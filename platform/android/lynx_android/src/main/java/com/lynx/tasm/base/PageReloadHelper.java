@@ -192,6 +192,10 @@ public class PageReloadHelper {
       url = currentUrl;
     }
 
+    if (templateData != null) {
+      templateData = templateData.deepClone();
+    }
+
     if (templateBin != null) {
       templateRender.renderTemplateWithBaseUrl(templateBin, mInitTemplateData, url);
     } else if (templateBundle != null) {
