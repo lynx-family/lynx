@@ -139,6 +139,8 @@ typedef void (^LynxUIScrollToCallBack)(int code, id _Nullable data);
   CGFloat _fadingEdge;
   BOOL _nestedUpdated;
   LynxUIScrollToCallBack _scrollToCallBack;
+  NSInteger _keepInitialScrollToIndex;
+  NSInteger _keepInitialScrollToOffset;
 
   // For list native storage
   NSInteger _listSign;
@@ -179,6 +181,8 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
     _forceImpression = NO;
     _lastScrollPoint = CGPointMake(INFINITY, INFINITY);
     _nestedUpdated = NO;
+    _keepInitialScrollToIndex = -1;
+    _keepInitialScrollToOffset = -1;
     self.firstRender = YES;
     [self ensureUpdateContentSize];
     _propMap = [[LynxPropertyDiffMap alloc] init];
@@ -256,7 +260,13 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
 - (void)onNodeReload {
   [super onNodeReload];
-  [self resetContentOffset];
+  if (_keepInitialScrollToIndex > -1) {
+    [self initialScrollToIndexInner:(int)_keepInitialScrollToIndex];
+    self.firstRender = YES;
+  } else if (_keepInitialScrollToOffset > -1) {
+    [self initialScrollOffsetInner:(int)_keepInitialScrollToOffset];
+    self.firstRender = YES;
+  }
 }
 
 - (void)onNodeReady {
@@ -448,9 +458,11 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 - (void)setInitialScrollOffset:(int)value requestReset:(BOOL)requestReset {
   if (requestReset) {
     value = 0;
+    _keepInitialScrollToOffset = 0;
     // reset means this UI now don't have this prop
     [_propMap deleteKey:LynxScrollViewInitialScrollOffset];
   } else {
+    _keepInitialScrollToOffset = value;
     // Keep the _propMap the latest updated value. It is allowed to change initial-offset more than
     // once before the first render.
     [_propMap putValue:@(value) forKey:LynxScrollViewInitialScrollOffset];
@@ -505,9 +517,11 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 - (void)setInitialScrollToIndex:(int)value requestReset:(BOOL)requestReset {
   if (requestReset) {
     value = 0;
+    _keepInitialScrollToIndex = 0;
     // reset means this UI (maybe reused from elsewhere) now don't have this prop
     [_propMap deleteKey:LynxScrollViewInitialScrollIndex];
   } else {
+    _keepInitialScrollToIndex = value;
     // Keep the _propMap the latest updated value. It is allowed to change initial-to-index more
     // than once before the first render.
     [_propMap putValue:@(value) forKey:LynxScrollViewInitialScrollIndex];

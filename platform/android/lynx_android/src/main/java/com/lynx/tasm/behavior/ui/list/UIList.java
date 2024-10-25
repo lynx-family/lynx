@@ -93,6 +93,7 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
   private ListStickyManager mListStickyManager;
   private AppearEventCourier mAppearEventCourier;
   private int mInitialScrollIndex = RecyclerView.NO_POSITION;
+  private int mKeepInitialScrollIndex = RecyclerView.NO_POSITION;
   private int mPendingStickyOffset = 0;
   private boolean mPendingOldStickCategory = true;
   private boolean mNewScrollTop = false;
@@ -1655,6 +1656,19 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
 
   public void setInitialScrollIndex(Dynamic value) {
     mInitialScrollIndex = ListEventManager.dynamicToInt(value, RecyclerView.NO_POSITION);
+    mKeepInitialScrollIndex = mInitialScrollIndex;
+  }
+
+  @Override
+  public void onNodeReload() {
+    super.onNodeReload();
+    if (mListScroller != null) {
+      if (mKeepInitialScrollIndex > RecyclerView.NO_POSITION) {
+        mListScroller.scrollToPositionInner(mKeepInitialScrollIndex);
+      } else {
+        mListScroller.scrollToPositionInner(0);
+      }
+    }
   }
 
   @Override
