@@ -23,10 +23,6 @@ BordersData::BordersData(bool css_align_with_legacy_w3c)
       radius_y_top_right(DefaultLayoutStyle::SL_DEFAULT_RADIUS()),
       radius_y_bottom_right(DefaultLayoutStyle::SL_DEFAULT_RADIUS()),
       radius_y_bottom_left(DefaultLayoutStyle::SL_DEFAULT_RADIUS()),
-      color_top(DefaultColor::DEFAULT_BORDER_COLOR),
-      color_right(DefaultColor::DEFAULT_BORDER_COLOR),
-      color_bottom(DefaultColor::DEFAULT_BORDER_COLOR),
-      color_left(DefaultColor::DEFAULT_BORDER_COLOR),
       style_top(DEFAULT_CSS_VALUE(css_align_with_legacy_w3c, BORDER_STYLE)),
       style_right(DEFAULT_CSS_VALUE(css_align_with_legacy_w3c, BORDER_STYLE)),
       style_bottom(DEFAULT_CSS_VALUE(css_align_with_legacy_w3c, BORDER_STYLE)),
@@ -46,10 +42,6 @@ void BordersData::Reset() {
   radius_y_top_right = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
   radius_y_bottom_right = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
   radius_y_bottom_left = DefaultLayoutStyle::SL_DEFAULT_RADIUS();
-  color_top = DefaultColor::DEFAULT_COLOR;
-  color_right = DefaultColor::DEFAULT_COLOR;
-  color_bottom = DefaultColor::DEFAULT_COLOR;
-  color_left = DefaultColor::DEFAULT_COLOR;
   style_top = DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE);
   style_right = DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE);
   style_bottom = DEFAULT_CSS_VALUE(css_align_with_legacy_w3c_, BORDER_STYLE);

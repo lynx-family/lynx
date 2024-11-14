@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdlib.h>
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,6 +35,7 @@
 #include "core/style/layout_animation_data.h"
 #include "core/style/outline_data.h"
 #include "core/style/perspective_data.h"
+#include "core/style/properties/border.h"
 #include "core/style/shadow_data.h"
 #include "core/style/text_attributes.h"
 #include "core/style/transform_origin_data.h"
@@ -91,6 +93,9 @@ class ComputedCSSStyle {
     length_context_.root_node_font_size_ = root_node_font_size;
     return true;
   }
+
+  bool SetBorderColorBySide(const tasm::CSSValue& value, const bool reset,
+                            style::BorderSide side);
 
   void SetLayoutUnit(float physical_pixels_per_layout_unit,
                      float layouts_unit_per_px) {
@@ -184,6 +189,8 @@ class ComputedCSSStyle {
     return new_animator_interpolation_;
   }
 
+  style::Border* Border() const { return border_.get(); }
+
   static float SAFE_AREA_INSET_TOP_;
   static float SAFE_AREA_INSET_BOTTOM_;
   static float SAFE_AREA_INSET_LEFT_;
@@ -247,6 +254,7 @@ class ComputedCSSStyle {
   base::String caret_color_;
   base::String adapt_font_size_;
   base::String content_;
+  std::unique_ptr<style::Border> border_;
 
   /************ css style property end ***************************/
 

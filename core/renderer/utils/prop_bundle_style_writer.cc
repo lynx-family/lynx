@@ -7,6 +7,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/style/properties/border.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -32,6 +33,21 @@ void PropBundleStyleWriter::PushStyleToBundle(
       false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
       "PropBundleStyleWriter can't find writer function for style id:%d.", id);
 }
+
+#pragma region border longhand
+
+void PropBundleStyleWriter::SetBorderColorBySide(
+    PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style,
+    style::BorderSide side) {
+  if (style->Border()) {
+    bundle->SetPropsByID(
+        id, style->Border()
+                    ->*(style::kBorderColorMembers[static_cast<size_t>(side)]));
+  } else {
+    bundle->SetNullPropsByID(id);
+  }
+}
+#pragma endregion  // border longhand
 
 void PropBundleStyleWriter::DefaultWriterFunc(
     PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style) {

@@ -4,7 +4,6 @@
 
 #include "core/renderer/css/computed_css_style.h"
 
-#include <cmath>
 #include <utility>
 
 #include "base/include/algorithm.h"
@@ -2135,48 +2134,37 @@ bool ComputedCSSStyle::SetFilter(const tasm::CSSValue& value,
                                       parser_configs_);
 }
 
-bool ComputedCSSStyle::SetBorderTopColor(const tasm::CSSValue& value,
-                                         const bool reset) {
-  CSSStyleUtils::PrepareOptional(
-      layout_computed_style_.surround_data_.border_data_);
+bool ComputedCSSStyle::SetBorderColorBySide(const tasm::CSSValue& value,
+                                            const bool reset,
+                                            style::BorderSide side) {
+  if (!border_) {
+    border_ = std::make_unique<style::Border>();
+  }
   return CSSStyleUtils::ComputeUIntStyle(
       value, reset,
-      layout_computed_style_.surround_data_.border_data_->color_top,
+      border_.get()->*(style::kBorderColorMembers[static_cast<size_t>(side)]),
       DefaultColor::DEFAULT_BORDER_COLOR, "border-top-color must be a number",
       parser_configs_);
 }
 
+bool ComputedCSSStyle::SetBorderTopColor(const tasm::CSSValue& value,
+                                         const bool reset) {
+  return SetBorderColorBySide(value, reset, style::BorderSide::kTop);
+}
+
 bool ComputedCSSStyle::SetBorderRightColor(const tasm::CSSValue& value,
                                            const bool reset) {
-  CSSStyleUtils::PrepareOptional(
-      layout_computed_style_.surround_data_.border_data_);
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset,
-      layout_computed_style_.surround_data_.border_data_->color_right,
-      DefaultColor::DEFAULT_BORDER_COLOR, "border-right-color must be a number",
-      parser_configs_);
+  return SetBorderColorBySide(value, reset, style::BorderSide::kRight);
 }
 
 bool ComputedCSSStyle::SetBorderBottomColor(const tasm::CSSValue& value,
                                             const bool reset) {
-  CSSStyleUtils::PrepareOptional(
-      layout_computed_style_.surround_data_.border_data_);
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset,
-      layout_computed_style_.surround_data_.border_data_->color_bottom,
-      DefaultColor::DEFAULT_BORDER_COLOR,
-      "border-bottom-color must be a number", parser_configs_);
+  return SetBorderColorBySide(value, reset, style::BorderSide::kBottom);
 }
 
 bool ComputedCSSStyle::SetBorderLeftColor(const tasm::CSSValue& value,
                                           const bool reset) {
-  CSSStyleUtils::PrepareOptional(
-      layout_computed_style_.surround_data_.border_data_);
-  return CSSStyleUtils::ComputeUIntStyle(
-      value, reset,
-      layout_computed_style_.surround_data_.border_data_->color_left,
-      DefaultColor::DEFAULT_BORDER_COLOR, "border-left-color must be a number",
-      parser_configs_);
+  return SetBorderColorBySide(value, reset, style::BorderSide::kLeft);
 }
 
 bool ComputedCSSStyle::SetBorderTopStyle(const tasm::CSSValue& value,
@@ -2960,40 +2948,21 @@ lepus_value ComputedCSSStyle::FilterToLepus() {
   return CSSStyleUtils::FilterToLepus(filter_);
 }
 
+// TODO(renzhongyue): remove #toLepus methods
 lepus_value ComputedCSSStyle::BorderTopColorToLepus() {
-  if (layout_computed_style_.surround_data_.border_data_) {
-    return lepus_value(
-        layout_computed_style_.surround_data_.border_data_->color_top);
-  } else {
-    return lepus_value();
-  }
+  return border_ ? lepus_value(border_->border_top_color) : lepus_value();
 }
 
 lepus_value ComputedCSSStyle::BorderRightColorToLepus() {
-  if (layout_computed_style_.surround_data_.border_data_) {
-    return lepus_value(
-        layout_computed_style_.surround_data_.border_data_->color_right);
-  } else {
-    return lepus_value();
-  }
+  return border_ ? lepus_value(border_->border_right_color) : lepus_value();
 }
 
 lepus_value ComputedCSSStyle::BorderBottomColorToLepus() {
-  if (layout_computed_style_.surround_data_.border_data_) {
-    return lepus_value(
-        layout_computed_style_.surround_data_.border_data_->color_bottom);
-  } else {
-    return lepus_value();
-  }
+  return border_ ? lepus_value(border_->border_bottom_color) : lepus_value();
 }
 
 lepus_value ComputedCSSStyle::BorderLeftColorToLepus() {
-  if (layout_computed_style_.surround_data_.border_data_) {
-    return lepus_value(
-        layout_computed_style_.surround_data_.border_data_->color_left);
-  } else {
-    return lepus_value();
-  }
+  return border_ ? lepus_value(border_->border_left_color) : lepus_value();
 }
 
 lepus_value ComputedCSSStyle::BorderTopWidthToLepus() {
