@@ -684,19 +684,16 @@ public class TextHelper {
       @Nullable String maxWidth, int maxLine) {
     float width = 0.f;
     int textFontSize = Math.round(UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14)));
-    int maxMeasureLine = maxLine;
-    float maxMeasureWidth = TextUtils.isEmpty(maxWidth)
-        ? 0
-        : UnitUtils.toPx(maxWidth, 0, 0, 0, 0, PixelUtils.dipToPx(0));
-
     JavaOnlyMap resultMap = new JavaOnlyMap();
-    if (text.isEmpty() || textFontSize == 0 || (maxLine > 1 && maxMeasureWidth < 1)) {
-      // if no valid fontSize or maxWidth set, just return width
+    if (text.isEmpty() || textFontSize == 0) {
+      // if no valid fontSize set, just return width
       resultMap.putDouble("width", width);
       return resultMap;
     }
 
-    if (maxLine == 1 && maxMeasureWidth < 1) {
+    float maxMeasureWidth = UnitUtils.toPx(maxWidth, 0, 0, 0, 0, PixelUtils.dipToPx(0));
+    boolean isValidMaxWidth = maxMeasureWidth > 0;
+    if (!isValidMaxWidth) {
       maxMeasureWidth = Short.MAX_VALUE;
     }
 
@@ -704,37 +701,31 @@ public class TextHelper {
     TextPaint textPaint = newTextPaint(textFontSize, fontFamily);
 
     final JavaOnlyArray paramArray = new JavaOnlyArray();
+    Layout textLayout;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
       // use StaticLayout#Builder
       StaticLayout.Builder builder = StaticLayout.Builder.obtain(
           textSpan, 0, textSpan.length(), textPaint, (int) Math.floor(maxMeasureWidth));
-      builder.setMaxLines(maxMeasureLine);
-      Layout textLayout = builder.build();
-      width = calculateMaxWidth(textLayout);
-      width = PixelUtils.pxToDip(width);
-      int lineCount = textLayout.getLineCount();
-      for (int i = 0; i < lineCount; i++) {
-        int start = textLayout.getLineStart(i);
-        int end = textLayout.getLineEnd(i);
-        String lineStr = text.substring(start, end);
-        paramArray.add(lineStr);
-      }
+      builder.setMaxLines(maxLine);
+      textLayout = builder.build();
     } else {
-      Layout textLayout = StaticLayoutCompat.get(textSpan, 0, textSpan.length(), textPaint,
+      textLayout = StaticLayoutCompat.get(textSpan, 0, textSpan.length(), textPaint,
           (int) Math.floor(maxMeasureWidth), Layout.Alignment.ALIGN_NORMAL, 1, 0.0f, false, null,
-          maxMeasureLine, TextDirectionHeuristics.FIRSTSTRONG_LTR);
-      int lineCount = textLayout.getLineCount();
+          maxLine, TextDirectionHeuristics.FIRSTSTRONG_LTR);
+    }
+    width = PixelUtils.pxToDip(calculateMaxWidth(textLayout));
+    resultMap.putDouble("width", width);
+    if (isValidMaxWidth) {
+      int lineCount =
+          maxLine > 0 ? Math.min(maxLine, textLayout.getLineCount()) : textLayout.getLineCount();
       for (int i = 0; i < lineCount; i++) {
         int start = textLayout.getLineStart(i);
         int end = textLayout.getLineEnd(i);
         String lineStr = text.substring(start, end);
         paramArray.add(lineStr);
       }
-      width = calculateMaxWidth(textLayout);
-      width = PixelUtils.pxToDip(width);
+      resultMap.putArray("content", paramArray);
     }
-    resultMap.putDouble("width", width);
-    resultMap.putArray("content", paramArray);
 
     return resultMap;
   }

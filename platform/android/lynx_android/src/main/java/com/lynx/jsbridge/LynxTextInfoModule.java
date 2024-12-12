@@ -31,7 +31,7 @@ public class LynxTextInfoModule extends LynxContextModule {
     }
     String fontFamily = params.getString("fontFamily");
     String maxWidth = params.getString("maxWidth");
-    int maxLine = 1;
+    int maxLine = -1;
     if (params.hasKey("maxLine")) {
       maxLine = params.getInt("maxLine");
     }
