@@ -33,7 +33,7 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
                         ctx->DefaultFontSize()) *
                     scale_density;
 
-  float max_width = std::numeric_limits<float>::max();
+  float max_width = -1.f;
   if (info.Contains(kMaxWidth)) {
     const std::string& max_width_str = info.GetValueForKey(kMaxWidth)->str();
     if (!max_width_str.empty()) {
@@ -41,6 +41,10 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
                       max_width_str, screen_size[0], ctx->DevicePixelRatio()) *
                   scale_density;
     }
+  }
+  bool is_valid_max_width = max_width > 0;
+  if (!is_valid_max_width) {
+    max_width = std::numeric_limits<float>::max();
   }
   ParagraphStyleHarmony paragraph_style;
   if (info.Contains(kMaxLine)) {
@@ -84,7 +88,7 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
   width = paragraph->GetLongestLine() / scale_density;
 
   int line_count = paragraph->GetLineCount();
-  if (line_count > 1) {
+  if (is_valid_max_width) {
     auto u16content = base::U8StringToU16(content);
     auto line_str_array = lepus::CArray::Create();
     auto u16content_len = u16content.length();

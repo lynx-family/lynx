@@ -97,8 +97,13 @@ NSString *const RTL_MARK = @"\u200F";
                      maxWidth:(CGFloat)maxWidth
                       maxLine:(NSInteger)maxLine {
   CGFloat width = 0.f;
-  if (text == nil || text.length == 0 || fontSize == 0 || (maxLine > 1 && maxWidth < 1)) {
+  if (text == nil || text.length == 0 || fontSize == 0) {
     return @{@"width" : @(width)};
+  }
+
+  Boolean isValidMaxWidth = maxWidth > 0;
+  if (!isValidMaxWidth) {
+    maxWidth = CGFLOAT_MAX;
   }
   UIFont *font = [UIFont systemFontOfSize:fontSize];
   if (fontFamily.length > 0) {
@@ -111,8 +116,8 @@ NSString *const RTL_MARK = @"\u200F";
   }
   NSDictionary *textAttributes = @{NSFontAttributeName : font};
   // if maxWidth is not set, the text only layout for one line
-  if (maxWidth < 1) {
-    CGRect rect = [text boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, 100)
+  if (!isValidMaxWidth) {
+    CGRect rect = [text boundingRectWithSize:CGSizeMake(maxWidth, 100)
                                      options:NSStringDrawingUsesLineFragmentOrigin
                                   attributes:textAttributes
                                      context:nil];
@@ -128,7 +133,9 @@ NSString *const RTL_MARK = @"\u200F";
     [textStorage addLayoutManager:layoutManager];
     NSTextContainer *textContainer =
         [[NSTextContainer alloc] initWithSize:CGSizeMake(maxWidth, 1000)];
-    textContainer.maximumNumberOfLines = maxLine;
+    if (maxLine > 0) {
+      textContainer.maximumNumberOfLines = maxLine;
+    }
     textContainer.lineFragmentPadding = 0;
     [layoutManager addTextContainer:textContainer];
     [layoutManager ensureLayoutForTextContainer:textContainer];

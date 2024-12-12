@@ -35,24 +35,21 @@ using namespace lynx;
 }
 
 - (NSDictionary *)getTextInfo:(NSString *)text params:(NSDictionary *)info {
-  if (text.length == 0) {
+  NSString *font_size = [info objectForKey:@"fontSize"];
+  if (text.length == 0 || !font_size || font_size.length == 0) {
     return @{@"width" : @0.f};
   }
-  NSString *font_size = [info objectForKey:@"fontSize"];
+
   static CGFloat kLynxDefaultFontSize = 14;
-  CGFloat fontSize = kLynxDefaultFontSize;
-  if (font_size && (font_size.length != 0)) {
-    fontSize = [LynxUnitUtils toPtFromUnitValue:font_size withDefaultPt:kLynxDefaultFontSize];
-  }
+  CGFloat fontSize = [LynxUnitUtils toPtFromUnitValue:font_size withDefaultPt:kLynxDefaultFontSize];
+
   NSString *fontFamily = [info objectForKey:@"fontFamily"];
   id max_line = [info objectForKey:@"maxLine"];
-  NSInteger maxLine;
+  NSInteger maxLine = -1;
   if ([max_line isKindOfClass:[NSNumber class]]) {
     maxLine = [max_line integerValue];
-  } else {
-    maxLine = 1;
   }
-  CGFloat maxWidth = 0;
+  CGFloat maxWidth = -1.f;
   NSString *max_width = [info objectForKey:@"maxWidth"];
   if (max_width.length != 0) {
     maxWidth = [LynxUnitUtils toPtFromUnitValue:max_width withDefaultPt:kLynxDefaultFontSize];
