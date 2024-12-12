@@ -19,7 +19,7 @@ std::unique_ptr<pub::Value> TextUtilsDarwinHelper::GetTextInfo(const std::string
                                                                const pub::Value& info) {
   lepus::Value result = lepus::Value::CreateObject();
   float width = 0.f;
-  if (!string.empty() && info.IsMap()) {
+  if (!string.empty() && info.IsMap() && info.Contains(kFontSize)) {
     const std::string font_size = info.GetValueForKey(kFontSize)->str();
     static CGFloat kLynxDefaultFontSize = 14;
     CGFloat fontSize = kLynxDefaultFontSize;
@@ -34,7 +34,7 @@ std::unique_ptr<pub::Value> TextUtilsDarwinHelper::GetTextInfo(const std::string
     }
     NSInteger maxLine = info.GetValueForKey(kMaxLine)->Number();
     const std::string max_width = info.GetValueForKey(kMaxWidth)->str();
-    CGFloat maxWidth = 0;
+    CGFloat maxWidth = -1.f;
     if (!max_width.empty()) {
       maxWidth = [LynxUnitUtils toPtFromUnitValue:[NSString stringWithUTF8String:max_width.c_str()]
                                     withDefaultPt:kLynxDefaultFontSize];
