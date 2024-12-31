@@ -36,4 +36,11 @@ public interface TestBenchActionCallback {
    * All actions playback in TestBench have been completed.
    */
   default void onTestBenchComplete() {}
+
+  /**
+   * Called when an error occurs during the playback phase of the TestBench
+   * @param code:Error code:
+   * @param message:Error message.
+   */
+  default void onError(int code, String message) {}
 }

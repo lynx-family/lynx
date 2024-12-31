@@ -6,10 +6,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@protocol TestBenchActionCallback;
+@class TestBenchActionCallback;
 @interface TestBenchPageManager : NSObject
 + (instancetype)sharedInstance;
-- (void)registerTestBenchActionCallback:(id<TestBenchActionCallback>)callback;
+- (void)registerTestBenchActionCallback:(TestBenchActionCallback *)callback;
 - (void)replayPageFromOpenSchema:(NSDictionary *)params;
 - (void)startReplay:(NSString *)url;
 - (void)removeCurrTestBenchVC:(NSString *)pageName hasBeenPop:(BOOL)hasBeenPop;

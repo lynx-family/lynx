@@ -11,7 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, copy) NSString *url;
 
-+ (BOOL)entranceTestBenchView:(id<TestBenchActionCallback>)actionCallback;
++ (BOOL)entranceTestBenchView:(NSMutableArray<id<TestBenchActionCallback>> *)actionCallbacks;
 
 + (BOOL)enableLoadLocalRecordFile:(NSString *)url;
 

@@ -144,13 +144,23 @@ static const int kVirtual = 1 << 2;
              completionHandler:^(NSData* _Nullable data, NSURLResponse* _Nullable response,
                                  NSError* _Nullable error) {
                __strong typeof(_self) strongSelf = _self;
+               if (error != Nil) {
+                 for (TestBenchActionCallback* callback in strongSelf.actionCallbacks) {
+                   SEL selector = @selector(onError:message:);
+                   if ([callback respondsToSelector:selector]) {
+                     [callback onError:TestBenchDownloadError message:error.localizedDescription];
+                   }
+                 }
+                 return;
+               }
+
                [strongSelf.stateView setReplayState:PARSING_JSON_FILE];
                [strongSelf handleRecordFileData:data];
              }];
   [dataTask resume];
 }
 
-- (void)registerTestBenchActionCallback:(id<TestBenchActionCallback>)callback {
+- (void)registerTestBenchActionCallback:(TestBenchActionCallback*)callback {
   [self.actionCallbacks addObject:callback];
 }
 
@@ -526,7 +536,7 @@ static const int kVirtual = 1 << 2;
         builder.fontScale = strongSelf->_rawFontScaleValue;
       }
       // provide a change to register module or resource provider
-      for (id<TestBenchActionCallback> callback in strongSelf.actionCallbacks) {
+      for (TestBenchActionCallback* callback in strongSelf.actionCallbacks) {
         [callback onLynxViewWillBuild:self builder:builder];
       }
     }];
@@ -548,7 +558,7 @@ static const int kVirtual = 1 << 2;
                    options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
                    context:nil];
     // provide a change to register module or resource provider
-    for (id<TestBenchActionCallback> callback in self.actionCallbacks) {
+    for (TestBenchActionCallback* callback in self.actionCallbacks) {
       [callback onLynxViewDidBuild:_lynxView];
     }
   } else {

@@ -6,18 +6,11 @@
 #import <Lynx/LynxGroup.h>
 #import <Lynx/LynxView.h>
 #import <UIKit/UIKit.h>
+#import "TestBenchActionCallback.h"
 #import "TestBenchReplayConfig.h"
 #import "TestBenchStateReplayView.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
-@class TestBenchActionManager;
-@protocol TestBenchActionCallback <NSObject>
-@required
-- (void)onLynxViewWillBuild:(TestBenchActionManager *)manager builder:(LynxViewBuilder *)builder;
-- (void)onLynxViewDidBuild:(LynxView *)lynxView;
-
-@end
 
 @interface TestBenchActionManager : NSObject
 @property(nonatomic, copy) void (^endTestBenchBlock)(void);
@@ -26,7 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) LynxGroup *lynxGroup;
 @property(nonatomic, readonly) NSArray<NSDictionary *> *componentList;
 
-- (void)registerTestBenchActionCallback:(id<TestBenchActionCallback>)callback;
+- (void)registerTestBenchActionCallback:(TestBenchActionCallback *)callback;
 - (void)startWithUrl:(NSString *)url
               inView:(UIView *)parentView
           withOrigin:(CGPoint)point

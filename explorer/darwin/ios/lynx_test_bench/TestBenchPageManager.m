@@ -38,7 +38,7 @@
 @property NSMutableDictionary *viewControllers;
 @property BOOL isMultiEnv;
 @property Counter *count;
-@property(nonatomic, strong) NSMutableArray<id<TestBenchActionCallback>> *actionCallbacks;
+@property(nonatomic, strong) NSMutableArray<TestBenchActionCallback *> *actionCallbacks;
 
 - (void)clear;
 - (void)loadDescribeFile:(NSString *)url;
@@ -80,7 +80,7 @@
   return [pageName componentsSeparatedByString:@"#"][0];
 }
 
-- (void)registerTestBenchActionCallback:(id<TestBenchActionCallback>)callback {
+- (void)registerTestBenchActionCallback:(TestBenchActionCallback *)callback {
   [self.actionCallbacks addObject:callback];
 }
 
@@ -122,7 +122,7 @@
   NSArray *query = [[source query] componentsSeparatedByString:@"&"];
 
   TestBenchViewController *tbVC = [TestBenchViewController new];
-  for (id<TestBenchActionCallback> callback in self.actionCallbacks) {
+  for (TestBenchActionCallback *callback in self.actionCallbacks) {
     [tbVC registerTestBenchActionCallback:callback];
   }
   if ([query containsObject:@"fullScreen=true"]) {

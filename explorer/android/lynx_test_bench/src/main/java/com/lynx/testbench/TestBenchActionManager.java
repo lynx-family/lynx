@@ -175,6 +175,7 @@ public class TestBenchActionManager {
 
   public static final int sEndForFirstScreen = 0;
   public static final int sEndForAll = 1;
+  public static final int sDownloadError = 0;
 
   public static byte[] decompress(byte[] data) {
     byte[] output;
@@ -288,6 +289,7 @@ public class TestBenchActionManager {
     public void onFailed(String msg) {
       mainThreadChecker("onFailed");
       Log.e("TestBenchActionManager", "Read recorded file failed!");
+      onError(sDownloadError, msg);
     }
 
     private void mainThreadChecker(String methodName) {
@@ -402,6 +404,12 @@ public class TestBenchActionManager {
   public void onTestBenchComplete() {
     for (TestBenchActionCallback callback : mCallbacks) {
       callback.onTestBenchComplete();
+    }
+  }
+
+  public void onError(int code, String message) {
+    for (TestBenchActionCallback callback : mCallbacks) {
+      callback.onError(code, message);
     }
   }
 

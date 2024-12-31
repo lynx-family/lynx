@@ -17,13 +17,13 @@ NSString *const TESTBENCH_ASSETS_SCHEME = @"asset://";
 @property(nonatomic, strong) TestBenchTraceProfileHelper *traceHelper;
 @property(nonatomic, assign) BOOL isStartTrace;
 @property(nonatomic, assign) NSInteger delaySeconds;
-@property(nonatomic, strong) id<TestBenchActionCallback> actionCallback;
+@property(nonatomic, strong) NSMutableArray<id<TestBenchActionCallback>> *actionCallbacks;
 
 @end
 
 @implementation TestBenchEntranceViewController
 
-+ (BOOL)entranceTestBenchView:(id<TestBenchActionCallback>)actionCallback {
++ (BOOL)entranceTestBenchView:(NSMutableArray<id<TestBenchActionCallback>> *)actionCallbacks {
   NSArray<NSString *> *argvs = [[NSProcessInfo processInfo] arguments];
 
   for (NSString *arg_str in argvs) {
@@ -31,7 +31,7 @@ NSString *const TESTBENCH_ASSETS_SCHEME = @"asset://";
         [arg_str hasPrefix:[[TestBenchEnv sharedInstance] testBenchUrlPrefix]]) {
       TestBenchEntranceViewController *testbenchVC = [TestBenchEntranceViewController new];
       testbenchVC.url = arg_str;
-      testbenchVC.actionCallback = actionCallback;
+      testbenchVC.actionCallbacks = actionCallbacks;
       UINavigationController *navigationVC = [TestBenchUIHelper getTopNavigationController];
       [navigationVC popViewControllerAnimated:NO];
       [navigationVC pushViewController:testbenchVC animated:YES];
@@ -105,7 +105,10 @@ NSString *const TESTBENCH_ASSETS_SCHEME = @"asset://";
       NSArray *query = [[source query] componentsSeparatedByString:@"&"];
 
       TestBenchViewController *tbVC = [TestBenchViewController new];
-      [tbVC registerTestBenchActionCallback:self.actionCallback];
+
+      for (id<TestBenchActionCallback> callback in self.actionCallbacks) {
+        [tbVC registerTestBenchActionCallback:callback];
+      }
       if ([query containsObject:@"fullScreen=true"]) {
         tbVC.fullScreen = YES;
       } else {

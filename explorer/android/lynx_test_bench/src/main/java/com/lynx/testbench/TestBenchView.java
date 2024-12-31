@@ -62,6 +62,13 @@ public class TestBenchView extends RelativeLayout {
         attachToView(viewGroup, intent.getIntExtra(LYNX_VIEW_WIDTH, MATCH_PARENT),
             intent.getIntExtra(LYNX_VIEW_HEIGHT, MATCH_PARENT));
       }
+
+      @Override
+      public void onError(int code, String message) {
+        if (code == TestBenchActionManager.sDownloadError) {
+          destroy();
+        }
+      }
     });
     ArrayList<TestBenchActionCallback> externalCallbacks =
         TestBenchPageManager.getInstance().getCallbacks();
