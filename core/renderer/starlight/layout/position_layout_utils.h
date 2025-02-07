@@ -9,6 +9,7 @@
 
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/layout/layout_global.h"
+#include "core/renderer/starlight/layout/logic_direction_utils.h"
 #include "core/renderer/starlight/types/layout_directions.h"
 #include "core/renderer/starlight/types/layout_types.h"
 
@@ -30,6 +31,12 @@ void CalcAbsoluteOrFixedPosition(
 Constraints GetAbsoluteOrFixedItemSizeAndMode(
     LayoutObject* absolute_or_fixed_item, LayoutObject* container,
     const Constraints& content_constraints);
+
+void CalcStartOffset(LayoutObject* absolute_or_fixed_item,
+                     BoundType container_bound_type,
+                     DimensionValue<Position> positions,
+                     const Constraints& containing_block, Dimension dimension,
+                     Direction direction, float offset = 0.f);
 
 void UpdateStickyItemPosition(LayoutObject* sticky_item, float screen_width,
                               const Constraints& content_constraints);

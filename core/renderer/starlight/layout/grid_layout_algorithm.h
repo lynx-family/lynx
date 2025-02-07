@@ -22,8 +22,8 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   void InitializeAlgorithmEnv() override;
   void Reset() override;
   void AlignInFlowItems() override;
-  BoxPositions GetAbsoluteOrFixedItemInitialPosition(
-      LayoutObject* item) override;
+  void MeasureAbsoluteAndFixed() override;
+  void AlignAbsoluteAndFixedItems() override;
   void SizeDeterminationByAlgorithm() override;
   void SetContainerBaseline() override{};
 
@@ -96,7 +96,7 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
       block_track_count_ = std::max(block_track_count_, track_count);
     }
   }
-  // measure grid with track size.
+  // measure grid items with containing block.
   void MeasureGridItems();
 
   // alignment
@@ -116,10 +116,20 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   const std::vector<NLength>& ImplicitTrackMaxTrackSizingFunction(
       Dimension dimension) const;
 
-  // Valid after ExpandFlexibleTracksAndStretchAutoTracks finish.
-  float GridTrackSize(Dimension dimension, int32_t start, int32_t end);
-  // Valid after ExpandFlexibleTracksAndStretchAutoTracks finish.
-  std::vector<float>& GridTracksPrefixes(Dimension dimension);
+  // Valid after 'ExpandFlexibleTracksAndStretchAutoTracks' has finished, taking
+  // into consideration 'align-content', 'justify-content', and 'gutters'.
+  // Including the special line (auto) - first and last lines (0th and -0th) of
+  // the augmented grid used for positioning absolutely-positioned items. When
+  // the line acquired thickness from the gutter, the following value is the
+  // offset from the line's end side to the container's padding bound.
+  // For example, for 'width: 400px (padding-bound-width)',
+  // 'grid-template-columns: 50px 100px', 'padding: 10px', 'gap: 10px'. We get
+  // [0 10 70 170 400].
+  std::vector<float>& GridLineOffsetFromContainerPaddingBound(
+      Dimension dimension);
+  // This calculation depends on "GridLineOffsetFromContainerPaddingBound".
+  float CalcContainingBlock(Dimension dimension, int32_t start, int32_t end);
+
   // Dimension for grid.
   // Writing-mode is not yet supported, inline axis is always equals horizontal
   // axis;
@@ -160,14 +170,15 @@ class GridLayoutAlgorithm : public LayoutAlgorithm {
   float block_gap_size_ = 0;
 
   std::vector<GridItemInfo> grid_item_infos_;
+  std::vector<GridItemInfo> grid_absolutely_positioned_item_infos_;
+
   std::vector<NLength> grid_row_min_track_sizing_function_;
   std::vector<NLength> grid_row_max_track_sizing_function_;
   std::vector<NLength> grid_column_min_track_sizing_function_;
   std::vector<NLength> grid_column_max_track_sizing_function_;
 
-  // Sum of prefixes grid track, it init after GridItemSizing() finish.
-  std::vector<float> grid_row_track_prefixes_;
-  std::vector<float> grid_column_track_prefixes_;
+  std::vector<float> grid_row_line_offset_from_container_padding_bound_;
+  std::vector<float> grid_column_line_offset_from_container_padding_bound_;
 };
 
 }  // namespace starlight

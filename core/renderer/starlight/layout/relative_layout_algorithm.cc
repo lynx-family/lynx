@@ -220,11 +220,6 @@ void RelativeLayoutAlgorithm::InitializeAlgorithmEnv() {
   Sort();
 }
 
-BoxPositions RelativeLayoutAlgorithm::GetAbsoluteOrFixedItemInitialPosition(
-    LayoutObject* absolute_or_fixed_item) {
-  return BoxPositions{Position::kStart, Position::kStart};
-}
-
 Constraints RelativeLayoutAlgorithm::ComputeConstraints(
     size_t idx, DirectionValue<LayoutUnit>& position_constraint,
     bool horizontal_only) const {

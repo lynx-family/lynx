@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "core/renderer/starlight/layout/layout_object.h"
+#include "core/renderer/starlight/layout/position_layout_utils.h"
 #include "core/renderer/starlight/layout/property_resolving_utils.h"
 
 namespace lynx {
@@ -51,31 +52,27 @@ void GridLayoutAlgorithm::Reset() {
   grid_row_max_track_sizing_function_.clear();
   grid_column_min_track_sizing_function_.clear();
   grid_column_max_track_sizing_function_.clear();
-  grid_row_track_prefixes_.clear();
-  grid_column_track_prefixes_.clear();
+  grid_row_line_offset_from_container_padding_bound_.clear();
+  grid_column_line_offset_from_container_padding_bound_.clear();
 }
 
 void GridLayoutAlgorithm::AlignInFlowItems() {
   for (const auto& item_info : grid_item_infos_) {
     LayoutObject* item = item_info.Item();
-    float inline_axis_offset =
-        GridTrackSize(InlineAxis(), 1, item_info.StartLine(InlineAxis()));
-    float block_axis_offset =
-        GridTrackSize(BlockAxis(), 1, item_info.StartLine(BlockAxis()));
+    const float inline_line_offset_from_content_bound =
+        GridLineOffsetFromContainerPaddingBound(
+            kHorizontal)[item_info.StartLine(kHorizontal)] -
+        (HorizontalFront() == kRight ? container_->GetLayoutPaddingRight()
+                                     : container_->GetLayoutPaddingLeft());
+    const float block_line_offset_from_content_bound =
+        GridLineOffsetFromContainerPaddingBound(
+            kVertical)[item_info.StartLine(kVertical)] -
+        container_->GetLayoutPaddingTop();
 
-    // if not first track.add a gap
-    if (item_info.StartLine(InlineAxis()) != kGridLineStart) {
-      inline_axis_offset += GridGapSize(InlineAxis());
-    }
-    if (item_info.StartLine(BlockAxis()) != kGridLineStart) {
-      block_axis_offset += GridGapSize(BlockAxis());
-    }
-
-    // axis offset + justify offset + item offset.
-    float offset_inline = inline_axis_offset + inline_axis_start_ +
-                          InlineAxisAlignment(item_info);
-    float offset_block =
-        block_axis_offset + block_axis_start_ + BlockAxisAlignment(item_info);
+    const float offset_inline =
+        inline_line_offset_from_content_bound + InlineAxisAlignment(item_info);
+    const float offset_block =
+        block_line_offset_from_content_bound + BlockAxisAlignment(item_info);
 
     SetBoundOffsetFrom(item, InlineFront(), BoundType::kMargin,
                        BoundType::kContent, offset_inline);
@@ -91,12 +88,9 @@ float GridLayoutAlgorithm::InlineAxisAlignment(const GridItemInfo& item_info) {
     justify_type = container_style_->GetJustifyItemsType();
   }
 
-  // track size - (margin + border box).
-  float track_size =
-      GridTrackSize(InlineAxis(), item_info.StartLine(InlineAxis()),
-                    item_info.EndLine(InlineAxis()));
-  float available_space =
-      track_size - GetMarginBoundDimensionSize(item_info.Item(), InlineAxis());
+  const float available_space =
+      item_info.ContainingBlock()[InlineAxis()].Size() -
+      GetMarginBoundDimensionSize(item_info.Item(), InlineAxis());
   float item_offset_inline = 0.f;
   switch (justify_type) {
     case JustifyType::kAuto:
@@ -123,11 +117,9 @@ float GridLayoutAlgorithm::BlockAxisAlignment(const GridItemInfo& item_info) {
     align_type = container_style_->GetAlignItems();
   }
 
-  float track_size =
-      GridTrackSize(BlockAxis(), item_info.StartLine(BlockAxis()),
-                    item_info.EndLine(BlockAxis()));
-  float available_space =
-      track_size - GetMarginBoundDimensionSize(item_info.Item(), BlockAxis());
+  const float available_space =
+      item_info.ContainingBlock()[BlockAxis()].Size() -
+      GetMarginBoundDimensionSize(item_info.Item(), BlockAxis());
   float item_offset_block = 0.f;
   switch (align_type) {
     case FlexAlignType::kFlexStart:
@@ -151,9 +143,117 @@ float GridLayoutAlgorithm::BlockAxisAlignment(const GridItemInfo& item_info) {
   return item_offset_block;
 }
 
-BoxPositions GridLayoutAlgorithm::GetAbsoluteOrFixedItemInitialPosition(
-    LayoutObject* absolute_or_fixed_item) {
-  return BoxPositions{Position::kStart, Position::kStart};
+// Special Handling for Absolute and Fixed in Grid
+void GridLayoutAlgorithm::MeasureAbsoluteAndFixed() {
+  for (GridItemInfo& item_info : grid_absolutely_positioned_item_infos_) {
+    LayoutObject* const item = item_info.Item();
+    Constraints containing_block;
+    containing_block[InlineAxis()] = OneSideConstraint::Definite(
+        CalcContainingBlock(InlineAxis(), item_info.StartLine(InlineAxis()),
+                            item_info.EndLine(InlineAxis())));
+    containing_block[BlockAxis()] = OneSideConstraint::Definite(
+        CalcContainingBlock(BlockAxis(), item_info.StartLine(BlockAxis()),
+                            item_info.EndLine(BlockAxis())));
+    item->GetBoxInfo()->ResolveBoxInfoForAbsoluteAndFixed(
+        containing_block, *item, item->GetLayoutConfigs());
+    item_info.SetContainingBlock(InlineAxis(), containing_block[InlineAxis()]);
+    item_info.SetContainingBlock(BlockAxis(), containing_block[BlockAxis()]);
+    const Constraints& item_size_mode =
+        position_utils::GetAbsoluteOrFixedItemSizeAndMode(item, container_,
+                                                          containing_block);
+    item->UpdateMeasure(item_size_mode, true);
+  }
+}
+
+// Special Handling for Absolute and Fixed in Grid
+void GridLayoutAlgorithm::AlignAbsoluteAndFixedItems() {
+  for (const GridItemInfo& item_info : grid_absolutely_positioned_item_infos_) {
+    LayoutObject* const item = item_info.Item();
+    // If a grid-placement property refers to a non-existent line either by
+    // explicitly specifying such a line or by spanning outside of the existing
+    // implicit grid, it is instead treated as specifying auto (instead of
+    // creating new implicit grid lines).
+    float offset_inline =
+        (item_info.StartLine(InlineAxis()) >
+         static_cast<int32_t>(
+             GridLineOffsetFromContainerPaddingBound(InlineAxis()).size()) -
+             2)
+            ? 0.f
+            : GridLineOffsetFromContainerPaddingBound(
+                  InlineAxis())[item_info.StartLine(InlineAxis())];
+    float offset_block =
+        (item_info.StartLine(BlockAxis()) >
+         static_cast<int32_t>(
+             GridLineOffsetFromContainerPaddingBound(BlockAxis()).size()) -
+             2)
+            ? 0.f
+            : GridLineOffsetFromContainerPaddingBound(
+                  BlockAxis())[item_info.StartLine(BlockAxis())];
+
+    const float inline_padding_size =
+        logic_direction_utils::GetPaddingBoundDimensionSize(container_,
+                                                            kHorizontal);
+    const float block_padding_size =
+        logic_direction_utils::GetPaddingBoundDimensionSize(container_,
+                                                            kVertical);
+    const LayoutComputedStyle* item_style = item->GetCSSStyle();
+    const auto left_offset = NLengthToLayoutUnit(
+        item_style->GetLeft(),
+        item_info.ContainingBlock()[kHorizontal].ToPercentBase());
+    const auto right_offset = NLengthToLayoutUnit(
+        item_style->GetRight(),
+        item_info.ContainingBlock()[kHorizontal].ToPercentBase());
+    const auto top_offset = NLengthToLayoutUnit(
+        item_style->GetTop(),
+        item_info.ContainingBlock()[kVertical].ToPercentBase());
+    const auto bottom_offset = NLengthToLayoutUnit(
+        item_style->GetBottom(),
+        item_info.ContainingBlock()[kVertical].ToPercentBase());
+
+    // Handle the logic of grid absolute items concerning rtl in advance.
+    if (HorizontalFront() == kRight) {
+      offset_inline = inline_padding_size - offset_inline;
+      if (left_offset.IsIndefinite() && right_offset.IsIndefinite()) {
+        offset_inline -= item->GetMarginBoundWidth();
+      } else {
+        offset_inline -= item_info.ContainingBlock()[kHorizontal].Size();
+      }
+    }
+
+    // Handle left/right additionally.
+    if (left_offset.IsIndefinite()) {
+      if (right_offset.IsIndefinite()) {
+        // if not setting left/right, consider justify-items/self.
+        offset_inline +=
+            (HorizontalFront() == kRight ? -InlineAxisAlignment(item_info)
+                                         : InlineAxisAlignment(item_info));
+      } else {
+        offset_inline = inline_padding_size - offset_inline -
+                        item_info.ContainingBlock()[kHorizontal].Size();
+      }
+    }
+
+    // Handle top/bottom additionally.
+    if (top_offset.IsIndefinite()) {
+      if (bottom_offset.IsIndefinite()) {
+        // if not setting top/bottom, consider align-items/self.
+        offset_block += BlockAxisAlignment(item_info);
+      } else {
+        offset_block = block_padding_size - offset_block -
+                       item_info.ContainingBlock()[kVertical].Size();
+      }
+    }
+
+    position_utils::CalcStartOffset(
+        item, BoundType::kPadding,
+        BoxPositions{Position::kStart, Position::kStart},
+        item_info.ContainingBlock(), kHorizontal, kLeft, offset_inline);
+
+    position_utils::CalcStartOffset(
+        item, BoundType::kPadding,
+        BoxPositions{Position::kStart, Position::kStart},
+        item_info.ContainingBlock(), kVertical, kTop, offset_block);
+  }
 }
 
 void GridLayoutAlgorithm::SizeDeterminationByAlgorithm() {
@@ -198,6 +298,8 @@ void GridLayoutAlgorithm::PlaceGridItems() {
 
 void GridLayoutAlgorithm::PrePlaceGridItems(PlaceItemCache& place_item) {
   grid_item_infos_.reserve(inflow_items_.size());
+  grid_absolutely_positioned_item_infos_.reserve(
+      absolute_or_fixed_items_.size());
 
   // track end line = track_size + 1.
   const int32_t explicit_column_end =
@@ -261,6 +363,16 @@ void GridLayoutAlgorithm::PrePlaceGridItems(PlaceItemCache& place_item) {
     item_info.InitSpanInfo(kHorizontal, explicit_column_end, column_offset_);
 
     grid_item_infos_.emplace_back(item_info);
+  }
+
+  for (const auto& absolute_or_fixed_item : absolute_or_fixed_items_) {
+    GridItemInfo item_info(absolute_or_fixed_item);
+
+    item_info.InitSpanInfo(kVertical, explicit_row_end, row_offset_, true);
+    item_info.InitSpanInfo(kHorizontal, explicit_column_end, column_offset_,
+                           true);
+
+    grid_absolutely_positioned_item_infos_.emplace_back(item_info);
   }
 
   inline_track_count_ = static_cast<int32_t>(
@@ -481,8 +593,8 @@ void GridLayoutAlgorithm::GridItemSizing() {
       // A grid item's grid area forms the containing block into which it is
       // laid out.
       const float containing_block_size =
-          GridTrackSize(dimension, item_info.StartLine(dimension),
-                        item_info.EndLine(dimension));
+          CalcContainingBlock(dimension, item_info.StartLine(dimension),
+                              item_info.EndLine(dimension));
       item_info.SetContainingBlock(
           dimension, OneSideConstraint::Definite(containing_block_size));
       // 1. Resolve percentage margin
@@ -706,10 +818,8 @@ void GridLayoutAlgorithm::CalcBlockAxisSizeContributions(
       // the previous step. If the grid container's inline size is definite,
       // also apply justify-content to account for the effective column gap
       // sizes.
-      // 'GridTrackSize' 's result has already considered justify-content.
       constraints[InlineAxis()] = OneSideConstraint::Definite(
-          GridTrackSize(InlineAxis(), item_info.StartLine(InlineAxis()),
-                        item_info.EndLine(InlineAxis())));
+          item_info.ContainingBlock()[InlineAxis()].Size());
       auto child_constraints =
           property_utils::GenerateDefaultConstraints(*child, constraints);
       const FloatSize layout_size =
@@ -1557,10 +1667,22 @@ void GridLayoutAlgorithm::ExpandFlexibleTracksAndStretchAutoTracks(
     Dimension dimension, const MeasureItemCache& item_size_infos,
     std::vector<float>& base_size) {
   const int32_t grid_track_count = GridTrackCount(dimension);
+  const size_t grid_line_count =
+      grid_track_count != 0 ? grid_track_count + 3 : 2;
+  auto& grid_line_offset = GridLineOffsetFromContainerPaddingBound(dimension);
+  grid_line_offset.resize(grid_line_count);
+  grid_line_offset[0] = 0.f;
+
   // When there are only absolute children, the grid_track_count may be zero,
   // so we need to update container size here.
   if (grid_track_count == 0) {
     UpdateContainerSize(dimension, 0.f);
+    grid_line_offset[1] =
+        container_constraints_[dimension].Size() +
+        (dimension == kHorizontal ? container_->GetLayoutPaddingLeft() +
+                                        container_->GetLayoutPaddingRight()
+                                  : container_->GetLayoutPaddingTop() +
+                                        container_->GetLayoutPaddingBottom());
     return;
   }
 
@@ -1733,15 +1855,25 @@ void GridLayoutAlgorithm::ExpandFlexibleTracksAndStretchAutoTracks(
       }
     }
   }
-
-  // pre-calculate track align.
-  const size_t track_prefixes_size = grid_track_count + 1;
-  auto& track_prefixes = GridTracksPrefixes(dimension);
-  track_prefixes.resize(track_prefixes_size);
-  track_prefixes[0] = 0.0f;
-  for (size_t idx = 1; idx < track_prefixes_size; ++idx) {
-    track_prefixes[idx] = base_size[idx - 1] + track_prefixes[idx - 1];
+  const float padding_start =
+      (dimension == kHorizontal)
+          ? (HorizontalFront() == kRight ? container_->GetLayoutPaddingRight()
+                                         : container_->GetLayoutPaddingLeft())
+          : container_->GetLayoutPaddingTop();
+  grid_line_offset[1] =
+      padding_start +
+      (dimension == kHorizontal ? inline_axis_start_ : block_axis_start_);
+  for (size_t idx = 2; idx < grid_line_count - 1; ++idx) {
+    grid_line_offset[idx] =
+        base_size[idx - 2] + grid_line_offset[idx - 1] +
+        (idx == grid_line_count - 2 ? 0.f : GridGapSize(dimension));
   }
+  grid_line_offset[grid_line_count - 1] =
+      container_constraints_[dimension].Size() +
+      (dimension == kHorizontal ? container_->GetLayoutPaddingLeft() +
+                                      container_->GetLayoutPaddingRight()
+                                : container_->GetLayoutPaddingTop() +
+                                      container_->GetLayoutPaddingBottom());
 }
 
 float GridLayoutAlgorithm::FindTheSizeOfAnFr(
@@ -1899,27 +2031,47 @@ GridLayoutAlgorithm::ImplicitTrackMaxTrackSizingFunction(
              : container_style_->GetGridAutoRowsMaxTrackingFunction();
 }
 
-std::vector<float>& GridLayoutAlgorithm::GridTracksPrefixes(
+std::vector<float>&
+GridLayoutAlgorithm::GridLineOffsetFromContainerPaddingBound(
     Dimension dimension) {
-  return dimension == kHorizontal ? grid_column_track_prefixes_
-                                  : grid_row_track_prefixes_;
+  return dimension == kHorizontal
+             ? grid_column_line_offset_from_container_padding_bound_
+             : grid_row_line_offset_from_container_padding_bound_;
 }
 
-// parm: start: grid axis line.start with 1.
-// parm: end:grid axis line.start with 1.
-float GridLayoutAlgorithm::GridTrackSize(Dimension dimension, int32_t start,
-                                         int32_t end) {
-  // 0: 0 size.==>(start=0,end=1)
-  // 1: track1 + 0.==>(start=0,end=2)
-  // 1 - 0: track1.==>(start=1,end=2)
-  const auto& track_prefixes = GridTracksPrefixes(dimension);
-  if (start >= end || start < 1 || track_prefixes.size() == 0) {
+float GridLayoutAlgorithm::CalcContainingBlock(Dimension dimension,
+                                               int32_t start, int32_t end) {
+  const auto& grid_line_offset =
+      GridLineOffsetFromContainerPaddingBound(dimension);
+  const int32_t grid_line_count = static_cast<int32_t>(grid_line_offset.size());
+
+  // For absolutely positioned: If a grid-placement property refers to a
+  // non-existent line either by explicitly specifying such a line or by
+  // spanning outside of the existing implicit grid, it is instead treated as
+  // specifying auto (instead of creating new implicit grid lines).
+  if (start > grid_line_count - 2) {
+    start = kGridLineUnDefine;
+  }
+
+  // Instead of auto-placement, an auto value for a grid-placement property
+  // contributes a special line to the placement whose position is that of the
+  // corresponding padding edge of the grid container. These lines become the
+  // first and last lines (0th and -0th) of the augmented grid used for
+  // positioning absolutely-positioned items.
+  if (end == kGridLineUnDefine || end > grid_line_count - 2) {
+    end = grid_line_count - 1;
+  }
+  if (start >= end) {
     return 0;
   }
-  float track_size = (track_prefixes[end - 1] - track_prefixes[start - 1]);
-  float gap_size = (GridGapSize(dimension) * (end - start - 1));
 
-  return track_size + gap_size;
+  // Gutters only appear between tracks of the implicit grid; there is no gutter
+  // before the first track or after the last track. (In particular, there is no
+  // gutter between the first/last track of the implicit grid and the 'auto'
+  // lines in the augmented grid.)
+  return grid_line_offset[end] - grid_line_offset[start] -
+         ((end > 1 && (end < grid_line_count - 2)) ? GridGapSize(dimension)
+                                                   : 0.f);
 }
 
 }  // namespace starlight

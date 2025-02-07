@@ -26,46 +26,6 @@ float CalcInitialOffset(float container_size, float absolute_item_size,
   return offset;
 }
 
-// Start always means left or top for now.
-void CalcStartOffset(LayoutObject* absolute_or_fixed_item,
-                     BoundType container_bound_type,
-                     DimensionValue<Position> positions,
-                     const Constraints& containing_block, Dimension dimension,
-                     Direction direction) {
-  const float margin_bound_size =
-      logic_direction_utils::GetMarginBoundDimensionSize(absolute_or_fixed_item,
-                                                         dimension);
-
-  const float init_start =
-      CalcInitialOffset(containing_block[dimension].Size(), margin_bound_size,
-                        positions[dimension]);
-
-  const LayoutComputedStyle* item_style = absolute_or_fixed_item->GetCSSStyle();
-  const auto start_offset = NLengthToLayoutUnit(
-      dimension == Dimension::kHorizontal ? item_style->GetLeft()
-                                          : item_style->GetTop(),
-      containing_block[dimension].ToPercentBase());
-  const auto end_offset = NLengthToLayoutUnit(
-      dimension == Dimension::kHorizontal ? item_style->GetRight()
-                                          : item_style->GetBottom(),
-      containing_block[dimension].ToPercentBase());
-  if (start_offset.IsDefinite()) {
-    logic_direction_utils::SetBoundOffsetFrom(
-        absolute_or_fixed_item,
-        dimension == Dimension::kHorizontal ? kLeft : kTop, BoundType::kMargin,
-        container_bound_type, start_offset.ToFloat());
-  } else if (end_offset.IsDefinite()) {
-    logic_direction_utils::SetBoundOffsetFrom(
-        absolute_or_fixed_item,
-        dimension == Dimension::kHorizontal ? kRight : kBottom,
-        BoundType::kMargin, container_bound_type, end_offset.ToFloat());
-  } else {
-    logic_direction_utils::SetBoundOffsetFrom(absolute_or_fixed_item, direction,
-                                              BoundType::kMargin,
-                                              container_bound_type, init_start);
-  }
-}
-
 float CalcLengthValue(const NLength& length, float screen_width,
                       const Constraints& constraints, Dimension dimension) {
   const auto offset =
@@ -220,6 +180,47 @@ void CalcAbsoluteOrFixedPosition(
   CalcStartOffset(absolute_or_fixed_item, container_bound_type,
                   absolute_or_fixed_item_initial_position, containing_block,
                   kVertical, directions[kVertical]);
+}
+
+// Start always means left or top for now.
+void CalcStartOffset(LayoutObject* absolute_or_fixed_item,
+                     BoundType container_bound_type,
+                     DimensionValue<Position> positions,
+                     const Constraints& containing_block, Dimension dimension,
+                     Direction direction, float offset) {
+  const float margin_bound_size =
+      logic_direction_utils::GetMarginBoundDimensionSize(absolute_or_fixed_item,
+                                                         dimension);
+
+  const float init_start =
+      CalcInitialOffset(containing_block[dimension].Size(), margin_bound_size,
+                        positions[dimension]);
+
+  const LayoutComputedStyle* item_style = absolute_or_fixed_item->GetCSSStyle();
+  const auto start_offset = NLengthToLayoutUnit(
+      dimension == Dimension::kHorizontal ? item_style->GetLeft()
+                                          : item_style->GetTop(),
+      containing_block[dimension].ToPercentBase());
+  const auto end_offset = NLengthToLayoutUnit(
+      dimension == Dimension::kHorizontal ? item_style->GetRight()
+                                          : item_style->GetBottom(),
+      containing_block[dimension].ToPercentBase());
+  if (start_offset.IsDefinite()) {
+    logic_direction_utils::SetBoundOffsetFrom(
+        absolute_or_fixed_item,
+        dimension == Dimension::kHorizontal ? kLeft : kTop, BoundType::kMargin,
+        container_bound_type, start_offset.ToFloat() + offset);
+  } else if (end_offset.IsDefinite()) {
+    logic_direction_utils::SetBoundOffsetFrom(
+        absolute_or_fixed_item,
+        dimension == Dimension::kHorizontal ? kRight : kBottom,
+        BoundType::kMargin, container_bound_type,
+        end_offset.ToFloat() + offset);
+  } else {
+    logic_direction_utils::SetBoundOffsetFrom(
+        absolute_or_fixed_item, direction, BoundType::kMargin,
+        container_bound_type, init_start + offset);
+  }
 }
 
 void UpdateStickyItemPosition(LayoutObject* sticky_item, float screen_width,

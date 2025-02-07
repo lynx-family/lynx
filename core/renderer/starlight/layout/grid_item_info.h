@@ -27,7 +27,7 @@ class GridItemInfo {
   // parm: axis_offset is the offset of base line, it make all grid line to
   // positive integer.
   void InitSpanInfo(Dimension dimension, int32_t explicit_end,
-                    int32_t axis_offset);
+                    int32_t axis_offset, bool if_absolutely_positioned = false);
   void SetSpanPosition(Dimension dimension, int32_t start, int32_t end);
   void SetSpanSize(Dimension dimension, int32_t span);
 

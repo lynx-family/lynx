@@ -27,8 +27,6 @@ class RelativeLayoutAlgorithm : public LayoutAlgorithm {
   void SizeDeterminationByAlgorithm() override;
   void AlignInFlowItems() override;
 
-  BoxPositions GetAbsoluteOrFixedItemInitialPosition(
-      LayoutObject* absolute_or_fixed_item) override;
   void InitializeAlgorithmEnv() override;
   void SetContainerBaseline() override{};
 
