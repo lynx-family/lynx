@@ -36,6 +36,8 @@ struct NetworkRequestInfo {
   std::string jsb_name_;
   std::string http_url_;
   std::string http_method_;
+  int http_code_;
+  bool use_lynx_network_;
 };
 
 // This NativeModuleInfo is mainly used to store JSB timings.
@@ -101,7 +103,7 @@ class NativeModuleInfoCollector {
   uint64_t GetCallbackThreadSwitchStart() const;
   uint64_t GetCallbackInvokeDuration() const;
   void SetNetworkRequestInfo(const NetworkRequestInfo& info);
-  NetworkRequestInfo GetNetworkRequestInfo() const;
+  NetworkRequestInfo& GetNetworkRequestInfo();
   // Some NativeModules depend on the Collector to calculate their metrics,
   // Collector's sample may break it. Use this to bypass the sample.
   void ForceEnable() { enable_ = true; }

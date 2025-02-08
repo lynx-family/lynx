@@ -10,7 +10,7 @@
 
 #include "base/include/fml/thread.h"
 #include "base/include/string/string_utils.h"
-#include "core/runtime/bindings/jsi/modules/lynx_module.h"
+#include "core/runtime/bindings/jsi/modules/lynx_module_impl.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
 #include "core/runtime/jsi/jsi.h"
 #include "third_party/rapidjson/document.h"
@@ -28,11 +28,12 @@ typedef std::function<void(const std::string&, Runtime& runtime,
                            InvokeMethodCallback callback)>
     FetchDataHandler;
 
-class ModuleTestBench : public LynxModule {
+class ModuleTestBench : public LynxModuleImpl {
  public:
   ModuleTestBench(const std::string& name,
                   const std::shared_ptr<ModuleDelegate>& delegate)
-      : LynxModule(name, delegate), testbench_thread_("test_bench_thread") {}
+      : LynxModuleImpl(name, delegate, nullptr),
+        testbench_thread_("test_bench_thread") {}
   ~ModuleTestBench() override = default;
   void initModuleData(
       const rapidjson::Value& value, rapidjson::Value* value_ptr,
@@ -73,6 +74,12 @@ class ModuleTestBench : public LynxModule {
 
  private:
   using ValueKind = Value::ValueKind;
+
+  void ConvertToPubArgs(Runtime* rt, const piper::Value* args, size_t count,
+                        MethodMetadata& method,
+                        std::unique_ptr<pub::Value>& pub_args,
+                        CallbackMap& callback_map,
+                        std::vector<int64_t>& callback_ids);
 
   bool IsStrictMode();
 

@@ -482,7 +482,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Fire(
             std::make_pair(std::move(jni_error_hit), std::move(error_ptr)));
       }
       return std::make_unique<lynx::pub::ValueImplAndroid>(
-          base::android::JavaValue());
+          base::android::JavaValue::Undefined());
     }
     // Int & Double correspond to int_32 & int_64 respectively, no need to
     // convert data

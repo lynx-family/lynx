@@ -43,23 +43,15 @@ class InvokeScope {
 
 void LynxModuleImpl::Destroy() {
   LOGI("LynxModuleImpl Destroy " << name_);
-  native_module_->Destroy();
-  native_module_ = nullptr;
+  if (native_module_) {
+    native_module_->Destroy();
+    native_module_ = nullptr;
+  }
 }
 
 base::expected<piper::Value, piper::JSINativeException>
 LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                              const piper::Value* args, size_t count) {
-  // TODO(liyanbo.monster): let interceptor use pub::Value args, and reuse those
-  // trace and monitor.
-  if (group_interceptor_) {
-    auto interceptor_result = group_interceptor_->InterceptModuleMethod(
-        shared_from_this(), method, rt, delegate_, args, count);
-    if (interceptor_result.handled) {
-      return std::move(interceptor_result.result);
-    }
-  }
-
   uint64_t call_func_start = lynx::base::CurrentSystemTimeMilliseconds();
   piper::Scope scope(*rt);
 #if ENABLE_TESTBENCH_RECORDER
@@ -222,33 +214,42 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                            timing_collector);
   }
 
-  // call method by native module
-  auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
-                                          count, callback_map);
-
-  // TODO(liyanbo.monster): after remove native promise, delete this.
-  std::optional<piper::Value> promise_res;
-#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
-    (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
-  native_module_->ExitInvokeScope();
-  // hack here, this will be deleted later.
-  if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
-    promise_res = native_module_->TryGetPromiseRet();
-  }
-#endif
-
   base::expected<piper::Value, piper::JSINativeException> response;
-  if (promise_res) {
-    response = std::move(*promise_res);
-  } else {
-    if (!ret.has_value()) {
-      timing_collector->OnErrorOccurred(NativeModuleStatusCode::FAILURE);
-      response = base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(ret.error()));
-    } else if (!ret.value()) {
-      response = Value::undefined();
+  bool has_intercept = false;
+  if (group_interceptor_) {
+    auto interceptor_result = group_interceptor_->InterceptModuleMethod(
+        shared_from_this(), method, rt, delegate_, args, count, args_array,
+        callback_map, timing_collector);
+    if (interceptor_result.handled) {
+      response = std::move(interceptor_result.result);
+      has_intercept = true;
+    }
+  }
+  if (!has_intercept) {
+    // call method by native module
+    auto ret = native_module_->InvokeMethod(method.name, std::move(args_array),
+                                            count, callback_map);
+    // TODO(liyanbo.monster): after remove native promise, delete this.
+    std::optional<piper::Value> promise_res;
+#if OS_IOS || OS_TVOS || OS_OSX
+    native_module_->ExitInvokeScope();
+    // hack here, this will be deleted later.
+    if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
+      auto promise_res = native_module_->TryGetPromiseRet();
+    }
+#endif
+    if (promise_res) {
+      response = std::move(*promise_res);
     } else {
-      response =
-          pub::ValueUtils::ConvertValueToPiperValue(*rt, *(ret.value().get()));
+      if (!ret.has_value()) {
+        timing_collector->OnErrorOccurred(NativeModuleStatusCode::FAILURE);
+        response = base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(ret.error()));
+      } else if (!ret.value()) {
+        response = Value::undefined();
+      } else {
+        response = pub::ValueUtils::ConvertValueToPiperValue(
+            *rt, *(ret.value().get()));
+      }
     }
   }
 
@@ -325,6 +326,9 @@ void LynxModuleImpl::OnErrorOccurred(const std::string& module_name,
 
 // private
 void LynxModuleImpl::SetMethodMetadata() {
+  if (!native_module_) {
+    return;
+  }
   auto methods = native_module_->GetMethodList();
   for (auto& pair : methods) {
     auto data = std::make_shared<MethodMetadata>(0, pair.first);

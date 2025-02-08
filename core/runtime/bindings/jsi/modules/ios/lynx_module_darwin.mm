@@ -19,7 +19,6 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.h"
 #include "core/runtime/common/utils.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/recorder/recorder_controller.h"

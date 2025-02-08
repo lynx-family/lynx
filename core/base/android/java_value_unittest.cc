@@ -20,6 +20,12 @@ TEST(JavaValueTest, ConstructorAndGetterAndSetter) {
     ASSERT_TRUE(val.IsPrimitiveType());
   }
   {
+    JavaValue val = JavaValue::Undefined();
+    ASSERT_FALSE(val.IsNull());
+    ASSERT_TRUE(val.IsUndefined());
+    ASSERT_TRUE(val.IsPrimitiveType());
+  }
+  {
     JavaValue val = JavaValue(true);
     ASSERT_TRUE(val.IsBool());
     ASSERT_TRUE(val.IsPrimitiveType());

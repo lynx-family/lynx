@@ -21,31 +21,38 @@ namespace piper {
 class LynxModuleAndroid;
 class LynxPromiseImpl;
 
-class ModuleCallbackAndroid : public ModuleCallback {
+class ModuleCallbackAndroid {
  public:
   using CallbackPair = std::pair<std::shared_ptr<ModuleCallbackAndroid>,
                                  base::android::ScopedGlobalJavaRef<jobject>>;
+  using CallbackArgsConverter = std::function<std::unique_ptr<pub::Value>(
+      piper::Runtime* rt, ModuleCallback* callback,
+      lynx::base::android::ScopedGlobalJavaRef<jobject> args)>;
   static bool RegisterJNI(JNIEnv* env);
-  static CallbackPair createCallbackImpl(
-      int64_t callback_id, std::shared_ptr<LynxModuleAndroid> invoker,
-      ModuleCallbackType type = ModuleCallbackType::Base);
 
-  ModuleCallbackAndroid(int64_t callback_id,
-                        std::shared_ptr<LynxModuleAndroid> invoker);
-
+  ModuleCallbackAndroid(std::weak_ptr<LynxModuleAndroid> callback_invoker,
+                        std::shared_ptr<ModuleCallback> callback)
+      : callback_invoker_(std::move(callback_invoker)),
+        callback_(std::move(callback)) {}
   ~ModuleCallbackAndroid() = default;
+  void Invoke(lynx::base::android::ScopedGlobalJavaRef<jobject> args);
 
-  std::weak_ptr<LynxModuleAndroid> callback_invoker_;
-  std::weak_ptr<LynxPromiseImpl> promise;
-
-  void SetArguments(base::android::ScopedGlobalJavaRef<jobject> obj);
-
-  base::android::ScopedGlobalJavaRef<jobject> GetArgumentsRef() const {
-    return arguments;
+  void SetCustomArgsConverter(CallbackArgsConverter converter) {
+    custom_args_converter_ = std::move(converter);
   }
 
+  std::shared_ptr<ModuleCallback> GetCallback() { return callback_; }
+
+  static CallbackPair CreateCallbackImpl(
+      std::shared_ptr<ModuleCallback> callback,
+      std::shared_ptr<LynxModuleAndroid> invoker);
+
+  std::weak_ptr<LynxPromiseImpl> promise;
+
  private:
-  base::android::ScopedGlobalJavaRef<jobject> arguments;
+  std::weak_ptr<LynxModuleAndroid> callback_invoker_;
+  std::shared_ptr<ModuleCallback> callback_;
+  CallbackArgsConverter custom_args_converter_;
 };
 }  // namespace piper
 }  // namespace lynx

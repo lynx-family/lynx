@@ -13,40 +13,31 @@
 #include "core/base/android/java_only_map.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/build/gen/CallbackImpl_jni.h"
-#include "core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.h"
 #include "core/runtime/bindings/jsi/modules/android/lynx_module_android.h"
 #include "core/runtime/bindings/jsi/modules/android/method_invoker.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "lynx/core/value_wrapper/android/value_impl_android.h"
 
 void Invoke(JNIEnv* env, jobject jcaller, jlong nativePtr, jobject array) {
-  auto callbackWeakImpl =
+  auto weak_callback_android =
       reinterpret_cast<std::weak_ptr<lynx::piper::ModuleCallbackAndroid>*>(
           nativePtr);
-  auto callbackImpl = callbackWeakImpl->lock();
-  if (callbackImpl == nullptr) {
+  auto callback_android = weak_callback_android->lock();
+  if (!callback_android) {
     LOGE(
         "LynxModule, callback_impl, nativeInvoke, "
         "callbackImpl.lock() is a nullptr");
     return;
   }
-  callbackImpl->SetArguments(
+  callback_android->Invoke(
       lynx::base::android::ScopedGlobalJavaRef<jobject>(env, array));
-  std::shared_ptr<lynx::piper::LynxModuleAndroid> callback_invoker =
-      callbackImpl->callback_invoker_.lock();
-  if (callback_invoker != nullptr) {
-    callback_invoker->InvokeCallback(callbackImpl);
-  } else {
-    LOGE(
-        "LynxModule, callback_impl, nativeInvoke, "
-        "callbackImpl->callback_invoker_.lock() is a nullptr");
-  }
 }
+
 void ReleaseNativePtr(JNIEnv* env, jobject jcaller, jlong nativePtr) {
-  auto callbackWeakImpl =
+  auto weak_callback_android =
       reinterpret_cast<std::weak_ptr<lynx::piper::ModuleCallbackAndroid>*>(
           nativePtr);
-  delete callbackWeakImpl;
+  delete weak_callback_android;
 }
 
 namespace lynx {
@@ -63,40 +54,45 @@ bool ModuleCallbackAndroid::RegisterJNI(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }
 
-ModuleCallbackAndroid::CallbackPair ModuleCallbackAndroid::createCallbackImpl(
-    int64_t callback_id, std::shared_ptr<LynxModuleAndroid> invoker,
-    ModuleCallbackType type) {
-  std::shared_ptr<ModuleCallbackAndroid> callback;
-  // TODO(huzhanbo.luc): move this into request_interceptor
-  switch (type) {
-    case ModuleCallbackType::Base:
-      callback = std::make_shared<ModuleCallbackAndroid>(callback_id, invoker);
-      break;
-    case ModuleCallbackType::Request:
-    case ModuleCallbackType::Fetch:
-      callback =
-          std::make_shared<ModuleCallbackRequest>(callback_id, invoker, type);
-      break;
+void ModuleCallbackAndroid::Invoke(
+    lynx::base::android::ScopedGlobalJavaRef<jobject> args) {
+  callback_->SetCustomArgsConverter(
+      [args = std::move(args), converter = std::move(custom_args_converter_)](
+          Runtime* runtime,
+          ModuleCallback* callback) mutable -> std::unique_ptr<pub::Value> {
+        if (converter) {
+          return converter(runtime, callback, args);
+        }
+        auto pub_array = std::make_shared<base::android::JavaOnlyArray>(args);
+        return std::make_unique<pub::ValueImplAndroid>(std::move(pub_array));
+      });
+  std::shared_ptr<lynx::piper::LynxModuleAndroid> callback_invoker =
+      callback_invoker_.lock();
+  if (callback_invoker != nullptr) {
+    callback_invoker->InvokeCallback(callback_, promise);
+  } else {
+    LOGE(
+        "LynxModule, callback_impl, nativeInvoke, "
+        "callbackImpl->callback_invoker_.lock() is a nullptr");
   }
-  auto weakCallback = new std::weak_ptr<ModuleCallbackAndroid>(callback);
-  auto nativePtr = reinterpret_cast<jlong>(weakCallback);
+}
+
+ModuleCallbackAndroid::CallbackPair ModuleCallbackAndroid::CreateCallbackImpl(
+    std::shared_ptr<ModuleCallback> callback,
+    std::shared_ptr<LynxModuleAndroid> invoker) {
+  std::shared_ptr<ModuleCallbackAndroid> callback_android =
+      std::make_shared<ModuleCallbackAndroid>(invoker, std::move(callback));
+  auto weak_callback =
+      new std::weak_ptr<ModuleCallbackAndroid>(callback_android);
+  auto native_ptr = reinterpret_cast<jlong>(weak_callback);
   JNIEnv* env = base::android::AttachCurrentThread();
-  jobject javaObj = env->NewObject(jniClass, ctor, nativePtr);
-  ModuleCallbackAndroid::CallbackPair pair = std::make_pair(
-      callback, base::android::ScopedGlobalJavaRef<jobject>(env, javaObj));
+  jobject javaObj = env->NewObject(jniClass, ctor, native_ptr);
+  ModuleCallbackAndroid::CallbackPair pair =
+      std::make_pair(callback_android,
+                     base::android::ScopedGlobalJavaRef<jobject>(env, javaObj));
   env->DeleteLocalRef(javaObj);
   return pair;
 }
 
-void ModuleCallbackAndroid::SetArguments(
-    base::android::ScopedGlobalJavaRef<jobject> obj) {
-  arguments = obj;
-  auto pub_array = std::make_shared<base::android::JavaOnlyArray>(arguments);
-  SetArgs(std::make_unique<pub::ValueImplAndroid>(std::move(pub_array)));
-};
-
-ModuleCallbackAndroid::ModuleCallbackAndroid(
-    int64_t callback_id, std::shared_ptr<LynxModuleAndroid> callback_invoker)
-    : ModuleCallback(callback_id), callback_invoker_(callback_invoker) {}
 }  // namespace piper
 }  // namespace lynx

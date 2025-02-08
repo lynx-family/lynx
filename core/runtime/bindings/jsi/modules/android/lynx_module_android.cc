@@ -20,6 +20,7 @@
 #include "core/services/feature_count/feature_counter.h"
 #include "core/value_wrapper/value_impl_piper.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
+#include "lynx/core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 namespace lynx {
 namespace piper {
 
@@ -267,11 +268,13 @@ LynxModuleAndroid::CreateLynxNativePromise(
          << " resolve callback id: " << resolve_callback_id);
 
     ModuleCallbackAndroid::CallbackPair resolve_callback_pair =
-        ModuleCallbackAndroid::createCallbackImpl(resolve_callback_id,
-                                                  shared_from_this());
+        ModuleCallbackAndroid::CreateCallbackImpl(
+            std::make_shared<ModuleCallback>(resolve_callback_id),
+            shared_from_this());
     ModuleCallbackAndroid::CallbackPair reject_callback_pair =
-        ModuleCallbackAndroid::createCallbackImpl(reject_callback_id,
-                                                  shared_from_this());
+        ModuleCallbackAndroid::CreateCallbackImpl(
+            std::make_shared<ModuleCallback>(reject_callback_id),
+            shared_from_this());
     std::shared_ptr<LynxPromiseImpl> promise =
         std::make_shared<LynxPromiseImpl>(resolve_callback_pair,
                                           reject_callback_pair);
@@ -337,7 +340,8 @@ LynxModuleAndroid::CreateLynxNativePromise(
   return std::move(*ret);
 }
 void LynxModuleAndroid::InvokeCallback(
-    const std::shared_ptr<ModuleCallbackAndroid>& callback) {
+    const std::shared_ptr<ModuleCallback>& callback,
+    std::weak_ptr<LynxPromiseImpl> promise) {
   LOGV("LynxModule, MethodInvoker::InvokeCallback, put callback: "
        << " id: "
        << (callback ? std::to_string(callback->callback_id())
@@ -349,21 +353,22 @@ void LynxModuleAndroid::InvokeCallback(
          << callback->callback_id());
     return;
   }
-  lock_delegate->RunOnJSThread([callback, ref = shared_from_this()]() {
-    ref->InvokeCallbackInternal(callback);
+  lock_delegate->RunOnJSThread([callback, ref = shared_from_this(), promise]() {
+    ref->InvokeCallbackInternal(callback, promise);
   });
 }
 
 // You must ensure that the call is made in the JS thread
 void LynxModuleAndroid::InvokeCallbackInternal(
-    const std::shared_ptr<ModuleCallbackAndroid>& callback) {
+    const std::shared_ptr<ModuleCallback>& callback,
+    std::weak_ptr<LynxPromiseImpl> weak_promise) {
   auto lock_delegate = delegate_.lock();
   if (!lock_delegate) {
     LOGR("LynxModuleCallback has been destroyed. id:"
          << callback->callback_id());
     return;
   }
-  std::shared_ptr<LynxPromiseImpl> promise = callback->promise.lock();
+  std::shared_ptr<LynxPromiseImpl> promise = weak_promise.lock();
   if (promise) {
     if (promise->GetReject() == callback) {
       lock_delegate->InvokeCallback(promise->GetReject());
@@ -378,27 +383,25 @@ void LynxModuleAndroid::InvokeCallbackInternal(
 
 const base::android::ScopedGlobalJavaRef<jobject>&
 LynxModuleAndroid::CreateLynxModuleCallback(
-    const std::shared_ptr<LynxModuleCallback>& base_callback,
-    ModuleCallbackType type) {
+    const std::shared_ptr<LynxModuleCallback>& base_callback) {
   uint64_t callback_id = base_callback->CallbackId();
   ModuleCallbackAndroid::CallbackPair callback_pair =
-      ModuleCallbackAndroid::createCallbackImpl(callback_id, shared_from_this(),
-                                                type);
-  auto callback_android = callback_pair.first;
-  // Notice: static pointer cast , in LynxModuleImpl, LynxModuleCallback is
-  // ModuleCallback Copy callback info
-  auto static_base_callback =
-      std::static_pointer_cast<ModuleCallback>(base_callback);
-  callback_android->SetStartTimeMS(static_base_callback->StartTimeMS());
-  callback_android->SetModuleName(static_base_callback->module_name_);
-  callback_android->SetModuleName(static_base_callback->method_name_);
-  callback_android->SetCallbackFlowId(static_base_callback->CallbackFlowId());
-  callback_android->timing_collector_ = static_base_callback->timing_collector_;
-  callback_android->SetFirstArg(static_base_callback->first_arg_);
+      ModuleCallbackAndroid::CreateCallbackImpl(
+          std::static_pointer_cast<ModuleCallback>(base_callback),
+          shared_from_this());
   // cache callback
   callbackHolders_[callback_id] = std::make_pair(
-      std::move(callback_android), std::move(callback_pair.second));
+      std::move(callback_pair.first), std::move(callback_pair.second));
   return callbackHolders_[callback_id].second;
+}
+
+ModuleCallbackAndroid* LynxModuleAndroid::GetModuleCallbackById(
+    uint64_t callback_id) {
+  auto it = callbackHolders_.find(callback_id);
+  if (it == callbackHolders_.end()) {
+    return nullptr;
+  }
+  return it->second.first.get();
 }
 
 }  // namespace piper

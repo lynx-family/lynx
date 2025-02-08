@@ -37,7 +37,10 @@ class ModuleInterceptor {
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
       const std::shared_ptr<piper::ModuleDelegate>& delegate,
-      const piper::Value* args, size_t count) const = 0;
+      const piper::Value* args, size_t count,
+      const std::unique_ptr<pub::Value>& pub_args, const CallbackMap& callbacks,
+      piper::NativeModuleInfoCollectorPtr timing_collector) const = 0;
+
   virtual void BeforeInvokeMethod(
       const LynxModule::MethodMetadata& method,
       const std::unique_ptr<pub::Value>& args,
@@ -54,7 +57,10 @@ class GroupInterceptor : public ModuleInterceptor {
       const std::shared_ptr<LynxModule>& module,
       const LynxModule::MethodMetadata& method, Runtime* rt,
       const std::shared_ptr<piper::ModuleDelegate>& delegate,
-      const piper::Value* args, size_t count) const override;
+      const piper::Value* args, size_t count,
+      const std::unique_ptr<pub::Value>& pub_args, const CallbackMap& callbacks,
+      piper::NativeModuleInfoCollectorPtr timing_collector) const override;
+
   void BeforeInvokeMethod(
       const LynxModule::MethodMetadata& method,
       const std::unique_ptr<pub::Value>& args,

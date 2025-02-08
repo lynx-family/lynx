@@ -26,7 +26,7 @@ class LynxModuleImpl : public LynxModule, public LynxNativeModule::Delegate {
       const std::string& name, const std::shared_ptr<ModuleDelegate>& delegate,
       const std::shared_ptr<lynx::piper::LynxNativeModule>& native_module)
       : LynxModule(name, delegate), native_module_(native_module) {
-    auto factory = native_module->GetValueFactory();
+    auto factory = native_module ? native_module->GetValueFactory() : nullptr;
     value_factory_ = factory ? std::move(factory)
                              : std::make_shared<pub::PubValueFactoryDefault>();
     SetMethodMetadata();

@@ -166,7 +166,7 @@ void NativeModuleInfoCollector::SetNetworkRequestInfo(
   timing_.network_request_info_ = info;
 }
 
-NetworkRequestInfo NativeModuleInfoCollector::GetNetworkRequestInfo() const {
+NetworkRequestInfo& NativeModuleInfoCollector::GetNetworkRequestInfo() {
   return timing_.network_request_info_;
 }
 

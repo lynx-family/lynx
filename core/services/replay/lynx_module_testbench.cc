@@ -12,6 +12,7 @@
 #include "core/runtime/jsi/jsi.h"
 #include "core/services/replay/lynx_callback_testbench.h"
 #include "core/services/replay/lynx_replay_helper.h"
+#include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
 namespace piper {
@@ -47,8 +48,22 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
                 " failed in invokeMethod(), method is nullptr"));
           }
           if (group_interceptor_) {
+            // timing
+            std::string first_arg_str;
+            if (count > 0 && args && args[0].isString()) {
+              first_arg_str = args[0].getString(rt).utf8(rt);
+            }
+            piper::NativeModuleInfoCollectorPtr timing_collector =
+                std::make_shared<piper::NativeModuleInfoCollector>(
+                    delegate_, name_, meta->name, first_arg_str);
+            std::unique_ptr<pub::Value> pub_args = nullptr;
+            std::vector<int64_t> callback_ids;
+            CallbackMap callback_map;
+            ConvertToPubArgs(&rt, args, count, *meta, pub_args, callback_map,
+                             callback_ids);
             auto pair = group_interceptor_->InterceptModuleMethod(
-                shared_from_this(), *meta, &rt, delegate_, args, count);
+                shared_from_this(), *meta, &rt, delegate_, args, count,
+                pub_args, callback_map, timing_collector);
             if (pair.handled) {
               return std::move(pair.result);
             }
@@ -71,15 +86,85 @@ piper::Value ModuleTestBench::get(Runtime *runtime, const PropNameID &prop) {
                 " failed in invokeMethod(), method is nullptr"));
           }
           if (group_interceptor_) {
+            // timing
+            std::string first_arg_str;
+            if (count > 0 && args && args[0].isString()) {
+              first_arg_str = args[0].getString(rt).utf8(rt);
+            }
+            piper::NativeModuleInfoCollectorPtr timing_collector =
+                std::make_shared<piper::NativeModuleInfoCollector>(
+                    delegate_, name_, moduleMetaData->name, first_arg_str);
+            std::unique_ptr<pub::Value> pub_args = nullptr;
+            std::vector<int64_t> callback_ids;
+            CallbackMap callback_map;
+            ConvertToPubArgs(&rt, args, count, *moduleMetaData, pub_args,
+                             callback_map, callback_ids);
             auto pair = group_interceptor_->InterceptModuleMethod(
                 shared_from_this(), *moduleMetaData, &rt, delegate_, args,
-                count);
+                count, pub_args, callback_map, timing_collector);
             if (pair.handled) {
               return std::move(pair.result);
             }
           }
           return this->invokeMethod(*(moduleMetaData.get()), &rt, args, count);
         });
+  }
+}
+
+void ModuleTestBench::ConvertToPubArgs(Runtime *rt, const piper::Value *args,
+                                       size_t count, MethodMetadata &method,
+                                       std::unique_ptr<pub::Value> &pub_args,
+                                       CallbackMap &callback_map,
+                                       std::vector<int64_t> &callback_ids) {
+  auto value_factory = std::make_shared<pub::PubValueFactoryDefault>();
+  auto args_array = value_factory->CreateArray();
+  // args is a pointer array. can not use getArray to read value.
+  for (size_t i = 0; i < count; i++) {
+    const lynx::piper::Value *arg = &args[i];
+    if (arg->isBool()) {
+      args_array->PushBoolToArray(arg->getBool());
+    } else if (arg->isNumber()) {
+      args_array->PushDoubleToArray(arg->getNumber());
+    } else if (arg->isNull() || arg->isUndefined()) {
+      args_array->PushNullToArray();
+    } else if (arg->isString()) {
+      args_array->PushStringToArray(arg->getString(*rt).utf8(*rt));
+    } else if (arg->isObject()) {
+      lynx::piper::Object o = arg->getObject(*rt);
+      if (o.isArray(*rt)) {
+        auto sub_arr = o.getArray(*rt);
+        auto sub_arr_result = pub::ValueUtils::ConvertPiperArrayToPubValue(
+            *rt, sub_arr, value_factory);
+        args_array->PushValueToArray(std::move(sub_arr_result));
+      } else if (o.isArrayBuffer(*rt)) {
+        size_t length;
+        args_array->PushArrayBufferToArray(
+            pub::ValueUtils::ConvertPiperToArrayBuffer(*rt, o, length), length);
+      } else if (o.isFunction(*rt)) {
+        uint64_t callback_flow_id = TRACE_FLOW_ID();
+        auto function = o.getFunction(*rt);
+        auto callback_id =
+            delegate_->RegisterJSCallbackFunction(std::move(function));
+        auto callback =
+            std::make_shared<lynx::piper::ModuleCallback>(callback_id);
+        callback->SetModuleName(name_);
+        callback->SetMethodName(method.name);
+        callback->SetCallbackFlowId(callback_flow_id);
+        callback_map.emplace(static_cast<int>(i), std::move(callback));
+        args_array->PushInt64ToArray(callback_id);
+        callback_ids.push_back(callback_id);
+      } else {
+        std::string r;
+        auto ret = pub::ValueUtils::ConvertBigIntToStringIfNecessary(*rt, o, r);
+        if (ret) {
+          args_array->PushBigIntToArray(r);
+          continue;
+        }
+        auto dict = pub::ValueUtils::ConvertPiperObjectToPubValue(
+            *rt, o, value_factory);
+        args_array->PushValueToArray(std::move(dict));
+      }
+    }
   }
 }
 

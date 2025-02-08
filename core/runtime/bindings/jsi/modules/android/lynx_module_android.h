@@ -18,6 +18,7 @@
 #include "core/runtime/bindings/jsi/modules/android/java_attribute_descriptor.h"
 #include "core/runtime/bindings/jsi/modules/android/method_invoker.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
+#include "lynx/core/runtime/bindings/jsi/modules/android/callback_impl.h"
 
 namespace lynx {
 
@@ -44,10 +45,10 @@ class LynxModuleAndroid
                 std::unordered_map<std::string, std::shared_ptr<MethodInvoker>>
                     &method_invoker_maps);
   const base::android::ScopedGlobalJavaRef<jobject> &CreateLynxModuleCallback(
-      const std::shared_ptr<LynxModuleCallback> &base_callback,
-      ModuleCallbackType type = ModuleCallbackType::Base);
+      const std::shared_ptr<LynxModuleCallback> &base_callback);
   // use delegate invoke Callback
-  void InvokeCallback(const std::shared_ptr<ModuleCallbackAndroid> &callback);
+  void InvokeCallback(const std::shared_ptr<ModuleCallback> &callback,
+                      std::weak_ptr<LynxPromiseImpl> promise);
   // for timing api & native promise
   // TODO(zhangqun.29) We will remove this method after remove native promise
   void EnterInvokeScope(
@@ -58,6 +59,8 @@ class LynxModuleAndroid
   base::expected<std::unique_ptr<pub::Value>, std::string> InvokeMethod(
       const std::string &method_name, std::unique_ptr<pub::Value> args,
       size_t count, const CallbackMap &callbacks) override;
+
+  ModuleCallbackAndroid *GetModuleCallbackById(uint64_t callback_id);
 
  private:
   std::string module_name_;
@@ -83,8 +86,8 @@ class LynxModuleAndroid
       const std::shared_ptr<MethodInvoker> &invoker, jobject module,
       const pub::Value *method_args, size_t args_count,
       const CallbackMap &callbacks);
-  void InvokeCallbackInternal(
-      const std::shared_ptr<ModuleCallbackAndroid> &callback);
+  void InvokeCallbackInternal(const std::shared_ptr<ModuleCallback> &callback,
+                              std::weak_ptr<LynxPromiseImpl> promise);
 
   inline Runtime *GetScopeRuntime() {
     if (!scope_rts_.empty()) {

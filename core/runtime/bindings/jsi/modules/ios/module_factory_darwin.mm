@@ -7,7 +7,6 @@
 #import <Lynx/LynxContextModule.h>
 #import <Lynx/LynxLog.h>
 #include <Lynx/LynxThreadSafeDictionary.h>
-#include "core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.h"
 
 #include <string>
 #include <unordered_map>

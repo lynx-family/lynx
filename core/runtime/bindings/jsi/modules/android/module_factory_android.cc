@@ -9,7 +9,6 @@
 
 #include "core/base/android/jni_helper.h"
 #include "core/build/gen/LynxModuleFactory_jni.h"
-#include "core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.h"
 #include "core/value_wrapper/android/value_impl_android.h"
 
 jboolean RetainJniObject(JNIEnv* env, jobject jcaller, jlong nativePtr) {

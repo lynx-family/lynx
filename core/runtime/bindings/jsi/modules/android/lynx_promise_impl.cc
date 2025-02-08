@@ -31,12 +31,12 @@ LynxPromiseImpl::LynxPromiseImpl(
   env->DeleteLocalRef(java_obj);
 }
 
-std::shared_ptr<ModuleCallbackAndroid> LynxPromiseImpl::GetReject() {
-  return rejectCallback_;
+std::shared_ptr<ModuleCallback> LynxPromiseImpl::GetReject() {
+  return rejectCallback_->GetCallback();
 }
 
-std::shared_ptr<ModuleCallbackAndroid> LynxPromiseImpl::GetResolve() {
-  return resolveCallback_;
+std::shared_ptr<ModuleCallback> LynxPromiseImpl::GetResolve() {
+  return resolveCallback_->GetCallback();
 }
 
 jobject LynxPromiseImpl::GetJniObject() { return jni_object_.Get(); }

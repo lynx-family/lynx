@@ -16,8 +16,8 @@ class LynxPromiseImpl {
   static bool RegisterJNI(JNIEnv *env);
   LynxPromiseImpl(ModuleCallbackAndroid::CallbackPair resolve_pair,
                   ModuleCallbackAndroid::CallbackPair reject_pair);
-  std::shared_ptr<ModuleCallbackAndroid> GetResolve();
-  std::shared_ptr<ModuleCallbackAndroid> GetReject();
+  std::shared_ptr<ModuleCallback> GetResolve();
+  std::shared_ptr<ModuleCallback> GetReject();
   jobject GetJniObject();
 
  private:

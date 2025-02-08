@@ -7,17 +7,6 @@ interceptor_shared_sources = [
   "//lynx/core/runtime/bindings/jsi/interceptor/interceptor_factory.h",
 ]
 network_interceptor_shared_sources = []
-if (is_android) {
-  network_interceptor_shared_sources += [
-    "//lynx/core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.cc",
-    "//lynx/core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.h",
-  ]
-} else if (is_apple) {
-  network_interceptor_shared_sources += [
-    "//lynx/core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.h",
-    "//lynx/core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.mm",
-  ]
-}
 
 bindings_extend_sources = [
   "//lynx/core/runtime/bindings/jsi/system_info.cc",

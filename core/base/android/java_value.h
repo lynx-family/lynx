@@ -47,6 +47,7 @@ class JavaValue {
  public:
   enum class JavaValueType {
     Null = 0,
+    Undefined,
     Boolean,
     Float,
     Double,
@@ -90,7 +91,8 @@ class JavaValue {
   bool IsPrimitiveType() {
     return type_ == JavaValueType::Null || type_ == JavaValueType::Boolean ||
            type_ == JavaValueType::Double || type_ == JavaValueType::Int32 ||
-           type_ == JavaValueType::Int64 || type_ == JavaValueType::Float;
+           type_ == JavaValueType::Int64 || type_ == JavaValueType::Float ||
+           type_ == JavaValueType::Undefined;
   }
 
   bool IsBool() const { return type_ == JavaValueType::Boolean; }
@@ -103,6 +105,7 @@ class JavaValue {
   }
 
   bool IsNull() const { return type_ == JavaValueType::Null; }
+  bool IsUndefined() const { return type_ == JavaValueType::Undefined; }
   bool IsString() const { return type_ == JavaValueType::String; }
   bool IsArray() const { return type_ == JavaValueType::Array; }
   bool IsArrayBuffer() const { return type_ == JavaValueType::ByteArray; }
@@ -176,7 +179,11 @@ class JavaValue {
 
   int Length() const;
 
+  static JavaValue Undefined() { return JavaValue(JavaValueType::Undefined); }
+
  private:
+  JavaValue(JavaValueType type) : type_(type) {}
+
   JavaValueType type_{JavaValueType::Null};
   std::variant<jvalue, base::android::ScopedGlobalJavaRef<jobject>,
                std::shared_ptr<base::android::JavaOnlyArray>,

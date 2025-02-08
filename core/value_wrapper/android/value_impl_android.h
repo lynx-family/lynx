@@ -49,7 +49,7 @@ class ValueImplAndroid : public pub::Value {
   int64_t Type() const override {
     return static_cast<int64_t>(backend_value_.type());
   }
-  bool IsUndefined() const override { return false; }
+  bool IsUndefined() const override { return backend_value_.IsUndefined(); }
 
   bool IsBool() const override { return backend_value_.IsBool(); }
   bool IsInt32() const override { return backend_value_.IsInt32(); }

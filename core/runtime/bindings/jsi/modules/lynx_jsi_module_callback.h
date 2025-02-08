@@ -54,6 +54,11 @@ class ModuleCallback : public LynxModuleCallback {
     method_name_ = method_name;
   }
   void SetFirstArg(const std::string& first_arg) { first_arg_ = first_arg; }
+  void SetCustomArgsConverter(std::function<std::unique_ptr<pub::Value>(
+                                  piper::Runtime* rt, ModuleCallback* callback)>
+                                  converter) {
+    custom_args_converter_ = std::move(converter);
+  }
   std::string module_name_;
   std::string method_name_;
   // Some JSB implement will use first arg as JSB function name,
@@ -72,6 +77,12 @@ class ModuleCallback : public LynxModuleCallback {
     group_interceptor_ = std::move(interceptor);
   }
 
+  void SetArgsConverter(std::function<std::unique_ptr<pub::Value>(
+                            piper::Runtime* rt, ModuleCallback* callback)>
+                            converter);
+
+  std::vector<base::LynxError>& GetErrorsRef() { return errors_; };
+
 #if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id);
 #endif
@@ -83,6 +94,9 @@ class ModuleCallback : public LynxModuleCallback {
 
  private:
   std::unique_ptr<pub::Value> args_ = nullptr;
+  std::function<std::unique_ptr<pub::Value>(piper::Runtime* rt,
+                                            ModuleCallback* callback)>
+      custom_args_converter_;
 };
 
 }  // namespace piper
