@@ -3,7 +3,7 @@ LoadBundleEntry:
   x-name:
     - 'loadBundle'
     - 'reloadBundleFromNative'
-    - 'reloadBundleFromBackgroundRuntime'
+    - 'reloadBundleFromBts'
   allOf:
     - $ref: 'PipelineEntry.yml#/PipelineEntry'
     - type: object
