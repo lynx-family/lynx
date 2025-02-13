@@ -1009,15 +1009,34 @@ export interface ListItemProps extends StandardProps {
   'sticky-bottom'?: boolean;
 
   /**
-   * Preset height to control the placeholder height of the view while the list component has not finished rendering. The more accurately it is set, the less flickering the list will have.
+   * Adding the `full-span` attribute to `<list-item/>` will make it occupy a single line. You need to configure {@link ListProps."list-type" | list-type} correctly to make the list enter a multi-column layout for this to work.
    * @defaultValue undefined
    * @Android
    * @iOS
    */
+  'full-span'?: boolean;
+
+  /**
+   * Preset height to control the placeholder height of the view while the list component has not finished rendering. The more accurately it is set, the less flickering the list will have.
+   * @defaultValue undefined
+   * @Android
+   * @iOS
+   * @deprecated For Lynx>=3.1, use {@link estimated-main-axis-size-px} instead
+   */
   'estimated-height-px'?: number;
 
   /**
+   * Preset height to control the placeholder height (in physical pixels) of the view while the list component has not finished rendering. The more accurately it is set, the less flickering the list will have.
+   * @defaultValue undefined
+   * @Android
+   * @iOS
+   * @deprecated For Lynx>=3.1, use {@link estimated-main-axis-size-px} instead
+   */
+  'estimated-height'?: number;
+
+  /**
    * Preset size in main scroll axis to control the placeholder size of the view while the list component has not finished rendering. The more accurately it is set, the less flickering the list will have.
+   * @since 3.1
    * @defaultValue undefined
    * @Android
    * @iOS

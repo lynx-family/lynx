@@ -1,6 +1,14 @@
 # CHANGELOG
 
+## 3.2.7
+
+### Patch Changes
+
+- Add some missing types of built-in element `list-item`
+
 ## 3.2.6
+
+### Patch Changes
 
 - Rename PipelineEntry.FrameworkPipelineTiming to PipelineEntry.FrameworkRenderingTiming
 
