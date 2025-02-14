@@ -151,7 +151,9 @@ void AddInstanceMethod(base::Vector<Wrapped::PropertyDescriptor>& props,
   if (skip_init_as_base || (info.Length() == 1 && info[0].IsExternal())) {
     return;
   }
-  {% if constructor_overloads %}
+  {% if is_namespace %}
+  Init({{interface_name}}::Create());
+  {% elif constructor_overloads %}
   {% for length, tests_methods in constructor_overloads.length_tests_methods %}
   if (info.Length() == {{length}}) {
     {% for test, overload in tests_methods %}
@@ -274,6 +276,22 @@ bool {{napi_class}}::IsInstance(Napi::ScriptWrappable* wrappable) {
   return false;
 }
 
+{% if owned_by_parent %}
+// static
+void Napi{{cpp_class}}::DefineProperty(Napi::Env env, Napi::Object target, {{cpp_class}}* raw, std::string name) {
+  std::string property_name = {{'"__" + 'if setlike}}name;
+  auto value = Wrap(std::unique_ptr<{{cpp_class}}>(raw), env);
+  auto descriptor = Napi::PropertyDescriptor::Value(property_name.c_str(), value);
+  // todo: handle readonly
+  target.DefineProperty(descriptor);
+
+  {% if setlike %}
+  auto descriptor_set = Napi::PropertyDescriptor::Value(name.c_str(), ToNAPI(raw->GetBindingValue(), env));
+  target.DefineProperty(descriptor_set);
+  {% endif %}
+}
+{% endif %}
+
 void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
   DCHECK(impl);
   DCHECK(!impl_);
@@ -294,6 +312,11 @@ void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
   Napi::PropertyDescriptor js_id =
       Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
   NapiObject().DefineProperty(js_id);
+  
+  {% for attribute in attributes if attribute.is_same_object and attribute.owned_by_parent %}
+  Napi{{attribute.idl_type}}::DefineProperty(Env(), NapiObject(), impl_->Get{{attribute.camel_case_name}}(), "{{attribute.name}}");
+  {% endfor %}
+
   {% if buffer_commands %}
   impl_->SetClientOnFrameCallback(
       fml::MakeCopyable([env = Env()]() {
@@ -323,7 +346,7 @@ ImplBase* {{napi_class}}::ReleaseImpl() {
   {% endif %}
 {% endmacro %}
 
-{% for attribute in attributes if not attribute.from_shared %}
+{% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent %}
 {{'// static' if attribute.is_static}}
 Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const CallbackInfo& info) {
   {% if enable_trace %}
@@ -496,7 +519,7 @@ Napi::Class* {{napi_class}}::Class(Napi::Env env) {
 
   {% endif %}
   // Attributes
-  {% for attribute in attributes %}
+  {% for attribute in attributes if not attribute.owned_by_parent %}
   {% if attribute.is_static %}
   props.push_back(
       Wrapped::StaticAccessor("{{attribute.name}}",
@@ -560,7 +583,11 @@ void {{napi_class}}::Install(Napi::Env env, Object& target) {
   if (target.Has("{{interface_name}}").FromMaybe(false)) {
     return;
   }
+  {% if is_namespace %}
+  target.Set("{{interface_name}}", Constructor(env).New({}));
+  {% else %}
   target.Set("{{interface_name}}", Constructor(env));
+  {% endif %}
 }
 
 }  // namespace {{component}}

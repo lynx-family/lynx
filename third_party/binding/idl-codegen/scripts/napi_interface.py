@@ -303,7 +303,12 @@ def interface_context(interface, interfaces, component_info, interfaces_info):
         'descendants':
         getattr(interface, 'descendants', []),
         'sharing_impl':
-        interface.sharing_impl
+        interface.sharing_impl,
+        'is_namespace':
+        interface.is_namespace,
+        'owned_by_parent':
+        interface.owned_by_parent,
+        'setlike':  True if interface.setlike else False,
     }
 
     # Constructors

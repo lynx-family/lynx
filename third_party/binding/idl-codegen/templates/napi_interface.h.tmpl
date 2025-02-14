@@ -5,6 +5,9 @@
 #define {{header_guard}}
 
 #include <memory>
+{% if setlike %}
+#include <string>
+{% endif %}
 
 {% for filename in header_includes %}
 #include "{{filename}}"
@@ -46,11 +49,14 @@ class {{'KRYPTON_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent
 
   static Napi::Object Wrap(std::unique_ptr<{{cpp_class}}>, Napi::Env);
   static bool IsInstance(Napi::ScriptWrappable*);
+  {% if owned_by_parent %}
+  static void DefineProperty(Napi::Env, Napi::Object, {{cpp_class}}*, std::string name);
+  {% endif %}
 
   void Init(std::unique_ptr<{{cpp_class}}>);
 
   // Attributes
-  {% for attribute in attributes if not attribute.from_shared %}
+  {% for attribute in attributes if not attribute.from_shared and not attribute.owned_by_parent %}
   {{'static ' if attribute.is_static}}Napi::Value {{attribute.camel_case_name}}AttributeGetter(const Napi::CallbackInfo&);
   {% if attribute.does_generate_setter %}
   {{'static ' if attribute.is_static}}void {{attribute.camel_case_name}}AttributeSetter(const Napi::CallbackInfo&, const Napi::Value&);

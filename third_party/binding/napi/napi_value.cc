@@ -165,6 +165,22 @@ Napi::Value ToNAPI(Value&& value, Napi::Env env) {
       }
       return obj;
     }
+    case ValueType::KSet: {
+      auto set_constructor = env.Global().Get("Set").As<Napi::Function>();
+      auto set = set_constructor.New({});
+      auto add = set.As<Napi::Object>().Get("add").As<Napi::Function>();
+      switch (value.GetSetType()) {
+        case SetType::kTypeString: {
+          auto& set_raw = *value.Data<std::unordered_set<std::string>>();
+          for (auto& item : set_raw) {
+            add.Call(set, { Napi::String::New(env, item) });
+          }
+          return set;
+        }
+        default:
+          BINDING_NOTREACHED();
+      }
+    }
   }
 }
 

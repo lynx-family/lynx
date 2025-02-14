@@ -163,6 +163,7 @@ void NapiTestContext::Init(std::unique_ptr<TestContext> impl) {
   Napi::PropertyDescriptor js_id =
       Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
   NapiObject().DefineProperty(js_id);
+
   impl_->SetClientOnFrameCallback(
       fml::MakeCopyable([env = Env()]() {
         Napi::HandleScope hs(env);

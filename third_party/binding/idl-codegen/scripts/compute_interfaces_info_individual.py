@@ -261,6 +261,8 @@ class InterfaceInfoCollector(object):
                 definition.is_callback,
                 'is_dictionary':
                 False,
+                'is_namespace':
+                definition.is_namespace,
                 # Interfaces that are referenced (used as types) and that we
                 # introspect during code generation (beyond interface-level
                 # data ([ImplementedAs], is_callback_interface, ancestors, and
@@ -360,6 +362,8 @@ class InterfaceInfoCollector(object):
             'DataContainer' in extended_attributes,
             'shared_impl':
             'SharedImpl' in extended_attributes,
+            'owned_by_parent':
+            'OwnedByParent' in extended_attributes,
         })
         merge_dict_recursively(self.interfaces_info[definition.name],
                                interface_info)

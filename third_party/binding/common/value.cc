@@ -98,6 +98,11 @@ Value Value::Dictionary(std::vector<std::pair<std::string, Value>> dict,
   return Value({std::move(dict), type});
 }
 
+// static
+Value Value::Set(std::unordered_set<std::string> set) {
+  return Value(std::move(set));
+}
+
 Value::Value() = default;
 
 Value::~Value() = default;

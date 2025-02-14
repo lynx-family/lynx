@@ -314,6 +314,7 @@ class IdlInterface(object):
         self.original_interface = None
         self.partial_interfaces = []
 
+        self.is_namespace = bool(node.GetClass() == 'Namespace')
         self.is_callback = bool(node.GetProperty('CALLBACK'))
         self.is_partial = bool(node.GetProperty('PARTIAL'))
         self.is_mixin = bool(node.GetProperty('MIXIN'))
@@ -435,6 +436,9 @@ class IdlInterface(object):
         self.async_created = False
         if 'AsyncCreated' in self.extended_attributes:
             self.async_created = True
+        self.owned_by_parent = False
+        if 'OwnedByParent' in self.extended_attributes:
+            self.owned_by_parent = True
 
         if constructor_operations or custom_constructor_operations:
             if self.constructors or self.custom_constructors:

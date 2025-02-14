@@ -6,6 +6,7 @@
 #define BINDING_COMMON_VALUE_H_
 
 #include <string>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -33,6 +34,7 @@ enum class ValueType {
   kArrayBuffer,
   kObject,
   kDictionary,
+  KSet,
 };
 
 // Valid when value type is kArray or kTypedArray.
@@ -58,6 +60,10 @@ enum class ArrayType {
 };
 
 constexpr int kDictionaryInvalidType = -1;
+enum class SetType {
+  kTypeEmpty,
+  kTypeString,
+};
 
 class Value {
  public:
@@ -83,6 +89,7 @@ class Value {
   static Value Object(Object&& obj);
   static Value Dictionary(std::vector<std::pair<std::string, Value>> dict,
                           int type = kDictionaryInvalidType);
+  static Value Set(std::unordered_set<std::string> set);
 
   Value();
   ~Value();
@@ -94,6 +101,7 @@ class Value {
 
   ValueType GetType() const { return type_; }
   ArrayType GetArrayType() const { return elem_type_; }
+  SetType GetSetType() const { return set_type_; }
   bool IsUndefined() const { return type_ == ValueType::kUndefined; }
   bool IsNull() const { return type_ == ValueType::kNull; }
   bool IsEmpty() const { return type_ == ValueType::kEmpty; }
@@ -148,6 +156,9 @@ class Value {
       : type_(type), elem_type_(elem_type), data_(std::move(array)) {}
   Value(std::vector<double> array, ValueType type, ArrayType elem_type)
       : type_(type), elem_type_(elem_type), data_(std::move(array)) {}
+  Value(std::unordered_set<std::string> set, ValueType type, SetType set_type)
+      : type_(type), set_type_(set_type), data_(std::move(set)) {}
+
   explicit Value(std::vector<std::string> array)
       : type_(ValueType::kArray),
         elem_type_(ArrayType::kTypeString),
@@ -171,15 +182,19 @@ class Value {
       : type_(ValueType::kObject), data_(std::move(obj)) {}
   explicit Value(DictionaryData dict)
       : type_(ValueType::kDictionary), data_(std::move(dict)) {}
+  explicit Value(std::unordered_set<std::string> set)
+      : type_(ValueType::KSet), set_type_(SetType::kTypeString), data_(std::move(set)) {}
 
   ValueType type_ = ValueType::kEmpty;
   ArrayType elem_type_ = ArrayType::kTypeEmpty;
+  SetType set_type_ = SetType::kTypeEmpty;
 
   std::variant<bool, double, std::string, std::vector<int32_t>,
                std::vector<uint32_t>, std::vector<float>, std::vector<double>,
                std::vector<char>, std::vector<std::string>, DictionaryData,
-               ArrayBufferData, class Object, std::vector<class Object>,
-               std::vector<Value>>
+               std::vector<std::pair<std::string, Value>>, ArrayBufferData,
+               class Object, std::vector<class Object>, std::vector<Value>,
+               std::unordered_set<std::string>>
       data_;
 };
 

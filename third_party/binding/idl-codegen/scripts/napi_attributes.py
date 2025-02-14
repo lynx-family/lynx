@@ -116,6 +116,13 @@ def attribute_context(interface, attribute, interfaces, component_info):
             extended_attributes, \
             '[PerWorldBindings] should only be used with wrapper types: %s.%s' % \
             (interface.name, attribute.name)
+
+    # [SameObject]
+    is_same_object = 'SameObject' in extended_attributes
+
+    # [OwnedByParent]
+    owned_by_parent = 'OwnedByParent' in extended_attributes
+
     # [SaveSameObject]
     is_save_same_object = ('SameObject' in attribute.extended_attributes and
                            'SaveSameObject' in attribute.extended_attributes)
@@ -233,6 +240,7 @@ def attribute_context(interface, attribute, interfaces, component_info):
         napi_utilities.exposed(attribute, interface),
         'getter_has_no_side_effect':
         has_extended_attribute_value(attribute, 'Affects', 'Nothing'),
+        'owned_by_parent': owned_by_parent,
         'has_cross_origin_getter':
             has_extended_attribute_value(attribute, 'CrossOrigin', None) or
             has_extended_attribute_value(attribute, 'CrossOrigin', 'Getter'),
@@ -272,6 +280,7 @@ def attribute_context(interface, attribute, interfaces, component_info):
         'is_read_only': attribute.is_read_only,
         'is_reflect': is_reflect,
         'is_replaceable': 'Replaceable' in attribute.extended_attributes,
+        'is_same_object': is_same_object,
         'is_save_same_object': is_save_same_object,
         'is_static': attribute.is_static,
         'is_url': 'URL' in extended_attributes,
