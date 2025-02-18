@@ -141,6 +141,7 @@ class Target:
     self.outputs = self.properties.get('outputs', [])
     self.script = self.properties.get('script', "")
     self.args = self.properties.get('args', [])
+    self.response_file_contents = self.properties.get('response_file_contents', [])
     self.declare_path = self.get_declare_path()
     self.dep_actions = set()
 
@@ -348,6 +349,19 @@ class Writer:
   def write_prebuild_action(self, target, project):
     if type(target) != Target:
       return -1
+    arguments = target.args
+    if target.response_file_contents != []:
+      response_file_dir = os.path.join(project.build_path, 'rsp_files')
+      response_file_path = os.path.join(response_file_dir, target.cmake_name + '.rsp')
+      if not os.path.exists(response_file_dir):
+        os.makedirs(response_file_dir, exist_ok=True)
+      with open(response_file_path, 'w+') as response_file:
+        for content in target.response_file_contents:
+          response_file.write(f"{content}\n")
+      response_file.close()
+      if '{{response_file_name}}' in arguments:
+        index = arguments.index('{{response_file_name}}')
+        arguments[index] = response_file_path
     self.write_single_variable('set', 'action_target', target.cmake_name)
     sources_path = []
     for source in target.sources:
@@ -375,7 +389,6 @@ class Writer:
       self.out.write('"\n')
     
     script = project.instead_source_path_prefix(target.script)
-    arguments = target.args
     self.out.write('  COMMAND python3 "')
     self.out.write(cmake_string_escape(script))
     self.out.write('"')
