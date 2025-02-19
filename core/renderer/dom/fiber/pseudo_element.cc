@@ -30,6 +30,7 @@ PlaceHolderPseudoElementStyleNames() {
           {kPropertyIDFontSize, "placeholder-font-size"},
           {kPropertyIDFontFamily, "placeholder-font-family"},
           {kPropertyIDFontWeight, "placeholder-font-weight"},
+          {kPropertyIDFontStyle, "placeholder-font-style"},
       }};
 
   return *kPlaceHolderPseudoElementStyleName;
