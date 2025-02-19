@@ -49,7 +49,12 @@ class TaskQueueEntry {
 
   TaskQueueId created_for;
 
-  explicit TaskQueueEntry(TaskQueueId created_for);
+  bool is_aligned_with_vsync_ = false;
+
+  bool IsAlignedWithVSync() const { return is_aligned_with_vsync_; }
+
+  explicit TaskQueueEntry(TaskQueueId created_for,
+                          bool is_aligned_with_vsync = false);
 
  private:
   BASE_DISALLOW_COPY_ASSIGN_AND_MOVE(TaskQueueEntry);
@@ -72,7 +77,7 @@ class MessageLoopTaskQueues {
 
   static MessageLoopTaskQueues* GetInstance();
 
-  TaskQueueId CreateTaskQueue();
+  TaskQueueId CreateTaskQueue(bool is_vsync_aligned_task_queue = false);
 
   void Dispose(TaskQueueId queue_id);
 
@@ -148,6 +153,8 @@ class MessageLoopTaskQueues {
   // method.
   bool IsTaskQueueRunningOnGivenMessageLoop(Wakeable* loop,
                                             TaskQueueId queue_id);
+
+  bool IsTaskQueueAlignedWithVSync(TaskQueueId queue_id);
 
  private:
   class MergedQueuesRunner;
