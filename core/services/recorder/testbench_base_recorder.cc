@@ -25,6 +25,8 @@ namespace lynx {
 namespace tasm {
 namespace recorder {
 
+thread_local rapidjson::Document dumped_document;
+
 std::unique_ptr<Byte[]> Compress(const char* source, size_t source_size,
                                  unsigned long* compressed_size_in) {
   *compressed_size_in = compressBound(source_size);
@@ -95,7 +97,7 @@ TestBenchBaseRecorder& TestBenchBaseRecorder::GetInstance() {
 bool TestBenchBaseRecorder::IsRecordingProcess() { return is_recording_; }
 
 rapidjson::Document::AllocatorType& TestBenchBaseRecorder::GetAllocator() {
-  return dumped_document_.GetAllocator();
+  return dumped_document.GetAllocator();
 };
 
 void TestBenchBaseRecorder::StartRecord() { is_recording_ = true; }
