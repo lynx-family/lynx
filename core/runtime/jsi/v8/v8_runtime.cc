@@ -513,8 +513,11 @@ std::optional<piper::Array> V8Runtime::getPropertyNames(
   v8::TryCatch trycatch(isolate_);
 
   v8::Local<v8::Object> v8obj = V8Helper::objectRef(obj);
-  v8::Local<v8::Array> ary =
-      v8obj->GetPropertyNames(getContext()).ToLocalChecked();
+  auto maybe_ary = v8obj->GetPropertyNames(getContext());
+  if (maybe_ary.IsEmpty()) {
+    return std::optional<piper::Array>();
+  }
+  v8::Local<v8::Array> ary = maybe_ary.ToLocalChecked();
   auto result = createArray(ary->Length());
   if (!result) {
     return std::optional<piper::Array>();
