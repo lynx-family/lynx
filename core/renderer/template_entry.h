@@ -173,6 +173,8 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     enable_microtask_promise_polyfill_ = enable;
   }
 
+  void SetEnableNapiProxyWrap(bool enable) { enable_napi_proxy_wrap_ = enable; }
+
   LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }
 
   TasmRuntimeBundle CreateTasmRuntimeBundle();
@@ -270,6 +272,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_js_binding_api_throw_exception_ = false;
   bool enable_bind_icu_ = false;
   bool enable_microtask_promise_polyfill_{false};
+  bool enable_napi_proxy_wrap_{true};
 #if ENABLE_LEPUSNG_WORKLET
   std::unique_ptr<lynx::piper::NapiEnvironment> napi_environment_;
 #endif

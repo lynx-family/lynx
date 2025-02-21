@@ -343,6 +343,8 @@ bool ConvertPiperValueToStringVector(Runtime& rt, const piper::Value& input,
   return true;
 }
 
+bool IsSingleJSContext(const std::string& group_id) { return group_id == "-1"; }
+
 #ifdef OS_ANDROID
 bool JSBUtilsRegisterJNI(JNIEnv* env) { return RegisterNativesImpl(env); }
 
