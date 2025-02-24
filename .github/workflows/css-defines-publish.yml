@@ -1,0 +1,37 @@
+name: css_defines_publish
+
+on: workflow_dispatch
+
+jobs:
+  css-defines-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 7.33.6
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.REPO_CSS_DEFINES_NPM_TOKEN }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd tools/css_generator
+          npm publish --access public --provenance
+          popd
