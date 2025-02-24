@@ -113,6 +113,17 @@ static constexpr const char kTotalActualFMP[] = "totalActualFmp";
  */
 static constexpr const char kEntryTypePipeline[] = "pipeline";
 // ------------------ name.pipelineOptions.origin ------------------
+// origin list
+static constexpr const char kUpdateTriggeredByBts[] = "updateTriggeredByBts";
+static constexpr const char kUpdateTriggeredByNative[] =
+    "updateTriggeredByNative";
+static constexpr const char kUpdateGlobalProps[] = "updateGlobalProps";
+static constexpr const char kSetNativeProps[] = "setNativeProps";
+static constexpr const char kLoadBundle[] = "loadBundle";
+static constexpr const char kReloadBundleFromNative[] =
+    "reloadBundleFromNative";
+static constexpr const char kReloadBundleFromBts[] = "reloadBundleFromBts";
+// props
 static constexpr const char kIdentifier[] = "identifier";
 static constexpr const char kPipelineStart[] = "pipelineStart";
 static constexpr const char kPipelineEnd[] = "pipelineEnd";
@@ -136,10 +147,6 @@ static constexpr const char kFrameworkPipelineTiming[] =
 // LoadBundleEntry is a special type of pipeline entry that possesses all the
 // fields of a PipelineEntry, in addition to the following extra fields.
 static constexpr const char kEntryNameLoadBundle[] = "loadBundle";
-static constexpr const char kLoadBundle[] = "loadBundle";
-static constexpr const char kReloadBundle[] = "reloadBundle";
-static constexpr const char kReloadFromBackground[] =
-    "reloadFromBackgroundRuntime";
 static constexpr const char kVmExecuteStart[] = "vmExecuteStart";
 static constexpr const char kVmExecuteEnd[] = "vmExecuteEnd";
 static constexpr const char kDataProcessorStart[] = "dataProcessorStart";

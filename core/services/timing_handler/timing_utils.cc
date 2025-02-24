@@ -55,7 +55,7 @@ TimestampKey GetPolyfillTimingKey(const TimestampKey& timing_key) {
            {kTemplateBundleParseEndPolyfill, kTemplateBundleParseEndPolyfill},
            {kLoadBackgroundStart, kLoadBackgroundStartPolyfill},
            {kLoadBackgroundEnd, kLoadBackgroundEndPolyfill},
-           {kReloadFromBackground, kReloadFromBackgroundPolyfill},
+           {kReloadBundleFromBts, kReloadBundleFromBtsPolyfill},
            {kPipelineStart, kPipelineStartPolyfill},
            {kPipelineEnd, kPipelineEndPolyfill},
            {kLayoutStart, kLayoutStartPolyfill},

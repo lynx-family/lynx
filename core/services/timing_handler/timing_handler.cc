@@ -112,7 +112,8 @@ bool TimingHandler::IsSetupPipeline(const PipelineID& pipeline_id) const {
     // TODO(kechenglong): split kLoadSSRData to a special pipeline type?
     return it->second == kLoadTemplate || it->second == kReloadTemplate ||
            it->second == kLoadSSRData || it->second == kLoadBundle ||
-           it->second == kReloadBundle;
+           it->second == kReloadBundleFromNative ||
+           it->second == kReloadBundleFromBts;
   }
   return false;
 }

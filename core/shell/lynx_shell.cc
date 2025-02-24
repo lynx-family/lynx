@@ -456,6 +456,7 @@ void LynxShell::LoadSSRData(
 void LynxShell::UpdateDataByParsedData(
     const std::shared_ptr<tasm::TemplateData>& data) {
   tasm::PipelineOptions pipeline_options;
+  pipeline_options.pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);
@@ -477,6 +478,7 @@ void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
       data, global_props, reinterpret_cast<int64_t>(this));
 #endif
   tasm::PipelineOptions pipeline_options;
+  pipeline_options.pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);
@@ -495,6 +497,7 @@ void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
 void LynxShell::ResetDataByParsedData(
     const std::shared_ptr<tasm::TemplateData>& data) {
   tasm::PipelineOptions pipeline_options;
+  pipeline_options.pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);
@@ -553,8 +556,7 @@ void LynxShell::ReloadTemplate(const std::shared_ptr<tasm::TemplateData>& data,
                                const lepus::Value& global_props) {
   tasm::PipelineOptions pipeline_options;
   pipeline_options.need_timestamps = true;
-  // TODO(kechenglong): should find a better pipeline_origin name?
-  pipeline_options.pipeline_origin = tasm::timing::kReloadBundle;
+  pipeline_options.pipeline_origin = tasm::timing::kReloadBundleFromNative;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);
@@ -572,6 +574,7 @@ void LynxShell::ReloadTemplate(const std::shared_ptr<tasm::TemplateData>& data,
 
 void LynxShell::UpdateConfig(const lepus::Value& config) {
   tasm::PipelineOptions pipeline_options;
+  pipeline_options.pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);
@@ -583,6 +586,7 @@ void LynxShell::UpdateConfig(const lepus::Value& config) {
 
 void LynxShell::UpdateGlobalProps(const lepus::Value& global_props) {
   tasm::PipelineOptions pipeline_options;
+  pipeline_options.pipeline_origin = tasm::timing::kUpdateGlobalProps;
   OnPipelineStart(pipeline_options.pipeline_id,
                   pipeline_options.pipeline_origin,
                   pipeline_options.pipeline_start_timestamp);

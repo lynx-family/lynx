@@ -90,7 +90,8 @@ bool TimingHandlerNg::IsLoadBundlePipeline(
   const auto& it = pipeline_id_to_origin_map_.find(pipeline_id);
   if (it != pipeline_id_to_origin_map_.end()) {
     return it->second == kLoadTemplate || it->second == kReloadTemplate ||
-           it->second == kReloadBundle || it->second == kLoadBundle;
+           it->second == kReloadBundleFromNative || it->second == kLoadBundle ||
+           it->second == kReloadBundleFromBts;
   }
   return false;
 }
