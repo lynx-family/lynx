@@ -4,15 +4,20 @@ description: pull common source and binary dependencies via habitat.
 
 inputs:
   concurrency:
+    description: concurrency of requests
     default: '2'
     required: false
-    type: string
+  skip-cache:
+    description: whether to skip cache
+    default: 'false'
+    required: false
 
 runs:
   using: composite
   steps:
     - name: setup cache action
       uses: lynx-infra/cache@main
+      if: ${{ inputs.skip-cache == 'false' }}
       with:
         path: ~/.habitat_cache
         key: ${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
@@ -21,8 +26,10 @@ runs:
 
     - name: run habitat sync
       shell: bash
+      working-directory: lynx
       run: |
-        python3 -m pip install PyYAML -i https://pypi.org/simple
-        lynx/tools/hab sync lynx
+        python3 -m pip install PyYAML
+        python3 -m pip install requests
+        tools/hab sync .
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
