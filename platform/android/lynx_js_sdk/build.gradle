@@ -102,7 +102,7 @@ afterEvaluate {
                     println "========= execute jssdk build in ${task.name} =========="
                     ignoreExitValue true
                     workingDir '../../'
-                    commandLine 'sh', '-c', "chmod +x ./android/lynx_js_sdk/jssdk_build.sh && ./android/lynx_js_sdk/jssdk_build.sh --build ${VERSION} --enable_lite ${enable_lite} " +
+                    commandLine 'bash', '-c', "source ../tools/envsetup.sh && chmod +x ./android/lynx_js_sdk/jssdk_build.sh && ./android/lynx_js_sdk/jssdk_build.sh --build ${VERSION} --enable_lite ${enable_lite} " +
                             "--jssdkMainDestPath ${jssdkMainDestPath} --jssdkDebugDestPath ${jssdkDebugDestPath} --lynxCoreBuildToolsPath ${lynxCoreBuildToolsPath}"
                 }
                 if (result.exitValue != 0) {

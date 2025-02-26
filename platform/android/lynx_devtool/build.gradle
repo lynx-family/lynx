@@ -233,7 +233,7 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../../'
-            commandLine 'sh', '-c', './devtool/lynx_devtool/resources/copy_resources.sh'
+            commandLine 'bash', '-c', 'source tools/envsetup.sh && ./devtool/lynx_devtool/resources/copy_resources.sh'
         }
     }
 }
