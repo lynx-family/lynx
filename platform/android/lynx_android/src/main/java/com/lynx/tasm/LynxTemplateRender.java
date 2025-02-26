@@ -210,8 +210,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private boolean mEnableSyncFlush;
 
-  // TODO(heshan): Add an experimental switch
-  private boolean mEnableLayoutOnBackgroundThread = false;
+  private boolean mEnableLayoutOnBackgroundThread = LynxEnv.inst().enableLayoutOnBackgroundThread();
 
   private boolean mEnableJSRuntime;
 
