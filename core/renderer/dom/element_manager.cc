@@ -12,6 +12,7 @@
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_selector_constants.h"
@@ -38,7 +39,6 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/layout_mediator.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 

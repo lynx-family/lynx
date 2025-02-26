@@ -13,13 +13,13 @@
 #include <vector>
 
 #include "base/include/closure.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/piper/js/update_data_type.h"
 #include "core/services/timing_handler/timing_handler.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
@@ -116,9 +116,11 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   void RunOnJSThread(base::closure closure) override;
   void RunOnJSThreadWhenIdle(base::closure closure) override;
 
-  void set_vsync_monitor(std::shared_ptr<VSyncMonitor> vsync_monitor) {
+  void set_vsync_monitor(
+      const std::shared_ptr<VSyncMonitor>& vsync_monitor,
+      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor) {
     vsync_observer_ = std::make_shared<VSyncObserverImpl>(
-        std::move(vsync_monitor), js_runner_);
+        vsync_monitor, js_runner_, runtime_actor);
   }
 
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() override {

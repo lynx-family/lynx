@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "core/shell/ios/vsync_monitor_darwin.h"
+#include "core/base/darwin/vsync_monitor_darwin.h"
 #include "lynx/base/include/fml/platform/darwin/message_loop_darwin.h"
 namespace lynx {
 namespace base {

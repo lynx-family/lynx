@@ -5,6 +5,9 @@
 
 #include <utility>
 
+#include "base/include/timer/time_utils.h"
+#include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
 #include "core/base/threading/task_runner_manufactor.h"
 
 namespace lynx {

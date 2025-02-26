@@ -4,7 +4,7 @@
 
 #include "core/shell/vsync_observer_impl.h"
 
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
 namespace shell {
@@ -16,7 +16,7 @@ void VSyncObserverImpl::RequestVSync() {
   has_pending_vsync_request_ = true;
   vsync_monitor_->AsyncRequestVSync(
       [this](int64_t frame_start_time, int64_t frame_end_time) {
-        vsync_monitor_->runtime_actor()->Act(
+        runtime_actor_->Act(
             [this, frame_start_time, frame_end_time](auto& runtime) {
               has_pending_vsync_request_ = false;
               DoFrame(frame_start_time, frame_end_time);

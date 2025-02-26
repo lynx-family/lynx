@@ -8,6 +8,7 @@
 
 #include "base/include/value/base_string.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
@@ -16,7 +17,6 @@
 #include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/lynx_actor_specialization.h"
 
 namespace lynx {

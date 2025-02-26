@@ -16,6 +16,7 @@
 #include "core/base/android/lynx_error_android.h"
 #include "core/base/android/lynx_white_board_android.h"
 #include "core/base/android/piper_data.h"
+#include "core/base/android/vsync_monitor_android.h"
 #include "core/renderer/css/android/css_color_utils.h"
 #include "core/renderer/css/android/css_gradient_utils.h"
 #include "core/renderer/dom/android/environment_android.h"
@@ -54,7 +55,6 @@
 #include "core/shell/android/native_facade_reporter_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
-#include "core/shell/android/vsync_monitor_android.h"
 
 #if MEMORY_TRACING
 #include "core/base/debug/memory_tracer_android.h"

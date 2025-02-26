@@ -7,9 +7,9 @@
 #include <utility>
 #include <vector>
 
+#include "core/base/threading/vsync_monitor.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/timing_handler/timing_mediator.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/lynx_runtime_actor_holder.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime_mediator.h"
@@ -64,16 +64,16 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
   auto delegate = std::make_unique<RuntimeMediator>(
       native_runtime_facade, nullptr, timing_actor, nullptr, js_task_runner,
       std::move(external_resource_loader));
-  delegate->set_vsync_monitor(vsync_monitor);
   delegate->SetPropBundleCreator(prop_bundle_creator);
   delegate->SetWhiteBoardDelegate(white_board_delegate);
+  auto* delegate_raw_ptr = delegate.get();
 
   auto runtime = std::make_unique<runtime::LynxRuntime>(
       group_id, instance_id, std::move(delegate), enable_user_bytecode,
       bytecode_source_url, enable_js_group_thread);
   auto runtime_actor = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       std::move(runtime), js_task_runner, instance_id, true);
-  vsync_monitor->set_runtime_actor(runtime_actor);
+  delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
   timing_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
 
   on_runtime_actor_created(runtime_actor, native_runtime_facade);

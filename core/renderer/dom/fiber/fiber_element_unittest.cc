@@ -12,6 +12,7 @@
 #include <tuple>
 
 #include "core/base/threading/task_runner_manufactor.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_value.h"
@@ -40,8 +41,8 @@
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/ui_wrapper/common/testing/prop_bundle_mock.h"
 #include "core/renderer/utils/test/text_utils_mock.h"
+#include "core/runtime/vm/lepus/js_object.h"
 #include "core/services/event_report/event_tracker.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/lynx_ui_operation_queue.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"

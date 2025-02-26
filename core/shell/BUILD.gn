@@ -10,8 +10,6 @@ shell_shared_sources = [
   "common/platform_call_back.h",
   "common/platform_call_back_manager.cc",
   "common/platform_call_back_manager.h",
-  "common/vsync_monitor.cc",
-  "common/vsync_monitor.h",
   "dynamic_ui_operation_queue.cc",
   "dynamic_ui_operation_queue.h",
   "engine_thread_switch.cc",
@@ -88,8 +86,6 @@ if (is_android) {
     "android/platform_call_back_android.h",
     "android/tasm_platform_invoker_android.cc",
     "android/tasm_platform_invoker_android.h",
-    "android/vsync_monitor_android.cc",
-    "android/vsync_monitor_android.h",
   ]
 } else if (is_ios) {
   shell_shared_sources += [
@@ -107,12 +103,7 @@ if (is_android) {
     "ios/native_facade_reporter_darwin.mm",
     "ios/tasm_platform_invoker_darwin.h",
     "ios/tasm_platform_invoker_darwin.mm",
-    "ios/vsync_monitor_darwin.h",
-    "ios/vsync_monitor_darwin.mm",
   ]
-}
-if (enable_unittests) {
-  shell_shared_sources += [ "common/vsync_monitor_default.cc" ]
 }
 
 lynx_core_source_set("shell") {

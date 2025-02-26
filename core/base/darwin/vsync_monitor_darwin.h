@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_SHELL_IOS_VSYNC_MONITOR_DARWIN_H_
-#define CORE_SHELL_IOS_VSYNC_MONITOR_DARWIN_H_
+#ifndef CORE_BASE_DARWIN_VSYNC_MONITOR_DARWIN_H_
+#define CORE_BASE_DARWIN_VSYNC_MONITOR_DARWIN_H_
 
 #include <memory>
 
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
 namespace shell {
@@ -34,4 +34,4 @@ class VSyncMonitorIOS : public VSyncMonitor {
 }  // namespace shell
 }  // namespace lynx
 
-#endif  // CORE_SHELL_IOS_VSYNC_MONITOR_DARWIN_H_
+#endif  // CORE_BASE_DARWIN_VSYNC_MONITOR_DARWIN_H_

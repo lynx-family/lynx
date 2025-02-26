@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/testing/fiber_mock_painting_context.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

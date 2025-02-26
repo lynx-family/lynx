@@ -4,7 +4,7 @@
 
 #include <memory>
 
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
 namespace shell {

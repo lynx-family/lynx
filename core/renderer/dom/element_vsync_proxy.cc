@@ -9,8 +9,10 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
+#include "core/base/threading/vsync_monitor.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
-#include "core/shell/common/vsync_monitor.h"
 
 namespace lynx {
 namespace tasm {

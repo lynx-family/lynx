@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "base/include/fml/platform/android/message_loop_android.h"
-#include "core/shell/android/vsync_monitor_android.h"
+#include "core/base/android/vsync_monitor_android.h"
 namespace lynx {
 namespace base {
 namespace android {

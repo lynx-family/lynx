@@ -10,7 +10,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
 namespace animation {}  // namespace animation

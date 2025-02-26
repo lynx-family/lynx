@@ -14,6 +14,7 @@
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
 #include "core/public/vsync_observer_interface.h"
+#include "core/runtime/piper/js/lynx_runtime.h"
 
 namespace lynx {
 namespace shell {
@@ -22,9 +23,13 @@ class VSyncMonitor;
 
 class VSyncObserverImpl : public runtime::IVSyncObserver {
  public:
-  VSyncObserverImpl(std::shared_ptr<VSyncMonitor> monitor,
-                    fml::RefPtr<fml::TaskRunner> js_runner)
-      : vsync_monitor_(std::move(monitor)), js_runner_(js_runner) {}
+  VSyncObserverImpl(
+      const std::shared_ptr<VSyncMonitor>& monitor,
+      fml::RefPtr<fml::TaskRunner> js_runner,
+      const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor)
+      : vsync_monitor_(std::move(monitor)),
+        js_runner_(js_runner),
+        runtime_actor_(runtime_actor) {}
 
   void RequestAnimationFrame(
       uintptr_t id,
@@ -43,6 +48,7 @@ class VSyncObserverImpl : public runtime::IVSyncObserver {
 
   std::shared_ptr<VSyncMonitor> vsync_monitor_{nullptr};
   fml::RefPtr<fml::TaskRunner> js_runner_{nullptr};
+  std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
 
   bool has_pending_vsync_request_{false};
   VSyncCallbackMap vsync_callbacks_;

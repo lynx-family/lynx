@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_value.h"
@@ -27,7 +28,6 @@
 #include "core/renderer/ui_component/list/batch_list_adapter.h"
 #include "core/renderer/ui_component/list/list_container_impl.h"
 #include "core/renderer/ui_component/list/list_types.h"
-#include "core/shell/common/vsync_monitor.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

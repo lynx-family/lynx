@@ -177,7 +177,6 @@ void LynxShell::InitRuntimeWithRuntimeDisabled(
   DCHECK(!enable_runtime_);
   runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       nullptr, nullptr, instance_id_, enable_runtime_);
-  vsync_monitor->set_runtime_actor(runtime_actor_);
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
   timing_mediator_->SetRuntimeActor(runtime_actor_);
@@ -218,15 +217,15 @@ void LynxShell::InitRuntime(
   auto delegate = std::make_unique<RuntimeMediator>(
       facade_actor_, engine_actor_, timing_actor_, card_cached_data_mgr_,
       js_task_runner, std::move(external_resource_loader));
-  delegate->set_vsync_monitor(vsync_monitor);
   delegate->SetPropBundleCreator(prop_bundle_creator_);
+  auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
   auto runtime = std::make_unique<runtime::LynxRuntime>(
       group_id, instance_id_, std::move(delegate), enable_user_code_cache,
       code_cache_source_url, enable_js_group_thread_);
   runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
-  vsync_monitor->set_runtime_actor(runtime_actor_);
+  delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
 
   ConsumeModuleFactory(module_manager.get());
   OnRuntimeCreate();

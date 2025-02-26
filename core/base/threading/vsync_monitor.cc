@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/threading/vsync_monitor.h"
 
 #include <utility>
 #include <vector>
@@ -15,10 +15,7 @@ namespace lynx {
 namespace shell {
 
 VSyncMonitor::VSyncMonitor(bool is_vsync_post_task_by_emergency)
-    : is_vsync_post_task_by_emergency_(
-          is_vsync_post_task_by_emergency
-              ? tasm::LynxEnv::GetInstance().IsVSyncPostTaskByEmergency()
-              : false) {
+    : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency) {
   LOGI("VSyncMonitor created with is_vsync_post_task_by_emergency_ "
        << is_vsync_post_task_by_emergency_);
 }

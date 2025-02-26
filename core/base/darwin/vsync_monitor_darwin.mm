@@ -2,7 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/shell/ios/vsync_monitor_darwin.h"
+#include "core/base/darwin/vsync_monitor_darwin.h"
+#include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
+
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CADisplayLink.h>
 

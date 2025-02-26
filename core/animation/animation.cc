@@ -15,7 +15,9 @@
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/animation/constants.h"
-#include "core/shell/common/vsync_monitor.h"
+#include "core/base/lynx_trace_categories.h"
+#include "core/base/threading/vsync_monitor.h"
+#include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
 namespace animation {

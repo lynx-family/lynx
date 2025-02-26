@@ -17,6 +17,8 @@ base_shared_sources = [
   "threading/task_runner_manufactor.h",
   "threading/thread_merger.cc",
   "threading/thread_merger.h",
+  "threading/vsync_monitor.cc",
+  "threading/vsync_monitor.h",
   "utils/any.h",
   "utils/file_utils.cc",
   "utils/file_utils.h",
@@ -52,6 +54,8 @@ if (is_android) {
     "android/message_loop_android_vsync.h",
     "android/piper_data.cc",
     "android/piper_data.h",
+    "android/vsync_monitor_android.cc",
+    "android/vsync_monitor_android.h",
     "thread/atomic_lifecycle.cc",
     "thread/atomic_lifecycle.h",
     "threading/js_thread_config_getter.cc",
@@ -73,6 +77,8 @@ if (is_android) {
     base_shared_sources += [
       "darwin/message_loop_darwin_vsync.cc",
       "darwin/message_loop_darwin_vsync.h",
+      "darwin/vsync_monitor_darwin.h",
+      "darwin/vsync_monitor_darwin.mm",
       "threading/task_runner_vsync.cc",
       "threading/task_runner_vsync.h",
     ]
@@ -94,11 +100,14 @@ if (is_android) {
   base_shared_sources += [ "threading/js_thread_config_getter.cc" ]
 }
 
-if (enable_unittests && !is_android) {
-  base_shared_sources += [
-    "threading/task_runner_vsync.cc",
-    "threading/task_runner_vsync.h",
-  ]
+if (enable_unittests) {
+  base_shared_sources += [ "threading/vsync_monitor_default.cc" ]
+  if (!is_android) {
+    base_shared_sources += [
+      "threading/task_runner_vsync.cc",
+      "threading/task_runner_vsync.h",
+    ]
+  }
 }
 
 # base_shared_sources end
@@ -183,6 +192,7 @@ unittest_set("base_testset") {
     "threading/task_runner_manufactor_unittest.cc",
     "threading/task_runner_vsync_unittest.cc",
     "threading/thread_merger_unittest.cc",
+    "threading/vsync_monitor_unittest.cc",
     "utils/file_utils_unittest.cc",
   ]
   public_deps = [ "//lynx/core/base" ]

@@ -5,11 +5,11 @@
 #include "core/shell/runtime_mediator.h"
 
 #include "base/include/debug/lynx_assert.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/template_assembler.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shared_data/white_board_delegate.h"
-#include "core/shell/common/vsync_monitor.h"
 
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/testbench_base_recorder.h"
