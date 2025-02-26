@@ -14,6 +14,21 @@ namespace tasm {
 
 class StaggeredGridLayoutManager : public ListLayoutManager {
  public:
+  class SpanItemInfo {
+   public:
+    SpanItemInfo(int span_index = list::kInvalidIndex,
+                 int item_index = list::kInvalidIndex)
+        : span_index_(span_index), item_index_(item_index) {}
+
+    bool IsValid() const {
+      return span_index_ != list::kInvalidIndex &&
+             item_index_ != list::kInvalidIndex;
+    }
+
+    int span_index_{list::kInvalidIndex};
+    int item_index_{list::kInvalidIndex};
+  };
+
   class LayoutState {
    public:
     LayoutState(int span_count, list::LayoutDirection layout_direction =
@@ -27,6 +42,8 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
 
     void Reset(int span_count) {
       layout_direction_ = list::LayoutDirection::kLayoutToEnd;
+      is_start_full_span_ = false;
+      is_end_full_span_ = false;
       start_lines.assign(span_count, 0.f);
       start_index.assign(span_count, 0);
       end_lines.assign(span_count, 0.f);
@@ -38,6 +55,9 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
         list::LayoutDirection::kLayoutToEnd};
     // The latest updated content offset.
     float latest_updated_content_offset_{0.f};
+
+    bool is_start_full_span_{false};
+    bool is_end_full_span_{false};
     // Top item_holds at each columns
     std::vector<float> start_lines{};
     std::vector<int> start_index{};
@@ -84,20 +104,21 @@ class StaggeredGridLayoutManager : public ListLayoutManager {
   float CalculateCrossAxisPosition(const ItemHolder* item_holder);
   float CalculateMainAxisPosition(ItemHolder* item_holder,
                                   LayoutState& layout_state);
-  int FindNextIndexToBindToStart(LayoutState& layout_state);
-  int FindIndexInColumn(int index, int column_index, int low, int high);
   // Detect whether this item_holder intersects current visible area.
-  bool IntersectVisibleArea(const ItemHolder* item_holder);
-
+  bool IntersectVisibleArea(const ItemHolder* item_holder) const;
   // Detect whether current trunk left empty space to fill. Both toStart and
   // toEnd.
-  bool HasRemainSpace(LayoutState& layout_state);
-  bool HasUnfilledStartLines(LayoutState& layout_state);
-  bool HasUnfilledEndLines(LayoutState& layout_state);
-  bool CurrentLineHasUnfilledEnd(float end_line);
-
-  int SmallestColumn(const std::vector<float>& current_end_lines);
-  int BiggestColumn(const std::vector<float>& current_lines);
+  int FindNextIndexToFillStart(LayoutState& layout_state) const;
+  bool HasRemainSpaceToFillStart(LayoutState& layout_state) const;
+  int GetItemIndexBeforeTargetIndex(const std::vector<int>& span_indexes,
+                                    int target_index) const;
+  bool HasRemainSpaceToFillEnd(int next_valid_item_index,
+                               LayoutState& layout_state) const;
+  bool CurrentLineHasRemainSpaceToFillEnd(float end_line) const;
+  std::vector<SpanItemInfo> GetMaxEndSpanItemInfoForStartLines(
+      LayoutState& layout_state) const;
+  SpanItemInfo GetMinEndSpanItemInfoForEndLines(
+      LayoutState& layout_state) const;
 
  private:
   std::vector<std::vector<int>> column_indexes_{};
