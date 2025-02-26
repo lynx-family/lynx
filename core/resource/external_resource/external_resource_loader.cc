@@ -16,8 +16,8 @@
 namespace lynx {
 namespace shell {
 
-ExternalResourceInfo ExternalResourceLoader::LoadScript(
-    const std::string& url) {
+ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
+                                                        long timeout) {
   if (!resource_loader_) {
     auto error_msg = "LoadScript:resource_loader_ is null";
     LOGE(error_msg);
@@ -37,7 +37,9 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(
                                                response.err_code,
                                                std::move(response.err_msg)));
       });
-  if (future.wait_for(std::chrono::seconds(5)) != std::future_status::ready) {
+  timeout = timeout > 0 ? timeout : 5;
+  if (future.wait_for(std::chrono::seconds(timeout)) !=
+      std::future_status::ready) {
     return ExternalResourceInfo(
         error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED, "timeout");
   }

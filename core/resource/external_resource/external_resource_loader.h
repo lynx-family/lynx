@@ -52,7 +52,7 @@ class ExternalResourceLoader
   ExternalResourceLoader(ExternalResourceLoader&&) = default;
   ExternalResourceLoader& operator=(ExternalResourceLoader&&) = default;
 
-  ExternalResourceInfo LoadScript(const std::string& url);
+  ExternalResourceInfo LoadScript(const std::string& url, long timeout);
 
   void LoadScriptAsync(const std::string& url, int32_t callback_id);
 

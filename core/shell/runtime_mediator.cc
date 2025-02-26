@@ -84,9 +84,9 @@ std::string RuntimeMediator::GetLynxJSAsset(const std::string& name) {
 }
 
 piper::JsContent RuntimeMediator::GetJSContentFromExternal(
-    const std::string& bundle_name, const std::string& name) {
+    const std::string& bundle_name, const std::string& name, long timeout) {
   LOGE("GetJSContent with externalResourceLoader: " << name);
-  auto info = external_resource_loader_->LoadScript(name);
+  auto info = external_resource_loader_->LoadScript(name, timeout);
   std::string external_resource_content("");
   piper::JsContent::Type type(piper::JsContent::Type::ERROR);
   if (info.Success()) {

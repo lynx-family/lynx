@@ -493,7 +493,11 @@ export abstract class BaseApp<
     return ret;
   }
 
-  requireModule<T>(path: string, entryName?: string): T {
+  requireModule<T>(
+    path: string,
+    entryName?: string,
+    options?: { timeout: number }
+  ): T {
     const init = BaseApp._$factoryCache[path];
     if (NODE_ENV !== 'development' && init) {
       // cache hit
@@ -504,11 +508,12 @@ export abstract class BaseApp<
     if (path.split('?')[0].endsWith('.json')) {
       const content = this.nativeApp.readScript(path, {
         dynamicComponentEntry: entryName ?? DEFAULT_ENTRY,
+        ...options,
       });
       return this._$executeJSON(content, { path, entryName });
     }
 
-    const exports = this.nativeApp.loadScript(path, entryName);
+    const exports = this.nativeApp.loadScript(path, entryName, options);
     return this._$executeInit<T>(exports, { path, entryName });
   }
 

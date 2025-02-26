@@ -119,8 +119,13 @@ export interface NativeApp {
    *
    * @param sourceURL
    * @param entryName
+   * @param options
    */
-  loadScript: (sourceURL: string, entryName?: string) => BundleInitReturnObj;
+  loadScript: (
+    sourceURL: string,
+    entryName?: string,
+    options?: { timeout: number }
+  ) => BundleInitReturnObj;
 
   loadScriptAsync(
     sourceURL: string,
@@ -129,7 +134,7 @@ export interface NativeApp {
 
   readScript: (
     sourceURL: string,
-    params?: { dynamicComponentEntry: string }
+    params?: { dynamicComponentEntry: string; timeout?: number }
   ) => string;
 
   setCard(app: BaseApp): void;

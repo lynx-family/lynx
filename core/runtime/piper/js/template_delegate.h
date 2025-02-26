@@ -76,7 +76,7 @@ class TemplateDelegate : public ContextProxy::Delegate {
                                      uint64_t update_task_id) = 0;
   virtual std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() = 0;
   virtual piper::JsContent GetJSContentFromExternal(
-      const std::string& entry_name, const std::string& name) = 0;
+      const std::string& entry_name, const std::string& name, long timeout) = 0;
   virtual std::string GetLynxJSAsset(const std::string& name) = 0;
 
   virtual void GetComponentContextDataAsync(const std::string& component_id,

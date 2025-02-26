@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 3.2.1
+
+### Patch Changes
+
+- lynx.requireModule support setting timeout time
+
 ## 3.2.0
 
 ### Major Changes

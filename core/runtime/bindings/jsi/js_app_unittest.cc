@@ -69,7 +69,7 @@ class MockDelegate : public runtime::test::MockTemplateDelegate {
   }
 
   MOCK_METHOD(piper::JsContent, GetJSContentFromExternal,
-              (const std::string&, const std::string&), (override));
+              (const std::string&, const std::string&, long), (override));
 
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() override {
     return std::make_shared<MockVSyncObserver>();
@@ -698,8 +698,9 @@ function readScript(nativeApp, url, params) {
 )--");
 
   // readScript with `http(s)://`
-  EXPECT_CALL(delegate_, GetJSContentFromExternal(
-                             ::testing::_, ::testing::StartsWith("http")))
+  EXPECT_CALL(delegate_,
+              GetJSContentFromExternal(
+                  ::testing::_, ::testing::StartsWith("http"), ::testing::_))
       .Times(::testing::AtLeast(1))
       .WillRepeatedly(::testing::Return(piper::JsContent(
           "function () { return 'http' }", piper::JsContent::Type::SOURCE)));
@@ -716,8 +717,9 @@ function readScript(nativeApp, url, params) {
   EXPECT_TRUE(result->isString());
   EXPECT_EQ(result->getString(rt).utf8(rt), "function () { return 'http' }");
 
-  EXPECT_CALL(delegate_, GetJSContentFromExternal(::testing::_,
-                                                  ::testing::StartsWith("/")))
+  EXPECT_CALL(delegate_,
+              GetJSContentFromExternal(::testing::_, ::testing::StartsWith("/"),
+                                       ::testing::_))
       .Times(::testing::AtLeast(1))
       .WillRepeatedly(::testing::Return(
           piper::JsContent("function () { return 'absolute' }",
@@ -735,9 +737,10 @@ function readScript(nativeApp, url, params) {
   EXPECT_EQ(result->getString(rt).utf8(rt),
             "function () { return 'absolute' }");
 
-  EXPECT_CALL(delegate_,
-              GetJSContentFromExternal(::testing::_,
-                                       ::testing::StartsWith("lynx_assets://")))
+  EXPECT_CALL(
+      delegate_,
+      GetJSContentFromExternal(
+          ::testing::_, ::testing::StartsWith("lynx_assets://"), ::testing::_))
       .Times(1)
       .WillOnce(::testing::Return(
           piper::JsContent("function () { return 'lynx_assets' }",
@@ -749,8 +752,9 @@ function readScript(nativeApp, url, params) {
   EXPECT_EQ(result->getString(rt).utf8(rt),
             "function () { return 'lynx_assets' }");
 
-  EXPECT_CALL(delegate_, GetJSContentFromExternal(::testing::_,
-                                                  ::testing::EndsWith(".json")))
+  EXPECT_CALL(delegate_,
+              GetJSContentFromExternal(
+                  ::testing::_, ::testing::EndsWith(".json"), ::testing::_))
       .Times(1)
       .WillOnce(::testing::Return(piper::JsContent(
           R"-({"type": "json"})-", piper::JsContent::Type::SOURCE)));
@@ -760,7 +764,7 @@ function readScript(nativeApp, url, params) {
   EXPECT_EQ(result->getString(rt).utf8(rt), R"-({"type": "json"})-");
 
   EXPECT_CALL(delegate_, GetJSContentFromExternal(::testing::Eq("CustomEntry"),
-                                                  ::testing::_))
+                                                  ::testing::_, ::testing::_))
       .Times(1)
       .WillOnce(::testing::Return(
           piper::JsContent("function () { return 'CustomEntry' }",
@@ -796,8 +800,9 @@ function readScriptWithoutArgs(nativeApp) {
                                 {Object::createFromHostObject(rt, app_proxy)});
 
   // readScript with `http://example.com/bar.js` but file is not exits.
-  EXPECT_CALL(delegate_, GetJSContentFromExternal(
-                             ::testing::_, ::testing::StartsWith("http")))
+  EXPECT_CALL(delegate_,
+              GetJSContentFromExternal(
+                  ::testing::_, ::testing::StartsWith("http"), ::testing::_))
       .Times(::testing::AtLeast(1))
       .WillRepeatedly(::testing::Return(piper::JsContent(
           "file is not exist.", piper::JsContent::Type::ERROR)));
@@ -809,6 +814,24 @@ function readScriptWithoutArgs(nativeApp) {
   result = read_script.call(
       rt, {Object::createFromHostObject(rt, app_proxy),
            String::createFromAscii(rt, "http://example.com/bar.js")});
+  EXPECT_TRUE(result->isUndefined());
+
+  // readScript with `http://example.com/bar.js` with timeout options.
+  EXPECT_CALL(delegate_, GetJSContentFromExternal(
+                             ::testing::_, ::testing::StartsWith("http"), 1))
+      .Times(::testing::AtLeast(1))
+      .WillRepeatedly(::testing::Return(
+          piper::JsContent("timeout", piper::JsContent::Type::ERROR)));
+  EXPECT_CALL(*exception_handler_,
+              onJSIException(HasMessage(
+                  "readScript http://example.com/bar.js error:timeout")))
+      .Times(1);
+  result = read_script.call(
+      rt,
+      {Object::createFromHostObject(rt, app_proxy),
+       String::createFromAscii(rt, "http://example.com/bar.js"),
+       eval("(() => ({dynamicComponentEntry: 'CustomEntry', timeout: 1}))()")
+           .value()});
   EXPECT_TRUE(result->isUndefined());
 }
 

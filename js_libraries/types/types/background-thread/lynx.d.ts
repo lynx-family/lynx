@@ -120,7 +120,14 @@ export interface Lynx extends CommonLynx {
 
   requireModuleAsync<T>(path: string, callback: (error: Error | null, exports?: T) => void): void;
 
-  requireModule<T>(path: string, entryName?: string): T;
+  /**
+   * @description requireModule 
+   * @param path: the source's path
+   * @param entryName: the resource's entry's name
+   * @param options(@since 3.2): timeout is waiting time,the unit is seconds
+   * @since 1.0
+   */
+  requireModule<T>(path: string, entryName?: string, options?: {timeout: number }): T;
 
   resumeExposure(): void;
   stopExposure(options?: { sendEvent: boolean }): void;

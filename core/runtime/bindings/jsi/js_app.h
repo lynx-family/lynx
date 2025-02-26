@@ -161,9 +161,9 @@ class App : public std::enable_shared_from_this<App> {
   void OnAppJSError(const piper::JSIException& exception);
 
   base::expected<Value, JSINativeException> loadScript(
-      const std::string entry_name, const std::string& url);
+      const std::string entry_name, const std::string& url, long timeout);
   base::expected<Value, JSINativeException> readScript(
-      const std::string entry_name, const std::string& url);
+      const std::string entry_name, const std::string& url, long timeout);
   piper::Value setTimeout(piper::Function func, int time);
   piper::Value setInterval(piper::Function func, int time);
   void clearTimeout(double task);
@@ -229,7 +229,7 @@ class App : public std::enable_shared_from_this<App> {
   void OnComponentDecoded(tasm::TasmRuntimeBundle bundle);
   void OnCardConfigDataChanged(const lepus::Value& data);
   JsContent GetJSContent(const std::string& bundle_name,
-                         const std::string& name);
+                         const std::string& name, long timeout);
 
   // For Runtime Timing API
   void MarkPipelineTiming(const tasm::PipelineID& pipeline_id,

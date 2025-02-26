@@ -66,6 +66,9 @@ inline std::unordered_map<std::string, JsContent>& GetJSAssetsMap() {
   return *js_assets_map_;
 }
 
+// default resource loader timeout is 5 seconds.
+constexpr long DEFAULT_RESOURCE_TIMEOUT = 5;
+
 }  // namespace
 
 #if ENABLE_TRACE_PERFETTO
@@ -151,11 +154,17 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (count > 1 && args[1].isString()) {
             entryName = args[1].getString(rt).utf8(rt);
           }
+
+          long timeout = DEFAULT_RESOURCE_TIMEOUT;
+          if (count > 2 && args[2].isNumber()) {
+            timeout = static_cast<long>(args[2].getNumber());
+          }
           auto native_app = native_app_.lock();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          return native_app->loadScript(entryName, sourceURL->utf8(rt));
+          return native_app->loadScript(entryName, sourceURL->utf8(rt),
+                                        timeout);
         });
   } else if (methodName == "readScript") {
     return Function::createFromHostFunction(
@@ -178,6 +187,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "readScript args[0] must be a string."));
           }
           std::string entry_name = tasm::DEFAULT_ENTRY_NAME;
+          long timeout = DEFAULT_RESOURCE_TIMEOUT;
           if (count > 1 && args[1].isObject()) {
             auto entry_opt =
                 args[1].getObject(rt).getProperty(rt, "dynamicComponentEntry");
@@ -192,12 +202,20 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                   "readScript dynamicComponentEntry must be a string."));
             }
             entry_name = entry_name_opt->utf8(rt);
+            auto timeout_opt = args[1].getObject(rt).getProperty(rt, "timeout");
+            if (timeout_opt && timeout_opt->isNumber()) {
+              timeout = static_cast<long>(timeout_opt->getNumber());
+            }
+          }
+          if (count > 2 && args[2].isObject()) {
+            auto timeout = args[2].getObject(rt).getProperty(rt, "timeout");
           }
           auto native_app = native_app_.lock();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
-          return native_app->readScript(entry_name, sourceURL->utf8(rt));
+          return native_app->readScript(entry_name, sourceURL->utf8(rt),
+                                        timeout);
         });
   } else if (methodName == "readDynamicComponentScripts") {
     // deprecated
@@ -2644,7 +2662,7 @@ std::optional<JSINativeException> App::batchedUpdateData(
 }
 
 base::expected<Value, JSINativeException> App::loadScript(
-    const std::string entry_name, const std::string& url) {
+    const std::string entry_name, const std::string& url, long timeout) {
   TRACE_EVENT_FUNC_NAME(LYNX_TRACE_CATEGORY, "url", url, "entry", entry_name);
 
   LOGI("loadscript:" << url);
@@ -2667,8 +2685,8 @@ base::expected<Value, JSINativeException> App::loadScript(
     } else {
       source_url = "/" + url;
     }
-    JsContent content = [this, is_lynx_assets_source, &source_url,
-                         &entry_name]() -> JsContent {
+    JsContent content = [this, is_lynx_assets_source, &source_url, &entry_name,
+                         timeout]() -> JsContent {
       if (is_lynx_assets_source) {
         auto& lynx_js_assets_ = GetJSAssetsMap();
         if (auto iter = lynx_js_assets_.find(source_url);
@@ -2681,7 +2699,7 @@ base::expected<Value, JSINativeException> App::loadScript(
           return iter->second;
         }
       } else {
-        return GetJSContent(entry_name, source_url);
+        return GetJSContent(entry_name, source_url, timeout);
       }
     }();
 
@@ -2736,7 +2754,7 @@ std::shared_ptr<ContextProxyInJS> App::GetContextProxy(
 }
 
 base::expected<Value, JSINativeException> App::readScript(
-    const std::string entry_name, const std::string& url) {
+    const std::string entry_name, const std::string& url, long timeout) {
   LOGI("readScript:" << url);
 
   auto rt = rt_.lock();
@@ -2754,7 +2772,7 @@ base::expected<Value, JSINativeException> App::readScript(
   } else {
     source_url = "/" + url;
   }
-  auto content = GetJSContent(entry_name, source_url);
+  auto content = GetJSContent(entry_name, source_url, timeout);
   auto is_error = content.IsError();
   auto buffer = std::move(content).GetBuffer();
   std::string throwing_source{reinterpret_cast<const char*>(buffer->data()),
@@ -3295,7 +3313,7 @@ void App::OnCardConfigDataChanged(const lepus::Value& data) {
 }
 
 JsContent App::GetJSContent(const std::string& bundle_name,
-                            const std::string& name) {
+                            const std::string& name, long timeout) {
   // get from TasmRuntimeBundles
   tasm::TasmRuntimeBundle* bundle = nullptr;
   if (bundle_name == tasm::DEFAULT_ENTRY_NAME) {
@@ -3326,7 +3344,7 @@ JsContent App::GetJSContent(const std::string& bundle_name,
   }
 
   // load from external
-  return delegate_->GetJSContentFromExternal(bundle_name, name);
+  return delegate_->GetJSContentFromExternal(bundle_name, name, timeout);
 }
 
 lepus::Value App::GetCustomSectionSync(const std::string& key) {

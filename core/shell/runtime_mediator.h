@@ -63,7 +63,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
                              uint64_t update_task_id) override;
   std::vector<lynx::shell::CacheDataOp> FetchUpdatedCardData() override;
   piper::JsContent GetJSContentFromExternal(const std::string& entry_name,
-                                            const std::string& name) override;
+                                            const std::string& name,
+                                            long timeout) override;
   std::string GetLynxJSAsset(const std::string& name) override;
 
   void GetComponentContextDataAsync(const std::string& component_id,

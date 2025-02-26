@@ -78,12 +78,16 @@ export class Lynx {
 
   resumeExposure = this.getApp()._apiList['resumeExposure'] as () => void;
 
-  requireModule = <RequireModule>(<T>(path: string, entryName?: string): T => {
+  requireModule = <RequireModule>(<T>(
+    path: string,
+    entryName?: string,
+    options?: { timeout: number }
+  ): T => {
     if (this.requireModule.cache[path]) {
       return this.requireModule.cache[path] as T;
     }
     // TODO(wangqingyu): deal with cyclic requireModule
-    const exports = this.getApp().requireModule<T>(path, entryName);
+    const exports = this.getApp().requireModule<T>(path, entryName, options);
 
     // When error happens in loading or executing, a JS error will be thrown.
     // So when we are here, the module is loaded and executed successfully.

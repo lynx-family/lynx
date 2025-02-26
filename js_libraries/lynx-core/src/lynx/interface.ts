@@ -119,7 +119,11 @@ export interface RequireModuleCache {
 }
 
 export interface RequireModule extends RequireModuleCache {
-  <T = unknown>(path: string, entryName?: string): T;
+  <T = unknown>(
+    path: string,
+    entryName?: string,
+    options?: { timeout: number }
+  ): T;
 }
 
 export interface RequireModuleAsync extends RequireModuleCache {

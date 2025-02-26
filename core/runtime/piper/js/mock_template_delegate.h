@@ -27,7 +27,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
     return {};
   }
   piper::JsContent GetJSContentFromExternal(const std::string& entry_name,
-                                            const std::string& name) override {
+                                            const std::string& name,
+                                            long timeout) override {
     return {"", piper::JsContent::Type::SOURCE};
   }
 
