@@ -13,6 +13,7 @@
 #include <mutex>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
@@ -149,6 +150,12 @@ bool ElementBinaryReader::DecodeElementRecursively(
         }
         break;
 
+      case ElementSectionEnum::ELEMENT_PIPER_EVENTS:
+        if (!DecodePiperEventsSection(element)) {
+          return false;
+        }
+        break;
+
       case ElementSectionEnum::ELEMENT_ATTRIBUTES:
         if (!DecodeAttributesSection(element)) {
           return false;
@@ -260,6 +267,42 @@ bool ElementBinaryReader::DecodeEventsSection(
     }
     element->SetJSEventHandler(std::move(name), event_string, std::move(value));
   }
+  return true;
+}
+
+bool ElementBinaryReader::DecodePiperEventsSection(
+    fml::RefPtr<FiberElement>& element) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              "ElementBinaryReader::DecodePiperEventsSection");
+  DECODE_COMPACT_U32(size);
+  for (uint32_t i = 0; i < size; ++i) {
+    DECODE_U8(type);
+    DECODE_STR(name);
+    DECODE_VALUE(value);
+
+    const auto& event_string =
+        GetEventStringType(static_cast<EventTypeEnum>(type));
+    if (event_string.str().empty()) {
+      return false;
+    }
+
+    std::vector<std::pair<base::String, lepus::Value>> piper_event_content;
+    tasm::ForEachLepusValue(
+        value, [&piper_event_content](const lepus::Value& key,
+                                      const lepus::Value& value) {
+          auto data = value.Table();
+          piper_event_content.push_back(
+              {data->GetValue(BASE_STATIC_STRING(
+                                  PiperEventContent::kPiperFunctionName))
+                   .String(),
+               data->GetValue(
+                   BASE_STATIC_STRING(PiperEventContent::kPiperFuncArgs))});
+        });
+
+    element->data_model()->SetStaticEvent(event_string, std::move(name),
+                                          std::move(piper_event_content));
+  }
+
   return true;
 }
 

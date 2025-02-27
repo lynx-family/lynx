@@ -52,6 +52,8 @@ struct PiperEventContent {
                     const lepus::Value piper_func_args)
       : piper_func_name_(piper_func_name), piper_func_args_(piper_func_args) {}
 
+  constexpr const static char kPiperFunctionName[] = "piperFunctionName";
+  constexpr const static char kPiperFuncArgs[] = "piperFunctionParameters";
   lepus::Value ToLepusValue() const;
 };
 

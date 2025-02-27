@@ -12,9 +12,6 @@ namespace lynx {
 namespace tasm {
 
 lepus::Value PiperEventContent::ToLepusValue() const {
-  constexpr const static char kPiperFunctionName[] = "piperFunctionName";
-  constexpr const static char kPiperFuncArgs[] = "piperFunctionParameters";
-
   lepus::Value dict = lepus::Value(lepus::Dictionary::Create());
   dict.SetProperty(BASE_STATIC_STRING(kPiperFunctionName),
                    lepus::Value(piper_func_name_));
