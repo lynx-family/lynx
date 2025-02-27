@@ -238,6 +238,25 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
   return entry;
 }
 
+bool TimingInfoNg::UpdateMetrics(const std::string& name,
+                                 const std::string& start_name,
+                                 const std::string& end_name,
+                                 uint64_t start_time, uint64_t end_time) {
+  auto duration = end_time - start_time;
+  auto metric_map = value_factory_->CreateMap();
+  metric_map->PushStringToMap(kName, name);
+  metric_map->PushStringToMap(kStartTimestampName, start_name);
+  metric_map->PushDoubleToMap(kStartTimestamp, ConvertUsToDouble(start_time));
+  metric_map->PushStringToMap(kEndTimestampName, end_name);
+  metric_map->PushDoubleToMap(kEndTimestamp, ConvertUsToDouble(end_time));
+  metric_map->PushDoubleToMap(kDuration, ConvertUsToDouble(duration));
+  auto result = metrics_.emplace(name, std::move(metric_map));
+  if (result.second) {
+    return true;
+  }
+  return false;
+}
+
 std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFcpEntry(
     const TimestampKey& current_key, const PipelineID& pipeline_id) {
   if (!value_factory_) {
@@ -246,107 +265,86 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFcpEntry(
         "empty.")
     return nullptr;
   }
-  // check is
-  static const std::initializer_list<std::string> pick_keys = {kLoadBundleStart,
-                                                               kPaintEnd};
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // get timing map
-  auto it = pipeline_timing_info_.find(pipeline_id);
-  if (it == pipeline_timing_info_.end()) {
-    return nullptr;
-  }
-  auto& timing_map = it->second;
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {kPaintEnd};
-  bool ready = timing_map.CheckAllKeysExist(pick_keys);
-  if (!ready) {
-    // When the Pipeline is not a LoadBundlePipeline, kLoadBundleStart will not
-    // exist in the timing_map. We need to check if kPaintEnd exists and whether
-    // LoadBundleEntry has been sent.
-    ready = timing_map.CheckAllKeysExist(check_keys) &&
-            !load_bundle_timing_map_.Empty();
-    if (!ready) {
+  bool has_update_metrics = false;
+
+  // If there's a pipeline ID, retrieve the timing map associated with the
+  // current ID. If there's no pipeline ID, check if metrics_[kLynxFCP] exists.
+  //      If not, exit; if it exists, extract kPaintEnd for calculation.
+  if (pipeline_id.empty()) {
+    // check ready
+    static const std::initializer_list<std::string> check_keys = {
+        kPrepareTemplateStart, kOpenTime};
+    if (std::find(check_keys.begin(), check_keys.end(), current_key) ==
+        check_keys.end()) {
       return nullptr;
     }
-  }
-
-  bool has_update_metrics = false;
-  auto dict = value_factory_->CreateMap();
-  auto metric_fcp = value_factory_->CreateMap();
-  auto metric_lynx_fcp = value_factory_->CreateMap();
-  auto metric_total_fcp = value_factory_->CreateMap();
-
-  auto paint_end = timing_map.GetTimestamp(kPaintEnd);
-  auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
-  if (load_bundle_start.has_value()) {
-    auto lynx_fcp = *paint_end - *load_bundle_start;
-    metric_lynx_fcp->PushStringToMap(kName, kLynxFCP);
-    metric_lynx_fcp->PushStringToMap(kStartTimestampName, kLoadBundleStart);
-    metric_lynx_fcp->PushDoubleToMap(kStartTimestamp,
-                                     ConvertUsToDouble(*load_bundle_start));
-    metric_lynx_fcp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_lynx_fcp->PushDoubleToMap(kEndTimestamp,
-                                     ConvertUsToDouble(*paint_end));
-    metric_lynx_fcp->PushDoubleToMap(kDuration, ConvertUsToDouble(lynx_fcp));
-    auto result = metrics_.emplace(kLynxFCP, std::move(metric_lynx_fcp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kLynxFCP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kLynxFCP, *metrics_[kLynxFCP]);
+    auto it = metrics_.find(kLynxFCP);
+    if (it == metrics_.end() || it->second == nullptr) {
+      return nullptr;
     }
-  }
 
-  auto prepare_template_start =
-      init_timing_info_.GetTimestamp(kPrepareTemplateStart);
-  if (prepare_template_start.has_value() && metrics_[kLynxFCP] != nullptr) {
+    // calcualate fcp and totalFcp
     uint64_t load_bundle_paint_end =
         metrics_[kLynxFCP]->GetValueForKey(kEndTimestamp)->Double() * 1000;
-    auto fcp = load_bundle_paint_end - *prepare_template_start;
-    metric_fcp->PushStringToMap(kName, kFCP);
-    metric_fcp->PushStringToMap(kStartTimestampName, kPrepareTemplateStart);
-    metric_fcp->PushDoubleToMap(kStartTimestamp,
-                                ConvertUsToDouble(*prepare_template_start));
-    metric_fcp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_fcp->PushDoubleToMap(kEndTimestamp,
-                                ConvertUsToDouble(load_bundle_paint_end));
-    metric_fcp->PushDoubleToMap(kDuration, ConvertUsToDouble(fcp));
-    auto result = metrics_.emplace(kFCP, std::move(metric_fcp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kFCP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kFCP, *metrics_[kFCP]);
+    if (current_key == kPrepareTemplateStart &&
+        metrics_.find(kFCP) == metrics_.end()) {
+      has_update_metrics |=
+          UpdateMetrics(kFCP, kPrepareTemplateStart, kPaintEnd,
+                        *init_timing_info_.GetTimestamp(kPrepareTemplateStart),
+                        load_bundle_paint_end);
     }
-  }
+    if (current_key == kOpenTime &&
+        metrics_.find(kTotalFCP) == metrics_.end()) {
+      has_update_metrics |= UpdateMetrics(
+          kTotalFCP, kOpenTime, kPaintEnd,
+          *init_timing_info_.GetTimestamp(kOpenTime), load_bundle_paint_end);
+    }
+  } else {
+    // check ready
+    static const std::initializer_list<std::string> check_keys = {kPaintEnd};
+    if (std::find(check_keys.begin(), check_keys.end(), current_key) ==
+        check_keys.end()) {
+      return nullptr;
+    }
+    auto it = pipeline_timing_info_.find(pipeline_id);
+    if (it == pipeline_timing_info_.end()) {
+      return nullptr;
+    }
+    auto& timing_map = it->second;
+    auto paint_end = timing_map.GetTimestamp(kPaintEnd);
+    auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
+    if (!paint_end.has_value() || !load_bundle_start.has_value()) {
+      return nullptr;
+    }
 
-  auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
-  if (open_time.has_value() && metrics_[kLynxFCP] != nullptr) {
-    uint64_t load_bundle_paint_end =
-        metrics_[kLynxFCP]->GetValueForKey(kEndTimestamp)->Double() * 1000;
-    auto total_fcp = load_bundle_paint_end - *open_time;
-    metric_total_fcp->PushStringToMap(kName, kTotalFCP);
-    metric_total_fcp->PushStringToMap(kStartTimestampName, kOpenTime);
-    metric_total_fcp->PushDoubleToMap(kStartTimestamp,
-                                      ConvertUsToDouble(*open_time));
-    metric_total_fcp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_total_fcp->PushDoubleToMap(kEndTimestamp,
-                                      ConvertUsToDouble(load_bundle_paint_end));
-    metric_total_fcp->PushDoubleToMap(kDuration, ConvertUsToDouble(total_fcp));
-    auto result = metrics_.emplace(kTotalFCP, std::move(metric_total_fcp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kTotalFCP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kTotalFCP, *metrics_[kTotalFCP]);
+    has_update_metrics |= UpdateMetrics(kLynxFCP, kLoadBundleStart, kPaintEnd,
+                                        *load_bundle_start, *paint_end);
+
+    // try to calc more metrics
+    auto prepare_template_start =
+        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
+    if (prepare_template_start.has_value()) {
+      has_update_metrics |=
+          UpdateMetrics(kFCP, kPrepareTemplateStart, kPaintEnd,
+                        *prepare_template_start, *paint_end);
+    }
+    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
+    if (open_time.has_value()) {
+      has_update_metrics |= UpdateMetrics(kTotalFCP, kOpenTime, kPaintEnd,
+                                          *open_time, *paint_end);
     }
   }
 
   if (has_update_metrics) {
-    return dict;
+    std::string keys[] = {kLynxFCP, kFCP, kTotalFCP};
+    auto result_dict = value_factory_->CreateMap();
+    for (const auto& key : keys) {
+      auto it = metrics_.find(key);
+      if (it != metrics_.end() && it->second != nullptr) {
+        result_dict->PushValueToMap(key, *it->second);
+      }
+    }
+    return result_dict;
   }
   return nullptr;
 }
@@ -359,132 +357,124 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricTtiEntry(
         "empty.")
     return nullptr;
   }
-  // check is
-  static const std::initializer_list<std::string> pick_keys = {
-      kLoadBundleStart, kLoadBackgroundEnd, kPaintEnd};
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // get timing map
-  auto it = pipeline_timing_info_.find(pipeline_id);
-  if (it == pipeline_timing_info_.end()) {
-    return nullptr;
-  }
-  auto& timing_map = it->second;
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {
-      kLoadBackgroundEnd, kPaintEnd};
-  bool ready = timing_map.CheckAllKeysExist(pick_keys);
-  if (!ready) {
-    // When the Pipeline is not a LoadBundlePipeline, kLoadBundleStart will not
-    // exist in the timing_map. We need to check if kPaintEnd exists and whether
-    // LoadBundleEntry has been sent.
-    ready = timing_map.CheckAllKeysExist(check_keys) &&
-            !load_bundle_timing_map_.Empty();
-    if (!ready) {
+  bool has_update_metrics = false;
+
+  // If there's a pipeline ID, retrieve the timing map associated with the
+  // current ID. If there's no pipeline ID, check if metrics_[kLynxFCP] exists.
+  //      If not, exit; if it exists, extract kPaintEnd for calculation.
+  if (pipeline_id.empty()) {
+    // check ready
+    static const std::initializer_list<std::string> pick_keys = {
+        kPrepareTemplateStart, kOpenTime};
+    if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
+        pick_keys.end()) {
       return nullptr;
     }
-  }
-
-  bool has_update_metrics = false;
-  auto dict = value_factory_->CreateMap();
-  auto metric_tti = value_factory_->CreateMap();
-  auto metric_lynx_tti = value_factory_->CreateMap();
-  auto metric_total_tti = value_factory_->CreateMap();
-
-  auto load_app_end = timing_map.GetTimestamp(kLoadBackgroundEnd);
-  auto paint_end = timing_map.GetTimestamp(kPaintEnd);
-  auto load_app_end_val = load_app_end.value_or(0);
-  auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
-  if (load_bundle_start.has_value()) {
-    auto lynx_tti = std::max(*paint_end, load_app_end_val) - *load_bundle_start;
-    metric_lynx_tti->PushStringToMap(kName, kLynxTTI);
-    metric_lynx_tti->PushStringToMap(kStartTimestampName, kLoadBundleStart);
-    metric_lynx_tti->PushDoubleToMap(kStartTimestamp,
-                                     ConvertUsToDouble(*load_bundle_start));
-    if (*paint_end > load_app_end_val) {
-      metric_lynx_tti->PushStringToMap(kEndTimestampName, kPaintEnd);
-      metric_lynx_tti->PushDoubleToMap(kEndTimestamp,
-                                       ConvertUsToDouble(*paint_end));
-    } else {
-      metric_lynx_tti->PushStringToMap(kEndTimestampName, kLoadBackgroundEnd);
-      metric_lynx_tti->PushDoubleToMap(kEndTimestamp,
-                                       ConvertUsToDouble(load_app_end_val));
+    auto it = metrics_.find(kLynxTTI);
+    if (it == metrics_.end() || it->second == nullptr) {
+      return nullptr;
     }
-    metric_lynx_tti->PushDoubleToMap(kDuration, ConvertUsToDouble(lynx_tti));
-    auto result = metrics_.emplace(kLynxTTI, std::move(metric_lynx_tti));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kLynxTTI, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kLynxTTI, *metrics_[kLynxTTI]);
-    }
-  }
 
-  auto prepare_template_start =
-      init_timing_info_.GetTimestamp(kPrepareTemplateStart);
-  if (prepare_template_start.has_value() && metrics_[kLynxTTI] != nullptr) {
-    uint64_t load_bundle_paint_end =
+    // calculate tti and totalTti
+    uint64_t load_bundle_paint_end_val =
         metrics_[kLynxTTI]->GetValueForKey(kEndTimestamp)->Double() * 1000;
-    auto tti = std::max(load_bundle_paint_end, load_app_end_val) -
-               *prepare_template_start;
-    metric_tti->PushStringToMap(kName, kTTI);
-    metric_tti->PushDoubleToMap(kDuration, tti);
-    metric_tti->PushStringToMap(kStartTimestampName, kPrepareTemplateStart);
-    metric_tti->PushDoubleToMap(kStartTimestamp,
-                                ConvertUsToDouble(*prepare_template_start));
-    if (load_bundle_paint_end > load_app_end_val) {
-      metric_tti->PushStringToMap(kEndTimestampName, kPaintEnd);
-      metric_tti->PushDoubleToMap(kEndTimestamp,
-                                  ConvertUsToDouble(load_bundle_paint_end));
-    } else {
-      metric_tti->PushStringToMap(kEndTimestampName, kLoadBackgroundEnd);
-      metric_tti->PushDoubleToMap(kEndTimestamp,
-                                  ConvertUsToDouble(load_app_end_val));
+    uint64_t load_background_end_val =
+        load_bundle_timing_map_.GetTimestamp(kLoadBackgroundEnd).value_or(0);
+    if (current_key == kPrepareTemplateStart &&
+        metrics_.find(kTTI) == metrics_.end()) {
+      if (load_bundle_paint_end_val < load_background_end_val) {
+        has_update_metrics |= UpdateMetrics(
+            kTTI, kPrepareTemplateStart, kPaintEnd,
+            *init_timing_info_.GetTimestamp(kPrepareTemplateStart),
+            load_bundle_paint_end_val);
+      } else {
+        has_update_metrics |= UpdateMetrics(
+            kTTI, kPrepareTemplateStart, kLoadBackgroundEnd,
+            *init_timing_info_.GetTimestamp(kPrepareTemplateStart),
+            load_background_end_val);
+      }
     }
-    metric_tti->PushDoubleToMap(kDuration, ConvertUsToDouble(tti));
-    auto result = metrics_.emplace(kTTI, std::move(metric_tti));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kTTI, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kTTI, *metrics_[kTTI]);
+    if (current_key == kOpenTime &&
+        metrics_.find(kTotalTTI) == metrics_.end()) {
+      if (load_bundle_paint_end_val < load_background_end_val) {
+        has_update_metrics |=
+            UpdateMetrics(kTotalTTI, kOpenTime, kPaintEnd,
+                          *init_timing_info_.GetTimestamp(kOpenTime),
+                          load_bundle_paint_end_val);
+      } else {
+        has_update_metrics |=
+            UpdateMetrics(kTotalTTI, kOpenTime, kLoadBackgroundEnd,
+                          *init_timing_info_.GetTimestamp(kOpenTime),
+                          load_background_end_val);
+      }
     }
-  }
+  } else {
+    // check ready
+    static const std::initializer_list<std::string> pick_keys = {kPaintEnd};
+    if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
+        pick_keys.end()) {
+      return nullptr;
+    }
+    auto it = pipeline_timing_info_.find(pipeline_id);
+    if (it == pipeline_timing_info_.end()) {
+      return nullptr;
+    }
+    auto& timing_map = it->second;
+    auto paint_end = timing_map.GetTimestamp(kPaintEnd);
+    auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
+    if (!paint_end.has_value() || !load_bundle_start.has_value()) {
+      return nullptr;
+    }
 
-  auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
-  if (open_time.has_value() && metrics_[kLynxTTI] != nullptr) {
-    uint64_t load_bundle_paint_end =
-        metrics_[kLynxTTI]->GetValueForKey(kEndTimestamp)->Double() * 1000;
-    auto total_tti =
-        std::max(load_bundle_paint_end, load_app_end_val) - *open_time;
-    metric_total_tti->PushStringToMap(kName, kTotalTTI);
-    metric_total_tti->PushStringToMap(kStartTimestampName, kOpenTime);
-    metric_total_tti->PushDoubleToMap(kStartTimestamp,
-                                      ConvertUsToDouble(*open_time));
-    if (load_bundle_paint_end > load_app_end_val) {
-      metric_total_tti->PushStringToMap(kEndTimestampName, kPaintEnd);
-      metric_total_tti->PushDoubleToMap(
-          kEndTimestamp, ConvertUsToDouble(load_bundle_paint_end));
+    // calculate lynxTti
+    uint64_t load_background_end_val =
+        timing_map.GetTimestamp(kLoadBackgroundEnd).value_or(0);
+    if (*paint_end < load_background_end_val) {
+      has_update_metrics |= UpdateMetrics(kLynxTTI, kLoadBundleStart, kPaintEnd,
+                                          *load_bundle_start, *paint_end);
     } else {
-      metric_total_tti->PushStringToMap(kEndTimestampName, kLoadBackgroundEnd);
-      metric_total_tti->PushDoubleToMap(kEndTimestamp,
-                                        ConvertUsToDouble(load_app_end_val));
+      has_update_metrics |=
+          UpdateMetrics(kLynxTTI, kLoadBundleStart, kLoadBackgroundEnd,
+                        *load_bundle_start, load_background_end_val);
     }
-    metric_total_tti->PushDoubleToMap(kDuration, ConvertUsToDouble(total_tti));
-    dict->PushValueToMap(kTotalTTI, *metric_total_tti);
-    auto result = metrics_.emplace(kTotalTTI, std::move(metric_total_tti));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kTotalTTI, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kTotalTTI, *metrics_[kTotalTTI]);
+
+    // try to calc tti and totalTti
+    auto prepare_template_start =
+        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
+    if (prepare_template_start.has_value()) {
+      if (*paint_end < load_background_end_val) {
+        has_update_metrics |=
+            UpdateMetrics(kTTI, kPrepareTemplateStart, kPaintEnd,
+                          *prepare_template_start, *paint_end);
+      } else {
+        has_update_metrics |=
+            UpdateMetrics(kTTI, kPrepareTemplateStart, kLoadBackgroundEnd,
+                          *prepare_template_start, load_background_end_val);
+      }
+    }
+    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
+    if (open_time.has_value()) {
+      if (*paint_end < load_background_end_val) {
+        has_update_metrics |= UpdateMetrics(kTotalTTI, kOpenTime, kPaintEnd,
+                                            *open_time, *paint_end);
+      } else {
+        has_update_metrics |=
+            UpdateMetrics(kTotalTTI, kOpenTime, kLoadBackgroundEnd, *open_time,
+                          load_background_end_val);
+      }
     }
   }
 
   if (has_update_metrics) {
-    return dict;
+    std::string keys[] = {kLynxTTI, kTTI, kTotalTTI};
+    auto result_dict = value_factory_->CreateMap();
+    for (const auto& key : keys) {
+      auto it = metrics_.find(key);
+      if (it != metrics_.end() && it->second != nullptr) {
+        result_dict->PushValueToMap(key, *it->second);
+      }
+    }
+    return result_dict;
   }
   return nullptr;
 }
@@ -497,118 +487,91 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFmpEntry(
         "empty.")
     return nullptr;
   }
-  // check is
-  static const std::initializer_list<std::string> pick_keys = {kLoadBundleStart,
-                                                               kPaintEnd};
-  if (std::find(pick_keys.begin(), pick_keys.end(), current_key) ==
-      pick_keys.end()) {
-    return nullptr;
-  }
-  // get timing map
-  auto it = pipeline_timing_info_.find(pipeline_id);
-  if (it == pipeline_timing_info_.end()) {
-    return nullptr;
-  }
-  auto& timing_map = it->second;
-  // check ready
-  static const std::initializer_list<std::string> check_keys = {kPaintEnd};
-  bool ready = timing_map.CheckAllKeysExist(pick_keys);
-  if (!ready) {
-    // When the Pipeline is not a LoadBundlePipeline, kLoadBundleStart will not
-    // exist in the timing_map. We need to check if kPaintEnd exists and whether
-    // LoadBundleEntry has been sent.
-    ready = timing_map.CheckAllKeysExist(check_keys) &&
-            !load_bundle_timing_map_.Empty();
-    if (!ready) {
+  bool has_update_metrics = false;
+
+  // If there's a pipeline ID, retrieve the timing map associated with the
+  // current ID. If there's no pipeline ID, check if metrics_[kLynxFCP] exists.
+  //      If not, exit; if it exists, extract kPaintEnd for calculation.
+  if (pipeline_id.empty()) {
+    // check ready
+    static const std::initializer_list<std::string> check_keys = {
+        kPrepareTemplateStart, kOpenTime};
+    if (std::find(check_keys.begin(), check_keys.end(), current_key) ==
+        check_keys.end()) {
       return nullptr;
     }
-  }
-
-  bool has_update_metrics = false;
-  auto dict = value_factory_->CreateMap();
-  auto metric_fmp = value_factory_->CreateMap();
-  auto metric_lynx_fmp = value_factory_->CreateMap();
-  auto metric_total_fmp = value_factory_->CreateMap();
-
-  // calculate actual_fmp if needed.
-  auto paint_end = timing_map.GetTimestamp(kPaintEnd);
-  auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
-  if (!load_bundle_timing_map_.Empty()) {
-    load_bundle_start = load_bundle_timing_map_.GetTimestamp(kLoadBundleStart);
-  }
-  if (load_bundle_start.has_value()) {
-    auto lynx_actual_fmp = *paint_end - *load_bundle_start;
-    metric_lynx_fmp->PushStringToMap(kName, kLynxActualFMP);
-    metric_lynx_fmp->PushDoubleToMap(kDuration, lynx_actual_fmp);
-    metric_lynx_fmp->PushStringToMap(kStartTimestampName, kLoadBundleStart);
-    metric_lynx_fmp->PushDoubleToMap(kStartTimestamp,
-                                     ConvertUsToDouble(*load_bundle_start));
-    metric_lynx_fmp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_lynx_fmp->PushDoubleToMap(kEndTimestamp,
-                                     ConvertUsToDouble(*paint_end));
-    metric_lynx_fmp->PushDoubleToMap(kDuration,
-                                     ConvertUsToDouble(lynx_actual_fmp));
-    auto result = metrics_.emplace(kLynxActualFMP, std::move(metric_lynx_fmp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kLynxActualFMP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kLynxActualFMP, *metrics_[kLynxActualFMP]);
+    auto it = metrics_.find(kLynxActualFMP);
+    if (it == metrics_.end() || it->second == nullptr) {
+      return nullptr;
     }
-  }
 
-  auto prepare_template_start =
-      init_timing_info_.GetTimestamp(kPrepareTemplateStart);
-  if (prepare_template_start.has_value() &&
-      metrics_[kLynxActualFMP] != nullptr) {
-    uint64_t load_bundle_paint_end =
+    // calcualate fcp and totalFcp
+    uint64_t paint_end =
         metrics_[kLynxActualFMP]->GetValueForKey(kEndTimestamp)->Double() *
         1000;
-    auto actual_fmp = load_bundle_paint_end - *prepare_template_start;
-    metric_fmp->PushStringToMap(kName, kActualFMP);
-    metric_fmp->PushStringToMap(kStartTimestampName, kPrepareTemplateStart);
-    metric_fmp->PushDoubleToMap(kStartTimestamp,
-                                ConvertUsToDouble(*prepare_template_start));
-    metric_fmp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_fmp->PushDoubleToMap(kEndTimestamp,
-                                ConvertUsToDouble(load_bundle_paint_end));
-    metric_fmp->PushDoubleToMap(kDuration, ConvertUsToDouble(actual_fmp));
-    auto result = metrics_.emplace(kActualFMP, std::move(metric_fmp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kActualFMP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kActualFMP, *metrics_[kActualFMP]);
+    if (current_key == kPrepareTemplateStart &&
+        metrics_.find(kActualFMP) == metrics_.end()) {
+      has_update_metrics |= UpdateMetrics(
+          kActualFMP, kPrepareTemplateStart, kPaintEnd,
+          *init_timing_info_.GetTimestamp(kPrepareTemplateStart), paint_end);
     }
-  }
+    if (current_key == kOpenTime &&
+        metrics_.find(kTotalActualFMP) == metrics_.end()) {
+      has_update_metrics |=
+          UpdateMetrics(kTotalActualFMP, kOpenTime, kPaintEnd,
+                        *init_timing_info_.GetTimestamp(kOpenTime), paint_end);
+    }
+  } else {
+    // check ready
+    static const std::initializer_list<std::string> check_keys = {kPaintEnd};
+    if (std::find(check_keys.begin(), check_keys.end(), current_key) ==
+        check_keys.end()) {
+      return nullptr;
+    }
+    auto it = pipeline_timing_info_.find(pipeline_id);
+    if (it == pipeline_timing_info_.end()) {
+      return nullptr;
+    }
+    auto& timing_map = it->second;
+    auto paint_end = timing_map.GetTimestamp(kPaintEnd);
+    auto load_bundle_start = timing_map.GetTimestamp(kLoadBundleStart);
+    if (!load_bundle_timing_map_.Empty()) {
+      load_bundle_start =
+          load_bundle_timing_map_.GetTimestamp(kLoadBundleStart);
+    }
+    if (!paint_end.has_value() || !load_bundle_start.has_value()) {
+      return nullptr;
+    }
 
-  auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
-  if (open_time.has_value() && metrics_[kLynxActualFMP] != nullptr) {
-    uint64_t load_bundle_paint_end =
-        metrics_[kLynxActualFMP]->GetValueForKey(kEndTimestamp)->Double() *
-        1000;
-    auto total_actual_fmp = load_bundle_paint_end - *open_time;
-    metric_total_fmp->PushStringToMap(kName, kTotalActualFMP);
-    metric_total_fmp->PushStringToMap(kStartTimestampName, kOpenTime);
-    metric_total_fmp->PushDoubleToMap(kStartTimestamp,
-                                      ConvertUsToDouble(*open_time));
-    metric_total_fmp->PushStringToMap(kEndTimestampName, kPaintEnd);
-    metric_total_fmp->PushDoubleToMap(kEndTimestamp,
-                                      ConvertUsToDouble(load_bundle_paint_end));
-    metric_total_fmp->PushDoubleToMap(kDuration,
-                                      ConvertUsToDouble(total_actual_fmp));
-    auto result =
-        metrics_.emplace(kTotalActualFMP, std::move(metric_total_fmp));
-    if (result.second) {
-      has_update_metrics = true;
-      dict->PushValueToMap(kTotalActualFMP, *metrics_[result.first->first]);
-    } else {
-      dict->PushValueToMap(kTotalActualFMP, *metrics_[kTotalActualFMP]);
+    has_update_metrics |=
+        UpdateMetrics(kLynxActualFMP, kLoadBundleStart, kPaintEnd,
+                      *load_bundle_start, *paint_end);
+
+    // try to calc more metrics
+    auto prepare_template_start =
+        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
+    if (prepare_template_start.has_value()) {
+      has_update_metrics |=
+          UpdateMetrics(kActualFMP, kPrepareTemplateStart, kPaintEnd,
+                        *prepare_template_start, *paint_end);
+    }
+    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
+    if (open_time.has_value()) {
+      has_update_metrics |= UpdateMetrics(kTotalActualFMP, kOpenTime, kPaintEnd,
+                                          *open_time, *paint_end);
     }
   }
 
   if (has_update_metrics) {
-    return dict;
+    std::string keys[] = {kLynxActualFMP, kActualFMP, kTotalActualFMP};
+    auto result_dict = value_factory_->CreateMap();
+    for (const auto& key : keys) {
+      auto it = metrics_.find(key);
+      if (it != metrics_.end() && it->second != nullptr) {
+        result_dict->PushValueToMap(key, *it->second);
+      }
+    }
+    return result_dict;
   }
   return nullptr;
 }
