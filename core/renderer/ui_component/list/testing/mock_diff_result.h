@@ -108,6 +108,108 @@ class DiffResult {
   }
 };
 
+class InsertOp {
+ public:
+  int position_{0};
+  std::string item_key_;
+  int estimated_main_axis_size_px_{0};
+  bool full_span_{false};
+  bool sticky_top_{false};
+  bool sticky_bottom_{false};
+
+  fml::RefPtr<lepus::Dictionary> ToMap() const {
+    auto insert_action = lepus::Dictionary::Create();
+    insert_action->SetValue(list::kPosition, lepus::Value(position_));
+    insert_action->SetValue(list::kItemKey, lepus::Value(item_key_));
+    insert_action->SetValue(list::kEstimatedMainAxisSizePx,
+                            lepus::Value(estimated_main_axis_size_px_));
+    insert_action->SetValue(list::kFullSpan, lepus::Value(full_span_));
+    insert_action->SetValue(list::kStickyTop, lepus::Value(sticky_top_));
+    insert_action->SetValue(list::kStickyBottom, lepus::Value(sticky_bottom_));
+    return insert_action;
+  }
+};
+
+class UpdateOp : public InsertOp {
+ public:
+  int from_{list::kInvalidIndex};
+  int to_{list::kInvalidIndex};
+  bool flush_{false};
+  std::string item_key_;
+  int estimated_main_axis_size_px_{0};
+  bool full_span_{false};
+  bool sticky_top_{false};
+  bool sticky_bottom_{false};
+
+  fml::RefPtr<lepus::Dictionary> ToMap() const {
+    auto update_action = InsertOp::ToMap();
+    update_action->SetValue(list::kFrom, lepus::Value(from_));
+    update_action->SetValue(list::kTo, lepus::Value(to_));
+    update_action->SetValue(list::kFlush, lepus::Value(flush_));
+    update_action->SetValue(list::kItemKey, lepus::Value(item_key_));
+    update_action->SetValue(list::kEstimatedMainAxisSizePx,
+                            lepus::Value(estimated_main_axis_size_px_));
+    update_action->SetValue(list::kFullSpan, lepus::Value(full_span_));
+    update_action->SetValue(list::kStickyTop, lepus::Value(sticky_top_));
+    update_action->SetValue(list::kStickyBottom, lepus::Value(sticky_bottom_));
+    return update_action;
+  }
+};
+
+class InsertAction {
+ public:
+  std::vector<InsertOp> insert_ops_;
+
+  fml::RefPtr<lepus::CArray> ToArray() const {
+    auto insert_action = lepus::CArray::Create();
+    for (const auto& insert_op : insert_ops_) {
+      insert_action->emplace_back(insert_op.ToMap());
+    }
+    return insert_action;
+  }
+};
+
+class RemoveAction {
+ public:
+  std::vector<int> remove_ops_;
+
+  fml::RefPtr<lepus::CArray> ToArray() const {
+    auto remove_action = lepus::CArray::Create();
+    for (const auto& remove_op : remove_ops_) {
+      remove_action->emplace_back(lepus::Value(remove_op));
+    }
+    return remove_action;
+  }
+};
+
+class UpdateAction {
+ public:
+  std::vector<UpdateOp> update_ops_;
+
+  fml::RefPtr<lepus::CArray> ToArray() const {
+    auto update_action = lepus::CArray::Create();
+    for (const auto& update_op : update_ops_) {
+      update_action->emplace_back(update_op.ToMap());
+    }
+    return update_action;
+  }
+};
+
+class FiberDiffResult {
+ public:
+  InsertAction insert_action_;
+  RemoveAction remove_action_;
+  UpdateAction update_action_;
+
+  fml::RefPtr<lepus::Dictionary> Resolve() const {
+    auto diff_result = lepus::Dictionary::Create();
+    diff_result->SetValue(list::kFiberInsertAction, insert_action_.ToArray());
+    diff_result->SetValue(list::kFiberRemoveAction, remove_action_.ToArray());
+    diff_result->SetValue(list::kFiberUpdateAction, update_action_.ToArray());
+    return diff_result;
+  }
+};
+
 }  // namespace list
 }  // namespace tasm
 }  // namespace lynx
