@@ -805,9 +805,9 @@ public class TextHelper {
    * @param num
    * @return String
    */
+  private static final DecimalFormat decimalFormat =
+      new DecimalFormat("###################.###########");
   public static String formatDoubleToString(double num) {
-    DecimalFormat decimalFormat = new DecimalFormat("###################.###########");
-
     return decimalFormat.format(num);
   }
 
