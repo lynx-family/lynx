@@ -12,10 +12,9 @@
 namespace lynx {
 namespace tasm {
 
-LazyBundleLifecycleOption::LazyBundleLifecycleOption(
-    const std::shared_ptr<TemplateAssembler>& tasm, const std::string& url,
-    int instance_id)
-    : weak_tasm(tasm), component_url(url), instance_id(instance_id) {
+LazyBundleLifecycleOption::LazyBundleLifecycleOption(const std::string& url,
+                                                     int instance_id)
+    : component_url(url), instance_id(instance_id) {
   // to prevent from reading Env too frequently
   static bool enable_report_event =
       lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
@@ -24,61 +23,59 @@ LazyBundleLifecycleOption::LazyBundleLifecycleOption(
   enable_report_event_ = enable_report_event;
 };
 
-bool LazyBundleLifecycleOption::HandleLoadedFailed() {
-  bool need_dispatch = false;
+bool LazyBundleLifecycleOption::HandleLoadFailure(TemplateAssembler* tasm) {
   if (sync && component_instance) {
     component_instance->SetLazyBundleState(LazyBundleState::STATE_FAIL,
                                            message);
-  } else {
-    // async mode.
-    auto tasm = weak_tasm.lock();
-    if (tasm) {
-      int impl_id;
-      need_dispatch =
-          tasm->page_proxy()->OnLazyBundleLoadedFailed(component_uid, impl_id);
-      // if async loading fails, there is no chance to send bind event in normal
-      // component lifecycle. So have to send bind event here.
-      tasm->SendLazyBundleBindEvent(component_url, lazy_bundle::kEventFail,
-                                    message, impl_id);
-    }
+    return false;
   }
+
+  // Asynchronous mode.
+  int impl_id = 0;
+  bool need_dispatch =
+      tasm->page_proxy()->OnLazyBundleLoadedFailed(component_uid, impl_id);
+
+  // If asynchronous loading fails, there is no opportunity to send the bind
+  // event during the normal component lifecycle. Therefore, the bind event must
+  // be sent here.
+  tasm->SendLazyBundleBindEvent(component_url, lazy_bundle::kEventFail, message,
+                                impl_id);
+
   return need_dispatch;
 }
 
-bool LazyBundleLifecycleOption::HandleLoadedSuccess() {
-  bool need_dispatch = false;
-  auto tasm = weak_tasm.lock();
-  if (!tasm) {
-    return need_dispatch;
-  }
+bool LazyBundleLifecycleOption::HandleLoadSuccess(TemplateAssembler* tasm) {
   if (sync && component_instance) {
     component_instance->SetLazyBundleState(LazyBundleState::STATE_SUCCESS,
                                            message);
-  } else {
-    // render lazy bundle.
-    int impl_id;
-    need_dispatch = tasm->page_proxy()->OnLazyBundleLoadedSuccess(
-        tasm.get(), component_url, component_uid, impl_id);
-
-    // if async loading, trigger bind event immediately.
-    tasm->SendLazyBundleBindEvent(component_url, lazy_bundle::kEventSuccess,
-                                  message, impl_id);
+    tasm->OnLazyBundlePerfReady(GetPerfEventMessage());
+    return false;
   }
+
+  // Asynchronous mode.
+  int impl_id;
+  bool need_dispatch = tasm->page_proxy()->OnLazyBundleLoadedSuccess(
+      tasm, component_url, component_uid, impl_id);
+
+  // If loading is asynchronous, trigger the bind event immediately.
+  tasm->SendLazyBundleBindEvent(component_url, lazy_bundle::kEventSuccess,
+                                message, impl_id);
 
   tasm->OnLazyBundlePerfReady(GetPerfEventMessage());
   return need_dispatch;
 }
 
-bool LazyBundleLifecycleOption::OnLazyBundleLifecycleEnd() {
+bool LazyBundleLifecycleOption::OnLazyBundleLifecycleEnd(
+    TemplateAssembler* tasm) {
   if (enable_fiber_arch) {
-    auto tasm = weak_tasm.lock();
-    if (tasm) {
-      tasm->TriggerLepusClosure(callback, message);
-    }
-    // no need to trigger dispatch any more, just return false is enough.
+    tasm->TriggerLepusClosure(callback, message);
+
+    // No need to trigger dispatch anymore; simply returning false is
+    // sufficient.
     return false;
   }
-  return is_success ? HandleLoadedSuccess() : HandleLoadedFailed();
+
+  return is_success ? HandleLoadSuccess(tasm) : HandleLoadFailure(tasm);
 }
 
 /**

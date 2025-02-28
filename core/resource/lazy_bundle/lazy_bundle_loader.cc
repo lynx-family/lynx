@@ -113,13 +113,18 @@ void LazyBundleLoader::AppendUrlToLifecycleOptionMap(
   options.emplace_back(std::move(lifecycle_option));
 }
 
-bool LazyBundleLoader::DispatchOnComponentLoaded(const std::string& url) {
+bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
+                                                 const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
+
   bool need_dispatch = false;
-  for (const auto& option : url_to_lifecycle_option_map_[url]) {
-    need_dispatch = option->OnLazyBundleLifecycleEnd() || need_dispatch;
+  auto iter = url_to_lifecycle_option_map_.find(url);
+
+  for (const auto& option : iter->second) {
+    need_dispatch = option->OnLazyBundleLifecycleEnd(tasm) || need_dispatch;
   }
-  url_to_lifecycle_option_map_.erase(url);
+  url_to_lifecycle_option_map_.erase(iter);
+
   return need_dispatch;
 }
 

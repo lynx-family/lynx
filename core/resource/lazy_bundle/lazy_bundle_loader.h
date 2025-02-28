@@ -137,7 +137,9 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
 
   void AppendUrlToLifecycleOptionMap(
       const std::string& url, std::unique_ptr<LazyBundleLifecycleOption>);
-  bool DispatchOnComponentLoaded(const std::string& url);
+
+  bool DispatchOnComponentLoaded(TemplateAssembler* tasm,
+                                 const std::string& url);
 
   virtual void SetEnableLynxResourceService(bool enable) {
     if (resource_loader_) {

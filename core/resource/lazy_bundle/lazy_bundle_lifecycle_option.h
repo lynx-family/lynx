@@ -17,8 +17,7 @@ namespace lynx {
 namespace tasm {
 
 struct LazyBundleLifecycleOption {
-  LazyBundleLifecycleOption(const std::shared_ptr<TemplateAssembler> &tasm,
-                            const std::string &url, int instance_id);
+  LazyBundleLifecycleOption(const std::string &url, int instance_id);
 
   // Move Only.
   LazyBundleLifecycleOption(const LazyBundleLifecycleOption &) = delete;
@@ -29,13 +28,12 @@ struct LazyBundleLifecycleOption {
 
   ~LazyBundleLifecycleOption();
 
-  bool OnLazyBundleLifecycleEnd();
+  bool OnLazyBundleLifecycleEnd(TemplateAssembler *tasm);
 
   void SyncOption(const LazyBundleLifecycleOption &option);
 
   lepus::Value GetPerfInfo();
 
-  std::weak_ptr<TemplateAssembler> weak_tasm;
   std::string component_url{};
   uint32_t component_uid{0};
   RadonLazyComponent *component_instance{nullptr};
@@ -66,8 +64,9 @@ struct LazyBundleLifecycleOption {
   bool enable_fiber_arch{false};
 
  private:
-  bool HandleLoadedSuccess();
-  bool HandleLoadedFailed();
+  bool HandleLoadSuccess(TemplateAssembler *tasm);
+
+  bool HandleLoadFailure(TemplateAssembler *tasm);
 
   lepus::Value GetPerfEventMessage();
 

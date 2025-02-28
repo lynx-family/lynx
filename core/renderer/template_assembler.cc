@@ -1225,7 +1225,7 @@ void TemplateAssembler::DidLoadComponent(
     SendLazyBundleGlobalEvent(callback_info.component_url, error_value);
   }
 
-  if (component_loader_->DispatchOnComponentLoaded(component_url)) {
+  if (component_loader_->DispatchOnComponentLoaded(this, component_url)) {
     // TODO(kechenglong): SetNeedsLayout if and only if needed.
     page_proxy()->element_manager()->SetNeedsLayout();
     page_proxy()->element_manager()->OnPatchFinish(pipeline_options);
@@ -2304,8 +2304,8 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequireTemplateEntry(
   tasm::recorder::RecordRequireTemplateScope scope(this, url, record_id_);
 #endif  // ENABLE_TESTBENCH_RECORDER
   LOGI("LoadLazyBundle RequireTemplate: " << url);
-  auto lifecycle_option = std::make_unique<LazyBundleLifecycleOption>(
-      shared_from_this(), url, instance_id_);
+  auto lifecycle_option =
+      std::make_unique<LazyBundleLifecycleOption>(url, instance_id_);
   lifecycle_option->callback = callback;
   lifecycle_option->enable_fiber_arch = EnableFiberArch();
   if (lazy_bundle) {
