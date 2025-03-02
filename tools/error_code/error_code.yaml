@@ -38,17 +38,17 @@ sections:
     high-code: 1
     behaviors:
       - name: Load
-        description: 'Error occurred when load app bundle'
+        description: 'Error occurred while loading app bundle'
         mid-code: 2
         level: fatal
         codes:
           - name: RenderFailed
             low-code: 1
             description: 'Failed to render app bundle.'
-            fix-suggestion: 'Should not call loadTemplate while the rendering pipeline of app bundle has not finished'
+            fix-suggestion: 'Should not call `loadTemplate` while the rendering pipeline of app bundle has not finished'
           - name: EnvNotReady
             low-code: 2
-            description: 'loadTemplate while LynxEnv has not been initialized'
+            description: '`loadTemplate` while LynxEnv has not been initialized'
             fix-suggestion: 'Please call the initialization method of LynxEnv before loadTemplate.'
             consumers:
               - client
@@ -66,19 +66,19 @@ sections:
             fix-suggestion: 'Please check the error message of the bundle.'
           - name: Exception
             low-code: 99
-            description: 'Exception occurred when rendering app bundle'
+            description: 'Exception occurred while rendering app bundle'
       - name: Reload
-        description: 'Error occurred when reloading app bundle'
+        description: 'Error occurred while reloading app bundle'
         mid-code: 5
         codes:
           - name: EarlyReload
             low-code: 1
-            description: 'reloadTemplate before loadTemplate!'
+            description: '`reloadTemplate` before `loadTemplate`'
             fix-suggestion: 'Please `loadTemplate` before `reloadTemplate`'
             consumers:
               - client
       - name: Verify
-        description: 'Error occurred when verifying app bundle'
+        description: 'Error occurred while verifying app bundle'
         mid-code: 7
         level: fatal
         codes:
@@ -91,7 +91,7 @@ sections:
     high-code: 2
     behaviors:
       - name: RuntimeError
-        description: 'Error occurred when executing background thread script'
+        description: 'Error occurred while executing background thread script'
         mid-code: 1
         level: undecided
         codes:
@@ -115,19 +115,19 @@ sections:
             fix-suggestion: 'Please check the error message and fix binding API call.'
       - name: PlatformCallJSFunction
         mid-code: 2
-        description: 'Platform Calling js function errors.'
+        description: 'Error occurred while calling JS function from platform.'
         codes:
           - name: TooFrequency
             low-code: 1
             level: warn
-            description: 'Calling js function too frequently. This may cause OOM issues.'
+            description: 'Calling JS function too frequently. This may cause OOM issues.'
             fix-suggestion: 'Please throttle related calls.'
   - name: Resource
     description: 'Resource related errors'
     high-code: 3
     behaviors:
       - name: Image
-        description: 'Error when loading image resource'
+        description: 'Error occurred while loading image resource'
         mid-code: 1
         codes:
           - name: BigImage
@@ -136,7 +136,7 @@ sections:
             fix-suggestion: 'Please resize the image to appropriate dimensions or enable downsampling.'
           - name: PicSource
             low-code: 2
-            description: 'Error from image decoding'
+            description: 'Error occurred while decoding image'
             fix-suggestion: 'Possibly due to an unsupported image format or a corrupted file. Please verify the integrity of the image file.'
           - name: FromUserOrDesign
             low-code: 3
@@ -148,10 +148,10 @@ sections:
             fix-suggestion: 'Please investigate the corresponding image download workflow for potential issues.'
           - name: Exception
             low-code: 99
-            description: 'Exception occurred when loading image'
+            description: 'Exception occurred while loading image'
             fix-suggestion: 'An unidentified exception occurred that cannot be attributed to a specific cause. Please investigate further based on the available details.'
       - name: Font
-        description: 'Error when loading font resource'
+        description: 'Error occurred while loading font resource'
         mid-code: 2
         level: error
         codes:
@@ -180,7 +180,7 @@ sections:
             description: 'Failed to register font.'
             fix-suggestion: 'If the font is displayed correctly, there is no need to deal with it.'
       - name: ExternalResource
-        description: 'Error when loading external resource'
+        description: 'Error occurred while loading external resource'
         mid-code: 3
         codes:
           - name: RequestFailed
@@ -192,19 +192,19 @@ sections:
             description: 'Failed to load local resource'
             fix-suggestion: 'Please check whether the local external resource is available'
       - name: I18n
-        description: 'Error when loading i18n resource'
+        description: 'Error occurred while loading i18n resource'
         mid-code: 4
         codes:
           - name: Default
             low-code: 0
             description: 'i18n Resource Error'
       - name: Module
-        description: 'Error when invoking LynxResourceModule'
+        description: 'Error occurred while invoking LynxResourceModule'
         mid-code: 21
         codes:
           - name: ParamsError
             low-code: 1
-            description: 'Parameter type mismatch or incorrect number of parameters when calling the requestResourcePrefetch or cancelResourcePrefetch API.'
+            description: 'Parameter type mismatch or incorrect number of parameters while calling the requestResourcePrefetch or cancelResourcePrefetch API.'
             fix-suggestion: 'Please refer to the parameter descriptions of this API in documentation and check the parameters used in the call.'
             consumers:
               - front-end
@@ -229,7 +229,7 @@ sections:
             description: 'Unexpected custom error'
             fix-suggestion: 'This is unexpected. Please file an issue to Lynx to help address it.'
       - name: Exception
-        description: 'Exception occurred when loading resource'
+        description: 'Exception occurred while loading resource'
         mid-code: 99
         codes:
           - name: Default
@@ -241,7 +241,7 @@ sections:
     high-code: 4
     behaviors:
       - name: Update
-        description: 'Error occurred when updating data'
+        description: 'Error occurred while updating data'
         mid-code: 1
         codes:
           - name: InvalidProcessor
@@ -254,13 +254,13 @@ sections:
             fix-suggestion: 'Target string data should be enabled to be parsed into a table.'
           - name: Exception
             low-code: 99
-            description: 'Exception occurred when updating data'
+            description: 'Exception occurred while updating data'
   - name: Element
     description: 'Error in element'
     high-code: 5
     behaviors:
       - name: API
-        description: 'Error occurred when invoke Element API'
+        description: 'Error occurred while invoking Element API'
         mid-code: 1
         codes:
           - name: Fatal
@@ -271,7 +271,7 @@ sections:
             low-code: 2
             description: 'Error in element API. Please find detailed information in the context.'
       - name: Update
-        description: 'Error occurred when updating element'
+        description: 'Error occurred while updating element'
         mid-code: 2
         codes:
           - name: NodeIsNull
@@ -279,7 +279,7 @@ sections:
             level: fatal
             description: 'Element update error for an unspecified reason'
   - name: Layout
-    description: 'Error occurred when Layout'
+    description: 'Error occurred during Layout'
     high-code: 6
     behaviors:
       - name: Internal
@@ -309,8 +309,8 @@ sections:
         codes:
           - name: UINotFound
             low-code: 1
-            description: 'Can not find UI when updating layout'
-            fix-suggestion: 'This is an internal error of Lynx. LynxUI has not been created or the creation failed when updating.'
+            description: 'Can not find UI while updating layout'
+            fix-suggestion: 'This is an internal error of Lynx. LynxUI has not been created or the creation failed while updating.'
       - name: Platform
         description: 'Invalid usage or exceptions on ShadowNode'
         mid-code: 4
@@ -321,7 +321,7 @@ sections:
             fix-suggestion: 'This is an internal error of Lynx, which usually occurs when multiple threads access ShadowNode at the same time.'
 
   - name: NativeModules
-    description: 'Error occurred when calling NativeModules'
+    description: 'Error occurred while calling NativeModules'
     high-code: 9
     behaviors:
       - name: Common
@@ -356,29 +356,29 @@ sections:
             low-code: 5
             level: error
             description: 'Does not have permission to call the method.'
-            fix-suggestion: 'Please ask RD of Lynx or client for help.'
+            fix-suggestion: 'Please file an issue to Lynx to help address it.'
           - name: SystemAuthorizationError
             low-code: 6
             level: error
             description: 'Does not have permission to call the method.'
-            fix-suggestion: 'Please ask RD of Lynx or client for help.'
+            fix-suggestion: 'Please file an issue to Lynx to help address it.'
           - name: ReturnError
             low-code: 7
             level: error
-            description: 'The module method return value is not valid'
-            fix-suggestion: 'Please ask RD of Lynx or client for help.'
+            description: 'The value returned by module method is invalid'
+            fix-suggestion: 'Please file an issue to Lynx to help address it.'
       - name: Network
-        description: 'Error when calling network module'
+        description: 'Error occurred while calling network module'
         mid-code: 8
         codes:
           - name: BadResponse
             low-code: 1
             description: 'The http response body is not a valid JSON'
-            fix-suggestion: 'check network request with url and server id'
+            fix-suggestion: "Check if the server's response body is correct; Check if client unexpectedly consumes http response body using network request interceptor; You can use request's url and log id to track down the problem."
             consumers:
               - front-end
       - name: CustomError
-        description: 'Error reported by module implementation'
+        description: 'Error occurred in custom native modules'
         mid-code: 98
         codes:
           - name: Default
@@ -388,7 +388,7 @@ sections:
             consumers:
               - client
       - name: Exception
-        description: 'Exception during invoking native module'
+        description: 'Exception occurred while invoking the native module.'
         mid-code: 99
         codes:
           - name: Default
@@ -402,7 +402,7 @@ sections:
     high-code: 10
     behaviors:
       - name: Exception
-        description: 'Exception during event handling'
+        description: 'Exception occurred while handling event'
         mid-code: 99
         codes:
           - name: Default
@@ -416,7 +416,7 @@ sections:
     high-code: 11
     behaviors:
       - name: RuntimeError
-        description: 'Error occurred when executing Main thread script'
+        description: 'Error occurred while executing Main thread script'
         mid-code: 1
         level: undecided
         codes:
@@ -424,7 +424,7 @@ sections:
             low-code: 0
             description: 'Main thread script error for an unspecified reason'
       - name: RendererFunction
-        description: 'Error occurred when executing renderer function'
+        description: 'Error occurred while executing renderer function'
         mid-code: 11
         codes:
           - name: Fatal
@@ -442,22 +442,18 @@ sections:
         description: 'Running on the wrong thread'
         mid-code: 2
         codes:
-          - name: Default
-            low-code: 0
-            description: 'Wrong thread error for an unspecified reason'
-            fix-suggestion: 'Please check your code using JS error message and call stack.'
           - name: DestroyError
             low-code: 1
-            description: 'Please ensure that destroy is called on UI thread.'
+            description: 'Please ensure that `destroy` is called on UI thread.'
           - name: SyncFlushError
             low-code: 2
-            description: 'Please ensure that SyncFlush is called on UI thread'
+            description: 'Please ensure that `SyncFlush` is called on UI thread'
   - name: CSS
     description: 'CSS related errors'
     high-code: 13
     behaviors:
       - name: Default
-        description: 'Unclassified CSS error'
+        description: 'Generic CSS error'
         mid-code: 1
         level: undecided
         codes:
@@ -477,23 +473,24 @@ sections:
         codes:
           - name: UnknownSetter
             low-code: 1
-            description: 'Error while setting value to ComputedCSSValue'
-            fix-suggestion: 'Please check if the value is valid for the property. An unsupported value may be used.'
+            description: 'Error occurred while setting value to ComputedCSSValue'
+            fix-suggestion: 'Ignore it or raise an issue on github to let us know. This error is unexpected, which might be caused by internal pipeline fault'
           - name: UnknownGetter
             low-code: 2
-            description: 'Error while getting value from ComputedCSSValue'
-            fix-suggestion: 'Please check the value id is valid. Now ComputedCSSValue api is not public, this could be an internal error log. Please let us know if this error occurs. This error will not affect display of the page.'
+            description: 'Error occurred while getting value from ComputedCSSValue'
+            fix-suggestion: 'Ignore it or raise an issue on github to let us know. This error is unexpected, which might be caused by internal pipeline fault.'
           - name: UnsupportedInheritance
             low-code: 3
             description: 'Property is not inheritable.'
             fix-suggestion: 'Remove property name from inheritance list.'
       - name: Parser
-        description: 'Error while parsing CSS'
+        description: 'Error occurred while parsing CSS'
         mid-code: 3
         codes:
           - name: Default
             low-code: 0
-            description: 'Default error while parsing CSS value.'
+            description: 'Generic error while parsing CSS value. Value is not acceptable for the property.'
+            fix-suggestion: 'Please use values following the property definitions. You can get the definitions at the official website.'
   - name: SSR
     description: 'Error for rendering page whose dom is constructed on server side'
     high-code: 14
@@ -517,14 +514,14 @@ sections:
             description: 'Script execution failed'
             fix-suggestion: 'Check the syntax of the script which is attached with SSR data.'
       - name: Load
-        description: 'Error occurred when load SSR Data'
+        description: 'Error occurred while loading SSR Data'
         mid-code: 2
         codes:
           - name: Uninitialized
             low-code: 1
             description: 'Load SSR data before the native library of Lynx is initialized'
       - name: Hydrate
-        description: 'Errors encountered when hydrating.'
+        description: 'Errors encountered while hydrating.'
         mid-code: 4
         codes:
           - name: DomDeviateFromSsrResult
@@ -536,7 +533,7 @@ sections:
     high-code: 16
     behaviors:
       - name: Load
-        description: 'Failed when load a lazy bundle. Check error message for bundle info'
+        description: 'Failed to load a lazy bundle.'
         mid-code: 1
         codes:
           - name: BadResponse
@@ -560,7 +557,7 @@ sections:
     high-code: 19
     behaviors:
       - name: MTSCallException
-        description: 'Error for main thread script call exception'
+        description: 'Error for main thread script call exception in worklet'
         mid-code: 1
         codes:
           - name: Default
@@ -583,11 +580,11 @@ sections:
             description: 'Can not find worklet module'
             fix-suggestion: 'Make sure you have imported worklet file correctly.'
   - name: MTSBridge
-    description: 'Error occurred when calling MTSBridge'
+    description: 'Error occurred while calling MTSBridge'
     high-code: 20
     behaviors:
       - name: Module
-        description: 'Error occurred when calling MTSBridge module'
+        description: 'Error occurred while calling MTSBridge module'
         mid-code: 1
         codes:
           - name: WrongParam
@@ -598,12 +595,12 @@ sections:
     high-code: 22
     behaviors:
       - name: API
-        description: 'Error when invoking component API'
+        description: 'Error occurred while invoking component API'
         mid-code: 1
         codes:
           - name: Deprecated
             low-code: 1
-            description: 'A deprecated component API is invoked!'
+            description: 'A deprecated component API is invoked'
             consumers:
               - front-end
       - name: List
@@ -648,7 +645,7 @@ sections:
         codes:
           - name: UnsupportedProp
             low-code: 1
-            description: 'Failed to apply blur-radius on <image> element, meaning that the effect will not be visible on this platform.'
+            description: 'Failed to apply blur-radius on \<image\> element, meaning that the effect will not be visible on this platform.'
             fix-suggestion: 'This may be due to platform-specific limitations or system restrictions. If blur-radius is not supported on this platform, consider using CSS filter: blur() as an alternative.'
       - name: Custom
         description: 'Custom error of components'
@@ -662,7 +659,7 @@ sections:
     high-code: 99
     behaviors:
       - name: Platform
-        description: 'Exceptions captured by the platform layer'
+        description: 'Platform exceptions'
         mid-code: 1
         codes:
           - name: Default
@@ -670,7 +667,7 @@ sections:
             description: 'Platform exceptions for an unspecified reason'
             fix-suggestion: 'This error is caught by Lynx engine. Please file an issue to Lynx for help.'
       - name: JNI
-        description: 'Exceptions captured when calling Java native interface'
+        description: 'Exceptions encountered while calling Java native interface'
         mid-code: 2
         codes:
           - name: Default
