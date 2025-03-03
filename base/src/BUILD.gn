@@ -375,6 +375,9 @@ source_set("values") {
 
   sources = [
     "../include/value/base_string.h",
+    "../include/value/lynx_api_types.h",
+    "../include/value/lynx_value_api.h",
+    "../include/value/lynx_value_types.h",
     "value/base_string.cc",
   ]
 }
