@@ -839,7 +839,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
                       backgroundColor:self->_backgroundColor
                            drawToEdge:NO
                             capInsets:self->_backgroundCapInsets.capInsets
-                       isGradientOnly:_onlyGradient
+                       isGradientOnly:_onlyGradient && (_uiBackgroundShapeLayerEnabled !=
+                                                        LynxBgShapeLayerPropDisabled)
                           isPixelated:_isPixelated];
 }
 

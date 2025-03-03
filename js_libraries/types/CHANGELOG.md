@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 3.2.2
+
+### Patch Changes
+
+- Add prop 'ios-background-shape-layer' for iOS
+
 ## 3.2.1
 
 ### Patch Changes

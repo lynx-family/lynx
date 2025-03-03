@@ -112,6 +112,15 @@ export interface StandardProps extends LynxEventProps {
   __lynx_timing_flag?: string;
 
   style?: string | CSSProperties;
+
+
+  /**
+   *  We use CAShapeLayer to accelerate rendering of the component's backgrounds on iOS.
+   * @defaultValue true
+   * @iOS
+   * @since Lynx 3.1
+   */
+  'ios-background-shape-layer'?: boolean;
 }
 
 export interface NoProps {

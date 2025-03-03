@@ -2975,7 +2975,7 @@ LYNX_PROP_DEFINE("overlap-ios", setOverlapRendering, BOOL) {
   _backgroundManager.overlapRendering = value;
 }
 
-LYNX_PROP_DEFINE("background-shape-layer", setUseBackgroundShapeLayer, BOOL) {
+LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL) {
   LynxBgShapeLayerProp enabled =
       requestReset ? LynxBgShapeLayerPropUndefine
                    : (value ? LynxBgShapeLayerPropEnabled : LynxBgShapeLayerPropDisabled);
