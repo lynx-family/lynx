@@ -22,6 +22,8 @@ NSString *const kBackButtonStyleDark = @"dark";
 NSString *const kBackButtonImageLight = @"back_light";
 NSString *const kBackButtonImageDark = @"back_dark";
 
+#define NAVIGATION_BAR_HEIGHT 48
+
 @interface LynxViewShellViewController () {
   LynxExtraTiming *extraTiming;
 }
@@ -74,7 +76,6 @@ NSString *const kBackButtonImageDark = @"back_dark";
 - (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
   CGRect screenFrame = self.view.frame;
   CGRect statusRect = [[UIApplication sharedApplication] statusBarFrame];
-  CGRect navRect = self.navigationController.navigationBar.frame;
 
   // Specify LynxView width and height according to the query parameters.
   CGSize screenSize = CGSizeZero;
@@ -108,7 +109,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
     lynxView.preferredLayoutHeight = screenSize.height - statusRect.size.height;
   } else {
     lynxView.preferredLayoutHeight =
-        screenSize.height - statusRect.size.height - navRect.size.height;
+        screenSize.height - statusRect.size.height - NAVIGATION_BAR_HEIGHT;
   }
   lynxView.layoutWidthMode = LynxViewSizeModeExact;
   lynxView.layoutHeightMode = LynxViewSizeModeExact;
@@ -155,7 +156,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
                                lynxView.intrinsicContentSize.height);
   } else {
     lynxViewFrame =
-        CGRectMake(0, statusRect.size.height + navRect.size.height,
+        CGRectMake(0, statusRect.size.height + NAVIGATION_BAR_HEIGHT,
                    lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
   }
   lynxView.frame = lynxViewFrame;
@@ -215,7 +216,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
 
   CGSize screenSize = [UIScreen mainScreen].bounds.size;
   CGFloat statusH = [UIApplication sharedApplication].statusBarFrame.size.height;
-  CGFloat navH = self.navigationController.navigationBar.frame.size.height;
+  CGFloat navH = NAVIGATION_BAR_HEIGHT;
   // create status view
   UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width, statusH)];
   statusView.backgroundColor = self.barColor;
@@ -240,6 +241,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
   titleLabel.text = self.navTitle;
   titleLabel.textColor = self.titleColor;
   titleLabel.textAlignment = NSTextAlignmentCenter;
+  titleLabel.font = [UIFont systemFontOfSize:18];
 
   [barView addSubview:goBackButton];
   [barView addSubview:titleLabel];
