@@ -15,7 +15,6 @@
 #import "LynxPropsProcessor.h"
 #import "LynxRawTextShadowNode.h"
 #import "LynxTextLayoutSpec.h"
-#import "LynxTextSelectionShadowNode.h"
 #import "LynxTextShadowNode.h"
 #import "LynxTextUtils.h"
 
@@ -174,9 +173,6 @@ NSAttributedStringKey const LynxVerticalAlignKey = @"LynxVerticalAlignKey";
 
         _hasNonVirtualOffspring |= baseText.hasNonVirtualOffspring;
       }
-    } else if ([child isKindOfClass:[LynxTextSelectionShadowNode class]]) {
-      LynxTextSelectionShadowNode* selectionNode = (LynxTextSelectionShadowNode*)child;
-      self.textStyle.selectionColor = selectionNode.backgroundColor;
     } else {
       // process inline-view and inline-image
       if (textMaxLength != LynxNumberNotSet) {

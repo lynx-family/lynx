@@ -69,12 +69,6 @@ public class BuiltInBehavior implements BehaviorBundle {
         return new InlineTruncationShadowNode();
       }
     });
-    bc.add(new Behavior("text-selection", false, true) {
-      @Override
-      public ShadowNode createShadowNode() {
-        return new TextSelectionShadowNode();
-      }
-    });
     bc.add(new Behavior("scroll-view", false, true) {
       @Override
       public LynxUI createUI(LynxContext context) {

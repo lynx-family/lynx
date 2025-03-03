@@ -829,10 +829,6 @@ void Element::HandleCSSVariables(StyleMap& styles) {
   css_patching_.HandleCSSVariables(styles);
 }
 
-void Element::ResolvePseudoSelectors() {
-  css_patching_.ResolvePseudoSelectors();
-}
-
 void Element::ResolvePlaceHolder() { css_patching_.ResolvePlaceHolder(); }
 
 bool Element::DisableFlattenWithOpacity() {

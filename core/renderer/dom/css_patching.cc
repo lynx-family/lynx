@@ -680,70 +680,6 @@ void CSSPatching::GetPseudoClassStyle(PseudoClassType pseudo_type,
   }
 }
 
-void CSSPatching::ResolvePseudoSelectors() {
-  if (element_ == nullptr || element_->data_model() == nullptr) {
-    LOGE(
-        "CSSPatching::ResolvePseudoSelectors failed since element or "
-        "data_model "
-        "is nullptr.");
-    return;
-  }
-
-  if (element_->is_fiber_element()) {
-    return;
-  }
-
-  CSSFragment* fragment = element_->GetRelatedCSSFragment();
-  if (fragment == nullptr) {
-    LOGE(
-        "CSSPatching::ResolvePseudoSelectors failed since fragment is "
-        "nullptr.");
-    return;
-  }
-
-  auto* radon_element = static_cast<RadonElement*>(element_);
-
-  if (fragment->enable_css_selector()) {
-    if (element_->GetTag() == "text") {  // only text can support selection
-      AttributeHolder selection;
-      selection.AddPseudoState(kPseudoStateSelection);
-      selection.SetPseudoElementOwner(element_->data_model());
-      GetCSSStyleNew(&selection, fragment);
-
-      StyleMap result;
-      DidCollectMatchedRules(element_->data_model(), result, nullptr);
-
-      if (result.empty()) {
-        return;
-      }
-      // ::selection
-      auto pseudo_node = CreatePseudoNode(CSSSheet::SELECTION_SELECT);
-      if (!pseudo_node) {
-        return;
-      }
-      report::GlobalFeatureCounter::Count(
-          report::LynxFeature::CPP_ENABLE_PSEUDO_SELECTOR,
-          manager_->GetInstanceId());
-      pseudo_node->SetIsPseudoNode();
-      pseudo_node->ConsumeStyle(result);
-      pseudo_node->FlushProps();
-      radon_element->InsertNode(pseudo_node);
-    }
-    return;
-  }
-
-  if (!fragment->HasPseudoStyle()) {
-    return;
-  }
-
-  if (radon_element->GetTag() == "text") {  // only text can support selection
-    // ::selection
-    UpdateSelectionPseudo(ParsePseudoCSSTokens(radon_element->data_model(),
-                                               kCSSSelectorSelection),
-                          radon_element);
-  }
-}
-
 void CSSPatching::ResolvePlaceHolder() {
   if (element_ == nullptr || element_->data_model() == nullptr) {
     LOGE(
@@ -980,19 +916,6 @@ const tasm::CSSParserConfigs& CSSPatching::GetCSSParserConfigs() {
   return *kDefaultCSSConfigs;
 }
 
-RadonElement* CSSPatching::CreatePseudoNode(int style_type) {
-  RadonElement* element = nullptr;
-  if (style_type & CSSSheet::SELECTION_SELECT) {
-    BASE_STATIC_STRING_DECL(kTextSelection, "text-selection");
-    element = new RadonElement(kTextSelection, nullptr, manager_);
-  }
-  if (element) {
-    EXEC_EXPR_FOR_INSPECTOR({ manager_->PrepareNodeForInspector(element); });
-    element->ResetPseudoType(style_type);
-  }
-  return element;
-}
-
 void CSSPatching::UpdateContentNode(const StyleMap& attrs,
                                     RadonElement* element) {
   if (!element->IsPseudoNode() || !element->content_data()) return;
@@ -1166,34 +1089,6 @@ void CSSPatching::ParsePseudoCSSTokensForFiber(FiberElement* element,
       map.merge(token->GetAttributes());
     }
   }
-}
-
-void CSSPatching::UpdateSelectionPseudo(const InlineTokenVector& token_list,
-                                        RadonElement* self) {
-  if (token_list.empty()) {
-    return;
-  }
-
-  // TODO support more selection style, and handle multi selection style merge
-  // currently only the last element is meaningful
-  auto token = token_list.back();
-  auto sheet = token->TargetSheet();
-
-  if (!sheet) {
-    return;
-  }
-
-  auto pseudo_node = CreatePseudoNode(sheet->GetType());
-
-  if (!pseudo_node) {
-    return;
-  }
-
-  pseudo_node->SetIsPseudoNode();
-  pseudo_node->ConsumeStyle(token->GetAttributes());
-  pseudo_node->FlushProps();
-
-  self->InsertNode(pseudo_node);
 }
 
 void CSSPatching::GenerateContentData(const lepus::Value& value,

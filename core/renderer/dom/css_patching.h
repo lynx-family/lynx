@@ -43,7 +43,6 @@ class CSSPatching {
 
   void HandlePseudoElement(CSSFragment* fragment);
 
-  void ResolvePseudoSelectors();
   void ResolvePlaceHolder();
 
   void SetEnableFiberArch(bool enable);
@@ -104,8 +103,6 @@ class CSSPatching {
 
   const tasm::CSSParserConfigs& GetCSSParserConfigs();
 
-  RadonElement* CreatePseudoNode(int style_type);
-
   void UpdateContentNode(const StyleMap& attrs, RadonElement* element);
 
   void ParsePlaceHolderTokens(PseudoPlaceHolderStyles& result,
@@ -118,9 +115,6 @@ class CSSPatching {
 
   InlineTokenVector ParsePseudoCSSTokens(AttributeHolder* node,
                                          const char* selector);
-
-  void UpdateSelectionPseudo(const InlineTokenVector& token_list,
-                             RadonElement* self);
 
   void GenerateContentData(const lepus::Value& value,
                            const AttributeHolder* vnode,

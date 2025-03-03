@@ -15,7 +15,6 @@ public class TextUpdateBundle {
 
   private Layout mTextLayout;
   private Set mViewTruncatedSet;
-  @ColorInt private int mSelectionColor = 0;
   private PointF mTextTranslateOffset;
 
   private boolean mNeedDrawStroke;
@@ -41,10 +40,6 @@ public class TextUpdateBundle {
     return mViewTruncatedSet;
   }
 
-  public void setSelectionColor(@ColorInt int color) {
-    mSelectionColor = color;
-  }
-
   public void setTextTranslateOffset(PointF offset) {
     mTextTranslateOffset = offset;
   }
@@ -55,10 +50,6 @@ public class TextUpdateBundle {
 
   public boolean getNeedDrawStroke() {
     return mNeedDrawStroke;
-  }
-
-  public @ColorInt int getSelectionColor() {
-    return mSelectionColor;
   }
 
   public PointF getTextTranslateOffset() {

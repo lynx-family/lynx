@@ -664,8 +664,6 @@ class Element : public lepus::RefCounted {
 
   void HandleCSSVariables(StyleMap& styles);
 
-  void ResolvePseudoSelectors();
-
   void ResolvePlaceHolder();
 
   // Callback before style resolving. Return false to skip style resolving.

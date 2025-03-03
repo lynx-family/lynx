@@ -645,7 +645,6 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
     TextHelper.dispatchLayoutEvent(this);
 
     TextUpdateBundle bundle = createNewUpdateBundle();
-    bundle.setSelectionColor(mSelectionColor);
     bundle.setTextTranslateOffset(mRenderer.getTextTranslateOffset());
     bundle.setNeedDrawStroke(mNeedDrawStroke);
     bundle.setOriginText(mSpannableString);

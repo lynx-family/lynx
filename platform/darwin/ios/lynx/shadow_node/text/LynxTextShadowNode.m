@@ -408,7 +408,6 @@ LYNX_REGISTER_SHADOW_NODE("text")
                                                                layoutSpec:spec];
   }
 
-  self.textRenderer.selectionColor = self.textStyle.selectionColor;
   CGSize size = self.textRenderer.size;
   CGFloat letterSpacing = self.textStyle.letterSpacing;
   if (!isnan(letterSpacing) && letterSpacing < 0) {

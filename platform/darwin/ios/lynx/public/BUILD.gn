@@ -95,7 +95,6 @@ public_shared_sources = [
   "shadow_node/text/LynxTextLayoutSpec.h",
   "shadow_node/text/LynxTextRenderer.h",
   "shadow_node/text/LynxTextRendererCache.h",
-  "shadow_node/text/LynxTextSelectionShadowNode.h",
   "shadow_node/text/LynxTextShadowNode.h",
   "ui/LUIBodyView.h",
   "ui/LUIErrorHandling.h",

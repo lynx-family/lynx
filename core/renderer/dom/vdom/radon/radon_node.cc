@@ -272,8 +272,6 @@ void RadonNode::DispatchFirstTime() {
     auto parent_element = GetParentWithFixed(ParentElement());
     ApplyDynamicCSSWhenParentIsReady(parent_element);
     radon_element()->FlushPropsFirstTimeWithParentElement(parent_element);
-
-    element()->ResolvePseudoSelectors();
   }
 
   class_dirty_ = false;

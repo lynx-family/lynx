@@ -230,7 +230,6 @@ subspec_target("lynx") {
     "shadow_node/text/LynxTextLayoutSpec.m",
     "shadow_node/text/LynxTextRenderer.m",
     "shadow_node/text/LynxTextRendererCache.m",
-    "shadow_node/text/LynxTextSelectionShadowNode.m",
     "shadow_node/text/LynxTextShadowNode.m",
     "ui/LynxFilterUtil+System.m",
     "ui/LynxFilterUtil.h",

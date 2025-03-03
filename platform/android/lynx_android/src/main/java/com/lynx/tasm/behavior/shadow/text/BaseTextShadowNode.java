@@ -107,7 +107,6 @@ public class BaseTextShadowNode extends ShadowNode {
   // for StaticLayout.BreakStrategy
   protected int mWordBreakStrategy = WORD_BREAK_STRATEGY_SIMPLE;
   protected boolean mNeedDrawStroke;
-  @ColorInt protected int mSelectionColor = 0;
   protected boolean mEnableEmojiCompat;
   protected static Method sEmojiProcess = null;
   protected static Object sEmojiCompatInst = null;
@@ -541,8 +540,6 @@ public class BaseTextShadowNode extends ShadowNode {
         mTextAttributes.mHasImageSpan |= shadowNode.mTextAttributes.mHasImageSpan;
         mTextAttributes.mHasInlineViewSpan |= shadowNode.mTextAttributes.mHasInlineViewSpan;
         mNeedDrawStroke |= shadowNode.mNeedDrawStroke;
-      } else if (child instanceof TextSelectionShadowNode) {
-        mSelectionColor = ((TextSelectionShadowNode) child).getBackgroundColor();
       } else {
         throw new RuntimeException(
             "Unexpected view type nested under text node: " + child.getClass());

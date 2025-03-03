@@ -66,7 +66,6 @@ extern NSAttributedStringKey const LynxWordBreakKey;
 @property(nonatomic, assign) CGFloat textIndent;
 @property(nonatomic, assign) CGFloat textStrokeWidth;
 @property(nonatomic, strong) UIColor* textStrokeColor;
-@property(nonatomic, strong) UIColor* selectionColor;
 @property(nonatomic, assign) BOOL isAutoFontSize;
 @property(nonatomic, assign) CGFloat autoFontSizeMaxSize;
 @property(nonatomic, assign) CGFloat autoFontSizeMinSize;
