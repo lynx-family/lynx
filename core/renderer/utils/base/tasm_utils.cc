@@ -17,6 +17,7 @@ lepus::Value GenerateSystemInfo(const lepus::Value* config) {
   BASE_STATIC_STRING_DECL(kPixelWidth, "pixelWidth");
   BASE_STATIC_STRING_DECL(kPixelHeight, "pixelHeight");
   BASE_STATIC_STRING_DECL(kLynxSdkVersion, "lynxSdkVersion");
+  BASE_STATIC_STRING_DECL(kEngineVersion, "engineVersion");
   BASE_STATIC_STRING_DECL(kTheme, "theme");
 
   static base::String kPlatformValue(Config::Platform());
@@ -28,6 +29,8 @@ lepus::Value GenerateSystemInfo(const lepus::Value* config) {
   system_info.SetProperty(kPixelWidth, lepus::Value(Config::pixelWidth()));
   system_info.SetProperty(kPixelHeight, lepus::Value(Config::pixelHeight()));
   system_info.SetProperty(kLynxSdkVersion,
+                          lepus::Value(Config::GetCurrentLynxVersion()));
+  system_info.SetProperty(kEngineVersion,
                           lepus::Value(Config::GetCurrentLynxVersion()));
 
   bool has_theme = false;

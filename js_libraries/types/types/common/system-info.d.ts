@@ -6,10 +6,19 @@ export type PlatformType = 'Android' | 'iOS';
 
 export interface SystemInfo {
   /**
-   * The version of the Lynx SDK.
+   * The version of the Lynx Engine.
+   * 
+   * @deprecated
    * @example '2.4', '2.10'
    */
   readonly lynxSdkVersion: string;
+
+  /**
+   * The version of the Lynx Engine.
+   *
+   * @example '3.2'
+   */
+  readonly engineVersion: string;
 
   /**
    * The current operating system version.

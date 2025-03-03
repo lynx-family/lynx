@@ -18,6 +18,7 @@ std::vector<PropNameID> SystemInfo::getPropertyNames(Runtime &rt) {
   vec.push_back(piper::PropNameID::forUtf8(rt, "osVersion"));
   vec.push_back(piper::PropNameID::forUtf8(rt, "runtimeType"));
   vec.push_back(piper::PropNameID::forUtf8(rt, "lynxSdkVersion"));
+  vec.push_back(piper::PropNameID::forUtf8(rt, "engineVersion"));
   return vec;
 }
 
@@ -46,6 +47,8 @@ Value SystemInfo::get(Runtime *rt, const PropNameID &name) {
         return String::createFromAscii(*rt, "quickjs");
     }
   } else if (methodName == "lynxSdkVersion") {
+    return String::createFromAscii(*rt, tasm::Config::GetCurrentLynxVersion());
+  } else if (methodName == "engineVersion") {
     return String::createFromAscii(*rt, tasm::Config::GetCurrentLynxVersion());
   }
   return piper::Value::undefined();
