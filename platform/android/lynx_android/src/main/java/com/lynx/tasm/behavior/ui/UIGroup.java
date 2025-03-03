@@ -65,6 +65,9 @@ public abstract class UIGroup<T extends ViewGroup>
   public void onInsertChild(LynxBaseUI child, int index) {
     child.setOffsetDescendantRectToLynxView(getOffsetDescendantRectToLynxView());
     mChildren.add(index, child);
+    if (mStableChildrenForTranslateZ != null) {
+      mStableChildrenForTranslateZ.add(index, child);
+    }
     child.setParent(this);
   }
 
@@ -96,6 +99,9 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   public boolean onRemoveChild(LynxBaseUI child) {
+    if (mStableChildrenForTranslateZ != null) {
+      mStableChildrenForTranslateZ.remove(child);
+    }
     if (!mChildren.remove(child)) {
       return false;
     }

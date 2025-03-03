@@ -55,6 +55,7 @@ import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -112,6 +113,7 @@ public class LynxUIOwner {
       new ConcurrentLinkedQueue<>();
 
   private HashMap<String, Boolean> mCreateNodeConfigHasReportedMark;
+  private final boolean mEnableStableTranslateZSorting;
 
   public LynxUIOwner(
       LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body) {
@@ -140,6 +142,9 @@ public class LynxUIOwner {
     mEnableReportCreateAsync =
         LynxEnv.getBooleanFromExternalEnv(LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG, false);
     mCreateNodeConfigHasReportedMark = new HashMap<String, Boolean>();
+    // TODO(renzhongyue): Remove this configuration after the experimental period.
+    mEnableStableTranslateZSorting =
+        LynxEnv.getBooleanFromExternalEnv(LynxEnvKey.ENABLE_STABLE_TRANSLATE_Z_SORTING, true);
     attachUIBodyView(body);
     TraceEvent.endSection("LynxUIOwner initialized");
   }
@@ -400,10 +405,18 @@ public class LynxUIOwner {
       if (parent != null && parent.isFlatten()) {
         newUpdateFlatten(parentTag, false);
       }
+      // The updateFlatten may created a new ui, should get parent ui from ui holder again.
       parent = mUIHolder.get(parentTag);
-      mTranslateZParentHolder.add(parent);
-      parent.setNeedSortChildren(true);
-      child.setLastTranslateZ(child.getTranslationZ());
+      if (parent != null) {
+        mTranslateZParentHolder.add(parent);
+        parent.setNeedSortChildren(true);
+        if (mEnableStableTranslateZSorting && parent.GetStableChildrenForTranslateZ() == null) {
+          // If its the first time the parent become a z children stack, use a stable list to track
+          // the original order of its children. We should make the sorting stable.
+          parent.setStableChildrenForTranslateZ(new ArrayList<>(parent.getChildren()));
+        }
+        child.setLastTranslateZ(child.getTranslationZ());
+      }
     }
   }
 
@@ -791,6 +804,7 @@ public class LynxUIOwner {
 
   /**
    * Recursively insert children of LynxFlattenUI into corresponding drawList.
+   *
    * @param parent LynxFlattenUI
    */
   private void insertChildIntoDrawListRecursive(LynxBaseUI parent) {
@@ -820,6 +834,9 @@ public class LynxUIOwner {
             "Insertion (new) failed due to unknown child signature: " + childTag);
       }
       checkTranslateZ(childTag, parentTag);
+      if (mTranslateZParentHolder.contains(parent)) {
+        parent.setNeedSortChildren(true);
+      }
       parent = mUIHolder.get(parentTag);
 
       if (!parent.canHaveFlattenChild() && child.isFlatten()) {
@@ -1161,7 +1178,7 @@ public class LynxUIOwner {
 
   /**
    * Finds the component by its component id.
-   *
+   * <p>
    * If the component to find is root, whose component id is -1, then getRootUI()
    * is returned.
    * If the component to find is a VirtualComponent, whose component
@@ -1416,9 +1433,9 @@ public class LynxUIOwner {
   /**
    * Sets the state of a gesture detector for a specific gesture on a UI node.
    *
-   * @param sign The unique identifier of the UI node.
+   * @param sign      The unique identifier of the UI node.
    * @param gestureId The identifier of the specific gesture.
-   * @param state The desired state to set for the gesture detector.
+   * @param state     The desired state to set for the gesture detector.
    */
   public void setGestureDetectorState(int sign, int gestureId, int state) {
     // Retrieve the UI node associated with the given identifier.
@@ -1441,9 +1458,9 @@ public class LynxUIOwner {
    * Handle whether internal lynxUI of the current gesture node consume the gesture and whether
    * native view outside the current node (outside of lynxView) consume the gesture.
    *
-   * @param sign The unique identifier of the UI node.
+   * @param sign      The unique identifier of the UI node.
    * @param gestureId The identifier of the specific native gesture.
-   * @param params {internal: boolean, isConsume: boolean, ...}
+   * @param params    {internal: boolean, isConsume: boolean, ...}
    */
   public void consumeGesture(int sign, int gestureId, ReadableMap params) {
     // Retrieve the UI node associated with the given identifier.
@@ -1657,12 +1674,16 @@ public class LynxUIOwner {
     for (LynxBaseUI child : parent.getChildren()) {
       removeFromDrawList(child);
     }
+    if (mEnableStableTranslateZSorting) {
+      // Sort the children from the original order in the lynx engine.
+      parent.resetTranslateZChildrenOrder();
+    }
     try {
       Collections.sort(parent.getChildren(), translationZComparator);
     } catch (Exception e) {
-      // FIXME(renzhongyue): Android bellow 6.0, have exception cannot cast String to LynxBaseUI.
-      LLog.i(
-          TAG, "Something went wrong during sort children by translation Z " + e.getStackTrace());
+      LLog.i(TAG,
+          "Something went wrong during sort children by translation Z "
+              + Arrays.toString(e.getStackTrace()));
     }
     insertChildIntoDrawListRecursive(parent);
   }
@@ -1728,6 +1749,7 @@ public class LynxUIOwner {
 
   /**
    * register listener for LynxUI which implement `ForegroundListener` interface
+   *
    * @param listener triggered when lynxview enter/exit foreground
    */
   void registerForegroundListener(@NonNull ForegroundListener listener) {
@@ -1738,6 +1760,7 @@ public class LynxUIOwner {
 
   /**
    * unregister listener for LynxUI which implement `ForegroundListener` interface
+   *
    * @param listener triggered when lynxview enter/exit foreground
    */
   public void unregisterForegroundListener(@NonNull ForegroundListener listener) {
