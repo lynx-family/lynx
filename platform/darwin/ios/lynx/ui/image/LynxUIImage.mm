@@ -603,7 +603,6 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       errorDetail = [NSString stringWithFormat:@"url:%@,%@", url, [error description]];
     }
     if (!errorDetail) {
-      [[LynxImageLoader imageService] setAutoPlay:strongSelf.view value:strongSelf.autoPlay];
       requestUrl.imageSize = image.size;
       requestUrl.isSuccess = 1;
       if (requestUrl.type == LynxImageRequestPlaceholder && strongSelf.image) {
@@ -617,6 +616,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       // Using gifs with corner-radius in animation is highly unrecommended.
       BOOL isAnimatedImage = [LynxUIImage isAnimatedImage:strongSelf.image];
       if (isAnimatedImage) {
+        [[LynxImageLoader imageService] setAutoPlay:strongSelf.view value:strongSelf.autoPlay];
         [strongSelf onImageReady:image withRequest:requestUrl];
         if ([NSThread isMainThread]) {
           [strongSelf superUpdateLayerMaskOnFrameChanged];
