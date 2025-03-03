@@ -688,7 +688,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         screenMetrics.widthPixels, screenMetrics.heightPixels, screenMetrics.density,
         LynxEnv.inst().getLocale(), mLynxViewBuilder.enableJSRuntime(),
         mLynxViewBuilder.enableMultiAsyncThread, mLynxViewBuilder.enablePreUpdateData,
-        mAutoConcurrency, mLynxViewBuilder.enableVSyncAlignedMessageLoop,
+        mAutoConcurrency,
+        mLynxViewBuilder.enableVSyncAlignedMessageLoop
+            || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal(),
         mLynxViewBuilder.enableAsyncHydration, mGroup != null && mGroup.enableJSGroupThread(),
         getJSGroupThreadNameIfNeed(), new TasmPlatformInvoker(mNativeFacade), whiteBoardPtr,
         lynxUIRenderer.getUIDelegatePtr(), lynxUIRenderer.useInvokeUIMethod());

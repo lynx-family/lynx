@@ -47,7 +47,7 @@ public class LynxViewBuilder {
   boolean enableSyncFlush = false;
   boolean enablePendingJsTask = false;
   boolean enableAutoConcurrency = false;
-  boolean enableVSyncAlignedMessageLoop = LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
+  boolean enableVSyncAlignedMessageLoop = false;
   boolean forceDarkAllowed = false;
 
   /**
