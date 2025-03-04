@@ -4,6 +4,7 @@
 /buildtools
 /third_party/quickjs/src
 /third_party/libcxx
+/third_party/v8
 /third_party/libcxxabi
 /third_party/llvm
 /third_party/gyp
@@ -31,6 +32,7 @@ ruby
 core/build/gen/
 /core/build/jni/gen
 /core/build/jni/BUILD.gn
+**/build/gen
 
 
 # Auto generated error code files
