@@ -5,15 +5,15 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lynx-family/lynx/blob/develop/LICENSE">
+  <a href="https://github.com/lynx-family/lynx/blob/develop/LICENSE" style="text-decoration:none">
     <img src="https://img.shields.io/badge/License-Apache--2.0-cyan?logo=apache" alt="Apache Licensed">
   </a>
-  <a href="https://github.com/lynx-family/lynx/releases">
+  <a href="https://github.com/lynx-family/lynx/releases" style="text-decoration:none">
     <img src="https://img.shields.io/github/v/release/lynx-family/lynx.svg" alt="Latest release version">
   </a>
-  <a href="https://github.com/lynx-family/lynx/actions">
+  <a href="https://github.com/lynx-family/lynx/actions" style="text-decoration:none">
     <img src="https://img.shields.io/github/actions/workflow/status/lynx-family/lynx/ci.yml" alt="CI status">
-  </a><a href="https://x.com/lynxjs_org">
+  </a><a href="https://x.com/lynxjs_org" style="text-decoration:none">
     <img src="https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2Flynxjs_org&style=social&label=Lynx" alt="X (formerly Twitter) URL">
   </a>
 </p>
