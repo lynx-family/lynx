@@ -21,11 +21,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
       - name: Build Explorer App
@@ -60,11 +55,6 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Install Common Dependencies
         uses: nick-fields/retry@v2
         with:
@@ -90,6 +80,7 @@ jobs:
             cd $GITHUB_WORKSPACE/lynx
             source tools/envsetup.sh
             pushd explorer/darwin/ios/lynx_explorer
+            git config --global url."https://github.com/".insteadOf "git@github.com:"
             bash bundle_install.sh
             popd
       - name: Build Explorer App
@@ -119,11 +110,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Setup Android enviroment
         if: ${{ inputs.dry_run == false }}
         uses: ./lynx/.github/actions/setup-android-env
@@ -185,11 +171,6 @@ jobs:
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
           path: lynx
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Install Common Dependencies
         uses: nick-fields/retry@v2
         with:
@@ -225,8 +206,6 @@ jobs:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
         run: |-
           source myenv/bin/activate
-          eval `ssh-agent -s`
-          ssh-add - <<< '${{ secrets.PRIVATE_SSH_KEY }}'
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           cd $GITHUB_WORKSPACE

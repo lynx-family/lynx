@@ -22,7 +22,7 @@ podspec_target("lynx_podspec") {
     license = "Apache 2.0"
     author = "Lynx"
     source = {
-      git = "git@github.com:lynx-family/lynx.git"
+      git = "https://github.com/lynx-family/lynx.git"
     }
     requires_arc = true
     default_subspec = "Framework"

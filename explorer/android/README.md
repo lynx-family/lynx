@@ -117,7 +117,7 @@ pip3 install pyyaml
 Pull the code from the Github repository and specify the path(`src/lynx`) to avoid contaminating the directory when installing dependencies.
 
 ```
-git clone git@github.com:lynx-family/lynx.git src/lynx
+git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
 ### Get the dependent files

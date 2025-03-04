@@ -14,11 +14,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Install Common Dependencies
         uses: nick-fields/retry@v2
         with:
