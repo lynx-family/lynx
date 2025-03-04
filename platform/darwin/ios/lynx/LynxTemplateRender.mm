@@ -2071,7 +2071,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)onFetchTemplateError:(NSError*)error {
-  NSString* error_msg = @"Error occurred when fetch template resource";
+  NSString* error_msg = @"Error occurred while fetching app bundle resource";
   LynxError* lynxError = [LynxError lynxErrorWithCode:ECLynxAppBundleLoadBadResponse
                                               message:error_msg];
   if (error) {

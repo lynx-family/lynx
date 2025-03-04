@@ -1998,12 +1998,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
         @Override
         public void run() {
-          String error_msg = "Error occurred when fetch template resource: " + msg;
-          String fix_suggestion = "Possible causes of this error code include: using a network "
-              + "proxy, incorrect resource "
-              + "address, resource not found, network unreachable, or other possible reasons.";
-          LynxError error = new LynxError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE,
-              error_msg, fix_suggestion, LynxError.LEVEL_ERROR);
+          String error_msg = "Error occurred while fetching app bundle resource";
+          LynxError error =
+              new LynxError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, error_msg);
+          error.setRootCause(msg);
           error.setCallStack(stack);
           onErrorOccurred(error);
         }
@@ -2120,12 +2118,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
         @Override
         public void run() {
-          String error_msg = "Error occurred when fetch template resource";
-          String fix_suggestion = "Possible causes of this error code include: using a network "
-              + "proxy, incorrect resource "
-              + "address, resource not found, network unreachable, or other possible reasons.";
-          LynxError error = new LynxError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE,
-              error_msg, fix_suggestion, LynxError.LEVEL_ERROR);
+          String error_msg = "Error occurred while fetching app bundle resource";
+          LynxError error =
+              new LynxError(LynxSubErrorCode.E_APP_BUNDLE_LOAD_BAD_RESPONSE, error_msg);
           error.setRootCause(msg);
           error.setCallStack(stack);
           onErrorOccurred(error);

@@ -64,8 +64,7 @@ bool BinaryReader::ReadStringDirectly(base::String& out_value) {
 void BinaryReader::PrintError(const char* format, const char* func, int line) {
   char buffer[1024];
   snprintf(buffer, sizeof(buffer), format, func, line);
-  error_message_ = error_message_ + buffer;
-  LOGE(buffer);
+  LOGE(error_message_ << ", " << buffer);
   // TODO ...
 }
 
