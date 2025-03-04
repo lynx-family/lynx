@@ -334,7 +334,6 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
     }
     mRenderer = null;
     mTruncatedSpannableString = null;
-    mEllipsisCount = 0;
     // Check if it is worth to measure
     if (widthMode != MeasureMode.UNDEFINED && heightMode != MeasureMode.UNDEFINED && width == 0
         && height == 0) {
@@ -609,6 +608,7 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
   public MeasureResult measure(MeasureParam param, @Nullable MeasureContext ctx) {
     mMeasureParam = param;
     mMeasureContext = ctx;
+    mEllipsisCount = 0;
     // To avoid break change.
     long result = measure(this, param.mWidth, param.mWidthMode, param.mHeight, param.mHeightMode);
     float width = MeasureOutput.getWidth(result);
