@@ -221,6 +221,8 @@ jobs:
           replacesArtifacts: true
           allowUpdates: true
       - name: Publish to CocoaPods Repo
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
         run: |-
           source myenv/bin/activate
           eval `ssh-agent -s`
