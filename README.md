@@ -56,7 +56,7 @@ To effectively manage dependencies using our custom tool, [Habitat](https://gith
 For instance, you could name this directory `src`:
 
 ```
-git clone git@github.com:lynx-family/lynx.git src/lynx
+git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
 For now, `src` contains only `lynx`. However as you proceed to build Lynx, you'll notice several installed dependencies there.

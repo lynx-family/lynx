@@ -14,11 +14,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - uses: actions/setup-node@v4
         with:
           node-version: 18
@@ -55,11 +50,6 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
@@ -105,11 +95,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Install SSH Key
-        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
-        with:
-          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
-          ssh-host: github.com
       - uses: actions/setup-node@v4
         with:
           node-version: 18

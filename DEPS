@@ -34,7 +34,7 @@ deps = {
     },
     '../buildtools/emsdk': {
         "type": "git",
-        "url": "git@github.com:emscripten-core/emsdk.git",
+        "url": "https://github.com/emscripten-core/emsdk.git",
         "commit": "2346baa7bb44a4a0571cc75f1986ab9aaa35aa03",
         "ignore_in_git": True,
         "condition": target == "tasm"
@@ -146,7 +146,7 @@ deps = {
     },
     '../build': {
         "type": "git",
-        "url": "git@github.com:lynx-family/buildroot.git",
+        "url": "https://github.com/lynx-family/buildroot.git",
         "commit": "b74a2ad3759ed710e67426eb4ce8e559405ed63f",
         "ignore_in_git": True,
         "condition": system in ['linux', 'darwin', 'windows']
@@ -223,7 +223,7 @@ deps = {
     }, 
     "third_party/quickjs/src": {
         "type": "git",
-        "url": "git@github.com:lynx-family/primjs.git",
+        "url": "https://github.com/lynx-family/primjs.git",
         "commit": "ea4d2d5d6e5fa4d36d31af560f00fb1880f52fe7",
         "ignore_in_git": True,
     },
@@ -289,7 +289,7 @@ deps = {
     },
     "./tools_shared": {
         "type": "solution",
-        "url": "git@github.com:lynx-family/tools-shared.git",
+        "url": "https://github.com/lynx-family/tools-shared.git",
         "commit": "f8df9cbb723a2ac40ae092b0de26415eb9154026",
         'deps_file': 'dependencies/DEPS',
         "ignore_in_git": True,

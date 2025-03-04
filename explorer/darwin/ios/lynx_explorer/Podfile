@@ -46,6 +46,6 @@ end
 
 target 'LynxExplorerTests' do
   inherit! :complete
-  pod 'OCMock', :git => 'git@github.com:erikdoe/ocmock.git', :tag => 'v3.9.1'
-  pod 'XcodeCoverage', :git => 'git@github.com:jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
+  pod 'OCMock', :git => 'https://github.com/erikdoe/ocmock.git', :tag => 'v3.9.1'
+  pod 'XcodeCoverage', :git => 'https://github.com/jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
 end
