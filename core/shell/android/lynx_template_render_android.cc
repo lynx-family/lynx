@@ -1115,25 +1115,6 @@ void UpdateI18nResource(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
-static void RunOnTasmThread(JNIEnv* env, jobject jcaller, jlong ptr,
-                            jlong lifecycle, jobject runnable) {
-  AtomicLifecycle* lifecycle_ptr =
-      reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
-    return;
-  }
-  auto* shell_ptr = reinterpret_cast<lynx::shell::LynxShell*>(ptr);
-  lynx::base::android::ScopedGlobalJavaRef<jobject> runnable_object(env,
-                                                                    runnable);
-  lynx::base::android::ScopedGlobalJavaRef<jobject> caller(env, jcaller);
-  shell_ptr->RunOnTasmThread([caller = std::move(caller),
-                              runnable = std::move(runnable_object)]() {
-    JNIEnv* env = lynx::base::android::AttachCurrentThread();
-    Java_LynxTemplateRender_executeRunnable(env, caller.Get(), runnable.Get());
-  });
-  AtomicLifecycle::TryFree(lifecycle_ptr);
-}
-
 void SetInitTiming(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                    jlong initStart, jlong initEnd) {
   AtomicLifecycle* lifecycle_ptr =

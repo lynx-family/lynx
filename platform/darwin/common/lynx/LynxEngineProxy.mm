@@ -29,6 +29,12 @@
   native_engine_proxy_ = proxy;
 }
 
+- (void)dispatchTaskToLynxEngine:(dispatch_block_t)task {
+  if (native_engine_proxy_ && task) {
+    native_engine_proxy_->DispatchTaskToLynxEngine([task]() { task(); });
+  }
+}
+
 - (void)invokeLepusFunc:(NSDictionary *)data callbackID:(int32_t)callbackID {
   if (!native_engine_proxy_ || !data[@"entry_name"]) {
     return;

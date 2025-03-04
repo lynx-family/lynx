@@ -2627,10 +2627,12 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   }
 
   public void runOnTasmThread(Runnable runnable) {
-    if (mNativePtr == 0) {
+    if (mEngineProxy == null) {
+      LLog.i(TAG, "runOnTasmThread failed, engine proxy is null.");
       return;
     }
-    nativeRunOnTasmThread(mNativePtr, mNativeLifecycle, runnable);
+
+    mEngineProxy.dispatchTaskToLynxEngine(runnable);
   }
 
   public void startLynxRuntime() {
@@ -3285,11 +3287,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     return null;
   }
 
-  @CalledByNative
-  public void executeRunnable(Runnable runnable) {
-    runnable.run();
-  }
-
   public static class LogLynxViewClient extends LynxViewClient {
     private long mStartLoadTime = 0;
 
@@ -3467,8 +3464,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private static native void nativeUpdateI18nResource(
       long ptr, long lifecycle, String key, String bytes, int status);
-
-  private native void nativeRunOnTasmThread(long ptr, long lifecycle, Runnable runnable);
 
   private static native void nativeSetInitTiming(
       long ptr, long lifecycle, long initStart, long initEnd);

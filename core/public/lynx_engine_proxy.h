@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/closure.h"
 #include "core/public/list_data.h"
 #include "core/public/pub_value.h"
 
@@ -17,6 +18,8 @@ namespace shell {
 class LynxEngineProxy {
  public:
   virtual ~LynxEngineProxy() = default;
+
+  virtual void DispatchTaskToLynxEngine(base::closure task) = 0;
 
   // Event
   virtual bool SendTouchEvent(const std::string& name, int32_t tag, float x,

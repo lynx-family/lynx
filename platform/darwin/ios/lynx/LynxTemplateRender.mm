@@ -1877,8 +1877,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)runOnTasmThread:(dispatch_block_t)task {
-  std::function<void(void)> native_task = [task]() { task(); };
-  shell_->RunOnTasmThread(std::move(native_task));
+  [_lynxEngineProxy dispatchTaskToLynxEngine:task];
 }
 
 - (LynxGestureArenaManager*)getGestureArenaManager {
