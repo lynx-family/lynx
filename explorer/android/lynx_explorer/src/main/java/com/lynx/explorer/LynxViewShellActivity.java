@@ -71,7 +71,6 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     setTopBarAppearance(url);
     mLynxContainer = findViewById(R.id.lynx_container);
-
     extraTimingInfo.mContainerInitEnd = System.currentTimeMillis();
 
     openTargetUrl(url);
