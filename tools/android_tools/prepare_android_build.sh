@@ -12,7 +12,9 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color
 
-if [ -z "$ANDROID_HOME" ]; then
+sdk_path=$(eval echo "$ANDROID_HOME")
+
+if [ -z "$sdk_path" ]; then
   echo -e "${RED}Error: Please configure the ANDROID_HOME environment variable first.${NC}"
   return 1
 fi
@@ -31,11 +33,11 @@ if [ ! -d $sdk_manager_path ]; then
 fi
 
 function install_sdk_component {
-  local component_path=$ANDROID_HOME/$1/$2
+  local component_path=$sdk_path/$1/$2
   if [ -d "$component_path" ]; then
     echo "'$1;$2' already installed at $component_path - skipping installation."
   else
-    $sdk_manager_path/sdkmanager --sdk_root=$ANDROID_HOME --install "$1;$2"
+    $sdk_manager_path/sdkmanager --sdk_root=$sdk_path --install "$1;$2"
   fi
 }
 
