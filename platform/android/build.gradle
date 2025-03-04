@@ -99,6 +99,13 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
     return [flavorNames, buildTypes]
 }
 
+ext.writeGnArgs = { String gnArgs ->
+    exec {
+        workingDir "../../"
+        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnArgs
+    }
+}
+
 task clean(type: Delete) {
     delete rootProject.buildDir
     delete "${rootProject.rootDir}/../out/gn_products_for_gradle"

@@ -281,10 +281,7 @@ task configGnCompileParas {
             }
         }
     }
-    exec {
-        workingDir "../../../"
-        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnBuildArgs_map.toJSONString()
-    }
+    writeGnArgs(gnBuildArgs_map.toJSONString())
 }
 
 dependencies {
