@@ -1,27 +1,19 @@
-<p align="center">
+<div align="center">
+
+<p>
   <a href="https://lynxjs.org">
     <img width="500" alt="Lynx" src="https://github.com/user-attachments/assets/23e35f90-1506-4b1d-8114-6bb2b8b643e7" />
   </a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/lynx-family/lynx/blob/develop/LICENSE">
-    <img src="https://img.shields.io/badge/License-Apache--2.0-cyan?logo=apache" alt="Apache Licensed">
-  </a>
-  <a href="https://github.com/lynx-family/lynx/releases">
-    <img src="https://img.shields.io/github/v/release/lynx-family/lynx.svg" alt="Latest release version">
-  </a>
-  <a href="https://github.com/lynx-family/lynx/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/lynx-family/lynx/ci.yml" alt="CI status">
-  </a><a href="https://x.com/lynxjs_org">
-    <img src="https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2Flynxjs_org&style=social&label=Lynx" alt="X (formerly Twitter) URL">
-  </a>
-</p>
+[![Apache licesed](https://img.shields.io/badge/License-Apache--2.0-cyan?logo=apache)](https://github.com/lynx-family/lynx/blob/develop/LICENSE)
+[![Latest release version](https://img.shields.io/github/v/release/lynx-family/lynx.svg)](https://github.com/lynx-family/lynx/releases)
+[![CI status](https://img.shields.io/github/actions/workflow/status/lynx-family/lynx/ci.yml)](https://github.com/lynx-family/lynx/actions)
+[![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2Flynxjs_org&style=social&label=Lynx)](https://x.com/lynxjs_org)
 
-
-<p align="center">
 Empower the web community and invite more to build across platforms
-</p>
+
+</div>
 
 
 ## Content
