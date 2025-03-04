@@ -125,10 +125,10 @@ def pod_lint_component(component, local_pod_source_name):
 def publish_component(component, sources, tag):
     if sources != None:
         run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx')
-        run_command(f'bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests --sources={sources}')
+        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests --sources={sources}')
     else:
         run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx')
-        run_command(f'bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests')
+        run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests')
 
 
 def publish_to_cocoapods(component, sources, tag):
@@ -173,7 +173,7 @@ def main():
     elif args.pod_lint:
         run_pod_lint(args.component)
     else:
-        print('Please specify --prepare-source , --publish or -pod_lint')
+        print('Please specify --prepare-source , --publish or --pod_lint')
         exit(1)
 
 
