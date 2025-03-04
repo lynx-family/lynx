@@ -1,0 +1,128 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+:root {
+  --page-light: #f0f2f5;
+  --page-dark: #181d25;
+  --box-light: #ffffff;
+  --box-dark: #282e38;
+
+  --title-light: #000000;
+  --title-dark: #ffffff;
+
+  --sub-title-light: #000000a6;
+  --sub-title-dark: #ffffffa6;
+
+  --text-light: #000000;
+  --text-dark: #ffffff;
+}
+
+@mixin page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: calc(100% - 48px);
+  justify-content: flex-start;
+}
+
+@mixin box {
+  display: flex;
+  border-radius: 12px;
+  width: 90%;
+  margin-left: 5%;
+  margin-right: 5%;
+}
+
+@mixin title {
+  line-height: 22px;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+@mixin sub-title {
+  line-height: 18px;
+  font-size: 15px;
+}
+
+@mixin text {
+  line-height: 18px;
+  font-size: 15px;
+  margin-left: 5%;
+  align-self: center;
+}
+
+.page__dark {
+  @include page;
+  background: #181d25;
+}
+
+.page__light {
+  @include page;
+  background: #f0f2f5;
+}
+
+.page-header {
+  display: flex;
+  margin-top: 5%;
+  margin-left: 5%;
+  padding-top: 2%;
+  width: 90%;
+  height: 10%;
+}
+
+.page-header__notch {
+  display: flex;
+  margin-top: 10%;
+  margin-left: 5%;
+  padding-top: 2%;
+  width: 90%;
+  height: 10%;
+}
+
+.title__dark {
+  @include title;
+  color: var(--title-dark);
+}
+
+.title__light {
+  @include title;
+  color: var(--title-light);
+}
+
+.sub-title__dark {
+  @include sub-title();
+  color: var(--sub-title-dark);
+}
+
+.sub-title__light {
+  @include sub-title();
+  color: var(--sub-title-light);
+}
+
+.forward-icon {
+  display: flex;
+  width: 18px;
+  height: 18px;
+  justify-content: center;
+}
+
+.box__dark {
+  @include box;
+  background: #282e38;
+}
+
+.box__light {
+  @include box;
+  background: #ffffff;
+}
+
+.text__dark {
+  @include text;
+  color: var(--text-dark);
+}
+
+.text__light {
+  @include text;
+  color: var(--text-light);
+}

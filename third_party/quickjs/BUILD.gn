@@ -1,0 +1,161 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//lynx/config.gni")
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+config("quickjs_private_config") {
+  visibility = [ ":*" ]
+  include_dirs = [
+    ".",
+    "src/src",
+    "src/src/interpreter",
+    "//lynx/core/runtime/vm/lepus",
+  ]
+
+  cflags = [
+    "-Wno-unused-private-field",
+    "-Wno-unused-variable",
+    "-Wno-unused-local-typedef",
+    "-Wno-sometimes-uninitialized",
+    "-Wno-uninitialized",
+    "-Wno-unused-function",
+    "-Wno-reorder-init-list",
+    "-Wno-format",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unknown-warning-option",
+    "-Wno-newline-eof",
+    "-Wno-sign-compare",
+  ]
+
+  # FIXME(): definition controlled by the args
+  defines = [
+    "ENABLE_LEPUSNG",
+    "ENABLE_QUICKJS_DEBUGGER",
+    "LYNX_SIMPLIFY=0",
+    "LYNX_DEV",
+    "CONFIG_VERSION=\"2019-09-10\"",
+  ]
+  if (is_win) {
+    defines += [
+      "ALLOCATE_WINDOWS",
+      "OS_WIN=1",
+    ]
+  }
+}
+
+config("quickjs_public_config") {
+  include_dirs = [
+    "../",
+    "./src/src",
+    "./src/src/interpreter",
+  ]
+  cflags = []
+  if (is_win) {
+    cflags += [ "-Wno-c99-designator" ]
+  }
+}
+
+source_set("quickjs_regexp") {
+  public_configs = [ ":quickjs_public_config" ]
+  configs += [ ":quickjs_private_config" ]
+  sources = [
+    "src/src/interpreter/quickjs/source/cutils.cc",
+    "src/src/interpreter/quickjs/source/libregexp.cc",
+    "src/src/interpreter/quickjs/source/libunicode.cc",
+  ]
+
+  if (disable_primjs_symbol_visibility_hidden) {
+    configs -= [
+      "//build/config/gcc:symbol_visibility_hidden",
+      "//build/config:symbol_visibility_hidden",
+    ]
+  }
+}
+
+source_set("quickjs") {
+  if (enable_primjs_prebuilt_lib) {
+    libs = [ "quick" ]
+  } else {
+    deps = [ ":quickjs_source" ]
+  }
+}
+
+source_set("quickjs_source") {
+  public_configs = [ ":quickjs_public_config" ]
+  configs += [ ":quickjs_private_config" ]
+  sources = [
+    #    "src/src/inspector/heapprofiler/take-snapshot.cc",
+    "src/src/gc/allocator.cc",
+    "src/src/gc/collector.cc",
+    "src/src/gc/global-handles.cc",
+    "src/src/gc/qjsvaluevalue-space.cc",
+    "src/src/gc/sweeper.cc",
+    "src/src/gc/thread_pool.cc",
+    "src/src/inspector/cpuprofiler/cpu_profiler.cc",
+    "src/src/inspector/cpuprofiler/cpu_profiler.h",
+    "src/src/inspector/cpuprofiler/profile_generator.cc",
+    "src/src/inspector/cpuprofiler/profile_generator.h",
+    "src/src/inspector/cpuprofiler/profile_tree.cc",
+    "src/src/inspector/cpuprofiler/profile_tree.h",
+    "src/src/inspector/cpuprofiler/profiler_sampling.cc",
+    "src/src/inspector/cpuprofiler/profiler_sampling.h",
+    "src/src/inspector/cpuprofiler/profiler_time.h",
+    "src/src/inspector/cpuprofiler/tracing_cpu_profiler.cc",
+    "src/src/inspector/cpuprofiler/tracing_cpu_profiler.h",
+    "src/src/inspector/debugger/debugger.cc",
+    "src/src/inspector/debugger/debugger_breakpoint.cc",
+    "src/src/inspector/debugger/debugger_callframe.cc",
+    "src/src/inspector/debugger/debugger_properties.cc",
+    "src/src/inspector/debugger/debugger_queue.cc",
+    "src/src/inspector/heapprofiler/edge.cc",
+    "src/src/inspector/heapprofiler/entry.cc",
+    "src/src/inspector/heapprofiler/gen.cc",
+    "src/src/inspector/heapprofiler/heapexplorer.cc",
+    "src/src/inspector/heapprofiler/heapprofiler.cc",
+    "src/src/inspector/heapprofiler/serialize.cc",
+    "src/src/inspector/heapprofiler/snapshot.cc",
+    "src/src/inspector/protocols.cc",
+    "src/src/inspector/runtime/runtime.cc",
+    "src/src/inspector/string_tools.cc",
+    "src/src/interpreter/quickjs/source/primjs_monitor.cc",
+    "src/src/interpreter/quickjs/source/quickjs.cc",
+    "src/src/interpreter/quickjs/source/quickjs_gc.cc",
+    "src/src/interpreter/quickjs/source/quickjs_queue.cc",
+    "src/src/interpreter/quickjs/source/quickjs_version.cc",
+  ]
+  sources += [
+    "src/src/basic/log/logging.cc",
+    "src/src/basic/log/primjs_logging.cc",
+  ]
+
+  deps = [
+    ":quickjs_libc",
+    ":quickjs_regexp",
+  ]
+
+  if (disable_primjs_symbol_visibility_hidden) {
+    configs -= [
+      "//build/config/gcc:symbol_visibility_hidden",
+      "//build/config:symbol_visibility_hidden",
+    ]
+  }
+}
+
+source_set("quickjs_libc") {
+  public_configs = [ ":quickjs_public_config" ]
+  configs += [ ":quickjs_private_config" ]
+  defines = [ "_GNU_SOURCE" ]
+  sources = [ "src/src/interpreter/quickjs/source/quickjs-libc.cc" ]
+
+  if (disable_primjs_symbol_visibility_hidden) {
+    configs -= [
+      "//build/config/gcc:symbol_visibility_hidden",
+      "//build/config:symbol_visibility_hidden",
+    ]
+  }
+}

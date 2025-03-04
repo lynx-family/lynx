@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="custom_reserved_a11y_action_0_id" type="id" />
+    <item name="custom_reserved_a11y_action_1_id" type="id" />
+    <item name="custom_reserved_a11y_action_2_id" type="id" />
+    <item name="custom_reserved_a11y_action_3_id" type="id" />
+    <item name="custom_reserved_a11y_action_4_id" type="id" />
+    <item name="custom_reserved_a11y_action_5_id" type="id" />
+    <item name="custom_reserved_a11y_action_6_id" type="id" />
+    <item name="custom_reserved_a11y_action_7_id" type="id" />
+    <item name="custom_reserved_a11y_action_8_id" type="id" />
+    <item name="custom_reserved_a11y_action_9_id" type="id" />
+    <item name="custom_reserved_a11y_action_10_id" type="id" />
+    <item name="custom_reserved_a11y_action_11_id" type="id" />
+    <item name="custom_reserved_a11y_action_12_id" type="id" />
+    <item name="custom_reserved_a11y_action_13_id" type="id" />
+    <item name="custom_reserved_a11y_action_14_id" type="id" />
+    <item name="custom_reserved_a11y_action_15_id" type="id" />
+    <item name="custom_reserved_a11y_action_16_id" type="id" />
+    <item name="custom_reserved_a11y_action_17_id" type="id" />
+    <item name="custom_reserved_a11y_action_18_id" type="id" />
+    <item name="custom_reserved_a11y_action_19_id" type="id" />
+    <item name="custom_reserved_a11y_action_20_id" type="id" />
+    <item name="custom_reserved_a11y_action_21_id" type="id" />
+    <item name="custom_reserved_a11y_action_22_id" type="id" />
+    <item name="custom_reserved_a11y_action_23_id" type="id" />
+    <item name="custom_reserved_a11y_action_24_id" type="id" />
+    <item name="custom_reserved_a11y_action_25_id" type="id" />
+    <item name="custom_reserved_a11y_action_26_id" type="id" />
+    <item name="custom_reserved_a11y_action_27_id" type="id" />
+    <item name="custom_reserved_a11y_action_28_id" type="id" />
+    <item name="custom_reserved_a11y_action_29_id" type="id" />
+    
+</resources>

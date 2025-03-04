@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/notification_container_layout"
+    android:layout_width="match_parent"
+    android:layout_height="45dp"
+    android:layout_marginHorizontal="5dp"
+    android:layout_marginBottom="5dp"
+    android:background="@drawable/devtool_notification_background"
+    android:orientation="horizontal">
+
+    <FrameLayout
+        android:layout_width="45dp"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/notification_view_log_count_circle"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="9dp"
+            android:src="@drawable/devtool_notification_log_count_circle" />
+
+        <TextView
+            android:id="@+id/notification_text_log_count"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="9dp"
+            android:ellipsize="end"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="0"
+            android:textColor="@color/logbox_white"
+            android:textSize="15dp" />
+    </FrameLayout>
+
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:layout_marginVertical="9dp"
+        android:background="@color/logbox_dark_grey" />
+
+    <TextView
+        android:id="@+id/notification_text_brief_log"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:paddingStart="9dp"
+        android:text=""
+        android:textColor="@color/logbox_white"
+        android:textSize="15dp" />
+
+    <FrameLayout
+        android:layout_width="45dp"
+        android:layout_height="match_parent">
+
+        <View
+            android:id="@+id/notification_button_cancel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:layout_margin="11dp"
+            android:background="@drawable/devtool_notification_close_circle"
+            android:scaleType="centerInside" />
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_margin="14dp"
+            android:alpha="0.5"
+            android:background="@color/logbox_transparent"
+            android:src="@drawable/notification_cancel" />
+    </FrameLayout>
+</LinearLayout>

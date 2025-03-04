@@ -1,0 +1,276 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+# This gn script is used to test tools of gn_to_cmake_script and gn_to_podspec_script.
+
+import("../cmake_target_template.gni")
+import("../podspec_target_template.gni")
+import("test.gni")
+
+group("gn_tools_test") {
+  deps = [
+    ":cmake_test",
+    ":podspec_test",
+  ]
+}
+
+sdk_configs = ""
+if (is_linux) {
+  sdk_configs = "//build/config/linux:sdk"
+} else if (is_mac) {
+  sdk_configs = "//build/config/mac:sdk"
+} else if (is_ios) {
+  sdk_configs = "//build/config/ios:sdk"
+} else if (is_tvos) {
+  sdk_configs = "//build/config/tvos:sdk"
+} else if (is_android) {
+  sdk_configs = "//build/config/android:sdk"
+}
+
+#### cmake_target template test ####
+cmake_target("cmake_test") {
+  output_name = "gn_test"
+  target_type = "shared_library"
+  file_name = "CMakeLists.txt"
+  sources = [
+    "gn_test_shared.cc",
+    "gn_test_shared.h",
+  ]
+  deps = [
+    ":gn_test_source",
+    ":gn_test_sub_shared",
+  ]
+  sub_cmake_target = [ ":gn_test_cmake" ]
+  include_dirs = [ "." ]
+  defines = [ "GN_TESTING_DEFINE=1" ]
+  cflags = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+  ]
+  ldflags = [ "-Wl,--exclude-libs,ALL,--gc-sections" ]
+  libs = [
+    "android",
+    "dl",
+    "jnigraphics",
+    "log",
+  ]
+  if (sdk_configs != "") {
+    exclude_configs = [ "$sdk_configs" ]
+  }
+}
+
+cmake_target("gn_test_cmake") {
+  output_name = "gn_test_cmake"
+  output_path = "out/gn_test_cmake"
+  target_type = "shared_library"
+  file_name = "CMakeLists.txt"
+  sources = []
+  if (sdk_configs != "") {
+    exclude_configs = [ "$sdk_configs" ]
+  }
+}
+
+test_shared_library("gn_test_sub_shared") {
+  sources = []
+  output_name = "gn_test_sub"
+  if (sdk_configs != "") {
+    exclude_configs = [ "$sdk_configs" ]
+  }
+}
+
+test_source_set("gn_test_source") {
+  include_dirs = [ "." ]
+  sources = [
+    "gn_test_source.cc",
+    "gn_test_source.h",
+  ]
+  public = [ "gn_test_source.h" ]
+  if (sdk_configs != "") {
+    exclude_configs = [ "$sdk_configs" ]
+  }
+
+  public_deps = [ ":gn_test_action" ]
+}
+
+action("gn_test_action") {
+  script = "//lynx/tools/gn_tools/test/gn_test_action.py"
+  sources = []
+  outputs = [ "$target_gen_dir/action.txt" ]
+  args = []
+}
+
+#### podspec_target template test ####
+podspec_target("podspec_test") {
+  global_variables = [ "\$is_debug = ENV['ENABLE_DEBUG'] == 'true'" ]
+  output_name = "gn_test.podspec"
+  output_path = "."
+  root_specification = {
+    name = "gnToPodspecTest"
+    version = "1.4.22"
+    summary = "The framework of gnToPodspecTest."
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "git@github.com:lynx-family/lynx.git"
+    }
+    requires_arc = true
+    default_subspec = "Framework"
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [
+        "HOST_OSTYPE=HOST_IOS",
+        "LYNX_DEBUG=#{\$is_debug}",
+      ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+    }
+    ios = {
+      deployment_target = "9.0"
+      framework = [
+        "WebKit",
+        "AudioToolbox",
+      ]
+    }
+    prepare_command = [
+      "echo \"test bundle pre command\"",
+      "echo \"test bundle pre build\"",
+    ]
+  }
+
+  deps = [ ":test_subspec" ]
+  condition_deps = [ [
+        ":test_subspec_condition_subspec_top",
+        "is_debug",
+      ] ]
+}
+
+subspec_target("test_subspec") {
+  sources = [
+    "gn_test_source.cc",
+    "gn_test_source.h",
+  ]
+  deps = [
+    ":test_sources",
+    ":test_subspec_subspec",
+  ]
+  vendored_frameworks = [ "//tools/gn_tools/Lynx/Help.framework" ]
+  vendored_libraries = [ "//tools/gn_tools/Lynx/help.a" ]
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+  ]
+  public_header_files = [ "//tools/gn_tools/test/gn_test_shared.h" ]
+  header_mappings_dir = "tools/gn_tools"
+  frameworks = [ "Accelerate" ]
+  framework = "AVFoundation"
+  libraries = [ "stdc++" ]
+  library = "log"
+  resource_bundles = [ ":LynxResources" ]
+  dependency = [
+    [
+      "test_dep/Framework",
+      ">=1.0.3",
+    ],
+    "test_dep/Native",
+  ]
+  pattern_source_files = [
+    "//tools/gn_tools/**/*.h",
+    "**/*.m",
+  ]
+  pattern_exclude_files = [ "//tools/to/file/**/*" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "OS_IOS=1",
+      "IS_DEBUG=#{\$is_debug}",
+    ]
+    CLANG_CXX_LANGUAGE_STANDARD = [ "gnu++17" ]
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/tools/gn_tools",
+      "//TARGET_BUILD_DIR/tools/gn_tools",
+      "//PODS_TARGET_SRCROOT/tools/gn_tools",
+      "//tools/gn_tools",
+    ]
+  }
+  flatten_deps = [ ":test_subspec_flatten_subspec" ]
+  condition_deps = [ [
+        ":test_subspec_condition_subspec",
+        "is_debug",
+      ] ]
+}
+
+source_set("test_sources") {
+  sources = [
+    "gn_test_shared.cc",
+    "gn_test_shared.h",
+  ]
+}
+
+subspec_target("test_subspec_subspec") {
+  sources = [
+    "gn_test_source_subspec.cc",
+    "gn_test_source_subspec.h",
+  ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "IS_DEBUG=#{\$is_debug}" ]
+    CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+  }
+}
+
+subspec_target("test_subspec_condition_subspec") {
+  sources = [
+    "gn_test_source_condition_subspec.cc",
+    "gn_test_source_condition_subspec.h",
+  ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "IS_DEBUG=#{\$is_debug}" ]
+    HEADER_SEARCH_PATHS = [ "//tools/gn_tools" ]
+  }
+}
+
+subspec_target("test_subspec_flatten_subspec") {
+  sources = [
+    "gn_test_source_flatten_subspec.cc",
+    "gn_test_source_flatten_subspec.h",
+  ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "IS_FLATTEN=true" ]
+    HEADER_SEARCH_PATHS = [ "//tools/gn_tools/flatten" ]
+  }
+  dependency = [
+    [
+      "test_dep/Framework",
+      ">=1.0.5",
+    ],
+    "test_dep/SubspecNative",
+  ]
+}
+
+subspec_target("test_subspec_condition_subspec_top") {
+  output_name = "ConditionSub"
+  sources = [
+    "gn_test_source_flatten_subspec_top.cc",
+    "gn_test_source_flatten_subspec_top.h",
+  ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "IS_FLATTEN=false" ]
+    HEADER_SEARCH_PATHS = [ "//tools/gn_tools/top/flatten" ]
+  }
+}
+
+bundle_data("LynxResources") {
+  sources = [
+    "//darwin/ios/JSAssets/release/lepus_bridge.js",
+    "//darwin/ios/JSAssets/release/lynx_core.js",
+  ]
+  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+}

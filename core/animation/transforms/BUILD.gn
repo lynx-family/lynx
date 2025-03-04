@@ -1,0 +1,66 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+transforms_shared_sources = [
+  "decomposed_transform.cc",
+  "decomposed_transform.h",
+  "matrix44.cc",
+  "matrix44.h",
+  "quaternion.cc",
+  "quaternion.h",
+  "transform_operation.cc",
+  "transform_operation.h",
+  "transform_operations.cc",
+  "transform_operations.h",
+]
+
+lynx_core_source_set("transforms") {
+  sources = transforms_shared_sources
+
+  public_deps = [
+    "//lynx/core/base",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  deps = [
+    "//lynx/core/renderer/css:css",
+    "//lynx/core/renderer/dom:dom_headers",
+    "//lynx/core/renderer/starlight:starlight",
+    "//lynx/core/style:style",
+  ]
+}
+
+unittest_set("transforms_testset") {
+  check_includes = false
+  testonly = true
+  sources = [
+    "quaternion_unittest.cc",
+    "transform_operation_unittest.cc",
+    "transform_operations_unittest.cc",
+  ]
+  deps = [
+    "//lynx/core/renderer:tasm_group",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+  public_deps = [ ":transforms" ]
+}
+
+unittest_exec("transforms_unittests_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":transforms",
+    ":transforms_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("transforms_tests") {
+  testonly = true
+  deps = [ ":transforms_unittests_exec" ]
+  public_deps = [ ":transforms_testset" ]
+}

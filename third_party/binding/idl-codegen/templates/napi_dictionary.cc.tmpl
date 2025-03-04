@@ -1,0 +1,252 @@
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#include "{{this_include_header_path}}"
+
+{% for filename in hardcoded_includes %}
+#include "{{filename}}"
+{% endfor %}
+
+using Napi::Array;
+using Napi::Number;
+using Napi::Object;
+using Napi::ObjectWrap;
+using Napi::String;
+using Napi::TypeError;
+using Napi::Value;
+
+using lynx::binding::IDLBoolean;
+using lynx::binding::IDLDouble;
+using lynx::binding::IDLFloat;
+using lynx::binding::IDLFunction;
+using lynx::binding::IDLNumber;
+using lynx::binding::IDLString;
+using lynx::binding::IDLUnrestrictedFloat;
+using lynx::binding::IDLUnrestrictedDouble;
+using lynx::binding::IDLNullable;
+using lynx::binding::IDLObject;
+using lynx::binding::IDLTypedArray;
+using lynx::binding::IDLArrayBuffer;
+using lynx::binding::IDLArrayBufferView;
+using lynx::binding::IDLDictionary;
+using lynx::binding::IDLSequence;
+using lynx::binding::NativeValueTraits;
+
+using lynx::binding::ExceptionMessage;
+
+namespace lynx {
+namespace {{component}} {
+
+{% macro convert_member_union(return_type, member) %}
+  do {
+    {% for union_type in member.union_types %}
+    {% if union_type.is_interface_type %}{# TODO: Handle sequence, dict, etc #}
+    if (auto* {{member.name}} = binding::SafeUnwrap<{{union_type.idl_type_name}}>({{member.name}}_val)) {
+      {{member.name}}_{{union_type.idl_type}}_ = {{member.name}}->ToImplUnsafe();
+      {{member.name}}_is_{{union_type.idl_type}}_ = true;
+      break;
+    }
+    {% elif union_type.enum_type %}
+    if ({{member.name}}_val.IsString()) {
+      auto {{member.name}} = NativeValueTraits<IDLString>::NativeValue({{member.name}}_val).Utf8Value();
+      {% for enum_value in union_type.enum_values %}
+      if ({{member.name}} == "{{enum_value}}") {
+        {{member.name}}_{{union_type.idl_type}}_ = {{member.name}};
+        {{member.name}}_is_{{union_type.idl_type}}_ = true;
+        break;
+      }
+      {% endfor %}
+    }
+    {% endif %}{# member.is_wrapper_type #}
+    {% endfor %}
+    {% for union_type in member.union_types %}
+    {% if union_type.is_dictionary %}
+    if (auto {{member.name}} = NativeValueTraits<{{union_type.idl_type_name}}>::NativeValue({{member.name}}_val)) {
+      {{member.name}}_{{union_type.idl_type}}_ = std::move({{member.name}});
+      {{member.name}}_is_{{union_type.idl_type}}_ = true;
+      break;
+    }
+    {% endif %}
+    {% endfor %}
+    ExceptionMessage::InvalidType(info.Env(), "{{member.name}}", "{{member.cpp_type}}");
+    {{return_type}}
+  } while (false);
+{% endmacro %}
+
+{% macro convert_member(return_type, member) %}
+  {% if member.is_dictionary %}
+  {{member.name}}_ = NativeValueTraits<{{member.idl_type_name}}>::NativeValue({{member.name}}_val);
+  {% elif member.is_sequence_type and member.enum_type %}
+  auto {{member.name}}_array = {{member.name}}_val.As<Array>();
+  auto {{member.name}}_len = {{member.name}}_array.Length();
+  for (size_t i = 0; i < {{member.name}}_len; ++i) {
+    const Value& value = {{member.name}}_array[i];
+    do {
+      if (value.IsString()) {
+        {% for value in member.enum_values %}
+        if (value.As<String>().Utf8Value() == "{{value}}") break;
+        {% endfor %}
+      }
+      ExceptionMessage::InvalidType(info.Env(), "{{cpp_class + '.' + member.name}}", "{{member.union_values or member.union_types or ('array' if member.is_sequence_type) or member.idl_type}}");
+      {{return_type}}
+    } while (false);
+    {{member.name}}_.push_back(value.As<String>().Utf8Value());
+  }
+  {% elif member.is_sequence_type %}
+  auto {{member.name}}_array = {{member.name}}_val.As<Array>();
+  auto {{member.name}}_len = {{member.name}}_array.Length();
+  for (size_t i = 0; i < {{member.name}}_len; ++i) {
+    const Value& value = {{member.name}}_array[i];
+    auto element = {{member.sequence_element_type}}::ToImpl(value);
+    if (element) {
+      {{member.name}}_.push_back(std::move(element));
+    }
+  }
+  {% elif member.enum_type %}
+  do {
+    if ({{member.name}}_val.IsString()) {
+      {{member.name}}_ = {{member.name}}_val.As<String>().Utf8Value();
+      {% for enum_value in member.enum_values %}
+      if ({{member.name}}_ == "{{enum_value}}") break;
+      {% endfor %}
+    }
+    ExceptionMessage::InvalidType(info.Env(), "{{member.name}}", "{{member.enum_values}}");
+    {{ return_type }}
+  } while (false);
+  {% elif member.is_boolean_type or member.is_numeric_type or member.is_string_type or member.is_wrapper_type %}
+  {{member.name}}_ = NativeValueTraits<{{member.idl_type_name}}>::NativeValue({{member.name}}_val);
+  {% if member.is_wrapper_type %}{# further check if unwrapping went well #}
+  if (info.Env().IsExceptionPending()) {
+    {{ return_type }}
+  }
+  {% endif %}
+  {% elif member.union_types %}
+  {{ convert_member_union(return_type, member) }}
+  {% endif %}{# member.is_boolean_type #}
+{% endmacro %}
+
+{% macro attach_member_union(member) %}
+  do {
+    {% for union_type in member.union_types %}
+    if ({{member.name}}_is_{{union_type.idl_type}}_) {
+      {{ attach_member(union_type, member.name + '_' + union_type.idl_type) | trim | indent(6) }}
+      break;
+    }
+    {% endfor %}
+  } while (false);
+{% endmacro %}
+
+{% macro attach_member(member, name) %}
+  {% if member.is_boolean_type %}
+  obj["{{name}}"] = Napi::Boolean::New(env, {{name}}_);
+  {% elif member.is_numeric_type %}
+  obj["{{name}}"] = Number::New(env, {{name}}_);
+  {% elif member.is_dictionary %}
+  obj["{{name}}"] = {{name}}_->ToJsObject(env);
+  {% elif member.is_sequence_type and member.enum_type %}
+  auto array = Array::New(env, {{name}}_.size());
+  for (size_t i = 0; i < {{name}}_.size(); ++i) {
+    array[i] = String::New(env, {{name}}_[i]);
+  }
+  obj["{{name}}"] = std::move(array);
+  {% elif member.is_sequence_type %}
+  auto array = Array::New(env, {{name}}_.size());
+  for (size_t i = 0; i < {{name}}_.size(); ++i) {
+    array[i] = {{name}}_[i]->ToJsObject(env);
+  }
+  obj["{{name}}"] = std::move(array);
+  {% elif member.is_string_type or member.enum_type %}
+  obj["{{name}}"] = String::New(env, {{name}}_);
+  {% elif member.is_wrapper_type or member.is_interface_type %}
+  {% if member.is_nullable %}
+  if ({{name}}_) {
+    obj["{{name}}"] = {{name}}_->IsNapiWrapped() ? {{name}}_->NapiObject() : Napi{{member.idl_type}}::Wrap(std::unique_ptr<{{member.idl_type}}>({{name}}_), env);
+  } else {
+    obj["{{name}}"] = env.Null();
+  }
+  {% else %}
+  obj["{{name}}"] = {{name}}_->IsNapiWrapped() ? {{name}}_->NapiObject() : Napi{{member.idl_type}}::Wrap(std::unique_ptr<{{member.idl_type}}>({{name}}_), env);
+  {% endif %}{# member.is_nullable #}
+  {% endif %}{# member.is_boolean_type #}
+{% endmacro %}
+
+// static
+std::unique_ptr<{{cpp_class}}> {{cpp_class}}::ToImpl(const Value& info) {
+  if (!info.IsObject()) {
+    ExceptionMessage::NonObjectReceived(info.Env(), DictionaryName());
+    return nullptr;
+  }
+
+  {% for member in members %}
+  {% if member.is_required %}
+  if (!info.As<Object>().Has("{{member.name}}").FromMaybe(false)) {
+    ExceptionMessage::NoRequiredProperty(info.Env(), DictionaryName(), "{{member.name}}");
+    return nullptr;
+  }
+  {% endif %}
+  {% endfor %}
+
+  return std::make_unique<{{cpp_class}}>(info);
+}
+
+Object {{cpp_class}}::ToJsObject(Napi::Env env) {
+  auto obj = Object::New(env);
+
+  {% for member in members %}
+  if ({{member.has_method_name}}()) {
+    {% if member.union_types %}
+    {{ attach_member_union(member) | trim | indent(2) }}
+    {% else %}
+    {{ attach_member(member, member.name) | trim | indent(2) }}
+    {% endif %}
+  }
+  {% endfor %}
+
+  return obj;
+}
+
+{{cpp_class}}::{{cpp_class}}(const Value& info)
+    {% if parent_cpp_class %}
+    : {{parent_cpp_class}}(info) {
+    {% else %}
+    {
+    {% endif %}
+  {% if members %}
+  Object obj = info.As<Object>();
+  {% for member in members %}
+  if (obj.Has("{{member.name}}").FromMaybe(false)) {
+    Value {{member.name}}_val = obj.Get("{{member.name}}");
+    {{ convert_member('return;', member) | trim | indent(2) }}
+    has_{{member.name}}_ = true;
+  }
+
+  {% endfor %}
+  {% endif %}
+}
+
+{% if has_remote %}
+binding::Value {{cpp_class}}::TransferToValue() {
+  std::vector<std::pair<std::string, binding::Value>> data;
+  {% for member in members %}
+  if ({{member.has_method_name}}()) {
+    {% if member.is_boolean_type %}
+    data.emplace_back("{{member.name}}", binding::Value::Boolean({{member.name}}_));
+    {% elif member.is_numeric_type %}
+    data.emplace_back("{{member.name}}", binding::Value::Number({{member.name}}_));
+    {% elif member.is_string_type or member.enum_type %}
+    data.emplace_back("{{member.name}}", binding::Value::String({{member.name}}_));
+    {% else %}
+    BINDING_NOTREACHED();
+    {% endif %}
+  } else {
+    data.emplace_back("{{member.name}}", binding::Value::Undefined());
+  }
+  {% endfor %}
+  return binding::Value::Dictionary(std::move(data), static_cast<int32_t>(DictionaryType::k{{cpp_class}}));
+}
+{% endif %}
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+{% endfilter %}{# format_blink_cpp_source_code #}

@@ -1,0 +1,10 @@
+{
+    "name": "exit-transition-name",
+    "id": 142,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "nihao",
+    "consumption_status": "skip",
+    "desc": "enter transition name"
+}

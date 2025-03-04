@@ -1,0 +1,36 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("rapidjson.gni")
+import ("build.gni")
+
+config("rapidjson_config") {
+  include_dirs = [
+    ".",
+    "//lynx/third_party",
+  ]
+  # rapidjson needs these defines to support C++11 features. These features
+  # are intentionally not autodetected by rapidjson.
+  defines = [
+    "RAPIDJSON_HAS_STDSTRING=1",
+    "RAPIDJSON_HAS_CXX11_RANGE_FOR",
+    "RAPIDJSON_HAS_CXX11_RVALUE_REFS",
+    "RAPIDJSON_HAS_CXX11_TYPETRAITS",
+    "RAPIDJSON_HAS_CXX11_NOEXCEPT",
+  ]
+
+  if (rapidjson_namespace != "") {
+    defines += [
+      "RAPIDJSON_NAMESPACE=${rapidjson_namespace}::rapidjson",
+      "RAPIDJSON_NAMESPACE_BEGIN=namespace ${rapidjson_namespace}{namespace rapidjson{",
+      "RAPIDJSON_NAMESPACE_END=}};namespace rapidjson=::${rapidjson_namespace}::rapidjson;",
+    ]
+  }
+}
+
+rapidjson_source_set("rapidjson") {
+  sources = rapidjson_shared_sources
+
+  public_configs = [ ":rapidjson_config" ]
+}

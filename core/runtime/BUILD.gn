@@ -1,0 +1,159 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/bindings_files.gni")
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+import("jsi/jsc/jsc.gni")
+
+declare_args() {
+  # Enable javascript debug.
+  use_js_debug = false
+}
+
+lynx_core_source_set("js_common") {
+  sources = [
+    "piper/js/js_bundle.cc",
+    "piper/js/js_bundle.h",
+    "piper/js/js_bundle_holder.h",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+# jsbridge_shared_sources
+jsbridge_shared_sources = [
+  "bindings/jsi/modules/lynx_jsi_module_callback.cc",
+  "bindings/jsi/modules/lynx_jsi_module_callback.h",
+  "bindings/jsi/modules/lynx_module.cc",
+  "bindings/jsi/modules/lynx_module.h",
+  "bindings/jsi/modules/lynx_module_binding.cc",
+  "bindings/jsi/modules/lynx_module_binding.h",
+  "bindings/jsi/modules/lynx_module_impl.cc",
+  "bindings/jsi/modules/lynx_module_impl.h",
+  "bindings/jsi/modules/lynx_module_manager.cc",
+  "bindings/jsi/modules/lynx_module_manager.h",
+  "bindings/jsi/modules/lynx_module_timing.cc",
+  "bindings/jsi/modules/lynx_module_timing.h",
+  "bindings/jsi/modules/module_delegate.h",
+  "bindings/jsi/modules/module_interceptor.cc",
+  "bindings/jsi/modules/module_interceptor.h",
+  "common/lynx_console_helper.h",
+  "piper/js/js_context_wrapper.cc",
+  "piper/js/js_context_wrapper.h",
+  "piper/js/js_executor.cc",
+  "piper/js/js_executor.h",
+  "piper/js/lynx_api_handler.cc",
+  "piper/js/lynx_api_handler.h",
+  "piper/js/lynx_runtime.cc",
+  "piper/js/lynx_runtime.h",
+  "piper/js/lynx_runtime_helper.h",
+  "piper/js/runtime_constant.h",
+  "piper/js/runtime_manager.cc",
+  "piper/js/runtime_manager.h",
+  "piper/js/template_delegate.h",
+  "piper/js/update_data_type.h",
+]
+
+if (!enable_unittests) {
+  if (is_apple && !is_oliver_node_lynx) {
+    jsbridge_shared_sources += jsc_sources
+    jsbridge_shared_sources +=
+        [
+          "bindings/jsi/modules/ios/lynx_module_darwin.h",
+          "bindings/jsi/modules/ios/lynx_module_darwin.mm",
+          "bindings/jsi/modules/ios/lynx_module_interceptor.h",
+          "bindings/jsi/modules/ios/module_factory_darwin.h",
+          "bindings/jsi/modules/ios/module_factory_darwin.mm",
+          "bindings/lepus/ios/lynx_lepus_module_darwin.h",
+          "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
+        ] + jsbridge_extend_shared_sources
+  }
+}
+
+if (enable_unittests) {
+  if (is_mac) {
+    # On MacOS, NapiBindingCore source files create JSC runtime by default.
+    # And consequently all unittests should link with JSC framework and
+    # depends on NapiBindingJSC.
+    jsbridge_shared_sources += jsc_sources
+  }
+}
+
+# jsbridge_shared_sources end
+
+lynx_core_source_set("runtime") {
+  sources = jsbridge_shared_sources
+  deps = [
+    ":js_common",
+    "bindings/jsi",
+    "common:reporter",
+    "common:utils",
+    "jsi",
+    "profile",
+    "profile/lepusng:lepusng_profile",
+    "profile/quickjs:quickjs_profile",
+    "//lynx/core/runtime/bindings/jsi/interceptor:interceptor_factory",
+    "//lynx/third_party/modp_b64",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  if (is_android || is_ios || enable_unittests) {
+    deps += [ "//lynx/core/runtime/profile/v8:v8_profile" ]
+  }
+
+  public_deps = [ "jsi/quickjs" ]
+  if (enable_napi_binding) {
+    public_deps += [ "bindings/napi:napi_binding_core" ]
+  }
+  if (is_android || is_ios) {
+    defines = [
+      "JS_SHARED_LIBRARY",
+      "EMSCRIPTEN",
+      "CONFIG_VERSION=\"2019-07-09\"",
+      "LYNX_DEV",
+      "LYNX_SIMPLIFY=0",
+    ]
+
+    if (is_debug) {
+      defines += [ "DEBUG_MEMORY" ]
+    }
+
+    configs = [ "//build/config/compiler:no_chromium_code" ]
+    exclude_configs = [ "//build/config/compiler:chromium_code" ]
+
+    cflags = [ "-Wno-unused-variable" ]
+
+    if (is_android) {
+      public_deps += [ "bindings/jsi/modules/android:modules_android_src" ]
+    }
+    if (enable_napi_binding) {
+      public_deps += [ "bindings/napi:napi_binding_core" ]
+    }
+  }
+}
+
+unittest_set("jsbridge_testset") {
+  sources = [
+    "bindings/jsi/modules/lynx_module_manager_unittest.cc",
+    "bindings/jsi/modules/native_module_factory_unittest.cc",
+    "piper/js/js_bundle_unittest.cc",
+  ]
+
+  deps = [
+    ":runtime",
+    "bindings/jsi:bindings_unittests_testset",
+    "bindings/napi:napi_unittests_testset",
+    "common:utils_unittests_testset",
+    "jscache:jscache_unittests_testset",
+    "jsi:jsi_unittests_testset",
+    "jsi/quickjs:quickjs_unittests_testset",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/utils:renderer_utils",
+  ]
+}
+
+unittest_exec("jsbridge_tests_exec") {
+  sources = []
+  deps = [ ":jsbridge_testset" ]
+}

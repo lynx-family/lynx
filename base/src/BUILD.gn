@@ -1,0 +1,390 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/oliver/oliver.gni")
+import("//lynx/testing/test.gni")
+import("base.gni")
+
+config("base_public") {
+  defines = []
+  cflags = []
+  if (!is_debug) {
+    defines += [ "NDEBUG" ]
+  }
+
+  if (is_android) {
+    defines += [
+      "GNU_SUPPORT=1",
+      "OS_ANDROID=1",
+      "OS_POSIX=1",
+    ]
+  } else if (is_ios) {
+    defines += [
+      "OS_IOS=1",
+      "OS_POSIX=1",
+    ]
+  } else if (is_mac) {
+    defines += [
+      "OS_OSX=1",
+      "OS_POSIX=1",
+    ]
+  } else if (is_win) {
+    defines += [
+      "OS_WIN=1",
+      "_CRT_SECURE_NO_WARNINGS=1",
+    ]
+  }
+}
+
+config("base_log_public") {
+  defines = []
+  if (enable_lite && enable_lite_production) {
+    defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
+  } else if (is_oliver_ssr) {
+    defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
+  } else if (is_debug) {
+    # In debug mode, logs of all levels will be output.
+    defines += [ "LYNX_MIN_LOG_LEVEL=0" ]
+  } else {
+    # In release mode, logs with a priority higher than LOG_DEBUG will be output.
+    defines += [ "LYNX_MIN_LOG_LEVEL=2" ]
+  }
+}
+
+source_set("base_log_headers") {
+  public_configs = [
+    ":base_public",
+    ":base_log_public",
+  ]
+  sources = [
+    "../include/debug/lynx_assert.h",
+    "../include/debug/lynx_error.h",
+    "../include/log/alog_wrapper.h",
+    "../include/log/log_stream.h",
+    "../include/log/logging.h",
+  ]
+  if (!is_win) {
+    sources += [ "../include/debug/backtrace.h" ]
+  }
+}
+
+source_set("base_log") {
+  public_configs = [
+    ":base_public",
+    ":base_log_public",
+  ]
+  public_deps = [ ":base_log_headers" ]
+
+  sources = [
+    "debug/lynx_error.cc",
+    "log/alog_wrapper.cc",
+    "log/log_stream.cc",
+    "log/logging.cc",
+  ]
+  if (!is_win) {
+    # Windows do not overwrite this file
+    sources += [ "debug/backtrace.cc" ]
+  }
+
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}
+
+source_set("time_utils") {
+  sources = [
+    "../include/timer/time_utils.h",
+    "timer/time_utils.cc",
+  ]
+  public_configs = [ ":base_public" ]
+}
+
+source_set("base") {
+  public_deps = [
+    ":string_utils",
+    ":time_utils",
+    ":values",
+  ]
+  public_configs = [ ":base_public" ]
+
+  sources = [
+    "../include/algorithm.h",
+    "../include/auto_reset.h",
+    "../include/base_export.h",
+    "../include/boost/unordered.h",
+    "../include/cast_util.h",
+    "../include/closure.h",
+    "../include/compiler_specific.h",
+    "../include/concurrent_queue.h",
+    "../include/expected.h",
+    "../include/expected_internal.h",
+    "../include/float_comparison.h",
+    "../include/fml/concurrent_message_loop.h",
+    "../include/fml/delayed_task.h",
+    "../include/fml/eintr_wrapper.h",
+    "../include/fml/macros.h",
+    "../include/fml/make_copyable.h",
+    "../include/fml/memory/ref_counted.h",
+    "../include/fml/memory/ref_counted_internal.h",
+    "../include/fml/memory/ref_ptr.h",
+    "../include/fml/memory/ref_ptr_internal.h",
+    "../include/fml/memory/task_runner_checker.h",
+    "../include/fml/memory/weak_ptr.h",
+    "../include/fml/memory/weak_ptr_internal.h",
+    "../include/fml/message_loop.h",
+    "../include/fml/message_loop_impl.h",
+    "../include/fml/message_loop_task_queues.h",
+    "../include/fml/platform/thread_config_setter.h",
+    "../include/fml/synchronization/atomic_object.h",
+    "../include/fml/synchronization/count_down_latch.h",
+    "../include/fml/synchronization/semaphore.h",
+    "../include/fml/synchronization/shared_mutex.h",
+    "../include/fml/synchronization/sync_switch.h",
+    "../include/fml/synchronization/waitable_event.h",
+    "../include/fml/task_queue_id.h",
+    "../include/fml/task_runner.h",
+    "../include/fml/task_source.h",
+    "../include/fml/task_source_grade.h",
+    "../include/fml/thread.h",
+    "../include/fml/time/time_delta.h",
+    "../include/fml/time/time_point.h",
+    "../include/fml/time/timer.h",
+    "../include/fml/time/timestamp_provider.h",
+    "../include/fml/unique_fd.h",
+    "../include/fml/unique_object.h",
+    "../include/fml/wakeable.h",
+    "../include/geometry/point.h",
+    "../include/geometry/rect.h",
+    "../include/geometry/size.h",
+    "../include/linked_hash_map.h",
+    "../include/lru_cache.h",
+    "../include/lynx_actor.h",
+    "../include/md5.h",
+    "../include/no_destructor.h",
+    "../include/path_utils.h",
+    "../include/position.h",
+    "../include/shared_vector.h",
+    "../include/sorted_for_each.h",
+    "../include/thread/base_semaphore.h",
+    "../include/thread/pthread_rw_lock_guard.h",
+    "../include/thread/timed_task.h",
+    "../include/to_underlying.h",
+    "../include/type_traits_addon.h",
+    "../include/vector.h",
+    "../include/vector2d.h",
+    "../include/vector_helper.h",
+    "../include/version_util.h",
+    "//build/build_config.h",
+    "fml/concurrent_message_loop.cc",
+    "fml/delayed_task.cc",
+    "fml/memory/task_runner_checker.cc",
+    "fml/memory/weak_ptr_internal.cc",
+    "fml/message_loop.cc",
+    "fml/message_loop_impl.cc",
+    "fml/message_loop_task_queues.cc",
+    "fml/synchronization/count_down_latch.cc",
+    "fml/synchronization/semaphore.cc",
+    "fml/synchronization/sync_switch.cc",
+    "fml/synchronization/waitable_event.cc",
+    "fml/task_runner.cc",
+    "fml/task_source.cc",
+    "fml/thread.cc",
+    "fml/thread_name_setter.h",
+    "fml/time/time_point.cc",
+    "fml/time/timer.cc",
+    "fml/unique_fd.cc",
+    "md5.cc",
+    "thread/timed_task.cc",
+  ]
+
+  if (is_android || is_linux) {
+    sources += [
+      "../include/fml/platform/linux/timerfd.h",
+      "fml/platform/linux/timerfd.cc",
+    ]
+  }
+
+  if (is_android) {
+    sources += [
+      "../include/fml/platform/android/message_loop_android.h",
+      "../include/fml/synchronization/shared_mutex_std.h",
+      "../include/platform/android/java_type.h",
+      "../include/platform/android/jni_convert_helper.h",
+      "../include/platform/android/jni_utils.h",
+      "../include/platform/android/scoped_java_ref.h",
+      "fml/platform/android/thread_config_setter_android.cc",
+      "fml/platform/posix/thread_name_setter_posix.cc",
+      "fml/synchronization/shared_mutex_std.cc",
+      "platform/android/java_type.cc",
+      "platform/android/jni_convert_helper.cc",
+      "platform/android/jni_utils.cc",
+      "platform/android/scoped_java_ref.cc",
+    ]
+    if (enable_unittests) {
+      # Use NDK implementation of message loop instead of JNI as UT doesn't have a JVM.
+      # Also ref to https://github.com/flutter/engine/pull/29889/files and
+      # https://github.com/flutter/engine/pull/31750 for historical reasons.
+      sources += [ "fml/platform/android/message_loop_android_ndk.cc" ]
+    } else {
+      sources += [ "fml/platform/android/message_loop_android.cc" ]
+    }
+  } else if (is_linux) {
+    sources += [
+      "../include/fml/synchronization/shared_mutex_std.h",
+      "fml/platform/posix/thread_name_setter_posix.cc",
+      "fml/synchronization/shared_mutex_std.cc",
+    ]
+    if (!use_custom_message_loop) {
+      sources += [
+        "../include/fml/platform/linux/message_loop_linux.h",
+        "fml/platform/linux/message_loop_linux.cc",
+      ]
+    }
+  } else if (is_apple) {
+    sources += [
+      "../include/fml/platform/darwin/cf_utils.h",
+      "../include/fml/synchronization/shared_mutex_posix.h",
+      "../include/platform/darwin/type_utils.h",
+      "fml/platform/darwin/thread_config_setter_darwin.mm",
+      "fml/platform/darwin/thread_name_setter_darwin.cc",
+      "fml/synchronization/shared_mutex_posix.cc",
+    ]
+
+    if (!use_custom_message_loop) {
+      sources += [
+        "../include/fml/platform/darwin/message_loop_darwin.h",
+        "fml/platform/darwin/message_loop_darwin.mm",
+      ]
+    }
+
+    flutter_cflags_objc = [
+      "-Werror=overriding-method-mismatch",
+      "-Werror=undeclared-selector",
+    ]
+    flutter_cflags_objcc = flutter_cflags_objc
+
+    cflags_objc = flutter_cflags_objc
+    cflags_objcc = flutter_cflags_objcc
+    frameworks = [ "Foundation.framework" ]
+  } else if (is_win) {
+    sources += [
+      "../include/fml/platform/win/message_loop_win.h",
+      "../include/fml/platform/win/task_runner_win32.h",
+      "../include/fml/platform/win/task_runner_win32_window.h",
+      "../include/fml/synchronization/shared_mutex_std.h",
+      "../include/string/string_conversion_win.h",
+      "fml/platform/win/message_loop_win.cc",
+      "fml/platform/win/task_runner_win32.cc",
+      "fml/platform/win/task_runner_win32_window.cc",
+      "fml/platform/win/thread_name_setter_win.cc",
+      "fml/synchronization/shared_mutex_std.cc",
+      "string/string_conversion_win.cc",
+    ]
+  }
+
+  sources += [
+    "../include/fml/hash_combine.h",
+    "../include/fml/raster_thread_merger.h",
+    "../include/fml/shared_thread_merger.h",
+    "./fml/raster_thread_merger.cc",
+    "./fml/shared_thread_merger.cc",
+  ]
+
+  deps = [ ":datauri_utils" ]
+
+  libs = []
+  if (is_android) {
+    libs += [ "android" ]
+  }
+  if (is_win) {
+    libs += [ "user32.lib" ]
+  }
+}
+
+if (enable_unittests) {
+  unittest_exec("base_unittests_exec") {
+    testonly = true
+    sources = [
+      "algorithm_unittest.cc",
+      "auto_reset_unittest.cc",
+      "boost/unordered_unittest.cc",
+      "closure_unittest.cc",
+      "concurrent_queue_unittest.cc",
+      "datauri_utils_unittest.cc",
+      "debug/lynx_error_unittest.cc",
+      "expected_unittest.cc",
+      "fml/hash_combine_unittests.cc",
+      "fml/memory/ref_counted_unittest.cc",
+      "fml/memory/task_runner_checker_unittest.cc",
+      "fml/memory/weak_ptr_unittest.cc",
+      "fml/message_loop_impl_unittests.cc",
+      "fml/message_loop_task_queues_merge_unmerge_unittests.cc",
+      "fml/message_loop_task_queues_unittests.cc",
+      "fml/message_loop_unittests.cc",
+      "fml/raster_thread_merger_unittests.cc",
+      "fml/synchronization/count_down_latch_unittests.cc",
+      "fml/synchronization/semaphore_unittest.cc",
+      "fml/synchronization/sync_switch_unittest.cc",
+      "fml/synchronization/waitable_event_unittest.cc",
+      "fml/task_source_unittests.cc",
+      "fml/thread_unittests.cc",
+      "fml/time/chrono_timestamp_provider.cc",
+      "fml/time/time_delta_unittest.cc",
+      "fml/time/time_point_unittest.cc",
+      "fml/time/time_unittest.cc",
+      "geometry_unittest.cc",
+      "linked_hash_map_unittest.cc",
+      "log/log_stream_unittest.cc",
+      "lynx_actor_unittest.cc",
+      "path_utils_unittest.cc",
+      "sorted_for_each_unittest.cc",
+      "string/string_number_convert_unittest.cc",
+      "string/string_utils_unittest.cc",
+      "string/utf_conv_unittests.cc",
+      "thread/timed_task_unittest.cc",
+      "timer/time_utils_unittest.cc",
+      "to_underlying_unittest.cc",
+      "type_traits_addon_unittest.cc",
+      "vector_unittest.cc",
+      "version_unittest.cc",
+    ]
+    if (is_mac) {
+      sources += [ "fml/platform/darwin/cf_utils_unittests.mm" ]
+    }
+    deps = [
+      ":base",
+      ":base_log",
+      "//third_party/googletest:gtest",
+    ]
+  }
+}
+
+source_set("string_utils") {
+  public_configs = [ ":base_public" ]
+  sources = [
+    "../include/string/string_number_convert.h",
+    "../include/string/string_utils.h",
+    "string/quickjs_dtoa.c",
+    "string/string_number_convert.cc",
+    "string/string_utils.cc",
+  ]
+}
+
+source_set("values") {
+  public_configs = [ ":base_public" ]
+
+  sources = [
+    "../include/value/base_string.h",
+    "value/base_string.cc",
+  ]
+}
+
+source_set("datauri_utils") {
+  public_configs = [ ":base_public" ]
+  sources = [
+    "../include/datauri_utils.h",
+    "datauri_utils.cc",
+  ]
+
+  public_deps = [ "//lynx/third_party/modp_b64" ]
+}

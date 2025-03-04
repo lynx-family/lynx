@@ -1,0 +1,5 @@
+declare_args() {
+  # Whether to use a custom message loop.
+  # If false, the platform’s default implementation will be used.
+  use_custom_message_loop = false
+}

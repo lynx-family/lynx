@@ -1,0 +1,116 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+use_flatten_deps = true
+
+# when publish lynx, all lynx components should be the same version
+lynx_version = "0.0.1"
+lynx_dependency = [ [
+      "Lynx",
+      "$lynx_version",
+    ] ]
+lynxdevtool_dependency = [ [
+      "LynxDevtool",
+      "$lynx_version",
+    ] ]
+basedevtool_dependency = [ [
+      "BaseDevtool",
+      "$lynx_version",
+    ] ]
+
+lynx_group_extend_source = [ "//lynx/platform/darwin/common/lynx/LynxGroup.mm" ]
+
+darwin_config = [
+  "//lynx/platform/darwin:darwin_flag_config",
+  "//lynx/platform/darwin:darwin_include_config",
+]
+
+devtool_darwin_config =
+    [ "//lynx/platform/darwin/common/lynx_devtool:public_config" ]
+
+lynx_public_extend_sources =
+    [ "//lynx/platform/darwin/common/lynx/public/LynxGroup.h" ]
+
+public_shared_extend_sources =
+    [ "//lynx/platform/darwin/ios/lynx/public/base/LynxImageFetcher.h" ]
+
+tasm_extend_deps = []
+
+Framework_deps = [
+  "Lynx/LazyLoad",
+  "Lynx/Native",
+  "Lynx/Trace",
+]
+
+PRIMJS_includes = [
+  "//PODS_ROOT/PrimJS/src/interpreter",
+  "//PODS_ROOT/PrimJS/src",
+  "//PODS_ROOT/PrimJS/src/gc",
+  "//PODS_ROOT/PrimJS/src/interpreter/quickjs/include",
+  "//PODS_ROOT/PrimJS/src/napi",
+  "//PODS_ROOT/PrimJS/src/napi/quickjs",
+  "//PODS_ROOT/PrimJS/src/napi/jsc",
+]
+
+Native_includes = [
+                    "//",
+                    "//TARGET_BUILD_DIR/Lynx/gen/Lynx",
+                    "//lynx/core",
+                    "//lynx",
+                    "//lynx/platform",
+                  ] + PRIMJS_includes
+
+Devtool_Native_includes = [
+                            "//TARGET_BUILD_DIR/Devtool/gen/Lynx",
+                            "//LynxDevtool",
+                            "//core",
+                            "//",
+                            "//lynx",
+                            "//lynx/devtool/lynx_devtool",
+                            "//PODS_ROOT/Lynx/lynx",
+                            "//PODS_ROOT/BaseDevtool/lynx/",
+                          ] + PRIMJS_includes
+
+Lepus_deps = [ "PrimJS/quickjs" ]
+
+devtool_extend_sources = []
+
+JSDebug_deps = [
+  "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+  "//lynx/devtool/js_inspect:inspector_const",
+  "//lynx/devtool/js_inspect/lepus:lepus_debug",
+  "//lynx/devtool/js_inspect/quickjs:quickjs_debug",
+  "//lynx/devtool/lynx_devtool/js_debug:devtool_common_js_debug",
+  "//lynx/devtool/lynx_devtool/js_debug:devtool_js_debug",
+  "//lynx/devtool/lynx_devtool/js_debug:devtool_quickjs_debug",
+  "//lynx/devtool/lynx_devtool/js_debug/:devtool_lepus_debug_sources",
+]
+
+js_debug_dependency = [
+  "PrimJS/quickjs_debugger",
+  "PrimJS/quickjs_heapprofiler",
+  "PrimJS/quickjs_profiler",
+]
+
+build_devtool_resources_command = [
+  "if [ -f \"./lynx/devtool/lynx_devtool/resources/copy_resources.sh\" ]; then",
+  "  ./lynx/devtool/lynx_devtool/resources/copy_resources.sh",
+  "fi",
+  "if [ -f \"./lynx/tools/js_tools/build.sh\" ]; then",
+  "  lynx/tools/js_tools/build.sh ios platform/darwin/ios/JSAssets/release/lynx_core.js platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
+  "fi",
+]
+
+devtool_prepare_command = build_devtool_resources_command
+
+LepusNG_deps = [ "PrimJS/quickjs" ]
+
+NapiBinding_Common_deps = [ "PrimJS/napi/env" ]
+
+QuickJS_includes = PRIMJS_includes
+QuickJS_deps = [ "PrimJS/napi/quickjs" ]
+
+JSC_deps = [ "PrimJS/napi/jsc" ]
+
+Worklet_deps = [ "PrimJS/quickjs" ]

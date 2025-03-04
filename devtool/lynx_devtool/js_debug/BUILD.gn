@@ -1,0 +1,173 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/runtime/jsi/v8/v8.gni")
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+import("//lynx/testing/test.gni")
+
+devtool_common_js_debug_sources = [
+  "inspector_client_delegate_impl.cc",
+  "inspector_client_delegate_impl.h",
+  "inspector_const_extend.h",
+  "java_script_debugger_ng.h",
+]
+
+devtool_js_debug_sources = [
+  "js/console_message_postman_impl.cc",
+  "js/console_message_postman_impl.h",
+  "js/inspector_java_script_debugger_impl.cc",
+  "js/inspector_java_script_debugger_impl.h",
+  "js/inspector_runtime_observer_impl.cc",
+  "js/inspector_runtime_observer_impl.h",
+  "js/runtime_manager_delegate_impl.cc",
+  "js/runtime_manager_delegate_impl.h",
+]
+
+devtool_lepus_debug_sources = [
+  "lepus/inspector_lepus_debugger_impl.cc",
+  "lepus/inspector_lepus_debugger_impl.h",
+  "lepus/inspector_lepus_observer_impl.cc",
+  "lepus/inspector_lepus_observer_impl.h",
+]
+
+devtool_quickjs_debug_sources = [
+  "js/quickjs/manager/quickjs_inspector_manager_impl.cc",
+  "js/quickjs/manager/quickjs_inspector_manager_impl.h",
+]
+
+devtool_source_set("devtool_quickjs_debug") {
+  sources = devtool_quickjs_debug_sources
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/devtool/js_inspect/quickjs:quickjs_debug",
+  ]
+}
+
+devtool_source_set("v8_profile_devtool") {
+  sources = [
+    "//lynx/core/runtime/profile/v8/v8_runtime_profiler.cc",
+    "//lynx/core/runtime/profile/v8/v8_runtime_profiler.h",
+    "//lynx/core/runtime/profile/v8/v8_runtime_profiler_wrapper.h",
+  ]
+
+  defines = [ "ENABLE_TRACE_PERFETTO=1" ]
+  deps = [
+    "//lynx/core/runtime/profile:profile_public_header",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+# devtool_v8_debug_sources
+devtool_v8_debug_sources = [
+  "js/v8/manager/v8_inspector_manager_impl.cc",
+  "js/v8/manager/v8_inspector_manager_impl.h",
+]
+
+devtool_source_set("devtool_js_v8_bridge") {
+  include_dirs = [ v8_headers_search_path ]
+  sources = js_v8_bridge_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+devtool_source_set("devtool_v8_debug") {
+  sources = devtool_v8_debug_sources
+  include_dirs = [ v8_headers_search_path ]
+  deps = [
+    ":devtool_js_v8_bridge",
+    "//lynx/base/src:base_log_headers",
+    "//lynx/devtool/js_inspect/v8:v8_debug",
+  ]
+}
+
+devtool_source_set("devtool_common_js_debug") {
+  sources = devtool_common_js_debug_sources
+  if (!is_android && !is_ios) {
+    public_deps = [
+      "//lynx/devtool/base_devtool/native/js_inspect:base_devtool_js_inspect",
+    ]
+  }
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+devtool_source_set("devtool_js_debug") {
+  sources = devtool_js_debug_sources
+  deps = [
+    ":devtool_common_js_debug",
+    "//lynx/base/src:base_log_headers",
+  ]
+  if (!enable_unittests) {
+    deps += [ ":devtool_quickjs_debug" ]
+    if (is_android || jsengine_type == "v8") {
+      deps += [ ":devtool_v8_debug" ]
+      include_dirs = [ v8_headers_search_path ]
+    }
+  }
+  public_configs = [ ":common_config" ]
+}
+
+devtool_source_set("devtool_lepus_debug_sources") {
+  sources = devtool_lepus_debug_sources
+  deps = [
+    ":devtool_common_js_debug",
+    "//lynx/base/src:base_log_headers",
+  ]
+  if (is_ios || is_android) {
+    sources += [
+      "lepus/manager/lepus_inspector_manager_impl.cc",
+      "lepus/manager/lepus_inspector_manager_impl.h",
+    ]
+  }
+}
+
+devtool_source_set("devtool_lepus_debug") {
+  deps = [ ":devtool_lepus_debug_sources" ]
+  if (is_ios || is_android) {
+    deps += [ "//lynx/devtool/js_inspect/lepus:lepus_debug" ]
+  }
+}
+
+devtool_source_set("js_debug") {
+  deps = [
+    ":devtool_js_debug",
+    ":devtool_lepus_debug",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+config("common_config") {
+  if (enable_unittests) {
+    defines = [ "ENABLE_UNITTESTS" ]
+  }
+}
+
+unittest_set("js_debug_testset") {
+  public_configs = [
+    "//lynx/core:lynx_public_config",
+    "//lynx/devtool/lynx_devtool:devtool_common_config",
+  ]
+  sources = [
+    "inspector_client_delegate_impl_unittest.cc",
+    "java_script_debugger_ng_unittest.cc",
+    "lepus/inspector_lepus_debugger_impl_unittest.cc",
+    "lepus/inspector_lepus_observer_impl_unittest.cc",
+  ]
+  public_deps = [
+    ":js_debug",
+    "//lynx/devtool/base_devtool/native:base_devtool",
+    "//lynx/devtool/testing/mock:devtool_mock",
+  ]
+  include_dirs = [ "//third_party/googletest/googletest/include" ]
+}
+
+unittest_exec("js_debug_unittest_exec") {
+  sources = []
+  deps = [ ":js_debug_testset" ]
+}
+
+group("js_debug_unit_test") {
+  testonly = true
+  deps = [ ":js_debug_unittest_exec" ]
+}

@@ -1,0 +1,11 @@
+interface LepusElement {
+    void setAttributes(object attributes);
+    void setStyles(object styles);
+    object getAttributes(sequence<ByteString> keys);
+    object getComputedStyles(sequence<ByteString> keys);
+    object getDataset();
+
+    object scrollBy(float width, float height);
+    object getBoundingClientRect();
+    void invoke(object param);
+};

@@ -1,0 +1,100 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@mixin box {
+  display: flex;
+  flex-direction: row;
+  border-radius: 12px;
+  background: white;
+  width: 90%;
+  height: auto;
+  margin: 2% 5% 2% 5%;
+}
+
+.box {
+  @include box;
+  background: white;
+}
+
+.box__dark {
+  @include box;
+  background: #282e38;
+}
+
+@mixin title {
+  line-height: 22px;
+  font-size: 17px;
+}
+
+.title {
+  @include title;
+  color: black;
+}
+
+.title__dark {
+  @include title;
+  color: white;
+}
+
+@mixin text {
+  line-height: 22px;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.text {
+  @include text;
+  color: #00000073;
+}
+
+.text__dark {
+  @include text;
+  color: #FFFFFF73;
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  margin: 20px 12px auto 16px;
+  flex-shrink: 0;
+}
+
+.content {
+  width: auto;
+  margin: 16px 20px 16px 0px;
+}
+
+@mixin circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin: 20px 12px auto 16px;
+  flex-shrink: 0;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.circle {
+  @include circle;
+  background-color: #FFEFED;
+}
+
+.circle__dark {
+  @include circle;
+  background-color: #42343A;
+}
+
+.placeholder-text {
+  font-size: 20px;
+  font-weight: bold;
+  color: #FF351A;
+}
+
+.placeholder-text__dark {
+  font-size: 20px;
+  font-weight: bold;
+  color: #FF6448;
+}

@@ -1,0 +1,73 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+import("//lynx/testing/test.gni")
+
+devtool_source_set("element") {
+  sources = [
+    "element_helper.cc",
+    "element_helper.h",
+    "element_inspector.cc",
+    "element_inspector.h",
+    "helper_util.cc",
+    "helper_util.h",
+    "inspector_css_helper.cc",
+    "inspector_css_helper.h",
+  ]
+
+  public_deps = []
+  if (!enable_unittests) {
+    public_deps = [ "//lynx/core/renderer/css:css_decoder" ]
+  }
+
+  if (is_android) {
+    # liblynx.so does not export symbols in following two files
+    sources += [
+      "//lynx/core/renderer/css/css_color.cc",
+      "//lynx/core/renderer/css/css_color.h",
+      "//lynx/core/renderer/css/css_keywords.cc",
+      "//lynx/core/renderer/css/css_keywords.h",
+    ]
+  }
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+unittest_set("devtool_element_helper_testset") {
+  public_configs = [
+    "//lynx/core:lynx_public_config",
+    "//lynx/devtool/lynx_devtool:devtool_common_config",
+  ]
+  sources = [
+    "element_helper.cc",
+    "element_helper_unittest.cc",
+    "element_inspector.cc",
+    "helper_util.cc",
+    "helper_util_unittest.cc",
+    "inspector_css_helper.cc",
+    "inspector_css_helper_unittest.cc",
+  ]
+  deps = [ "//lynx/core/shell/testing:mock_tasm_delegate_testset" ]
+  public_deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/css:css",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/starlight:starlight",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/third_party/jsoncpp",
+  ]
+}
+
+unittest_exec("devtool_element_exec") {
+  sources = []
+  deps = [ ":devtool_element_helper_testset" ]
+}
+
+group("devtool_element_unit_test") {
+  testonly = true
+  deps = [
+    ":devtool_element_exec",
+    ":devtool_element_helper_testset",
+  ]
+}

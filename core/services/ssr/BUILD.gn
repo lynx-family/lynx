@@ -1,0 +1,27 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+ssr_shared_sources = [
+  "client/ssr_client_utils.h",
+  "client/ssr_data_update_manager.cc",
+  "client/ssr_data_update_manager.h",
+  "client/ssr_event_utils.cc",
+  "client/ssr_event_utils.h",
+  "client/ssr_hydrate_info.h",
+  "client/ssr_style_sheet.h",
+  "ssr_type_info.h",
+]
+
+ssr_client_sources =
+    [ "//${lynx_dir}/core/services/ssr/client/ssr_client_utils.cc" ]
+
+lynx_core_source_set("ssr") {
+  sources = ssr_shared_sources + ssr_client_sources
+  public_deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/rapidjson",
+  ]
+}

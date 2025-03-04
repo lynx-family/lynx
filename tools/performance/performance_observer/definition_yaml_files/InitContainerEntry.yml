@@ -1,0 +1,21 @@
+InitContainerEntry:
+  x-type: init
+  x-name: container
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        openTime:
+          type: number
+        containerInitStart:
+          type: number
+        containerInitEnd:
+          type: number
+        prepareTemplateStart:
+          type: number
+        prepareTemplateEnd:
+          type: number
+        extraTiming:
+          type: map
+          additionalProperties:
+            type: number

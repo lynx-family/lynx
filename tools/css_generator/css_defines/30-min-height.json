@@ -1,0 +1,46 @@
+{
+    "name": "min-height",
+    "id": 30,
+    "type": "length",
+    "default_value": "auto",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "min-height": {
+            "__compat": {
+              "description": "sets the minimum height of an element.",
+              "lynx_path": "docs/zh/api/css/properties/min-height",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/min-height",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                },
+                "web_lynx": {
+                  "version_added": "1.0"
+                }
+              }
+            }
+          } 
+    }
+}

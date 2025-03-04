@@ -1,0 +1,124 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@import "../shared";
+
+.logo {
+  display: flex;
+  width: 24px;
+  height: 24px;
+}
+
+.home-title__dark {
+  @include title;
+  margin-left: 6px;
+  color: var(--title-dark)
+}
+
+.home-title__light {
+  @include title;
+  margin-left: 6px;
+}
+
+.scan {
+  padding-top: -8px;
+  margin-left: auto;
+  border-radius: 20px;
+  width: 40px;
+  height: 40px;
+}
+
+.scan-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.input-card-url__light {
+  @include box;
+  flex-direction: column;
+  height: 24%;
+  justify-content: center;
+  margin-bottom: 3%;
+  background: var(--box-light);
+}
+
+.input-card-url__dark {
+  @include box;
+  flex-direction: column;
+  height: 24%;
+  justify-content: center;
+  margin-bottom: 3%;
+  background: var(--box-dark);
+}
+
+.input-box {
+  display: flex;
+  align-items: flex-start;
+  margin: 0% 5% 5% 5%;
+  border-width: 0px 0px 1px;
+  border-color: #0000000a;
+  height: 20%;
+  width: 90%;
+}
+
+.bold-text__light {
+  font-size: 14px;
+  font-weight: 500;
+  height: 20%;
+  margin: 5%;
+}
+
+.bold-text__dark {
+  font-size: 14px;
+  font-weight: 500;
+  height: 20%;
+  margin: 5%;
+  color: var(--text-dark)
+}
+
+@mixin connect-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1% 5% 5% 5%;
+  border-radius: 8px;
+  height: 28%;
+  width: 90%;
+}
+
+.connect-button__light {
+  @include connect-button;
+  background: #ff351a;
+}
+
+.connect-button__dark {
+  @include connect-button;
+  background: #ff6448;
+}
+
+.showcase__light {
+  @include box;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  height: 8%;
+  background: var(--box-light);
+}
+
+.showcase__dark {
+  @include box;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  height: 8%;
+  background: var(--box-dark);
+}
+
+.showcase-icon {
+  display: flex;
+  align-self: center;
+  justify-self: center;
+  margin-left: 5%;
+  border-radius: 8px;
+  height: 32px;
+  width: 32px;
+}

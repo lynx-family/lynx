@@ -1,0 +1,21 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+jscache_quickjs_sources =
+    rebase_path([
+                  "bytecode/quickjs_bytecode.h",
+                  "bytecode/quickjs_bytecode_provider.cc",
+                  "bytecode/quickjs_bytecode_provider.h",
+                  "bytecode/quickjs_bytecode_provider_src.cc",
+                  "bytecode/quickjs_bytecode_provider_src.h",
+                  "quickjs_cache_generator.cc",
+                  "quickjs_cache_generator.h",
+                ])
+
+jscache_quickjs_unittest_sources =
+    rebase_path([ "bytecode/quickjs_bytecode_provider_unittest.cc" ])
+if (is_mac || is_linux) {
+  jscache_quickjs_unittest_sources +=
+      rebase_path([ "bytecode/quickjs_bytecode_debug_info_unittest.cc" ])
+}

@@ -1,0 +1,67 @@
+{
+    "name": "grid-auto-flow",
+    "id": 184,
+    "type": "complex",
+    "default_value": "row",
+    "version": "2.1",
+    "author": "liting.src",
+    "desc": "",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "row",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "column",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "dense",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "row dense",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "column dense",
+            "version": "2.1",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "grid-auto-flow": {
+            "__compat": {
+              "lynx_path": "api/css/properties/grid-auto-flow",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/grid-auto-flow",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.1"
+                },
+                "ios": {
+                  "version_added": "2.1"
+                },
+                "clay_android": {
+                  "version_added": "2.1"
+                },
+                "clay_macos": {
+                  "version_added": "2.1"
+                },
+                "clay_windows": {
+                  "version_added": "2.1"
+                }
+              }
+            }
+          }
+    }
+}

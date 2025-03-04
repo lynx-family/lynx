@@ -1,0 +1,10 @@
+{
+    "name": "background-color",
+    "id": 6,
+    "type": "color",
+    "default_value": "transparent",
+    "version": "1.0",
+    "author": "yaoxiaopeng",
+    "consumption_status": "skip",
+    "desc": ""
+}

@@ -1,0 +1,16 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../starlight.gni")
+
+starlight_source_set("starlight_native") {
+  sources = [
+    "include/starlight.h",
+    "include/starlight_config.h",
+    "include/starlight_enums.h",
+    "include/starlight_value.h",
+    "src/starlight.cc",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

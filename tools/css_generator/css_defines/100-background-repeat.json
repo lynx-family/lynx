@@ -1,0 +1,42 @@
+{
+    "name": "background-repeat",
+    "id": 100,
+    "type": "complex",
+    "default_value": "no-repeat",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "no-repeat",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "repeat-x",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "repeat-y",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "repeat",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "round",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "space",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

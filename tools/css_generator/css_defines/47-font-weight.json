@@ -1,0 +1,67 @@
+{
+    "name": "font-weight",
+    "id": 47,
+    "type": "enum",
+    "default_value": "normal",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "bold",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "100",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "200",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "300",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "400",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "500",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "600",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "700",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "800",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "900",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

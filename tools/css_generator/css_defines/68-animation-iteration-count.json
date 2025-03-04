@@ -1,0 +1,10 @@
+{
+    "name": "animation-iteration-count",
+    "id": 68,
+    "type": "complex",
+    "default_value": "1",
+    "version": "1.0",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "desc": ""
+}

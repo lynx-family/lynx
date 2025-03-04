@@ -1,0 +1,3 @@
+# ignore generated files
+lynx-core/src/common/subErrorCode.ts
+types/types/background-thread/lynx-performance-entry.d.ts

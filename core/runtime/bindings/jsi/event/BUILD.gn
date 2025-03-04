@@ -1,0 +1,55 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# js_runtime_shared_sources
+js_runtime_shared_sources = [
+  "context_proxy_in_js.cc",
+  "context_proxy_in_js.h",
+  "js_event_listener.cc",
+  "js_event_listener.h",
+]
+
+lynx_core_source_set("js_runtime") {
+  sources = js_runtime_shared_sources
+
+  deps = []
+
+  public_deps = [
+    "//lynx/core/event",
+    "//lynx/core/runtime/bindings/common/event:runtime_common",
+  ]
+}
+
+unittest_set("js_runtime_testset") {
+  sources = [
+    "//lynx/core/runtime/piper/js/mock_template_delegate.h",
+    "context_proxy_in_js_test.cc",
+    "context_proxy_in_js_test.h",
+    "js_event_listener_test.cc",
+    "js_event_listener_test.h",
+  ]
+  public_deps = [
+    ":js_runtime",
+    "//lynx/core/base",
+    "//lynx/core/event:event_testset",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/vm/lepus:lepus",
+    "//lynx/core/runtime/vm/lepus:lepus_ng",
+  ]
+  data_deps = []
+}
+
+unittest_exec("js_runtime_unittests_exec") {
+  sources = []
+  deps = [ ":js_runtime_testset" ]
+}
+
+group("js_runtime_tests") {
+  testonly = true
+  deps = [ ":js_runtime_unittests_exec" ]
+}

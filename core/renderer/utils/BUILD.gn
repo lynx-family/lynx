@@ -1,0 +1,45 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/renderer/utils/build.gni")
+import("//lynx/testing/test.gni")
+
+need_default_lynx_trail_hub_impl = is_oliver_ssr || enable_unittests ||
+                                   (is_linux || is_win) || is_oliver_node_lynx
+
+# TODO(zhoupeng): move LynxTraiHub to an independent source set after decoupled from LynxEnv
+lynx_core_source_set("lynx_env") {
+  sources = lynx_env_shared_sources_path
+  if (need_default_lynx_trail_hub_impl) {
+    sources += lynx_trail_hub_default_sources_path
+  }
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+lynx_core_source_set("renderer_dom_utils") {
+  sources = lynx_renderer_dom_utils_sources_path
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("renderer_utils") {
+  sources = lynx_renderer_utils_sources_path + lynx_env_shared_sources_path
+  if (!enable_unittests && !is_oliver_ssr) {
+    sources += lynx_renderer_utils_platform_sources_path
+  }
+  if (need_default_lynx_trail_hub_impl) {
+    sources += lynx_renderer_utils_mock_sources_path
+    sources += lynx_trail_hub_default_sources_path
+  }
+  public_deps = [ "//lynx/core/public" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("gtest_renderer_utils_android") {
+  sources = [ "android/event_converter_android_unittest.cc" ]
+  deps = [ "//third_party/googletest:gtest_sources" ]
+}

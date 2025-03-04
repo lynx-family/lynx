@@ -1,0 +1,10 @@
+{
+    "name": "transition",
+    "id": 108,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyanbo,linxiaosong",
+    "consumption_status": "skip",
+    "desc": ""
+}

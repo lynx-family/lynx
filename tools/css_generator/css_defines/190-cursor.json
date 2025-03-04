@@ -1,0 +1,10 @@
+{
+    "name": "cursor",
+    "id": 190,
+    "type": "complex",
+    "default_value": "default",
+    "version": "2.3",
+    "author": "baiqiang",
+    "consumption_status": "skip",
+    "desc": ""
+}

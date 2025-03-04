@@ -1,0 +1,179 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply from: '../../../platform/android/publish.gradle'
+import org.json.simple.JSONObject
+
+ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
+
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 22
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+        multiDexEnabled true
+
+        buildConfigField("String","enable_trace","\"$enable_trace\"")
+
+        buildConfigField("String","VERSION","\"${VERSION}\"")
+
+        packagingOptions {
+            exclude 'lib/*/libc++_shared.so'
+        }
+
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        debugMode {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DFLAVOR_NAME=debugMode'
+
+                }
+            }
+        }
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-fsanitize=address',
+                            '-fsanitize-address-use-after-scope',
+                            '-fPIE',
+                            '-Wl,-ldl',
+                            '-Wl,-llog',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_ARM_MODE=arm', '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    arguments '-DFLAVOR_NAME=noasan'
+                }
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DCMAKE_BUILD_TYPE=Release',
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=release',
+                            '-LH'// Show compile parameters.
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=debug',
+                            '-LH'// Show compile parameters.
+
+                    // Symbol table with line numbers.
+                    cppFlags "-g",
+                            '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            debuggable true
+        }
+    }
+
+   externalNativeBuild {
+       cmake {
+           path "CMakeLists.txt"
+           version CMAKE_VERSION
+       }
+
+   }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+// Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.
+task configGnCompileParas {
+    def buildVariantList = getFlavorNamesAndBuildTypes(project)
+    def flavorNames = buildVariantList[0]
+    def buildTypes = buildVariantList[1]
+    JSONObject gnBuildArgs_map = new JSONObject()
+    flavorNames.each{
+        JSONObject gnBuildArgs_list = new JSONObject()
+        String flavorName = it
+        if (flavorName == "asan") {
+            gnBuildArgs_list.put("is_asan", "true")
+        } else {
+            gnBuildArgs_list.put("is_asan", "false")
+        }
+
+        buildTypes.each{
+            String buildType = it
+            if (buildType == "release") {
+                gnBuildArgs_list.put("is_debug", "false")
+                if (enable_lite_production == "true") {
+                    gnBuildArgs_list.put("enable_trace", "none")
+                } else {
+                    gnBuildArgs_list.put("enable_trace", "\"${enable_trace}\"")
+                }
+            } else if(buildType == "debug") {
+                gnBuildArgs_list.put("is_debug", "true")
+                if (enable_lite_production == "true") {
+                    gnBuildArgs_list.put("enable_trace", "none")
+                } else if (enable_trace == "none") {
+                    gnBuildArgs_list.put("enable_trace", "perfetto")
+                } else {
+                    gnBuildArgs_list.put("enable_trace", "\"${enable_trace}\"")
+                }
+            }
+            rootProject.ext.abiList.each { abi ->
+                gnBuildArgs_map.put(flavorName+buildType+abi, gnBuildArgs_list)
+            }
+        }
+    }
+    exec {
+        workingDir "../../../"
+        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnBuildArgs_map.toJSONString()
+    }
+}
+
+dependencies {
+    compileOnly 'androidx.annotation:annotation:1.0.0'
+}

@@ -1,0 +1,40 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/Lynx.gni")
+
+# This target defines a source_set which contains some common configs and deps needed by
+# all targets in the source tree of lynx_devtool
+#
+template("devtool_source_set") {
+  lynx_core_source_set(target_name) {
+    forward_variables_from(invoker, "*", [ "configs" ])
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    configs += [ "//lynx/devtool/lynx_devtool:devtool_common_config" ]
+    if (!defined(exclude_configs)) {
+      exclude_configs = []
+    }
+    if (is_android) {
+      configs += [
+        "//lynx/platform/android/lynx_devtool:devtool_common_defines",
+        "//lynx/platform/android/lynx_devtool:devtool_flag_config",
+      ]
+    }
+    if (is_win) {
+      exclude_configs += [
+        "//build/config/compiler:no_rtti",
+        "//build/config/win:winver",
+      ]
+    }
+
+    if (!defined(deps)) {
+      deps = []
+    }
+  }
+}

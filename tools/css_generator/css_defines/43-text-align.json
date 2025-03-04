@@ -1,0 +1,42 @@
+{
+    "name": "text-align",
+    "id": 43,
+    "type": "enum",
+    "default_value": "start",
+    "version": "1.0",
+    "author": "tangruiwen,liting.src",
+    "desc": "",
+    "consumption_status": "skip",
+    "values": [
+        {
+            "value": "left",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "center",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "right",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "start",
+            "version": "2.0",
+            "desc": ""
+        },
+        {
+            "value": "end",
+            "version": "2.0",
+            "desc": ""
+        },
+        {
+            "value": "justify",
+            "version": "2.10",
+            "desc": ""
+        }
+    ]
+}

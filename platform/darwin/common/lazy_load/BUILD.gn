@@ -1,0 +1,32 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+assert(is_apple)
+
+lazy_load_shared_sources = [ "LynxLazyRegister.m" ]
+
+# Please put public headers on this _public_headers list.
+# These public headers will be added to the public_header_files variable in the podspec
+lazy_load_public_headers = [
+  "LynxLazyLoad.h",
+  "LynxLazyRegister.h",
+]
+
+subspec_target("LazyLoad") {
+  sources = lazy_load_shared_sources + lazy_load_public_headers
+  public_header_files = lazy_load_public_headers
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "LYNX_LAZY_LOAD=1" ]
+  }
+}
+
+lynx_core_source_set("lazy_load") {
+  sources = lazy_load_shared_sources + lazy_load_public_headers
+  public = lazy_load_public_headers
+
+  defines = [ "LYNX_LAZY_LOAD = 1" ]
+}

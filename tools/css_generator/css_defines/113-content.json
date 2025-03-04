@@ -1,0 +1,10 @@
+{
+    "name": "content",
+    "id": 113,
+    "type": "string",
+    "default_value": "",
+    "version": "1.0",
+    "author": "zhangxiao",
+    "consumption_status": "layout-only",
+    "desc": ""
+}

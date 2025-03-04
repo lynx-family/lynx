@@ -1,0 +1,35 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+
+devtool_source_set("tracing") {
+  sources = [
+    "frame_trace_service.cc",
+    "frame_trace_service.h",
+    "instance_counter_trace_impl.cc",
+    "instance_counter_trace_impl.h",
+  ]
+  if (is_android) {
+    sources += [
+      "platform/fps_trace_plugin_android.cc",
+      "platform/fps_trace_plugin_android.h",
+      "platform/frame_trace_service_android.cc",
+      "platform/frame_trace_service_android.h",
+      "platform/frameview_trace_plugin_android.cc",
+      "platform/frameview_trace_plugin_android.h",
+      "platform/instance_trace_plugin_android.cc",
+      "platform/instance_trace_plugin_android.h",
+    ]
+  } else if (is_ios) {
+    sources += [
+      "platform/fps_trace_plugin_darwin.h",
+      "platform/fps_trace_plugin_darwin.mm",
+      "platform/frameview_trace_plugin_darwin.h",
+      "platform/frameview_trace_plugin_darwin.mm",
+      "platform/instance_trace_plugin_darwin.h",
+      "platform/instance_trace_plugin_darwin.mm",
+    ]
+  }
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

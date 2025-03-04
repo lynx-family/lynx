@@ -1,0 +1,46 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+map_buffer_shared_source = [
+  "compact_array_buffer.cc",
+  "compact_array_buffer.h",
+  "compact_array_buffer_builder.cc",
+  "compact_array_buffer_builder.h",
+  "base_buffer.h",
+  "base_buffer_builder.h",
+  "map_buffer.cc",
+  "map_buffer.h",
+  "map_buffer_builder.cc",
+  "map_buffer_builder.h",
+]
+
+lynx_core_source_set("map_buffer") {
+  sources = map_buffer_shared_source + [
+              "readable_compact_array_buffer.cc",
+              "readable_compact_array_buffer.h",
+              "readable_map_buffer.cc",
+              "readable_map_buffer.h",
+            ]
+  public_deps = [ "//lynx/core/base:base" ]
+}
+
+group("mapbuffer_tests") {
+  testonly = true
+  deps = [ ":mapbuffer_unittests_exec" ]
+}
+
+unittest_exec("mapbuffer_unittests_exec") {
+  sources = map_buffer_shared_source + [
+              "testing/compact_array_buffer_unittest.cc",
+              "testing/map_buffer_unittest.cc",
+            ]
+
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/renderer/utils:lynx_env",
+  ]
+}

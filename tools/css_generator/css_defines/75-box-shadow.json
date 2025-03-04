@@ -1,0 +1,10 @@
+{
+    "name": "box-shadow",
+    "id": 75,
+    "type": "complex",
+    "default_value": "",
+    "author": "liujilong",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "desc": ""
+}

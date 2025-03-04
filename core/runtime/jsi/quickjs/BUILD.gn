@@ -1,0 +1,39 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/runtime/jscache/quickjs/quickjs_cache.gni")
+import("//lynx/core/runtime/jsi/quickjs/build.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("quickjs") {
+  sources = lynx_jsi_quickjs_sources_path
+  sources += jscache_quickjs_sources
+
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/core/runtime/jscache:jscache",
+  ]
+
+  if (is_mac || is_ios || is_linux) {
+    deps += [ "//lynx/third_party/quickjs" ]
+  }
+}
+
+unittest_set("quickjs_unittests_testset") {
+  include_dirs = [ "//core" ]
+
+  sources = [
+    "//lynx/core/runtime/jscache/js_cache_manager_unittest.cc",
+    "//lynx/core/runtime/jscache/js_cache_tracker_unittest.cc",
+    "//lynx/core/runtime/jscache/js_cache_tracker_unittest.h",
+    "quickjs_helper_unittest.cc",
+    "quickjs_runtime_unittest.cc",
+  ]
+  sources += jscache_quickjs_unittest_sources
+
+  configs = [ "//lynx/core/runtime/jscache:jscache_config" ]
+
+  deps = [ ":quickjs" ]
+}

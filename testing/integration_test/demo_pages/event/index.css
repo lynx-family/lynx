@@ -1,0 +1,36 @@
+.count {
+    padding-top: 30px;
+    width: 100%;
+    justify-content: center;
+}
+
+.title {
+    color: #999999e3;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 5px;
+}
+
+.button {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    font-size: 14px;
+    border-radius: 2px;
+    position: relative;
+    text-decoration: none;
+    height: 44px;
+    background-color: #2d8cf0;
+    color: #fff;
+    margin-right: 10px;
+    margin-left: 10px;
+    justify-content: center;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    padding-left: 16px;
+    padding-right: 16px;
+}
+
+.button-text {
+    color: #fff;
+}

@@ -1,0 +1,10 @@
+{
+    "name": "border-color",
+    "id": 59,
+    "type": "complex",
+    "default_value": "black",
+    "version": "1.0",
+    "author": "linyiyi,tangruiwen",
+    "consumption_status": "skip",
+    "desc": ""
+}

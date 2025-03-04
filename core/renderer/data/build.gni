@@ -1,0 +1,32 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+lynx_data_shared_sources = [
+  "lynx_view_data_manager.cc",
+  "lynx_view_data_manager.h",
+  "template_data.cc",
+  "template_data.h",
+]
+
+lynx_data_shared_sources_path =
+    get_path_info(lynx_data_shared_sources, "abspath")
+
+lynx_data_platform_sources = []
+lynx_data_platform_sources += [ "platform_data.h" ]
+if (is_android) {
+  lynx_data_platform_sources += [
+    "android/platform_data_android.cc",
+    "android/platform_data_android.h",
+  ]
+} else if (is_ios) {
+  lynx_data_platform_sources += [
+    "ios/platform_data_darwin.h",
+    "ios/platform_data_darwin.mm",
+  ]
+}
+
+lynx_data_platform_sources_path =
+    get_path_info(lynx_data_platform_sources, "abspath")

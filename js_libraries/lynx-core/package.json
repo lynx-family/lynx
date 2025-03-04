@@ -1,0 +1,52 @@
+{
+  "name": "@lynx-js/lynx-core",
+  "version": "0.1.1",
+  "description": "Lynx JS environment initialization section, LynxCore will be pre-loaded before appService loading.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/typings/",
+  "source": "src/index.ts",
+  "scripts": {
+    "build:ios": "cross-env  TARGET=ios npm run build",
+    "build:android": "cross-env TARGET=android npm run build",
+    "build:web": "cross-env TARGET=web npm run build",
+    "build": "node esbuild.mjs",
+    "build:lib": "tsc",
+    "format": "prettier -w src"
+  },
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "files": [
+    "output/web",
+    "lynx_core.d.ts"
+  ],
+  "exports":{
+    ".": {
+      "import": "./dist/index.js",
+      "default":"./dist/index.js"
+    },
+    "./web" :{
+      "import": "./output/web/lynx_core.js",
+      "types": "./lynx_core.d.ts",
+      "default":"./output/web/lynx_core.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:lynx-family/lynx.git"
+  },
+  "keywords": [
+    "lepus",
+    "jssdk"
+  ],
+  "devDependencies": {
+    "@types/node": "18.7.2",
+    "cross-env": "^7.0.3",
+    "esbuild": "0.19.12",
+    "regenerator-runtime": "0.13.7",
+    "@lynx-js/types": "workspace:*",
+    "@lynx-js/runtime-shared": "workspace:*",
+    "@lynx-js/ios-polyfill": "workspace:*",
+    "@lynx-js/ios-polyfill-promise": "workspace:*"
+  }
+}

@@ -1,0 +1,243 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Declare an CMake target to generate CMake script.
+#
+# This target will be converted to a corresponding CMake script.
+# You can use the generated CMake script to compile the corresponding
+# product in the CMake compilation system.
+#
+# Variables
+#   cmake_version: cmake version, the defulat value is 3.4.1
+#   target_type: must be set! specify the type of the CMake compilation
+#     product, now support [static_library, shared_library, executable]
+#   file_name: the name of the output cmake file, the default value is
+#     "CMakeLists.txt"
+#   output_name: specify the output name of the compilation product, the
+#     default value is ${target_name}
+#   output_path: specify the output path of the generated CMake script
+#   sources: specify the sources in this target
+#   deps: specify the dependencies of this target
+#   sub_cmake_target: specify the `add_subdirection` target in cmake script
+#     that declare in GN
+#   sub_cmake_target_and_link: same as sub_cmake_target, and this target will
+#     link it after add_subdirection
+#   configs: specify the configs of this target
+#   cflags: specify the cflags of this target
+#   cflags_c: specify the cflags_c of this target
+#   cflags_cc: specify the cflags_cc of this target
+#   defines: specify the defines of this target
+#   include_dirs: specify the include_dirs of this target
+#   lib_dirs: specify the lib_dirs of this target
+#   libs: specify the libs of this target
+#   ldflags: specify the ldflags of this target
+#   find_and_link_packages: specify the existing CMake project to search for
+#     and link. It must conform to the following style:
+#     ["package_name", ["search_path1", "search_path2", ...], <"cmake::configd">,
+#       "package_component_to_link", ...]
+#   project_name: The project name of the current CMake project.
+#
+# Example:
+#   cmake_target("foo") {
+#     cmake_version = "3.4.2"
+#     target_type = "shared_library"
+#     file_name = "CMakeLists.txt"
+#     output_name = "foo"
+#     output_path = "path/to/file"
+#     sources = ["//foo/foo.cc", "//foo/foo.h"]
+#     deps = [":other_target"]
+#     sub_cmake_target = [":other_cmake_target"]
+#     sub_cmake_target_and_link = [":other_link_cmake_target"]
+#     configs = ["//foo:foo_config"]
+#     cflags = [""]
+#     cflags_c = [""]
+#     cflags_cc = [""]
+#     defines = [""]
+#     include_dirs = [""]
+#     lib_dirs = [""]
+#     libs = ["log"]
+#     ldflags = [""]
+#     find_and_link_packages = [ [
+#     "Threads",
+#     "Threads::Threads",
+#     ], ["path/to/search_path"] ]
+#     project_name = "Foo"
+#   }
+template("cmake_target") {
+  forward_variables_from(invoker, [ "target_type" ])
+
+  # Currently, three CMake types are supported: static library, shared library
+  # and executable.
+  type_check = target_type == "static_library" ||
+               target_type == "shared_library" || target_type == "executable"
+  assert(
+      type_check,
+      "please set target_type from [static_library, shared_library, executable]")
+
+  # As the top-level target, cmake_target doesn't allow the use of functions with
+  # transferable attributes, such as public_deps, public_configs, and all_dependent_configs.
+  assert(!defined(invoker.public_deps),
+         "please use \"deps\" to add dependency!")
+  assert(!defined(invoker.public_configs),
+         "please use \"configs\" to add configs!")
+  assert(!defined(invoker.all_dependent_configs),
+         "please use \"configs\" to add configs!")
+
+  # cmake defulat version is 3.4.1
+  cmake_version_ = "3.4.1"
+  if (defined(invoker.cmake_version)) {
+    cmake_version_ = invoker.cmake_version
+  }
+
+  output_name_ = target_name
+  if (defined(invoker.output_name)) {
+    output_name_ = invoker.output_name
+  }
+
+  file_name_ = "CMakeLists.txt"
+  if (defined(invoker.file_name)) {
+    file_name_ = invoker.file_name
+  }
+
+  # The default output path is the directory where the target declaration is located.
+  output_path_ = rebase_path(".")
+  if (defined(invoker.output_path)) {
+    output_path_ = rebase_path(invoker.output_path)
+  }
+
+  sources_ = []
+  if (defined(invoker.sources)) {
+    sources_ += invoker.sources
+  }
+
+  deps_ = []
+  if (defined(invoker.deps)) {
+    deps_ += invoker.deps
+  }
+
+  sub_cmake_target_ = []
+  if (defined(invoker.sub_cmake_target)) {
+    foreach(sub, invoker.sub_cmake_target) {
+      gn_target = string_replace(rebase_path(sub), rebase_path("//"), "//")
+      sub_cmake_target_ += [ string_replace(gn_target, "/:", ":") ]
+    }
+  }
+
+  sub_cmake_target_and_link_ = []
+  if (defined(invoker.sub_cmake_target_and_link)) {
+    foreach(sub, invoker.sub_cmake_target_and_link) {
+      gn_target = string_replace(rebase_path(sub), rebase_path("//"), "//")
+      sub_cmake_target_and_link_ += [ string_replace(gn_target, "/:", ":") ]
+    }
+  }
+
+  configs_ = []
+  if (defined(invoker.configs)) {
+    configs_ += invoker.configs
+  }
+
+  exclude_configs_ = []
+  if (defined(invoker.exclude_configs)) {
+    exclude_configs_ = invoker.exclude_configs
+  }
+
+  cflags_ = []
+  if (defined(invoker.cflags)) {
+    cflags_ += invoker.cflags
+  }
+  cflags_c_ = []
+  if (defined(invoker.cflags_c)) {
+    cflags_c_ += invoker.cflags_c
+  }
+  cflags_cc_ = []
+  if (defined(invoker.cflags_cc)) {
+    cflags_cc_ += invoker.cflags_cc
+  }
+  defines_ = []
+  if (defined(invoker.defines)) {
+    defines_ += invoker.defines
+  }
+  ldflags_ = []
+  if (defined(invoker.ldflags)) {
+    ldflags_ += invoker.ldflags
+  }
+  include_dirs_ = []
+  if (defined(invoker.include_dirs)) {
+    include_dirs_ += invoker.include_dirs
+  }
+  lib_dirs_ = []
+  if (defined(invoker.lib_dirs)) {
+    lib_dirs_ += invoker.lib_dirs
+  }
+  libs_ = []
+  if (defined(invoker.libs)) {
+    libs_ += invoker.libs
+  }
+
+  # cmake_target("target_name") {
+  #   find_and_link_packages: [
+  #     ["package_name", ["search_path1", "search_path2", ...], <"cmake::configd">, "package_component_to_link", "package_component_to_link", ...]
+  #   ]
+  # }
+  # convert to cmake:
+  # if the "cmake:configd" is present in the second element of the list,
+  # it will be converted to:
+  #   find_package(package_name REQUIRED CONFIG PATHS "search_path1", "search_path2")
+  #   target_link_libraries(target_name package_component_to_link)
+  #   target_link_libraries(target_name package_component_to_link)
+  #   ...
+  # otherwise, it will be converted to:
+  #   find_package(package_name PATHS "search_path1", "search_path2")
+  #   target_link_libraries(target_name package_component_to_link)
+  #   target_link_libraries(target_name package_component_to_link)
+  #   ...
+  find_and_link_packages_ = []
+  if (defined(invoker.find_and_link_packages)) {
+    find_and_link_packages_ += invoker.find_and_link_packages
+  }
+
+  project_name_ = ""
+  if (defined(invoker.project_name)) {
+    project_name_ += invoker.project_name
+  }
+
+  target("$target_type", "$target_name") {
+    output_name = output_name_
+    configs += configs_
+    configs -= exclude_configs_
+    deps = deps_
+    sources = sources_
+
+    cflags = cflags_
+    cflags_c = cflags_c_
+    cflags_cc = cflags_cc_
+    lib_dirs = lib_dirs_
+    libs = libs_
+    include_dirs = include_dirs_
+    defines = defines_
+    ldflags = ldflags_
+    metadata = {
+      file_name = [ file_name_ ]
+      project_name = [ project_name_ ]
+      is_cmake_target = [ "true" ]
+      cmake_version = [ cmake_version_ ]
+      output_path = [ output_path_ ]
+      sub_cmake_target = sub_cmake_target_
+      sub_cmake_target_and_link = sub_cmake_target_and_link_
+      find_and_link_packages = find_and_link_packages_
+    }
+  }
+
+  # write cmake_target's name to file
+  out_gen_path = "cmake_targets"
+  current_target_full_name =
+      string_replace(rebase_path(":$target_name"), rebase_path("//"), "//")
+  current_target_name = string_replace(current_target_full_name, "/:", ":")
+  lines = [ "$current_target_name" ]
+  out_file_name =
+      string_replace(string_replace(current_target_name, "/", "_"), ":", "_")
+  out_file_path =
+      rebase_path("$root_build_dir/${out_gen_path}/$out_file_name.txt")
+  write_file("$out_file_path", lines, "list lines")
+}

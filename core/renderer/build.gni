@@ -1,0 +1,80 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/renderer_utils_files.gni")
+import("//lynx/config.gni")
+
+# TODO(chenyouhui): Remove this
+import("//lynx/oliver/oliver.gni")
+lynx_tasm_shared_sources = [
+                             "//lynx/core/services/replay/replay_controller.cc",
+                             "//lynx/core/services/replay/replay_controller.h",
+                             "js_bundle_holder_impl.cc",
+                             "js_bundle_holder_impl.h",
+                             "lynx_env_config.cc",
+                             "lynx_env_config.h",
+                             "lynx_global_pool.cc",
+                             "lynx_global_pool.h",
+                             "page_config.cc",
+                             "page_config.h",
+                             "page_proxy.cc",
+                             "page_proxy.h",
+                             "tasm/config.cc",
+                             "tasm/config.h",
+                             "tasm/i18n/i18n.cc",
+                             "tasm/i18n/i18n.h",
+                             "tasm_runtime_bundle.h",
+                             "template_assembler.cc",
+                             "template_assembler.h",
+                             "template_entry.cc",
+                             "template_entry.h",
+                             "template_entry_holder.cc",
+                             "template_entry_holder.h",
+                             "template_themed.h",
+                           ] + lynx_tasm_extend_shared_sources
+
+if (is_ios) {
+  lynx_tasm_shared_sources += [ "tasm/sysinfo/sysinfo_ios.cc" ]
+} else if (is_android) {
+  lynx_tasm_shared_sources += [
+    "tasm/i18n/i18n_binder_android.cc",
+    "tasm/i18n/i18n_binder_android.h",
+    "tasm/sysinfo/sysinfo_android.cc",
+  ]
+}
+
+if (is_apple && !enable_unittests && !is_oliver_ssr && !is_oliver_node_lynx) {
+  lynx_tasm_shared_sources += [
+    "//lynx/core/base/darwin/config_darwin.h",
+    "//lynx/core/base/darwin/config_darwin.mm",
+    "tasm/i18n/i18n_binder_darwin.h",
+    "tasm/i18n/i18n_binder_darwin.mm",
+  ]
+}
+
+if (is_oliver_ssr) {
+  lynx_tasm_shared_sources += [ "tasm/sysinfo/sysinfo_default.cc" ]
+}
+if (enable_unittests) {
+  lynx_tasm_shared_sources += [ "tasm/sysinfo/sysinfo_default.cc" ]
+}
+
+lynx_tasm_shared_sources_path =
+    get_path_info(lynx_tasm_shared_sources, "abspath")
+
+lynx_recorder_sources = [
+  "//lynx/core/services/recorder/recorder_controller.cc",
+  "//lynx/core/services/recorder/recorder_controller.h",
+]
+
+lynx_recorder_sources_path = get_path_info(lynx_recorder_sources, "abspath")
+
+lynx_tasm_config_sources = [
+  "tasm/config.cc",
+  "tasm/config.h",
+  "tasm/sysinfo/sysinfo_headless.cc",
+]
+
+lynx_tasm_config_sources_path =
+    get_path_info(lynx_tasm_config_sources, "abspath")

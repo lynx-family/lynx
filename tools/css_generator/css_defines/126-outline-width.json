@@ -1,0 +1,10 @@
+{
+    "name": "outline-width",
+    "id": 126,
+    "type": "border-width",
+    "default_value": "medium",
+    "version": "1.0",
+    "author": "liyun",
+    "consumption_status": "skip",
+    "desc": ""
+}

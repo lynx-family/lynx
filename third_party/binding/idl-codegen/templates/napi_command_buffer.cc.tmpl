@@ -1,0 +1,284 @@
+{% from 'macros.tmpl' import insufficient_argnum_defend, convert_argument, call_out_init, call_out_return_value, convert_attribute %}
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block_2024.txt' %}
+#include "{{this_include_header_path}}"
+
+#include "base/include/auto_reset.h"
+{% for filename in hardcoded_includes %}
+#include "{{filename}}"
+{% endfor %}
+
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_defines.h"
+#endif
+
+namespace lynx {
+namespace {{component}} {
+
+{% macro decode_argument_struct(argument) %}
+{% if argument.is_boolean_type %}
+uint32_t {{argument.name}};
+{% elif argument.is_numeric_type %}
+{% if argument.idl_type == 'unrestricted float' or argument.idl_type == 'float' %}
+float {{argument.name}};
+{% elif argument.idl_type == 'long' or argument.idl_type == 'short' %}
+int32_t {{argument.name}};
+{% elif argument.idl_type == 'long long' or  argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' %}
+double {{argument.name}};
+{% else %}
+uint32_t {{argument.name}};
+{% endif %}
+{% elif argument.is_string_type %}
+uint32_t {{argument.name}}StringLengthGen;
+{% elif argument.is_wrapper_type %}
+uint32_t {{argument.name}}Id;
+{% elif argument.is_typed_array or argument.is_sequence_type %}
+uint32_t {{argument.name}}ArrayLengthGen;
+{% elif argument['idl_type'] == 'ArrayBuffer' %}
+{% if argument.is_nullable %}
+uint32_t is_null;
+{% endif %}
+uint32_t {{argument.name}}ByteLengthGen;
+{% elif argument['idl_type'] == 'ArrayBufferView' %}
+uint32_t {{argument.name}}ViewTypeGen;
+uint32_t {{argument.name}}ByteLengthGen;
+{% endif %}
+{% endmacro %}
+
+{% macro method_case(method) %}
+case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{method.overload_index}}()
+  struct __attribute__ ((__packed__)) {{method.camel_case_name}}Command {
+    {% set ns.count = 0 %}
+    {% for argument in method.arguments %}
+    {% if argument.is_numeric_type or argument.is_boolean_type %}
+    {% if argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double'%}
+    {% set ns.count = ns.count + 2 %}
+    {% else %}
+    {% set ns.count = ns.count + 1 %}
+    {% endif %}
+    {% elif argument.is_string_type %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_wrapper_type %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.is_typed_array or argument.is_sequence_type %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument['idl_type'] == 'ArrayBuffer' %}
+    {% if argument.is_nullable %}
+    {% set ns.count = ns.count + 1 %}
+    {% endif %}
+    {% set ns.count = ns.count + 1 %}
+    {% elif argument.idl_type == 'ArrayBufferView' %}
+    {% set ns.count = ns.count + 2 %}
+    {% endif %}
+    {{ decode_argument_struct(argument) | trim | indent(4) }}
+    {% endfor %}
+    {% if method.return_async %}
+    {% set ns.count = ns.count + 1 %}
+    uint32_t id;
+    {% endif %}
+  };
+  {% if ns.count > 0 %}
+  {{method.camel_case_name}}Command& command = ReadBuffer<{{method.camel_case_name}}Command>(buffer, current);
+  current += {{ns.count}};
+  {% endif %}
+{#                                                                            #}
+  {% for argument in method.arguments %}
+  {% if argument.is_typed_array %}
+  {% if argument.idl_type == 'Float32Array' %}
+  SharedVector<float> {{argument.name}}((float*)buffer + current, command.{{argument.name}}ArrayLengthGen);
+  current += command.{{argument.name}}ArrayLengthGen;
+  {% elif argument.idl_type == 'Int32Array' %}
+  SharedVector<int32_t> {{argument.name}}((int32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
+  current += command.{{argument.name}}ArrayLengthGen;
+  {% elif argument.idl_type == 'Uint32Array' %}
+  SharedVector<uint32_t> {{argument.name}}((uint32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
+  current += command.{{argument.name}}ArrayLengthGen;
+  {% endif %}{# array type #}
+{#                                                                            #}
+  {% elif argument.is_sequence_type %}
+  {# TODO(yuyifei): Currently assumes sequence<string> or sequence<uint32> #}
+  {% if argument.sequence_element_type == 'String' %}
+  std::vector<std::string> {{argument.name}};
+  for (uint32_t i = 0; i < command.{{argument.name}}ArrayLengthGen; ++i) {
+    uint32_t str_len = ReadBuffer<uint32_t>(buffer, current);
+    {{argument.name}}.push_back(binding::Utf16LeToUtf8((char16_t*)(buffer + current + 1), str_len));
+    current += (str_len + 3) / 2;
+  }
+  {% else %}
+  SharedVector<uint32_t> {{argument.name}}((uint32_t*)buffer + current, command.{{argument.name}}ArrayLengthGen);
+  current += command.{{argument.name}}ArrayLengthGen;
+  {% endif %}{# sequence_element_type #}
+{#                                                                            #}
+  {% elif argument.is_string_type %}
+  std::string {{argument.name}} = binding::Utf16LeToUtf8((char16_t*)(buffer + current), command.{{argument.name}}StringLengthGen);
+  current += (command.{{argument.name}}StringLengthGen + 1) / 2;
+{#                                                                            #}
+  {% elif argument.is_wrapper_type %}
+  {% if argument.async_created %}
+  {{argument.idl_type}}* {{argument.name}} = nullptr;
+  if (auto* async = FromAsyncId(command.{{argument.name}}Id)) {
+    {{argument.name}} = async->ToImplUnsafe<{{argument.idl_type}}>();
+  }
+  {% else %}
+  Napi{{argument.idl_type}}* {{argument.name}}_bridge = FromId<Napi{{argument.idl_type}}>(command.{{argument.name}}Id);
+  {{argument.idl_type}}* {{argument.name}} = {{argument.name}}_bridge ? {{argument.name}}_bridge->ToImplUnsafe() : nullptr;
+  {% endif %}{# async #}
+  {% if not argument.is_nullable %}
+  if (!{{argument.name}}) {
+    LogTypeError("{{method.camel_case_name}}", "{{argument.name}}", command.{{argument.name}}Id);
+    type_safe = false;
+  }
+  {% endif %}
+  {% elif argument.idl_type == 'ArrayBufferView' %}
+  ArrayBufferView {{argument.name}}(buffer + current, (ArrayBufferView::ViewType)command.{{argument.name}}ViewTypeGen, command.{{argument.name}}ByteLengthGen);
+{#                                                                            #}
+  {% endif %}
+  {% endfor %}
+  if (type_safe) {
+    {{'auto&& result = ' if method.idl_type != 'void'}}pointer.{{method.ptr_name}}->{{method.camel_case_name}}({{method.arguments | map ('command_argument_literal') | join(', ')}});
+    {% if method.return_async %}
+    FromAsyncId(command.id)->Init(std::unique_ptr<ImplBase>(result));
+    {% endif %}
+    {% if method.is_sync %}
+    {{ update_return_value(method) | trim | indent(2) }}
+    // Sync calls should be at the end of buffer.
+    {{macro_prefix}}DCHECK(current == length);
+    if (current != length) {
+      Napi::Error::New(env, "Command out of order. Are you using native Promise instead of Lynx mock on iOS < 15?").ThrowAsJavaScriptException();
+      return Napi::Value();
+    }
+    {% endif %}
+  }
+  {% for argument in method.arguments %}
+  {% if argument.idl_type == 'ArrayBuffer' or argument['idl_type'] == 'ArrayBufferView' %}
+  current += (command.{{argument.name}}ByteLengthGen + 3) / 4;
+  {% endif %}
+  {% endfor %}
+  break;
+}
+{% endmacro %}
+
+{% macro update_return_value(method) %}
+  {{'rv = env.Undefined();' if method.cpp_type == 'void'}}
+  {% if method.is_nullable %}
+  {% if method.is_wrapper_type or method.is_dictionary %}
+  if (!result) rv = env.Null();
+  {% elif method.idl_type == 'any' or method.idl_type == 'object' %}
+  if (result.IsEmpty()) rv = env.Null();
+  {% endif %}
+  {% endif %}{# is_nullable #}
+  {% if method.is_boolean_type %}
+  rv = Napi::Boolean::New(env, result);
+  {% elif method.is_numeric_type %}
+  rv = Napi::Number::New(env, result);
+  {% elif method.is_string_type %}
+  rv = Napi::String::New(env, result);
+  {% elif method.is_sequence_type %}
+  auto array = Napi::Array::New(env, result.size());
+  for (size_t i = 0; i < result.size(); ++i) {
+    {% if method.sequence_element_type == 'Number' %}
+    array[i] = Napi::Number::New(env, result[i]);
+    {% elif method.sequence_element_type == 'String' %}
+    array[i] = Napi::String::New(env, result[i]);
+    {% elif method.sequence_element_type == 'Object' %}
+    array[static_cast<uint32_t>(i)] = (result[i]->IsNapiWrapped() ? result[i]->NapiObject()) : Napi{{method.sequence_element_idl_type}}::Wrap(std::unique_ptr<{{method.sequence_element_idl_type}}>(std::move(result[i])), env));
+    {% else %}
+    ExceptionMessage::NotSupportYet(env);
+    {% endif %}{# sequence_element_type #}
+  }
+  rv = array;
+  {% elif method.is_wrapper_type %}
+  {% if method.may_chain %}
+  rv = result->JsObject();
+  {% else %}
+  rv = result ? (result->IsNapiWrapped() ? result->NapiObject() : Napi{{method.idl_type}}::Wrap(std::unique_ptr<{{method.cpp_type[:-1]}}>(std::move(result)), env)) : env.Null();
+  {% endif %}
+  {% elif method.is_dictionary %}
+  rv = result->ToJsObject(env);
+  {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' %}
+  {% if method.remote_method_id %}
+  rv = ToNAPI(std::move(result), env);
+  {% else %}
+  rv = result;
+  {% endif %}
+  {% endif %}{# method.is_boolean_type #}
+{% endmacro %}
+
+{% set ns = namespace(count = 0) %}
+// TODO(yuyifei): Return value wrapper and remove |env| parameter.
+Napi::Value {{napi_class}}::RunBuffer(uint32_t* buffer, uint32_t length, Napi::Env env) {
+  Napi::Value rv;
+  uint32_t current = 1u;
+  while (current < length) {
+    struct __attribute__ ((__packed__)) MethodHeader {
+      uint32_t method;
+      uint32_t object_id;
+    };
+    MethodHeader& header = ReadBuffer<MethodHeader>(buffer, current);
+    bool type_safe = false;
+    union ObjectPointer {
+      {% for interface in interfaces if not interface.remote_only %}
+      {{interface.type_name}}* {{interface.ptr_name}};
+      {% endfor %}
+      // Currently assumes single inheritance only.
+      ImplBase* orphan;
+    } pointer;
+    {% for interface in interfaces if not interface.shared_impl and not interface.remote_only %}
+    if (Napi{{interface.type_name}}* bridge = FromId<Napi{{interface.type_name}}>(header.object_id)) {
+      pointer.{{interface.ptr_name}} = bridge->ToImplUnsafe();
+      type_safe = true;
+    }
+    {% endfor %}
+    if (auto it = orphans_.find(header.object_id); it != orphans_.end()) {
+      {{macro_prefix}}DCHECK(!type_safe);
+      pointer.orphan = it->second.get();
+      type_safe = true;
+    }
+    if (!type_safe) {
+      {{macro_prefix}}LOGE("Method " << header.method << " called with invalid object: " << header.object_id);
+    }
+    current += 2;
+    switch (header.method) {
+      {% for method in methods %}
+      {{ method_case(method) | trim | indent(6) }}
+      {% endfor %}
+      default:{
+        {{macro_prefix}}LOGE("=================== {{component}} Error Report ===================");
+        {{macro_prefix}}LOGE("Unexpected {{component}} command! Current len: " << length << ", pos: " << current << ", method: " << header.method << ", object_id: " << header.object_id << ", " << sizeof(int*));
+        std::stringstream start_content;
+        for (uint32_t i = 0; i < std::min(128u, current); ++i) {
+          start_content << "[" << i << "]" << ReadBuffer<uint32_t>(buffer, i);
+        }
+        {{macro_prefix}}LOGE("Content at {{component}} buffer start: " << start_content.str());
+        std::stringstream current_content;
+        for (uint32_t i = std::max(0, (int)current - 64); i < std::min(length, current + 64); ++i) {
+          current_content << "[" << i << "]" << ReadBuffer<uint32_t>(buffer, i);
+        }
+        {{macro_prefix}}LOGE("Content around {{component}} current: " << current_content.str());
+        {{macro_prefix}}LOGE("==========================================================");
+        {{macro_prefix}}NOTREACHED();
+        break;
+      }
+    }
+  }
+  // We should reach the end of buffer after a flush.
+  {{macro_prefix}}DCHECK(current == length);
+  return rv;
+}
+
+// static
+template <typename T>
+T* {{napi_class}}::FromId(uint32_t id) {
+  if (auto it = ObjectRegistry().find(id); it != ObjectRegistry().end()) {
+    if (T::IsInstance(it->second)) {
+      return static_cast<T*>(it->second);
+    }
+  }
+  return nullptr;
+}
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+{% endfilter %}{# format_blink_cpp_source_code #}

@@ -1,0 +1,63 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+group("root") {
+  testonly = true
+  deps = [
+    ":default",
+    ":third_party_base_group",
+    ":third_party_trace_group",
+  ]
+}
+
+group("default") {
+  testonly = true
+  deps = [ "//lynx/core:lynx_native" ]
+  if (is_android) {
+    deps += [ "//lynx/platform/android:Android" ]
+  }
+  if (is_ios) {
+    deps += [ "//lynx/platform/darwin/ios/lynx_service:LynxService" ]
+    deps += [ "//lynx/platform/darwin/ios/lynx_devtool:devtool_podspec" ]
+    deps += [ "//lynx/platform/darwin/ios:iOS" ]
+    deps += [ "//lynx/devtool/base_devtool/darwin/ios:BaseDevtool_podspec" ]
+  }
+
+  if (enable_unittests) {
+    deps += [ "//lynx/tools/gn_tools/test:gn_tools_test" ]
+  }
+}
+
+group("all") {
+  # lynx core modules
+  deps = [ "//lynx/core:lynx_core_native" ]
+
+  # testing
+  if (enable_unittests) {
+    testonly = true
+    deps += [ "//lynx/testing" ]
+  }
+}
+
+group("oliver_group") {
+  deps = [ "//lynx/oliver" ]
+}
+
+group("third_party_base_group") {
+  deps = []
+  testonly = true
+  if (enable_unittests) {
+    deps += [ "//lynx/base/src:base_unittests_exec" ]
+  }
+}
+
+group("third_party_trace_group") {
+  deps = []
+  testonly = true
+  if (enable_unittests) {
+    deps += [ "//lynx/base/trace/native:trace_tests" ]
+  }
+}

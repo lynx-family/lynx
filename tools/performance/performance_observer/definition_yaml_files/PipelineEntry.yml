@@ -1,0 +1,48 @@
+FrameworkPipelineTiming:
+  type: object
+  x-ignore-java: true
+  x-ignore-oc: true
+
+PipelineEntry:
+  x-type: pipeline
+  x-name:
+    - updateTriggeredByBts
+    - updateTriggeredByNts
+    - updateTriggeredByNative
+    - reactHydrate
+    - setNativeProps
+    - updateGlobalProps
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        identifier:
+          type: string
+        pipelineStart:
+          type: number
+        pipelineEnd:
+          type: number
+        mtsRenderStart:
+          type: number
+        mtsRenderEnd:
+          type: number
+        resolveStart:
+          type: number
+        resolveEnd:
+          type: number
+        layoutStart:
+          type: number
+        layoutEnd:
+          type: number
+        paintingUiOperationExecuteStart:
+          type: number
+        paintingUiOperationExecuteEnd:
+          type: number
+        layoutUiOperationExecuteStart:
+          type: number
+        layoutUiOperationExecuteEnd:
+          type: number
+        paintEnd:
+          type: number
+        frameworkPipelineTiming:
+          $ref: '#/FrameworkPipelineTiming'

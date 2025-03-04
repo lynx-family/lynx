@@ -1,0 +1,29 @@
+name: setup ruby cache
+
+description: setup ruby cache for the Lynx iOS build stage
+
+inputs:
+  path:
+    default: 'lynx/ruby'
+    required: false
+    type: string
+
+runs:
+  using: composite
+  steps:
+    - name: get ruby version
+      id: get_ruby_version
+      shell: bash
+      run: |-
+        ruby_version=$(ruby -v | awk '{print $2}')
+        ruby_version=$(echo $ruby_version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        ruby_version=$(echo $ruby_version | awk -F. '{print $1"."$2".0"}')
+        echo "VERSION=$ruby_version" >> $GITHUB_OUTPUT;
+
+    - name: setup ruby cache action
+      uses: lynx-infra/cache@main
+      with:
+        path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
+        key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}

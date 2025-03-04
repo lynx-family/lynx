@@ -1,0 +1,10 @@
+{
+    "name": "-x-handle-size",
+    "id": 211,
+    "type": "length",
+    "default_value": "0px",
+    "version": "3.1",
+    "author": "zhouzhuangzhuang",
+    "consumption_status": "skip",
+    "desc": ""
+}

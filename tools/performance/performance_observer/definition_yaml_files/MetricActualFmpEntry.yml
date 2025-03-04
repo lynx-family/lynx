@@ -1,0 +1,13 @@
+MetricActualFmpEntry:
+  x-type: metric
+  x-name: actualFmp
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        actualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        lynxActualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalActualFmp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'

@@ -1,0 +1,282 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/android.gni")
+import("//lynx/platform/android/lynx_android/LynxAndroid.gni")
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+assert(is_android)
+
+group("LynxAndroid") {
+  deps = []
+  if (build_lynx_dylib) {
+    deps += [ ":lynx_android" ]
+    if (!enable_lite) {
+      deps += [ "//lynx/core/runtime/jsi/v8:lynx_v8_bridge" ]
+    }
+  }
+}
+if (build_lynx_dylib) {
+  cmake_target("lynx_android") {
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "lynx"
+    deps = [
+      "//lynx/base/trace/android:LynxTrace",
+      "//lynx/core/build:build",
+      "//lynx/core/shell:shell",
+      "//lynx/platform/android/lynx_android:lynx_android_lib",
+      "//lynx/platform/android/lynx_android/src:lynx_jni_on_load",
+    ]
+    configs = [
+      "//lynx/platform/android/lynx_android:lynx_android_public_config",
+      "//lynx/platform/android/lynx_android:lynx_android_private_config",
+    ]
+    if (!enable_lite) {
+      sub_cmake_target = [ "//lynx/core/runtime/jsi/v8:lynx_v8_bridge" ]
+    }
+  }
+}
+
+group("lynx_android_lib") {
+  public_deps = [
+    "//lynx/base/src:base",
+    "//lynx/core/animation:animation",
+    "//lynx/core/animation/basic_animation:basic_animation",
+    "//lynx/core/animation/lynx_basic_animator:lynx_basic_animator",
+    "//lynx/core/animation/transforms:transforms",
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base:base",
+    "//lynx/core/build:build",
+    "//lynx/core/event",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/css:css",
+    "//lynx/core/renderer/data:data",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/dom/selector:element_selector",
+    "//lynx/core/renderer/events:events",
+    "//lynx/core/renderer/signal:signal",
+    "//lynx/core/renderer/starlight:starlight",
+    "//lynx/core/renderer/ui_wrapper:ui_wrapper",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/resource",
+    "//lynx/core/runtime",
+    "//lynx/core/runtime/bindings/common/event:runtime_common",
+    "//lynx/core/runtime/bindings/jsi/event:js_runtime",
+    "//lynx/core/runtime/bindings/jsi/fetch:fetch",
+    "//lynx/core/runtime/bindings/jsi/interceptor:network_interceptor",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/bindings/lepus/event:lepus_runtime",
+    "//lynx/core/runtime/vm/lepus:lepus",
+    "//lynx/core/runtime/vm/lepus:lepus_ng",
+    "//lynx/core/services/event_report:event_report",
+    "//lynx/core/services/feature_count:feature_count",
+    "//lynx/core/services/fluency:fluency",
+    "//lynx/core/services/long_task_timing:long_task_timing",
+    "//lynx/core/services/ssr:ssr",
+    "//lynx/core/services/timing_handler:timing_handler",
+    "//lynx/core/services/timing_handler:timing_handler_delegate",
+    "//lynx/core/services/timing_handler:timing_handler_platform",
+    "//lynx/core/shared_data:shared_data",
+    "//lynx/core/value_wrapper:value_wrapper",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+  if (enable_air) {
+    public_deps += [ "//lynx/core/renderer/dom/air:tasm_air" ]
+  }
+  if (enable_testbench_recorder) {
+    public_deps += [ "//lynx/core/services/recorder:recorder" ]
+  }
+  if (enable_testbench_replay) {
+    public_deps += [ "//lynx/core/services/replay" ]
+  }
+  if (enable_inspector) {
+    public_deps += [ "//lynx/core/inspector:inspector" ]
+  }
+  if (enable_memory_tracing) {
+    public_deps += [ "//lynx/core/base/debug:memory_tracer_src" ]
+  }
+  if (enable_lepusng_worklet) {
+    public_deps += [ "//lynx/core/renderer/worklet:worklet" ]
+  }
+
+  if (enable_napi_binding) {
+    public_deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_quickjs" ]
+  }
+  if (enable_lynx_testing) {
+    public_deps += [
+      "//lynx/core/base:gtest_lynx_base_android",
+      "//lynx/core/renderer/utils:gtest_renderer_utils_android",
+      "//third_party/googletest:gtest_sources",
+      "//third_party/googletest_custom:gtest_custom",
+    ]
+  }
+}
+
+config("lynx_android_public_config") {
+  defines = [
+    "ANDROID",
+    "RAPIDJSON_HAS_STDSTRING=1",
+    "LYNX_DEV",
+    "LYNX_SIMPLIFY=0",
+    "NAPI_DISABLE_CPP_EXCEPTIONS",
+    "NAPI_DISABLE_CPP_RTTI",
+  ]
+  if (enable_inspector) {
+    defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
+  }
+  include_dirs = [
+    "//core",
+    "//core/build/gen",
+  ]
+  cflags = []
+  cflags += [
+    "-fno-short-enums",
+    "-fno-strict-aliasing",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-Wno-unused-parameter",
+    "-Wno-unknown-warning-option",
+
+    # These features are commonly used and should not
+    # be treated as warnings.
+    "-Wno-vla-cxx-extension",
+    "-Wno-missing-field-initializers",
+
+    # for zlib
+    "-Wno-unused-function",
+  ]
+  cflags_c = []
+  cflags_cc = [
+    "-std=c++17",
+    "-fno-exceptions",
+    "-fno-rtti",
+    "-Wl,-ldl",
+    "-Wno-unused-command-line-argument",
+  ]
+
+  if (is_debug) {
+    cflags_cc += [ "-g" ]
+    cflags += [ "-O0" ]
+  } else {
+    defines += [ "NDEBUG" ]
+    cflags += [
+      "-faddrsig",
+      "-$compiler_optimization_level",
+    ]
+    if (enable_lto) {
+      cflags += [ "-flto" ]
+    }
+  }
+  if (enable_lite) {
+    defines += [ "USE_POW_TABLE=0" ]
+    cflags += [ "-fno-stack-protector" ]
+    if (enable_lite_production) {
+      defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
+    }
+  } else {
+    defines += [ "USE_POW_TABLE=1" ]
+  }
+
+  if (jsengine_type == "jsc") {
+    defines += [ "JS_ENGINE_TYPE=1" ]
+    include_dirs += [ "//third_party/jsc" ]
+  } else if (jsengine_type == "quickjs") {
+    defines += [
+      "JS_ENGINE_TYPE=2",
+      "QUICKJS_VER_LYNX",
+    ]
+  }
+
+  if (enable_memory_tracing) {
+    defines += [ "MEMORY_TRACING" ]
+  }
+  if (enable_radon) {
+    defines += [ "_ENABLE_RADON_" ]
+  }
+
+  if (enable_frozen_mode) {
+    defines += [ "LYNX_ENABLE_FROZEN_MODE=true" ]
+  }
+
+  if (enable_napi_binding) {
+    include_dirs += [
+      "//lynx/third_party/napi/include",
+      "//third_party/v8/11.1.277/include",
+    ]
+  }
+
+  if (is_asan) {
+    cflags += [ "-fno-omit-frame-pointer" ]
+    cflags_cc += [
+      "-O1",
+      "-g",
+    ]
+  } else {
+    cflags_c += [
+      "-fomit-frame-pointer",
+      "-fno-sanitize=safe-stack",
+    ]
+    cflags_cc += [
+      "-fomit-frame-pointer",
+      "-fno-sanitize=safe-stack",
+    ]
+  }
+
+  cflags += custom_cflags
+  defines += custom_defines
+}
+
+# This config is only used in lynx_android target.
+config("lynx_android_private_config") {
+  ldflags = [
+    "-Wl,--exclude-libs,ALL,--gc-sections",
+    "-Wl,--build-id=sha1",
+    "-fuse-ld=lld",
+    "-Xlinker",
+    "-Map=output.map",
+  ]
+
+  lib_dirs = []
+  libs = [
+    "android",
+    "dl",
+    "jnigraphics",
+    "log",
+  ]
+  if (jsengine_type == "jsc") {
+    lib_dirs += [ "${jsc_lib_dir}" ]
+    libs += [ "jsc" ]
+  } else if (jsengine_type == "quickjs") {
+    lib_dirs += [ "${primjs_native_lib_dir}" ]
+    libs += [ "quick" ]
+  }
+  if (enable_napi_binding) {
+    lib_dirs += [ "${primjs_native_lib_dir}" ]
+    libs += [ "napi" ]
+  }
+
+  if (!is_debug) {
+    ldflags += [
+      "-O2",
+      "-Wl,--icf=all",
+    ]
+    if (enable_lto) {
+      ldflags += [ "-flto" ]
+    }
+  }
+  if (enable_lite) {
+    if (enable_lite_production) {
+      ldflags +=
+          [ "-Wl,--version-script=" + rebase_path(
+                "//lynx/platform/android/lynx_android/lynx_lite_export.map") ]
+    }
+  }
+  if (host_os == "linux") {
+    ldflags += [ "-stdlib=libc++" ]
+  }
+
+  ldflags += custom_ldflags
+}

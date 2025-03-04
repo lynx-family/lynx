@@ -1,0 +1,35 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("public") {
+  sources = [
+    "jsb/lynx_module_callback.h",
+    "jsb/lynx_native_module.h",
+    "jsb/native_module_factory.h",
+    "layout_ctx_platform_impl.h",
+    "layout_node_manager.h",
+    "layout_node_value.h",
+    "list_data.h",
+    "lynx_engine_proxy.h",
+    "lynx_extension_delegate.h",
+    "lynx_resource_loader.h",
+    "lynx_runtime_proxy.h",
+    "painting_ctx_platform_impl.h",
+    "pipeline_option.h",
+    "platform_extra_bundle.h",
+    "prop_bundle.h",
+    "pub_value.h",
+    "runtime_lifecycle_observer.h",
+    "text_utils.h",
+    "timing_collector_platform.h",
+    "timing_key.h",
+    "ui_delegate.h",
+    "vsync_observer_interface.h",
+  ]
+
+  # Don't add other dependencies here!
+  deps = [ "//lynx/base/src:base" ]
+}

@@ -1,0 +1,56 @@
+From 9b9fe401b39fc5201bb14da2c4c238472dad4c18 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Tue, 13 Aug 2024 16:55:54 +0800
+Subject: [PATCH] [Infra] Add BUILD.gn file of xhook
+
+---
+ BUILD.gn | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+ create mode 100644 BUILD.gn
+
+diff --git a/BUILD.gn b/BUILD.gn
+new file mode 100644
+index 0000000..0688438
+--- /dev/null
++++ b/BUILD.gn
+@@ -0,0 +1,37 @@
++# Copyright 2020 The Lynx Authors. All rights reserved.
++
++assert(is_android)
++
++source_set("xhook") {
++  sources = [
++    "libxhook/jni/queue.h",
++    "libxhook/jni/tree.h",
++    "libxhook/jni/xh_core.c",
++    "libxhook/jni/xh_core.h",
++    "libxhook/jni/xh_elf.c",
++    "libxhook/jni/xh_elf.h",
++    "libxhook/jni/xh_errno.h",
++    "libxhook/jni/xh_jni.c",
++    "libxhook/jni/xh_log.c",
++    "libxhook/jni/xh_log.h",
++    "libxhook/jni/xh_util.c",
++    "libxhook/jni/xh_util.h",
++    "libxhook/jni/xh_version.c",
++    "libxhook/jni/xh_version.h",
++    "libxhook/jni/xhook.c",
++    "libxhook/jni/xhook.h",
++  ]
++
++  public = [
++    "libxhook/jni/queue.h",
++    "libxhook/jni/tree.h",
++    "libxhook/jni/xh_core.h",
++    "libxhook/jni/xh_elf.h",
++    "libxhook/jni/xh_errno.h",
++    "libxhook/jni/xh_log.h",
++    "libxhook/jni/xh_util.h",
++    "libxhook/jni/xh_version.h",
++    "libxhook/jni/xhook.h",
++  ]
++
++}
+-- 
+2.45.2
+

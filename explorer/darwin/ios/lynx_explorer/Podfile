@@ -1,0 +1,51 @@
+source 'https://cdn.cocoapods.org/'
+project './LynxExplorer.xcodeproj'
+
+platform :ios, '9.0'
+
+install!'cocoapods',:deterministic_uuids=>false,
+                    :lock_pod_sources=>false,
+                    :generate_multiple_pod_projects => true,
+                    :incremental_installation=>true,
+                    :warn_for_multiple_pod_sources => false
+
+post_install do |installer|
+  installer.pod_target_subprojects.flat_map { |p| p.targets }.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
+  end
+end
+
+target 'LynxExplorer' do
+  pod 'Lynx', :path => '../../../../..', :subspecs => [
+   'Framework',
+   'Replay',
+  ],:testspecs => [ 'UnitTests' ]
+
+  pod 'LynxDevtool', :path => '../../../../..', :subspecs => [
+   'Framework',
+  ],:testspecs => [ 'UnitTests' ]
+
+  pod 'BaseDevtool', :path => '../../../../..'
+
+  pod 'LynxService', :path => '../../../../..', :subspecs => [
+    'Image',
+    'Log',
+    'Devtool',
+    'Http',
+  ]
+
+  pod 'PrimJS', '2.11.1-alpha.3', :subspecs => ['quickjs', 'napi']
+
+  pod 'SDWebImage','5.15.5'
+  pod 'SDWebImageWebPCoder', '0.11.0'
+
+  pod 'DebugRouter', '5.0.6-alpha.2'
+end
+
+target 'LynxExplorerTests' do
+  inherit! :complete
+  pod 'OCMock', :git => 'git@github.com:erikdoe/ocmock.git', :tag => 'v3.9.1'
+  pod 'XcodeCoverage', :git => 'git@github.com:jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
+end

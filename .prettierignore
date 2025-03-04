@@ -1,0 +1,11 @@
+__dist__/
+dist/
+packages/template-assembler-cli/lepus/**/*
+packages/lynx-core/__tests__/fixtures/**/*
+packages/lynx-core/lepus/**/*
+*.d.ts
+oliver/**/*.js
+!oliver/**/*.config.js
+!oliver/compiler-ng/scripts/*.js
+!oliver/type-lynx/**/*.d.ts
+node_modules/

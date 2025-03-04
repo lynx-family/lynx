@@ -1,0 +1,42 @@
+{
+    "name": "relative-layout-once",
+    "id": 139,
+    "type": "bool",
+    "default_value": "true",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "relative-layout-once": {
+            "__compat": {
+              "description": "Used to set typesetting acceleration. When using positioning between elements at the same level, it is recommended to enable this property, and elements at the same level will only depend upwards.",
+              "lynx_path": "docs/zh/api/css/properties/relative-layout-once",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "clay_android": {
+                  "version_added": "1.4"
+                },
+                "clay_macos": {
+                  "version_added": "1.4"
+                },
+                "clay_windows": {
+                  "version_added": "1.4"
+                }
+              }
+            }
+          }
+    }
+}

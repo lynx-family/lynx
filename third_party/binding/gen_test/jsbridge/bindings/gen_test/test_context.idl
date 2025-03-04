@@ -1,0 +1,23 @@
+[BufferCommands, OmitConstants]
+interface TestContext {
+  void voidFromVoid();
+
+  void voidFromString(DOMString s);
+  DOMString stringFromVoid();
+
+  void voidFromStringArray(sequence<DOMString> sa);
+
+  void voidFromTypedArray(Float32Array fa);
+
+  void voidFromArrayBuffer(ArrayBuffer ab);
+
+  void voidFromArrayBufferView(ArrayBufferView abv);
+  void voidFromNullableArrayBufferView(ArrayBufferView? abv);
+
+  TestAsyncObject createAsyncObject();
+  void asyncForAsyncObject(TestAsyncObject tao);
+  void asyncForNullableAsyncObject(TestAsyncObject? tao);
+  DOMString syncForAsyncObject(TestAsyncObject tao);
+
+  [ForcedSync]void finish();
+};

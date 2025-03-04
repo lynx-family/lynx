@@ -1,0 +1,31 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//lynx/core/Lynx.gni")
+
+event_report_shared_sources = [ "event_tracker.h" ]
+
+if (is_oliver_ssr) {
+  event_report_shared_sources += [ "event_tracker_nodejs.cc" ]
+} else {
+  event_report_shared_sources += [ "event_tracker.cc" ]
+}
+
+if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests) {
+  event_report_shared_sources += [ "event_tracker_platform_impl.h" ]
+  if (is_android) {
+    event_report_shared_sources += [
+      "android/event_tracker_android.h",
+      "android/event_tracker_platform_impl.cc",
+    ]
+  } else if (is_apple) {
+    event_report_shared_sources += [ "darwin/event_tracker_platform_impl.mm" ]
+  }
+}
+
+lynx_core_source_set("event_report") {
+  sources = event_report_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

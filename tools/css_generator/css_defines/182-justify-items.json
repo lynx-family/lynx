@@ -1,0 +1,68 @@
+{
+    "name": "justify-items",
+    "id": 182,
+    "type": "complex",
+    "default_value": "stretch",
+    "version": "2.1",
+    "author": "liting.src",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "values": [
+        {
+            "value": "start",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "end",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "center",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "stretch",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "auto",
+            "version": "2.1",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "justify-items": {
+            "__compat": {
+              "description": "defines the default justify-self for all items of the box, giving them all a default way of justifying each box along the appropriate axis.",
+              "lynx_path": "api/css/properties/justify-items",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/justify-items",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.1"
+                },
+                "ios": {
+                  "version_added": "2.1"
+                },
+                "clay_android": {
+                  "version_added": "2.1"
+                },
+                "clay_macos": {
+                  "version_added": "2.1"
+                },
+                "clay_windows": {
+                  "version_added": "2.1"
+                }
+              }
+            }
+          }
+    }
+}

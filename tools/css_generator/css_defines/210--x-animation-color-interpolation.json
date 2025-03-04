@@ -1,0 +1,27 @@
+{
+    "name": "-x-animation-color-interpolation",
+    "id": 210,
+    "type": "enum",
+    "default_value": "auto",
+    "version": "2.18",
+    "author": "wangyifei.20010605",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "auto",
+            "version": "2.18",
+            "desc": ""
+        },
+        {
+            "value": "sRGB",
+            "version": "2.18",
+            "desc": ""
+        },
+        {
+            "value": "linearRGB",
+            "version": "2.18",
+            "desc": ""
+        }
+    ]
+}

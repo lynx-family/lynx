@@ -1,0 +1,72 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/core/napi.gni")
+import("//lynx/config.gni")
+import("//lynx/core/base_targets.gni")
+
+# All of those args one-to-one correspond with the macros in the code of Lynx module.
+# Please do not add other types of flags to this scope.
+declare_args() {
+  # build_lepus_compile indicates whether build with template compiler
+  build_lepus_compile = true
+
+  # enable_air corresponds the macro of ENABLE_AIR
+  enable_air = false
+
+  # disable_nanbox corresponds the macro of DISABLE_NANBOX
+  disable_nanbox = false
+
+  # enable_testbench_replay corresponds the macro of ENABLE_TESTBENCH_REPLAY
+  enable_testbench_replay = false
+
+  # enable_testbench_recorder corresponds the macro of ENABLE_TESTBENCH_RECORDER.
+  enable_testbench_recorder = false
+
+  # enable_just_lepusng corresponds the macro of ENABLE_JUST_LEPUSNG
+  # ENABLE_JUST_LEPUSNG only use on ultralite to control package size
+  enable_just_lepusng = false
+
+  # JavaScript engine type. jsengine_type determines the value of macro JS_ENGINE_TYPE
+  jsengine_type = "none"
+
+  # enable some logic for e2e test
+  enable_e2e_test = false
+
+  # disable_list_platform_implementation is used to determine whether FE can use c++ list element.
+  disable_list_platform_implementation = true
+}
+
+if (is_win) {
+  build_lepus_compile = false
+} else if (is_android) {
+  declare_args() {
+    # gradle will pass these args when building Android.
+    # enable buid debugMode liblynx.so for testbench.
+    lynx_in_debug = false
+
+    # enable replay in release mode.
+    enable_replay_release = false
+  }
+
+  # these args are up to lynx_in_debug arg,
+  # gradle will not pass these args when building Android.
+  enable_testbench_replay = lynx_in_debug
+  if (enable_replay_release) {
+    enable_testbench_replay = true
+  }
+  enable_testbench_recorder = lynx_in_debug
+
+  # the arg is up to enable_lite arg,
+  # gradle will not pass this arg when building Android.
+  enable_just_lepusng = enable_lite
+} else if (is_ios) {
+  if (jsengine_type == "none") {
+    jsengine_type = "jsc"
+  }
+}
+
+if (enable_unittests) {
+  enable_air = true
+}

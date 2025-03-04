@@ -1,0 +1,27 @@
+{
+    "name": "font-style",
+    "id": 61,
+    "type": "enum",
+    "default_value": "normal",
+    "version": "1.0",
+    "author": "liyun",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "italic",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "oblique",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

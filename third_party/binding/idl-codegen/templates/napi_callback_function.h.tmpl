@@ -1,0 +1,60 @@
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#ifndef {{header_guard}}
+#define {{header_guard}}
+
+#include <utility>
+#include <memory>
+
+{% for filename in header_includes %}
+{% if filename[0] == '<' %}
+#include {{filename}}
+{% else %}
+#include "{{filename}}"
+{% endif %}
+{% endfor %}
+
+{% for filename in hardcoded_includes %}
+#include "{{filename}}"
+{% endfor %}
+
+namespace lynx {
+namespace {{component}} {
+{% if not holder_storage_namespace %}
+
+using binding::HolderStorage;
+using binding::InstanceGuard;
+
+{% endif %}
+class {{cpp_class}} {
+ public:
+  {{cpp_class}}(Napi::Function callback);
+
+  {{cpp_class}}(const {{cpp_class}}& cb) = delete;
+
+  {% if enable_interval %}
+  ~{{cpp_class}}();
+  {% endif %}
+
+  void Invoke({{ arguments | map(attribute = 'declaration_name') | join(', ')}});
+
+  Napi::Value GetResult() { return result_; }
+  Napi::Env Env(bool *valid);
+
+  void SetExceptionHandler(std::function<void(Napi::Env)> handler) {
+    exception_handler_ = std::move(handler);
+  }
+
+ private:
+  std::weak_ptr<{{holder_storage_namespace}}InstanceGuard> storage_guard_;
+  Napi::Value result_;
+  std::function<void(Napi::Env)> exception_handler_;
+};
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+#endif  // {{header_guard}}
+
+{% endfilter %}{# format_blink_cpp_source_code #}

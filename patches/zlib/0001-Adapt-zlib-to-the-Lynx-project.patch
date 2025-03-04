@@ -1,0 +1,72 @@
+From 3d01e5e2df337d157c42323b9460d6b4ec9b3504 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Mon, 26 Aug 2024 16:44:13 +0800
+Subject: [PATCH] Adapt zlib to the Lynx project
+
+1. Add tvOS support.
+2. Add the -Wno-unknown-warning-option cflag.
+3. Update the GN path for cpu-features.
+---
+ BUILD.gn | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 8ed0807..ffca3aa 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -77,7 +77,7 @@ if ((current_cpu == "arm" || current_cpu == "arm64") &&
+ }
+ 
+ use_x86_x64_optimizations =
+-    (current_cpu == "x86" || current_cpu == "x64") && !is_ios
++    (current_cpu == "x86" || current_cpu == "x64") && !is_ios && !is_tvos && !is_android
+ 
+ config("zlib_adler32_simd_config") {
+   if (use_x86_x64_optimizations) {
+@@ -131,7 +131,7 @@ if (use_arm_neon_optimizations) {
+       defines += [ "ARMV8_OS_LINUX" ]
+     } else if (is_mac) {
+       defines += [ "ARMV8_OS_MACOS" ]
+-    } else if (is_ios) {
++    } else if (is_ios || is_tvos) {
+       defines += [ "ARMV8_OS_IOS" ]
+     } else if (is_fuchsia) {
+       defines += [ "ARMV8_OS_FUCHSIA" ]
+@@ -273,6 +273,7 @@ source_set("zlib_slide_hash_simd") {
+ config("zlib_warnings") {
+   if (is_clang) {
+     cflags = [
++      "-Wno-unknown-warning-option",
+       "-Wno-deprecated-non-prototype",
+       "-Wno-incompatible-pointer-types",
+       "-Wunused-variable",
+@@ -346,7 +347,7 @@ component("zlib") {
+   if (is_android) {
+     import("//build/config/android/config.gni")
+     if (defined(android_ndk_root) && android_ndk_root != "") {
+-      deps += [ "//third_party/cpu_features:ndk_compat" ]
++      deps += [ "//third_party/cpu-features" ]
+     } else {
+       assert(false, "CPU detection requires the Android NDK")
+     }
+@@ -387,7 +388,7 @@ config("minizip_warnings") {
+ static_library("minizip") {
+   include_dirs = [
+     ".",
+-    "//third_party/zlib",
++    "//lynx/third_party/zlib",
+   ]
+ 
+   sources = [
+@@ -524,7 +525,7 @@ if (build_with_chromium) {
+     configs += [ "//build/config/compiler:no_chromium_code" ]
+ 
+     include_dirs = [
+-      "//third_party/googletest/src/googletest/include/gtest",
++      "//lynx/third_party/googletest/src/googletest/include/gtest",
+       ".",
+       "google",
+     ]
+-- 
+2.45.2
+

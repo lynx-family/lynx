@@ -1,0 +1,33 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/runtime/bindings/lepus/build.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("lepus") {
+  include_dirs = [ "//lynx/third_party" ]
+
+  sources =
+      lynx_lepus_binding_sources_path + lynx_renderer_functions_sources_path
+
+  public_deps = [
+    "//lynx/core/base",
+    "//lynx/core/renderer/css",
+    "//lynx/core/renderer/events",
+    "//lynx/core/renderer/signal:signal",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/runtime/vm/lepus",
+  ]
+
+  if (!is_oliver_ssr) {
+    public_deps += [
+      "//lynx/core/resource/lazy_bundle:lazy_bundle",
+      "//lynx/core/runtime/bindings/common/event:runtime_common",
+      "//lynx/core/runtime/bindings/jsi/event:js_runtime",
+      "//lynx/core/runtime/bindings/lepus/event:lepus_runtime",
+      "//lynx/core/template_bundle:template_bundle",
+    ]
+  }
+}

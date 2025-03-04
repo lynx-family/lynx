@@ -1,0 +1,157 @@
+name: tasm_publish
+
+on: workflow_dispatch
+
+jobs:
+  tasm-linux-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 7.33.6
+      - name: Install Python Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+      - name: Build Linux Tasm
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/hab sync . -f --target tasm
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:release:linux
+          popd
+      - name: Upload Linux Tasm Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tasm_linux
+          path: lynx/oliver/lynx-tasm/build/linux/Release/lepus.node
+
+  tasm-darwin-build:
+    runs-on: macOS-latest
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 7.33.6
+      - name: Install Python Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+      - name: Build Darwin Tasm
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/hab sync . -f --target tasm
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:release:darwin
+          popd
+      - name: Upload Darwin Tasm Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tasm_darwin
+          path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
+
+  tasm-publish:
+    runs-on: macOS-latest
+    needs: [tasm-linux-build, tasm-darwin-build]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 7.33.6
+      - name: Install Python Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+      - name: Build Wasm Binary
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/hab sync . -f --target tasm
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:wasm
+          popd
+      - name: Download Linux Tasm Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tasm_linux
+          path: lynx/oliver/lynx-tasm/build/linux/Release
+      - name: Download Darwin Tasm Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: tasm_darwin
+          path: lynx/oliver/lynx-tasm/build/darwin/Release
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.REPO_TASM_NPM_TOKEN }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:wasm
+          npm publish --access public
+          popd

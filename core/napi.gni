@@ -1,0 +1,20 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+# All of those args one-to-one correspond with the macros in the code of Lynx module.
+# Please do not add other types of flags to this scope.
+declare_args() {
+  # enable_napi_binding corresponds the macro of ENABLE_NAPI_BINDING
+  enable_napi_binding = false
+}
+
+if (is_android) {
+  # the arg is up to enable_lite arg,
+  # gradle will not pass this arg when building Android.
+  enable_just_lepusng = enable_lite
+}
+
+enable_napi_binding = enable_lepusng_worklet

@@ -1,0 +1,15 @@
+body,
+#root {
+  height: 100%;
+  background: #fafafa;
+  font-family: 'ui-sans-serif';
+}
+/* override */
+.CodeMirror {
+  border: none;
+  height: auto !important;
+  background: transparent !important;
+}
+.cm-s-default .cm-number {
+  color: #ce1126 !important;
+}

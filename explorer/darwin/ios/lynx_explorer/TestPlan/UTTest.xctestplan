@@ -1,0 +1,46 @@
+{
+  "configurations" : [
+    {
+      "id" : "25FD960C-5271-4A36-9FDB-4D8CE629C50A",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false
+  },
+  "testTargets" : [
+    {
+      "enabled" : false,
+      "target" : {
+        "containerPath" : "container:LynxExplorer.xcodeproj",
+        "identifier" : "2B736B882D096F8A000A35F6",
+        "name" : "LynxExplorerTests"
+      }
+    },
+    {
+      "skippedTests" : [
+        "LynxBackgroundRuntimeUnitTest\/testEvaluateJavaScript",
+        "LynxBackgroundRuntimeUnitTest\/testFreezeSendGlobalEvent",
+        "LynxBackgroundRuntimeUnitTest\/testGenericResourceLoader",
+        "LynxBackgroundRuntimeUnitTest\/testSessionStorage",
+        "LynxBackgroundRuntimeUnitTest\/testSessionStorageAfterAttach",
+        "LynxResourceLoaderDarwinUnitTest\/testReportErrorToBackground",
+        "LynxResourceLoaderDarwinUnitTest\/testReportErrorToLynxView",
+        "LynxTemplateBundleUnitTest\/testCreateTemplateBundleWithOption",
+        "LynxTemplateBundleUnitTest\/testDynamicComponentTemplateBundle",
+        "LynxTemplateBundleUnitTest\/testGetExtraInfo",
+        "LynxTemplateBundleUnitTest\/testTemplateBundleLepus",
+        "LynxTemplateBundleUnitTest\/testTemplateBundleLepusNG"
+      ],
+      "target" : {
+        "containerPath" : "container:Pods\/Lynx.xcodeproj",
+        "identifier" : "87B2BD4CDFCA0FB4DA2F6FC70422BB1B",
+        "name" : "Lynx-Unit-UnitTests"
+      }
+    }
+  ],
+  "version" : 1
+}

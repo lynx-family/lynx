@@ -1,0 +1,20 @@
+{
+    "name": "layout-animation-create-timing-function",
+    "id": 83,
+    "type": "timing-function",
+    "default_value": "linear",
+    "author": "liyanbo",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "keywords": [
+        "linear",
+        "ease-in",
+        "ease-out",
+        "ease-in-ease-out",
+        "ease",
+        "ease-in-out",
+        "square-bezier",
+        "cubic-bezier"
+    ],
+    "desc": ""
+}

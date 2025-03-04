@@ -1,0 +1,23 @@
+{
+  "name": "@lynx-js/runtime-shared",
+  "version": "0.0.1",
+  "description": "lynx runtime shared",
+  "source": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:lynx-family/lynx.git"
+  },
+  "keywords": [
+    "jssdk"
+  ],
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "dependencies": {
+    "tslib": "2.5.0"
+  }
+}

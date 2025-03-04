@@ -1,0 +1,134 @@
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#ifndef {{header_guard}}
+#define {{header_guard}}
+
+{% for filename in header_includes %}
+#include "{{filename}}"
+{% endfor %}
+{% for member in members %}
+{% if member.is_wrapper_type %}
+{% if member.impl_namespace %}
+
+namespace {{member.impl_namespace}} {
+  class {{member.idl_type}};
+}
+{% endif %}
+{% endif %}
+{% endfor %}
+
+namespace lynx {
+{% if has_remote %}
+namespace binding {
+class RemoteDictionaryBuffer;
+}  // namespace binding
+{% endif %}
+namespace {{component}} {
+
+{% macro declare_wrapper(member) %}
+{% if member.is_wrapper_type or member.is_interface_type %}
+{% if member.impl_namespace %}
+using {{member.impl_namespace}}::{{member.idl_type}};
+{% else %}
+class {{member.idl_type}};
+{% endif %}{# member.impl_namespace #}
+{% endif %}{# member.is_wrapper_type #}
+{% endmacro %}
+
+{% for member in members %}
+{% if member.union_types %}
+{% for union_type in member.union_types %}
+{{ declare_wrapper(union_type) }}
+{% endfor %}
+{% else %}
+{{ declare_wrapper(member) }}
+{% endif %}{# member.union_types #}
+{% endfor %}
+
+class {{cpp_class}}{{' : public ' + parent_cpp_class if parent_cpp_class}} {
+ public:
+  {{cpp_class}}() = default;
+  {{cpp_class}}(const Napi::Value&);
+
+  static std::unique_ptr<{{cpp_class}}> ToImpl(const Napi::Value&);
+  {% if has_remote %}
+  static std::unique_ptr<{{cpp_class}}> FromRemote(binding::RemoteDictionaryBuffer& buffer);
+  {% endif %}
+
+  Napi::Object ToJsObject(Napi::Env);
+  {% if has_remote %}
+  binding::Value TransferToValue();
+  {% endif %}
+
+  {% for member in members %}
+  bool {{member.has_method_name}}() const { return has_{{member.name}}_; }
+  {% if member.is_sequence_type %}
+  const {{member.cpp_type}}& {{member.getter_name}}() const {
+    {% if member.is_required %}
+    BINDING_DCHECK({{member.has_method_name}}());
+    {% endif %}
+    return {{member.name}}_;
+  }
+  {% elif member.union_types %}
+  {% for union_type in member.union_types %}
+  bool {{member.name}}Is{{union_type.idl_type}}() const {
+    return {{member.name}}_is_{{union_type.idl_type}}_;
+  }
+  {{union_type.cpp_type}} {{member.getter_name}}As{{union_type.idl_type}}() const {
+    {% if member.is_required %}
+    BINDING_DCHECK({{member.has_method_name}}() && {{member.name}}Is{{union_type.idl_type}}());
+    {% endif %}
+    return {{member.name}}_{{union_type.idl_type}}_{{'.get()' if union_type.is_dictionary}};
+  }
+  {% endfor %}
+  {% else %}
+  {{member.cpp_type}} {{member.getter_name}}() const {
+    {% if member.is_required %}
+    BINDING_DCHECK({{member.has_method_name}}());
+    {% endif %}
+    return {{member.name}}_{{'.get()' if member.is_dictionary}};
+  }
+  {% endif %}{# member.union_types #}
+
+  {% endfor %}
+
+  // Dictionary name
+  static constexpr const char* DictionaryName() {
+    return "{{cpp_class}}";
+  }
+
+ private:
+  {% for member in members %}
+  {% if member.cpp_default_value %}
+  bool has_{{member.name}}_ = true;
+  {% else %}
+  bool has_{{member.name}}_ = false;
+  {% endif %}
+  {% endfor %}
+
+  {% for member in members %}
+  {% if member.is_dictionary %}
+  std::unique_ptr<{{member.idl_type}}> {{member.name}}_;
+  {% elif member.union_types %}
+  {% for union_type in member.union_types %}
+
+  bool {{member.name}}_is_{{union_type.idl_type}}_ = false;
+  {% if union_type.is_dictionary %}
+  std::unique_ptr<{{union_type.idl_type}}> {{member.name}}_{{union_type.idl_type}}_;
+  {% else %}
+  {{union_type.cpp_type}} {{member.name}}_{{union_type.idl_type}}_;
+  {% endif %}
+  {% endfor %}
+  {% else %}
+  {{member.cpp_type}} {{member.name}}_{{' = ' + member.cpp_default_value if member.cpp_default_value}};
+  {% endif %}{# member.union_types #}
+  {% endfor %}
+};
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+#endif  // {{header_guard}}
+
+{% endfilter %}{# format_blink_cpp_source_code #}

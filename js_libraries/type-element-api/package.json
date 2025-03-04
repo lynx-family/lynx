@@ -1,0 +1,26 @@
+{
+  "name": "@lynx-js/type-element-api",
+  "version": "0.0.1",
+  "description": "",
+  "keywords": ["element-api" , "types"],
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "types":"types/index.d.ts",
+  "main": "types/index.d.ts",
+  "scripts": {
+    "test": "tsd"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts"
+    }
+  },
+  "files": [
+    "types/",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "tsd": "0.30.4"
+  }
+}

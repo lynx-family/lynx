@@ -1,0 +1,21 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+perfetto_header_files = [ "perfetto.h" ]
+
+perfetto_shared_sources = [ "perfetto.cc" ]
+
+config("allow_sign_compare") {
+  cflags = [ "-Wno-sign-compare" ]
+}
+
+source_set("perfetto") {
+  sources = perfetto_shared_sources + perfetto_header_files
+
+  # On some platfoms, cmsg = CMSG_NXTHDR(&msg_hdr, cmsg)) will cause build break:
+  #  comparison of integers of different signs: 'unsigned long' and 'long'
+  configs += [ ":allow_sign_compare" ]
+}

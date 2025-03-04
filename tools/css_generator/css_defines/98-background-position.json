@@ -1,0 +1,10 @@
+{
+    "name": "background-position",
+    "id": 98,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": ""
+}

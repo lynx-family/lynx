@@ -1,0 +1,91 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+builder({
+    "default" :{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+            "enable_inspector=true",
+        ],
+        "output": "out/Default",
+        "type": "gn",
+    },
+    "build_for_element_test":{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+        ],
+        "output": "out/Default_element_test",
+        "type": "gn",
+    },
+    "build_for_agent_test":{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+            "enable_testbench_recorder=true",
+            "enable_testbench_replay=true",
+        ],
+        "output": "out/Default_agent_test",
+        "type": "gn",
+    }
+})
+
+coverage({
+    "output": "out/coverage",
+    "ignores": [
+        "third_party/*",
+        ".*_unittest.cc",
+        ".*_unittest.h",
+        "core/*",
+        "core/base/*",
+        "core/runtime/vm/lepus/*",
+        "core/parser/*",
+        "core/runtime/*",
+        "testing/*"
+    ],
+    "type": "llvm",
+})
+
+targets({
+    "devtool_element_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'build_for_element_test'
+    },
+    "devtoolng_unittest_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "devtool_base_unittest_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "devtool_agent_unittest_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'build_for_agent_test',
+        "args":["--gtest_filter=\"-*DISABLE*\""]
+    },
+    "js_debug_unittest_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    }
+})

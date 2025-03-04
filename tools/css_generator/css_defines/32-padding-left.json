@@ -1,0 +1,40 @@
+{
+    "name": "padding-left",
+    "id": 32,
+    "type": "length",
+    "default_value": "0px",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "padding-left": {
+            "__compat": {
+              "lynx_path": "docs/zh/api/css/properties/padding-left",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/padding-left",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            }
+          }
+    }
+}

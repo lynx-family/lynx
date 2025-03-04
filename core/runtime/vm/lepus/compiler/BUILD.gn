@@ -1,0 +1,51 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/testing/test.gni")
+
+group("lepus_compiler_tests") {
+  testonly = true
+  deps = [ ":lepus_compiler" ]
+  public_deps = []
+}
+
+# the lepus_compiler will read test cases in
+# "$root_out_dir/lepus_test/{{source_file_part}}"
+copy("test_cases_copy") {
+  sources = [ "unit_test" ]
+  outputs = [ "$root_out_dir/lepus_test/{{source_file_part}}" ]
+}
+
+config("private_compiler_config") {
+  cflags = [
+    "-O0",
+    "-g",
+    "-Wno-unused-variable",
+    "-Wno-return-type",
+    "-Wno-switch",
+  ]
+}
+
+executable("lepus_compiler") {
+  testonly = true
+  sources = [ "encode_main.cc" ]
+  deps = [
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/runtime/vm/lepus",
+  ]
+  data_deps = [ ":test_cases_copy" ]
+  configs += [ ":private_compiler_config" ]
+}
+
+unittest_exec("lepus_compiler_exec") {
+  testonly = true
+  sources = [ "lepus_compiler_unittests.cc" ]
+  deps = [
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/runtime/vm/lepus",
+  ]
+  support_custom_init = true
+  data_deps = [ ":test_cases_copy" ]
+  configs = [ ":private_compiler_config" ]
+}

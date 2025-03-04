@@ -1,0 +1,269 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply from: '../jacoco.gradle'
+apply from: '../publish.gradle'
+import org.json.simple.JSONObject
+ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
+
+android {
+    publishNonDefault true
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 22
+        versionCode 1
+        versionName "1.0"
+        missingDimensionStrategy 'lynx','noasan'
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles 'consumer-rules.pro'
+
+        packagingOptions {
+            if (enable_lynx_android_test.toBoolean()) {
+                pickFirst 'lib/*/liblynx.so'
+                pickFirst 'lib/*/liblynxtrace.so'
+                pickFirst 'lib/*/libnapi.so'
+                pickFirst 'lib/*/libnapi_v8.so'
+                pickFirst 'lib/*/libquick.so'
+                pickFirst 'lib/*/libv8_libfull.cr.so'
+                pickFirst 'lib/*/libc++_shared.so'
+                pickFirst 'lib/*/libbasedevtool.so'
+            } else {
+                exclude 'lib/*/liblynx.so'
+                exclude 'lib/*/libnapi.so'
+                exclude 'lib/*/libnapi_v8.so'
+                exclude 'lib/*/libquick.so'
+                exclude 'lib/*/libv8_libfull.cr.so'
+                exclude 'lib/*/libc++_shared.so'
+                exclude 'lib/*/liblynxtrace.so'
+                exclude 'lib/*/libbasedevtool.so'
+            }
+        }
+        buildConfigField("String", "LYNX_SDK_VERSION", "\"${VERSION}\"")
+        buildConfigField("Boolean","enable_lite", enable_lite)
+        multiDexEnabled true
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-fsanitize=address',
+                            '-fsanitize-address-use-after-scope',
+                            '-fPIE',
+                            '-Wl,-ldl',
+                            '-Wl,-llog',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_ARM_MODE=arm',
+                              '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_STL='+getCppLib(),
+                              '-DFLAVOR_NAME=noasan'
+                }
+            }
+            getIsDefault().set(true)
+        }
+    }
+
+    buildTypes {
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=release',
+                            '-LH'//To show compile parameters
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DBUILD_LEPUS_COMPILE=false',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=debug',
+                            '-LH'//To show compile parameters
+
+                    // Symbol table with line numbers
+                    cppFlags "-g",
+                            '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                }
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+            version CMAKE_VERSION
+        }
+    }
+
+    configurations {
+        extractJNI
+    }
+
+    sourceSets {
+        release {
+            jniLibs.srcDirs = ['libs/' + js_engine_type]
+        }
+        debug {
+            jniLibs.srcDirs = ['libs/' + js_engine_type]
+        }
+    }
+
+    project.afterEvaluate{
+        project.android.libraryVariants.each {
+            String flavorName = it.flavorName.capitalize()
+            String buildTypeName = it.buildType.name.capitalize()
+            tasks.getByName("merge${flavorName}${buildTypeName}JniLibFolders") {
+                it.doFirst {
+                    copyLynxSoToLib("debugMode", buildTypeName)
+                }
+            }
+        }
+    }
+
+    buildFeatures {
+        prefab true
+    }
+}
+
+def copyLynxSoToLib(String flavor, String buildType) {
+    ABI_FILTERS.each { abi ->
+        String soPath = "$buildDir/../../lynx_android/build/intermediates/cmake/$flavor$buildType/obj/$abi/"
+        delete "$buildDir/../src/main/jniLibs/$abi/liblynx_debug.so"
+        File desFile = new File(projectDir, "src/main/jniLibs/$abi/")
+        copy {
+            from soPath
+            into desFile
+            rename 'liblynx.so', 'liblynx_debug.so'
+            include 'liblynx.so'
+        }
+    }
+}
+
+task extractJNIFiles {
+    doLast {
+        configurations.extractJNI.files.each {
+            def file = it.absoluteFile
+            def packageName = file.name.tokenize('-')[0]
+            println("extractJNI: " + packageName)
+            copy {
+                from zipTree(file)
+                into "$projectDir/build/jniLibs/$packageName/"
+                include "jni/**/*"
+            }
+        }
+    }
+    dependsOn(":LynxAndroid:extractJNIFiles")
+}
+
+// Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.
+task configGnCompileParas {
+    def buildVariantList = getFlavorNamesAndBuildTypes(project)
+    def flavorNames = buildVariantList[0]
+    def buildTypes = buildVariantList[1]
+    JSONObject gnBuildArgs_map = new JSONObject()
+    flavorNames.each{
+        JSONObject gnBuildArgs_list = new JSONObject()
+        String flavorName = it
+        if (flavorName == "asan") {
+            gnBuildArgs_list.put("is_asan", "true")
+        }
+
+        buildTypes.each{
+            String buildType = it
+            gnBuildArgs_list.put("build_lepus_compile", "false")
+            gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
+            if (buildType == "release") {
+                gnBuildArgs_list.put("is_debug", "false")
+            } else if(buildType == "debug") {
+                gnBuildArgs_list.put("is_debug", "true")
+            }
+            rootProject.ext.abiList.each { abi ->
+                gnBuildArgs_map.put(flavorName+buildType+abi, gnBuildArgs_list)
+            }
+        }
+    }
+    exec {
+        workingDir "../../../"
+        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnBuildArgs_map.toJSONString()
+    }
+}
+
+task copyResources() {
+    doLast {
+        exec {
+            workingDir '../../../'
+            commandLine 'sh', '-c', './devtool/lynx_devtool/resources/copy_resources.sh'
+        }
+    }
+}
+
+preBuild.dependsOn extractJNIFiles
+preBuild.dependsOn copyResources
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('externalNativeBuild')) {
+        task.dependsOn extractJNIFiles
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation project(':LynxAndroid')
+    implementation project(':LynxTrace')
+
+    compileOnly('androidx.appcompat:appcompat:1.0.0')
+
+    testImplementation 'junit:junit:4.12'
+    testImplementation 'org.mockito:mockito-inline:4.8.1'
+
+    api project(':LynxJSSDK')
+
+    implementation 'org.lynxsdk.lynx:debug-router:0.0.1-alpha.2'
+    implementation 'org.lynxsdk.lynx:v8so:0.0.1'
+    
+    compileOnly("com.squareup.okhttp3:okhttp:3.10.0")
+    androidTestImplementation("com.squareup.okhttp3:mockwebserver:3.10.0")
+
+    api project(':BaseDevtool')
+}

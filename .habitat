@@ -1,0 +1,8 @@
+habitat_version = "0.3.136"
+solutions = [
+    {
+        'name': '.',
+        'deps_file': 'DEPS',
+        'url': ''
+    }
+]

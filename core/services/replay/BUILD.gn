@@ -1,0 +1,73 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+replay_shared_sources = [
+  #TOOD(@dupengcheng.ptrdu) move to other file later.
+  "//${lynx_dir}/core/services/replay/lynx_module_binding_testbench.h",
+  "layout_tree_testbench.cc",
+  "layout_tree_testbench.h",
+  "lynx_callback_testbench.cc",
+  "lynx_callback_testbench.h",
+  "lynx_module_binding_testbench.cc",
+  "lynx_module_manager_testbench.cc",
+  "lynx_module_manager_testbench.h",
+  "lynx_module_testbench.cc",
+  "lynx_module_testbench.h",
+  "lynx_replay_helper.cc",
+  "lynx_replay_helper.h",
+  "testbench_test_replay.cc",
+  "testbench_test_replay.h",
+]
+
+lynx_core_source_set("replay") {
+  include_dirs = [
+    "//core",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+  ]
+  sources = replay_shared_sources
+
+  if (is_android) {
+    public_deps = [ "//lynx/third_party/rapidjson" ]
+  }
+
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/runtime",
+    "//lynx/core/runtime/vm/lepus:lepus",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_set("replay_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [
+    "layout_tree_testbench_unittest.cc",
+    "lynx_module_testbench_unittest.cc",
+    "lynx_replay_helper_unittest.cc",
+  ]
+  public_deps = [
+    ":replay",
+    "//lynx/testing/utils:testing_utils",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_exec("replay_unittest_exec") {
+  sources = []
+  deps = [ ":replay_testset" ]
+}
+
+group("replay_unit_test") {
+  testonly = true
+  deps = [
+    ":replay_testset",
+    ":replay_unittest_exec",
+  ]
+}

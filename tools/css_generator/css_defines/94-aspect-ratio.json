@@ -1,0 +1,70 @@
+{
+    "name": "aspect-ratio",
+    "id": 94,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "aspect-ratio": {
+            "__compat": {
+              "lynx_path": "api/css/properties/aspect-ratio",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/aspect-ratio",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.2"
+                },
+                "ios": {
+                  "version_added": "1.2"
+                },
+                "clay_android": {
+                  "version_added": "1.2"
+                },
+                "clay_macos": {
+                  "version_added": "1.2"
+                },
+                "clay_windows": {
+                  "version_added": "1.2"
+                }
+              }
+            },
+            "auto": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "clay_android": {
+                    "version_added": false
+                  },
+                  "clay_macos": {
+                    "version_added": false
+                  },
+                  "clay_windows": {
+                    "version_added": false
+                  },
+                  "web_lynx": {
+                    "version_added": false
+                  }
+                }
+              }
+            }
+          }
+    }
+}

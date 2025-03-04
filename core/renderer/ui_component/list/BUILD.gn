@@ -1,0 +1,92 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+component_list_shared_sources = [
+  "list_container.cc",
+  "list_container.h",
+  "radon_list_element.cc",
+  "radon_list_element.h",
+]
+
+if (disable_list_platform_implementation) {
+  component_list_shared_sources += [
+    "adapter_helper.cc",
+    "adapter_helper.h",
+    "batch_list_adapter.cc",
+    "batch_list_adapter.h",
+    "default_list_adapter.cc",
+    "default_list_adapter.h",
+    "grid_layout_manager.cc",
+    "grid_layout_manager.h",
+    "item_holder.cc",
+    "item_holder.h",
+    "linear_layout_manager.cc",
+    "linear_layout_manager.h",
+    "list_adapter.cc",
+    "list_adapter.h",
+    "list_anchor_manager.cc",
+    "list_anchor_manager.h",
+    "list_children_helper.cc",
+    "list_children_helper.h",
+    "list_container_impl.cc",
+    "list_container_impl.h",
+    "list_event_manager.cc",
+    "list_event_manager.h",
+    "list_layout_manager.cc",
+    "list_layout_manager.h",
+    "list_orientation_helper.cc",
+    "list_orientation_helper.h",
+    "list_types.h",
+    "staggered_grid_layout_manager.cc",
+    "staggered_grid_layout_manager.h",
+  ]
+} else {
+  component_list_shared_sources += [
+    "list_container_default.cc",
+    "list_container_default.h",
+  ]
+}
+
+lynx_core_source_set("react_component_list") {
+  sources = component_list_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+unittest_set("react_component_list_testset") {
+  public_deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/vm/lepus/tasks:tasks_testset",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+  sources = [
+    "batch_list_adapter_unittest.cc",
+    "default_list_adapter_unittest.cc",
+    "list_adapter_unittest.cc",
+    "list_anchor_manager_unittest.cc",
+    "list_children_helper_unittest.cc",
+    "testing/mock_diff_result.h",
+    "testing/mock_list_element.h",
+    "testing/utils.cc",
+    "testing/utils.h",
+  ]
+}
+
+unittest_exec("react_component_list_testset_exec") {
+  sources = []
+  deps = [ ":react_component_list_testset" ]
+}
+
+group("react_component_list_testset_group") {
+  testonly = true
+  deps = [
+    ":react_component_list_testset",
+    ":react_component_list_testset_exec",
+  ]
+}

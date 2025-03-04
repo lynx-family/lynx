@@ -1,0 +1,12 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+group("devtool_unit_test") {
+  testonly = true
+  deps = [
+    "//lynx/devtool/lynx_devtool/element:devtool_element_unit_test",
+    "//lynx/devtool/lynx_devtool/js_debug:js_debug_unit_test",
+    "//lynx/devtool/testing:devtool_ng_unit_test",
+  ]
+}

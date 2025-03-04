@@ -1,0 +1,108 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+import("napi.gni")
+
+napi_quickjs_shared_sources = [
+  "napi_runtime_proxy_quickjs.cc",
+  "napi_runtime_proxy_quickjs.h",
+  "shim/shim_napi_env_quickjs.h",
+]
+
+lynx_core_source_set("napi_binding_core") {
+  sources = napi_shared_source + napi_public_headers
+  deps = [ "//lynx/third_party/binding/napi:napi_binding_base" ]
+  public_deps = []
+  if (is_mac) {
+    public_deps += [ "//lynx/third_party/napi:env" ]
+  }
+  public_deps += [ "//lynx/third_party/rapidjson" ]
+
+  exclude_configs = [ "//build/config/compiler:no_rtti" ]
+  deps += [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("napi_binding_core_headers") {
+  sources = napi_public_headers
+}
+
+lynx_core_source_set("napi_binding_jsc") {
+  sources = napi_jsc_shared_sources
+
+  deps = [ ":napi_binding_core" ]
+  deps += [ "//lynx/third_party/napi:jsc" ]
+}
+
+lynx_core_source_set("napi_binding_quickjs") {
+  sources = napi_quickjs_shared_sources
+
+  deps = [ "//lynx/base/src:base_log_headers" ]
+  public_deps = [ ":napi_binding_core" ]
+
+  if (is_mac) {
+    deps += [
+      "//lynx/core/runtime/jsi/quickjs:quickjs",
+      "//lynx/third_party/napi:quickjs",
+    ]
+  }
+}
+
+config("napi_config") {
+  include_dirs = [
+    ".",
+    "//",
+  ]
+}
+
+lynx_core_source_set("napi_binding_v8") {
+  sources = [
+    "napi_runtime_proxy_v8.cc",
+    "napi_runtime_proxy_v8.h",
+    "napi_runtime_proxy_v8_factory.h",
+    "shim/shim_napi_env_v8.h",
+  ]
+  include_dirs = [ v8_headers_search_path ]
+  if (is_ios) {
+    sources += [ "jsbinding_napi_v8_ios_imp.cc" ]
+  }
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("napi_binding_oliver") {
+  sources = napi_shared_source + napi_public_headers
+  if (jsengine_type == "jsc") {
+    sources += napi_jsc_shared_sources
+  } else if (jsengine_type == "quickjs") {
+    sources += napi_quickjs_shared_sources
+  }
+
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/binding/napi:napi_binding_base",
+  ]
+}
+
+unittest_set("napi_unittests_testset") {
+  sources = [ "napi_environment_unittest.cc" ]
+
+  configs = [ ":napi_config" ]
+
+  deps = [
+    ":napi_binding_quickjs",
+    "//lynx/core/base",
+    "//lynx/core/runtime/bindings/napi/test:test_module",
+  ]
+  deps += [
+    "//lynx/third_party/napi:env",
+    "//lynx/third_party/napi:quickjs",
+  ]
+  if (is_mac) {
+    # On MacOS, NapiBindingCore source files create JSC runtime by default.
+    # And consequently all unittests should link with JSC framework and
+    # depends on NapiBindingJSC.
+    deps += [ ":napi_binding_jsc" ]
+  }
+}

@@ -1,0 +1,829 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("//${lynx_dir}/build_overrides/resource_file.gni")
+import("//lynx/core/Lynx.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+import("Podspecs.gni")
+
+assert(is_ios)
+
+podspec_target("lynx_podspec") {
+  global_variables = lynx_podspec_metadata.global_variables
+  output_name = "Lynx.podspec"
+  output_path = rebase_path("//")
+  root_specification = {
+    name = "Lynx"
+    version = "$lynx_version"
+    summary = "The framework of Lynx."
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "git@github.com:lynx-family/lynx.git"
+    }
+    requires_arc = true
+    default_subspec = "Framework"
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wmissing-field-initializers",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [
+        "OS_IOS=1",
+        "HOST_OSTYPE=HOST_IOS",
+        "LYNX_DEBUG=0",
+        "LYNX_ENABLE_E2E_TEST=#{\$enable_e2e_test}",
+        "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
+      ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+    }
+    ios = {
+      deployment_target = "9.0"
+      framework = [
+        "WebKit",
+        "AudioToolbox",
+      ]
+    }
+    prepare_command = [
+      "if [ -f \"./lynx/tools/js_tools/build.sh\" ]; then",
+      "  lynx/tools/js_tools/build.sh ios lynx/platform/darwin/ios/JSAssets/release/lynx_core.js lynx/platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
+      "fi",
+    ]
+  }
+  deps = [
+    ":Framework",
+    ":ReleaseResource",
+    ":Replay",
+    ":UnitTestResource",
+    ":UnitTests",
+  ]
+}
+
+subspec_target("Framework") {
+  # The following flags are added just to keep it consistent with the original podspec.
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "RAPIDJSON_HAS_STDSTRING=1",
+      "RAPIDJSON_NAMESPACE=lynx::rapidjson",
+      "RAPIDJSON_NAMESPACE_BEGIN=\\\"namespace lynx{namespace rapidjson{\\\"",
+      "RAPIDJSON_NAMESPACE_END=\\\"}};namespace rapidjson=::lynx::rapidjson;\\\"",
+      "JS_ENGINE_TYPE=1",
+      "ENABLE_INSPECTOR=1",
+      "LYNX_ENABLE_FROZEN_MODE=#{\$enable_frozen_mode}",
+      "OS_POSIX=1",
+    ]
+  }
+  if (!is_debug) {
+    pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
+  }
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Werror",
+  ]
+  flatten_deps = framework_podspec_deps
+  frameworks = [
+    "UIKit",
+    "NaturalLanguage",
+  ]
+  if (!use_flatten_deps) {
+    dependency = Framework_deps
+  } else {
+    dependency = [ "Lynx/ReleaseResource" ]
+  }
+}
+
+subspec_target("lynx") {
+  sources = [
+    "LynxBackgroundRuntime+Internal.h",
+    "LynxBackgroundRuntime.mm",
+    "LynxConfig+Internal.h",
+    "LynxContext+Internal.h",
+    "LynxTemplateRender+Internal.h",
+    "LynxTemplateRender+Protected.h",
+    "LynxTemplateRender.mm",
+    "LynxUIRenderer.h",
+    "LynxUIRenderer.mm",
+    "LynxUIRendererProtocol.h",
+    "LynxView+Protected.h",
+    "LynxView.mm",
+    "LynxViewBuilder+Internal.h",
+    "LynxViewBuilder.mm",
+    "LynxWasmFuncRegistry.mm",
+    "PaintingContextProxy.h",
+    "PaintingContextProxy.mm",
+    "animation/LynxAnimationDelegate.m",
+    "animation/LynxAnimationInfo.m",
+    "animation/LynxAnimationTransformRotation.m",
+    "animation/LynxAnimationUtils.m",
+    "animation/LynxKeyframeAnimator.m",
+    "animation/LynxKeyframeManager.m",
+    "animation/LynxKeyframes.m",
+    "animation/LynxLayoutAnimationManager.m",
+    "animation/LynxTransitionAnimationManager.m",
+    "base/LynxBoxShadowManager.m",
+    "base/LynxConverter+Transform.m",
+    "base/LynxFontFaceManager.m",
+    "base/LynxGradient.m",
+    "base/LynxLayoutStyle.mm",
+    "base/LynxPropsProcessor.mm",
+    "base/LynxTextStyle.m",
+    "base/LynxTextUtils.m",
+    "base/LynxTransformOriginRaw.m",
+    "base/LynxTransformRaw.m",
+    "base/LynxUIMethodProcessor.m",
+    "base/UIDevice+Lynx.m",
+    "base/background/LynxBackgroundCapInsets.m",
+    "base/background/LynxBackgroundDrawable.mm",
+    "base/background/LynxBackgroundImageLayerInfo.m",
+    "base/background/LynxBackgroundInfo.m",
+    "base/background/LynxBackgroundLinearGradientDrawable.mm",
+    "base/background/LynxBackgroundManager.m",
+    "base/background/LynxBackgroundSubBackgroundLayer.m",
+    "base/background/LynxBackgroundUtils.m",
+    "base/background/LynxBoxShadowLayer.m",
+    "event/LynxEventDetail.m",
+    "event/LynxEventEmitter.mm",
+    "event/LynxEventHandler+Internal.h",
+    "event/LynxEventHandler.m",
+    "event/LynxEventSpec.m",
+    "event/LynxKeyboardEventDispatcher.m",
+    "event/LynxTouchHandler+Internal.h",
+    "event/LynxTouchHandler.mm",
+    "fluency/LynxFluencyMonitor.h",
+    "fluency/LynxFluencyMonitor.mm",
+    "fluency/LynxScrollFluency.h",
+    "fluency/LynxScrollFluency.m",
+    "fluency/base/LynxFPSMonitor.h",
+    "fluency/base/LynxFPSMonitor.mm",
+    "fluency/base/LynxFPSRecord.h",
+    "fluency/base/LynxFPSRecord.m",
+    "gesture/LynxBaseGestureHandler.m",
+    "gesture/LynxDefaultGestureHandler.m",
+    "gesture/LynxFlingGestureHandler.m",
+    "gesture/LynxGestureArenaManager.h",
+    "gesture/LynxGestureArenaManager.m",
+    "gesture/LynxGestureDetectorDarwin.m",
+    "gesture/LynxGestureDetectorManager.h",
+    "gesture/LynxGestureDetectorManager.m",
+    "gesture/LynxGestureFlingTrigger.h",
+    "gesture/LynxGestureFlingTrigger.m",
+    "gesture/LynxGestureHandlerTrigger.h",
+    "gesture/LynxGestureHandlerTrigger.m",
+    "gesture/LynxLongPressGestureHandler.m",
+    "gesture/LynxNativeGestureHandler.m",
+    "gesture/LynxPanGestureHandler.m",
+    "gesture/LynxTapGestureHandler.m",
+    "hero_transitions/CALayer+LynxHeroTransition.m",
+    "hero_transitions/LynxHeroAnimator.m",
+    "hero_transitions/LynxHeroModifiers.m",
+    "hero_transitions/LynxHeroTransition.m",
+    "hero_transitions/LynxUI+LynxHeroTransition.m",
+    "hero_transitions/UIView+LynxHeroTransition.m",
+    "hero_transitions/UIViewController+LynxHeroTransition.m",
+    "module/LynxAccessibilityModule.h",
+    "module/LynxAccessibilityModule.mm",
+    "module/LynxExposureModule.h",
+    "module/LynxExposureModule.mm",
+    "module/LynxFetchModule.h",
+    "module/LynxFetchModule.m",
+    "module/LynxIntersectionObserverModule.h",
+    "module/LynxIntersectionObserverModule.mm",
+    "module/LynxResourceModule.h",
+    "module/LynxResourceModule.mm",
+    "module/LynxTextInfoModule.h",
+    "module/LynxTextInfoModule.mm",
+    "module/LynxUIMethodModule.h",
+    "module/LynxUIMethodModule.mm",
+    "public/LynxTemplateRender.h",
+    "public/LynxView+Internal.h",
+    "public/LynxView.h",
+    "public/LynxViewBuilder.h",
+    "shadow_node/LynxCustomMeasureShadowNode.mm",
+    "shadow_node/LynxLayoutNode.mm",
+    "shadow_node/LynxLayoutTick.m",
+    "shadow_node/LynxMeasureFuncDarwin.h",
+    "shadow_node/LynxMeasureFuncDarwin.mm",
+    "shadow_node/LynxNativeLayoutNode.mm",
+    "shadow_node/LynxShadowNode.m",
+    "shadow_node/LynxShadowNodeOwner.m",
+    "shadow_node/LynxUILayoutTick.h",
+    "shadow_node/LynxUILayoutTick.m",
+    "shadow_node/text/LynxBaseTextShadowNode.m",
+    "shadow_node/text/LynxBaselineShiftLayoutManager.m",
+    "shadow_node/text/LynxConverter+NSShadow.m",
+    "shadow_node/text/LynxEventTargetSpan.m",
+    "shadow_node/text/LynxInlineTextShadowNode.m",
+    "shadow_node/text/LynxInlineTruncationShadowNode.m",
+    "shadow_node/text/LynxRawTextShadowNode.m",
+    "shadow_node/text/LynxTextLayoutManager.m",
+    "shadow_node/text/LynxTextLayoutSpec.m",
+    "shadow_node/text/LynxTextRenderer.m",
+    "shadow_node/text/LynxTextRendererCache.m",
+    "shadow_node/text/LynxTextSelectionShadowNode.m",
+    "shadow_node/text/LynxTextShadowNode.m",
+    "ui/LynxFilterUtil+System.m",
+    "ui/LynxFilterUtil.h",
+    "ui/LynxFilterUtil.m",
+    "ui/LynxGlobalObserver.m",
+    "ui/LynxLayer.m",
+    "ui/LynxRootUI.m",
+    "ui/LynxScrollEventManager.mm",
+    "ui/LynxScrollListener.m",
+    "ui/LynxUI+Accessibility.m",
+    "ui/LynxUI+AsyncDisplay.m",
+    "ui/LynxUI+Fluency.m",
+    "ui/LynxUI+Gesture.h",
+    "ui/LynxUI+Private.h",
+    "ui/LynxUI.m",
+    "ui/LynxUIComponent.m",
+    "ui/LynxUIContext+Internal.h",
+    "ui/LynxUIContext.mm",
+    "ui/LynxUIExposure+Internal.h",
+    "ui/LynxUIExposure.m",
+    "ui/LynxUIIntersectionObserver+Internal.h",
+    "ui/LynxUIIntersectionObserver.h",
+    "ui/LynxUIIntersectionObserver.mm",
+    "ui/LynxUIOwner+Accessibility.h",
+    "ui/LynxUIOwner+Accessibility.m",
+    "ui/LynxUIOwner+Private.h",
+    "ui/LynxUIOwner.m",
+    "ui/LynxUIView.m",
+    "ui/UIScrollView+Lynx.m",
+    "ui/UIScrollView+LynxFadingEdge.m",
+    "ui/UIScrollView+LynxGesture.m",
+    "ui/UIView+Lynx.m",
+    "ui/image/LynxBlurImageProcessor.m",
+    "ui/image/LynxFatImageProcessor.m",
+    "ui/image/LynxImageBlurUtils.m",
+    "ui/image/LynxImageLoader.mm",
+    "ui/image/LynxNinePatchImageProcessor.m",
+    "ui/image/LynxUIFilterImage.m",
+    "ui/image/LynxUIImage.mm",
+    "ui/image/LynxUIInlineImage.m",
+    "ui/image/LynxURL.m",
+    "ui/list/LynxListAppearEventEmitter.m",
+    "ui/list/LynxListScrollEventEmitter.m",
+    "ui/list/LynxUIListLoader.mm",
+    "ui/list/container/LynxUIListContainer.mm",
+    "ui/list/list_light/layout/LynxListHorizontalLayoutManager.mm",
+    "ui/list/list_light/layout/LynxListLayoutManager.mm",
+    "ui/list/list_light/layout/LynxListLayoutModelLight.mm",
+    "ui/list/list_light/layout/LynxListVerticalLayoutManager.mm",
+    "ui/list/list_light/ui/LynxUIListCellContentProducer.h",
+    "ui/list/list_light/ui/LynxUIListCellContentProducer.mm",
+    "ui/list/list_light/ui/LynxUIListDataSource.h",
+    "ui/list/list_light/ui/LynxUIListDataSource.mm",
+    "ui/list/list_light/ui/LynxUIListInvalidationContext.m",
+    "ui/list/list_light/ui/LynxUIListLight+PropSetter.h",
+    "ui/list/list_light/ui/LynxUIListLight+PropSetter.mm",
+    "ui/list/list_light/ui/LynxUIListLight.mm",
+    "ui/list/list_light/ui/LynxUIListScrollManager.mm",
+    "ui/list/list_light/view/LynxListAnchorManager.h",
+    "ui/list/list_light/view/LynxListAnchorManager.mm",
+    "ui/list/list_light/view/LynxListCachedCellManager.h",
+    "ui/list/list_light/view/LynxListCachedCellManager.mm",
+    "ui/list/list_light/view/LynxListReusePool.h",
+    "ui/list/list_light/view/LynxListReusePool.mm",
+    "ui/list/list_light/view/LynxListViewCellLight.mm",
+    "ui/list/list_light/view/LynxListViewLight.mm",
+    "ui/list/lynx_collection/LynxCollectionDataSource.m",
+    "ui/list/lynx_collection/LynxCollectionScroll.m",
+    "ui/list/lynx_collection/LynxCollectionScroller.m",
+    "ui/list/lynx_collection/LynxCollectionViewCell.m",
+    "ui/list/lynx_collection/LynxUICollection+Delegate.m",
+    "ui/list/lynx_collection/LynxUICollection+PropSetter.m",
+    "ui/list/lynx_collection/LynxUICollection.m",
+    "ui/list/lynx_collection/LynxUIListItem.m",
+    "ui/list/lynx_collection/layout/LynxCollectionInvalidationContext.m",
+    "ui/list/lynx_collection/layout/LynxCollectionViewLayout.m",
+    "ui/list/lynx_collection/layout/LynxCollectionViewLayoutModel.m",
+    "ui/list/lynx_collection/layout/LynxCollectionViewLayoutSectionModel.m",
+    "ui/lynx_basic_shapes/LBSCoreGraphicsPathParser.h",
+    "ui/lynx_basic_shapes/LBSCoreGraphicsPathParser.m",
+    "ui/lynx_basic_shapes/LBSPathParser.h",
+    "ui/lynx_basic_shapes/LBSPathParser.m",
+    "ui/lynx_basic_shapes/LynxBasicShape.m",
+    "ui/scroll_view/AbsLynxUIScroller.m",
+    "ui/scroll_view/LynxBounceView.m",
+    "ui/scroll_view/LynxImpressionView.m",
+    "ui/scroll_view/LynxScrollView.m",
+    "ui/scroll_view/LynxUIScroller.m",
+    "ui/scroll_view/UIScrollView+Nested.m",
+    "ui/text/LynxTextOverflowLayer.m",
+    "ui/text/LynxTextView.m",
+    "ui/text/LynxUIText.m",
+    "utils/LynxGradientUtils.mm",
+    "utils/LynxPropertyDiffMap.m",
+    "utils/LynxUIKitAPIAdapter.m",
+    "utils/LynxUIUnitUtils.m",
+    "utils/LynxViewConfigProcessor.mm",
+  ]
+  public_header_files = [
+    "public/LynxViewBuilder.h",
+    "public/LynxTemplateRender.h",
+    "public/LynxView.h",
+    "public/LynxView+Internal.h",
+  ]
+}
+
+subspec_target("UnitTests") {
+  test_subspec = true
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [ "//TARGET_BUILD_DIR/Lynx/Lynx/gen/Lynx" ]
+  }
+  sources = [
+    "//lynx/core/value_wrapper/darwin/value_impl_darwin_unittest.mm",
+    "//lynx/platform/darwin/common/lynx/LynxEnvUnitTest.mm",
+    "//lynx/platform/darwin/common/lynx/LynxErrorUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/LynxResourceLoaderDarwinUnitTest.mm",
+    "//lynx/platform/darwin/common/lynx/LynxTemplateDataUnitTest.mm",
+    "//lynx/platform/darwin/common/lynx/LynxViewClientUnitTest.mm",
+    "//lynx/platform/darwin/common/lynx/base/LynxConverter+UIUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/base/LynxPageReloadHelperUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/base/LynxResourceServiceFetcherUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/base/LynxVersionUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/devtool_wrapper/LynxMemoryListenerUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/event_report/LynxEventReporterUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/event_report/LynxEventReporterUtilsUnitTest.m",
+    "//lynx/platform/darwin/common/lynx/feature_count/LynxFeatureCounterUnitTest.mm",
+    "LynxModuleManagerDarwinUnitTest.mm",
+    "LynxUnitTestUtils.h",
+    "LynxUnitTestUtils.mm",
+    "base/LynxComponentStatisticUnitTest.m",
+    "base/LynxFPSMonitorUnitTest.m",
+    "base/LynxLogUnitTest.m",
+    "base/background/LynxBackgroundManagerUnitTest.m",
+    "base/background/LynxBoxShadowLayerUnitTest.m",
+    "event/Test/LynxEventHandlerUnitTest.h",
+    "event/Test/LynxEventHandlerUnitTest.mm",
+    "event/Test/LynxTouchHandlerUnitTest.h",
+    "event/Test/LynxTouchHandlerUnitTest.mm",
+    "gesture/LynxBaseGestureHandlerUnitTest.m",
+    "gesture/LynxDefaultGestureHandlerUnitTest.m",
+    "gesture/LynxFlingGestureHandlerUnitTest.m",
+    "gesture/LynxGestureArenaManagerUnitTest.m",
+    "gesture/LynxGestureFlingTriggerUnitTest.m",
+    "gesture/LynxGestureHandlerTriggerUnitTest.m",
+    "gesture/LynxLongPressGestureHandlerUnitTest.m",
+    "gesture/LynxPanGestureHandlerUnitTest.m",
+    "gesture/LynxTapGestureHandlerUnitTest.m",
+    "module/LynxAccessibilityModuleUnitTest.m",
+    "module/LynxExposureModuleUnitTest.h",
+    "module/LynxExposureModuleUnitTest.m",
+    "shadow_node/text/LynxTextRendererUnitTest.m",
+    "ui/LynxUI+AccessibilityUnitTest.m",
+    "ui/LynxUI+PropSetterUnitTest.mm",
+    "ui/LynxUIExposureUnitTest.h",
+    "ui/LynxUIExposureUnitTest.m",
+    "ui/LynxUIOwner+AccessibilityUnitTest.m",
+    "ui/LynxUIOwnerUnitTest.m",
+    "ui/LynxUIUnitTest.m",
+    "ui/LynxUIUnitTestUtils.h",
+    "ui/LynxUIUnitTestUtils.m",
+    "ui/UIScrollView+LynxUnitTest.m",
+    "ui/image/LynxUIImageUnitTest.m",
+    "ui/list/container/LynxUIListContainerUnitTest.m",
+    "ui/list/list_light/layout/LynxListLayoutManagerUnitTest.mm",
+    "ui/list/list_light/view/LynxListViewLightUnitTest.mm",
+    "ui/list/lynx_collection/LynxUICollection+DelegateUnitTest.m",
+    "ui/lynx_basic_shapes/LynxBasicShapeUnitTest.m",
+    "ui/scroll_view/LynxUIScrollerBasicUnitTest.m",
+    "ui/scroll_view/LynxUIScrollerScrollEventUnitTest.m",
+    "ui/scroll_view/LynxUIScrollerUIMethodScrollToUnitTest.m",
+    "ui/scroll_view/LynxUIScrollerUnitTest.m",
+    "ui/scroll_view/LynxUIScrollerUnitTestUtils.h",
+    "ui/scroll_view/LynxUIScrollerUnitTestUtils.m",
+    "utils/LynxColorUtilsUnitTest.m",
+    "utils/LynxConfigProcessorUnitTest.m",
+    "utils/LynxConvertUtilsUnitTest.m",
+    "utils/LynxGradientUtilsUnitTest.m",
+    "utils/LynxHtmlEscapeUnitTest.m",
+    "utils/LynxPlatFormLengthUnitTest.m",
+    "utils/LynxPropertyDiffMapUnitTest.m",
+    "utils/LynxUnitUtilsUnitTest.m",
+    "utils/LynxVersionUtilsUnitTest.m",
+  ]
+  dependency = [
+    "Lynx/Framework",
+    "Lynx/UnitTestResource",
+    "XcodeCoverage",
+    "OCMock",
+  ]
+}
+
+subspec_target("Air") {
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_AIR=1" ]
+  }
+  deps = [ "//lynx/core/renderer/dom/air:tasm_air" ]
+}
+
+subspec_target("Inspector") {
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Werror",
+  ]
+  if (!use_flatten_deps) {
+    header_mappings_dir = "."
+  }
+  deps = [ "//lynx/core/inspector" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "INSPECTOR_TEST=1" ]
+    HEADER_SEARCH_PATHS = [ "//core" ]
+  }
+}
+
+subspec_target("JSRuntime") {
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Werror",
+  ]
+  framework = "JavaScriptCore"
+  deps = [
+    "//lynx/core/runtime",
+    "//lynx/core/runtime:js_common",
+    "//lynx/core/runtime/bindings/jsi",
+    "//lynx/core/runtime/common:reporter",
+    "//lynx/core/runtime/common:utils",
+    "//lynx/core/runtime/jscache:jscache",
+    "//lynx/core/runtime/jsi",
+    "//lynx/core/runtime/jsi/quickjs",
+    "//lynx/core/runtime/profile:profile",
+    "//lynx/core/runtime/profile/quickjs:quickjs_profile",
+  ]
+
+  libraries = [ "stdc++" ]
+  if (!use_flatten_deps) {
+    header_mappings_dir = "."
+    dependency = [ "Lynx/Native" ]
+  }
+}
+
+subspec_target("LepusNG") {
+  deps = [
+    "//lynx/core/runtime/profile/lepusng:lepusng_profile",
+    "//lynx/core/runtime/vm/lepus:lepus_ng",
+  ]
+  dependency = []
+  if (!use_flatten_deps) {
+    header_mappings_dir = "."
+    dependency += [ "Lynx/Native" ]
+  }
+  dependency += LepusNG_deps
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "LYNX_DEV",
+      "LYNX_SIMPLIFY=0",
+    ]
+  }
+}
+
+# NapiBinding
+subspec_target("NapiBinding") {
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Werror",
+  ]
+  if (use_flatten_deps) {
+    flatten_deps = [
+      ":JSC",
+      ":NapiBinding_Common",
+      ":QuickJS",
+    ]
+  } else {
+    header_mappings_dir = "."
+    deps = [
+      ":JSC",
+      ":NapiBinding_Common",
+      ":QuickJS",
+    ]
+  }
+
+  framework = "JavaScriptCore"
+  libraries = [ "stdc++" ]
+}
+
+subspec_target("JSC") {
+  deps = [ "//lynx/core/runtime/bindings/napi:napi_binding_jsc" ]
+  dependency = []
+  if (!use_flatten_deps) {
+    dependency += [ "Lynx/NapiBinding/Common" ]
+  }
+  dependency += JSC_deps
+}
+
+subspec_target("NapiBinding_Common") {
+  output_name = "Common"
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "NAPI_DISABLE_CPP_RTTI",
+      "NAPI_DISABLE_CPP_EXCEPTIONS",
+      "ENABLE_NAPI_BINDING=1",
+    ]
+  }
+  deps = [
+    "//lynx/core/runtime/bindings/napi:napi_binding_core",
+    "//lynx/third_party/binding/napi:napi_binding_base",
+  ]
+  dependency = []
+  if (!use_flatten_deps) {
+    dependency += [ "Lynx/Native" ]
+  }
+  dependency += NapiBinding_Common_deps
+}
+
+subspec_target("QuickJS") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = QuickJS_includes
+  }
+  deps = [ "//lynx/core/runtime/bindings/napi:napi_binding_quickjs" ]
+  dependency = []
+  if (!use_flatten_deps) {
+    dependency += [ "Lynx/NapiBinding/Common" ]
+  }
+  dependency += QuickJS_deps
+}
+
+subspec_target("Native") {
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-documentation",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Werror",
+  ]
+  pod_target_xcconfig = {
+    if (enable_inspector) {
+      GCC_PREPROCESSOR_DEFINITIONS = [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
+    }
+    HEADER_SEARCH_PATHS = Native_includes
+  }
+  if (enable_recorder) {
+    condition_deps = [ [
+          ":Recorder",
+          "enable_recorder",
+        ] ]
+  }
+  if (use_flatten_deps) {
+    flatten_deps = native_podspec_deps
+  } else {
+    header_mappings_dir = "."
+    deps = native_podspec_deps
+    dependency = [ "Lynx/Trace" ]
+  }
+}
+
+#TODO(zhixuan): migrate recorder
+subspec_target("Recorder") {
+  header_mappings_dir = "."
+  libraries = [ "stdc++" ]
+  deps = [ "//lynx/core/services/recorder" ]
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_RECORDER=1" ]
+  }
+}
+
+# TODO(zhixuan): migrate zlib
+subspec_target("zlib") {
+  compiler_flags = [
+    "-Wno-conversion",
+    "-Wno-comma",
+    "-Wno-unused-function",
+    "-Wno-sign-compare",
+  ]
+  libraries = [ "stdc++" ]
+  deps = [ "//third_party/zlib" ]
+}
+
+subspec_target("amoeba") {
+  deps = [ "//lynx/core/renderer/css" ]
+}
+
+subspec_target("animation") {
+  deps = [ "//lynx/core/animation" ]
+}
+
+subspec_target("animation_utils") {
+  deps = [ "//lynx/core/animation/utils:animation_utils" ]
+}
+
+subspec_target("base") {
+  deps = [
+    "//lynx/base/src:base_log",
+    "//lynx/base/src:base_log_headers",
+    "//lynx/core/base",
+    "//lynx/core/base:json_utils",
+    "//lynx/core/base:observer",
+    "//lynx/core/build:build",
+  ]
+}
+
+subspec_target("basic_animation") {
+  deps = [ "//lynx/core/animation/basic_animation:basic_animation" ]
+}
+
+subspec_target("lynx_basic_animator") {
+  deps = [ "//lynx/core/animation/lynx_basic_animator:lynx_basic_animator" ]
+}
+
+subspec_target("fml") {
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/src:string_utils",
+    "//lynx/base/src:time_utils",
+    "//lynx/base/src:values",
+  ]
+}
+
+subspec_target("lepus") {
+  deps = [ "//lynx/core/runtime/vm/lepus" ]
+  dependency = Lepus_deps
+}
+
+subspec_target("parser") {
+  deps = [ "//lynx/core/parser" ]
+}
+
+subspec_target("resource") {
+  deps = [
+    "//lynx/core/resource",
+    "//lynx/core/resource/external_resource:external_resource",
+    "//lynx/core/resource/lazy_bundle:lazy_bundle",
+  ]
+}
+
+subspec_target("starlight") {
+  deps = [ "//lynx/core/renderer/starlight" ]
+}
+
+subspec_target("tasm") {
+  deps = [
+           "//lynx/core/event",
+           "//lynx/core/public",
+           "//lynx/core/renderer:tasm",
+           "//lynx/core/renderer/css:css_decoder",
+           "//lynx/core/renderer/css:css_dom",
+           "//lynx/core/renderer/data:data",
+           "//lynx/core/renderer/dom:dom",
+           "//lynx/core/renderer/dom:dom_headers",
+           "//lynx/core/renderer/dom:renderer_dom",
+           "//lynx/core/renderer/dom/fiber",
+           "//lynx/core/renderer/dom/selector:element_selector",
+           "//lynx/core/renderer/dom/vdom/radon",
+           "//lynx/core/renderer/events:events",
+           "//lynx/core/renderer/signal:signal",
+           "//lynx/core/renderer/ui_component/list:react_component_list",
+           "//lynx/core/renderer/ui_wrapper/common",
+           "//lynx/core/renderer/ui_wrapper/layout",
+           "//lynx/core/renderer/ui_wrapper/painting",
+           "//lynx/core/renderer/utils:renderer_dom_utils",
+           "//lynx/core/renderer/utils:renderer_utils",
+           "//lynx/core/runtime/bindings/common/event:runtime_common",
+           "//lynx/core/runtime/bindings/jsi/event:js_runtime",
+           "//lynx/core/runtime/bindings/jsi/fetch:fetch",
+           "//lynx/core/runtime/bindings/jsi/interceptor:interceptor_factory",
+           "//lynx/core/runtime/bindings/jsi/interceptor:network_interceptor",
+           "//lynx/core/runtime/bindings/lepus",
+           "//lynx/core/runtime/bindings/lepus/event:lepus_runtime",
+           "//lynx/core/runtime/vm/lepus/tasks:tasks",
+           "//lynx/core/services/event_report:event_report",
+           "//lynx/core/services/feature_count:feature_count",
+           "//lynx/core/services/fluency:fluency",
+           "//lynx/core/services/long_task_timing:long_task_timing",
+           "//lynx/core/services/ssr",
+           "//lynx/core/services/timing_handler:timing_handler",
+           "//lynx/core/services/timing_handler:timing_handler_delegate",
+           "//lynx/core/services/timing_handler:timing_handler_platform",
+           "//lynx/core/shared_data",
+           "//lynx/core/shared_data:white_board",
+           "//lynx/core/shell",
+           "//lynx/core/style",
+           "//lynx/core/value_wrapper:value_wrapper",
+         ] + tasm_extend_deps
+}
+
+subspec_target("template_bundle") {
+  deps = [
+    "//lynx/core/template_bundle:template_bundle",
+    "//lynx/core/template_bundle/template_codec:template_decoder",
+    "//lynx/core/template_bundle/template_codec/binary_decoder:binary_decoder",
+  ]
+}
+
+subspec_target("third_party") {
+  if (use_flatten_deps) {
+    flatten_deps = [
+      ":modp64",
+      ":rapidjson",
+      ":zlib",
+    ]
+  } else {
+    header_mappings_dir = "."
+    deps = [
+      ":modp64",
+      ":rapidjson",
+      ":zlib",
+    ]
+  }
+  libraries = [ "stdc++" ]
+}
+
+subspec_target("modp64") {
+  deps = [ "//lynx/third_party/modp_b64" ]
+  libraries = [ "stdc++" ]
+}
+
+subspec_target("rapidjson") {
+  deps = [ "//lynx/third_party/rapidjson" ]
+}
+
+subspec_target("transforms") {
+  deps = [ "//lynx/core/animation/transforms" ]
+}
+
+subspec_target("ReleaseResource") {
+  resource_bundles = [ ":LynxResources" ]
+}
+
+#TODO(zhixuan): migrate worklet
+subspec_target("Replay") {
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_TESTBENCH_REPLAY=1" ]
+  }
+  deps = [ "//lynx/core/services/replay" ]
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native" ]
+    header_mappings_dir = "."
+  } else {
+    dependency = [ "Lynx/Framework" ]
+  }
+}
+
+subspec_target("Trace") {
+  compiler_flags = [ "-Wno-nullability-completeness" ]
+  if (enable_trace != "perfetto") {
+    compiler_flags += [ "-Wno-unused-private-field" ]
+  }
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//lynx/base/trace/darwin",
+      "//lynx/base/trace/darwin/ios",
+    ]
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "OS_IOS=1",
+      "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
+    ]
+  }
+  flatten_deps = [ "//lynx/base/trace/darwin:LynxTrace_subspec" ]
+  deps = [ "//lynx/base/trace/native:trace" ]
+  if (enable_trace == "perfetto") {
+    deps += [ "//lynx/third_party/perfetto:perfetto" ]
+  }
+}
+
+subspec_target("UnitTestResource") {
+  resource_bundles = [ ":LynxResources" ]
+}
+
+subspec_target("Worklet") {
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_LEPUSNG_WORKLET=1" ]
+  }
+  deps = [ "//lynx/core/renderer/worklet" ]
+  if (!enable_unittests) {
+    deps += [ "//lynx/core/renderer/css:css_decoder" ]
+  }
+  dependency = []
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/NapiBinding/QuickJS" ]
+  }
+  dependency += Worklet_deps
+}
+
+#TODO(zhixuan): Migrate LynxResources
+# The bundle_data target is used to list subspec content of resource_bundles type
+bundle_data("LynxResources") {
+  sources = lynx_resources
+  outputs = [ "{{bundle_resources_dir}}/{{source_file_part}}" ]
+}

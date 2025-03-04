@@ -1,0 +1,10 @@
+{
+    "name": "text-stroke-color",
+    "id": 195,
+    "type": "color",
+    "default_value": "black",
+    "version": "2.10",
+    "author": "liumiao",
+    "consumption_status": "skip",
+    "desc": ""
+}

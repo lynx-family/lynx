@@ -1,0 +1,35 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+# binary_decoder_shared_sources
+binary_decoder_shared_sources = [
+  # TODO(chenyouhui.duke): Use a better way
+  "//${lynx_dir}/core/template_bundle/template_codec/binary_decoder/lynx_binary_base_template_reader.cc",
+  "//${lynx_dir}/core/template_bundle/template_codec/binary_decoder/lynx_binary_config_helper.cc",
+  "element_binary_reader.cc",
+  "element_binary_reader.h",
+  "lynx_binary_base_css_reader.cc",
+  "lynx_binary_base_css_reader.h",
+  "lynx_binary_base_template_reader.h",
+  "lynx_binary_config_decoder.cc",
+  "lynx_binary_config_decoder.h",
+  "lynx_binary_config_helper.h",
+  "lynx_binary_lazy_reader_delegate.h",
+  "lynx_binary_reader.cc",
+  "lynx_binary_reader.h",
+  "template_binary_reader.cc",
+  "template_binary_reader.h",
+]
+
+# binary_decoder_shared_sources end
+
+lynx_core_source_set("binary_decoder") {
+  sources = binary_decoder_shared_sources
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}

@@ -1,0 +1,120 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+plugins {
+    id 'com.android.library'
+}
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: '../../../../platform/android/publish.gradle'
+import org.json.simple.JSONObject
+
+android {
+
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 26
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+
+        packagingOptions {
+            exclude 'lib/*/libdebugrouter.so'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            externalNativeBuild {
+                cmake {
+                    arguments '-DBUILD_TYPE=release'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DBUILD_TYPE=debug'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    arguments '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    arguments '-DFLAVOR_NAME=noasan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+    }
+
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    compileOnly 'androidx.annotation:annotation:1.0.0'
+    implementation 'org.lynxsdk.lynx:debug-router:0.0.1-alpha.2'
+}
+
+// Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.
+task configGnCompileParas {
+    def buildVariantList = getFlavorNamesAndBuildTypes(project)
+    def flavorNames = buildVariantList[0]
+    def buildTypes = buildVariantList[1]
+    JSONObject gnBuildArgs_map = new JSONObject()
+    flavorNames.each{
+        JSONObject gnBuildArgs_list = new JSONObject()
+        String flavorName = it
+        if (flavorName == "debugMode") {
+            gnBuildArgs_list.put("lynx_in_debug", "true")
+        } else if(flavorName == "asan") {
+            gnBuildArgs_list.put("is_asan", "true")
+        }
+        buildTypes.each{
+            String buildType = it
+            if (buildType == "release") {
+            } else if(buildType == "debug") {
+            }
+            rootProject.ext.abiList.each { abi -> 
+                gnBuildArgs_map.put(flavorName+buildType+abi, gnBuildArgs_list)
+            }
+        }
+    }
+    exec {
+        workingDir "../../../../"
+        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnBuildArgs_map.toJSONString()
+    }
+}

@@ -1,0 +1,11 @@
+InitBackgroundRuntimeEntry:
+  x-type: init
+  x-name: backgroundRuntime
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        loadCoreStart:
+          type: number
+        loadCoreEnd:
+          type: number

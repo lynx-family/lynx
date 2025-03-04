@@ -1,0 +1,26 @@
+{
+    "name": "transform",
+    "id": 62,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "linxiaosong, wujintian",
+    "consumption_status": "skip",
+    "keywords": [
+        "translate",
+        "translateX",
+        "translateY",
+        "translateZ",
+        "translate",
+        "translate3d",
+        "translate3D",
+        "rotate",
+        "rotateX",
+        "rotateY",
+        "rotateZ",
+        "scale",
+        "scaleX",
+        "scaleY"
+    ],
+    "desc": ""
+}

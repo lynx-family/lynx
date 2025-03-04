@@ -1,0 +1,17 @@
+# Copyright 2019 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+modp_b64_shared_sources = [
+  "modp_b64.cc",
+  "modp_b64.h",
+  "modp_b64_data.h",
+]
+
+source_set("modp_b64") {
+  sources = modp_b64_shared_sources
+
+  cflags = [ "-Wno-unknown-warning-option" ]
+}

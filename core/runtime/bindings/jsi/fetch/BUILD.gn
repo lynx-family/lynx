@@ -1,0 +1,16 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+fetch_shared_sources = [
+  "body_native.cc",
+  "body_native.h",
+]
+
+lynx_core_source_set("fetch") {
+  sources = fetch_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

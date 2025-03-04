@@ -1,0 +1,38 @@
+checker-config:
+  file-type-checker:
+    binary-files-allow-list:
+      - 'core/renderer/css/testing/*'
+      - 'devtool/lynx_devtool/resources/devtool-switch/src/assets/*'
+      - 'explorer/darwin/ios/Lynx_explorer/LynxExplorer/Assets.xcassets/AppIcon.appiconset/*'
+      - 'third_party/binding/idl-codegen/third_party/doc/_static/*'
+      - '^explorer/darwin/ios/lynx_explorer/*'
+      - '^explorer/homepage/assets/images/*'
+      - '^explorer/showcase/menu/assets/images/*'
+      - '^platform/android/gradle/wrapper/*'
+      - '^platform/android/lynx_android/src/main/res/*'
+      - '^platform/android/lynx_example/*'
+      - '^platform/android/lynx_test_bench/*'
+      - 'devtool/lynx_devtool/resources/images/*'
+      - 'platform/android/lynx_devtool/src/main/res/drawable/*'
+      - 'explorer/android/gradle/*'
+      - 'explorer/android/lynx_explorer/*'
+      - 'explorer/android/lynx_explorer/src/main/res'
+      - 'testing/integration_test/test_script/resources/*'
+      - 'explorer/android/lynx_test_bench/scr/main/res'
+
+  coding-style-checker:
+    ignore-suffixes:
+      - '_jni.h'
+      - 'pnpm-lock.yaml'
+      - 'Podfile.yml'
+      - '.d.ts'
+      - '.r.ts'
+    ignore-dirs:
+      - '^core/build/gen/*'
+      - '^third_party/*'
+      - '^lynx/third_party/trace/native/perfetto/*'
+      - '^build/*'
+      - '^lynx/third_party/base/include/boost/*'
+      - '^lynx/third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
+      - '^lynx/explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
+      - '^base/include/boost/*'

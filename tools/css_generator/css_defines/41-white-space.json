@@ -1,0 +1,22 @@
+{
+    "name": "white-space",
+    "id": 41,
+    "type": "enum",
+    "default_value": "normal",
+    "version": "1.0",
+    "desc": "",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "nowrap",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

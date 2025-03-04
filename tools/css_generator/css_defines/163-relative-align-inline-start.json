@@ -1,0 +1,42 @@
+{
+    "name": "relative-align-inline-start",
+    "id": 163,
+    "type": "complex",
+    "default_value": "-1",
+    "version": "2.0",
+    "author": "wangzhixuan.0821",
+    "consumption_status": "skip",
+    "desc": "",
+    "compat_data": {
+        "relative-align-inline-start": {
+            "__compat": {
+              "description": "Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to id.",
+              "lynx_path": "docs/zh/api/css/properties/relative-align-inline-start",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "2.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "2.0"
+                },
+                "clay_android": {
+                  "version_added": "2.0"
+                },
+                "clay_macos": {
+                  "version_added": "2.0"
+                },
+                "clay_windows": {
+                  "version_added": "2.0"
+                }
+              }
+            }
+          }
+    }
+}

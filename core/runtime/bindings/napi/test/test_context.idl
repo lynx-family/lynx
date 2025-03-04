@@ -1,0 +1,3 @@
+interface TestContext {
+  long testPlusOne(long num);
+};

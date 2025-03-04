@@ -1,0 +1,10 @@
+{
+    "name": "border-bottom-width",
+    "id": 20,
+    "type": "border-width",
+    "default_value": "0px",
+    "version": "1.0",
+    "author": "yaoxiaopeng",
+    "consumption_status": "layout-wanted",
+    "desc": ""
+}

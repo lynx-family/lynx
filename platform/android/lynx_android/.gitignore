@@ -1,0 +1,7 @@
+/build
+/src/main/jni/gen/
+
+#ignore generated files
+src/main/java/com/lynx/tasm/LynxErrorBehavior.java
+src/main/java/com/lynx/tasm/LynxSubErrorCode.java
+src/main/java/com/lynx/tasm/performance/performanceobserver

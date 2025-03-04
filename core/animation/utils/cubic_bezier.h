@@ -1,0 +1,105 @@
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// Copyright 2021 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CORE_ANIMATION_UTILS_CUBIC_BEZIER_H_
+#define CORE_ANIMATION_UTILS_CUBIC_BEZIER_H_
+
+namespace lynx {
+namespace animation {
+#define CUBIC_BEZIER_SPLINE_SAMPLES 11
+
+class CubicBezier {
+ public:
+  CubicBezier(double p1x, double p1y, double p2x, double p2y);
+  CubicBezier(const CubicBezier& other);
+
+  double SampleCurveX(double t) const {
+    // `ax t^3 + bx t^2 + cx t' expanded using Horner's rule.
+    return ((ax_ * t + bx_) * t + cx_) * t;
+  }
+
+  double SampleCurveY(double t) const {
+    return ((ay_ * t + by_) * t + cy_) * t;
+  }
+
+  double SampleCurveDerivativeX(double t) const {
+    return (3.0 * ax_ * t + 2.0 * bx_) * t + cx_;
+  }
+
+  double SampleCurveDerivativeY(double t) const {
+    return (3.0 * ay_ * t + 2.0 * by_) * t + cy_;
+  }
+
+  static double GetDefaultEpsilon();
+
+  // Given an x value, find a parametric value it came from.
+  // x must be in [0, 1] range. Doesn't use gradients.
+  double SolveCurveX(double x, double epsilon) const;
+
+  // Evaluates y at the given x with default epsilon.
+  double Solve(double x) const;
+  // Evaluates y at the given x. The epsilon parameter provides a hint as to the
+  // required accuracy and is not guaranteed. Uses gradients if x is
+  // out of [0, 1] range.
+  double SolveWithEpsilon(double x, double epsilon) const {
+    if (x < 0.0) return 0.0 + start_gradient_ * x;
+    if (x > 1.0) return 1.0 + end_gradient_ * (x - 1.0);
+    return SampleCurveY(SolveCurveX(x, epsilon));
+  }
+
+  // Returns an approximation of dy/dx at the given x with default epsilon.
+  double Slope(double x) const;
+  // Returns an approximation of dy/dx at the given x.
+  // Clamps x to range [0, 1].
+  double SlopeWithEpsilon(double x, double epsilon) const;
+
+  // These getters are used rarely. We reverse compute them from coefficients.
+  // See CubicBezier::InitCoefficients. The speed has been traded for memory.
+  double GetX1() const;
+  double GetY1() const;
+  double GetX2() const;
+  double GetY2() const;
+
+  // Gets the bezier's minimum y value in the interval [0, 1].
+  double range_min() const { return range_min_; }
+  // Gets the bezier's maximum y value in the interval [0, 1].
+  double range_max() const { return range_max_; }
+
+ private:
+  void InitCoefficients(double p1x, double p1y, double p2x, double p2y);
+  void InitGradients(double p1x, double p1y, double p2x, double p2y);
+  void InitRange(double p1y, double p2y);
+  void InitSpline();
+
+  double ax_;
+  double bx_;
+  double cx_;
+
+  double ay_;
+  double by_;
+  double cy_;
+
+  double start_gradient_;
+  double end_gradient_;
+
+  double range_min_;
+  double range_max_;
+
+  double spline_samples_[CUBIC_BEZIER_SPLINE_SAMPLES];
+
+#ifndef NDEBUG
+  // Guard against attempted to solve for t given x in the event that the curve
+  // may have multiple values for t for some values of x in [0, 1].
+  bool monotonically_increasing_;
+#endif
+};
+
+}  // namespace animation
+}  // namespace lynx
+
+#endif  // CORE_ANIMATION_UTILS_CUBIC_BEZIER_H_

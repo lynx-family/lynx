@@ -1,0 +1,13 @@
+MetricFcpEntry:
+  x-type: metric
+  x-name: fcp
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        fcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        lynxFcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalFcp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'

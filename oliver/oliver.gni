@@ -1,0 +1,159 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+declare_args() {
+  oliver_type = "none"
+
+  # Whether build lepus cmd
+  compile_lepus_cmd = false
+
+  # Whether need NodeJS headers
+  is_nodejs = false
+}
+
+if (oliver_type == "ssr") {
+  is_oliver_ssr = true
+  is_oliver_tasm = false
+  is_oliver_security = false
+  is_oliver_node_lynx = false
+  is_nodejs = true
+} else if (oliver_type == "tasm") {
+  is_oliver_ssr = false
+  is_oliver_tasm = true
+  is_oliver_security = false
+  is_oliver_node_lynx = false
+  is_nodejs = !is_wasm
+} else if (oliver_type == "security") {
+  is_oliver_ssr = false
+  is_oliver_tasm = false
+  is_oliver_security = true
+  is_oliver_node_lynx = false
+  is_nodejs = true
+} else if (oliver_type == "node-lynx") {
+  is_oliver_ssr = false
+  is_oliver_tasm = false
+  is_oliver_security = false
+  is_oliver_node_lynx = true
+  is_nodejs = true
+} else {
+  is_oliver_ssr = false
+  is_oliver_tasm = false
+  is_oliver_security = false
+  is_oliver_node_lynx = false
+  is_nodejs = false
+}
+
+is_oliver =
+    is_oliver_ssr || is_oliver_tasm || is_oliver_security || is_oliver_node_lynx
+
+template("oliver_node_lib") {
+  assert(defined(invoker.output_name),
+         "mac_toolchain() must specify a \"output_name\" value")
+
+  _vars_to_forward = [
+    "cflags",
+    "defines",
+    "deps",
+    "ldflags",
+    "libs",
+    "visibility",
+  ]
+
+  _oliver_node_dir = "$root_out_dir/oliver"
+  output_name = invoker.output_name
+
+  copy(target_name) {
+    if (is_mac) {
+      sources = [ "$root_out_dir/lib$output_name.dylib" ]
+    } else if (is_linux) {
+      sources = [ "$root_out_dir/lib$output_name.so" ]
+    } else {
+      sources = []
+    }
+    outputs = [ "$_oliver_node_dir/$output_name.node" ]
+
+    deps = [ ":oliver_dylib" ]
+  }
+
+  shared_library("oliver_dylib") {
+    forward_variables_from(invoker, _vars_to_forward)
+
+    output_name = invoker.output_name
+  }
+}
+
+# Template to generate js resources (e.g. lynx_core.js)
+#
+# Arguments
+#
+#   - need_header(optional)
+#
+#       need generate .js.h file
+#
+#   - output_name(optional)
+#
+#       name of the js source without the extension. auto gen ${output_name}_dev.js
+#
+#   - output_path(optional)
+#
+#       path to the generated js source without the filename.
+#       output path must be inside the output directory of the build.
+#
+#   - platform
+#
+#       target platform of build
+#
+#   - script
+#
+#       build script path
+#
+
+template("build_kernel_js") {
+  assert(defined(invoker.script),
+         "script must be defined for build_kernel_js ($target_name)")
+
+  assert(defined(invoker.platform),
+         "platform must be defined for build_kernel_js ($target_name)")
+
+  _output_name = target_name
+  if (defined(invoker.output_name)) {
+    _output_name = invoker.output_name
+  }
+
+  _output_path = "$root_build_dir/js"
+  if (defined(invoker.output_path)) {
+    _output_path = invoker.output_path
+  }
+
+  _need_header = false
+  if (defined(invoker.need_header)) {
+    _need_header = invoker.need_header
+  }
+
+  action(target_name) {
+    script = invoker.script
+    platform = invoker.platform
+    need_header = _need_header
+    outputs = [
+      "$_output_path/${_output_name}.js",
+      "$_output_path/${_output_name}_dev.js",
+    ]
+
+    need_gen = "false"
+    if (need_header) {
+      need_gen = "true"
+    }
+
+    args = [
+      "--platform",
+      "$platform",
+      "--release_output",
+      rebase_path(outputs[0], root_build_dir),
+      "--dev_output",
+      rebase_path(outputs[1], root_build_dir),
+      "--gen_h_header",
+      "$need_gen",
+    ]
+  }
+}

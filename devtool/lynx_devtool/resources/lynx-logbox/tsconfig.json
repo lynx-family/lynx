@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "target": "ESNext",
+    "jsx": "preserve",
+    "moduleResolution": "node",
+    "lib": ["ESNext", "DOM"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [ "src/", "typings.d.ts" ]
+}

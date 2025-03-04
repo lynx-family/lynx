@@ -1,0 +1,10 @@
+{
+    "name": "letter-spacing",
+    "id": 42,
+    "type": "complex",
+    "default_value": "0px",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": ""
+}

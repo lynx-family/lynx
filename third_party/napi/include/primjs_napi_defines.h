@@ -1,0 +1,100 @@
+// this file may need to be include multiple times
+
+// node_api.h
+#define napi_addon_register_func napi_addon_register_func_primjs
+#define napi_module napi_module_primjs
+#define napi_add_env_cleanup_hook napi_add_env_cleanup_hook_primjs
+#define napi_remove_env_cleanup_hook napi_remove_env_cleanup_hook_primjs
+
+// node_api_types.h
+#define napi_async_execute_callback napi_async_execute_callback_primjs
+#define napi_async_complete_callback napi_async_complete_callback_primjs
+
+// js_native_api_types.h
+#define napi_env napi_env_primjs
+#define napi_env__ napi_env_primjs__
+#define napi_value napi_value_primjs
+#define napi_value__ napi_value_primjs__
+#define napi_ref napi_ref_primjs
+#define napi_ref__ napi_ref_primjs__
+#define napi_handle_scope napi_handle_scope_primjs
+#define napi_handle_scope__ napi_handle_scope_primjs__
+#define napi_escapable_handle_scope napi_escapable_handle_scope_primjs
+#define napi_escapable_handle_scope__ napi_escapable_handle_scope_primjs__
+#define napi_callback_info napi_callback_info_primjs
+#define napi_callback_info__ napi_callback_info_primjs__
+#define napi_deferred napi_deferred_primjs
+#define napi_deferred__ napi_deferred_primjs__
+
+#define napi_default napi_default_primjs
+#define napi_writable napi_writable_primjs
+#define napi_enumerable napi_enumerable_primjs
+#define napi_configurable napi_configurable_primjs
+#define napi_static napi_static_primjs
+#define napi_default_method napi_default_method_primjs
+#define napi_default_jsproperty napi_default_jsproperty_primjs
+#define napi_property_attributes napi_property_attributes_primjs
+
+#define napi_undefined napi_undefined_primjs
+#define napi_null napi_null_primjs
+#define napi_boolean napi_boolean_primjs
+#define napi_number napi_number_primjs
+#define napi_string napi_string_primjs
+#define napi_symbol napi_symbol_primjs
+#define napi_object napi_object_primjs
+#define napi_function napi_function_primjs
+#define napi_external napi_external_primjs
+#define napi_bigint napi_bigint_primjs
+#define napi_valuetype napi_valuetype_primjs
+
+#define napi_int8_array napi_int8_array_primjs
+#define napi_uint8_array napi_uint8_array_primjs
+#define napi_uint8_clamped_array napi_uint8_clamped_array_primjs
+#define napi_int16_array napi_int16_array_primjs
+#define napi_uint16_array napi_uint16_array_primjs
+#define napi_int32_array napi_int32_array_primjs
+#define napi_uint32_array napi_uint32_array_primjs
+#define napi_float32_array napi_float32_array_primjs
+#define napi_float64_array napi_float64_array_primjs
+#define napi_bigint64_array napi_bigint64_array_primjs
+#define napi_biguint64_array napi_biguint64_array_primjs
+#define napi_typedarray_type napi_typedarray_type_primjs
+
+#define napi_tsfn_nonblocking napi_tsfn_nonblocking_primjs
+#define napi_tsfn_blocking napi_tsfn_blocking_primjs
+#define napi_threadsafe_function_call_mode \
+  napi_threadsafe_function_call_mode_primjs
+#define napi_threadsafe_function_call_js napi_threadsafe_function_call_js_primjs
+
+#define napi_ok napi_ok_primjs
+#define napi_invalid_arg napi_invalid_arg_primjs
+#define napi_object_expected napi_object_expected_primjs
+#define napi_string_expected napi_string_expected_primjs
+#define napi_name_expected napi_name_expected_primjs
+#define napi_function_expected napi_function_expected_primjs
+#define napi_number_expected napi_number_expected_primjs
+#define napi_boolean_expected napi_boolean_expected_primjs
+#define napi_array_expected napi_array_expected_primjs
+#define napi_generic_failure napi_generic_failure_primjs
+#define napi_pending_exception napi_pending_exception_primjs
+#define napi_cancelled napi_cancelled_primjs
+#define napi_escape_called_twice napi_escape_called_twice_primjs
+#define napi_handle_scope_mismatch napi_handle_scope_mismatch_primjs
+#define napi_callback_scope_mismatch napi_callback_scope_mismatch_primjs
+#define napi_queue_full napi_queue_full_primjs
+#define napi_closing napi_closing_primjs
+#define napi_bigint_expected napi_bigint_expected_primjs
+#define napi_date_expected napi_date_expected_primjs
+#define napi_arraybuffer_expected napi_arraybuffer_expected_primjs
+#define napi_detachable_arraybuffer_expected \
+  napi_detachable_arraybuffer_expected_primjs
+#define napi_conflict_instance_data napi_conflict_instance_data_primjs
+#define napi_context_scope_mismatch napi_context_scope_mismatch_primjs
+#define napi_status napi_status_primjs
+
+#define napi_callback napi_callback_primjs
+#define napi_finalize napi_finalize_primjs
+
+#define napi_property_descriptor napi_property_descriptor_primjs
+#define napi_extended_error_info napi_extended_error_info_primjs
+#define napi_get_last_error_info napi_get_last_error_info_primjs

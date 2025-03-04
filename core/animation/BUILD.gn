@@ -1,0 +1,80 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+animation_shared_sources = [
+  "animation.cc",
+  "animation.h",
+  "animation_curve.cc",
+  "animation_curve.h",
+  "animation_delegate.h",
+  "constants.h",
+  "css_keyframe_manager.cc",
+  "css_keyframe_manager.h",
+  "css_transition_manager.cc",
+  "css_transition_manager.h",
+  "keyframe_effect.cc",
+  "keyframe_effect.h",
+  "keyframe_model.cc",
+  "keyframe_model.h",
+  "keyframed_animation_curve.cc",
+  "keyframed_animation_curve.h",
+  "transform_animation_curve.cc",
+  "transform_animation_curve.h",
+]
+
+lynx_core_source_set("animation") {
+  sources = animation_shared_sources
+
+  public_deps = [
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/third_party/rapidjson",
+  ]
+}
+
+unittest_set("animation_testset") {
+  testonly = true
+
+  public_deps = [ ":animation" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+
+  sources = [
+    "animation_unittest.cc",
+    "css_keyframe_manager_unittest.cc",
+    "css_transition_manager_unittest.cc",
+    "keyframe_effect_unittest.cc",
+    "keyframe_model_unittest.cc",
+    "keyframed_animation_curve_unittest.cc",
+    "testing/mock_animation.cc",
+    "testing/mock_css_keyframe_manager.cc",
+    "testing/mock_css_transition_manager.cc",
+    "transform_animation_curve_unittest.cc",
+  ]
+}
+
+unittest_exec("animation_unittests_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":animation",
+    ":animation_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("animation_tests") {
+  testonly = true
+  deps = [ ":animation_unittests_exec" ]
+  public_deps = [ ":animation_testset" ]
+}

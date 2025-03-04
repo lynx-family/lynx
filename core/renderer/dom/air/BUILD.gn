@@ -1,0 +1,40 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+air_shared_sources = [
+  "air_element/air_block_element.cc",
+  "air_element/air_block_element.h",
+  "air_element/air_component_element.cc",
+  "air_element/air_component_element.h",
+  "air_element/air_element.cc",
+  "air_element/air_element.h",
+  "air_element/air_element_container.cc",
+  "air_element/air_element_container.h",
+  "air_element/air_for_element.cc",
+  "air_element/air_for_element.h",
+  "air_element/air_if_element.cc",
+  "air_element/air_if_element.h",
+  "air_element/air_page_element.cc",
+  "air_element/air_page_element.h",
+  "air_touch_event_handler.cc",
+  "air_touch_event_handler.h",
+  "lynx_air_parsed_style_store.cc",
+  "lynx_air_parsed_style_store.h",
+]
+
+lynx_core_source_set("tasm_air") {
+  sources = air_shared_sources
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+mocktest_exec("air_runtime_mockset_exec") {
+  sources = [ "testing/air_lepus_context_mock.h" ]
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+}

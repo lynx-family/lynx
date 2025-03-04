@@ -1,0 +1,20 @@
+{
+    "name": "animation-timing-function",
+    "id": 66,
+    "type": "timing-function",
+    "default_value": "linear",
+    "version": "1.0",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "keywords": [
+        "linear",
+        "ease-in",
+        "ease-out",
+        "ease-in-ease-out",
+        "ease",
+        "ease-in-out",
+        "square-bezier",
+        "cubic-bezier"
+    ],
+    "desc": ""
+}

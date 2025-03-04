@@ -1,0 +1,564 @@
+{% from 'macros.tmpl' import insufficient_argnum_defend, convert_argument, call_out_init, call_out_return_value, convert_attribute %}
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#include "{{this_include_header_path}}"
+
+#include <vector>
+#include <utility>
+
+#include "base/include/vector.h"
+
+{% for filename in hardcoded_includes %}
+{% if filename.startswith('<') %}
+#include {{filename}}
+{% else %}
+#include "{{filename}}"
+{% endif %}
+{% endfor %}
+
+{% if attach_native_info %}
+#include "jsbridge/bindings/{{component}}/napi_{{component}}_command_buffer.h"
+{% endif %}
+{% if descendants %}
+#include "base/include/no_destructor.h"
+{% endif %}
+{% if buffer_commands %}
+#include "base/include/fml/make_copyable.h"
+{% endif %}
+
+#ifdef USE_PRIMJS_NAPI
+#include "third_party/napi/include/primjs_napi_defines.h"
+#endif
+
+using Napi::Array;
+using Napi::CallbackInfo;
+using Napi::Error;
+using Napi::Function;
+using Napi::FunctionReference;
+using Napi::Number;
+using Napi::Object;
+using Napi::ObjectWrap;
+using Napi::String;
+using Napi::TypeError;
+using Napi::Value;
+
+using Napi::ArrayBuffer;
+using Napi::Int8Array;
+using Napi::Uint8Array;
+using Napi::Int16Array;
+using Napi::Uint16Array;
+using Napi::Int32Array;
+using Napi::Uint32Array;
+using Napi::Float32Array;
+using Napi::Float64Array;
+using Napi::DataView;
+
+using lynx::binding::IDLBoolean;
+using lynx::binding::IDLDouble;
+using lynx::binding::IDLFloat;
+using lynx::binding::IDLFunction;
+using lynx::binding::IDLNumber;
+using lynx::binding::IDLString;
+using lynx::binding::IDLUnrestrictedFloat;
+using lynx::binding::IDLUnrestrictedDouble;
+using lynx::binding::IDLNullable;
+using lynx::binding::IDLObject;
+using lynx::binding::IDLInt8Array;
+using lynx::binding::IDLInt16Array;
+using lynx::binding::IDLInt32Array;
+using lynx::binding::IDLUint8ClampedArray;
+using lynx::binding::IDLUint8Array;
+using lynx::binding::IDLUint16Array;
+using lynx::binding::IDLUint32Array;
+using lynx::binding::IDLFloat32Array;
+using lynx::binding::IDLFloat64Array;
+using lynx::binding::IDLArrayBuffer;
+using lynx::binding::IDLArrayBufferView;
+using lynx::binding::IDLDictionary;
+using lynx::binding::IDLSequence;
+using lynx::binding::NativeValueTraits;
+
+using lynx::binding::ExceptionMessage;
+
+namespace lynx {
+namespace {{component}} {
+
+namespace {
+const uint64_t k{{interface_name}}ClassID = reinterpret_cast<uint64_t>(&k{{interface_name}}ClassID);
+const uint64_t k{{interface_name}}ConstructorID = reinterpret_cast<uint64_t>(&k{{interface_name}}ConstructorID);
+
+{% if descendants %}
+std::mutex& DescendantTypesLock() {
+  static base::NoDestructor<std::mutex> types_lock_;
+  return *types_lock_;
+}
+
+std::vector<void*>& DescendantTypes() {
+  static base::NoDestructor<std::vector<void*>> types_;
+  return *types_;
+}
+{% endif %}
+
+using Wrapped = binding::NapiBaseWrapped<{{napi_class}}>;
+typedef Value ({{napi_class}}::*InstanceCallback)(const CallbackInfo& info);
+typedef void ({{napi_class}}::*InstanceSetterCallback)(const CallbackInfo& info, const Value& value);
+
+{% if constants and not omit_constants %}
+void AddConstant(base::Vector<Wrapped::PropertyDescriptor>& props,
+                 Napi::Env env,
+                 const char* name,
+                 double value) {
+  props.push_back(Wrapped::InstanceValue(name, Number::New(env, value), napi_enumerable));
+}
+
+{% endif %}
+__attribute__((unused))
+void AddAttribute(base::Vector<Wrapped::PropertyDescriptor>& props,
+                  const char* name,
+                  InstanceCallback getter,
+                  InstanceSetterCallback setter) {
+  props.push_back(
+      Wrapped::InstanceAccessor(name, getter, setter, napi_default_jsproperty));
+}
+
+__attribute__((unused))
+void AddInstanceMethod(base::Vector<Wrapped::PropertyDescriptor>& props,
+                       const char* name,
+                       InstanceCallback method) {
+  props.push_back(
+      Wrapped::InstanceMethod(name, method, napi_default_jsproperty));
+}
+}  // namespace
+
+{{napi_class}}::{{napi_class}}(const CallbackInfo& info, bool skip_init_as_base)
+    {% if parent_interface %}
+    : Napi{{parent_interface}}(info, true) {
+    {% else %}
+    : NapiBridge(info) {
+    {% endif %}
+  {% if parent_interface and not sharing_impl %}{# let ancestors know if on an inheritance chain #}
+  static std::atomic_bool s_type_propagated = false;
+  if (!s_type_propagated) {
+    PropagateDescendantType((void*)&k{{interface_name}}ClassID);
+    s_type_propagated = true;
+  }
+  {% endif %}
+  set_type_id((void*)&k{{interface_name}}ClassID);
+
+  // If this is a base class or created by native, skip initialization since
+  // impl side needs to have control over the construction of the impl object.
+  if (skip_init_as_base || (info.Length() == 1 && info[0].IsExternal())) {
+    return;
+  }
+  {% if constructor_overloads %}
+  {% for length, tests_methods in constructor_overloads.length_tests_methods %}
+  if (info.Length() == {{length}}) {
+    {% for test, overload in tests_methods %}
+    {% if test == 'true' %}
+    InitOverload{{overload.overload_index}}(info);
+    return;
+    {% else %}
+    if ({{test}}) {
+      InitOverload{{overload.overload_index}}(info);
+      return;
+    }
+    {% endif %}
+    {% endfor %}{# test_methods #}
+  }
+  {% endfor %}{# length_tests_methods #}
+  ExceptionMessage::FailedToCallOverload(info.Env(), "{{interface_name}} constructor");
+  return;
+  {% elif constructors %}
+  Init(info);
+  {% else %}
+  ExceptionMessage::IllegalConstructor(info.Env(), InterfaceName());
+  return;
+  {% endif %}{# constructor_overloads #}
+}
+
+{% for constructor in constructors %}
+void {{napi_class}}::Init{{'Overload' + constructor.overload_index | string if constructor.overload_index}}(const CallbackInfo& info) {
+  {% if constructor.is_raises_exception %}
+  binding::ExceptionState exception_state(info.Env());
+  {% endif %}
+  {{ insufficient_argnum_defend('void', constructor, 'Constructor') | trim }}
+
+  {% for argument in constructor.arguments %}
+  {% if argument.is_optional %}
+  if (info.Length() <= {{argument.index}}) {
+    {{ call_out_init(constructor, argument.index) | trim | indent(2) }}
+    return;
+  }
+  {% endif %}
+  {{ convert_argument('return;', argument) | trim }}
+
+  {% endfor %}
+
+  {{ call_out_init(constructor, constructor.arguments | length()) | trim }}
+}
+
+{% endfor %}
+
+{% if dispose_on_destruction or buffer_commands or log_on_destruction or attach_native_info %}
+{{napi_class}}::~{{napi_class}}() {
+  {% if log_on_destruction %}
+  {{macro_prefix}}LOGI("{{napi_class}} Destructor " << this << " {{cpp_class}} " << ToImplUnsafe());
+  {% endif %}
+  {% if buffer_commands %}
+  // If JS context is being teared down, no need to keep the impl.
+  if (static_cast<napi_env>(Env())->rt) {
+    {{command_buffer_class}}::OrphanImpl(Env(), std::unique_ptr<ImplBase>(ReleaseImpl()), object_id_);
+  }
+  {% endif %}
+  {% if dispose_on_destruction %}
+  impl_->Dispose();
+  {% endif %}
+
+  {% if attach_native_info %}
+  {{command_buffer_class}}::UnregisterBufferedObject(this, object_id_);
+  {% endif %}
+}
+{% endif %}
+
+{% if parent_interface and not sharing_impl or descendants %}
+void {{napi_class}}::PropagateDescendantType(void* type_info) {
+  {% if parent_interface and not sharing_impl %}
+  Napi{{parent_interface}}::PropagateDescendantType(type_info);
+  {% endif %}
+  {% if descendants %}
+  std::lock_guard<std::mutex> lock(DescendantTypesLock());
+  DescendantTypes().push_back(type_info);
+  {% endif %}
+}
+{% endif %}
+
+{{cpp_class}}* {{napi_class}}::ToImplUnsafe() {
+  {% if parent_interface %}
+  return impl_;
+  {% else %}
+  return impl_.get();
+  {% endif %}
+}
+
+// static
+Object {{napi_class}}::Wrap(std::unique_ptr<{{cpp_class}}> impl, Napi::Env env) {
+  DCHECK(impl);
+  auto obj = Constructor(env).New({Napi::External::New(env, nullptr, nullptr, nullptr)});
+  ObjectWrap<{{napi_class}}>::Unwrap(obj)->Init(std::move(impl));
+  return obj;
+}
+
+// static
+bool {{napi_class}}::IsInstance(Napi::ScriptWrappable* wrappable) {
+  if (!wrappable) {
+    return false;
+  }
+  if (static_cast<{{napi_class}}*>(wrappable)->type_id() == &k{{interface_name}}ClassID) {
+    return true;
+  }
+  {% if descendants %}
+  {
+    std::lock_guard<std::mutex> lock(DescendantTypesLock());
+    for (void* type : DescendantTypes()) {
+      if (static_cast<{{napi_class}}*>(wrappable)->type_id() == type) {
+        return true;
+      }
+    }
+  }
+  {% endif %}
+  return false;
+}
+
+void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
+  DCHECK(impl);
+  DCHECK(!impl_);
+
+  {% if parent_interface %}
+  impl_ = impl.release();
+
+  // Also initialize base part as its initialization was skipped.
+  Napi{{parent_interface}}::Init(std::unique_ptr<{{parent_cpp_class}}>(impl_));
+  {% else %}
+  impl_ = std::move(impl);
+  // We only associate and call OnWrapped() once, when we init the root base.
+  impl_->AssociateWithWrapper(this);
+  {% endif %}
+
+  {% if attach_native_info %}
+  object_id_ = {{command_buffer_class}}::RegisterBufferedObject(this);
+  Napi::PropertyDescriptor js_id =
+      Napi::PropertyDescriptor::Value("__id",  Number::New(Env(), object_id_), napi_default);
+  NapiObject().DefineProperty(js_id);
+  {% if buffer_commands %}
+  impl_->SetClientOnFrameCallback(
+      fml::MakeCopyable([env = Env()]() {
+        Napi::HandleScope hs(env);
+        {{command_buffer_class}}::FlushCommandBuffer(env, true);
+      }));
+  {% endif %}
+  {% endif %}
+}
+
+{% if buffer_commands %}
+ImplBase* {{napi_class}}::ReleaseImpl() {
+  {% if parent_interface %}
+  return Napi{{parent_interface}}::ReleaseImpl();
+  {% else %}
+  impl_->AssociateWithWrapper(nullptr);
+  return impl_.release();
+  {% endif %}
+}
+{% endif %}
+
+{% macro callee(attr_or_method) %}
+  {% if attr_or_method.is_static %}
+  {{cpp_class}}::
+  {% else %}
+  impl_->
+  {% endif %}
+{% endmacro %}
+
+{% for attribute in attributes if not attribute.from_shared %}
+{{'// static' if attribute.is_static}}
+Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const CallbackInfo& info) {
+  {% if enable_trace %}
+  {{macro_prefix}}TRACE_EVENT0("{{attribute.camel_case_name}}G");
+  {% endif %}
+  {% if not attribute.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {% if attribute.is_boolean_type %}
+  return Napi::Boolean::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.is_numeric_type %}
+  return Number::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.is_string_type or attribute.enum_type %}
+  return String::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.idl_type == 'object' %}
+  return {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+  {% elif attribute.is_wrapper_type %}
+  auto* wrapped = {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+
+  {% if attribute.is_nullable %}
+  if (!wrapped) {
+    return info.Env().Null();
+  }
+  {% endif %}
+  // Impl needs to take care of object ownership.
+  DCHECK(wrapped->IsNapiWrapped());
+  return wrapped->NapiObject();
+  {% elif attribute.union_types or attribute.is_typed_array or attribute.idl_type == 'ArrayBuffer' or attribute.idl_type == 'ArrayBufferView' %}
+  {% if has_remote %}
+  return ToNAPI({{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}(), info.Env());
+  {% else %}
+  return {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+  {% endif %}
+  {% else %}
+  ExceptionMessage::NotImplemented(info.Env());
+  return Value();
+  {% endif %}
+}
+
+{% if attribute.does_generate_setter and not attribute.from_shared %}
+{{'// static' if attribute.is_static}}
+void {{napi_class}}::{{attribute.camel_case_name}}AttributeSetter(const CallbackInfo& info, const Value& value) {
+  {% if enable_trace %}
+  {{macro_prefix}}TRACE_EVENT0("{{attribute.camel_case_name}}S");
+  {% endif %}
+  {% if not attribute.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {{ convert_attribute(callee(attribute) | trim, attribute) | trim }}
+}
+
+{% endif %}
+{% endfor %}
+
+{% for method in methods if not method.from_shared %}
+{% if method.has_binding_version %}
+{{'// static' if method.is_static}}
+Value {{napi_class}}::{{method.camel_case_name}}Method{{'Overload' + method.overload_index | string if method.overload_index}}(const CallbackInfo& info) {
+  {% if enable_trace and not method.overload_index %}
+  {{macro_prefix}}TRACE_EVENT0("{{method.camel_case_name}}M");
+  {% endif %}
+  {% if not method.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+  {% if method.is_raises_exception %}
+  binding::ExceptionState exception_state(info.Env());
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {{ insufficient_argnum_defend("Value", method, method.camel_case_name) | trim }}
+
+  {% for argument in method.arguments %}
+  {% if argument.is_optional %}
+  if (info.Length() <= {{argument.index}}) {
+    {{ call_out_return_value(method, argument.index, callee(method) | trim) | trim | indent(2)}}
+  }
+  {% endif %}
+
+  {% if method.cpp_type == 'void' %}
+  {{ convert_argument('return info.Env().Undefined();', argument)| trim }}
+  {% else %}
+  {{ convert_argument('return Value();', argument)| trim }}
+  {% endif %}
+
+  {% endfor %}
+  {{ call_out_return_value(method, method.number_of_arguments, callee(method) | trim) | trim }}
+}
+
+{% endif %}
+{% endfor %}
+
+{# Overload hub #}
+{% for method in methods if method.overloads %}
+{% if method.has_binding_resolver %}
+{{'// static' if method.is_static}}
+Value {{napi_class}}::{{method.camel_case_name}}Method(const CallbackInfo& info) {
+  {% if enable_trace %}
+  {{macro_prefix}}TRACE_EVENT0("{{method.camel_case_name}}MH");
+  {% endif %}
+  const size_t arg_count = std::min<size_t>(info.Length(), {{method.overloads.maxarg}}u);
+  {% for length, tests_methods in method.overloads.length_tests_methods %}
+  if (arg_count == {{length}}) {
+    {% set ns = namespace(stop = false) %}
+    {% for test, overload in tests_methods if not ns.stop and overload.has_binding_version %}
+    {% if test == 'true' %}
+    {% if method.only_one_inherited and overload.overload_index == 1 %}
+    return Napi{{parent_cpp_class}}::{{method.camel_case_name}}Method(info);
+    {% else %}
+    return {{method.camel_case_name}}MethodOverload{{overload.overload_index}}(info);
+    {% endif %}
+    {% set ns.stop = true %}
+    {% else %}
+    if ({{test}}) {
+      {% if method.only_one_inherited and overload.overload_index == 1 %}
+      return Napi{{parent_cpp_class}}::{{method.camel_case_name}}Method(info);
+      {% else %}
+      return {{method.camel_case_name}}MethodOverload{{overload.overload_index}}(info);
+      {% endif %}
+    }
+    {% endif %}
+    {% endfor %}
+  }
+  {% endfor %}
+  ExceptionMessage::FailedToCallOverload(info.Env(), "{{method.camel_case_name}}()");
+  return info.Env().Undefined();
+}
+
+{% endif %}
+{% endfor %}
+
+// static
+Napi::Class* {{napi_class}}::Class(Napi::Env env) {
+  auto* clazz = env.GetInstanceData<Napi::Class>(k{{interface_name}}ClassID);
+  if (clazz) {
+    return clazz;
+  }
+
+  {% set ns = namespace(props_count = 0) %}
+  {% if constants and not omit_constants %}
+  {% set ns.props_count = ns.props_count + constants|length %}
+  {% endif %}
+  {% set ns.props_count = ns.props_count + attributes|length %}
+  {% for method in methods if not method.overload_index or method.overloads %}
+  {% if method.has_binding_version or method.has_binding_resolver %}
+  {% set ns.props_count = ns.props_count + 1 %}
+  {% endif %}
+  {% endfor %}
+  {% set ns.props_count = [ns.props_count, 1]|max  %}{# InlineVector does not accept 0 size #}
+  base::InlineVector<Wrapped::PropertyDescriptor, {{ ns.props_count|string }}> props;
+
+  {% if constants and not omit_constants %}
+  // Constants
+  {% for constant in constants %}
+  AddConstant(props, env, "{{constant.name}}", {{constant.value}});
+  {% endfor %}
+
+  {% endif %}
+  // Attributes
+  {% for attribute in attributes %}
+  {% if attribute.is_static %}
+  props.push_back(
+      Wrapped::StaticAccessor("{{attribute.name}}",
+                              &{{napi_class}}::{{attribute.camel_case_name}}AttributeGetter,
+                              {% if attribute.does_generate_setter %}
+                              &{{napi_class}}::{{attribute.camel_case_name}}AttributeSetter,
+                              {% else %}
+                              nullptr,
+                              {% endif %}
+                              napi_static
+      ));
+  {% else %}
+  AddAttribute(props, "{{attribute.name}}",
+               &{{napi_class}}::{{attribute.camel_case_name}}AttributeGetter,
+               {% if attribute.does_generate_setter %}
+               &{{napi_class}}::{{attribute.camel_case_name}}AttributeSetter
+               {% else %}
+               nullptr
+               {% endif %}
+               );
+  {% endif %}
+  {% endfor %}
+
+  // Methods
+  {% for method in methods if not method.overload_index or method.overloads %}
+  {% if method.has_binding_version or method.has_binding_resolver %}
+  {% if method.is_static %}
+  props.push_back(
+      Wrapped::StaticMethod("{{method.name}}",
+                            &{{napi_class}}::{{method.camel_case_name}}Method,
+                            napi_static
+      ));
+  {% else %}
+  AddInstanceMethod(props, "{{method.name}}{{'_' if method.keep_binding_version or method.keep_binding_resolver }}", &{{napi_class}}::{{method.camel_case_name}}Method);
+  {% endif %}{# static #}
+  {% endif %}
+  {% endfor %}
+
+  // Cache the class
+  clazz = new Napi::Class(Wrapped::DefineClass(env, "{{interface_name}}", props.size(), props.data<const napi_property_descriptor>(){{', nullptr, *Napi' + parent_interface + '::Class(env)' if parent_interface and not sharing_impl}}));
+  env.SetInstanceData<Napi::Class>(k{{interface_name}}ClassID, clazz);
+  return clazz;
+}
+
+// static
+Function {{napi_class}}::Constructor(Napi::Env env) {
+  FunctionReference* ref = env.GetInstanceData<FunctionReference>(k{{interface_name}}ConstructorID);
+  if (ref) {
+    return ref->Value();
+  }
+
+  // Cache the constructor for future use
+  ref = new FunctionReference();
+  ref->Reset(Class(env)->Get(env), 1);
+  env.SetInstanceData<FunctionReference>(k{{interface_name}}ConstructorID, ref);
+  return ref->Value();
+}
+
+// static
+void {{napi_class}}::Install(Napi::Env env, Object& target) {
+  if (target.Has("{{interface_name}}").FromMaybe(false)) {
+    return;
+  }
+  target.Set("{{interface_name}}", Constructor(env));
+}
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+{% endfilter %}{# format_blink_cpp_source_code #}

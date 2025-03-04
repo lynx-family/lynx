@@ -1,0 +1,79 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+
+# Do not include this file directly, include //core/Lynx.gni instead
+#
+import("//lynx/config.gni")
+import("//lynx/oliver/oliver.gni")
+
+# This target defines a source_set which contains some common configs and deps needed by
+# all targets in the source tree of Lynx
+#
+template("lynx_core_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "configs",
+                             "public_configs",
+                           ])
+
+    if (!defined(deps)) {
+      deps = []
+    }
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+
+    if (!defined(public_configs)) {
+      public_configs = []
+    }
+    if (defined(invoker.public_configs)) {
+      public_configs += invoker.public_configs
+    }
+    public_configs += [
+      "//${lynx_dir}/core:lynx_public_config",
+      "//lynx/third_party/quickjs:quickjs_public_config",
+    ]
+
+    if (enable_unittests) {
+      configs += [ "//lynx/testing:lynx_unit_test_config" ]
+    }
+
+    if (is_oliver || is_encoder_ut) {
+      configs += [ "//lynx/oliver:lynx_oliver_config" ]
+    } else if (is_android) {
+      if (!defined(libs)) {
+        libs = []
+      }
+      libs += [ "log" ]
+      configs +=
+          [ "//lynx/platform/android/lynx_android:lynx_android_public_config" ]
+    } else if (is_apple) {
+      configs += darwin_config
+    }
+
+    if (is_oliver) {
+      deps += [ "//lynx/core:find_node_headers" ]
+    }
+
+    if (defined(exclude_configs)) {
+      configs -= exclude_configs
+    }
+
+    if (defined(exclude_deps)) {
+      deps -= exclude_deps
+    }
+
+    if (defined(exclude_public_configs)) {
+      public_configs -= exclude_public_configs
+    }
+  }
+}

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright 2022 The Lynx Authors. All rights reserved. -->
+
+<resources>
+    <string name="copy">复制</string>
+    <string name="selectAll">全选</string>
+</resources>

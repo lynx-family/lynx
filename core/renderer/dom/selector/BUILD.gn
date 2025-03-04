@@ -1,0 +1,45 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+element_selector_sources = [
+  "element_selector.cc",
+  "element_selector.h",
+  "fiber_element_selector.cc",
+  "fiber_element_selector.h",
+  "matching/attribute_selector_matching.cc",
+  "matching/attribute_selector_matching.h",
+  "select_result.h",
+  "selector_item.h",
+]
+
+lynx_core_source_set("element_selector") {
+  sources = element_selector_sources
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("element_selector_oliver") {
+  sources = element_selector_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+unittest_set("element_selector_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [ "select_result_unittest.cc" ]
+  public_deps = [
+    ":element_selector",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+  ]
+}
+
+unittest_exec("element_selector_unittests_exec") {
+  sources = []
+  deps = [ ":element_selector_testset" ]
+}

@@ -1,0 +1,57 @@
+{
+    "name": "box-sizing",
+    "id": 5,
+    "type": "enum",
+    "default_value": "auto",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "desc": "",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "border-box",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "content-box",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "auto",
+            "version": "2.0",
+            "desc": "lynx:border-box w3c:content-box"
+        }
+    ],
+    "compat_data": {
+        "box-sizing": {
+            "__compat": {
+              "lynx_path": "api/css/properties/box-sizing",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/box-sizing",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            }
+          }
+    }
+}

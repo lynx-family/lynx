@@ -1,0 +1,11 @@
+callback FrameCallback = void (long long status);
+[EnableInterval] callback FuncCallback = void (object param);
+
+interface LepusLynx {
+    void triggerLepusBridge(ByteString methodName, object methodDetail, FuncCallback cb);
+    object triggerLepusBridgeSync(ByteString methodName, object methodDetail);
+    long setTimeout(FuncCallback cb, long delay);
+    void clearTimeout(long id);
+    long setInterval(FuncCallback cb, long delay);
+    void clearInterval(long id);
+};

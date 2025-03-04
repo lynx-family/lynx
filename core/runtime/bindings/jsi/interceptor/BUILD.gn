@@ -1,0 +1,16 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/bindings_files.gni")
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("interceptor_factory") {
+  sources = interceptor_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("network_interceptor") {
+  sources = network_interceptor_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

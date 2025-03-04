@@ -1,0 +1,94 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+if (is_android) {
+  import("//build/config/android/config.gni")
+}
+if (target_cpu == "arm" || target_cpu == "arm64") {
+  import("//build/config/arm.gni")
+}
+
+# global configs
+declare_args() {
+  # Whether to enable trace
+  # There are three modes: "perfetto", "systrace", "none"
+  # 1. "perfetto" : enable perfetto trace
+  # 2. "systrace" : enable system trace, only for Android
+  # 3. "none" : disable trace, default value
+  enable_trace = "none"
+
+  build_number = "1"
+  build_version = "1.0.0"
+
+  # Whether to enable unit tests
+  enable_unittests = false
+
+  # Whether to build lynx shared library
+  build_lynx_dylib = false
+
+  build_lynx_lepus_node = false
+
+  enable_fuzzertests = false
+
+  # Whether to enable encoder unit tests
+  is_encoder_ut = false
+
+  # Whether enable v8 engine.
+  enable_v8 = true
+
+  # Whether enable frozen mode. Frozen mode is used for ut to disable log printing
+  enable_frozen_mode = false
+
+  # Build lite production
+  enable_lite = false
+  enable_lite_production = false
+
+  # Whether enable recorder.
+  enable_recorder = is_debug
+
+  # Whether enable richtext.
+  enable_richtext = false
+
+  # use napi from primjs with primjs suffix.
+  use_primjs_napi = false
+
+  # enable_lepusng_worklet corresponds the macro of ENABLE_LEPUSNG_WORKLET
+  enable_lepusng_worklet = false
+
+  # enable_inspector corresponds the macro of ENABLE_INSPECTOR
+  enable_inspector = false
+
+  # enable_inspector_test corresponds the macro of INSPECTOR_TEST
+  enable_inspector_test = false
+
+  # disable primjs symbol hidden
+  disable_primjs_symbol_visibility_hidden = false
+
+  # enable primjs prebuilt lib
+  enable_primjs_prebuilt_lib = false
+
+  # Which directory the Node header will be copied into
+  node_headers_dst_dir = "//oliver/lynx-ssr-runtime"
+
+  # enable lynx clang static checker plugin
+  enable_lynx_clang_plugin = false
+
+  # enable 16kb align for android
+  enable_16kb_align = false
+
+  # compiler optimization level
+  compiler_optimization_level = "Oz"
+}
+
+declare_args() {
+  v8_headers_search_path = "//lynx/third_party/v8/11.1.277/include"
+}
+
+if (is_android) {
+  enable_inspector = !enable_lite_production
+  enable_inspector_test = !enable_lite_production
+} else if (is_ios || is_mac) {
+  enable_inspector_test = true
+  v8_headers_search_path = "//$lynx_dir/third_party/NativeScript/include"
+}

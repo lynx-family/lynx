@@ -1,0 +1,32 @@
+{
+    "name": "animation-direction",
+    "id": 69,
+    "type": "complex",
+    "default_value": "normal",
+    "version": "1.0",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "reverse",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "alternate",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "alternate-reverse",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

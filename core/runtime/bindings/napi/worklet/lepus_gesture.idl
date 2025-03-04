@@ -1,0 +1,19 @@
+// An interface for handling gestures using LepusGesture.
+interface LepusGesture {
+
+//set gesture detector's state to active, this will make arena memeber to active
+void active(unsigned short gestureId);
+
+//set gesture detector's state to fail, this will make arena memeber to fail, next arena member will active
+void fail(unsigned short gestureId);
+
+//set gesture detector's state to end, this will make gesture to end
+void end(unsigned short gestureId);
+
+// Scroll the view during the gesture operation.
+// @param deltaX The horizontal distance to scroll.
+// @param deltaY The vertical distance to scroll.
+// @return An object representing the scrolled view.
+object scrollBy(float deltaX, float deltaY);
+
+};

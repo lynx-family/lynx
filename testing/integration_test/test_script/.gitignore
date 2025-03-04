@@ -1,0 +1,8 @@
+venv
+*.jpg
+*.png
+*.pyc
+.idea
+__pycache__
+./*.log
+!resources/**

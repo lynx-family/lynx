@@ -1,0 +1,52 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# value_wrapper_shared_sources
+value_wrapper_shared_sources = [
+  "value_impl_lepus.cc",
+  "value_impl_lepus.h",
+  "value_impl_piper.h",
+  "value_wrapper_utils.cc",
+  "value_wrapper_utils.h",
+]
+if (is_android) {
+  value_wrapper_shared_sources += [
+    "android/value_impl_android.cc",
+    "android/value_impl_android.h",
+  ]
+}
+
+if (is_apple) {
+  value_wrapper_shared_sources += [
+    "darwin/value_impl_darwin.h",
+    "darwin/value_impl_darwin.mm",
+  ]
+}
+
+lynx_core_source_set("value_wrapper") {
+  sources = value_wrapper_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("value_impl_android_unittest") {
+  sources = [ "android/value_impl_android_unittest.cc" ]
+  deps = [ "//third_party/googletest:gtest_sources" ]
+}
+
+unittest_exec("value_wrapper_unittest_exec") {
+  sources = []
+  deps = [ ":value_wrapper_testset" ]
+}
+
+unittest_set("value_wrapper_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [ "value_impl_unittest.cc" ]
+  deps = [
+    "//lynx/core/public",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}

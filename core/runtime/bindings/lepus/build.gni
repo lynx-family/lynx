@@ -1,0 +1,33 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+lynx_lepus_binding_sources = [
+  "renderer.cc",
+  "renderer.h",
+  "renderer_functions.h",
+  "renderer_functions_def.h",
+  "renderer_template.h",
+]
+
+if (is_android && enable_lite) {
+  lynx_lepus_binding_sources -= [
+    "renderer.cc",
+    "renderer.h",
+  ]
+}
+
+lynx_lepus_binding_sources_path =
+    get_path_info(lynx_lepus_binding_sources, "abspath")
+
+lynx_renderer_functions_sources = [ "renderer_functions.cc" ]
+
+lynx_renderer_functions_sources_path =
+    get_path_info(lynx_renderer_functions_sources, "abspath")
+
+lynx_empty_renderer_functions_sources = [ "empty_renderer_functions.cc" ]
+
+lynx_empty_renderer_functions_sources_path =
+    get_path_info(lynx_empty_renderer_functions_sources, "abspath")

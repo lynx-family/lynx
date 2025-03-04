@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "module": "ES6",
+    "noImplicitAny": false,
+    "removeComments": false,
+    "downlevelIteration": true,
+    "preserveConstEnums": true,
+    "outDir": "./dist/",
+    "moduleResolution": "Node",
+    "target": "ES2020",
+    "lib": ["es2015", "es2016", "ES2019.Array", "ES2021", "DOM", "ES2022.Error" ],
+    "pretty": true ,
+    "skipLibCheck": false,
+    "allowJs": true,
+    "declaration": true,
+    "declarationDir": "./dist/typings",
+    "types": [],
+    "baseUrl": "./",
+    "typeRoots": ["./src/typings"]
+  },
+  "include": ["src/"]
+}

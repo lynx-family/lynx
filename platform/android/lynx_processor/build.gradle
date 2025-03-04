@@ -1,0 +1,15 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'java'
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.annotation:annotation:1.0.0'
+    implementation 'com.squareup:javapoet:1.11.1'
+    implementation 'com.google.auto.service:auto-service:1.0-rc5'
+    annotationProcessor 'com.google.auto.service:auto-service:1.0-rc5'
+}

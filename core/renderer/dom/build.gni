@@ -1,0 +1,72 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+lynx_dom_core_sources = [
+  "element_container.cc",
+  "element_container.h",
+  "element_manager.cc",
+]
+
+if (!enable_unittests) {
+  if (is_android) {
+    lynx_dom_core_sources += [
+      "android/environment_android.cc",
+      "android/environment_android.h",
+      "android/lepus_message_consumer.cc",
+      "android/lepus_message_consumer.h",
+      "android/lynx_get_ui_result_android.cc",
+      "android/lynx_get_ui_result_android.h",
+      "android/lynx_template_bundle_android.cc",
+      "android/lynx_template_bundle_android.h",
+      "android/lynx_view_data_manager_android.cc",
+      "android/lynx_view_data_manager_android.h",
+    ]
+  } else if (is_apple) {
+    lynx_dom_core_sources += [
+      "ios/lepus_value_converter.h",
+      "ios/lepus_value_converter.mm",
+    ]
+  }
+}
+
+lynx_dom_core_sources_path = get_path_info(lynx_dom_core_sources, "abspath")
+
+lynx_element_shared_sources = [
+  "element.cc",
+  "element_property.cc",
+  "vdom/radon/radon_element.cc",
+  "vdom/radon/radon_element.h",
+]
+
+lynx_element_shared_sources_path =
+    get_path_info(lynx_element_shared_sources, "abspath")
+
+lynx_component_attr_sources = [
+  "component_attributes.cc",
+  "component_attributes.h",
+  "component_config.h",
+]
+
+lynx_component_attr_sources_path =
+    get_path_info(lynx_component_attr_sources, "abspath")
+
+lynx_renderer_dom_sources = [
+  "attribute_holder.cc",
+  "attribute_holder.h",
+  "css_patching.cc",
+  "css_patching.h",
+  "element_bundle.cc",
+  "element_bundle.h",
+  "element_vsync_proxy.cc",
+  "element_vsync_proxy.h",
+  "layout_bundle.h",
+  "list_component_info.cc",
+  "list_component_info.h",
+  "lynx_get_ui_result.h",
+]
+
+lynx_renderer_dom_sources_path =
+    get_path_info(lynx_renderer_dom_sources, "abspath")

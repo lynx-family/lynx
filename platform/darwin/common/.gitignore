@@ -1,0 +1,7 @@
+# ignore generated files
+lynx/public/LynxErrorBehavior.h
+lynx/LynxErrorBehavior.m
+lynx/public/LynxSubErrorCode.h
+lynx/LynxSubErrorCode.m
+lynx/performance/performance_observer/
+lynx/public/performance/performance_observer/

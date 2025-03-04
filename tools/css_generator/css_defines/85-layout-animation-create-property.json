@@ -1,0 +1,16 @@
+{
+    "name": "layout-animation-create-property",
+    "id": 85,
+    "type": "animation-property",
+    "default_value": "opacity",
+    "version": "1.0",
+    "author": "liyanbo",
+    "consumption_status": "skip",
+    "keywords": [
+        "opacity",
+        "scaleX",
+        "scaleY",
+        "scaleXY"
+    ],
+    "desc": ""
+}

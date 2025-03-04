@@ -1,0 +1,42 @@
+{
+    "name": "relative-id",
+    "id": 130,
+    "type": "number",
+    "default_value": "-1",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "relative-id": {
+            "__compat": {
+              "description": "Used to set the number of sibling elements in the relative layout.",
+              "lynx_path": "docs/zh/api/css/properties/relative-id",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "clay_android": {
+                  "version_added": "1.4"
+                },
+                "clay_macos": {
+                  "version_added": "1.4"
+                },
+                "clay_windows": {
+                  "version_added": "1.4"
+                }
+              }
+            }
+          }
+    }
+}

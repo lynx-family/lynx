@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "lib": ["ES2015", "ES2016", "ES2017"],
+    "esModuleInterop": true,
+    "baseUrl": "./types",
+    "strict": true,
+    "outDir": "lib",
+    "typeRoots": ["./node_modules/@types"],
+    "jsx": "preserve",
+    "module": "esnext",
+    "moduleResolution": "Node",
+    "skipLibCheck": true
+  },
+  "include": [],
+  "exclude": ["node_modules"]
+}

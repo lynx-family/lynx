@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+set -e
+
+##############################################################################
+##
+##  habitat start up script for UN*X
+##
+##############################################################################
+__version__="0.3.136"
+
+if [[ "$HABITAT_DEBUG" = "true" ]]; then
+  set -x
+fi
+
+debug () {
+  if [[ "$HABITAT_DEBUG" = "true" ]]; then
+    echo "$*"
+  fi
+}
+
+warn ( ) {
+    echo "$*"
+}
+
+die ( ) {
+    echo
+    echo "$*"
+    echo
+    exit 1
+}
+
+HABITAT_VERSION=${HABITAT_VERSION:-$__version__}
+HABITAT_RELEASES_URL=https://github.com/lynx-family/habitat/releases/download
+
+# Attempt to set APP_HOME
+# Resolve links: $0 may be a link
+PRG="$0"
+# Need this for relative symlinks.
+while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`"/$link"
+    fi
+done
+SAVED="`pwd`"
+cd "`dirname \"$PRG\"`/" >/dev/null
+APP_HOME="`pwd -P`"
+cd "$SAVED" >/dev/null
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD="maximum"
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "`uname`" in
+  CYGWIN* )
+    cygwin=true
+    ;;
+  Darwin* )
+    darwin=true
+    ;;
+  MINGW* )
+    msys=true
+    ;;
+  NONSTOP* )
+    nonstop=true
+    ;;
+esac
+
+# Increase the maximum file descriptors if we can.
+if [ "$cygwin" = "false" -a "$nonstop" = "false" ] ; then
+    MAX_FD_LIMIT=`ulimit -H -n`
+    if [ $? -eq 0 ] ; then
+        if [ "$MAX_FD" = "maximum" -o "$MAX_FD" = "max" ] ; then
+            MAX_FD="$MAX_FD_LIMIT"
+        fi
+        ulimit -n $MAX_FD
+        if [ $? -ne 0 ] ; then
+            warn "Could not set maximum file descriptor limit: $MAX_FD"
+        fi
+    else
+        warn "Could not query maximum file descriptor limit: $MAX_FD_LIMIT"
+    fi
+fi
+
+HABITAT_CACHE_DIR=$HOME/.habitat_cache/habitat
+HAB_EXECUTABLE_FILE=$HABITAT_CACHE_DIR/$HABITAT_VERSION/hab.pex
+export PATH=$HABITAT_CACHE_DIR/$HABITAT_VERSION:$PATH
+
+install() {
+  if [ ! -f "$HAB_EXECUTABLE_FILE" ]; then
+    debug "Installing habitat ($HABITAT_VERSION)..."
+    mkdir -p $HABITAT_CACHE_DIR/$HABITAT_VERSION
+    curl -sL "$HABITAT_RELEASES_URL/$HABITAT_VERSION/hab.pex" -o $HAB_EXECUTABLE_FILE
+    chmod +x $HAB_EXECUTABLE_FILE
+  else
+    debug "hab already exists."
+  fi
+}
+
+install
+
+# check habitat version
+CURRENT_VERSION=$($HAB_EXECUTABLE_FILE -v | tail -n 1)
+if [[ $CURRENT_VERSION != "${HABITAT_VERSION}" ]]; then
+  install
+fi
+
+for arg in "$@"
+do
+  if [ -d "$arg" ]; then
+    root_dir=$arg
+  fi
+  if [[ "$arg" == "sync" ]]; then
+    is_sync_command=true
+  fi
+done
+
+exit_code=0
+if [ $is_sync_command ]; then
+  err_msg=$($HAB_EXECUTABLE_FILE deps "$root_dir" 2>&1 1>/dev/null) || exit_code=$?
+  if [[ $exit_code = 126 ]]; then
+    # 126 means incompatible version
+    PATTERN="([0-9]+\.[0-9]+\.[0-9]{1,3}(-[a-z]+\.[0-9]+)?)"
+    HABITAT_VERSION=$(echo "$err_msg" | grep -E "^expected\ version:\ " | grep -E "$PATTERN" -o)
+    debug "required version ${HABITAT_VERSION} does not exist, try installing it first (current version is $CURRENT_VERSION)"
+    install
+  fi
+fi
+
+exit_code=0
+echo Using habitat "$HABITAT_VERSION"
+$HAB_EXECUTABLE_FILE "$@" || exit_code=$?
+
+exit $exit_code

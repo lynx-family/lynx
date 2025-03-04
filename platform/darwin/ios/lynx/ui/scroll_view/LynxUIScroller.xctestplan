@@ -1,0 +1,55 @@
+{
+  "configurations" : [
+    {
+      "id" : "AE658D23-2BBD-423F-812B-B28B755C57B0",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "LynxAccessibilityModuleUnitTest",
+        "LynxBackgroundManagerUnitTest",
+        "LynxBasicShapeUnitTest",
+        "LynxBoxShadowLayerUnitTest",
+        "LynxColorUnitsUnitTest",
+        "LynxComponentStatisticUnitTest",
+        "LynxConvertUtilsUnitTest",
+        "LynxConverterUIUnitTest",
+        "LynxErrorUnitTest",
+        "LynxExposureModuleUnitTest",
+        "LynxFPSMonitorUnitTest",
+        "LynxHtmlEscapeUnitTest",
+        "LynxLogUnitTest",
+        "LynxMemoryListenerUnitTest",
+        "LynxShadowNodeStatisticUnitTest",
+        "LynxTemplateBundleUnitTest",
+        "LynxTextRendererUnitTest",
+        "LynxTouchHanderUnitTest",
+        "LynxUICollectionDelegateUnitTest",
+        "LynxUIExposureUnitTest",
+        "LynxUIImageUnitTest",
+        "LynxUIOwnerAccessibilityUnitTest",
+        "LynxUIUnitTest",
+        "LynxUI_AccessibilityUnitTest",
+        "LynxUnitUtilsUnitTest",
+        "LynxVersionUnitTest",
+        "LynxVersionUtilsUnitTest",
+        "ResourceLoaderDarwinUnitTest",
+        "UIScrollView_LynxUnitTest"
+      ],
+      "target" : {
+        "containerPath" : "container:Pods\/Lynx.xcodeproj",
+        "identifier" : "87B2BD4CDFCA0FB4DA2F6FC70422BB1B",
+        "name" : "Lynx-Unit-UnitTests"
+      }
+    }
+  ],
+  "version" : 1
+}

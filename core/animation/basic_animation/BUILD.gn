@@ -1,0 +1,63 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+basic_animation_shared_sources = [
+  "animation_effect.cc",
+  "animation_effect.h",
+  "animation_effect_timing.cc",
+  "animation_effect_timing.h",
+  "animation_event_listener.h",
+  "animation_frame_callback.h",
+  "animation_frame_callback_provider.h",
+  "animation_timeline.cc",
+  "animation_timeline.h",
+  "animator_target.h",
+  "basic_animation.cc",
+  "basic_animation.h",
+  "basic_animation_curve.cc",
+  "basic_animation_curve.h",
+  "basic_keyframe_effect.cc",
+  "basic_keyframe_effect.h",
+  "basic_keyframe_model.cc",
+  "basic_keyframe_model.h",
+  "keyframe.h",
+  "property_value.h",
+  "thread_local_animation_handler.cc",
+  "thread_local_animation_handler.h",
+]
+
+lynx_core_source_set("basic_animation") {
+  sources = basic_animation_shared_sources
+
+  public_deps = [
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base",
+  ]
+}
+
+unittest_set("basic_animation_testset") {
+  testonly = true
+  sources = []
+  deps = []
+  public_deps = [ ":basic_animation" ]
+}
+
+unittest_exec("basic_animation_unittests_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":basic_animation",
+    ":basic_animation_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("basic_animation_tests") {
+  testonly = true
+  deps = [ ":basic_animation_unittests_exec" ]
+  public_deps = [ ":basic_animation_testset" ]
+}

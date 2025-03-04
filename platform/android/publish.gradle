@@ -1,0 +1,117 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
+import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency
+
+def aarPathList=""
+
+def getAARPath(buildPath) {
+    FileTree fileTree = project.fileTree(dir: buildPath, includes: ['**/*.aar'])
+    if (fileTree.files) {
+        return fileTree.files[0]
+    } else {
+        throw new GradleException("No aar found in the path $buildPath.")
+    }
+}
+
+afterEvaluate {
+    def runTasks = gradle.startParameter.taskNames.toString().toLowerCase()
+    // Only tasks whose names contain "publish" can be triggered to avoid other Gradle tasks from executing this section of logic.
+    if (runTasks.contains("publish")) {
+        publishing {
+            publications {
+                release(MavenPublication) {
+                    groupId ARTIFACT_GROUP
+                    artifactId ARTIFACT_NAME
+                    version findProperty("version")
+                    artifact(getAARPath("$project.buildDir/outputs/aar"))
+                    // Obtain all the so symbol tables of the component.
+                    def soSymbolsPathMap = [:]
+                    project.android.libraryVariants.all { variant ->
+                        def nativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
+                        if (nativeBuildTask != null) {
+                            def folder = nativeBuildTask.getObjFolder()
+                            FileTree fileTree = project.fileTree(nativeBuildTask.getObjFolder())
+                            fileTree.include "**/*.so"
+                            fileTree.files.each { item ->
+                                soSymbolsPathMap[item.name[0..(item.name.lastIndexOf('.')-1)]] = item.path
+                            }
+                        }
+                    }
+                    // Add so symbol tables into the component artifact.
+                    if (!soSymbolsPathMap.isEmpty()) {
+                        soSymbolsPathMap.each { name, path ->
+                            artifact(path) {
+                                classifier name
+                            }
+                        }
+                    }
+                    pom {
+                        name = artifactId
+                        url = REPOSITORY_URL
+                        description = DESCRIPTION
+                        licenses {
+                            license {
+                                name = 'The Apache License, Version 2.0'
+                                url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                            }
+                        }
+                        developers {
+                            developer {
+                                name = DEVELOPER_NAME
+                                email = DEVELOPER_EMAIL
+                            }
+                        }
+                        scm {
+                            url = REPOSITORY_URL
+                            connection = "scm:git:git://$REPOSITORY_SSH_URL"
+                            developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
+                        }
+                        signing {
+                            def signingKeyId = findProperty("signing.keyId")
+                            def signingPassword = findProperty("signing.password")
+                            def signingSecretKey = findProperty("signing.secretKey")
+                            useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+                            sign publishing.publications.release
+                        }
+                        withXml {
+                            def dependenciesNode = asNode().appendNode('dependencies')
+                            configurations.implementation.allDependencies.each { dependency ->
+                                if (dependency instanceof DefaultExternalModuleDependency) {
+                                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                                    dependencyNode.appendNode('groupId', dependency.group)
+                                    dependencyNode.appendNode('artifactId', dependency.name)
+                                    dependencyNode.appendNode('version', dependency.version)
+                                    dependencyNode.appendNode('scope', 'runtime')
+                                } else if (dependency instanceof DefaultProjectDependency) {
+                                    String scope = "runtime"
+                                    if (configurations.api.dependencies.contains(dependency)) {
+                                        scope = "compile"
+                                    }
+                                    def project = project(":${dependency.name}")
+                                    def artifactId = project.findProperty('ARTIFACT_NAME')
+                                    def groupId = project.findProperty('ARTIFACT_GROUP')
+                                    def version = findProperty("version")
+                                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                                    dependencyNode.appendNode('groupId', groupId)
+                                    dependencyNode.appendNode('artifactId', artifactId)
+                                    dependencyNode.appendNode('version', version)
+                                    dependencyNode.appendNode('scope', scope)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    url = "$project.buildDir/release"
+                }
+            }
+        }
+    }
+}

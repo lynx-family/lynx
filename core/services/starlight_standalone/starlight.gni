@@ -1,0 +1,33 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+
+# This target defines a source_set which contains some common configs and deps needed by
+# all targets in the source tree of Starlight
+#
+template("starlight_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker, "*", [ "configs" ])
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+
+    configs += [ "//lynx/core/services/starlight_standalone:starlight_config" ]
+
+    if (is_android) {
+      configs += [
+        "//Android/LynxStarlight:starlight_private_config",
+        "//Android/LynxStarlight:starlight_public_include",
+      ]
+    }
+    if (defined(exclude_configs)) {
+      configs -= exclude_configs
+    }
+
+    if (defined(exclude_deps)) {
+      deps -= exclude_deps
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+    "name": "relative-inline-end-of",
+    "id": 166,
+    "type": "number",
+    "default_value": "-1",
+    "version": "2.0",
+    "author": "wangzhixuan.0821",
+    "consumption_status": "skip",
+    "desc": "",
+    "compat_data": {
+        "relative-inline-end-of": {
+            "__compat": {
+              "description": "The current element is to the left/right of the sibling element corresponding to the specified id.",
+              "lynx_path": "docs/zh/api/css/properties/relative-inline-end-of",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "2.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "2.0"
+                },
+                "clay_android": {
+                  "version_added": "2.0"
+                },
+                "clay_macos": {
+                  "version_added": "2.0"
+                },
+                "clay_windows": {
+                  "version_added": "2.0"
+                }
+              }
+            }
+          }
+    }
+}

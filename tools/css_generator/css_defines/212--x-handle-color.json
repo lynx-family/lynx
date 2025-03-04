@@ -1,0 +1,10 @@
+{
+    "name": "-x-handle-color",
+    "id": 212,
+    "type": "color",
+    "default_value": "transparent",
+    "version": "3.1",
+    "author": "zhouzhuangzhuang",
+    "consumption_status": "skip",
+    "desc": ""
+}

@@ -1,0 +1,126 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@color-verbose-light: #F5F5F5;
+@color-verbose-dark: #9E9E9E;
+@color-info-light: #E3F2FD;
+@color-info-dark: #0D47A1;
+@color-warn-light: #FFFDE7;
+@color-warn-dark: #F57F17;
+@color-error-light: #FFEBEE;
+@color-error-dark: #B71C1C;
+
+.container {
+  width: 100%;
+  margin-top: 50px;
+}
+
+.log-container {
+  margin: 10px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 5px;
+
+  &--verbose {
+    background-color: @color-verbose-light;
+    border-color: @color-verbose-dark;
+  }
+
+  &--info {
+    background-color: @color-info-light;
+    border-color: @color-info-dark;
+  }
+
+  &--warn {
+    background-color: @color-warn-light;
+    border-color: @color-warn-dark;
+  }
+
+  &--error {
+    background-color: @color-error-light;
+    border-color: @color-error-dark;
+  }
+}
+
+.log-header {
+  display: flex;
+  color: #fff;
+  padding-left: 10px;
+  padding-right: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  
+  &--verbose {
+    background-color: @color-verbose-dark;
+  }
+
+  &--info {
+    background-color: @color-info-dark;
+  }
+
+  &--warn {
+    background-color: @color-warn-dark;
+  }
+
+  &--error {
+    background-color: @color-error-dark;
+  }
+}
+
+.log-content {
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+
+  &--verbose {
+    color: #9E9E9E;
+  }
+
+  &--info {
+    color: #0D47A1;
+  }
+
+  &--warn {
+    color: #F57F17;
+  }
+
+  &--error {
+    color: @color-error-dark;
+  }
+}
+
+.log-message {
+  margin: 0;
+  padding: 10px;
+  border: 0;
+  flex-grow: 1;
+  white-space: pre-wrap;
+  overflow: auto;
+  max-height: 150px;
+  word-break: break-word;
+}
+
+.empty {
+  position: relative;
+  display: block;
+  padding: 0.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  border-radius: 0.25rem;
+  background-color: rgba(206, 17, 38, 0.05);
+  color: inherit;
+  margin: 0.5em;
+}
+
+.link {
+  color: #108ee9;
+}
+
+.muted {
+  color: #a0a0a0;
+}
+
+

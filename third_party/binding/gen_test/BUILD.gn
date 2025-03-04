@@ -1,0 +1,58 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+config("test_module_config") {
+  include_dirs = [
+    ".",
+    "//",
+  ]
+}
+
+lynx_core_source_set("test_module") {
+  sources = [
+    "jsbridge/bindings/gen_test/napi_async_object.cc",
+    "jsbridge/bindings/gen_test/napi_async_object.h",
+    "jsbridge/bindings/gen_test/napi_gen_test_command_buffer_gen.cc",
+    "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.cc",
+    "jsbridge/bindings/gen_test/napi_gen_test_command_buffer.h",
+    "jsbridge/bindings/gen_test/napi_test_context.cc",
+    "jsbridge/bindings/gen_test/napi_test_context.h",
+    "jsbridge/bindings/gen_test/napi_test_element.cc",
+    "jsbridge/bindings/gen_test/napi_test_element.h",
+    "test_async_object.h",
+    "test_context.cc",
+    "test_context.h",
+    "test_element.h",
+    "test_module.cc",
+    "test_module.h",
+  ]
+  public_configs = [
+    ":test_module_config",
+    "//lynx/third_party/napi:napi_config",
+  ]
+  deps = [ "//lynx/core/runtime/bindings/napi:napi_binding_core" ]
+}
+
+unittest_exec("binding_generator_unittests_exec") {
+  sources = [ "binding_generator_unittest.cc" ]
+
+  deps = [
+    ":test_module",
+    "//lynx/core/base",
+    "//lynx/core/runtime/bindings/napi:napi_binding_quickjs",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/third_party/napi:env",
+    "//lynx/third_party/napi:quickjs",
+    ":binding_unittest_sources",
+  ]
+}
+
+copy("binding_unittest_sources") {
+  sources = [ "jsbridge/bindings/gen_test/testContext.ts" ]
+  outputs =
+      [ "$root_out_dir/third_party/binding/gen_test/jsbridge/bindings/gen_test/testContext.ts" ]
+}

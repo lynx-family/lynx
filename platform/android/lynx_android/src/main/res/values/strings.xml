@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright 2022 The Lynx Authors. All rights reserved. -->
+
+<resources>
+    <string name="copy">Copy</string>
+    <string name="selectAll">Select All</string>
+</resources>

@@ -1,0 +1,27 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@mixin page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  justify-content: flex-start;
+}
+
+.page {
+  @include page;
+  background: #f0f2f5;
+}
+
+.page__dark {
+  @include page;
+  background: #181D25;
+}
+
+.list {
+  width: 100%;
+  height: 100%;
+  padding-bottom: 30px;
+}

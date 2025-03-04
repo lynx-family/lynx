@@ -1,0 +1,129 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+shell_shared_sources = [
+  "common/platform_call_back.cc",
+  "common/platform_call_back.h",
+  "common/platform_call_back_manager.cc",
+  "common/platform_call_back_manager.h",
+  "common/vsync_monitor.cc",
+  "common/vsync_monitor.h",
+  "dynamic_ui_operation_queue.cc",
+  "dynamic_ui_operation_queue.h",
+  "engine_thread_switch.cc",
+  "engine_thread_switch.h",
+  "layout_mediator.cc",
+  "layout_mediator.h",
+  "lynx_actor_specialization.h",
+  "lynx_card_cache_data_manager.cc",
+  "lynx_card_cache_data_manager.h",
+  "lynx_card_cache_data_op.h",
+  "lynx_engine.cc",
+  "lynx_engine.h",
+  "lynx_engine_proxy_impl.cc",
+  "lynx_engine_proxy_impl.h",
+  "lynx_runtime_actor_holder.cc",
+  "lynx_runtime_actor_holder.h",
+  "lynx_runtime_proxy_impl.cc",
+  "lynx_runtime_proxy_impl.h",
+  "lynx_shell.cc",
+  "lynx_shell.h",
+  "lynx_shell_builder.cc",
+  "lynx_shell_builder.h",
+  "lynx_ui_operation_async_queue.cc",
+  "lynx_ui_operation_async_queue.h",
+  "lynx_ui_operation_queue.cc",
+  "lynx_ui_operation_queue.h",
+  "native_facade.h",
+  "native_facade_empty_implementation.h",
+  "native_facade_reporter.h",
+  "runtime_mediator.cc",
+  "runtime_mediator.h",
+  "runtime_standalone_helper.cc",
+  "runtime_standalone_helper.h",
+  "tasm_mediator.cc",
+  "tasm_mediator.h",
+  "tasm_operation_queue.cc",
+  "tasm_operation_queue.h",
+  "tasm_operation_queue_async.cc",
+  "tasm_operation_queue_async.h",
+  "tasm_platform_invoker.h",
+  "thread_mode_auto_switch.cc",
+  "thread_mode_auto_switch.h",
+  "vsync_observer_impl.cc",
+  "vsync_observer_impl.h",
+]
+
+if (!enable_unittests) {
+  shell_shared_sources += [
+    "module_delegate_impl.cc",
+    "module_delegate_impl.h",
+  ]
+} else {
+  shell_shared_sources += [
+    "module_delegate_impl.h",
+    "module_delegate_mock.cc",
+  ]
+}
+
+if (is_android) {
+  shell_shared_sources += [
+    "android/js_proxy_android.cc",
+    "android/js_proxy_android.h",
+    "android/lynx_engine_proxy_android.cc",
+    "android/lynx_engine_proxy_android.h",
+    "android/lynx_runtime_wrapper_android.cc",
+    "android/lynx_runtime_wrapper_android.h",
+    "android/lynx_template_render_android.cc",
+    "android/lynx_template_renderer_android.h",
+    "android/native_facade_android.cc",
+    "android/native_facade_android.h",
+    "android/native_facade_reporter_android.cc",
+    "android/native_facade_reporter_android.h",
+    "android/platform_call_back_android.cc",
+    "android/platform_call_back_android.h",
+    "android/tasm_platform_invoker_android.cc",
+    "android/tasm_platform_invoker_android.h",
+    "android/vsync_monitor_android.cc",
+    "android/vsync_monitor_android.h",
+  ]
+} else if (is_ios) {
+  shell_shared_sources += [
+    "ios/data_utils.h",
+    "ios/data_utils.mm",
+    "ios/js_proxy_darwin.h",
+    "ios/js_proxy_darwin.mm",
+    "ios/lynx_engine_proxy_darwin.h",
+    "ios/lynx_engine_proxy_darwin.mm",
+    "ios/lynx_runtime_facade_darwin.h",
+    "ios/lynx_runtime_facade_darwin.mm",
+    "ios/native_facade_darwin.h",
+    "ios/native_facade_darwin.mm",
+    "ios/native_facade_reporter_darwin.h",
+    "ios/native_facade_reporter_darwin.mm",
+    "ios/tasm_platform_invoker_darwin.h",
+    "ios/tasm_platform_invoker_darwin.mm",
+    "ios/vsync_monitor_darwin.h",
+    "ios/vsync_monitor_darwin.mm",
+  ]
+}
+if (enable_unittests) {
+  shell_shared_sources += [ "common/vsync_monitor_default.cc" ]
+}
+
+lynx_core_source_set("shell") {
+  sources = shell_shared_sources
+  public_deps = [
+    "//lynx/core/resource/external_resource:external_resource",
+    "//lynx/core/runtime",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/core/services/timing_handler",
+    "//lynx/core/services/timing_handler:timing_handler_delegate",
+    "//lynx/core/services/timing_handler:timing_handler_platform",
+    "//lynx/third_party/rapidjson",
+  ]
+}

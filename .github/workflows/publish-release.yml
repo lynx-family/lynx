@@ -1,0 +1,234 @@
+name: publish-release
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        required: true
+        type: boolean
+      version:
+        required: false
+        type: string
+
+jobs:
+  android-explorer-build:
+    runs-on: lynx-ubuntu-22.04-avd-large
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Build Explorer App
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd explorer/android
+          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon
+          popd
+      - name: push to release
+        uses: ncipollo/release-action@v1
+        if: ${{ inputs.dry_run == false }}
+        with:
+          tag: ${{ inputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
+          allowUpdates: true
+      - name: upload artifact
+        uses: lynx-infra/upload-artifact@dev
+        continue-on-error: true
+        with:
+          name: android-lynx-explorer
+          path: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
+
+  ios-explorer-build:
+    runs-on: lynx-darwin-14-medium
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            python3 -m venv myenv
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            rm -rf $GITHUB_WORKSPACE/third_party
+            tools/hab sync .
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Install iOS Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: |-
+            set -e
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            source tools/envsetup.sh
+            pushd explorer/darwin/ios/lynx_explorer
+            bash bundle_install.sh
+            popd
+      - name: Build Explorer App
+        run: |-
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          pushd explorer/darwin/ios/lynx_explorer
+          xcodebuild -workspace LynxExplorer.xcworkspace -scheme LynxExplorer -configuration Debug -arch ${{ matrix.arch }} -archivePath build/LynxExplorer.xcarchive -derivedDataPath iOSCoreBuild/DerivedData -resultBundlePath results_bundle -showBuildTimingSummary -sdk iphonesimulator LD_GENERATE_MAP_FILE=YES LD_MAP_FILE_PATH=Build/linkmap.txt -jobs 24 build
+          popd
+          tar --strip-components 10 -czvf LynxExplorer-${{ matrix.arch }}.app.tar.gz explorer/darwin/ios/lynx_explorer/iOSCoreBuild/DerivedData/Build/Products/Debug-iphonesimulator/LynxExplorer.app
+      - name: push explorer to release
+        uses: ncipollo/release-action@v1
+        if: ${{ inputs.dry_run == false }}
+        with:
+          tag: ${{ inputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
+          allowUpdates: true
+  android-sdk-release:
+    runs-on: ${{ inputs.dry_run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-avd-large' }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Setup Android enviroment
+        if: ${{ inputs.dry_run == false }}
+        uses: ./lynx/.github/actions/setup-android-env
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+      - name: Install Common Dependencies With Cache
+        if: ${{ inputs.dry_run == true }}
+        uses: ./lynx/.github/actions/common-deps
+      - name: Install Common Dependencies
+        if: ${{ inputs.dry_run == false }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          python3 -m pip install PyYAML -i https://pypi.org/simple
+          source tools/envsetup.sh
+          tools/hab sync . -f
+      - name: Build artifact
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd platform/android
+          ./gradlew assembleAllModulesRelease -Penable_trace=none -no-daemon
+          popd
+      - name: Package maven artifacts
+        if: ${{ inputs.dry_run == false }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          pushd platform/android
+          ./gradlew publishAllModules \
+          -Pversion=${{ inputs.version }} \
+          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
+          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
+          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
+          ./gradlew zipArtifacts -Pversion=${{ inputs.version }} getArtifactList
+          popd
+          pushd platform/android/build
+          artifact_list=$(<artifact-list)
+          echo "::set-output name=artifact_list::$artifact_list"
+          popd
+        id: build_artifact
+      - name: Publish artifact to maven
+        if: ${{ inputs.dry_run == false }}
+        uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
+        with:
+          portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
+          artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
+  ios-sdk-publish:
+    runs-on: macos-13
+    if: ${{ inputs.dry_run == false }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lynx
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            python3 -m venv myenv
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            python3 -m pip install requests -i https://pypi.org/simple
+            source tools/envsetup.sh
+            tools/hab sync . -f
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Prepare cocoapods publish source
+        run: |-
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          cd $GITHUB_WORKSPACE
+          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.version }} --component all
+      - name: Push iOS SDK to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ inputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '*.zip'
+          replacesArtifacts: true
+          allowUpdates: true
+      - name: Publish to CocoaPods Repo
+        run: |-
+          source myenv/bin/activate
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.PRIVATE_SSH_KEY }}'
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          cd $GITHUB_WORKSPACE
+          git config --global user.name "lynx.authors"
+          git config --global user.email "lynx.authors@users.noreply.github.com"
+          python3 lynx/tools/ios_tools/skip_pod_lint.py --source public
+          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --publish --component all  --tag ${{ inputs.version }}

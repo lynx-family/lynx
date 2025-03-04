@@ -1,0 +1,10 @@
+{
+    "name": "caret-color",
+    "id": 128,
+    "type": "string",
+    "default_value": "auto",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "skip",
+    "desc": "auto"
+}

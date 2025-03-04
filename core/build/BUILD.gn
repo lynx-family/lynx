@@ -1,0 +1,66 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("build") {
+  sources = [
+    "gen/lynx_sub_error_code.cc",
+    "gen/lynx_sub_error_code.h",
+  ]
+
+  if (is_android) {
+    sources += [
+      "gen/AttributeDescriptor_jni.h",
+      "gen/BlurUtils_jni.h",
+      "gen/CallStackUtil_jni.h",
+      "gen/CallbackImpl_jni.h",
+      "gen/ColorUtils_jni.h",
+      "gen/DeviceUtils_jni.h",
+      "gen/DisplayMetricsHolder_jni.h",
+      "gen/EnvUtils_jni.h",
+      "gen/FluencySample_jni.h",
+      "gen/GradientUtils_jni.h",
+      "gen/HttpRequest_jni.h",
+      "gen/HttpResponse_jni.h",
+      "gen/ICURegister_jni.h",
+      "gen/ILynxJSIObjectDescriptor_jni.h",
+      "gen/JSProxy_jni.h",
+      "gen/JavaOnlyArray_jni.h",
+      "gen/JavaOnlyMap_jni.h",
+      "gen/LLog_jni.h",
+      "gen/LayoutContext_jni.h",
+      "gen/LayoutNodeManager_jni.h",
+      "gen/LayoutNode_jni.h",
+      "gen/LynxBackgroundRuntime_jni.h",
+      "gen/LynxEngineProxy_jni.h",
+      "gen/LynxEnv_jni.h",
+      "gen/LynxError_jni.h",
+      "gen/LynxEventReporter_jni.h",
+      "gen/LynxFeatureCounter_jni.h",
+      "gen/LynxGetUIResult_jni.h",
+      "gen/LynxJSIObjectHub_jni.h",
+      "gen/LynxLongTaskMonitor_jni.h",
+      "gen/LynxModuleFactory_jni.h",
+      "gen/LynxModuleWrapper_jni.h",
+      "gen/LynxNativeMemoryTracer_jni.h",
+      "gen/LynxResourceLoader_jni.h",
+      "gen/LynxUIRenderer_jni.h",
+      "gen/LynxWhiteBoard_jni.h",
+      "gen/MethodDescriptor_jni.h",
+      "gen/PaintingContext_jni.h",
+      "gen/PiperData_jni.h",
+      "gen/PlatformCallBack_jni.h",
+      "gen/PlatformExtraBundleHolder_jni.h",
+      "gen/ReadableCompactArrayBuffer_jni.h",
+      "gen/ReadableMapBuffer_jni.h",
+      "gen/ResourceLoader_jni.h",
+      "gen/TasmPlatformInvoker_jni.h",
+      "gen/TemplateBundle_jni.h",
+      "gen/TemplateData_jni.h",
+      "gen/TextUtils_jni.h",
+      "gen/TimingCollector_jni.h",
+      "gen/VSyncMonitor_jni.h",
+    ]
+  }
+}

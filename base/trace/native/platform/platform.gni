@@ -1,0 +1,61 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+platform_public_headers = []
+platform_shared_sources = []
+
+if (is_android) {
+  platform_shared_sources += [
+    "$root_gen_dir/lynx/base/trace/native/platform/android/jni_headers/TraceController_jni.h",
+    "$root_gen_dir/lynx/base/trace/native/platform/android/jni_headers/TraceEvent_jni.h",
+  ]
+}
+
+if (enable_trace == "perfetto") {
+  if (is_android) {
+    platform_public_headers += [
+      "platform/android/trace_event_android.h",
+      "platform/android/trace_controller_android.h",
+    ]
+    platform_shared_sources += [
+      "platform/android/trace_controller_android.cc",
+      "platform/android/trace_controller_android.h",
+      "platform/android/trace_event_android.h",
+      "platform/android/trace_event_android_perfetto.cc",
+    ]
+  } else if (is_ios || is_mac) {
+    platform_public_headers += [ "platform/darwin/trace_controller_darwin.h" ]
+    platform_shared_sources += [
+      "platform/darwin/trace_controller_darwin.h",
+      "platform/darwin/trace_controller_darwin.mm",
+    ]
+  } else if (is_win) {
+    platform_public_headers += [ "platform/windows/trace_controller_win.h" ]
+    platform_shared_sources += [
+      "platform/windows/trace_controller_win.cc",
+      "platform/windows/trace_controller_win.h",
+    ]
+  }
+} else {
+  if (is_android) {
+    platform_public_headers += [
+      "platform/android/trace_event_android.h",
+      "platform/android/trace_controller_android.h",
+    ]
+    platform_shared_sources += [
+      "platform/android/trace_controller_android.h",
+      "platform/android/trace_controller_android_mock.cc",
+      "platform/android/trace_event_android.h",
+    ]
+    if (enable_trace == "systrace") {
+      platform_shared_sources +=
+          [ "platform/android/trace_event_android_systrace.cc" ]
+    } else {
+      platform_shared_sources +=
+          [ "platform/android/trace_event_android_mock.cc" ]
+    }
+  }
+}

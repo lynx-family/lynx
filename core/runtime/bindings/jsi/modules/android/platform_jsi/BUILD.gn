@@ -1,0 +1,17 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("platform_jsi_android") {
+  sources = [
+    "jsi_object_utils.cc",
+    "jsi_object_utils.h",
+    "lynx_jsi_object_descriptor.cc",
+    "lynx_jsi_object_descriptor.h",
+    "lynx_platform_jsi_object_android.cc",
+    "lynx_platform_jsi_object_android.h",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

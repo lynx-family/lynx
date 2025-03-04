@@ -1,0 +1,28 @@
+so_load_configs:
+  output_path: tools/build_jni/testing/lynx_so_load.cpp
+  custom_headers:
+    - core/base/android/android_jni.h
+  namespaces:
+    - lynx
+gn_configs:
+  template_name: lynx_source_set
+  custom_headers:
+    - //core/Lynx.gni
+inputs:
+  - java: com/lynx/tasm/LynxTemplateRender.java
+  - java: com/lynx/tasm/LynxBackgroundRuntime.java
+  - java: com/lynx/react/bridge/JavaOnlyMap.java
+  - java: com/lynx/react/bridge/JavaOnlyArray.java
+    macro: TEST_MACRO
+  - java: com/lynx/tasm/LynxError.java
+special_cases:
+  - header: base/include/fml/platform/android/message_loop_android.h
+    method: lynx::fml::MessageLoopAndroid::Register(env);
+  - header: core/base/android/logging_android.h
+    java: com/lynx/tasm/base/LLog.java
+    method: lynx::base::logging::RegisterJNI(env);
+  - header: core/runtime/common/utils.h
+    method: lynx::piper::JSBUtilsRegisterJNI(env);
+  - method: lynx::piper::JSBUtilsMapRegisterJNI(env);
+  - header: core/runtime/bindings/jsi/modules/android/lynx_promise_impl.h
+    method: lynx::piper::LynxPromiseImpl::RegisterJNI(env);

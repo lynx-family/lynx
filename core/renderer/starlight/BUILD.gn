@@ -1,0 +1,175 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/config.gni")
+import("//lynx/oliver/oliver.gni")
+import("//lynx/testing/test.gni")
+
+starlight_layout_sources = [
+  "layout/box_info.cc",
+  "layout/box_info.h",
+  "layout/cache_manager.cc",
+  "layout/cache_manager.h",
+  "layout/container_node.cc",
+  "layout/container_node.h",
+  "layout/direction_selector.h",
+  "layout/elastic_layout_utils.cc",
+  "layout/elastic_layout_utils.h",
+  "layout/flex_info.cc",
+  "layout/flex_info.h",
+  "layout/flex_layout_algorithm.cc",
+  "layout/flex_layout_algorithm.h",
+  "layout/grid_item_info.cc",
+  "layout/grid_item_info.h",
+  "layout/grid_layout_algorithm.cc",
+  "layout/grid_layout_algorithm.h",
+  "layout/layout_algorithm.cc",
+  "layout/layout_algorithm.h",
+  "layout/layout_global.cc",
+  "layout/layout_global.h",
+  "layout/layout_object.cc",
+  "layout/layout_object.h",
+  "layout/linear_layout_algorithm.cc",
+  "layout/linear_layout_algorithm.h",
+  "layout/logic_direction_utils.cc",
+  "layout/logic_direction_utils.h",
+  "layout/node.h",
+  "layout/position_layout_utils.cc",
+  "layout/position_layout_utils.h",
+  "layout/property_resolving_utils.cc",
+  "layout/property_resolving_utils.h",
+  "layout/relative_layout_algorithm.cc",
+  "layout/relative_layout_algorithm.h",
+  "layout/staggered_grid_layout_algorithm.cc",
+  "layout/staggered_grid_layout_algorithm.h",
+]
+
+starlight_style_sources = [
+  "//lynx/core/style/color.h",
+  "style/auto_gen_css_type.h",
+  "style/borders_data.cc",
+  "style/borders_data.h",
+  "style/box_data.cc",
+  "style/box_data.h",
+  "style/css_type.h",
+  "style/data_ref.h",
+  "style/default_layout_style.h",
+  "style/flex_data.cc",
+  "style/flex_data.h",
+  "style/grid_data.cc",
+  "style/grid_data.h",
+  "style/layout_computed_style.cc",
+  "style/layout_computed_style.h",
+  "style/layout_style_utils.cc",
+  "style/layout_style_utils.h",
+  "style/linear_data.cc",
+  "style/linear_data.h",
+  "style/relative_data.cc",
+  "style/relative_data.h",
+  "style/surround_data.cc",
+  "style/surround_data.h",
+]
+
+starlight_types_sources = [
+  "types/layout_attribute.h",
+  "types/layout_configs.h",
+  "types/layout_constraints.h",
+  "types/layout_directions.h",
+  "types/layout_measurefunc.h",
+  "types/layout_result.h",
+  "types/layout_types.h",
+  "types/layout_unit.h",
+  "types/nlength.cc",
+  "types/nlength.h",
+]
+
+starlight_event_sources = [
+  "event/layout_event.h",
+  "event/layout_event_data.h",
+  "event/layout_event_handler.h",
+]
+
+config("starlight_public_config") {
+  include_dirs = [
+    "//core",
+    "//lynx/core",
+  ]
+}
+
+config("starlight_private_config") {
+  include_dirs = [
+    "//core",
+    "//lynx/third_party",
+  ]
+  defines = []
+  cflags = []
+  cflags_c = []
+  cflags_cc = []
+  if (is_android) {
+    if (enable_inspector) {
+      defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
+    }
+
+    if (is_debug) {
+      cflags_cc += [ "-g" ]
+      cflags += [ "-O0" ]
+    } else {
+      cflags += [ "-Oz" ]
+    }
+
+    if (is_asan) {
+      cflags += [ "-fno-omit-frame-pointer" ]
+      cflags_cc += [
+        "-O1",
+        "-g",
+      ]
+    } else {
+      cflags += [
+        "-fomit-frame-pointer",
+        "-fno-sanitize=safe-stack",
+      ]
+    }
+  }
+}
+
+source_set("starlight") {
+  sources = starlight_layout_sources + starlight_style_sources +
+            starlight_types_sources
+  if (!is_oliver_ssr) {
+    sources += starlight_event_sources
+  } else {
+    not_needed(starlight_event_sources)
+  }
+  public_deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/src:base_log",
+  ]
+
+  public_configs = [ ":starlight_public_config" ]
+  configs += [ ":starlight_private_config" ]
+
+  deps = [ "//lynx/third_party/rapidjson" ]
+}
+
+group("starlight_tests") {
+  testonly = true
+  deps = [ ":starlight_unittest_exec" ]
+  public_deps = [ ":starlight_testset" ]
+}
+
+unittest_set("starlight_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [
+    "layout/container_node_unittest.cc",
+    "style/data_ref_unittest.cc",
+  ]
+  public_deps = [
+    ":starlight",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+unittest_exec("starlight_unittest_exec") {
+  sources = []
+  deps = [ ":starlight_testset" ]
+}

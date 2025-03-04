@@ -1,0 +1,26 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("resource") {
+  sources = []
+  if (is_android) {
+    sources += [
+      "lynx_resource_loader_android.cc",
+      "lynx_resource_loader_android.h",
+    ]
+  } else if (is_apple && !enable_unittests && !is_oliver_node_lynx) {
+    sources += [
+      "lynx_resource_loader_darwin.h",
+      "lynx_resource_loader_darwin.mm",
+    ]
+  }
+
+  deps = [ "//lynx/base/src:base_log_headers" ]
+  public_deps = [
+    "external_resource:external_resource",
+    "lazy_bundle:lazy_bundle",
+  ]
+}

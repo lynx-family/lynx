@@ -1,0 +1,66 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1'
+
+    }
+}
+import org.json.simple.JSONArray
+
+task assembleAllModulesRelease {
+    rootProject.afterEvaluate {
+        rootProject.subprojects.each { subproject ->
+            if(subproject.plugins.hasPlugin("maven-publish")) {
+                def hasNoAsanFlavor = subproject.android.productFlavors.names.contains('noasan')
+                if (hasNoAsanFlavor) {
+                    dependsOn subproject.tasks.named('assembleNoasanRelease')
+                } else {
+                    dependsOn subproject.tasks.named('assembleRelease')
+                }
+            }
+        }
+    }
+}
+
+task publishAllModules {
+    rootProject.afterEvaluate {
+        rootProject.subprojects.each { subproject ->
+            if(subproject.plugins.hasPlugin("maven-publish")) {
+                dependsOn subproject.tasks.named('publish')
+            }
+        }
+    }
+}
+
+def artifactList = new JSONArray()
+
+task zipArtifacts {
+    doLast {
+        rootProject.subprojects.each { subproject ->
+            if(subproject.plugins.hasPlugin("maven-publish")) {
+                def artifactPath = "${subproject.buildDir}/release"
+                def version = findProperty("version")
+                def zipPath = file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
+                ant.zip(destfile: zipPath, basedir: artifactPath)
+                artifactList.add(zipPath.toString())
+            }
+        }
+    }
+}
+
+task getArtifactList {
+    dependsOn(zipArtifacts)
+    doLast {
+        println "artifactInfo: ${artifactList}"
+        String json = artifactList.toJSONString()
+        File file = new File("${project.buildDir}/artifact-list")
+        FileOutputStream outputStream = new FileOutputStream(file)
+        outputStream.write(json.getBytes())
+    }
+}

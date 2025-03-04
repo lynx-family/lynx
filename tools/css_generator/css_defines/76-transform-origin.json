@@ -1,0 +1,17 @@
+{
+    "name": "transform-origin",
+    "id": 76,
+    "type": "complex",
+    "default_value": "",
+    "author": "wujintian",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "keywords": [
+        "left",
+        "right",
+        "top",
+        "bottom",
+        "center"
+    ],
+    "desc": ""
+}

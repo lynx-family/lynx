@@ -1,0 +1,22 @@
+{
+    "name": "text-overflow",
+    "id": 45,
+    "type": "enum",
+    "default_value": "clip",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "clip",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "ellipsis",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

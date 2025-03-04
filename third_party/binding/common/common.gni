@@ -1,0 +1,19 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+common_shared_sources = rebase_path([
+  "base.cc",
+  "env.cc",
+  "object_ref.cc",
+  "object.cc",
+  "value.cc",
+])
+
+common_public_headers = rebase_path([
+  "base.h",
+  "env.h",
+  "object_ref.h",
+  "object.h",
+  "value.h",
+])

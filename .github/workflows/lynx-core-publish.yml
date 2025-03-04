@@ -1,0 +1,51 @@
+name: lynx_core_publish
+
+on: workflow_dispatch
+
+jobs:
+  lynx_types_publish:
+    runs-on: macOS-latest
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            tools/hab sync . -f
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 7.33.6
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.REPO_LYNX_CORE_NPM_TOKEN }}
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd js_libraries/lynx-runtime-shared
+          pnpm run build
+          popd
+          pushd js_libraries/lynx-core
+          pnpm run build:web
+          npm publish --access public
+          popd

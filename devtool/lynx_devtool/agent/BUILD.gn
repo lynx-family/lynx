@@ -1,0 +1,110 @@
+#Copyright 2022 The Lynx Authors.All rights reserved.
+#Licensed under the Apache License Version 2.0 that can be found in the
+#LICENSE file in the root directory of this source tree.
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+
+#devtool_agent_shared_sources
+devtool_agent_shared_sources = [
+  "//lynx/devtool/lynx_devtool/lynx_devtool_ng.cc",
+  "//lynx/devtool/lynx_devtool/lynx_devtool_ng.h",
+  "agent_constants.h",
+  "devtool_platform_facade.cc",
+  "devtool_platform_facade.h",
+  "domain_agent/inspector_agent.cc",
+  "domain_agent/inspector_agent.h",
+  "domain_agent/inspector_component_agent.cc",
+  "domain_agent/inspector_component_agent.h",
+  "domain_agent/inspector_css_agent_ng.cc",
+  "domain_agent/inspector_css_agent_ng.h",
+  "domain_agent/inspector_debugger_agent.cc",
+  "domain_agent/inspector_debugger_agent.h",
+  "domain_agent/inspector_dom_agent_ng.cc",
+  "domain_agent/inspector_dom_agent_ng.h",
+  "domain_agent/inspector_heap_profiler_agent.cc",
+  "domain_agent/inspector_heap_profiler_agent.h",
+  "domain_agent/inspector_input_agent.cc",
+  "domain_agent/inspector_input_agent.h",
+  "domain_agent/inspector_io_agent.cc",
+  "domain_agent/inspector_io_agent.h",
+  "domain_agent/inspector_layer_tree_agent_ng.cc",
+  "domain_agent/inspector_layer_tree_agent_ng.h",
+  "domain_agent/inspector_log_agent.cc",
+  "domain_agent/inspector_log_agent.h",
+  "domain_agent/inspector_lynx_agent_ng.cc",
+  "domain_agent/inspector_lynx_agent_ng.h",
+  "domain_agent/inspector_memory_agent.cc",
+  "domain_agent/inspector_memory_agent.h",
+  "domain_agent/inspector_overlay_agent_ng.cc",
+  "domain_agent/inspector_overlay_agent_ng.h",
+  "domain_agent/inspector_page_agent_ng.cc",
+  "domain_agent/inspector_page_agent_ng.h",
+  "domain_agent/inspector_performance_agent.cc",
+  "domain_agent/inspector_performance_agent.h",
+  "domain_agent/inspector_profiler_agent.cc",
+  "domain_agent/inspector_profiler_agent.h",
+  "domain_agent/inspector_runtime_agent.cc",
+  "domain_agent/inspector_runtime_agent.h",
+  "domain_agent/inspector_template_agent.cc",
+  "domain_agent/inspector_template_agent.h",
+  "domain_agent/inspector_testbench_recorder_agent.cc",
+  "domain_agent/inspector_testbench_recorder_agent.h",
+  "domain_agent/inspector_testbench_replay_agent.cc",
+  "domain_agent/inspector_testbench_replay_agent.h",
+  "domain_agent/inspector_tracing_agent.cc",
+  "domain_agent/inspector_tracing_agent.h",
+  "domain_agent/inspector_ui_tree_agent.cc",
+  "domain_agent/inspector_ui_tree_agent.h",
+  "domain_agent/system_info_agent.cc",
+  "domain_agent/system_info_agent.h",
+  "global_devtool_platform_facade.h",
+  "hierarchy_observer_impl.cc",
+  "hierarchy_observer_impl.h",
+  "inspector_common_observer_impl.cc",
+  "inspector_common_observer_impl.h",
+]
+
+devtool_agent_ng_sources = [
+  "agent_defines.h",
+  "console_message_manager.cc",
+  "console_message_manager.h",
+  "inspector_default_executor.cc",
+  "inspector_default_executor.h",
+  "inspector_element_observer_impl.cc",
+  "inspector_element_observer_impl.h",
+  "inspector_tasm_executor.cc",
+  "inspector_tasm_executor.h",
+  "inspector_ui_executor.cc",
+  "inspector_ui_executor.h",
+  "inspector_util.cc",
+  "inspector_util.h",
+  "lynx_devtool_mediator.cc",
+  "lynx_devtool_mediator.h",
+  "lynx_devtool_mediator_base.h",
+  "lynx_global_devtool_mediator.cc",
+  "lynx_global_devtool_mediator.h",
+]
+
+if (is_android) {
+  devtool_agent_shared_sources += [
+    "//lynx/devtool/lynx_devtool/android/devtool_message_handler_android.cc",
+    "//lynx/devtool/lynx_devtool/android/devtool_message_handler_android.h",
+    "//lynx/devtool/lynx_devtool/android/invoke_cdp_from_sdk_sender_android.cc",
+    "//lynx/devtool/lynx_devtool/android/invoke_cdp_from_sdk_sender_android.h",
+    "//lynx/devtool/lynx_devtool/android/lynx_devtool_ng_android.cc",
+    "//lynx/devtool/lynx_devtool/android/lynx_devtool_ng_android.h",
+    "android/devtool_platform_android.cc",
+    "android/devtool_platform_android.h",
+    "android/global_devtool_platform_android.cc",
+    "android/global_devtool_platform_android.h",
+  ]
+}
+
+#devtool_agent_shared_sources end
+
+devtool_source_set("agent") {
+  sources = devtool_agent_shared_sources + devtool_agent_ng_sources
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//third_party/zlib",
+  ]
+}

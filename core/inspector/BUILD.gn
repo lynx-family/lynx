@@ -1,0 +1,43 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+inspector_shared_sources = [
+  "console_message_postman.h",
+  "lepus_inspector_manager.h",
+  "observer/inspector_common_observer.h",
+  "observer/inspector_element_observer.h",
+  "observer/inspector_lepus_observer.h",
+  "observer/inspector_runtime_observer_ng.h",
+  "runtime_inspector_manager.h",
+  "style_sheet.h",
+]
+
+lynx_core_source_set("inspector") {
+  sources = inspector_shared_sources
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+}
+
+unittest_set("inspector_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [
+    "runtime_inspector_manager_unittest.cc",
+    "runtime_inspector_manager_unittest.h",
+  ]
+}
+
+unittest_exec("inspector_test_exec") {
+  sources = []
+  deps = [ ":inspector_testset" ]
+}
+
+group("inspector_group") {
+  testonly = true
+  deps = [
+    ":inspector_test_exec",
+    ":inspector_testset",
+  ]
+}

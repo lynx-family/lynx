@@ -1,0 +1,61 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+signal_shared_sources = [
+  "computation.cc",
+  "computation.h",
+  "lynx_signal.cc",
+  "lynx_signal.h",
+  "memo.cc",
+  "memo.h",
+  "scope.cc",
+  "scope.h",
+  "signal_context.cc",
+  "signal_context.h",
+]
+
+lynx_core_source_set("signal") {
+  sources = signal_shared_sources
+
+  public_deps = []
+}
+
+unittest_set("signal_test_testset") {
+  testonly = true
+
+  sources = [
+    "computation_unittest.cc",
+    "computation_unittest.h",
+    "lynx_signal_unittest.cc",
+    "lynx_signal_unittest.h",
+    "memo_unittest.cc",
+    "memo_unittest.h",
+    "scope_unittest.cc",
+    "scope_unittest.h",
+    "signal_context_unittest.cc",
+    "signal_context_unittest.h",
+  ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:dom_testset",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/quickjs",
+  ]
+}
+
+unittest_exec("signal_test_exec") {
+  testonly = true
+
+  sources = []
+
+  deps = [ ":signal_test_testset" ]
+}

@@ -1,0 +1,10 @@
+{
+    "name": "adapt-font-size",
+    "id": 93,
+    "type": "string",
+    "default_value": "0",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "skip",
+    "desc": ""
+}

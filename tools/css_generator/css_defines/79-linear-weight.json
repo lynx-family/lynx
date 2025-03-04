@@ -1,0 +1,43 @@
+{
+    "name": "linear-weight",
+    "id": 79,
+    "type": "number",
+    "default_value": "0",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "linear-weight": {
+            "__compat": {
+              "description": "Child element's weight in linear layout.",
+              "lynx_path": "api/css/properties/linear-weight",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                },
+                "web_lynx": {
+                  "version_added": "4.1.0"
+                }
+              }
+            }
+          }
+    }
+}

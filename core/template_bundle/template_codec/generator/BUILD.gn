@@ -1,0 +1,30 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("generator") {
+  include_dirs = [ "//third_party" ]
+
+  sources = [
+    "base_struct.h",
+    "list_parser.cc",
+    "list_parser.h",
+    "meta_factory.cc",
+    "meta_factory.h",
+    "source_generator.cc",
+    "source_generator.h",
+    "template_dynamic_component_parser.cc",
+    "template_dynamic_component_parser.h",
+    "template_page_parser.cc",
+    "template_page_parser.h",
+    "template_parser.cc",
+    "template_parser.h",
+    "template_scope.cc",
+    "template_scope.h",
+    "ttml_holder.cc",
+    "ttml_holder.h",
+  ]
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}

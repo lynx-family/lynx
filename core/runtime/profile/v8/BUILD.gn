@@ -1,0 +1,43 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("v8_profile") {
+  sources = [
+    "v8_runtime_profiler.cc",
+    "v8_runtime_profiler.h",
+    "v8_runtime_profiler_wrapper.h",
+  ]
+
+  deps = [
+    "//lynx/core/runtime/profile:profile_public_header",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_set("v8_profile_testset") {
+  sources = [ "v8_runtime_profiler_unittest.cc" ]
+  public_deps = [
+    ":v8_profile",
+    "//lynx/base/src:base",
+    "//lynx/base/trace/native:trace",
+    "//lynx/core/runtime/profile",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_exec("v8_profile_unittests_exec") {
+  sources = []
+  deps = [ ":v8_profile_testset" ]
+}
+
+group("v8_profile_tests") {
+  testonly = true
+  deps = [
+    ":v8_profile_testset",
+    ":v8_profile_unittests_exec",
+  ]
+}

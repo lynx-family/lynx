@@ -1,0 +1,73 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+import("//lynx/third_party/binding/common/common.gni")
+
+config("napi_private_config") {
+  if (use_primjs_napi) {
+    defines = [ "USE_PRIMJS_NAPI" ]
+  }
+}
+
+napi_private_headers = rebase_path([
+  "array_buffer_view.h",
+  "callback_helper.h",
+  "exception_message.h",
+  "exception_state.h",
+  "napi_base_wrap.h",
+  "napi_bridge.h",
+  "napi_object_ref.h",
+  "napi_object.h",
+  "napi_value.h",
+  "native_value_traits.h",
+  "shim/shim_napi.h",
+  "shim/shim_napi_env.h",
+  "shim/shim_napi_runtime.h",
+])
+
+napi_public_headers = napi_private_headers + common_public_headers
+
+source_set("napi_binding_base_headers") {
+  sources = napi_public_headers
+
+  configs += [
+    ":napi_private_config",
+    "//lynx/third_party/napi:napi_config",
+  ]
+}
+
+source_set("napi_binding_base") {
+  sources = [
+    "callback_helper.cc",
+    "exception_message.cc",
+    "napi_base_wrap.cc",
+    "napi_bridge.cc",
+    "napi_object_ref.cc",
+    "napi_object.cc",
+    "napi_value.cc",
+    "native_value_traits.cc",
+  ]
+
+  sources += common_shared_sources
+  sources += napi_public_headers
+
+  configs += [
+    ":napi_private_config",
+    "//lynx/third_party/napi:napi_config",
+  ]
+}
+
+unittest_exec("napi_binding_unittests_exec") {
+  sources = [ "napi_binding_unittest.cc" ]
+
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/runtime/bindings/napi:napi_binding_quickjs",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/third_party/napi:env",
+    "//lynx/third_party/napi:quickjs",
+  ]
+}

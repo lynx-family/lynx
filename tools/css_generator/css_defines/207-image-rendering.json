@@ -1,0 +1,27 @@
+{
+    "name": "image-rendering",
+    "id": 207,
+    "type": "enum",
+    "default_value": "auto",
+    "version": "2.14",
+    "author": "baiqiang",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "auto",
+            "version": "2.14",
+            "desc": ""
+        },
+        {
+            "value": "crisp-edges",
+            "version": "2.14",
+            "desc": ""
+        },
+        {
+            "value": "pixelated",
+            "version": "2.14",
+            "desc": ""
+        }
+    ]
+}

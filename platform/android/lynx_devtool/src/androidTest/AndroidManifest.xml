@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.lynxdevtool.test">
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Add Instrument listener to generate a xml report for android unittest -->
+    <instrumentation
+        android:name="androidx.test.runner.AndroidJUnitRunner"
+        android:targetPackage="com.example.lynxdevtool.test">
+        <meta-data
+            android:name="listener"
+            android:value="com.lynx.testing.base.instrumentation.LynxInstrumentTestListener" />
+    </instrumentation>
+</manifest>

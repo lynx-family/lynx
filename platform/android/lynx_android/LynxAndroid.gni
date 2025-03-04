@@ -1,0 +1,12 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+
+import("//lynx/platform/android/Android.gni")
+
+declare_args() {
+  enable_memory_tracing = false
+
+  # enable lynx testing with googletest
+  enable_lynx_testing = false
+}
+
+enable_radon = true

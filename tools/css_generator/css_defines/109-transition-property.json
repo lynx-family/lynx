@@ -1,0 +1,27 @@
+{
+    "name": "transition-property",
+    "id": 109,
+    "type": "animation-property",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyanbo,linxiaosong",
+    "consumption_status": "skip",
+    "keywords": [
+        "none",
+        "opacity",
+        "scaleX",
+        "scaleY",
+        "scaleXY",
+        "width",
+        "height",
+        "background-color",
+        "visibility",
+        "left",
+        "top",
+        "right",
+        "bottom",
+        "transform",
+        "all"
+    ],
+    "desc": ""
+}

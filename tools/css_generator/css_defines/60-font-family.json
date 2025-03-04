@@ -1,0 +1,10 @@
+{
+    "name": "font-family",
+    "id": 60,
+    "type": "string",
+    "default_value": "",
+    "version": "1.0",
+    "author": "zhangqinghua",
+    "consumption_status": "skip",
+    "desc": ""
+}

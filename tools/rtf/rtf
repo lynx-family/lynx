@@ -1,0 +1,20 @@
+#!/bin/bash
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# This is an execution tool example. When you want to conveniently
+# use the RTF capability in your repository, you can first import
+# the RTF repository code into your source code, Copy the current
+# script to the directory you need and modify the corresponding content.
+
+
+# Get the directory where the current script is located
+SCRIPT_PATH=$(dirname "$0")
+
+# !!!!! RTF_SOURCE_RELATIVE_PATH need to modify !!!!
+# Relative path between the source code directory and the current script.
+
+RTF_SOURCE_RELATIVE_PATH="."
+
+RTF_SOURCE_PATH="${SCRIPT_PATH}"/"${RTF_SOURCE_RELATIVE_PATH}"
+OLD_PYTHONPATH=$PYTHONPATH
+export PYTHONPATH=${RTF_SOURCE_PATH}:${OLD_PYTHONPATH}
+python3 "${RTF_SOURCE_PATH}"/cli/app.py "$@"

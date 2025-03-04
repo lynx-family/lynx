@@ -1,0 +1,29 @@
+{
+  "name": "lynx-libs-mono",
+  "version": "1.0.0",
+  "description": "All JS libraries related to LynxCore",
+  "main": "index.js",
+  "keywords": [
+    "lynx",
+    "jssdk",
+    "core",
+    "types"
+  ],
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build:core:android": "./tools/js_tools/build.sh android platform/android/lynx_js_sdk/src/main/assets/lynx_core.js platform/android/lynx_js_sdk/src/debug/assets/lynx_core_dev.js",
+    "build:core:darwin": "./tools/js_tools/build.sh ios platform/darwin/ios/JSAssets/release/lynx_core.js platform/darwin/ios/JSAssets/debug/lynx_core_dev.js",
+    "export:core": "pnpm --filter @lynx-js/lynx-core build:lib",
+    "build:node-shard-tools": "pnpm --filter @lynx-js/runtime-shared build"
+  },
+  "engines": {
+    "node": ">=14",
+    "pnpm": "7.33.6"
+  },
+  "devDependencies": {
+    "prettier": "2.2.1",
+    "typescript": "4.9.4"
+  },
+  "packageManager": "pnpm@7.33.6"
+}

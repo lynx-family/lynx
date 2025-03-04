@@ -1,0 +1,7 @@
+PerformanceEntry:
+  type: object
+  properties:
+    name:
+      type: string
+    entryType:
+      type: string

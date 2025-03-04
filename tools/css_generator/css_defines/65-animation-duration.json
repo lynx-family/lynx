@@ -1,0 +1,10 @@
+{
+    "name": "animation-duration",
+    "id": 65,
+    "type": "time",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "desc": ""
+}

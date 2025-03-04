@@ -1,0 +1,65 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+trace_public_headers = [
+  "LynxTraceController.h",
+  "LynxTraceEventWrapper.h",
+  "LynxTraceEvent.h",
+]
+
+trace_shared_sources = [
+  "LynxTraceEvent.mm",
+  "LynxTraceEventWrapper.mm",
+]
+
+if (enable_trace == "perfetto") {
+  trace_shared_sources += [ "LynxTraceController.mm" ]
+} else {
+  trace_shared_sources += [ "LynxTraceController_mock.mm" ]
+}
+
+config("trace_public_config") {
+  include_dirs = [ "./" ]
+
+  cflags_objc = [
+    "-fobjc-arc",
+    "-include",
+    rebase_path("trace-prefix.h", root_build_dir),
+  ]
+
+  cflags_objcc = cflags_objc + [ "-std=gnu++17" ]
+
+  defines = [ "OS_POSIX=1" ]
+  if (is_ios) {
+    defines += [ "OS_IOS=1" ]
+  } else if (is_mac) {
+    defines += [ "OS_OSX=1" ]
+  }
+}
+
+subspec_target("LynxTrace_subspec") {
+  sources = trace_shared_sources + trace_public_headers
+  public_header_files = trace_public_headers
+}
+
+source_set("LynxTrace") {
+  sources = trace_shared_sources + trace_public_headers
+  public = trace_public_headers
+
+  public_configs = [ "//lynx/base/trace/native:trace_public_config" ]
+  public_deps = [ "//lynx/base/trace/native:trace" ]
+
+  if (enable_trace == "perfetto" && is_mac) {
+    configs -= [ "//build/config/compiler:cxx_version_default" ]
+  }
+
+  public_configs += [ ":trace_public_config" ]
+}
+
+source_set("lynx_trace_public_headers") {
+  sources = trace_public_headers
+}

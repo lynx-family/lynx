@@ -1,0 +1,21 @@
+name: setup android enviroment
+
+description: Setup Android enviroment, which includes JDK, Android SDK and NDK.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Java SDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: 'zulu'
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        cmdline-tools-version: 9862592
+    - name: Setup Android NDK
+      shell: bash
+      run: |-
+        sdkmanager "ndk;21.1.6352462"
+        export ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.1.6352462

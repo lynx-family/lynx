@@ -1,0 +1,54 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+config("jscache_config") {
+  if (enable_unittests) {
+    defines = [ "QUICKJS_CACHE_UNITTEST" ]
+  }
+}
+
+lynx_core_source_set("jscache") {
+  public_configs = [ ":jscache_config" ]
+
+  sources = [
+    "cache_generator.h",
+    "js_cache_manager.cc",
+    "js_cache_manager.h",
+    "js_cache_manager_facade.cc",
+    "js_cache_manager_facade.h",
+    "js_cache_tracker.cc",
+    "js_cache_tracker.h",
+    "meta_data.cc",
+    "meta_data.h",
+  ]
+
+  if (enable_unittests || is_oliver_ssr || is_oliver_node_lynx) {
+    sources += [ "js_cache_manager_mock.cc" ]
+  } else if (is_android) {
+    sources += [ "android/js_cache_manager_android.cc" ]
+  } else if (is_apple) {
+    sources += [ "ios/js_cache_manager_darwin.mm" ]
+  }
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/services/event_report",
+    "//lynx/third_party/rapidjson",
+  ]
+}
+
+unittest_set("jscache_unittests_testset") {
+  public_configs = [ ":jscache_config" ]
+
+  include_dirs = [ "//core" ]
+
+  sources = [
+    "js_cache_manager_facade_unittest.cc",
+    "meta_data_unittest.cc",
+  ]
+
+  deps = [ ":jscache" ]
+}

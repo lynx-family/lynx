@@ -1,0 +1,28 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_android)
+
+import("//lynx/config.gni")
+
+config("16kb_page") {
+  ldflags = []
+  if (enable_16kb_align &&
+      (android_app_abi == "arm64-v8a" || android_app_abi == "x86_64")) {
+    ldflags += [
+      "-Wl,-z,max-page-size=16384",
+      "-fuse-ld=lld",
+    ]
+  }
+}
+
+group("Android") {
+  if (build_lynx_dylib) {
+    deps = [
+      "//lynx/base/trace/android:LynxTrace",
+      "//lynx/platform/android/lynx_android",
+      "//lynx/platform/android/lynx_devtool:LynxDevtool",
+    ]
+  }
+}

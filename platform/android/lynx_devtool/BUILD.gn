@@ -1,0 +1,167 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+import("//lynx/platform/android/Android.gni")
+import("//lynx/platform/android/lynx_devtool/lynx_devtool.gni")
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+group("LynxDevtool") {
+  deps = []
+  if (build_lynx_dylib) {
+    deps = [ ":lynxdevtool" ]
+  }
+}
+
+if (build_lynx_dylib) {
+  cmake_target("lynxdevtool") {
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "lynxdevtool"
+    deps = [
+      ":lynxdevtool_lib",
+      "//lynx/base/trace/android:LynxTrace",
+      "//lynx/devtool/base_devtool/android/base_devtool:base_devtool",
+      "//lynx/platform/android/lynx_android:lynx_android",
+    ]
+
+    lib_dirs = [
+      "${primjs_native_lib_dir}",
+      "${v8_native_lib_dir}",
+    ]
+    libs = [
+      "android",
+      "dl",
+      "log",
+      "quick",
+      "v8_libfull.cr",
+    ]
+
+    if (enable_napi_binding) {
+      libs += [
+        "napi",
+        "napi_v8",
+      ]
+    }
+
+    configs = [
+      ":devtool_common_defines",
+      ":devtool_flag_config",
+      ":devtool_ldflag_config",
+      "//lynx/platform/android:16kb_page",
+    ]
+  }
+}
+
+group("lynxdevtool_lib") {
+  public_deps = [
+    ":devtool_third_party",
+    ":lynx_base_for_devtool",
+    ":lynx_tasm_recorder_for_devtool",
+    "//lynx/devtool/lynx_devtool:lynx_devtool_group",
+    "//lynx/devtool/lynx_devtool//js_debug:js_debug",
+    "//lynx/devtool/lynx_devtool/build:android_devtool_build",
+    "//lynx/devtool/lynx_devtool/js_debug:v8_profile_devtool",
+    "//lynx/devtool/lynx_devtool/tracing",
+    "//lynx/platform/android/lynx_devtool/src:lynx_devtool_jni_on_load",
+  ]
+
+  # jsbridge source file
+  if (enable_napi_binding) {
+    public_deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_v8" ]
+  }
+}
+
+group("devtool_third_party") {
+  public_deps = [
+    "//lynx/third_party/jsoncpp:jsoncpp",
+    "//lynx/third_party/modp_b64:modp_b64",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+config("devtool_common_defines") {
+  defines = [
+    "RAPIDJSON_HAS_STDSTRING=1",
+    "NAPI_DISABLE_CPP_EXCEPTIONS",
+    "NAPI_DISABLE_CPP_RTTI",
+  ]
+
+  # TODO(tangyongjie): Remove trace related macros from devtool.
+
+  defines += [ "ENABLE_TRACE_PERFETTO=1" ]
+  if (!is_debug) {
+    defines += [
+      "ENABLE_LOGGING=0",
+      "NDEBUG",
+    ]
+  } else {
+    defines += [
+      "DEBUG_MEMORY",
+      "ENABLE_LOGGING=1",
+    ]
+  }
+}
+
+config("devtool_flag_config") {
+  cflags = [
+    "-fexceptions",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fno-short-enums",
+    "-fno-stack-protector",
+    "-fno-strict-aliasing",
+    "-Wno-unused-parameter",
+  ]
+  cflags_c = []
+  cflags_cc = [
+    "-fno-rtti",
+    "-std=c++17",
+    "-Wl,-ldl",
+    "-Wno-unused-command-line-argument",
+  ]
+  configs = []
+  if (is_debug) {
+    cflags_cc += [ "-g" ]
+  }
+}
+
+config("devtool_ldflag_config") {
+  ldflags = [ "-Wl,--exclude-libs,ALL" ]
+  ldflags += [
+    "-fuse-ld=lld",
+    "-Xlinker",
+    "-Map=output.map",
+  ]
+}
+
+devtool_source_set("lynx_base_for_devtool") {
+  deps = []
+  sources = [
+    "//lynx/core/base/android/android_jni.cc",
+    "//lynx/core/base/android/android_jni.h",
+    "//lynx/core/base/android/callstack_util_android.h",
+    "//lynx/core/base/utils/file_utils.cc",
+    "//lynx/core/base/utils/file_utils.h",
+  ]
+  if (is_android) {
+    public_configs = [ "//lynx/base/src:base_public" ]
+    public_deps = [ "//lynx/base/src:base" ]
+    deps += [ "//lynx/core/build:build" ]
+  }
+
+  # devtool doesn't contain implementation of log, only deps on base_log_headers here
+  deps += [ "//lynx/base/src:base_log_headers" ]
+}
+
+# TODO(zhaosong): devtool should use the symbols exposed by lynx directly,
+#                 so need to remove lynx_tasm_recorder_for_devtool target later.
+devtool_source_set("lynx_tasm_recorder_for_devtool") {
+  sources = [
+    "//lynx/core/services/recorder/native_module_recorder.cc",
+    "//lynx/core/services/recorder/native_module_recorder.h",
+    "//lynx/core/services/recorder/testbench_base_recorder.cc",
+    "//lynx/core/services/recorder/testbench_base_recorder.h",
+  ]
+}

@@ -1,0 +1,199 @@
+{
+    "name": "position",
+    "id": 4,
+    "type": "enum",
+    "default_value": "relative",
+    "version": "1.0",
+    "desc": "",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "absolute",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "relative",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "fixed",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "sticky",
+            "version": "1.4",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "position": {
+            "__compat": {
+              "lynx_path": "docs/zh/api/css/css-style/position",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/position",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            },
+            "relative": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            },
+            "absolute": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            },
+            "fixed": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            },
+            "sticky": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.4"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.4"
+                  },
+                  "clay_android": {
+                    "version_added": "1.4"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.4"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.4"
+                  }
+                }
+              }
+            },
+            "static": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "clay_android": {
+                    "version_added": false
+                  },
+                  "clay_macos": {
+                    "version_added": false
+                  },
+                  "clay_windows": {
+                    "version_added": false
+                  }
+                }
+              }
+            }
+          }
+    }
+}

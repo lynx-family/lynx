@@ -1,0 +1,56 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# runtime_common_shared_sources
+runtime_common_shared_sources = [
+  "context_proxy.cc",
+  "context_proxy.h",
+  "message_event.cc",
+  "message_event.h",
+  "runtime_constants.h",
+]
+
+lynx_core_source_set("runtime_common") {
+  sources = runtime_common_shared_sources
+
+  # The runtime_common is expected to only depend on the lepus::Value, base and event module, but lepus::Value is still strongly coupled with context now. In the future, if there is a common::Value, it will depend on common::Value rather than lepus::Value.
+  public_deps = [ "//lynx/core/event" ]
+}
+
+unittest_set("runtime_common_testset") {
+  sources = [
+    "context_proxy_test.cc",
+    "context_proxy_test.h",
+    "message_event_test.cc",
+    "message_event_test.h",
+  ]
+  public_deps = [
+    ":runtime_common",
+    "//lynx/core/base",
+    "//lynx/core/event",
+    "//lynx/core/event:event_testset",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/runtime:runtime",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/quickjs",
+  ]
+  data_deps = []
+}
+
+unittest_exec("runtime_common_unittests_exec") {
+  sources = []
+  deps = [ ":runtime_common_testset" ]
+}
+
+group("runtime_common_tests") {
+  testonly = true
+  deps = [ ":runtime_common_unittests_exec" ]
+}

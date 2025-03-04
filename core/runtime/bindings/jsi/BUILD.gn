@@ -1,0 +1,60 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/bindings_files.gni")
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+bindings_sources = [
+                     "api_call_back-inl.h",
+                     "api_call_back.cc",
+                     "api_call_back.h",
+                     "api_invoke_ctrl.h",
+                     "big_int/big_integer.h",
+                     "big_int/constants.cc",
+                     "big_int/jsbi.cc",
+                     "big_int/jsbi.h",
+                     "console.h",
+                     "global.cc",
+                     "global.h",
+                     "java_script_element.cc",
+                     "java_script_element.h",
+                     "js_app.cc",
+                     "js_app.h",
+                     "js_object_destruction_observer.h",
+                     "js_task_adapter.cc",
+                     "js_task_adapter.h",
+                     "lynx.cc",
+                     "lynx.h",
+                     "lynx_console.cc",
+                     "lynx_js_error.cc",
+                     "lynx_js_error.h",
+                   ] + bindings_extend_sources
+
+lynx_core_source_set("jsi") {
+  sources = bindings_sources
+
+  public_deps = [
+    "//lynx/core/runtime/bindings/common/event:runtime_common",
+    "//lynx/core/runtime/bindings/jsi/event:js_runtime",
+    "//lynx/core/runtime/bindings/jsi/fetch:fetch",
+    "//lynx/core/services/feature_count:feature_count",
+    "//lynx/core/services/fluency:fluency",
+  ]
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}
+
+unittest_set("bindings_unittests_testset") {
+  sources = [
+    "//lynx/core/runtime/piper/js/mock_template_delegate.h",
+    "api_call_back_unittest.cc",
+    "js_app_unittest.cc",
+    "js_task_adapter_unittest.cc",
+    "mock_module_delegate.h",
+  ]
+
+  configs = [ "//lynx/core/runtime/jsi:jsi_unittest_config" ]
+
+  deps = [ ":jsi" ]
+}

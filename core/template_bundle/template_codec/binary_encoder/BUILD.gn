@@ -1,0 +1,31 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("binary_encoder") {
+  sources = [
+    "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.cc",
+    "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.h",
+    "csr_element_binary_writer.cc",
+    "csr_element_binary_writer.h",
+    "encode_util.cc",
+    "encode_util.h",
+    "encoder.cc",
+    "encoder.h",
+    "repack_binary_reader.cc",
+    "repack_binary_reader.h",
+    "repack_binary_writer.cc",
+    "repack_binary_writer.h",
+  ]
+
+  public_deps = [ "css_encoder:css_encoder" ]
+
+  exclude_configs = []
+  if (is_wasm) {
+    exclude_configs += [ "//build/config/compiler:no_rtti" ]
+    configs = [ "//build/config/compiler:rtti" ]
+  }
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}

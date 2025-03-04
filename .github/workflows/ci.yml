@@ -1,0 +1,282 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  static-check:
+    runs-on: lynx-ubuntu-22.04-avd-medium
+    steps:
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lynx
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Run file type check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers file-type
+      - name: Run cpplint check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers cpplint
+      - name: Run java-lint check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers java-lint
+      - name: Run commit-message check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers commit-message
+      - name: Run coding-style check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers coding-style
+      - name: Run android-check-style check
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          python3 tools_shared/git_lynx.py check --checkers android-check-style
+
+  darwin-native-unittests-check:
+    runs-on: lynx-darwin-14-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m venv myenv
+            source myenv/bin/activate
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            tools/hab sync .
+      - name: Run Unittests
+        run: |-
+          set -e
+          source myenv/bin/activate
+          source tools/envsetup.sh
+          tools/rtf/rtf native-ut run --names lynx
+
+  linux-native-unittests-check:
+    runs-on: lynx-ubuntu-22.04-avd-large
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Run Unittests
+        run: |
+          cd $GITHUB_WORKSPACE/lynx
+          set -e
+          source tools/envsetup.sh
+          tools/rtf/rtf native-ut run --names lynx
+
+  linux-native-devtool-unittests-check:
+    runs-on: lynx-ubuntu-22.04-avd-large
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Run Unittests
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          set -e
+          source tools/envsetup.sh
+          tools/rtf/rtf native-ut run --names devtool
+
+  ios-unittests-check:
+    runs-on: lynx-darwin-14-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m venv myenv
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            tools/hab sync .
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Install iOS Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 20
+          max_attempts: 3
+          command: |-
+            set -e
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            source tools/envsetup.sh
+            pushd explorer/darwin/ios/lynx_explorer
+            bash bundle_install.sh --skip-card-build
+            popd
+      - name: Run Unittests
+        run: |-
+          set -e
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          pushd explorer/darwin/ios/lynx_explorer
+          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
+          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
+          echo $sdkVersion > sdk.txt
+          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -dest"platform=iOS Simulator,OS=$(cat sdk.txt),name=iPhone 11" SYMROOT=`pwd`/Build/Products -testPlan UTTest
+          chmod u+x xctestrunner
+          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
+          popd
+
+  tasm-linux-build:
+    runs-on: lynx-ubuntu-22.04-avd-large
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Build Linux Tasm
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/hab sync . -f
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:release:linux
+          popd
+
+  tasm-darwin-build:
+    runs-on: lynx-darwin-14-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            set -e
+            python3 -m venv myenv
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            tools/hab sync .
+      - name: Build Darwin Tasm
+        run: |-
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/hab sync . -f
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:release:darwin
+          popd
+
+  android-unittests-check:
+    runs-on: lynx-ubuntu-22.04-physical-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install SSH Key
+        uses: kielabokkie/ssh-key-and-known-hosts-action@v1
+        with:
+          ssh-private-key: ${{ secrets.PRIVATE_SSH_KEY }}
+          ssh-host: github.com
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Build Example App
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          tools/rtf/rtf android-ut run --name lynx
+
+  release-workflow:
+    uses: ./.github/workflows/publish-release.yml
+    with:
+      dry_run: true
+    secrets: inherit

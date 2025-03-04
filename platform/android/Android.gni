@@ -1,0 +1,14 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("//lynx/core/Lynx.gni")
+
+# libjsc.so path for //android/lynx_android:lynx_android target.
+jsc_lib_dir = "//third_party/jsc/jni/${android_app_abi}"
+
+# Paths to the .so libraries that the Android module depends on.
+primjs_native_lib_dir = "//lynx/platform/android/lynx_android/build/jniLibs/primjs/jni/${android_app_abi}"
+
+v8_native_lib_dir = "//lynx/platform/android/lynx_android/build/jniLibs/v8so/jni/${android_app_abi}"

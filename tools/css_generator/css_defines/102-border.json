@@ -1,0 +1,10 @@
+{
+    "name": "border",
+    "id": 102,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyun",
+    "consumption_status": "layout-wanted",
+    "desc": ""
+}

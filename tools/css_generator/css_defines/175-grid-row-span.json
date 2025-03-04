@@ -1,0 +1,39 @@
+{
+    "name": "grid-row-span",
+    "id": 175,
+    "type": "number",
+    "default_value": "",
+    "version": "2.1",
+    "author": "liting.src",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "grid-row-span": {
+            "__compat": {
+              "lynx_path": "api/css/properties/grid-row-span",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.1"
+                },
+                "ios": {
+                  "version_added": "2.1"
+                },
+                "clay_android": {
+                  "version_added": "2.1"
+                },
+                "clay_macos": {
+                  "version_added": "2.1"
+                },
+                "clay_windows": {
+                  "version_added": "2.1"
+                }
+              }
+            }
+          }
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "line-spacing",
+    "id": 72,
+    "type": "complex",
+    "default_value": "0px",
+    "author": "tangruiwen",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "desc": ""
+}

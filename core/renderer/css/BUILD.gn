@@ -1,0 +1,117 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/renderer/css/build.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("css") {
+  check_includes = false
+  sources = lynx_css_core_sources_path + lynx_css_runtime_sources_path
+
+  # FIXME(renzhongyue): Check file contents to prevent duplicated
+  # compilation for the generated file
+  exec_script("//lynx/tools/css_generator/css_parser_generator.py")
+  public_deps = [
+    "//lynx/core/base",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/core/style",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  if (enable_unittests) {
+    public_deps += [
+      ":css_parser",
+      "//lynx/third_party/double-conversion:double_conversion",
+    ]
+  }
+}
+
+lynx_core_source_set("css_dom") {
+  sources = lynx_css_dom_sources_path
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("css_decoder") {
+  sources = lynx_css_decoder_sources_path
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("css_parser") {
+  sources = lynx_css_parser_sources_path
+}
+
+unittest_set("css_test_testset") {
+  public_deps = [ ":css" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+
+  sources = [
+    "//lynx/core/renderer/dom/css_patching_unittest.cc",
+    "css_color_unittest.cc",
+    "css_font_face_token_unittest.cc",
+    "css_fragment_unittest.cc",
+    "css_keyframes_token_unittest.cc",
+    "css_keywords_unittest.cc",
+    "css_parser_token_unittest.cc",
+    "css_property_auto_gen_unittest.cc",
+    "css_property_unittest.cc",
+    "css_style_sheet_manager_unittest.cc",
+    "css_style_utils_unittest.cc",
+    "css_utils_unittest.cc",
+    "css_variable_handler_unittest.cc",
+    "shared_css_fragment_unittest.cc",
+    "unit_handler_unittest.cc",
+  ]
+}
+
+unittest_set("css_ng_testset") {
+  public_deps = [ ":css" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+
+  sources = [
+    "ng/invalidation/invalidation_set_test.cc",
+    "ng/invalidation/rule_invalidation_set_test.cc",
+    "ng/matcher/selector_matcher_test.cc",
+    "ng/parser/css_parser_token_stream_test.cc",
+    "ng/parser/css_tokenizer_test.cc",
+    "ng/selector/css_selector_parser_test.cc",
+    "ng/selector/lynx_css_selector_test.cc",
+    "ng/style/rule_set_unittest.cc",
+  ]
+}
+
+unittest_exec("css_test_exec") {
+  sources = []
+  deps = [
+    ":css_ng_testset",
+    ":css_test_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("css_tests") {
+  testonly = true
+  deps = [
+    ":css_test_exec",
+    "parser:css_parser_test_exec",
+  ]
+  public_deps = [
+    ":css_ng_testset",
+    ":css_test_testset",
+    "parser:css_parser_testset",
+  ]
+}

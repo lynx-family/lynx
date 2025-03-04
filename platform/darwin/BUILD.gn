@@ -1,0 +1,149 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_apple)
+
+import("//lynx/core/Lynx.gni")
+
+config("darwin_include_config") {
+  if (!defined(include_dirs)) {
+    include_dirs = []
+  }
+  include_dirs += [
+    "//lynx/platform/darwin/common/lynx",
+    "//lynx/platform/darwin/common/lynx/public",
+    "//lynx/platform/darwin/common/lynx/public/base",
+    "//lynx/platform/darwin/common/lynx/public/devtool_wrapper",
+    "//lynx/platform/darwin/common/lynx/public/event",
+    "//lynx/platform/darwin/common/lynx/public/event_report",
+    "//lynx/platform/darwin/common/lynx/public/module",
+    "//lynx/platform/darwin/common/lynx/public/navigator",
+    "//lynx/platform/darwin/common/lynx/public/navigator/cache",
+    "//lynx/platform/darwin/common/lynx/public/performance",
+    "//lynx/platform/darwin/common/lynx/public/resource",
+    "//lynx/platform/darwin/common/lynx/public/service",
+    "//lynx/platform/darwin/common/lynx/public/Trace",
+    "//lynx/platform/darwin/common/lynx/public/utils",
+    "//lynx/platform/darwin/common/lynx/public/utils/thread_safe_dictionary",
+    "//lynx/platform/darwin/common/lazy_load",
+
+    "//lynx/platform/darwin/common/lynx/base",
+    "//lynx/platform/darwin/common/lynx/devtool_wrapper",
+    "//lynx/platform/darwin/common/lynx/event",
+    "//lynx/platform/darwin/common/lynx/event_report",
+    "//lynx/platform/darwin/common/lynx/feature_count",
+    "//lynx/platform/darwin/common/lynx/module",
+    "//lynx/platform/darwin/common/lynx/navigator",
+    "//lynx/platform/darwin/common/lynx/navigator/cache",
+    "//lynx/platform/darwin/common/lynx/performance",
+    "//lynx/platform/darwin/common/lynx/resource",
+    "//lynx/platform/darwin/common/lynx/service",
+    "//lynx/platform/darwin/common/lynx/Trace",
+    "//lynx/platform/darwin/common/lynx/utils",
+    "//lynx/platform/darwin/common/lynx/utils/thread_safe_dictionary",
+    "//lynx/platform/darwin/common/lazy_load",
+  ]
+
+  if (is_ios) {
+    include_dirs += [
+      "//lynx/platform/darwin/ios/Headers/Private",
+      "//lynx/platform/darwin/ios/lynx",
+      "//lynx/platform/darwin/ios/lynx/Network",
+      "//lynx/platform/darwin/ios/lynx/public",
+      "//lynx/platform/darwin/ios/lynx/public/animation",
+      "//lynx/platform/darwin/ios/lynx/public/base",
+      "//lynx/platform/darwin/ios/lynx/public/base/background",
+      "//lynx/platform/darwin/ios/lynx/public/DevtoolWrapper",
+      "//lynx/platform/darwin/ios/lynx/public/event",
+      "//lynx/platform/darwin/ios/lynx/public/Fluency",
+      "//lynx/platform/darwin/ios/lynx/public/Fluency/Base",
+      "//lynx/platform/darwin/ios/lynx/public/gesture",
+      "//lynx/platform/darwin/ios/lynx/public/hero_transitions",
+      "//lynx/platform/darwin/ios/lynx/public/Module",
+      "//lynx/platform/darwin/ios/lynx/public/Navigator",
+      "//lynx/platform/darwin/ios/lynx/public/shadow_node",
+      "//lynx/platform/darwin/ios/lynx/public/shadow_node/text",
+      "//lynx/platform/darwin/ios/lynx/public/ui",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list/lynx_collection",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list/lynx_collection/layout",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list/list_light/layout",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list/list_light/ui",
+      "//lynx/platform/darwin/ios/lynx/public/ui/list/list_light/view",
+      "//lynx/platform/darwin/ios/lynx/public/ui/scroll_view",
+      "//lynx/platform/darwin/ios/lynx/public/ui/text",
+      "//lynx/platform/darwin/ios/lynx/public",
+      "//lynx/platform/darwin/ios/lynx/public/utils",
+
+      "//lynx/platform/darwin/ios/lynx/animation",
+      "//lynx/platform/darwin/ios/lynx/base",
+      "//lynx/platform/darwin/ios/lynx/base/background",
+      "//lynx/platform/darwin/ios/lynx/DevtoolWrapper",
+      "//lynx/platform/darwin/ios/lynx/event",
+      "//lynx/platform/darwin/ios/lynx/fluency",
+      "//lynx/platform/darwin/ios/lynx/fluency/base",
+      "//lynx/platform/darwin/ios/lynx/gesture",
+      "//lynx/platform/darwin/ios/lynx/hero_transitions",
+      "//lynx/platform/darwin/ios/lynx/module",
+      "//lynx/platform/darwin/ios/lynx/Navigator",
+      "//lynx/platform/darwin/ios/lynx/shadow_node",
+      "//lynx/platform/darwin/ios/lynx/shadow_node/text",
+      "//lynx/platform/darwin/ios/lynx/ui",
+      "//lynx/platform/darwin/ios/lynx/ui/list",
+      "//lynx/platform/darwin/ios/lynx/ui/list/lynx_collection",
+      "//lynx/platform/darwin/ios/lynx/ui/list/lynx_collection/layout",
+      "//lynx/platform/darwin/ios/lynx/ui/list/list_light/layout",
+      "//lynx/platform/darwin/ios/lynx/ui/list/list_light/ui",
+      "//lynx/platform/darwin/ios/lynx/ui/list/list_light/view",
+      "//lynx/platform/darwin/ios/lynx/ui/scroll_view",
+      "//lynx/platform/darwin/ios/lynx/ui/text",
+      "//lynx/platform/darwin/ios/lynx/utils",
+    ]
+  }
+}
+
+config("darwin_flag_config") {
+  prefix_header = "//lynx/platform/darwin/common/Lynx-prefix.h"
+
+  if (!defined(cflags_objc)) {
+    cflags_objc = []
+  }
+  if (!defined(cflags_objcc)) {
+    cflags_objcc = []
+  }
+  if (!defined(defines)) {
+    defines = []
+  }
+  cflags_objc += [
+    "-fobjc-arc",
+    "-include",
+    rebase_path(prefix_header, root_build_dir),
+    "-Wno-self-assign-field",
+    "-Wno-shadow-ivar",
+    "-Wno-sign-compare",
+    "-Wno-unused-private-field",
+  ]
+  cflags_objcc += [
+    "-std=gnu++17",
+    "-fobjc-arc",
+    "-include",
+    rebase_path(prefix_header, root_build_dir),
+    "-Wno-self-assign-field",
+    "-Wno-shadow-ivar",
+    "-Wno-sign-compare",
+    "-Wno-unused-private-field",
+  ]
+
+  defines += [ "OS_POSIX=1" ]
+
+  if (is_ios) {
+    defines += [ "OS_IOS=1" ]
+  } else if (is_mac) {
+    defines += [
+      "OS_OSX=1",
+      "NAPI_DISABLE_CPP_EXCEPTIONS",
+      "NAPI_DISABLE_CPP_RTTI",
+    ]
+  }
+}

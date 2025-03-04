@@ -1,0 +1,12 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/platform/darwin/common/lynx/public/sources_list.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+subspec_target("Public") {
+  sources = common_lynx_public_headers
+  public_header_files = common_lynx_public_headers
+}

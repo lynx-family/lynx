@@ -1,0 +1,42 @@
+{
+    "name": "relative-top-of",
+    "id": 135,
+    "type": "number",
+    "default_value": "-1",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "relative-top-of": {
+            "__compat": {
+              "description": "The current element is to the top of the sibling element specified corresponding to id.",
+              "lynx_path": "docs/zh/api/css/properties/relative-top-of",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "clay_android": {
+                  "version_added": "1.4"
+                },
+                "clay_macos": {
+                  "version_added": "1.4"
+                },
+                "clay_windows": {
+                  "version_added": "1.4"
+                }
+              }
+            }
+          }
+    }
+}

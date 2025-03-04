@@ -1,0 +1,20 @@
+{
+    "name": "transition-timing-function",
+    "id": 112,
+    "type": "timing-function",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyanbo,linxiaosong",
+    "consumption_status": "skip",
+    "keywords": [
+        "linear",
+        "ease-in",
+        "ease-out",
+        "ease-in-ease-out",
+        "ease",
+        "ease-in-out",
+        "square-bezier",
+        "cubic-bezier"
+    ],
+    "desc": ""
+}

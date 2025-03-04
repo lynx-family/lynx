@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "module": "ES6",
+    "noImplicitAny": false,
+    "removeComments": false /* For conditional compile */,
+    "downlevelIteration": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "inlineSources": true,
+    "outDir": "./dist/",
+    "noResolve": true,
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "ESNext",
+    "lib": ["es2015", "es2016", "ES2019.Array", "DOM"],
+    "pretty": true /* Stylize errors and messages using color and context. */,
+    "skipLibCheck": false,
+    "declaration": true,
+    "types": [],
+    "baseUrl": "./",
+    "paths": {
+      "~/*": ["./src/*"]
+    },
+    "typeRoots": ["./src/typings"]
+  },
+  "include": ["src/"]
+}

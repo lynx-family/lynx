@@ -1,0 +1,51 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+lynx_basic_animator_shared_sources = [
+  "basic_animator.cc",
+  "basic_animator.h",
+  "basic_animator_event_listener.cc",
+  "basic_animator_event_listener.h",
+  "basic_animator_frame_callback_provider.cc",
+  "basic_animator_frame_callback_provider.h",
+  "basic_property_value.cc",
+  "basic_property_value.h",
+]
+
+lynx_core_source_set("lynx_basic_animator") {
+  sources = lynx_basic_animator_shared_sources
+
+  public_deps = [
+    "//lynx/core/animation:animation",
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base",
+    "//lynx/core/shell:shell",
+  ]
+}
+
+unittest_set("lynx_basic_animator_testset") {
+  testonly = true
+  sources = [ "lynx_basic_animator_unittest.cc" ]
+  deps = []
+  public_deps = [ ":lynx_basic_animator" ]
+}
+
+unittest_exec("lynx_basic_animator_unittests_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":lynx_basic_animator",
+    ":lynx_basic_animator_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("lynx_basic_animator_tests") {
+  testonly = true
+  deps = [ ":lynx_basic_animator_unittests_exec" ]
+  public_deps = [ ":lynx_basic_animator_testset" ]
+}

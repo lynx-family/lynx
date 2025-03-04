@@ -1,0 +1,26 @@
+{
+  "name": "showcase",
+  "version": "1.0.0",
+  "description": "Showcases for lynx explorer",
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --filter @showcase/menu run build"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@lynx-example/animation": "0.3.0",
+    "@lynx-example/css": "0.3.0",
+    "@lynx-example/fetch": "0.3.0",
+    "@lynx-example/image": "0.3.0",
+    "@lynx-example/layout": "0.3.0",
+    "@lynx-example/lazy-bundle": "0.3.0",
+    "@lynx-example/list": "0.3.0",
+    "@lynx-example/scroll-view": "0.3.0",
+    "@lynx-example/text": "0.3.0",
+    "@lynx-example/view": "0.3.0"
+  }
+}

@@ -1,0 +1,48 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: '../../publish.gradle'
+
+android {
+    compileSdkVersion 32
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 32
+        versionCode 1
+        versionName "1.0"
+        missingDimensionStrategy 'lynx', 'noasan'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+            java.srcDirs = ['src/main/java']
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    compileOnly "androidx.annotation:annotation:1.0.0"
+    compileOnly project(':LynxAndroid')
+}

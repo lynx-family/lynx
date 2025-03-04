@@ -1,0 +1,155 @@
+// Copyright 2018 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+buildscript {
+    ext {
+        gradle_version = '3.5.0'
+        kotlin_version = '1.5.32'
+        minSdkVersion = 21
+        compileSdkVersion = 30
+        targetSdkVersion = 29
+        buildToolsVersion = "29.0.2"
+        ndkVersion = ndk_version
+        bdp_panga_version = '0.0.2.5'
+        if(project.hasProperty("buildLynxDebugSo")){
+            buildLynxDebugSo = true
+        }else{
+            buildLynxDebugSo = false
+        }
+        if (project.hasProperty("lynx-local-build")) {
+            abiList=['armeabi-v7a', 'arm64-v8a', 'x86']
+        } else if (project.hasProperty("build_for_emu")){
+            abiList=['armeabi-v7a', 'x86']
+        } else {
+            abiList=['arm64-v8a']
+        }
+        enable_coverage_bool = (enable_coverage == 'true')
+    }
+    repositories {
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:4.1.0'
+        classpath "com.android.tools:r8:3.1.51"
+        classpath 'de.undercouch:gradle-download-task:3.1.2'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+
+        classpath 'com.neenbedankt.gradle.plugins:android-apt:1.8'//Added line
+
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+plugins {
+    id "org.jetbrains.kotlin.android" version "1.6.21" apply false
+}
+apply from: file("./package.gradle")
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
+
+subprojects {
+    afterEvaluate{
+        if (plugins.hasPlugin('com.android.library')) {
+            dependencies {
+                androidTestImplementation project(':TestingBase')
+            }
+        }
+    }
+}
+
+ext.getCppLib = {
+    if (project.hasProperty('use_cpp_shared') && project.property('use_cpp_shared') == 'true') {
+        return 'c++_shared'
+    }
+    if (project.hasProperty('use_cpp_static') && project.property('use_cpp_static') == 'true') {
+        return 'c++_static'
+    }
+    return 'c++_static'
+}
+
+ext.getFlavorNamesAndBuildTypes = { Project project ->
+    def flavorNames = []
+    def buildTypes = []
+    project.android.productFlavors.all { flavor ->
+        flavorNames << flavor.name
+    }
+    project.android.buildTypes.all { buildType ->
+        buildTypes << buildType.name
+    }
+    def runTasks = gradle.startParameter.taskNames.toString().toLowerCase()
+    if (runTasks.contains("generateAllGnCmakeTargets")) {
+        return [flavorNames, buildTypes]
+    }
+    // To reduce the generation of cmake scripts, the following types that will
+    // not be used are excluded.
+    // Notice: We can't exclude flavorNames because not all the flavors are the same in all projects.
+    if (!(runTasks.contains("release") || runTasks.contains("publish"))) {
+        buildTypes -= "release"
+    }
+    if (!runTasks.contains("debug")) {
+        buildTypes -= "debug"
+    }
+    return [flavorNames, buildTypes]
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+    delete "${rootProject.rootDir}/../out/gn_products_for_gradle"
+}
+
+if(buildLynxDebugSo){
+    // force Gradle to evaluate the child build.gradle files before the parent
+    evaluationDependsOnChildren()
+    Project lynxTrace = project(':LynxTrace')
+    Project lynxAndroid = project(':LynxAndroid')
+    Project lynxDevtool = project(':LynxDevtool')
+    lynxDevtool.android.libraryVariants.each {
+        String flavorName = it.flavorName.capitalize()
+        String buildTypeName = it.buildType.name.capitalize()
+        Task jniLibFoldersTask = lynxDevtool.tasks["merge${flavorName.capitalize()}${buildTypeName}JniLibFolders"]
+        Task lynxTraceNativeBuild = lynxTrace.tasks["externalNativeBuildDebugMode${buildTypeName}"]
+        Task lynxAndroidNativeBuild = lynxAndroid.tasks["externalNativeBuildDebugMode${buildTypeName}"]
+        // lynx will use lynxtrace.so created by externalNativeBuildDebugMode
+        lynxAndroidNativeBuild.dependsOn(lynxTraceNativeBuild)
+        // devtool will use lynx.so created by externalNativeBuildDebugMode
+        jniLibFoldersTask.dependsOn(lynxAndroidNativeBuild)
+        // make sure always run generateJsonModel
+        Task generateJsonModelTask = lynxAndroid.tasks["generateJsonModelDebugMode${buildTypeName}"]
+        generateJsonModelTask.outputs.upToDateWhen { false }
+    }
+}
+
+
+task generateAllGnCmakeTargets {
+    // force Gradle to evaluate the child build.gradle files before the parent
+    evaluationDependsOnChildren()
+
+    rootProject.allprojects { Project project ->
+        if(project.tasks.findByName('configGnCompileParas')) {
+            println project.name + " has configGnCompileParas task."
+            dependsOn project.configGnCompileParas
+        }
+    }
+    exec {
+        workingDir "../../"
+        commandLine "python3", "tools/android_tools/generate_cmake_scripts_by_gn.py"
+        println commandLine
+    }
+}
+
+
+task generateJNIHeader {
+    description "Because generated files should not checkin this repo, so generate JNI headers before build."
+    exec {
+        workingDir "../../"
+        commandLine "bash", "tools/build_jni/prebuild.sh"
+        println commandLine
+    }
+}

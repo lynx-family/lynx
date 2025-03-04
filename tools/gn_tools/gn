@@ -1,0 +1,63 @@
+#!/bin/bash
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+additional_help_info() {
+ echo "Additional GN capabilities provided by lynx:"
+ echo "  command-line: gn ... --ide=cmake [--cmake-target=\$CMAKE_TARGET_NAME]"
+ echo "             or gn ... --ide=podspec [--podspec-target=\$PODSPEC_TARGET_NAME]"
+ echo "  --ide=cmake: Converts the cmake_target in GN into the corresponding cmake script, all cmake_targets will be converted by default."
+ echo "  --cmake-target: Specifies a single cmake_target to convert into a cmake script."
+ echo "  --ide=podspec: Converts the podspec_target in GN into the corresponding podfile script, all podspec_targets will be converted by default."
+ echo "  --podspec-target: Specifies a single podspec_target to convert into a podfile script."
+ echo ""
+ echo ""
+}
+
+file_type=""
+cmake_target=""
+podspec_target=""
+new_args=()
+for arg in "$@"; do
+  if [[ $arg == --ide=* ]]; then
+    file_type="${arg#*=}"
+  elif [[ $arg == --cmake-target=* ]]; then
+    cmake_target="${arg#*=}"
+  elif [[ $arg == --podspec-target=* ]]; then
+    podspec_target="${arg#*=}"
+  else
+    new_args+=("$arg")
+  fi
+
+  if [[ $arg == --help ]]; then
+    additional_help_info
+  fi
+done
+
+current_dir=$(dirname "$0")
+parent_dir=$(dirname "$current_dir")
+LYNX_DIR=$(dirname "$parent_dir")
+PROJECT_ROOT_DIR=$(dirname "$LYNX_DIR")
+
+if [[ "$file_type" == "cmake" ]]; then
+  json_ide_args=''
+  if [ -n "$cmake_target" ]; then
+    json_ide_args="--json-ide-script-args=${cmake_target}"
+  fi
+  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_cmake_script.py" $json_ide_args'
+  eval $cmd
+elif [[ "$file_type" == "podspec" ]]; then
+  json_ide_args=''
+  if [ -n "$podspec_target" ]; then
+    json_ide_args="--json-ide-script-args=${podspec_target}"
+  fi
+  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_podspec_script.py" $json_ide_args'
+  eval $cmd
+else
+  if [ -n "$file_type" ]; then
+    new_args+=("--ide=$file_type")
+  fi
+  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}"'
+  eval $cmd
+fi

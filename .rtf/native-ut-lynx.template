@@ -1,0 +1,271 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+builder({
+    "default" :{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_inspector = true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+            f"is_asan={options.get_str('enable_asan', 'false')}",
+        ],
+        "output": "out/Default",
+        "type": "gn",
+    },
+
+    "builder_for_trace" :{
+        "args": [
+            "enable_lepusng_worklet=true",
+            "enable_unittests=true",
+            "enable_napi_binding=true",
+            "enable_coverage=true",
+            "enable_trace=\\\"perfetto\\\""
+        ],
+        "output": "out/Default_test_enable_trace",
+        "type": "gn",
+    }
+
+})
+
+coverage({
+    "output": "out/coverage",
+    "ignores": [
+        ".*_unittest.cc", 
+        ".*_unittests.cc",
+        ".*_unittests.mm"
+        "*_tests.cc",
+        "*_test.cc",
+        ".*_test.h",
+        ".*_unittest.h",
+        ".*_test.cc",
+        "core/shell/testing/*",
+        "core/animation/testing/*",
+        "core/renderer/ui_wrapper/testing/*",
+        "core/renderer/dom/air/testing/*",
+        "core/runtime/vm/lepus/compiler/encode_main.cc",
+        "testing/*",
+    ] + options.get_dir_list("third_party", excludes=["base"]),
+    "type": "llvm",
+})
+
+targets({
+    "base_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "args":["--gtest_filter=\"-*TimeSensitiveTest*\""]
+    },
+    "trace_unittests_exec": {
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_trace'
+    },
+    "profile_unittests_exec": {
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_trace'
+    },
+    "v8_profile_unittests_exec": {
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_trace'
+    },
+    "quickjs_profile_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_trace'
+    },
+    "lepusng_profile_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "builder":'builder_for_trace'
+    },
+    "dom_unittest_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True
+    },
+    "dom_trace_unittest_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True
+    },
+    "value_wrapper_unittest_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True
+    },
+    "record_unittest_exec":{
+       "cwd": ".", 
+       "owners":["ZhaoSongGOO"],
+       "coverage": True,
+       "enable_parallel":True
+    },
+    "replay_unittest_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True
+    },
+
+    "shell_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "args":["--gtest_filter=\"-*DISABLE*\""]
+    },
+     "css_parser_test_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "css_encoder_test_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "jsbridge_tests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "retry":3,
+    },
+    "worklet_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "shared_data_test_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"], 
+        "coverage": True,
+        "enable_parallel":True,
+        "retry":3,
+    },
+    "element_selector_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"], 
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "lazy_bundle_test_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"], 
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "animation_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "basic_animation_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "enable":False
+    },
+    "lynx_basic_animator_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+        "enable":True
+    },
+    "inspector_test_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+     "transforms_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+     "event_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"], 
+        "coverage": True,
+        "enable_parallel":True,
+    },
+     "events_test_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "signal_test_exec": {
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+     "starlight_unittest_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "runtime_common_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"], 
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "js_runtime_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "lepus_runtime_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "task_unittests_exec":{
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "page_config_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+    "mapbuffer_unittests_exec":{
+        "cwd": ".",
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
+})

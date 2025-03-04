@@ -1,0 +1,32 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/config.gni")
+import("//lynx/testing/test.gni")
+
+unittest_exec("devtoolng_unittest_exec") {
+  testonly = true
+  sources = []
+  deps = [ "transition:devtool_transition_testset" ]
+}
+
+unittest_exec("devtool_base_unittest_exec") {
+  testonly = true
+  sources = []
+  deps = [ "base_devtool:devtool_base_devtool_testset" ]
+}
+
+unittest_exec("devtool_agent_unittest_exec") {
+  testonly = true
+  sources = []
+  deps = [ "agent:devtool_agent_testset" ]
+}
+
+group("devtool_ng_unit_test") {
+  testonly = true
+  deps = [
+    ":devtool_agent_unittest_exec",
+    ":devtool_base_unittest_exec",
+    ":devtoolng_unittest_exec",
+  ]
+}

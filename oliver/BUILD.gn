@@ -1,0 +1,80 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/oliver/oliver.gni")
+
+config("lynx_oliver_config") {
+  include_dirs = [ "$root_gen_dir/node-addon-api" ]
+  if (is_nodejs) {
+    include_dirs += [ "//buildtools/node/include/node" ]
+  }
+
+  #
+  # fix emscripten build error.
+  # update: remove EMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES to avoid unbound type error in tasm
+  #
+  defines = []
+
+  cflags = []
+  if (is_oliver_ssr) {
+    cflags += [ "-fexceptions" ]
+
+    if (!is_debug) {
+      cflags += [
+        "-O3",
+        "-Oz",
+        "-g0",
+      ]
+    } else {
+      cflags += [ "-g" ]
+    }
+
+    defines += [
+      "BUILD_SSR_SERVER_RUNTIME=1",
+      "OS_POSIX=1",
+      "NAPI_DISABLE_CPP_EXCEPTIONS",
+      "NAPI_VERSION=3",
+    ]
+  }
+
+  if (is_oliver_tasm) {
+    cflags += [ "-fexceptions" ]
+
+    defines += [ "LEPUS_PC" ]
+    if (!compile_lepus_cmd) {
+      defines += [
+        "ENABLE_NAPI",
+        "NAPI_VERSION=6",
+      ]
+    }
+  }
+
+  if (is_encoder_ut) {
+    cflags += [ "-fexceptions" ]
+
+    defines += [
+      "LEPUS_PC",
+      "LYNX_UNIT_TEST=1",
+    ]
+  }
+}
+
+group("oliver") {
+  if (is_wasm) {
+    if (is_oliver_tasm) {
+      deps = [ "//lynx/oliver/lynx-tasm:OliverTasmWasm" ]
+    }
+  } else {
+    if (is_oliver_tasm) {
+      if (compile_lepus_cmd) {
+        deps = [ "//lynx/oliver/lynx-tasm:LepusCmdExe" ]
+      } else {
+        deps = [ "//lynx/oliver/lynx-tasm:CreateTasmNode" ]
+      }
+    } else {
+      deps = []
+    }
+  }
+}

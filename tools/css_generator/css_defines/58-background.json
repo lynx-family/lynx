@@ -1,0 +1,10 @@
+{
+    "name": "background",
+    "id": 58,
+    "type": "complex",
+    "default_value": "transparent, transparent",
+    "author": "linyiyi,tangruiwen",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "desc": ""
+}

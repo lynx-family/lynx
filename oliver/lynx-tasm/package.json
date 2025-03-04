@@ -1,0 +1,43 @@
+{
+    "name": "@lynx-js/tasm",
+    "version": "0.0.5",
+    "description": "",
+    "main": "index.js",
+    "types": "index.d.ts",
+    "files": [
+      "build/**/*.node",
+      "build-dll/liblepus.dylib",
+      "index.js",
+      "index.d.ts",
+      "lepus.js",
+      "Changelog.md"
+    ],
+    "scripts": {
+      "build": "run-script-os",
+      "build:wasm": "python3 ./../build_gn.py --type tasm --wasm true",
+      "build:darwin": "npm run build:release:darwin -- --local true",
+      "build:linux": "npm run build:release:linux -- --type tasm",
+      "build:debug": "run-script-os",
+      "build:debug:wasm": "npm run build:wasm -- --debug true",
+      "build:debug:darwin": "npm run build:release:darwin -- --debug true --local true",
+      "build:debug:linux": "npm run build:release:linux -- --type tasm --debug true",
+      "build:release": "npm run build:wasm && run-script-os",
+      "build:release:darwin": "python3 ./../build_gn.py --platform darwin --type tasm",
+      "build:release:linux": "python3 ./../build_gn.py --platform linux --type tasm",
+      "clean": "rm -rf build lepus.js",
+      "build:all": "npm run clean && npm run build:wasm && npm run build:darwin && npm run build:linux",
+      "build:all:debug": "npm run clean && npm run build:wasm:debug && npm run build:darwin:debug && npm run build:linux:debug",
+      "release:alpha": "npm publish --tag=alpha"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "Apache-2.0",
+    "dependencies": {
+    },
+    "devDependencies": {
+      "@types/node": "18.7.2",
+      "node-addon-api": "7.1.0",
+      "run-script-os": "1.1.6"
+    }
+  }
+  

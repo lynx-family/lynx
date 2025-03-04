@@ -1,0 +1,50 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+config("public_config") {
+  include_dirs = [ "include/include" ]
+}
+
+config("private_config") {
+  include_dirs = [ "include/include" ]
+  cflags = [
+    "-Wno-conversion",
+    "-fno-objc-arc",
+    "-Wno-documentation",
+    "-Wno-error",
+  ]
+  if (is_mac) {
+    libs = [
+      "lib/macOS/libcppgc_base.a",
+      "lib/macOS/libfuzzer_support.a",
+      "lib/macOS/libinspector_fuzzer.a",
+      "lib/macOS/libjson_fuzzer.a",
+      "lib/macOS/libparser_fuzzer.a",
+      "lib/macOS/libregexp_builtins_fuzzer.a",
+      "lib/macOS/libregexp_fuzzer.a",
+      "lib/macOS/libtorque_base.a",
+      "lib/macOS/libtorque_generated_definitions.a",
+      "lib/macOS/libtorque_generated_initializers.a",
+      "lib/macOS/libtorque_ls_base.a",
+      "lib/macOS/libv8_base_without_compiler.a",
+      "lib/macOS/libv8_bigint.a",
+      "lib/macOS/libv8_compiler.a",
+      "lib/macOS/libv8_compiler_for_mksnapshot_source_set.a",
+      "lib/macOS/libv8_heap_base.a",
+      "lib/macOS/libv8_init.a",
+      "lib/macOS/libv8_initializers.a",
+      "lib/macOS/libv8_libbase.a",
+      "lib/macOS/libv8_libplatform.a",
+      "lib/macOS/libv8_monolith.a",
+      "lib/macOS/libv8_snapshot.a",
+      "lib/macOS/libv8_turboshaft.a",
+    ]
+  }
+}
+
+source_set("NativeScript") {
+  sources = []
+  configs += [ ":private_config" ]
+  public_configs = [ ":public_config" ]
+}

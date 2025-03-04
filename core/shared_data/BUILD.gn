@@ -1,0 +1,57 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("white_board") {
+  sources = [
+    "lynx_white_board.cc",
+    "lynx_white_board.h",
+  ]
+
+  public_deps = [ "//lynx/core/base" ]
+}
+
+lynx_core_source_set("shared_data") {
+  sources = [
+    "white_board_delegate.cc",
+    "white_board_delegate.h",
+    "white_board_runtime_delegate.cc",
+    "white_board_runtime_delegate.h",
+    "white_board_tasm_delegate.cc",
+    "white_board_tasm_delegate.h",
+  ]
+
+  libs = []
+  public_deps = [
+    ":white_board",
+    "//lynx/core/runtime",
+    "//lynx/core/runtime/vm/lepus",
+  ]
+}
+
+unittest_set("shared_data_test_testset") {
+  testonly = true
+  public_deps = [ "//lynx/core/shared_data" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/core/shell/testing:shell_testset",
+  ]
+
+  sources = [ "lynx_white_board_unittest.cc" ]
+}
+
+unittest_exec("shared_data_test_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":shared_data_test_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}

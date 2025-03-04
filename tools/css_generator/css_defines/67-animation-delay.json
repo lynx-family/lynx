@@ -1,0 +1,10 @@
+{
+    "name": "animation-delay",
+    "id": 67,
+    "type": "time",
+    "default_value": "0s",
+    "version": "1.0",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "desc": ""
+}

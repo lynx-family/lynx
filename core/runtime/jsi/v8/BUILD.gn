@@ -1,0 +1,86 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/runtime/jsi/v8/v8.gni")
+
+if (is_android) {
+  import("//lynx/platform/android/lynx_android/LynxAndroid.gni")
+} else {
+  import("//lynx/core/Lynx.gni")
+}
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+if (is_android) {
+  config("private_config") {
+    ldflags = [
+      "-Wl,--exclude-libs,ALL,--gc-sections",
+      "-Wl,--build-id=sha1",
+    ]
+    if (host_os == "linux") {
+      ldflags += [ "-stdlib=libc++" ]
+    }
+
+    if (!is_debug) {
+      ldflags += [
+        "-O2",
+        "-Wl,--icf=all",
+        "-fuse-ld=lld",
+      ]
+      if (enable_lto) {
+        ldflags += [ "-flto" ]
+      }
+    }
+    if (enable_lite) {
+      if (enable_lite_production) {
+        ldflags +=
+            [ "-Wl,--version-script=" + rebase_path(
+                  "//lynx/platform/android/lynx_android/lynx_lite_export.map") ]
+      }
+    }
+  }
+
+  if (build_lynx_dylib) {
+    cmake_target("lynx_v8_bridge") {
+      target_type = "shared_library"
+      output_name = "lynx_v8_bridge"
+      deps = [
+        ":js_v8_bridge",
+        "//lynx/platform/android/lynx_android:lynx_android",
+      ]
+      lib_dirs = [ "${v8_native_lib_dir}" ]
+      libs = [ "v8_libfull.cr" ]
+      if (enable_napi_binding) {
+        lib_dirs += [ "${primjs_native_lib_dir}" ]
+        libs += [
+          "napi",
+          "napi_v8",
+        ]
+      }
+      configs = [ ":private_config" ]
+    }
+  }
+
+  lynx_core_source_set("js_v8_bridge") {
+    include_dirs = [ v8_headers_search_path ]
+    sources = js_v8_bridge_shared_sources
+    sources += [
+      "//lynx/core/base/observer/observer.h",
+      "//lynx/core/base/observer/observer_list.cc",
+      "//lynx/core/base/observer/observer_list.h",
+      "//lynx/core/build/gen/lynx_sub_error_code.cc",
+      "//lynx/core/build/gen/lynx_sub_error_code.h",
+      "//lynx/core/runtime/bindings/jsi/modules/android/jni_v8_bridge.cc",
+    ]
+    if (enable_napi_binding) {
+      sources +=
+          [ "//lynx/core/runtime/bindings/napi/napi_runtime_proxy_v8.cc" ]
+    }
+    if (is_debug) {
+      cflags = [ "-O0" ]
+    } else {
+      cflags = [ "-Oz" ]
+    }
+    deps = [ "//lynx/base/src:base_log_headers" ]
+  }
+}

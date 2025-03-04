@@ -1,0 +1,27 @@
+{
+    "name": "word-break",
+    "id": 121,
+    "type": "enum",
+    "default_value": "normal",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "break-all",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "keep-all",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

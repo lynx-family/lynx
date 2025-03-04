@@ -1,0 +1,12 @@
+{
+  "name": "@lynx-js/ios-polyfill",
+  "private": true,
+  "description": "lynx polyfill for ios9",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "dependencies": {
+    "core-js": "3.6.4"
+  }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "text-stroke",
+    "id": 193,
+    "type": "complex",
+    "default_value": "0px black",
+    "version": "2.10",
+    "author": "liumiao",
+    "consumption_status": "skip",
+    "desc": ""
+}

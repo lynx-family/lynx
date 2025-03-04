@@ -1,0 +1,29 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//lynx/core/Lynx.gni")
+
+long_task_timing_shared_sources = [
+  "long_batched_tasks_monitor.cc",
+  "long_batched_tasks_monitor.h",
+  "long_task_monitor.h",
+  "long_task_timing.h",
+]
+
+if (!is_oliver_ssr) {
+  long_task_timing_shared_sources += [ "long_task_monitor.cc" ]
+}
+
+if (is_android) {
+  long_task_timing_shared_sources += [
+    "android/long_task_monitor_android.cc",
+    "android/long_task_monitor_android.h",
+  ]
+}
+
+lynx_core_source_set("long_task_timing") {
+  sources = long_task_timing_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

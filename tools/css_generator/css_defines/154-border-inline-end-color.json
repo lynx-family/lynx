@@ -1,0 +1,10 @@
+{
+    "name": "border-inline-end-color",
+    "id": 154,
+    "type": "color",
+    "default_value": "black",
+    "version": "2.0",
+    "author": "liting.src",
+    "consumption_status": "skip",
+    "desc": ""
+}

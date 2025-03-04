@@ -1,0 +1,37 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/core/Lynx.gni")
+
+lepus_debug_source = [
+  "lepus_inspector_client_impl.cc",
+  "lepus_inspector_client_impl.h",
+  "lepus_inspector_client_provider.cc",
+  "lepus_inspector_client_provider.h",
+  "lepus_internal/lepus_inspected_context.h",
+  "lepus_internal/lepus_inspector_impl.cc",
+  "lepus_internal/lepus_inspector_impl.h",
+  "lepus_internal/lepus_inspector_ng.h",
+  "//${lynx_dir}/devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.cc",
+  "//${lynx_dir}/devtool/js_inspect/lepus/lepus_internal/lepus_inspected_context_provider.h",
+  "lepus_internal/lepusng/lepusng_inspected_context_impl.cc",
+  "lepus_internal/lepusng/lepusng_inspected_context_impl.h",
+  "lepus_internal/lepusng/lepusng_inspected_context_callbacks.cc",
+  "lepus_internal/lepusng/lepusng_inspected_context_callbacks.h",
+  "lepus_internal/lepusng/lepusng_debugger.cc",
+  "lepus_internal/lepusng/lepusng_debugger.h",
+]
+
+source_set("lepus_debug") {
+  sources = lepus_debug_source
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+    "//lynx/devtool/js_inspect:inspector_const",
+  ]
+  include_dirs = [ "//lynx/third_party" ]
+  deps += [ "//lynx/third_party/rapidjson:rapidjson" ]
+  public_configs = [ "//lynx/third_party/quickjs:quickjs_public_config" ]
+}

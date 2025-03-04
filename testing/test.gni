@@ -1,0 +1,201 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//testing/FuzzFramework/fuzz_test.gni")
+
+template("unittest_exec") {
+  check_target_name =
+      exec_script("//lynx/tools/gn_tools/gn_check_target_name.py",
+                  [
+                    "${target_name}",
+                    "_exec",
+                  ],
+                  "list lines")
+  assert(check_target_name[1] == "0", check_target_name[0])
+  executable("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [ "//lynx/testing/utils:gtest_main" ]
+    } else {
+      deps = [ "//lynx/testing/utils:gtest_main" ]
+    }
+    if (!defined(support_custom_init) || !support_custom_init) {
+      deps += [ "//lynx/testing/utils:gtest_custom_init" ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+  }
+}
+
+template("unittest_set") {
+  assert(defined(invoker.sources), "missing sources for ${target_name}")
+  check_target_name =
+      exec_script("//lynx/tools/gn_tools/gn_check_target_name.py",
+                  [
+                    "${target_name}",
+                    "_testset",
+                  ],
+                  "list lines")
+  assert(check_target_name[1] == "0", check_target_name[0])
+  source_set("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [
+        "//third_party/googletest:gmock",
+        "//third_party/googletest:gtest",
+      ]
+    } else {
+      deps = [
+        "//third_party/googletest:gmock",
+        "//third_party/googletest:gtest",
+      ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+  }
+}
+
+template("mocktest_set") {
+  assert(defined(invoker.sources), "missing sources for ${target_name}")
+  check_target_name =
+      exec_script("//lynx/tools/gn_tools/gn_check_target_name.py",
+                  [
+                    "${target_name}",
+                    "_testset",
+                  ],
+                  "list lines")
+  assert(check_target_name[1] == "0", check_target_name[0])
+  source_set("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [ "//third_party/googletest:gmock" ]
+    } else {
+      deps = [ "//third_party/googletest:gmock" ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+  }
+}
+
+template("mocktest_exec") {
+  check_target_name =
+      exec_script("//lynx/tools/gn_tools/gn_check_target_name.py",
+                  [
+                    "${target_name}",
+                    "_exec",
+                  ],
+                  "list lines")
+  assert(check_target_name[1] == "0", check_target_name[0])
+  executable("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [ "//lynx/testing/utils:gmock_main" ]
+    } else {
+      deps = [ "//lynx/testing/utils:gmock_main" ]
+    }
+    if (!defined(support_custom_init) || !support_custom_init) {
+      deps += [ "//lynx/testing/utils:gtest_custom_init" ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+  }
+}
+
+template("benchmark_set") {
+  assert(defined(invoker.sources), "missing sources for ${target_name}")
+  source_set("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [ "//third_party/benchmark:benchmark" ]
+    } else {
+      deps = [ "//third_party/benchmark:benchmark" ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+  }
+  libs = [ "pthread" ]
+}
+
+template("benchmark_test") {
+  assert(defined(invoker.sources), "missing sources for ${target_name}")
+  executable("${target_name}") {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "deps",
+                             "configs",
+                           ])
+    testonly = true
+    if (defined(invoker.deps)) {
+      deps = invoker.deps
+      deps += [ "//third_party/benchmark:benchmark_main" ]
+    } else {
+      deps = [ "//third_party/benchmark:benchmark_main" ]
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (defined(configs_to_exclude)) {
+      configs -= configs_to_exclude
+    }
+    if (!is_android) {
+      configs += [ "//build/config/gcc:no_exceptions" ]
+    }
+  }
+}

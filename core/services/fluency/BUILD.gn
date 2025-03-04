@@ -1,0 +1,22 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+fluency_shared_sources = [
+  "fluency_tracer.cc",
+  "fluency_tracer.h",
+]
+
+if (is_android) {
+  fluency_shared_sources += [
+    "android/fluency_sample_android.cc",
+    "android/fluency_sample_android.h",
+  ]
+}
+
+lynx_core_source_set("fluency") {
+  sources = fluency_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

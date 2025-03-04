@@ -1,0 +1,10 @@
+{
+    "name": "layout-animation-delete-duration",
+    "id": 86,
+    "type": "time",
+    "default_value": "0s",
+    "version": "1.0",
+    "author": "liyanbo",
+    "consumption_status": "skip",
+    "desc": ""
+}

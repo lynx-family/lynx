@@ -1,0 +1,13 @@
+{
+    "name": "list-main-axis-gap",
+    "id": 186,
+    "type": "complex",
+    "default_value": "0px",
+    "version": "2.2",
+    "author": "huangsu, yangqingchuan",
+    "consumption_status": "skip",
+    "keywords": [
+        "grayscale"
+    ],
+    "desc": ""
+}

@@ -1,0 +1,10 @@
+{
+    "name": "mask-position",
+    "id": 200,
+    "type": "complex",
+    "default_value": "",
+    "version": "2.13",
+    "author": "baiqiang",
+    "consumption_status": "skip",
+    "desc": ""
+}

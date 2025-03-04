@@ -1,0 +1,204 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# base_shared_sources
+base_shared_sources = [
+  "js_constants.h",
+  "lynx_trace_categories.h",
+  "thread/once_task.h",
+  "thread/thread_utils.cc",
+  "thread/thread_utils.h",
+  "threading/js_thread_config_getter.h",
+  "threading/task_runner_manufactor.cc",
+  "threading/task_runner_manufactor.h",
+  "threading/thread_merger.cc",
+  "threading/thread_merger.h",
+  "utils/any.h",
+  "utils/file_utils.cc",
+  "utils/file_utils.h",
+]
+
+if (is_android) {
+  base_shared_sources += [
+    "android/android_jni.cc",
+    "android/android_jni.h",
+    "android/callstack_util_android.cc",
+    "android/callstack_util_android.h",
+    "android/device_utils_android.cc",
+    "android/device_utils_android.h",
+    "android/fresco_blur_filter.c",
+    "android/fresco_blur_filter.h",
+    "android/java_only_array.cc",
+    "android/java_only_array.h",
+    "android/java_only_map.cc",
+    "android/java_only_map.h",
+    "android/java_value.cc",
+    "android/java_value.h",
+    "android/jni_helper.cc",
+    "android/jni_helper.h",
+    "android/logging_android.cc",
+    "android/logging_android.h",
+    "android/lynx_android_blur.cc",
+    "android/lynx_android_blur.h",
+    "android/lynx_error_android.cc",
+    "android/lynx_error_android.h",
+    "android/lynx_white_board_android.cc",
+    "android/lynx_white_board_android.h",
+    "android/message_loop_android_vsync.cc",
+    "android/message_loop_android_vsync.h",
+    "android/piper_data.cc",
+    "android/piper_data.h",
+    "thread/atomic_lifecycle.cc",
+    "thread/atomic_lifecycle.h",
+    "threading/js_thread_config_getter.cc",
+    "threading/task_runner_vsync.cc",
+    "threading/task_runner_vsync.h",
+  ]
+} else if (is_apple) {
+  if (!enable_unittests && !is_oliver_node_lynx) {
+    base_shared_sources += [
+      "darwin/logging_darwin.h",
+      "darwin/logging_darwin.mm",
+      "darwin/lynx_env_darwin.h",
+      "darwin/lynx_env_darwin.mm",
+      "darwin/lynx_trail_hub_impl_darwin.h",
+      "darwin/lynx_trail_hub_impl_darwin.mm",
+    ]
+  }
+  if (is_ios) {
+    base_shared_sources += [
+      "darwin/message_loop_darwin_vsync.cc",
+      "darwin/message_loop_darwin_vsync.h",
+      "threading/task_runner_vsync.cc",
+      "threading/task_runner_vsync.h",
+    ]
+  }
+  if (is_mac) {
+    base_shared_sources += [
+      "utils/paths_mac.h",
+      "utils/paths_mac.mm",
+    ]
+  }
+  base_shared_sources += [ "threading/js_thread_config_getter.cc" ]
+} else if (is_win) {
+  base_shared_sources += [
+    "threading/js_thread_config_getter.cc",
+    "utils/paths_win.cc",
+    "utils/paths_win.h",
+  ]
+} else if (is_linux) {
+  base_shared_sources += [ "threading/js_thread_config_getter.cc" ]
+}
+
+if (enable_unittests && !is_android) {
+  base_shared_sources += [
+    "threading/task_runner_vsync.cc",
+    "threading/task_runner_vsync.h",
+  ]
+}
+
+# base_shared_sources end
+
+lynx_core_source_set("base") {
+  libs = []
+  sources = []
+  deps = []
+  public_deps = [ "//lynx/core/build:build" ]
+  public_configs = []
+  if (is_oliver_ssr) {
+    not_needed(base_shared_sources)
+    sources += [
+      "threading/task_runner_manufactor.cc",
+      "threading/task_runner_manufactor.h",
+    ]
+    deps += [
+      ":json_utils",
+      ":observer",
+      "//lynx/base/src:base_log",
+    ]
+  } else {
+    sources += base_shared_sources
+    public_deps += [
+      "//lynx/base/src:base",
+      "//lynx/base/src:base_log",
+      "//lynx/base/trace/native:trace_public_headers",
+    ]
+    if (is_android) {
+      deps += [ "//lynx/third_party/rapidjson:rapidjson" ]
+    }
+    if (is_win) {
+      libs += [ "user32.lib" ]
+    }
+
+    deps += [
+      ":json_utils",
+      ":observer",
+    ]
+  }
+}
+
+lynx_core_source_set("json_utils") {
+  sources = [
+    "json/json_util.h",
+    "json/json_utils.cc",
+  ]
+
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+lynx_core_source_set("observer") {
+  sources = [
+    "observer/observer.h",
+    "observer/observer_list.cc",
+    "observer/observer_list.h",
+  ]
+}
+
+lynx_core_source_set("gtest_lynx_base_android") {
+  check_includes = false
+  sources = []
+  deps = []
+  if (is_android) {
+    sources = [
+      "android/android_jni_unittest.cc",
+      "android/java_value_unittest.cc",
+      "android/jni_helper_unittest.cc",
+    ]
+    deps += [ "//lynx/core/value_wrapper:value_impl_android_unittest" ]
+  }
+  deps += [ "//third_party/googletest:gtest_sources" ]
+}
+
+unittest_set("base_testset") {
+  sources = [
+    "json/json_utils_unittests.cc",
+    "thread/blocking_queue_unittest.cc",
+    "thread/once_task_unittest.cc",
+    "thread/thread_utils_unittest.cc",
+    "threading/task_runner_manufactor_unittest.cc",
+    "threading/task_runner_vsync_unittest.cc",
+    "threading/thread_merger_unittest.cc",
+    "utils/file_utils_unittest.cc",
+  ]
+  public_deps = [ "//lynx/core/base" ]
+}
+
+unittest_exec("lynx_base_unittests_exec") {
+  sources = []
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/base:base_testset",
+    "//lynx/core/renderer/utils:lynx_env",
+  ]
+}
+
+group("base_tests") {
+  testonly = true
+  deps = [ "//lynx/core/base:lynx_base_unittests_exec" ]
+  public_deps = [ "//lynx/core/base:base_testset" ]
+}

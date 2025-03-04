@@ -1,0 +1,213 @@
+{% macro insufficient_argnum_defend(cpp_type, method, pretty_name) %}
+  {% if method.number_of_required_arguments > 0 %}
+  if (info.Length() < {{method.number_of_required_arguments}}) {
+    ExceptionMessage::NotEnoughArguments(info.Env(), InterfaceName(), "{{pretty_name}}", "{{method.number_of_required_arguments}}");
+    {{'return;' if cpp_type == 'void' else 'return Value();'}}
+  }
+  {% endif %}
+{% endmacro %}
+
+{% macro convert_argument_enum(return_type, argument, literal) %}
+  std::string arg{{argument.index}}_{{argument.name}};
+  do {
+    if ({{literal}}.IsString()) {
+      arg{{argument.index}}_{{argument.name}} = {{literal}}.As<String>().Utf8Value();
+      {% for value in argument.enum_values %}
+      if (arg{{argument.index}}_{{argument.name}} == "{{value}}") break;
+      {% endfor %}
+    }
+    ExceptionMessage::InvalidType(info.Env(), "{{'argument ' + argument.index|string if 'index' in argument else argument.name}}", "{{argument.enum_values}}");
+    {{ return_type }}
+  } while (false);
+{% endmacro %}
+
+{% macro convert_argument_union(return_type, argument, literal) %}
+  uint32_t union_branch = 0;
+  {% for union_type in argument.union_types %}
+  {% if union_type.is_interface_type %}{# TODO: Handle sequence, dict, etc #}
+  {{union_type.idl_type}}* arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = nullptr;
+  {% elif union_type.is_string_type %}
+  std::string arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}};
+  {% endif %}
+  {% endfor %}
+  do {
+    {% for union_type in argument.union_types %}
+    {% if union_type.is_interface_type %}{# TODO: Handle sequence, dict, etc #}
+    if (auto* {{argument.name}} = binding::SafeUnwrap<{{union_type.idl_type_name}}>({{literal}})) {
+      arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = {{argument.name}}->ToImplUnsafe();
+      union_branch = {{loop.index}};
+      break;
+    }
+    {% elif union_type.is_string_type %}
+    // Converting to string.
+    arg{{argument.index}}_{{argument.name}}_{{union_type.idl_type}} = {{literal}}.ToString().Utf8Value();
+    union_branch = {{loop.index}};
+    break;
+    {% endif %}
+    {% endfor %}
+    ExceptionMessage::InvalidType(info.Env(), "{{'argument ' + argument.index|string if 'index' in argument else argument.name}}", "{{argument.idl_type or argument.cpp_type}}");
+    {{ return_type }}
+  } while (false);
+{% endmacro %}
+
+{% macro convert_argument(return_type, argument) %}
+  {% if argument.native_value_traits_support %}
+  auto arg{{argument.index}}_{{argument.name}} = NativeValueTraits<{{argument.idl_type_name}}>::NativeValue(info, {{argument.index}});
+  {% if argument.raises_exception %}
+  if (info.Env().IsExceptionPending()) {
+    {{ return_type }}
+  }
+  {% endif %}
+  {% elif argument.enum_type %}
+  {{ convert_argument_enum(return_type, argument, 'info[' + argument.index|string + ']' ) }}
+  {% elif argument.union_types %}
+  {{ convert_argument_union(return_type, argument, 'info[' + argument.index|string + ']') }}
+  {% endif %}{# NG #}
+{% endmacro %}
+
+{% macro convert_attribute(callee, attribute) %}
+  {% if attribute.native_value_traits_support %}
+  {{ callee }}Set{{attribute.camel_case_name}}(NativeValueTraits<{{attribute.idl_type_name}}>::NativeValue(value));
+  {% elif attribute.union_types %}
+  {{ convert_argument_union("return;", attribute, 'value') }}
+  switch (union_branch) {
+    {% for union_type in attribute.union_types %}
+    case {{loop.index}}: {
+      {{ callee }}Set{{attribute.camel_case_name}}(arg_{{attribute.name}}_{{union_type.idl_type}});
+    }
+    {% endfor %}
+    default: {
+      return;
+    }
+  }
+  {% elif attribute.enum_type %}
+  {{ convert_argument_enum('return;', attribute, 'value') }}
+  {{ callee }}Set{{attribute.camel_case_name}}(std::move(arg_{{attribute.name}}));
+  {% else %}
+  ExceptionMessage::NotImplemented(info.Env());
+  return;
+  {% endif %}
+{% endmacro %}
+
+{% macro call_out_init(constructor, num_args) %}
+
+  {% if num_args and constructor.arguments[0] and constructor.arguments[0].union_types %}
+  switch (union_branch) {
+    {% for union_type in constructor.arguments[0].union_types %}
+    case {{loop.index}}: {
+      auto impl = {{constructor.cpp_type[:-1]}}::Create({% if constructor.is_raises_exception %}exception_state, {% endif %}arg0_{{constructor.arguments[0].name}}_{{union_type.idl_type}}{% for arg in constructor.arguments[1:num_args] %}, {{arg | argument_literal }}{% endfor %});
+      {% if constructor.is_raises_exception %}
+      if (exception_state.HadException()) {
+        return;
+      }
+      {% endif %}
+      Init(std::move(impl));
+      break;
+    }
+    {% endfor %}
+    default: {
+      ExceptionMessage::FailedToCallOverloadExpecting(info.Env(), "{{constructor.cpp_type[:-1]}} constructor", "{{constructor.arguments[0].cpp_type}}");
+      return;
+    }
+  }
+  {% else %}
+  auto impl = {{constructor.cpp_type[:-1]}}::Create({% if constructor.is_raises_exception %}exception_state{{ ', ' if num_args>0 }}{% endif %}{{constructor.arguments[:num_args] | map ('argument_literal') | join(', ')}});
+  {% if constructor.is_raises_exception %}
+  if (exception_state.HadException()) {
+    return;
+  }
+  {% endif %}
+  Init(std::move(impl));
+  {% endif %}
+{% endmacro %}
+
+{% macro call_out_return_value(method, num_args, callee) %}
+  {% if num_args and method.arguments[0] and method.arguments[0].union_types %}
+  switch (union_branch) {
+    {% for union_type in method.arguments[0].union_types %}
+    case {{loop.index}}: {
+      {{'auto&& result = ' if method.cpp_type != 'void'}}{{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state, {% endif %}arg0_{{method.arguments[0].name}}_{{union_type.idl_type}}{% for argument in method.arguments[1:num_args] %}, {{argument | argument_literal}}{% endfor %});
+      {% if method.is_raises_exception and method.cpp_type != 'void' %}
+      if (exception_state.HadException()) {
+        return Value();
+      }
+      {% endif %}
+      {{ return_value(method) | trim | indent(4)}}
+    }
+    {% endfor %}
+    default: {
+      ExceptionMessage::FailedToCallOverloadExpecting(info.Env(), "{{method.camel_case_name}}()", "{{method.arguments[0].cpp_type}}");
+      return Value();
+    }
+  }
+  {% else %}
+  {% if method.cpp_type == 'void' %}
+  {{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state{{ ', ' if num_args>0 }}{% endif %}{{ method.arguments[:num_args] | map('argument_literal') | join(', ')}});
+  {% elif method.is_sequence_type %}
+  const auto& vector_result = {{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state{{ ', ' if num_args>0 }}{% endif %}{{ method.arguments[:num_args] | map('argument_literal') | join(', ')}});
+  {% if method.is_raises_exception %}
+  if (exception_state.HadException()) {
+    return Value();
+  }
+  {% endif %}
+  auto result = Array::New(info.Env(), vector_result.size());
+  for (size_t i = 0; i < vector_result.size(); ++i) {
+    {% if method.sequence_element_type == 'Number' %}
+    result[i] = Number::New(info.Env(), vector_result[i]);
+    {% elif method.sequence_element_type == 'String' %}
+    result[i] = String::New(info.Env(), vector_result[i]);
+    {% elif method.sequence_element_type == 'Object' %}
+    result[static_cast<uint32_t>(i)] = (vector_result[i]->IsNapiWrapped() ? vector_result[i]->NapiObject() : Napi{{method.sequence_element_idl_type}}::Wrap(std::unique_ptr<{{method.sequence_element_idl_type}}>(std::move(vector_result[i])), info.Env()));
+    {% else %}
+    ExceptionMessage::NotSupportYet(info.Env());
+    return Value();
+    {% endif %}{# sequence_element_type #}
+  }
+  {% else %}
+  auto&& result = {{callee}}{{method.camel_case_name}}({% if method.is_raises_exception %}exception_state{{ ', ' if num_args>0 }}{% endif %}{{ method.arguments[:num_args] | map('argument_literal') | join(', ')}});
+  {% if method.is_raises_exception %}
+  if (exception_state.HadException()) {
+    return Value();
+  }
+  {% endif %}
+  {% endif %}{# method.cpp_type #}
+  {{ return_value(method) | trim }}
+  {% endif %}{# union_types #}
+{% endmacro %}
+
+{% macro return_value(method) %}
+  {{'return info.Env().Undefined();' if method.cpp_type == 'void'}}
+  {% if method.is_nullable %}
+  {% if method.is_wrapper_type or method.is_dictionary %}
+  if (!result) return info.Env().Null();
+  {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type %}
+  {% if method.is_sequence_type %}
+  // TODO(yuyifei): This is actually not reached. Consider implementing Optional if necessary.
+  {% endif %}
+  if (result.IsEmpty()) return info.Env().Null();
+  {% endif %}
+  {% endif %}{# is_nullable #}
+  {% if method.is_boolean_type %}
+  return Napi::Boolean::New(info.Env(), result);
+  {% elif method.is_numeric_type %}
+  return Number::New(info.Env(), result);
+  {% elif method.is_string_type %}
+  return String::New(info.Env(), result);
+  {% elif method.is_wrapper_type %}
+  {% if method.may_chain %}
+  return result->NapiObject();
+  {% else %}
+  return result ? (result->IsNapiWrapped() ? result->NapiObject() : Napi{{method.idl_type}}::Wrap(std::unique_ptr<{{method.cpp_type[:-1]}}>(std::move(result)), info.Env())) : info.Env().Null();
+  {% endif %}
+  {% elif method.is_dictionary %}
+  return std::unique_ptr<{{method.idl_type}}>(result)->ToJsObject(info.Env());
+  {% elif method.is_sequence_type %}
+  return result;
+  {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' %}
+  {% if method.remote_method_id or method.idl_type == 'ArrayBuffer' %}
+  return ToNAPI(std::move(result), info.Env());
+  {% else %}
+  return result;
+  {% endif %}
+  {% endif %}{# method.is_boolean_type #}
+{% endmacro %}

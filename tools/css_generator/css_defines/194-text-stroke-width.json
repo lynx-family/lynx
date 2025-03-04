@@ -1,0 +1,10 @@
+{
+    "name": "text-stroke-width",
+    "id": 194,
+    "type": "border-width",
+    "default_value": "0px",
+    "version": "2.10",
+    "author": "liumiao",
+    "consumption_status": "skip",
+    "desc": ""
+}

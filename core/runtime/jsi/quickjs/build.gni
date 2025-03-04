@@ -1,0 +1,25 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+lynx_jsi_quickjs_sources = [
+  "quickjs_api.h",
+  "quickjs_context_wrapper.cc",
+  "quickjs_context_wrapper.h",
+  "quickjs_exception.cc",
+  "quickjs_exception.h",
+  "quickjs_helper.cc",
+  "quickjs_helper.h",
+  "quickjs_host_function.cc",
+  "quickjs_host_function.h",
+  "quickjs_host_object.cc",
+  "quickjs_host_object.h",
+  "quickjs_inspector_manager.h",
+  "quickjs_runtime.cc",
+  "quickjs_runtime.h",
+  "quickjs_runtime_wrapper.cc",
+  "quickjs_runtime_wrapper.h",
+]
+
+lynx_jsi_quickjs_sources_path =
+    get_path_info(lynx_jsi_quickjs_sources, "abspath")

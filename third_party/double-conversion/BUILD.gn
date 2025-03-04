@@ -1,0 +1,44 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+source_set("source") {
+  visibility = [ ":*" ]
+  sources = [
+    "double-conversion/bignum-dtoa.cc",
+    "double-conversion/bignum.cc",
+    "double-conversion/cached-powers.cc",
+    "double-conversion/double-to-string.cc",
+    "double-conversion/fast-dtoa.cc",
+    "double-conversion/fixed-dtoa.cc",
+    "double-conversion/string-to-double.cc",
+    "double-conversion/strtod.cc",
+  ]
+}
+
+source_set("headers") {
+  visibility = [ ":*" ]
+  sources = [
+    "double-conversion/bignum-dtoa.h",
+    "double-conversion/bignum.h",
+    "double-conversion/cached-powers.h",
+    "double-conversion/diy-fp.h",
+    "double-conversion/double-conversion.h",
+    "double-conversion/double-to-string.h",
+    "double-conversion/fast-dtoa.h",
+    "double-conversion/fixed-dtoa.h",
+    "double-conversion/ieee.h",
+    "double-conversion/string-to-double.h",
+    "double-conversion/strtod.h",
+    "double-conversion/utils.h",
+  ]
+}
+
+source_set("double_conversion") {
+  cflags = []
+  if (is_posix) {
+    cflags += [ "-fvisibility=hidden" ]
+  }
+  deps = [ ":source" ]
+  public_deps = [ ":headers" ]
+}

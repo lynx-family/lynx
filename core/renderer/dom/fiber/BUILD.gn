@@ -1,0 +1,54 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+# fiber_shared_sources
+fiber_shared_sources = [
+  "block_element.cc",
+  "block_element.h",
+  "component_element.cc",
+  "component_element.h",
+  "fiber_element.cc",
+  "fiber_element.h",
+  "fiber_node_info.cc",
+  "fiber_node_info.h",
+  "for_element.cc",
+  "for_element.h",
+  "if_element.cc",
+  "if_element.h",
+  "image_element.cc",
+  "image_element.h",
+  "list_element.cc",
+  "list_element.h",
+  "list_item_scheduler_adapter.cc",
+  "list_item_scheduler_adapter.h",
+  "none_element.cc",
+  "none_element.h",
+  "page_element.cc",
+  "page_element.h",
+  "pseudo_element.cc",
+  "pseudo_element.h",
+  "raw_text_element.cc",
+  "raw_text_element.h",
+  "scroll_element.cc",
+  "scroll_element.h",
+  "text_element.cc",
+  "text_element.h",
+  "tree_resolver.cc",
+  "tree_resolver.h",
+  "view_element.cc",
+  "view_element.h",
+  "wrapper_element.cc",
+  "wrapper_element.h",
+]
+
+# fiber_shared_sources end
+
+lynx_core_source_set("fiber") {
+  sources = fiber_shared_sources
+  public_deps =
+      [ "//lynx/core/renderer/ui_component/list:react_component_list" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

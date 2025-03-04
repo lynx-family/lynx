@@ -1,0 +1,60 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+#
+
+rapidjson_shared_sources = get_path_info([
+    "allocators.h",
+    "cursorstreamwrapper.h",
+    "document.h",
+    "encodedstream.h",
+    "encodings.h",
+    "error/en.h",
+    "error/error.h",
+    "filereadstream.h",
+    "filewritestream.h",
+    "fwd_c.h",
+    "internal/biginteger.h",
+    "internal/diyfp.h",
+    "internal/dtoa.h",
+    "internal/ieee754.h",
+    "internal/itoa.h",
+    "internal/meta.h",
+    "internal/pow10.cc",
+    "internal/pow10.h",
+    "internal/regex.h",
+    "internal/stack.h",
+    "internal/strfunc.h",
+    "internal/strtod.h",
+    "internal/swap.h",
+    "istreamwrapper.h",
+    "memorybuffer.h",
+    "memorystream.h",
+    "ostreamwrapper.h",
+    "pointer.h",
+    "prettywriter.h",
+    "rapidjson.h",
+    "reader.h",
+    "schema.h",
+    "stream.h",
+    "stringbuffer.h",
+    "writer.h",
+  ], "abspath")
+
+template("rapidjson_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker, "*", [ "configs", "sources" ])
+
+    if (!defined(include_dirs)) {
+      include_dirs = []
+    }
+    include_dirs += [ "." ]
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    
+    sources = rapidjson_shared_sources
+  }
+}

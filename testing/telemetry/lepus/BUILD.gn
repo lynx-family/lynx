@@ -1,0 +1,25 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//testing/test.gni")
+benchmark_test("lepus_benchmark") {
+  testonly = true
+  sources = [ "lepus_benchmark.cc" ]
+  deps = [
+    ":lepus_benchmark_test_files",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//third_party/googletest:gtest",
+  ]
+}
+
+copy("lepus_benchmark_test_files") {
+  sources = [
+    "big_object.js",
+    "leak_objects.js",
+  ]
+  outputs = [ "$root_out_dir/benchmark_test_files/{{source_file_part}}" ]
+}

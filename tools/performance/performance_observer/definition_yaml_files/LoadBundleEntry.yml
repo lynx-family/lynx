@@ -1,0 +1,22 @@
+LoadBundleEntry:
+  x-type: 'pipeline'
+  x-name:
+    - 'loadBundle'
+    - 'reloadBundleFromNative'
+    - 'reloadBundleFromBackgroundRuntime'
+  allOf:
+    - $ref: 'PipelineEntry.yml#/PipelineEntry'
+    - type: object
+      properties:
+        loadBundleStart:
+          type: number
+        loadBundleEnd:
+          type: number
+        parseStart:
+          type: number
+        parseEnd:
+          type: number
+        loadBackgroundStart:
+          type: number
+        loadBackgroundEnd:
+          type: number

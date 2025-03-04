@@ -1,0 +1,13 @@
+MetricTtiEntry:
+  x-type: metric
+  x-name: tti
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        tti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        lynxTti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalTti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'

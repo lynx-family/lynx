@@ -1,0 +1,152 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+lynx_lepus_common_sources = [
+  "//${lynx_dir}/core/runtime/vm/lepus/base_binary_reader.cc",
+  "//${lynx_dir}/core/runtime/vm/lepus/binary_input_stream.cc",
+  "array.cc",
+  "array.h",
+  "base_api.h",
+  "base_binary_reader.h",
+  "binary_input_stream.h",
+  "binary_reader.cc",
+  "binary_reader.h",
+  "builtin.cc",
+  "builtin.h",
+  "byte_array.cc",
+  "byte_array.h",
+  "context.cc",
+  "context.h",
+  "js_object.cc",
+  "js_object.h",
+  "json_api.h",
+  "json_parser.cc",
+  "json_parser.h",
+  "lepus_error_helper.cc",
+  "lepus_error_helper.h",
+  "lepus_value.cc",
+  "lepus_value.h",
+  "path_parser.cc",
+  "path_parser.h",
+  "qjs_callback.cc",
+  "qjs_callback.h",
+  "ref_type.h",
+  "table.cc",
+  "table.h",
+]
+
+lynx_lepus_common_sources_path =
+    get_path_info(lynx_lepus_common_sources, "abspath")
+
+lynx_lepus_core_sources = [
+  "//${lynx_dir}/core/runtime/vm/lepus/output_stream.cc",
+  "array_api.cc",
+  "array_api.h",
+  "bytecode_print.cc",
+  "bytecode_print.h",
+  "date_api.h",
+  "exception.h",
+  "function.cc",
+  "function.h",
+  "function_api.cc",
+  "function_api.h",
+  "guard.h",
+  "heap.h",
+  "jsvalue_helper.h",
+  "lepus_date.cc",
+  "lepus_date.h",
+  "lepus_date_api.cc",
+  "lepus_date_api.h",
+  "lepus_global.cc",
+  "lepus_global.h",
+  "lepus_inspector.h",
+  "lepus_utils.h",
+  "marco.h",
+  "math_api.h",
+  "op_code.h",
+  "output_stream.h",
+  "quick_context.h",
+  "regexp.h",
+  "regexp_api.cc",
+  "regexp_api.h",
+  "string_api.cc",
+  "string_api.h",
+  "switch.cc",
+  "switch.h",
+  "table_api.cc",
+  "table_api.h",
+  "token.h",
+  "tt_tm.h",
+  "upvalue.h",
+  "visitor.h",
+  "vm_context.cc",
+  "vm_context.h",
+]
+if (is_ios) {
+  lynx_lepus_core_sources -= [
+    "bytecode_print.cc",
+    "bytecode_print.h",
+  ]
+}
+lynx_lepus_core_sources_path = get_path_info(lynx_lepus_core_sources, "abspath")
+
+lynx_lepus_compile_sources = [
+  "//${lynx_dir}/core/runtime/vm/lepus/context_binary_writer.cc",
+  "binary_writer.cc",
+  "binary_writer.h",
+  "bytecode_generator.cc",
+  "bytecode_generator.h",
+  "code_generator.cc",
+  "code_generator.h",
+  "context_binary_writer.h",
+  "parser.cc",
+  "parser.h",
+  "quickjs_debug_info.cc",
+  "quickjs_debug_info.h",
+  "scanner.cc",
+  "scanner.h",
+  "semantic_analysis.cc",
+  "semantic_analysis.h",
+  "syntax_tree.cc",
+  "syntax_tree.h",
+]
+if (is_ios) {
+  lynx_lepus_compile_sources -= [
+    "//${lynx_dir}/core/runtime/vm/lepus/context_binary_writer.cc",
+    "binary_writer.cc",
+    "binary_writer.h",
+    "context_binary_writer.h",
+  ]
+}
+
+lynx_lepus_compile_sources_path =
+    get_path_info(lynx_lepus_compile_sources, "abspath")
+
+lynx_lepus_ng_sources = [
+  "//lynx/core/runtime/bindings/lepus/renderer_ng.cc",
+  "jsvalue_helper.cc",
+  "jsvalue_helper.h",
+  "quick_context.cc",
+  "quick_context.h",
+  "ref_counted_class.cc",
+  "ref_counted_class.h",
+]
+
+lynx_lepus_ng_sources_path = get_path_info(lynx_lepus_ng_sources, "abspath")
+
+lynx_quick_context_pool_sources = [
+  "quick_context_pool.cc",
+  "quick_context_pool.h",
+]
+lynx_quick_context_pool_sources_path =
+    get_path_info(lynx_quick_context_pool_sources, "abspath")
+
+lynx_lepus_task_sources = [
+  "tasks/lepus_callback_manager.cc",
+  "tasks/lepus_callback_manager.h",
+  "tasks/lepus_raf_manager.cc",
+  "tasks/lepus_raf_manager.h",
+]
+
+lynx_lepus_task_sources_path = get_path_info(lynx_lepus_task_sources, "abspath")

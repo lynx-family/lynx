@@ -1,0 +1,32 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("modules_android_src") {
+  include_dirs = [ "//lynx/core/runtime/bindings/jsi/modules/android" ]
+  sources = [
+    "callback_impl.cc",
+    "callback_impl.h",
+    "java_attribute_descriptor.cc",
+    "java_attribute_descriptor.h",
+    "java_method_descriptor.cc",
+    "java_method_descriptor.h",
+    "lynx_module_android.cc",
+    "lynx_module_android.h",
+    "lynx_promise_impl.cc",
+    "lynx_promise_impl.h",
+    "lynx_proxy_runtime_helper.cc",
+    "lynx_proxy_runtime_helper.h",
+    "method_invoker.cc",
+    "method_invoker.h",
+    "module_factory_android.cc",
+    "module_factory_android.h",
+  ]
+  public_deps = [
+    "platform_jsi:platform_jsi_android",
+    "//lynx/third_party/rapidjson",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

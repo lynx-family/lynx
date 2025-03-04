@@ -1,0 +1,28 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+rootProject.name = "android"
+include ':LynxTrace'
+project(":LynxTrace").projectDir = new File(rootProject.projectDir, '../../base/trace/android')
+
+include ':LynxAndroid'
+project(":LynxAndroid").projectDir = new File(rootProject.projectDir, './lynx_android')
+include ':LynxJSSDK'
+project(":LynxJSSDK").projectDir = new File(rootProject.projectDir, './lynx_js_sdk')
+include ':LynxProcessor'
+project(":LynxProcessor").projectDir = new File(rootProject.projectDir, './lynx_processor')
+include ':TestingBase'
+project(":TestingBase").projectDir = new File(rootProject.projectDir, './testing_base')
+
+include ':lynx_service_log'
+project(":lynx_service_log").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_log')
+include ':lynx_service_image'
+project(":lynx_service_image").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_image')
+include ':lynx_service_devtool'
+project(":lynx_service_devtool").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_devtool')
+include ':LynxDevtool'
+project(":LynxDevtool").projectDir = new File(rootProject.projectDir, './lynx_devtool')
+include ":BaseDevtool"
+project(':BaseDevtool').projectDir = new File(rootProject.projectDir, '../../devtool/base_devtool/android/base_devtool')
+include ':lynx_service_http'
+project(":lynx_service_http").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_http')

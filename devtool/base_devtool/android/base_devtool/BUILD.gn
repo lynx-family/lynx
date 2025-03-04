@@ -1,0 +1,73 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/platform/android/Android.gni")
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+if (build_lynx_dylib) {
+  cmake_target("base_devtool") {
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "basedevtool"
+    deps = [ "//lynx/devtool/base_devtool/native:base_devtool_lib" ]
+    libs = [
+      "android",
+      "dl",
+      "log",
+    ]
+
+    configs = [
+      ":devtool_common_defines",
+      ":devtool_flag_config",
+      ":devtool_ldflag_config",
+      "//lynx/platform/android:16kb_page",
+    ]
+  }
+}
+
+config("devtool_common_defines") {
+  defines = [ "RAPIDJSON_HAS_STDSTRING=1" ]
+  if (!is_debug) {
+    defines += [
+      "ENABLE_LOGGING=0",
+      "NDEBUG",
+    ]
+  } else {
+    defines += [
+      "DEBUG_MEMORY",
+      "ENABLE_LOGGING=1",
+    ]
+  }
+}
+
+config("devtool_flag_config") {
+  cflags = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fno-short-enums",
+    "-fno-stack-protector",
+    "-fno-strict-aliasing",
+    "-Wno-unused-parameter",
+    "-Oz",
+  ]
+  cflags_c = []
+  cflags_cc = [
+    "-fno-rtti",
+    "-std=c++17",
+    "-Wl,-ldl",
+    "-Wno-unused-command-line-argument",
+  ]
+  configs = []
+  if (is_debug) {
+    cflags_cc += [ "-g" ]
+  }
+}
+
+config("devtool_ldflag_config") {
+  ldflags = [ "-Wl,--exclude-libs,ALL" ]
+  ldflags += [
+    "-Xlinker",
+    "-Map=output.map",
+  ]
+}

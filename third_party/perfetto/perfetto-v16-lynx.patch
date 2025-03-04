@@ -1,0 +1,289 @@
+diff --git a/sdk/perfetto.cc b/sdk/perfetto.cc
+index 69d0c116a..7201ac37d 100644
+--- a/sdk/perfetto.cc
++++ b/sdk/perfetto.cc
+@@ -83,6 +83,7 @@ void InstallCtrCHandler(CtrlCHandlerFunction);
+ 
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
+ #include <Windows.h>
++#include <processthreadsapi.h>
+ #include <io.h>
+ #else
+ #include <signal.h>
+@@ -92,6 +93,16 @@ void InstallCtrCHandler(CtrlCHandlerFunction);
+ namespace perfetto {
+ namespace base {
+ 
++#if PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
++PlatformProcessId GetProcessId() {
++  return static_cast<uint64_t>(GetCurrentProcessId());
++}
++
++PlatformThreadId GetThreadId() {
++  return static_cast<uint64_t>(GetCurrentThreadId());
++}
++#endif
++
+ namespace {
+ CtrlCHandlerFunction g_handler = nullptr;
+ }
+@@ -499,7 +510,7 @@ namespace perfetto {
+ namespace base {
+ 
+ constexpr uid_t kInvalidUid = static_cast<uid_t>(-1);
+-constexpr pid_t kInvalidPid = static_cast<pid_t>(-1);
++__attribute__((unused)) constexpr pid_t kInvalidPid = static_cast<pid_t>(-1);
+ 
+ // Do not add new usages of kPageSize, consider using GetSysPageSize() below.
+ // TODO(primiano): over time the semantic of kPageSize became too ambiguous.
+@@ -2177,6 +2188,8 @@ bool RingBuffer::IsOnValidTaskRunner() {
+ #if defined(ADDRESS_SANITIZER) && !PERFETTO_BUILDFLAG(PERFETTO_OS_WIN) && \
+     !defined(ADDRESS_SANITIZER_WITHOUT_INSTRUMENTATION)
+ 
++#define __sanitizer_annotate_contiguous_container(...) /**/
++
+ #define ANNOTATE_NEW_BUFFER(buffer, capacity, new_size)                      \
+   if (buffer) {                                                              \
+     __sanitizer_annotate_contiguous_container(buffer, (buffer) + (capacity), \
+@@ -6451,6 +6464,10 @@ class PERFETTO_EXPORT ThreadTaskRunner : public TaskRunner {
+ #include <sys/prctl.h>
+ #endif
+ 
++#if PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
++#include <processthreadsapi.h>
++#endif
++
+ // Internal implementation utils that aren't as widely useful/supported as
+ // base/thread_utils.h.
+ 
+@@ -6459,6 +6476,7 @@ namespace base {
+ 
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_LINUX) ||   \
+     PERFETTO_BUILDFLAG(PERFETTO_OS_ANDROID) || \
++    PERFETTO_BUILDFLAG(PERFETTO_OS_WIN) || \
+     PERFETTO_BUILDFLAG(PERFETTO_OS_APPLE)
+ // Sets the "comm" of the calling thread to the first 15 chars of the given
+ // string.
+@@ -6469,16 +6487,28 @@ inline bool MaybeSetThreadName(const std::string& name) {
+ 
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_APPLE)
+   return pthread_setname_np(buf) == 0;
++#elif PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
++  wchar_t wstr[128];
++  mbstowcs(wstr, buf, sizeof(buf));
++  HRESULT hr = SetThreadDescription(GetCurrentThread(), wstr);
++  return SUCCEEDED(hr);
+ #else
+   return pthread_setname_np(pthread_self(), buf) == 0;
+ #endif
+ }
+ 
+ inline bool GetThreadName(std::string& out_result) {
+-  char buf[16] = {};
++  char buf[64] = {};
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_ANDROID)
+   if (prctl(PR_GET_NAME, buf) != 0)
+     return false;
++#elif PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
++  PWSTR data;
++  HRESULT hr = GetThreadDescription(GetCurrentThread(), &data);
++  if (FAILED(hr))
++    return false;
++  wcstombs(buf, data, sizeof(buf));
++  LocalFree(data);
+ #else
+   if (pthread_getname_np(pthread_self(), buf, sizeof(buf)) != 0)
+     return false;
+@@ -39821,15 +39851,15 @@ void TracingMuxerImpl::RegisterInterceptor(
+           }
+         }
+         // Only allow certain interceptors for now.
+-        if (descriptor.name() != "test_interceptor" &&
+-            descriptor.name() != "console") {
+-          PERFETTO_ELOG(
+-              "Interceptors are experimental. If you want to use them, please "
+-              "get in touch with the project maintainers "
+-              "(https://perfetto.dev/docs/contributing/"
+-              "getting-started#community).");
+-          return;
+-        }
++        // if (descriptor.name() != "test_interceptor" &&
++        //     descriptor.name() != "console") {
++        //   PERFETTO_ELOG(
++        //       "Interceptors are experimental. If you want to use them, please "
++        //       "get in touch with the project maintainers "
++        //       "(https://perfetto.dev/docs/contributing/"
++        //       "getting-started#community).");
++        //   return;
++        // }
+         interceptors_.emplace_back();
+         RegisteredInterceptor& interceptor = interceptors_.back();
+         interceptor.descriptor = descriptor;
+@@ -41251,7 +41281,7 @@ EventContext TrackEventInternal::WriteEvent(
+   // We assume that |category| and |name| point to strings with static lifetime.
+   // This means we can use their addresses as interning keys.
+   // TODO(skyostil): Intern categories at compile time.
+-  if (category && type != protos::pbzero::TrackEvent::TYPE_SLICE_END &&
++  if (category &&
+       type != protos::pbzero::TrackEvent::TYPE_COUNTER) {
+     category->ForEachGroupMember(
+         [&](const char* member_name, size_t name_size) {
+diff --git a/sdk/perfetto.h b/sdk/perfetto.h
+index 53a05fba2..23497a822 100644
+--- a/sdk/perfetto.h
++++ b/sdk/perfetto.h
+@@ -32,6 +32,10 @@
+  * limitations under the License.
+  */
+ 
++// Prevents namespace conflicts
++#define perfetto LnxPft
++#define protozero LnxPze
++
+ #ifndef INCLUDE_PERFETTO_TRACING_BUFFER_EXHAUSTED_POLICY_H_
+ #define INCLUDE_PERFETTO_TRACING_BUFFER_EXHAUSTED_POLICY_H_
+ 
+@@ -333,15 +337,7 @@ enum class BufferExhaustedPolicy {
+ #define PERFETTO_PRINTF_FORMAT(x, y)
+ #endif
+ 
+-#if PERFETTO_BUILDFLAG(PERFETTO_OS_IOS)
+-// TODO(b/158814068): For iOS builds, thread_local is only supported since iOS
+-// 8. We'd have to use pthread for thread local data instead here. For now, just
+-// define it to nothing since we don't support running perfetto or the client
+-// lib on iOS right now.
+-#define PERFETTO_THREAD_LOCAL
+-#else
+ #define PERFETTO_THREAD_LOCAL thread_local
+-#endif
+ 
+ #if defined(__GNUC__) || defined(__clang__)
+ #define PERFETTO_POPCOUNT(x) __builtin_popcountll(x)
+@@ -4041,6 +4037,11 @@ class TrackEvent : public ::protozero::Message {
+   template <typename T = DebugAnnotation> T* add_debug_annotations() {
+     return BeginNestedMessage<T>(4);
+   }
++  template <typename T = DebugAnnotation> void add_debug_annotations(const std::string& name, const std::string& value) {
++    T* annotations = add_debug_annotations();
++    annotations->set_name(name);
++    annotations->set_string_value(value);
++  }
+ 
+ 
+   using FieldMetadata_TaskExecution =
+@@ -9113,9 +9114,6 @@ class DataSource : public DataSourceBase {
+   // per data-source *instance*.
+   static internal::DataSourceThreadLocalState* GetOrCreateDataSourceTLS(
+       internal::DataSourceStaticState* static_state) {
+-#if PERFETTO_BUILDFLAG(PERFETTO_OS_IOS)
+-    PERFETTO_FATAL("Data source TLS not supported on iOS, see b/158814068");
+-#endif
+     auto* tracing_impl = internal::TracingMuxer::Get();
+     internal::TracingTLS* root_tls = tracing_impl->GetOrCreateTracingTLS();
+     internal::DataSourceThreadLocalState* ds_tls =
+@@ -12193,8 +12191,8 @@ struct TraceFormatTraits<std::nullptr_t> {
+ // gen_amalgamated expanded: #include "perfetto/base/build_config.h"
+ 
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
+-#include <Windows.h>
+-#include <processthreadsapi.h>
++// #include <Windows.h>
++// #include <processthreadsapi.h>
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_FUCHSIA)
+ #include <zircon/process.h>
+ #include <zircon/types.h>
+@@ -12212,9 +12210,7 @@ inline PlatformProcessId GetProcessId() {
+ }
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
+ using PlatformProcessId = uint64_t;
+-inline PlatformProcessId GetProcessId() {
+-  return static_cast<uint64_t>(GetCurrentProcessId());
+-}
++PlatformProcessId GetProcessId();
+ #else
+ using PlatformProcessId = pid_t;
+ inline PlatformProcessId GetProcessId() {
+@@ -12251,8 +12247,8 @@ inline PlatformProcessId GetProcessId() {
+ // gen_amalgamated expanded: #include "perfetto/base/build_config.h"
+ 
+ #if PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
+-#include <Windows.h>
+-#include <processthreadsapi.h>
++// #include <Windows.h>
++// #include <processthreadsapi.h>
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_FUCHSIA)
+ #include <zircon/process.h>
+ #include <zircon/types.h>
+@@ -12292,9 +12288,7 @@ inline PlatformThreadId GetThreadId() {
+ }
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_WIN)
+ using PlatformThreadId = uint64_t;
+-inline PlatformThreadId GetThreadId() {
+-  return static_cast<uint64_t>(GetCurrentThreadId());
+-}
++PlatformThreadId GetThreadId();
+ #elif PERFETTO_BUILDFLAG(PERFETTO_OS_NACL)
+ using PlatformThreadId = pid_t;
+ inline PlatformThreadId GetThreadId() {
+@@ -15437,7 +15431,6 @@ class TrackEventDataSource
+             // category) is stored as part of the track descriptor instead being
+             // recorded with individual events.
+             if (CatTraits::kIsDynamic &&
+-                type != protos::pbzero::TrackEvent::TYPE_SLICE_END &&
+                 type != protos::pbzero::TrackEvent::TYPE_COUNTER) {
+               DynamicCategory dynamic_category =
+                   CatTraits::GetDynamicCategory(category);
+@@ -15977,6 +15970,11 @@ constexpr bool IsDynamicCategory(const ::perfetto::DynamicCategory&) {
+       category, /*name=*/nullptr,      \
+       ::perfetto::protos::pbzero::TrackEvent::TYPE_SLICE_END, ##__VA_ARGS__)
+ 
++#define TRACE_EVENT_END_WITH_NAME(category, name, ...)       \
++  PERFETTO_INTERNAL_TRACK_EVENT(                             \
++      category, ::perfetto::internal::GetStaticString(name), \
++      ::perfetto::protos::pbzero::TrackEvent::TYPE_SLICE_END, ##__VA_ARGS__)
++
+ // Begin a slice which gets automatically closed when going out of scope.
+ #define TRACE_EVENT(category, name, ...) \
+   PERFETTO_INTERNAL_SCOPED_TRACK_EVENT(category, name, ##__VA_ARGS__)
+@@ -16751,7 +16749,7 @@ class PERFETTO_EXPORT TrackEventLegacy {
+ #define PERFETTO_INTERNAL_LEGACY_EVENT(phase, category, name, flags,         \
+                                        thread_id, ...)                       \
+   [&]() {                                                                    \
+-    constexpr auto& kDefaultTrack =                                          \
++    const auto& kDefaultTrack =                                              \
+         ::perfetto::internal::TrackEventInternal::kDefaultTrack;             \
+     /* First check the scope for instant events. */                          \
+     if ((phase) == TRACE_EVENT_PHASE_INSTANT) {                              \
+@@ -111098,6 +111096,11 @@ class TrackEvent : public ::protozero::Message {
+   template <typename T = DebugAnnotation> T* add_debug_annotations() {
+     return BeginNestedMessage<T>(4);
+   }
++  template <typename T = DebugAnnotation> void add_debug_annotations(const std::string& name, const std::string& value) {
++    T* annotations = add_debug_annotations();
++    annotations->set_name(name);
++    annotations->set_string_value(value);
++  }
+ 
+ 
+   using FieldMetadata_TaskExecution =
+@@ -123314,6 +123317,11 @@ class PERFETTO_EXPORT TrackEvent : public ::protozero::CppMessageObj {
+   int debug_annotations_size() const;
+   void clear_debug_annotations();
+   DebugAnnotation* add_debug_annotations();
++  void add_debug_annotations(const std::string& name, const std::string& value) {
++    auto* annotations = add_debug_annotations();
++    annotations->set_name(name);
++    annotations->set_string_value(value);
++  }
+ 
+   bool has_task_execution() const { return _has_field_[5]; }
+   const TaskExecution& task_execution() const { return *task_execution_; }
+@@ -132163,4 +132171,8 @@ class StackBuffered : public StaticBuffered<T> {
+ }  // namespace protozero
+ 
+ #endif  // INCLUDE_PERFETTO_PROTOZERO_STATIC_BUFFER_H_
++namespace lynx {
++  namespace perfetto = ::perfetto;
++} // namespace lynx
++
+ 

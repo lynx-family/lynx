@@ -1,0 +1,168 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/devtool/base_devtool/native/base_devtool.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+group("base_devtool_lib") {
+  # core
+  deps = [
+    ":base_devtool",
+    ":base_devtool_jni",
+  ]
+
+  # add others
+  if (is_android && !enable_unittests) {
+    deps += [ "//lynx/base/src:string_utils" ]
+  }
+}
+
+group("base_devtool_without_jni_lib") {
+  deps = [ ":base_devtool" ]
+}
+
+group("base_devtool_common_lib") {
+  deps = [ ":base_devtool_common" ]
+}
+
+# base_devtool_shared_sources
+base_devtool_shared_sources = [
+  "abstract_devtool.cc",
+  "cdp_domain_agent_base.cc",
+  "debug_router_message_subscriber.h",
+  "devtool_global_slot.cc",
+  "devtool_global_slot.h",
+  "devtool_message_dispatcher.cc",
+  "devtool_slot.cc",
+  "devtool_slot.h",
+  "devtool_status.cc",
+  "global_message_channel.cc",
+  "global_message_channel.h",
+  "global_message_dispatcher.cc",
+  "global_message_dispatcher.h",
+  "public/abstract_devtool.h",
+  "public/base_devtool_export.h",
+  "public/cdp_domain_agent_base.h",
+  "public/devtool_message_dispatcher.h",
+  "public/devtool_message_handler.h",
+  "public/devtool_status.h",
+  "public/message_sender.h",
+  "view_message_channel.cc",
+  "view_message_channel.h",
+  "view_message_dispatcher.cc",
+  "view_message_dispatcher.h",
+]
+
+if (enable_unittests) {
+  base_devtool_shared_sources += [
+    "test/devtool_global_slot_platform_mock.cc",
+    "test/devtool_global_slot_platform_mock.h",
+    "test/devtool_slot_platform_mock.cc",
+    "test/devtool_slot_platform_mock.h",
+    "test/mock_receiver.cc",
+    "test/mock_receiver.h",
+  ]
+}
+if (is_android && !enable_unittests) {
+  base_devtool_shared_sources += [
+    "android/devtool_global_slot_android.cc",
+    "android/devtool_slot_android.cc",
+  ]
+}
+if (is_ios && !enable_unittests) {
+  base_devtool_shared_sources += [
+    "darwin/ios/devtool_global_slot_ios.h",
+    "darwin/ios/devtool_global_slot_ios.mm",
+    "darwin/ios/devtool_slot_ios.h",
+    "darwin/ios/devtool_slot_ios.mm",
+  ]
+}
+
+# base_devtool_shared_sources end
+
+common_devtool_shared_sources = [
+  "common/devtool_global_slot_common.cc",
+  "common/devtool_global_slot_common.h",
+  "common/devtool_slot_common.cc",
+  "common/devtool_slot_common.h",
+]
+
+base_devtool_public_headers = [
+  "//lynx/devtool/base_devtool/native/js_inspect/inspector_client_delegate_base_impl.h",
+  "//lynx/devtool/base_devtool/native/public/abstract_devtool.h",
+  "//lynx/devtool/base_devtool/native/public/cdp_domain_agent_base.h",
+  "//lynx/devtool/base_devtool/native/public/devtool_message_dispatcher.h",
+  "//lynx/devtool/base_devtool/native/public/devtool_message_handler.h",
+  "//lynx/devtool/base_devtool/native/public/devtool_status.h",
+  "//lynx/devtool/base_devtool/native/public/message_sender.h",
+  "//lynx/devtool/base_devtool/native/public/base_devtool_export.h",
+]
+
+base_devtool_jni_sources = [
+  "android/base_devtool_jni_load.cc",
+  "android/base_devtool_jni_load.h",
+]
+
+base_devtool_source_set("base_devtool_jni") {
+  sources = base_devtool_jni_sources
+}
+
+base_devtool_source_set("base_devtool") {
+  public = base_devtool_public_headers
+
+  sources = base_devtool_shared_sources
+
+  public_deps = [
+    "//lynx/core/base:json_utils",
+    "//lynx/devtool/base_devtool/native/js_inspect:base_devtool_js_inspect",
+    "//lynx/third_party/jsoncpp:jsoncpp",
+    "//lynx/third_party/modp_b64:modp_b64",
+  ]
+
+  if (!defined(deps)) {
+    deps = [
+      "//lynx/base/src:base",
+      "//lynx/base/src:base_log",
+      "//third_party/zlib",
+    ]
+  }
+
+  if (!defined(include_dirs)) {
+    include_dirs = []
+  }
+
+  include_dirs += [
+    "//lynx/third_party/jsoncpp/include/",
+    "//",
+  ]
+  if (is_android && !enable_unittests) {
+    deps += [
+      ":android_jni",
+      "//lynx/core/build:build",
+    ]
+  }
+}
+
+base_devtool_source_set("base_devtool_common") {
+  sources = []
+  if (!enable_unittests) {
+    sources += common_devtool_shared_sources
+  } else {
+    not_needed(common_devtool_shared_sources)
+  }
+  deps = [ ":base_devtool" ]
+}
+
+subspec_target("base_devtool_subspec") {
+  sources = base_devtool_shared_sources
+  public_header_files = base_devtool_public_headers
+}
+
+base_devtool_source_set("android_jni") {
+  sources = [
+    "//lynx/core/base/android/android_jni.cc",
+    "//lynx/core/base/android/callstack_util_android.cc",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

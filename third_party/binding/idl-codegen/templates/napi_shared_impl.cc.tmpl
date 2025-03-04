@@ -1,0 +1,210 @@
+{% from 'macros.tmpl' import insufficient_argnum_defend, convert_argument, call_out_init, call_out_return_value, convert_attribute %}
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#include "{{this_include_header_path}}"
+
+#include <vector>
+#include <utility>
+
+{% for filename in hardcoded_includes %}
+#include "{{filename}}"
+{% endfor %}
+
+{% if buffer_commands %}
+#include "jsbridge/bindings/{{component}}/napi_{{component}}_command_buffer.h"
+#include "base/include/fml/make_copyable.h"
+{% endif %}
+
+using Napi::Array;
+using Napi::CallbackInfo;
+using Napi::Error;
+using Napi::Function;
+using Napi::FunctionReference;
+using Napi::Number;
+using Napi::Object;
+using Napi::ObjectWrap;
+using Napi::String;
+using Napi::TypeError;
+using Napi::Value;
+
+using Napi::ArrayBuffer;
+using Napi::Int8Array;
+using Napi::Uint8Array;
+using Napi::Int16Array;
+using Napi::Uint16Array;
+using Napi::Int32Array;
+using Napi::Uint32Array;
+using Napi::Float32Array;
+using Napi::Float64Array;
+using Napi::DataView;
+
+using lynx::binding::IDLBoolean;
+using lynx::binding::IDLDouble;
+using lynx::binding::IDLFloat;
+using lynx::binding::IDLFunction;
+using lynx::binding::IDLNumber;
+using lynx::binding::IDLString;
+using lynx::binding::IDLUnrestrictedFloat;
+using lynx::binding::IDLUnrestrictedDouble;
+using lynx::binding::IDLNullable;
+using lynx::binding::IDLObject;
+using lynx::binding::IDLInt8Array;
+using lynx::binding::IDLInt16Array;
+using lynx::binding::IDLInt32Array;
+using lynx::binding::IDLUint8ClampedArray;
+using lynx::binding::IDLUint8Array;
+using lynx::binding::IDLUint16Array;
+using lynx::binding::IDLUint32Array;
+using lynx::binding::IDLFloat32Array;
+using lynx::binding::IDLFloat64Array;
+using lynx::binding::IDLArrayBuffer;
+using lynx::binding::IDLArrayBufferView;
+using lynx::binding::IDLDictionary;
+using lynx::binding::IDLSequence;
+using lynx::binding::NativeValueTraits;
+
+using lynx::binding::ExceptionMessage;
+
+namespace lynx {
+namespace {{component}} {
+
+{{napi_class}}::{{napi_class}}(const CallbackInfo& info, bool unused)
+    : NapiBridge(info) {
+}
+
+void {{napi_class}}::Init(std::unique_ptr<{{cpp_class}}> impl) {
+  DCHECK(impl);
+  DCHECK(!impl_);
+
+  {% if parent_interface %}
+  impl_ = impl.release();
+
+  // Also initialize base part as its initialization was skipped.
+  Napi{{parent_interface}}::Init(std::unique_ptr<{{parent_cpp_class}}>(impl_));
+  {% else %}
+  impl_ = std::move(impl);
+  // We only associate and call OnWrapped() once, when we init the root base.
+  impl_->AssociateWithWrapper(this);
+  {% endif %}
+}
+
+{% if not parent_interface %}
+ImplBase* {{napi_class}}::ReleaseImpl() {
+  impl_->AssociateWithWrapper(nullptr);
+  return impl_.release();
+}
+{% endif %}
+
+{% macro callee(attr_or_method) %}
+  {% if attr_or_method.is_static %}
+  {{cpp_class}}::
+  {% else %}
+  impl_->
+  {% endif %}
+{% endmacro %}
+
+{% for attribute in attributes %}
+{{'// static' if attribute.is_static}}
+Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const CallbackInfo& info) {
+  {% if enable_trace %}
+  {{macro_prefix}}TRACE_EVENT0("{{attribute.camel_case_name}}G");
+  {% endif %}
+  {% if not attribute.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {% if attribute.is_boolean_type %}
+  return Napi::Boolean::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.is_numeric_type %}
+  return Number::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.is_string_type or attribute.enum_type %}
+  return String::New(info.Env(), {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}());
+  {% elif attribute.idl_type == 'object' %}
+  return {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+  {% elif attribute.is_wrapper_type %}
+  auto* wrapped = {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+
+  {% if attribute.is_nullable %}
+  if (!wrapped) {
+    return info.Env().Null();
+  }
+  {% endif %}
+  // Impl needs to take care of object ownership.
+  DCHECK(wrapped->IsNapiWrapped());
+  return wrapped->NapiObject();
+  {% elif attribute.union_types or attribute.is_typed_array or attribute.idl_type == 'ArrayBuffer' or attribute.idl_type == 'ArrayBufferView' %}
+  return {{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}();
+  {% else %}
+  ExceptionMessage::NotImplemented(info.Env());
+  return Value();
+  {% endif %}
+}
+
+{% if attribute.does_generate_setter %}
+{{'// static' if attribute.is_static}}
+void {{napi_class}}::{{attribute.camel_case_name}}AttributeSetter(const CallbackInfo& info, const Value& value) {
+  {% if enable_trace %}
+  {{macro_prefix}}TRACE_EVENT0("{{attribute.camel_case_name}}S");
+  {% endif %}
+  {% if not attribute.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {{ convert_attribute(callee(attribute) | trim, attribute) | trim }}
+}
+
+{% endif %}
+{% endfor %}
+
+{% for method in methods %}
+{% if method.has_binding_version %}
+{{'// static' if method.is_static}}
+Value {{napi_class}}::{{method.camel_case_name}}Method{{'Overload' + method.overload_index | string if method.overload_index}}(const CallbackInfo& info) {
+  {% if enable_trace and not method.overload_index %}
+  {{macro_prefix}}TRACE_EVENT0("{{method.camel_case_name}}M");
+  {% endif %}
+  {% if not method.is_static %}
+  DCHECK(impl_);
+  {% endif %}
+  {% if method.is_raises_exception %}
+  binding::ExceptionState exception_state(info.Env());
+  {% endif %}
+
+  {% if buffer_commands %}
+  {{command_buffer_class}}::FlushCommandBuffer(info.Env());
+  {% endif %}
+
+  {{ insufficient_argnum_defend("Value", method, method.camel_case_name) | trim }}
+
+  {% for argument in method.arguments %}
+  {% if argument.is_optional %}
+  if (info.Length() <= {{argument.index}}) {
+    {{ call_out_return_value(method, argument.index, callee(method) | trim) | trim | indent(2)}}
+  }
+  {% endif %}
+
+  {% if method.cpp_type == 'void' %}
+  {{ convert_argument('return info.Env().Undefined();', argument)| trim }}
+  {% else %}
+  {{ convert_argument('return Value();', argument)| trim }}
+  {% endif %}
+
+  {% endfor %}
+  {{ call_out_return_value(method, method.number_of_arguments, callee(method) | trim) | trim }}
+}
+
+{% endif %}
+{% endfor %}
+}  // namespace {{component}}
+}  // namespace lynx
+
+{% endfilter %}{# format_blink_cpp_source_code #}

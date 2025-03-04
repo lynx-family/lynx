@@ -1,0 +1,57 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+profile_public_header = [
+  "runtime_profiler.h",
+  "runtime_profiler_manager.h",
+]
+
+source_set("profile_public_header") {
+  sources = profile_public_header
+
+  public_deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/trace/native:trace_public_headers",
+  ]
+}
+
+lynx_core_source_set("profile") {
+  sources = profile_public_header
+  sources += [
+    "runtime_profiler.cc",
+    "runtime_profiler_manager.cc",
+  ]
+
+  public_deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/src:base_log",
+    "//lynx/base/trace/native:trace_public_headers",
+  ]
+}
+
+unittest_set("profile_testset") {
+  sources = [ "runtime_profiler_unittest.cc" ]
+  public_deps = [
+    ":profile",
+    "//lynx/base/src:base",
+    "//lynx/base/src:base_log",
+    "//lynx/base/trace/native:trace",
+  ]
+}
+
+unittest_exec("profile_unittests_exec") {
+  sources = []
+  deps = [ ":profile_testset" ]
+}
+
+group("profile_tests") {
+  testonly = true
+  deps = [
+    ":profile_testset",
+    ":profile_unittests_exec",
+  ]
+}

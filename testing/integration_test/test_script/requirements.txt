@@ -1,0 +1,8 @@
+opencv-python
+requests>=2.25.1
+lynx-e2e-appium==0.0.4
+pyyaml
+retrying
+appium-python-client==3.1.1
+selenium==4.17.2
+ujson

@@ -1,0 +1,51 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("css_encoder") {
+  sources = [
+    "css_font_face_token.cc",
+    "css_font_face_token.h",
+    "css_keyframes_token.cc",
+    "css_keyframes_token.h",
+    "css_parse_token_group.h",
+    "css_parser.cc",
+    "css_parser.h",
+    "css_parser_token.cc",
+    "css_parser_token.h",
+    "shared_css_fragment.cc",
+    "shared_css_fragment.h",
+  ]
+
+  # After clarifying all dependencies, then add new deps.
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}
+
+unittest_set("css_encoder_testset") {
+  include_dirs = [ "//core/" ]
+
+  public_deps = [
+    ":css_encoder",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+  ]
+
+  sources = [
+    "css_font_face_token_unittest.cc",
+    "css_keyframes_token_unittest.cc",
+    "css_parser_token_unittest.cc",
+    "css_parser_unittest.cc",
+    "shared_css_fragment_unittest.cc",
+  ]
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}
+
+unittest_exec("css_encoder_test_exec") {
+  testonly = true
+  deps = [ ":css_encoder_testset" ]
+}

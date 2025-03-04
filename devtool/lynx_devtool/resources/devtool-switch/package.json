@@ -1,0 +1,24 @@
+{
+  "name": "devtool-switch",
+  "private": true,
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "rspeedy build",
+    "dev": "rspeedy dev",
+    "preview": "rspeedy preview"
+  },
+  "dependencies": {
+    "@lynx-js/react": "^0.105.0",
+    "i18next": "^23.16.8",
+    "jotai": "^2.11.0"
+  },
+  "devDependencies": {
+    "@lynx-js/qrcode-rsbuild-plugin": "^0.3.3",
+    "@lynx-js/react-rsbuild-plugin": "^0.9.0",
+    "@lynx-js/rspeedy": "^0.8.2",
+    "@lynx-js/types": "link:../../../../js_libraries/types",
+    "@types/react": "^18.3.12"
+  }
+}

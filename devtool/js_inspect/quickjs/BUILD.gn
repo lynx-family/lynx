@@ -1,0 +1,33 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+quickjs_debug_source = [
+  "quickjs_inspector_client_provider.cc",
+  "quickjs_inspector_client_provider.h",
+  "quickjs_internal/interface.h",
+  "quickjs_internal/quickjs_debugger_ng.cc",
+  "quickjs_internal/quickjs_debugger_ng.h",
+  "quickjs_internal/quickjs_inspected_context.cc",
+  "quickjs_internal/quickjs_inspected_context.h",
+  "quickjs_internal/quickjs_inspected_context_callbacks.cc",
+  "quickjs_internal/quickjs_inspected_context_callbacks.h",
+  "quickjs_internal/quickjs_inspector.h",
+  "quickjs_internal/quickjs_inspector_impl.cc",
+  "quickjs_internal/quickjs_inspector_impl.h",
+  "quickjs_inspector_client_impl.cc",
+  "quickjs_inspector_client_impl.h",
+]
+
+source_set("quickjs_debug") {
+  sources = quickjs_debug_source
+  deps = [
+    "//lynx/base/src:base_log_headers",
+    "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+    "//lynx/devtool/js_inspect:inspector_const",
+  ]
+  include_dirs = [ "//lynx/third_party" ]
+  public_configs = [ "//lynx/third_party/quickjs:quickjs_public_config" ]
+}

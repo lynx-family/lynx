@@ -1,0 +1,35 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+template("test_source_set") {
+  source_set("$target_name") {
+    forward_variables_from(invoker,
+                           [
+                             "sources",
+                             "public_deps",
+                             "public",
+                             "configs",
+                             "include_dirs",
+                           ])
+    if (defined(invoker.exclude_configs)) {
+      configs -= invoker.exclude_configs
+    }
+  }
+}
+
+template("test_shared_library") {
+  shared_library("$target_name") {
+    forward_variables_from(invoker,
+                           [
+                             "output_name",
+                             "sources",
+                             "public_deps",
+                             "configs",
+                             "include_dirs",
+                           ])
+    if (defined(invoker.exclude_configs)) {
+      configs -= invoker.exclude_configs
+    }
+  }
+}

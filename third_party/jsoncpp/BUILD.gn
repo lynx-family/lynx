@@ -1,0 +1,32 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+source_set("jsoncpp") {
+  include_dirs = [ "include" ]
+  defines = [ 
+    "JSON_USE_EXCEPTION=0",
+    "JSONCPP_NORETURN= ", # empty define
+  ]
+  sources = [
+    "include/json/allocator.h",
+    "include/json/assertions.h",
+    "include/json/autolink.h",
+    "include/json/config.h",
+    "include/json/features.h",
+    "include/json/forwards.h",
+    "include/json/json.h",
+    "include/json/reader.h",
+    "include/json/value.h",
+    "include/json/version.h",
+    "include/json/writer.h",
+    "src/lib_json/json_reader.cpp",
+    "src/lib_json/json_tool.h",
+    "src/lib_json/json_value.cpp",
+    "src/lib_json/json_valueiterator.inl",
+    "src/lib_json/json_writer.cpp",
+  ]
+  if (is_win) {
+    cflags = [ "/EHsc" ]
+  }
+}

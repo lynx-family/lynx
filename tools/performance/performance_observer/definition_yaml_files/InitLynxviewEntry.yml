@@ -1,0 +1,11 @@
+InitLynxviewEntry:
+  x-type: init
+  x-name: lynxview
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        createLynxStart:
+          type: number
+        createLynxEnd:
+          type: number

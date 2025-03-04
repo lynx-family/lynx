@@ -1,0 +1,9 @@
+## Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("lynx_jni_on_load") {
+  sources = [ "main/jni/lynx_so_load.cpp" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

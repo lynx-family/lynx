@@ -1,0 +1,74 @@
+{
+    "name": "flex-basis",
+    "id": 51,
+    "type": "length",
+    "default_value": "auto",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "flex-basis": {
+            "__compat": {
+              "description": "<code>flex-basis</code>",
+              "lynx_path": "api/css/properties/flex-basis",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/flex-basis",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            },
+            "unsupported_value_": {
+              "__compat": {
+                "description": "<code>max-content</code>, <code>min-content</code>, <code>fit-content</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "clay_android": {
+                    "version_added": false
+                  },
+                  "clay_macos": {
+                    "version_added": false
+                  },
+                  "clay_windows": {
+                    "version_added": false
+                  },
+                  "web_lynx": {
+                    "version_added": false
+                  }
+                }
+              }
+            }
+          }
+    }
+}

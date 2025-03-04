@@ -1,0 +1,101 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+
+android {
+    compileSdkVersion 32
+
+    defaultConfig {
+        applicationId "com.lynx.explorer"
+        minSdkVersion 24
+        targetSdkVersion 32
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        packagingOptions {
+            pickFirst 'lib/*/libc++_shared.so'
+            pickFirst 'lib/*/liblynx.so'
+            pickFirst 'lib/*/liblynxtrace.so'
+            pickFirst '**/libnapi.so'
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile file(MYAPP_RELEASE_KEYSTORE_FILE)
+            storePassword MYAPP_RELEASE_STORE_PASSWORD
+            keyAlias MYAPP_RELEASE_KEY_ALIAS
+            keyPassword MYAPP_RELEASE_KEY_PASSWORD
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        asan {
+            dimension "lynx"
+            matchingFallbacks = ["asan"]
+        }
+        noasan {
+            dimension "lynx"
+            matchingFallbacks= ["noasan"]
+            getIsDefault().set(true)
+        }
+    }
+
+    sourceSets {
+        asan {
+            jni.srcDirs = ["../../core/build/gen"]
+        }
+        noasan {
+            jni.srcDirs = ["../../core/build/gen"]
+        }
+
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.0.0'
+    implementation 'androidx.core:core:1.6.0'
+    implementation 'com.facebook.fresco:fresco:2.3.0'
+    implementation 'com.facebook.fresco:animated-gif:2.3.0'
+    implementation 'com.facebook.fresco:animated-webp:2.3.0'
+    implementation 'com.facebook.fresco:webpsupport:2.3.0'
+    implementation 'com.facebook.fresco:animated-base:2.3.0'
+
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    implementation "com.squareup.okhttp3:okhttp:4.9.0"
+    implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.4.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.7.0'
+    implementation 'org.lynxsdk.lynx:v8so:0.0.1'
+
+    implementation project(':LynxAndroid')
+    implementation project(':LynxTestBench')
+
+    implementation project(':lynx_service_log')
+    implementation project(':lynx_service_image')
+    implementation project(':lynx_service_devtool')
+    implementation project(':lynx_service_http')
+    implementation project(':LynxDevtool')
+
+    kapt project(':LynxProcessor')
+    compileOnly project(':LynxProcessor')
+}

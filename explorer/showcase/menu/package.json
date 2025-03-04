@@ -1,0 +1,24 @@
+{
+  "name": "@showcase/menu",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "rspeedy build",
+    "build:dev": "rspeedy build --mode=development",
+    "dev": "rspeedy dev"
+  },
+  "dependencies": {
+    "@lynx-js/react": "0.105.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "6",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@lynx-js/qrcode-rsbuild-plugin": "^0.3.3",
+    "@lynx-js/react-rsbuild-plugin": "0.9.0",
+    "@lynx-js/rspeedy": "0.8.2",
+    "@rsbuild/plugin-sass": "^1.1.2",
+    "@types/react": "^18.3.2",
+    "prettier": "3.4.2"
+  }
+}

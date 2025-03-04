@@ -1,0 +1,32 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/core/base_targets.gni")
+
+template("base_devtool_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker, "*", [ "configs" ])
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+    if (is_android) {
+      configs += [
+        "//lynx/devtool/base_devtool/android/base_devtool:devtool_common_defines",
+        "//lynx/devtool/base_devtool/android/base_devtool:devtool_flag_config",
+      ]
+    }
+    if (!defined(defines)) {
+      defines = []
+    }
+    defines += [ "DEFINED_BASE_DEVTOOL" ]
+    if (!defined(deps)) {
+      deps = []
+    }
+  }
+}

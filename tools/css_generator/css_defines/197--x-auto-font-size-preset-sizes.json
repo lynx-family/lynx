@@ -1,0 +1,10 @@
+{
+    "name": "-x-auto-font-size-preset-sizes",
+    "id": 197,
+    "type": "complex",
+    "default_value": "",
+    "version": "2.12",
+    "author": "zhouzhuangzhuang",
+    "consumption_status": "skip",
+    "desc": ""
+}

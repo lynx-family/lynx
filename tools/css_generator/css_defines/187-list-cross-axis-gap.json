@@ -1,0 +1,10 @@
+{
+    "name": "list-cross-axis-gap",
+    "id": 187,
+    "type": "complex",
+    "default_value": "0px",
+    "version": "2.2",
+    "author": "huangsu, yangqingchuan",
+    "consumption_status": "layout-wanted",
+    "desc": ""
+}

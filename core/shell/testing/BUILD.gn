@@ -1,0 +1,65 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//lynx/testing/test.gni")
+
+group("shell_tests") {
+  testonly = true
+  deps = [ ":shell_unittests_exec" ]
+  public_deps = [ ":shell_testset" ]
+}
+
+mocktest_set("shell_testset") {
+  sources = [
+    "../common/platform_call_back_manager_unittest.cc",
+    "../common/vsync_monitor_unittest.cc",
+    "../dynamic_ui_operation_queue_unittest.cc",
+    "../engine_thread_switch_unittest.cc",
+    "../lynx_card_cache_data_manager_unittest.cc",
+    "../lynx_engine_proxy_impl_unittest.cc",
+    "../lynx_runtime_actor_holder_unittest.cc",
+    "../lynx_shell_builder_unitest.cc",
+    "../lynx_shell_unittest.cc",
+    "../lynx_ui_operation_async_queue_unittest.cc",
+    "../lynx_ui_operation_queue_unittest.cc",
+    "../tasm_operation_queue_async_unittest.cc",
+    "../tasm_operation_queue_unittest.cc",
+    "../thread_mode_auto_switch_unittest.cc",
+    "mock_native_facade.cc",
+    "mock_native_facade.h",
+    "mock_runner_manufactor.cc",
+    "mock_runner_manufactor.h",
+  ]
+  public_deps = [
+    "..:shell",
+    "//lynx/core/renderer/dom:dom",
+  ]
+  deps = [
+    "//lynx/core/runtime/bindings/napi:napi_binding_quickjs",
+    "//lynx/third_party/quickjs",
+  ]
+  deps += [
+    "//lynx/third_party/napi:env",
+    "//lynx/third_party/napi:quickjs",
+    "//lynx/third_party/quickjs:quickjs_libc",
+  ]
+  configs = [ "//build/config/compiler:cxx_version_17" ]
+}
+
+mocktest_exec("shell_unittests_exec") {
+  sources = []
+  deps = [
+    ":shell_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+unittest_set("mock_tasm_delegate_testset") {
+  sources = [
+    "mock_tasm_delegate.cc",
+    "mock_tasm_delegate.h",
+  ]
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+}

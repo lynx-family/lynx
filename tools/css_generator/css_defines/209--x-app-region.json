@@ -1,0 +1,27 @@
+{
+    "name": "-x-app-region",
+    "id": 209,
+    "type": "enum",
+    "default_value": "none",
+    "version": "2.17",
+    "author": "zhoushijie",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "none",
+            "version": "2.17",
+            "desc": ""
+        },
+        {
+            "value": "drag",
+            "version": "2.17",
+            "desc": ""
+        },
+        {
+            "value": "no-drag",
+            "version": "2.17",
+            "desc": ""
+        }
+    ]
+}

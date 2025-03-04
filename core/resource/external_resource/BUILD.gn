@@ -1,0 +1,19 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+# external_resource_shared_sources
+
+external_resource_shared_sources = [
+  "external_resource_loader.cc",
+  "external_resource_loader.h",
+]
+
+# external_resource_shared_sources end
+
+lynx_core_source_set("external_resource") {
+  sources = external_resource_shared_sources
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

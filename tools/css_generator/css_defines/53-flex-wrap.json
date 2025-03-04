@@ -1,0 +1,140 @@
+{
+    "name": "flex-wrap",
+    "id": 53,
+    "type": "enum",
+    "default_value": "nowrap",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "values": [
+        {
+            "value": "wrap",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "nowrap",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "wrap-reverse",
+            "version": "1.0",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "flex-wrap": {
+            "__compat": {
+              "lynx_path": "api/css/properties/flex-wrap",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/flex-wrap",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            },
+            "nowrap": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            },
+            "wrap": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            },
+            "wrap-reverse": {
+              "__compat": {
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.0"
+                  },
+                  "clay_android": {
+                    "version_added": "1.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.0"
+                  }
+                }
+              }
+            }
+          }
+    }
+}

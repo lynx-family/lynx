@@ -1,0 +1,17 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+js_inspect_interface_source = [
+  "inspector_client_delegate.h",
+  "inspector_client_ng.cc",
+  "inspector_client_ng.h",
+  "inspector_client_quickjs_delegate.h",
+  "inspector_client_v8_delegate.h",
+]
+
+source_set("js_inspect_interface") {
+  sources = js_inspect_interface_source
+}

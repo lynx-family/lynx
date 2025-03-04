@@ -1,0 +1,27 @@
+{
+    "name": "background-origin",
+    "id": 99,
+    "type": "complex",
+    "default_value": "border-box",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": "",
+    "values": [
+        {
+            "value": "border-box",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "content-box",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "padding-box",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

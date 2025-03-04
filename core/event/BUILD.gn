@@ -1,0 +1,53 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+event_shared_sources = [
+  "event.cc",
+  "event.h",
+  "event_dispatch_result.h",
+  "event_dispatcher.cc",
+  "event_dispatcher.h",
+  "event_listener.cc",
+  "event_listener.h",
+  "event_listener_map.cc",
+  "event_listener_map.h",
+  "event_target.cc",
+  "event_target.h",
+  "keyboard_event.cc",
+  "keyboard_event.h",
+  "touch_event.cc",
+  "touch_event.h",
+]
+
+lynx_core_source_set("event") {
+  sources = event_shared_sources
+
+  public_deps = [ "//lynx/base" ]
+}
+
+unittest_set("event_testset") {
+  sources = [
+    "event_listener_map_test.cc",
+    "event_listener_map_test.h",
+    "event_listener_test.cc",
+    "event_listener_test.h",
+    "event_target_test.cc",
+    "event_target_test.h",
+  ]
+  public_deps = [ "//lynx/core/event" ]
+  data_deps = []
+}
+
+unittest_exec("event_unittests_exec") {
+  sources = []
+  deps = [ ":event_testset" ]
+}
+
+group("event_tests") {
+  testonly = true
+  deps = [ ":event_unittests_exec" ]
+}

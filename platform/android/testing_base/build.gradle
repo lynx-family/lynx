@@ -1,0 +1,44 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 22
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+        missingDimensionStrategy 'lynx','noasan'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    compileOnly project(':LynxAndroid')
+    compileOnly 'androidx.annotation:annotation:1.0.0'
+    implementation 'androidx.multidex:multidex:2.0.1'
+    api 'androidx.core:core:1.0.0'
+    api 'org.mockito:mockito-android:4.8.1'
+    api 'androidx.test.ext:junit:1.1.1'
+    api 'androidx.test.espresso:espresso-core:3.1.0'
+    api 'androidx.test:rules:1.4.0'
+}

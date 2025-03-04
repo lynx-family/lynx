@@ -1,0 +1,32 @@
+{
+    "name": "visibility",
+    "id": 103,
+    "type": "enum",
+    "default_value": "visible",
+    "version": "1.0",
+    "author": "wangheyang",
+    "desc": "",
+    "consumption_status": "skip",
+    "values": [
+        {
+            "value": "hidden",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "visible",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "none",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "collapse",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

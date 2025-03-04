@@ -1,0 +1,14 @@
+{
+    "name": "demo-pages",
+    "version": "1.0.0",
+    "description": "Demo pages for lynx integeration test",
+    "author": "Lynx Authors",
+    "license": "Apache-2.0",
+    "private": true,
+    "scripts": {
+      "build": "pnpm --filter @demo_pages/* run build"
+    },
+    "engines": {
+      "node": ">=18"
+    }
+  }

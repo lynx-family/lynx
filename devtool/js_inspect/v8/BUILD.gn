@@ -1,0 +1,23 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+v8_debug_source = [
+  "v8_inspector_client_provider.cc",
+  "v8_inspector_client_provider.h",
+  "v8_inspector_client_impl.cc",
+  "v8_inspector_client_impl.h",
+]
+
+source_set("v8_debug") {
+  sources = v8_debug_source
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/src:base_log_headers",
+    "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+    "//lynx/devtool/js_inspect:inspector_const",
+  ]
+  include_dirs = [ v8_headers_search_path ]
+}

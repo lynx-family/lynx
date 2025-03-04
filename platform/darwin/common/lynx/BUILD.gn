@@ -1,0 +1,144 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_apple)
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("//lynx/core/Lynx.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+# common_lynx_shared_sources
+common_lynx_shared_sources = [
+  "LynxConfig.mm",
+  "LynxConfigInfo.m",
+  "LynxContext.mm",
+  "LynxDebugger.m",
+  "LynxEngineProxy+Native.h",
+  "LynxEngineProxy.h",
+  "LynxEngineProxy.mm",
+  "LynxEnv+Internal.h",
+  "LynxEnv.mm",
+  "LynxError.m",
+  "LynxErrorBehavior.m",
+  "LynxErrorCode.m",
+  "LynxErrorReceiverProtocol.h",
+  "LynxGlobalObserver+Internal.h",
+  "LynxGroup+Internal.h",
+  "LynxLifecycleDispatcher.m",
+  "LynxLoadMeta.m",
+  "LynxSSRHelper.h",
+  "LynxSSRHelper.m",
+  "LynxScreenMetrics.m",
+  "LynxServiceInfo.m",
+  "LynxSubErrorCode.m",
+  "LynxTemplateBundle+Converter.h",
+  "LynxTemplateBundle.mm",
+  "LynxTemplateBundleOption.m",
+  "LynxTemplateData+Converter.h",
+  "LynxTemplateData.mm",
+  "LynxTemplateRenderDelegateExternal.m",
+  "LynxTheme.m",
+  "LynxUpdateMeta.m",
+  "LynxView+Identify.m",
+  "LynxViewClientV2.mm",
+  "TemplateRenderCallbackProtocol.h",
+  "base/LynxBacktrace.mm",
+  "base/LynxCallStackUtil.h",
+  "base/LynxCallStackUtil.mm",
+  "base/LynxComponent.m",
+  "base/LynxComponentRegistry.m",
+  "base/LynxConverter+LynxCSSType.m",
+  "base/LynxConverter+UI.m",
+  "base/LynxConverter.m",
+  "base/LynxExternalResourceFetcherWrapper.mm",
+  "base/LynxLog.mm",
+  "base/LynxPageReloadHelper.mm",
+  "base/LynxPerformance.m",
+  "base/LynxResourceServiceFetcher.mm",
+  "base/LynxThreadManager.mm",
+  "base/LynxVersion.m",
+  "devtool_wrapper/CustomizedMessage.mm",
+  "devtool_wrapper/DevToolOverlayDelegate.h",
+  "devtool_wrapper/DevToolOverlayDelegate.mm",
+  "devtool_wrapper/LynxDevToolUtils.mm",
+  "devtool_wrapper/LynxDevtool.h",
+  "devtool_wrapper/LynxDevtool.mm",
+  "devtool_wrapper/LynxMemoryListener.m",
+  "event/LynxEvent.m",
+  "event/LynxTouchEvent.m",
+  "event_report/LynxEventReporter.mm",
+  "event_report/LynxEventReporterUtils.h",
+  "event_report/LynxEventReporterUtils.m",
+  "feature_count/LynxFeature.h",
+  "feature_count/LynxFeatureCounter.h",
+  "feature_count/LynxFeatureCounter.mm",
+  "module/JSModule+Internal.h",
+  "module/JSModule.mm",
+  "module/LynxSetModule.mm",
+  "navigator/LynxBaseCardManager+Private.h",
+  "navigator/LynxBaseCardManager.m",
+  "navigator/LynxCardManager.m",
+  "navigator/LynxNavigator.m",
+  "navigator/LynxRoute.m",
+  "navigator/NavigationModule.m",
+  "navigator/cache/LynxLruCache.m",
+  "navigator/cache/LynxLruCacheNode.m",
+  "network/LynxHttpRequest.m",
+  "performance/LynxExtraTiming.m",
+  "performance/LynxTimingConstants.h",
+  "performance/LynxTimingConstants.m",
+  "resource/LynxProviderRegistry.m",
+  "resource/LynxResourceRequest.m",
+  "resource/LynxResourceResponse.m",
+  "resource/LynxTemplateResource.m",
+  "service/LynxService.m",
+  "service/LynxServiceResourceRequestParameters.m",
+  "utils/LynxColorUtils.mm",
+  "utils/LynxConvertUtils.h",
+  "utils/LynxConvertUtils.m",
+  "utils/LynxHtmlEscape.m",
+  "utils/LynxSizeValue.m",
+  "utils/LynxUnitUtils.m",
+  "utils/LynxVersionUtils.mm",
+  "utils/LynxWeakProxy.m",
+  "utils/thread_safe_dictionary/LynxThreadSafeDictionary.m",
+]
+
+performanceentry_impl_lists = exec_script(
+        "//build/ls.py",
+        [
+          "--target-directory",
+          rebase_path(
+              "//lynx/platform/darwin/common/lynx/performance/performance_observer"),
+        ],
+        "list lines")
+common_lynx_shared_sources += performanceentry_impl_lists
+
+common_lynx_shared_sources += lynx_group_extend_source
+
+# common_lynx_shared_sources end
+
+subspec_target("Lynx_subspec") {
+  output_name = "Lynx"
+  sources = common_lynx_shared_sources
+}
+
+lynx_core_source_set("Lynx") {
+  sources = common_lynx_shared_sources
+
+  cflags_objcc = [ "-std=gnu++17" ]
+  cflags_cc = [ "-std=gnu++17" ]
+
+  exclude_configs = [ "//build/config/compiler:cxx_version_default" ]
+
+  public_deps = [
+    "//lynx/base/trace/darwin:LynxTrace",
+    "//lynx/core:lynx_native",
+    "//lynx/core/inspector:inspector",
+    "//lynx/core/shared_data",
+    "//lynx/platform/darwin/common/lazy_load:lazy_load",
+    "//lynx/platform/darwin/common/lynx/public:Public",
+    "//lynx/third_party/rapidjson",
+  ]
+}

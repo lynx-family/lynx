@@ -1,0 +1,59 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+events_shared_sources = [
+  "closure_event_listener.cc",
+  "closure_event_listener.h",
+  "event_handler.cc",
+  "events.h",
+  "gesture.h",
+  "touch_event_handler.cc",
+  "touch_event_handler.h",
+]
+
+lynx_core_source_set("events") {
+  sources = events_shared_sources
+
+  public_deps = [
+    "//lynx/core/base",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  if (enable_lepusng_worklet) {
+    public_deps += [ "//lynx/core/renderer/worklet:worklet" ]
+  }
+}
+
+unittest_set("events_test_testset") {
+  testonly = true
+
+  sources = [
+    "closure_event_listener_test.cc",
+    "touch_event_handler_unittest.cc",
+  ]
+
+  public_deps = [
+    ":events",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:dom_testset",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/quickjs",
+  ]
+}
+
+unittest_exec("events_test_exec") {
+  testonly = true
+
+  sources = []
+
+  deps = [ ":events_test_testset" ]
+}

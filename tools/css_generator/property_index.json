@@ -1,0 +1,857 @@
+[
+    {
+        "count": 213
+    },
+    {
+        "id": 0,
+        "name": "top"
+    },
+    {
+        "id": 1,
+        "name": "left"
+    },
+    {
+        "id": 2,
+        "name": "right"
+    },
+    {
+        "id": 3,
+        "name": "bottom"
+    },
+    {
+        "id": 4,
+        "name": "position"
+    },
+    {
+        "id": 5,
+        "name": "box-sizing"
+    },
+    {
+        "id": 6,
+        "name": "background-color"
+    },
+    {
+        "id": 7,
+        "name": "border-left-color"
+    },
+    {
+        "id": 8,
+        "name": "border-right-color"
+    },
+    {
+        "id": 9,
+        "name": "border-top-color"
+    },
+    {
+        "id": 10,
+        "name": "border-bottom-color"
+    },
+    {
+        "id": 11,
+        "name": "border-radius"
+    },
+    {
+        "id": 12,
+        "name": "border-top-left-radius"
+    },
+    {
+        "id": 13,
+        "name": "border-bottom-left-radius"
+    },
+    {
+        "id": 14,
+        "name": "border-top-right-radius"
+    },
+    {
+        "id": 15,
+        "name": "border-bottom-right-radius"
+    },
+    {
+        "id": 16,
+        "name": "border-width"
+    },
+    {
+        "id": 17,
+        "name": "border-left-width"
+    },
+    {
+        "id": 18,
+        "name": "border-right-width"
+    },
+    {
+        "id": 19,
+        "name": "border-top-width"
+    },
+    {
+        "id": 20,
+        "name": "border-bottom-width"
+    },
+    {
+        "id": 21,
+        "name": "color"
+    },
+    {
+        "id": 22,
+        "name": "opacity"
+    },
+    {
+        "id": 23,
+        "name": "display"
+    },
+    {
+        "id": 24,
+        "name": "overflow"
+    },
+    {
+        "id": 25,
+        "name": "height"
+    },
+    {
+        "id": 26,
+        "name": "width"
+    },
+    {
+        "id": 27,
+        "name": "max-width"
+    },
+    {
+        "id": 28,
+        "name": "min-width"
+    },
+    {
+        "id": 29,
+        "name": "max-height"
+    },
+    {
+        "id": 30,
+        "name": "min-height"
+    },
+    {
+        "id": 31,
+        "name": "padding"
+    },
+    {
+        "id": 32,
+        "name": "padding-left"
+    },
+    {
+        "id": 33,
+        "name": "padding-right"
+    },
+    {
+        "id": 34,
+        "name": "padding-top"
+    },
+    {
+        "id": 35,
+        "name": "padding-bottom"
+    },
+    {
+        "id": 36,
+        "name": "margin"
+    },
+    {
+        "id": 37,
+        "name": "margin-left"
+    },
+    {
+        "id": 38,
+        "name": "margin-right"
+    },
+    {
+        "id": 39,
+        "name": "margin-top"
+    },
+    {
+        "id": 40,
+        "name": "margin-bottom"
+    },
+    {
+        "id": 41,
+        "name": "white-space"
+    },
+    {
+        "id": 42,
+        "name": "letter-spacing"
+    },
+    {
+        "id": 43,
+        "name": "text-align"
+    },
+    {
+        "id": 44,
+        "name": "line-height"
+    },
+    {
+        "id": 45,
+        "name": "text-overflow"
+    },
+    {
+        "id": 46,
+        "name": "font-size"
+    },
+    {
+        "id": 47,
+        "name": "font-weight"
+    },
+    {
+        "id": 48,
+        "name": "flex"
+    },
+    {
+        "id": 49,
+        "name": "flex-grow"
+    },
+    {
+        "id": 50,
+        "name": "flex-shrink"
+    },
+    {
+        "id": 51,
+        "name": "flex-basis"
+    },
+    {
+        "id": 52,
+        "name": "flex-direction"
+    },
+    {
+        "id": 53,
+        "name": "flex-wrap"
+    },
+    {
+        "id": 54,
+        "name": "align-items"
+    },
+    {
+        "id": 55,
+        "name": "align-self"
+    },
+    {
+        "id": 56,
+        "name": "align-content"
+    },
+    {
+        "id": 57,
+        "name": "justify-content"
+    },
+    {
+        "id": 58,
+        "name": "background"
+    },
+    {
+        "id": 59,
+        "name": "border-color"
+    },
+    {
+        "id": 60,
+        "name": "font-family"
+    },
+    {
+        "id": 61,
+        "name": "font-style"
+    },
+    {
+        "id": 62,
+        "name": "transform"
+    },
+    {
+        "id": 63,
+        "name": "animation"
+    },
+    {
+        "id": 64,
+        "name": "animation-name"
+    },
+    {
+        "id": 65,
+        "name": "animation-duration"
+    },
+    {
+        "id": 66,
+        "name": "animation-timing-function"
+    },
+    {
+        "id": 67,
+        "name": "animation-delay"
+    },
+    {
+        "id": 68,
+        "name": "animation-iteration-count"
+    },
+    {
+        "id": 69,
+        "name": "animation-direction"
+    },
+    {
+        "id": 70,
+        "name": "animation-fill-mode"
+    },
+    {
+        "id": 71,
+        "name": "animation-play-state"
+    },
+    {
+        "id": 72,
+        "name": "line-spacing"
+    },
+    {
+        "id": 73,
+        "name": "border-style"
+    },
+    {
+        "id": 74,
+        "name": "order"
+    },
+    {
+        "id": 75,
+        "name": "box-shadow"
+    },
+    {
+        "id": 76,
+        "name": "transform-origin"
+    },
+    {
+        "id": 77,
+        "name": "linear-orientation"
+    },
+    {
+        "id": 78,
+        "name": "linear-weight-sum"
+    },
+    {
+        "id": 79,
+        "name": "linear-weight"
+    },
+    {
+        "id": 80,
+        "name": "linear-gravity"
+    },
+    {
+        "id": 81,
+        "name": "linear-layout-gravity"
+    },
+    {
+        "id": 82,
+        "name": "layout-animation-create-duration"
+    },
+    {
+        "id": 83,
+        "name": "layout-animation-create-timing-function"
+    },
+    {
+        "id": 84,
+        "name": "layout-animation-create-delay"
+    },
+    {
+        "id": 85,
+        "name": "layout-animation-create-property"
+    },
+    {
+        "id": 86,
+        "name": "layout-animation-delete-duration"
+    },
+    {
+        "id": 87,
+        "name": "layout-animation-delete-timing-function"
+    },
+    {
+        "id": 88,
+        "name": "layout-animation-delete-delay"
+    },
+    {
+        "id": 89,
+        "name": "layout-animation-delete-property"
+    },
+    {
+        "id": 90,
+        "name": "layout-animation-update-duration"
+    },
+    {
+        "id": 91,
+        "name": "layout-animation-update-timing-function"
+    },
+    {
+        "id": 92,
+        "name": "layout-animation-update-delay"
+    },
+    {
+        "id": 93,
+        "name": "adapt-font-size"
+    },
+    {
+        "id": 94,
+        "name": "aspect-ratio"
+    },
+    {
+        "id": 95,
+        "name": "text-decoration"
+    },
+    {
+        "id": 96,
+        "name": "text-shadow"
+    },
+    {
+        "id": 97,
+        "name": "background-image"
+    },
+    {
+        "id": 98,
+        "name": "background-position"
+    },
+    {
+        "id": 99,
+        "name": "background-origin"
+    },
+    {
+        "id": 100,
+        "name": "background-repeat"
+    },
+    {
+        "id": 101,
+        "name": "background-size"
+    },
+    {
+        "id": 102,
+        "name": "border"
+    },
+    {
+        "id": 103,
+        "name": "visibility"
+    },
+    {
+        "id": 104,
+        "name": "border-right"
+    },
+    {
+        "id": 105,
+        "name": "border-left"
+    },
+    {
+        "id": 106,
+        "name": "border-top"
+    },
+    {
+        "id": 107,
+        "name": "border-bottom"
+    },
+    {
+        "id": 108,
+        "name": "transition"
+    },
+    {
+        "id": 109,
+        "name": "transition-property"
+    },
+    {
+        "id": 110,
+        "name": "transition-duration"
+    },
+    {
+        "id": 111,
+        "name": "transition-delay"
+    },
+    {
+        "id": 112,
+        "name": "transition-timing-function"
+    },
+    {
+        "id": 113,
+        "name": "content"
+    },
+    {
+        "id": 114,
+        "name": "border-left-style"
+    },
+    {
+        "id": 115,
+        "name": "border-right-style"
+    },
+    {
+        "id": 116,
+        "name": "border-top-style"
+    },
+    {
+        "id": 117,
+        "name": "border-bottom-style"
+    },
+    {
+        "id": 118,
+        "name": "implicit-animation"
+    },
+    {
+        "id": 119,
+        "name": "overflow-x"
+    },
+    {
+        "id": 120,
+        "name": "overflow-y"
+    },
+    {
+        "id": 121,
+        "name": "word-break"
+    },
+    {
+        "id": 122,
+        "name": "background-clip"
+    },
+    {
+        "id": 123,
+        "name": "outline"
+    },
+    {
+        "id": 124,
+        "name": "outline-color"
+    },
+    {
+        "id": 125,
+        "name": "outline-style"
+    },
+    {
+        "id": 126,
+        "name": "outline-width"
+    },
+    {
+        "id": 127,
+        "name": "vertical-align"
+    },
+    {
+        "id": 128,
+        "name": "caret-color"
+    },
+    {
+        "id": 129,
+        "name": "direction"
+    },
+    {
+        "id": 130,
+        "name": "relative-id"
+    },
+    {
+        "id": 131,
+        "name": "relative-align-top"
+    },
+    {
+        "id": 132,
+        "name": "relative-align-right"
+    },
+    {
+        "id": 133,
+        "name": "relative-align-bottom"
+    },
+    {
+        "id": 134,
+        "name": "relative-align-left"
+    },
+    {
+        "id": 135,
+        "name": "relative-top-of"
+    },
+    {
+        "id": 136,
+        "name": "relative-right-of"
+    },
+    {
+        "id": 137,
+        "name": "relative-bottom-of"
+    },
+    {
+        "id": 138,
+        "name": "relative-left-of"
+    },
+    {
+        "id": 139,
+        "name": "relative-layout-once"
+    },
+    {
+        "id": 140,
+        "name": "relative-center"
+    },
+    {
+        "id": 141,
+        "name": "enter-transition-name"
+    },
+    {
+        "id": 142,
+        "name": "exit-transition-name"
+    },
+    {
+        "id": 143,
+        "name": "pause-transition-name"
+    },
+    {
+        "id": 144,
+        "name": "resume-transition-name"
+    },
+    {
+        "id": 145,
+        "name": "flex-flow"
+    },
+    {
+        "id": 146,
+        "name": "z-index"
+    },
+    {
+        "id": 147,
+        "name": "text-decoration-color"
+    },
+    {
+        "id": 148,
+        "name": "linear-cross-gravity"
+    },
+    {
+        "id": 149,
+        "name": "margin-inline-start"
+    },
+    {
+        "id": 150,
+        "name": "margin-inline-end"
+    },
+    {
+        "id": 151,
+        "name": "padding-inline-start"
+    },
+    {
+        "id": 152,
+        "name": "padding-inline-end"
+    },
+    {
+        "id": 153,
+        "name": "border-inline-start-color"
+    },
+    {
+        "id": 154,
+        "name": "border-inline-end-color"
+    },
+    {
+        "id": 155,
+        "name": "border-inline-start-width"
+    },
+    {
+        "id": 156,
+        "name": "border-inline-end-width"
+    },
+    {
+        "id": 157,
+        "name": "border-inline-start-style"
+    },
+    {
+        "id": 158,
+        "name": "border-inline-end-style"
+    },
+    {
+        "id": 159,
+        "name": "border-start-start-radius"
+    },
+    {
+        "id": 160,
+        "name": "border-end-start-radius"
+    },
+    {
+        "id": 161,
+        "name": "border-start-end-radius"
+    },
+    {
+        "id": 162,
+        "name": "border-end-end-radius"
+    },
+    {
+        "id": 163,
+        "name": "relative-align-inline-start"
+    },
+    {
+        "id": 164,
+        "name": "relative-align-inline-end"
+    },
+    {
+        "id": 165,
+        "name": "relative-inline-start-of"
+    },
+    {
+        "id": 166,
+        "name": "relative-inline-end-of"
+    },
+    {
+        "id": 167,
+        "name": "inset-inline-start"
+    },
+    {
+        "id": 168,
+        "name": "inset-inline-end"
+    },
+    {
+        "id": 169,
+        "name": "mask-image"
+    },
+    {
+        "id": 170,
+        "name": "grid-template-columns"
+    },
+    {
+        "id": 171,
+        "name": "grid-template-rows"
+    },
+    {
+        "id": 172,
+        "name": "grid-auto-columns"
+    },
+    {
+        "id": 173,
+        "name": "grid-auto-rows"
+    },
+    {
+        "id": 174,
+        "name": "grid-column-span"
+    },
+    {
+        "id": 175,
+        "name": "grid-row-span"
+    },
+    {
+        "id": 176,
+        "name": "grid-column-start"
+    },
+    {
+        "id": 177,
+        "name": "grid-column-end"
+    },
+    {
+        "id": 178,
+        "name": "grid-row-start"
+    },
+    {
+        "id": 179,
+        "name": "grid-row-end"
+    },
+    {
+        "id": 180,
+        "name": "grid-column-gap"
+    },
+    {
+        "id": 181,
+        "name": "grid-row-gap"
+    },
+    {
+        "id": 182,
+        "name": "justify-items"
+    },
+    {
+        "id": 183,
+        "name": "justify-self"
+    },
+    {
+        "id": 184,
+        "name": "grid-auto-flow"
+    },
+    {
+        "id": 185,
+        "name": "filter"
+    },
+    {
+        "id": 186,
+        "name": "list-main-axis-gap"
+    },
+    {
+        "id": 187,
+        "name": "list-cross-axis-gap"
+    },
+    {
+        "id": 188,
+        "name": "linear-direction"
+    },
+    {
+        "id": 189,
+        "name": "perspective"
+    },
+    {
+        "id": 190,
+        "name": "cursor"
+    },
+    {
+        "id": 191,
+        "name": "text-indent"
+    },
+    {
+        "id": 192,
+        "name": "clip-path"
+    },
+    {
+        "id": 193,
+        "name": "text-stroke"
+    },
+    {
+        "id": 194,
+        "name": "text-stroke-width"
+    },
+    {
+        "id": 195,
+        "name": "text-stroke-color"
+    },
+    {
+        "id": 196,
+        "name": "-x-auto-font-size"
+    },
+    {
+        "id": 197,
+        "name": "-x-auto-font-size-preset-sizes"
+    },
+    {
+        "id": 198,
+        "name": "mask"
+    },
+    {
+        "id": 199,
+        "name": "mask-repeat"
+    },
+    {
+        "id": 200,
+        "name": "mask-position"
+    },
+    {
+        "id": 201,
+        "name": "mask-clip"
+    },
+    {
+        "id": 202,
+        "name": "mask-origin"
+    },
+    {
+        "id": 203,
+        "name": "mask-size"
+    },
+    {
+        "id": 204,
+        "name": "gap"
+    },
+    {
+        "id": 205,
+        "name": "column-gap"
+    },
+    {
+        "id": 206,
+        "name": "row-gap"
+    },
+    {
+        "id": 207,
+        "name": "image-rendering"
+    },
+    {
+        "id": 208,
+        "name": "hyphens"
+    },
+    {
+        "id": 209,
+        "name": "-x-app-region"
+    },
+    {
+        "id": 210,
+        "name": "-x-animation-color-interpolation"
+    },
+    {
+        "id": 211,
+        "name": "-x-handle-size"
+    },
+    {
+        "id": 212,
+        "name": "-x-handle-color"
+    }
+]

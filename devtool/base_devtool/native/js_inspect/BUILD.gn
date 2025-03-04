@@ -1,0 +1,21 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/devtool/base_devtool/native/base_devtool.gni")
+
+base_devtool_source_set("base_devtool_js_inspect") {
+  sources = [
+    "inspector_client_delegate_base_impl.cc",
+    "inspector_client_delegate_base_impl.h",
+    "script_manager_ng.cc",
+    "script_manager_ng.h",
+  ]
+  public_deps = [
+    "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+    "//lynx/devtool/js_inspect:inspector_const",
+    "//lynx/third_party/rapidjson",
+  ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

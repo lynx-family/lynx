@@ -1,0 +1,53 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+animation_utils_shared_sources = [
+  "cubic_bezier.cc",
+  "cubic_bezier.h",
+  "timing_function.cc",
+  "timing_function.h",
+]
+
+lynx_core_source_set("animation_utils") {
+  sources = animation_utils_shared_sources
+
+  public_deps = [ "//lynx/core/style" ]
+}
+
+unittest_set("animation_utils_testset") {
+  testonly = true
+
+  public_deps = [ ":animation_utils" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+
+  sources = [
+    "cubic_bezier_unittest.cc",
+    "timing_function_unittest.cc",
+  ]
+}
+
+unittest_exec("animation_utils_unittests_exec") {
+  testonly = true
+  sources = []
+  deps = [
+    ":animation_utils",
+    ":animation_utils_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("animation_utils_tests") {
+  testonly = true
+  deps = [ ":animation_utils_unittests_exec" ]
+  public_deps = [ ":animation_utils_testset" ]
+}

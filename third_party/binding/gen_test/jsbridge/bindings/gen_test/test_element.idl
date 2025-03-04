@@ -1,0 +1,5 @@
+interface TestElement {
+    constructor();
+
+    TestContext getContext(ByteString type);
+};

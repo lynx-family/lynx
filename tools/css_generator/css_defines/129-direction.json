@@ -1,0 +1,96 @@
+{
+    "name": "direction",
+    "id": 129,
+    "type": "enum",
+    "default_value": "normal",
+    "version": "1.0",
+    "desc": "lynx layout direction",
+    "author": "wujintian, wangzhixuan.0821",
+    "consumption_status": "layout-wanted",
+    "values": [
+        {
+            "value": "normal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "lynx-rtl",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "rtl",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "ltr",
+            "version": "2.0",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "direction": {
+            "__compat": {
+              "description": "",
+              "lynx_path": "api/css/properties/direction",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.0"
+                },
+                "ios": {
+                  "version_added": "2.0"
+                },
+                "clay_android": {
+                  "version_added": "2.0"
+                },
+                "clay_macos": {
+                  "version_added": "2.0"
+                },
+                "clay_windows": {
+                  "version_added": "2.0"
+                },
+                "web_lynx": {
+                  "partial_implementation": true,
+                  "version_added": "0.0.0",
+                  "notes": "direction:rtl is as powerful as direction:lynx-rtl"
+                }
+              }
+            },
+            "lynx-rtl": {
+              "__compat": {
+                "description": "<code>lynx-rtl</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "version_added": "2.0"
+                  },
+                  "ios": {
+                    "version_added": "2.0"
+                  },
+                  "clay_android": {
+                    "version_added": "2.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "2.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "2.0"
+                  },
+                  "web_lynx": {
+                    "version_added": "4.1.0"
+                  }
+                }
+              }
+            }
+          }
+    }
+}

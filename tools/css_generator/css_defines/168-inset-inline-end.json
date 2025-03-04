@@ -1,0 +1,41 @@
+{
+    "name": "inset-inline-end",
+    "id": 168,
+    "type": "length",
+    "default_value": "0px",
+    "version": "2.0",
+    "author": "liting.src",
+    "consumption_status": "skip",
+    "desc": "",
+    "compat_data": {
+        "inset-inline-end": {
+            "__compat": {
+              "description": "The inset-inline-end CSS property defines the logical inline end inset of an element, which maps to a physical offset depending on the element's directionality.",
+              "lynx_path": "api/css/properties/inset-inline-end",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/inset-inline-end",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.0"
+                },
+                "ios": {
+                  "version_added": "2.0"
+                },
+                "clay_android": {
+                  "version_added": "2.0"
+                },
+                "clay_macos": {
+                  "version_added": "2.0"
+                },
+                "clay_windows": {
+                  "version_added": "2.0"
+                }
+              }
+            }
+          }
+    }
+}

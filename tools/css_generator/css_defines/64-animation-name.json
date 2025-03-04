@@ -1,0 +1,10 @@
+{
+    "name": "animation-name",
+    "id": 64,
+    "type": "complex",
+    "default_value": "",
+    "author": "liyanbo, linxiaosong",
+    "version": "1.0",
+    "consumption_status": "skip",
+    "desc": ""
+}

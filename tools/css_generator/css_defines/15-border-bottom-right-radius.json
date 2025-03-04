@@ -1,0 +1,10 @@
+{
+    "name": "border-bottom-right-radius",
+    "id": 15,
+    "type": "complex",
+    "default_value": "0px",
+    "version": "1.0",
+    "author": "liyun,linyiyi",
+    "consumption_status": "skip",
+    "desc": ""
+}

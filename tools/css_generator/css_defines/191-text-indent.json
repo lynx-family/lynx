@@ -1,0 +1,10 @@
+{
+    "name": "text-indent",
+    "id": 191,
+    "type": "length",
+    "default_value": "0px",
+    "consumption_status": "skip",
+    "version": "2.4",
+    "author": "baiqiang",
+    "desc": ""
+}

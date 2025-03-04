@@ -1,0 +1,131 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: '../publish.gradle'
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        release {
+            assets.srcDirs = ['src/release/assets']
+        }
+        debug {
+            assets.srcDirs = ['src/debug/assets']
+        }
+        main {
+            assets.srcDirs = ['src/main/assets']
+        }
+    }
+
+    // TODO(yueming): Since there is no C++ code in this module, this flavor should be removed.
+    //  However, it could cause assemble task not be executed and aar file not generated.
+    //  We'll need to look into it carefully later.
+    flavorDimensions 'lynx'
+    productFlavors {
+        debugMode {
+            dimension 'lynx'
+        }
+        asan {
+            dimension 'lynx'
+        }
+        noasan {
+            dimension 'lynx'
+        }
+    }
+}
+
+int taskNum = 0
+boolean jssdkExecuted = false
+
+afterEvaluate {
+    gradle.taskGraph.whenReady {
+        def tasks = gradle.taskGraph.getAllTasks()
+        List<Task> assetsStartTasks = new ArrayList<>()
+        List<Task> assetsEndTasks = new ArrayList<>()
+        List<Task> asanTasks = new ArrayList<>()
+        List<Task> noAsanTasks = new ArrayList<>()
+        def jssdkMainDestPath = "$projectDir/src/main/assets"
+        def jssdkDebugDestPath = "$projectDir/src/debug/assets"
+        def lynxCoreBuildToolsPath = file("$projectDir.parentFile.parentFile.parentFile/tools/js_tools/").absolutePath
+
+        tasks.each {
+            if (it.project.name != 'LynxJSSDK') {
+                return
+            }
+
+            if (it.name.startsWith("generate") && it.name.endsWith("Assets")) {
+                assetsStartTasks.add(it)
+            }
+            if ((it.name.startsWith("merge") || it.name.startsWith("package")) && it.name.endsWith("Assets")) {
+                taskNum++
+                assetsEndTasks.add(it)
+            }
+            // run only a flavor task
+            if (it.name.toLowerCase().contains("noasan")) {
+                noAsanTasks.add(it)
+            }else if (it.name.toLowerCase().contains("asan")) {
+                asanTasks.add(it)
+            }
+
+            // skip debug BuildConfig.java
+            if (it.name.startsWith("generate") && it.name.endsWith("DebugBuildConfig")) {
+                it.onlyIf = { false }
+            }
+        }
+
+        assetsStartTasks.each { task ->
+            task.doFirst {
+                if (jssdkExecuted) {
+                    println "========= jssdk build already done,  ${task.name} need not build again=========="
+                    return
+                }
+                jssdkExecuted = true
+                ExecResult result = exec {
+                    println "========= execute jssdk build in ${task.name} =========="
+                    ignoreExitValue true
+                    workingDir '../../'
+                    commandLine 'sh', '-c', "chmod +x ./android/lynx_js_sdk/jssdk_build.sh && ./android/lynx_js_sdk/jssdk_build.sh --build ${VERSION} --enable_lite ${enable_lite} " +
+                            "--jssdkMainDestPath ${jssdkMainDestPath} --jssdkDebugDestPath ${jssdkDebugDestPath} --lynxCoreBuildToolsPath ${lynxCoreBuildToolsPath}"
+                }
+                if (result.exitValue != 0) {
+                    throw new GradleException("jssdk build error, please check build log")
+                }
+            }
+        }
+        assetsEndTasks.each { task ->
+            task.doLast {
+                taskNum--
+                if (taskNum == 0) {
+                    println "========= remove jssdk in ${task.name} =========="
+                    ExecResult result = exec {
+                        workingDir '../../'
+                        ignoreExitValue true
+                        commandLine 'sh', '-c', "./android/lynx_js_sdk/jssdk_build.sh --clear ${VERSION} --enable_lite ${enable_lite} " +
+                                "--jssdkMainDestPath ${jssdkMainDestPath} --jssdkDebugDestPath ${jssdkDebugDestPath} --lynxCoreBuildToolsPath ${lynxCoreBuildToolsPath}"
+                    }
+                    if (result.exitValue != 0) {
+                        throw new GradleException("jssdk clear error, please check build log")
+                    }
+                }
+            }
+        }
+    }
+}

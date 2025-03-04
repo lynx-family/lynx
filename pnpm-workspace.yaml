@@ -1,0 +1,6 @@
+packages:
+  - '.'
+  - 'js_libraries/*'
+  - devtool/lynx_devtool/resources/devtool-switch
+  - devtool/lynx_devtool/resources/lynx-logbox
+  - explorer/homepage

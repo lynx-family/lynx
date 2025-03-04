@@ -1,0 +1,58 @@
+{
+  "name": "@lynx-js/types",
+  "version": "3.2.0",
+  "description": "",
+  "keywords": ["lynx" , "types"],
+  "license": "Apache-2.0",
+  "author": "Lynx Authors",
+  "types":"types/index.d.ts",
+  "main": "types/index.d.ts",
+  "scripts": {
+    "test": ""
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts"
+    },
+    "./background": {
+      "types": "./types/background-thread/index.d.ts"
+    },
+    "./main-thread": {
+      "types": "./types/main-thread/index.d.ts"
+    },
+    "./common": {
+      "types": "./types/common/index.d.ts"
+    },
+    "./element": {
+      "types": "./types/common/element/index.d.ts"
+    },
+    "./events": {
+      "types": "./types/common/events.d.ts"
+    },
+    "./props": {
+      "types": "./types/common/props.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "background": [
+        "./types/background-thread/index.d.ts"
+      ],
+      "common": ["./types/common/index.d.ts"],
+      "element": ["./types/common/element/index.d.ts"],
+      "events": ["./types/common/events.d.ts"],
+      "props": ["./types/common/props.d.ts"],
+      "main-thread": ["./types/main-thread/index.d.ts"]
+    }
+  },
+  "files": [
+    "types/",
+    "CHANGELOG.md"
+  ],
+  "dependencies": {
+    "csstype": "3.1.3"
+  },
+  "devDependencies": {
+    "tsd": "0.30.4"
+  }
+}

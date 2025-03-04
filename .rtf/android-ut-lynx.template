@@ -1,0 +1,43 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+
+builder({
+    "default": {
+        "args": [
+            "--parallel",
+            "--configure-on-demand",
+            "-x lint",
+            "-Pbuild_for_emu",
+            "-Penable_lynx_android_test=true",
+            "-Penable_coverage=true",
+        ],
+        "workspace": "platform/android",
+        "type": "gradle",
+    }
+})
+
+coverage({
+    "output": "out/coverage",
+    "type": "jacoco",
+    "jacoco_cli":"../third_party/jacoco/lib/jacococli.jar"
+})
+
+targets({
+    "LynxAndroid": {
+        "owners":["ZhaoSongGOO"],
+        "task": "LynxAndroid:assembleNoasanDebugAndroidTest",
+        "source_files":"platform/android/lynx_android/src/main/java",
+        "class_files":"platform/android/lynx_android/build/intermediates/javac/noasanDebug/classes/*",
+        "apk":"platform/android/lynx_android/build/outputs/apk/androidTest/noasan/debug/LynxAndroid-noasan-debug-androidTest.apk",
+        "package":"com.lynx.test",
+        "coverage":False,
+    },
+    "LynxDevtool": {
+        "owners":["ZhaoSongGOO"],
+        "task": "LynxDevtool:assembleNoasanDebugAndroidTest",
+        "source_files":"platform/android/lynx_devtool/src/main/java",
+        "class_files":"platform/android/lynx_devtool/build/intermediates/javac/noasanDebug/classes/*",
+        "apk":"platform/android/lynx_devtool/build/outputs/apk/androidTest/noasan/debug/LynxDevtool-noasan-debug-androidTest.apk",
+        "package":"com.example.lynxdevtool.test",
+        "coverage":False,
+    }
+})

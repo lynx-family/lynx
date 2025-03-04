@@ -1,0 +1,10 @@
+{
+    "name": "border-radius",
+    "id": 11,
+    "type": "complex",
+    "default_value": "0px",
+    "version": "1.0",
+    "author": "liyun,linyiyi",
+    "consumption_status": "skip",
+    "desc": ""
+}

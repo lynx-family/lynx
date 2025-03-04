@@ -1,0 +1,109 @@
+{
+    "$schema": "http://json-schema.org/schema",
+    "title": "css_define",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "pattern": "^(?![0-9])(?!(--|-\\d))[a-zA-Z0-9\\u00A0-\\uFFFF_-]*$"
+      },
+      "id": {
+        "type": "integer"
+      },
+      "type": {
+        "type": "string"
+      },
+      "default_value": {
+        "type": "string"
+      },
+      "version": {
+        "type": "string"
+      },
+      "author": {
+        "type": "string"
+      },
+      "consumption_status": {
+        "type": "string",
+        "enum": ["layout-wanted", "layout-only", "skip"]
+      },
+      "desc": {
+        "type": "string"
+      },
+      "keywords": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "values": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "value": {
+              "type": "string"
+            },
+            "version": {
+              "type": "string"
+            },
+            "desc": {
+              "type": "string"
+            },
+            "align-type": {
+              "type": "string",
+              "enum": ["flex-start",  "flex-end", "start", "end"]
+            }
+          },
+          "required": ["value", "version"]
+        }
+      },
+      "links": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            },
+            "desc": {
+              "type": "string"
+            }
+          },
+          "required": ["url"]
+        }
+      },
+      "note": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "literal": {
+              "type": "string"
+            },
+            "level": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["tip", "info", "warning", "danger"]
+              }
+            }
+          },
+          "required": ["literal", "level"]
+        }
+      },
+      "example": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "id",
+      "type",
+      "default_value",
+      "version",
+      "author",
+      "consumption_status",
+      "desc"
+    ]
+  }
+  

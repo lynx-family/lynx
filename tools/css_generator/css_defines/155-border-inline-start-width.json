@@ -1,0 +1,10 @@
+{
+    "name": "border-inline-start-width",
+    "id": 155,
+    "type": "border-width",
+    "default_value": "0px",
+    "version": "2.0",
+    "author": "liting.src",
+    "consumption_status": "skip",
+    "desc": ""
+}

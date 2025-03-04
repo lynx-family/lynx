@@ -1,0 +1,20 @@
+#Copyright 2022 The Lynx Authors.All rights reserved.
+#Licensed under the Apache License Version 2.0 that can be found in the
+#LICENSE file in the root directory of this source tree.
+import("//lynx/devtool/lynx_devtool/devtool.gni")
+
+devtool_source_set("android_devtool_build") {
+  assert(is_android)
+  sources = [
+    "gen/CDPResultCallbackWrapper_jni.h",
+    "gen/DevtoolMessageHandlerDelegate_jni.h",
+    "gen/FPSTrace_jni.h",
+    "gen/FrameTraceService_jni.h",
+    "gen/FrameViewTrace_jni.h",
+    "gen/GlobalDevtoolPlatformAndroidDelegate_jni.h",
+    "gen/InstanceTrace_jni.h",
+    "gen/LynxDevtoolNGDelegate_jni.h",
+    "gen/LynxInspectorOwner_jni.h",
+    "gen/RecorderController_jni.h",
+  ]
+}

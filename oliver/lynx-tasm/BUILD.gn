@@ -1,0 +1,192 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/wasm/wasm_static_lib.gni")
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/renderer/build.gni")
+import("//lynx/core/renderer/css/build.gni")
+import("//lynx/core/renderer/data/build.gni")
+import("//lynx/core/renderer/dom/build.gni")
+import("//lynx/core/renderer/utils/build.gni")
+import("//lynx/core/runtime/bindings/lepus/build.gni")
+import("//lynx/core/runtime/jscache/quickjs/quickjs_cache.gni")
+import("//lynx/core/runtime/jsi/quickjs/build.gni")
+import("//lynx/core/runtime/vm/lepus/build.gni")
+import("//lynx/core/runtime/vm/lepus/build.gni")
+import("//lynx/oliver/oliver.gni")
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+group("LepusCmdExe") {
+  if (build_lynx_lepus_node && !is_wasm) {
+    deps = [ ":lepus_cmd_exec" ]
+  }
+}
+
+group("CreateTasmNode") {
+  if (build_lynx_lepus_node && !is_wasm) {
+    deps = [ ":create_tasm_node" ]
+  }
+}
+
+group("OliverTasmWasm") {
+  if (build_lynx_lepus_node && is_wasm) {
+    deps = [ ":oliver_tasm_wasm" ]
+  }
+}
+
+if (build_lynx_lepus_node) {
+  lynx_encoder_deps = [
+    ":encoder_common",
+    "//lynx/core/parser",
+    "//lynx/core/template_bundle/template_codec/generator",
+    "//lynx/third_party/aes",
+    "//lynx/third_party/modp_b64",
+  ]
+
+  if (is_wasm) {
+    wasm_static_lib("oliver_tasm_wasm") {
+      output_name = "lepus"
+      binary_path = "$root_out_dir/obj/lynx/oliver/lynx-tasm"
+
+      script = "//lynx/oliver/gen_wasm_js.py"
+      args = [
+        "--emsdk_path",
+        "$emsdk_dir",
+        "--binary_path",
+        rebase_path("$root_out_dir/wasm", "$root_build_dir"),
+        "--output_name",
+        "$output_name",
+        "--flags",
+        string_join(
+            " ",
+            [
+              "-s WASM=1",
+              "-s WASM_ASYNC_COMPILATION=0",
+              "-s ASSERTIONS=1",
+              "-s NODEJS_CATCH_EXIT=0",
+              "-s NODEJS_CATCH_REJECTION=0",
+              "-s DISABLE_EXCEPTION_CATCHING=0",
+              "-s SINGLE_FILE=1",
+              "--bind",
+              "-s ALLOW_MEMORY_GROWTH=1",
+              "-s MODULARIZE=1",
+              "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['cwrap','ccall', 'allocateUTF8','UTF8ToString']\"",
+              "-s EXPORTED_FUNCTIONS=\"['_reencode_template_debug', '_lepusCheck', '_createBufferPool', '_dropBufferPool', '_readBufferPool_data', '_readBufferPool_len']\"",
+            ]),
+      ]
+
+      deps = lynx_encoder_deps
+    }
+  } else {
+    oliver_node_lib("create_tasm_node") {
+      output_name = "lepus"
+
+      if (is_mac) {
+        ldflags = [ "-Wl,-dead_strip,-undefined,dynamic_lookup" ]
+      } else if (is_linux) {
+        ldflags = [ "-static-libstdc++" ]
+      }
+
+      deps = lynx_encoder_deps
+      deps += [ "//lynx/third_party/quickjs:quickjs" ]
+    }
+
+    cmake_target("lepus_cmd_exec") {
+      cmake_version = "3.4.1"
+      target_type = "executable"
+      output_name = "lepus_cmd"
+      if (is_mac) {
+        ldflags = [ "-Wl,-dead_strip,-undefined,dynamic_lookup" ]
+      } else if (is_linux) {
+        ldflags = [ "-static-libstdc++" ]
+      }
+      cflags_cc = [
+        "-std=c++17",
+        "-Wall",
+        "-Wuninitialized",
+        "-Wno-implicit-int-float-conversion",
+        "-Wno-unknown-warning-option",
+        "-Wno-c99-designator",
+      ]
+
+      deps = lynx_encoder_deps
+      deps += [
+        "//lynx/core/template_bundle/template_codec:lepus_cmd",
+        "//lynx/third_party/quickjs:quickjs",
+      ]
+
+      find_and_link_packages = [ [
+            "Threads",
+            [],
+            "",
+            "Threads::Threads",
+          ] ]
+      libs = [ "stdc++" ]
+    }
+  }
+
+  lynx_core_source_set("encoder_common") {
+    # css
+    sources = lynx_css_core_sources_path
+    sources += lynx_css_parser_sources_path
+    sources -= lynx_css_extra_sources_path
+
+    # lepus
+    sources += lynx_lepus_common_sources_path
+    sources += lynx_lepus_ng_sources_path
+    sources += lynx_lepus_task_sources_path
+    if (build_lepus_compile) {
+      sources += lynx_lepus_compile_sources_path
+    }
+    if (!enable_just_lepusng) {
+      sources += lynx_lepus_core_sources_path
+    }
+    sources += lynx_lepus_binding_sources_path
+    sources += lynx_empty_renderer_functions_sources_path
+
+    # dom
+    sources += lynx_component_attr_sources_path
+    sources += lynx_tasm_config_sources_path
+    if (is_nodejs) {
+      sources += [ "//lynx/core/renderer/tasm/napi_bind.cc" ]
+    }
+
+    # utils
+    sources += lynx_renderer_utils_sources_path
+    sources += lynx_env_shared_sources_path
+    sources += lynx_renderer_utils_mock_sources_path
+    sources += lynx_trail_hub_default_sources_path
+
+    # data
+    sources += lynx_data_shared_sources_path
+
+    # quickjs
+    if (is_wasm || is_encoder_ut) {
+      sources += lynx_jsi_quickjs_sources_path
+      sources += jscache_quickjs_sources
+    }
+
+    deps = [
+      "//lynx/base/src:base_log",
+      "//lynx/base/src:string_utils",
+      "//lynx/base/src:values",
+      "//lynx/core:find_node_headers",
+      "//lynx/core/base:json_utils",
+      "//lynx/core/base:observer",
+      "//lynx/core/build:build",
+      "//lynx/core/runtime:js_common",
+      "//lynx/core/runtime/common:reporter",
+      "//lynx/core/template_bundle/template_codec:template_encoder",
+      "//lynx/core/value_wrapper:value_wrapper",
+      "//lynx/third_party/double-conversion:double_conversion",
+    ]
+
+    deps += [ "//lynx/third_party/quickjs" ]
+
+    if (is_wasm) {
+      exclude_configs = [ "//build/config/compiler:no_rtti" ]
+      configs = [ "//build/config/compiler:rtti" ]
+    }
+  }
+}

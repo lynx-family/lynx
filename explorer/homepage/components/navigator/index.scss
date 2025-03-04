@@ -1,0 +1,29 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@mixin navigator {
+  display: flex;
+  margin-top: auto;
+  height: 48px;
+}
+.navigator__light {
+  @include navigator;
+  box-shadow: 0 -1px #d9d9d9;
+  background: #fbfbfc;
+}
+
+.navigator__dark {
+  @include navigator;
+  box-shadow: 0 -1px #ffffff29;
+  background: #181d25;
+}
+.button {
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+}
+.icon {
+  width: 28px;
+  height: 28px;
+}

@@ -1,0 +1,252 @@
+{% macro partial_data_opt(interface_name, method) %}
+  {% if method.name.startswith('uniform') and method.name.endswith('v') %}
+  {% if method.name.startswith('uniformMatrix') and method.arguments | length == 5 %}
+  if (typeof {{method.arguments[4].name}} === "number" && {{method.arguments[4].name}} < cmdLengthCutoff && ArrayBuffer.isView({{method.arguments[2].name}})) {
+    let bpe = {{method.arguments[2].name}}.BYTES_PER_ELEMENT
+    let buf = new {{method.arguments[2].name}}.constructor({{method.arguments[2].name}}.buffer, {{method.arguments[3].name}} * bpe, {{method.arguments[4].name}});
+    {{method.name}}.apply(this, [{{method.arguments[0].name}}, {{method.arguments[1].name}}, buf]);
+    return;
+  }
+  {% elif method.arguments | length == 4 %}
+  if (typeof {{method.arguments[3].name}} === "number" && {{method.arguments[3].name}} < cmdLengthCutoff && ArrayBuffer.isView({{method.arguments[1].name}})) {
+    let bpe = {{method.arguments[1].name}}.BYTES_PER_ELEMENT
+    let buf = new {{method.arguments[1].name}}.constructor({{method.arguments[1].name}}.buffer, {{method.arguments[2].name}} * bpe, {{method.arguments[3].name}});
+    {{method.name}}.apply(this, [{{method.arguments[0].name}}, buf]);
+    return;
+  }
+  {% endif %}
+  {% endif %}
+  {#                                                                        #}
+  {% if method.name == 'bufferData' and method.arguments | length > 3 %}
+  if (typeof {{method.arguments[4].name}} === "number" && {{method.arguments[4].name}} < cmdLengthCutoff && ArrayBuffer.isView({{method.arguments[1].name}})) {
+    let byte_offset = {{method.arguments[3].name}} * {{method.arguments[1].name}}.BYTES_PER_ELEMENT;
+    if ({{method.arguments[3].name}} > 0 && byte_offset < {{method.arguments[1].name}}.byteLength && {{method.arguments[4].name}} > 0 && {{method.arguments[3].name}} + {{method.arguments[4].name}} < {{method.arguments[1].name}}.length) {
+      let buf = new {{method.arguments[1].name}}.constructor({{method.arguments[1].name}}.buffer, byte_offset, {{method.arguments[4].name}});
+      bufferData2.apply(this, [{{method.arguments[0].name}}, buf, {{method.arguments[2].name}}]);
+      return;
+    }
+  }
+
+  if (ArrayBuffer.isView({{method.arguments[1].name}}) && {{method.arguments[4].name}}) {
+    {{method.arguments[1].name}} = {{method.arguments[1].name}}.subarray({{method.arguments[3].name}}, {{method.arguments[3].name}} + {{method.arguments[4].name}});
+    srcOffset = 0;
+  }
+  {% endif %}
+  {% if method.name == 'bufferSubData' and method.arguments | length > 3  %}
+  if (typeof {{method.arguments[4].name}} === "number" && {{method.arguments[4].name}} < cmdLengthCutoff && ArrayBuffer.isView({{method.arguments[2].name}})) {
+    let byte_offset = {{method.arguments[3].name}} * {{method.arguments[2].name}}.BYTES_PER_ELEMENT;
+    if ({{method.arguments[3].name}} > 0 && byte_offset < {{method.arguments[2].name}}.byteLength && {{method.arguments[4].name}} > 0 && {{method.arguments[3].name}} + {{method.arguments[4].name}} < {{method.arguments[2].name}}.length) {
+      let buf = new {{method.arguments[2].name}}.constructor({{method.arguments[2].name}}.buffer, byte_offset, {{method.arguments[4].name}});
+      bufferSubData1.apply(this, [{{method.arguments[0].name}}, {{method.arguments[1].name}},  buf]);
+      return;
+    }
+  }
+
+  if (ArrayBuffer.isView({{method.arguments[2].name}}) && {{method.arguments[4].name}}) {
+    {{method.arguments[2].name}} = {{method.arguments[2].name}}.subarray({{method.arguments[3].name}}, {{method.arguments[3].name}} + {{method.arguments[4].name}});
+    srcOffset = 0;
+  }
+  {% endif %}
+
+  {% if (method.name == 'compressedTexSubImage2D' or method.name == 'compressedTexImage3D') and method.arguments | length == 10  %}
+  if (ArrayBuffer.isView({{method.arguments[7].name}}) && {{method.arguments[9].name}}) {
+    {{method.arguments[7].name}} = {{method.arguments[7].name}}.subarray({{method.arguments[8].name}}, {{method.arguments[8].name}} + {{method.arguments[9].name}});
+    srcOffset = 0;
+  }
+  {% endif %}
+
+  {% if method.name == 'compressedTexImage2D' and method.arguments | length == 9  %}
+  if (ArrayBuffer.isView({{method.arguments[6].name}}) && {{method.arguments[8].name}}) {
+    {{method.arguments[6].name}} = {{method.arguments[6].name}}.subarray({{method.arguments[7].name}}, {{method.arguments[7].name}} + {{method.arguments[8].name}});
+    srcOffset = 0;
+  }
+  {% endif %}
+
+  {% if method.name == 'compressedTexSubImage3D' and method.arguments | length == 12  %}
+  if (ArrayBuffer.isView({{method.arguments[9].name}}) && {{method.arguments[11].name}}) {
+    {{method.arguments[9].name}} = {{method.arguments[9].name}}.subarray({{method.arguments[10].name}}, {{method.arguments[10].name}} + {{method.arguments[11].name}});
+    srcOffset = 0;
+  }
+  {% endif %}
+{% endmacro %}
+
+{% macro overload_resolvers(name, methods, overloads_child_only) %}
+  {#
+  There are 2 different cases here:
+  a. uniform<Matrix>[xx]v series are only overloaded in a child interface (WebGL2 context).
+     The command buffer context only keeps base and child extra method and omits the
+     inherited 'redundant' one, so we are unable to use overload_index like normal.
+     Make sure we modify the base function name and 'generate' a resolver here.
+  b. buffer<Sub>Data are overloaded in both base and children. The overload index is usable,
+     but function body is yet to be generated automatically.
+  #}
+  {# a. Dispatching uniforms can be done with arg num #}
+  {% for method in methods if method.overload_index and overloads_child_only[method.name] == true and method.name.startswith('uniform')%}
+  function {{method.name}}() {
+    if (arguments.length < {{method.arguments | length - 1}}) {
+      {{method.name}}base.apply(this, arguments);
+    } else {
+      {{method.name}}{{method.overload_index}}.apply(this, arguments);
+    }
+  }
+
+  {% endfor %}
+  {# b. Now comes the real ugly stuff #}
+  {% if name == 'WebGLRenderingContext' %}
+  function bufferData(target, size, usage) {
+    if (arguments.length >= 3) {
+      if (size == null) {
+        bufferData3.apply(this, arguments);
+        return;
+      }
+      if (ArrayBuffer.isView(size)) {
+        // ArrayBufferView
+        bufferData2.apply(this, arguments);
+        return;
+      }
+      if (size instanceof ArrayBuffer) {
+        // ArrayBuffer
+        bufferData3.apply(this, arguments);
+        return;
+      }
+      // Number
+      bufferData1.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve bufferData');
+  }
+
+  function bufferSubData(target, offset, data) {
+    if (arguments.length >= 3) {
+      if (ArrayBuffer.isView(data)) {
+        // ArrayBufferView
+        bufferSubData1.apply(this, arguments);
+        return;
+      } else if (data instanceof ArrayBuffer) {
+        // ArrayBuffer
+        bufferSubData2.apply(this, arguments);
+        return;
+      }
+    }
+    throw new TypeError('Failed to resolve bufferData');
+  }
+
+  {% elif name == 'WebGL2RenderingContext' %}
+  function bufferData(target, size, usage) {
+    if (arguments.length == 3) {
+      if (size == null) {
+        bufferData3.apply(this, arguments);
+        return;
+      }
+      if (ArrayBuffer.isView(size)) {
+        // ArrayBufferView
+        bufferData2.apply(this, arguments);
+        return;
+      }
+      if (size instanceof ArrayBuffer) {
+        // ArrayBuffer
+        bufferData3.apply(this, arguments);
+        return;
+      }
+      // Number
+      bufferData1.apply(this, arguments);
+      return;
+    } else if (arguments.length >= 4) {
+      bufferData4.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve bufferData');
+  }
+
+  function bufferSubData(target, offset, data) {
+    if (arguments.length == 3) {
+      if (ArrayBuffer.isView(data)) {
+        // ArrayBufferView
+        bufferSubData1.apply(this, arguments);
+        return;
+      } else if (data instanceof ArrayBuffer) {
+        // ArrayBuffer
+        bufferSubData2.apply(this, arguments);
+        return;
+      }
+    } else if (arguments.length >= 4) {
+      bufferSubData3.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve bufferSubData');
+  }
+
+  function compressedTexImage2D() {
+    if (arguments.length == 7) {
+      compressedTexImage2Dbase.apply(this, arguments);
+      return;
+    } else if (arguments.length == 8) {
+      if (ArrayBuffer.isView(arguments[6])) {
+        compressedTexImage2D2.apply(this, arguments);
+        return;
+      }
+      compressedTexImage2D3.apply(this, arguments);
+      return;
+    } else if (arguments.length >= 9) {
+      compressedTexImage2D2.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve compressedTexImage2D');
+  }
+
+  function compressedTexSubImage2D() {
+    if (arguments.length == 8) {
+      compressedTexSubImage2Dbase.apply(this, arguments);
+      return;
+    } else if (arguments.length == 9) {
+      if (ArrayBuffer.isView(arguments[7])) {
+        compressedTexSubImage2D2.apply(this, arguments);
+        return;
+      }
+      compressedTexSubImage2D3.apply(this, arguments);
+      return;
+    } else if (arguments.length >= 10) {
+      compressedTexSubImage2D2.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve compressedTexSubImage2D');
+  }
+
+  function compressedTexImage3D() {
+    if (arguments.length == 8) {
+      compressedTexImage3D1.apply(this, arguments);
+      return;
+    } else if (arguments.length == 9) {
+      if (ArrayBuffer.isView(arguments[7])) {
+        compressedTexImage3D1.apply(this, arguments);
+        return;
+      }
+      compressedTexImage3D2.apply(this, arguments);
+      return;
+    } else if (arguments.length >= 10) {
+      compressedTexImage3D1.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve compressedTexImage3D');
+  }
+
+  function compressedTexSubImage3D() {
+    if (arguments.length == 10) {
+      compressedTexSubImage3D1.apply(this, arguments);
+      return;
+    } else if (arguments.length == 11) {
+      if (ArrayBuffer.isView(arguments[9])) {
+        compressedTexSubImage3D1.apply(this, arguments);
+        return;
+      }
+      compressedTexSubImage3D2.apply(this, arguments);
+      return;
+    } else if (arguments.length >= 12) {
+      compressedTexSubImage3D1.apply(this, arguments);
+      return;
+    }
+    throw new TypeError('Failed to resolve compressedTexSubImage3D');
+  }
+
+  {% endif %}
+{% endmacro %}

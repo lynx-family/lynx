@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="@color/logbox_black" />
+    <stroke
+        android:width="2dp"
+        android:color="@color/logbox_white" />
+    <size
+        android:width="27dp"
+        android:height="27dp" />
+</shape>

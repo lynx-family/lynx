@@ -1,0 +1,18 @@
+interface LepusComponent {
+    LepusElement querySelector(ByteString selector);
+    sequence<LepusElement> querySelectorAll(ByteString selector);
+    long requestAnimationFrame(FrameCallback cb);
+    void cancelAnimationFrame(long id);
+    void triggerEvent(ByteString eventName, object eventDetail, object eventOption);
+
+    object getStore();
+    void setStore(object data);
+
+    object getData();
+    void setData(object data);
+
+    object getProperties();
+
+    // call js function asynchronous, in lepus thread, lepus event need return value from js function
+    void callJSFunction(ByteString methodName, object methodParam, optional FuncCallback cb);
+};

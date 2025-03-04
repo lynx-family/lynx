@@ -1,0 +1,35 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//lynx/config.gni")
+import("//lynx/testing/test.gni")
+
+group("lynx_test") {
+  testonly = true
+  deps = [
+    "//lynx/core/animation:animation_tests",
+    "//lynx/core/animation/basic_animation:basic_animation_unittests_exec",
+    "//lynx/core/animation/lynx_basic_animator:lynx_basic_animator_unittests_exec",
+    "//lynx/core/animation/transforms:transforms_tests",
+    "//lynx/core/animation/utils:animation_utils_unittests_exec",
+    "//lynx/core/event:event_tests",
+    "//lynx/core/inspector:inspector_group",
+    "//lynx/core/renderer/css:css_tests",
+    "//lynx/core/renderer/dom:dom_tests",
+    "//lynx/core/renderer/events:events_test_exec",
+    "//lynx/core/renderer/signal:signal_test_exec",
+    "//lynx/core/renderer/starlight:starlight_tests",
+    "//lynx/core/renderer/tasm/react/android/mapbuffer:mapbuffer_tests",
+    "//lynx/core/renderer/ui_component/list:react_component_list_testset_group",
+    "//lynx/core/runtime:jsbridge_tests_exec",
+    "//lynx/core/runtime/bindings/common/event:runtime_common_unittests_exec",
+    "//lynx/core/runtime/bindings/jsi/event:js_runtime_unittests_exec",
+    "//lynx/core/runtime/bindings/lepus/event:lepus_runtime_unittests_exec",
+    "//lynx/core/runtime/vm/lepus/tasks:task_unittests_exec",
+    "//lynx/core/services/recorder:record_unit_test",
+    "//lynx/core/services/replay:replay_unit_test",
+    "//lynx/core/shared_data:shared_data_test_exec",
+    "//lynx/core/shell/testing:shell_tests",
+    "//lynx/third_party/binding:binding_tests",
+  ]
+}

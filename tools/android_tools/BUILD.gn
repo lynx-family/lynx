@@ -1,0 +1,30 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/config/android/config.gni")
+import("//build/config/android/rules.gni")
+
+config("cpu_features_include") {
+  include_dirs = [ "$android_ndk_root/sources/android/cpufeatures" ]
+}
+
+config("cpu_features_warnings") {
+  if (is_clang) {
+    # cpu-features.c has few unused functions on x86 b/26403333
+    cflags = [ "-Wno-unused-function" ]
+  }
+}
+
+source_set("cpu_features") {
+  sources = [ "$android_ndk_root/sources/android/cpufeatures/cpu-features.c" ]
+  public_configs = [ ":cpu_features_include" ]
+
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    "//build/config/compiler:no_chromium_code",
+
+    # Must be after no_chromium_code for warning flags to be ordered correctly.
+    ":cpu_features_warnings",
+  ]
+}

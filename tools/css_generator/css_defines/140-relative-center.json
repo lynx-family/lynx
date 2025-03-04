@@ -1,0 +1,64 @@
+{
+    "name": "relative-center",
+    "id": 140,
+    "type": "enum",
+    "default_value": "none",
+    "version": "1.0",
+    "author": "zhangmin",
+    "desc": "TBD",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "none",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "vertical",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "horizontal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "both",
+            "version": "1.0",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "relative-center": {
+            "__compat": {
+              "description": "Specifies that the current element is aligned with the bottom edge of the parent or sibling element corresponding to id.",
+              "lynx_path": "docs/zh/api/css/properties/relative-center",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.4"
+                },
+                "clay_android": {
+                  "version_added": "1.4"
+                },
+                "clay_macos": {
+                  "version_added": "1.4"
+                },
+                "clay_windows": {
+                  "version_added": "1.4"
+                }
+              }
+            }
+          }
+    }
+}

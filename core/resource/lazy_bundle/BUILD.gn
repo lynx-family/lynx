@@ -1,0 +1,42 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# lazy_bundle_shared_sources
+
+lazy_bundle_shared_sources = [
+  "lazy_bundle_lifecycle_option.cc",
+  "lazy_bundle_lifecycle_option.h",
+  "lazy_bundle_loader.cc",
+  "lazy_bundle_loader.h",
+  "lazy_bundle_utils.cc",
+  "lazy_bundle_utils.h",
+]
+
+# lazy_bundle_shared_sources end
+
+lynx_core_source_set("lazy_bundle") {
+  sources = lazy_bundle_shared_sources
+}
+
+unittest_set("lazy_bundle_test_testset") {
+  testonly = true
+
+  sources = [ "lazy_bundle_unittest.cc" ]
+
+  public_deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+unittest_exec("lazy_bundle_test_exec") {
+  testonly = true
+
+  sources = []
+
+  deps = [ ":lazy_bundle_test_testset" ]
+}

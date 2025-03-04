@@ -1,0 +1,64 @@
+{
+    "name": "flex-direction",
+    "id": 52,
+    "type": "enum",
+    "default_value": "row",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "values": [
+        {
+            "value": "column",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "row",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "row-reverse",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "column-reverse",
+            "version": "1.0",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "flex-direction": {
+            "__compat": {
+              "lynx_path": "api/css/properties/flex-direction",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/flex-direction",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "notes": "",
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            }
+          }
+    }
+}

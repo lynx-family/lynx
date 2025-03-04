@@ -1,0 +1,99 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+@import "../shared";
+
+.theme__dark {
+  @include box;
+  flex-direction: column;
+  margin-bottom: 3%;
+  height: 18%;
+  background: var(--box-dark);
+}
+
+.theme__light {
+  @include box;
+  flex-direction: column;
+  margin-bottom: 3%;
+  height: 18%;
+  background: var(--box-light);
+}
+
+.option-item {
+  display: flex;
+  height: 33%;
+}
+
+.option-icon {
+  width: 16px;
+  height: 16px;
+  margin-left: 5%;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.radio-button-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 2px;
+  height: 18px;
+  width: 18px;
+  margin-right: 5%;
+  margin-left: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.radio-button {
+  display: flex;
+  border-radius: 50%;
+  width: 11px;
+  height: 11px;
+}
+
+.radio-button-container-active__light {
+  @extend .radio-button-container;
+  border: 1px solid #ff351a;
+}
+
+.radio-button-container-inactive__light {
+  @extend .radio-button-container;
+  border: 1px solid #d9d9d9;
+}
+
+.radio-button-active__light {
+  @extend .radio-button;
+  background: #ff351a;
+}
+
+.radio-button-container-active__dark {
+  @extend .radio-button-container;
+  border: 1px solid #ff6448;
+}
+
+.radio-button-container-inactive__dark {
+  @extend .radio-button-container;
+  border: 1px solid #ffffff29;
+}
+
+.radio-button-active__dark {
+  @extend .radio-button;
+  background: #ff6448;
+}
+
+.devtool__light {
+  @include box;
+  height: 8%;
+  justify-content: center;
+  background: var(--box-light);
+}
+
+.devtool__dark {
+  @include box;
+  height: 8%;
+  justify-content: center;
+  background: var(--box-dark);
+}

@@ -1,0 +1,15 @@
+PerformanceMetric:
+  type: object
+  properties:
+    name:
+      type: string
+    duration:
+      type: number
+    startTimestampName:
+      type: string
+    startTimestamp:
+      type: number
+    endTimestampName:
+      type: string
+    endTimestamp:
+      type: number

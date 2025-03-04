@@ -1,0 +1,183 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+import("//lynx/testing/test.gni")
+import("hook_systrace/hook_systrace.gni")
+import("platform/platform.gni")
+
+config("trace_public_config") {
+  include_dirs = [
+    "//lynx/third_party/perfetto",
+    "$root_gen_dir/lynx",
+  ]
+  defines = []
+  if (enable_trace == "perfetto") {
+    defines += [ "ENABLE_TRACE_PERFETTO=1" ]
+  } else if (enable_trace == "systrace") {
+    defines += [ "ENABLE_TRACE_SYSTRACE=1" ]
+  }
+  cflags = [ "-Wno-unused-parameter" ]
+
+  if (enable_trace != "perfetto") {
+    cflags += [ "-Wno-unused-private-field" ]
+  }
+
+  if (is_clang) {
+    cflags += [
+      "-Wno-unused-lambda-capture",
+      "-Wno-unused-const-variable",
+    ]
+  }
+}
+
+config("trace_private_config") {
+  cflags = [
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-exceptions",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fno-short-enums",
+    "-fno-stack-protector",
+    "-fno-strict-aliasing",
+    "-Wextra",
+  ]
+  cflags_c = []
+  cflags_cc = [
+    "-fno-rtti",
+    "-std=c++17",
+    "-Wl,-ldl",
+    "-Wno-unused-command-line-argument",
+  ]
+  configs = []
+  if (is_debug) {
+    cflags_cc += [ "-g" ]
+  }
+
+  defines = []
+
+  # TODO(yongjie): enable log in trace.
+  defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
+}
+
+# trace_public_headers & trace_shared_sources
+trace_public_headers = [
+  "internal_trace_category.h",
+  "trace_controller.h",
+  "trace_event.h",
+  "track_event_wrapper.h",
+  "trace_event_utils_perfetto.h",
+  "trace_export.h",
+]
+
+trace_shared_sources = [
+  "internal_trace_category.h",
+  "trace_controller.h",
+  "trace_event.h",
+  "trace_event_utils_perfetto.h",
+  "trace_export.h",
+  "track_event_wrapper.h",
+
+  # TODO(luchengxuan) remove & use trace_event directly in 218
+  "trace_event_export_symbol.cc",
+  "trace_event_export_symbol.h",
+]
+
+if (enable_trace != "perfetto") {
+  trace_shared_sources += [
+    "trace_controller.cc",
+    "trace_event_utils_perfetto_mock.cc",
+    "track_event_wrapper_mock.cc",
+  ]
+}
+
+if (enable_trace == "perfetto") {
+  trace_public_headers += [ "instance_counter_trace.h" ]
+  trace_shared_sources += [
+    "instance_counter_trace.cc",
+    "instance_counter_trace.h",
+    "trace_controller_impl.cc",
+    "trace_controller_impl.h",
+    "track_event_wrapper.cc",
+  ]
+} else if (enable_trace == "systrace") {
+  trace_public_headers += [
+    "trace_event_utils_systrace.h",
+    "instance_counter_trace.h",
+  ]
+  trace_shared_sources += [
+    "instance_counter_trace.cc",
+    "instance_counter_trace.h",
+    "trace_event_utils_systrace.h",
+  ]
+
+  if (is_android) {
+    trace_shared_sources += [ "trace_event_utils_systrace_android.cc" ]
+  } else if (is_apple || is_win || is_linux) {
+    trace_shared_sources += [ "trace_event_utils_systrace_default.cc" ]
+  }
+}
+
+trace_public_headers += platform_public_headers + hook_systrace_public_headers
+trace_shared_sources += platform_shared_sources + hook_systrace_shared_sources
+
+# trace_public_headers & trace_shared_sources end
+
+source_set("trace") {
+  # TODO(tangyongjie): Currently, when GN is converted to podspec, public will be converted
+  # to public_header_files, which will be enabled later to distinguish the meaning of the two.
+  # public = trace_public_headers
+  sources = trace_shared_sources
+
+  public_deps = [
+    "//lynx/base/src:base",
+    # TODO(yongjie): enable log in trace.
+    # "//lynx/base/src:base_log",
+  ]
+
+  if (is_android) {
+    if (enable_trace == "perfetto") {
+      public_deps += [ "//third_party/xhook:xhook" ]
+    }
+    public_deps += [ "//lynx/base/trace/android:trace_jni" ]
+  }
+
+  if (enable_trace == "perfetto") {
+    public_deps += [
+      "//lynx/third_party/perfetto:perfetto",
+      "//lynx/third_party/rapidjson:rapidjson",
+    ]
+  }
+
+  public_configs = [ ":trace_public_config" ]
+  configs += [ ":trace_private_config" ]
+}
+
+source_set("trace_public_headers") {
+  sources = trace_public_headers
+  public_configs = [ ":trace_public_config" ]
+}
+
+unittest_set("trace_testset") {
+  sources = [
+    "trace_controller_unittest.cc",
+    "trace_event_unittest.cc",
+  ]
+  public_deps = [ ":trace" ]
+}
+
+unittest_exec("trace_unittests_exec") {
+  sources = []
+  deps = [
+    ":trace",
+    ":trace_testset",
+  ]
+}
+
+group("trace_tests") {
+  testonly = true
+  deps = [ ":trace_unittests_exec" ]
+  public_deps = [ ":trace_testset" ]
+}

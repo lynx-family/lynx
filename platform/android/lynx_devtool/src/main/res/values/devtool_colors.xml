@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="logbox_white">#FFFFFF</color>
+    <color name="logbox_black">#000000</color>
+    <color name="logbox_dark_grey">#5C5D5D</color>
+    <color name="logbox_grey">#717272</color>
+    <color name="logbox_red">#FFE44369</color>
+    <color name="logbox_yellow">#FFEFBD36</color>
+    <color name="logbox_transparent">#00000000</color>
+</resources>

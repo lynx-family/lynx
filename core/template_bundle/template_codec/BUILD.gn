@@ -1,0 +1,60 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/codec_files.gni")
+import("//lynx/core/Lynx.gni")
+
+lynx_core_source_set("lepus_cmd") {
+  include_dirs = [ "//third_party" ]
+
+  sources = [
+    "lepus_cmd.cc",
+    "lepus_cmd.h",
+  ]
+
+  if (is_oliver) {
+    public_deps = [ "//lynx/third_party/quickjs:quickjs" ]
+  }
+  deps = [ "//lynx/third_party/rapidjson:rapidjson" ]
+}
+
+lynx_core_source_set("lepus_compile") {
+  sources = [
+    "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.cc",
+    "//${lynx_dir}/core/template_bundle/template_codec/binary_encoder/template_binary_writer.h",
+    "binary_encoder/encoder.h",
+    "generator/template_parser.cc",
+    "generator/template_parser.h",
+  ]
+
+  exclude_configs = []
+  if (is_wasm) {
+    exclude_configs += [ "//build/config/compiler:no_rtti" ]
+    configs = [ "//build/config/compiler:rtti" ]
+  }
+}
+
+lynx_core_source_set("template_decoder") {
+  sources = [
+              "compile_options.h",
+              "header_ext_info.h",
+              "magic_number.h",
+              "moulds.h",
+              "template_binary.h",
+              "ttml_constant.h",
+              "version.h",
+            ] + magic_source
+
+  public_deps = [ "binary_decoder:binary_decoder" ]
+}
+
+lynx_core_source_set("template_encoder") {
+  sources = [
+              "compile_options.h",
+              "magic_number.h",
+              "template_binary.h",
+            ] + magic_source
+
+  public_deps = [ "binary_encoder:binary_encoder" ]
+}

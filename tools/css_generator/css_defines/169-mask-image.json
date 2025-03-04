@@ -1,0 +1,10 @@
+{
+    "name": "mask-image",
+    "id": 169,
+    "type": "complex",
+    "default_value": "",
+    "version": "2.0",
+    "author": "zhangqinghua",
+    "consumption_status": "skip",
+    "desc": ""
+}

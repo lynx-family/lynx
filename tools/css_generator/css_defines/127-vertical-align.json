@@ -1,0 +1,20 @@
+{
+    "name": "vertical-align",
+    "id": 127,
+    "type": "complex",
+    "default_value": "default",
+    "version": "1.0",
+    "author": "zhangmin",
+    "consumption_status": "skip",
+    "keywords": [
+        "baseline",
+        "sub",
+        "super",
+        "top",
+        "text-top",
+        "middle",
+        "bottom",
+        "text-bottom"
+    ],
+    "desc": ""
+}

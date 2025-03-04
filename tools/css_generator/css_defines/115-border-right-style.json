@@ -1,0 +1,22 @@
+{
+    "name": "border-right-style",
+    "id": 115,
+    "type": "border-style",
+    "default_value": "",
+    "version": "1.0",
+    "author": "liyun",
+    "consumption_status": "skip",
+    "keywords": [
+        "solid",
+        "dashed",
+        "dotted",
+        "double",
+        "groove",
+        "ridge",
+        "inset",
+        "outset",
+        "hidden",
+        "none"
+    ],
+    "desc": ""
+}

@@ -1,0 +1,70 @@
+{
+    "name": "linear-cross-gravity",
+    "id": 148,
+    "type": "enum",
+    "default_value": "none",
+    "version": "1.6",
+    "author": "zhangmin, wangzhixuan",
+    "desc": "default linear layout gravity for children",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "none",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "start",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "end",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "center",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "stretch",
+            "version": "1.6",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "linear-cross-gravity": {
+            "__compat": {
+              "description": "Set the position of the child element on the cross axis of the parent container in linear layout.",
+              "lynx_path": "api/css/properties/linear-layout-gravity",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.6"
+                },
+                "ios": {
+                  "version_added": "1.6"
+                },
+                "clay_android": {
+                  "version_added": "1.6"
+                },
+                "clay_macos": {
+                  "version_added": "1.6"
+                },
+                "clay_windows": {
+                  "version_added": "1.6"
+                },
+                "web_lynx": {
+                  "version_added": "4.1.0"
+                }
+              }
+            }
+          }
+    }
+}

@@ -1,0 +1,80 @@
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#ifndef {{header_guard}}
+#define {{header_guard}}
+
+#include <memory>
+
+{% for filename in header_includes %}
+#include "{{filename}}"
+{% endfor %}
+
+{% if impl_namespace %}
+namespace {{impl_namespace}} {
+class {{cpp_class}};
+}
+{% endif %}
+
+namespace lynx {
+namespace {{component}} {
+
+using binding::NapiBridge;
+using binding::ImplBase;
+
+{% if impl_namespace %}
+using {{impl_namespace}}::{{cpp_class}};
+{% else %}
+class {{cpp_class}};
+{% endif %}
+
+class {{napi_class}} : public NapiBridge {
+ public:
+  {{napi_class}}(const Napi::CallbackInfo&, bool);
+
+  void Init(std::unique_ptr<{{cpp_class}}>);
+
+  // Attributes
+  {% for attribute in attributes %}
+  {{'static ' if attribute.is_static}}Napi::Value {{attribute.camel_case_name}}AttributeGetter(const Napi::CallbackInfo&);
+  {% if attribute.does_generate_setter %}
+  {{'static ' if attribute.is_static}}void {{attribute.camel_case_name}}AttributeSetter(const Napi::CallbackInfo&, const Napi::Value&);
+  {% endif %}
+  {% endfor %}
+
+  // Methods
+  {% for method in methods if not method.overload_index and method.has_binding_version %}
+  {{'static ' if method.is_static}}Napi::Value {{method.camel_case_name}}Method(const Napi::CallbackInfo&);
+  {% endfor %}
+
+  // Overloads
+  {% for method in methods if method.overload_index %}
+  {{'static ' if method.is_static}}Napi::Value {{method.camel_case_name}}MethodOverload{{method.overload_index}}(const Napi::CallbackInfo&);
+  {% endfor %}
+
+  // Interface name
+  virtual const char* InterfaceName() = 0;
+
+{% if not parent_interface %}
+ protected:
+  ImplBase* ReleaseImpl();
+
+{% endif %}
+ private:
+  {% for constructor in constructors %}
+  void Init{{'Overload' + constructor.overload_index | string if constructor.overload_index}}(const Napi::CallbackInfo&);
+  {% endfor %}
+  {% if parent_interface %}
+  // Owned by root base.
+  {{cpp_class}}* impl_ = nullptr;
+  {% else %}
+  std::unique_ptr<{{cpp_class}}> impl_;
+  {% endif %}
+};
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+#endif  // {{header_guard}}
+
+{% endfilter %}{# format_blink_cpp_source_code #}

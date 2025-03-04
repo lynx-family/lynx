@@ -1,0 +1,10 @@
+{
+    "name": "font-size",
+    "id": 46,
+    "type": "length",
+    "default_value": "medium",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": ""
+}

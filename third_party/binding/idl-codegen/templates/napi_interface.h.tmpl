@@ -1,0 +1,125 @@
+{% filter format_blink_cpp_source_code %}
+
+{% include 'lynx_copyright_block.txt' %}
+#ifndef {{header_guard}}
+#define {{header_guard}}
+
+#include <memory>
+
+{% for filename in header_includes %}
+#include "{{filename}}"
+{% endfor %}
+{% if exported %}
+#include "base/include/base_export.h"
+{% endif %}
+
+{% if impl_namespace %}
+namespace {{impl_namespace}} {
+class {{cpp_class}};
+}
+{% endif %}
+
+namespace lynx {
+namespace {{component}} {
+
+using binding::NapiBridge;
+using binding::ImplBase;
+
+{% if impl_namespace %}
+using {{impl_namespace}}::{{cpp_class}};
+{% else %}
+class {{cpp_class}};
+{% endif %}
+
+class {{'BASE_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent_interface if parent_interface else 'NapiBridge'}} {
+ public:
+  {{napi_class}}(const Napi::CallbackInfo&, bool skip_init_as_base = false);
+  {% if dispose_on_destruction or buffer_commands or log_on_destruction or attach_native_info %}
+  ~{{napi_class}}() override;
+  {% endif %}
+
+  {% if export_impl_getter %}
+  BASE_EXPORT {{cpp_class}}* ToImplUnsafe();
+  {% else %}
+  {{cpp_class}}* ToImplUnsafe();
+  {% endif %}
+
+  static Napi::Object Wrap(std::unique_ptr<{{cpp_class}}>, Napi::Env);
+  static bool IsInstance(Napi::ScriptWrappable*);
+
+  void Init(std::unique_ptr<{{cpp_class}}>);
+
+  // Attributes
+  {% for attribute in attributes if not attribute.from_shared %}
+  {{'static ' if attribute.is_static}}Napi::Value {{attribute.camel_case_name}}AttributeGetter(const Napi::CallbackInfo&);
+  {% if attribute.does_generate_setter %}
+  {{'static ' if attribute.is_static}}void {{attribute.camel_case_name}}AttributeSetter(const Napi::CallbackInfo&, const Napi::Value&);
+  {% endif %}
+  {% endfor %}
+
+  // Methods
+  {% for method in methods if not method.overload_index and not method.from_shared %}
+  {% if method.has_binding_version %}
+  {{'static ' if method.is_static}}Napi::Value {{method.camel_case_name}}Method(const Napi::CallbackInfo&);
+  {% endif %}
+  {% endfor %}
+
+  // Overload Hubs
+  {% for method in methods if method.overloads %}
+  {% if method.has_binding_resolver %}
+  {{'static ' if method.is_static}}Napi::Value {{method.camel_case_name}}Method(const Napi::CallbackInfo&);
+  {% endif %}
+  {% endfor %}
+
+  // Overloads
+  {% for method in methods if method.overload_index and not method.from_shared %}
+  {% if method.has_binding_version %}
+  {{'static ' if method.is_static}}Napi::Value {{method.camel_case_name}}MethodOverload{{method.overload_index}}(const Napi::CallbackInfo&);
+  {% endif %}
+  {% endfor %}
+
+  // Injection hook
+  static void Install(Napi::Env, Napi::Object&);
+
+  static Napi::Function Constructor(Napi::Env);
+  static Napi::Class* Class(Napi::Env);
+
+  // Interface name
+  {% if sharing_impl %}
+  const char* InterfaceName() override {
+  {% else %}
+  static constexpr const char* InterfaceName() {
+  {% endif %}
+    return "{{interface_name}}";
+  }
+
+ {% if parent_interface and not sharing_impl or descendants %}
+ protected:
+  void PropagateDescendantType(void* type_info);
+ {% endif %}
+
+ private:
+  {% for constructor in constructors %}
+  void Init{{'Overload' + constructor.overload_index | string if constructor.overload_index}}(const Napi::CallbackInfo&);
+  {% endfor %}
+  {% if buffer_commands %}
+  ImplBase* ReleaseImpl();
+  {% endif %}
+  {% if parent_interface %}
+  // Owned by root base.
+  {{cpp_class}}* impl_ = nullptr;
+  {% else %}
+  std::unique_ptr<{{cpp_class}}> impl_;
+  {% endif %}
+  {% if attach_native_info %}
+  // The unique id of this object in JS command buffer.
+  uint32_t object_id_;
+  {% endif %}
+};
+
+}  // namespace {{component}}
+}  // namespace lynx
+
+#endif  // {{header_guard}}
+
+{% endfilter %}{# format_blink_cpp_source_code #}

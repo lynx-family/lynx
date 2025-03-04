@@ -1,0 +1,91 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/renderer_utils_files.gni")
+import("//lynx/config.gni")
+
+lynx_renderer_utils_sources = [
+                                "base/base_def.h",
+                                "base/element_template_info.h",
+                                "base/tasm_constants.h",
+                                "base/tasm_worker_basic_task_runner.cc",
+                                "base/tasm_worker_basic_task_runner.h",
+                                "base/tasm_worker_task_runner.cc",
+                                "base/tasm_worker_task_runner.h",
+                                "diff_algorithm.h",
+                                "value_utils.cc",
+                                "value_utils.h",
+                              ] + lynx_renderer_utils_extend_sources
+
+lynx_renderer_utils_sources_path =
+    get_path_info(lynx_renderer_utils_sources, "abspath")
+
+lynx_renderer_dom_utils_sources = [
+  "prop_bundle_style_writer.cc",
+  "prop_bundle_style_writer.h",
+]
+
+lynx_renderer_dom_utils_sources_path =
+    get_path_info(lynx_renderer_dom_utils_sources, "abspath")
+
+lynx_renderer_utils_platform_sources = []
+
+if (is_android) {
+  lynx_renderer_utils_platform_sources += [
+    "android/device_display_info.cc",
+    "android/device_display_info.h",
+    "android/event_converter_android.cc",
+    "android/event_converter_android.h",
+    "android/text_utils_android.cc",
+    "android/text_utils_android.h",
+    "android/value_converter_android.cc",
+    "android/value_converter_android.h",
+  ]
+}
+if (is_ios) {
+  lynx_renderer_utils_platform_sources += [
+    "darwin/event_converter_darwin.h",
+    "darwin/event_converter_darwin.mm",
+    "ios/text_utils_ios.h",
+    "ios/text_utils_ios.mm",
+  ]
+}
+
+lynx_renderer_utils_platform_sources_path =
+    get_path_info(lynx_renderer_utils_platform_sources, "abspath")
+
+lynx_renderer_utils_mock_sources = [
+  "test/text_utils_mock.cc",
+  "test/text_utils_mock.h",
+]
+
+lynx_env_shared_sources = [
+  "lynx_env.cc",
+  "lynx_env.h",
+  "lynx_trail_hub.cc",
+  "lynx_trail_hub.h",
+]
+
+if (is_apple || is_android || is_linux) {
+  lynx_env_shared_sources += [ "sys_lynx_env/sys_env_default.cc" ]
+}
+
+if (is_android) {
+  lynx_env_shared_sources += [
+    "android/lynx_env_android.cc",
+    "android/lynx_env_android.h",
+    "android/lynx_trail_hub_impl_android.cc",
+    "android/lynx_trail_hub_impl_android.h",
+  ]
+}
+
+lynx_env_shared_sources_path = get_path_info(lynx_env_shared_sources, "abspath")
+
+lynx_renderer_utils_mock_sources_path =
+    get_path_info(lynx_renderer_utils_mock_sources, "abspath")
+
+lynx_trail_hub_default_sources = [ "lynx_trail_hub_impl_default.cc" ]
+
+lynx_trail_hub_default_sources_path =
+    get_path_info(lynx_trail_hub_default_sources, "abspath")

@@ -1,0 +1,102 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+# worklet_shared_sources
+worklet_shared_sources = [
+  "//lynx/core/runtime/bindings/napi/worklet/napi_frame_callback.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_frame_callback.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_func_callback.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_func_callback.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_component.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_component.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_element.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_element.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_gesture.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_gesture.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_lynx.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_lepus_lynx.h",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_loader_ui.cc",
+  "//lynx/core/runtime/bindings/napi/worklet/napi_loader_ui.h",
+  "base/worklet_utils.cc",
+  "base/worklet_utils.h",
+  "lepus_component.cc",
+  "lepus_component.h",
+  "lepus_element.cc",
+  "lepus_element.h",
+  "lepus_gesture.cc",
+  "lepus_gesture.h",
+  "lepus_lynx.cc",
+  "lepus_lynx.h",
+  "lepus_raf_handler.cc",
+  "lepus_raf_handler.h",
+]
+
+# worklet_shared_sources end
+
+lynx_core_source_set("worklet") {
+  public_configs = [ "//lynx/third_party/napi:napi_config" ]
+
+  sources = worklet_shared_sources
+
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+  if (!enable_unittests) {
+    public_deps += [ "//lynx/core/renderer/css:css_decoder" ]
+  }
+
+  deps = [ "//lynx/base/src:base_log_headers" ]
+  if (enable_napi_binding) {
+    deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_quickjs" ]
+  }
+}
+
+lynx_core_source_set("worklet_oliver") {
+  sources = worklet_shared_sources
+  public_deps = []
+  if (!enable_unittests) {
+    public_deps += [ "//lynx/core/renderer/css:css_decoder" ]
+  }
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}
+
+unittest_set("worklet_testset") {
+  sources = [
+    "test/worklet_api_unittest.cc",
+    "test/worklet_event_unittest.cc",
+    "test/worklet_utils_unittest.cc",
+  ]
+  public_deps = [
+    ":worklet",
+    "//lynx/core/base",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime",
+    "//lynx/core/runtime/bindings/lepus",
+  ]
+  public_deps += [ "//lynx/third_party/napi:env" ]
+  if (is_ios) {
+    public_deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_jsc" ]
+  } else {
+    public_deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_quickjs" ]
+  }
+  data_deps = []
+}
+
+unittest_exec("worklet_unittests_exec") {
+  sources = []
+  deps = [
+    ":worklet",
+    ":worklet_testset",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/quickjs",
+  ]
+}

@@ -1,0 +1,47 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+
+# TODO(): extract "radon" works as an independent module
+lynx_core_source_set("radon") {
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+  sources = [
+    "base_component.cc",
+    "base_component.h",
+    "list_reuse_pool.cc",
+    "list_reuse_pool.h",
+    "node_path_info.cc",
+    "node_path_info.h",
+    "node_select_options.h",
+    "node_selector.cc",
+    "node_selector.h",
+    "radon_base.cc",
+    "radon_base.h",
+    "radon_component.cc",
+    "radon_component.h",
+    "radon_diff_list_node.cc",
+    "radon_diff_list_node.h",
+    "radon_diff_list_node2.cc",
+    "radon_diff_list_node2.h",
+    "radon_dispatch_option.cc",
+    "radon_dispatch_option.h",
+    "radon_factory.cc",
+    "radon_factory.h",
+    "radon_lazy_component.cc",
+    "radon_lazy_component.h",
+    "radon_list_base.cc",
+    "radon_list_base.h",
+    "radon_node.cc",
+    "radon_node.h",
+    "radon_page.cc",
+    "radon_page.h",
+    "radon_slot.cc",
+    "radon_slot.h",
+    "radon_types.h",
+    "set_css_variable_op.h",
+  ]
+  public_deps += [ "//lynx/core/renderer/css:css_decoder" ]
+  deps = [ "//lynx/base/src:base_log_headers" ]
+}

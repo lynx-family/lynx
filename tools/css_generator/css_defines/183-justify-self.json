@@ -1,0 +1,68 @@
+{
+    "name": "justify-self",
+    "id": 183,
+    "type": "complex",
+    "default_value": "auto",
+    "version": "2.1",
+    "author": "liting.src",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "values": [
+        {
+            "value": "start",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "end",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "center",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "stretch",
+            "version": "2.1",
+            "desc": ""
+        },
+        {
+            "value": "auto",
+            "version": "2.1",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "justify-self": {
+            "__compat": {
+              "description": "The CSS justify-self property sets the way a box is justified inside its alignment container along the appropriate axis.",
+              "lynx_path": "api/css/properties/justify-self",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/justify-self",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.1"
+                },
+                "ios": {
+                  "version_added": "2.1"
+                },
+                "clay_android": {
+                  "version_added": "2.1"
+                },
+                "clay_macos": {
+                  "version_added": "2.1"
+                },
+                "clay_windows": {
+                  "version_added": "2.1"
+                }
+              }
+            }
+          }
+    }
+}

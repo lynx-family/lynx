@@ -1,0 +1,183 @@
+{
+    "name": "grid-template-rows",
+    "id": 171,
+    "type": "complex",
+    "default_value": "",
+    "version": "2.1",
+    "author": "liting.src",
+    "consumption_status": "layout-only",
+    "desc": "",
+    "compat_data": {
+        "grid-template-rows": {
+            "__compat": {
+              "lynx_path": "api/css/properties/grid-template-rows",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/grid-template-rows",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "2.1"
+                },
+                "ios": {
+                  "version_added": "2.1"
+                },
+                "clay_android": {
+                  "version_added": "2.1"
+                },
+                "clay_macos": {
+                  "version_added": "2.1"
+                },
+                "clay_windows": {
+                  "version_added": "2.1"
+                }
+              }
+            },
+            "calc": {
+              "__compat": {
+                "description": "<code>calc()</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "2.18"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "2.18"
+                  },
+                  "clay_android": {
+                    "version_added": "2.18"
+                  },
+                  "clay_macos": {
+                    "version_added": "2.18"
+                  },
+                  "clay_windows": {
+                    "version_added": "2.18"
+                  }
+                }
+              }
+            },
+            "fr": {
+              "__compat": {
+                "description": "<code>fr</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "3.0"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "3.0"
+                  },
+                  "clay_android": {
+                    "version_added": "3.0"
+                  },
+                  "clay_macos": {
+                    "version_added": "3.0"
+                  },
+                  "clay_windows": {
+                    "version_added": "3.0"
+                  }
+                }
+              }
+            },
+            "max-content": {
+              "__compat": {
+                "description": "<code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+                    "version_added": "targetSdkVersion 3.1"
+                  },
+                  "ios": {
+                    "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+                    "version_added": "targetSdkVersion 3.1"
+                  },
+                  "clay_android": {
+                    "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+                    "version_added": "targetSdkVersion 3.1"
+                  },
+                  "clay_macos": {
+                    "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+                    "version_added": "targetSdkVersion 3.1"
+                  },
+                  "clay_windows": {
+                    "notes": "Or when <code>quirksMode >= 3.1</code>, Lynx supports <code>max-content</code>, <code>fit-content</code> and <code>minmax()</code>.",
+                    "version_added": "targetSdkVersion 3.1"
+                  }
+                }
+              }
+            },
+            "unsupported_value1": {
+              "__compat": {
+                "description": "<code>none</code> and <code>[linename]</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "clay_android": {
+                    "version_added": false
+                  },
+                  "clay_macos": {
+                    "version_added": false
+                  },
+                  "clay_windows": {
+                    "version_added": false
+                  }
+                }
+              }
+            },
+            "unsupported_value2": {
+              "__compat": {
+                "description": "<code>min-content</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": false
+                  },
+                  "clay_android": {
+                    "version_added": false
+                  },
+                  "clay_macos": {
+                    "version_added": false
+                  },
+                  "clay_windows": {
+                    "version_added": false
+                  }
+                }
+              }
+            }
+          }
+    }
+}

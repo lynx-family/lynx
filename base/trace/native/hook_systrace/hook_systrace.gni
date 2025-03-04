@@ -1,0 +1,25 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+hook_systrace_public_headers = []
+hook_systrace_shared_sources = []
+
+if (enable_trace == "perfetto") {
+  hook_systrace_public_headers += [ "hook_systrace/hook_system_trace.h" ]
+  hook_systrace_shared_sources += [
+    "hook_systrace/cpu_info_trace.cc",
+    "hook_systrace/cpu_info_trace.h",
+    "hook_systrace/hook_system_trace.h",
+  ]
+
+  if (is_android) {
+    hook_systrace_shared_sources +=
+        [ "hook_systrace/hook_system_trace_android.cc" ]
+  } else if (is_apple || is_win || is_linux) {
+    hook_systrace_shared_sources +=
+        [ "hook_systrace/hook_system_trace_default.cc" ]
+  }
+}

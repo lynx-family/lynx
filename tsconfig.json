@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig to read more about this file */
+
+    /* Projects */
+    "incremental": true,                                 /* Save .tsbuildinfo files to allow for incremental compilation of projects. */
+    "useDefineForClassFields": true,                     /* Emit ECMAScript-standard-compliant class fields. */
+
+    /* JavaScript Support */
+    "allowJs": false,                                    /* Allow JavaScript files to be a part of your program. Use the 'checkJS' option to get errors from these files. */
+    "checkJs": false,                                    /* Enable error reporting in type-checked JavaScript files. */
+
+    /* Emit */
+    "declaration": true,                                 /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
+    "sourceMap": true,                                   /* Create source map files for emitted JavaScript files. */
+    "stripInternal": true,                               /* Disable emitting declarations that have '@internal' in their JSDoc comments. */
+    
+    /* Interop Constraints */
+    "verbatimModuleSyntax": true,                        /* Do not transform or elide any imports or exports not marked as type-only, ensuring they are written in the output file's format based on the 'module' setting. */
+    "isolatedDeclarations": true,                        /* Require sufficient annotation on exports so other tools can trivially generate declaration files. */
+    "esModuleInterop": true,                             /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */
+    "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports. */
+
+    /* Type Checking */
+    "strict": true,                                      /* Enable all strict type-checking options. */
+
+    /* Completeness */
+    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+  },
+  "references": [],
+  "include": [],
+}

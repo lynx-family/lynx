@@ -1,0 +1,170 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+podspec_target("BaseDevtool_podspec") {
+  output_name = "BaseDevtool.podspec"
+  output_path = "//"
+  global_variables = [ "\$package_version = ENV[\"version\"]" ]
+  root_specification = {
+    name = "BaseDevtool"
+    version = "$lynx_version"
+    summary = "BaseDevTool is a universal debugging component that includes some common capabilities of DevTool."
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "git@github.com:lynx-family/lynx.git"
+    }
+    requires_arc = true
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [
+        "OS_IOS=1",
+        "HOST_OSTYPE=HOST_IOS",
+        "LYNX_DEBUG=0",
+        "LYNX_ENABLE_E2E_TEST=#{\$enable_e2e_test}",
+      ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+      CLANG_ENABLE_CPP_STATIC_DESTRUCTORS = "NO"
+    }
+    ios = {
+      deployment_target = "9.0"
+    }
+  }
+  if (use_flatten_deps) {
+    deps = [ ":framework" ]
+  } else {
+    deps = [
+      ":ThirdParty",
+      ":framework",
+    ]
+  }
+}
+
+subspec_target("framework") {
+  sources = [
+    "DevToolGlobalSlotIOS.h",
+    "DevToolGlobalSlotIOS.mm",
+    "DevToolSlotIOS.h",
+    "DevToolSlotIOS.mm",
+  ]
+  public_header_files = [
+    "DevToolGlobalSlotIOS.h",
+    "DevToolSlotIOS.h",
+  ]
+  deps = [
+    "//lynx/devtool/base_devtool/native/js_inspect:base_devtool_js_inspect",
+    "//lynx/devtool/fundamentals/js_inspect:js_inspect_interface",
+    "//lynx/devtool/js_inspect:inspector_const",
+    "//lynx/third_party/jsoncpp:jsoncpp",
+  ]
+  flatten_deps = [ "//lynx/devtool/base_devtool/native:base_devtool_subspec" ]
+  if (use_flatten_deps) {
+    flatten_deps += [ ":ThirdParty" ]
+  }
+
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//",
+      "//lynx",
+      "//lynx/third_party/jsoncpp/include/",
+      "//PODS_ROOT/Lynx/lynx",
+    ]
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "RAPIDJSON_HAS_STDSTRING=1",
+      "RAPIDJSON_NAMESPACE=lynx::rapidjson",
+      "RAPIDJSON_NAMESPACE_BEGIN=\\\"namespace lynx{namespace rapidjson{\\\"",
+      "RAPIDJSON_NAMESPACE_END=\\\"}};namespace rapidjson=::lynx::rapidjson;\\\"",
+    ]
+  }
+  dependency = [ [
+        "DebugRouter",
+        ">= 5.0.5",
+      ] ]
+
+  if (use_flatten_deps) {
+    dependency += lynx_dependency
+  }
+}
+
+subspec_target("ThirdParty") {
+  if (use_flatten_deps) {
+    flatten_deps = [
+      ":fml",
+      ":modp64",
+      ":rapidjson",
+      ":zlib",
+    ]
+  } else {
+    deps = [
+      ":fml",
+      ":modp64",
+      ":rapidjson",
+      ":zlib",
+    ]
+  }
+}
+
+subspec_target("fml") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+      "//lynx",
+    ]
+  }
+  deps = [ "//lynx/base/src:base_log_headers" ]
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/fml" ]
+  }
+}
+
+subspec_target("zlib") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+      "//lynx",
+    ]
+  }
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/third_party/zlib" ]
+  }
+}
+
+subspec_target("modp64") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+      "//lynx",
+    ]
+  }
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/third_party/modp64" ]
+  }
+}
+
+subspec_target("rapidjson") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+      "//lynx",
+    ]
+  }
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Native/third_party/rapidjson" ]
+  }
+}

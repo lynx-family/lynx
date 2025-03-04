@@ -1,0 +1,217 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/util/write_cmake_config.gni")
+import("//lynx/config.gni")
+import("//lynx/core/Lynx.gni")
+
+# This target is used to contain configs that are required globally.
+# This config is added to the basic xxx_source_set template.
+# If you are using the basic xxx_source_set template, you do not need to add this config.
+config("lynx_public_config") {
+  ldflags = []
+  include_dirs = []
+  cflags = []
+  defines = []
+  include_dirs += [
+    "//lynx",
+    "//lynx/platform",
+    "//lynx/core",
+    "//lynx/core/build/gen",
+    "//lynx/third_party",
+  ]
+
+  cflags += [
+    "-Wno-c99-designator",
+    "-Wno-unknown-warning-option",
+    "-Wno-sign-compare",
+    "-Wno-unused-but-set-variable",
+    "-Wno-unused-parameter",
+  ]
+  defines += [
+    "LYNX_ENABLE_E2E_TEST=${enable_e2e_test}",
+    "ENABLE_TESTBENCH_REPLAY=${enable_testbench_replay}",
+    "ENABLE_TESTBENCH_RECORDER=${enable_testbench_recorder}",
+    "INSPECTOR_TEST=${enable_inspector_test}",
+    "ENABLE_LEPUSNG_WORKLET=${enable_lepusng_worklet}",
+    "ENABLE_NAPI_BINDING=${enable_napi_binding}",
+    "ENABLE_AIR=${enable_air}",
+    "DISABLE_NANBOX=${disable_nanbox}",
+    "ENABLE_JUST_LEPUSNG=${enable_just_lepusng}",
+    "ENABLE_INSPECTOR=${enable_inspector}",
+  ]
+
+  if (is_android) {
+    if (is_debug) {
+      defines += [ "DEBUG_MEMORY" ]
+    }
+    defines += [
+      "GNU_SUPPORT=1",
+      "OS_ANDROID=1",
+      "OS_POSIX=1",
+    ]
+  } else if (is_ios) {
+    defines += [
+      "OS_IOS=1",
+      "OS_POSIX=1",
+    ]
+  } else if (is_mac) {
+    if (!enable_unittests && !is_oliver && !is_encoder_ut) {
+      defines += [
+        "OS_OSX=1",
+        "OS_POSIX=1",
+      ]
+    }
+    defines += [ "lynx_EXPORTS" ]
+  }
+
+  if (use_primjs_napi) {
+    defines += [ "USE_PRIMJS_NAPI" ]
+  }
+
+  if (enable_trace == "perfetto") {
+    defines += [ "ENABLE_TRACE_PERFETTO=1" ]
+  } else if (enable_trace == "systrace") {
+    defines += [ "ENABLE_TRACE_SYSTRACE=1" ]
+  }
+
+  if (!is_debug) {
+    defines += [ "NDEBUG" ]
+  }
+
+  defines += [ "RAPIDJSON_HAS_STDSTRING=1" ]
+
+  if (jsengine_type == "jsc") {
+    defines += [ "JS_ENGINE_TYPE=1" ]
+  } else if (jsengine_type == "quickjs") {
+    defines += [
+      "JS_ENGINE_TYPE=2",
+      "QUICKJS_VER_LYNX",
+    ]
+  } else if (jsengine_type == "v8") {
+    defines += [ "JS_ENGINE_TYPE=0" ]
+  }
+
+  # Attach arguments to turn on Lynx Clang static checker plugin.
+  if (enable_lynx_clang_plugin) {
+    if (host_os == "linux") {
+      plugin_dylib = rebase_path(
+              "//tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.so")
+    } else if (host_os == "mac") {
+      plugin_dylib = rebase_path(
+              "//tools/clang/lynx_clang_plugin/release/libLynxClangPlugin.dylib")
+    } else {
+      print(
+          "Unable to turn on Lynx Clang plugin on platforms other than MacOS or Linux.")
+    }
+
+    # Load plugin Clang args.
+    clang_args = [
+      "-load",
+      plugin_dylib,
+      "-add-plugin",
+      "lynx_static_analysis",
+    ]
+
+    # Arguments for plugin.
+    plugin_args = [
+      "-config",
+      rebase_path("//tools/clang/lynx_clang_plugin/release/lynx_config.json"),
+      "-on_path",
+      rebase_path("//"),
+      "-output_dir",
+      rebase_path("//lynx_clang_plugin_output"),
+    ]
+
+    # Forward all plugin arguments with plugin prefix.
+    foreach(arg, plugin_args) {
+      clang_args += [
+        "-plugin-arg-lynx_static_analysis",
+        arg,
+      ]
+    }
+
+    # Forward all arguments with -Xclang
+    foreach(arg, clang_args) {
+      cflags += [
+        "-Xclang",
+        arg,
+      ]
+    }
+  }
+}
+
+config("config") {
+  include_dirs = [
+    ".",
+    "//lynx/core",
+    "//third_party",
+  ]
+
+  cflags = [
+    "-Wno-c99-designator",
+    "-Wno-unknown-warning-option",
+    "-Wno-sign-compare",
+    "-Wno-unused-but-set-variable",
+  ]
+
+  defines = [ "RAPIDJSON_HAS_STDSTRING=1" ]
+}
+
+action("find_node_headers") {
+  target_dir = rebase_path(node_headers_dst_dir)
+
+  script = "//lynx/oliver/copy_node_headers.py"
+
+  args = [ target_dir ]
+  outputs = [ "$root_gen_dir/node" ]
+}
+
+group("lynx_core_native") {
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+group("lynx_native") {
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/core/animation",
+    "//lynx/core/animation/basic_animation",
+    "//lynx/core/animation/lynx_basic_animator:lynx_basic_animator",
+    "//lynx/core/animation/transforms",
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base",
+    "//lynx/core/build:build",
+    "//lynx/core/event",
+    "//lynx/core/renderer:tasm_group",
+    "//lynx/core/renderer/css",
+    "//lynx/core/renderer/data:data",
+    "//lynx/core/renderer/events",
+    "//lynx/core/renderer/signal:signal",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/resource",
+    "//lynx/core/runtime/bindings/common/event:runtime_common",
+    "//lynx/core/runtime/bindings/jsi/interceptor:interceptor_factory",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/core/services/event_report:event_report",
+    "//lynx/core/services/feature_count:feature_count",
+    "//lynx/core/services/fluency:fluency",
+    "//lynx/core/services/long_task_timing:long_task_timing",
+    "//lynx/core/services/timing_handler:timing_handler",
+    "//lynx/third_party/modp_b64",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  if (is_ios || is_android) {
+    deps += [ "//lynx/core/parser" ]
+  }
+
+  if (enable_recorder) {
+    deps += [ "//lynx/core/services/recorder:recorder" ]
+  }
+}

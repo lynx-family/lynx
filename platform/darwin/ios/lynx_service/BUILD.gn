@@ -1,0 +1,102 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("//lynx/config.gni")
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
+group("LynxService") {
+  deps = [ ":LynxService_podspec" ]
+}
+
+podspec_target("LynxService_podspec") {
+  output_name = "LynxService.podspec"
+  output_path = rebase_path("//")
+  root_specification = {
+    name = "LynxService"
+    version = "$lynx_version"
+    summary = "The framework of Lynx Service"
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "git@github.com:lynx-family/lynx.git"
+    }
+    requires_arc = true
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [
+        "OS_IOS=1",
+        "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
+      ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+      CLANG_ENABLE_CPP_STATIC_DESTRUCTORS = "NO"
+    }
+    ios = {
+      deployment_target = "9.0"
+    }
+  }
+  deps = [
+    ":Devtool",
+    ":Http",
+    ":Image",
+    ":Log",
+  ]
+  if (enable_trace == "perfetto") {
+    global_variables = [ "\$enable_trace = 1" ]
+  } else {
+    global_variables = [ "\$enable_trace = 0" ]
+  }
+}
+
+subspec_target("Image") {
+  sources = [
+    "image/LynxImageService.h",
+    "image/LynxImageService.m",
+  ]
+  dependency = lynx_dependency
+  dependency += [ [
+        "SDWebImage",
+        "5.15.5",
+      ] ]
+  dependency += [ [
+        "SDWebImageWebPCoder",
+        "0.11.0",
+      ] ]
+}
+
+subspec_target("Log") {
+  sources = [
+    "log/LynxLogService.h",
+    "log/LynxLogService.mm",
+  ]
+  dependency = lynx_dependency
+}
+
+subspec_target("Devtool") {
+  sources = [
+    "devtool/LynxDevToolService.h",
+    "devtool/LynxDevToolService.mm",
+  ]
+  public_header_files = [ "devtool/LynxDevToolService.h" ]
+
+  dependency = lynx_dependency
+  dependency += lynxdevtool_dependency
+}
+
+subspec_target("Http") {
+  sources = [
+    "http/LynxHttpService.h",
+    "http/LynxHttpService.m",
+  ]
+  dependency = lynx_dependency
+}

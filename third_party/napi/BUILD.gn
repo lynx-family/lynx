@@ -1,0 +1,126 @@
+# Copyright 2022 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("//lynx/config.gni")
+
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+config("napi_config") {
+  defines = [
+    "NAPI_DISABLE_CPP_EXCEPTIONS",
+    "NAPI_DISABLE_CPP_RTTI",
+  ]
+
+  if (use_primjs_napi) {
+    defines += [ "USE_PRIMJS_NAPI" ]
+  }
+}
+
+config("private_config") {
+  cflags = [
+    "-Wno-sign-compare",
+    "-Wno-unused-function",
+  ]
+  if (is_win) {
+    defines = [ "OS_WIN" ]
+    cflags += [ "-Wno-c99-designator" ]
+  }
+  include_dirs = [
+    "..",
+    "../quickjs/src",
+    "../quickjs/src/src/",
+    "../quickjs/src/src/interpreter",
+    "../quickjs/src/src/napi",
+    "../quickjs/src/src/napi/common",
+  ]
+}
+
+source_set("common") {
+  public = [ "include/napi_state.h" ]
+}
+
+if (enable_primjs_prebuilt_lib) {
+  source_set("napi_lib") {
+    libs = [ "napi" ]
+  }
+} else {
+  shared_library("napi_lib") {
+    output_name = "napi"
+    deps = [
+      ":quickjs",
+      "//lynx/third_party/quickjs:quickjs",
+    ]
+  }
+}
+
+source_set("env") {
+  public = [
+    "include/js_native_api.h",
+    "include/js_native_api_types.h",
+    "include/napi.h",
+    "include/napi_env.h",
+    "include/napi_module.h",
+    "include/napi_runtime.h",
+  ]
+  public_configs = [ ":napi_config" ]
+  configs += [ ":private_config" ]
+  sources = [
+    "../quickjs/src/src/napi/env/napi_env.cc",
+    "../quickjs/src/src/napi/env/napi_env.h",
+    "../quickjs/src/src/napi/env/napi_runtime.cc",
+    "../quickjs/src/src/napi/env/napi_runtime.h",
+    "../quickjs/src/src/napi/napi.cc",
+    "../quickjs/src/src/napi/napi.h",
+    "../quickjs/src/src/napi/napi_module.cc",
+    "../quickjs/src/src/napi/napi_module.h",
+  ]
+  public_deps = [ ":common" ]
+}
+
+source_set("quickjs") {
+  public = [ "include/napi_env_quickjs.h" ]
+  configs += [ ":private_config" ]
+  sources = [
+    "../quickjs/src/src/napi/quickjs/js_native_api_QuickJS.cc",
+    "../quickjs/src/src/napi/quickjs/js_native_api_QuickJS.h",
+  ]
+  public_deps = [
+    ":common",
+    ":env",
+  ]
+}
+
+source_set("v8") {
+  public = [ "include/napi_env_v8.h" ]
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  configs += [ ":private_config" ]
+  include_dirs = [
+    "//lynx/third_party/napi/include",
+    v8_headers_search_path,
+  ]
+  sources = [
+    "../quickjs/src/src/napi/v8/js_native_api_v8.cc",
+    "../quickjs/src/src/napi/v8/js_native_api_v8.h",
+  ]
+  public_deps = [
+    ":common",
+    ":env",
+  ]
+}
+
+source_set("jsc") {
+  public = [ "include/napi_env_jsc.h" ]
+  configs += [ ":private_config" ]
+  sources = [
+    "../quickjs/src/src/napi/jsc/js_native_api_JavaScriptCore.cc",
+    "../quickjs/src/src/napi/jsc/js_native_api_JavaScriptCore.h",
+  ]
+  public_deps = [
+    ":common",
+    ":env",
+  ]
+}

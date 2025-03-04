@@ -1,0 +1,32 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//testing/test.gni")
+benchmark_test("base_benchmark") {
+  testonly = true
+  sources = []
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/base/src:base_log",
+  ]
+}
+
+# These performance test cases are used to compare the performance
+# of Vector and std::vector. There is no need to run these test cases
+# in CI to prevent misreport on the benchmark platform.
+benchmark_test("vector_benchmark") {
+  testonly = true
+  sources = [ "./vector_benchmark.cc" ]
+  deps = [ "//lynx/base/src:base" ]
+}
+
+# These tests are created to tune LinkedHashMap for proper template
+# arguments for linear threshold. Without modifying LinkedHashMap,
+# there is no need to run these test cases to prevent misreport
+# on the benchmark platform.
+benchmark_test("linked_hash_map_benchmark") {
+  testonly = true
+  sources = [ "./linked_hash_map_benchmark.cc" ]
+  deps = [ "//lynx/base/src:base" ]
+}

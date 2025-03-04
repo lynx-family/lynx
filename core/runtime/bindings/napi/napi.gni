@@ -1,0 +1,20 @@
+napi_shared_source = rebase_path([
+                                   "napi_environment.cc",
+                                   "napi_loader_js.cc",
+                                   "napi_runtime_proxy.cc",
+                                 ])
+
+napi_public_headers = rebase_path([
+                                    "napi_bench_object.h",
+                                    "napi_environment.h",
+                                    "napi_loader_js.h",
+                                    "napi_runtime_proxy.h",
+                                    "napi_runtime_proxy_quickjs_factory.h",
+                                    "napi_runtime_proxy_v8_factory.h",
+                                  ])
+
+napi_jsc_shared_sources = rebase_path([
+                                        "napi_runtime_proxy_jsc.cc",
+                                        "napi_runtime_proxy_jsc.h",
+                                        "shim/shim_napi_env_jsc.h",
+                                      ])

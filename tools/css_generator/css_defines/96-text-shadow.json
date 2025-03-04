@@ -1,0 +1,10 @@
+{
+    "name": "text-shadow",
+    "id": 96,
+    "type": "complex",
+    "default_value": "",
+    "version": "1.0",
+    "author": "tangruiwen",
+    "consumption_status": "skip",
+    "desc": ""
+}

@@ -1,0 +1,33 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+interceptor_shared_sources = [
+  "//lynx/core/runtime/bindings/jsi/interceptor/interceptor_factory.cc",
+  "//lynx/core/runtime/bindings/jsi/interceptor/interceptor_factory.h",
+]
+
+network_interceptor_shared_sources = [
+  "//lynx/core/runtime/bindings/jsi/interceptor/network_monitor.cc",
+  "//lynx/core/runtime/bindings/jsi/interceptor/network_monitor.h",
+]
+if (is_android) {
+  network_interceptor_shared_sources += [
+    "//lynx/core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.cc",
+    "//lynx/core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.h",
+  ]
+} else if (is_apple) {
+  network_interceptor_shared_sources += [
+    "//lynx/core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.h",
+    "//lynx/core/runtime/bindings/jsi/interceptor/ios/request_interceptor_darwin.mm",
+  ]
+}
+
+bindings_extend_sources = [
+  "//lynx/core/runtime/bindings/jsi/system_info.cc",
+  "//lynx/core/runtime/bindings/jsi/system_info.h",
+]
+
+jsbridge_extend_shared_sources = [
+  "//lynx/core/runtime/bindings/jsi/modules/ios/lynx_module_interceptor.mm",
+]

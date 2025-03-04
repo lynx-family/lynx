@@ -1,0 +1,22 @@
+{
+    "name": "animation-play-state",
+    "id": 71,
+    "type": "complex",
+    "default_value": "running",
+    "version": "1.0",
+    "desc": "",
+    "author": "liyanbo, linxiaosong",
+    "consumption_status": "skip",
+    "values": [
+        {
+            "value": "paused",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "running",
+            "version": "1.0",
+            "desc": ""
+        }
+    ]
+}

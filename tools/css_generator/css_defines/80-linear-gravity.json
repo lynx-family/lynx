@@ -1,0 +1,131 @@
+{
+    "name": "linear-gravity",
+    "id": 80,
+    "type": "enum",
+    "default_value": "none",
+    "version": "1.0",
+    "author": "zhangmin",
+    "desc": "",
+    "consumption_status": "layout-only",
+    "values": [
+        {
+            "value": "none",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "top",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "bottom",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "left",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "right",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "center-vertical",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "center-horizontal",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "space-between",
+            "version": "1.0",
+            "desc": ""
+        },
+        {
+            "value": "start",
+            "version": "1.6",
+            "desc": ""
+        },
+        {
+            "value": "end",
+            "version": "1.6",
+            "desc": ""
+        },
+        {
+            "value": "center",
+            "version": "1.6",
+            "desc": ""
+        }
+    ],
+    "compat_data": {
+        "linear-gravity": {
+            "__compat": {
+              "description": "defines how distributes space between and around content items along the main-axis of a linear container.",
+              "lynx_path": "api/css/properties/linear-gravity",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                },
+                "web_lynx": {
+                  "version_added": "4.1.0"
+                }
+              }
+            },
+            "value1": {
+              "__compat": {
+                "description": "<code>start</code>, <code>end</code>, <code>center</code>",
+                "status": {
+                  "deprecated": false,
+                  "experimental": false
+                },
+                "support": {
+                  "android": {
+                    "notes": "",
+                    "version_added": "1.6"
+                  },
+                  "ios": {
+                    "notes": "",
+                    "version_added": "1.6"
+                  },
+                  "clay_android": {
+                    "version_added": "1.6"
+                  },
+                  "clay_macos": {
+                    "version_added": "1.6"
+                  },
+                  "clay_windows": {
+                    "version_added": "1.6"
+                  },
+                  "web_lynx": {
+                    "version_added": "4.1.0"
+                  }
+                }
+              }
+            }
+          }
+    }
+}

@@ -1,0 +1,51 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("quickjs_profile") {
+  sources = [
+    "quickjs_runtime_profiler.cc",
+    "quickjs_runtime_profiler.h",
+  ]
+
+  public_deps = [
+    "//lynx/core/runtime/jsi/quickjs:quickjs",
+    "//lynx/core/runtime/profile:profile_public_header",
+    "//lynx/core/runtime/vm/lepus:lepus_ng",
+  ]
+}
+
+unittest_set("quickjs_profile_testset") {
+  sources = [ "quickjs_runtime_profiler_unittest.cc" ]
+  public_deps = [
+    ":quickjs_profile",
+    "//lynx/base/trace/native:trace",
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/jscache:jscache",
+    "//lynx/core/runtime/jsi:jsi",
+    "//lynx/core/runtime/jsi/quickjs:quickjs",
+    "//lynx/core/runtime/profile:profile",
+    "//lynx/core/runtime/vm/lepus:lepus",
+    "//lynx/testing/utils:runtime_utils",
+    "//lynx/testing/utils:testing_utils",
+  ]
+}
+
+unittest_exec("quickjs_profile_unittests_exec") {
+  sources = []
+  deps = [ ":quickjs_profile_testset" ]
+}
+
+group("quickjs_profile_tests") {
+  testonly = true
+  deps = [
+    ":quickjs_profile_testset",
+    ":quickjs_profile_unittests_exec",
+  ]
+}

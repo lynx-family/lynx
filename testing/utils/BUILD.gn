@@ -1,0 +1,38 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/config.gni")
+
+group("testing_utils") {
+  deps = [ ":runtime_utils" ]
+}
+
+source_set("runtime_utils") {
+  sources = [
+    "make_js_runtime.cc",
+    "make_js_runtime.h",
+  ]
+
+  deps = [
+    "//lynx/core/base",
+    "//lynx/core/runtime",
+  ]
+}
+
+source_set("gtest_main") {
+  testonly = true
+  sources = [ "gtest_main.cc" ]
+  deps = [ "//third_party/googletest:gtest" ]
+}
+
+source_set("gmock_main") {
+  testonly = true
+  sources = [ "gmock_main.cc" ]
+  deps = [ "//third_party/googletest:gmock" ]
+}
+
+source_set("gtest_custom_init") {
+  testonly = true
+  sources = [ "gtest_custom_init.cc" ]
+}

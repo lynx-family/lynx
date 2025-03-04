@@ -1,0 +1,44 @@
+{
+  "name": "@lynx-js/logbox",
+  "version": "0.0.1",
+  "description": "A LogBox that can show error messages to developers during development.",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rsbuild build && cp node_modules/source-map/lib/mappings.wasm dist",
+    "dev": "rsbuild dev"
+  },
+  "author": "Lynx Authors",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@reduxjs/toolkit": "^1.4.0",
+    "@types/react": "^18.0.2",
+    "@types/react-dom": "18",
+    "@types/react-redux": "^7.1.34",
+    "codemirror": "^5.56.0",
+    "core-js": "^3.8.2",
+    "react": "^18.0.2",
+    "react-codemirror2": "^7.2.1",
+    "react-dom": "^18.0.2",
+    "react-redux": "^8.1.3",
+    "redux": "^4.0.5",
+    "settle-promise": "1.0.0",
+    "source-map": "0.7.4",
+    "utf8": "^3.0.0"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.5.2",
+    "@ant-design/pro-layout": "^5.0.12",
+    "@babel/code-frame": "^7.12.11",
+    "@rsbuild/core": "^1.1.11",
+    "@rsbuild/plugin-less": "^1.1.0",
+    "@rsbuild/plugin-node-polyfill": "^1.2.0",
+    "@rsbuild/plugin-react": "^1.1.1",
+    "anser": "1.4.9",
+    "copy-to-clipboard": "~3.3.1",
+    "html-entities": "1.3.1",
+    "vconsole": "3.5.1"
+  }
+}

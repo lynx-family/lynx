@@ -1,0 +1,436 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+# Declare an podspec target to generate podfile script.
+#
+# Use this template to declare a podspec file object in GN.
+# When calling `gn gen` with `--ide=podspec`, GN will automatically
+# convert the declared podspec_target object into a podspec script.
+#
+# Variables
+#   global_variables: configure pod global variables, which will be placed
+#                     at the top of the podspec file.
+#                     e.g. `global_variables = ["is_deug=true",...]`.
+#   output_path: specify the output path of the generated podspec script.
+#   output_name: specify the output name of the podspec script, the
+#                default value is ${target_name}.
+#   root_specification: configuration information of the sdk, supporting all
+#                       keywords in [podspec Root specification] and [podspec Platform],
+#                       internal variables support map, list and string types.
+#                       e.g. root_specification = { name = "Foo",
+#                                                   source = {git = "xxx"},
+#                                                   prepare_command = ["xxx"],
+#                                                   ...
+#                                                 }
+#                       [podspec Root specification]:
+#                         https://guides.cocoapods.org/syntax/podspec.html#group_root_specification
+#                       [podspec Platform]:
+#                         https://guides.cocoapods.org/syntax/podspec.html#deployment_target
+#   deps: specify the dependencies of this target, which must be of the subspec_target type.
+#   condition_deps: specify the deps that are dependent based on the set determination
+#                   conditions, e.g. `condition_deps = [["SUBSPEC_TARGET_NAME", "CONDITION_VAR"],...]`.
+#
+# Example:
+#   podspec_target("foo") {
+#       global_variables = [
+#         "\$is_debug = ENV[\"IS_DEBUG\"]",
+#         "\$enable_foo = ['true', 'True', '1'].include?(ENV[\"ENABLE_FOO\"]) ? 1 : 0""
+#       ]
+#     output_name = "Foo"
+#     output_path = "path/to/file"
+#     root_specification = {
+#      name = "Foo",
+#      homepage = "https://code.xxx.org/xxx/Foo_Repositories",
+#      source = {
+#        git="git@code.xxx.org:Foo/foo.git"
+#      }
+#      ios = {
+#        deployment_target = "9.0",
+#        framework = ["WebKit", ...]
+#      }
+#      pod_target_xcconfig = {
+#        GCC_PREPROCESSOR_DEFINITIONS=["IS_DEBUG=#{\$is_debug}",
+#                                      "ENABLE_FOO=#{\$enable_foo}",
+#                                      ..."]
+#        CLANG_CXX_LANGUAGE_STANDARD="gnu++17"
+#      }
+#      requires_arc = true
+#      prepare_command = [
+#        "file/to/path/prepare_build.sh",
+#      ]
+#      .....
+#     }
+#     deps = [
+#       "//path/to/file:$SUBSPEC_TARGET_NAME",
+#     ]
+#     condition_deps = [
+#       ["//path/to/file:foo", "enable_foo"]
+#     ]
+#
+#   }
+template("podspec_target") {
+  forward_variables_from(invoker, [ "*" ])
+
+  # As the top-level target, cmake_target doesn't allow the use of functions with
+  # transferable attributes, such as public_deps, public_configs, and all_dependent_configs.
+  assert(!defined(invoker.public_deps),
+         "please use \"deps\" to add dependency!")
+  assert(!defined(invoker.public_configs),
+         "please use \"configs\" to add configs!")
+  assert(!defined(invoker.all_dependent_configs),
+         "please use \"configs\" to add configs!")
+
+  global_variables_ = []
+  if (defined(invoker.global_variables)) {
+    global_variables_ += invoker.global_variables
+  }
+
+  # The default output path is the directory where the target declaration is located.
+  output_path_ = rebase_path(".")
+  if (defined(invoker.output_path)) {
+    output_path_ = rebase_path(invoker.output_path)
+  }
+
+  output_name_ = target_name
+  if (defined(invoker.output_name)) {
+    output_name_ = invoker.output_name
+  }
+
+  root_specification_ = {
+  }
+  if (defined(invoker.root_specification)) {
+    root_specification_ = invoker.root_specification
+  }
+
+  deps_ = []
+  if (defined(invoker.deps)) {
+    deps_ = invoker.deps
+  }
+
+  condition_deps_ = []
+  if (defined(invoker.condition_deps)) {
+    foreach(conditon_dep, invoker.condition_deps) {
+      dep_tuple = []
+      gn_target_ =
+          string_replace(rebase_path(conditon_dep[0]), rebase_path("//"), "//")
+      gn_target = string_replace(gn_target_, "/:", ":")
+      dep_tuple = [
+        gn_target,
+        conditon_dep[1],
+      ]
+      condition_deps_ += [ dep_tuple ]
+    }
+  }
+
+  group("$target_name") {
+    deps = deps_
+    metadata = {
+      global_variables = global_variables_
+      output_path = [ output_path_ ]
+      output_name = [ output_name_ ]
+      root_specification = [ root_specification_ ]
+      condition_deps = condition_deps_
+    }
+  }
+
+  # write pod_target's name to file
+  out_gen_path = "podspec_targets"
+  current_target_full_name =
+      string_replace(rebase_path(":$target_name"), rebase_path("//"), "//")
+  current_target_name = string_replace(current_target_full_name, "/:", ":")
+  lines = [ "$current_target_name" ]
+  out_file_name =
+      string_replace(string_replace(current_target_name, "/", "_"), ":", "_")
+  out_file_path =
+      rebase_path("$root_build_dir/${out_gen_path}/$out_file_name.txt")
+  write_file("$out_file_path", lines, "list lines")
+}
+
+# Declare an subspec target.
+#
+# This template is only used to declare the subspecs that the
+# podspec_target depends on, and it’s an independent and exposed
+# compilation unit in the podspec script.
+#
+# Variables
+#   [Cocospods camp's parameters]: You can find the relevant definitions in
+#                                  https://guides.cocoapods.org/syntax/podspec.html.
+#     vendored_frameworks: The paths of the framework bundles that come shipped with the Pod.
+#     vendored_libraries: The paths of the libraries that come shipped with the Pod.
+#     compiler_flags: A list of flags which should be passed to the compiler.
+#     public_header_files: A list of file patterns that should be used as public headers.
+#     header_dir: The directory where to store the headers files so they don't break includes.
+#     header_mappings_dir: A directory from where to preserve the folder structure for
+#                          the headers files.
+#     frameworks: A list of system frameworks that the user’s target needs to link against.
+#     framework: system framework that the user’s target needs to link against.
+#     libraries: A list of system libraries that the user’s target needs to link against.
+#     library: system library that the user’s target needs to link against.
+#     resource_bundles: define the name and the file of the resource bundles
+#                       which should be built for the Pod.
+#     dependency: Any dependency on other Pods.
+#     pattern_source_files: source_files that support regular expression matching.
+#     pattern_exclude_files: exclude_files that support regular expression matching.
+#     pod_target_xcconfig: A dictionary of xcconfigs that should be applied to the subspec target,
+#                          internal variables support map, list and string types. you can set compile
+#                          flags in it, include OTHER_CFLAGS, OTHER_CPLUSPLUSFLAGS, HEADER_SEARCH_PATHS,
+#                          GCC_PREPROCESSOR_DEFINITIONS and so on.
+#                          tips: you can use [//PODS_ROOT, //TARGET_BUILD_DIR, //PODS_TARGET_SRCROOT] in
+#                                HEADER_SEARCH_PATHS variable to specify the build-related paths related to pods.
+#                                e.g. pod_target_xcconfig = {
+#                                       HEADER_SEARCH_PATHS=["//PODS_ROOT/path/to/header",
+#                                                            "//TARGET_BUILD_DIR/path/to/public"
+#                                                            ]
+#                                       }
+#                                     will convert to
+#                                     sp.pod_target_xcconfig  = {
+#                                       "HEADER_SEARCH_PATHS" => "\"${PODS_ROOT}/path/to/header\" \
+#                                                               \"${TARGET_BUILD_DIR}/path/to/public\""
+#                                     }
+#   [GN camp's parameters]
+#     test_subspec: Mark whether it is a test module, if true, the target will be declared
+#                   as `test_spec`.
+#     sources: subspec's source_files.
+#     deps: the GN target dependencies of this target, which must be of the source_set type, the sources
+#           of the target in deps will be flattened to the current subspec.
+#     flatten_deps: the subspec target dependencies of this target, which must be of the subspec_target type, thier
+#                   all parameters exclude [output_name, test_subspec, flatten_deps] will be flattened to the current subspec, and they will not be converted into
+#                   the subspec in this target, but only used for parameter collection.
+#                   e.g. subspec_target("A") {         |    subspec_target("B") {
+#                          flatten_deps = [":B"]       |      sources = ["B.h","B.mm"]
+#                          sources = ["A.h","A.mm"]    |    }
+#                        }                             |
+#                   you will get
+#                       p.subspec "A" do |sp|
+#                         sp.source_files = "A.h",
+#                                           "A.mm"
+#                                           "B.h"
+#                                           "B.mm"
+#                       end
+#   condition_deps: specify the deps that are dependent based on the set determination
+#                   conditions, e.g. `condition_deps = [["SUBSPEC_TARGET_NAME", "CONDITION_VAR"],...]`.
+#
+# Example:
+#   subspec_target("foo_subspec") {
+#     sources = ["subspec_core.cc", "subspec_core.h", ...]
+#     deps = ["//path/to/file:foo_subspec_deps_target", ...]
+#     vendored_frameworks = ["//path/to/file/xxx.framework", ...]
+#     vendored_libraries = ["//path/to/file/libxxx.a", ...]
+#     compiler_flags = ["-Wall", "-Wextra", ...]
+#     public_header_files = ["//path/to/file/xxx.h", ...]
+#     header_dir = "//path/..."
+#     header_mappings_dir = "//path/to/..."
+#     frameworks = ["Accelerate", ...]
+#     framework = "AVFoundation"
+#     libraries = ["stdc++", ...]
+#     library = "log"
+#     resource_bundles = ["//path/to/file:bundle_data_target", ...]
+#     dependency = [["Foo_dep/Framework", ">=1.0.3"], "Foo_dep/Native"]
+#     pattern_source_files = ["path/to/**/*.h", ...]
+#     pattern_exclude_files = ["path/to/file/**/*", ...]
+#     pod_target_xcconfig = {
+#       GCC_PREPROCESSOR_DEFINITIONS=["OS_IOS=1", "IS_DEBUG=#{\$is_debug}", ...]
+#       CLANG_CXX_LANGUAGE_STANDARD="gnu++17"
+#     }
+#     flatten_deps = ["path/to/flatten:subspec_target_name", ...]
+#     condition_deps = [
+#       ["//path/to/file:foo", "enable_foo"]
+#     ]
+#   }
+template("subspec_target") {
+  forward_variables_from(invoker, [ "*" ])
+
+  # As the top-level target, cmake_target doesn't allow the use of functions with
+  # transferable attributes, such as public_deps, public_configs, and all_dependent_configs.
+  assert(!defined(invoker.public_deps),
+         "please use \"deps\" to add dependency!")
+  assert(!defined(invoker.public_configs),
+         "please use \"configs\" to add configs!")
+  assert(!defined(invoker.all_dependent_configs),
+         "please use \"configs\" to add configs!")
+
+  test_subspec_ = false
+  if (defined(invoker.test_subspec)) {
+    test_subspec_ = invoker.test_subspec
+  }
+
+  vendored_frameworks_ = []
+  if (defined(invoker.vendored_frameworks)) {
+    foreach(vendored_framework, invoker.vendored_frameworks) {
+      vendored_framework_name = string_replace(rebase_path(vendored_framework),
+                                               rebase_path("//"),
+                                               "//")
+      vendored_frameworks_ += [ vendored_framework_name ]
+    }
+  }
+  vendored_libraries_ = []
+  if (defined(invoker.vendored_libraries)) {
+    foreach(vendored_library, invoker.vendored_libraries) {
+      vendored_library_name =
+          string_replace(rebase_path(vendored_library), rebase_path("//"), "//")
+      vendored_libraries_ += [ vendored_library_name ]
+    }
+  }
+
+  compiler_flags_ = []
+  if (defined(invoker.compiler_flags)) {
+    compiler_flags_ = invoker.compiler_flags
+  }
+
+  public_header_files_ = []
+  if (defined(invoker.public_header_files)) {
+    foreach(header_file, invoker.public_header_files) {
+      header_path =
+          string_replace(rebase_path(header_file), rebase_path("//"), "//")
+      public_header_files_ += [ header_path ]
+    }
+  }
+
+  header_dir_ = ""
+  if (defined(invoker.header_dir)) {
+    header_dir_ = invoker.header_dir
+  }
+
+  header_mappings_dir_ = ""
+  if (defined(invoker.header_mappings_dir)) {
+    header_mappings_dir_ = invoker.header_mappings_dir
+  }
+
+  output_name_ = "$target_name"
+  if (defined(invoker.output_name)) {
+    output_name_ = invoker.output_name
+  }
+
+  sources_ = []
+  if (defined(invoker.sources)) {
+    sources_ = invoker.sources
+  }
+
+  deps_ = []
+  if (defined(invoker.deps)) {
+    deps_ = invoker.deps
+  }
+
+  flatten_deps_ = []
+  if (defined(invoker.flatten_deps)) {
+    foreach(dep, invoker.flatten_deps) {
+      gn_target = string_replace(rebase_path(dep), rebase_path("//"), "//")
+      flatten_deps_ += [ string_replace(gn_target, "/:", ":") ]
+    }
+  }
+
+  condition_deps_ = []
+  if (defined(invoker.condition_deps)) {
+    foreach(conditon_dep, invoker.condition_deps) {
+      dep_tuple = []
+      gn_target_ =
+          string_replace(rebase_path(conditon_dep[0]), rebase_path("//"), "//")
+      gn_target = string_replace(gn_target_, "/:", ":")
+      dep_tuple = [
+        gn_target,
+        conditon_dep[1],
+      ]
+      condition_deps_ += [ dep_tuple ]
+    }
+  }
+
+  frameworks_ = []
+  if (defined(invoker.frameworks)) {
+    frameworks_ = invoker.frameworks
+  }
+  if (defined(invoker.framework)) {
+    frameworks_ += [ invoker.framework ]
+  }
+
+  libraries_ = []
+  if (defined(invoker.libraries)) {
+    libraries_ = invoker.libraries
+  }
+  if (defined(invoker.library)) {
+    libraries_ += [ invoker.library ]
+  }
+
+  resource_bundles_ = []
+  if (defined(invoker.resource_bundles)) {
+    foreach(bundle_data, invoker.resource_bundles) {
+      gn_target =
+          string_replace(rebase_path(bundle_data), rebase_path("//"), "//")
+      resource_bundles_ += [ string_replace(gn_target, "/:", ":") ]
+    }
+  }
+
+  dependency_ = []
+  if (defined(invoker.dependency)) {
+    dependency_ = invoker.dependency
+  }
+
+  pattern_source_files_ = []
+  if (defined(invoker.pattern_source_files)) {
+    foreach(pattern_source_file, invoker.pattern_source_files) {
+      pattern = string_replace(rebase_path(pattern_source_file),
+                               rebase_path("//"),
+                               "//")
+      pattern_source_files_ += [ pattern ]
+    }
+  }
+
+  pattern_exclude_files_ = []
+  if (defined(invoker.pattern_exclude_files)) {
+    foreach(pattern_exclude_file, invoker.pattern_exclude_files) {
+      pattern = string_replace(rebase_path(pattern_exclude_file),
+                               rebase_path("//"),
+                               "//")
+      pattern_exclude_files_ += [ pattern ]
+    }
+  }
+
+  pod_target_xcconfig_ = {
+  }
+  if (defined(invoker.pod_target_xcconfig)) {
+    pod_target_xcconfig = invoker.pod_target_xcconfig
+    if (defined(pod_target_xcconfig.HEADER_SEARCH_PATHS)) {
+      headers = []
+      foreach(header, pod_target_xcconfig.HEADER_SEARCH_PATHS) {
+        header_path =
+            string_replace(rebase_path(header), rebase_path("//"), "//")
+        headers += [ header_path ]
+      }
+      pod_target_xcconfig.HEADER_SEARCH_PATHS = []
+      pod_target_xcconfig.HEADER_SEARCH_PATHS = headers
+    }
+    pod_target_xcconfig_ = pod_target_xcconfig
+  }
+
+  source_set("$target_name") {
+    sources = sources_
+    deps = deps_
+
+    metadata = {
+      output_name = [ output_name_ ]
+      flatten_deps = flatten_deps_
+      is_subspec_target = [ true ]
+      test_subspec = [ test_subspec_ ]
+      header_mappings_dir = [ header_mappings_dir_ ]
+      vendored_frameworks = vendored_frameworks_
+      vendored_libraries = vendored_libraries_
+      compiler_flags = compiler_flags_
+      public_header_files = public_header_files_
+      header_dir = [ header_dir_ ]
+      frameworks = frameworks_
+      libraries = libraries_
+      resource_bundles = resource_bundles_
+      dependency = dependency_
+      pattern_source_files = pattern_source_files_
+      pattern_exclude_files = pattern_exclude_files_
+      pod_target_xcconfig = [ pod_target_xcconfig_ ]
+      condition_deps = condition_deps_
+    }
+  }
+
+  # Wake up the BUILD.gnfile where the flatten_deps targets are located,
+  # so that they can be in the GN build path.
+  group("${target_name}_group_for_deps") {
+    deps = flatten_deps_
+  }
+}

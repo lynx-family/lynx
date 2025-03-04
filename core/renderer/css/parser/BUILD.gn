@@ -1,0 +1,63 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/testing/test.gni")
+
+unittest_set("css_parser_testset") {
+  public_deps = [
+    "..:css",
+    "//lynx/third_party/rapidjson",
+  ]
+
+  sources = [
+    "animation_direction_handler_unittest.cc",
+    "animation_fill_mode_handler_unittest.cc",
+    "animation_iteration_count_handler_unittest.cc",
+    "animation_property_handler_unittest.cc",
+    "animation_shorthand_handler_unittest.cc",
+    "aspect_ratio_handler_unittest.cc",
+    "auto_font_size_handler_unittest.cc",
+    "auto_font_size_preset_sizes_handler_unittest.cc",
+    "background_box_handler_unittest.cc",
+    "background_image_handler_unittest.cc",
+    "background_position_handler_unittest.cc",
+    "background_repeat_handler_unittest.cc",
+    "background_shorthand_handler_unittest.cc",
+    "background_size_handler_unittest.cc",
+    "bool_handler_unittest.cc",
+    "border_handler_unittest.cc",
+    "border_radius_handler_unittest.cc",
+    "clip_path_handler_unittest.cc",
+    "color_handler_unittest.cc",
+    "css_string_parser_unittest.cc",
+    "css_string_scanner_unittest.cc",
+    "enum_handler_unittest.cc",
+    "filter_handler_unittest.cc",
+    "flex_flow_handler_unittest.cc",
+    "flex_handler_unittest.cc",
+    "font_length_handler_unittest.cc",
+    "four_sides_shorthand_handler_unittest.cc",
+    "grid_template_handler_unittest.cc",
+    "length_handler_unittest.cc",
+    "list_gap_handler_unittest.cc",
+    "number_handler_unittest.cc",
+    "shadow_handler_unittest.cc",
+    "string_handler_unittest.cc",
+    "text_decoration_handler_unittest.cc",
+    "text_stroke_handler_unittest.cc",
+    "time_handler_unittest.cc",
+    "timing_function_handler_unittest.cc",
+    "transform_handler_unittest.cc",
+    "transform_origin_handler_unittest.cc",
+    "transition_shorthand_handler_unittest.cc",
+  ]
+}
+
+unittest_exec("css_parser_test_exec") {
+  sources = []
+  deps = [
+    ":css_parser_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}

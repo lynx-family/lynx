@@ -1,0 +1,124 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/runtime/vm/lepus/build.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("lepus") {
+  sources = lynx_lepus_common_sources_path
+  if (is_android) {
+    if (!enable_just_lepusng) {
+      sources += lynx_lepus_core_sources_path
+    }
+  } else {
+    sources += lynx_lepus_core_sources_path
+  }
+
+  if (build_lepus_compile) {
+    sources += lynx_lepus_compile_sources_path
+  }
+
+  deps = []
+  if (is_mac || is_linux) {
+    deps += [ "//lynx/third_party/quickjs" ]
+  } else if (is_ios) {
+    deps += [ "//lynx/third_party/quickjs:quickjs_regexp" ]
+  }
+  public_deps = [
+    "//lynx/core/base",
+    "//lynx/core/parser",
+    "//lynx/core/runtime/profile:profile_public_header",
+    "//lynx/core/runtime/vm/lepus/tasks:tasks",
+    "//lynx/third_party/rapidjson",
+  ]
+  deps += [ ":lepus_ng" ]
+
+  # The following macro is used for local debugging and prints the log to the console. please don't delete
+  # if(is_test) {
+  #   sources += [
+  #     "ast_dump.h",
+  #     "ast_dump.cc"
+  #   ]
+  #   defines = ["LEPUS_PC", "LEPUS_TEST"]
+  # }
+}
+
+lynx_core_source_set("lepus_ng") {
+  sources = lynx_lepus_ng_sources_path + lynx_quick_context_pool_sources_path
+
+  public_deps = [
+    "//lynx/core/runtime/vm/lepus/tasks:tasks",
+    "//lynx/third_party/rapidjson",
+  ]
+  deps = [ "//lynx/core/runtime/common:reporter" ]
+  if (!is_android && !is_oliver_ssr) {
+    deps += [ "//lynx/third_party/quickjs" ]
+  }
+
+  exclude_configs = [ "//build/config/compiler:chromium_code" ]
+  configs = [ "//build/config/compiler:no_chromium_code" ]
+}
+
+shared_library("lepus_shared") {
+  sources = []
+  deps = [
+    ":lepus",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+unittest_set("lepus_testset") {
+  sources = [
+    "//lynx/testing/lynx/tasm/databinding/data_update_replayer.cc",
+    "//lynx/testing/lynx/tasm/databinding/databinding_test.cc",
+    "//lynx/testing/lynx/tasm/databinding/element_dump_helper.cc",
+    "//lynx/testing/lynx/tasm/databinding/mock_replayer_component_loader.cc",
+    "context_decoder_unittests.cc",
+    "function_api_unittest.cc",
+    "lepus_error_helper_unittest.cc",
+    "path_parser_unittest.cc",
+    "quick_context_pool_unittest.cc",
+    "quickjs_promise_unittest.cc",
+    "quickjs_stack_size_unittest.cc",
+    "string_api_unittest.cc",
+    "value_utils_unittest.cc",
+  ]
+
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+
+  public_deps = [
+    ":lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+  ]
+  deps = [
+    ":lepus_unittest_sources",
+    ":lepusng_unittest_sources",
+    ":value_utils_sources",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+}
+
+unittest_exec("lepus_unittests_exec") {
+  sources = []
+  deps = [
+    ":lepus_testset",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}
+
+copy("lepus_unittest_sources") {
+  sources = [ "compiler/unit_test" ]
+  outputs = [ "$root_out_dir/core/runtime/vm/lepus/compiler/unit_test" ]
+}
+
+copy("lepusng_unittest_sources") {
+  sources = [ "compiler/lepusng_unit_test" ]
+  outputs = [ "$root_out_dir/core/runtime/vm/lepus/compiler/lepusng_unit_test" ]
+}
+
+copy("value_utils_sources") {
+  sources = [ "big_object.js" ]
+  outputs = [ "$root_out_dir/core/runtime/vm/lepus/big_object.js" ]
+}

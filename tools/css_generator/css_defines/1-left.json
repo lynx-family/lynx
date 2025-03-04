@@ -1,0 +1,41 @@
+{
+    "name": "left",
+    "id": 1,
+    "type": "length",
+    "default_value": "auto",
+    "version": "1.0",
+    "author": "wangzhixuan",
+    "consumption_status": "layout-only",
+    "desc": "left offset",
+    "compat_data": {
+        "left": {
+            "__compat": {
+              "description": "participates in setting the horizontal position of a positioned element. It has no effect on non-positioned elements.",
+              "lynx_path": "docs/zh/api/css/properties/left",
+              "mdn_url": "https://developer.mozilla.org/zh-CN/docs/Web/CSS/left",
+              "spec_url": [],
+              "status": {
+                "deprecated": false,
+                "experimental": false
+              },
+              "support": {
+                "android": {
+                  "version_added": "1.0"
+                },
+                "ios": {
+                  "version_added": "1.0"
+                },
+                "clay_android": {
+                  "version_added": "1.0"
+                },
+                "clay_macos": {
+                  "version_added": "1.0"
+                },
+                "clay_windows": {
+                  "version_added": "1.0"
+                }
+              }
+            }
+          }
+    }
+}

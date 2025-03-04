@@ -1,0 +1,73 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("//lynx/config.gni")
+import("//lynx/tools/gn_tools/cmake_target_template.gni")
+
+assert(is_android)
+
+config("trace_android_private_config") {
+  ldflags = [
+    "-Wl,--exclude-libs,ALL,--gc-sections",
+    "-fuse-ld=lld",
+    "-Xlinker",
+    "-Map=output.map",
+  ]
+
+  # Specify the symbols that need to be exported in order to hide symbols like `__emutls_get_address` that are not intended to be exported.
+  # lld will export `__emutls_get_address` with enable lto, it's a bug of lld.
+  ldflags +=
+      [ "-Wl,--version-script," + rebase_path("lynx_trace_export_symbol.map") ]
+}
+
+if (build_lynx_dylib) {
+  cmake_target("LynxTrace") {
+    cmake_version = "3.4.1"
+    target_type = "shared_library"
+    output_name = "lynxtrace"
+
+    deps = [
+      ":trace_jni",
+      "//lynx/base/trace/native:trace",
+    ]
+
+    libs = [ "log" ]
+
+    configs = [ ":trace_android_private_config" ]
+  }
+}
+
+source_set("trace_jni") {
+  sources = [ "src/main/jni/LynxTraceSoLoad.cpp" ]
+  include_dirs = [ "$root_gen_dir/lynx" ]
+  deps = [ "//lynx/base/src:base" ]
+  public_deps = [ ":prebuild_jni_header" ]
+  configs += [
+    "//lynx/base/trace/native:trace_private_config",
+    "//lynx/base/trace/native:trace_public_config",
+  ]
+}
+
+action("prebuild_jni_header") {
+  script = "//lynx/base/trace/tools/build_jni/prebuild_jni.py"
+
+  java_classes_path = rebase_path("./src/main/java")
+  jni_file_path = rebase_path("../native/platform/android/jni_files")
+  output_path = "$target_gen_dir/../native/platform/android/jni_headers"
+  print(output_path)
+
+  args = [
+    java_classes_path,
+    jni_file_path,
+    rebase_path(output_path),
+  ]
+
+  inputs = []
+
+  outputs = [
+    "$output_path/TraceEvent_jni.h",
+    "$output_path/TraceController_jni.h",
+  ]
+}

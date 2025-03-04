@@ -1,0 +1,320 @@
+// Copyright 2024 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+apply plugin: 'com.android.library'
+apply from: '../jacoco.gradle'
+apply from: '../publish.gradle'
+import org.json.simple.JSONObject
+
+ext.ABI_FILTERS = ['armeabi-v7a', 'armeabi', 'arm64-v8a', 'x86']
+ext.DEBUG_JS_ENGINE_TYPE = js_engine_type
+android {
+    publishNonDefault true
+    compileSdkVersion rootProject.ext.compileSdkVersion
+    ndkVersion rootProject.ext.ndkVersion
+
+    defaultConfig {
+        minSdkVersion 16
+        targetSdkVersion 22
+        versionCode 1
+        versionName "1.0"
+        buildConfigField("String", "LYNX_SDK_VERSION", "\"${VERSION}\"")
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
+        // enable tracing
+        buildConfigField("Boolean","enable_frozen_mode",enable_frozen_mode)
+        buildConfigField("Boolean","enable_air",enable_air)
+        buildConfigField("Boolean","disable_nanbox", disable_nanbox)
+        buildConfigField("Boolean","enable_lite_production", enable_lite_production)
+        buildConfigField("Boolean","enable_lite",enable_lite)
+
+        multiDexEnabled true
+
+        packagingOptions {
+            exclude 'lib/*/libnapi.so'
+            exclude 'lib/*/libquick.so'
+            exclude 'lib/*/liblynxtrace.so'
+            exclude 'lib/*/libv8_libfull.cr.so'
+        }
+    }
+
+    flavorDimensions "lynx"
+    productFlavors {
+        debugMode {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                            '-DFLAVOR_NAME=debugMode'
+
+                }
+            }
+        }
+        asan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-fsanitize=address',
+                            '-fsanitize-address-use-after-scope',
+                            '-fPIE',
+                            '-Wl,-ldl',
+                            '-Wl,-llog',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_ARM_MODE=arm',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DFLAVOR_NAME=asan'
+                    abiFilters(*rootProject.ext.abiList)
+                }
+            }
+        }
+        noasan {
+            dimension "lynx"
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                            '-DFLAVOR_NAME=noasan'
+                }
+            }
+
+            // You may notice that it’s a bit strange to use getIsDefault
+            // instead of accessing directly to the field isDefault,
+            // this happens because it’s declared as final and there’s no setter available.
+            // Source: https://issuetracker.google.com/issues/36988145
+            // Long story short: "isDefault true" won't work.
+            getIsDefault().set(true)
+        }
+    }
+
+    buildTypes {
+        release {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=release',
+                            '-LH'//To show compile parameters
+                }
+
+
+                buildConfigField("String", "JS_ENGINE_TYPE", "\"${js_engine_type}\"")
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            consumerProguardFiles 'proguard-rules.pro'
+            minifyEnabled false
+        }
+
+        debug {
+            externalNativeBuild {
+                cmake {
+                    arguments '-DANDROID_PLATFORM=android-14',
+                            '-DANDROID_TOOLCHAIN=clang',
+                            '-DANDROID_STL='+getCppLib(),
+                            '-DLOCAL_ARM_NEON=true',
+                            '-DBUILD_TYPE=debug',
+                            '-LH'//To show compile parameters
+
+                    // Symbol table with line numbers
+                    cppFlags "-g"
+                }
+                buildConfigField("String", "JS_ENGINE_TYPE", "\"${DEBUG_JS_ENGINE_TYPE}\"")
+            }
+            ndk {
+                abiFilters(*rootProject.ext.abiList)
+            }
+            jniDebuggable true
+            debuggable true
+
+        }
+
+        // Only NoAsanRelease use custom lld
+        def runTasks = gradle.startParameter.taskNames.toString().toLowerCase()
+        if (!runTasks.contains("noasan")) {
+            release {
+                externalNativeBuild {
+                    cmake {
+                        arguments '-DUSE_CUSTOM_LLD='+enable_custom_lld
+                    }
+                }
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+   externalNativeBuild {
+       cmake {
+           path "CMakeLists.txt"
+           version CMAKE_VERSION
+       }
+   }
+
+    configurations {
+        extractJNI
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+            res.srcDirs = ['src/main/res']
+        }
+
+        androidTest {
+            assets.srcDirs = ['src/android_test/assets']
+            java.srcDirs += ['src/android_test/java/']
+        }
+
+        release {
+            jniLibs.srcDirs = ['libs/'+js_engine_type]
+            assets.srcDirs = ['src/release/assets']
+        }
+        debug {
+            jniLibs.srcDirs = ['libs/'+js_engine_type]
+            assets.srcDirs = ['src/debug/assets']
+        }
+    }
+}
+
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+// Use to remove designated useless dir in resources process period
+final List<String> exclusions = []
+tasks.create("excludeTask") {
+    doLast {
+        exclusions.each {
+            File file = file("${buildDir}/intermediates/exploded-aar/${it}")
+            logger.log(LogLevel.ERROR, "Excluding file " + file)
+            if (file.exists()) {
+                file.deleteDir()
+            }
+        }
+    }
+}
+
+tasks.whenTaskAdded({
+    if (it.name.matches(/^process.*Resources$/)) {
+        it.dependsOn excludeTask
+    }
+})
+
+task extractJNIFiles {
+    doLast {
+        configurations.extractJNI.files.each {
+            def file = it.absoluteFile
+            def packageName = file.name.tokenize('-')[0].replace(".aar", "")
+            println("extractJNI: " + packageName)
+            copy {
+                from zipTree(file)
+                into "$projectDir/build/jniLibs/$packageName/"
+                include "jni/**/*"
+            }
+        }
+    }
+}
+
+preBuild.dependsOn extractJNIFiles
+tasks.whenTaskAdded { task ->
+    if (task.name.startsWith('externalNativeBuild')) {
+        task.dependsOn extractJNIFiles
+    }
+}
+
+// Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.
+task configGnCompileParas {
+    def buildVariantList = getFlavorNamesAndBuildTypes(project)
+    def flavorNames = buildVariantList[0]
+    def buildTypes = buildVariantList[1]
+    JSONObject gnBuildArgs_map = new JSONObject()
+    flavorNames.each{
+        JSONObject gnBuildArgs_list = new JSONObject()
+        String flavorName = it
+        if (flavorName == "debugMode") {
+            gnBuildArgs_list.put("lynx_in_debug", "true")
+            gnBuildArgs_list.put("enable_trace", "perfetto")
+        } else if(flavorName == "asan") {
+            gnBuildArgs_list.put("is_asan", "true")
+        }
+
+        buildTypes.each{
+            String buildType = it
+            gnBuildArgs_list.put("build_lepus_compile", "false")
+            gnBuildArgs_list.put("jsengine_type", "\"$js_engine_type\"")
+            gnBuildArgs_list.put("enable_memory_tracing", "\"$enable_memory_tracing\"")
+            gnBuildArgs_list.put("enable_lite", "\"$enable_lite\"")
+            gnBuildArgs_list.put("enable_lto", "\"$enable_lto\"")
+            gnBuildArgs_list.put("enable_lite_production", "\"$enable_lite_production\"")
+            gnBuildArgs_list.put("disable_base_export", "\"$enable_lite_production\"")
+            gnBuildArgs_list.put("enable_air", "\"$enable_air\"")
+            gnBuildArgs_list.put("disable_nanbox", "\"$disable_nanbox\"")
+            gnBuildArgs_list.put("disable_list_platform_implementation", "\"$disable_list_platform_implementation\"")
+            gnBuildArgs_list.put("compiler_optimization_level", "\"$compiler_optimization_level\"")
+            if (buildType == "release") {
+                gnBuildArgs_list.put("is_debug", "false")
+                gnBuildArgs_list.put("enable_replay_release", "\"$enable_replay_release\"")
+                if(!rootProject.ext.buildLynxDebugSo){
+                    gnBuildArgs_list.put("lynx_in_debug", "true")
+                    gnBuildArgs_list.put("enable_trace", "perfetto")
+                }
+            } else if(buildType == "debug") {
+                if(!rootProject.ext.buildLynxDebugSo){
+                    gnBuildArgs_list.put("lynx_in_debug", "true")
+                    gnBuildArgs_list.put("enable_trace", "perfetto")
+                }
+                gnBuildArgs_list.put("is_debug", "true")
+            }
+            rootProject.ext.abiList.each { abi ->
+                gnBuildArgs_map.put(flavorName+buildType+abi, gnBuildArgs_list)
+            }
+        }
+    }
+    exec {
+        workingDir "../../../"
+        commandLine "python3", "tools/android_tools/write_gn_args.py", "--gn-args", gnBuildArgs_map.toJSONString()
+    }
+}
+
+dependencies {
+    implementation project(':LynxTrace')
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    compileOnly group: 'com.google.code.gson', name: 'gson', version: '2.8.5'
+
+    compileOnly('androidx.appcompat:appcompat:1.0.0')
+    compileOnly 'androidx.recyclerview:recyclerview:1.0.0'
+    compileOnly 'androidx.annotation:annotation:1.0.0'
+    // Exclude useless res dir of com.android.support:appcompat-v7:23.0.1
+    exclusions.add("com.android.support/appcompat-v7/23.0.1/res")
+
+    compileOnly 'com.facebook.soloader:soloader:0.6.0'
+
+    println('LynxAndroid LynxProcessor is ON')
+    compileOnly project(':LynxProcessor')
+    annotationProcessor project(':LynxProcessor')
+
+    androidTestImplementation "junit:junit:4.12"
+    androidTestImplementation "androidx.test:core:1.4.0"
+    androidTestImplementation "androidx.recyclerview:recyclerview:1.0.0"
+    androidTestCompileOnly project(':LynxProcessor')
+    androidTestImplementation "com.google.auto.service:auto-service-annotations:1.0-rc5"
+    androidTestAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc5"
+
+    implementation 'org.lynxsdk.lynx:primjs:2.11.1-alpha.3'
+    extractJNI 'org.lynxsdk.lynx:primjs:2.11.1-alpha.3'
+    extractJNI 'org.lynxsdk.lynx:v8so:0.0.1'
+
+    api project(':LynxJSSDK')
+}

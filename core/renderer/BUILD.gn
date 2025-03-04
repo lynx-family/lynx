@@ -1,0 +1,109 @@
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/renderer/build.gni")
+import("//lynx/testing/test.gni")
+
+group("tasm_group") {
+  deps = [
+    ":tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom/selector:element_selector",
+    "//lynx/core/services/event_report:event_report",
+    "//lynx/core/services/long_task_timing:long_task_timing",
+    "//lynx/core/services/ssr",
+    "//lynx/core/shell:shell",
+  ]
+}
+
+lepus_compile = is_android && build_lepus_compile
+
+lynx_core_source_set("tasm") {
+  include_dirs = [ "//lynx/third_party" ]
+
+  # TODO(zhengsenyao): break tasm to into three targets: tasm, tasm_config & vdom_radon
+  allow_circular_includes_from = [ "//lynx/core/renderer/dom:dom_headers" ]
+
+  sources = lynx_tasm_shared_sources_path
+  if (!is_oliver_ssr) {
+    sources += lynx_recorder_sources_path
+  }
+
+  deps = [ "//lynx/core/renderer/dom:dom_headers" ]
+  public_deps = [
+    "//lynx/core/animation",
+    "//lynx/core/animation/utils:animation_utils",
+    "//lynx/core/base",
+    "//lynx/core/renderer/css",
+    "//lynx/core/renderer/data",
+    "//lynx/core/renderer/dom/vdom/radon",
+    "//lynx/core/renderer/events",
+    "//lynx/core/renderer/signal:signal",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/renderer/utils:renderer_utils",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/runtime/vm/lepus",
+    "//lynx/core/services/event_report",
+    "//lynx/core/services/long_task_timing",
+    "//lynx/core/template_bundle:template_bundle",
+  ]
+
+  if (!is_oliver_ssr) {
+    public_deps += [
+      "//lynx/core/animation/basic_animation:basic_animation",
+      "//lynx/core/animation/lynx_basic_animator:lynx_basic_animator",
+      "//lynx/core/animation/transforms",
+      "//lynx/core/resource/lazy_bundle:lazy_bundle",
+      "//lynx/core/runtime",
+      "//lynx/core/shared_data",
+      "//lynx/core/shell",
+    ]
+  }
+
+  if (enable_unittests) {
+    sources += [
+      "tasm/testing/event_tracker_mock.cc",
+      "tasm/testing/event_tracker_mock.h",
+    ]
+    configs = [
+      "//build/config/compiler:cxx_version_17",
+      "//lynx/core/runtime/bindings/napi:napi_config",
+    ]
+    deps += [
+      "//lynx/core/base",
+      "//lynx/core/runtime/bindings/napi:napi_binding_quickjs",
+      "//lynx/core/runtime/bindings/napi/test:test_module",
+      "//lynx/third_party/quickjs",
+      "//lynx/third_party/rapidjson:rapidjson",
+    ]
+    deps += [
+      "//lynx/third_party/napi:env",
+      "//lynx/third_party/napi:quickjs",
+      "//lynx/third_party/quickjs:quickjs_libc",
+    ]
+    if (is_mac) {
+      # On MacOS, NapiBindingCore source files create JSC runtime by default.
+      # And consequently all unittests should link with JSC framework and
+      # depends on NapiBindingJSC.
+      deps += [ "//lynx/core/runtime/bindings/napi:napi_binding_jsc" ]
+    }
+  }
+
+  if (lepus_compile) {
+    public_deps +=
+        [ "//lynx/core/template_bundle/template_codec:lepus_compile" ]
+  }
+}
+
+unittest_exec("page_config_unittests_exec") {
+  testonly = true
+
+  sources = [ "page_config_unittests.cc" ]
+
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+  ]
+}

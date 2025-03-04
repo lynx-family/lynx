@@ -1,0 +1,14 @@
+{
+    "name": "overflow-x",
+    "id": 119,
+    "type": "complex",
+    "default_value": "hidden",
+    "version": "1.0",
+    "author": "linxiaosong",
+    "consumption_status": "skip",
+    "keywords": [
+        "hidden",
+        "visible"
+    ],
+    "desc": ""
+}
