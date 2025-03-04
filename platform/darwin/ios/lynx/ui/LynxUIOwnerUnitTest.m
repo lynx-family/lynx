@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxShadowNodeOwner.h>
+#import <Lynx/LynxUIOwner.h>
 #import <XCTest/XCTest.h>
-#import "LynxComponentRegistry.h"
-#import "LynxEnv.h"
-#import "LynxShadowNodeOwner.h"
-#import "LynxUIOwner.h"
 
 @interface LynxUIOwnerUnitTest : XCTestCase
 @property(nonatomic, strong) LynxUIOwner *uiOwner;

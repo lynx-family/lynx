@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionScroll.h"
-#import "LynxListDebug.h"
-#import "LynxUICollection.h"
-#import "UIScrollView+LynxGesture.h"
+#import <Lynx/LynxCollectionScroll.h>
+#import <Lynx/LynxListDebug.h>
+#import <Lynx/LynxUICollection.h>
+#import <Lynx/UIScrollView+LynxGesture.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

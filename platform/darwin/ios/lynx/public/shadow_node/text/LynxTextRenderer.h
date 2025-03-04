@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxEventTargetSpan.h"
-#import "LynxTextLayoutSpec.h"
+#import <Lynx/LynxEventTargetSpan.h>
+#import <Lynx/LynxTextLayoutSpec.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

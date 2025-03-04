@@ -6,9 +6,9 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXPAGERELOADHELPERPROTO_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxTemplateBundle.h"
-#import "LynxTemplateData.h"
-#import "LynxView.h"
+#import <Lynx/LynxTemplateBundle.h>
+#import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxView.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

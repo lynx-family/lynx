@@ -3,14 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxUIUnitTestUtils.h"
-#import "LynxComponentRegistry.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIView.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxView.h>
 #import "LynxTemplateRender+Internal.h"
-#import "LynxUI+Internal.h"
-#import "LynxUI.h"
-#import "LynxUIOwner.h"
-#import "LynxUIView.h"
-#import "LynxView+Internal.h"
-#import "LynxView.h"
 
 @implementation LynxEventEmitterUnitTestHelper
 

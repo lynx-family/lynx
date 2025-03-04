@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxDefines.h>
 #import "JSModule+Internal.h"
-#import "LynxDefines.h"
 
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 

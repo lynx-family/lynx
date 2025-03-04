@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxResourceResponse.h"
+#import <Lynx/LynxResourceResponse.h>
 
 const NSInteger LynxResourceResponseCodeSuccess = 0;
 const NSInteger LynxResourceResponseCodeFailed = -1;

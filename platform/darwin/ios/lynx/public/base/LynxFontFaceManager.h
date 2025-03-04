@@ -3,13 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LUIBodyView.h"
-#import "LynxContext.h"
-#import "LynxError.h"
-#import "LynxGenericResourceFetcher.h"
-#import "LynxResourceFetcher.h"
-#import "LynxResourceProvider.h"
-#import "LynxTextStyle.h"
+#import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxResourceFetcher.h>
+#import <Lynx/LynxResourceProvider.h>
+#import <Lynx/LynxTextStyle.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

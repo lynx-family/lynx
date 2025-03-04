@@ -4,14 +4,14 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxBackgroundRuntime.h"
-#import "LynxConfig.h"
-#import "LynxDynamicComponentFetcher.h"
-#import "LynxGenericResourceFetcher.h"
-#import "LynxGroup.h"
-#import "LynxMediaResourceFetcher.h"
-#import "LynxTemplateResourceFetcher.h"
-#import "LynxViewEnum.h"
+#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxConfig.h>
+#import <Lynx/LynxDynamicComponentFetcher.h>
+#import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxGroup.h>
+#import <Lynx/LynxMediaResourceFetcher.h>
+#import <Lynx/LynxTemplateResourceFetcher.h>
+#import <Lynx/LynxViewEnum.h>
 
 typedef NS_ENUM(NSInteger, LynxBooleanOption) {
   LynxBooleanOptionUnset = 0,

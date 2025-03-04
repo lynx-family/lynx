@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionViewCell.h"
-#import "LynxUIComponent.h"
-#import "LynxUIImage.h"
+#import <Lynx/LynxCollectionViewCell.h>
+#import <Lynx/LynxUIComponent.h>
+#import <Lynx/LynxUIImage.h>
 
 @interface LynxCollectionViewCell ()
 @end

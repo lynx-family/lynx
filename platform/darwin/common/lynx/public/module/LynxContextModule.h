@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_MODULE_LYNXCONTEXTMODULE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxContext.h"
-#import "LynxModule.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxModule.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

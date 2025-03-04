@@ -2,22 +2,22 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBaseTextShadowNode.h"
-#import "LynxBoxShadowManager.h"
-#import "LynxConverter+NSShadow.h"
-#import "LynxConverter+UI.h"
-#import "LynxFontFaceManager.h"
-#import "LynxGradient.h"
-#import "LynxHtmlEscape.h"
-#import "LynxInlineTruncationShadowNode.h"
-#import "LynxLog.h"
-#import "LynxNativeLayoutNode.h"
-#import "LynxPropsProcessor.h"
-#import "LynxRawTextShadowNode.h"
-#import "LynxTextLayoutSpec.h"
-#import "LynxTextSelectionShadowNode.h"
-#import "LynxTextShadowNode.h"
-#import "LynxTextUtils.h"
+#import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxBoxShadowManager.h>
+#import <Lynx/LynxConverter+NSShadow.h>
+#import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxGradient.h>
+#import <Lynx/LynxHtmlEscape.h>
+#import <Lynx/LynxInlineTruncationShadowNode.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxNativeLayoutNode.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRawTextShadowNode.h>
+#import <Lynx/LynxTextLayoutSpec.h>
+#import <Lynx/LynxTextSelectionShadowNode.h>
+#import <Lynx/LynxTextShadowNode.h>
+#import <Lynx/LynxTextUtils.h>
 
 NSAttributedStringKey const LynxInlineViewAttributedStringKey =
     @"LynxInlineViewAttributedStringKey";

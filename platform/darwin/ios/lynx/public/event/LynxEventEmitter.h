@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEvent.h"
-#import "LynxEventTarget.h"
-#import "LynxTouchEvent.h"
+#import <Lynx/LynxEvent.h>
+#import <Lynx/LynxEventTarget.h>
+#import <Lynx/LynxTouchEvent.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

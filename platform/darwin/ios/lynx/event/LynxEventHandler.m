@@ -2,19 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBaseLogBoxProxy.h"
-#import "LynxEnv.h"
+#import <Lynx/LynxBaseLogBoxProxy.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxTouchHandler.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/LynxViewInternal.h>
+#import <Lynx/LynxWeakProxy.h>
+#import <Lynx/UIView+Lynx.h>
 #import "LynxEventHandler+Internal.h"
-#import "LynxLog.h"
 #import "LynxTouchHandler+Internal.h"
-#import "LynxTouchHandler.h"
-#import "LynxUI+Internal.h"
-#import "LynxUnitUtils.h"
-#import "LynxView+Internal.h"
-#import "LynxView.h"
-#import "LynxViewInternal.h"
-#import "LynxWeakProxy.h"
-#import "UIView+Lynx.h"
 
 #pragma mark - LynxEventHandler
 @interface LynxEventHandler ()

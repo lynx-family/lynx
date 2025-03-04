@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxLayoutNode.h"
-#import "LynxShadowNodeStyle.h"
-#import "LynxUIOwner.h"
+#import <Lynx/LynxLayoutNode.h>
+#import <Lynx/LynxShadowNodeStyle.h>
+#import <Lynx/LynxUIOwner.h>
 
 @class LynxShadowNode;
 

@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDevToolUtils.h"
+#import <Lynx/LynxDevToolUtils.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 #import <objc/message.h>
-#import "LynxLog.h"
-#import "LynxService.h"
-#import "LynxServiceDevToolProtocol.h"
 
 @implementation LynxDevToolUtils
 

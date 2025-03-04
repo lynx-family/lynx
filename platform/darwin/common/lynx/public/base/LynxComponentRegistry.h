@@ -4,7 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #if __has_include("LynxLazyLoad.h")
-#import "LynxLazyLoad.h"
+#import <Lynx/LynxLazyLoad.h>
 #ifndef LYNX_LAZY_LOAD
 #define LYNX_LAZY_LOAD 1
 #endif

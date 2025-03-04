@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionViewLayout.h"
-#import "LynxCollectionDataSource.h"
-#import "LynxCollectionInvalidationContext.h"
-#import "LynxCollectionScroll.h"
-#import "LynxCollectionViewLayoutModel.h"
-#import "LynxCollectionViewLayoutSectionModel.h"
-#import "LynxUICollection.h"
+#import <Lynx/LynxCollectionDataSource.h>
+#import <Lynx/LynxCollectionInvalidationContext.h>
+#import <Lynx/LynxCollectionScroll.h>
+#import <Lynx/LynxCollectionViewLayout.h>
+#import <Lynx/LynxCollectionViewLayoutModel.h>
+#import <Lynx/LynxCollectionViewLayoutSectionModel.h>
+#import <Lynx/LynxUICollection.h>
 
 #ifndef LYNX_COLLECTION_COMPARE_EPSILON
 #define LYNX_COLLECTION_COMPARE_EPSILON 0.0001

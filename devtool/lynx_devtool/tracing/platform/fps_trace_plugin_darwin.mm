@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "devtool/lynx_devtool/tracing/platform/fps_trace_plugin_darwin.h"
-#import "LynxFPSTrace.h"
+#import <LynxDevtool/LynxFPSTrace.h>
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 namespace lynx {

@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxHeroModifiers.h>
+#import <Lynx/LynxUI.h>
 #import <UIKit/UIKit.h>
-#import "LynxHeroModifiers.h"
-#import "LynxUI.h"
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxAnimationInfo;

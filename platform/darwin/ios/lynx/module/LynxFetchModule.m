@@ -4,11 +4,11 @@
 
 #import "LynxFetchModule.h"
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxHttpRequest.h>
+#import <Lynx/LynxModule.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceHttpProtocol.h>
 #import <objc/runtime.h>
-#import "LynxHttpRequest.h"
-#import "LynxModule.h"
-#import "LynxService.h"
-#import "LynxServiceHttpProtocol.h"
 
 @implementation LynxFetchModule
 

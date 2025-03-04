@@ -5,10 +5,10 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
-#import "LynxEnv.h"
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/LynxViewClientV2.h>
 #import "LynxUnitTestUtils.h"
-#import "LynxView.h"
-#import "LynxViewClientV2.h"
 
 @interface LynxViewClientV2Tester : NSObject <LynxViewLifecycleV2>
 

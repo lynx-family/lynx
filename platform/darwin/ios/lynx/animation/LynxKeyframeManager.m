@@ -1,11 +1,11 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxKeyframeManager.h"
-#import "LynxKeyframeAnimator.h"
-#import "LynxLog.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI.h"
+#import <Lynx/LynxKeyframeAnimator.h>
+#import <Lynx/LynxKeyframeManager.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI.h>
 
 @implementation LynxKeyframeManager {
   NSArray<LynxAnimationInfo*>* _infos;

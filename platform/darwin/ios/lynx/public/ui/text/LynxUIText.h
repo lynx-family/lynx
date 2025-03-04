@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxTextOverflowLayer.h"
-#import "LynxTextRenderer.h"
-#import "LynxTextView.h"
-#import "LynxUI+Internal.h"
+#import <Lynx/LynxTextOverflowLayer.h>
+#import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxTextView.h>
+#import <Lynx/LynxUI+Internal.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

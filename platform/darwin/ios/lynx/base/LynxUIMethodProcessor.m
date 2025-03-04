@@ -1,11 +1,11 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxUIMethodProcessor.h"
+#import <Lynx/LynxModule.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
-#import "LynxModule.h"
-#import "LynxUI.h"
 
 typedef void (^LynxUIMethod)(id target, NSDictionary* params, LynxUIMethodCallbackBlock callback);
 typedef NSMutableDictionary<NSString*, LynxUIMethod> UIMethodMap;

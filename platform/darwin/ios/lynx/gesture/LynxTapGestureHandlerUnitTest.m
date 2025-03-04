@@ -2,15 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseGestureHandler.h>
+#import <Lynx/LynxDefaultGestureHandler.h>
+#import <Lynx/LynxFlingGestureHandler.h>
+#import <Lynx/LynxGestureArenaMember.h>
+#import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxTapGestureHandler.h>
+#import <Lynx/LynxUIText.h>
 #import <XCTest/XCTest.h>
-#import "LynxBaseGestureHandler.h"
-#import "LynxDefaultGestureHandler.h"
-#import "LynxFlingGestureHandler.h"
-#import "LynxGestureArenaMember.h"
-#import "LynxGestureDetectorDarwin.h"
 #import "LynxGestureHandlerTrigger.h"
-#import "LynxTapGestureHandler.h"
-#import "LynxUIText.h"
 #import "LynxUIUnitTestUtils.h"
 
 @interface LynxTapGestureHandlerUnitTest : XCTestCase

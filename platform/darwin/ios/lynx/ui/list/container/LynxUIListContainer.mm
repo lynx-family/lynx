@@ -2,17 +2,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIListContainer.h"
-#import "LynxComponentRegistry.h"
-#import "LynxPropsProcessor.h"
-#import "LynxScrollEventManager.h"
-#import "LynxScrollView.h"
-#import "LynxSubErrorCode.h"
-#import "LynxUI+Fluency.h"
-#import "LynxUI+Internal.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxScrollEventManager.h>
+#import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUI+Fluency.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIListContainer.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/UIScrollView+Lynx.h>
 #import "LynxUIContext+Internal.h"
-#import "LynxUIMethodProcessor.h"
-#import "UIScrollView+Lynx.h"
 #include "core/shell/lynx_shell.h"
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;

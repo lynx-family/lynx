@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTemplateBundle.h"
-#import "LynxService.h"
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxTemplateBundle.h>
 #import "LynxTemplateBundle+Converter.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/runtime/jscache/js_cache_manager_facade.h"

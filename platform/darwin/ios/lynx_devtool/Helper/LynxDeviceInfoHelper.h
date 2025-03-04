@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <LynxDevtool/LynxBaseDeviceInfo.h>
 #import <SystemConfiguration/SystemConfiguration.h>
 #import <netinet/in.h>
-#import "LynxBaseDeviceInfo.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

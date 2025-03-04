@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LUIErrorHandling.h"
+#import <Lynx/LUIErrorHandling.h>
 
 /// This protocol is a collection of abilities a root view of Lynx UI tree is required.
 ///

@@ -8,7 +8,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
-#import "LynxScreenMetrics.h"
+#import <Lynx/LynxScreenMetrics.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

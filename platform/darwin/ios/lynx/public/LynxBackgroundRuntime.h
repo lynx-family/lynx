@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxGenericResourceFetcher.h"
-#import "LynxGroup.h"
-#import "LynxMediaResourceFetcher.h"
-#import "LynxModule.h"
-#import "LynxResourceProvider.h"
-#import "LynxTemplateData.h"
-#import "LynxTemplateResourceFetcher.h"
+#import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxGroup.h>
+#import <Lynx/LynxMediaResourceFetcher.h>
+#import <Lynx/LynxModule.h>
+#import <Lynx/LynxResourceProvider.h>
+#import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxTemplateResourceFetcher.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -2,15 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseGestureHandler.h>
+#import <Lynx/LynxGestureArenaMember.h>
+#import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUIText.h>
 #import <XCTest/XCTest.h>
-#import "LynxBaseGestureHandler.h"
 #import "LynxGestureArenaManager.h"
-#import "LynxGestureArenaMember.h"
 #import "LynxGestureDetectorManager.h"
 #import "LynxGestureFlingTrigger.h"
 #import "LynxGestureHandlerTrigger.h"
-#import "LynxTouchEvent.h"
-#import "LynxUIText.h"
 #import "LynxUIUnitTestUtils.h"
 
 @interface LynxGestureArenaMemberMockForArena : NSObject <LynxGestureArenaMember, LynxEventTarget>

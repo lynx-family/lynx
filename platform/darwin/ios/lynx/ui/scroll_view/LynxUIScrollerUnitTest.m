@@ -2,16 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBounceView.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIScroller.h>
+#import <Lynx/LynxUIView.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
-#import "LynxBounceView.h"
-#import "LynxPropsProcessor.h"
 #import "LynxUI+Gesture.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIOwner.h"
-#import "LynxUIScroller.h"
 #import "LynxUIScrollerUnitTestUtils.h"
-#import "LynxUIView.h"
 
 @interface LynxUIScrollerUnitTest : XCTestCase
 @end

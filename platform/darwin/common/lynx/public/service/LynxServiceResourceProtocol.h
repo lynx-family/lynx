@@ -5,10 +5,10 @@
 #ifndef DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICERESOURCEPROTOCOL_H_
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICERESOURCEPROTOCOL_H_
 #import <Foundation/Foundation.h>
-#import "LynxServiceProtocol.h"
-#import "LynxServiceResourceRequestOperationProtocol.h"
-#import "LynxServiceResourceRequestParameters.h"
-#import "LynxServiceResourceResponseProtocol.h"
+#import <Lynx/LynxServiceProtocol.h>
+#import <Lynx/LynxServiceResourceRequestOperationProtocol.h>
+#import <Lynx/LynxServiceResourceRequestParameters.h>
+#import <Lynx/LynxServiceResourceResponseProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

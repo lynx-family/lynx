@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIView.h"
+#import <Lynx/LynxUIView.h>
 
-#import "LynxComponentRegistry.h"
-#import "LynxUI+Internal.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxUI+Internal.h>
 
 @interface UILynxView : UIView
 

@@ -5,7 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 #define DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_H_
 
-#import "LynxTemplateBundleOption.h"
+#import <Lynx/LynxTemplateBundleOption.h>
 
 @interface LynxTemplateBundle : NSObject
 

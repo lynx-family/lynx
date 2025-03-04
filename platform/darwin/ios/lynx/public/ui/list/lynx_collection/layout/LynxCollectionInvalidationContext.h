@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxCollectionViewLayoutModel.h>
 #import <UIKit/UIKit.h>
-#import "LynxCollectionViewLayoutModel.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

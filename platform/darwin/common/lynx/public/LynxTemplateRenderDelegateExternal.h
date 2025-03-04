@@ -5,7 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_LYNXTEMPLATERENDERDELEGATEEXTERNAL_H_
 #define DARWIN_COMMON_LYNX_LYNXTEMPLATERENDERDELEGATEEXTERNAL_H_
 
-#import "LynxTemplateRenderDelegate.h"
+#import <Lynx/LynxTemplateRenderDelegate.h>
 
 /**
  * Used only by the LynxTemplateRender, to support LynxTemplateRender can  receive lifecycle’s

@@ -1,19 +1,19 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxKeyframeAnimator.h"
+#import <Lynx/LynxAnimationDelegate.h>
+#import <Lynx/LynxAnimationUtils.h>
+#import <Lynx/LynxColorUtils.h>
+#import <Lynx/LynxConverter+LynxCSSType.h>
+#import <Lynx/LynxConverter+Transform.h>
+#import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxGlobalObserver.h>
+#import <Lynx/LynxKeyframeAnimator.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
 #import <mach/mach_time.h>
-#import "LynxAnimationDelegate.h"
-#import "LynxAnimationUtils.h"
-#import "LynxColorUtils.h"
-#import "LynxConverter+LynxCSSType.h"
-#import "LynxConverter+Transform.h"
-#import "LynxConverter+UI.h"
-#import "LynxGlobalObserver.h"
-#import "LynxLog.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+Internal.h"
-#import "LynxUI.h"
 
 static const CFTimeInterval kTimeNotInit = 0;
 static const double kAnimationIterationCountInfinite = 1E9;

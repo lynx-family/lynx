@@ -4,7 +4,7 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxScreenMetrics.h"
+#import <Lynx/LynxScreenMetrics.h>
 
 @implementation LynxScreenMetrics
 

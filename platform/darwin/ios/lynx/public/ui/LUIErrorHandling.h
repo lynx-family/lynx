@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxError.h"
+#import <Lynx/LynxError.h>
 
 @protocol LUIErrorHandling <NSObject>
 

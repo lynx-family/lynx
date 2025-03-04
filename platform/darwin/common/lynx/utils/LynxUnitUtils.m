@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUnitUtils.h"
-#import "LynxLog.h"
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxUnitUtils.h>
 
 @implementation LynxUnitUtils
 

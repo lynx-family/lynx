@@ -4,7 +4,7 @@
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-#import "LynxMeasureDelegate.h"
+#import <Lynx/LynxMeasureDelegate.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxLayoutNode;

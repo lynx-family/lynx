@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxUIOwner.h>
 #import <UIKit/UIKit.h>
-#import "LynxEventEmitter.h"
-#import "LynxUIOwner.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

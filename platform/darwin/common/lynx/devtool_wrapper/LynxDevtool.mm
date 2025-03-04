@@ -2,26 +2,26 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDevtool.h"
+#import <Lynx/LynxDevtool.h>
 
 #import <AudioToolbox/AudioToolbox.h>
 
-#import "LynxBaseInspectorOwner.h"
-#import "LynxBaseLogBoxProxy.h"
-#import "LynxContextModule.h"
-#import "LynxDevtool+Internal.h"
-#import "LynxEnv.h"
-#import "LynxLog.h"
-#import "LynxPageReloadHelper+Internal.h"
-#import "LynxPageReloadHelper.h"
+#import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseLogBoxProxy.h>
+#import <Lynx/LynxContextModule.h>
+#import <Lynx/LynxDevtool+Internal.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPageReloadHelper+Internal.h>
+#import <Lynx/LynxPageReloadHelper.h>
 
-#import "LynxError.h"
+#import <Lynx/LynxError.h>
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 
-#import "LynxService.h"
-#import "LynxServiceDevToolProtocol.h"
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 
 #pragma mark - LynxDevtool
 @implementation LynxDevtool {

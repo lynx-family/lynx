@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "AbsLynxUIScroller.h"
-#import "LynxScrollView.h"
-#import "LynxUI.h"
+#import <Lynx/AbsLynxUIScroller.h>
+#import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxUI.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

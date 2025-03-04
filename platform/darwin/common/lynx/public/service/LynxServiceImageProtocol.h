@@ -6,9 +6,9 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICEIMAGEPROTOCOL_H_
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IOS
+#import <Lynx/LynxServiceProtocol.h>
+#import <Lynx/LynxUIImage.h>
 #import <UIKit/UIKit.h>
-#import "LynxServiceProtocol.h"
-#import "LynxUIImage.h"
 
 NS_ASSUME_NONNULL_BEGIN
 typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *_Nullable error,

@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxListAnchorManager.h"
+#import <Lynx/LynxListViewCellLight.h>
 #import "LynxListCachedCellManager.h"
-#import "LynxListViewCellLight.h"
 
 @implementation LynxListAnchorManager
 

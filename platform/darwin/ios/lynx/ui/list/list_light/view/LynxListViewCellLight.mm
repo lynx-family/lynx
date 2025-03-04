@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxListViewCellLight.h>
-#import "LynxUI.h"
-#import "LynxUIComponent.h"
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIComponent.h>
 
 @implementation LynxListViewCellLight
 - (instancetype)init {

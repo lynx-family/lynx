@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBoxShadowManager.h"
-#import "LynxConverter.h"
+#import <Lynx/LynxBoxShadowManager.h>
+#import <Lynx/LynxConverter.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxUI;

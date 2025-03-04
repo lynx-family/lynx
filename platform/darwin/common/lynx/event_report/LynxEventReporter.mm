@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEventReporter.h"
-#import "LynxService.h"
-#import "LynxServiceEventReporterProtocol.h"
-#import "LynxVersion.h"
+#import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceEventReporterProtocol.h>
+#import <Lynx/LynxVersion.h>
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"

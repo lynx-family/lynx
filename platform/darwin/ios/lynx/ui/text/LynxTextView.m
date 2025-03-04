@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTextView.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLayer.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
-#import "LynxComponentRegistry.h"
-#import "LynxLayer.h"
-#import "LynxTextRenderer.h"
-#import "LynxUIText.h"
-#import "LynxWeakProxy.h"
+#import <Lynx/LynxTextRenderer.h>
+#import <Lynx/LynxTextView.h>
+#import <Lynx/LynxUIText.h>
+#import <Lynx/LynxWeakProxy.h>
 
 #pragma mark - LynxTextLayerRender
 @interface LynxTextLayerRender : NSObject <CALayerDelegate>

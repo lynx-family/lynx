@@ -2,19 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDevtoolEnv.h"
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEnvKey.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxErrorBehavior.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <LynxDevtool/LynxDevtoolEnv.h>
 #if OS_IOS
-#import "DevtoolWebSocketModule.h"
+#import <LynxDevtool/DevtoolWebSocketModule.h>
 #endif
 
+#include <LynxDevtool/LynxDebugBridge.h>
 #include "core/renderer/utils/lynx_env.h"
-#include "platform/darwin/common/lynx_devtool/LynxDebugBridge.h"
 
 NSString *const ERROR_CODE_KEY_PREFIX = @"error_code";
 NSString *const CDP_DOMAIN_KEY_PREFIX = @"enable_cdp_domain";

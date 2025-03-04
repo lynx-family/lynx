@@ -6,9 +6,9 @@
 #define DARWIN_COMMON_LYNX_NAVIGATOR_LYNXNAVIGATOR_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxHolder.h"
-#import "LynxRoute.h"
-#import "LynxSchemaInterceptor.h"
+#import <Lynx/LynxHolder.h>
+#import <Lynx/LynxRoute.h>
+#import <Lynx/LynxSchemaInterceptor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

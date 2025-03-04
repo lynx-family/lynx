@@ -1,13 +1,13 @@
 // Copyright 2020 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxGradient.h"
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxColorUtils.h>
+#import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxGradient.h>
+#import <Lynx/LynxGradientUtils.h>
 #import <UIKit/UIKit.h>
-#import "LynxCSSType.h"
-#import "LynxColorUtils.h"
-#import "LynxConverter+UI.h"
-#import "LynxGradientUtils.h"
 
 #pragma mark LynxGradient
 

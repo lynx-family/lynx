@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxAccessibilityModule.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxUIOwner.h>
 #import "LynxContext+Internal.h"
-#import "LynxContext.h"
 #import "LynxUIOwner+Accessibility.h"
-#import "LynxUIOwner.h"
 
 static NSString *NAME = @"LynxAccessibilityModule";
 static NSString *MSG_MUTATION_STYLES = @"mutation_styles";

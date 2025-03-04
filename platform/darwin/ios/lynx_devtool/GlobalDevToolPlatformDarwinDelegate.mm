@@ -1,18 +1,18 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "GlobalDevToolPlatformDarwinDelegate.h"
+#import <LynxDevtool/GlobalDevToolPlatformDarwinDelegate.h>
 
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <mach/mach.h>
 #import <sys/utsname.h>
 
-#import "LynxDeviceInfoHelper.h"
-#import "LynxFPSTrace.h"
-#import "LynxFrameViewTrace.h"
-#import "LynxInstanceTrace.h"
-#import "LynxMemoryController.h"
-#import "LynxTraceController.h"
+#import <Lynx/LynxTraceController.h>
+#import <LynxDevtool/LynxDeviceInfoHelper.h>
+#import <LynxDevtool/LynxFPSTrace.h>
+#import <LynxDevtool/LynxFrameViewTrace.h>
+#import <LynxDevtool/LynxInstanceTrace.h>
+#import <LynxDevtool/LynxMemoryController.h>
 
 #include "devtool/lynx_devtool/agent/global_devtool_platform_facade.h"
 

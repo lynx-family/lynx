@@ -4,7 +4,7 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxAnimationInfo.h"
+#import <Lynx/LynxAnimationInfo.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxUI;

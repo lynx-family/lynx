@@ -4,10 +4,10 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxCSSType.h"
-#import "LynxMeasureDelegate.h"
-#import "LynxShadowNodeStyle.h"
-#import "LynxTextStyle.h"
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxMeasureDelegate.h>
+#import <Lynx/LynxShadowNodeStyle.h>
+#import <Lynx/LynxTextStyle.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <CoreFoundation/CoreFoundation.h>
-#import "LynxBackgroundInfo.h"
-#import "LynxCSSType.h"
-#import "LynxGradient.h"
+#import <Lynx/LynxBackgroundInfo.h>
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxGradient.h>
 
-#import "LynxUIUnitUtils.h"
+#import <Lynx/LynxUIUnitUtils.h>
 
 @interface LynxBackgroundSize : NSObject
 

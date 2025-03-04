@@ -5,8 +5,8 @@
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
 
-#import "LynxLazyLoad.h"
-#import "UIScrollView+LynxFadingEdge.h"
+#import <Lynx/LynxLazyLoad.h>
+#import <Lynx/UIScrollView+LynxFadingEdge.h>
 
 @interface LynxFadingEdge : NSObject
 
