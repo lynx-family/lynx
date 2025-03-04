@@ -82,7 +82,7 @@ void JavaOnlyArray::PushByteArray(uint8_t* buffer, int length) {
   base::android::ScopedLocalJavaRef<jbyteArray> jni_byte_array_ref;
   if (buffer && length > 0) {
     jni_byte_array_ref = base::android::JNIConvertHelper::ConvertToJNIByteArray(
-        env, std::string(*buffer, length));
+        env, std::string(reinterpret_cast<const char*>(buffer), length));
   }
   Java_JavaOnlyArray_pushByteArray(env, jni_object_.Get(),
                                    jni_byte_array_ref.Get());

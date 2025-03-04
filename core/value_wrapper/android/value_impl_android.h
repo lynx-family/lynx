@@ -74,7 +74,7 @@ class ValueImplAndroid : public pub::Value {
   int64_t Int64() const override { return backend_value_.Int64(); }
   uint64_t UInt64() const override { return 0; }
   double Number() const override { return backend_value_.Double(); }
-  uint8_t* ArrayBuffer() const override { return nullptr; }
+  uint8_t* ArrayBuffer() const override;
   const std::string& str() const override { return backend_value_.String(); }
   int Length() const override { return 0; }
 
@@ -82,17 +82,41 @@ class ValueImplAndroid : public pub::Value {
   void ForeachArray(pub::ForeachArrayFunc func) const override;
   void ForeachMap(pub::ForeachMapFunc func) const override;
 
-  // Find
-  // TODO(wujintian): Implement those APIs
-  std::unique_ptr<Value> GetValueAtIndex(uint32_t idx) const override {
-    return std::make_unique<ValueImplAndroid>(base::android::JavaValue());
-  }
+  // Array
+  bool PushValueToArray(const Value& value) override;
+  bool PushValueToArray(std::unique_ptr<Value> value) override;
+  bool PushNullToArray() override;
+  bool PushArrayBufferToArray(std::unique_ptr<uint8_t[]> value,
+                              size_t length) override;
+  bool PushStringToArray(const std::string& value) override;
+  bool PushBigIntToArray(const std::string& value) override;
+  bool PushBoolToArray(bool value) override;
+  bool PushDoubleToArray(double value) override;
+  bool PushInt32ToArray(int32_t value) override;
+  bool PushInt64ToArray(int64_t value) override;
+
+  // Map
+  bool PushValueToMap(const std::string& key, const Value& value) override;
+  bool PushValueToMap(const std::string& key,
+                      std::unique_ptr<Value> value) override;
+  bool PushNullToMap(const std::string& key) override;
+  bool PushArrayBufferToMap(const std::string& key,
+                            std::unique_ptr<uint8_t[]> value,
+                            size_t length) override;
+  bool PushStringToMap(const std::string& key,
+                       const std::string& value) override;
+  bool PushBigIntToMap(const std::string& key,
+                       const std::string& value) override;
+  bool PushBoolToMap(const std::string& key, bool value) override;
+  bool PushDoubleToMap(const std::string& key, double value) override;
+  bool PushInt32ToMap(const std::string& key, int32_t value) override;
+  bool PushInt64ToMap(const std::string& key, int64_t value) override;
+
+  std::unique_ptr<Value> GetValueAtIndex(uint32_t idx) const override;
   bool Erase(uint32_t idx) const override { return false; }
-  std::unique_ptr<Value> GetValueForKey(const std::string& key) const override {
-    return std::make_unique<ValueImplAndroid>(base::android::JavaValue());
-  }
+  std::unique_ptr<Value> GetValueForKey(const std::string& key) const override;
   bool Erase(const std::string& key) const override { return false; }
-  bool Contains(const std::string& key) const override { return false; }
+  bool Contains(const std::string& key) const override;
 
   const base::android::JavaValue& backend_value() const {
     return backend_value_;

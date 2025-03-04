@@ -84,6 +84,7 @@ class JavaValue {
   int32_t Int32() const;
   int64_t Int64() const;
   double Double() const;
+  uint8_t* ArrayBuffer() const;
   const std::string& String() const;
   const std::shared_ptr<base::android::JavaOnlyArray>& Array() const {
     return std::get<std::shared_ptr<base::android::JavaOnlyArray>>(
@@ -104,6 +105,11 @@ class JavaValue {
             .Get());
   }
 
+  // Map Getter
+  JavaValue GetValueForKey(const std::string& key) const;
+  // Array Getter
+  JavaValue GetValueForIndex(uint32_t index) const;
+
   JavaValueType type() const { return type_; }
 
  private:
@@ -113,6 +119,7 @@ class JavaValue {
                std::shared_ptr<base::android::JavaOnlyMap>>
       j_variant_value_;
   mutable std::optional<std::string> string_cache_;
+  mutable std::vector<uint8_t> array_buffer_ptr_cache_;
 };
 
 }  // namespace android

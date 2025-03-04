@@ -132,7 +132,7 @@ void JavaOnlyMap::PushByteArray(const std::string& key, uint8_t* buffer,
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
   if (buffer && length > 0) {
     jni_byte_array_ref = base::android::JNIConvertHelper::ConvertToJNIByteArray(
-        env, std::string(*buffer, length));
+        env, std::string(reinterpret_cast<const char*>(buffer), length));
   }
   Java_JavaOnlyMap_putByteArray(env, jni_object_.Get(), jni_key.Get(),
                                 jni_byte_array_ref.Get());
