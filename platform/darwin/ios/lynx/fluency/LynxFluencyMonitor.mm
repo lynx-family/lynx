@@ -8,6 +8,7 @@
 #import "LynxScrollListener.h"
 #import "LynxService.h"
 #import "LynxTemplateRender+Internal.h"
+#import "LynxTraceEvent.h"
 #import "LynxView+Internal.h"
 #include "core/services/fluency/fluency_tracer.h"
 
@@ -50,6 +51,8 @@ typedef NS_ENUM(NSInteger, ForceStatus) {
           completion:^(LynxFPSRecord *_Nonnull record) {
             [self stopWithScrollInfo:(LynxScrollInfo *)(record.key)];
           }];
+
+  [LynxTraceEvent instant:@"vitals" withName:@"ScrollStart" debugInfo:@{@"tag" : info.tagName}];
 }
 
 - (void)stopWithScrollInfo:(LynxScrollInfo *)info {
@@ -59,6 +62,7 @@ typedef NS_ENUM(NSInteger, ForceStatus) {
     return;
   }
   [self reportWithRecord:record info:info];
+  [LynxTraceEvent instant:@"vitals" withName:@"ScrollStop" debugInfo:@{@"tag" : info.tagName}];
 }
 
 - (NSDictionary *)jsonFromRecord:(LynxFPSRecord *)record info:(LynxScrollInfo *)info {
