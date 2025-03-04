@@ -4144,6 +4144,7 @@ RENDERER_FUNCTION_CC(FiberUpdateListCallbacks) {
     component_at_indexes = *arg3;
   }
   auto list_element = fml::static_ref_ptr_cast<ListElement>(arg0->RefCounted());
+  list_element->set_tasm(GET_TASM_POINTER());
   list_element->UpdateCallbacks(*arg1, *arg2, component_at_indexes);
   RETURN_UNDEFINED();
 }
