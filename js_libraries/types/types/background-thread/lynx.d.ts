@@ -130,6 +130,7 @@ export interface Lynx extends CommonLynx {
   requireModule<T>(path: string, entryName?: string, options?: {timeout: number }): T;
 
   resumeExposure(): void;
+  
   stopExposure(options?: { sendEvent: boolean }): void;
 
   setObserverFrameRate(options?: { forPageRect?: number; forExposureCheck?: number }): void;

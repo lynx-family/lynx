@@ -838,6 +838,8 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
   if (doc.HasMember(kEnableMultiTouch) && doc[kEnableMultiTouch].IsBool()) {
     page_config->SetEnableMultiTouch(doc[kEnableMultiTouch].GetBool());
+  } else {
+    page_config->SetEnableMultiTouch(LynxEnv::GetInstance().EnableMultiTouch());
   }
 
   if (doc.HasMember(kEnableNativeList) && doc[kEnableNativeList].IsBool()) {

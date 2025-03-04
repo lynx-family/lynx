@@ -376,5 +376,9 @@ bool LynxEnv::EnableNativeCreateViewAsync() {
 bool LynxEnv::EnableSignalAPI() {
   return GetBoolEnv(Key::ENABLE_SIGNAL_API, false);
 }
+
+bool LynxEnv::EnableMultiTouch() {
+  return GetBoolEnv(Key::ENABLE_MULTI_TOUCH, false);
+}
 }  // namespace tasm
 }  // namespace lynx
