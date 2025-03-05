@@ -123,25 +123,30 @@ public abstract class LynxObserverManager {
       LLog.e(TAG, "LynxObserverManager add listeners failed since observer is null");
       return;
     }
-    mGlobalLayoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
-      @Override
-      public void onGlobalLayout() {
-        requestCheckUI();
-      }
-    };
-    mScrollChangedListener = new ViewTreeObserver.OnScrollChangedListener() {
-      @Override
-      public void onScrollChanged() {
-        requestCheckUI();
-      }
-    };
-
-    mDrawListener = new ViewTreeObserver.OnDrawListener() {
-      @Override
-      public void onDraw() {
-        requestCheckUI();
-      }
-    };
+    if (mGlobalLayoutListener == null) {
+      mGlobalLayoutListener = new ViewTreeObserver.OnGlobalLayoutListener() {
+        @Override
+        public void onGlobalLayout() {
+          requestCheckUI();
+        }
+      };
+    }
+    if (mScrollChangedListener == null) {
+      mScrollChangedListener = new ViewTreeObserver.OnScrollChangedListener() {
+        @Override
+        public void onScrollChanged() {
+          requestCheckUI();
+        }
+      };
+    }
+    if (mDrawListener == null) {
+      mDrawListener = new ViewTreeObserver.OnDrawListener() {
+        @Override
+        public void onDraw() {
+          requestCheckUI();
+        }
+      };
+    }
     observer.addOnGlobalLayoutListener(mGlobalLayoutListener);
     observer.addOnScrollChangedListener(mScrollChangedListener);
     observer.addOnDrawListener(mDrawListener);
@@ -301,6 +306,9 @@ public abstract class LynxObserverManager {
     observer.removeOnGlobalLayoutListener(mGlobalLayoutListener);
     observer.removeOnScrollChangedListener(mScrollChangedListener);
     observer.removeOnDrawListener(mDrawListener);
+    mGlobalLayoutListener = null;
+    mScrollChangedListener = null;
+    mDrawListener = null;
   }
 
   private void getLeftAndTopOfBoundsInScreen(View view, RectF bounds) {
