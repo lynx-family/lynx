@@ -42,7 +42,7 @@ podspec_target("LynxService_podspec") {
       CLANG_ENABLE_CPP_STATIC_DESTRUCTORS = "NO"
     }
     ios = {
-      deployment_target = "9.0"
+      deployment_target = "10.0"
     }
   }
   deps = [

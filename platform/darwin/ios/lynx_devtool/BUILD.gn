@@ -95,7 +95,7 @@ podspec_target("devtool_podspec") {
     }
     prepare_command = devtool_prepare_command
     ios = {
-      deployment_target = "9.0"
+      deployment_target = "10.0"
     }
   }
   if (use_flatten_deps) {

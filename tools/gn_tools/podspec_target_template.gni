@@ -46,7 +46,7 @@
 #        git="git@code.xxx.org:Foo/foo.git"
 #      }
 #      ios = {
-#        deployment_target = "9.0",
+#        deployment_target = "10.0",
 #        framework = ["WebKit", ...]
 #      }
 #      pod_target_xcconfig = {

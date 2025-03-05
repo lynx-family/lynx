@@ -21,5 +21,5 @@ Pod::Spec.new do |spec|
   spec.pod_target_xcconfig = {
     "DEFINES_MODULE" => "YES",
   }
-  spec.ios.deployment_target = "9.0"
+  spec.ios.deployment_target = "10.0"
 end

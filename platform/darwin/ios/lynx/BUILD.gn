@@ -46,7 +46,7 @@ podspec_target("lynx_podspec") {
       OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
     }
     ios = {
-      deployment_target = "9.0"
+      deployment_target = "10.0"
       framework = [
         "WebKit",
         "AudioToolbox",

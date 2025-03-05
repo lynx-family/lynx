@@ -134,7 +134,7 @@ podspec_target("podspec_test") {
       OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
     }
     ios = {
-      deployment_target = "9.0"
+      deployment_target = "10.0"
       framework = [
         "WebKit",
         "AudioToolbox",
