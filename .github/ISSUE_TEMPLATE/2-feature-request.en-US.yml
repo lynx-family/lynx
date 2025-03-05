@@ -1,0 +1,30 @@
+name: "✨ Feature Request"
+description: Submit a new feature request to Rspack
+title: "[Feature]: "
+type: Feature
+labels: ["pending triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for submitting a new feature request! Before submitting, please note:
+
+         - Confirm that this is a common feature and cannot be implemented using existing APIs.
+         - Make sure you've searched in the [Issues](https://github.com/lynx-family/lynx/issues) and haven't found the same request.
+         - You can discuss the feature in the [Discussions](https://github.com/lynx-family/lynx/discussions) first.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What problem does this feature solve?
+      description: Please describe the use case for this feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: api
+    attributes:
+      label: What does the proposed API of configuration look like?
+      description: Describe the new API, give some code examples. If webpack has its own implementation, you can provide some related links.
+    validations:
+      required: true
