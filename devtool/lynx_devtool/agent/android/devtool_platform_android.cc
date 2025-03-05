@@ -123,16 +123,24 @@ DevToolPlatformAndroid::DevToolPlatformAndroid(JNIEnv* env, jobject owner)
 int DevToolPlatformAndroid::FindNodeIdForLocation(
     float x, float y, std::string screen_shot_mode) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return 0;
+  }
   auto jni_mode = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, screen_shot_mode);
   return Java_DevToolPlatformAndroidDelegate_findNodeIdForLocationFromUI(
-      env, weak_android_delegate_.Get(), x, y, jni_mode.Get());
+      env, ref.Get(), x, y, jni_mode.Get());
 }
 
 void DevToolPlatformAndroid::ScrollIntoView(int node_id) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   return Java_DevToolPlatformAndroidDelegate_scrollIntoViewFromUI(
-      env, weak_android_delegate_.Get(), node_id);
+      env, ref.Get(), node_id);
 }
 
 std::vector<float> DevToolPlatformAndroid::GetRectToWindow() const {
@@ -175,6 +183,9 @@ void DevToolPlatformAndroid::EmulateTouch(
     std::shared_ptr<lynx::devtool::MouseEvent> input) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   int x = input->x_;
   int y = input->y_;
   lynx::base::android::ScopedLocalJavaRef<jstring> type =
@@ -254,32 +265,45 @@ void DevToolPlatformAndroid::Destroy() {
 
 void DevToolPlatformAndroid::StartScreenCast(ScreenshotRequest request) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   std::string mode = lynx::devtool::DevToolStatus::GetInstance().GetStatus(
       lynx::devtool::DevToolStatus::kDevToolStatusKeyScreenShotMode,
       lynx::devtool::DevToolStatus::SCREENSHOT_MODE_FULLSCREEN);
   auto jni_mode =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, mode);
   Java_DevToolPlatformAndroidDelegate_startCasting(
-      env, weak_android_delegate_.Get(), request.quality_, request.max_width_,
-      request.max_height_, jni_mode.Get());
+      env, ref.Get(), request.quality_, request.max_width_, request.max_height_,
+      jni_mode.Get());
 }
 
 void DevToolPlatformAndroid::StopScreenCast() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  Java_DevToolPlatformAndroidDelegate_stopCasting(env,
-                                                  weak_android_delegate_.Get());
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
+  Java_DevToolPlatformAndroidDelegate_stopCasting(env, ref.Get());
 }
 
 void DevToolPlatformAndroid::GetLynxScreenShot() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  Java_DevToolPlatformAndroidDelegate_sendCardPreview(
-      env, weak_android_delegate_.Get());
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
+  Java_DevToolPlatformAndroidDelegate_sendCardPreview(env, ref.Get());
 }
 
 void DevToolPlatformAndroid::OnAckReceived() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  Java_DevToolPlatformAndroidDelegate_onAckReceived(
-      env, weak_android_delegate_.Get());
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
+  Java_DevToolPlatformAndroidDelegate_onAckReceived(env, ref.Get());
 }
 
 void DevToolPlatformAndroid::OnReceiveTemplateFragment(const std::string& data,
@@ -297,8 +321,11 @@ void DevToolPlatformAndroid::OnReceiveTemplateFragment(const std::string& data,
 
 std::vector<int32_t> DevToolPlatformAndroid::GetViewLocationOnScreen() const {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
   std::vector<int32_t> res;
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return res;
+  }
   lynx::base::android::ScopedLocalJavaRef<jintArray> result =
       Java_DevToolPlatformAndroidDelegate_getViewLocationOnScreen(env,
                                                                   ref.Get());
@@ -316,6 +343,9 @@ void DevToolPlatformAndroid::SendEventToVM(const std::string& vm_type,
                                            const std::string& data) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
   lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   auto j_vm_type = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, vm_type);
   auto j_event_name =
@@ -329,9 +359,12 @@ void DevToolPlatformAndroid::SendEventToVM(const std::string& vm_type,
 
 lynx::lepus::Value* DevToolPlatformAndroid::GetLepusValueFromTemplateData() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return nullptr;
+  }
   jlong template_data_ptr =
-      Java_DevToolPlatformAndroidDelegate_getTemplateDataPtr(
-          env, weak_android_delegate_.Get());
+      Java_DevToolPlatformAndroidDelegate_getTemplateDataPtr(env, ref.Get());
   if (template_data_ptr != 0) {
     return reinterpret_cast<lynx::lepus::Value*>(template_data_ptr);
   }
@@ -341,24 +374,36 @@ lynx::lepus::Value* DevToolPlatformAndroid::GetLepusValueFromTemplateData() {
 std::string DevToolPlatformAndroid::GetTemplateJsInfo(int32_t offset,
                                                       int32_t size) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return std::string();
+  }
   auto template_js = Java_DevToolPlatformAndroidDelegate_getTemplateJsInfo(
-      env, weak_android_delegate_.Get(), offset, size);
+      env, ref.Get(), offset, size);
   return lynx::base::android::JNIConvertHelper::ConvertToString(
       env, template_js.Get());
 }
 
 std::string DevToolPlatformAndroid::GetUINodeInfo(int id) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  auto ui_node_info = Java_DevToolPlatformAndroidDelegate_getUINodeInfo(
-      env, weak_android_delegate_.Get(), id);
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return std::string();
+  }
+  auto ui_node_info =
+      Java_DevToolPlatformAndroidDelegate_getUINodeInfo(env, ref.Get(), id);
   return lynx::base::android::JNIConvertHelper::ConvertToString(
       env, ui_node_info.Get());
 }
 
 std::string DevToolPlatformAndroid::GetLynxUITree() {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  auto lynx_ui_tree = Java_DevToolPlatformAndroidDelegate_getLynxUITree(
-      env, weak_android_delegate_.Get());
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return std::string();
+  }
+  auto lynx_ui_tree =
+      Java_DevToolPlatformAndroidDelegate_getLynxUITree(env, ref.Get());
   return lynx::base::android::JNIConvertHelper::ConvertToString(
       env, lynx_ui_tree.Get());
 }
@@ -366,13 +411,17 @@ std::string DevToolPlatformAndroid::GetLynxUITree() {
 int DevToolPlatformAndroid::SetUIStyle(int id, std::string name,
                                        std::string content) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return -1;
+  }
   auto jni_name =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, name);
   auto jni_content =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
                                                                    content);
   return Java_DevToolPlatformAndroidDelegate_setUIStyle(
-      env, weak_android_delegate_.Get(), id, jni_name.Get(), jni_content.Get());
+      env, ref.Get(), id, jni_name.Get(), jni_content.Get());
 }
 
 std::vector<double> DevToolPlatformAndroid::GetBoxModel(
@@ -387,7 +436,10 @@ std::vector<double> DevToolPlatformAndroid::GetBoxModel(
 std::vector<float> DevToolPlatformAndroid::GetTransformValue(
     int id, const std::vector<float>& pad_border_margin_layout) {
   std::vector<float> res;
-
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return res;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jfloatArray> j_pad_border_margin_layout(
       env, env->NewFloatArray(pad_border_margin_layout.size()));
@@ -396,8 +448,7 @@ std::vector<float> DevToolPlatformAndroid::GetTransformValue(
                            &pad_border_margin_layout[0]);
   base::android::ScopedLocalJavaRef<jfloatArray> result =
       Java_DevToolPlatformAndroidDelegate_getTransformValue(
-          env, weak_android_delegate_.Get(), id,
-          j_pad_border_margin_layout.Get());
+          env, ref.Get(), id, j_pad_border_margin_layout.Get());
   jsize size = env->GetArrayLength(result.Get());
   jfloat* arr = env->GetFloatArrayElements(result.Get(), nullptr);
   for (auto i = 0; i < size; i++) {
@@ -412,21 +463,26 @@ void DevToolPlatformAndroid::PageReload(bool ignore_cache,
                                         bool from_template_fragments,
                                         int32_t template_size) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   auto jni_data = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
       env, template_bin);
   Java_DevToolPlatformAndroidDelegate_pageReload(
-      env, weak_android_delegate_.Get(), ignore_cache, jni_data.Get(),
-      from_template_fragments, template_size);
+      env, ref.Get(), ignore_cache, jni_data.Get(), from_template_fragments,
+      template_size);
 }
 
 void DevToolPlatformAndroid::Navigate(const std::string& url) {
   JNIEnv* env = lynx::base::android::AttachCurrentThread();
-  lynx::base::android::ScopedLocalJavaRef<jobject> local_ref(
-      weak_android_delegate_);
+  lynx::base::android::ScopedLocalJavaRef<jobject> ref(weak_android_delegate_);
+  if (ref.IsNull()) {
+    return;
+  }
   auto jni_url =
       lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, url);
-  Java_DevToolPlatformAndroidDelegate_navigate(env, local_ref.Get(),
-                                               jni_url.Get());
+  Java_DevToolPlatformAndroidDelegate_navigate(env, ref.Get(), jni_url.Get());
 }
 
 }  // namespace devtool
