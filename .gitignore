@@ -17,6 +17,10 @@
 *.profraw
 __pycache__
 /venv
+*.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 /*.podspec
 .bundle
@@ -109,3 +113,9 @@ js_libraries/lynx-core/src/common/feature.ts
 
 # ignore os specific hidden files
 **/.DS_Store
+
+# Editor specific files
+.vscode
+*.sublime-project
+*.sublime-workspace
+.idea
