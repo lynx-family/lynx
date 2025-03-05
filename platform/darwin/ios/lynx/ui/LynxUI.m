@@ -1009,12 +1009,27 @@ short const OVERFLOW_HIDDEN_VAL = 0x00;
 
 - (CGRect)getRelativeBoundingClientRect:(NSDictionary*)params {
   NSString* relativeID = [params objectForKey:@"relativeTo"];
+  BOOL iOSEnableAnimationProps = [params objectForKey:@"iOSEnableAnimationProps"];
+  if ([[params objectForKey:@"relativeTo"] isEqualToString:@"screen"]) {
+    if (iOSEnableAnimationProps) {
+      CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      return [layer convertRect:layer.bounds toLayer:nil];
+    } else {
+      return [self.view convertRect:self.view.bounds toView:nil];
+    }
+  }
   LynxUI* relativeUI =
       [self getRelativeUI:relativeID] ?: [self.context.uiOwner uiWithIdSelector:relativeID];
-  if ([[params objectForKey:@"relativeTo"] isEqualToString:@"screen"]) {
-    return [self.view convertRect:self.view.bounds toView:nil];
-  } else if (relativeUI != nil) {
-    CGRect rect = [self.view convertRect:self.view.bounds toView:relativeUI.view];
+  if (relativeUI != nil) {
+    CGRect rect = CGRectZero;
+    if (iOSEnableAnimationProps) {
+      CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      CALayer* relativeLayer =
+          relativeUI.view.layer.presentationLayer ?: relativeUI.view.layer.modelLayer;
+      rect = [layer convertRect:layer.bounds toLayer:relativeLayer];
+    } else {
+      rect = [self.view convertRect:self.view.bounds toView:relativeUI.view];
+    }
     if ([relativeUI.view isKindOfClass:[UIScrollView class]]) {
       rect.origin.x -= ((UIScrollView*)relativeUI.view).contentOffset.x;
       rect.origin.y -= ((UIScrollView*)relativeUI.view).contentOffset.y;
@@ -1025,7 +1040,13 @@ short const OVERFLOW_HIDDEN_VAL = 0x00;
     if (rootView == NULL) {
       return CGRectMake(0, 0, self.frame.size.width, self.frame.size.height);
     }
-    return [self.view convertRect:self.view.bounds toView:rootView];
+    if (iOSEnableAnimationProps) {
+      CALayer* layer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      CALayer* rootLayer = rootView.layer.presentationLayer ?: rootView.layer.modelLayer;
+      return [layer convertRect:layer.bounds toLayer:rootLayer];
+    } else {
+      return [self.view convertRect:self.view.bounds toView:rootView];
+    }
   }
 }
 
