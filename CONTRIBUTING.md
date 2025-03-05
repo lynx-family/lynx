@@ -88,7 +88,7 @@ When you’re ready to make a code change, please create a Pull Request:
       it should be classified as `Feature`.
     - **[Required]** The section following the title should be the summary, providing a detailed description of the
       changes (there must be a blank line between the title and the summary).
-    - **[Required]** The commit must be linked to an issue, and the issue ID needs to appear in the format
+    - **[Optional]** The commit can be linked to an issue, and the issue ID needs to appear in the format
       `issue: #xxx`.
     - **[Optional]** The commit can be linked to a document. If you labeled your changes as `Feature` or `Refactor`,
       this is required. The format of a doc link should be like this: `doc: https://xxxxxxx`
