@@ -33,7 +33,11 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           pushd explorer/android
-          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon
+          if [ "${{ inputs.dry_run }}" = "false" ]; then
+            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -Plynx-local-build -no-daemon
+          else
+            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon
+          fi
           popd
       - name: push to release
         uses: ncipollo/release-action@v1
