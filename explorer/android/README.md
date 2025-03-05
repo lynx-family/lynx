@@ -99,11 +99,11 @@ pip3 install pyyaml
 
 We recommend using pyenv to manage python environment on Linux.
 
-To install pyenv: [`https://github.com/pyenv/pyenv`](https://github.com/pyenv/pyenv)   
-Install python with version larger or equal to 3.9 using pyenv:  
+To install pyenv: [`https://github.com/pyenv/pyenv`](https://github.com/pyenv/pyenv)
+Install python with version higher or equal to 3.9 using pyenv:  
 ```
-pyenv install 3.9 # Or a larger version
-pyenv global 3.9 # Or a larger version
+pyenv install 3.9 # or higher
+pyenv global 3.9 # or higher
 ```
 Install pyyaml after python is setup:
 ```
