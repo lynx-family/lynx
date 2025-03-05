@@ -208,6 +208,18 @@
   return [_eventHandler hitTest:point withEvent:event];
 }
 
+- (void)handleFocus:(id<LynxEventTarget>)target
+             onView:(UIView *)view
+      withContainer:(UIView *)container
+           andPoint:(CGPoint)point
+           andEvent:(UIEvent *)event {
+  [_eventHandler handleFocus:target
+                      onView:view
+               withContainer:container
+                    andPoint:point
+                    andEvent:event];
+}
+
 - (UIView *)eventHandlerRootView {
   return nil;
 }
