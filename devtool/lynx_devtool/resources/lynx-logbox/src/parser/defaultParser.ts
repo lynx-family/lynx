@@ -13,6 +13,9 @@ interface ICriticalInfo {
 
 export class DefaultErrorParser implements IErrorParser {
   async parse(rawError: any): Promise<IErrorRecord | null> {
+    if (!rawError?.error) {
+      return null;
+    }
     const errorProps: IErrorProps = {
       code: rawError.sub_code,
       level: rawError.level,

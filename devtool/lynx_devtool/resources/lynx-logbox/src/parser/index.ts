@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { IErrorParser, parseJsonStringSafely } from './base';
+import { DEFAULT_CONTEXT_SIZE, IErrorParser, parseJsonStringSafely } from './base';
 import { IErrorRecord } from '@/common/interface';
 import { BTSErrorParser } from './btsErrorParser';
 import { MTSErrorParser } from './mtsErrorParser';
@@ -22,20 +22,36 @@ function initAdapters(): void {
   parsers.push(new DefaultErrorParser());
 }
 
+function constructFallbackErrorRecord(message: string): IErrorRecord {
+  return {
+    message,
+    contextSize: DEFAULT_CONTEXT_SIZE,
+    rawErrorText: message,
+    errorProps: {
+      code: -1,
+    },
+  };
+}
+
 export async function parseErrorWrapper(rawErrorText: string): Promise<IErrorRecord | null> {
   initAdapters();
   const json = parseJsonStringSafely(rawErrorText);
   if (!json) {
     console.warn('Failed to parse error, the raw string is:', rawErrorText);
-    return null;
+    return constructFallbackErrorRecord(rawErrorText);
   }
   for (const a of parsers) {
-    const res = await a.parse(json);
+    let res;
+    try {
+      res = await a.parse(json);
+    } catch (e) {
+      console.warn('Exception encountered while parsing raw error:', e);
+    }
     if (res) {
       return { ...res, rawErrorText };
     }
   }
-  return null;
+  return constructFallbackErrorRecord(rawErrorText);
 }
 
 export * from './base';
