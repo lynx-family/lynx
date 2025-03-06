@@ -96,6 +96,7 @@ class TemplateBinaryReader : public LynxBinaryReader,
 
   // element template
   bool DecodeElementTemplateSection() override;
+  bool ParallelDecodeElementTemplate();
 
   // lepus chunk
   bool DecodeLepusChunk() override;

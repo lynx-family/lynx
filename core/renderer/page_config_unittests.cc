@@ -29,6 +29,14 @@ namespace test {
   page_config.Set##func_name(false);                                           \
   EXPECT_EQ(expect_false_value, page_config.Get##func_name());
 
+TEST(PageConfigTest, EnableParallelParseElementTemplate) {
+  PageConfig page_config;
+  EXPECT_FALSE(page_config.GetEnableParallelParseElementTemplate());
+
+  page_config.pipeline_scheduler_config_ = 1;
+  EXPECT_TRUE(page_config.GetEnableParallelParseElementTemplate());
+}
+
 TEST(PageConfigTest, EnableUseContextPool) {
   CHECK_CONFIG_VALUE(EnableUseContextPool, true, true, false);
 }

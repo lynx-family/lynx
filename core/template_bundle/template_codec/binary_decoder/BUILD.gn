@@ -3,6 +3,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//lynx/core/Lynx.gni")
+import("//lynx/testing/test.gni")
 
 # binary_decoder_shared_sources
 binary_decoder_shared_sources = [
@@ -32,4 +33,28 @@ lynx_core_source_set("binary_decoder") {
     "//lynx/base/src:base_log_headers",
     "//lynx/third_party/rapidjson:rapidjson",
   ]
+}
+
+unittest_set("binary_decoder_testset") {
+  public_configs = [ "//lynx/core:lynx_public_config" ]
+  sources = [
+    "lynx_binary_config_decoder_unittest.cc",
+    "lynx_binary_config_decoder_unittest.h",
+  ]
+  deps = [
+    "//lynx/core/renderer:tasm",
+    "//lynx/core/renderer/dom:dom",
+    "//lynx/core/renderer/dom:renderer_dom",
+    "//lynx/core/renderer/starlight",
+    "//lynx/core/runtime/bindings/lepus",
+    "//lynx/core/shell/testing:mock_tasm_delegate_testset",
+    "//lynx/third_party/quickjs",
+    "//lynx/third_party/rapidjson:rapidjson",
+  ]
+  public_deps = [ ":binary_decoder" ]
+}
+
+unittest_exec("binary_decoder_unittest_exec") {
+  sources = []
+  deps = [ ":binary_decoder_testset" ]
 }

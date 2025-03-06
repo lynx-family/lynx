@@ -38,6 +38,7 @@ enum class TernaryBool { TRUE_VALUE, FALSE_VALUE, UNDEFINE_VALUE };
 // 40 ~ 47 bit: Reserved for paint stage in Pixel Pipeline.
 // 48 ~ 63 bit: Flexible bits for extensibility.
 // TODO: Need to add a TS definition for PipelineSchedulerConfig.
+constexpr static uint64_t kEnableParallelParseElementTemplate = 1;
 constexpr static uint64_t kEnableListBatchRenderMask = 1 << 8;
 constexpr static uint64_t kEnableParallelElementMask = 1 << 16;
 constexpr static uint64_t kEnableListBatchRenderAsyncResolvePropertyMask =
@@ -863,6 +864,10 @@ class PageConfig final : public EntryConfig {
 
   inline void SetEnableCSSInvalidation(bool enable) {
     enable_css_invalidation_ = enable;
+  }
+
+  inline bool GetEnableParallelParseElementTemplate() {
+    return pipeline_scheduler_config_ & kEnableParallelParseElementTemplate;
   }
 
   inline bool GetEnableParallelElement() const {

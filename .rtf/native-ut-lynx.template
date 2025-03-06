@@ -59,6 +59,12 @@ targets({
         "enable_parallel":True,
         "args":["--gtest_filter=\"-*TimeSensitiveTest*\""]
     },
+    "binary_decoder_unittest_exec": {
+        "cwd": ".", 
+        "owners":["ZhaoSongGOO"],
+        "coverage": True,
+        "enable_parallel":True,
+    },
     "trace_unittests_exec": {
         "cwd": ".", 
         "owners":["ZhaoSongGOO"],

@@ -210,7 +210,15 @@ bool TemplateBinaryReader::DecodeElementTemplateSection() {
   // LazyDecode ElementTemplateSection, just exec DecodeElementTemplateRoute
   // when decode template.
   ERROR_UNLESS(DecodeElementTemplatesRouter());
+  if (page_configs_ && page_configs_->GetEnableParallelParseElementTemplate()) {
+    ERROR_UNLESS(ParallelDecodeElementTemplate());
+  }
   return true;
+}
+
+bool TemplateBinaryReader::ParallelDecodeElementTemplate() {
+  // TODO(songshourui.null): impl this function later.
+  return false;
 }
 
 bool TemplateBinaryReader::DecodeLepusChunk() {
