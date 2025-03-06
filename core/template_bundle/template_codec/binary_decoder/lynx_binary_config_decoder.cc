@@ -276,16 +276,6 @@ static constexpr const char* const kEnableQueryComponentSync =
     "enableQueryComponentSync";
 
 /**
- * @name: pipelineSchedulerConfig
- * @description: Scheduler config for pipeline, including
- * enableParallelElement/list-framework batch render and other scheduler config
- * @platform: Both
- * @supportVersion: 3.1
- */
-static constexpr const char* const kPipelineSchedulerConfig =
-    "pipelineSchedulerConfig";
-
-/**
  * @name: enableNativeList
  * @description: Indicates whether use c++ list.
  * @supportVersion: 3.2
@@ -1053,6 +1043,14 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     return TernaryBool::UNDEFINE_VALUE;
   });
 
+  page_config->ForEachUint64Config([&doc](const std::string& name) {
+    const char* const key = name.c_str();
+    if (doc.HasMember(key) && doc[key].IsUint64()) {
+      return doc[key].GetUint64();
+    }
+    return static_cast<uint64_t>(0);
+  });
+
   page_config->SetEnableElementAPITypeCheckThrowWarning(
       lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
                                           LYNX_VERSION_2_16));
@@ -1069,12 +1067,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       doc[kEnableQueryComponentSync].IsBool()) {
     page_config->SetEnableQueryComponentSync(
         doc[kEnableQueryComponentSync].GetBool());
-  }
-
-  if (doc.HasMember(kPipelineSchedulerConfig) &&
-      doc[kPipelineSchedulerConfig].IsUint64()) {
-    page_config->SetPipelineSchedulerConfig(
-        doc[kPipelineSchedulerConfig].GetUint64());
   }
 
   // enableMicrotaskPromisePolyfill

@@ -122,6 +122,17 @@ class PageConfig final : public EntryConfig {
           }
         }
 
+        // if is a uint64
+        auto uint64_pair = GetFuncUint64Map().find(name);
+        if (uint64_pair != GetFuncUint64Map().end()) {
+          if (it->value.IsUint64()) {
+            const auto [setter, getter] = uint64_pair->second;
+            if ((this->*(getter))() == 0) {
+              (this->*(setter))(it->value.GetUint64());
+            }
+          }
+        }
+
         // TODO(nihao.royal) unify parameters of different types.
       }
     }
@@ -130,6 +141,14 @@ class PageConfig final : public EntryConfig {
   void ForEachBoolConfig(
       const base::MoveOnlyClosure<TernaryBool, const std::string&> func) {
     for (const auto& [name, pair] : GetFuncBoolMap()) {
+      const auto [setter, getter] = pair;
+      (this->*(setter))(func(name));
+    }
+  }
+
+  void ForEachUint64Config(
+      const base::MoveOnlyClosure<uint64_t, const std::string&> func) {
+    for (const auto& [name, pair] : GetFuncUint64Map()) {
       const auto [setter, getter] = pair;
       (this->*(setter))(func(name));
     }
@@ -1413,6 +1432,8 @@ class PageConfig final : public EntryConfig {
   using PageConfigMap = std::unordered_map<std::string, PageConfigPair<T>>;
 
   static const PageConfigMap<TernaryBool>& GetFuncBoolMap();
+
+  static const PageConfigMap<uint64_t>& GetFuncUint64Map();
 };
 }  // namespace tasm
 }  // namespace lynx
