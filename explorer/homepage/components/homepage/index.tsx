@@ -20,11 +20,7 @@ interface HomePageProps {
   withNotchScreen: (className: string) => string;
 }
 
-interface HomePageState {
-  inputValue: string;
-}
-
-export default class HomePage extends Component<HomePageProps, HomePageState> {
+export default class HomePage extends Component<HomePageProps> {
   icons = {
     Scan: {
       Dark: ScanIconDark,
@@ -40,11 +36,10 @@ export default class HomePage extends Component<HomePageProps, HomePageState> {
     },
   };
 
+  inputValue: string = '';
+
   constructor(props: HomePageProps) {
     super(props);
-    this.state = {
-      inputValue: '',
-    };
   }
 
   openScan = () => {
@@ -52,7 +47,7 @@ export default class HomePage extends Component<HomePageProps, HomePageState> {
   };
 
   openSchema = () => {
-    NativeModules.ExplorerModule.openSchema(this.state.inputValue);
+    NativeModules.ExplorerModule.openSchema(this.inputValue);
   };
 
   openShowcasePage = () => {
@@ -72,9 +67,7 @@ export default class HomePage extends Component<HomePageProps, HomePageState> {
 
   handleInput = (event: any) => {
     const currentValue = event.detail.value.trim();
-    this.setState({
-      inputValue: currentValue,
-    });
+    this.inputValue = currentValue;
   };
 
   icon(name: string) {
@@ -95,7 +88,6 @@ export default class HomePage extends Component<HomePageProps, HomePageState> {
 
   render() {
     const { showPage, withTheme, withNotchScreen } = this.props;
-    const { inputValue } = this.state;
     if (!showPage) {
       return <></>;
     }
@@ -130,7 +122,6 @@ export default class HomePage extends Component<HomePageProps, HomePageState> {
           <input
             className="input-box"
             bindinput={this.handleInput}
-            value={inputValue}
             placeholder="Enter Card URL"
             text-color={this.textColor()}
           />
