@@ -30,7 +30,10 @@ void ViewMessageDispatcher::DispatchMessage(
   DevToolMessageDispatcher::DispatchMessage(sender, type, msg);
   auto it = subscribe_handler_map_.find(type);
   if (it != subscribe_handler_map_.end()) {
-    it->second->handle(sender, type, msg);
+    Json::Reader reader;
+    Json::Value message;
+    reader.parse(msg, message);
+    it->second->handle(sender, type, message);
     return;
   }
 }
