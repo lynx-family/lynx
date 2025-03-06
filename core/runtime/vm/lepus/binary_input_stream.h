@@ -95,6 +95,8 @@ class InputStream {
   size_t ReadCompactS32(int32_t* out_value);
   size_t ReadCompactU64(uint64_t* out_value);
 
+  virtual std::unique_ptr<InputStream> DeriveInputStream() = 0;
+
  protected:
   size_t offset_;
 };
@@ -119,7 +121,14 @@ class ByteArrayInputStream : public InputStream {
   }
 
   ByteArrayInputStream(std::vector<uint8_t> data)
-      : buf_(std::make_unique<InputBuffer>(std::move(data))) {}
+      : buf_(std::make_shared<InputBuffer>(std::move(data))) {}
+
+  ByteArrayInputStream(const std::shared_ptr<InputBuffer>& buf) : buf_(buf) {}
+
+  ByteArrayInputStream(const ByteArrayInputStream& rhs) = delete;
+  ByteArrayInputStream& operator=(const ByteArrayInputStream& rhs) = delete;
+  ByteArrayInputStream(const ByteArrayInputStream&& rhs) = delete;
+  ByteArrayInputStream& operator=(const ByteArrayInputStream&& rhs) = delete;
 
   bool ReadFromFile(const char* filename);
   inline const std::vector<uint8_t>& byte_array() { return buf_->data; }
@@ -130,8 +139,12 @@ class ByteArrayInputStream : public InputStream {
   }
   virtual size_t size() override { return buf_->size(); }
 
+  std::unique_ptr<InputStream> DeriveInputStream() override {
+    return std::make_unique<ByteArrayInputStream>(buf_);
+  }
+
  private:
-  std::unique_ptr<InputBuffer> buf_;
+  std::shared_ptr<InputBuffer> buf_;
 };
 
 }  // namespace lepus
