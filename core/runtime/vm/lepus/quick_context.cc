@@ -643,7 +643,7 @@ std::string QuickContext::FormatExceptionMessage(const std::string& message,
                                                  const std::string& stack,
                                                  const std::string& prefix) {
   std::string ret(prefix);
-  ret = ret + "lepusng exception: ";
+  ret = ret + "main-thread.js exception: ";
   ret += message;
 
   ret += " backtrace:\n";
