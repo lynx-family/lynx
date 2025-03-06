@@ -5,6 +5,7 @@
 #include "core/shell/android/lynx_engine_proxy_android.h"
 
 #include <string>
+#include <utility>
 
 #include "core/base/android/java_only_array.h"
 #include "core/base/android/java_only_map.h"
@@ -109,6 +110,20 @@ jlong Create(JNIEnv *env, jobject jcaller, jlong ptr) {
 
 void Destroy(JNIEnv *env, jobject jcaller, jlong ptr) {
   delete reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+}
+
+void DispatchTaskToLynxEngine(JNIEnv *env, jobject jcaller, jlong ptr,
+                              jobject java_runnable) {
+  auto *engine_proxy =
+      reinterpret_cast<lynx::shell::LynxEngineProxyAndroid *>(ptr);
+
+  lynx::base::android::ScopedGlobalJavaRef<jobject> runnable(env,
+                                                             java_runnable);
+
+  engine_proxy->DispatchTaskToLynxEngine([runnable = std::move(runnable)]() {
+    JNIEnv *env = lynx::base::android::AttachCurrentThread();
+    Java_LynxEngineProxy_executeRunnable(env, runnable.Get());
+  });
 }
 
 namespace lynx {

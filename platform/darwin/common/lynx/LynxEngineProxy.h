@@ -14,28 +14,39 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxCustomEvent;
 
 @interface LynxEngineProxy : NSObject
+
+/**
+ * Dispatch a given task to be executed on the LynxEngine's running thread.
+ * @param task The block to be dispatched
+ */
+- (void)dispatchTaskToLynxEngine:(dispatch_block_t)task;
+
 /**
  * Invoke lepus function
  *  @param data function params
  *  @param callbackID the key of invoke task
  */
 - (void)invokeLepusFunc:(NSDictionary *)data callbackID:(int32_t)callbackID;
+
 /**
  * Synchronously send touch event to runtime
  *  @param event touch param
  */
 - (void)sendSyncTouchEvent:(LynxTouchEvent *)event;
 - (void)sendSyncMultiTouchEvent:(LynxTouchEvent *)event;
+
 /**
  * Synchronously send gesture event to runtime
  * @param event custom event param
  */
 - (void)sendGestureEvent:(int)gestureId event:(LynxCustomEvent *)event;
+
 /**
  * Synchronously send custom event to runtime
  *  @param event custom event param
  */
 - (void)sendCustomEvent:(LynxCustomEvent *)event;
+
 /**
  * Notify css pseudo status change
  *  @param tag pseudo tag
