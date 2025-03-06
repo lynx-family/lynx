@@ -22,6 +22,7 @@
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #import "LynxCallStackUtil.h"
+#import "LynxContext.h"
 #import "LynxEnv+Internal.h"
 #import "LynxEnv.h"
 #import "LynxError.h"
@@ -580,15 +581,13 @@ void PaintingContextDarwin::Invoke(
       if (owner == nil) {
         return;
       }
-      const auto& raw_ptr = owner.uiContext.shellPtr;
-      if (raw_ptr == 0) {
-        return;
-      }
-      reinterpret_cast<shell::LynxShell*>(raw_ptr)->RunOnTasmThread([code, data, block]() {
+
+      [owner.uiContext.lynxContext runOnTasmThread:^{
         // exec the block on tasm thread.
         block(code, PubLepusValue(LynxConvertToLepusValue(data)));
-      });
+      }];
     };
+
     LynxUI* ui = [owner findUIBySign:(int)element_id];
     if (!ui) {
       NSString* msg =

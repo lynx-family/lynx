@@ -11,6 +11,18 @@
 namespace lynx {
 namespace shell {
 
+void LynxEngineProxyImpl::DispatchTaskToLynxEngine(base::closure task) {
+  if (engine_actor_ == nullptr) {
+    LOGE(
+        "LynxEngineProxy::DispatchTaskToLynxEngine failed since engine_actor_ "
+        "is nullptr");
+    return;
+  }
+
+  engine_actor_->Act(
+      [task = std::move(task)](auto& engine) mutable { task(); });
+}
+
 bool LynxEngineProxyImpl::SendTouchEvent(const std::string& name, int32_t tag,
                                          float x, float y, float client_x,
                                          float client_y, float page_x,
