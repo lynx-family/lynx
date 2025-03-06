@@ -2,6 +2,8 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//lynx/tools/gn_tools/podspec_target_template.gni")
+
 source_set("source") {
   visibility = [ ":*" ]
   sources = [
@@ -41,4 +43,12 @@ source_set("double_conversion") {
   }
   deps = [ ":source" ]
   public_deps = [ ":headers" ]
+}
+
+subspec_target("DoubleConversion") {
+  deps = [
+    ":double_conversion",
+    ":headers",
+    ":source",
+  ]
 }
