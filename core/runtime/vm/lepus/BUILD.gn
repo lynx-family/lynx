@@ -75,6 +75,8 @@ unittest_set("lepus_testset") {
     "//lynx/testing/lynx/tasm/databinding/databinding_test.cc",
     "//lynx/testing/lynx/tasm/databinding/element_dump_helper.cc",
     "//lynx/testing/lynx/tasm/databinding/mock_replayer_component_loader.cc",
+    "binary_input_stream_unittest.cc",
+    "binary_input_stream_unittest.h",
     "context_decoder_unittests.cc",
     "function_api_unittest.cc",
     "lepus_error_helper_unittest.cc",
