@@ -1,0 +1,8 @@
+---
+contact_links:
+  - about: 'Please raise issues about framework or toolset on its own repo.'
+    name: Framework or Toolset
+    url: 'https://github.com/lynx-family/lynx-stack/issues'
+  - about: 'Please raise issues about the site on its own repo.'
+    name: Website
+    url: 'https://github.com/lynx-family/lynx-website/issues'
