@@ -71,6 +71,8 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
   RuntimeManager();
   ~RuntimeManager() override;
 
+  bool IsSingleJSContext(const std::string& group_id);
+
   std::shared_ptr<piper::Runtime> CreateJSRuntime(
       const std::string& group_id,
       std::shared_ptr<piper::JSIExceptionHandler> exception_handler,

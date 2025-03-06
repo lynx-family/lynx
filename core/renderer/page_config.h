@@ -1099,10 +1099,6 @@ class PageConfig final : public EntryConfig {
 
   void SetEnableSignalAPI(TernaryBool enable) { enable_signal_api_ = enable; }
 
-  void SetEnableNapiProxyWrap(bool enable) { enable_napi_proxy_wrap_ = enable; }
-
-  bool GetEnableNapiProxyWrap() const { return enable_napi_proxy_wrap_; }
-
   // TODO(songshourui.null): move this function to testing file
   void PrintPageConfig(std::ostream& output) {
 #define PAGE_CONFIG_DUMP(key) output << #key << ":" << key << ",";
@@ -1392,9 +1388,6 @@ class PageConfig final : public EntryConfig {
 
   // disable tracing gc mode in quick context
   bool disable_quick_tracing_gc_{false};
-
-  // enable napi proxy wrap
-  bool enable_napi_proxy_wrap_{true};
 
   TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
 
