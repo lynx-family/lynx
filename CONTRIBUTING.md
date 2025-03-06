@@ -124,6 +124,33 @@ and then start the landing process.
 Typically, a Pull Request will be reviewed **within one week**.
 The landing process will be triggered manually if the changes pass all CI checks and are ready to be merged.
 
+### Static Code Analysis Tasks
+CI tasks include static code analysis, unit testing, building, etc. You can run static code analysis tasks:
+```
+source tools/envsetup.sh
+tools/hab sync . -f
+git lynx check
+```
+
+The table below shows the specific tasks performed by `git lynx check`:
+
+|Task Name|Description|
+|----|----|
+|`coding-style`|Check the coding style of files|
+|`commit-message`|Check the format of commit message|
+|`cpplint`|Check your C++ code for style violations and potential errors|
+|`java-lint`|Check your Java code for style violations and potential errors|
+|`android-check-style`|Check the import style of Android code|
+|`file-type`|Check whether there are any binary files (We do not recommend storing binary files in the repository)|
+
+The specific programming languages and tools supported by `coding-style` task:
+
+|Language|Supported|Formatting Tool|
+|----|----|----|
+|C,C++,Objective-C,Java|✅|clang-format|
+|TypeScript|✅|prettier|
+|GN|✅|gn|
+
 ## Landing Pull Requests
 
 To make sure that new changes won't break the additional tests,
@@ -150,6 +177,11 @@ You can find the detailed guidelines here: [Google's Style Guides](https://googl
 Following these style guides helps ensure that our code is consistent, clear, and of high quality.
 Please make sure to familiarize yourself with these guidelines of C++, Java, Objective-C,
 and Python before contributing to the project.
+
+We provide a convenient tool called `git lynx` that can automatically format your code when coding style checks fail. Note that it will only check changes that have been committed.
+```
+git lynx format
+```
 
 Special thanks to Google for making these comprehensive style guides available for developers!
 
