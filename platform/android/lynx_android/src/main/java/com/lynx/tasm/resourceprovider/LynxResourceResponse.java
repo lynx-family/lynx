@@ -24,8 +24,8 @@ public final class LynxResourceResponse<T> {
     return this.data;
   }
 
-  public static LynxResourceResponse onFailed(Throwable error) {
-    LynxResourceResponse response = new LynxResourceResponse();
+  public static <T> LynxResourceResponse<T> onFailed(Throwable error) {
+    LynxResourceResponse<T> response = new LynxResourceResponse<>();
     response.state = ResponseState.FAILED;
     response.error = error;
     return response;
