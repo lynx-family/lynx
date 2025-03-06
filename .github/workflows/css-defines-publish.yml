@@ -5,6 +5,9 @@ on: workflow_dispatch
 jobs:
   css-defines-publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
