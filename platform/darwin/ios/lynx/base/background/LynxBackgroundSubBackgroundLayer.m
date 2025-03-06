@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBackgroundImageLayerInfo.h"
-#import "LynxBackgroundManager.h"
-#import "LynxBackgroundUtils.h"
-#import "LynxUI+Internal.h"
-#import "LynxWeakProxy.h"
+#import <Lynx/LynxBackgroundImageLayerInfo.h>
+#import <Lynx/LynxBackgroundManager.h>
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxWeakProxy.h>
 
 @interface LynxBackgroundSubBackgroundLayer () {
   bool _needCalculateInterval;

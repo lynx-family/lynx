@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLifecycleDispatcher.h"
-#import "LynxEnv.h"
-#import "LynxEventReporter.h"
-#import "LynxView+Internal.h"
-#import "LynxViewClient.h"
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxLifecycleDispatcher.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxViewClient.h>
 
 @implementation LynxLifecycleDispatcher {
   NSHashTable<id<LynxViewBaseLifecycle>>* _innerLifecycleClients;

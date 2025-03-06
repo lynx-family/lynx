@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "devtool/lynx_devtool/tracing/platform/frameview_trace_plugin_darwin.h"
-#import "LynxFrameViewTrace.h"
+#import <LynxDevtool/LynxFrameViewTrace.h>
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 namespace lynx {

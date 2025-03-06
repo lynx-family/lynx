@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxSSRHelper.h"
-#import "LynxErrorBehavior.h"
+#import <Lynx/LynxErrorBehavior.h>
 
 typedef NS_ENUM(NSInteger, LynxSSRHydrateStatus) {
   LynxSSRHydrateStatusUndefined = 0,

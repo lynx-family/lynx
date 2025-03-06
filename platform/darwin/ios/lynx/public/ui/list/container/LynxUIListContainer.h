@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIComponent.h"
-#import "LynxUIScroller.h"
+#import <Lynx/LynxUIComponent.h>
+#import <Lynx/LynxUIScroller.h>
 
 @interface LynxUIListContainer : LynxUIScroller <LynxUIComponentLayoutObserver>
 // Mark c++ has updated contentSize and contentOffset

@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxHeroTransition.h"
-#import "CALayer+LynxHeroTransition.h"
-#import "UIView+LynxHeroTransition.h"
-#import "UIViewController+LynxHeroTransition.h"
+#import <Lynx/CALayer+LynxHeroTransition.h>
+#import <Lynx/LynxHeroTransition.h>
+#import <Lynx/UIView+LynxHeroTransition.h>
+#import <Lynx/UIViewController+LynxHeroTransition.h>
 
 @interface LynxHeroTransition ()
 

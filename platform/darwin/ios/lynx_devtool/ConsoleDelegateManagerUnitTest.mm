@@ -4,11 +4,11 @@
 
 #define private public
 
+#import <LynxDevtool/ConsoleDelegateManager.h>
+#import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#import <LynxDevtool/LynxInspectorConsoleDelegate.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#import "ConsoleDelegateManager.h"
-#import "DevToolPlatformDarwinDelegate.h"
-#import "LynxInspectorConsoleDelegate.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 
 @interface LynxInspectorConsoleDelegateMock : NSObject <LynxInspectorConsoleDelegate>

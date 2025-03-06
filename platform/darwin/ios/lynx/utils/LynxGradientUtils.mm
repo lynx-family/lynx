@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxGradientUtils.h"
+#import <Lynx/LynxGradientUtils.h>
 
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/css_utils.h"

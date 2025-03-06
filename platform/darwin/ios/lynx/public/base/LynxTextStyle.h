@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBackgroundManager.h"
-#import "LynxCSSType.h"
+#import <Lynx/LynxBackgroundManager.h>
+#import <Lynx/LynxCSSType.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

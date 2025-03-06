@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDevToolSetModule.h"
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxBaseInspectorOwnerNG.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEnvKey.h>
-#import "LynxDevtoolEnv.h"
+#import <LynxDevtool/LynxDevToolSetModule.h>
+#import <LynxDevtool/LynxDevtoolEnv.h>
 
 @implementation LynxDevToolSetModule {
   __weak LynxContext *context_;

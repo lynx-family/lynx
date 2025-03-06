@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundDrawable.h"
-#import "LynxBackgroundUtils.h"
+#import <Lynx/LynxBackgroundDrawable.h>
+#import <Lynx/LynxBackgroundUtils.h>
 #pragma mark LynxBackgroundImageLayerInfo
 
 NS_ASSUME_NONNULL_BEGIN

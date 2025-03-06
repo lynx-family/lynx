@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICEMONITORPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxView.h"
+#import <Lynx/LynxView.h>
 
 @protocol LynxServiceProtocol;
 NS_ASSUME_NONNULL_BEGIN

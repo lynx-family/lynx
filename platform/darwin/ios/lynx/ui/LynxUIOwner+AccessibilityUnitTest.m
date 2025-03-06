@@ -1,16 +1,16 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIImage.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUIView.h>
+#import <Lynx/LynxView.h>
 #import <XCTest/XCTest.h>
-#import "LynxPropsProcessor.h"
 #import "LynxUI+Private.h"
-#import "LynxUI.h"
-#import "LynxUIImage.h"
-#import "LynxUIMethodProcessor.h"
 #import "LynxUIOwner+Accessibility.h"
-#import "LynxUIOwner.h"
-#import "LynxUIView.h"
-#import "LynxView.h"
 
 #define LYNX_A11Y_TAG_TESTING(pointer) ((NSInteger)pointer + 11)
 

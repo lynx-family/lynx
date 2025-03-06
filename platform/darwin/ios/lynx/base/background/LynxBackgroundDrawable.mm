@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundDrawable.h"
-#import "LynxCSSType.h"
-#import "LynxUIUnitUtils.h"
+#import <Lynx/LynxBackgroundDrawable.h>
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxUIUnitUtils.h>
 #include "base/include/log/logging.h"
 
 // Layers that implicit animations are disabled.

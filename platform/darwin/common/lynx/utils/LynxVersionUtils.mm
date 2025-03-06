@@ -1,7 +1,7 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxVersionUtils.h"
+#import <Lynx/LynxVersionUtils.h>
 #include "base/include/string/string_utils.h"
 #include "core/template_bundle/template_codec/version.h"
 

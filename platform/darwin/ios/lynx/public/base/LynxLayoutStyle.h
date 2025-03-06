@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-#import "LynxCSSType.h"
+#import <Lynx/LynxCSSType.h>
 
 @interface LynxLayoutStyle : NSObject
 

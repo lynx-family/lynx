@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxForegroundProtocol.h"
-#import "LynxModule.h"
-#import "LynxUI.h"
-#import "LynxUIContext.h"
-#import "LynxUIMethodProcessor.h"
+#import <Lynx/LynxForegroundProtocol.h>
+#import <Lynx/LynxModule.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

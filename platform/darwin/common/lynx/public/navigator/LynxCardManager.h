@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBaseCardManager.h"
+#import <Lynx/LynxBaseCardManager.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

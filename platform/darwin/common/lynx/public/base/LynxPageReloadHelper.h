@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxPageReloadHelperProto.h"
+#import <Lynx/LynxPageReloadHelperProto.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

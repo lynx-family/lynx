@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxGestureFlingTrigger.h"
-#import "LynxWeakProxy.h"
+#import <Lynx/LynxWeakProxy.h>
 
 static const CGFloat kLynxMinVelocity = 300.0;
 static const CGFloat kLynxMaxVelocity = 5000.0;

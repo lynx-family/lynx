@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxAnimationDelegate.h"
-#import "LynxUI+Internal.h"
-#import "LynxUI.h"
+#import <Lynx/LynxAnimationDelegate.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
 @implementation LynxAnimationDelegate
 
 + (instancetype)initWithDidStart:(DidAnimationStart __nullable)start

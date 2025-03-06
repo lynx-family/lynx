@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "AbsLynxUIScroller.h"
 #import <Foundation/Foundation.h>
-#import "LynxPropsProcessor.h"
+#include <Lynx/AbsLynxUIScroller.h>
+#import <Lynx/LynxPropsProcessor.h>
 
 @implementation AbsLynxUIScroller
 

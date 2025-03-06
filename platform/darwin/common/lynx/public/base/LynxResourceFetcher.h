@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXRESOURCEFETCHER_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxResourceRequest.h"
-#import "LynxResourceResponse.h"
+#import <Lynx/LynxResourceRequest.h>
+#import <Lynx/LynxResourceResponse.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

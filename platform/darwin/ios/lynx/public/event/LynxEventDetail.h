@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxEvent.h"
-#import "LynxEventTargetBase.h"
+#import <Lynx/LynxEvent.h>
+#import <Lynx/LynxEventTargetBase.h>
 @class LynxView;
 
 NS_ASSUME_NONNULL_BEGIN

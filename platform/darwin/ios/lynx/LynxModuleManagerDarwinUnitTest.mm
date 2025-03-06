@@ -8,10 +8,10 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxView.h>
 #import "LynxBackgroundRuntime+Internal.h"
-#import "LynxEnv.h"
 #import "LynxUnitTestUtils.h"
-#import "LynxView.h"
 
 #include "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"
 

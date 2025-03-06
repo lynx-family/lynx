@@ -3,13 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxPageReloadHelper.h"
-#import "LynxResourceProvider.h"
+#import <Lynx/LynxPageReloadHelper.h>
+#import <Lynx/LynxResourceProvider.h>
 #if TARGET_OS_IOS
-#import "LynxUIOwner.h"
+#import <Lynx/LynxUIOwner.h>
 #endif
-#import "LynxError.h"
-#import "LynxView.h"
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxView.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

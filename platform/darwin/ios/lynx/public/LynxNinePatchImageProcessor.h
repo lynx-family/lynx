@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxImageProcessor.h"
+#import <Lynx/LynxImageProcessor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

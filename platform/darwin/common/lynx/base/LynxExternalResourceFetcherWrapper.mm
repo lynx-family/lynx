@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxExternalResourceFetcherWrapper.h"
+#import <Lynx/LynxExternalResourceFetcherWrapper.h>
 
-#import "LynxError.h"
-#import "LynxSubErrorCode.h"
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxSubErrorCode.h>
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"

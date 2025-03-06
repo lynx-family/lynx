@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTemplateData.h"
+#import <Lynx/LynxDefines.h>
+#import <Lynx/LynxTemplateData.h>
 #import <sys/utsname.h>
-#import "LynxDefines.h"
 #import "LynxTemplateData+Converter.h"
 
-#import "LynxLog.h"
+#import <Lynx/LynxLog.h>
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/utils/value_utils.h"

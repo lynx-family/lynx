@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIText.h"
-#import "LynxComponentRegistry.h"
-#import "LynxEnv.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIUnitUtils.h"
-#import "LynxUnitUtils.h"
-#import "LynxView+Internal.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIText.h>
+#import <Lynx/LynxUIUnitUtils.h>
+#import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxView+Internal.h>
 
 @interface LynxUITextDrawParameter : NSObject
 

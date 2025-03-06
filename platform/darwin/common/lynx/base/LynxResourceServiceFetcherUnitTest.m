@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxResourceFetcher.h>
+#import <Lynx/LynxResourceServiceFetcher.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceResourceProtocol.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#import "LynxError.h"
-#import "LynxResourceFetcher.h"
-#import "LynxResourceServiceFetcher.h"
-#import "LynxService.h"
-#import "LynxServiceResourceProtocol.h"
 
 @interface LynxResourceServiceFetcherUnitTest : XCTestCase
 

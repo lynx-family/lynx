@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXPROVIDERREGISTRY_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxResourceProvider.h"
+#import <Lynx/LynxResourceProvider.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

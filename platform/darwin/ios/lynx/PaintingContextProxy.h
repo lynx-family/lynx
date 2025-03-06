@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxShadowNode.h"
+#import <Lynx/LynxShadowNode.h>
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
 
 NS_ASSUME_NONNULL_BEGIN

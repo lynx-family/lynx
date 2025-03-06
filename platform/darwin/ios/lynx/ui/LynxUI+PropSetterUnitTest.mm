@@ -10,19 +10,19 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
-#import "LynxCSSType.h"
-#import "LynxEnv.h"
-#import "LynxListScrollEventEmitter.h"
-#import "LynxPropsProcessor.h"
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxListScrollEventEmitter.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUICollection+Internal.h>
+#import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/UIView+Lynx.h>
 #import "LynxTemplateRender+Internal.h"
 #import "LynxUI+Private.h"
-#import "LynxUI.h"
-#import "LynxUICollection+Internal.h"
-#import "LynxUICollection.h"
-#import "LynxUIOwner.h"
-#import "LynxView+Internal.h"
-#import "LynxView.h"
-#import "UIView+Lynx.h"
 
 #include <stdio.h>
 #include <memory>

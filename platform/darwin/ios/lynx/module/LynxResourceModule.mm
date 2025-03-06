@@ -4,15 +4,15 @@
 
 #import "LynxResourceModule.h"
 
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceImageProtocol.h>
+#import <Lynx/LynxServiceResourceProtocol.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxView+Internal.h>
 #import "LynxContext+Internal.h"
-#import "LynxService.h"
-#import "LynxServiceImageProtocol.h"
-#import "LynxServiceResourceProtocol.h"
-#import "LynxSubErrorCode.h"
 #import "LynxTemplateRender+Internal.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
-#import "LynxView+Internal.h"
 
 static NSString* kDataKey = @"data";
 static NSString* kUriKey = @"uri";

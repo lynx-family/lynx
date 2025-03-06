@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxRootUI.h>
+#import <LynxDevtool/LynxUITreeHelper.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#import "LynxUITreeHelper.h"
 
 extern NSString* const ScreenshotModeLynxView;
 extern NSString* const ScreenshotModeFullScreen;

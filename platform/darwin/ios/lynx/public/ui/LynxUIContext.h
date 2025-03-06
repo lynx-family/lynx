@@ -3,15 +3,15 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxLifecycleDispatcher.h>
+#import <Lynx/LynxMediaResourceFetcher.h>
+#import <Lynx/LynxScreenMetrics.h>
+#import <Lynx/LynxScrollListener.h>
+#import <Lynx/LynxTemplateResourceFetcher.h>
 #import <Lynx/LynxUIListProtocol.h>
-#import "LynxEventEmitter.h"
-#import "LynxGenericResourceFetcher.h"
 #import "LynxImageFetcher.h"
-#import "LynxLifecycleDispatcher.h"
-#import "LynxMediaResourceFetcher.h"
-#import "LynxScreenMetrics.h"
-#import "LynxScrollListener.h"
-#import "LynxTemplateResourceFetcher.h"
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxRootUI;

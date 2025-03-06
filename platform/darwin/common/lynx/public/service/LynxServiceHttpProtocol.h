@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxHttpRequest.h"
-#import "LynxServiceProtocol.h"
+#import <Lynx/LynxHttpRequest.h>
+#import <Lynx/LynxServiceProtocol.h>
 
 @protocol LynxHttpInterceptor
 - (LynxHttpResponse*)interceptRequest:(LynxHttpRequest*)request;

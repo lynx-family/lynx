@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBounceView.h"
+#import <Lynx/LynxBounceView.h>
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLayoutStyle.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxView.h>
 #import <objc/runtime.h>
-#import "LynxComponentRegistry.h"
-#import "LynxLayoutStyle.h"
-#import "LynxPropsProcessor.h"
-#import "LynxView.h"
 
 @implementation LynxBounceView
 

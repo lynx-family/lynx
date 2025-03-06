@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLayoutAnimationManager.h"
-#import "LynxAnimationDelegate.h"
-#import "LynxAnimationUtils.h"
-#import "LynxUI+Internal.h"
-#import "LynxUI.h"
-#import "LynxUIScroller.h"
+#import <Lynx/LynxAnimationDelegate.h>
+#import <Lynx/LynxAnimationUtils.h>
+#import <Lynx/LynxLayoutAnimationManager.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIScroller.h>
 
 @interface LynxLayoutAnimationManager ()
 @property(nonatomic, weak) LynxUI* ui;

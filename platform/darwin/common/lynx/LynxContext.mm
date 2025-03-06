@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxExtensionModule.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxView+Internal.h>
 #import "JSModule+Internal.h"
 #import "LynxContext+Internal.h"
-#import "LynxExtensionModule.h"
-#import "LynxLog.h"
-#import "LynxSubErrorCode.h"
-#import "LynxView+Internal.h"
 
 NSString *const kDefaultComponentID = @"-1";
 

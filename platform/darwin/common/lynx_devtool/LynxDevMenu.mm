@@ -26,8 +26,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDevMenu.h"
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <LynxDevtool/LynxDevMenu.h>
 #if OS_IOS
 #import <UIKit/UIKit.h>
 #elif OS_OSX

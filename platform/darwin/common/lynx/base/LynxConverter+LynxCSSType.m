@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxConverter+LynxCSSType.h>
+#import <Lynx/LynxLog.h>
 #import <QuartzCore/QuartzCore.h>
-#import "LynxConverter+LynxCSSType.h"
-#import "LynxLog.h"
 
 DEFINE_ENUM_CONVERTER(LynxOverflowType, LynxOverflowHidden)
 DEFINE_ENUM_CONVERTER(LynxAnimationDirectionType, LynxAnimationDirectionNormal)

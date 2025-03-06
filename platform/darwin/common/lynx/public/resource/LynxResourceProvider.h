@@ -7,8 +7,8 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxResourceRequest.h"
-#import "LynxResourceResponse.h"
+#import <Lynx/LynxResourceRequest.h>
+#import <Lynx/LynxResourceResponse.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

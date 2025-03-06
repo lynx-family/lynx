@@ -5,9 +5,9 @@
 #ifndef DARWIN_COMMON_LYNX_RESOURCE_LYNXMEDIARESOURCEFETCHER_H_
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXMEDIARESOURCEFETCHER_H_
 
+#import <Lynx/LynxResourceRequest.h>
+#import <Lynx/LynxResourceResponse.h>
 #import <UIKit/UIKit.h>
-#import "LynxResourceRequest.h"
-#import "LynxResourceResponse.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

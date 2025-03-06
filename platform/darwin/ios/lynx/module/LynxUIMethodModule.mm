@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxUIMethodModule.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxThreadManager.h>
+#import <Lynx/LynxUIOwner.h>
 #import "LynxContext+Internal.h"
-#import "LynxContext.h"
-#import "LynxThreadManager.h"
-#import "LynxUIOwner.h"
 
 using namespace lynx;
 

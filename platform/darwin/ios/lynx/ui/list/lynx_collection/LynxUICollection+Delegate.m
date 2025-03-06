@@ -2,24 +2,24 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionDataSource.h"
-#import "LynxCollectionViewCell.h"
-#import "LynxCollectionViewLayout.h"
+#import <Lynx/LynxCollectionDataSource.h>
+#import <Lynx/LynxCollectionViewCell.h>
+#import <Lynx/LynxCollectionViewLayout.h>
+#import <Lynx/LynxGlobalObserver.h>
+#import <Lynx/LynxListAppearEventEmitter.h>
+#import <Lynx/LynxListScrollEventEmitter.h>
+#import <Lynx/LynxScrollEventManager.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxUI+Fluency.h>
+#import <Lynx/LynxUICollection+Delegate.h>
+#import <Lynx/LynxUICollection+Internal.h>
+#import <Lynx/LynxUIListDelegate.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/UIScrollView+Lynx.h>
+#import <Lynx/UIScrollView+LynxGesture.h>
 #import "LynxFeatureCounter.h"
-#import "LynxGlobalObserver.h"
-#import "LynxListAppearEventEmitter.h"
-#import "LynxListScrollEventEmitter.h"
-#import "LynxScrollEventManager.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
-#import "LynxUI+Fluency.h"
-#import "LynxUICollection+Delegate.h"
-#import "LynxUICollection+Internal.h"
 #import "LynxUIContext+Internal.h"
-#import "LynxUIListDelegate.h"
-#import "LynxUIMethodProcessor.h"
-#import "UIScrollView+Lynx.h"
-#import "UIScrollView+LynxGesture.h"
 
 @implementation LynxUICollection (Delegate)
 

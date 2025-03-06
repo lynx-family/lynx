@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxConverter+NSShadow.h"
-#import "LynxLog.h"
+#import <Lynx/LynxConverter+NSShadow.h>
+#import <Lynx/LynxLog.h>
 
 @implementation LynxConverter (NSShadow)
 + (NSShadow *)toNSShadow:(NSArray<LynxBoxShadow *> *)shadowArr {

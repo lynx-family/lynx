@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLruCache.h"
-#import "LynxLruCacheNode.h"
+#import <Lynx/LynxLruCache.h>
+#import <Lynx/LynxLruCacheNode.h>
 
 static const char *kLynxLRUCacheQueue = "kLynxLRUCacheQueue";
 
