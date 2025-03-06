@@ -2957,14 +2957,12 @@ LYNX_PROP_SETTER("filter", setFilter, NSArray*) {
   id filter = [self getFilterWithType:_filter_type];
   if (filter) {
     [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
-      ui.view.layer.filters = @[ filter ];
+      [ui.backgroundManager setFilters:@[ filter ]];
     }];
-    [_backgroundManager setFilters:@[ filter ]];
   } else {
     [self.nodeReadyBlockArray addObject:^(LynxUI* ui) {
-      ui.view.layer.filters = nil;
+      [ui.backgroundManager setFilters:nil];
     }];
-    [_backgroundManager setFilters:nil];
   }
 }
 
