@@ -221,6 +221,9 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   if (_borderLayer != nil) {
     _borderLayer.transform = transform;
   }
+  if (_maskLayer) {
+    _maskLayer.transform = transform;
+  }
 }
 
 - (void)setTransformOrigin:(CGPoint)transformOrigin {
@@ -1211,6 +1214,13 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
         _borderLayer.mask = mask;
       }
       _borderLayer.transform = transformWithSticky;
+    }
+
+    if (_maskLayer) {
+      _maskLayer.transform = CATransform3DIdentity;
+      // All properties should set with the original frame size without UI transformation.
+      _maskLayer.frame = _ui.view.layer.frame;
+      _maskLayer.transform = transformWithSticky;
     }
 
     if (!CATransform3DIsIdentity(transformWithSticky)) {
