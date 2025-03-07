@@ -467,7 +467,7 @@ export abstract class BaseApp<
       nativeConsole.profile(`running ${path} init`);
       const ret = factory<T>({ tt: this });
 
-      // Here means that no error occured when executing.
+      // Here means that no error occurred when executing.
       // Only then we cache the factory.
       BaseApp._$factoryCache[path] = factory;
       return ret;
