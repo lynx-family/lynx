@@ -7,9 +7,9 @@
 #include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 std::shared_ptr<VSyncMonitor> VSyncMonitor::Create() { return nullptr; }
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx

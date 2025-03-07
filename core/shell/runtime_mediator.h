@@ -117,7 +117,7 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   void RunOnJSThreadWhenIdle(base::closure closure) override;
 
   void set_vsync_monitor(
-      const std::shared_ptr<VSyncMonitor>& vsync_monitor,
+      const std::shared_ptr<base::VSyncMonitor>& vsync_monitor,
       const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor) {
     vsync_observer_ = std::make_shared<VSyncObserverImpl>(
         vsync_monitor, js_runner_, runtime_actor);

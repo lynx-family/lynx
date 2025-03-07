@@ -17,7 +17,7 @@
 #include "core/animation/keyframe_effect.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 class VSyncMonitor;
 }
 

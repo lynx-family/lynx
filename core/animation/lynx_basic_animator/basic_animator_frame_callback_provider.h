@@ -11,7 +11,7 @@
 
 namespace lynx {
 
-namespace shell {
+namespace base {
 class VSyncMonitor;
 }
 
@@ -21,7 +21,7 @@ class BasicAnimatorFrameCallbackProvider
     : public AnimationFrameCallbackProvider {
  public:
   explicit BasicAnimatorFrameCallbackProvider(
-      const std::shared_ptr<shell::VSyncMonitor> &vsync_monitor)
+      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
       : vsync_monitor_(vsync_monitor) {}
 
   ~BasicAnimatorFrameCallbackProvider() override = default;
@@ -29,10 +29,10 @@ class BasicAnimatorFrameCallbackProvider
   void RequestNextFrame(
       base::MoveOnlyClosure<void, const fml::TimePoint &> callback) override;
 
-  std::shared_ptr<shell::VSyncMonitor> GetVSyncMonitor();
+  std::shared_ptr<base::VSyncMonitor> GetVSyncMonitor();
 
  private:
-  std::shared_ptr<shell::VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
 };
 }  // namespace basic
 }  // namespace animation

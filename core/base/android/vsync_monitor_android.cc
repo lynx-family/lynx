@@ -14,7 +14,7 @@
 void OnVSync(JNIEnv* env, jclass jcaller, jlong nativePtr,
              jlong frameStartTimeNS, jlong frameEndTimeNS) {
   auto* weak_ptr =
-      reinterpret_cast<std::weak_ptr<lynx::shell::VSyncMonitorAndroid>*>(
+      reinterpret_cast<std::weak_ptr<lynx::base::VSyncMonitorAndroid>*>(
           nativePtr);
   auto shared_ptr = weak_ptr->lock();
   if (shared_ptr) {
@@ -24,10 +24,10 @@ void OnVSync(JNIEnv* env, jclass jcaller, jlong nativePtr,
 }
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 std::shared_ptr<VSyncMonitor> VSyncMonitor::Create() {
-  return std::make_shared<lynx::shell::VSyncMonitorAndroid>();
+  return std::make_shared<lynx::base::VSyncMonitorAndroid>();
 }
 
 // static
@@ -60,5 +60,5 @@ void VSyncMonitorAndroid::RequestVSyncOnUIThread(Callback callback) {
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_VSyncMonitor_requestOnUIThread(env, reinterpret_cast<jlong>(weak_self));
 }
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx
