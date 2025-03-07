@@ -284,7 +284,6 @@ deps = {
         "type": "http",
         "url": "https://github.com/google/xctestrunner/releases/download/0.2.15/ios_test_runner.par",
         "decompress": False,
-        "ignore_in_git": True,
         "condition": system in ['darwin'],
     },
     "./tools_shared": {
