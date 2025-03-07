@@ -13,7 +13,7 @@
 #include "base/include/fml/task_runner.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
  public:
@@ -64,7 +64,7 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   VSyncMonitor &operator==(const VSyncMonitor &) = delete;
 };
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx
 
 #endif  // CORE_BASE_THREADING_VSYNC_MONITOR_H_
