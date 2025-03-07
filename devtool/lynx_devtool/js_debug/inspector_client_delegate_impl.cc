@@ -430,6 +430,8 @@ bool InspectorClientDelegateImpl::HandleMessageConsoleAPICalled(
     return HandleMessageConsoleAPICalledFromV8(message);
   } else if (vm_type_ == kKeyEngineQuickjs) {
     HandleMessageConsoleAPICalledFromQuickjs(message);
+  } else if (vm_type_ == kKeyEngineLepus) {
+    HandleMessageConsoleAPICalledFromLepus(message);
   }
   return false;
 }
@@ -491,6 +493,19 @@ void InspectorClientDelegateImpl::HandleMessageConsoleAPICalledFromQuickjs(
     message[kKeyParams].AddMember(
         rapidjson::Value(kKeyConsoleId, message.GetAllocator()),
         rapidjson::Value(console_view_id), message.GetAllocator());
+  }
+}
+
+void InspectorClientDelegateImpl::HandleMessageConsoleAPICalledFromLepus(
+    rapidjson::Document& message) {
+  if (message.HasMember(kKeyParams)) {
+    message[kKeyParams].AddMember(
+        rapidjson::Value(kKeyConsoleTag, message.GetAllocator()),
+        rapidjson::Value(kKeyEngineLepus, message.GetAllocator()),
+        message.GetAllocator());
+    message[kKeyParams].AddMember(
+        rapidjson::Value(kKeyConsoleId, message.GetAllocator()),
+        rapidjson::Value(kDefaultViewID), message.GetAllocator());
   }
 }
 
