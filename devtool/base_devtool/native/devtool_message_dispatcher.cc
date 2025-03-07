@@ -32,6 +32,7 @@ void DevToolMessageDispatcher::DispatchCDPMessage(
   std::string domain = method.substr(0, method.find(kDomainDot));
   Json::Value content;
 
+  std::shared_lock<std::shared_mutex> lock(agent_mutex_);
   auto iter = agent_map_.find(domain);
   if (iter == agent_map_.end()) {
     Json::Value error;
@@ -52,6 +53,7 @@ void DevToolMessageDispatcher::DispatchJsonMessage(
     DispatchCDPMessage(sender, msg);
     return;
   }
+  std::shared_lock<std::shared_mutex> lock(handler_mutex_);
   auto it = handler_map_.find(type);
   if (it != handler_map_.end()) {
     it->second->handle(sender, type, msg);
@@ -63,6 +65,7 @@ void DevToolMessageDispatcher::DispatchJsonMessage(
 // DebugRouter Thread
 void DevToolMessageDispatcher::RegisterMessageHandler(
     const std::string& type, std::unique_ptr<DevToolMessageHandler>&& handler) {
+  std::unique_lock<std::shared_mutex> lock(handler_mutex_);
   auto it = handler_map_.find(type);
   if (it != handler_map_.end()) {
     LOGI("RegisterMessageHandler has exists:" << it->first);
@@ -73,11 +76,13 @@ void DevToolMessageDispatcher::RegisterMessageHandler(
 void DevToolMessageDispatcher::RegisterAgent(
     const std::string& agent_name,
     std::unique_ptr<CDPDomainAgentBase>&& agent) {
+  std::unique_lock<std::shared_mutex> lock(agent_mutex_);
   agent_map_.emplace(agent_name, std::move(agent));
 }
 
 CDPDomainAgentBase* DevToolMessageDispatcher::GetAgent(
     const std::string& agent_name) {
+  std::shared_lock<std::shared_mutex> lock(agent_mutex_);
   auto iter = agent_map_.find(agent_name);
   if (iter == agent_map_.end()) {
     return nullptr;

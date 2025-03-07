@@ -5,6 +5,7 @@
 #ifndef DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_DEVTOOL_MESSAGE_DISPATCHER_H_
 #define DEVTOOL_BASE_DEVTOOL_NATIVE_PUBLIC_DEVTOOL_MESSAGE_DISPATCHER_H_
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -59,6 +60,8 @@ class BASE_DEVTOOL_EXPORT DevToolMessageDispatcher
       agent_map_;
   std::unordered_map<std::string, std::unique_ptr<DevToolMessageHandler>>
       handler_map_;
+  std::shared_mutex handler_mutex_;
+  std::shared_mutex agent_mutex_;
 };
 
 }  // namespace devtool

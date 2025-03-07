@@ -28,6 +28,7 @@ void ViewMessageDispatcher::DispatchMessage(
     const std::shared_ptr<MessageSender>& sender, const std::string& type,
     const std::string& msg) {
   DevToolMessageDispatcher::DispatchMessage(sender, type, msg);
+  std::shared_lock<std::shared_mutex> lock(subscribe_mutex_);
   auto it = subscribe_handler_map_.find(type);
   if (it != subscribe_handler_map_.end()) {
     Json::Reader reader;
@@ -41,6 +42,7 @@ void ViewMessageDispatcher::DispatchMessage(
 // for handling all kinds of messages
 void ViewMessageDispatcher::SubscribeMessage(
     const std::string& type, std::unique_ptr<DevToolMessageHandler>&& handler) {
+  std::unique_lock<std::shared_mutex> lock(subscribe_mutex_);
   auto it = subscribe_handler_map_.find(type);
   if (it != subscribe_handler_map_.end()) {
     LOGI("SubscribeMessage's handler has exists:" << it->first);
@@ -50,6 +52,7 @@ void ViewMessageDispatcher::SubscribeMessage(
 
 void ViewMessageDispatcher::UnSubscribeMessage(const std::string& type) {
   LOGI("UnSubscribeMessage :" << type);
+  std::unique_lock<std::shared_mutex> lock(subscribe_mutex_);
   subscribe_handler_map_.erase(type);
 }
 

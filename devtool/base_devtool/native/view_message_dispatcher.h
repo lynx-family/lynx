@@ -6,6 +6,7 @@
 #define DEVTOOL_BASE_DEVTOOL_NATIVE_VIEW_MESSAGE_DISPATCHER_H_
 #include <cstdint>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -37,6 +38,7 @@ class ViewMessageDispatcher : public DevToolMessageDispatcher {
   std::shared_ptr<ViewMessageChannel> view_message_channel_;
   std::unordered_map<std::string, std::unique_ptr<DevToolMessageHandler>>
       subscribe_handler_map_;
+  std::shared_mutex subscribe_mutex_;
 };
 }  // namespace devtool
 }  // namespace lynx
