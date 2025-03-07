@@ -80,6 +80,7 @@ explorer/darwin/ios/lynx_explorer/LynxExplorer.xcodeproj/**
 explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource
 explorer/darwin/ios/lynx_explorer/iOSCoreBuild/
 explorer/darwin/ios/lynx_explorer/results_bundle
+explorer/darwin/ios/lynx_explorer/xctestrunner
 ruby/
 
 # JSLibrary
