@@ -192,7 +192,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
       }
 
       return cutout != null;
-    }
+  }
   }
 
   private void setStatusBarAppearance() {
