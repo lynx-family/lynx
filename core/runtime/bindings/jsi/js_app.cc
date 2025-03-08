@@ -1931,7 +1931,13 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
   piper::Object page_config_subset(*rt);
   if (!page_config_subset.setProperty(
           *rt, runtime::kEnableMicrotaskPromisePolyfill,
-          card_bundle_.enable_microtask_promise_polyfill)) {
+          card_bundle_.enable_microtask_promise_polyfill) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableNapiProxyWrap,
+          !IsSingleJSContext(group_id_) &&
+              card_bundle_.enable_napi_proxy_wrap &&
+              tasm::LynxEnv::GetInstance().GetBoolEnv(
+                  tasm::LynxEnv::Key::ENABLE_NAPI_PROXY_WRAP, true))) {
     handleLoadAppFailed(" App::loadApp error! page_config_subset init fail.");
     return;
   }
