@@ -66,7 +66,6 @@ class TestBenchBaseRecorder {
   template <typename T>
   void InsertReplayConfig(int64_t record_id, const char* name, T value);
 
-  rapidjson::Document dumped_document_;
   std::unordered_map<int64_t, rapidjson::Value> lynx_view_table_;
   rapidjson::Value resource_table_;
   rapidjson::Value scripts_table_;
