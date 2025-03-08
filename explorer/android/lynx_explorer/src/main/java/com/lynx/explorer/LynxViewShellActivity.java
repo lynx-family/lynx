@@ -159,15 +159,17 @@ public class LynxViewShellActivity extends AppCompatActivity {
     return super.onOptionsItemSelected(item);
   }
 
-  public boolean isNotchScreen() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-      return false;
-    }
 
+public boolean isNotchScreen() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        return false;
+    }
+    
     WindowManager windowManager = getSystemService(WindowManager.class);
     if (windowManager == null) {
-      return false;
+        return false;
     }
+
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       return getWindow().getDecorView()
