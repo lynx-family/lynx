@@ -18,6 +18,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.WindowInsets;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,8 +48,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   public static final String URL_KEY = "url";
   private static final String URL_PREFIX = "file://lynx?local://";
   private static final String TAG = "LynxViewShellActivity";
-  private static final String HOME_PAGE_URL =
-      "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
+  private static final String HOME_PAGE_URL = "file://lynx?local://homepage.lynx.bundle?fullscreen=true";
   private static final String DEFAULT_TOP_BAR_COLOR = "#F0F2F5";
   private static final String DEFAULT_TOP_BAR_TITLE_COLOR = "#000000";
   private static final String DEFAULT_TOP_BAR_BACK_BUTTON_STYLE = "light";
@@ -114,7 +114,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
   private void setWindowColor(Toolbar toolbar, QueryMapUtils queryMap) {
     String color = queryMap.contains("bar_color") ? "#" + queryMap.getString("bar_color")
-                                                  : DEFAULT_TOP_BAR_COLOR;
+        : DEFAULT_TOP_BAR_COLOR;
 
     toolbar.setBackgroundColor(Color.parseColor(color));
     getWindow().setStatusBarColor(Color.parseColor(color));
@@ -142,7 +142,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     TextView tv = toolbar.findViewById(R.id.toolbar_title);
     String title = queryMap.contains("title") ? queryMap.getString("title") : null;
     String titleColor = queryMap.contains("title_color") ? "#" + queryMap.getString("title_color")
-                                                         : DEFAULT_TOP_BAR_TITLE_COLOR;
+        : DEFAULT_TOP_BAR_TITLE_COLOR;
 
     if (tv != null) {
       tv.setText(title);
@@ -169,9 +169,30 @@ public class LynxViewShellActivity extends AppCompatActivity {
       return false;
     }
 
-    Display display = windowManager.getDefaultDisplay();
-    DisplayCutout cutout = display.getCutout();
-    return cutout != null;
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      return getWindow().getDecorView()
+          .getRootWindowInsets()
+          .getDisplayCutout() != null;
+    } else {
+      Display display = windowManager.getDefaultDisplay();
+      DisplayCutout cutout = null;
+
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          cutout = display.getCutout();
+        } else {
+          WindowInsets windowInsets = getWindow().getDecorView().getRootWindowInsets();
+          if (windowInsets != null) {
+            cutout = windowInsets.getDisplayCutout();
+          }
+        }
+      } catch (Exception e) {
+        Log.e(TAG, "Error checking for notch: " + e.getMessage());
+        return false;
+      }
+
+      return cutout != null;
+    }
   }
 
   private void setStatusBarAppearance() {
@@ -181,15 +202,14 @@ public class LynxViewShellActivity extends AppCompatActivity {
 
     if (isNotchScreen()) {
       WindowManager.LayoutParams params = getWindow().getAttributes();
-      params.layoutInDisplayCutoutMode =
-          WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+      params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
       getWindow().setAttributes(params);
       getWindow().getDecorView().setSystemUiVisibility(
           View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
     }
 
-    WindowInsetsControllerCompat windowInsetsController =
-        WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+    WindowInsetsControllerCompat windowInsetsController = WindowCompat.getInsetsController(getWindow(),
+        getWindow().getDecorView());
 
     windowInsetsController.setSystemBarsBehavior(
         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
@@ -213,7 +233,8 @@ public class LynxViewShellActivity extends AppCompatActivity {
     builder.setGenericResourceFetcher(new DemoGenericResourceFetcher());
     builder.setTemplateResourceFetcher(new DemoTemplateResourceFetcher(this));
     builder.setMediaResourceFetcher(new DemoMediaResourceFetcher());
-    // Parse the URL parameters and specify the LynxView width, height, and density according to the
+    // Parse the URL parameters and specify the LynxView width, height, and density
+    // according to the
     // parameters.
     QueryMapUtils queryMap = new QueryMapUtils();
     queryMap.parse(url);
@@ -278,8 +299,8 @@ public class LynxViewShellActivity extends AppCompatActivity {
     globalProps.put("screenHeight", displayMetrics.heightPixels / displayMetrics.density);
 
     String theme = "Light";
-    if ((context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
-        == Configuration.UI_MODE_NIGHT_YES) {
+    if ((context.getResources().getConfiguration().uiMode
+        & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES) {
       theme = "Dark";
     }
     globalProps.put("theme", theme);
