@@ -5,6 +5,7 @@
 #include "core/renderer/ui_component/list/adapter_helper.h"
 
 #include <algorithm>
+#include <sstream>
 #include <utility>
 
 #include "base/trace/native/trace_event.h"
@@ -14,6 +15,30 @@
 
 namespace lynx {
 namespace tasm {
+
+std::string AdapterHelper::DiffResult::ToString() const {
+  std::ostringstream oss("DiffResult: item_keys:[");
+  for (const auto& item_key : item_keys_) {
+    oss << item_key << ",";
+  }
+  oss << "],";
+  auto diff_action_to_string = [&oss](const std::string& key,
+                                      const std::vector<int32_t>& array) {
+    oss << key << ":[";
+    for (int32_t index : array) {
+      oss << index << ",";
+    }
+    oss << "],";
+  };
+  diff_action_to_string(list::kInsertions, insertions_);
+  diff_action_to_string(list::kRemovals, removals_);
+  diff_action_to_string(list::kUpdateFrom, update_from_);
+  diff_action_to_string(list::kUpdateTo, update_to_);
+  diff_action_to_string(list::kMoveFrom, move_from_);
+  diff_action_to_string(list::kMoveTo, move_to_);
+  return oss.str();
+}
+
 //  update "diff-result" info  on radon_diff architecture
 bool AdapterHelper::UpdateDiffResult(const lepus::Value& diff_result) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateDiffResult");
@@ -49,12 +74,12 @@ bool AdapterHelper::UpdateDiffResult(const lepus::Value& diff_result) {
 
 void AdapterHelper::UpdateInsertions(const lepus::Value& diff_insertions) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateInsertions");
-  insertions_.clear();
+  diff_result_.insertions_.clear();
   if (diff_insertions.IsArray()) {
     ForEachLepusValue(diff_insertions, [this](const lepus::Value& key,
                                               const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        insertions_.emplace_back(value.Int32());
+        diff_result_.insertions_.emplace_back(value.Int32());
       }
     });
   }
@@ -62,12 +87,12 @@ void AdapterHelper::UpdateInsertions(const lepus::Value& diff_insertions) {
 
 void AdapterHelper::UpdateRemovals(const lepus::Value& diff_removals) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateRemovals");
-  removals_.clear();
+  diff_result_.removals_.clear();
   if (diff_removals.IsArray()) {
     ForEachLepusValue(diff_removals, [this](const lepus::Value& key,
                                             const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        removals_.emplace_back(value.Int32());
+        diff_result_.removals_.emplace_back(value.Int32());
       }
     });
   }
@@ -75,12 +100,12 @@ void AdapterHelper::UpdateRemovals(const lepus::Value& diff_removals) {
 
 void AdapterHelper::UpdateUpdateFrom(const lepus::Value& diff_update_from) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateUpdateFrom");
-  update_from_.clear();
+  diff_result_.update_from_.clear();
   if (diff_update_from.IsArray()) {
     ForEachLepusValue(diff_update_from, [this](const lepus::Value& key,
                                                const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        update_from_.emplace_back(value.Int32());
+        diff_result_.update_from_.emplace_back(value.Int32());
       }
     });
   }
@@ -88,12 +113,12 @@ void AdapterHelper::UpdateUpdateFrom(const lepus::Value& diff_update_from) {
 
 void AdapterHelper::UpdateUpdateTo(const lepus::Value& diff_update_to) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateUpdateTo");
-  update_to_.clear();
+  diff_result_.update_to_.clear();
   if (diff_update_to.IsArray()) {
     ForEachLepusValue(diff_update_to, [this](const lepus::Value& key,
                                              const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        update_to_.emplace_back(value.Int32());
+        diff_result_.update_to_.emplace_back(value.Int32());
       }
     });
   }
@@ -101,12 +126,12 @@ void AdapterHelper::UpdateUpdateTo(const lepus::Value& diff_update_to) {
 
 void AdapterHelper::UpdateMoveTo(const lepus::Value& diff_move_to) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateMoveTo");
-  move_to_.clear();
+  diff_result_.move_to_.clear();
   if (diff_move_to.IsArray()) {
     ForEachLepusValue(diff_move_to, [this](const lepus::Value& key,
                                            const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        move_to_.emplace_back(value.Int32());
+        diff_result_.move_to_.emplace_back(value.Int32());
       }
     });
   }
@@ -114,12 +139,12 @@ void AdapterHelper::UpdateMoveTo(const lepus::Value& diff_move_to) {
 
 void AdapterHelper::UpdateMoveFrom(const lepus::Value& diff_move_from) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateMoveFrom");
-  move_from_.clear();
+  diff_result_.move_from_.clear();
   if (diff_move_from.IsArray()) {
     ForEachLepusValue(diff_move_from, [this](const lepus::Value& key,
                                              const lepus::Value& value) {
       if (value.IsInt32() && value.Int32() >= 0) {
-        move_from_.emplace_back(value.Int32());
+        diff_result_.move_from_.emplace_back(value.Int32());
       }
     });
   }
@@ -134,32 +159,32 @@ fml::RefPtr<lepus::Dictionary> AdapterHelper::GenerateDiffInfo() const {
   BASE_STATIC_STRING_DECL(kMoveToKey, "move_to");
   BASE_STATIC_STRING_DECL(kMoveFromKey, "move_from");
   auto array = lepus::CArray::Create();
-  for (auto i : insertions_) {
+  for (auto i : diff_result_.insertions_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kInsertionsKey, std::move(array));
   array = lepus::CArray::Create();
-  for (auto i : removals_) {
+  for (auto i : diff_result_.removals_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kRemovalsKey, std::move(array));
   array = lepus::CArray::Create();
-  for (auto i : update_from_) {
+  for (auto i : diff_result_.update_from_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kUpdateFromKey, std::move(array));
   array = lepus::CArray::Create();
-  for (auto i : update_to_) {
+  for (auto i : diff_result_.update_to_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kUpdateToKey, std::move(array));
   array = lepus::CArray::Create();
-  for (auto i : move_to_) {
+  for (auto i : diff_result_.move_to_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kMoveToKey, std::move(array));
   array = lepus::CArray::Create();
-  for (auto i : move_from_) {
+  for (auto i : diff_result_.move_from_) {
     array->emplace_back(i);
   }
   diff_info->SetValue(kMoveFromKey, std::move(array));
@@ -167,23 +192,26 @@ fml::RefPtr<lepus::Dictionary> AdapterHelper::GenerateDiffInfo() const {
 }
 
 //   update "item-key" info  on radon_diff architecture
-void AdapterHelper::UpdateItemKeys(const lepus::Value& item_keys) {
+void AdapterHelper::UpdateItemKeys(const lepus::Value& item_keys_value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateItemKeys");
-  item_keys_.clear();
-  item_key_map_.clear();
+  auto& item_keys = diff_result_.item_keys_;
+  auto& item_key_map = diff_result_.item_key_map_;
+  item_keys.clear();
+  item_key_map.clear();
   bool has_illegal_item_key = false;
   bool has_duplicated_item_key = false;
-  if (item_keys.IsArray()) {
+  if (item_keys_value.IsArray()) {
     ForEachLepusValue(
-        item_keys, [this, &has_illegal_item_key, &has_duplicated_item_key](
-                       const lepus::Value& key, const lepus::Value& value) {
+        item_keys_value,
+        [&has_illegal_item_key, &has_duplicated_item_key, &item_keys,
+         &item_key_map](const lepus::Value& key, const lepus::Value& value) {
           if (value.IsString()) {
             const std::string& item_key = value.StdString();
             has_duplicated_item_key =
                 has_duplicated_item_key ||
-                item_key_map_.find(item_key) != item_key_map_.end();
-            item_key_map_[item_key] = static_cast<int>(item_keys_.size());
-            item_keys_.emplace_back(item_key);
+                item_key_map.find(item_key) != item_key_map.end();
+            item_key_map[item_key] = static_cast<int>(item_keys.size());
+            item_keys.emplace_back(item_key);
           } else {
             has_illegal_item_key = true;
           }
@@ -290,63 +318,66 @@ void AdapterHelper::UpdateFiberInsertAction(const lepus::Value& insert_action,
   if (!insert_action.IsArray()) {
     return;
   }
+  auto& insertions = diff_result_.insertions_;
+  auto& item_keys = diff_result_.item_keys_;
   if (only_parse_insertions) {
-    insertions_.clear();
+    insertions.clear();
   }
   bool has_illegal_item_key = false;
-  ForEachLepusValue(
-      insert_action, [this, only_parse_insertions, &has_illegal_item_key](
-                         const lepus::Value& key, const lepus::Value& value) {
-        if (!value.IsTable()) {
+  ForEachLepusValue(insert_action, [this, only_parse_insertions,
+                                    &has_illegal_item_key, &insertions,
+                                    &item_keys](const lepus::Value& key,
+                                                const lepus::Value& value) {
+    if (!value.IsTable()) {
+      return;
+    }
+    const auto& position =
+        value.GetProperty(BASE_STATIC_STRING(list::kPosition));
+    const auto& item_key =
+        value.GetProperty(BASE_STATIC_STRING(list::kItemKey));
+    if (position.IsNumber() && item_key.IsString()) {
+      int index = static_cast<int>(position.Number());
+      const std::string& item_key_str = item_key.StdString();
+      if (index >= 0 && !item_key_str.empty()) {
+        if (only_parse_insertions) {
+          insertions.emplace_back(index);
           return;
         }
-        const auto& position =
-            value.GetProperty(BASE_STATIC_STRING(list::kPosition));
-        const auto& item_key =
-            value.GetProperty(BASE_STATIC_STRING(list::kItemKey));
-        if (position.IsNumber() && item_key.IsString()) {
-          int index = static_cast<int>(position.Number());
-          const std::string& item_key_str = item_key.StdString();
-          if (index >= 0 && !item_key_str.empty()) {
-            if (only_parse_insertions) {
-              insertions_.emplace_back(index);
-              return;
-            }
-            if (index <= static_cast<int>(item_keys_.size())) {
-              const auto& is_full_span =
-                  value.GetProperty(BASE_STATIC_STRING(list::kFullSpan));
-              const auto& is_sticky_top =
-                  value.GetProperty(BASE_STATIC_STRING(list::kStickyTop));
-              const auto& is_sticky_bottom =
-                  value.GetProperty(BASE_STATIC_STRING(list::kStickyBottom));
-              const auto& estimated_height_px = value.GetProperty(
-                  BASE_STATIC_STRING(list::kEstimatedHeightPx));
-              const auto& estimated_size_px = value.GetProperty(
-                  BASE_STATIC_STRING(list::kEstimatedMainAxisSizePx));
-              item_keys_.insert(item_keys_.begin() + index, item_key_str);
-              if (is_full_span.IsBool() && is_full_span.Bool()) {
-                fiber_full_spans_.insert(item_key_str);
-              }
-              if (is_sticky_top.IsBool() && is_sticky_top.Bool()) {
-                fiber_sticky_tops_.insert(item_key_str);
-              }
-              if (is_sticky_bottom.IsBool() && is_sticky_bottom.Bool()) {
-                fiber_sticky_bottoms_.insert(item_key_str);
-              }
-              if (estimated_height_px.IsNumber()) {
-                fiber_estimated_heights_px_[item_key_str] =
-                    static_cast<int32_t>(estimated_height_px.Number());
-              }
-              if (estimated_size_px.IsNumber()) {
-                fiber_estimated_sizes_px_[item_key_str] =
-                    static_cast<int32_t>(estimated_size_px.Number());
-              }
-            }
+        if (index <= static_cast<int>(item_keys.size())) {
+          const auto& is_full_span =
+              value.GetProperty(BASE_STATIC_STRING(list::kFullSpan));
+          const auto& is_sticky_top =
+              value.GetProperty(BASE_STATIC_STRING(list::kStickyTop));
+          const auto& is_sticky_bottom =
+              value.GetProperty(BASE_STATIC_STRING(list::kStickyBottom));
+          const auto& estimated_height_px =
+              value.GetProperty(BASE_STATIC_STRING(list::kEstimatedHeightPx));
+          const auto& estimated_size_px = value.GetProperty(
+              BASE_STATIC_STRING(list::kEstimatedMainAxisSizePx));
+          item_keys.insert(item_keys.begin() + index, item_key_str);
+          if (is_full_span.IsBool() && is_full_span.Bool()) {
+            fiber_full_spans_.insert(item_key_str);
           }
-        } else if (!item_key.IsString()) {
-          has_illegal_item_key = true;
+          if (is_sticky_top.IsBool() && is_sticky_top.Bool()) {
+            fiber_sticky_tops_.insert(item_key_str);
+          }
+          if (is_sticky_bottom.IsBool() && is_sticky_bottom.Bool()) {
+            fiber_sticky_bottoms_.insert(item_key_str);
+          }
+          if (estimated_height_px.IsNumber()) {
+            fiber_estimated_heights_px_[item_key_str] =
+                static_cast<int32_t>(estimated_height_px.Number());
+          }
+          if (estimated_size_px.IsNumber()) {
+            fiber_estimated_sizes_px_[item_key_str] =
+                static_cast<int32_t>(estimated_size_px.Number());
+          }
         }
-      });
+      }
+    } else if (!item_key.IsString()) {
+      has_illegal_item_key = true;
+    }
+  });
   if (has_illegal_item_key && !only_parse_insertions && delegate_) {
     std::string error_msg = "Error for illegal list item-key.";
     std::string suggestion = "Please check the legality of the item-key.";
@@ -364,27 +395,31 @@ void AdapterHelper::UpdateFiberRemoveAction(const lepus::Value& remove_action,
   if (!remove_action.IsArray()) {
     return;
   }
+  auto& removals = diff_result_.removals_;
+  auto& item_keys = diff_result_.item_keys_;
+  auto& item_key_map = diff_result_.item_key_map_;
   if (only_parse_removals) {
-    removals_.clear();
+    removals.clear();
   }
-  ForEachLepusValue(remove_action, [this, only_parse_removals](
-                                       const lepus::Value& key,
-                                       const lepus::Value& value) {
+  ForEachLepusValue(remove_action, [this, only_parse_removals, &removals,
+                                    &item_keys,
+                                    &item_key_map](const lepus::Value& key,
+                                                   const lepus::Value& value) {
     if (!value.IsNumber()) {
       return;
     }
     int index = static_cast<int>(value.Number());
-    if (index >= 0 && index < static_cast<int>(item_keys_.size())) {
+    if (index >= 0 && index < static_cast<int>(item_keys.size())) {
       if (only_parse_removals) {
-        removals_.emplace_back(index);
+        removals.emplace_back(index);
         return;
       }
       // Note: item_keys_ is a vector, and can not remove element from it in the
       // forward direction.
-      const auto& item_key_str = item_keys_[index];
-      auto it = item_key_map_.end();
-      if (item_key_map_.end() != (it = item_key_map_.find(item_key_str))) {
-        item_key_map_.erase(it);
+      const auto& item_key_str = item_keys[index];
+      auto it = item_key_map.end();
+      if (item_key_map.end() != (it = item_key_map.find(item_key_str))) {
+        item_key_map.erase(it);
       }
       if (fiber_full_spans_.end() != fiber_full_spans_.find(item_key_str)) {
         fiber_full_spans_.erase(item_key_str);
@@ -407,9 +442,9 @@ void AdapterHelper::UpdateFiberRemoveAction(const lepus::Value& remove_action,
     }
   });
   if (!only_parse_removals) {
-    item_keys_.clear();
+    item_keys.clear();
     std::vector<std::pair<std::string, int>> remaining_item_keys(
-        item_key_map_.begin(), item_key_map_.end());
+        item_key_map.begin(), item_key_map.end());
 
     std::sort(remaining_item_keys.begin(), remaining_item_keys.end(),
               [](const std::pair<std::string, int>& l,
@@ -417,7 +452,7 @@ void AdapterHelper::UpdateFiberRemoveAction(const lepus::Value& remove_action,
                 return l.second < r.second;
               });
     for (const auto& it : remaining_item_keys) {
-      item_keys_.emplace_back(it.first);
+      item_keys.emplace_back(it.first);
     }
   }
 }
@@ -429,14 +464,18 @@ void AdapterHelper::UpdateFiberUpdateAction(const lepus::Value& update_action,
   if (!update_action.IsArray()) {
     return;
   }
+  auto& update_from = diff_result_.update_from_;
+  auto& update_to = diff_result_.update_to_;
+  auto& item_keys = diff_result_.item_keys_;
   if (only_parse_update) {
-    update_from_.clear();
-    update_to_.clear();
+    update_from.clear();
+    update_to.clear();
   }
   bool has_illegal_item_key = false;
   ForEachLepusValue(
-      update_action, [this, only_parse_update, &has_illegal_item_key](
-                         const lepus::Value& key, const lepus::Value& value) {
+      update_action,
+      [this, only_parse_update, &has_illegal_item_key, &update_from, &update_to,
+       &item_keys](const lepus::Value& key, const lepus::Value& value) {
         if (!value.IsTable()) {
           return;
         }
@@ -454,17 +493,17 @@ void AdapterHelper::UpdateFiberUpdateAction(const lepus::Value& update_action,
           if (from >= 0 && to >= 0) {
             if (only_parse_update) {
               if (flush.Bool()) {
-                update_from_.emplace_back(from);
-                update_to_.emplace_back(to);
+                update_from.emplace_back(from);
+                update_to.emplace_back(to);
               }
               // Note: if only_parse_update == true, we should return here to
               // avoid updating item_keys_ repeatedly.
               return;
             }
             const std::string& item_key_str = item_key.StdString();
-            if (from < static_cast<int>(item_keys_.size()) &&
+            if (from < static_cast<int>(item_keys.size()) &&
                 !item_key_str.empty()) {
-              item_keys_[from] = item_key_str;
+              item_keys[from] = item_key_str;
               const auto& is_full_span =
                   value.GetProperty(BASE_STATIC_STRING(list::kFullSpan));
               const auto& is_sticky_top =
@@ -529,17 +568,21 @@ void AdapterHelper::UpdateFiberExtraInfo() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "AdapterHelper::UpdateFiberExtraInfo");
   // update item_key_map_ from item_keys_ vector after parse insert / remove /
   // update actions
+  auto& item_key_map = diff_result_.item_key_map_;
+  auto& item_keys = diff_result_.item_keys_;
   bool has_duplicated_item_key = false;
-  item_key_map_.clear();
-  for (int i = 0; i < static_cast<int>(item_keys_.size()); ++i) {
-    const std::string& item_key = item_keys_[i];
-    has_duplicated_item_key =
-        has_duplicated_item_key ||
-        item_key_map_.find(item_key) != item_key_map_.end();
-    item_key_map_[item_key] = i;
+  item_key_map.clear();
+  for (int i = 0; i < static_cast<int>(item_keys.size()); ++i) {
+    const std::string& item_key = item_keys[i];
+    has_duplicated_item_key = has_duplicated_item_key ||
+                              item_key_map.find(item_key) != item_key_map.end();
+    item_key_map[item_key] = i;
   }
+
   if (has_duplicated_item_key && delegate_) {
-    std::string error_msg = "Error for duplicated list item-key.";
+    std::string error_msg = "Error for duplicated list item-key. ";
+    error_msg += "Last diff result is " + last_diff_result_.ToString();
+    error_msg += "Current diff result is " + diff_result_.ToString();
     std::string suggestion = "Please check the legality of the item-key.";
     auto error = lynx::base::LynxError(
         error::E_COMPONENT_LIST_DUPLICATE_ITEM_KEY, std::move(error_msg),
@@ -547,38 +590,38 @@ void AdapterHelper::UpdateFiberExtraInfo() {
     delegate_->OnErrorOccurred(std::move(error));
   }
   // update estimated height px from fiber
-  estimated_heights_px_.resize(item_keys_.size(), -1);
+  estimated_heights_px_.resize(item_keys.size(), -1);
   for (const auto& pair : fiber_estimated_heights_px_) {
-    auto it = item_key_map_.find(pair.first);
-    if (item_key_map_.end() != it && it->second >= 0 &&
-        it->second < static_cast<int>(item_keys_.size())) {
+    auto it = item_key_map.find(pair.first);
+    if (item_key_map.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
       estimated_heights_px_[it->second] = pair.second;
     }
   }
   // update estimated main axis size px from fiber
-  estimated_sizes_px_.resize(item_keys_.size(), -1);
+  estimated_sizes_px_.resize(item_keys.size(), -1);
   for (const auto& pair : fiber_estimated_sizes_px_) {
-    auto it = item_key_map_.find(pair.first);
-    if (item_key_map_.end() != it && it->second >= 0 &&
-        it->second < static_cast<int>(item_keys_.size())) {
+    auto it = item_key_map.find(pair.first);
+    if (item_key_map.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
       estimated_sizes_px_[it->second] = pair.second;
     }
   }
   // update full span from fiber
   full_spans_.clear();
   for (const auto& item_key_str : fiber_full_spans_) {
-    auto it = item_key_map_.find(item_key_str);
-    if (item_key_map_.end() != it && it->second >= 0 &&
-        it->second < static_cast<int>(item_keys_.size())) {
+    auto it = item_key_map.find(item_key_str);
+    if (item_key_map.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
       full_spans_.insert(it->second);
     }
   }
   // update sticky top from fiber
   sticky_tops_.clear();
   for (const auto& item_key_str : fiber_sticky_tops_) {
-    auto it = item_key_map_.find(item_key_str);
-    if (item_key_map_.end() != it && it->second >= 0 &&
-        it->second < static_cast<int>(item_keys_.size())) {
+    auto it = item_key_map.find(item_key_str);
+    if (item_key_map.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
       sticky_tops_.emplace_back(it->second);
     }
   }
@@ -586,19 +629,15 @@ void AdapterHelper::UpdateFiberExtraInfo() {
   // update sticky bottom from fiber
   sticky_bottoms_.clear();
   for (const auto& item_key_str : fiber_sticky_bottoms_) {
-    auto it = item_key_map_.find(item_key_str);
-    if (item_key_map_.end() != it && it->second >= 0 &&
-        it->second < static_cast<int>(item_keys_.size())) {
+    auto it = item_key_map.find(item_key_str);
+    if (item_key_map.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
       sticky_bottoms_.emplace_back(it->second);
     }
   }
   std::sort(sticky_bottoms_.begin(), sticky_bottoms_.end());
-}
-
-bool AdapterHelper::HasValidDiff() {
-  return insertions_.size() > 0 || removals_.size() > 0 ||
-         move_to_.size() > 0 || move_from_.size() > 0 ||
-         update_to_.size() > 0 || update_from_.size() > 0;
+  // save last diff result.
+  last_diff_result_ = diff_result_;
 }
 
 }  // namespace tasm
