@@ -159,20 +159,31 @@ public class LynxViewShellActivity extends AppCompatActivity {
     return super.onOptionsItemSelected(item);
   }
 
-  public boolean isNotchScreen() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-      return false;
-    }
 
+public boolean isNotchScreen() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        return false;
+    }
+    
     WindowManager windowManager = getSystemService(WindowManager.class);
     if (windowManager == null) {
-      return false;
+        return false;
     }
+    
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // Android 10+ approach
+        Display display = windowManager.getDefaultDisplay();
+        DisplayCutout cutout = display.getCutout();
+        return cutout != null;
+    } else {
+        // Android 9 approach
+        WindowInsets windowInsets = windowManager.getCurrentWindowMetrics().getWindowInsets();
+        DisplayCutout cutout = windowInsets.getDisplayCutout();
+        return cutout != null;
+    }
+}
 
-    Display display = windowManager.getDefaultDisplay();
-    DisplayCutout cutout = display.getCutout();
-    return cutout != null;
-  }
+
 
   private void setStatusBarAppearance() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
