@@ -27,6 +27,8 @@ lynx_lepus_common_sources = [
   "lepus_error_helper.h",
   "lepus_value.cc",
   "lepus_value.h",
+  "lynx_value_lepusng.cc",
+  "lynx_value_lepusng.h",
   "path_parser.cc",
   "path_parser.h",
   "qjs_callback.cc",
