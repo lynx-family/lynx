@@ -648,6 +648,8 @@ void LynxShell::SyncFetchLayoutResult() {
   engine_actor_->Act([](auto& engine) { engine->SyncFetchLayoutResult(); });
 }
 
+// TODO(klaxxi): There may currently be two layout passes.
+// Optimization will be done later to skip the layout triggered in Bind.
 void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
                                                      int32_t width_mode,
                                                      float height,
@@ -662,7 +664,7 @@ void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
   auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
 
   // TODO(heshan): Merge with the similar logic of EngineThreadSwitch
-  layout_runner->Bind(ui_loop);
+  layout_runner->Bind(ui_loop, true);
   tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(true);
 
   UpdateViewport(width, width_mode, height, height_mode);

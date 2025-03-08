@@ -150,14 +150,19 @@ void TaskRunner::RunNowOrPostTask(
   }
 }
 
-void TaskRunner::Bind(fml::RefPtr<MessageLoopImpl> target_loop) {
+void TaskRunner::Bind(fml::RefPtr<MessageLoopImpl> target_loop,
+                      bool should_run_expired_tasks_immediately) {
   if (target_loop && target_loop != loop_) {
     LYNX_BASE_CHECK(target_loop->CanRunNow());
     UnBind();
-    target_loop->Bind(queue_id_);
+    target_loop->Bind(queue_id_, should_run_expired_tasks_immediately);
     loop_ = std::move(target_loop);
-    // Try to wake up the loop when there are tasks in the queue.
-    MessageLoopTaskQueues::GetInstance()->WakeUp(loop_->GetTaskQueueIds());
+
+    if (!should_run_expired_tasks_immediately) {
+      // If expired tasks should not be run immediately,
+      // attempt to wake up the loop when there are tasks in the queue.
+      MessageLoopTaskQueues::GetInstance()->WakeUp(loop_->GetTaskQueueIds());
+    }
   }
 }
 
