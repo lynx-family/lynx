@@ -326,6 +326,7 @@ if (enable_unittests) {
       "fml/synchronization/semaphore_unittest.cc",
       "fml/synchronization/sync_switch_unittest.cc",
       "fml/synchronization/waitable_event_unittest.cc",
+      "fml/task_runner_unittests.cc",
       "fml/task_source_unittests.cc",
       "fml/thread_unittests.cc",
       "fml/time/chrono_timestamp_provider.cc",

@@ -210,11 +210,39 @@ std::vector<TaskQueueId> MessageLoopImpl::GetTaskQueueIds() const {
   return queue_ids_;
 }
 
-void MessageLoopImpl::Bind(const TaskQueueId& queue_id) {
+void MessageLoopImpl::Bind(
+    const TaskQueueId& queue_id,
+    bool should_run_expired_tasks_immediately_for_queue_to_bind) {
+  TRACE_EVENT("lynx", "MessageLoopImpl::Bind");
+
   task_queue_->IsTaskQueueAlignedWithVSync(queue_id)
       ? vsync_aligned_task_queue_ids_.emplace_back(queue_id)
       : queue_ids_.emplace_back(queue_id);
   task_queue_->SetWakeable(queue_id, this);
+
+  if (should_run_expired_tasks_immediately_for_queue_to_bind) {
+    std::vector<TaskQueueId> queue_ids{queue_id};
+    const auto now = fml::TimePoint::Now();
+
+    while (1) {
+      auto next_task = task_queue_->GetNextTaskToRun(queue_ids, now);
+      if (!next_task) {
+        break;
+      }
+
+      auto invocation = std::move(next_task.value().task);
+      if (!invocation) {
+        break;
+      }
+      invocation();
+
+      auto observers =
+          task_queue_->GetObserversToNotify(next_task->task_queue_id);
+      for (const auto& observer : observers) {
+        (*observer)();
+      }
+    }
+  }
 }
 
 void MessageLoopImpl::UnBind(const TaskQueueId& queue_id) {

@@ -662,7 +662,7 @@ void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
   auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
 
   // TODO(heshan): Merge with the similar logic of EngineThreadSwitch
-  layout_runner->Bind(ui_loop);
+  layout_runner->Bind(ui_loop, true);
   tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(true);
 
   UpdateViewport(width, width_mode, height, height_mode);

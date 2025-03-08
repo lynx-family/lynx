@@ -87,7 +87,8 @@ class TaskRunner : public fml::RefCountedThreadSafe<TaskRunner>,
 
   void RemoveTaskObserver(intptr_t key);
 
-  void Bind(fml::RefPtr<MessageLoopImpl> target_loop);
+  void Bind(fml::RefPtr<MessageLoopImpl> target_loop,
+            bool should_run_expired_tasks_immediately = false);
 
   void UnBind();
 
