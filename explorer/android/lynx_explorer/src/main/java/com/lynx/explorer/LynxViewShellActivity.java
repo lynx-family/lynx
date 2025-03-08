@@ -221,7 +221,7 @@ public boolean isNotchScreen() {
     if (url == null) {
       Log.i(TAG, "openTargetUrl failed: url is null.");
       return;
-    }
+  }
 
     LynxViewBuilder builder = new LynxViewBuilder();
     builder.addBehaviors(new ImageBehavior().create());
