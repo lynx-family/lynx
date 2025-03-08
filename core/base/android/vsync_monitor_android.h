@@ -10,7 +10,7 @@
 #include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 class VSyncMonitorAndroid : public VSyncMonitor {
  public:
@@ -27,7 +27,7 @@ class VSyncMonitorAndroid : public VSyncMonitor {
   bool is_vsync_triggered_in_ui_thread_{false};
 };
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx
 
 #endif  // CORE_BASE_ANDROID_VSYNC_MONITOR_ANDROID_H_

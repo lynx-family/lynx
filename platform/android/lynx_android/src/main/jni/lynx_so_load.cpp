@@ -111,7 +111,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   lynx::piper::JSBUtilsMapRegisterJNI(env);
   lynx::base::android::EnvironmentAndroid::RegisterJNIUtils(env);
   lynx::shell::JSProxyAndroid::RegisterJNIUtils(env);
-  lynx::shell::VSyncMonitorAndroid::RegisterJNI(env);
+  lynx::base::VSyncMonitorAndroid::RegisterJNI(env);
   lynx::shell::LynxRuntimeWrapperAndroid::RegisterJNI(env);
   lynx::shell::LynxTemplateRendererAndroid::RegisterJni(env);
   lynx::shell::NativeFacadeAndroid::RegisterJni(env);

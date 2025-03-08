@@ -111,7 +111,7 @@ class CSSKeyframeManager : public AnimationDelegate {
                          const std::string& animation_name);
 
  private:
-  std::shared_ptr<shell::VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   tasm::CSSKeyframesContent empty_keyframe_map_;
 };
 

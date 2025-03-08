@@ -37,7 +37,7 @@ class MessageLoopAndroidVSync : public fml::MessageLoopAndroid {
   // the entire vsync cycle.
   static constexpr float kTraversalProportion = 0.75;
   // TODO(qiuxian): VSyncMonitor now locates in shell, needs to be moved to base
-  std::shared_ptr<lynx::shell::VSyncMonitorAndroid> vsync_monitor_;
+  std::shared_ptr<lynx::base::VSyncMonitorAndroid> vsync_monitor_;
 
   // Used to record the time for requesting vsync, it will be reset to 0 when
   // the vsync callback is executed.
