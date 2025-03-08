@@ -9,6 +9,7 @@
 #import "LynxTouchHandler+Internal.h"
 #import "LynxTouchHandler.h"
 #import "LynxUI+Internal.h"
+#import "LynxUIKitAPIAdapter.h"
 #import "LynxUnitUtils.h"
 #import "LynxView+Internal.h"
 #import "LynxView.h"
@@ -652,6 +653,92 @@
 
 - (LynxUIOwner*)uiOwner {
   return _uiOwner;
+}
+
+// TODO(songshourui.null): opt me
+// In TCProject's UITextView case, when user chose "SelectAll" or "Select", the keyboard
+// will be dismissed. Since in some cases, UITextEffectsWindow hitest function is not
+// called by iOS, and LynxView hittest function will be called such that
+// [self endEditing:true] will be called. To workaround this bad case, when
+// LynxView hittest function is called, call this tapOnUICalloutBarButton function to
+// determine whether to dismiss the keyboard.
+- (BOOL)tapOnUICalloutBarButton:(UIView*)container
+                      withPoint:(CGPoint)point
+                       andEvent:(UIEvent*)event {
+  NSArray<UIWindow*>* windows = [LynxUIKitAPIAdapter getWindows];
+  BOOL res = NO;
+  if (windows == nil || [windows count] == 0) {
+    return res;
+  }
+  for (UIWindow* window in windows) {
+    NSString* windowName = NSStringFromClass([window class]);
+    if (window != nil && windowName != nil && windowName.length == 19 &&
+        [windowName hasPrefix:@"UITextEff"] && [windowName hasSuffix:@"ectsWindow"] &&
+        ![window isEqual:container.window]) {
+      CGPoint newPoint = [window convertPoint:point fromView:container];
+      UIView* target = [window hitTest:newPoint withEvent:event];
+      NSString* targetName = NSStringFromClass([target class]);
+      if (target != nil && targetName != nil && targetName.length == 18 &&
+          [targetName hasPrefix:@"UICallo"] && [targetName hasSuffix:@"utBarButton"]) {
+        res = YES;
+        break;
+      } else if (target != nil && targetName != nil && targetName.length == 11 &&
+                 [targetName hasPrefix:@"UISta"] && [targetName hasSuffix:@"ckView"]) {
+        res = YES;
+        break;
+      } else if (target != nil && targetName != nil && targetName.length == 26 &&
+                 [targetName hasPrefix:@"_UIVisualEff"] &&
+                 [targetName hasSuffix:@"ectContentView"]) {
+        res = YES;
+        break;
+      }
+    }
+  }
+  return res;
+}
+
+- (BOOL)needEndEditing:(UIView*)view {
+  if ([view isKindOfClass:[UITextField class]] || [view isKindOfClass:[UITextView class]]) {
+    return NO;
+  }
+
+  // In UITextView case, when user chose "SelectAll", the view hierarchy will be like this:
+  // UITextRangeView -> UITextSelectionView -> _UITextContainerView -> LynxTextView
+  // However, UITextRangeView is a private class which is not accessible, so we can only
+  // use [[[superview]superview]superview] as judge condition to avoid keyboard being folded
+  // so that user can adjust cursor positions.
+  if ([[[[view superview] superview] superview] isKindOfClass:[UITextView class]]) {
+    return NO;
+  }
+
+  // In iOS16 & UITextField has the same issue mentioned before, the view hierarchy will be like
+  // this: UITextRangeView -> UITextSelectionView -> _UITextLayoutView -> UIFieldEditor ->
+  // LynxTextField so use [[[[superview] superview] superview] superview] to handle this
+  // situation.
+  if (@available(iOS 16.0, *)) {
+    if ([[[[[view superview] superview] superview] superview] isKindOfClass:[UITextField class]]) {
+      return NO;
+    }
+  }
+
+  return YES;
+}
+
+- (void)handleFocus:(id<LynxEventTarget>)target
+             onView:(UIView*)view
+      withContainer:(UIView*)container
+           andPoint:(CGPoint)point
+           andEvent:(UIEvent*)event {
+  if ([self needEndEditing:view] &&
+      ![[[[view superview] superview] superview] isKindOfClass:[UITextView class]] &&
+      ![target ignoreFocus] &&
+      ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event]) {
+    // To free our touch handler from being blocked, dispatch endEditing asynchronously.
+    __weak UIView* weakView = view;
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [weakView endEditing:true];
+    });
+  }
 }
 
 @end
