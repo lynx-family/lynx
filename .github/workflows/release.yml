@@ -33,12 +33,147 @@ jobs:
             echo "Version is invalid"
             exit 1
           fi
-  release:
-    uses: ./.github/workflows/publish-release.yml
+
+  android-explorer-build:
+    runs-on: lynx-ubuntu-22.04-avd-large
     needs: get-version
-    with:
-      dry_run: false
-      version: ${{ needs.get-version.outputs.version }}
-    permissions:
-      contents: write
-    secrets: inherit
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Explorer App
+        uses: ./lynx/.github/actions/android-explorer-build
+        with:
+          build-type: release
+      - name: push to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.get-version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
+          allowUpdates: true
+
+  ios-explorer-build:
+    runs-on: lynx-darwin-14-medium
+    needs: get-version
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Explorer App
+        uses: ./lynx/.github/actions/ios-explorer-build
+        with:
+          arch: ${{ matrix.arch }}
+      - name: push explorer to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.get-version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
+          allowUpdates: true
+
+  android-sdk-release:
+    runs-on: 'ubuntu-latest'
+    needs: get-version
+    env:
+      VERSION: ${{ needs.get-version.outputs.version }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Setup Android enviroment
+        uses: ./lynx/.github/actions/setup-android-env
+      - name: Install Common Dependencies
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          python3 -m pip install PyYAML -i https://pypi.org/simple
+          source tools/envsetup.sh
+          tools/hab sync . -f
+      - name: Build artifact
+        uses: ./lynx/.github/actions/android-sdk-build
+      - name: Package maven artifacts
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          pushd platform/android
+          ./gradlew publishAllModules \
+          -Pversion=$VERSION \
+          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
+          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
+          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
+          ./gradlew zipArtifacts -Pversion=$VERSION getArtifactList
+          popd
+          pushd platform/android/build
+          artifact_list=$(<artifact-list)
+          echo "::set-output name=artifact_list::$artifact_list"
+          popd
+        id: build_artifact
+      - name: Publish artifact to maven
+        uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
+        with:
+          portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
+          artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
+
+  ios-sdk-publish:
+    runs-on: macos-13
+    needs: get-version
+    env:
+      VERSION: ${{ needs.get-version.outputs.version }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lynx
+      - name: Install Common Dependencies
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |-
+            python3 -m venv myenv
+            source myenv/bin/activate
+            cd $GITHUB_WORKSPACE/lynx
+            python3 -m pip install PyYAML -i https://pypi.org/simple
+            python3 -m pip install requests -i https://pypi.org/simple
+            source tools/envsetup.sh
+            tools/hab sync . -f
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Prepare cocoapods publish source
+        run: |-
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          cd $GITHUB_WORKSPACE
+          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $VERSION --component all
+      - name: Push iOS SDK to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: $VERSION
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '*.zip'
+          replacesArtifacts: true
+          allowUpdates: true
+      - name: Publish to CocoaPods Repo
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+        run: |-
+          source myenv/bin/activate
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          cd $GITHUB_WORKSPACE
+          git config --global user.name "lynx.authors"
+          git config --global user.email "lynx.authors@users.noreply.github.com"
+          python3 lynx/tools/ios_tools/skip_pod_lint.py --source public
+          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --publish --component all  --tag $VERSION

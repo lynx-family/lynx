@@ -83,7 +83,7 @@ class CaseSet:
                 if type(config['platform']) == list and platform not in config['platform']:
                     continue
             self._category = config['category']
-            url = f"file://lynx?local://{config['path']}.js"
+            url = f"file://lynx?local://{config['path']}/main.lynx.bundle"
             if enable_scale and 'testbench' not in config['type']:
                 if platform == 'android':
                     config['width'] = config['width'] if 'width' in config else 720

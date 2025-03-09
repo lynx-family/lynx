@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import threading
+import queue
 
 from urllib.parse import urlparse, urlunparse, parse_qsl
 from lynx_e2e.api.exception import StopRunningCase
@@ -33,7 +34,10 @@ def wait_for_equal(test, message, obj, prop_name, expected, timeout=10):
     def wait_for_equal_inner():
         lynx_test_tag = obj.get_attribute('lynx-test-tag')
         lynx_element = get_lynx_element(test, lynx_test_tag)
-        actual = getattr(lynx_element, prop_name)
+        if hasattr(lynx_element, prop_name):
+            actual = getattr(lynx_element, prop_name)
+        else:
+            actual = lynx_element.get_attribute(prop_name)
         if actual == expected:
             return True
         else:
@@ -50,18 +54,18 @@ def wait_for_equal(test, message, obj, prop_name, expected, timeout=10):
         test.log_record("error_record", EnumLogLevel.INFO, attachments={"error_img": image_name}, has_error=True)
         raise StopRunningCase(message)
 
-stop_thread = False
 def _run_with_timeout(timeout, func):
-    global stop_thread
+    stop_event = threading.Event()
+    exception_queue = queue.Queue()
     def target():
         try:
-            global stop_thread
-            while not stop_thread:
+            while not stop_event.is_set():
                 result = func()
                 if result:
                     break
         except Exception as e:
-            stop_thread = True
+            stop_event.set()
+            exception_queue.put(e)
             raise e
 
     thread = threading.Thread(target=target)
@@ -69,8 +73,10 @@ def _run_with_timeout(timeout, func):
 
     thread.join(timeout)
     if thread.is_alive():
-        stop_thread = True
+        stop_event.set()
         raise TimeoutError("Function timed out.")
+    if not exception_queue.empty():
+        raise exception_queue.get()
 
 def append_query_to_url(url, query_str=None):
     def merge_query(origin_query, extra_query):
