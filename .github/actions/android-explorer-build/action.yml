@@ -1,0 +1,42 @@
+name: build android explorer
+
+description: build android explorer apk and upload apk to release if build-type is 'release'
+
+inputs:
+  build-type:
+    description: The type of explorer we are building. It could be release or dry-run
+    required: true
+  build-params:
+    description: Set project properties for gradle when building explorer
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/common-deps
+    - name: Build Explorer App
+      env:
+        BUILD_TYPE: ${{ inputs.build-type }}
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+        source tools/envsetup.sh
+        pushd explorer/android
+        if [ "$BUILD_TYPE" = "release" ]; then
+          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon ${{ inputs.build-params }}
+        elif [ "$BUILD_TYPE" = "dry-run" ]; then
+          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=x86,arm64-v8a -no-daemon ${{ inputs.build-params }}
+        fi
+        popd
+    - name: upload artifact
+      uses: lynx-infra/upload-artifact@dev
+      continue-on-error: true
+      with:
+        name: android-lynx-explorer
+        path: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'

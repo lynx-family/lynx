@@ -1,0 +1,15 @@
+name: build android sdk
+
+description: build android sdk for all achitectures
+
+runs:
+  using: composite
+  steps:
+    - name: Build artifact
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+        source tools/envsetup.sh
+        pushd platform/android
+        ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
+        popd

@@ -1,14 +1,18 @@
 name: release
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       tag:
+#         description: 'release tag'
+#         required: false
+#         type: string
+#   push:
+#     tags:
+#       - '*'
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'release tag'
-        required: false
-        type: string
-  push:
-    tags:
-      - '*'
+  pull_request:
+    branches:
+      - develop
 
 jobs:
   get-version:
@@ -24,6 +28,7 @@ jobs:
           else
             version=$(echo ${{ github.ref }} | awk -F "/" '{print $3}')
           fi
+          version=0.0.1-alpha.1
           if [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || \
                 $version =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ || \
                 $version =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$ ]]; then
@@ -37,7 +42,6 @@ jobs:
     uses: ./.github/workflows/publish-release.yml
     needs: get-version
     with:
-      dry_run: false
       version: ${{ needs.get-version.outputs.version }}
     permissions:
       contents: write

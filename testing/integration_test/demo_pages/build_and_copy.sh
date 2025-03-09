@@ -7,34 +7,36 @@
 pushd $(dirname $0)
 
 demo_page_root_dir=$(pwd)
-android_assets_dir=$(readlink -f $demo_page_root_dir/../../../explorer/android/lynx_explorer/src/main/assets)
-ios_resource_dir=$(readlink -f $demo_page_root_dir/../../../explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource)
-mkdir -p $android_assets_dir/automation
-mkdir -p $ios_resource_dir/automation
+explorer_dir=$(cd "$(dirname $(dirname $(dirname "$demo_page_root_dir")))"; pwd)
+echo "explorer_dir: " $explorer_dir
+android_assets_dir="$explorer_dir/explorer/android/lynx_explorer/src/main/assets"
+if [ ! -d $android_assets_dir ]; then
+    mkdir -p $android_assets_dir
+fi
+ios_resource_dir="$explorer_dir/explorer/darwin/ios/lynx_explorer/LynxExplorer/Resource"
+if [ ! -d $ios_resource_dir ]; then
+    mkdir -p $ios_resource_dir
+fi
+rm -rf $android_assets_dir/automation
+mkdir $android_assets_dir/automation
+rm -rf $ios_resource_dir/automation
+mkdir $ios_resource_dir/automation
 
-pnpm install
+echo "========== build integration test demo pages =========="
+pnpm install --frozen-lockfile
 pnpm run build
 
+echo "========== copy integration test demo pages resource=========="
 for path in $(ls ${demo_page_root_dir}); do
     if [ -d "$path" -a "$path" != "node_modules" ]; then
-        for dir in ./$path/dist/*/; do
-            if [ -d "$dir" ]; then
-                template_path="${dir}template.js"
-                if [ -e "$template_path" ]; then
-                    folder_name=$(basename "$dir")
-                    if [ "$folder_name" = "main" ]; then
-                        cp $template_path $android_assets_dir/automation/$path.js
-                        cp $template_path $ios_resource_dir/automation/$path.js
-                    else
-                        mkdir -p $android_assets_dir/automation/$folder_name
-                        mkdir -p $ios_resource_dir/automation/$folder_name
-                        cp $template_path $android_assets_dir/automation/$folder_name/$path.js
-                        cp $template_path $ios_resource_dir/automation/$folder_name/$path.js
-                    fi
-                fi
+        mkdir -p $android_assets_dir/automation/$path
+        mkdir -p $ios_resource_dir/automation/$path
+        for filename in $(ls ./$path/dist/); do
+            if [[ "$filename" == *.lynx.bundle ]]; then
+                cp ./$path/dist/$filename $android_assets_dir/automation/$path/
+                cp ./$path/dist/$filename $ios_resource_dir/automation/$path/
             fi
         done
     fi
 done
-
 popd
