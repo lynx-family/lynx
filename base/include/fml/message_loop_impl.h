@@ -71,7 +71,9 @@ class MessageLoopImpl : public Wakeable,
 
   void SetRestrictionDuration(fml::TimeDelta duration);
 
-  void Bind(const TaskQueueId& queue_id);
+  void Bind(
+      const TaskQueueId& queue_id,
+      bool should_run_expired_tasks_immediately_for_queue_to_bind = false);
 
   void UnBind(const TaskQueueId& queue_id);
 
