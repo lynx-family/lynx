@@ -11,43 +11,24 @@ on:
 
 jobs:
   android-explorer-build:
+    if: ${{ inputs.dry_run == false }}
     runs-on: lynx-ubuntu-22.04-avd-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
       - name: Build Explorer App
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd explorer/android
-          if [ "${{ inputs.dry_run }}" = "false" ]; then
-            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
-          else
-            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon
-          fi
-          popd
+        uses: ./lynx/.github/actions/android-explorer-build
+        with:
+          build-type: release
       - name: push to release
         uses: ncipollo/release-action@v1
-        if: ${{ inputs.dry_run == false }}
         with:
           tag: ${{ inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
           allowUpdates: true
-      - name: upload artifact
-        uses: lynx-infra/upload-artifact@dev
-        continue-on-error: true
-        with:
-          name: android-lynx-explorer
-          path: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
 
   ios-explorer-build:
     runs-on: lynx-darwin-14-medium

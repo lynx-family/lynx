@@ -168,7 +168,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   }
 
   public boolean isNotchScreen() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
       return false;
     }
 

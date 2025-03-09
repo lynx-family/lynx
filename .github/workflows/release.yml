@@ -6,9 +6,8 @@ on:
         description: 'release tag'
         required: false
         type: string
-  push:
-    tags:
-      - '*'
+  release:
+    types: [published]
 
 jobs:
   get-version:

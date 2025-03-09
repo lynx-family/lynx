@@ -31,5 +31,4 @@ def run(test):
     button2 = lynxview.get_by_test_tag("button2")
     rect = button2.rect
     button2.click(offset_x=rect.width / 2 - 20, offset_y=0)
-    time.sleep(1)
-    utils.take_screenshot_check(test, "event_inline_text_", 1, rect)
+    test.wait_for_equal('Inline-text click check failed!', button2, 'style', 'text-align:right;width:100%;height:max-content;background-color:#ff0000;')

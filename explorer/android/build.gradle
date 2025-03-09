@@ -174,7 +174,7 @@ if (buildIntegrationDemo) {
         description "Build Integeration Test Demo Card."
         exec {
             workingDir "../../testing/integration_test/demo_pages"
-            commandLine "bash","-c", "source ../../tools/envsetup.sh && ./build_and_copy.sh"
+            commandLine "bash","-c", "source ../../../tools/envsetup.sh && ./build_and_copy.sh"
             println commandLine
         }
     }
