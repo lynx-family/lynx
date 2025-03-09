@@ -196,7 +196,7 @@ public class LynxUIOwner {
       ui.setGestureDetectors(gestureDetectors);
     }
 
-    if (props != null && !props.isEmpty()) {
+    if (props != null) {
       boolean needUpdateFlatten = !tendToFlatten && ui.isFlatten();
 
       // Transit UI between LynxUI and LynxFlattenUI according to props.

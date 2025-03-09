@@ -37,10 +37,6 @@ public class StylesDiffMap {
     return false;
   }
 
-  public boolean isEmpty() {
-    return mBackingMap == null || mBackingMap.size() == 0;
-  }
-
   public boolean isNull(String name) {
     return mBackingMap.isNull(name);
   }
