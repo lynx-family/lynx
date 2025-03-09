@@ -10,210 +10,10 @@ defaults:
     working-directory: lynx
 
 jobs:
-  static-check:
-    runs-on: lynx-ubuntu-22.04-avd-medium
-    steps:
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 2
-          ref: ${{ github.event.pull_request.head.sha }}
-          path: lynx
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Run file type check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers file-type
-      - name: Run cpplint check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers cpplint
-      - name: Run java-lint check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers java-lint
-      - name: Run commit-message check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers commit-message
-      - name: Run coding-style check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers coding-style
-      - name: Run android-check-style check
-        run: |
-          source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers android-check-style
-
-  darwin-native-unittests-check:
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
-      - name: Run Unittests
-        run: |
-          set -e
-          source ../myenv/bin/activate
-          source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
-
-  linux-native-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names lynx
-
-  linux-native-devtool-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Run Unittests
-        run: |
-          set -e
-          source tools/envsetup.sh
-          tools/rtf/rtf native-ut run --names devtool
-
-  ios-unittests-check:
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
-      - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
-      - name: Install iOS Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |
-            set -e
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            pushd explorer/darwin/ios/lynx_explorer
-            git config --global url."https://github.com/".insteadOf "git@github.com:"
-            bash bundle_install.sh --skip-card-build
-            popd
-      - name: Run Unittests
-        run: |
-          set -e
-          source ../myenv/bin/activate
-          pushd explorer/darwin/ios/lynx_explorer
-          xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
-          sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
-          echo $sdkVersion > sdk.txt
-          xcodebuild build-for-testing ARCHS=arm64 -workspace LynxExplorer.xcworkspace -scheme LynxExplorerTests -enableCodeCoverage YES -configuration Debug -sdk iphonesimulator$(cat sdk.txt) COMPILER_INDEX_STORE_ENABLE=NO -derivedDataPath iOSCoreBuild/DerivedData -dest"platform=iOS Simulator,OS=$(cat sdk.txt),name=iPhone 11" SYMROOT=`pwd`/Build/Products -testPlan UTTest
-          chmod u+x xctestrunner
-          ./xctestrunner --xctestrun `pwd`/Build/Products/LynxExplorerTests_UTTest_iphonesimulator$(cat sdk.txt)-arm64.xctestrun --work_dir `pwd` --output_dir `pwd`/iOSCoreBuild/DerivedData simulator_test
-          popd
-
-  tasm-linux-build:
-    runs-on: lynx-ubuntu-22.04-avd-large
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-      - name: Build Linux Tasm
-        run: |
-          source tools/envsetup.sh
-          tools/hab sync . -f
-          pushd oliver/lynx-tasm
-          npm install
-          npm run build:release:linux
-          popd
-
-  tasm-darwin-build:
-    runs-on: lynx-darwin-14-medium
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
-      - name: Build Darwin Tasm
-        run: |
-          source ../myenv/bin/activate
-          source tools/envsetup.sh
-          tools/hab sync . -f
-          pushd oliver/lynx-tasm
-          npm install
-          npm run build:release:darwin
-          popd
-
-  android-unittests-check:
+  android-e2e-test:
+    env:
+      APPIUM_TEST_SERVER_PORT: 4723
+      APPIUM_TEST_SERVER_HOST: 127.0.0.1
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
@@ -226,13 +26,102 @@ jobs:
           python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
-      - name: Build Example App
+      - name: Install Appium
         run: |
+          pushd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          tools/rtf/rtf android-ut run --name lynx
-
-  release-workflow:
-    uses: ./.github/workflows/publish-release.yml
-    with:
-      dry_run: true
-    secrets: inherit
+          pnpm install appium@2.11.2 -w
+          pnpm install appium-espresso-driver@4.0.0 -w
+          popd
+      - name: Install libpulse0
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpulse0
+          sudo apt-get install -y libxkbfile1
+      - name: Setup Java SDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'zulu'
+      - name: Start Android 28 emulator
+        run: |
+          set -x
+          export QT_QPA_PLATFORM=offscreen
+          nohup $ANDROID_HOME/emulator/emulator -no-window -avd Nexus_5_API_28 -no-snapshot -no-audio -no-boot-anim &
+          max_wait_time=300
+          start_time=$(date +%s)
+          while true; do
+              current_time=$(date +%s)
+              elapsed_time=$((current_time - start_time))
+              if [ $elapsed_time -gt $max_wait_time ]; then
+                  echo "Emulator startup timed out."
+                  exit 1
+              fi
+              $ANDROID_HOME/platform-tools/adb devices
+              if $ANDROID_HOME/platform-tools/adb devices | grep -q "device$"; then
+                  echo "Emulator startup completed."
+                  break
+              fi
+              echo "Waiting for emulator to startup..."
+              sleep 10
+          done
+          $ANDROID_HOME/platform-tools/adb devices
+      - name: Repack and Install Explorer App
+        run: |
+          pushd $GITHUB_WORKSPACE/lynx
+          LATEST_VERSION=$(ls -1 "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)
+          target_dir=$(find ./node_modules/.pnpm -type d -name "appium-adb@*" | head -n 1)
+          ESPRESSO_SIGN_KEYS_DIR=""
+          if [ -n "$target_dir" ]; then
+              ESPRESSO_SIGN_KEYS_DIR="$target_dir/node_modules/appium-adb/keys"
+          else
+              echo "node_modules/.pnpm/appium-adb is not founded!"
+              exit 1
+          fi
+          APK_PATH=${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build_temp
+          java -jar $ANDROID_HOME/build-tools/$LATEST_VERSION/lib/apksigner.jar sign --key $ESPRESSO_SIGN_KEYS_DIR/testkey.pk8 --cert $ESPRESSO_SIGN_KEYS_DIR/testkey.x509.pem  --out $APK_PATH/LynxExplorer-noasan-release-signed.apk $APK_PATH/LynxExplorer-noasan-release.apk
+          adb install $APK_PATH/LynxExplorer-noasan-release-signed.apk
+      - name: Start Appium server
+        run: |
+          pushd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd node_modules/appium/node_modules/.bin
+          ls
+          nohup ./appium server \
+            --port=$APPIUM_TEST_SERVER_PORT \
+            --address=$APPIUM_TEST_SERVER_HOST \
+            --log-no-colors \
+            --log-timestamp \
+            2>&1 > "$GITHUB_WORKSPACE/lynx/appium.log" &
+          adb logcat > "$GITHUB_WORKSPACE/lynx/device.log" 2>&1 &
+          popd
+          popd
+      - name: Check if Appium Server is running
+        run: |
+          max_attempts=10
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if nc -z $APPIUM_TEST_SERVER_HOST $APPIUM_TEST_SERVER_PORT; then
+              echo "Appium Server is running."
+              break
+            else
+              attempt=$((attempt + 1))
+              echo "Attempt $attempt: Appium Server is not yet running. Retrying in 2 seconds..."
+              sleep 2
+            fi
+          done
+          if [ $attempt -eq $max_attempts ]; then
+            echo "Failed to start Appium Server."
+            exit 1
+          fi
+      - name: Run Android E2E Test
+        run: |
+          pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+          export server_port=$APPIUM_TEST_SERVER_PORT
+          export platform=android
+          pip3 install -r requirements.txt
+          python3 manage.py runtest android_test.core
+          echo "------"
+          ls $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+          echo "------"
+          cat "$GITHUB_WORKSPACE/lynx/device.log"
