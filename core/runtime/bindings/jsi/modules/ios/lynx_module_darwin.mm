@@ -755,7 +755,8 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
   LOGV("LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock, |JS FUNCTION| id: "
        << callback_id << " " << module_name_ << "." << method_name);
 
-  std::weak_ptr<Delegate> delegate(delegate_);
+  std::weak_ptr<Delegate> weak_delegate(delegate_);
+  std::weak_ptr<LynxModuleCallback> weak_callback(callback);
 
   __block BOOL wrapperWasCalled = NO;
   //  Some JSB implement will use first arg as JSB function name, so we need first
@@ -780,15 +781,16 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
       return;
     }
     wrapperWasCalled = YES;
-    auto lock_delegate = delegate.lock();
-    if (!lock_delegate) {
+    auto lock_delegate = weak_delegate.lock();
+    auto lock_callback = weak_callback.lock();
+    if (!lock_delegate || !lock_callback) {
       LOGR("LynxModuleCallback has been destroyed. id:" << callback_id);
       return;
     }
 
     auto array = lock_delegate->GetValueFactory()->CreateArray();
     array->PushValueToArray(std::make_unique<pub::ValueImplDarwin>(response));
-    callback->SetArgs(std::move(array));
+    lock_callback->SetArgs(std::move(array));
 
     if (tasm::LynxEnv::GetInstance().IsPiperMonitorEnabled() &&
         [response isKindOfClass:[NSDictionary class]] && ((NSDictionary *)response).count > 0) {
@@ -797,8 +799,8 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
           schema_copy, response, std::to_string(start_time_copy));
     }
     LOGV("LynxModule, LynxCallbackBlock, put function to JSThread, "
-         << "callback id: " << callback_id << "piper::ModuleCallback: " << callback);
-    lock_delegate->InvokeCallback(callback);
+         << "callback id: " << callback_id << "piper::ModuleCallback: " << lock_callback);
+    lock_delegate->InvokeCallback(lock_callback);
   };
 }
 
