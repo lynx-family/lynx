@@ -59,6 +59,8 @@ class LEPUSValueHelper {
   */
   static lepus::Value ToLepusValue(LEPUSContext* ctx, const LEPUSValue& val,
                                    int32_t copy_flag = 0);
+  static lepus::Value ToLepusValue(lynx_api_env env, const lynx_value& val,
+                                   int32_t copy_flag = 0);
 
   /**
    * @brief This function converts value to base::String and initialize

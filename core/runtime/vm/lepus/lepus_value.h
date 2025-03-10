@@ -16,6 +16,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lynx_value_api.h"
 #include "base/include/vector.h"
 #include "core/runtime/vm/lepus/marco.h"
 
@@ -39,6 +40,8 @@ class Value;
 
 using JSValueIteratorCallback =
     base::MoveOnlyClosure<void, LEPUSContext*, LEPUSValue&, LEPUSValue&>;
+using ExtendedValueIteratorCallback =
+    base::MoveOnlyClosure<void, lynx_api_env, lynx_value&, lynx_value&>;
 
 using LepusValueIterator =
     base::MoveOnlyClosure<void, const lepus::Value&, const lepus::Value&>;
@@ -92,6 +95,16 @@ enum ValueType {
   // Adding a new Value_type needs to be inserted before 'Value_TypeCount'
   Value_PrimJsValue,
   Value_TypeCount,
+};
+
+enum class CustomRefType : uint32_t {
+  kNone,
+  kRefCounted,  // TODO(frendy): Remove this type after lepus value is
+                // decoupled.
+  kJSObject,
+  kClosure,
+  kCDate,
+  kRegExp,
 };
 
 class Context;
@@ -170,6 +183,15 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 #endif
   GCPersistent* p_val_ = nullptr;
 
+  // lynx_value
+  lynx_api_env env_;
+  lynx_value value_;
+  lynx_value_ref value_ref_;
+  // TODO(frendy): Move custom_ref_type_ to RefCounted class.
+  CustomRefType custom_ref_type_ = CustomRefType::kNone;
+  // TODO(frendy): Remove use_lynx_value_ after lepus value is decoupled.
+  static inline bool use_lynx_value_ = false;
+
  public:
   explicit Value() = default;
   Value(const Value& value);
@@ -202,9 +224,25 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   explicit Value(void* data);
   explicit Value(CFunction val);
   explicit Value(bool for_nan, bool val);
+  Value(lynx_api_env env, const lynx_value& val);
+  Value(lynx_api_env env, lynx_value&& val);
 
-  inline bool IsCDate() const { return type_ == Value_CDate; }
-  inline bool IsRegExp() const { return type_ == Value_RegExp; }
+  inline bool IsCDate() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_object &&
+             custom_ref_type_ == CustomRefType::kCDate;
+    } else {
+      return type_ == Value_CDate;
+    }
+  }
+  inline bool IsRegExp() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_object &&
+             custom_ref_type_ == CustomRefType::kRegExp;
+    } else {
+      return type_ == Value_RegExp;
+    }
+  }
 
   fml::RefPtr<lepus::Closure> GetClosure() const;
   fml::RefPtr<lepus::CDate> Date() const;
@@ -220,7 +258,14 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   inline void DupValue() const;
   void FreeValue();
 
-  inline bool IsClosure() const { return type_ == Value_Closure; }
+  inline bool IsClosure() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_object &&
+             custom_ref_type_ == CustomRefType::kClosure;
+    } else {
+      return type_ == Value_Closure;
+    }
+  }
   inline bool IsCallable() const { return IsClosure() || IsJSFunction(); }
 
 // add for compile
@@ -231,83 +276,250 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
       explicit Value(uint8_t data);
 #undef NumberConstructor
 
-#define SetNumberDefine(name, type) \
-  void SetNumber(type value) {      \
-    FreeValue();                    \
-    val_##type##_ = value;          \
-    type_ = Value_##name;           \
+  //#define SetNumberDefine(name, type) \
+//  void SetNumber(type value) {      \
+//    FreeValue();                    \
+//    val_##type##_ = value;          \
+//    type_ = Value_##name;           \
+//  }
+  //
+  //  NumberType(SetNumberDefine)
+  // #undef SetNumberDefine
+
+  void SetNumber(double val) {
+    FreeValue();
+    if (use_lynx_value_) {
+      value_ = {.val_double = val, .type = lynx_value_double};
+    } else {
+      val_double_ = val;
+      type_ = Value_Double;
+    }
   }
 
-  NumberType(SetNumberDefine)
-#undef SetNumberDefine
-
-      inline ValueType Type() const {
-    return type_;
+  void SetNumber(int32_t val) {
+    FreeValue();
+    if (use_lynx_value_) {
+      value_ = {.val_int32 = val, .type = lynx_value_int32};
+    } else {
+      val_int32_t_ = val;
+      type_ = Value_Int32;
+    }
   }
+
+  void SetNumber(uint32_t val) {
+    FreeValue();
+    if (use_lynx_value_) {
+      value_ = {.val_uint32 = val, .type = lynx_value_uint32};
+    } else {
+      val_uint32_t_ = val;
+      type_ = Value_UInt32;
+    }
+  }
+
+  void SetNumber(int64_t val) {
+    FreeValue();
+    if (use_lynx_value_) {
+      value_ = {.val_int64 = val, .type = lynx_value_int64};
+    } else {
+      val_int64_t_ = val;
+      type_ = Value_Int64;
+    }
+  }
+
+  void SetNumber(uint64_t val) {
+    FreeValue();
+    if (use_lynx_value_) {
+      value_ = {.val_uint64 = val, .type = lynx_value_uint64};
+    } else {
+      val_uint64_t_ = val;
+      type_ = Value_UInt64;
+    }
+  }
+
+  ValueType Type() const;
 
   static Value Clone(const Value& src, bool clone_as_jsvalue = false);
 
   static Value ShallowCopy(const Value& src, bool clone_as_jsvalue = false);
 
   inline bool IsReference() const {
-    return (type_ > Value_Bool && type_ < Value_CFunction) ||
-           ((type_ >= Value_CDate && type_ <= Value_RefCounted &&
-             type_ != Value_Undefined));
+    if (use_lynx_value_) {
+      return value_.type > lynx_value_uint64 &&
+             value_.type < lynx_value_extended;
+    } else {
+      return (type_ > Value_Bool && type_ < Value_CFunction) ||
+             ((type_ >= Value_CDate && type_ <= Value_RefCounted &&
+               type_ != Value_Undefined));
+    }
   }
-  inline void* Ptr() const { return val_ptr_; }
+  inline void* Ptr() const {
+    return use_lynx_value_ ? value_.val_ptr : val_ptr_;
+  }
 
-  inline bool IsBool() const { return type_ == Value_Bool || IsJSBool(); }
+  inline bool IsBool() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_bool ||
+             IsTypeForExtended(lynx_value_bool);
+    } else {
+      return type_ == Value_Bool || IsJSBool();
+    }
+  }
 
-  inline bool IsString() const { return type_ == Value_String || IsJSString(); }
+  inline bool IsString() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_string ||
+             IsTypeForExtended(lynx_value_string);
+    } else {
+      return type_ == Value_String || IsJSString();
+    }
+  }
 
-  inline bool IsInt64() const { return type_ == Value_Int64 || IsJSInteger(); }
+  inline bool IsInt64() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_int64 || IsJSInteger();
+    } else {
+      return type_ == Value_Int64 || IsJSInteger();
+    }
+  }
 
   inline bool IsNumber() const {
-    return (type_ == Value_Double) ||
-           (type_ >= Value_Int32 && type_ <= Value_UInt64) || IsJSNumber();
+    if (use_lynx_value_) {
+      return (value_.type >= lynx_value_double &&
+              value_.type <= lynx_value_uint64) ||
+             IsExtendedNumber();
+    } else {
+      return (type_ == Value_Double) ||
+             (type_ >= Value_Int32 && type_ <= Value_UInt64) || IsJSNumber();
+    }
   }
 
-  inline bool IsDouble() const { return type_ == Value_Double; }
+  inline bool IsDouble() const {
+    return use_lynx_value_ ? value_.type == lynx_value_double
+                           : type_ == Value_Double;
+  }
 
-  inline bool IsArray() const { return type_ == Value_Array; }
+  inline bool IsArray() const {
+    return use_lynx_value_ ? value_.type == lynx_value_array
+                           : type_ == Value_Array;
+  }
 
-  inline bool IsTable() const { return type_ == Value_Table; }
+  inline bool IsTable() const {
+    return use_lynx_value_ ? value_.type == lynx_value_map
+                           : type_ == Value_Table;
+  }
 
   inline bool IsObject() const {
-    if (IsTable()) return true;
-    if (IsJSValue()) return IsJSTable();
-    return false;
+    if (use_lynx_value_) {
+      if (value_.type == lynx_value_map) {
+        return true;
+      }
+      if (IsExtendedValue() && value_.val_ptr != nullptr) {
+        bool ret;
+        env_->lynx_value_is_map(env_, value_, &ret);
+        return ret;
+      }
+      return false;
+    } else {
+      if (IsTable()) return true;
+      if (IsJSValue()) return IsJSTable();
+      return false;
+    }
   }
 
   inline bool IsArrayOrJSArray() const {
-    if (IsArray()) return true;
-    if (IsJSValue()) return IsJSArray();
-    return false;
+    if (use_lynx_value_) {
+      if (value_.type == lynx_value_array) {
+        return true;
+      }
+      if (IsExtendedValue() && value_.val_ptr != nullptr) {
+        bool ret;
+        env_->lynx_value_is_array(env_, value_, &ret);
+        return ret;
+      }
+      return false;
+    } else {
+      if (IsArray()) return true;
+      if (IsJSValue()) return IsJSArray();
+      return false;
+    }
   }
 
   inline bool IsCPointer() const {
-    return type_ == Value_CPointer || IsJSCPointer();
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_external ||
+             IsTypeForExtended(lynx_value_external);
+    } else {
+      return type_ == Value_CPointer || IsJSCPointer();
+    }
   }
 
-  inline bool IsRefCounted() const { return type_ == Value_RefCounted; }
+  inline bool IsRefCounted() const {
+    return use_lynx_value_ ? value_.type == lynx_value_object
+                           : type_ == Value_RefCounted;
+  }
 
-  inline bool IsInt32() const { return type_ == Value_Int32; }
-  inline bool IsUInt32() const { return type_ == Value_UInt32; }
-  inline bool IsUInt64() const { return type_ == Value_UInt64; }
-  inline bool IsNil() const { return (type_ == Value_Nil) || IsJsNull(); }
+  inline bool IsInt32() const {
+    return use_lynx_value_ ? value_.type == lynx_value_int32
+                           : type_ == Value_Int32;
+  }
+  inline bool IsUInt32() const {
+    return use_lynx_value_ ? value_.type == lynx_value_uint32
+                           : type_ == Value_UInt32;
+  }
+  inline bool IsUInt64() const {
+    return use_lynx_value_ ? value_.type == lynx_value_uint64
+                           : type_ == Value_UInt64;
+  }
+  inline bool IsNil() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_null ||
+             IsTypeForExtended(lynx_value_null);
+    } else {
+      return (type_ == Value_Nil) || IsJsNull();
+    }
+  }
   inline bool IsUndefined() const {
-    return type_ == Value_Undefined || IsJSUndefined();
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_undefined ||
+             IsTypeForExtended(lynx_value_undefined);
+    } else {
+      return type_ == Value_Undefined || IsJSUndefined();
+    }
   }
-  inline bool IsCFunction() const { return type_ == Value_CFunction; }
-  inline bool IsJSObject() const { return type_ == Value_JSObject; }
-  inline bool IsByteArray() const { return type_ == Value_ByteArray; }
-  inline bool IsNaN() const { return type_ == Value_NaN; }
+
+  inline bool IsCFunction() const {
+    return use_lynx_value_ ? value_.type == lynx_value_function
+                           : type_ == Value_CFunction;
+  }
+  inline bool IsJSObject() const {
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_object &&
+             custom_ref_type_ == CustomRefType::kJSObject;
+    } else {
+      return type_ == Value_JSObject;
+    }
+  }
+  inline bool IsByteArray() const {
+    return use_lynx_value_ ? value_.type == lynx_value_arraybuffer
+                           : type_ == Value_ByteArray;
+  }
+  inline bool IsNaN() const {
+    return use_lynx_value_ ? value_.type == lynx_value_nan : type_ == Value_NaN;
+  }
 
   inline bool Bool() const {
-    if (type_ != Value_Bool) return !IsFalse();
-    return val_bool_;
+    if (use_lynx_value_) {
+      if (value_.type != lynx_value_bool) return !IsFalse();
+      return value_.val_bool;
+    } else {
+      if (type_ != Value_Bool) return !IsFalse();
+      return val_bool_;
+    }
   }
-  inline bool NaN() const { return type_ == Value_NaN && val_nan_; }
+  inline bool NaN() const {
+    return use_lynx_value_ ? value_.type == lynx_value_nan && value_.val_bool
+                           : type_ == Value_NaN && val_nan_;
+  }
 
   double Number() const;
 
@@ -458,41 +670,79 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   }
 
   inline bool IsJSCPointer() const {
-    return IsJSValue() && LEPUS_VALUE_IS_LEPUS_CPOINTER(WrapJSValue());
+    if (use_lynx_value_) {
+      return IsTypeForExtended(lynx_value_external);
+    } else {
+      return IsJSValue() && LEPUS_VALUE_IS_LEPUS_CPOINTER(WrapJSValue());
+    }
   }
 
   inline void* LEPUSCPointer() const {
-    DCHECK(IsJSCPointer());
-    return LEPUS_VALUE_GET_CPOINTER(WrapJSValue());
+    if (use_lynx_value_) {
+      DCHECK(IsJSCPointer());
+      void* ret;
+      env_->lynx_value_get_external(env_, value_, &ret);
+      return ret;
+    } else {
+      DCHECK(IsJSCPointer());
+      return LEPUS_VALUE_GET_CPOINTER(WrapJSValue());
+    }
   }
 
   bool IsJSArray() const;
   bool IsJSTable() const;
 
   inline bool IsJSBool() const {
-    return IsJSValue() && LEPUS_VALUE_IS_BOOL(WrapJSValue());
+    if (use_lynx_value_) {
+      return IsTypeForExtended(lynx_value_bool);
+    } else {
+      return IsJSValue() && LEPUS_VALUE_IS_BOOL(WrapJSValue());
+    }
   }
   inline bool LEPUSBool() const {
-    if (!IsJSBool()) return false;
-    return LEPUS_VALUE_GET_BOOL(WrapJSValue());
+    if (use_lynx_value_) {
+      if (!IsTypeForExtended(lynx_value_bool)) return false;
+      bool ret;
+      env_->lynx_value_get_bool(env_, value_, &ret);
+      return ret;
+    } else {
+      if (!IsJSBool()) return false;
+      return LEPUS_VALUE_GET_BOOL(WrapJSValue());
+    }
   }
   inline bool IsJSString() const {
-    return IsJSValue() && LEPUS_IsString(WrapJSValue());
+    if (use_lynx_value_) {
+      return IsTypeForExtended(lynx_value_string);
+    } else {
+      return IsJSValue() && LEPUS_IsString(WrapJSValue());
+    }
   }
 
   inline bool IsJSUndefined() const {
-    return IsJSValue() && LEPUS_VALUE_IS_UNDEFINED(WrapJSValue());
+    if (use_lynx_value_) {
+      return IsTypeForExtended(lynx_value_undefined);
+    } else {
+      return IsJSValue() && LEPUS_VALUE_IS_UNDEFINED(WrapJSValue());
+    }
   }
 
   inline bool IsJSNumber() const {
-    auto value = WrapJSValue();
-    return IsJSValue() &&
-           (LEPUS_VALUE_IS_INT(value) || LEPUS_VALUE_IS_FLOAT64(value) ||
-            LEPUS_VALUE_IS_BIG_INT(value));
+    if (use_lynx_value_) {
+      return IsExtendedNumber();
+    } else {
+      auto value = WrapJSValue();
+      return IsJSValue() &&
+             (LEPUS_VALUE_IS_INT(value) || LEPUS_VALUE_IS_FLOAT64(value) ||
+              LEPUS_VALUE_IS_BIG_INT(value));
+    }
   }
 
   inline bool IsJsNull() const {
-    return IsJSValue() && LEPUS_VALUE_IS_NULL(WrapJSValue());
+    if (use_lynx_value_) {
+      return IsTypeForExtended(lynx_value_null);
+    } else {
+      return IsJSValue() && LEPUS_VALUE_IS_NULL(WrapJSValue());
+    }
   }
 
   double LEPUSNumber() const;
@@ -511,10 +761,19 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   bool IsTrue() const { return !IsFalse(); }
 
   bool IsFalse() const {
-    return type_ == Value_Nil || type_ == Value_NaN ||
-           type_ == Value_Undefined || (type_ == Value_Bool && !Bool()) ||
-           (IsNumber() && Number() == 0) ||
-           (type_ == Value_String && StringView().empty()) || IsJSFalse();
+    if (use_lynx_value_) {
+      return value_.type == lynx_value_null || value_.type == lynx_value_nan ||
+             value_.type == lynx_value_undefined ||
+             (value_.type == lynx_value_bool && !Bool()) ||
+             (IsNumber() && Number() == 0) ||
+             (value_.type == lynx_value_string && StringView().empty()) ||
+             IsJSFalse();
+    } else {
+      return type_ == Value_Nil || type_ == Value_NaN ||
+             type_ == Value_Undefined || (type_ == Value_Bool && !Bool()) ||
+             (IsNumber() && Number() == 0) ||
+             (type_ == Value_String && StringView().empty()) || IsJSFalse();
+    }
   }
   inline bool IsEmpty() const {
     return (type_ == Value_Nil) || (type_ == Value_Undefined) ||
@@ -523,17 +782,30 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   inline void SetNil() {
     FreeValue();
-    type_ = Value_Nil;
-    val_ptr_ = nullptr;
+    if (use_lynx_value_) {
+      value_.type = lynx_value_null;
+      value_.val_ptr = nullptr;
+    } else {
+      type_ = Value_Nil;
+      val_ptr_ = nullptr;
+    }
   }
 
   inline void SetUndefined() {
     FreeValue();
-    type_ = Value_Undefined;
-    val_ptr_ = nullptr;
+    if (use_lynx_value_) {
+      value_.type = lynx_value_undefined;
+      value_.val_ptr = nullptr;
+    } else {
+      type_ = Value_Undefined;
+      val_ptr_ = nullptr;
+    }
   }
 
   bool IsEqual(const Value& value) const;
+  ValueType TypeFromLynxValue() const;
+  inline lynx_value value() const { return value_; }
+
   BASE_EXPORT_FOR_DEVTOOL friend bool operator==(const Value& left,
                                                  const Value& right);
 
@@ -669,8 +941,32 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   void IteratorJSValue(const LepusValueIterator& callback) const;
   friend lepus::LEPUSValueHelper;
 
+  static inline void SetUseLynxValue(bool val) { use_lynx_value_ = val; }
+
  private:
   void Copy(const Value& value);
+
+  bool IsTypeForExtended(lynx_value_type type) const {
+    if (!IsExtendedValue()) {
+      return false;
+    }
+    lynx_value_type result;
+    env_->lynx_value_typeof(env_, value_, &result);
+    return result == type;
+  }
+
+  bool IsExtendedNumber() const {
+    if (!IsExtendedValue()) {
+      return false;
+    }
+    lynx_value_type result;
+    env_->lynx_value_typeof(env_, value_, &result);
+    return result >= lynx_value_double && result <= lynx_value_uint64;
+  }
+
+  inline bool IsExtendedValue() const {
+    return value_.type == lynx_value_extended && env_ != nullptr;
+  }
 
   void ConstructValueFromLepusRef(LEPUSContext* ctx, const LEPUSValue& val);
 

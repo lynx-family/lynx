@@ -186,6 +186,71 @@ lepus::Value LEPUSValueHelper::ToLepusTable(LEPUSContext* ctx,
   return Value(std::move(tbl));
 }  // namespace lepus
 
+lepus::Value LEPUSValueHelper::ToLepusValue(lynx_api_env env,
+                                            const lynx_value& val,
+                                            int32_t flag) {
+  lynx_value_type type;
+  env->lynx_value_typeof(env, val, &type);
+  switch (type) {
+    case lynx_value_null:
+      return Value();
+    case lynx_value_undefined: {
+      lepus::Value ret;
+      ret.SetUndefined();
+      return ret;
+    }
+    case lynx_value_bool: {
+      bool ret;
+      env->lynx_value_get_bool(env, val, &ret);
+      return Value(ret);
+    }
+    case lynx_value_double:
+      break;
+    case lynx_value_int32:
+      break;
+    case lynx_value_uint32:
+      break;
+    case lynx_value_int64:
+      break;
+    case lynx_value_uint64:
+      break;
+    case lynx_value_nan:
+      break;
+    case lynx_value_string:
+      break;
+    case lynx_value_array: {
+      bool is_refcounted_obj;
+      env->lynx_value_is_refcounted_object(env, val, &is_refcounted_obj);
+      if (is_refcounted_obj) {
+        if (likely(flag == 0)) {
+          return lepus::Value(env, val);
+        } else if (flag == 1) {
+          return Value::Clone(lepus::Value(env, val));
+        } else {
+          Value ret(env, val);
+          if (!ret.MarkConst()) {
+            ret = Value::Clone(ret);
+          }
+          return ret;
+        }
+      }
+    } break;
+    case lynx_value_map:
+      break;
+    case lynx_value_arraybuffer:
+      break;
+    case lynx_value_function:
+      break;
+    case lynx_value_object:
+      break;
+    case lynx_value_external:
+      break;
+    case lynx_value_extended:
+      break;
+  }
+  return lepus::Value();
+}
+
 lepus::Value LEPUSValueHelper::ToLepusValue(LEPUSContext* ctx,
                                             const LEPUSValue& val,
                                             int32_t flag) {
