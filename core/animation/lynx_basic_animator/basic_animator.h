@@ -21,7 +21,7 @@
 #include "core/style/animation_data.h"
 namespace lynx {
 
-namespace shell {
+namespace base {
 class VSyncMonitor;
 }
 
@@ -35,10 +35,9 @@ class LynxBasicAnimator : public basic::AnimatorTarget {
   enum BasicValueType { INT = 0, FLOAT };
   using Callback = std::function<void(float)>;
 
-  LynxBasicAnimator(
-      starlight::AnimationData data,
-      std::shared_ptr<shell::VSyncMonitor> vsync_monitor = nullptr,
-      BasicValueType type = BasicValueType::FLOAT)
+  LynxBasicAnimator(starlight::AnimationData data,
+                    std::shared_ptr<base::VSyncMonitor> vsync_monitor = nullptr,
+                    BasicValueType type = BasicValueType::FLOAT)
       : basic_type_(type), data_(data) {
     frame_provider_ =
         std::make_shared<BasicAnimatorFrameCallbackProvider>(vsync_monitor);

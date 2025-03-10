@@ -23,9 +23,12 @@
 #include "core/shell/tasm_platform_invoker.h"
 
 namespace lynx {
-namespace shell {
 
+namespace base {
 class VSyncMonitor;
+}
+
+namespace shell {
 
 using InvokeUIMethodFunction =
     base::MoveOnlyClosure<void, tasm::LynxGetUIResult, const std::string&,
@@ -38,7 +41,7 @@ class TasmMediator : public LynxEngine::Delegate {
   TasmMediator(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
-      const std::shared_ptr<VSyncMonitor>& vsync_monitor,
+      const std::shared_ptr<base::VSyncMonitor>& vsync_monitor,
       const std::shared_ptr<LynxActor<tasm::LayoutContext>>& layout_actor,
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
       const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>&
@@ -251,7 +254,7 @@ class TasmMediator : public LynxEngine::Delegate {
   // vsync monitor.
   // TODO(songshourui.null): Provide requesAnimationFrame capability to
   // ElementWorklet later by this vsync_monitor_;
-  std::shared_ptr<VSyncMonitor> vsync_monitor_;
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
 
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;
 

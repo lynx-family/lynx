@@ -13,7 +13,7 @@
 @property(atomic) CADisplayLink *displayLink;
 @property(atomic) BOOL isInBackground;
 
-- (instancetype)initWithCallback:(lynx::shell::VSyncMonitor::Callback)callback;
+- (instancetype)initWithCallback:(lynx::base::VSyncMonitor::Callback)callback;
 
 - (void)requestPulse;
 
@@ -22,11 +22,11 @@
 @end
 
 @implementation LynxVSyncPulse {
-  lynx::shell::VSyncMonitor::Callback _callback;
+  lynx::base::VSyncMonitor::Callback _callback;
   CADisplayLink *_displayLink;
 }
 
-- (instancetype)initWithCallback:(lynx::shell::VSyncMonitor::Callback)callback {
+- (instancetype)initWithCallback:(lynx::base::VSyncMonitor::Callback)callback {
   self = [super init];
   if (self) {
     _callback = std::move(callback);
@@ -93,10 +93,10 @@
 @end
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 std::shared_ptr<VSyncMonitor> VSyncMonitor::Create() {
-  return std::make_shared<lynx::shell::VSyncMonitorIOS>(false);
+  return std::make_shared<lynx::base::VSyncMonitorIOS>(false);
 }
 
 class LynxVSyncPulsePuppet {
@@ -160,5 +160,5 @@ void VSyncMonitorIOS::RequestVSyncOnUIThread(Callback callback) {
   }
 }
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx

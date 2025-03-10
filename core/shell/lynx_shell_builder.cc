@@ -77,8 +77,9 @@ LynxShellBuilder& LynxShellBuilder::SetWhiteBoard(
 
 LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
     bool enable_element_manager_vsync_monitor) {
-  this->element_manager_vsync_monitor_ =
-      enable_element_manager_vsync_monitor ? VSyncMonitor::Create() : nullptr;
+  this->element_manager_vsync_monitor_ = enable_element_manager_vsync_monitor
+                                             ? base::VSyncMonitor::Create()
+                                             : nullptr;
   return *this;
 }
 
@@ -219,7 +220,7 @@ LynxShell* LynxShellBuilder::build() {
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY,
                     "LynxShell::Create::CreateEngineActor");
   // create engine actor
-  auto vsync_monitor = VSyncMonitor::Create();
+  auto vsync_monitor = base::VSyncMonitor::Create();
   auto tasm_mediator = std::make_unique<TasmMediator>(
       shell->facade_actor_, shell->card_cached_data_mgr_, vsync_monitor,
       shell->layout_actor_, std::move(tasm_platform_invoker_),

@@ -94,7 +94,7 @@ class LynxShell {
   virtual void AttachRuntime(
       std::weak_ptr<piper::LynxModuleManager> module_manager);
   void InitRuntimeWithRuntimeDisabled(
-      std::shared_ptr<VSyncMonitor> vsync_monitor);
+      std::shared_ptr<base::VSyncMonitor> vsync_monitor);
 
   void StartJsRuntime();
 

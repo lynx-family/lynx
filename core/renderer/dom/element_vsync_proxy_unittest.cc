@@ -32,7 +32,7 @@ constexpr int64_t kFrameDuration = 16;  // ms
 
 }  // namespace
 
-class TestVSyncMonitor : public shell::VSyncMonitor {
+class TestVSyncMonitor : public base::VSyncMonitor {
  public:
   TestVSyncMonitor() = default;
   ~TestVSyncMonitor() override = default;

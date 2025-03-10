@@ -39,9 +39,9 @@
 #include "core/services/timing_handler/timing_handler.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 class VSyncMonitor;
-}  // namespace shell
+}  // namespace base
 namespace tasm {
 
 struct PseudoPlaceHolderStyles;
@@ -267,7 +267,7 @@ class ElementManager {
       std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
       Delegate *delegate, const LynxEnvConfig &lynx_env_config,
       int32_t instance_id = tasm::report::kUnknownInstanceId,
-      const std::shared_ptr<shell::VSyncMonitor> &vsync_monitor = nullptr,
+      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor = nullptr,
       const bool enable_diff_without_layout = false);
 
   // avoid pImpl idiom type of compilation error when self inlclude
@@ -727,7 +727,7 @@ class ElementManager {
     return config_ ? config_->GetEnableReloadLifecycle() : false;
   }
 
-  std::shared_ptr<shell::VSyncMonitor> &vsync_monitor() {
+  std::shared_ptr<base::VSyncMonitor> &vsync_monitor() {
     return vsync_monitor_;
   }
 
@@ -1085,7 +1085,7 @@ class ElementManager {
   std::unordered_set<ElementContainer *> dirty_stacking_contexts_;
   LynxEnvConfig lynx_env_config_;
   Delegate *delegate_{nullptr};
-  std::shared_ptr<shell::VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   std::unordered_map<base::String, int> node_type_recorder_;
   // <page>,<wrapper>,<none> is a special tag and must be COMMON.
   std::unordered_map<base::String, int32_t> node_info_recorder_{

@@ -12,7 +12,7 @@
 #include "core/base/threading/task_runner_manufactor.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 
 VSyncMonitor::VSyncMonitor(bool is_vsync_post_task_by_emergency)
     : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency) {
@@ -123,5 +123,5 @@ void VSyncMonitor::BindToCurrentThread() {
   runner_ = fml::MessageLoop::GetCurrent().GetTaskRunner();
 }
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx

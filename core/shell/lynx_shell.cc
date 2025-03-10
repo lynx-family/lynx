@@ -173,7 +173,7 @@ void LynxShell::Destroy() {
 }
 
 void LynxShell::InitRuntimeWithRuntimeDisabled(
-    std::shared_ptr<VSyncMonitor> vsync_monitor) {
+    std::shared_ptr<base::VSyncMonitor> vsync_monitor) {
   DCHECK(!enable_runtime_);
   runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       nullptr, nullptr, instance_id_, enable_runtime_);
@@ -203,8 +203,8 @@ void LynxShell::InitRuntime(
   tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
       static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
-  std::shared_ptr<VSyncMonitor> vsync_monitor =
-      lynx::shell::VSyncMonitor::Create();
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor =
+      base::VSyncMonitor::Create();
   if (!enable_runtime_) {
     InitRuntimeWithRuntimeDisabled(vsync_monitor);
     return;

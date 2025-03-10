@@ -19,7 +19,7 @@ namespace tasm {
 
 ElementVsyncProxy::ElementVsyncProxy(
     ElementManager *element_manager,
-    const std::shared_ptr<shell::VSyncMonitor> &vsync_monitor)
+    const std::shared_ptr<base::VSyncMonitor> &vsync_monitor)
     : element_manager_(element_manager), vsync_monitor_(vsync_monitor){};
 
 void ElementVsyncProxy::TickAllElement(fml::TimePoint &frame_time) {

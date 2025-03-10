@@ -17,14 +17,17 @@
 #include "core/runtime/piper/js/lynx_runtime.h"
 
 namespace lynx {
-namespace shell {
 
+namespace base {
 class VSyncMonitor;
+}
+
+namespace shell {
 
 class VSyncObserverImpl : public runtime::IVSyncObserver {
  public:
   VSyncObserverImpl(
-      const std::shared_ptr<VSyncMonitor>& monitor,
+      const std::shared_ptr<base::VSyncMonitor>& monitor,
       fml::RefPtr<fml::TaskRunner> js_runner,
       const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor)
       : vsync_monitor_(std::move(monitor)),
@@ -46,7 +49,7 @@ class VSyncObserverImpl : public runtime::IVSyncObserver {
   using VSyncCallback = base::MoveOnlyClosure<void, int64_t, int64_t>;
   using VSyncCallbackMap = std::unordered_map<uintptr_t, VSyncCallback>;
 
-  std::shared_ptr<VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   fml::RefPtr<fml::TaskRunner> js_runner_{nullptr};
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
 
