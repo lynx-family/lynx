@@ -115,6 +115,7 @@ class InspectorClientDelegateImpl : public InspectorClientDelegateBaseImpl {
   bool HandleMessageConsoleAPICalled(rapidjson::Document& message);
   bool HandleMessageConsoleAPICalledFromV8(rapidjson::Document& message);
   void HandleMessageConsoleAPICalledFromQuickjs(rapidjson::Document& message);
+  void HandleMessageConsoleAPICalledFromLepus(rapidjson::Document& message);
 
   std::string GenMessageCallFunctionOn(const std::string& object_id,
                                        int message_id = 0);
