@@ -52,7 +52,7 @@ Run the following commands from the root of the repository to install the depend
 ```
 cd src/lynx
 tools/hab sync .
-source tools/envsetup.sh
+source tools/ios-only-envsetup.sh
 ```
 
 ## Build iOS App
