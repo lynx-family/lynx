@@ -10,7 +10,7 @@
 #include "core/base/threading/vsync_monitor.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 class LynxVSyncPulsePuppet;
 
 class VSyncMonitorIOS : public VSyncMonitor {
@@ -31,7 +31,7 @@ class VSyncMonitorIOS : public VSyncMonitor {
   std::unique_ptr<LynxVSyncPulsePuppet> delegate_;
 };
 
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx
 
 #endif  // CORE_BASE_DARWIN_VSYNC_MONITOR_DARWIN_H_

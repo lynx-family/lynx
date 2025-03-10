@@ -14,7 +14,7 @@ namespace lynx {
 namespace base {
 namespace android {
 MessageLoopAndroidVSync::MessageLoopAndroidVSync() {
-  vsync_monitor_ = std::make_shared<shell::VSyncMonitorAndroid>();
+  vsync_monitor_ = std::make_shared<base::VSyncMonitorAndroid>();
   vsync_monitor_->BindToCurrentThread();
   vsync_monitor_->Init();
 }

@@ -28,7 +28,7 @@ class ElementVsyncProxy
  public:
   ElementVsyncProxy(
       ElementManager *element_manager,
-      const std::shared_ptr<shell::VSyncMonitor> &vsync_monitor = nullptr);
+      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor = nullptr);
   ~ElementVsyncProxy() = default;
 
   // Tick all element of set.
@@ -61,7 +61,7 @@ class ElementVsyncProxy
   // TODO(wujintian): move the member variable to element manager. Then some
   // member function such as `RegistToSet` and `NotifyElementDestroy` and
   // `GetAnimationElements` can be removed.
-  std::shared_ptr<shell::VSyncMonitor> vsync_monitor_{nullptr};
+  std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
 
   // NewAnimator preferred Fps
   std::string preferred_fps_ = kPreferredFpsAuto;

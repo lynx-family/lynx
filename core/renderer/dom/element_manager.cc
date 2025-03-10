@@ -146,7 +146,7 @@ ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
     Delegate *delegate, const LynxEnvConfig &lynx_env_config,
     int32_t instance_id,
-    const std::shared_ptr<shell::VSyncMonitor> &vsync_monitor,
+    const std::shared_ptr<base::VSyncMonitor> &vsync_monitor,
     const bool enable_diff_without_layout)
     : node_manager_(new NodeManager),
       air_node_manager_(new AirNodeManager),

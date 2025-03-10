@@ -120,7 +120,7 @@ class LynxShellBuilder {
   tasm::LynxEnvConfig lynx_env_config_{0, 0, 1, 1};
   std::shared_ptr<lynx::tasm::LazyBundleLoader> loader_;
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board_;
-  std::shared_ptr<lynx::shell::VSyncMonitor> element_manager_vsync_monitor_;
+  std::shared_ptr<lynx::base::VSyncMonitor> element_manager_vsync_monitor_;
   bool enable_new_animator_{false};
   bool enable_native_list_{false};
   bool enable_layout_only_{true};

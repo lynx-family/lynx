@@ -11,7 +11,7 @@
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
-namespace shell {
+namespace base {
 namespace testing {
 
 namespace {
@@ -248,5 +248,5 @@ TEST_F(VsyncMonitorTest, OnVsyncOnMergedThread) {
 }
 
 }  // namespace testing
-}  // namespace shell
+}  // namespace base
 }  // namespace lynx

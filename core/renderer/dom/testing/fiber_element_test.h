@@ -39,7 +39,7 @@ const std::tuple<bool, int> fiber_element_generation_params[] = {
         true, 3),  // enable parallel flush with MULTI_THREADS thread strategy
 };
 
-class TestVSyncMonitor : public shell::VSyncMonitor {
+class TestVSyncMonitor : public base::VSyncMonitor {
  public:
   TestVSyncMonitor() = default;
   ~TestVSyncMonitor() override = default;

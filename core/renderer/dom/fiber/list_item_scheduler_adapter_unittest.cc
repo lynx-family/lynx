@@ -47,7 +47,7 @@ const int scheduler_adapter_generation_params[] = {
     3,  // MULTI_THREAD strategy
 };
 
-class TestVSyncMonitor : public shell::VSyncMonitor {
+class TestVSyncMonitor : public base::VSyncMonitor {
  public:
   TestVSyncMonitor() = default;
   ~TestVSyncMonitor() override = default;
