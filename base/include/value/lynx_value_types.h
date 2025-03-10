@@ -61,7 +61,10 @@ struct lynx_value {
   int64_t tag = 0;
 };
 
-typedef lynx_value (*lynx_value_callback)(lynx_api_env env,
-                                          const lynx_value_callback_info info);
+typedef lynx_value (*lynx_value_create_func_cb)(
+    lynx_api_env env, const lynx_value_callback_info info);
+
+typedef void (*lynx_value_iterator_cb)(lynx_value key, lynx_value val,
+                                       void* pfunc, void* raw_data);
 
 #endif  // BASE_INCLUDE_VALUE_LYNX_VALUE_TYPES_H_
