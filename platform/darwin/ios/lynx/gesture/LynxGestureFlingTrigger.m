@@ -5,8 +5,8 @@
 #import "LynxGestureFlingTrigger.h"
 #import "LynxWeakProxy.h"
 
-static const CGFloat kLynxMinVelocity = 300.0;
-static const CGFloat kLynxMaxVelocity = 5000.0;
+static const CGFloat kLynxMinVelocity = 50.0;
+static const CGFloat kLynxMaxVelocity = 10000.0.0;
 
 @interface LynxGestureFlingTrigger ()
 @property(readonly, nonatomic, weak) id target;
@@ -20,6 +20,9 @@ static const CGFloat kLynxMaxVelocity = 5000.0;
 @property(readonly, nonatomic, assign) NSTimeInterval durationY;
 @property(readonly, nonatomic, assign) BOOL flingX;
 @property(readonly, nonatomic, assign) BOOL flingY;
+@property(readonly, nonatomic, assign) BOOL proMotion;
+@property(readonly, nonatomic, assign) NSTimeInterval interval;
+@property(readonly, nonatomic, assign) NSInteger tickCount;
 @end
 
 @implementation LynxGestureFlingTrigger
@@ -32,10 +35,12 @@ static const CGFloat kLynxMaxVelocity = 5000.0;
                                                selector:@selector(tick:)];
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
     _displayLink.paused = YES;
-    if (@available(iOS 10.0, *)) {
-      _displayLink.preferredFramesPerSecond = 120;
-    }
     _threshold = 0.5f / [[UIScreen mainScreen] scale];
+    _proMotion = UIScreen.mainScreen.maximumFramesPerSecond > 60;
+    _interval = _proMotion ? 0.008 : 0.016;
+    if (@available(iOS 10.0, *)) {
+      _displayLink.preferredFramesPerSecond = _proMotion ? 120 : 60;
+    }
     _state = LynxGestureFlingTriggerStateEnd;
   }
   return self;
@@ -53,7 +58,7 @@ static const CGFloat kLynxMaxVelocity = 5000.0;
     _state = LynxGestureFlingTriggerStateUpdate;
   }
 
-  NSTimeInterval currentTime = CACurrentMediaTime();
+  NSTimeInterval currentTime = _beginTime + _interval * ++_tickCount;
   NSTimeInterval timeProgressX = getTimeProgress(currentTime, _beginTime, _durationX);
   NSTimeInterval timeProgressY = getTimeProgress(currentTime, _beginTime, _durationY);
 
@@ -115,6 +120,7 @@ CGFloat updateDistance(NSTimeInterval timeProgress, CGFloat duration, CGFloat ve
   _flingY = flingY;
 
   _beginTime = CACurrentMediaTime();
+  _count = 0;
   _velocity = velocity;
 
   // Do some math to get the duration of FLING
@@ -128,7 +134,7 @@ CGFloat updateDistance(NSTimeInterval timeProgress, CGFloat duration, CGFloat ve
   _lastDistance = CGPointZero;
   _distance = CGPointZero;
   _state = LynxGestureFlingTriggerStateStart;
-
+  _tickCount = 0;
   // Start ticking
   _displayLink.paused = NO;
   return YES;
