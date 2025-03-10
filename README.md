@@ -17,13 +17,21 @@ Empower the web community and invite more to build across platforms
 
 
 ## Content
-- [About Lynx](#About-Lynx)
-- [Documentation](#Documentation)
-- [How to Use Lynx](#How-to-Use-Lynx)
-- [How to Contribute](#How-to-Contribute)
-- [Discussions](#Discussions)
-- [Credits](#Credits)
-- [License](#License)
+- [Content](#content)
+- [About Lynx](#about-lynx)
+- [Documentation](#documentation)
+- [How to Use Lynx](#how-to-use-lynx)
+  - [Requirements](#requirements)
+  - [Getting Started guide](#getting-started-guide)
+- [How to Contribute](#how-to-contribute)
+  - [Get the Code](#get-the-code)
+  - [Code of Conduct](#code-of-conduct)
+  - [Contributing Guide](#contributing-guide)
+- [Discussions](#discussions)
+- [Credits](#credits)
+  - [Third Party Libraries](#third-party-libraries)
+  - [Referenced API Design and Implementations](#referenced-api-design-and-implementations)
+- [License](#license)
 
 ## About Lynx
 
@@ -40,7 +48,7 @@ You shall find documentation for Lynx on [lynxjs.org](http://lynxjs.org).
 
 ## How to Use Lynx
 ### Requirements
-Lynx apps may target iOS 10 and Android 5.0 (API 21) or newer.
+Lynx apps support iOS 10 and Android 5.0 (API 21) or newer.
 
 We recommend using macOS as the development operating system. Windows and Linux are not yet verified or guaranteed, so you may encounter problems. If you need assistance, please file an issue, and we will be more than happy to help you address it.
 
@@ -50,7 +58,7 @@ We recommend using macOS as the development operating system. Windows and Linux 
 
 ## How to Contribute
 ### Get the Code
-Instead of cloning the repository right away, please consider taking an extra step.
+Before cloning repository immediately, please consider taking additional step.
 
 To effectively manage dependencies using our custom tool, [Habitat](https://github.com/lynx-family/habitat), it is recommended to create an additional directory.
 For instance, you could name this directory `src`:
