@@ -21,6 +21,7 @@
   // Record tags that use shadownode.
   NSMutableSet<NSString*>* _tagSet;
   LynxComponentScopeRegistry* _componentRegistry;
+  LynxLayoutNodeManager* _layoutNodeManager;
   BOOL _destroyed;
   id<LynxShadowNodeDelegate> _delegate;
   float _rootWidth;
@@ -55,8 +56,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   _delegate = delegate;
 }
 
-- (void)setLayoutNodeManager:(void*)layoutNodeManagerPtr {
-  _layoutNodeManagerPtr = layoutNodeManagerPtr;
+- (void)initLayoutNodeManager:(void*)layoutNodeManagerPtr {
+  _layoutNodeManager = [[LynxLayoutNodeManager alloc] initWithNativePtr:layoutNodeManagerPtr];
 }
 
 - (NSInteger)createNodeWithSign:(NSInteger)sign
@@ -83,7 +84,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
     }
     [node setUIOperation:_uiOwner];
     [node setDelegate:_delegate];
-    [node setLayoutNodeManagerPtr:_layoutNodeManagerPtr];
+    [node setLayoutNodeManager:_layoutNodeManager];
     [_nodeHolder setObject:node forKey:[NSNumber numberWithInteger:sign]];
     // update props for shadow node
     for (NSString* key in props) {
