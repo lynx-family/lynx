@@ -753,6 +753,9 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       doc[kEnableNewIntersectionObserver].IsBool()) {
     page_config->SetEnableNewIntersectionObserver(
         doc[kEnableNewIntersectionObserver].GetBool());
+  } else {
+    page_config->SetEnableNewIntersectionObserver(
+        LynxEnv::GetInstance().EnableNewIntersectionObserver());
   }
 
   if (doc.HasMember(kObserverFrameRate) && doc[kObserverFrameRate].IsInt()) {
@@ -828,6 +831,8 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
   if (doc.HasMember(kEnableMultiTouch) && doc[kEnableMultiTouch].IsBool()) {
     page_config->SetEnableMultiTouch(doc[kEnableMultiTouch].GetBool());
+  } else {
+    page_config->SetEnableMultiTouch(LynxEnv::GetInstance().EnableMultiTouch());
   }
 
   if (doc.HasMember(kEnableNativeList) && doc[kEnableNativeList].IsBool()) {
