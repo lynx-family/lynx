@@ -22,13 +22,13 @@ The following dependencies are needed:
 #### MacOS
 We recommend using Homebrew to install the OpenJDK distribution called Zulu, which is provided by Azul.
 
-```
+```bash
 brew install --cask zulu@11
 ```
 
 You can use the following command to confirm whether the installation is successful
 
-```
+```bash
 javac --version
 ```
 
@@ -37,13 +37,20 @@ If the installation is successful, the terminal will output javac version number
 #### Linux
 
 On Ubuntu or Debian:
-```
+```bash
 sudo apt install openjdk-11-jdk 
 ```
 
 On RHEL or CentOS:
-```
+```bash
 sudo yum install openjdk-11-jdk 
+```
+
+On Arch
+```bash
+sudo pacman -Syu
+sudo pacman -S jdk11-openjdk
+sudo archlinux-java set java-11-openjdk
 ```
 
 
@@ -56,12 +63,12 @@ Confirm your JDK installation directory. If you follow the above steps, the JDK 
 Add the following statement to your environment configuration file (it may be ~/.zshrc or ~/.bash_profile or ~/.bashrc, depending on your terminal environment):
 
 - MacOS
-```
+```bash
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-11.jdk/Contents/Home
 export PATH=$JAVA_HOME/bin:$PATH
 ```
 - Linux 
-```
+```bash
 export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 export PATH=$JAVA_HOME/bin:$PATH
 ```
@@ -78,7 +85,7 @@ If you have installed the Android SDK before, please set ANDROID_HOME to the ins
 
 If you have NOT installed the Android SDK before, you can set ANDROID_HOME to the path where you want the Android SDK to be installed. We have tools to help you install the Android SDK to ANDROID_HOME.
 
-```
+```bash
 export ANDROID_HOME=<path-to-android-sdk>
 ```
 
@@ -88,7 +95,7 @@ export ANDROID_HOME=<path-to-android-sdk>
 #### MacOS
 The yaml dependency needs to be installed to execute some auto-generation logic.
 
-```
+```bash
 # use the virtual environment to manage python environment
 python3 -m venv venv
 source venv/bin/activate
@@ -101,12 +108,12 @@ We recommend using pyenv to manage python environment on Linux.
 
 To install pyenv: [`https://github.com/pyenv/pyenv`](https://github.com/pyenv/pyenv)
 Install python with version higher or equal to 3.9 using pyenv:  
-```
+```bash
 pyenv install 3.9 # or higher
 pyenv global 3.9 # or higher
 ```
 Install pyyaml after python is setup:
-```
+```bash
 pip3 install pyyaml
 ```
 
@@ -116,7 +123,7 @@ pip3 install pyyaml
 
 Pull the code from the Github repository and specify the path(`src/lynx`) to avoid contaminating the directory when installing dependencies.
 
-```
+```bash
 git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
@@ -124,7 +131,7 @@ git clone https://github.com/lynx-family/lynx.git src/lynx
 
 After getting the project repository, execute the following commands in the root directory of the project to get the project dependent files
 
-```
+```bash
 cd src/lynx
 source tools/envsetup.sh
 tools/hab sync .
@@ -134,7 +141,7 @@ tools/hab sync .
 
 Execute the following commands, which will install the Android components required by Lynx, including the Android SDK/NDK. During the execution process, your authorization might be required.
 
-```
+```bash
 source tools/android_tools/prepare_android_build.sh
 ```
 
@@ -167,7 +174,7 @@ Select the `LynxExplorer` module and click the `Run` button to experience LynxEx
 
 Enter the `explorer/android` directory from the project root directory and execute the following command
 
-```
+```bash
 cd explorer/android
 ./gradlew :LynxExplorer:assembleNoAsanDebug --no-daemon
 ```
@@ -178,12 +185,12 @@ This command will generate LynxExplorer-noasan-debug.apk in the `lynx_explorer/b
 
 You can install the above .apk file on your device using the adb command
 
-````
+````bash
 adb install lynx_explorer/build/outputs/apk/noasan/debug/LynxExplorer-noasan-debug.apk
 ````
 
 If the adb command is not found, you can add the path to the adb command in the environment configuration file(~/.zshrc or ~/.bash_profile or ~/.bashrc):
 
-```
+```bash
 export PATH=${PATH}:${ANDROID_HOME}/platform-tools
 ```
