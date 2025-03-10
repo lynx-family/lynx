@@ -71,6 +71,7 @@ unittest_set("react_component_list_testset") {
     "list_adapter_unittest.cc",
     "list_anchor_manager_unittest.cc",
     "list_children_helper_unittest.cc",
+    "staggered_grid_layout_manager_unittest.cc",
     "testing/mock_diff_result.h",
     "testing/mock_list_element.h",
     "testing/utils.cc",
