@@ -62,10 +62,6 @@ using namespace lynx::tasm;
 
 @implementation LynxLayoutNode
 
-LayoutNodeManager *LynxGetLayoutNodeManager(void *layoutNodeManagerPtr) {
-  return static_cast<LayoutNodeManager *>(layoutNodeManagerPtr);
-}
-
 - (instancetype)initWithSign:(NSInteger)sign tagName:(NSString *)tagName {
   self = [super init];
   if (self) {
@@ -76,14 +72,13 @@ LayoutNodeManager *LynxGetLayoutNodeManager(void *layoutNodeManagerPtr) {
 }
 
 - (void)turboNativeLayoutNode {
-  if (_layoutNodeManagerPtr != nullptr && (_measureDelegate || _customMeasureDelegate)) {
-    LynxGetLayoutNodeManager(_layoutNodeManagerPtr)
-        ->SetMeasureFunc((int32_t)_sign, std::make_unique<LynxMeasureFuncDarwin>(self));
+  if (_layoutNodeManager != nullptr && (_measureDelegate || _customMeasureDelegate)) {
+    [_layoutNodeManager setMeasureFuncWithSign:_sign LayoutNode:self];
   }
 }
 
 - (void)adoptNativeLayoutNode:(int64_t)ptr {
-  _style = [[LynxLayoutStyle alloc] initWithSign:_sign layoutNodeManager:_layoutNodeManagerPtr];
+  _style = [[LynxLayoutStyle alloc] initWithSign:_sign layoutNodeManager:_layoutNodeManager];
   [self turboNativeLayoutNode];
 }
 
@@ -135,24 +130,24 @@ LayoutNodeManager *LynxGetLayoutNodeManager(void *layoutNodeManagerPtr) {
 }
 
 - (void)setNeedsLayout {
-  if (_layoutNodeManagerPtr == nullptr) {
+  if (_layoutNodeManager == nullptr) {
     return;
   }
-  LynxGetLayoutNodeManager(_layoutNodeManagerPtr)->MarkDirtyAndRequestLayout((int32_t)_sign);
+  [_layoutNodeManager markDirtyAndRequestLayout:_sign];
 }
 
 - (void)internalSetNeedsLayoutForce {
-  if (_layoutNodeManagerPtr == nullptr) {
+  if (_layoutNodeManager == nullptr) {
     return;
   }
-  LynxGetLayoutNodeManager(_layoutNodeManagerPtr)->MarkDirtyAndForceLayout((int32_t)_sign);
+  [_layoutNodeManager markDirtyAndForceLayout:_sign];
 }
 
 - (BOOL)needsLayout {
-  if (_layoutNodeManagerPtr == nullptr) {
+  if (_layoutNodeManager == nullptr) {
     return NO;
   }
-  return LynxGetLayoutNodeManager(_layoutNodeManagerPtr)->IsDirty((int32_t)_sign);
+  return [_layoutNodeManager isDirty:_sign];
 }
 
 - (void)layoutDidStart {

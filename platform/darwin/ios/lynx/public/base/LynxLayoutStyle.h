@@ -4,12 +4,14 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 #import "LynxCSSType.h"
+#import "LynxLayoutNodeManager.h"
 
 @interface LynxLayoutStyle : NSObject
 
 @property(nonatomic, readonly) NSInteger sign;
 
-- (instancetype)initWithSign:(NSInteger)sign layoutNodeManager:(void*)layoutNodeManager;
+- (instancetype)initWithSign:(NSInteger)sign
+           layoutNodeManager:(LynxLayoutNodeManager*)layoutNodeManager;
 - (LynxFlexDirection)flexDirection;
 
 // Now only supports computed length, length with auto and percentage will be 0

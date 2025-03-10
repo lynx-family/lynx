@@ -211,6 +211,7 @@ subspec_target("lynx") {
     "public/LynxViewBuilder.h",
     "shadow_node/LynxCustomMeasureShadowNode.mm",
     "shadow_node/LynxLayoutNode.mm",
+    "shadow_node/LynxLayoutNodeManager.mm",
     "shadow_node/LynxLayoutTick.m",
     "shadow_node/LynxMeasureFuncDarwin.h",
     "shadow_node/LynxMeasureFuncDarwin.mm",
