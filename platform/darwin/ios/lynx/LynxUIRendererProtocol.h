@@ -65,6 +65,12 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id<LynxEventTarget>)hitTestInEventHandler:(CGPoint)point withEvent:(UIEvent *)event;
 
+- (void)handleFocus:(id<LynxEventTarget>)target
+             onView:(UIView *)view
+      withContainer:(UIView *)container
+           andPoint:(CGPoint)point
+           andEvent:(UIEvent *)event;
+
 - (UIView *)eventHandlerRootView;
 
 - (LynxUIOwner *)uiOwner;
