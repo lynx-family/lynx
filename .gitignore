@@ -123,3 +123,8 @@ js_libraries/lynx-core/src/common/feature.ts
 *.sublime-project
 *.sublime-workspace
 .idea
+
+# ignore Gradle files
+.gradle/
+*/.gradle/
+**/.gradle/
