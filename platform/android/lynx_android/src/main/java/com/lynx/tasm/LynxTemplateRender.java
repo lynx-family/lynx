@@ -104,7 +104,7 @@ import org.json.JSONObject;
 public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private static final String TAG = "LynxTemplateRender";
 
-  private TemplateAssembler mTemplateAssembler = new TemplateAssembler();
+  private final TemplateAssembler mTemplateAssembler = new TemplateAssembler();
 
   private InnerPageLoadListener mPageLoadListener;
   private ViewLayoutTick mViewLayoutTick;
@@ -156,7 +156,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private static final String TRACE_DISPATCH_ERROR = "TemplateRender.dispatchError";
   private static final String TRACE_SET_GLOBAL_PROPS = "TemplateRender.setGlobalProps";
   private static final String TRACE_INIT_WITH_CONTEXT = "TemplateRender.initWithContext";
-  private static final String TRACE_CREATE_TASM = "TemplateRender.createTemplateAssembler";
+  private static final String TRACE_CREATE_TASM = "TemplateRender.createLynxEngine";
   private static final String TRACE_PROCESS_RENDER = "TemplateRender.processRender";
   private static final String TRACE_INIT_ATTACH_LYNX_VIEW = "TemplateRender.attachLynxView";
   private static final String TRACE_CLIENT_REPORT_COMPONENT_INFO = "Client.onReportComponentInfo";
@@ -588,7 +588,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           lastInstanceId = mLynxContext.getInstanceId();
           LynxEventReporter.removeGenericInfo(lastInstanceId);
         }
-        destroyTemplateAssembler();
+        destroyLynxEngine();
       }
 
       int tempPreWidthMeasureSpec = mPreWidthMeasureSpec;
@@ -602,7 +602,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       if (mLynxContext != null) {
         mLynxContext.reset();
       }
-      createTemplateAssembler(lastInstanceId);
+      createLynxEngine(lastInstanceId);
       updateViewport(tempPreWidthMeasureSpec, tempPreHeightMeasureSpec);
 
       setMsTiming(TimingHandler.CREATE_LYNX_START, mInitStart, null);
@@ -633,7 +633,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
   }
 
-  private void createTemplateAssembler(final int lastInstanceId) {
+  private void createLynxEngine(final int lastInstanceId) {
     if (!checkIfEnvPrepared()) {
       return;
     }
@@ -834,7 +834,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       WeakReference<LynxTemplateRender> mWeakRef = new WeakReference<>(this);
     }
 
-    createTemplateAssembler(LynxEventReporter.INSTANCE_ID_UNKNOWN);
+    createLynxEngine(LynxEventReporter.INSTANCE_ID_UNKNOWN);
 
     if (context == null) {
       // Disable UIFlush before attaching lynxView
@@ -1038,7 +1038,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private void legacyLoadTemplateWithProvider(
       @NonNull String templateUrl, AbsTemplateProvider.Callback callback) {
-    if (mTemplateAssembler == null || TextUtils.isEmpty(templateUrl)) {
+    if (TextUtils.isEmpty(templateUrl)) {
       throw new IllegalArgumentException(
           TAG + " template url is null or TemplateProvider is not init");
     }
@@ -1116,7 +1116,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     LLog.i(TAG, formatLynxMessage("renderTemplate"));
   }
 
-  private void prepareForRenderTemplate() {
+  private void prepareLynxEngineIfNeeded() {
     if (!checkIfEnvPrepared()) {
       onErrorOccurred(LynxSubErrorCode.E_APP_BUNDLE_LOAD_ENV_NOT_READY,
           "LynxEnv has not been prepared successfully!");
@@ -1171,7 +1171,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
 
-    this.prepareForRenderTemplate();
+    this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplate(template, initData, getTemplateUrl(), new TASMCallback());
     }
@@ -1191,7 +1191,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
 
-    this.prepareForRenderTemplate();
+    this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplate(template, templateData, getTemplateUrl(), new TASMCallback());
     }
@@ -1212,7 +1212,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
 
-    this.prepareForRenderTemplate();
+    this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplate(template, initData, getTemplateUrl(), new TASMCallback());
     }
@@ -1239,7 +1239,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
 
     setUrl(baseUrl);
-    this.prepareForRenderTemplate();
+    this.prepareLynxEngineIfNeeded();
     if (mNativePtr != 0) {
       loadTemplateBundle(bundle, baseUrl, templateData, false, false, new TASMCallback());
     }
@@ -1275,18 +1275,27 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
 
     setUrl(metaData.getUrl());
-    this.prepareForRenderTemplate();
+    renderWithLoadMeta(metaData);
+    if (metaData.initialData != null) {
+      postRenderOrUpdateData(metaData.initialData);
+    }
+    onTraceEventEnd(eventName);
+  }
+
+  // init lynxEngine with info in LynxLoadMeta
+  private void initLynxEngineWithLoadMeta(LynxLoadMeta loadMeta) {
     if (mNativePtr != 0) {
-      if (metaData.enableProcessLayout()) {
+      if (loadMeta.enableProcessLayout()) {
         setEnableUIFlush(false);
       }
 
       // Inject platform config
-      Map<String, String> lynxViewConfig = metaData.lynxViewConfig;
+      Map<String, String> lynxViewConfig = loadMeta.lynxViewConfig;
       if (lynxViewConfig == null || lynxViewConfig.isEmpty()) {
         // Default platform config from LynxView Builder.
         lynxViewConfig = mOriginLynxViewConfig;
       }
+
       if (lynxViewConfig != null) {
         String platformConfig =
             lynxViewConfig.get(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey());
@@ -1294,16 +1303,12 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           nativeSetPlatformConfig(mNativePtr, mNativeLifecycle, platformConfig);
         }
       }
+
       // update GlobalProps
-      if (metaData.globalProps != null) {
-        this.updateGlobalProps(metaData.globalProps);
+      if (loadMeta.globalProps != null) {
+        this.updateGlobalProps(loadMeta.globalProps);
       }
-      renderWithLoadMeta(metaData);
     }
-    if (metaData.initialData != null) {
-      postRenderOrUpdateData(metaData.initialData);
-    }
-    onTraceEventEnd(eventName);
   }
 
   private void renderWithLoadMeta(final LynxLoadMeta metaData) {
@@ -1314,6 +1319,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       if (mDevTool != null) {
         mDevTool.onLoadFromBundle(metaData.bundle, metaData.initialData, metaData.url);
       }
+      this.prepareLynxEngineIfNeeded();
+      this.initLynxEngineWithLoadMeta(metaData);
       boolean enableDumpElementTree = metaData.enableDumpElementTree();
       LLog.i(TAG,
           "LoadMeta with bundle, pre-painting: " + isPrePainting
@@ -1325,6 +1332,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       if (mDevTool != null) {
         mDevTool.onLoadFromLocalFile(metaData.binaryData, metaData.initialData, metaData.url);
       }
+      this.prepareLynxEngineIfNeeded();
+      this.initLynxEngineWithLoadMeta(metaData);
       boolean enableRecycleTemplateBundle = metaData.enableRecycleTemplateBundle();
       LLog.i(TAG,
           "LoadMeta with binary, pre-painting: " + isPrePainting
@@ -1844,11 +1853,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mDevTool = null;
     }
     if (mNativePtr != 0) {
-      // Romeve generic info of template instance before destroy.
+      // remove generic info of template instance before destroy.
       if (mLynxContext != null) {
         LynxEventReporter.clearCache(mLynxContext.getInstanceId());
       }
-      destroyTemplateAssembler();
+      destroyLynxEngine();
     }
 
     mHasDestroy = true;
@@ -2819,11 +2828,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         processorName, initData);
   }
 
-  private void loadTemplateBundle(
-      TemplateBundle bundle, String url, TemplateData initData, NativeFacade.Callback callback) {
-    this.loadTemplateBundle(bundle, url, initData, false, false, callback);
-  }
-
   private void loadTemplateBundle(TemplateBundle bundle, String url, TemplateData initData,
       boolean isPrePainting, boolean enableDumpElementTree, NativeFacade.Callback callback) {
     if ((mNativeFacade == null) || (mNativePtr == 0)) {
@@ -3115,7 +3119,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     return "";
   }
 
-  private void destroyTemplateAssembler() {
+  private void destroyLynxEngine() {
     if (!mIsDestroyed.compareAndSet(false, true)) {
       return;
     }
