@@ -467,13 +467,13 @@ std::string JSErrorReporter::ErrorEventToJsonString(JSErrorInfo& info,
   // sentry.sdk
   {
     rapidjson::Value sentry_sdk(rapidjson::kObjectType);
-    sentry_sdk.AddMember("name", "sentry.javascript.browser", allocator);
-    sentry_sdk.AddMember("version", "5.15.5", allocator);
+    sentry_sdk.AddMember("name", "sentry.javascript.lynx", allocator);
+    sentry_sdk.AddMember("version", "9.0.0", allocator);
     rapidjson::Value sentry_sdk_packages(rapidjson::kArrayType);
     rapidjson::Value sentry_sdk_packages_item(rapidjson::kObjectType);
-    sentry_sdk_packages_item.AddMember("name", "npm:@sentry/browser",
+    sentry_sdk_packages_item.AddMember("name", "npm:@sentry/core",
                                        allocator);
-    sentry_sdk_packages_item.AddMember("version", "5.15.5", allocator);
+    sentry_sdk_packages_item.AddMember("version", "9.0.0", allocator);
     sentry_sdk_packages.PushBack(sentry_sdk_packages_item, allocator);
     sentry_sdk.AddMember("packages", sentry_sdk_packages, allocator);
     rapidjson::Value sentry_sdk_integrations(rapidjson::kArrayType);

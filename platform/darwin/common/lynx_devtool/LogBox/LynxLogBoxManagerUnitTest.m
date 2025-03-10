@@ -12,7 +12,7 @@ static NSString* kNativeError =
 static NSString* kJSError =
     @"{\"sdk\":\"1.0.0\",\"level\":\"error\",\"url\":\"xxx\",\"error\":\"{\\\"sentry\\\":{"
     @"\\\"exception\\\":{\\\"values\\\":[]},\\\"level\\\":\\\"error\\\",\\\"sdk\\\":{\\\"name\\\":"
-    @"\\\"sentry.javascript.browser\\\",\\\"packages\\\":[{\\\"name\\\":\\\"\\\",\\\"version\\\":"
+    @"\\\"sentry.javascript.lynx\\\",\\\"packages\\\":[{\\\"name\\\":\\\"\\\",\\\"version\\\":"
     @"\\\"1.0.0\\\"}],\\\"version\\\":\\\"1.0.0\\\",\\\"integrations\\\":[]},\\\"platform\\\":"
     @"\\\"javascript\\\",\\\"tags\\\":{\\\"lib_version\\\":\\\"\\\",\\\"version_code\\\":"
     @"\\\"unknown_version\\\",\\\"run_type\\\":\\\"lynx_core\\\",\\\"extra\\\":\\\"at Card onLoad "
@@ -24,7 +24,7 @@ static NSString* kJSError =
 static NSString* kJSErrorMissingMessageField =
     @"{\"sdk\":\"1.0.0\",\"level\":\"error\",\"url\":\"xxx\",\"error\":\"{\\\"sentry\\\":{"
     @"\\\"exception\\\":{\\\"values\\\":[]},\\\"level\\\":\\\"error\\\",\\\"sdk\\\":{\\\"name\\\":"
-    @"\\\"sentry.javascript.browser\\\",\\\"packages\\\":[{\\\"name\\\":\\\"\\\",\\\"version\\\":"
+    @"\\\"sentry.javascript.lynx\\\",\\\"packages\\\":[{\\\"name\\\":\\\"\\\",\\\"version\\\":"
     @"\\\"1.0.0\\\"}],\\\"version\\\":\\\"1.0.0\\\",\\\"integrations\\\":[]},\\\"platform\\\":"
     @"\\\"javascript\\\",\\\"tags\\\":{\\\"lib_version\\\":\\\"\\\",\\\"version_code\\\":"
     @"\\\"unknown_version\\\",\\\"run_type\\\":\\\"lynx_core\\\",\\\"extra\\\":\\\"at Card onLoad "
