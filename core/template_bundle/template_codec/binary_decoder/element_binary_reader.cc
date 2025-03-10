@@ -59,8 +59,20 @@ const base::static_string::GenericCache& GetEventStringType(
 };
 }  // namespace
 
-// These are the APIs used for decoding data and return fiber elements:
+ElementBinaryReader::ElementBinaryReader(
+    std::unique_ptr<lepus::InputStream> stream,
+    const std::vector<base::String>& string_list,
+    const tasm::CompileOptions& options,
+    const OrderedStringKeyRouter& element_templates_router,
+    const StringKeyRouter& string_key_parsed_styles_router)
+    : ElementBinaryReader(std::move(stream)) {
+  string_list_ = string_list;
+  compile_options_ = options;
+  element_templates_router_ = element_templates_router;
+  string_key_parsed_styles_router_ = string_key_parsed_styles_router;
+}
 
+// These are the APIs used for decoding data and return fiber elements:
 fml::RefPtr<FiberElement> ElementBinaryReader::DecodeSingleTemplate(
     ElementManager* manager, TemplateAssembler* tasm) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "ElementBinaryReader::DecodeSingleTemplate");
@@ -396,8 +408,14 @@ bool ElementBinaryReader::ConstructElement(ElementSectionEnum section_type,
   return true;
 }
 
-// These are the APIs used for decoding data and return element infos:
+std::unique_ptr<ElementBinaryReader>
+ElementBinaryReader::DeriveElementBinaryReader() {
+  return std::make_unique<ElementBinaryReader>(
+      stream_->DeriveInputStream(), string_list(), compile_options_,
+      element_templates_router_, string_key_parsed_styles_router_);
+}
 
+// These are the APIs used for decoding data and return element infos:
 // Lazy decode. Only decode templates router. The
 // decoding of the template waits until it is actually needed.
 bool ElementBinaryReader::DecodeElementTemplatesRouter() {

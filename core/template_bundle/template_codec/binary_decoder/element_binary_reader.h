@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_base_css_reader.h"
@@ -21,6 +22,13 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
  public:
   explicit ElementBinaryReader(std::unique_ptr<lepus::InputStream> stream)
       : LynxBinaryBaseCSSReader(std::move(stream)){};
+
+  explicit ElementBinaryReader(
+      std::unique_ptr<lepus::InputStream> stream,
+      const std::vector<base::String>& string_list,
+      const tasm::CompileOptions& options,
+      const OrderedStringKeyRouter& element_templates_router,
+      const StringKeyRouter& string_key_parsed_styles_router);
 
   ~ElementBinaryReader() override = default;
 
@@ -46,6 +54,8 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
   // and return the element info.
   std::shared_ptr<ElementTemplateInfo> DecodeTemplatesInfoWithKey(
       const std::string& key);
+
+  std::unique_ptr<ElementBinaryReader> DeriveElementBinaryReader();
 
  protected:
   // These are the APIs used for decoding data into fiber elements.

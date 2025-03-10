@@ -160,7 +160,6 @@ class BaseBinaryReader : public BinaryReader {
 #endif
   tasm::CompileOptions compile_options_;
 
- private:
   std::vector<base::String> string_list_;
 };
 
