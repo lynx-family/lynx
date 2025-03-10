@@ -28,9 +28,7 @@ class TestWakeable : public fml::Wakeable {
 
   explicit TestWakeable(WakeUpCall call) : wake_up_call_(call) {}
 
-  void WakeUp(fml::TimePoint time_point, bool is_woken_by_vsync) override {
-    wake_up_call_(time_point);
-  }
+  void WakeUp(fml::TimePoint time_point) override { wake_up_call_(time_point); }
 
  private:
   WakeUpCall wake_up_call_;

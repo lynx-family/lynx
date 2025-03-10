@@ -19,7 +19,7 @@ class Wakeable {
  public:
   virtual ~Wakeable() {}
 
-  virtual void WakeUp(fml::TimePoint time_point, bool is_woken_by_vsync) = 0;
+  virtual void WakeUp(fml::TimePoint time_point) = 0;
 };
 
 }  // namespace fml

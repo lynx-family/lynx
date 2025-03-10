@@ -79,10 +79,6 @@ class MessageLoopImpl : public Wakeable,
 
   void SetVSyncRequest(VSyncRequest vsync_request);
 
-  void WakeUp(fml::TimePoint time_point, bool is_woken_by_vsync) override;
-
-  virtual void WakeUp(fml::TimePoint time_point) = 0;
-
  protected:
   // Exposed for the embedder shell which allows clients to poll for events
   // instead of dedicating a thread to the message loop.
@@ -97,43 +93,13 @@ class MessageLoopImpl : public Wakeable,
   MessageLoopTaskQueues* task_queue_;
   TaskQueueId internal_queue_id_;
   std::vector<TaskQueueId> queue_ids_;
-  std::vector<TaskQueueId> vsync_aligned_task_queue_ids_;
 
  private:
-  void WakeUpByVSync(fml::TimePoint time_point);
-
-  bool WaitForVSyncTimeOut();
-
-  bool HasPendingVSyncRequest();
-
-  void FlushVSyncAlignedTasks(FlushType type);
-  // Return true if reach the given restriction_duration, otherwise, return
-  // false.
-  bool FlushTasksWithRestrictionDuration(
-      FlushType type, const std::vector<TaskQueueId>& queue_ids,
-      int64_t restriction_duration);
-
   std::atomic_bool terminated_;
   // Default fml::TimeDelta::Max(), means no effect.
   fml::TimeDelta restriction_duration_;
 
   VSyncRequest vsync_request_;
-
-  // The max execution time, its value is determined by the screen refresh rate.
-  // Will be set inside the vsync callback.
-  int64_t max_execute_time_ms_ = 16;
-  static constexpr int64_t kNSecPerMSec = 1000000;
-
-  // This is an estimated value. It indicates the proportion of FlushTasks in
-  // the entire vsync cycle.
-  static constexpr float kTraversalProportion = 0.75;
-
-  // Used to record the time for requesting vsync, it will be reset to 0 when
-  // the vsync callback is executed.
-  int64_t request_vsync_time_millis_ = 0;
-
-  // The maximum timeout for waiting for the vsync callback.
-  static constexpr int64_t kWaitingVSyncTimeoutMillis = 5000;
 
   virtual void FlushTasks(FlushType type);
 
