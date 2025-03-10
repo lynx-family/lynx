@@ -91,7 +91,9 @@ static NSDictionary *convertLepusTableToNSDictionary(const lepus_value &value) {
   for (auto iter = table->begin(); iter != table->end(); iter++) {
     NSString *key = convertCStringToNSString(iter->first.c_str());
     id nsValue = convertLepusValueToNSObject(iter->second);
-    [nsDict setValue:nsValue forKey:key];
+    if (nsValue) {
+      [nsDict setValue:nsValue forKey:key];
+    }
   }
   return [nsDict copy];
 }
@@ -117,7 +119,10 @@ static NSArray *convertQjsArrayToNSArray(const lepus::Value &value) {
   NSMutableArray *nsArray = [[NSMutableArray alloc] init];
   if (value.IsJSArray()) {
     value.IteratorJSValue([nsArray](const lepus::Value &_index, const lepus::Value &element) {
-      [nsArray addObject:convertLepusValueToNSObject(element)];
+      id nsObject = convertLepusValueToNSObject(element);
+      if (nsObject) {
+        [nsArray addObject:convertLepusValueToNSObject(element)];
+      }
     });
   };
   return [nsArray copy];
@@ -129,7 +134,9 @@ static NSDictionary *convertQjsTableToNSDictionary(const lepus::Value &value) {
     value.IteratorJSValue([nsDict](const lepus::Value &key, const lepus::Value &value) {
       NSString *nsKey = convertCStringToNSString(key.CString());
       id nsValue = convertLepusValueToNSObject(value);
-      [nsDict setValue:nsValue forKey:nsKey];
+      if (nsValue) {
+        [nsDict setValue:nsValue forKey:nsKey];
+      }
     });
   }
   return [nsDict copy];
