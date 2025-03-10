@@ -257,7 +257,8 @@ dependencies {
     api project(':LynxJSSDK')
 
     implementation 'org.lynxsdk.lynx:debug-router:0.0.1-alpha.2'
-    implementation 'org.lynxsdk.lynx:v8so:0.0.1'
+    // implementation 'org.lynxsdk.lynx:v8so:0.0.1'
+    implementation fileTree(dir: '../lynx_android/libs', include: ['v8so.aar'])
     
     compileOnly("com.squareup.okhttp3:okhttp:3.10.0")
     androidTestImplementation("com.squareup.okhttp3:mockwebserver:3.10.0")

@@ -18,7 +18,7 @@ buildscript {
         }
 
         if (project.hasProperty("lynx-local-build")) {
-            abiList=['armeabi-v7a', 'arm64-v8a', 'x86']
+            abiList=['armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64']
         } else if (project.hasProperty("build_for_emu")) {
             abiList=['armeabi-v7a', 'x86']
         } else {
