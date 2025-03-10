@@ -275,8 +275,7 @@ class App : public std::enable_shared_from_this<App> {
         bundle_module_mode_(
             tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
         animation_frame_handler_(
-            std::make_unique<runtime::AnimationFrameTaskHandler>()),
-        group_id_(group_id) {}
+            std::make_unique<runtime::AnimationFrameTaskHandler>()) {}
 
   void Init();
   std::optional<Value> SendPageEvent(const std::string& page_name,
@@ -343,7 +342,6 @@ class App : public std::enable_shared_from_this<App> {
   std::unique_ptr<runtime::AnimationFrameTaskHandler> animation_frame_handler_;
   bool has_paused_animation_frame_{false};
   lynx::tasm::FluencyTracer fluency_tracer_;
-  const std::string group_id_;
 };
 
 }  // namespace piper

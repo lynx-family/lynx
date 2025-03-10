@@ -176,6 +176,10 @@ RuntimeManager::~RuntimeManager() {
   runtime_manager_delegate_.reset();
 }
 
+bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
+  return group_id == "-1";
+}
+
 std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     const std::string& group_id,
     std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
@@ -188,7 +192,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     runtime_manager_delegate_->BeforeRuntimeCreate(
         force_use_lightweight_js_engine);
   }
-  bool is_single_context = piper::IsSingleJSContext(group_id);
+  bool is_single_context = IsSingleJSContext(group_id);
   std::shared_ptr<piper::Runtime> js_runtime;
   std::shared_ptr<piper::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously

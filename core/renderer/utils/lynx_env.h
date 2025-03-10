@@ -83,7 +83,6 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF,
     ENABLE_NATIVE_CREATE_VIEW_ASYNC,
     ENABLE_SIGNAL_API,
-    ENABLE_NAPI_PROXY_WRAP,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -172,7 +171,6 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_NATIVE_CREATE_VIEW_ASYNC,
              "enable_native_create_view_async"},
             {Key::ENABLE_SIGNAL_API, "enable_signal_api"},
-            {Key::ENABLE_NAPI_PROXY_WRAP, "enable_napi_proxy_wrap"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());

@@ -82,15 +82,6 @@ constexpr const char kEnableMicrotaskPromisePolyfill[] =
     "enableMicrotaskPromisePolyfill";
 
 /**
- * @name: enableNapiProxyWrap
- * @description: This is internal config, use for adjust if we should wrap napi
- *object with proxy.
- * @platform: Both
- * @supportVersion: 3.2
- **/
-constexpr const char kEnableNapiProxyWrap[] = "enableNapiProxyWrap";
-
-/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.
