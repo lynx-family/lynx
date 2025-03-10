@@ -391,7 +391,7 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     if (list_event_manager_) {
       list_event_manager_->SetVisibleCell(value.Bool());
     }
-    should_set_props = false;
+    should_set_props = true;
   } else if (key.IsEqual(list::kShouldRequestStateRestore)) {
     should_request_state_restore_ = value.Bool();
     should_set_props = false;

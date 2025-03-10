@@ -90,6 +90,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private boolean mEnableScrollEndEvent = false;
   private boolean mEnableScrollStateChangeEvent = false;
   private boolean mEnableBatchRender = false;
+  private boolean mEnableNeedVisibleItemInfo = false;
   // for new gesture
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
 
@@ -558,6 +559,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     mUpdateAnimationFadeInDuration = value;
   }
 
+  @LynxProp(name = "need-visible-item-info", defaultBoolean = false)
+  public void setNeedVisibleItemInfo(boolean value) {
+    mEnableNeedVisibleItemInfo = value;
+  }
+
   @LynxUIMethod
   public void scrollToPosition(ReadableMap params, Callback callback) {
     if (mScrollToCallback != null) {
@@ -850,6 +856,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (mEnableScrollStateChangeEvent) {
       LynxDetailEvent event =
           new LynxDetailEvent(getSign(), LynxScrollEvent.EVENT_SCROLL_STATE_CHANGE);
+
+      if (mEnableNeedVisibleItemInfo) {
+        event.addDetail("attachedCells", visibleCellsInfo());
+      }
+
       event.addDetail("state", state);
       mContext.getEventEmitter().sendCustomEvent(event);
     }
