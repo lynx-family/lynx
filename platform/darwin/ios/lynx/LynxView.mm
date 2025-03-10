@@ -345,48 +345,17 @@
   RUN_RENDER_SAFELY(touchTarget = [_templateRender hitTestInEventHandler:point withEvent:event];);
   UIView* view = [super hitTest:point withEvent:event];
 
-  if ([self needEndEditing:view] &&
-      ![[[[view superview] superview] superview] isKindOfClass:[UITextView class]] &&
-      ![touchTarget ignoreFocus] && ![self tapOnUICalloutBarButton:point withEvent:event]) {
-    // To free our touch handler from being blocked, dispatch endEditing asynchronously.
-    __weak LynxView* weakSelf = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
-      [weakSelf endEditing:true];
-    });
-  }
+  [_templateRender.lynxUIRenderer handleFocus:touchTarget
+                                       onView:view
+                                withContainer:self
+                                     andPoint:point
+                                     andEvent:event];
   // If target eventThrough, return nil to let event through LynxView.
   if ([touchTarget eventThrough]) {
     return nil;
   } else {
     return view;
   }
-}
-
-- (BOOL)needEndEditing:(UIView*)view {
-  if ([view isKindOfClass:[UITextField class]] || [view isKindOfClass:[UITextView class]]) {
-    return NO;
-  }
-
-  // In UITextView case, when user chose "SelectAll", the view hierarchy will be like this:
-  // UITextRangeView -> UITextSelectionView -> _UITextContainerView -> LynxTextView
-  // However, UITextRangeView is a private class which is not accessible, so we can only
-  // use [[[superview]superview]superview] as judge condition to avoid keyboard being folded
-  // so that user can adjust cursor positions.
-  if ([[[[view superview] superview] superview] isKindOfClass:[UITextView class]]) {
-    return NO;
-  }
-
-  // In iOS16 & UITextField has the same issue mentioned before, the view hierarchy will be like
-  // this: UITextRangeView -> UITextSelectionView -> _UITextLayoutView -> UIFieldEditor ->
-  // LynxTextField so use [[[[superview] superview] superview] superview] to handle this
-  // situation.
-  if (@available(iOS 16.0, *)) {
-    if ([[[[[view superview] superview] superview] superview] isKindOfClass:[UITextField class]]) {
-      return NO;
-    }
-  }
-
-  return YES;
 }
 
 #pragma mark - View
