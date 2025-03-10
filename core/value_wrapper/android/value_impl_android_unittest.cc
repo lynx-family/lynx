@@ -56,7 +56,7 @@ TEST(ValueImplAndroidUnittest, FactoryAndGetter) {
     auto buf = std::make_unique<uint8_t[]>(10);
     auto val = factory.CreateArrayBuffer(std::move(buf), 10);
     ASSERT_TRUE(val->IsArrayBuffer());
-    ASSERT_TRUE(val->ArrayBuffer() == nullptr);
+    ASSERT_TRUE(val->ArrayBuffer() != nullptr);
   }
   {
     auto val = factory.CreateArray();
@@ -162,6 +162,172 @@ TEST(ValueImplAndroidUnittest, Uint64Uint32CornerCase) {
     EXPECT_TRUE(new_lepus_value.IsInt64());
     EXPECT_EQ(uint64_lepus_val.UInt64(), 123456);
     EXPECT_EQ(new_lepus_value.Int64(), 123456);
+  }
+}
+
+TEST(ValueImplAndroidUnittest, JavaValueMapMethod) {
+  // push boolean & get boolean
+  ValueImplAndroidFactory factory = pub::ValueImplAndroidFactory();
+  auto value_map = factory.CreateMap();
+  // push boolean & get boolean
+  {
+    auto result1 = value_map->PushValueToMap(
+        "boolean_pub_value", ValueImplAndroid(base::android::JavaValue(true)));
+    auto result2 = value_map->PushBoolToMap("boolean_value", false);
+    EXPECT_TRUE(result1 && result2);
+    EXPECT_TRUE(value_map->Contains("boolean_pub_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("boolean_pub_value")->IsBool());
+    EXPECT_TRUE(value_map->GetValueForKey("boolean_pub_value")->Bool());
+    EXPECT_TRUE(value_map->Contains("boolean_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("boolean_value")->IsBool());
+    EXPECT_FALSE(value_map->GetValueForKey("boolean_value")->Bool());
+  }
+  // push NULL & get NULL
+  {
+    auto result = value_map->PushValueToMap(
+        "null_value", ValueImplAndroid(base::android::JavaValue()));
+    EXPECT_TRUE(result);
+    EXPECT_FALSE(value_map->Contains("null_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("null_value")->IsNil());
+  }
+
+  // push Int32 & get Int32
+  {
+    auto result = value_map->PushInt32ToMap("int32_value", 123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("int32_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("int32_value")->IsNumber());
+    EXPECT_EQ(value_map->GetValueForKey("int32_value")->Int32(), 123);
+  }
+  // push Int64 & get Int64
+  {
+    auto result = value_map->PushInt64ToMap("int64_value", 123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("int64_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("int64_value")->IsNumber());
+    EXPECT_EQ(value_map->GetValueForKey("int64_value")->Int64(), 123);
+  }
+  // push Double & get Double
+  {
+    auto result = value_map->PushDoubleToMap("double_value", 123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("double_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("double_value")->IsNumber());
+    EXPECT_EQ(value_map->GetValueForKey("double_value")->Double(), 123);
+  }
+  // push String & get String
+  {
+    auto result = value_map->PushStringToMap("string_value", "foo");
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("string_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("string_value")->IsString());
+    EXPECT_EQ(value_map->GetValueForKey("string_value")->str(), "foo");
+  }
+  // push ArrayBuffer & get ArrayBuffer
+  {
+    std::unique_ptr<uint8_t[]> arr = std::make_unique<uint8_t[]>(3);
+    arr[0] = 'f';
+    arr[1] = 'o';
+    arr[2] = 'o';
+    auto result = value_map->PushArrayBufferToMap("array_buffer_value",
+                                                  std::move(arr), 3);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("array_buffer_value"));
+    EXPECT_TRUE(
+        value_map->GetValueForKey("array_buffer_value")->IsArrayBuffer());
+    auto result_arr = value_map->GetValueForKey("array_buffer_value");
+    uint8_t* pub_result = result_arr->ArrayBuffer();
+    EXPECT_EQ(pub_result[0], 'f');
+    EXPECT_EQ(pub_result[1], 'o');
+    EXPECT_EQ(pub_result[2], 'o');
+  }
+  // push BigInt & get BigInt
+  {
+    auto result =
+        value_map->PushBigIntToMap("bigint_value", "9223372036854775806");
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_map->Contains("bigint_value"));
+    EXPECT_TRUE(value_map->GetValueForKey("bigint_value")->IsInt64());
+    EXPECT_EQ(value_map->GetValueForKey("bigint_value")->Int64(),
+              9223372036854775806);
+  }
+}
+
+TEST(ValueImplAndroidUnittest, JavaValueArrayMethod) {
+  // push bool & get bool
+  ValueImplAndroidFactory factory = pub::ValueImplAndroidFactory();
+  auto value_array = factory.CreateArray();
+  // push boolean & get boolean
+  {
+    auto result1 = value_array->PushValueToArray(
+        ValueImplAndroid(base::android::JavaValue(true)));
+    auto result2 = value_array->PushBoolToArray(false);
+    EXPECT_TRUE(result1 && result2);
+    EXPECT_TRUE(value_array->GetValueAtIndex(0)->IsBool());
+    EXPECT_TRUE(value_array->GetValueAtIndex(0)->Bool());
+    EXPECT_TRUE(value_array->GetValueAtIndex(1)->IsBool());
+    EXPECT_FALSE(value_array->GetValueAtIndex(1)->Bool());
+  }
+
+  // push NULL & get NULL
+  {
+    auto result = value_array->PushValueToArray(
+        ValueImplAndroid(base::android::JavaValue()));
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(2)->IsNil());
+  }
+
+  // push Int32 & get Int32
+  {
+    auto result = value_array->PushInt32ToArray(123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(3)->IsNumber());
+    EXPECT_EQ(value_array->GetValueAtIndex(3)->Int32(), 123);
+  }
+  // push Int64 & get Int64
+  {
+    auto result = value_array->PushInt64ToArray(123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(4)->IsNumber());
+    EXPECT_EQ(value_array->GetValueAtIndex(4)->Int64(), 123);
+  }
+  // push Double & get Double
+  {
+    auto result = value_array->PushDoubleToArray(123);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(5)->IsNumber());
+    EXPECT_EQ(value_array->GetValueAtIndex(5)->Double(), 123);
+  }
+
+  // push String & get String
+  {
+    auto result = value_array->PushStringToArray("foo");
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(6)->IsString());
+    EXPECT_EQ(value_array->GetValueAtIndex(6)->str(), "foo");
+  }
+
+  // push BigInt & get BigInt
+  {
+    auto result = value_array->PushBigIntToArray("9223372036854775806");
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(7)->IsInt64());
+    EXPECT_EQ(value_array->GetValueAtIndex(7)->Int64(), 9223372036854775806);
+  }
+  // push ArrayBuffer & get ArrayBuffer
+  {
+    std::unique_ptr<uint8_t[]> arr = std::make_unique<uint8_t[]>(3);
+    arr[0] = 'f';
+    arr[1] = 'o';
+    arr[2] = 'o';
+    auto result = value_array->PushArrayBufferToArray(std::move(arr), 3);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(value_array->GetValueAtIndex(8)->IsArrayBuffer());
+    auto result_arr = value_array->GetValueAtIndex(8);
+    uint8_t* pub_result = result_arr->ArrayBuffer();
+    EXPECT_EQ(pub_result[0], 'f');
+    EXPECT_EQ(pub_result[1], 'o');
+    EXPECT_EQ(pub_result[2], 'o');
   }
 }
 

@@ -83,6 +83,224 @@ void ValueImplAndroid::ForeachMap(pub::ForeachMapFunc func) const {
                                       std::move(closure));
 }
 
+uint8_t* ValueImplAndroid::ArrayBuffer() const {
+  if (!backend_value_.IsArrayBuffer()) {
+    return nullptr;
+  }
+  auto* buffer = backend_value_.ArrayBuffer();
+  return buffer;
+}
+
+bool ValueImplAndroid::PushValueToArray(const Value& value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  if (value.backend_type() != pub::ValueBackendType::ValueBackendTypeJava) {
+    return false;
+  }
+
+  backend_value_.Array()->PushJavaValue(
+      reinterpret_cast<const ValueImplAndroid*>(&value)->backend_value());
+  return true;
+}
+
+bool ValueImplAndroid::PushValueToArray(std::unique_ptr<Value> value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  if (value->backend_type() != pub::ValueBackendType::ValueBackendTypeJava) {
+    return false;
+  }
+
+  backend_value_.Array()->PushJavaValue(
+      reinterpret_cast<const ValueImplAndroid*>(value.get())->backend_value());
+  return true;
+}
+
+bool ValueImplAndroid::PushNullToArray() {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushJavaValue(base::android::JavaValue());
+  return true;
+}
+
+bool ValueImplAndroid::PushArrayBufferToArray(std::unique_ptr<uint8_t[]> value,
+                                              size_t length) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushByteArray(value.get(), length);
+  return true;
+}
+
+bool ValueImplAndroid::PushStringToArray(const std::string& value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushString(value);
+  return true;
+}
+
+bool ValueImplAndroid::PushBoolToArray(bool value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushBoolean(value);
+  return true;
+}
+
+bool ValueImplAndroid::PushDoubleToArray(double value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushDouble(value);
+  return true;
+}
+
+bool ValueImplAndroid::PushInt32ToArray(int32_t value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushInt(value);
+  return true;
+}
+
+bool ValueImplAndroid::PushInt64ToArray(int64_t value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  backend_value_.Array()->PushInt64(value);
+  return true;
+}
+
+bool ValueImplAndroid::PushBigIntToArray(const std::string& value) {
+  if (!backend_value_.IsArray()) {
+    return false;
+  }
+  auto big_number = std::strtoll(value.c_str(), nullptr, 0);
+  backend_value_.Array()->PushInt64(big_number);
+  return true;
+}
+bool ValueImplAndroid::PushValueToMap(const std::string& key,
+                                      const Value& value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  if (value.backend_type() != pub::ValueBackendType::ValueBackendTypeJava) {
+    return false;
+  }
+  backend_value_.Map()->PushJavaValue(
+      key, reinterpret_cast<const ValueImplAndroid*>(&value)->backend_value());
+  return true;
+}
+
+bool ValueImplAndroid::PushValueToMap(const std::string& key,
+                                      std::unique_ptr<Value> value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  if (value->backend_type() != pub::ValueBackendType::ValueBackendTypeJava) {
+    return false;
+  }
+  backend_value_.Map()->PushJavaValue(
+      key,
+      reinterpret_cast<const ValueImplAndroid*>(value.get())->backend_value());
+  return true;
+}
+
+bool ValueImplAndroid::PushNullToMap(const std::string& key) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushNull(key.c_str());
+  return true;
+}
+
+bool ValueImplAndroid::PushArrayBufferToMap(const std::string& key,
+                                            std::unique_ptr<uint8_t[]> value,
+                                            size_t length) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushByteArray(key, value.get(), length);
+  return true;
+}
+
+bool ValueImplAndroid::PushStringToMap(const std::string& key,
+                                       const std::string& value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushString(key, value);
+  return true;
+}
+
+bool ValueImplAndroid::PushBoolToMap(const std::string& key, bool value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushBoolean(key, value);
+  return true;
+}
+
+bool ValueImplAndroid::PushDoubleToMap(const std::string& key, double value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushDouble(key, value);
+  return true;
+}
+
+bool ValueImplAndroid::PushInt32ToMap(const std::string& key, int32_t value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushInt(key, value);
+  return true;
+}
+
+bool ValueImplAndroid::PushInt64ToMap(const std::string& key, int64_t value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  backend_value_.Map()->PushInt64(key.c_str(), value);
+  return true;
+}
+
+bool ValueImplAndroid::PushBigIntToMap(const std::string& key,
+                                       const std::string& value) {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  auto big_number = std::strtoll(value.c_str(), nullptr, 0);
+  backend_value_.Map()->PushInt64(key.c_str(), big_number);
+  return true;
+}
+std::unique_ptr<Value> ValueImplAndroid::GetValueForKey(
+    const std::string& key) const {
+  if (!backend_value_.IsMap()) {
+    return std::make_unique<ValueImplAndroid>(base::android::JavaValue());
+  }
+  auto result = std::make_unique<ValueImplAndroid>(
+      backend_value_.GetValueForKey(key.c_str()));
+  return std::move(result);
+}
+bool ValueImplAndroid::Contains(const std::string& key) const {
+  if (!backend_value_.IsMap()) {
+    return false;
+  }
+  return backend_value_.Map()->Contains(key.c_str());
+}
+std::unique_ptr<Value> ValueImplAndroid::GetValueAtIndex(uint32_t idx) const {
+  if (!backend_value_.IsArray()) {
+    return std::make_unique<ValueImplAndroid>(base::android::JavaValue());
+  }
+  auto result =
+      std::make_unique<ValueImplAndroid>(backend_value_.GetValueForIndex(idx));
+  return std::move(result);
+}
+
 base::android::JavaValue ValueUtilsAndroid::ConvertValueToJavaValue(
     const Value& value,
     std::vector<std::unique_ptr<pub::Value>>* prev_value_vector, int depth) {
