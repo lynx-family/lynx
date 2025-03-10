@@ -104,6 +104,10 @@ class TimingInfoNg {
   void ClearAllTimingInfo();
 
  private:
+  bool UpdateMetrics(const std::string& name, const std::string& start_name,
+                     const std::string& end_name, uint64_t start_time,
+                     uint64_t end_time);
+
   // Note: All data is not meant to be overwritten! If you need to overwrite any
   // data, you must clear it first using ClearInitTimingInfo or
   // ClearPipelineTimingInfo before reconfiguring it.
