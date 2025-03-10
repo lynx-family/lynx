@@ -17,20 +17,28 @@ Empower the web community and invite more to build across platforms
 
 
 ## Content
-- [About Lynx](#About-Lynx)
-- [Documentation](#Documentation)
-- [How to Use Lynx](#How-to-Use-Lynx)
-- [How to Contribute](#How-to-Contribute)
-- [Discussions](#Discussions)
-- [Credits](#Credits)
-- [License](#License)
+- [Content](#content)
+- [About Lynx](#about-lynx)
+- [Documentation](#documentation)
+- [How to Use Lynx](#how-to-use-lynx)
+  - [Requirements](#requirements)
+  - [Getting Started Guide](#getting-started-guide)
+- [How to Contribute](#how-to-contribute)
+  - [Get the Code](#get-the-code)
+  - [Code of Conduct](#code-of-conduct)
+  - [Contributing Guide](#contributing-guide)
+- [Discussions](#discussions)
+- [Credits](#credits)
+  - [Third Party Libraries](#third-party-libraries)
+  - [Referenced API Design and Implementations](#referenced-api-design-and-implementations)
+- [License](#license)
 
 ## About Lynx
 
-Lynx is a _family_ of open-source technologies empowering developers to use their existing web skills to create truly native UIs for both mobile and web from a single codebase, featuring performance at scale and velocity.
-- **💫 Write Once, Render Anywhere.** Enjoy native rendering on Android, iOS, and Web, or pixel-perfect consistency across mobile and desktop via our custom renderer.
-- **🌐 Web-Inspired Design.** Leverage your existing knowledge of CSS and React. We designed Lynx with the web knowledge and libraries in mind.
-- **⚡ Performance at Scale.** Achieve instant launch and silky UI responsiveness via our multithreaded engine, whether standalone or embedded.
+Lynx is a _family_ of open-source technologies empowering developers to use their existing web skills to create truly native UIs for both mobile and web from a single codebase, focusing on performance at scale and development velocity.
+- **💫 Write Once, Render Anywhere:** Enjoy native rendering on Android, iOS, and Web, or pixel-perfect consistency across platforms via our custom renderer.
+- **🌐 Web-Inspired Design:** Leverage your existing knowledge of CSS and React. We designed Lynx with web standards and libraries in mind.
+- **⚡ Performance at Scale:** Achieve instant launch times and smooth UI responsiveness through our multithreaded engine, whether standalone or embedded.
 
 This repository contains the **core engine** of Lynx. For other repositories in the Lynx family, visit our [org homepage](https://github.com/lynx-family).
 
@@ -40,27 +48,27 @@ You shall find documentation for Lynx on [lynxjs.org](http://lynxjs.org).
 
 ## How to Use Lynx
 ### Requirements
-Lynx apps may target iOS 10 and Android 5.0 (API 21) or newer.
+Lynx apps support iOS 10 and Android 5.0 (API 21) or newer.
 
-We recommend using macOS as the development operating system. Windows and Linux are not yet verified or guaranteed, so you may encounter problems. If you need assistance, please file an issue, and we will be more than happy to help you address it.
+We recommend using macOS for development. Windows and Linux support is not yet verified or guaranteed, so you may encounter issues. If you need assistance, please file an issue, and we'll be happy to help.
 
-### Getting Started guide
-- Trying out Lynx with [hello world](https://lynxjs.org/guide/start/quick-start.html)
-- [Integrating Lynx with an Existing Application](https://lynxjs.org/guide/start/integrate-with-existing-apps.html)
+### Getting Started Guide
+- Get started with [Hello World](https://lynxjs.org/guide/start/quick-start.html)
+- Learn about [Integrating Lynx with Existing Applications](https://lynxjs.org/guide/start/integrate-with-existing-apps.html)
 
 ## How to Contribute
 ### Get the Code
-Instead of cloning the repository right away, please consider taking an extra step.
+Before cloning the repository, please take an additional step.
 
-To effectively manage dependencies using our custom tool, [Habitat](https://github.com/lynx-family/habitat), it is recommended to create an additional directory.
-For instance, you could name this directory `src`:
+To effectively manage dependencies using our custom tool, [Habitat](https://github.com/lynx-family/habitat), we recommend creating a dedicated directory.
+For example, create a directory named `src`:
 
-```
+```bash
 git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
-For now, `src` contains only `lynx`. However as you proceed to build Lynx, you'll notice several installed dependencies there.
-This additional `src` directory helps keep your workplace organized.
+Initially, `src` will contain only `lynx`. As you build Lynx, additional dependencies will be installed there.
+This structure helps keep your workspace organized.
 
 ### [Code of Conduct][coc]
 We are devoted to ensuring a positive, inclusive, and safe environment for all contributors. Please find our [Code of Conduct][coc] for detailed information.
