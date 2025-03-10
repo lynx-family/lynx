@@ -40,7 +40,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
       std::make_shared<lynx::shell::LynxActor<lynx::shell::NativeFacade>>(
           std::move(native_facade_runtime), js_task_runner, instance_id, true);
   std::shared_ptr<VSyncMonitor> vsync_monitor =
-      lynx::shell::VSyncMonitor::Create();
+      lynx::base::VSyncMonitor::Create();
 
   auto timing_mediator =
       std::make_unique<lynx::tasm::timing::TimingMediator>(instance_id);

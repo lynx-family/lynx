@@ -27,7 +27,7 @@ class MessageLoopDarwinVSync : public fml::MessageLoopDarwin {
   uint64_t max_execute_time_ms_ = 16;
   static constexpr uint64_t kNSecPerMSec = 1000000;
   // TODO(qiuxian): VSyncMonitor now locates in shell, needs to be moved to base
-  std::shared_ptr<lynx::shell::VSyncMonitorIOS> vsync_monitor_;
+  std::shared_ptr<lynx::base::VSyncMonitorIOS> vsync_monitor_;
   // Used to record the time for requesting vsync, it will be reset to 0 when
   // the vsync callback is executed.
   uint64_t request_vsync_time_millis_ = 0;
