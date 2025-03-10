@@ -132,7 +132,7 @@ void LayoutContextDarwin::SetFontFaces(const FontFacesMap& fontFaces) {
 }
 
 void LayoutContextDarwin::SetLayoutNodeManager(LayoutNodeManager* layout_node_manager) {
-  [nodeOwner setLayoutNodeManager:layout_node_manager];
+  [nodeOwner initLayoutNodeManager:layout_node_manager];
 }
 
 }  // namespace tasm

@@ -8,10 +8,6 @@
 #import "LynxNativeLayoutNode.h"
 #import "LynxPropsProcessor.h"
 #import "LynxUnitUtils.h"
-#include "core/public/layout_node_manager.h"
-#include "core/public/layout_node_value.h"
-
-using namespace lynx::tasm;
 
 @interface LynxCustomMeasureShadowNode () <LynxCustomMeasureDelegate>
 
@@ -34,20 +30,12 @@ LYNX_PROP_SETTER("custom-layout", customLayout, BOOL) { _hasCustomLayout = value
 
 - (MeasureResult)measureNativeLayoutNode:(nonnull MeasureParam *)param
                           measureContext:(nullable MeasureContext *)ctx {
-  LayoutResult size =
-      static_cast<LayoutNodeManager *>(self.layoutNodeManagerPtr)
-          ->UpdateMeasureByPlatform((int32_t)self.sign, param.width, (int32_t)param.widthMode,
-                                    param.height, (int32_t)param.heightMode, ctx.finalMeasure);
-  MeasureResult result;
-  result.size = CGSizeMake(size.width_, size.height_);
-  result.baseline = size.baseline_;
-  return result;
+  return [self.layoutNodeManager measureWithSign:self.sign MeasureParam:param MeasureContext:ctx];
 }
 
 - (void)alignNativeLayoutNode:(nonnull AlignParam *)param
                  alignContext:(nonnull AlignContext *)context {
-  static_cast<LayoutNodeManager *>(self.layoutNodeManagerPtr)
-      ->AlignmentByPlatform((int32_t)self.sign, param.topOffset, param.leftOffset);
+  [self.layoutNodeManager alignWithSign:self.sign AlignParam:param AlignContext:context];
 }
 
 - (MeasureResult)customMeasureLayoutNode:(nonnull MeasureParam *)param

@@ -23,7 +23,6 @@ typedef NS_ENUM(NSInteger, LynxShadowNodeType) {
 
 @property(atomic, readonly, nullable) LynxLayoutTick* layoutTick;
 @property(nonatomic, weak, readonly) LynxUIContext* uiContext;
-@property(nonatomic, assign) void* layoutNodeManagerPtr;
 
 - (instancetype)init NS_UNAVAILABLE;
 - (instancetype)initWithUIOwner:(LynxUIOwner*)uiOwner
@@ -32,7 +31,7 @@ typedef NS_ENUM(NSInteger, LynxShadowNodeType) {
 
 - (void)setDelegate:(id<LynxShadowNodeDelegate>)delegate;
 
-- (void)setLayoutNodeManager:(void*)layoutNodeManager;
+- (void)initLayoutNodeManager:(void*)layoutNodeManagerPtr;
 
 - (NSInteger)createNodeWithSign:(NSInteger)sign
                         tagName:(nonnull NSString*)tagName
