@@ -57,6 +57,7 @@
   V(get_instance_data)              \
   V(equals)                         \
   V(create_reference)               \
+  V(move_reference)                 \
   V(delete_reference)               \
   V(get_reference_value)            \
   V(open_handle_scope)              \
@@ -206,6 +207,10 @@ struct lynx_api_env__ {
                                                  lynx_value_ref* result);
   lynx_api_status (*lynx_value_delete_reference)(lynx_api_env env,
                                                  lynx_value_ref ref);
+  lynx_api_status (*lynx_value_move_reference)(lynx_api_env env,
+                                               lynx_value src_val,
+                                               lynx_value_ref src_ref,
+                                               lynx_value_ref* result);
   lynx_api_status (*lynx_value_get_reference_value)(lynx_api_env env,
                                                     lynx_value_ref ref,
                                                     lynx_value* result);
