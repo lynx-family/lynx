@@ -309,7 +309,10 @@ void TemplateAssembler::UpdateGlobalPropsToContext(const lepus::Value& props) {
 
   ForEachEntry([&kGlobalPropsKey_str, &kSystemInfo_str,
                 &kTriggerReadyWhenReloadStr, &kPostDataBeforeUpdateLepusStr,
-                &props](const auto& entry) {
+                &props,
+                enable_signal_api =
+                    page_config_ ? page_config_->GetEnableSignalAPIBoolValue()
+                                 : false](const auto& entry) {
     auto context = entry->GetVm();
     if (context == nullptr) {
       return;
@@ -322,6 +325,8 @@ void TemplateAssembler::UpdateGlobalPropsToContext(const lepus::Value& props) {
       context->SetPropertyToLynx(kPostDataBeforeUpdateLepusStr,
                                  lepus::Value(true));
     }
+    context->SetPropertyToLynx(BASE_STATIC_STRING(kEnableSignalAPI),
+                               lepus::Value(enable_signal_api));
   });
 }
 

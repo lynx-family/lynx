@@ -101,8 +101,6 @@ class PageConfig final : public EntryConfig {
 
   ~PageConfig() override = default;
 
-  lepus::Value GetConfigToRuntime();
-
   void DecodePageConfigFromJsonStringWhileUndefined(
       const std::string& config_json_string) {
     rapidjson::Document doc;
@@ -1414,8 +1412,6 @@ class PageConfig final : public EntryConfig {
   bool disable_quick_tracing_gc_{false};
 
   TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
-
-  lepus::Value config_to_runtime_;
 
   template <typename T>
   using PageConfigSetter = void (PageConfig::*)(T);
