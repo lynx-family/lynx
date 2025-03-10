@@ -67,7 +67,8 @@ public class BehaviorRegistry {
     if (viewManager != null) {
       return viewManager;
     }
-    throw new RuntimeException("No BehaviorController defined for class " + className);
+    throw new RuntimeException("Native Element <" + className + ">"
+        + " is not registered. No BehaviorController defined for class: \"" + className + "\"");
   }
 
   public Set<String> getAllBehaviorRegistryName() {
