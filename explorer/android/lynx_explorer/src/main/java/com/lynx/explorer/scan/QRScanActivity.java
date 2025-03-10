@@ -13,6 +13,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.ResultPoint;
+import com.google.zxing.client.android.Intents;
 import com.journeyapps.barcodescanner.BarcodeCallback;
 import com.journeyapps.barcodescanner.BarcodeResult;
 import com.journeyapps.barcodescanner.DecoratedBarcodeView;
@@ -51,7 +52,7 @@ public class QRScanActivity extends Activity {
 
     mBarcodeView = findViewById(R.id.barcode_scanner);
     Collection<BarcodeFormat> formats = Arrays.asList(BarcodeFormat.QR_CODE);
-    mBarcodeView.getBarcodeView().setDecoderFactory(new DefaultDecoderFactory(formats));
+    mBarcodeView.getBarcodeView().setDecoderFactory(new DefaultDecoderFactory(formats,null,null, Intents.Scan.MIXED_SCAN));
     mBarcodeView.initializeFromIntent(getIntent());
     mBarcodeView.decodeSingle(callback);
   }
