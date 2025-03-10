@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 3.2.3
+
+### Patch Changes
+
+- Add typing for selectUniqueID
+
 ## 3.2.2
 
 ### Patch Changes
