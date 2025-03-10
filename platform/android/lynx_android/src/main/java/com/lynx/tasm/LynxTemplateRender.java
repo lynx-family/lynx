@@ -52,7 +52,6 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxIntersectionObserverManager;
 import com.lynx.tasm.behavior.herotransition.HeroTransitionManager;
 import com.lynx.tasm.behavior.shadow.ChoreographerLayoutTick;
-import com.lynx.tasm.behavior.shadow.CustomLayoutTick;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.ViewLayoutTick;
@@ -650,11 +649,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mViewLayoutTick = new ViewLayoutTick(mLynxView);
       layoutTick = mViewLayoutTick;
     } else {
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-        layoutTick = new ChoreographerLayoutTick();
-      } else {
-        layoutTick = new CustomLayoutTick();
-      }
+      layoutTick = new ChoreographerLayoutTick();
     }
 
     if (mEnableGenericResourceFetcher) {
