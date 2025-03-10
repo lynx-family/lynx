@@ -58,28 +58,32 @@ Untuk mengelola dependensi secara efektif menggunakan alat khusus kami, [Habitat
 git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
-For now, `src` contains only `lynx`. However as you proceed to build Lynx, you'll notice several installed dependencies there.
+Sekarang, `src` hanya berisi `lynx`. Namun, ketika Anda melanjutkan proses untuk build Lynx, Anda akan melihat beberapa depedensi yang terinstall di sana.
 This additional `src` directory helps keep your workplace organized.
+Direktori `src` tambahan ini membantu menjaga workplace Anda terorganisir.
 
-### [Code of Conduct][coc]
+### [Code of Conduct (Kode Etik)][coc]
 We are devoted to ensuring a positive, inclusive, and safe environment for all contributors. Please find our [Code of Conduct][coc] for detailed information.
+
+Kami berdedikasi untuk memastika lingkungan yang positif, inklusif, dan lingkungan yang aman untuk semua kontributor. Silahkan baca [Code of Conduct][coc] untuk informasi lebih rinci.
 
 [coc]: CODE_OF_CONDUCT.md
 
-### [Contributing Guide][contributing]
-We welcome you to join and become a member of Lynx Authors. It's people like you that make this project great.
+### [Panduan Kontribusi][contributing]
+Kami menyambut baik Anda untuk bergabung dan menjadi bagian dari Lynx Authors. Orang seperti Andalah yang membuat proyek menjadi ini semakin baik.
 
-Please refer to our [contributing guide][contributing] for details.
+Silahkan lihat [panduan berkontribusi][contributing] untuk informasi lebih rinci.
 
 [contributing]: CONTRIBUTING.md
 
-## Discussions
-Large discussions and proposals are discussed in [Github Discussions](https://github.com/lynx-family/lynx/discussions)
+## Diskusi
+Diskusi dan proposal besar dibahas dalam [Github Discussions](https://github.com/lynx-family/lynx/discussions)
 
 ## Credits
-Lynx makes use of several third-party libraries and draws inspiration from various projects. We would like to express our sincere gratitude to these sources.
+Lynx memanfaatkan beberapa third-party libraries dan mengambil inspirasi dari beberapa proyek. Kami ingin mengucapkan terima kasih yang sebesar-besarnya pada sumber-sumber ini.
+
 ### Third Party Libraries
-Lynx incorporates the following third-party libraries, which have significantly contributed to its functionality. We appreciate the efforts of the developers and the open-source community behind these projects:
+Lynx menggabungkan third-party libraries berikut ini, yang secara signifikan berkontribusi pada fungsionalitasnya. Kami menghargai upaya para pengembang dan komunitas sumber terbukan di balik proyek-proyek ini:
 - [aes](https://github.com/SergeyBel/AES)
 - [benchmark](https://github.com/google/benchmark)
 - [binding](https://chromium.googlesource.com/chromium/blink/+/refs/heads/main/Source/bindings)
@@ -99,14 +103,14 @@ Lynx incorporates the following third-party libraries, which have significantly 
 - [zlib](https://chromium.googlesource.com/chromium/src/third_party/zlib)
 
 ### Referenced API Design and Implementations
-The design of some APIs and some implementations in Lynx have been inspired by and referenced from the following outstanding projects. Their innovative designs and solutions have been invaluable in shaping Lynx:
+Desain beberapa API dan beberapa implementasi di Lynx terinspirasi dan direferensikan dari proyek-proyek luar biasa berikut ini. Desain dan solusi inovatif mereka sangat berharga dalam membentuk Lynx:
 - [chromium](https://chromium.googlesource.com/chromium/)
 - [react-native](https://github.com/facebook/react-native)
 - [flutter engine](https://github.com/flutter/engine)
 
-We respect the intellectual property rights of all these projects and adhere to relevant open-source licenses and usage guidelines.
+Kami menghormati hak kekayaan intelektual dari semua proyek ini dan mematuhi lisensi sumber terbuka yang relevan serta pedoman penggunaan.
 
 ## [License][license]
-Lynx is Apache licensed, as found in the [LICENSE][license] file.
+Lynx berlisensi Apache licensed, yang dapat ditemukan pada file [LICENSE][license].
 
 [license]: LICENSE
