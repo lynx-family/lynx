@@ -1,6 +1,6 @@
 opencv-python
 requests>=2.25.1
-lynx-e2e-appium==0.0.4
+lynx-e2e-appium==0.0.4-alpha.1
 pyyaml
 retrying
 appium-python-client==3.1.1
