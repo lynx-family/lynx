@@ -40,8 +40,11 @@ std::unique_ptr<TaskSourceGradeHolder>& GetThreadLocalGradeHolder() {
 
 }  // namespace
 
-TaskQueueEntry::TaskQueueEntry(TaskQueueId created_for_arg)
-    : subsumed_by(_kUnmerged), created_for(created_for_arg) {
+TaskQueueEntry::TaskQueueEntry(TaskQueueId created_for_arg,
+                               bool is_aligned_with_vsync)
+    : subsumed_by(_kUnmerged),
+      created_for(created_for_arg),
+      is_aligned_with_vsync_(is_aligned_with_vsync) {
   wakeable = NULL;
   task_observers = TaskObservers();
   task_source = std::make_unique<TaskSource>(created_for);
@@ -52,11 +55,13 @@ MessageLoopTaskQueues* MessageLoopTaskQueues::GetInstance() {
   return instance.get();
 }
 
-TaskQueueId MessageLoopTaskQueues::CreateTaskQueue() {
+TaskQueueId MessageLoopTaskQueues::CreateTaskQueue(
+    bool is_vsync_aligned_task_queue) {
   std::lock_guard guard(queue_mutex_);
   TaskQueueId loop_id = TaskQueueId(task_queue_id_counter_);
   ++task_queue_id_counter_;
-  queue_entries_[loop_id] = std::make_unique<TaskQueueEntry>(loop_id);
+  queue_entries_[loop_id] =
+      std::make_unique<TaskQueueEntry>(loop_id, is_vsync_aligned_task_queue);
   return loop_id;
 }
 
@@ -132,6 +137,11 @@ bool MessageLoopTaskQueues::IsTaskQueueRunningOnGivenMessageLoop(
   return queue_entries_.at(entry->subsumed_by)->wakeable == loop;
 }
 
+bool MessageLoopTaskQueues::IsTaskQueueAlignedWithVSync(TaskQueueId queue_id) {
+  std::lock_guard guard(queue_mutex_);
+  return queue_entries_.at(queue_id)->IsAlignedWithVSync();
+}
+
 bool MessageLoopTaskQueues::HasPendingTasks(TaskQueueId queue_id) const {
   std::lock_guard guard(queue_mutex_);
   return HasPendingTasksUnlocked(queue_id);
@@ -168,7 +178,8 @@ MessageLoopTaskQueues::GetNextTaskToRun(
 void MessageLoopTaskQueues::WakeUpUnlocked(TaskQueueId queue_id,
                                            fml::TimePoint time) const {
   if (queue_entries_.at(queue_id)->wakeable) {
-    queue_entries_.at(queue_id)->wakeable->WakeUp(time);
+    queue_entries_.at(queue_id)->wakeable->WakeUp(
+        time, queue_entries_.at(queue_id)->IsAlignedWithVSync());
   }
 }
 
