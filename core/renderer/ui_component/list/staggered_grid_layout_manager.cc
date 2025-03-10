@@ -24,62 +24,82 @@ void StaggeredGridLayoutManager::InitLayoutState() {
 void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
     LayoutState& layout_state) {
   // Use attached_children to calculate start/end lines
-  // 1. Calculate top_item and end_item from attached_children
-  std::vector<ItemHolder*> top_item_holder(
+  // 1. Calculate start_item_holders and end_item_holders from attached_children
+  std::vector<ItemHolder*> start_item_holders(
       span_count_, list_container_->GetItemHolderForIndex(
                        list_container_->GetDataCount() - 1));
-  std::vector<ItemHolder*> end_item_holder(
+  std::vector<ItemHolder*> end_item_holders(
       span_count_, list_container_->GetItemHolderForIndex(0));
   if (list_children_helper_->attached_children().size() > 0) {
     list_children_helper_->ForEachChild(
         list_children_helper_->attached_children(),
-        [this, &top_item_holder, &end_item_holder,
+        [this, &start_item_holders, &end_item_holders,
          list_adapter =
              list_container_->list_adapter()](ItemHolder* item_holder) {
-          if (IntersectVisibleArea(item_holder) &&
-              !list_adapter->IsRemoved(item_holder)) {
-            int column_index = item_holder->item_col_index();
-            if (top_item_holder[column_index]->index() > item_holder->index()) {
-              top_item_holder[column_index] = item_holder;
+          // span index of current item holder.
+          int span_index = item_holder->item_col_index();
+          int item_index = item_holder->index();
+          int current_start_item_index =
+              start_item_holders[span_index]->index();
+          int current_end_item_index = end_item_holders[span_index]->index();
+          // 1. Update start_item_holders vector.
+          if (item_holder->item_full_span()) {
+            // 1.1 If item holder is full span.
+            for (int i = 0; i < span_count_; ++i) {
+              // If index of item holder in start_item_holders larger than
+              // item_index, we should set item_holder to the position i in
+              // start_item_holders.
+              if (start_item_holders[i]->index() > item_index) {
+                start_item_holders[i] = item_holder;
+              }
             }
-            if (end_item_holder[column_index]->index() < item_holder->index()) {
-              end_item_holder[column_index] = item_holder;
+          } else if (current_start_item_index > item_index) {
+            // 1.2 If item holder is not full span and has less index, we just
+            // need to set it to start_item_holders.
+            start_item_holders[span_index] = item_holder;
+          }
+          // 2. Update end_item_holders vector.
+          if (item_holder->item_full_span()) {
+            // 2.1 If item holder is full span.
+            for (int i = 0; i < span_count_; ++i) {
+              // If index of item holder in end_item_holders smaller than
+              // item_index, we should set item_holder to the position i in
+              // end_item_holders.
+              if (end_item_holders[i]->index() < item_index) {
+                end_item_holders[i] = item_holder;
+              }
             }
+          } else if (current_end_item_index < item_index) {
+            // 2.2 If item holder is not full span and has larger index, we
+            // just need to set it to end_item_holders.
+            end_item_holders[span_index] = item_holder;
           }
           return false;
         });
-    // 2. Use top_item and end_item to update start_lines and start_indexes
-    for (int i = 0; i < span_count_; i++) {
-      if (top_item_holder[i]->item_full_span()) {
-        std::fill(
-            layout_state.start_lines.begin(), layout_state.start_lines.end(),
-            list_orientation_helper_->GetDecoratedStart(top_item_holder[i]));
-        std::fill(layout_state.start_index.begin(),
-                  layout_state.start_index.end(), top_item_holder[i]->index());
-        break;
-      } else {
-        layout_state.start_lines[i] =
-            list_orientation_helper_->GetDecoratedStart(top_item_holder[i]);
-        layout_state.start_index[i] = top_item_holder[i]->index();
-      }
+    layout_state.is_start_full_span_ = true;
+    layout_state.is_end_full_span_ = true;
+    ItemHolder* item_holder = nullptr;
+    // 2. Use start_item_holders update start lines and start indexes.
+    for (int i = 0; i < span_count_; ++i) {
+      item_holder = start_item_holders[i];
+      layout_state.start_index[i] = item_holder->index();
+      layout_state.start_lines[i] =
+          list_orientation_helper_->GetDecoratedStart(item_holder);
+      // Note: if all items in start_item_holders are full span, we mark
+      // is_start_full_span_ to true.
+      layout_state.is_start_full_span_ =
+          item_holder->item_full_span() && layout_state.is_start_full_span_;
     }
-    for (int i = 0; i < span_count_; i++) {
-      if (end_item_holder[i]->item_full_span()) {
-        std::fill(
-            layout_state.end_lines.begin(), layout_state.end_lines.end(),
-            list_orientation_helper_->GetDecoratedStart(end_item_holder[i]) +
-                list_orientation_helper_->GetDecoratedMeasurement(
-                    end_item_holder[i]));
-        std::fill(layout_state.end_index.begin(), layout_state.end_index.end(),
-                  end_item_holder[i]->index());
-        break;
-      } else {
-        layout_state.end_lines[i] =
-            list_orientation_helper_->GetDecoratedStart(end_item_holder[i]) +
-            list_orientation_helper_->GetDecoratedMeasurement(
-                end_item_holder[i]);
-        layout_state.end_index[i] = end_item_holder[i]->index();
-      }
+    // 3. Use end_item_holders update end lines and end indexes.
+    for (int i = 0; i < span_count_; ++i) {
+      item_holder = end_item_holders[i];
+      layout_state.end_index[i] = item_holder->index();
+      layout_state.end_lines[i] =
+          list_orientation_helper_->GetDecoratedEnd(item_holder);
+      // Note: if all items in end_item_holders are full span, we mark
+      // is_end_full_span_ to true.
+      layout_state.is_end_full_span_ =
+          item_holder->item_full_span() && layout_state.is_end_full_span_;
     }
   }
 }
@@ -184,6 +204,8 @@ void StaggeredGridLayoutManager::OnLayoutChildrenInternal(
                                                       content_offset_);
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
   if (!list_container_->enable_batch_render()) {
+    // TODO(dingwang.wxx): If use initial-scroll-index, this may lead to fill
+    // from the item 0 to initial-scroll-index. So we can remove this logic.
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "Fill");
     layout_state.Reset(span_count_);
     layout_state.layout_direction_ = list::LayoutDirection::kLayoutToStart;
@@ -294,19 +316,17 @@ void StaggeredGridLayoutManager::Fill(LayoutState& layout_state) {
 
 void StaggeredGridLayoutManager::FillToEnd(LayoutState& layout_state) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "StaggeredGridLayoutManager::FillToEnd");
-  bool need_fill = HasRemainSpace(layout_state);
-  if (!need_fill || layout_state.end_index.empty() ||
-      layout_state.end_lines.empty()) {
-    return;
-  }
-  int current_last_index = *std::max_element(layout_state.end_index.begin(),
-                                             layout_state.end_index.end());
-  current_last_index += static_cast<int>(layout_state.layout_direction_);
-  while (need_fill && current_last_index >= 0 &&
-         current_last_index < list_container_->GetDataCount()) {
-    LayoutChunkToEnd(current_last_index, layout_state, false);
-    need_fill = HasRemainSpace(layout_state);
-    current_last_index += static_cast<int>(layout_state.layout_direction_);
+  int next_item_index = *std::max_element(layout_state.end_index.begin(),
+                                          layout_state.end_index.end());
+  next_item_index += static_cast<int>(layout_state.layout_direction_);
+  const int data_count = list_container_->GetDataCount();
+  bool need_to_fill = next_item_index >= 0 && next_item_index < data_count &&
+                      HasRemainSpaceToFillEnd(next_item_index, layout_state);
+  while (need_to_fill) {
+    LayoutChunkToEnd(next_item_index, layout_state, false);
+    next_item_index += static_cast<int>(layout_state.layout_direction_);
+    need_to_fill = next_item_index >= 0 && next_item_index < data_count &&
+                   HasRemainSpaceToFillEnd(next_item_index, layout_state);
   }
 }
 
@@ -324,50 +344,60 @@ void StaggeredGridLayoutManager::FillToStart(LayoutState& layout_state) {
   // Store the delta before layout
   ItemHolder* scroll_anchor_item_holder =
       list_container_->GetItemHolderForIndex(min_start_index);
-  float delta =
+  float start_align_delta =
       list_orientation_helper_->GetDecoratedStart(scroll_anchor_item_holder) -
       content_offset_;
-  bool need_fill = HasRemainSpace(layout_state);
+  int next_item_index = list::kInvalidIndex;
+  bool need_fill = HasRemainSpaceToFillStart(layout_state) &&
+                   (next_item_index = FindNextIndexToFillStart(layout_state)) !=
+                       list::kInvalidIndex;
   while (need_fill) {
-    int next_start_index_to_fill = FindNextIndexToBindToStart(layout_state);
-    int max_start_col = BiggestColumn(layout_state.start_lines);
+    bool item_size_changed = false;
     ItemHolder* item_holder =
-        list_container_->GetItemHolderForIndex(next_start_index_to_fill);
-    // If no valid next index, break;
-    if (!item_holder) {
-      break;
+        list_container_->GetItemHolderForIndex(next_item_index);
+    if (item_holder) {
+      float before_size =
+          list_orientation_helper_->GetDecoratedMeasurement(item_holder);
+      list_container_->list_adapter()->BindItemHolder(item_holder,
+                                                      next_item_index);
+      item_size_changed = base::FloatsNotEqual(
+          before_size,
+          list_orientation_helper_->GetDecoratedMeasurement(item_holder));
     }
-    float decorated_size =
-        list_orientation_helper_->GetDecoratedMeasurement(item_holder);
-    list_container_->list_adapter()->BindItemHolder(item_holder,
-                                                    next_start_index_to_fill);
-    if (fabs(list_orientation_helper_->GetDecoratedMeasurement(item_holder) -
-             decorated_size) > 10e-6) {
-      // If item_holder really bound and size did changed, trigger the layout,
-      // or just use the size in cache.
+    if (item_size_changed) {
+      // If item_holder really bound and size did changed, trigger the layout.
       LayoutInvalidItemHolder(0);
       UpdateStartAndEndLinesStatus(layout_state);
     } else {
-      // If size didn't change, only update start_lines
+      // If size didn't change, only update start lines and start indexes
       if (item_holder->item_full_span()) {
         std::fill(layout_state.start_lines.begin(),
                   layout_state.start_lines.end(),
                   list_orientation_helper_->GetDecoratedStart(item_holder));
         std::fill(layout_state.start_index.begin(),
-                  layout_state.start_index.end(), item_holder->index());
+                  layout_state.start_index.end(), next_item_index);
+        // Note: need to update is_start_full_span_ after update start_lines and
+        // start_index.
+        layout_state.is_start_full_span_ = true;
       } else {
-        layout_state.start_lines[max_start_col] =
+        int span_index = item_holder->item_col_index();
+        layout_state.start_lines[span_index] =
             list_orientation_helper_->GetDecoratedStart(item_holder);
-        layout_state.start_index[max_start_col] = item_holder->index();
+        layout_state.start_index[span_index] = next_item_index;
+        // Note: need to update is_start_full_span_ after update start_lines and
+        // start_index.
+        layout_state.is_start_full_span_ = false;
       }
     }
     float target_content_offset =
         list_orientation_helper_->GetDecoratedStart(scroll_anchor_item_holder) -
-        delta;
+        start_align_delta;
     content_size_ = GetTargetContentSize();
     SetContentOffset(target_content_offset);
-    // If still not filled, trigger next fill
-    need_fill = HasRemainSpace(layout_state);
+    // If still not filled, trigger next fill.
+    need_fill = HasRemainSpaceToFillStart(layout_state) &&
+                (next_item_index = FindNextIndexToFillStart(layout_state)) !=
+                    list::kInvalidIndex;
   }
 }
 
@@ -455,20 +485,20 @@ void StaggeredGridLayoutManager::LayoutInvalidItemHolder(
 float StaggeredGridLayoutManager::CalculateMainAxisPosition(
     ItemHolder* item_holder, LayoutState& layout_state) {
   // Use min and max elements to layout current item_holder and update end_lines
-  if (layout_state.end_index.empty() || layout_state.end_lines.empty()) {
+  auto& end_lines = layout_state.end_lines;
+  auto& end_indexes = layout_state.end_index;
+  if (end_lines.empty() || end_indexes.empty()) {
     return 0.f;
   }
-  auto min_end_line = std::min_element(layout_state.end_lines.begin(),
-                                       layout_state.end_lines.end());
-  auto max_end_line = std::max_element(layout_state.end_lines.begin(),
-                                       layout_state.end_lines.end());
   float item_size = 0.f;
   float main_axis_position = 0.f;
+  int item_index = item_holder->index();
   if (item_holder->item_full_span()) {
     // Handle full_span items
+    main_axis_position = *std::max_element(end_lines.begin(), end_lines.end());
     float top_inset = 0.f;
-    main_axis_position = *max_end_line;
-    if (item_holder->index() > 0) {
+
+    if (item_index > 0) {
       top_inset = main_axis_gap_;
     } else {
       main_axis_position += list_orientation_helper_->GetStartAfterPadding();
@@ -478,23 +508,26 @@ float StaggeredGridLayoutManager::CalculateMainAxisPosition(
     // Note: After updating top_inset, we can get new item_size because
     // item_size contains the top_inset of item holder.
     item_size = list_orientation_helper_->GetDecoratedMeasurement(item_holder);
-    std::fill(layout_state.end_lines.begin(), layout_state.end_lines.end(),
+    // Update end_lines and end_indexes.
+    std::fill(end_lines.begin(), end_lines.end(),
               main_axis_position + item_size);
+    std::fill(end_indexes.begin(), end_indexes.end(), item_index);
+    layout_state.is_end_full_span_ = true;
     // Note: don't forget to add top_inset to main_axis_position.
     main_axis_position += top_inset;
     item_holder->SetItemColIndex(0);
     for (auto& info : column_indexes_) {
-      info.push_back(item_holder->index());
+      info.push_back(item_index);
     }
   } else {
-    auto min_col_span_index = static_cast<int>(
-        std::distance(layout_state.end_lines.begin(), min_end_line));
-    main_axis_position = layout_state.end_lines[min_col_span_index];
+    int min_span_index =
+        GetMinEndSpanItemInfoForEndLines(layout_state).span_index_;
+    main_axis_position = end_lines[min_span_index];
     // Only add topInset to non_zero item_holder
     // When layout_manager changed, the previous top_inset setting should be
     // overrided
     float top_inset = 0;
-    if (layout_state.end_lines[min_col_span_index] > 0) {
+    if (end_lines[min_span_index] > 0) {
       top_inset = main_axis_gap_;
     } else {
       main_axis_position += list_orientation_helper_->GetStartAfterPadding();
@@ -504,12 +537,14 @@ float StaggeredGridLayoutManager::CalculateMainAxisPosition(
     // Note: After updating top_inset, we can get new item_size because
     // item_size contains the top_inset of item holder.
     item_size = list_orientation_helper_->GetDecoratedMeasurement(item_holder);
-    layout_state.end_lines[min_col_span_index] = main_axis_position + item_size;
+    // Update end_lines and end_indexes.
+    end_lines[min_span_index] = main_axis_position + item_size;
+    end_indexes[min_span_index] = item_index;
+    layout_state.is_end_full_span_ = false;
     // Note: don't forget to add top_inset to main_axis_position.
     main_axis_position += top_inset;
-    layout_state.end_index[min_col_span_index] = item_holder->index();
-    item_holder->SetItemColIndex(min_col_span_index);
-    column_indexes_[min_col_span_index].push_back(item_holder->index());
+    item_holder->SetItemColIndex(min_span_index);
+    column_indexes_[min_span_index].push_back(item_index);
   }
   return main_axis_position;
 }
@@ -595,7 +630,7 @@ float StaggeredGridLayoutManager::GetTargetContentSize() {
 }
 
 bool StaggeredGridLayoutManager::IntersectVisibleArea(
-    const ItemHolder* item_holder) {
+    const ItemHolder* item_holder) const {
   float container_size = list_orientation_helper_->GetMeasurement();
   return base::FloatsLargerOrEqual(
              content_offset_ + container_size,
@@ -605,126 +640,230 @@ bool StaggeredGridLayoutManager::IntersectVisibleArea(
              content_offset_);
 }
 
-int StaggeredGridLayoutManager::SmallestColumn(
-    const std::vector<float>& current_end_lines) {
-  auto min_size =
-      std::min_element(current_end_lines.begin(), current_end_lines.end());
-  return static_cast<int>(std::distance(current_end_lines.begin(), min_size));
+bool StaggeredGridLayoutManager::CurrentLineHasRemainSpaceToFillEnd(
+    float end_line) const {
+  return end_line <
+         std::min(content_offset_ + list_orientation_helper_->GetMeasurement(),
+                  content_size_ - list_orientation_helper_->GetEndPadding());
 }
 
-int StaggeredGridLayoutManager::BiggestColumn(
-    const std::vector<float>& current_lines) {
-  auto min_size = std::max_element(current_lines.begin(), current_lines.end());
-  return static_cast<int>(std::distance(current_lines.begin(), min_size));
-}
-
-bool StaggeredGridLayoutManager::HasRemainSpace(LayoutState& layout_state) {
-  // return true if need real fill
-  if (layout_state.layout_direction_ == list::LayoutDirection::kLayoutToEnd) {
-    return HasUnfilledEndLines(layout_state);
-  } else {
-    return HasUnfilledStartLines(layout_state);
-  }
-}
-
-bool StaggeredGridLayoutManager::HasUnfilledEndLines(
-    LayoutState& layout_state) {
-  bool has_remain_space{false};
-  if (layout_state.end_index.empty() || layout_state.end_lines.empty()) {
+bool StaggeredGridLayoutManager::HasRemainSpaceToFillEnd(
+    int next_valid_item_index, LayoutState& layout_state) const {
+  const auto& end_indexes = layout_state.end_index;
+  const auto& end_lines = layout_state.end_lines;
+  if (end_indexes.empty() || end_lines.empty()) {
     return false;
   }
-
-  if (list_container_->list_adapter()->HasFullSpanItems()) {
-    // List-rows may cause unfilled rows, requiring special consideration
-    int max_end_index = *std::max_element(layout_state.end_index.begin(),
-                                          layout_state.end_index.end());
-    int next_end_index = max_end_index + 1;
-    if (next_end_index < list_container_->GetDataCount() &&
-        list_container_->list_adapter()->IsFullSpanAtIndex(next_end_index)) {
-      // judge whether the biggest element has cross end line if this
-      // next_end_index is full-span as it will show up in a new row
+  if (layout_state.is_end_full_span_) {
+    // Case 1: end index is full span.
+    //        col-0            col-1          col-2
+    //   +--------------++--------------++--------------+
+    //   | Item0(200px) || Item1(100px) || Item2(150px) |
+    //   |              ||              ||              |
+    //   |              |+______________+|              |
+    //   |              |                +______________+
+    //   +______________+                               |
+    //   +----------------------------------------------+
+    //   |          FullSpanItem3(end index)            |
+    //   +----------------------------------------------+
+    return CurrentLineHasRemainSpaceToFillEnd(end_lines[0]);
+  } else {
+    // Case 2: item in end indexes is not full span.
+    ListAdapter* list_adapter = list_container_->list_adapter();
+    if (list_adapter->IsFullSpanAtIndex(next_valid_item_index)) {
+      // Case 2.1 the next item is full span.
+      //        col-0            col-1          col-2
+      //   +--------------++--------------++--------------+
+      //   | Item0(200px) || Item1(100px) || Item2(150px) |
+      //   |              ||              ||              |
+      //   |              |+______________+|              |
+      //   |              |                +______________+
+      //   +______________+                               |
+      //   +----------------------------------------------+
+      //   |          FullSpanItem3(next item)            |
+      //   +----------------------------------------------+
       float max_end_line = *std::max_element(layout_state.end_lines.begin(),
                                              layout_state.end_lines.end());
-      return CurrentLineHasUnfilledEnd(max_end_line);
+      return CurrentLineHasRemainSpaceToFillEnd(max_end_line);
     } else {
-      // judge whether the smallest element has cross end line
+      // Case 2.2 the next item is not full span.
+      //        col-0            col-1          col-2
+      //   +--------------++--------------++--------------+
+      //   | Item0(200px) || Item1(100px) || Item2(200px) |
+      //   |              ||              ||              |
+      //   |              |+______________+|              |
+      //   |              |+______________+|              |
+      //   +______________+|              |+______________+
+      //                   |    Item3     |
+      //                   | (next item)  |
+      //                   |              |
+      //                   +______________+
       float min_end_line = *std::min_element(layout_state.end_lines.begin(),
                                              layout_state.end_lines.end());
-      return CurrentLineHasUnfilledEnd(min_end_line);
+      return CurrentLineHasRemainSpaceToFillEnd(min_end_line);
     }
   }
-  for (int i = 0; i < span_count_ && i < list_container_->GetDataCount(); ++i) {
-    auto end_line = layout_state.end_lines[i];
-    if (CurrentLineHasUnfilledEnd(end_line)) {
-      has_remain_space = true;
-      break;
-    }
-  }
-  return has_remain_space;
 }
 
-bool StaggeredGridLayoutManager::HasUnfilledStartLines(
-    LayoutState& layout_state) {
-  bool has_remain_space{false};
-  if (layout_state.start_index.empty() || layout_state.start_lines.empty()) {
+bool StaggeredGridLayoutManager::HasRemainSpaceToFillStart(
+    LayoutState& layout_state) const {
+  const auto& start_indexes = layout_state.start_index;
+  const auto& start_lines = layout_state.start_lines;
+  if (start_indexes.empty() || start_lines.empty()) {
     return false;
   }
-  if (list_container_->list_adapter()->HasFullSpanItems()) {
-    // List-rows may cause unfilled rows, requiring special consideration
-    int next_start_index = FindNextIndexToBindToStart(layout_state);
-    if (next_start_index < 0 &&
-        next_start_index >= list_container_->GetDataCount()) {
-      return false;
-    }
-    if (list_container_->list_adapter()->IsFullSpanAtIndex(next_start_index)) {
-      // judge whether the biggest element has cross end line if this
-      // next_start_index is full-span as it will show up in a new row
-      float min_start_line = *std::min_element(layout_state.start_lines.begin(),
-                                               layout_state.start_lines.end());
-      return min_start_line > content_offset_ &&
-             min_start_line > list_orientation_helper_->GetStartAfterPadding();
-    } else {
-      // judge whether the smallest element has cross end line
-      auto next_item_holder =
-          list_container_->GetItemHolderForIndex(next_start_index);
-      return IntersectVisibleArea(next_item_holder);
-    }
-  }
-  for (int i = 0; i < span_count_ && i < list_container_->GetDataCount(); ++i) {
-    auto start_line = layout_state.start_lines[i];
-    if (start_line > content_offset_ &&
-        start_line > list_orientation_helper_->GetStartAfterPadding()) {
-      has_remain_space = true;
-      break;
-    }
-  }
-  return has_remain_space;
-}
-
-bool StaggeredGridLayoutManager::CurrentLineHasUnfilledEnd(float end_line) {
-  return end_line <
-             std::min(
-                 content_offset_ + list_orientation_helper_->GetMeasurement(),
-                 content_size_ - list_orientation_helper_->GetEndPadding()) &&
-         std::fabs(end_line - content_offset_) > 10e-6;
-}
-
-int StaggeredGridLayoutManager::FindNextIndexToBindToStart(
-    LayoutState& layout_state) {
-  int max_start_col = BiggestColumn(layout_state.start_lines);
-  int max_start_position = layout_state.start_index[max_start_col];
-  auto find_index =
-      std::find(column_indexes_[max_start_col].begin(),
-                column_indexes_[max_start_col].end(), max_start_position);
-  int index_in_layout_column = static_cast<int>(
-      std::distance(column_indexes_[max_start_col].begin(), find_index));
-  if (index_in_layout_column <= 0 ||
-      index_in_layout_column >=
-          static_cast<int>(column_indexes_[max_start_col].size())) {
-    return -1;
+  const float start_after_padding =
+      list_orientation_helper_->GetStartAfterPadding();
+  if (layout_state.is_start_full_span_) {
+    // Case 1: start index is full span
+    float start_full_span_line = start_lines[0];
+    return start_full_span_line > content_offset_ &&
+           start_full_span_line > start_after_padding;
   } else {
-    return column_indexes_[max_start_col][index_in_layout_column - 1];
+    // Case 2: start indexes has no full span item
+    for (int i = 0; i < static_cast<int>(start_lines.size()) &&
+                    i < list_container_->GetDataCount();
+         ++i) {
+      if (start_lines[i] > content_offset_ &&
+          start_lines[i] > start_after_padding) {
+        return true;
+      }
+    }
   }
+  return false;
+}
+
+int StaggeredGridLayoutManager::FindNextIndexToFillStart(
+    LayoutState& layout_state) const {
+  const auto& start_indexes = layout_state.start_index;
+  const auto& start_lines = layout_state.start_lines;
+  if (start_indexes.empty() || start_lines.empty()) {
+    return list::kInvalidIndex;
+  }
+  ListAdapter* list_adapter = list_container_->list_adapter();
+  if (layout_state.is_start_full_span_) {
+    // Case 1 start index is full span
+    int start_full_span_index = start_indexes[0];
+    if (start_full_span_index == 0) {
+      // Case 1.1 start index is first item.
+      return list::kInvalidIndex;
+    } else if (list_adapter->IsFullSpanAtIndex(start_full_span_index - 1)) {
+      // Case 1.2 start index - 1 is full span item.
+      return start_full_span_index - 1;
+    } else {
+      // Case 1.3. Find max end item index before start_full_span_index
+      //        col-0            col-1          col-2
+      //   +--------------++--------------++--------------+
+      //   | Item0(200px) || Item1(100px) || Item2(150px) |
+      //   |              ||              ||              |
+      //   | (next item)  |+______________+|              |
+      //   |              |                +______________+
+      //   +______________+                               |
+      //   +----------------------------------------------+
+      //   |              FullSpanItem3(50)               |
+      //   +----------------------------------------------+
+      for (const auto& column_index : column_indexes_) {
+        int item_index =
+            GetItemIndexBeforeTargetIndex(column_index, start_full_span_index);
+        if (item_index != list::kInvalidIndex) {
+          return item_index;
+        }
+      }
+    }
+  } else {
+    // Case 2. start index is not full span.
+    // Here consider the case:
+    //
+    //        col-0            col-1          col-2
+    //   +--------------++--------------++--------------+
+    //   | Item0(200px) || Item1(100px) || Item2(150px) |
+    //   |              ||              || (next item)  |
+    //   |              |+______________+|              |
+    //   |              |                +______________+
+    //   +______________+                               |
+    //   +----------------------------------------------+
+    //   |              FullSpanItem3(50)               |
+    //   +----------------------------------------------+
+    //
+    // If fill to start, the correct bind order should be: Item0, Item2, Item1.
+    // After bind Item0, we find that col-1 and col-2 has the same start line
+    // that larger than col-0. If we invoke max_element(start_lines) directly,
+    // we will get the col-1 is the max start line and use col-1 to fill, but in
+    // this case the correct col is col-2.
+    std::vector<SpanItemInfo> span_item_infos =
+        GetMaxEndSpanItemInfoForStartLines(layout_state);
+    if (!span_item_infos.empty()) {
+      for (const auto& span_item_info : span_item_infos) {
+        if (span_item_info.IsValid()) {
+          const auto& column_index =
+              column_indexes_[span_item_info.span_index_];
+          int next_item_index = GetItemIndexBeforeTargetIndex(
+              column_index, span_item_info.item_index_);
+          if (next_item_index != list::kInvalidIndex) {
+            return next_item_index;
+          }
+        }
+      }
+    }
+  }
+  return list::kInvalidIndex;
+}
+
+int StaggeredGridLayoutManager::GetItemIndexBeforeTargetIndex(
+    const std::vector<int>& span_indexes, int target_index) const {
+  if (!span_indexes.empty()) {
+    auto it = std::find(span_indexes.begin(), span_indexes.end(), target_index);
+    auto reverse_it = span_indexes.rend();
+    if (it != span_indexes.end() &&
+        (reverse_it = std::make_reverse_iterator(it)) != span_indexes.rend()) {
+      ItemHolder* next_item_holder =
+          list_container_->GetItemHolderForIndex(*reverse_it);
+      if (next_item_holder &&
+          base::FloatsLargerOrEqual(
+              list_orientation_helper_->GetDecoratedEnd(next_item_holder),
+              content_offset_)) {
+        return *reverse_it;
+      }
+    }
+  }
+  return list::kInvalidIndex;
+}
+
+std::vector<StaggeredGridLayoutManager::SpanItemInfo>
+StaggeredGridLayoutManager::GetMaxEndSpanItemInfoForStartLines(
+    LayoutState& layout_state) const {
+  const auto& start_indexes = layout_state.start_index;
+  const auto& start_lines = layout_state.start_lines;
+  if (start_lines.empty()) {
+    return {{list::kInvalidIndex, list::kInvalidIndex}};
+  }
+  if (layout_state.is_start_full_span_) {
+    return {{0, start_indexes[0]}};
+  }
+  std::vector<SpanItemInfo> span_item_infos;
+  auto max_line_it = std::max_element(start_lines.begin(), start_lines.end());
+  for (int i = 0; i < static_cast<int>(start_lines.size()); ++i) {
+    if (base::FloatsEqual(start_lines[i], *max_line_it)) {
+      span_item_infos.emplace_back(i, start_indexes[i]);
+    }
+  }
+  return span_item_infos;
+}
+
+StaggeredGridLayoutManager::SpanItemInfo
+StaggeredGridLayoutManager::GetMinEndSpanItemInfoForEndLines(
+    LayoutState& layout_state) const {
+  const auto& end_indexes = layout_state.end_index;
+  const auto& end_lines = layout_state.end_lines;
+  if (end_lines.empty()) {
+    return {list::kInvalidIndex, list::kInvalidIndex};
+  }
+  if (layout_state.is_end_full_span_) {
+    return {0, end_indexes[0]};
+  }
+  auto it = std::min_element(end_lines.begin(), end_lines.end());
+  int span_index = static_cast<int>(std::distance(end_lines.begin(), it));
+  return {span_index, end_indexes[span_index]};
 }
 
 }  // namespace tasm
