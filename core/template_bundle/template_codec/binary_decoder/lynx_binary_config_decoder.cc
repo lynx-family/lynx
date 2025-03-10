@@ -1090,6 +1090,13 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
                                         : TernaryBool::FALSE_VALUE);
   }
 
+  // enableNapiProxyWrap
+  if (doc.HasMember(runtime::kEnableNapiProxyWrap) &&
+      doc[runtime::kEnableNapiProxyWrap].IsBool()) {
+    page_config->SetEnableNapiProxyWrap(
+        doc[runtime::kEnableNapiProxyWrap].GetBool());
+  }
+
   config_helper_.HandlePageConfig(doc, page_config);
 
   ReportGlobalFeatureSwitch(page_config);
