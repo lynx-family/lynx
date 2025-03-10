@@ -219,7 +219,7 @@ class Element : public lepus::RefCounted {
 
   virtual const EventMap& event_map() const;
   virtual const EventMap& lepus_event_map();
-  virtual const EventMap& global_bind_event_map();
+  virtual const EventMap& global_bind_event_map() const;
   // GestureMap key - gesture id / value - GestureDetector
   virtual const GestureMap& gesture_map();
 

@@ -276,7 +276,7 @@ const EventMap& Element::lepus_event_map() {
   return *kEmptyLepusEventMap;
 }
 
-const EventMap& Element::global_bind_event_map() {
+const EventMap& Element::global_bind_event_map() const {
   if (data_model()) {
     return data_model()->global_bind_events();
   }
