@@ -1275,18 +1275,27 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
 
     setUrl(metaData.getUrl());
-    this.prepareForRenderTemplate();
+    renderWithLoadMeta(metaData);
+    if (metaData.initialData != null) {
+      postRenderOrUpdateData(metaData.initialData);
+    }
+    onTraceEventEnd(eventName);
+  }
+
+  // init lynxEngine with info in LynxLoadMeta
+  private void initWithLynxLoadMeta(LynxLoadMeta loadMeta) {
     if (mNativePtr != 0) {
-      if (metaData.enableProcessLayout()) {
+      if (loadMeta.enableProcessLayout()) {
         setEnableUIFlush(false);
       }
 
       // Inject platform config
-      Map<String, String> lynxViewConfig = metaData.lynxViewConfig;
+      Map<String, String> lynxViewConfig = loadMeta.lynxViewConfig;
       if (lynxViewConfig == null || lynxViewConfig.isEmpty()) {
         // Default platform config from LynxView Builder.
         lynxViewConfig = mOriginLynxViewConfig;
       }
+
       if (lynxViewConfig != null) {
         String platformConfig =
             lynxViewConfig.get(LynxViewBuilderProperty.PLATFORM_CONFIG.getKey());
@@ -1294,22 +1303,20 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           nativeSetPlatformConfig(mNativePtr, mNativeLifecycle, platformConfig);
         }
       }
+
       // update GlobalProps
-      if (metaData.globalProps != null) {
-        this.updateGlobalProps(metaData.globalProps);
+      if (loadMeta.globalProps != null) {
+        this.updateGlobalProps(loadMeta.globalProps);
       }
-      renderWithLoadMeta(metaData);
     }
-    if (metaData.initialData != null) {
-      postRenderOrUpdateData(metaData.initialData);
-    }
-    onTraceEventEnd(eventName);
   }
 
   private void renderWithLoadMeta(final LynxLoadMeta metaData) {
     LynxLoadMode loadMode = metaData.loadMode;
     boolean isPrePainting =
         LynxLoadMode.PRE_PAINTING == loadMode || LynxLoadMode.PRE_PAINTING_DRAW == loadMode;
+    this.prepareForRenderTemplate();
+    this.initWithLynxLoadMeta(metaData);
     if (metaData.isBundleValid()) {
       if (mDevTool != null) {
         mDevTool.onLoadFromBundle(metaData.bundle, metaData.initialData, metaData.url);
