@@ -17,7 +17,6 @@ lynx_core_source_set("css") {
     "//lynx/core/base",
     "//lynx/core/runtime/vm/lepus",
     "//lynx/core/style",
-    "//lynx/third_party/rapidjson",
   ]
 
   if (enable_unittests) {

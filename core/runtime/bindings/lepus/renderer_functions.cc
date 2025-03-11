@@ -4,6 +4,7 @@
 
 #include "core/runtime/bindings/lepus/renderer_functions.h"
 
+#include <MacTypes.h>
 #include <assert.h>
 
 #include <deque>
@@ -40,6 +41,7 @@
 #include "core/renderer/dom/fiber/wrapper_element.h"
 #include "core/renderer/dom/list_component_info.h"
 #include "core/renderer/dom/selector/fiber_element_selector.h"
+#include "core/renderer/dom/style_object.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_diff_list_node.h"
 #include "core/renderer/dom/vdom/radon/radon_diff_list_node2.h"
@@ -54,6 +56,7 @@
 #include "core/renderer/signal/lynx_signal.h"
 #include "core/renderer/signal/memo.h"
 #include "core/renderer/signal/scope.h"
+#include "core/renderer/sss/style_property_map.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -6782,6 +6785,24 @@ RENDERER_FUNCTION_CC(IsProfileRecording) {
 #else
   return lepus::Value(false);
 #endif
+}
+
+RENDERER_FUNCTION_CC(CreateStyleObject) {
+  CHECK_ARGC_GE(CreateStyleObject, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, Table, CreateStyleObject);
+  StyleMap style_map;
+  auto* tasm = GET_TASM_POINTER();
+  ForEachLepusValue(*arg0, [&style_map, tasm](const lepus::Value& key,
+                                              const lepus::Value& value) {
+    UnitHandler::Process(static_cast<CSSPropertyID>(key.Number()), value,
+                         style_map,
+                         tasm->GetPageConfig()->GetCSSParserConfigs());
+  });
+
+  const fml::RefPtr<lepus::RefCounted> style_property_map_ref =
+      fml::MakeRefCounted<lepus::RefCountedWrapper<StyleObject>>(
+          std::move(style_map));
+  return lepus::Value(style_property_map_ref);
 }
 
 }  // namespace tasm

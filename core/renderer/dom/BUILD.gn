@@ -26,6 +26,7 @@ lynx_core_source_set("dom") {
     "//lynx/core/renderer/css:css_dom",
     "//lynx/core/renderer/dom:renderer_dom",
     "//lynx/core/renderer/dom/fiber",
+    "//lynx/core/renderer/simple_styling",
     "//lynx/core/renderer/ui_wrapper",
     "//lynx/core/renderer/utils:renderer_dom_utils",
     "//lynx/core/renderer/utils:renderer_utils",

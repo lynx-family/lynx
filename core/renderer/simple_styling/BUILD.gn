@@ -1,0 +1,13 @@
+# Copyright 2020 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//lynx/core/Lynx.gni")
+import("//lynx/core/renderer/css/build.gni")
+import("//lynx/testing/test.gni")
+
+lynx_core_source_set("simple_styling") {
+  public_deps = [ "//lynx/core/renderer/css" ]
+
+  sources = [ "style_property_map.h" ]
+}

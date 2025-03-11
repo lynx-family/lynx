@@ -247,5 +247,6 @@
   V(ProfileEnd)                       \
   V(ProfileMark)                      \
   V(ProfileFlowId)                    \
-  V(IsProfileRecording)
+  V(IsProfileRecording)               \
+  V(CreateStyleObject)
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_RENDERER_FUNCTIONS_DEF_H_

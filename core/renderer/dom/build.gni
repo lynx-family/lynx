@@ -66,6 +66,7 @@ lynx_renderer_dom_sources = [
   "list_component_info.cc",
   "list_component_info.h",
   "lynx_get_ui_result.h",
+  "style_object.h",
 ]
 
 lynx_renderer_dom_sources_path =

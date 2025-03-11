@@ -28,6 +28,7 @@ enum class RefType : int32_t {
   kComputation,
   kMemo,
   kScope,
+  kStyleObject,
   kOtherType,
 };
 

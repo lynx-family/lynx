@@ -17,6 +17,7 @@ lynx_core_source_set("lepus") {
     "//lynx/core/renderer/css",
     "//lynx/core/renderer/events",
     "//lynx/core/renderer/signal:signal",
+    "//lynx/core/renderer/sss",
     "//lynx/core/renderer/utils:renderer_utils",
     "//lynx/core/runtime/vm/lepus",
   ]

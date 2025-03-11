@@ -5,6 +5,7 @@
 #ifndef CORE_RUNTIME_VM_LEPUS_REF_COUNTED_CLASS_H_
 #define CORE_RUNTIME_VM_LEPUS_REF_COUNTED_CLASS_H_
 
+#include <memory>
 #include <optional>
 
 #include "base/include/fml/memory/ref_counted.h"
@@ -44,6 +45,23 @@ class RefCounted : public fml::RefCountedThreadSafeStorage {
  protected:
   RefCounted() = default;
   static inline LEPUSClassID class_id = 0;
+};
+
+template <typename T>
+struct RefTypeTrait {
+  static constexpr RefType value = RefType::kOtherType;
+};
+
+template <typename T, template <typename U> class T2 = RefTypeTrait,
+          class... Args>
+class RefCountedWrapper : public RefCounted {
+ public:
+  explicit RefCountedWrapper(Args... args) {
+    value = std::make_unique<T>(args...);
+  }
+  ~RefCountedWrapper() override = default;
+  RefType GetRefType() const override { return T2<T>::value; }
+  std::unique_ptr<T> value;
 };
 
 }  // namespace lepus
