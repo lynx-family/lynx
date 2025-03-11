@@ -52,7 +52,8 @@ public class QRScanActivity extends Activity {
 
     mBarcodeView = findViewById(R.id.barcode_scanner);
     Collection<BarcodeFormat> formats = Arrays.asList(BarcodeFormat.QR_CODE);
-    mBarcodeView.getBarcodeView().setDecoderFactory(new DefaultDecoderFactory(formats,null,null, Intents.Scan.MIXED_SCAN));
+    mBarcodeView.getBarcodeView().setDecoderFactory(
+        new DefaultDecoderFactory(formats, null, null, Intents.Scan.MIXED_SCAN));
     mBarcodeView.initializeFromIntent(getIntent());
     mBarcodeView.decodeSingle(callback);
   }
