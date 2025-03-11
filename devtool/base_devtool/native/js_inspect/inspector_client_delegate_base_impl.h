@@ -113,6 +113,8 @@ class BASE_EXPORT InspectorClientDelegateBaseImpl
                                            int line, int column,
                                            int message_id = 0);
   std::string GenMessageSetBreakpointsActive(bool active, int message_id = 0);
+  std::string GenMessageSetPauseOnExceptions(const std::string& state,
+                                             int message_id = 0);
   rapidjson::Document GenTargetInfo(const std::string& target_id,
                                     const std::string& title);
   std::string GenMessageTargetCreated(const std::string& target_id,

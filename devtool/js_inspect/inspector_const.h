@@ -40,6 +40,7 @@ constexpr char kKeyAttached[] = "attached";
 constexpr char kKeyCanAccessOpener[] = "canAccessOpener";
 constexpr char kKeyTargetInfo[] = "targetInfo";
 constexpr char kKeyWaitingForDebugger[] = "waitingForDebugger";
+constexpr char kKeyState[] = "state";
 
 // parameters extended by ourselves
 constexpr char kKeyEngineType[] = "engineType";
@@ -55,6 +56,8 @@ constexpr char kMethodDebuggerSetBreakpointByUrl[] =
 constexpr char kMethodDebuggerSetBreakpointsActive[] =
     "Debugger.setBreakpointsActive";
 constexpr char kMethodDebuggerRemoveBreakpoint[] = "Debugger.removeBreakpoint";
+constexpr char kMethodDebuggerSetPauseOnExceptions[] =
+    "Debugger.setPauseOnExceptions";
 constexpr char kMethodRuntimeEnable[] = "Runtime.enable";
 constexpr char kMethodProfilerEnable[] = "Profiler.enable";
 
