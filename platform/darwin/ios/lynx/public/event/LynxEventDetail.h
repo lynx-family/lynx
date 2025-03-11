@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import "LynxEvent.h"
 #import "LynxEventTargetBase.h"
 @class LynxView;
