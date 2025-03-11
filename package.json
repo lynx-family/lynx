@@ -22,6 +22,7 @@
     "pnpm": "7.33.6"
   },
   "devDependencies": {
+    "@types/node": "^22.13.10",
     "prettier": "2.2.1",
     "typescript": "4.9.4"
   },
