@@ -15,11 +15,11 @@ config("public_config") {
   cflags = []
   if (is_ios) {
     include_dirs += [
-      "//Darwin/iOS/Headers/Private",
-      "//Darwin/iOS/LynxDevtool",
-      "//Darwin/iOS/LynxDevtool/Helper",
-      "//Darwin/iOS/Lynx/Base",
-      "//Darwin/iOS/Public/Base",
+      "//platform/darwin/ios/Headers/Private",
+      "//platform/darwin/ios/lynxDevtool",
+      "//platform/darwin/ios/lynxDevtool/Helper",
+      "//platform/darwin/ios/lynx/Base",
+      "//platform/darwin/ios/public/base",
     ]
     cflags += [
       "-include",

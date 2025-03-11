@@ -63,7 +63,7 @@ Native_includes = [
 
 Devtool_Native_includes = [
                             "//TARGET_BUILD_DIR/Devtool/gen/Lynx",
-                            "//LynxDevtool",
+                            "//devtool/lynx_devtool",
                             "//core",
                             "//",
                             "//lynx",

@@ -172,6 +172,7 @@ android {
         androidTest {
             assets.srcDirs = ['src/android_test/assets']
             java.srcDirs += ['src/android_test/java/']
+            manifest.srcFile 'src/android_test/AndroidManifest.xml'
         }
 
         release {

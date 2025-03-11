@@ -30,9 +30,9 @@ checker-config:
     ignore-dirs:
       - '^core/build/gen/*'
       - '^third_party/*'
-      - '^lynx/third_party/trace/native/perfetto/*'
+      - '^lynx/base/trace/native/perfetto/*'
       - '^build/*'
-      - '^lynx/third_party/base/include/boost/*'
+      - '^lynx/base/include/boost/*'
       - '^lynx/third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
       - '^lynx/explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
       - '^base/include/boost/*'

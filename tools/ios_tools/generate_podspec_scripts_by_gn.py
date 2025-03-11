@@ -58,6 +58,9 @@ def main():
               enable_napi_binding=true enable_lepusng_worklet=true \
               enable_recorder=true arm_use_neon=false build_lepus_compile=false'
 
+  # TODO(yongjie): remove this after we fix the issue of build_lynx_dylib.
+  gn_args += f' build_lynx_dylib=true'
+
   root_path = args.root
 
   return generate_compile_products(root_path, args, gn_args)
