@@ -12,7 +12,7 @@ builder = {
             "-Penable_lynx_android_test=true",
             "-Penable_coverage=true",
         ],
-        "workspace": "Android",
+        "workspace": "platform/android", 
         "type": "gradle",
     }
 }
@@ -20,7 +20,7 @@ builder = {
 coverage = {
     "output": "out/coverage",
     "source_files": [
-        "LynxAndroid/src/main/java",
+        "lynx_android/src/main/java",
     ],
     "type": "jacoco",
 }

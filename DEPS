@@ -74,7 +74,7 @@ deps = {
         'type': 'git',
         'url': 'https://github.com/iqiyi/xHook.git',
         'commit': 'e59285034feadfdd4ba9b65e1eea1d381da83ed3',
-        "patches": os.path.join(root_dir, 'patches', 'xhook', '0001-Infra-Add-BUILD.gn-file-of-xhook.patch'),        
+        "patches": os.path.join(root_dir, 'dependencies', 'patches', 'xhook', '0001-Infra-Add-BUILD.gn-file-of-xhook.patch'),        
         "ignore_in_git": True,
     },    
     'copy_root_gn_config': {
@@ -189,7 +189,7 @@ deps = {
         'type': 'git',
         'url': 'https://chromium.googlesource.com/chromium/src/third_party/zlib',
         'commit': 'f5fd0ad2663e239a31184ad4c9919991dda16f46',
-        "patches": os.path.join(root_dir, 'patches', 'zlib', '0001-Adapt-zlib-to-the-Lynx-project.patch'),         
+        "patches": os.path.join(root_dir, 'dependencies', 'patches', 'zlib', '0001-Adapt-zlib-to-the-Lynx-project.patch'),         
         "ignore_in_git": True,
     },
     'third_party/NativeScript/include': {

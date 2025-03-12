@@ -283,7 +283,7 @@ subspec_target("js_debug") {
 
 subspec_target("LogBoxFramework") {
   pod_target_xcconfig = {
-    HEADER_SEARCH_PATHS = [ "//LynxDevtool" ]
+    HEADER_SEARCH_PATHS = [ "//devtool/lynx_devtool" ]
   }
   deps = [ "//lynx/platform/darwin/common/lynx_devtool:logbox" ]
   if (!use_flatten_deps) {
@@ -306,7 +306,7 @@ subspec_target("ThirdParty") {
   libraries = [ "stdc++" ]
   pod_target_xcconfig = {
     HEADER_SEARCH_PATHS = [
-      "//LynxDevtool",
+      "//devtool/lynx_devtool",
       "//core",
       "//lynx/third_party/jsoncpp/include",
       "//PODS_ROOT/Lynx",
@@ -333,12 +333,12 @@ subspec_target("zlib") {
 subspec_target("UnitTests") {
   test_subspec = true
   sources = [
-    "//Darwin/iOS/LynxDevtool/ConsoleDelegateManagerUnitTest.mm",
-    "//Darwin/iOS/LynxDevtool/Helper/LepusDebugInfoHelperUnitTest.m",
-    "//Darwin/iOS/LynxDevtool/Helper/LynxUITreeHelperUnitTest.m",
-    "//Darwin/iOS/LynxDevtool/LynxDevToolErrorUtilsUnitTest.m",
-    "//Darwin/iOS/LynxDevtool/Memory/LynxMemoryControllerUnitTest.m",
     "//lynx/platform/darwin/common/lynx_devtool/LogBox/LynxLogBoxManagerUnitTest.m",
+    "//platform/darwin/ios/lynxDevtool/ConsoleDelegateManagerUnitTest.mm",
+    "//platform/darwin/ios/lynxDevtool/Helper/LepusDebugInfoHelperUnitTest.m",
+    "//platform/darwin/ios/lynxDevtool/Helper/LynxUITreeHelperUnitTest.m",
+    "//platform/darwin/ios/lynxDevtool/LynxDevToolErrorUtilsUnitTest.m",
+    "//platform/darwin/ios/lynxDevtool/Memory/LynxMemoryControllerUnitTest.m",
   ]
   dependency = [
     "LynxDevtool/Framework",

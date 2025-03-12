@@ -10,61 +10,63 @@ import("Podspecs.gni")
 
 assert(is_ios)
 
-podspec_target("lynx_podspec") {
-  global_variables = lynx_podspec_metadata.global_variables
-  output_name = "Lynx.podspec"
-  output_path = rebase_path("//")
-  root_specification = {
-    name = "Lynx"
-    version = "$lynx_version"
-    summary = "The framework of Lynx."
-    homepage = "https://github.com/lynx-family/lynx"
-    license = "Apache 2.0"
-    author = "Lynx"
-    source = {
-      git = "https://github.com/lynx-family/lynx.git"
-    }
-    requires_arc = true
-    default_subspec = "Framework"
-    compiler_flags = [
-      "-Wall",
-      "-Wextra",
-      "-Wno-unused-parameter",
-      "-Wmissing-field-initializers",
-      "-Wshorten-64-to-32",
-      "-fno-rtti",
-    ]
-    pod_target_xcconfig = {
-      GCC_PREPROCESSOR_DEFINITIONS = [
-        "OS_IOS=1",
-        "HOST_OSTYPE=HOST_IOS",
-        "LYNX_DEBUG=0",
-        "LYNX_ENABLE_E2E_TEST=#{\$enable_e2e_test}",
-        "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
+if (build_lynx_dylib) {
+  podspec_target("lynx_podspec") {
+    global_variables = lynx_podspec_metadata.global_variables
+    output_name = "Lynx.podspec"
+    output_path = rebase_path("//")
+    root_specification = {
+      name = "Lynx"
+      version = "$lynx_version"
+      summary = "The framework of Lynx."
+      homepage = "https://github.com/lynx-family/lynx"
+      license = "Apache 2.0"
+      author = "Lynx"
+      source = {
+        git = "https://github.com/lynx-family/lynx.git"
+      }
+      requires_arc = true
+      default_subspec = "Framework"
+      compiler_flags = [
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-Wmissing-field-initializers",
+        "-Wshorten-64-to-32",
+        "-fno-rtti",
       ]
-      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
-      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
-    }
-    ios = {
-      deployment_target = "10.0"
-      framework = [
-        "WebKit",
-        "AudioToolbox",
+      pod_target_xcconfig = {
+        GCC_PREPROCESSOR_DEFINITIONS = [
+          "OS_IOS=1",
+          "HOST_OSTYPE=HOST_IOS",
+          "LYNX_DEBUG=0",
+          "LYNX_ENABLE_E2E_TEST=#{\$enable_e2e_test}",
+          "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
+        ]
+        CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+        OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+      }
+      ios = {
+        deployment_target = "10.0"
+        framework = [
+          "WebKit",
+          "AudioToolbox",
+        ]
+      }
+      prepare_command = [
+        "if [ -f \"./lynx/tools/js_tools/build.sh\" ]; then",
+        "  lynx/tools/js_tools/build.sh ios lynx/platform/darwin/ios/JSAssets/release/lynx_core.js lynx/platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
+        "fi",
       ]
     }
-    prepare_command = [
-      "if [ -f \"./lynx/tools/js_tools/build.sh\" ]; then",
-      "  lynx/tools/js_tools/build.sh ios lynx/platform/darwin/ios/JSAssets/release/lynx_core.js lynx/platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js",
-      "fi",
+    deps = [
+      ":Framework",
+      ":ReleaseResource",
+      ":Replay",
+      ":UnitTestResource",
+      ":UnitTests",
     ]
   }
-  deps = [
-    ":Framework",
-    ":ReleaseResource",
-    ":Replay",
-    ":UnitTestResource",
-    ":UnitTests",
-  ]
 }
 
 subspec_target("Framework") {
