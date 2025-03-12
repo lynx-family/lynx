@@ -7,7 +7,10 @@ import("//lynx/core/Lynx.gni")
 # constant_share_sources
 
 lynx_core_source_set("template_bundle") {
-  sources = [ "lynx_template_bundle.h" ]
+  sources = [
+    "lynx_template_bundle.cc",
+    "lynx_template_bundle.h",
+  ]
 
   public_deps =
       [ "//lynx/core/template_bundle/template_codec:template_decoder" ]
