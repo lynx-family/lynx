@@ -85,7 +85,7 @@ dependencies {
     implementation "com.squareup.okhttp3:okhttp:4.9.0"
     implementation 'com.squareup.okhttp3:okhttp-urlconnection:4.4.0'
     implementation 'com.squareup.retrofit2:retrofit:2.7.0'
-    implementation 'org.lynxsdk.lynx:v8so:0.0.1'
+    implementation 'org.lynxsdk.lynx:v8so:11.1.277.3'
 
     implementation project(':LynxAndroid')
     implementation project(':LynxTestBench')

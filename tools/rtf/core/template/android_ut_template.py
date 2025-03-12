@@ -8,7 +8,7 @@ builder = {
             "--parallel",
             "--configure-on-demand",
             "-x lint",
-            "-Pbuild_for_emu",
+            "-PabiList=x86",
             "-Penable_lynx_android_test=true",
             "-Penable_coverage=true",
         ],

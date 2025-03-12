@@ -20,14 +20,14 @@ ANDROID_GN_ARGS_FILE_NAME = "gn_args.json"
 
 def android_target_cpu(variant_type):
   target_cpu = ''
-  if 'x86' in variant_type:
-    target_cpu = 'x86'
+  if 'x86_64' in variant_type:
+    target_cpu = 'x64'
   elif 'armeabi-v7a' in variant_type or 'armeabi' in variant_type:
     target_cpu = 'arm'
   elif 'mips' in variant_type:
     target_cpu = 'mipsel'
-  elif 'x86_64' in variant_type:
-    target_cpu = 'x64'
+  elif 'x86' in variant_type:
+    target_cpu = 'x86'
   elif 'arm64-v8a' in variant_type:
     target_cpu = 'arm64'
   elif 'mips64' in variant_type:

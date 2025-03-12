@@ -16,13 +16,8 @@ buildscript {
         }else{
             buildLynxDebugSo = false
         }
-        if (project.hasProperty("lynx-local-build")) {
-            abiList=['armeabi-v7a', 'arm64-v8a', 'x86']
-        } else if (project.hasProperty("build_for_emu")){
-            abiList=['armeabi-v7a', 'x86']
-        } else {
-            abiList=['arm64-v8a']
-        }
+        value = project.properties["abiList"]
+        abiList = value? value.toString().split(",") : ["arm64-v8a"]
         enable_coverage_bool = (enable_coverage == 'true')
     }
     repositories {

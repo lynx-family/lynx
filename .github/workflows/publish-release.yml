@@ -29,7 +29,7 @@ jobs:
           source tools/envsetup.sh
           pushd explorer/android
           if [ "${{ inputs.dry_run }}" = "false" ]; then
-            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -Plynx-local-build -no-daemon
+            ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
           else
             ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -no-daemon
           fi
@@ -140,7 +140,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           pushd platform/android
-          ./gradlew assembleAllModulesRelease -Penable_trace=none -no-daemon
+          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
           popd
       - name: Package maven artifacts
         if: ${{ inputs.dry_run == false }}
