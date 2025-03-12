@@ -424,6 +424,8 @@ class LynxShell {
   std::vector<std::unique_ptr<lynx::piper::NativeModuleFactory>>
       module_factories_;
 
+  std::shared_ptr<LayoutResultManager> layout_result_manager_;
+
  private:
   std::weak_ptr<piper::JsBundleHolder> GetWeakJsBundleHolder();
 };

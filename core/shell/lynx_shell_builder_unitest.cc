@@ -35,14 +35,6 @@ class LynxShellBuilderTest : public ::testing::Test {
   ~LynxShellBuilderTest() override = default;
 
   void SetUp() override {
-    auto facade = std::make_unique<MockNativeFacade>();
-    facade_ = reinterpret_cast<intptr_t>(facade.get());
-    auto painting_context =
-        std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
-    painting_context_ = reinterpret_cast<intptr_t>(painting_context.get());
-    auto painting_context_creator = [&](lynx::shell::LynxShell* shell) {
-      return std::move(painting_context);
-    };
     lynx_env_config_ =
         std::make_unique<lynx::tasm::LynxEnvConfig>(60, 90, 1.f, 1.f);
     loader_ = std::make_shared<lynx::tasm::MockLazyBundleLoader>();
@@ -50,24 +42,6 @@ class LynxShellBuilderTest : public ::testing::Test {
     option_ = std::make_unique<lynx::shell::ShellOption>();
 
     shell_builder_ = std::make_unique<LynxShellBuilder>();
-    shell_.reset((*shell_builder_)
-                     .SetNativeFacade(std::move(facade))
-                     .SetPaintingContextCreator(painting_context_creator)
-                     .SetLynxEnvConfig(*lynx_env_config_)
-                     .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
-                     .SetEnableElementManagerVsyncMonitor(true)
-                     .SetLazyBundleLoader(loader_)
-                     .SetEnablePreUpdateData(enable_pre_update_data_)
-                     .SetEnableLayoutOnly(enable_layout_only_)
-                     .SetTasmLocale(locale_)
-                     .SetLayoutContextPlatformImpl(nullptr)
-                     .SetStrategy(strategy_)
-                     .SetEngineActor([](auto& actor) {})
-                     .SetShellOption(*option_)
-                     .build());
-
-    shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
-        nullptr, shell_->runners_.GetUITaskRunner());
   }
 
   void TearDown() override { shell_ = nullptr; }
@@ -90,6 +64,35 @@ class LynxShellBuilderTest : public ::testing::Test {
 };  // LynxShellBuilderTest
 
 TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  facade_ = reinterpret_cast<intptr_t>(facade.get());
+
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  painting_context_ = reinterpret_cast<intptr_t>(painting_context.get());
+  auto painting_context_creator = [&](lynx::shell::LynxShell* shell) {
+    return std::move(painting_context);
+  };
+
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
+                   .SetEnableElementManagerVsyncMonitor(true)
+                   .SetLazyBundleLoader(loader_)
+                   .SetEnablePreUpdateData(enable_pre_update_data_)
+                   .SetEnableLayoutOnly(enable_layout_only_)
+                   .SetTasmLocale(locale_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetEngineActor([](auto& actor) {})
+                   .SetShellOption(*option_)
+                   .build());
+
+  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+      nullptr, shell_->runners_.GetUITaskRunner());
+
   // SetNativeFacade() test
   EXPECT_EQ(reinterpret_cast<intptr_t>(shell_->facade_actor_->Impl()), facade_);
 
@@ -144,6 +147,86 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
   // SetShellOption() test
   EXPECT_EQ(shell_builder_->shell_option_.enable_auto_concurrency_,
             this->option_->enable_auto_concurrency_);
+
+  EXPECT_EQ(shell_->layout_result_manager_, nullptr);
+  EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_, nullptr);
+}
+
+TEST_F(LynxShellBuilderTest,
+       LynxShellBuilderDisableForceLayoutOnBackgroundThreadTest) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  facade_ = reinterpret_cast<intptr_t>(facade.get());
+
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  painting_context_ = reinterpret_cast<intptr_t>(painting_context.get());
+  auto painting_context_creator = [&](lynx::shell::LynxShell* shell) {
+    return std::move(painting_context);
+  };
+
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
+                   .SetEnableElementManagerVsyncMonitor(true)
+                   .SetLazyBundleLoader(loader_)
+                   .SetEnablePreUpdateData(enable_pre_update_data_)
+                   .SetEnableLayoutOnly(enable_layout_only_)
+                   .SetTasmLocale(locale_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetEngineActor([](auto& actor) {})
+                   .SetShellOption(*option_)
+                   .SetForceLayoutOnBackgroundThread(false)
+                   .build());
+
+  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+      nullptr, shell_->runners_.GetUITaskRunner());
+
+  EXPECT_EQ(shell_->layout_result_manager_, nullptr);
+  EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_, nullptr);
+}
+
+TEST_F(LynxShellBuilderTest,
+       LynxShellBuilderEnableForceLayoutOnBackgroundThreadTest) {
+  auto facade = std::make_unique<MockNativeFacade>();
+  facade_ = reinterpret_cast<intptr_t>(facade.get());
+
+  auto painting_context =
+      std::make_unique<lynx::tasm::PaintingContextPlatformImpl>();
+  painting_context_ = reinterpret_cast<intptr_t>(painting_context.get());
+  auto painting_context_creator = [&](lynx::shell::LynxShell* shell) {
+    return std::move(painting_context);
+  };
+
+  shell_.reset((*shell_builder_)
+                   .SetNativeFacade(std::move(facade))
+                   .SetPaintingContextCreator(painting_context_creator)
+                   .SetLynxEnvConfig(*lynx_env_config_)
+                   .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
+                   .SetEnableElementManagerVsyncMonitor(true)
+                   .SetLazyBundleLoader(loader_)
+                   .SetEnablePreUpdateData(enable_pre_update_data_)
+                   .SetEnableLayoutOnly(enable_layout_only_)
+                   .SetTasmLocale(locale_)
+                   .SetLayoutContextPlatformImpl(nullptr)
+                   .SetStrategy(strategy_)
+                   .SetEngineActor([](auto& actor) {})
+                   .SetShellOption(*option_)
+                   .SetForceLayoutOnBackgroundThread(true)
+                   .build());
+
+  shell_->runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
+      nullptr, shell_->runners_.GetUITaskRunner());
+
+  EXPECT_NE(shell_->layout_result_manager_, nullptr);
+  EXPECT_NE(shell_->layout_mediator_->layout_result_manager_, nullptr);
+
+  EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_,
+            shell_->layout_result_manager_);
+  EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_,
+            shell_->layout_mediator_->operation_queue_);
 }
 
 }  // namespace shell

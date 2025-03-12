@@ -16,6 +16,7 @@ mocktest_set("shell_testset") {
     "../common/platform_call_back_manager_unittest.cc",
     "../dynamic_ui_operation_queue_unittest.cc",
     "../engine_thread_switch_unittest.cc",
+    "../layout_result_manager_unittest.cc",
     "../lynx_card_cache_data_manager_unittest.cc",
     "../lynx_engine_proxy_impl_unittest.cc",
     "../lynx_runtime_actor_holder_unittest.cc",

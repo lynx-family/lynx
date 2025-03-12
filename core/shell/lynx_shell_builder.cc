@@ -164,6 +164,12 @@ LynxShellBuilder& LynxShellBuilder::SetPropBundleCreator(
   return *this;
 }
 
+LynxShellBuilder& LynxShellBuilder::SetForceLayoutOnBackgroundThread(
+    bool force_layout_on_background_thread) {
+  this->force_layout_on_background_thread_ = force_layout_on_background_thread;
+  return *this;
+}
+
 LynxShell* LynxShellBuilder::build() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxShell::Create");
 
@@ -173,6 +179,7 @@ LynxShell* LynxShellBuilder::build() {
   }
 
   LynxShell* shell = new LynxShell(this->strategy_, this->shell_option_);
+
   shell->facade_actor_ = std::make_shared<LynxActor<NativeFacade>>(
       std::move(this->native_facade_), shell->runners_.GetUITaskRunner(),
       shell->instance_id_);
@@ -206,8 +213,18 @@ LynxShell* LynxShellBuilder::build() {
   }
 
   // create layout actor
-  auto layout_mediator = std::make_unique<lynx::shell::LayoutMediator>(
-      shell->tasm_operation_queue_);
+  std::unique_ptr<LayoutMediator> layout_mediator;
+
+  if (force_layout_on_background_thread_) {
+    shell->layout_result_manager_ = std::make_shared<LayoutResultManager>();
+
+    layout_mediator = std::make_unique<lynx::shell::LayoutMediator>(
+        shell->layout_result_manager_);
+  } else {
+    layout_mediator = std::make_unique<lynx::shell::LayoutMediator>(
+        shell->tasm_operation_queue_);
+  }
+
   shell->layout_mediator_ = layout_mediator.get();
   if (layout_context_) {
     layout_context_->SetLynxShell(shell);

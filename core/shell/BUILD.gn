@@ -16,6 +16,8 @@ shell_shared_sources = [
   "engine_thread_switch.h",
   "layout_mediator.cc",
   "layout_mediator.h",
+  "layout_result_manager.cc",
+  "layout_result_manager.h",
   "lynx_actor_specialization.h",
   "lynx_card_cache_data_manager.cc",
   "lynx_card_cache_data_manager.h",

@@ -23,7 +23,12 @@ namespace shell {
 #pragma mark LayoutMediator
 LayoutMediator::LayoutMediator(
     const std::shared_ptr<TASMOperationQueue> &operation_queue)
-    : operation_queue_(operation_queue), air_node_manager_{nullptr} {}
+    : operation_queue_(operation_queue) {}
+
+LayoutMediator::LayoutMediator(
+    const std::shared_ptr<LayoutResultManager> &layout_result_manager)
+    : layout_result_manager_(layout_result_manager),
+      operation_queue_(layout_result_manager) {}
 
 void LayoutMediator::OnLayoutUpdate(
     int tag, float x, float y, float width, float height,
@@ -115,34 +120,68 @@ void LayoutMediator::OnLayoutAfter(
           }
         });
   }
-  if (!engine_actor_->CanRunNow()) {
-    operation_queue_->AppendPendingTask();
 
-    // FIXME(heshan):when renderTemplate has no patch, is_first_screen
-    // will be false forever.
-    // need to mark the flag as true in ElementManager::Delegate.
-    if (is_first_layout) {
-      operation_queue_->has_first_screen_ = true;
-      operation_queue_->first_screen_cv_.notify_one();
+  if (layout_result_manager_ == nullptr) {
+    if (!engine_actor_->CanRunNow()) {
+      operation_queue_->AppendPendingTask();
+
+      // FIXME(heshan):when renderTemplate has no patch, is_first_screen
+      // will be false forever.
+      // need to mark the flag as true in ElementManager::Delegate.
+      if (is_first_layout) {
+        operation_queue_->has_first_screen_ = true;
+        operation_queue_->first_screen_cv_.notify_one();
+      }
     }
+
+    engine_actor_->Act([queue = operation_queue_.get(), catalyzer = catalyzer_,
+                        options = options, h = std::move(holder), has_layout,
+                        is_first_layout, facade_actor = facade_actor_,
+                        node_manager = node_manager_](auto &engine) mutable {
+      options.has_layout = has_layout;
+      HandlePendingLayoutTask(queue, catalyzer, options);
+      HandleListOrComponentUpdated(node_manager, options);
+
+      if (options.has_layout) {
+        // TODO(heshan): now trigger onFirstScreen when first layout,
+        // but it is inconsistent with options.is_first_screen.
+        facade_actor->Act([is_first_screen = is_first_layout](auto &facade) {
+          facade->OnPageChanged(is_first_screen);
+        });
+      }
+    });
+  } else {
+    auto operations = layout_result_manager_->FetchTASMOperations();
+
+    auto on_layout_after_task = [layout_result_manager =
+                                     layout_result_manager_.get(),
+                                 catalyzer = catalyzer_,
+                                 facade_actor = facade_actor_,
+                                 node_manager = node_manager_,
+                                 operations = std::move(operations),
+                                 holder = std::move(holder), options = options,
+                                 is_first_layout, has_layout]() mutable {
+      options.has_layout = has_layout;
+      HandlePendingLayoutTask(nullptr, catalyzer, options, &operations);
+      HandleListOrComponentUpdated(node_manager, options);
+
+      if (options.has_layout) {
+        // TODO(klaxxi): now trigger onFirstScreen when first layout,
+        // but it is inconsistent with options.is_first_screen.
+        facade_actor->Act([is_first_screen = is_first_layout](auto &facade) {
+          facade->OnPageChanged(is_first_screen);
+        });
+      }
+    };
+
+    layout_result_manager_->EnqueueOnLayoutAfterTask(
+        std::move(on_layout_after_task));
+
+    engine_actor_->Act(
+        [layout_result_manager = layout_result_manager_](auto &engine) {
+          layout_result_manager->RunOnLayoutAfterTasks();
+        });
   }
-
-  engine_actor_->Act([queue = operation_queue_.get(), catalyzer = catalyzer_,
-                      options = options, h = std::move(holder), has_layout,
-                      is_first_layout, facade_actor = facade_actor_,
-                      node_manager = node_manager_](auto &engine) mutable {
-    options.has_layout = has_layout;
-    HandlePendingLayoutTask(queue, catalyzer, options);
-    HandleListOrComponentUpdated(node_manager, options);
-
-    if (options.has_layout) {
-      // TODO(heshan): now trigger onFirstScreen when first layout,
-      // but it is inconsistent with options.is_first_screen.
-      facade_actor->Act([is_first_screen = is_first_layout](auto &facade) {
-        facade->OnPageChanged(is_first_screen);
-      });
-    }
-  });
 
   // As the layout is triggered twice in the layout process, and the second
   // layout copies the options, the HandleListOrComponentUpdated may also
@@ -204,9 +243,10 @@ void LayoutMediator::SetTiming(tasm::Timing timing) {
 }
 
 // @note: run on tasm thread
-void LayoutMediator::HandlePendingLayoutTask(TASMOperationQueue *queue,
-                                             tasm::Catalyzer *catalyzer,
-                                             tasm::PipelineOptions options) {
+void LayoutMediator::HandlePendingLayoutTask(
+    TASMOperationQueue *queue, tasm::Catalyzer *catalyzer,
+    tasm::PipelineOptions options,
+    const std::vector<TASMOperationQueue::TASMOperationWrapper> *operations) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "LayoutMediator.HandlePendingLayoutTask");
   if (catalyzer == nullptr) {
     return;
@@ -215,7 +255,14 @@ void LayoutMediator::HandlePendingLayoutTask(TASMOperationQueue *queue,
       catalyzer->GetInstanceId(), tasm::timing::kNativeFuncTask,
       tasm::timing::kTaskNameHandlePendingLayoutTask);
   // If Flush return false, means layout has no change.
-  bool layout_changed = queue->Flush() || catalyzer->NeedUpdateLayout();
+  bool layout_changed = false;
+
+  if (operations == nullptr) {
+    layout_changed = queue->Flush() || catalyzer->NeedUpdateLayout();
+  } else {
+    layout_changed = LayoutResultManager::ExecuteTASMOperations(*operations);
+  }
+
   catalyzer->painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
   if (layout_changed) {
     catalyzer->UpdateLayoutRecursively();

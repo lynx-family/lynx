@@ -95,6 +95,9 @@ class LynxShellBuilder {
   LynxShellBuilder& SetTasmPlatformInvoker(
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker);
 
+  LynxShellBuilder& SetForceLayoutOnBackgroundThread(
+      bool force_layout_on_background_thread);
+
   LynxShell* build();
 
  private:
@@ -150,6 +153,8 @@ class LynxShellBuilder {
   ShellOption shell_option_;
 
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
+
+  bool force_layout_on_background_thread_{false};
 };
 
 }  // namespace shell

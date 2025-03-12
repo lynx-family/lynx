@@ -23,6 +23,22 @@ class TASMOperationQueue {
   using TASMOperation = base::closure;
   constexpr static size_t kOperationArrayReserveSize = 128;
 
+  struct TASMOperationWrapper {
+    explicit TASMOperationWrapper(TASMOperation operation,
+                                  bool is_trivial = false)
+        : operation(std::move(operation)), is_trivial(is_trivial) {}
+    ~TASMOperationWrapper() = default;
+
+    TASMOperationWrapper(TASMOperationWrapper const&) = delete;
+    TASMOperationWrapper& operator=(TASMOperationWrapper const&) = delete;
+
+    TASMOperationWrapper(TASMOperationWrapper&&) = default;
+    TASMOperationWrapper& operator=(TASMOperationWrapper&&) = default;
+
+    TASMOperation operation;
+    bool is_trivial;
+  };
+
   TASMOperationQueue() { operations_.reserve(kOperationArrayReserveSize); }
   virtual ~TASMOperationQueue() = default;
 
@@ -45,22 +61,6 @@ class TASMOperationQueue {
   std::condition_variable first_screen_cv_;
 
  protected:
-  struct TASMOperationWrapper {
-    explicit TASMOperationWrapper(TASMOperation operation,
-                                  bool is_trivial = false)
-        : operation(std::move(operation)), is_trivial(is_trivial) {}
-    ~TASMOperationWrapper() = default;
-
-    TASMOperationWrapper(TASMOperationWrapper const&) = delete;
-    TASMOperationWrapper& operator=(TASMOperationWrapper const&) = delete;
-
-    TASMOperationWrapper(TASMOperationWrapper&&) = default;
-    TASMOperationWrapper& operator=(TASMOperationWrapper&&) = default;
-
-    TASMOperation operation;
-    bool is_trivial;
-  };
-
   std::vector<TASMOperationWrapper> operations_;
 };
 

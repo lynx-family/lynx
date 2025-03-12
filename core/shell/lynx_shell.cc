@@ -645,7 +645,30 @@ void LynxShell::SetPlatformConfig(std::string platform_config_json_string) {
 }
 
 void LynxShell::SyncFetchLayoutResult() {
-  engine_actor_->Act([](auto& engine) { engine->SyncFetchLayoutResult(); });
+  if (layout_result_manager_ == nullptr) {
+    engine_actor_->Act([](auto& engine) { engine->SyncFetchLayoutResult(); });
+    return;
+  }
+
+  // TODO(klaxxi): Merge the similar logic with that in method
+  // LayoutImmediatelyWithUpdatedViewport.
+  DCHECK(runners_.GetUITaskRunner()->RunsTasksOnCurrentThread());
+  DCHECK(runners_.GetTASMTaskRunner()->RunsTasksOnCurrentThread());
+  DCHECK(!runners_.GetLayoutTaskRunner()->RunsTasksOnCurrentThread());
+
+  auto layout_runner = runners_.GetLayoutTaskRunner();
+  auto layout_loop = layout_runner->GetLoop();
+
+  auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
+
+  layout_runner->Bind(ui_loop, true);
+  layout_result_manager_->RunOnLayoutAfterTasks();
+
+  layout_runner->UnBind();
+
+  layout_loop->PostTask(
+      [layout_runner, layout_loop]() { layout_runner->Bind(layout_loop); },
+      fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
 }
 
 // TODO(klaxxi): There may currently be two layout passes.
@@ -663,16 +686,26 @@ void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
 
   auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
 
-  // TODO(heshan): Merge with the similar logic of EngineThreadSwitch
-  layout_runner->Bind(ui_loop, true);
-  tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(true);
+  if (layout_result_manager_ == nullptr) {
+    layout_runner->Bind(ui_loop, true);
+    tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(true);
 
-  UpdateViewport(width, width_mode, height, height_mode);
+    UpdateViewport(width, width_mode, height, height_mode);
 
-  TriggerLayout();
+    TriggerLayout();
 
-  layout_runner->UnBind();
-  tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(false);
+    layout_runner->UnBind();
+    tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(false);
+  } else {
+    layout_runner->Bind(ui_loop, true);
+    layout_result_manager_->RunOnLayoutAfterTasks();
+
+    UpdateViewport(width, width_mode, height, height_mode);
+
+    TriggerLayout();
+
+    layout_runner->UnBind();
+  }
 
   layout_loop->PostTask(
       [layout_runner, layout_loop]() { layout_runner->Bind(layout_loop); },

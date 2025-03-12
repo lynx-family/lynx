@@ -13,6 +13,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/services/timing_handler/timing_handler.h"
+#include "core/shell/layout_result_manager.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
@@ -24,7 +25,12 @@ namespace shell {
 class LayoutMediator : public tasm::LayoutContext::Delegate,
                        public std::enable_shared_from_this<LayoutMediator> {
  public:
-  LayoutMediator(const std::shared_ptr<TASMOperationQueue> &operation_queue);
+  explicit LayoutMediator(
+      const std::shared_ptr<TASMOperationQueue> &operation_queue);
+
+  explicit LayoutMediator(
+      const std::shared_ptr<LayoutResultManager> &layout_result_manager);
+
   void SetRuntimeActor(
       const std::shared_ptr<LynxActor<runtime::LynxRuntime>> &actor) {
     runtime_actor_ = actor;
@@ -68,9 +74,11 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
                                       tasm::Catalyzer *catalyzer);
 
  private:
-  static void HandlePendingLayoutTask(TASMOperationQueue *queue,
-                                      tasm::Catalyzer *catalyzer,
-                                      tasm::PipelineOptions option);
+  static void HandlePendingLayoutTask(
+      TASMOperationQueue *queue, tasm::Catalyzer *catalyzer,
+      tasm::PipelineOptions option,
+      const std::vector<TASMOperationQueue::TASMOperationWrapper> *operations =
+          nullptr);
   static void HandleListOrComponentUpdated(
       tasm::NodeManager *node_manager, const tasm::PipelineOptions &options);
 
@@ -78,13 +86,16 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::timing::TimingHandler>> timing_actor_;
+
+  std::shared_ptr<LayoutResultManager> layout_result_manager_;
+
   // tasm thread and layout thread is same one
   // when strategy is {ALL_ON_UI, MOST_ON_TASM}
   std::shared_ptr<TASMOperationQueue> operation_queue_;
   // dont own, external ptr from class ElementManager
   // thread safe, because they only run on tasm thread
   tasm::NodeManager *node_manager_;
-  tasm::AirNodeManager *air_node_manager_;
+  tasm::AirNodeManager *air_node_manager_{nullptr};
   tasm::Catalyzer *catalyzer_;
 
   // TODO(heshan):now trigger onFirstScreen when first layout,
