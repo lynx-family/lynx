@@ -390,7 +390,7 @@ base::InlineVector<std::string, 32> SplitStringByCharsOrderly(
       if (word_count && word_start >= 0 &&
           static_cast<size_t>(word_start) + static_cast<size_t>(word_count) <=
               size) {
-        grouper.emplace_back(byte_array, static_cast<size_t>(word_start),
+        grouper.emplace_back(str, static_cast<size_t>(word_start),
                              static_cast<size_t>(word_count));
       } else {
         grouper.emplace_back();

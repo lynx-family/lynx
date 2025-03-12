@@ -178,6 +178,18 @@ TEST(SplitStringByCharsOrderlyTest, SplitStringByCharsOrderly) {
   ASSERT_EQ(result, expected);
 }
 
+TEST(SplitStringByCharsOrderlyTest,
+     SplitStringByCharsOrderlyWithNullCharacter) {
+  std::string input("background-\0image: {x:\0xx}", 26);
+  ;
+  base::Vector<std::string> expected;
+
+  auto result = SplitStringByCharsOrderly<':', ';'>(input);
+  expected = {std::string("background-\0image", 17),
+              std::string(" {x:\0xx}", 8)};
+  ASSERT_EQ(result, expected);
+}
+
 TEST(U8StringToU16Test, U8StringToU16) {
   std::vector<std::string> input;
   std::vector<std::u16string> expected;
