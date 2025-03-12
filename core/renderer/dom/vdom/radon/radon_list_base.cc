@@ -205,6 +205,9 @@ void RadonListBase::RenderComponentAtIndex(uint32_t index,
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       tasm_->GetInstanceId(), tasm::timing::kListNodeTask,
       tasm::timing::kTaskNameRadonListBaseRenderAtIndex);
+  LOGI("RadonListBase::RenderComponentAtIndex index:"
+       << index << ",operation_id:" << operation_id << ", this:" << this);
+
   DCHECK(index < platform_info_.components_.size());
   auto* comp = CreateComponentWithType(index);
   if (comp != nullptr) {

@@ -1483,6 +1483,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     return;
   }
 
+  _LogI(@"LynxTemplateRender setTheme mode:%@", [theme valueForKey:@"mode"]);
   [self setLocalTheme:theme];
   [self markDirty];
   [self requestLayoutWhenSafepointEnable];

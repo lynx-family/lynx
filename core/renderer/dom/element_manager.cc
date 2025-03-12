@@ -580,6 +580,7 @@ void ElementManager::UpdateScreenMetrics(float width, float height) {
 }
 
 void ElementManager::UpdateFontScale(float font_scale) {
+  LOGI("ElementManager::UpdateFontScale scale:" << font_scale);
   GetLynxEnvConfig().SetFontScale(font_scale);
   // update element tree
   delegate_->UpdateLynxEnvForLayoutThread(GetLynxEnvConfig());

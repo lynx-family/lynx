@@ -160,11 +160,12 @@
         }
         LLogInfo(@"LynxTextRender textLength:%lu, w:%f, "
                  @"h:%f,maxLineNum:%ld,lineHeight:%f,direction:%ld,fontWeight:%f,fontStyle:%ld,"
-                 @"fontFamily:%@,letterSpacing:%f",
-                 (unsigned long)(_textStorage.length), w, h, (long)_layoutSpec.maxLineNum,
-                 _layoutSpec.textStyle.lineHeight, (long)(_layoutSpec.textStyle.direction),
-                 _layoutSpec.textStyle.fontWeight, (long)(_layoutSpec.textStyle.fontStyle),
-                 _layoutSpec.textStyle.fontFamilyName, _layoutSpec.textStyle.letterSpacing);
+                 @"fontFamily:%@,letterSpacing:%f,sign:%ld",
+                 (unsigned long)(_textStorage.length), _layoutSpec.width, _layoutSpec.height,
+                 (long)_layoutSpec.maxLineNum, _layoutSpec.textStyle.lineHeight,
+                 (long)(_layoutSpec.textStyle.direction), _layoutSpec.textStyle.fontWeight,
+                 (long)(_layoutSpec.textStyle.fontStyle), _layoutSpec.textStyle.fontFamilyName,
+                 _layoutSpec.textStyle.letterSpacing, (long)(_layoutSpec.sign));
 
         [_layoutManager ensureLayoutForBoundingRect:CGRectMake(0, 0, w, h)
                                     inTextContainer:_textContainer];

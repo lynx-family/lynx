@@ -45,6 +45,7 @@ BOOL LynxSameMeasureMode(LynxMeasureMode left, LynxMeasureMode right) {
     _enableTextRefactor = NO;
     _enableNewClipMode = NO;
     _textSingleLineVerticalAlign = LynxVerticalAlignDefault;
+    _sign = 0;
   }
   return self;
 }

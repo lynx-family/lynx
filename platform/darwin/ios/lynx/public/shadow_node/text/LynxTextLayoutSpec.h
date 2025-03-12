@@ -45,6 +45,9 @@ BOOL LynxSameMeasureMode(LynxMeasureMode left, LynxMeasureMode right);
 @property(readonly, nonatomic) BOOL widthUndifined;
 @property(readonly, nonatomic) BOOL heightUndifined;
 
+// FIXME(linxs): to be removed later, just for debugging
+@property(nonatomic, assign) NSInteger sign;
+
 - (instancetype)initWithWidth:(CGFloat)width
                        height:(CGFloat)height
                     widthMode:(LynxMeasureMode)widthMode

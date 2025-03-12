@@ -378,6 +378,7 @@ LYNX_REGISTER_SHADOW_NODE("text")
                                                      textStyle:self.textStyle
                                         enableTailColorConvert:self.enableTailColorConvert];
   spec.enableTextRefactor = self.enableTextRefactor;
+  spec.sign = self.sign;
   spec.enableTextNonContiguousLayout = [self enableTextNonContiguousLayout];
   spec.enableNewClipMode = self.enableNewClipMode;
   spec.layoutManagerDelegate = _lineSpacingAdaptation;
