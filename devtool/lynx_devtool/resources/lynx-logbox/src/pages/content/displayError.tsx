@@ -81,8 +81,10 @@ function createErrorItem(item: IErrorRecord, key: number, cachedErrors: string[]
           <CopyOutlined
             style={{ fontSize: '16px', color: 'white' }}
             onClick={() => {
-              copy(JSON.stringify(item.rawErrorText));
-              getBridge().toastMessage('The error message has been copied');
+              if (item.rawErrorText !== undefined) {
+                copy(item.rawErrorText);
+                getBridge().toastMessage('Error message copied');
+              }
             }}
           />
         </div>
