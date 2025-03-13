@@ -22,6 +22,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "base/include/value/lynx_value_api.h"
 #include "quickjs/include/quickjs.h"
 #ifdef __cplusplus
 }
@@ -92,6 +93,16 @@ enum ValueType {
   // Adding a new Value_type needs to be inserted before 'Value_TypeCount'
   Value_PrimJsValue,
   Value_TypeCount,
+};
+
+enum class CustomRefCountedType : uint32_t {
+  kNone,
+  kRefCounted,  // TODO(frendy): Remove this type after lepus value is
+                // decoupled.
+  kJSObject,
+  kClosure,
+  kCDate,
+  kRegExp,
 };
 
 class Context;
@@ -170,6 +181,14 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 #endif
   GCPersistent* p_val_ = nullptr;
 
+  lynx_api_env env_;
+  lynx_value value_;
+  lynx_value_ref value_ref_;
+  // TODO(frendy): Move custom_ref_type_ to RefCounted class.
+  CustomRefCountedType custom_ref_type_ = CustomRefCountedType::kNone;
+  // TODO(frendy): Remove use_lynx_value_ after lepus value is decoupled.
+  static inline bool use_lynx_value_ = false;
+
  public:
   explicit Value() = default;
   Value(const Value& value);
@@ -231,19 +250,52 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
       explicit Value(uint8_t data);
 #undef NumberConstructor
 
-#define SetNumberDefine(name, type) \
-  void SetNumber(type value) {      \
-    FreeValue();                    \
-    val_##type##_ = value;          \
-    type_ = Value_##name;           \
+  //#define SetNumberDefine(name, type) \
+//  void SetNumber(type value) {      \
+//    FreeValue();                    \
+//    val_##type##_ = value;          \
+//    type_ = Value_##name;           \
+//  }
+  //
+  //  NumberType(SetNumberDefine)
+  // #undef SetNumberDefine
+
+  void SetNumber(double val) {
+    FreeValue();
+    val_double_ = val;
+    type_ = Value_Double;
+    value_ = {.val_double = val, .type = lynx_value_double};
   }
 
-  NumberType(SetNumberDefine)
-#undef SetNumberDefine
-
-      inline ValueType Type() const {
-    return type_;
+  void SetNumber(int32_t val) {
+    FreeValue();
+    val_int32_t_ = val;
+    type_ = Value_Int32;
+    value_ = {.val_int32 = val, .type = lynx_value_int32};
   }
+
+  void SetNumber(uint32_t val) {
+    FreeValue();
+    val_uint32_t_ = val;
+    type_ = Value_UInt32;
+    value_ = {.val_uint32 = val, .type = lynx_value_uint32};
+  }
+
+  void SetNumber(int64_t val) {
+    FreeValue();
+    val_int64_t_ = val;
+    type_ = Value_Int64;
+    value_ = {.val_int64 = val, .type = lynx_value_int64};
+  }
+
+  void SetNumber(uint64_t val) {
+    FreeValue();
+    val_uint64_t_ = val;
+    type_ = Value_UInt64;
+    value_ = {.val_uint64 = val, .type = lynx_value_uint64};
+  }
+
+  inline ValueType Type() const { return type_; }
 
   static Value Clone(const Value& src, bool clone_as_jsvalue = false);
 
@@ -525,12 +577,14 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
     FreeValue();
     type_ = Value_Nil;
     val_ptr_ = nullptr;
+    value_ = {.val_ptr = nullptr, .type = lynx_value_null};
   }
 
   inline void SetUndefined() {
     FreeValue();
     type_ = Value_Undefined;
     val_ptr_ = nullptr;
+    value_ = {.val_ptr = nullptr, .type = lynx_value_undefined};
   }
 
   bool IsEqual(const Value& value) const;
@@ -668,6 +722,8 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   void IteratorJSValue(const LepusValueIterator& callback) const;
   friend lepus::LEPUSValueHelper;
+
+  void SetUseLynxValue(bool val) { use_lynx_value_ = val; }
 
  private:
   void Copy(const Value& value);

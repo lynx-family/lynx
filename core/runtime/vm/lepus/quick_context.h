@@ -16,6 +16,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "core/runtime/vm/lepus/lynx_value_lepusng.h"
 #include "quickjs/include/quickjs.h"
 #ifdef __cplusplus
 }
@@ -168,6 +169,8 @@ class QuickContext : private LEPUSRuntimeData, public Context {
   void RemoveRuntimeProfiler();
 #endif
 
+  inline lynx_api_env LynxAPIEnv() { return lynx_api_env_; }
+
  private:
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count,
@@ -203,6 +206,8 @@ class QuickContext : private LEPUSRuntimeData, public Context {
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<profile::RuntimeProfiler> runtime_profiler_;
 #endif
+
+  lynx_api_env lynx_api_env_;
 };
 
 class QuickContextBundle final : public ContextBundle {
