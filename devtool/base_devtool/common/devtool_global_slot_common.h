@@ -9,13 +9,13 @@
 #include <string>
 
 #include "devtool/base_devtool/native/devtool_global_slot.h"
-#include "third_party/debug_router/src/DebugRouter/Common/debug_router_global_handler.h"
+#include "third_party/debug_router/src/debug_router/Common/debug_router_global_handler.h"
 
 namespace lynx {
 namespace devtool {
 
 class DevToolGlobalSlotCommon
-    : public debugrouter::DebugRouterGlobalHandler,
+    : public debugrouter::common::DebugRouterGlobalHandler,
       public std::enable_shared_from_this<DevToolGlobalSlotCommon> {
  public:
   void InitWithGlobalSlot(

@@ -10,7 +10,7 @@ namespace devtool {
 void DevToolSlotCommon::InitWithSlot(
     const std::shared_ptr<lynx::devtool::DevToolSlot>& slot_ptr) {
   slot_ptr_ = slot_ptr;
-  debug_router_slot_ = std::make_shared<debugrouter::DebugRouterSlot>();
+  debug_router_slot_ = std::make_shared<debugrouter::common::DebugRouterSlot>();
   std::shared_ptr<DevToolSlotCommon> ptr = shared_from_this();
   debug_router_slot_->SetDelegate(ptr);
   template_url_ = "";

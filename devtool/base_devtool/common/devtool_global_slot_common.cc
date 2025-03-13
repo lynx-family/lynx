@@ -4,12 +4,12 @@
 
 #include "devtool/base_devtool/common/devtool_global_slot_common.h"
 
-#include "third_party/debug_router/src/DebugRouter/Common/debug_router.h"
+#include "third_party/debug_router/src/debug_router/Common/debug_router.h"
 
 namespace lynx {
 namespace devtool {
 
-using DebugRouter = debugrouter::DebugRouter;
+using DebugRouter = debugrouter::common::DebugRouter;
 const int GLOBAL_MESSAGE_SESSION_ID = -1;
 
 void DevToolGlobalSlotCommon::InitWithGlobalSlot(

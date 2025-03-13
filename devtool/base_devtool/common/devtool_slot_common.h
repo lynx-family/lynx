@@ -9,14 +9,14 @@
 #include <string>
 
 #include "devtool/base_devtool/native/devtool_slot.h"
-#include "third_party/debug_router/src/DebugRouter/Common/debug_router_slot.h"
-#include "third_party/debug_router/src/DebugRouter/Common/debug_router_slot_delegate.h"
+#include "third_party/debug_router/src/debug_router/Common/debug_router_slot.h"
+#include "third_party/debug_router/src/debug_router/Common/debug_router_slot_delegate.h"
 
 namespace lynx {
 namespace devtool {
 
 class DevToolSlotCommon
-    : public debugrouter::DebugRouterSlotDelegate,
+    : public debugrouter::common::DebugRouterSlotDelegate,
       public std::enable_shared_from_this<DevToolSlotCommon> {
  public:
   void InitWithSlot(
@@ -34,7 +34,7 @@ class DevToolSlotCommon
  private:
   std::string template_url_;
   std::weak_ptr<lynx::devtool::DevToolSlot> slot_ptr_;
-  std::shared_ptr<debugrouter::DebugRouterSlot> debug_router_slot_;
+  std::shared_ptr<debugrouter::common::DebugRouterSlot> debug_router_slot_;
 };
 
 }  // namespace devtool
