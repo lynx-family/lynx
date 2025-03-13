@@ -64,6 +64,10 @@ class TimingHandlerNg {
     timing_info_.SetEnableEngineCallback(enable_engine_callback);
   };
 
+  inline void SetEnableJSRuntime(bool enable_js_runtime) {
+    timing_info_.SetEnableJSRuntime(enable_js_runtime);
+  }
+
  private:
   // Internal storage and delegate for timing information.
   TimingInfoNg timing_info_;

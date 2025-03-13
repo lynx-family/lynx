@@ -47,6 +47,9 @@ class TimingInfoNg {
   inline bool GetEnableEngineCallback() const {
     return enable_engine_callback_;
   }
+  inline void SetEnableJSRuntime(bool enable_js_runtime) {
+    enable_js_runtime_ = enable_js_runtime;
+  }
 
   // This logic is to ensure compatibility with the old js_app markTiming
   // API. The old js_app markTiming API takes TimingFlag as a parameter and
@@ -104,6 +107,10 @@ class TimingInfoNg {
   void ClearAllTimingInfo();
 
  private:
+  bool UpdateMetrics(const std::string& name, const std::string& start_name,
+                     const std::string& end_name, uint64_t start_time,
+                     uint64_t end_time);
+
   // Note: All data is not meant to be overwritten! If you need to overwrite any
   // data, you must clear it first using ClearInitTimingInfo or
   // ClearPipelineTimingInfo before reconfiguring it.
@@ -140,6 +147,7 @@ class TimingInfoNg {
 
   // Other properties for tracking state and configuration.
   bool enable_engine_callback_{false};
+  bool enable_js_runtime_{true};
   std::shared_ptr<pub::PubValueFactory> value_factory_ = nullptr;
 };
 }  // namespace timing
