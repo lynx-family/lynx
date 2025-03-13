@@ -18,10 +18,9 @@ import subprocess
 import sys
 
 def clean_gn_project_json_file(gn_out_dir):
-  for dir in os.listdir(gn_out_dir):
-    project_json_file = os.path.join(gn_out_dir, dir, 'project.json')
-    if os.path.exists(project_json_file):
-      os.remove(project_json_file)
+  project_json_file = os.path.join(gn_out_dir, 'project.json')
+  if os.path.exists(project_json_file):
+    os.remove(project_json_file)
 
 def generate_compile_products(root_path, args, gn_args):
   is_debug = args.is_debug
