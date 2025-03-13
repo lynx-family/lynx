@@ -229,23 +229,30 @@ public class LynxViewShellActivity extends AppCompatActivity {
     lynxView.updateGlobalProps(getGlobalProps(this));
     extraTimingInfo.mPrepareTemplateStart = System.currentTimeMillis();
 
+    renderLynxViewWithUrl(lynxView, url);
+    mLynxContainer.addView(lynxView,
+        new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
+            queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
+    mLynxView = lynxView;
+  }
+
+  private void renderLynxViewWithUrl(LynxView lynxView, String url) {
     // Add a mock initData as example.
     Map<String, Object> initData = new HashMap<>();
     initData.put("mockData", "Hello Lynx Explorer");
 
     if (isAssetFilename(url)) {
+      // get file from asset
       url = getAssetFilename(url);
-
+      // parse url
       String[] strs = url.split("[?]");
       if (strs.length > 1) {
         url = strs[0];
       }
-
       strs = url.split("[&]");
       if (strs.length > 1) {
         url = strs[0];
       }
-
       byte[] templateBundleData = readFileFromAssets(this, url);
       extraTimingInfo.mPrepareTemplateEnd = System.currentTimeMillis();
       lynxView.setExtraTiming(extraTimingInfo);
@@ -263,12 +270,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     } else {
       Log.i(TAG, "openTargetUrl failed: not supported url.");
     }
-    mLynxContainer.addView(lynxView,
-        new FrameLayout.LayoutParams(queryMap.getInt("width", ViewGroup.LayoutParams.MATCH_PARENT),
-            queryMap.getInt("height", ViewGroup.LayoutParams.MATCH_PARENT)));
-    mLynxView = lynxView;
   }
-
   private TemplateData getGlobalProps(Context context) {
     DisplayMetrics displayMetrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
     Map globalProps = new HashMap();

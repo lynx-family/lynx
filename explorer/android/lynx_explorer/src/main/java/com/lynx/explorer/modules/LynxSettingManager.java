@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.explorer.modules;
 
-import com.lynx.tasm.fontface.FontFaceManager;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import com.lynx.tasm.theme.LynxTheme;
 import java.util.concurrent.atomic.AtomicBoolean;
