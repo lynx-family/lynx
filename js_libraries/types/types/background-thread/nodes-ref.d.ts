@@ -79,6 +79,12 @@ export interface NodesRef {
 
 export interface SelectorQuery {
   /**
+   * Selects a single node by the uid of node.
+   * @param selector CSS selector
+   */
+  selectUniqueID(uniqueId: string | number): NodesRef;
+
+  /**
    * Selects a single node by CSS selector.
    * @param selector CSS selector
    */
