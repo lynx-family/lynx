@@ -119,8 +119,6 @@ class LynxTemplateBundle final {
 
   lepus::Value GetCustomSection(const std::string &key);
 
-  std::string SerializeToString() const;
-
  private:
   // header info.
   uint32_t total_size_{0};
@@ -205,6 +203,7 @@ class LynxTemplateBundle final {
   friend class LynxBinaryReader;
   friend class TemplateAssembler;
   friend class TemplateEntry;
+  friend class LynxTemplateBundleConverter;
 };
 }  // namespace tasm
 }  // namespace lynx

@@ -78,10 +78,5 @@ bool LynxTemplateBundle::ShouldReuseLepusContext() const {
   return !IsCard() && compile_options_.enable_fiber_arch_;
 }
 
-std::string LynxTemplateBundle::SerializeToString() const {
-  // TODO(nihao.royal): support serialize LynxTemplateBundle to string.
-  return "";
-}
-
 }  // namespace tasm
 }  // namespace lynx

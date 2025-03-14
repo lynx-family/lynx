@@ -15,3 +15,11 @@ lynx_core_source_set("template_bundle") {
   public_deps =
       [ "//lynx/core/template_bundle/template_codec:template_decoder" ]
 }
+
+lynx_core_source_set("template_bundle_converter") {
+  sources = [
+    "lynx_template_bundle_converter.cc",
+    "lynx_template_bundle_converter.h",
+  ]
+  public_deps = [ ":template_bundle" ]
+}
