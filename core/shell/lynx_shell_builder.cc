@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/shared_data/lynx_white_board.h"
 
 namespace lynx {
 namespace shell {
@@ -328,9 +329,10 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
     tasm->SetLazyBundleLoader(this->loader_);
   }
 
-  if (this->white_board_ != nullptr) {
-    tasm->SetWhiteBoard(this->white_board_);
+  if (this->white_board_ == nullptr) {
+    this->white_board_ = std::make_shared<tasm::WhiteBoard>();
   }
+  tasm->SetWhiteBoard(this->white_board_);
 
   if (!this->locale_.empty()) {
     tasm->SetLocale(this->locale_);
