@@ -10,7 +10,6 @@ from sub_generator.oc_generator import generate_objc_interface, generate_objc_im
 from utils import *
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-definition_dir = os.path.join(base_dir, 'definition_yaml_files')
 
 def main(yaml_files_list_file):
     license = '''// Copyright 2024 The Lynx Authors. All rights reserved.
