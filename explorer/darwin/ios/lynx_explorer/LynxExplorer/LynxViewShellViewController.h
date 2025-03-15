@@ -11,4 +11,6 @@
 @property(nonatomic, readwrite) NSMutableDictionary* params;
 @property(nonatomic, readwrite) BOOL hiddenNav;
 
+- (NSString*)getStorageItem:(NSString*)key;
+
 @end

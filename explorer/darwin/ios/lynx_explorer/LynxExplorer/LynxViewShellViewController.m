@@ -128,6 +128,13 @@ NSString *const kBackButtonImageDark = @"back_dark";
   }
   [globalProps updateObject:theme forKey:@"theme"];
   [globalProps updateObject:self.frontendTheme forKey:@"frontendTheme"];
+
+  // Add the preferred theme from user defaults
+  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
+  if (preferredTheme) {
+    [globalProps updateObject:preferredTheme forKey:@"preferredTheme"];
+  }
+
   [lynxView updateGlobalPropsWithTemplateData:globalProps];
 
   LynxTemplateData *initData =
@@ -336,6 +343,11 @@ NSString *const kBackButtonImageDark = @"back_dark";
   }
 
   return NO;
+}
+
+- (NSString *)getStorageItem:(NSString *)key {
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  return [defaults objectForKey:key];
 }
 
 @end

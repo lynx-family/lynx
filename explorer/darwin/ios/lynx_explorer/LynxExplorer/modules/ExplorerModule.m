@@ -38,6 +38,7 @@ NSString *const DEVTOOL_SWITCH_URL = @"file://lynx?local://switchPage/devtoolSwi
     @"getSettingInfo" : NSStringFromSelector(@selector(getSettingInfo)),
     @"openDevtoolSwitchPage" : NSStringFromSelector(@selector(openDevToolSwitchPage)),
     @"navigateBack" : NSStringFromSelector(@selector(navigateBack)),
+    @"saveThemePreferences" : NSStringFromSelector(@selector(saveThemePreferences:value:)),
   };
 }
 
@@ -89,6 +90,12 @@ NSString *const DEVTOOL_SWITCH_URL = @"file://lynx?local://switchPage/devtoolSwi
       [vc popViewControllerAnimated:YES];
     }
   });
+}
+
+- (void)saveThemePreferences:(NSString *)theme value:(NSString *)value {
+  NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+  [defaults setObject:value forKey:theme];
+  [defaults synchronize];
 }
 
 @end
