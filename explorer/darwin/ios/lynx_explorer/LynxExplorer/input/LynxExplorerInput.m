@@ -61,7 +61,18 @@ LYNX_PROP_SETTER("value", setValue, NSString *) { self.view.text = value; }
 LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) { self.view.placeholder = value; }
 
 LYNX_PROP_SETTER("text-color", setTextColor, NSString *) {
-  self.view.textColor = [UIHelper colorWithHexString:value];
+  UIColor *textColor = [UIHelper colorWithHexString:value];
+  self.view.textColor = textColor;
+
+  UIColor *placeholderColor = [textColor colorWithAlphaComponent:0.4];
+  if (@available(iOS 13.0, *)) {
+    NSAttributedString *attributedPlaceholder = [[NSAttributedString alloc]
+        initWithString:self.view.placeholder ?: @""
+            attributes:@{NSForegroundColorAttributeName : placeholderColor}];
+    self.view.attributedPlaceholder = attributedPlaceholder;
+  } else {
+    [self.view setValue:placeholderColor forKeyPath:@"_placeholderLabel.textColor"];
+  }
 }
 
 - (void)textFieldDidChange:(NSNotification *)notification {
