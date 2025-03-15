@@ -87,6 +87,15 @@ public class LynxViewShellActivity extends AppCompatActivity {
     super.onDestroy();
   }
 
+  @Override
+  public boolean onOptionsItemSelected(MenuItem item) {
+    if (item.getItemId() == android.R.id.home) {
+      finish();
+      return true;
+    }
+    return super.onOptionsItemSelected(item);
+  }
+
   private String getStorageItem(String key) {
     SharedPreferences p = this.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE);
     String value = p.getString(key, null);
