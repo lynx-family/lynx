@@ -459,17 +459,18 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   }
 
   public void updateScreenMetrics(int width, int height) {
-    if (mNativePtr == 0 || mLynxContext == null) {
+    LynxContext context = mLynxContext;
+    if (mNativePtr == 0 || context == null) {
       return;
     }
-    if (width != mLynxContext.getScreenMetrics().widthPixels
-        || height != mLynxContext.getScreenMetrics().heightPixels) {
+    if (width != context.getScreenMetrics().widthPixels
+        || height != context.getScreenMetrics().heightPixels) {
       mShouldUpdateViewport = true;
-      mLynxContext.updateScreenSize(width, height);
+      context.updateScreenSize(width, height);
       nativeUpdateScreenMetrics(mNativePtr, mNativeLifecycle, width, height,
-          mLynxContext.getScreenMetrics().density, lynxUIRenderer().getUIDelegatePtr());
+          context.getScreenMetrics().density, lynxUIRenderer().getUIDelegatePtr());
       if (mDevTool != null) {
-        mDevTool.updateScreenMetrics(width, height, mLynxContext.getScreenMetrics().density);
+        mDevTool.updateScreenMetrics(width, height, context.getScreenMetrics().density);
       }
     }
   }
@@ -1449,9 +1450,13 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   }
 
   public void updateMetaData(LynxUpdateMeta meta) {
-    if (mLynxContext.isInPreLoad()) {
+    LynxContext context = mLynxContext;
+    if (context == null) {
+      return;
+    }
+    if (context.isInPreLoad()) {
       LLog.i(TAG, "updateData after pre load, url:" + mUrl);
-      mLynxContext.setInPreLoad(false);
+      context.setInPreLoad(false);
     }
 
     TemplateData updatedGlobalProps = null;
@@ -1535,9 +1540,13 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   public void updateData(TemplateData data) {
     String eventName = "LynxTemplateRender.updateData";
     onTraceEventBegin(eventName);
-    if (mLynxContext.isInPreLoad()) {
+    LynxContext context = mLynxContext;
+    if (context == null) {
+      return;
+    }
+    if (context.isInPreLoad()) {
       LLog.i(TAG, "updateData after pre load, url:" + mUrl);
-      mLynxContext.setInPreLoad(false);
+      context.setInPreLoad(false);
     }
     if (prepareUpdateData(data)) {
       data.markConsumed();
@@ -3053,13 +3062,19 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   // TODO(hexionghui): This interface will be deleted later. Since LynxSendCustomEventRunnable
   // relies on this interface, it cannot be deleted temporarily.
   public void sendCustomEvent(@NonNull LynxCustomEvent event) {
-    if (mLynxContext == null || mLynxContext.getEventEmitter() == null) {
-      LLog.e(TAG,
-          "sendCustomEvent event: " + event.getName()
-              + " failed since mLynxContext or getEventEmitter() is null.");
+    LynxContext context = mLynxContext;
+    if (context == null) {
+      LLog.e(
+          TAG, "sendCustomEvent event: " + event.getName() + " failed since mLynxContext is null.");
       return;
     }
-    mLynxContext.getEventEmitter().sendCustomEvent(event);
+    if (context.getEventEmitter() == null) {
+      LLog.e(TAG,
+          "sendCustomEvent event: " + event.getName()
+              + " failed since mLynxContext.getEventEmitter() is null.");
+      return;
+    }
+    context.getEventEmitter().sendCustomEvent(event);
   }
 
   public JavaOnlyMap getListPlatformInfo(int listSign) {
