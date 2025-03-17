@@ -21,7 +21,7 @@ class BasicFloatPropertyValue : public basic::PropertyValue {
       const std::unique_ptr<PropertyValue>& end_value) const override;
 
   size_t GetType() const override {
-    return static_cast<size_t>(basic::PropertyValueType::Float);
+    return static_cast<size_t>(basic::BasicPropertyValueType::Float);
   }
 
   float GetFloatValue() const { return float_value_; }

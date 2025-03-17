@@ -12,7 +12,7 @@ namespace lynx {
 namespace animation {
 namespace basic {
 
-enum class PropertyValueType { Int = 0, Float, Opacity, Color };
+enum class BasicPropertyValueType { Int = 0, Float, Color, Transform };
 
 class PropertyValue {
  public:
