@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_EVENT_LYNXEVENT_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxEventTargetBase.h"
+#import <Lynx/LynxEventTargetBase.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

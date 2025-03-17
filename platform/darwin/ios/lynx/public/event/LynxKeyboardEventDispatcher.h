@@ -5,7 +5,7 @@
 #ifndef LynxKeyboardEventDispatcher_h
 #define LynxKeyboardEventDispatcher_h
 
-#import "LynxContext.h"
+#import <Lynx/LynxContext.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

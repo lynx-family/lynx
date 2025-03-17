@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTextOverflowLayer.h"
-#import "LynxTextView.h"
-#import "LynxUIText.h"
-#import "LynxUIUnitUtils.h"
+#import <Lynx/LynxTextOverflowLayer.h>
+#import <Lynx/LynxTextView.h>
+#import <Lynx/LynxUIText.h>
+#import <Lynx/LynxUIUnitUtils.h>
 
 @implementation LynxTextOverflowLayer
 

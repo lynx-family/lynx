@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LepusDebugInfoHelper.h"
-#import "LynxDevToolDownloader.h"
-#import "LynxLog.h"
+#import <Lynx/LynxLog.h>
+#import <LynxDevtool/LepusDebugInfoHelper.h>
+#import <LynxDevtool/LynxDevToolDownloader.h>
 
 @implementation LepusDebugInfoHelper {
   BOOL _waitFlag;

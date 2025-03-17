@@ -778,8 +778,6 @@ class TemplateAssembler final
 
   void EnsureAirTouchEventHandler();
 
-  void SetPageConfigRadonMode() const;
-
   // Insert data inplace to parameter, return if the page data should be read
   // only.
   TemplateData ProcessTemplateData(

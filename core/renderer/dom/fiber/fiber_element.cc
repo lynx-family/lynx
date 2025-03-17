@@ -60,10 +60,7 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag)
 
 FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
                            int32_t css_id)
-    : Element(tag, manager),
-      dirty_(kDirtyCreated),
-      node_manager_(manager ? manager->node_manager() : nullptr),
-      css_id_(css_id) {
+    : Element(tag, manager), dirty_(kDirtyCreated), css_id_(css_id) {
   css_patching_.SetEnableFiberArch(true);
   InitLayoutBundle();
   SetAttributeHolder(std::make_shared<AttributeHolder>(this));
@@ -148,8 +145,6 @@ void FiberElement::AttachToElementManager(
     bool keep_element_id) {
   Element::AttachToElementManager(manager, style_manager, keep_element_id);
 
-  node_manager_ = manager->node_manager();
-
   const auto &env_config = manager->GetLynxEnvConfig();
   if (platform_css_style_ == nullptr) {
     platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
@@ -205,7 +200,7 @@ FiberElement::~FiberElement() {
     element_manager()->NotifyElementDestroy(this);
     DestroyPlatformNode();
     element_manager()->DestroyLayoutNode(impl_id());
-    node_manager_->Erase(id_);
+    element_manager()->node_manager()->Erase(id_);
   }
 }
 
@@ -1524,8 +1519,9 @@ void FiberElement::ParallelFlushAsRoot() {
 
   while (!task_queue.empty()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::ConsumeParallelTask");
-    if (task_queue.front().get()->GetFuture().wait_for(std::chrono::seconds(
-            task_wait_timeout_)) == std::future_status::ready) {
+    if (task_queue.front().get()->GetFuture().wait_for(
+            std::chrono::seconds(element_manager()->GetTaskWaitTimeout())) ==
+        std::future_status::ready) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::ConsumeLeftIter");
       task_queue.front().get()->GetFuture().get()();
       task_queue.pop_front();

@@ -85,6 +85,12 @@ bool LynxBinaryReader::DecodeCSSDescriptor() {
 
   // greedy decode css section
   const auto& manager = template_bundle().GetCSSStyleManager();
+
+  if (page_configs_) {
+    manager->SetFixCSSImportRuleOrder(
+        page_configs_->GetFixCSSImportRuleOrder());
+  }
+
   ERROR_UNLESS(GreedyDecodeCSSDescriptor((*manager->GetCSSFragmentMap())));
 
   // make all fragments read-only

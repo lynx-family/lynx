@@ -70,8 +70,6 @@ class ScopedJSObjectPushPopHelper {
   JSValueCircularArray& pre_object_vector_;
 };
 
-bool IsSingleJSContext(const std::string& group_id);
-
 #if defined(OS_ANDROID)
 bool JSBUtilsRegisterJNI(JNIEnv* env);
 bool JSBUtilsMapRegisterJNI(JNIEnv* env);

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxScrollEventManager.h"
-#import "LynxUIContext.h"
+#import <Lynx/LynxScrollEventManager.h>
+#import <Lynx/LynxUIContext.h>
 
 NSString *const LynxEventScroll = @"scroll";
 NSString *const LynxEventScrollEnd = @"scrollend";

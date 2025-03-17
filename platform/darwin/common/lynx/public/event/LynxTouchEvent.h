@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_EVENT_LYNXTOUCHEVENT_H_
 
 #import <CoreGraphics/CoreGraphics.h>
-#import "LynxEvent.h"
+#import <Lynx/LynxEvent.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

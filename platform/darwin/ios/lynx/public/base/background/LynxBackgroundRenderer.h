@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundRenderer+Internal.h"
+#import <Lynx/LynxBackgroundRenderer+Internal.h>
 
 // Currently, the dashed / dotted implementation only supports a single colour +
 // single width, as that's currently required and supported on Android.

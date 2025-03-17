@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LUIBodyView.h>
+#import <Lynx/LynxRootUI.h>
+#import <Lynx/UIView+Lynx.h>
 #import <objc/runtime.h>
-#import "LUIBodyView.h"
-#import "LynxRootUI.h"
 #import "LynxUIOwner+Accessibility.h"
-#import "UIView+Lynx.h"
 
 #define LYNX_A11Y_TAG(pointer) ((NSInteger)pointer + 11)
 

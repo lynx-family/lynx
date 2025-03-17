@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxUIOwner.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
-#import "LynxEnv.h"
 #import "LynxTemplateRender+Internal.h"
-#import "LynxUIOwner.h"
 
 @interface LynxComponentStatisticUnitTest : XCTestCase
 

@@ -4,13 +4,14 @@
 
 #import "LynxUIRenderer.h"
 
+#import <Lynx/LynxEventHandler.h>
+#import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxGenericResourceFetcher.h>
+#import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxWeakProxy.h>
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
 #import "LynxEventHandler+Internal.h"
-#import "LynxEventHandler.h"
-#import "LynxFontFaceManager.h"
-#import "LynxGenericResourceFetcher.h"
-#import "LynxKeyboardEventDispatcher.h"
 #import "LynxTemplateRender+Internal.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTouchHandler+Internal.h"
@@ -18,7 +19,6 @@
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 #import "LynxViewBuilder+Internal.h"
-#import "LynxWeakProxy.h"
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 

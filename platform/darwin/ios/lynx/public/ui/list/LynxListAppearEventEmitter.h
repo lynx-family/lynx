@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEventEmitter.h"
-#import "LynxUICollection+Internal.h"
-#import "LynxUIComponent.h"
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxUICollection+Internal.h>
+#import <Lynx/LynxUIComponent.h>
 
 @class LynxUICollection;
 

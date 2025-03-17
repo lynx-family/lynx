@@ -2,30 +2,30 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEnv.h"
+#import <Lynx/LynxEnv.h>
 
 #import <objc/message.h>
 
-#import "LynxComponentRegistry.h"
-#import "LynxConfig.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxConfig.h>
+#import <Lynx/LynxEnvKey.h>
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxLazyRegister.h>
+#import <Lynx/LynxLifecycleDispatcher.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxViewClient.h>
 #import "LynxEnv+Internal.h"
-#import "LynxEnvKey.h"
-#import "LynxError.h"
-#import "LynxLazyRegister.h"
-#import "LynxLifecycleDispatcher.h"
-#import "LynxLog.h"
-#import "LynxService.h"
-#import "LynxSubErrorCode.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
-#import "LynxViewClient.h"
 #if ENABLE_TRACE_PERFETTO
-#import "LynxTraceController.h"
+#import <Lynx/LynxTraceController.h>
 #endif
-#import "LynxBaseInspectorOwner.h"
-#import "LynxDevToolUtils.h"
-#import "LynxService.h"
-#import "LynxServiceDevToolProtocol.h"
+#import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxDevToolUtils.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"
@@ -40,8 +40,8 @@
 #include "core/services/timing_handler/timing.h"
 
 #if OS_IOS
-#import "LynxUICollection.h"
-#import "LynxUIKitAPIAdapter.h"
+#import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
 #endif
 
 @interface LynxEnv ()

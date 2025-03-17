@@ -18,7 +18,7 @@ class VSyncMonitorAndroid : public VSyncMonitor {
   ~VSyncMonitorAndroid() override = default;
   static bool RegisterJNI(JNIEnv* env);
 
-  void RequestVSyncOnUIThread(Callback callback);
+  void RequestVSyncOnUIThread(Callback callback) override;
 
  protected:
   void RequestVSync() override;

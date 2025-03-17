@@ -2,35 +2,35 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIScroller.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLayoutStyle.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Fluency.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIScroller.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <objc/runtime.h>
-#import "LynxComponentRegistry.h"
-#import "LynxLayoutStyle.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+Fluency.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIMethodProcessor.h"
-#import "LynxWeakProxy.h"
 
-#import "LynxBounceView.h"
-#import "LynxGlobalObserver.h"
-#import "LynxImpressionView.h"
-#import "LynxPropertyDiffMap.h"
-#import "LynxScrollEventManager.h"
-#import "LynxScrollView.h"
+#import <Lynx/LynxBounceView.h>
+#import <Lynx/LynxGlobalObserver.h>
+#import <Lynx/LynxImpressionView.h>
+#import <Lynx/LynxPropertyDiffMap.h>
+#import <Lynx/LynxScrollEventManager.h>
+#import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/UIScrollView+Lynx.h>
+#import <Lynx/UIScrollView+LynxFadingEdge.h>
+#import <Lynx/UIScrollView+LynxGesture.h>
+#import <Lynx/UIScrollView+Nested.h>
 #import "LynxTemplateRender+Internal.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
 #import "LynxUI+Gesture.h"
-#import "LynxUICollection.h"
 #import "LynxUIContext+Internal.h"
-#import "LynxUnitUtils.h"
-#import "LynxView+Internal.h"
-#import "LynxView.h"
-#import "UIScrollView+Lynx.h"
-#import "UIScrollView+LynxFadingEdge.h"
-#import "UIScrollView+LynxGesture.h"
-#import "UIScrollView+Nested.h"
 
 const NSInteger kScrollEdgeThreshold = 1;
 const NSInteger kInvalidBounceDistance = -1;

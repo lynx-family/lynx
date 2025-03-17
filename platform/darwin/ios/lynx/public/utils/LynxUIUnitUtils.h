@@ -5,6 +5,7 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxCSSType.h>
+#import <UIKit/UIKit.h>
 #import <objc/NSObject.h>
 
 NS_ASSUME_NONNULL_BEGIN

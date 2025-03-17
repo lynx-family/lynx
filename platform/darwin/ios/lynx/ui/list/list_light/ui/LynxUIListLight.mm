@@ -6,11 +6,11 @@
 #import <Lynx/LynxListVerticalLayoutManager.h>
 #import <Lynx/LynxListViewCellLight.h>
 #import <Lynx/LynxListViewLight.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIListDataSource.h>
 #import <Lynx/LynxUIListLight.h>
 #import <Lynx/LynxUIListProtocol.h>
-#import "LynxUI+Internal.h"
-#import "LynxUIMethodProcessor.h"
+#import <Lynx/LynxUIMethodProcessor.h>
 #include "core/shell/lynx_shell.h"
 
 @interface LynxUIListLight ()

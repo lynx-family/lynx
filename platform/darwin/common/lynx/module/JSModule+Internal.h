@@ -5,7 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_MODULE_JSMODULE_INTERNAL_H_
 #define DARWIN_COMMON_LYNX_MODULE_JSMODULE_INTERNAL_H_
 
-#import "JSModule.h"
+#import <Lynx/JSModule.h>
 #import "core/shell/ios/js_proxy_darwin.h"
 
 @interface JSModule ()

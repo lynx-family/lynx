@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIListLoader.h"
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIComponent.h>
+#import <Lynx/LynxUIListLoader.h>
+#import <Lynx/LynxView+Internal.h>
 #include <numeric>
 #import "LynxTemplateRender+Internal.h"
-#import "LynxUI.h"
-#import "LynxUIComponent.h"
-#import "LynxView+Internal.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/shell/lynx_shell.h"

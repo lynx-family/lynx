@@ -19,8 +19,10 @@
 namespace lynx {
 namespace fml {
 
-TaskRunner::TaskRunner(fml::RefPtr<MessageLoopImpl> loop)
-    : queue_id_(MessageLoopTaskQueues::GetInstance()->CreateTaskQueue()) {
+TaskRunner::TaskRunner(fml::RefPtr<MessageLoopImpl> loop,
+                       bool is_aligned_with_vsync)
+    : queue_id_(MessageLoopTaskQueues::GetInstance()->CreateTaskQueue(
+          is_aligned_with_vsync)) {
   BindOnCreate(loop);
 }
 

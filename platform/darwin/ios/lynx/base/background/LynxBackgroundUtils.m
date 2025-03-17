@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundUtils.h"
-#import "LynxBackgroundImageLayerInfo.h"
-#import "LynxBackgroundRenderer.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIUnitUtils.h"
+#import <Lynx/LynxBackgroundImageLayerInfo.h>
+#import <Lynx/LynxBackgroundRenderer.h>
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIUnitUtils.h>
 
 void LynxDrawBackgroundToImageContext(LynxBorderRadii cornerRadii, UIEdgeInsets borderInsets,
                                       CGColorRef backgroundColor, BOOL drawToEdge,

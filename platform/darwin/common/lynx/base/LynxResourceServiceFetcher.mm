@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxResourceServiceFetcher.h"
+#import <Lynx/LynxResourceServiceFetcher.h>
 
-#import "LynxError.h"
-#import "LynxLog.h"
-#import "LynxResourceResponseDataInfoProtocol.h"
-#import "LynxService.h"
-#import "LynxServiceResourceProtocol.h"
-#import "LynxSubErrorCode.h"
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxResourceResponseDataInfoProtocol.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceResourceProtocol.h>
+#import <Lynx/LynxSubErrorCode.h>
 
 @implementation LynxResourceServiceFetcher
 

@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIView.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#import "LynxPropsProcessor.h"
 #import "LynxUI+Gesture.h"
-#import "LynxUI+Internal.h"
 #import "LynxUI+Private.h"
-#import "LynxUIView.h"
 
 @implementation LynxUI (Test)
 - (UIView *)createView {

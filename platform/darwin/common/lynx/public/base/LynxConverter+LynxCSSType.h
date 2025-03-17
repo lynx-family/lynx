@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXCONVERTER_LYNXCSSTYPE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxConverter.h"
+#import <Lynx/LynxConverter.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

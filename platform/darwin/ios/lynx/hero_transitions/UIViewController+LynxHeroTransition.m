@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxHeroTransition.h>
+#import <Lynx/UIViewController+LynxHeroTransition.h>
 #import <objc/runtime.h>
-#import "LynxHeroTransition.h"
-#import "UIViewController+LynxHeroTransition.h"
 
 @implementation LynxHeroViewControllerConfig
 

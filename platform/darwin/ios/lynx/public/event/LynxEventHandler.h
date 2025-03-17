@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxEventTarget.h>
 #import <UIKit/UIKit.h>
-#import "LynxEventEmitter.h"
-#import "LynxEventTarget.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

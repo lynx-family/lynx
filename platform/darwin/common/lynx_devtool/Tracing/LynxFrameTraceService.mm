@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxFrameTraceService.h"
+#import <LynxDevtool/LynxFrameTraceService.h>
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 #import "tracing/frame_trace_service.h"

@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxAnimationInfo.h"
-#import "LynxConverter.h"
-#import "LynxKeyframes.h"
+#import <Lynx/LynxAnimationInfo.h>
+#import <Lynx/LynxConverter.h>
+#import <Lynx/LynxKeyframes.h>
 
 @class LynxUI;
 

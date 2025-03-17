@@ -17,6 +17,12 @@ void NativeFacadeReporterAndroid::RegisterJni(JNIEnv* env) {
 
 void NativeFacadeReporterAndroid::OnPerformanceEvent(
     const lepus::Value& entry) {
+  // Since this method operates in an asynchronous thread, we need to
+  // ensure that the Java Object is available.
+  base::android::ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) {
+    return;
+  }
   JNIEnv* env = base::android::AttachCurrentThread();
   auto j_entry_map = lynx::tasm::android::ValueConverterAndroid::
       ConvertLepusToJavaOnlyMapForTiming(entry);

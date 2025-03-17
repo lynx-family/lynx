@@ -5,14 +5,14 @@
 #ifndef DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICE_H_
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICE_H_
 #import <Foundation/Foundation.h>
-#import "LynxDefines.h"
-#import "LynxServiceModuleProtocol.h"
-#import "LynxServiceMonitorProtocol.h"
-#import "LynxServiceProtocol.h"
-#import "LynxServiceSecurityProtocol.h"
-#import "LynxServiceTrailProtocol.h"
+#import <Lynx/LynxDefines.h>
+#import <Lynx/LynxServiceModuleProtocol.h>
+#import <Lynx/LynxServiceMonitorProtocol.h>
+#import <Lynx/LynxServiceProtocol.h>
+#import <Lynx/LynxServiceSecurityProtocol.h>
+#import <Lynx/LynxServiceTrailProtocol.h>
 #if TARGET_OS_IOS
-#import "LynxServiceImageProtocol.h"
+#import <Lynx/LynxServiceImageProtocol.h>
 #endif
 
 NS_ASSUME_NONNULL_BEGIN

@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxProviderRegistry.h"
+#import <Lynx/LynxProviderRegistry.h>
 
 NSString* const LYNX_PROVIDER_TYPE_IMAGE = @"IMAGE";
 NSString* const LYNX_PROVIDER_TYPE_FONT = @"FONT";

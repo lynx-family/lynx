@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LAZYLOAD_LYNXLAZYREGISTER_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxLazyLoad.h"
+#import <Lynx/LynxLazyLoad.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

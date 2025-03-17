@@ -26,6 +26,11 @@ void TimingHandlerNg::OnPipelineStart(
     const PipelineID& pipeline_id, const PipelineOrigin& pipeline_origin,
     const TimestampUs pipeline_start_timestamp) {
   pipeline_id_to_origin_map_.emplace(pipeline_id, pipeline_origin);
+  if (pipeline_origin == kReloadBundleFromNative ||
+      pipeline_origin == kLoadBundle ||
+      pipeline_origin == kReloadBundleFromBts) {
+    timing_info_.SetLoadBundlePipelineId(pipeline_id);
+  }
 }
 
 void TimingHandlerNg::BindPipelineIDWithTimingFlag(
@@ -87,13 +92,7 @@ void TimingHandlerNg::ProcessPipelineTiming(
 
 bool TimingHandlerNg::IsLoadBundlePipeline(
     const PipelineID& pipeline_id) const {
-  const auto& it = pipeline_id_to_origin_map_.find(pipeline_id);
-  if (it != pipeline_id_to_origin_map_.end()) {
-    return it->second == kLoadTemplate || it->second == kReloadTemplate ||
-           it->second == kReloadBundleFromNative || it->second == kLoadBundle ||
-           it->second == kReloadBundleFromBts;
-  }
-  return false;
+  return pipeline_id == timing_info_.GetLoadBundlePipelineId();
 }
 
 /*
@@ -111,14 +110,14 @@ void TimingHandlerNg::DispatchPerformanceEventIfNeeded(
     const TimestampKey& timing_key, const lynx::tasm::PipelineID& pipeline_id) {
   if (!pipeline_id.empty()) {
     DispatchPipelineEntryIfNeeded(timing_key, pipeline_id);
-    DispatchMetricFcpEntryIfNeeded(timing_key, pipeline_id);
-    DispatchMetricTtiEntryIfNeeded(timing_key, pipeline_id);
-    DispatchMetricFmpEntryIfNeeded(timing_key, pipeline_id);
   } else {
     DispatchInitContainerEntryIfNeeded(timing_key);
     DispatchInitLynxViewEntryIfNeeded(timing_key);
     DispatchInitBackgroundRuntimeEntryIfNeeded(timing_key);
   }
+  DispatchMetricFcpEntryIfNeeded(timing_key, pipeline_id);
+  DispatchMetricTtiEntryIfNeeded(timing_key, pipeline_id);
+  DispatchMetricFmpEntryIfNeeded(timing_key, pipeline_id);
 }
 
 void TimingHandlerNg::DispatchInitContainerEntryIfNeeded(
@@ -164,7 +163,7 @@ void TimingHandlerNg::DispatchInitBackgroundRuntimeEntryIfNeeded(
 
 void TimingHandlerNg::DispatchMetricFcpEntryIfNeeded(
     const TimestampKey& current_key, const PipelineID& pipeline_id) {
-  if (!IsLoadBundlePipeline(pipeline_id)) {
+  if (!pipeline_id.empty() && !IsLoadBundlePipeline(pipeline_id)) {
     return;
   }
   auto entry = timing_info_.GetMetricFcpEntry(current_key, pipeline_id);
@@ -179,7 +178,7 @@ void TimingHandlerNg::DispatchMetricFcpEntryIfNeeded(
 
 void TimingHandlerNg::DispatchMetricTtiEntryIfNeeded(
     const TimestampKey& current_key, const PipelineID& pipeline_id) {
-  if (!IsLoadBundlePipeline(pipeline_id)) {
+  if (!pipeline_id.empty() && !IsLoadBundlePipeline(pipeline_id)) {
     return;
   }
   auto entry = timing_info_.GetMetricTtiEntry(current_key, pipeline_id);
@@ -195,25 +194,32 @@ void TimingHandlerNg::DispatchMetricTtiEntryIfNeeded(
 void TimingHandlerNg::DispatchMetricFmpEntryIfNeeded(
     const TimestampKey& current_key,
     const lynx::tasm::PipelineID& pipeline_id) {
-  auto it = pipeline_id_to_timing_flags_map_.find(pipeline_id);
-  if (it == pipeline_id_to_timing_flags_map_.end()) {
-    return;
-  }
-  // Iterate over the vector of TimingFlags for the specific ID
-  for (const TimingFlag& flag : it->second) {
-    if (flag != kLynxTimingActualFMPFlag) {
-      continue;
-    }
-    auto entry = timing_info_.GetMetricFmpEntry(current_key, pipeline_id);
-    if (entry == nullptr) {
+  if (!pipeline_id.empty()) {
+    auto it = pipeline_id_to_timing_flags_map_.find(pipeline_id);
+    if (it == pipeline_id_to_timing_flags_map_.end()) {
       return;
     }
-    entry->PushStringToMap(kEntryType, kEntryTypeMetric);
-    entry->PushStringToMap(kEntryName, kEntryNameActualFMP);
-    delegate_->OnPerformanceEvent(std::move(entry),
-                                  timing_info_.GetEnableEngineCallback());
-    break;
+    bool is_fmp_pipeline =
+        false;  // Iterate over the vector of TimingFlags for the specific ID
+    for (const TimingFlag& flag : it->second) {
+      if (flag == kLynxTimingActualFMPFlag) {
+        is_fmp_pipeline = true;
+        break;
+      }
+    }
+    if (!is_fmp_pipeline) {
+      return;
+    }
   }
+
+  auto entry = timing_info_.GetMetricFmpEntry(current_key, pipeline_id);
+  if (entry == nullptr) {
+    return;
+  }
+  entry->PushStringToMap(kEntryType, kEntryTypeMetric);
+  entry->PushStringToMap(kEntryName, kEntryNameActualFMP);
+  delegate_->OnPerformanceEvent(std::move(entry),
+                                timing_info_.GetEnableEngineCallback());
 }
 
 void TimingHandlerNg::DispatchLoadBundleEntryIfNeeded(

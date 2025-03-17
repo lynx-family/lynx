@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_LYNXTEMPLATERENDERDELEGATE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxTemplateBundle.h"
-#import "LynxViewClientV2.h"
+#import <Lynx/LynxTemplateBundle.h>
+#import <Lynx/LynxViewClientV2.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

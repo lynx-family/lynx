@@ -3,13 +3,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxListViewLight.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIComponent.h>
 #import <Lynx/LynxUIListCellContentProducer.h>
 #import <Lynx/LynxUIListLight.h>
 #import "LynxTemplateRender+Internal.h"
-#import "LynxUI.h"
-#import "LynxUIComponent.h"
 
-#import "LynxView+Internal.h"
+#import <Lynx/LynxView+Internal.h>
 
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/diff_algorithm.h"

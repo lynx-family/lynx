@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_PUBLIC_SERVICE_LynxServiceLogProtocol_h
 
 #import <Foundation/Foundation.h>
-#import "LynxServiceProtocol.h"
+#import <Lynx/LynxServiceProtocol.h>
 
 @protocol LynxServiceLogProtocol <LynxServiceProtocol>
 

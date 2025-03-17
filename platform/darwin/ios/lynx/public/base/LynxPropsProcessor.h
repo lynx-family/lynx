@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxDefines.h"
-#import "LynxPreprocessingUtils.h"
+#import <Lynx/LynxDefines.h>
+#import <Lynx/LynxPreprocessingUtils.h>
 
 /**
  * A special prefix for method name

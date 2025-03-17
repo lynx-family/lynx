@@ -5,7 +5,7 @@
 #ifndef DARWIN_COMMON_LYNX_LYNXUPDATEMETA_H_
 #define DARWIN_COMMON_LYNX_LYNXUPDATEMETA_H_
 
-#import "LynxTemplateData.h"
+#import <Lynx/LynxTemplateData.h>
 
 @interface LynxUpdateMeta : NSObject
 @property(nonatomic, strong, nullable) LynxTemplateData* data;

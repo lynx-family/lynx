@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "TestbenchDumpFileHelper.h"
 #import <Lynx/LynxUIImage.h>
+#import <LynxDevtool/TestbenchDumpFileHelper.h>
 #import <objc/runtime.h>
 
 #pragma mark - TestbenchDumpFileHelper

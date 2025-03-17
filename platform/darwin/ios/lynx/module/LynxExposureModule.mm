@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import "LynxExposureModule.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUIExposure.h>
+#import <Lynx/LynxUIOwner.h>
 #import "LynxContext+Internal.h"
-#import "LynxContext.h"
-#import "LynxUIContext.h"
-#import "LynxUIExposure.h"
-#import "LynxUIOwner.h"
 
 using namespace lynx;
 

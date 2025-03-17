@@ -15,6 +15,7 @@
 #include "base/include/vector.h"
 #include "core/public/pipeline_option.h"
 #include "core/services/timing_handler/timing.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
 #include "core/services/timing_handler/timing_info_ng.h"
 
@@ -63,6 +64,10 @@ class TimingHandlerNg {
   inline void SetEnableEngineCallback(bool enable_engine_callback) {
     timing_info_.SetEnableEngineCallback(enable_engine_callback);
   };
+
+  inline void SetEnableBackgroundRuntime(bool enable_background_runtime) {
+    timing_info_.SetEnableBackgroundRuntime(enable_background_runtime);
+  }
 
  private:
   // Internal storage and delegate for timing information.

@@ -17,18 +17,11 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "core/base/threading/js_thread_config_getter.h"
+#include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/utils/lynx_env.h"  // nogncheck
 
-// TODO(qiuxian):merge vsync loop to normal loop.
 #ifdef OS_ANDROID
-#include "base/include/fml/memory/ref_ptr.h"
 #include "core/base/android/device_utils_android.h"
-#include "core/base/android/message_loop_android_vsync.h"
-#include "core/base/threading/task_runner_vsync.h"
-#elif defined(OS_IOS)
-#include "base/include/fml/memory/ref_ptr.h"
-#include "core/base/darwin/message_loop_darwin_vsync.h"
-#include "core/base/threading/task_runner_vsync.h"
 #endif
 
 #ifdef OS_WIN
@@ -216,14 +209,21 @@ void UIThread::Init(void* platform_loop) {
   GetUITaskRunner() =
       fml::MessageLoop::EnsureInitializedForCurrentThread(platform_loop)
           .GetTaskRunner();
-  // TODO(qiuxian): TaskRunnerVSync will be removed after inject vsync to normal
-  // loop.
-#ifdef OS_ANDROID
-  GetUIVSyncTaskRunner() = fml::MakeRefCounted<base::TaskRunnerVSync>(
-      fml::MakeRefCounted<android::MessageLoopAndroidVSync>());
-#elif defined(OS_IOS)
-  GetUIVSyncTaskRunner() = fml::MakeRefCounted<base::TaskRunnerVSync>(
-      fml::MakeRefCounted<darwin::MessageLoopDarwinVSync>());
+
+#if defined(OS_ANDROID) || (OS_IOS)
+  auto vsync_monitor = base::VSyncMonitor::Create();
+  vsync_monitor->BindToCurrentThread();
+  vsync_monitor->Init();
+  GetUITaskRunner()->GetLoop()->SetVSyncRequest(
+      [vsync_monitor](fml::VSyncCallback vsync_callback) {
+        vsync_monitor->RequestVSyncOnUIThread(
+            [vsync_callback = std::move(vsync_callback)](
+                int64_t frame_start_time_ns, int64_t frame_target_time_ns) {
+              vsync_callback(frame_start_time_ns, frame_target_time_ns);
+            });
+      });
+  GetUIVSyncTaskRunner() =
+      fml::MakeRefCounted<fml::TaskRunner>(GetUITaskRunner()->GetLoop(), true);
 #endif
   HasInit() = true;
   GetUIInitCV().notify_all();
@@ -329,16 +329,8 @@ void TaskRunnerManufactor::CreateTASMRunner(
   return;
 #endif
 
-#if defined(OS_ANDROID) || (OS_IOS)
-  // Only Android supports vsync aligned message loop.
-  tasm_task_runner_ =
-      enable_vsync_aligned_msg_loop
-          ? fml::MakeRefCounted<base::TaskRunnerVSync>(std::move(loop))
-          : fml::MakeRefCounted<fml::TaskRunner>(std::move(loop));
-  return;
-#else
-  tasm_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(std::move(loop));
-#endif
+  tasm_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(
+      std::move(loop), enable_vsync_aligned_msg_loop);
 }
 
 fml::RefPtr<fml::MessageLoopImpl> TaskRunnerManufactor::StartTASMThread() {

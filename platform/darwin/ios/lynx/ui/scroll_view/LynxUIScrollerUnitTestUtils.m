@@ -3,15 +3,15 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxUIScrollerUnitTestUtils.h"
+#import <Lynx/LynxBounceView.h>
+#import <Lynx/LynxEvent.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIScroller.h>
 #import <XCTest/XCTest.h>
-#import "LynxBounceView.h"
-#import "LynxEvent.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+Internal.h"
 #import "LynxUI+Private.h"
-#import "LynxUI.h"
-#import "LynxUIMethodProcessor.h"
-#import "LynxUIScroller.h"
 #import "LynxUIUnitTestUtils.h"
 
 @implementation LynxUIScrollerUnitTestUtils

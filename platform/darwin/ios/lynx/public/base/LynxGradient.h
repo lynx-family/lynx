@@ -4,7 +4,7 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
-#import "LynxCSSType.h"
+#import <Lynx/LynxCSSType.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

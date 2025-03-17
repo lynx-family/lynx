@@ -5738,10 +5738,10 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
 
   auto indexFragment = std::make_shared<SharedCSSFragment>(
       1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+  manager->task_wait_timeout_ = 5000;
 
   // parent
   auto page = manager->CreateFiberPage("page", 11);
-  page->task_wait_timeout_ = 5000;
 
   // child component
   base::String component_id("21");
@@ -5870,10 +5870,10 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
 
   auto indexFragment = std::make_shared<SharedCSSFragment>(
       1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+  manager->task_wait_timeout_ = 5000;
 
   // parent
   auto page = manager->CreateFiberPage("page", 11);
-  page->task_wait_timeout_ = 5000;
 
   // child component
   base::String component_id("21");
@@ -6022,9 +6022,9 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {
 
   auto style_sheet =
       std::make_shared<CSSFragmentDecorator>(indexFragment.get());
+  manager->task_wait_timeout_ = 1000;
   // page
   auto page = manager->CreateFiberPage("page", 11);
-  page->task_wait_timeout_ = 1000;
   page->style_sheet_ = style_sheet;
 
   // children
@@ -6129,9 +6129,9 @@ TEST_P(FiberElementTest, ConsumeAnimationPropBundle_new_animator) {
 
   auto style_sheet =
       std::make_shared<CSSFragmentDecorator>(indexFragment.get());
+  manager->task_wait_timeout_ = 1000;
   // page
   auto page = manager->CreateFiberPage("page", 11);
-  page->task_wait_timeout_ = 1000;
   page->style_sheet_ = style_sheet;
 
   // children

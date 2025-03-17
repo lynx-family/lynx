@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxAnimationDelegate.h"
-#import "LynxAnimationInfo.h"
-#import "LynxUI.h"
+#import <Lynx/LynxAnimationDelegate.h>
+#import <Lynx/LynxAnimationInfo.h>
+#import <Lynx/LynxUI.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

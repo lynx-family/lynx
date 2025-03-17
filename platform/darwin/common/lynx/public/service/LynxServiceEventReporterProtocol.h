@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICEEVENTREPORTERPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxEventReporter.h"
-#import "LynxServiceProtocol.h"
+#import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxServiceProtocol.h>
 
 @class LynxView;
 

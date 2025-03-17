@@ -4,7 +4,7 @@
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-#import "LynxCustomMeasureDelegate.h"
+#import <Lynx/LynxCustomMeasureDelegate.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @interface MeasureContext ()

@@ -25,7 +25,7 @@ class VSyncMonitorIOS : public VSyncMonitor {
 
   void RequestVSync() override;
 
-  void RequestVSyncOnUIThread(Callback callback);
+  void RequestVSyncOnUIThread(Callback callback) override;
 
  private:
   std::unique_ptr<LynxVSyncPulsePuppet> delegate_;

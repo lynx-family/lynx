@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICERESOURCERESPONSEPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxResourceResponseDataInfoProtocol.h"
+#import <Lynx/LynxResourceResponseDataInfoProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -5,8 +5,8 @@
 #ifndef DARWIN_COMMON_LYNX_RESOURCE_LYNXGENERICRESOURCEFETCHER_H_
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXGENERICRESOURCEFETCHER_H_
 
-#import "LynxResourceRequest.h"
-#import "LynxResourceResponse.h"
+#import <Lynx/LynxResourceRequest.h>
+#import <Lynx/LynxResourceResponse.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

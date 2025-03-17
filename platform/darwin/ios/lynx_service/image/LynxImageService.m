@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxImageService.h"
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxResourceFetcher.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <LynxService/LynxImageService.h>
 #import <SDWebImage/SDWebImage.h>
 @interface LynxImageService ()
 

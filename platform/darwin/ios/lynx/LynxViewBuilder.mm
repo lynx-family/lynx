@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEnv.h"
-#import "LynxFontFaceManager.h"
-#import "LynxLazyRegister.h"
-#import "LynxLog.h"
-#import "LynxTraceEvent.h"
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxLazyRegister.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxTraceEvent.h>
 #import "LynxUIRenderer.h"
 #import "LynxViewBuilder+Internal.h"
 

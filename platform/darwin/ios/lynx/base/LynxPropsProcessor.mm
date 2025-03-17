@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxPropsProcessor.h"
-#import "LynxConverter.h"
-#import "LynxLog.h"
-#import "LynxShadowNode.h"
-#import "LynxUI.h"
+#import <Lynx/LynxConverter.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxShadowNode.h>
+#import <Lynx/LynxUI.h>
 
 #import <objc/message.h>
 #import <objc/runtime.h>

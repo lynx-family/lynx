@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundRuntime.h"
-#import "LynxDevtool.h"
+#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxDevtool.h>
 
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"

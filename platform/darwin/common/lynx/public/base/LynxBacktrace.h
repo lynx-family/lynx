@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXBACKTRACE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxDefines.h"
+#import <Lynx/LynxDefines.h>
 
 typedef NSString* (^LynxBacktraceFunction)(NSString* message, NSUInteger skippedDepth);
 

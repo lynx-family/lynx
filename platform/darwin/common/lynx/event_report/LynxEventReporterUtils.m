@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxEventReporterUtils.h"
-#import "LynxLog.h"
+#import <Lynx/LynxLog.h>
 
 // GeneralInfo props name:
 // The last loaded URL in this lynxView, will be updated when lynxView render new template.

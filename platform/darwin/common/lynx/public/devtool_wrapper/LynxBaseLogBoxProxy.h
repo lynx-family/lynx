@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxDevtool.h"
-#import "LynxPageReloadHelper.h"
+#import <Lynx/LynxDevtool.h>
+#import <Lynx/LynxPageReloadHelper.h>
 
 typedef NS_ENUM(NSInteger, LynxLogBoxLevel) {
   LynxLogBoxLevelInfo,

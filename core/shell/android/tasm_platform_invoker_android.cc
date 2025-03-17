@@ -61,7 +61,6 @@ constexpr const char* kEnableNewGesture = "enableNewGesture";
 constexpr const char* kTargetSdkVersion = "targetSdkVersion";
 constexpr const char* kLepusVersion = "lepusVersion";
 constexpr const char* kEnableLepusNg = "enableLepusNG";
-constexpr const char* kRadonMode = "radonMode";
 constexpr const char* kTapSlop = "tapSlop";
 constexpr const char* kDefaultOverflowVisible = "defaultOverflowVisible";
 constexpr const char* kEnableLynxScrollFluency = "enableLynxScrollFluency";
@@ -150,7 +149,6 @@ void TasmPlatformInvokerAndroid::OnPageConfigDecoded(
   java_config.PushBoolean(kEnableNewGesture, config->GetEnableNewGesture());
   java_config.PushString(kLepusVersion, config->GetLepusVersion());
   java_config.PushBoolean(kEnableLepusNg, config->GetEnableLepusNG());
-  java_config.PushString(kRadonMode, config->GetRadonMode());
   java_config.PushString(kTapSlop, config->GetTapSlop());
   java_config.PushBoolean(kDefaultOverflowVisible,
                           config->GetDefaultOverflowVisible());

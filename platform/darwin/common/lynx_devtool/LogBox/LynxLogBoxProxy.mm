@@ -8,7 +8,7 @@
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxView+Internal.h>
-#import "LynxDevtoolEnv.h"
+#import <LynxDevtool/LynxDevtoolEnv.h>
 #import "LynxLogBoxHelper.h"
 #import "LynxLogBoxOwner.h"
 

@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTextStyle.h"
-#import "LynxBackgroundImageLayerInfo.h"
-#import "LynxFontFaceManager.h"
+#import <Lynx/LynxBackgroundImageLayerInfo.h>
+#import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxTextStyle.h>
 
 static CGFloat kLynxDefaultFontSize = 14;
 

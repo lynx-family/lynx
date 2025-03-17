@@ -5,9 +5,9 @@
 #ifndef DARWIN_COMMON_LYNX_RESOURCE_LYNXTEMPLATERESOURCEFETCHER_H_
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXTEMPLATERESOURCEFETCHER_H_
 
-#import "LynxResourceRequest.h"
-#import "LynxResourceResponse.h"
-#import "LynxTemplateResource.h"
+#import <Lynx/LynxResourceRequest.h>
+#import <Lynx/LynxResourceResponse.h>
+#import <Lynx/LynxTemplateResource.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

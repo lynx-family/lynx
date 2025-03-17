@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_NAVIGATOR_NAVIGATIONMODULE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxModule.h"
+#import <Lynx/LynxModule.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBackgroundUtils.h"
-#import "LynxUI.h"
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxUI.h>
 
 @implementation LynxBackgroundInfo {
   LynxBorderStyle _borderStyles[4];

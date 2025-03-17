@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTrailModule.h"
+#import <LynxDevtool/LynxTrailModule.h>
 
-#import "Lynx/LynxLog.h"
-#import "Lynx/LynxService.h"
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxService.h>
 
 @implementation LynxTrailModule {
   __weak LynxContext *context_;

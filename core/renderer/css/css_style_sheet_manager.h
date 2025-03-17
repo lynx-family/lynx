@@ -89,6 +89,12 @@ class CSSStyleSheetManager {
 
   bool GetEnableCSSLazyImport() { return enable_css_lazy_import_; }
 
+  void SetFixCSSImportRuleOrder(bool enable) {
+    fix_css_import_rule_order_ = enable;
+  }
+
+  bool GetFixCSSImportRuleOrder() const { return fix_css_import_rule_order_; }
+
  private:
   friend class TemplateBinaryReader;
   friend class TemplateBinaryReaderSSR;
@@ -109,6 +115,8 @@ class CSSStyleSheetManager {
 
   // enableCSSLazyImport default value is false.
   bool enable_css_lazy_import_ = false;
+
+  bool fix_css_import_rule_order_{true};
 };
 
 }  // namespace tasm

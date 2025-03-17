@@ -40,6 +40,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class FontFaceManager {
   private static final String TAG = "FontFaceManager";
@@ -397,9 +400,10 @@ public class FontFaceManager {
     com.lynx.tasm.resourceprovider.LynxResourceRequest
         request = new com.lynx.tasm.resourceprovider.LynxResourceRequest(fontFaceSRC,
         com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeFont);
-    request.setAsyncMode(com.lynx.tasm.resourceprovider.LynxResourceRequest.AsyncMode.EXACTLY_SYNC);
+    request.setAsyncMode(com.lynx.tasm.resourceprovider.LynxResourceRequest.AsyncMode.MOST_SYNC);
     LynxGenericResourceFetcher genericResourceFetcher = context.getGenericResourceFetcher();
-    Typeface typeface[] = new Typeface[1];
+    final AtomicReference<byte[]> bytesRef = new AtomicReference<>();
+    final CountDownLatch latch = new CountDownLatch(1);
     if (genericResourceFetcher != null) {
       genericResourceFetcher.fetchResource(
           request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
@@ -409,22 +413,38 @@ public class FontFaceManager {
               if (response.getState()
                       == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS
                   && null != response.getData()) {
-                try {
-                  typeface[0] = TypefaceUtils.createFromBytes(context, response.getData());
-                } catch (Exception e) {
-                  reportError(LynxSubErrorCode.E_RESOURCE_FONT_REGISTER_FAILED,
-                      "Create typeface from bytes failed", fontFaceSRC, e, context);
-                }
+                bytesRef.set(response.getData());
               } else {
                 reportError(LynxSubErrorCode.E_RESOURCE_FONT_RESOURCE_LOAD_ERROR,
                     "Load font with genericResourceFetcher failed:"
                         + response.getError().getMessage(),
                     fontFaceSRC, null, context);
               }
+              latch.countDown();
             };
           });
     };
-    return typeface[0];
+
+    try {
+      boolean awaitSuccess = latch.await(30, TimeUnit.SECONDS);
+      if (!awaitSuccess) {
+        reportError(LynxSubErrorCode.E_RESOURCE_FONT_RESOURCE_LOAD_ERROR,
+            "Load font with genericResourceFetcher failed:request timeout", fontFaceSRC, null,
+            context);
+        return null;
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      reportError(LynxSubErrorCode.E_RESOURCE_FONT_RESOURCE_LOAD_ERROR,
+          "Load font with genericResourceFetcher failed", fontFaceSRC, e, context);
+      return null;
+    }
+    byte[] bytes = bytesRef.get();
+    if (bytes == null || bytes.length == 0) {
+      return null;
+    }
+
+    return TypefaceUtils.createFromBytes(context, bytes);
   }
 
   /**

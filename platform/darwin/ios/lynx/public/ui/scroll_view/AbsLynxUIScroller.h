@@ -5,7 +5,7 @@
 #ifndef LynxUIScrollerApi_h
 #define LynxUIScrollerApi_h
 
-#import "LynxUI.h"
+#import <Lynx/LynxUI.h>
 /* A helper class for LynxUIScroller
  */
 

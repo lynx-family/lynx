@@ -459,10 +459,6 @@ void TemplateAssembler::DidVMExecute() {
   // timing actions
   tasm::TimingCollector::Instance()->MarkFrameworkTiming(
       tasm::timing::kVmExecuteEnd);
-
-  // Radon info can be know only after Vm->Execute()
-  SetPageConfigRadonMode();
-
   // Ensure that only one page config is set
   if (!page_proxy_.HasSSRRadonPage()) {
     OnPageConfigDecoded(page_config_);
@@ -1409,13 +1405,6 @@ bool TemplateAssembler::BuildComponentEntryInternal(
   }
 
   return true;
-}
-
-void TemplateAssembler::SetPageConfigRadonMode() const {
-  if (!page_config_) {
-    return;
-  }
-  page_config_->SetRadonMode("RadonDiff");
 }
 
 void TemplateAssembler::SetPageConfig(

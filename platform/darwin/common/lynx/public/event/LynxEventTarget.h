@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxEventDetail.h>
+#import <Lynx/LynxEventSpec.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
-#import "LynxEventDetail.h"
-#import "LynxEventSpec.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

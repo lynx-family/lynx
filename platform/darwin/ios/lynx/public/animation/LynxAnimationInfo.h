@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxConverter.h>
 #import <UIKit/UIKit.h>
-#import "LynxCSSType.h"
-#import "LynxConverter.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxBasicShape.h>
+#import <Lynx/LynxCSSType.h>
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 #import "LBSPathParser.h"
-#import "LynxBackgroundUtils.h"
-#import "LynxBasicShape.h"
-#import "LynxCSSType.h"
 
 static void LBSStringMoveTo(void* ctx, float x, float y) {
   char op[20];

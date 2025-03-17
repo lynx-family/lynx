@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxDevtool.h"
-#import "LynxTemplateData.h"
-#import "LynxView.h"
+#import <Lynx/LynxDevtool.h>
+#import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxView.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTransformOriginRaw.h"
-#import "LynxCSSType.h"
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxTransformOriginRaw.h>
 
 @implementation LynxTransformOriginRaw {
   LynxPlatformLengthUnit _p0Unit;

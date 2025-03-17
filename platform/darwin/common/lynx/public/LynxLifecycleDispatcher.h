@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_LYNXLIFECYCLEDISPATCHER_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxViewClient.h"
-#import "LynxViewClientV2.h"
+#import <Lynx/LynxViewClient.h>
+#import <Lynx/LynxViewClientV2.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

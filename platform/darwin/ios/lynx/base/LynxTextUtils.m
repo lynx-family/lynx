@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTextUtils.h"
+#import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxTextUtils.h>
 #import <NaturalLanguage/NaturalLanguage.h>
-#import "LynxFontFaceManager.h"
 
 NSString *const ELLIPSIS = @"\u2026";
 // Strong direction unicodes to control the direction of ellipsis

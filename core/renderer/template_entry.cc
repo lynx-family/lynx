@@ -199,9 +199,6 @@ bool TemplateEntry::InitWithPageConfigger(
 
   SetEnableMicrotaskPromisePolyfill(
       page_config->GetEnableMicrotaskPromisePolyfill());
-
-  SetEnableNapiProxyWrap(page_config->GetEnableNapiProxyWrap());
-
   return true;
 }
 
@@ -482,7 +479,6 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_js_binding_api_throw_exception_,
           enable_bind_icu_,
           enable_microtask_promise_polyfill_,
-          enable_napi_proxy_wrap_,
           template_bundle().custom_sections_};
 }
 

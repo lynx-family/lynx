@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxCustomMeasureDelegate.h"
-#import "LynxShadowNode.h"
+#import <Lynx/LynxCustomMeasureDelegate.h>
+#import <Lynx/LynxShadowNode.h>
 
 NS_ASSUME_NONNULL_BEGIN
 @interface LynxNativeLayoutNode : LynxShadowNode

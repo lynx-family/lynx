@@ -7,13 +7,13 @@
 
 #include <deque>
 
+#import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxPropsProcessor.h>
-#import "LynxEventTarget.h"
-#import "LynxRootUI.h"
+#import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxUIView.h>
+#import <Lynx/LynxWeakProxy.h>
 #import "LynxTouchHandler+Internal.h"
 #import "LynxTouchHandlerUnitTest.h"
-#import "LynxUIView.h"
-#import "LynxWeakProxy.h"
 
 @interface LynxTouchHandler ()
 

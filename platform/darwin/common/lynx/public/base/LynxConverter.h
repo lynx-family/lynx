@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXCONVERTER_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxCSSType.h"
+#import <Lynx/LynxCSSType.h>
 /**
  * A class helping to convert value to the wanted type, you can add
  * custom conversion by category.

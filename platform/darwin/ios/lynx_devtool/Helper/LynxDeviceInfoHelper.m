@@ -56,10 +56,10 @@ Reference: <https://www.theiphonewiki.com/wiki/Models>
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxDeviceInfoHelper.h"
 #import <CoreFoundation/CoreFoundation.h>
 #import <CoreTelephony/CTTelephonyNetworkInfo.h>
 #import <Lynx/LynxVersion.h>
+#import <LynxDevtool/LynxDeviceInfoHelper.h>
 #import <arpa/inet.h>
 #import <ifaddrs.h>
 #import <netdb.h>

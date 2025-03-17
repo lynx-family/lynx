@@ -3,16 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxError.h"
-#import "LynxPageReloadHelper.h"
-#import "LynxTemplateData.h"
-#import "LynxTemplateRender.h"
-#import "LynxView.h"
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxPageReloadHelper.h>
+#import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxView.h>
 
 // Use system macro in header file to avoid host app can not recognize custom macro
 #if TARGET_OS_IOS
-#import "LynxBackgroundRuntime.h"
-#import "LynxUIOwner.h"
+#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxUIOwner.h>
 #endif
 
 NS_ASSUME_NONNULL_BEGIN

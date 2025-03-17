@@ -2,15 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionDataSource.h"
-#import "LynxCollectionInvalidationContext.h"
-#import "LynxCollectionScroll.h"
-#import "LynxCollectionViewCell.h"
-#import "LynxListAppearEventEmitter.h"
-#import "LynxUICollection+Delegate.h"
-#import "LynxUICollection+Internal.h"
-#import "LynxUICollection.h"
-#import "LynxUIListLoader.h"
+#import <Lynx/LynxCollectionDataSource.h>
+#import <Lynx/LynxCollectionInvalidationContext.h>
+#import <Lynx/LynxCollectionScroll.h>
+#import <Lynx/LynxCollectionViewCell.h>
+#import <Lynx/LynxListAppearEventEmitter.h>
+#import <Lynx/LynxUICollection+Delegate.h>
+#import <Lynx/LynxUICollection+Internal.h>
+#import <Lynx/LynxUICollection.h>
+#import <Lynx/LynxUIListLoader.h>
 
 @interface LynxCollectionDataSource ()
 @property(nonatomic, weak, readonly) LynxUICollection *collection;

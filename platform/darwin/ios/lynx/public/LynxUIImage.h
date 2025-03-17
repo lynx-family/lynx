@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <Foundation/Foundation.h>
-#import "LynxConverter.h"
-#import "LynxError.h"
-#import "LynxShadowNode.h"
-#import "LynxUI.h"
-#import "LynxURL.h"
+#import <Lynx/LynxConverter.h>
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxShadowNode.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxURL.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

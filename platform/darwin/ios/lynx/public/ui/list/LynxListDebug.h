@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLog.h"
+#import <Lynx/LynxLog.h>
 
 #ifndef LYNX_LIST_DEBUG
 #define LYNX_LIST_DEBUG 0

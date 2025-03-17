@@ -2,15 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxImageLoader.h"
-#import "LynxDebugger.h"
-#import "LynxEnv.h"
-#import "LynxImageProcessor.h"
-#import "LynxLog.h"
-#import "LynxNinePatchImageProcessor.h"
-#import "LynxService.h"
-#import "LynxTraceEvent.h"
-#import "LynxUI.h"
+#import <Lynx/LynxDebugger.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxImageLoader.h>
+#import <Lynx/LynxImageProcessor.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxNinePatchImageProcessor.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxUI.h>
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/lynx_trace_categories.h"

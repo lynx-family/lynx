@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxScreenCastHelper.h"
 #import <CoreGraphics/CoreGraphics.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxView.h>
+#import <LynxDevtool/LynxDevToolFrameCapturer.h>
+#import <LynxDevtool/LynxScreenCastHelper.h>
 #include <memory>
-#import "LynxDevToolFrameCapturer.h"
 #include "base/screen_metadata.h"
 
 static int const kCardPreviewQuality = 80;

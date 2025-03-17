@@ -4,8 +4,8 @@
 
 #import <XCTest/XCTest.h>
 
-#import "LynxConverter+UI.h"
-#import "LynxConverter.h"
+#import <Lynx/LynxConverter+UI.h>
+#import <Lynx/LynxConverter.h>
 
 @interface LynxConverterUIUnitTest : XCTestCase
 @end

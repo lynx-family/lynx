@@ -3,17 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBackgroundManager.h"
-#import "LynxBackgroundUtils.h"
-#import "LynxComponent.h"
-#import "LynxEventSpec.h"
-#import "LynxEventTarget.h"
-#import "LynxEventTargetBase.h"
-#import "LynxKeyframeManager.h"
-#import "LynxNewGestureDelegate.h"
-#import "LynxUIContext.h"
-#import "LynxUITarget.h"
-#import "UIScrollView+Nested.h"
+#import <Lynx/LynxBackgroundManager.h>
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxComponent.h>
+#import <Lynx/LynxEventSpec.h>
+#import <Lynx/LynxEventTarget.h>
+#import <Lynx/LynxEventTargetBase.h>
+#import <Lynx/LynxKeyframeManager.h>
+#import <Lynx/LynxNewGestureDelegate.h>
+#import <Lynx/LynxUIContext.h>
+#import <Lynx/LynxUITarget.h>
+#import <Lynx/UIScrollView+Nested.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

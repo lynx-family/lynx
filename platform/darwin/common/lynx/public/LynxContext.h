@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_LYNXCONTEXT_H_
 
 #import <Foundation/Foundation.h>
-#import "JSModule.h"
-#import "LynxView.h"
+#import <Lynx/JSModule.h>
+#import <Lynx/LynxView.h>
 @protocol LynxExtensionModule;
 
 NS_ASSUME_NONNULL_BEGIN

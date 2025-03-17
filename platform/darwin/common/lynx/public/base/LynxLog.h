@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_BASE_LYNXLOG_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxDefines.h"
+#import <Lynx/LynxDefines.h>
 
 #define LLog(...) _LynxLog(LynxLogLevelInfo, __VA_ARGS__)
 #define LLogVerbose(...) _LynxLog(LynxLogLevelVerbose, __VA_ARGS__)

@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxFPSTrace.h"
 #import <Lynx/LynxTraceEvent.h>
+#import <LynxDevtool/LynxFPSTrace.h>
+#import <LynxDevtool/LynxFrameTraceService.h>
 #include <mach/mach_time.h>
 #include <chrono>
-#import "LynxFrameTraceService.h"
 #if OS_OSX
 #import <AppKit/AppKit.h>
 #endif

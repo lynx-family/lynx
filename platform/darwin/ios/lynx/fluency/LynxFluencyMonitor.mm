@@ -3,12 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxFluencyMonitor.h"
-#import "LynxEventReporter.h"
+#import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxScrollListener.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxView+Internal.h>
 #import "LynxFPSMonitor.h"
-#import "LynxScrollListener.h"
-#import "LynxService.h"
 #import "LynxTemplateRender+Internal.h"
-#import "LynxView+Internal.h"
 #include "core/services/fluency/fluency_tracer.h"
 
 typedef NS_ENUM(NSInteger, ForceStatus) {

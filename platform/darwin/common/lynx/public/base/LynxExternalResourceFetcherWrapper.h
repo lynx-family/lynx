@@ -5,8 +5,8 @@
 #ifndef DARWIN_COMMON_LYNX_BASE_LYNXEXTERNALRESOURCEFETCHERWRAPPER_H_
 #define DARWIN_COMMON_LYNX_BASE_LYNXEXTERNALRESOURCEFETCHERWRAPPER_H_
 
-#import "LynxDynamicComponentFetcher.h"
-#import "LynxResourceServiceFetcher.h"
+#import <Lynx/LynxDynamicComponentFetcher.h>
+#import <Lynx/LynxResourceServiceFetcher.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

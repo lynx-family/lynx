@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBasicShape.h"
+#import <Lynx/LynxBackgroundInfo.h>
+#import <Lynx/LynxBackgroundUtils.h>
+#import <Lynx/LynxBasicShape.h>
 #import "LBSCoreGraphicsPathParser.h"
-#import "LynxBackgroundInfo.h"
-#import "LynxBackgroundUtils.h"
 
 typedef NS_ENUM(NSInteger, LBSCornerType) {
   LBSCornerTypeDefault = 0,

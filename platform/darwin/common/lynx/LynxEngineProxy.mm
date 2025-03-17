@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxEvent.h>
+#import <Lynx/LynxTouchEvent.h>
 #import "LynxEngineProxy+Native.h"
-#import "LynxEvent.h"
 #import "LynxTemplateData+Converter.h"
-#import "LynxTouchEvent.h"
 
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"

@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxIntersectionObserverModule.h"
+#import <Lynx/LynxContext.h>
 #import "LynxContext+Internal.h"
-#import "LynxContext.h"
 #import "LynxUIIntersectionObserver.h"
 
 using namespace lynx;

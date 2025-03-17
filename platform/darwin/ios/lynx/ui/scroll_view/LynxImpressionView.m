@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxImpressionView.h"
-#import "LynxComponentRegistry.h"
-#import "LynxLayoutStyle.h"
-#import "LynxPropsProcessor.h"
-#import "LynxView.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxImpressionView.h>
+#import <Lynx/LynxLayoutStyle.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxView.h>
 
 NSNotificationName const LynxImpressionWillManualExposureNotification =
     @"LynxImpressionWillManualExposureNotification";

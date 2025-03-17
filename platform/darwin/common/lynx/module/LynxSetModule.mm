@@ -2,16 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxSetModule.h"
-#import "LynxBaseInspectorOwner.h"
-#import "LynxBaseInspectorOwnerNG.h"
+#import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseInspectorOwnerNG.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEnvKey.h>
+#import <Lynx/LynxSetModule.h>
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
-#import "LynxEnv.h"
-#import "LynxEnvKey.h"
 
 #if OS_IOS
-#import "LynxUIOwner.h"
+#import <Lynx/LynxUIOwner.h>
 #endif
 
 @implementation LynxSetModule {

@@ -21,6 +21,8 @@ binary_decoder_shared_sources = [
   "lynx_binary_lazy_reader_delegate.h",
   "lynx_binary_reader.cc",
   "lynx_binary_reader.h",
+  "parallel_parse_task_scheduler.cc",
+  "parallel_parse_task_scheduler.h",
   "template_binary_reader.cc",
   "template_binary_reader.h",
 ]

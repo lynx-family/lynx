@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxNativeLayoutNode.h"
-#import "LynxCustomMeasureDelegate+Internal.h"
-#import "LynxPropsProcessor.h"
+#import <Lynx/LynxCustomMeasureDelegate+Internal.h>
+#import <Lynx/LynxNativeLayoutNode.h>
+#import <Lynx/LynxPropsProcessor.h>
 #include "core/public/layout_node_manager.h"
 #include "core/public/layout_node_value.h"
 

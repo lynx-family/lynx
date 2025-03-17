@@ -2,16 +2,16 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionDataSource.h"
-#import "LynxCollectionInvalidationContext.h"
-#import "LynxCollectionViewLayout.h"
+#import <Lynx/LynxCollectionDataSource.h>
+#import <Lynx/LynxCollectionInvalidationContext.h>
+#import <Lynx/LynxCollectionViewLayout.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUICollection+Delegate.h>
+#import <Lynx/LynxUICollection+Internal.h>
+#import <Lynx/LynxUICollection+PropSetter.h>
 #import "LynxFeatureCounter.h"
-#import "LynxPropsProcessor.h"
-#import "LynxSubErrorCode.h"
-#import "LynxUI+Internal.h"
-#import "LynxUICollection+Delegate.h"
-#import "LynxUICollection+Internal.h"
-#import "LynxUICollection+PropSetter.h"
 #import "LynxUIContext+Internal.h"
 
 static const CGFloat DEFAULT_SCROLL_EVENT_THROTTLE = 200;

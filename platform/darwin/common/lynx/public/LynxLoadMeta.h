@@ -5,8 +5,8 @@
 #ifndef DARWIN_COMMON_LYNX_LYNXLOADMETA_H_
 #define DARWIN_COMMON_LYNX_LYNXLOADMETA_H_
 
-#import "LynxTemplateBundle.h"
-#import "LynxTemplateData.h"
+#import <Lynx/LynxTemplateBundle.h>
+#import <Lynx/LynxTemplateData.h>
 
 // LynxLoadModeNormal:Load Template as usual
 // LynxLoadModePrePainting:Pending JS Events when load template, events will be send when update

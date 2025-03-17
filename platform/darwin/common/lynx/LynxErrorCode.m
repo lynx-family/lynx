@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 // clang-format off
-#import "LynxErrorCode.h"
+#import <Lynx/LynxErrorCode.h>
 
 /**
  * ATTENTION !!!

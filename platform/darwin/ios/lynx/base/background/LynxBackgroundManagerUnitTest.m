@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBackgroundManager.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIView.h>
 #import <XCTest/XCTest.h>
-#import "LynxBackgroundManager.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+Internal.h"
 #import "LynxUI+Private.h"
-#import "LynxUIView.h"
 
 @interface LynxBackgroundManagerUnitTest : XCTestCase {
   LynxUIView* _view;

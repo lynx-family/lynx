@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLayoutNode.h"
-#import "LynxCustomMeasureDelegate+Internal.h"
+#import <Lynx/LynxCustomMeasureDelegate+Internal.h>
+#import <Lynx/LynxLayoutNode.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
 #import "LynxMeasureFuncDarwin.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
 #include "core/public/layout_node_manager.h"
 
 #include "base/trace/native/trace_event.h"

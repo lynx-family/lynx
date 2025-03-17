@@ -5,13 +5,13 @@
 #import "LynxUIIntersectionObserver.h"
 #import "LynxUIIntersectionObserver+Internal.h"
 
+#import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <objc/runtime.h>
 #import "LynxContext+Internal.h"
-#import "LynxRootUI.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIOwner.h"
-#import "LynxUnitUtils.h"
-#import "LynxWeakProxy.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 

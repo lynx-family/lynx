@@ -2,17 +2,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIListContainer.h"
-#import "LynxComponentRegistry.h"
-#import "LynxPropsProcessor.h"
-#import "LynxScrollEventManager.h"
-#import "LynxScrollView.h"
-#import "LynxSubErrorCode.h"
-#import "LynxUI+Fluency.h"
-#import "LynxUI+Internal.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxScrollEventManager.h>
+#import <Lynx/LynxScrollView.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUI+Fluency.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIListContainer.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/UIScrollView+Lynx.h>
 #import "LynxUIContext+Internal.h"
-#import "LynxUIMethodProcessor.h"
-#import "UIScrollView+Lynx.h"
 #include "core/shell/lynx_shell.h"
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
@@ -116,6 +116,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, assign) BOOL isInScrollToPosition;
 @property(nonatomic, assign) BOOL isInAutoScroll;
 @property(nonatomic, assign) LynxListScrollState currentScrollState;
+@property(nonatomic, assign) BOOL enableNeedVisibleItemInfo;
 // Experimental
 @property(nonatomic, assign) BOOL disableFilterScroll;
 
@@ -400,6 +401,10 @@ LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDu
   self.updateAnimationFadeInDuration = value / 1000.;
 }
 
+LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
+  self.enableNeedVisibleItemInfo = value;
+}
+
 - (void)setEnableScroll:(BOOL)value requestReset:(BOOL)requestReset {
   if (requestReset) {
     value = YES;
@@ -419,14 +424,19 @@ LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDu
   if (self.currentScrollState == scrollState) {
     return;
   }
+  NSMutableDictionary *detail = [[NSMutableDictionary alloc] init];
+  detail[@"state"] = @(scrollState);
+  if (self.enableNeedVisibleItemInfo) {
+    NSArray *attachedCellsArray = [self visibleCellsInfo];
+    detail[@"attachedCells"] = attachedCellsArray;
+  }
+
   switch (scrollState) {
     case LynxListScrollStateIdle: {
       if (!self.isInAutoScroll && !self.isInScrollToPosition) {
         [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
                                       scrollView:self.view
-                                          detail:@{
-                                            @"state" : @(LynxListScrollStateIdle),
-                                          }];
+                                          detail:detail];
         [self.scrollEventManager sendScrollEvent:LynxEventScrollEnd scrollView:self.view];
       }
       [self postFluencyEventWithInfo:[self infoWithScrollView:self.view
@@ -437,9 +447,7 @@ LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDu
     case LynxListScrollStateFling: {
       [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
                                     scrollView:self.view
-                                        detail:@{
-                                          @"state" : @(LynxListScrollStateFling),
-                                        }];
+                                        detail:detail];
       LynxScrollInfo *info = [self infoWithScrollView:self.view
                                              selector:@selector(scrollerDidEndDragging:
                                                                         willDecelerate:)];
@@ -447,23 +455,22 @@ LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDu
       [self postFluencyEventWithInfo:info];
       break;
     }
+
     case LynxListScrollStateDragging: {
       [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
                                     scrollView:self.view
-                                        detail:@{
-                                          @"state" : @(LynxListScrollStateDragging),
-                                        }];
+                                        detail:detail];
+
       [self
           postFluencyEventWithInfo:[self infoWithScrollView:self.view
                                                    selector:@selector(scrollerWillBeginDragging:)]];
+
       break;
     }
     case LynxListScrollStateScrollAnimation: {
       [self.scrollEventManager sendScrollEvent:LynxEventScrollStateChange
                                     scrollView:self.view
-                                        detail:@{
-                                          @"state" : @(LynxListScrollStateScrollAnimation),
-                                        }];
+                                        detail:detail];
       [self
           postFluencyEventWithInfo:[self infoWithScrollView:self.view
                                                    selector:@selector(scrollerWillBeginDragging:)]];

@@ -2,17 +2,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUIExposure.h"
-#import "LynxEnv.h"
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIExposure.h>
+#import <Lynx/LynxUIKitAPIAdapter.h>
+#import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxWeakProxy.h>
 #import "LynxGlobalObserver+Internal.h"
 #import "LynxTemplateRender+Internal.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
-#import "LynxUI+Internal.h"
-#import "LynxUIKitAPIAdapter.h"
-#import "LynxUnitUtils.h"
-#import "LynxView+Internal.h"
-#import "LynxWeakProxy.h"
 
 @interface LynxUIExposureDetail : NSObject
 @property(nonatomic, copy) NSString *exposureScene;

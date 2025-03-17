@@ -95,7 +95,8 @@ class TaskRunner : public fml::RefCountedThreadSafe<TaskRunner>,
   const fml::RefPtr<MessageLoopImpl>& GetLoop() const;
 
  protected:
-  explicit TaskRunner(fml::RefPtr<MessageLoopImpl> loop);
+  explicit TaskRunner(fml::RefPtr<MessageLoopImpl> loop,
+                      bool is_aligned_with_vsync = false);
   fml::RefPtr<MessageLoopImpl> loop_;
 
  private:

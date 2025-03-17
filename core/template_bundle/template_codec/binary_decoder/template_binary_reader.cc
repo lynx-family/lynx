@@ -49,6 +49,12 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
   bool enable_css_lazy_decode = enable_css_async_decode || GetCSSLazyDecode();
 
   auto& manager = template_bundle().GetCSSStyleManager();
+
+  if (page_configs_) {
+    manager->SetFixCSSImportRuleOrder(
+        page_configs_->GetFixCSSImportRuleOrder());
+  }
+
   auto& target_fragments_map = *manager->GetCSSFragmentMap();
 
   if (!enable_css_lazy_decode) {
@@ -91,6 +97,12 @@ void TemplateBinaryReader::CopyForCSSAsyncDecode(
       other.enable_css_variable_multi_default_value_;
   css_section_range_ = other.css_section_range_;
   lepus_chunk_route_ = other.lepus_chunk_route_;
+}
+
+void TemplateBinaryReader::EnsureParallelParseTaskScheduler() {
+  if (task_schedular_ == nullptr) {
+    task_schedular_ = std::make_unique<ParallelParseTaskScheduler>();
+  }
 }
 
 bool TemplateBinaryReader::GetCSSLazyDecode() {
@@ -217,8 +229,9 @@ bool TemplateBinaryReader::DecodeElementTemplateSection() {
 }
 
 bool TemplateBinaryReader::ParallelDecodeElementTemplate() {
-  // TODO(songshourui.null): impl this function later.
-  return false;
+  EnsureParallelParseTaskScheduler();
+  return task_schedular_->ParallelParseElementTemplate(
+      &element_templates_router_, this);
 }
 
 bool TemplateBinaryReader::DecodeLepusChunk() {

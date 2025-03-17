@@ -6,10 +6,10 @@
  * This is a experimental API, it is unstable and may break at any time.
  */
 
-#import "LynxConfig.h"
-#import "LynxContext.h"
-#import "LynxGroup.h"
-#import "LynxServiceProtocol.h"
+#import <Lynx/LynxConfig.h>
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxGroup.h>
+#import <Lynx/LynxServiceProtocol.h>
 
 @protocol LynxServiceExtensionProtocol <LynxServiceProtocol>
 

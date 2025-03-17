@@ -3,14 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxBackgroundCapInsets.h>
+#import <Lynx/LynxBackgroundDrawable.h>
+#import <Lynx/LynxBackgroundInfo.h>
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxConverter.h>
+#import <Lynx/LynxError.h>
+#import <Lynx/LynxGradient.h>
 #import <UIKit/UIKit.h>
-#import "LynxBackgroundCapInsets.h"
-#import "LynxBackgroundDrawable.h"
-#import "LynxBackgroundInfo.h"
-#import "LynxCSSType.h"
-#import "LynxConverter.h"
-#import "LynxError.h"
-#import "LynxGradient.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

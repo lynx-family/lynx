@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxEvent.h"
+#import <Lynx/LynxEvent.h>
 
 int32_t const LynxTouchPseudoStateNone = 0;
 int32_t const LynxTouchPseudoStateHover = 1;

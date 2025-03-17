@@ -709,6 +709,15 @@ export interface ListProps extends StandardProps {
    */
   'needs-visible-cells'?: boolean;
 
+   /**
+   * Control whether the 'attachedCells' is included in the scroll event callback parameters on native list.
+   * @defaultValue  false
+   * @Android
+   * @iOS
+   * @H
+   */
+    'need-visible-item-info'?: boolean;
+
   /**
    * Specify the callback frequency of the scroll event by passing in a value, which specifies how many milliseconds (ms) <list> will call the scroll callback event during scrolling.
    * @defaultValue  200

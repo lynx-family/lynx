@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxPageReloadHelper.h"
-#import "LynxClassAliasDefines.h"
-#import "LynxLog.h"
-#import "LynxPageReloadHelper+Internal.h"
+#import <Lynx/LynxClassAliasDefines.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPageReloadHelper+Internal.h>
+#import <Lynx/LynxPageReloadHelper.h>
 #if OS_IOS
-#import "LynxTextRendererCache.h"
+#import <Lynx/LynxTextRendererCache.h>
 #endif
 
 #pragma mark - LynxPageReloadHelper

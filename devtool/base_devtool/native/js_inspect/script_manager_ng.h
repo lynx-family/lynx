@@ -39,6 +39,13 @@ class BASE_EXPORT ScriptManagerNG {
   void SetBreakpointsActive(bool active) { breakpoints_active_ = active; }
   bool GetBreakpointsActive() { return breakpoints_active_; }
 
+  void SetPauseOnExceptionsState(const std::string& state) {
+    pause_on_exceptions_state_ = state;
+  }
+  const std::string GetPauseOnExceptionsState() {
+    return pause_on_exceptions_state_;
+  }
+
   void InsertScriptId(int script_id);
   void ClearScriptIds();
   const std::set<int>& GetScriptIds() { return script_ids_; }
@@ -48,6 +55,7 @@ class BASE_EXPORT ScriptManagerNG {
 
   std::mutex mutex_;
   bool breakpoints_active_{true};
+  std::string pause_on_exceptions_state_;
 
   std::unordered_map<std::string, Breakpoint> breakpoints_;
   std::unordered_map<int, Breakpoint> set_breakpoint_map_;

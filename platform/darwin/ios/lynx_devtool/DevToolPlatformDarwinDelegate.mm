@@ -1,20 +1,20 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "DevToolPlatformDarwinDelegate.h"
+#import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
 #include <vector>
 
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <Lynx/LynxTemplateData+Converter.h>
+#import <LynxDevtool/ConsoleDelegateManager.h>
+#import <LynxDevtool/LepusDebugInfoHelper.h>
+#import <LynxDevtool/LynxDevToolToast.h>
+#import <LynxDevtool/LynxDeviceInfoHelper.h>
+#import <LynxDevtool/LynxDevtoolEnv.h>
+#import <LynxDevtool/LynxEmulateTouchHelper.h>
+#import <LynxDevtool/LynxScreenCastHelper.h>
+#import <LynxDevtool/LynxUITreeHelper.h>
 #import <sys/utsname.h>
-#import "ConsoleDelegateManager.h"
-#import "Helper/LynxEmulateTouchHelper.h"
-#import "Helper/LynxUITreeHelper.h"
-#import "LepusDebugInfoHelper.h"
-#import "LynxDevToolToast.h"
-#import "LynxDeviceInfoHelper.h"
-#import "LynxDevtoolEnv.h"
-#import "LynxScreenCastHelper.h"
 
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"

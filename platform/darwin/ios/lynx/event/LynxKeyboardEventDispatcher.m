@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxKeyboardEventDispatcher.h"
+#import <Lynx/LynxKeyboardEventDispatcher.h>
+#include <Lynx/LynxLog.h>
 #import <UIKit/UIKit.h>
-#include "LynxLog.h"
 
 #define KEYBOARD_STATUS_CHANGED "keyboardstatuschanged"
 

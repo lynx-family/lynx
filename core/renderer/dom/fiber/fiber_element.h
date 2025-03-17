@@ -1016,8 +1016,6 @@ class FiberElement : public Element, public SelectorItem {
 
   mutable FiberElement* render_root_element_{nullptr};
 
-  NodeManager* node_manager_;
-
   std::vector<ActionParam> action_param_list_;
 
   AttrUMap updated_attr_map_;
@@ -1032,10 +1030,6 @@ class FiberElement : public Element, public SelectorItem {
   lepus::Value config_{lepus::Dictionary::Create()};
 
   std::list<base::closure> parallel_reduce_tasks_ = {};
-
-  // Internal timeout in threaded element flush mode to enable force running on
-  // thread-pool in unittests
-  int32_t task_wait_timeout_{0};
 
   bool has_font_size_{false};
 

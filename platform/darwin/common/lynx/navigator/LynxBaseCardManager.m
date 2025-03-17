@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxBaseCardManager.h"
+#import <Lynx/LynxBaseCardManager.h>
+#import <Lynx/LynxHolder.h>
+#import <Lynx/LynxLruCache.h>
+#import <Lynx/LynxRoute.h>
+#import <Lynx/LynxView.h>
 #import "LynxBaseCardManager+Private.h"
-#import "LynxHolder.h"
-#import "LynxLruCache.h"
-#import "LynxRoute.h"
-#import "LynxView.h"
 
 @implementation LynxBaseCardManager
 

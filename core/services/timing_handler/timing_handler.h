@@ -104,6 +104,7 @@ class TimingHandler {
   // Setter methods for various properties related to timing.
   inline void SetEnableJSRuntime(bool enable_js_runtime) {
     timing_info_.SetEnableJSRuntime(enable_js_runtime);
+    handler_ng_.SetEnableBackgroundRuntime(enable_js_runtime);
   }
   inline void SetEnableAirStrictMode(bool enable_air_strict_mode) {
     timing_info_.SetEnableAirStrictMode(enable_air_strict_mode);

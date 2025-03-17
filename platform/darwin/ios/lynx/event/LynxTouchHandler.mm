@@ -2,23 +2,23 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTouchHandler.h"
+#import <Lynx/LynxTouchHandler.h>
 #import <UIKit/UIGestureRecognizerSubclass.h>
 #import "LynxTouchHandler+Internal.h"
 
-#import "LynxBaseInspectorOwner.h"
-#import "LynxBaseLogBoxProxy.h"
-#import "LynxEnv.h"
-#import "LynxEventEmitter.h"
+#import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseLogBoxProxy.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxTouchEvent.h>
+#import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxWeakProxy.h>
 #import "LynxEventHandler+Internal.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxGestureFlingTrigger.h"
 #import "LynxGestureHandlerTrigger.h"
-#import "LynxLog.h"
-#import "LynxTouchEvent.h"
-#import "LynxUI+Internal.h"
-#import "LynxUI.h"
-#import "LynxWeakProxy.h"
 
 #include <deque>
 #include <map>

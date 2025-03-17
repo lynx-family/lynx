@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxGroup.h"
+#import <Lynx/LynxGroup.h>
+#import <Lynx/LynxView.h>
 #import "LynxGroup+Internal.h"
-#import "LynxView.h"
 
 #include "core/shared_data/lynx_white_board.h"
 

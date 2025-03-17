@@ -9,12 +9,12 @@
 
 #include <memory>
 
-#import "LynxErrorBehavior.h"
+#import <Lynx/LynxErrorBehavior.h>
+#import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxView+Internal.h>
+#import <Lynx/LynxView.h>
 #import "LynxTemplateRender+Protected.h"
-#import "LynxTemplateRender.h"
 #import "LynxUnitTestUtils.h"
-#import "LynxView+Internal.h"
-#import "LynxView.h"
 
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime_mediator.h"

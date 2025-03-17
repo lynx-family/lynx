@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUI.h"
-#import "LynxUIMethodProcessor.h"
+#import <Lynx/LynxUI.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

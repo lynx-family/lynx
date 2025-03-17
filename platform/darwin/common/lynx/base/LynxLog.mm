@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxLog.h"
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxTraceEvent.h>
 #include <map>
-#import "LynxEnv.h"
-#import "LynxTraceEvent.h"
 
 #include "base/include/debug/lynx_assert.h"
 #include "base/trace/native/trace_event.h"

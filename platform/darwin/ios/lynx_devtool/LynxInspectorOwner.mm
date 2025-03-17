@@ -12,19 +12,19 @@
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTemplateRender+Internal.h>
 #import <Lynx/LynxUIRendererProtocol.h>
+#import <LynxDevtool/DevToolMonitorView.h>
+#import <LynxDevtool/DevToolPlatformDarwinDelegate.h>
+#import <LynxDevtool/LynxDebugBridge.h>
+#import <LynxDevtool/LynxDevMenu.h>
+#import <LynxDevtool/LynxDevToolDownloader.h>
+#import <LynxDevtool/LynxDevToolErrorUtils.h>
+#import <LynxDevtool/LynxDevToolNGDarwinDelegate.h>
+#import <LynxDevtool/LynxDevToolToast.h>
+#import <LynxDevtool/LynxDevtoolEnv.h>
+#import <LynxDevtool/LynxInspectorOwner+Internal.h>
+#import <LynxDevtool/LynxUITreeHelper.h>
+#import <LynxDevtool/TestbenchDumpFileHelper.h>
 #import <objc/runtime.h>
-#import "DevToolMonitorView.h"
-#import "DevToolPlatformDarwinDelegate.h"
-#import "Helper/LynxUITreeHelper.h"
-#import "Helper/TestbenchDumpFileHelper.h"
-#import "LynxDebugBridge.h"
-#import "LynxDevMenu.h"
-#import "LynxDevToolDownloader.h"
-#import "LynxDevToolErrorUtils.h"
-#import "LynxDevToolNGDarwinDelegate.h"
-#import "LynxDevToolToast.h"
-#import "LynxDevtoolEnv.h"
-#import "LynxInspectorOwner+Internal.h"
 
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/template_assembler.h"
@@ -37,7 +37,7 @@
 #include "base/screen_metadata.h"
 #include "core/services/replay/replay_controller.h"
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-#import "LynxFrameViewTrace.h"
+#import <LynxDevtool/LynxFrameViewTrace.h>
 #endif
 
 @interface LynxInspectorOwner () <DebugRouterSlotDelegate>

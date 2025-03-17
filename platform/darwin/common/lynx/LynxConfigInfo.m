@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxConfigInfo.h"
-#import "LynxView.h"
+#import <Lynx/LynxConfigInfo.h>
+#import <Lynx/LynxView.h>
 
 @implementation LynxConfigInfo
 

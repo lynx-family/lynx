@@ -46,10 +46,9 @@ def format_gn_arg(key, value):
   return arg_str
 
 def clean_gn_project_json_file(gn_out_dir):
-  for dir in os.listdir(gn_out_dir):
-    project_json_file = os.path.join(gn_out_dir, dir, 'project.json')
-    if os.path.exists(project_json_file):
-      os.remove(project_json_file)
+  project_json_file = os.path.join(gn_out_dir, 'project.json')
+  if os.path.exists(project_json_file):
+    os.remove(project_json_file)
 
 def run_gn_script(args, root_dir, build_lynx_dylib=False):
   target = args.target
@@ -67,8 +66,6 @@ def run_gn_script(args, root_dir, build_lynx_dylib=False):
   r = 0
   gn_path = os.path.join(root_dir, 'lynx', 'tools', 'gn_tools', 'gn')
   gn_out_dir = os.path.join(root_dir, 'out/gn_to_cmake')
-  if os.path.exists(gn_out_dir) and os.path.isdir(gn_out_dir):
-    clean_gn_project_json_file(gn_out_dir)
   for gn_args_key in gn_args_map.keys():
     gn_args = ""
     gn_args_list = gn_args_map[gn_args_key]
@@ -81,6 +78,8 @@ def run_gn_script(args, root_dir, build_lynx_dylib=False):
     if build_lynx_dylib:
       gn_args += ' build_lynx_dylib=true'
     gn_out_path = os.path.join(gn_out_dir, project_name, gn_args_key)
+    if os.path.exists(gn_out_path) and os.path.isdir(gn_out_path):
+      clean_gn_project_json_file(gn_out_path)
     set_cmake_target = '--cmake-target=%s' % (target) if target else ''
     cmd = '%s gen %s --args="%s" --ide="cmake" %s' % (gn_path, gn_out_path, gn_args, set_cmake_target)
     r |= subprocess.call(cmd, shell=True)

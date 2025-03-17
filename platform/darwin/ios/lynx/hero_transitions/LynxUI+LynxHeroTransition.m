@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxAnimationInfo.h"
+#import <Lynx/LynxAnimationInfo.h>
+#import <Lynx/LynxHeroTransition.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxUI+LynxHeroTransition.h>
+#import <Lynx/UIView+LynxHeroTransition.h>
 #import "LynxFeatureCounter.h"
-#import "LynxHeroTransition.h"
-#import "LynxLog.h"
-#import "LynxPropsProcessor.h"
-#import "LynxUI+LynxHeroTransition.h"
 #import "LynxUIContext+Internal.h"
-#import "UIView+LynxHeroTransition.h"
 
 @implementation LynxUI (LynxHeroTransition)
 

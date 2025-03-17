@@ -3,9 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #define private public
+#import <Lynx/LynxEventReporter.h>
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
-#import "LynxEventReporter.h"
 #import "LynxFeatureCounter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 

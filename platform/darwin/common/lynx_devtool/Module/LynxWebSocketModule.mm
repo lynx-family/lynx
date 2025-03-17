@@ -26,9 +26,9 @@
  SOFTWARE.
  */
 
-#import "LynxWebSocketModule.h"
+#import <LynxDevtool/LynxWebSocketModule.h>
 
-#import <LynxWebSocket.h>
+#import <LynxDevtool/LynxWebSocket.h>
 
 @interface LynxWebSocketModule ()
 

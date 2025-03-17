@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxError.h"
+#import <Lynx/LynxError.h>
 
-#import "LynxLog.h"
-#import "LynxSubErrorCode.h"
-#import "LynxVersion.h"
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxVersion.h>
 
 NSString* const LynxErrorDomain = @"com.lynx.error";
 

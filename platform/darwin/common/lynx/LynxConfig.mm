@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxComponentRegistry.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxDefines.h>
+#import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
 #import "LynxConfig+Internal.h"
-#import "LynxDefines.h"
-#import "LynxEnv.h"
-#import "LynxLog.h"
 
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
 

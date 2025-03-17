@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxUI+Accessibility.h"
-#import "LynxUIMethodProcessor.h"
-#import "LynxUIOwner.h"
-#import "LynxView.h"
-#import "LynxWeakProxy.h"
+#import <Lynx/LynxUI+Accessibility.h>
+#import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxView.h>
+#import <Lynx/LynxWeakProxy.h>
 
 @implementation LynxUI (Accessibility)
 

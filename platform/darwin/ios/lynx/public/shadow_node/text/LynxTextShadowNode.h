@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxBaseTextShadowNode.h"
-#import "LynxConverter.h"
-#import "LynxCustomMeasureDelegate.h"
-#import "LynxMeasureDelegate.h"
+#import <Lynx/LynxBaseTextShadowNode.h>
+#import <Lynx/LynxConverter.h>
+#import <Lynx/LynxCustomMeasureDelegate.h>
+#import <Lynx/LynxMeasureDelegate.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

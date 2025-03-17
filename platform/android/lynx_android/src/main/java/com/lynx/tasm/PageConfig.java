@@ -34,7 +34,6 @@ public class PageConfig {
   private static final String KEY_TARGET_SDK_VERSION = "targetSdkVersion";
   private static final String KEY_LEPUS_VERSION = "lepusVersion";
   private static final String KEY_ENABLE_LEPUS_NG = "enableLepusNG";
-  private static final String KEY_RADON_MODE = "radonMode";
   private static final String KEY_TAP_SLOP = "tapSlop";
   private static final String KEY_ENABLE_CREATE_VIEW_ASYNC = "enableCreateViewAsync";
   private static final String KEY_ENABLE_VSYNC_ALIGNED_FLUSH = "enableVsyncAlignedFlush";
@@ -93,7 +92,6 @@ public class PageConfig {
   private String targetSdkVersion;
   private String lepusVersion;
   private boolean enableLepusNG;
-  private String radonMode;
   private String mTapSlop;
   private boolean mEnableCreateViewAsync;
   private boolean mEnableVsyncAlignedFlush;
@@ -211,9 +209,6 @@ public class PageConfig {
       }
       if (map.hasKey(KEY_ENABLE_LEPUS_NG)) {
         enableLepusNG = map.getBoolean(KEY_ENABLE_LEPUS_NG);
-      }
-      if (map.hasKey(KEY_RADON_MODE)) {
-        radonMode = map.getString(KEY_RADON_MODE);
       }
       if (map.hasKey(KEY_TAP_SLOP)) {
         mTapSlop = map.getString(KEY_TAP_SLOP);
@@ -425,10 +420,6 @@ public class PageConfig {
 
   public boolean isEnableLepusNG() {
     return enableLepusNG;
-  }
-
-  public String getRadonMode() {
-    return radonMode;
   }
 
   public String getTapSlop() {

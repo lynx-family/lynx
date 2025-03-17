@@ -63,7 +63,7 @@ function getViewType(view) {
   }
 }
 
-const commandBufferCreator = function(appendTarget) {
+const commandBufferCreator = function(appendTarget, idGen) {
   if ({{interface_name}}CB) return {{interface_name}}CB;
   const cb = appendTarget.getCommandBuffer();
   const buffer = cb.buffer;
@@ -83,8 +83,6 @@ const commandBufferCreator = function(appendTarget) {
   const cmdLengthCutoff = 8192;
   const isLittleEndian = new Uint16Array(new Uint8Array([1, 0]).buffer)[0] === 1;
 
-  // Leave 0 as invalid.
-  let globalAsyncId = 1;
   {% for cls in async_classes %}
   let {{cls}} = appendTarget.{{cls}}
   {% endfor %}
@@ -105,7 +103,7 @@ const commandBufferCreator = function(appendTarget) {
     {% endfor %}
 {#                                                                            #}
     {% if method.return_async %}
-    let id = globalAsyncId++;
+    let id = idGen.generate();
     let puppet = new {{method.idl_type}}(id);
     puppet.__id = id;
     objects.push(puppet);
@@ -290,8 +288,8 @@ const commandBufferCreator = function(appendTarget) {
 
 let protoHooked = false;
 
-function hook{{interface_name}}(appendTarget, context) {
-  const commandBuffer = commandBufferCreator(appendTarget);
+function hook{{interface_name}}(appendTarget, context, idGen) {
+  const commandBuffer = commandBufferCreator(appendTarget, idGen);
   if (protoHooked) return;
   protoHooked = true;
   let ctxProto = context.__proto__;

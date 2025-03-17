@@ -4,10 +4,10 @@
 
 #import <Foundation/Foundation.h>
 
-#import "JSModule.h"
-#import "LynxLoadMeta.h"
-#import "LynxTheme.h"
-#import "LynxViewEnum.h"
+#import <Lynx/JSModule.h>
+#import <Lynx/LynxLoadMeta.h>
+#import <Lynx/LynxTheme.h>
+#import <Lynx/LynxViewEnum.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

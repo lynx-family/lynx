@@ -44,6 +44,8 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
 
   void BindTaskRunner(const fml::RefPtr<fml::TaskRunner> &runner);
 
+  virtual void RequestVSyncOnUIThread(Callback callback){};
+
  protected:
   virtual void RequestVSync() = 0;
 

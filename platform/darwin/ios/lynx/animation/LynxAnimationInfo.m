@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxAnimationInfo.h"
-#import "LynxConverter+LynxCSSType.h"
-#import "LynxLog.h"
+#import <Lynx/LynxAnimationInfo.h>
+#import <Lynx/LynxConverter+LynxCSSType.h>
+#import <Lynx/LynxLog.h>
 
 @implementation LynxAnimationInfo
 - (instancetype)initWithName:(NSString *)name {

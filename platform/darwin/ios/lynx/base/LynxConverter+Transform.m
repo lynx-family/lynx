@@ -1,11 +1,11 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxCSSType.h"
-#import "LynxConverter+Transform.h"
-#import "LynxLog.h"
-#import "LynxUIUnitUtils.h"
-#import "LynxUnitUtils.h"
+#import <Lynx/LynxCSSType.h>
+#import <Lynx/LynxConverter+Transform.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxUIUnitUtils.h>
+#import <Lynx/LynxUnitUtils.h>
 
 typedef NS_ENUM(NSUInteger, TranslateAxis) {
   TranslateAxisX = 0,

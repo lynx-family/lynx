@@ -62,7 +62,7 @@ SharedCSSFragment* CSSStyleSheetManager::GetCSSStyleSheet(int32_t id) {
 
 void CSSStyleSheetManager::FlatDependentCSS(SharedCSSFragment* fragment) {
   const auto& dependents = fragment->dependent_ids();
-  if (fragment->enable_css_selector()) {
+  if (fragment->enable_css_selector() && fix_css_import_rule_order_) {
     std::for_each(dependents.begin(), dependents.end(), [&](int32_t id) {
       fragment->ImportOtherFragment(GetCSSStyleSheet(id));
     });

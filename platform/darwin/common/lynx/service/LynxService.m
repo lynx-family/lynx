@@ -1,23 +1,23 @@
 // Copyright 2022 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LynxService.h"
-#import "LynxLazyLoad.h"
-#import "LynxLog.h"
-#import "LynxServiceDevToolProtocol.h"
-#import "LynxServiceEventReporterProtocol.h"
-#import "LynxServiceExtensionProtocol.h"
-#import "LynxServiceHttpProtocol.h"
-#import "LynxServiceI18nProtocol.h"
-#import "LynxServiceImageProtocol.h"
-#import "LynxServiceLogProtocol.h"
-#import "LynxServiceMonitorProtocol.h"
-#import "LynxServiceProtocol.h"
-#import "LynxServiceResourceProtocol.h"
-#import "LynxServiceSecurityProtocol.h"
-#import "LynxServiceSystemInvokeProtocol.h"
-#import "LynxServiceTrailProtocol.h"
-#import "LynxTraceEvent.h"
+#import <Lynx/LynxLazyLoad.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
+#import <Lynx/LynxServiceEventReporterProtocol.h>
+#import <Lynx/LynxServiceExtensionProtocol.h>
+#import <Lynx/LynxServiceHttpProtocol.h>
+#import <Lynx/LynxServiceI18nProtocol.h>
+#import <Lynx/LynxServiceImageProtocol.h>
+#import <Lynx/LynxServiceLogProtocol.h>
+#import <Lynx/LynxServiceMonitorProtocol.h>
+#import <Lynx/LynxServiceProtocol.h>
+#import <Lynx/LynxServiceResourceProtocol.h>
+#import <Lynx/LynxServiceSecurityProtocol.h>
+#import <Lynx/LynxServiceSystemInvokeProtocol.h>
+#import <Lynx/LynxServiceTrailProtocol.h>
+#import <Lynx/LynxTraceEvent.h>
 
 #import <objc/runtime.h>
 

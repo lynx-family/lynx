@@ -162,6 +162,8 @@ static constexpr const char* kEnableCSSLazyImport = "enableCSSLazyImport";
 static constexpr const char* kEnableNewAnimator = "enableNewAnimator";
 static constexpr const char* kDisableQuickTracingGC = "disableQuickTracingGC";
 
+static constexpr const char* kFixCSSImportRuleOrder = "fixCSSImportRuleOrder";
+
 /// Upload global feature switches in PageConfig with common data about lynx
 /// view. If you add a new  global feature switch, you should add it to report
 /// event.
@@ -1088,18 +1090,18 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kDisableQuickTracingGC].GetBool());
   }
 
+  // fix css import rule order issue
+  if (doc.HasMember(kFixCSSImportRuleOrder) &&
+      doc[kFixCSSImportRuleOrder].IsBool()) {
+    page_config->SetFixCSSImportRuleOrder(
+        doc[kFixCSSImportRuleOrder].GetBool());
+  }
+
   // enableSignalAPI
   if (doc.HasMember(kEnableSignalAPI) && doc[kEnableSignalAPI].IsBool()) {
     page_config->SetEnableSignalAPI(doc[kEnableSignalAPI].GetBool()
                                         ? TernaryBool::TRUE_VALUE
                                         : TernaryBool::FALSE_VALUE);
-  }
-
-  // enableNapiProxyWrap
-  if (doc.HasMember(runtime::kEnableNapiProxyWrap) &&
-      doc[runtime::kEnableNapiProxyWrap].IsBool()) {
-    page_config->SetEnableNapiProxyWrap(
-        doc[runtime::kEnableNapiProxyWrap].GetBool());
   }
 
   config_helper_.HandlePageConfig(doc, page_config);

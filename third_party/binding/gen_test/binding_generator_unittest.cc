@@ -5,13 +5,13 @@
 #include <fstream>
 #include <string>
 
+#include "base/include/string/string_utils.h"
 #include "core/runtime/bindings/napi/napi_environment.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_quickjs.h"
 #include "core/runtime/bindings/napi/shim/shim_napi_env_quickjs.h"
 #include "jsbridge/bindings/gen_test/napi_test_context.h"
 #include "jsbridge/bindings/gen_test/napi_test_element.h"
-#include "base/include/string/string_utils.h"
 #include "third_party/binding/gen_test/test_async_object.h"
 #include "third_party/binding/gen_test/test_context.h"
 #include "third_party/binding/gen_test/test_module.h"
@@ -85,7 +85,14 @@ class BindingGeneratorTest : public ::testing::Test {
     js_code.erase(js_code.find("export {"));
 
     env_.RunScript(js_code.c_str());
-    env_.RunScript("hookTestContext(globalThis, ctx);");
+    env_.RunScript(
+        "const idGen = {"
+        "  uniqueId: 1,"
+        "  generate: function () {"
+        "    return this.uniqueId++;"
+        "  },"
+        "};");
+    env_.RunScript("hookTestContext(globalThis, ctx, idGen);");
     EXPECT_FALSE(env_.GetAndClearPendingException().IsObject());
     LOGI("Setup complete");
   }

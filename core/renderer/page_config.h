@@ -157,7 +157,6 @@ class PageConfig final : public EntryConfig {
     std::unordered_map<std::string, std::string> map;
     map.insert({"page_flatten", page_flatten ? "true" : "false"});
     map.insert({"target_sdk_version", target_sdk_version_});
-    map.insert({"radon_mode", radon_mode_});
     map.insert({"enable_lepus_ng", enable_lepus_ng_ ? "true" : "false"});
     map.insert({"react_version", react_version_});
     map.insert({"enable_css_parser", enable_css_parser_ ? "true" : "false"});
@@ -501,10 +500,6 @@ class PageConfig final : public EntryConfig {
     lepus_version_ = lepus_version;
   }
   inline std::string GetLepusVersion() { return lepus_version_; }
-
-  inline void SetRadonMode(std::string radon_mode) { radon_mode_ = radon_mode; }
-
-  inline std::string GetRadonMode() { return radon_mode_; }
 
   inline void SetEnableLepusNG(bool enable_lepus_ng) {
     enable_lepus_ng_ = enable_lepus_ng;
@@ -1044,6 +1039,12 @@ class PageConfig final : public EntryConfig {
 
   bool GetDisableQuickTracingGC() const { return disable_quick_tracing_gc_; }
 
+  void SetFixCSSImportRuleOrder(bool enable) {
+    fix_css_import_rule_order_ = enable;
+  }
+
+  bool GetFixCSSImportRuleOrder() const { return fix_css_import_rule_order_; }
+
   void SetEnableReloadLifecycle(bool enable) {
     enable_reload_lifecycle_ = enable;
   }
@@ -1120,10 +1121,6 @@ class PageConfig final : public EntryConfig {
   }
 
   void SetEnableSignalAPI(TernaryBool enable) { enable_signal_api_ = enable; }
-
-  void SetEnableNapiProxyWrap(bool enable) { enable_napi_proxy_wrap_ = enable; }
-
-  bool GetEnableNapiProxyWrap() const { return enable_napi_proxy_wrap_; }
 
   // TODO(songshourui.null): move this function to testing file
   void PrintPageConfig(std::ostream& output) {
@@ -1208,7 +1205,6 @@ class PageConfig final : public EntryConfig {
   CSSParserConfigs css_parser_configs_;
   std::string target_sdk_version_;
   std::string lepus_version_;
-  std::string radon_mode_;
   bool enable_lepus_ng_{true};
   std::string tap_slop_{};
   bool default_overflow_visible_{false};
@@ -1415,8 +1411,7 @@ class PageConfig final : public EntryConfig {
   // disable tracing gc mode in quick context
   bool disable_quick_tracing_gc_{false};
 
-  // enable napi proxy wrap
-  bool enable_napi_proxy_wrap_{true};
+  bool fix_css_import_rule_order_{true};
 
   TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
 

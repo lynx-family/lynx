@@ -6,11 +6,11 @@
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <LynxDevtool/LynxDevToolDownloader.h>
+#import <LynxDevtool/LynxDevToolToast.h>
+#import <LynxDevtool/LynxDevtoolEnv.h>
 #import <TargetConditionals.h>
 #import <WebKit/WebKit.h>
-#import "LynxDevToolDownloader.h"
-#import "LynxDevToolToast.h"
-#import "LynxDevtoolEnv.h"
 
 static NSString *const kLogBoxEventReportFeedback = @"lynxsdk_redbox_feedback";
 

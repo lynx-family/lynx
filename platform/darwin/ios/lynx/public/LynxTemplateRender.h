@@ -3,15 +3,15 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import "LynxEventTarget.h"
-#import "LynxExtensionModule.h"
+#import <Lynx/LynxEventTarget.h>
+#import <Lynx/LynxExtensionModule.h>
+#import <Lynx/LynxResourceFetcher.h>
+#import <Lynx/LynxScrollListener.h>
+#import <Lynx/LynxTemplateRenderDelegateExternal.h>
+#import <Lynx/LynxTemplateRenderProtocol.h>
+#import <Lynx/LynxUIListProtocol.h>
+#import <Lynx/LynxViewEnum.h>
 #import "LynxImageFetcher.h"
-#import "LynxResourceFetcher.h"
-#import "LynxScrollListener.h"
-#import "LynxTemplateRenderDelegateExternal.h"
-#import "LynxTemplateRenderProtocol.h"
-#import "LynxUIListProtocol.h"
-#import "LynxViewEnum.h"
 
 @class LynxDevtool;
 @class LynxTemplateBundle;

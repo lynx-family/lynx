@@ -1034,6 +1034,8 @@ class ElementManager {
    */
   void ClearExtremeParsedStyles();
 
+  inline int32_t GetTaskWaitTimeout() { return task_wait_timeout_; }
+
  protected:
   /**
    * call this function to request layout
@@ -1162,6 +1164,10 @@ class ElementManager {
   std::atomic_int element_count_{0};
   std::atomic_int layout_only_element_count_{0};
   std::atomic_int layout_only_transition_count_{0};
+
+  // Internal timeout in threaded element flush mode to enable force running on
+  // thread-pool in unittests
+  int32_t task_wait_timeout_{0};
 
   ALLOW_UNUSED_TYPE std::map<lynx::devtool::DevToolFunction,
                              std::function<void(const base::any &)>>

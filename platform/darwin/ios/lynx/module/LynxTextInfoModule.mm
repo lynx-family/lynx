@@ -3,12 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "LynxTextInfoModule.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxTextUtils.h>
+#import <Lynx/LynxThreadManager.h>
+#import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUnitUtils.h>
 #import "LynxContext+Internal.h"
-#import "LynxContext.h"
-#import "LynxTextUtils.h"
-#import "LynxThreadManager.h"
-#import "LynxUIOwner.h"
-#import "LynxUnitUtils.h"
 #include "core/renderer/utils/ios/text_utils_ios.h"
 
 using namespace lynx;

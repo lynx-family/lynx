@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxPageReloadHelper+Internal.h>
+#import <Lynx/LynxPageReloadHelper.h>
+#import <Lynx/LynxTemplateData.h>
+#import <Lynx/LynxView.h>
 #import <XCTest/XCTest.h>
-#import "LynxPageReloadHelper+Internal.h"
-#import "LynxPageReloadHelper.h"
-#import "LynxTemplateData.h"
-#import "LynxView.h"
 
 @interface LynxPageReloadHelperUnitTest : XCTestCase
 

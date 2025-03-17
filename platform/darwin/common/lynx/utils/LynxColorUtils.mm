@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxColorUtils.h"
+#import <Lynx/LynxColorUtils.h>
 #include "core/renderer/css/css_color.h"
 
 @implementation LynxColorUtils

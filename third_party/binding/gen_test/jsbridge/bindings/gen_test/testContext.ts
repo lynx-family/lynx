@@ -69,7 +69,7 @@ function getViewType(view) {
   }
 }
 
-const commandBufferCreator = function(appendTarget) {
+const commandBufferCreator = function(appendTarget, idGen) {
   if (TestContextCB) return TestContextCB;
   const cb = appendTarget.getCommandBuffer();
   const buffer = cb.buffer;
@@ -89,8 +89,6 @@ const commandBufferCreator = function(appendTarget) {
   const cmdLengthCutoff = 8192;
   const isLittleEndian = new Uint16Array(new Uint8Array([1, 0]).buffer)[0] === 1;
 
-  // Leave 0 as invalid.
-  let globalAsyncId = 1;
   let TestAsyncObject = appendTarget.TestAsyncObject
 
   function voidFromVoid() {
@@ -271,7 +269,7 @@ const commandBufferCreator = function(appendTarget) {
   }
 
   function createAsyncObject() {
-    let id = globalAsyncId++;
+    let id = idGen.generate();
     let puppet = new TestAsyncObject(id);
     puppet.__id = id;
     objects.push(puppet);
@@ -369,8 +367,8 @@ const commandBufferCreator = function(appendTarget) {
 
 let protoHooked = false;
 
-function hookTestContext(appendTarget, context) {
-  const commandBuffer = commandBufferCreator(appendTarget);
+function hookTestContext(appendTarget, context, idGen) {
+  const commandBuffer = commandBufferCreator(appendTarget, idGen);
   if (protoHooked) return;
   protoHooked = true;
   let ctxProto = context.__proto__;

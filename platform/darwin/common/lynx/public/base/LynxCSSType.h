@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 
-#import "LynxAutoGenCSSType.h"
+#import <Lynx/LynxAutoGenCSSType.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

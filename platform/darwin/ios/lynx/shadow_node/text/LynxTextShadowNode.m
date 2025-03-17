@@ -2,18 +2,18 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxTextShadowNode.h"
 #import <CoreText/CoreText.h>
-#import "LynxComponentRegistry.h"
-#import "LynxLog.h"
-#import "LynxNativeLayoutNode.h"
-#import "LynxPropsProcessor.h"
-#import "LynxRootUI.h"
-#import "LynxTemplateRender.h"
-#import "LynxTextRendererCache.h"
-#import "LynxTextUtils.h"
-#import "LynxTraceEvent.h"
-#import "LynxTraceEventWrapper.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxLog.h>
+#import <Lynx/LynxNativeLayoutNode.h>
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxTextRendererCache.h>
+#import <Lynx/LynxTextShadowNode.h>
+#import <Lynx/LynxTextUtils.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventWrapper.h>
 
 // This is an adaptaion for one of the bug of line spacing in TextKit that
 // the last line will disappeare when both maxNumberOfLines and lineSpacing are set.

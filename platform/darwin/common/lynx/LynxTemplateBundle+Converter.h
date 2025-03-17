@@ -5,7 +5,8 @@
 #ifndef DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_CONVERTER_H_
 #define DARWIN_COMMON_LYNX_LYNX_TEMPLATE_BUNDLE_CONVERTER_H_
 
-#import "LynxTemplateBundle.h"
+#import <Lynx/LynxTemplateBundle.h>
+
 #include "core/template_bundle/lynx_template_bundle.h"
 
 std::shared_ptr<lynx::tasm::LynxTemplateBundle> LynxGetRawTemplateBundle(

@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxCollectionScroll.h"
-#import "LynxCollectionInvalidationContext.h"
-#import "LynxCollectionScroller.h"
-#import "LynxCollectionViewLayout.h"
-#import "LynxUIMethodProcessor.h"
+#import <Lynx/LynxCollectionInvalidationContext.h>
+#import <Lynx/LynxCollectionScroll.h>
+#import <Lynx/LynxCollectionScroller.h>
+#import <Lynx/LynxCollectionViewLayout.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 
 CGFloat const kLynxCollectionScrollDefaultSafeDisappearPercentage = 0.01;
 CGFloat const kLynxCollectionScrollDefaultSafeDisappearOffset =

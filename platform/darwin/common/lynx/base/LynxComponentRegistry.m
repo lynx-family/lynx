@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxComponentRegistry.h"
+#import <Lynx/LynxComponentRegistry.h>
+#import <Lynx/LynxThreadSafeDictionary.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
-#import "LynxThreadSafeDictionary.h"
 #if OS_IOS
-#import "LynxPropsProcessor.h"
-#import "LynxShadowNode.h"
-#import "LynxUI.h"
+#import <Lynx/LynxPropsProcessor.h>
+#import <Lynx/LynxShadowNode.h>
+#import <Lynx/LynxUI.h>
 #endif
 
 @implementation LynxComponentRegistry

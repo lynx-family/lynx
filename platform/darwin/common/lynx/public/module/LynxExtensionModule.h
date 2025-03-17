@@ -6,8 +6,8 @@
  * This is a experimental API, it is unstable and may break at any time.
  */
 
-#import "LynxContext.h"
-#import "LynxGroup.h"
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxGroup.h>
 
 @protocol LynxExtensionModule <NSObject>
 

@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_RESOURCE_LYNXRESOURCEREQUEST_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxServiceResourceRequestParameters.h"
+#import <Lynx/LynxServiceResourceRequestParameters.h>
 
 NS_ASSUME_NONNULL_BEGIN
 

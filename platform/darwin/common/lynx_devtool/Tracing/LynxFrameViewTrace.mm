@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "LynxFrameViewTrace.h"
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#import <LynxDevtool/LynxFrameTraceService.h>
+#import <LynxDevtool/LynxFrameViewTrace.h>
 #include <mach/mach_time.h>
 #include <chrono>
-#import "LynxFrameTraceService.h"
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 #import "tracing/platform/frameview_trace_plugin_darwin.h"

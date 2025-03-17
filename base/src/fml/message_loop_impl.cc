@@ -117,6 +117,7 @@ void MessageLoopImpl::FlushVSyncAlignedTasks(FlushType type) {
 bool MessageLoopImpl::FlushTasksWithRestrictionDuration(
     FlushType type, const std::vector<TaskQueueId>& queue_ids,
     int64_t restriction_duration) {
+  TRACE_EVENT("lynx", "MessageLoop::FlushVSyncAlignedTasks");
   const auto now = fml::TimePoint::Now();
   bool reach_max_restriction = false;
   std::optional<TaskSource::TopTaskResult> task;
@@ -155,7 +156,7 @@ bool MessageLoopImpl::FlushTasksWithRestrictionDuration(
 
 void MessageLoopImpl::WakeUp(fml::TimePoint time_point,
                              bool is_woken_by_vsync) {
-  if (is_woken_by_vsync) {
+  if (is_woken_by_vsync && vsync_request_) {
     WakeUpByVSync(time_point);
     return;
   }
@@ -214,7 +215,7 @@ void MessageLoopImpl::Bind(const TaskQueueId& queue_id,
                            bool should_run_expired_tasks_immediately) {
   TRACE_EVENT("lynx", "MessageLoopImpl::Bind");
 
-  task_queue_->IsTaskQueueAlignedWithVSync(queue_id)
+  (vsync_request_ && task_queue_->IsTaskQueueAlignedWithVSync(queue_id))
       ? vsync_aligned_task_queue_ids_.emplace_back(queue_id)
       : queue_ids_.emplace_back(queue_id);
   task_queue_->SetWakeable(queue_id, this);
@@ -245,9 +246,10 @@ void MessageLoopImpl::Bind(const TaskQueueId& queue_id,
 }
 
 void MessageLoopImpl::UnBind(const TaskQueueId& queue_id) {
-  auto& ids = task_queue_->IsTaskQueueAlignedWithVSync(queue_id)
-                  ? vsync_aligned_task_queue_ids_
-                  : queue_ids_;
+  auto& ids =
+      (vsync_request_ && task_queue_->IsTaskQueueAlignedWithVSync(queue_id))
+          ? vsync_aligned_task_queue_ids_
+          : queue_ids_;
   for (auto it = ids.begin(); it != ids.end(); ++it) {
     if (*it == queue_id) {
       ids.erase(it);
