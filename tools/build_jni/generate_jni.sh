@@ -15,13 +15,21 @@ python3 -c "import yaml"
 if [ $? -eq 0 ]; then
     echo "PyYAML installed"
 else
-    echo "PyYAML is not installed"
-    pip3 install PyYAML
-    python3 -c "import yaml"
-    if [ $? -eq 0 ]; then
-        echo "PyYAML installed successfully"
+    echo "PyYAML is not installed, try to use venv"
+    VENV_PATH=$CURRENT_PATH/../../.venv
+    if [ -d $VENV_PATH ]; then
+        echo "venv already exists, reuse it"
     else
-        echo "PyYAML installation failed"
+        echo "venv not exists, create it"
+        python3 -m venv $VENV_PATH
+    fi
+    source $VENV_PATH/bin/activate
+    pip3 install PyYAML
+    if [ $? -eq 0 ]; then
+        echo "PyYAML in venv installed successfully"
+    else
+        echo "PyYAML in venv installation failed, please install it manually."
+        exit 1
     fi
 fi
 for index in $(seq 0 $(($ANDROID_NAME_LENGTH - 1)))
