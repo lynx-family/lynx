@@ -661,9 +661,24 @@ void LynxShell::SyncFetchLayoutResult() {
 
   auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
 
-  layout_runner->Bind(ui_loop, true);
+  // First, consume all potentially pending onLayoutAfter tasks,
+  // as ResumeLayout does not necessarily retrigger the layout afterward,
+  // also ensuring proper sequencing.
   layout_result_manager_->RunOnLayoutAfterTasks();
 
+  // Second, pause the layout to prevent multiple layout triggers
+  // while consuming pending tasks in the layout queue.
+  layout_actor_->Impl()->PauseLayout();
+
+  // Third, bind the layout queue to the current thread and
+  // clear all pending tasks in the layout queue.
+  layout_runner->Bind(ui_loop, true);
+
+  // Fourth, resume the layout.
+  // If there is a pending layout, it will be retriggered here.
+  layout_actor_->Impl()->ResumeLayout();
+
+  // Fifth, rebind the layout queue to the background thread.
   layout_runner->UnBind();
 
   layout_loop->PostTask(
@@ -671,8 +686,6 @@ void LynxShell::SyncFetchLayoutResult() {
       fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
 }
 
-// TODO(klaxxi): There may currently be two layout passes.
-// Optimization will be done later to skip the layout triggered in Bind.
 void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
                                                      int32_t width_mode,
                                                      float height,
@@ -687,29 +700,53 @@ void LynxShell::LayoutImmediatelyWithUpdatedViewport(float width,
   auto ui_loop = runners_.GetUITaskRunner()->GetLoop();
 
   if (layout_result_manager_ == nullptr) {
+    // TODO(klaxxi): Remove the logic in this branch after
+    // passing the platform-level ForceLayoutOnBackgroundThread switch to
+    // LynxShell.
+    layout_actor_->Impl()->PauseLayout();
+
     layout_runner->Bind(ui_loop, true);
+
     tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(true);
 
     UpdateViewport(width, width_mode, height, height_mode);
 
-    TriggerLayout();
+    layout_actor_->Impl()->ResumeLayout();
 
     layout_runner->UnBind();
     tasm_operation_queue_->SetAppendPendingTaskNeededDuringFlush(false);
+
+    layout_loop->PostTask(
+        [layout_runner, layout_loop]() { layout_runner->Bind(layout_loop); },
+        fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
   } else {
-    layout_runner->Bind(ui_loop, true);
+    // First, consume all potentially pending onLayoutAfter tasks,
+    // as ResumeLayout does not necessarily retrigger the layout afterward,
+    // also ensuring proper sequencing.
     layout_result_manager_->RunOnLayoutAfterTasks();
 
+    // Second, pause the layout, as a layout must always be retriggered
+    // after updateViewport, making any layout triggered while consuming
+    // pending tasks in the layout queue redundant.
+    layout_actor_->Impl()->PauseLayout();
+
+    // Third, bind the layout queue to the current thread and
+    // clear all pending tasks in the layout queue.
+    layout_runner->Bind(ui_loop, true);
+
+    // Fourth, update the viewport and resume the layout,
+    // which will retrigger the layout here.
     UpdateViewport(width, width_mode, height, height_mode);
 
-    TriggerLayout();
+    layout_actor_->Impl()->ResumeLayout();
 
+    // Fifth, rebind the layout queue to the background thread.
     layout_runner->UnBind();
-  }
 
-  layout_loop->PostTask(
-      [layout_runner, layout_loop]() { layout_runner->Bind(layout_loop); },
-      fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
+    layout_loop->PostTask(
+        [layout_runner, layout_loop]() { layout_runner->Bind(layout_loop); },
+        fml::TimePoint::Now(), fml::TaskSourceGrade::kEmergency);
+  }
 }
 
 void LynxShell::SendCustomEvent(const std::string& name, int32_t tag,

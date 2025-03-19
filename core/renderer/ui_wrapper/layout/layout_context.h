@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "base/include/closure.h"
 #include "core/public/layout_ctx_platform_impl.h"
@@ -193,6 +194,10 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
 #endif
 
+  void PauseLayout();
+
+  void ResumeLayout();
+
  private:
   class CircularLayoutDependencyDetector {
    public:
@@ -290,6 +295,12 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
 
   LayoutContext(const LayoutContext&) = delete;
   LayoutContext& operator=(const LayoutContext&) = delete;
+
+  bool layout_paused_{false};
+
+  // Stores the pipeline options of all paused layouts,
+  // which will be used for layout upon resumption.
+  std::vector<PipelineOptions> pipeline_options_for_paused_layouts_{};
 };
 }  // namespace tasm
 }  // namespace lynx

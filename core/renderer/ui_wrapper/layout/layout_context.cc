@@ -4,6 +4,7 @@
 
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <sstream>
@@ -38,6 +39,21 @@
 #include "core/services/timing_handler/timing_constants.h"
 namespace lynx {
 namespace tasm {
+
+namespace {
+
+void CollectDirtyNodeForList(LayoutNode* node, const PipelineOptions& options) {
+  static bool enable_native_list_nested =
+      LynxEnv::GetInstance().EnableNativeListNested();
+  if ((!enable_native_list_nested && options.operation_id == 0) ||
+      (enable_native_list_nested && node->id() != options.list_id_)) {
+    // Note: We should avoid adding the parent list node to
+    // options.updated_list_elements_ when rendering a list item.
+    options.updated_list_elements_.emplace_back(node->id());
+  }
+}
+
+}  // namespace
 
 LayoutContext::LayoutContext(
     std::unique_ptr<Delegate> delegate,
@@ -689,7 +705,20 @@ void LayoutContext::SetLayoutEarlyExitTiming(const PipelineOptions& options) {
   if (options.need_timestamps) {
     auto* timing_collector = tasm::TimingCollector::Instance();
     timing_collector->Mark(tasm::timing::kLayoutStart);
+
+    if (options.enable_report_list_item_life_statistic_ &&
+        options.IsRenderListItem()) {
+      options.list_item_life_option_.start_layout_time_ =
+          base::CurrentTimeMicroseconds();
+    }
+
     timing_collector->Mark(tasm::timing::kLayoutEnd);
+
+    if (options.enable_report_list_item_life_statistic_ &&
+        options.IsRenderListItem()) {
+      options.list_item_life_option_.end_layout_time_ =
+          base::CurrentTimeMicroseconds();
+    }
   }
 }
 
@@ -702,6 +731,16 @@ void LayoutContext::Layout(const PipelineOptions& options) {
               [&options](lynx::perfetto::EventContext ctx) {
                 options.UpdateTraceDebugInfo(ctx.event());
               });
+
+  if (layout_paused_) {
+    pipeline_options_for_paused_layouts_.emplace_back(options);
+    LOGI(
+        "[Layout] The layout has been paused and will be re-executed after "
+        "resuming."
+        << view_port_info_str);
+    return;
+  }
+
   if (root_ == nullptr || root_->slnode() == nullptr ||
       !root_->slnode()->IsDirty()) {
     if (root_ == nullptr || root_->slnode() == nullptr) {
@@ -917,13 +956,16 @@ void LayoutContext::LayoutRecursively(LayoutNode* node,
 
   node->MarkUpdated();
   if (node->is_list_container()) {
-    static bool enable_native_list_nested =
-        LynxEnv::GetInstance().EnableNativeListNested();
-    if ((!enable_native_list_nested && options.operation_id == 0) ||
-        (enable_native_list_nested && node->id() != options.list_id_)) {
-      // Note: we should avoid to add parent list node to
-      // options.updated_list_elements_ when rendering list item.
-      options.updated_list_elements_.emplace_back(node->id());
+    if (pipeline_options_for_paused_layouts_.empty()) {
+      CollectDirtyNodeForList(node, options);
+    } else {
+      // If pipeline_options_for_paused_layouts_ is not empty,
+      // collect for all pipeline options in
+      // pipeline_options_for_paused_layouts_.
+      for (const auto& pending_pipeline_options :
+           pipeline_options_for_paused_layouts_) {
+        CollectDirtyNodeForList(node, pending_pipeline_options);
+      }
     }
   }
 }
@@ -1260,6 +1302,27 @@ bool LayoutContext::IfNeedsUpdateLayoutInfo(LayoutNode* node) {
     }
   }
   return false;
+}
+
+void LayoutContext::PauseLayout() { layout_paused_ = true; }
+
+void LayoutContext::ResumeLayout() {
+  layout_paused_ = false;
+
+  if (!pipeline_options_for_paused_layouts_.empty()) {
+    // Only the first execution performs Layout,
+    // while subsequent ones only trigger onLayoutAfter.
+    Layout(pipeline_options_for_paused_layouts_.front());
+
+    std::for_each(std::next(pipeline_options_for_paused_layouts_.begin()),
+                  pipeline_options_for_paused_layouts_.end(),
+                  [this](const auto& options) {
+                    SetLayoutEarlyExitTiming(options);
+                    delegate_->OnLayoutAfter(options);
+                  });
+  }
+
+  pipeline_options_for_paused_layouts_.clear();
 }
 
 }  // namespace tasm
