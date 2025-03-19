@@ -44,7 +44,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   }
   [_contextDict addEntriesFromDictionary:ctxDict];
   _moduleFactoryPtr->registerExtraInfo(ctxDict);
-  _moduleFactoryPtr->registerMethodSession(sessionInfo);
+  if (sessionInfo) {
+    _moduleFactoryPtr->registerMethodSession(sessionInfo);
+  }
 }
 
 - (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr {

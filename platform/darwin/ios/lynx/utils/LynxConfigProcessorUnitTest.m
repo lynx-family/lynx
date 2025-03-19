@@ -118,4 +118,13 @@
   XCTAssertEqual(builder.bytecodeUrl, @"foo");
 }
 
+- (void)testRegisterContext {
+  LynxConfig *config = [[LynxConfig alloc] initWithProvider:nil];
+  config.contextDict = [[NSMutableDictionary alloc] init];
+
+  NSDictionary *dict = @{@"key" : @"value"};
+  [config registerContext:dict sessionInfo:nil];
+  XCTAssertEqual(config.contextDict[@"key"], @"value");
+}
+
 @end

@@ -17,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) id<LynxTemplateProvider> templateProvider;
 @property(nonatomic) LynxComponentScopeRegistry *componentRegistry;
-@property(nonatomic, copy, nullable) NSMutableDictionary *contextDict;
+@property(nonatomic, strong, nullable) NSMutableDictionary *contextDict;
 
 /*! Set a global (default) config which will provide a convenient way
  for creating LynxView without LynxConfig. */
