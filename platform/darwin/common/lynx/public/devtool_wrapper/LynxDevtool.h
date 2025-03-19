@@ -34,6 +34,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onLoadFromBundle:(LynxTemplateBundle *)bundle
                  withURL:(NSString *)url
                 initData:(LynxTemplateData *)data;
+- (void)onUpdateDataWithTemplateData:(LynxTemplateData *)data;
+- (void)onResetDataWithTemplateData:(LynxTemplateData *)data;
 
 - (void)onStandaloneRuntimeLoadFromURL:(NSString *)url;
 

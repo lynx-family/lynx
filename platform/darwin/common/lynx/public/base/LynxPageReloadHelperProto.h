@@ -14,7 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol LynxPageReloadHelperProto <NSObject>
 
-- (nonnull instancetype)initWithLynxView:(LynxView*)view;
+- (nonnull instancetype)initWithLynxView:(LynxView *)view;
 
 /**
  * Load page from local file
@@ -22,32 +22,42 @@ NS_ASSUME_NONNULL_BEGIN
  * @param url template url
  * @param data init data
  */
-- (void)loadFromLocalFile:(NSData*)tem withURL:(NSString*)url initData:(LynxTemplateData*)data;
+- (void)loadFromLocalFile:(NSData *)tem withURL:(NSString *)url initData:(LynxTemplateData *)data;
 /**
  * Load page from url
  * @param url template url
  * @param data init data
  */
-- (void)loadFromURL:(NSString*)url initData:(LynxTemplateData*)data;
+- (void)loadFromURL:(NSString *)url initData:(LynxTemplateData *)data;
 /**
  * Load page from template bundle
  * @param bundle template bundle
  * @param url template url
  * @param data init data
  */
-- (void)loadFromBundle:(LynxTemplateBundle*)bundle
-               withURL:(NSString*)url
-              initData:(LynxTemplateData*)data;
+- (void)loadFromBundle:(LynxTemplateBundle *)bundle
+               withURL:(NSString *)url
+              initData:(LynxTemplateData *)data;
+/**
+ * Update init data of page
+ * @param data init data to update with
+ */
+- (void)updateDataWithTemplateData:(LynxTemplateData *)data;
+/**
+ * Reset init data of page
+ * @param data init data to reset with
+ */
+- (void)resetDataWithTemplateData:(LynxTemplateData *)data;
 
 /**
  * Get template data url of page
  */
-- (nonnull NSString*)getURL;
+- (nonnull NSString *)getURL;
 
 /**
  * Get template data of page
  */
-- (LynxTemplateData*)getTemplateData;
+- (LynxTemplateData *)getTemplateData;
 
 /**
  * Reload whole LynxView
@@ -60,15 +70,15 @@ NS_ASSUME_NONNULL_BEGIN
  * @param size fragment counts
  */
 - (void)reloadLynxView:(BOOL)ignoreCache
-          withTemplate:(NSString*)templateBin
+          withTemplate:(NSString *)templateBin
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size;
 /**
  * Notify that page receives new template fragment
  * @param fragment new template fragment
  */
-- (void)onReceiveTemplateFragment:(NSString*)fragment withEof:(BOOL)eof;
-- (void)navigateLynxView:(nonnull NSString*)url;
+- (void)onReceiveTemplateFragment:(NSString *)fragment withEof:(BOOL)eof;
+- (void)navigateLynxView:(nonnull NSString *)url;
 
 - (void)setTextLable:(NSInteger)label;
 - (void)removeTextLabel;
@@ -77,7 +87,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Bind LynxView
  */
-- (void)attachLynxView:(nonnull LynxView*)lynxView;
+- (void)attachLynxView:(nonnull LynxView *)lynxView;
 
 @end
 

@@ -1103,6 +1103,8 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onLoadFromURL:initData:postURL:(NSString *url,[initData] LynxTemplateData *data,[postURL] NSString *postURL);
   public void LynxDevtool::attachDebugBridge:(NSString *url);
   public void LynxDevtool::onLoadFromBundle:withURL:initData:(LynxTemplateBundle *bundle,[withURL] NSString *url,[initData] LynxTemplateData *data);
+  public void LynxDevtool::onUpdateDataWithTemplateData:(LynxTemplateData *data);
+  public void LynxDevtool::onResetDataWithTemplateData:(LynxTemplateData *data);
   public void LynxDevtool::onStandaloneRuntimeLoadFromURL:(NSString *url);
   public void LynxDevtool::onTemplateAssemblerCreated:(intptr_t ptr);
   public void LynxDevtool::onEnterForeground();
@@ -2488,6 +2490,8 @@ public protocol LynxPageReloadHelperProto-p : <NSObject> {
   public void LynxPageReloadHelperProto-p::loadFromLocalFile:withURL:initData:(NSData *tem,[withURL] NSString *url,[initData] LynxTemplateData *data);
   public void LynxPageReloadHelperProto-p::loadFromURL:initData:(NSString *url,[initData] LynxTemplateData *data);
   public void LynxPageReloadHelperProto-p::loadFromBundle:withURL:initData:(LynxTemplateBundle *bundle,[withURL] NSString *url,[initData] LynxTemplateData *data);
+  public void LynxPageReloadHelperProto-p::updateDataWithTemplateData:(LynxTemplateData *data);
+  public void LynxPageReloadHelperProto-p::resetDataWithTemplateData:(LynxTemplateData *data);
   public nonnull NSString * LynxPageReloadHelperProto-p::getURL();
   public LynxTemplateData * LynxPageReloadHelperProto-p::getTemplateData();
   public void LynxPageReloadHelperProto-p::reloadLynxView:(BOOL ignoreCache);
