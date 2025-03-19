@@ -57,6 +57,12 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
     kLongArrayType,
     kFloatArrayType,
     kDoubleArrayType,
+    kListType,
+    kBoolWrapperType,
+    kIntWrapperType,
+    kLongWrapperType,
+    kFloatWrapperType,
+    kDoubleWrapperType,
     kBoolType,
     kIntType,
     kLongType,
@@ -83,6 +89,12 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
       JNIEnv* env, jobject root_object,
       LynxPlatformJSIObjectAndroid::JObjectType type, jfieldID field_id);
 
+  // convert jni object whose type is primitive wrapper
+  std::unique_ptr<platform_jsi::JSIObject>
+  ConvertJSIObjectFieldPrimitiveWrapper(
+      JNIEnv* env, jobject root_object,
+      LynxPlatformJSIObjectAndroid::JObjectType type);
+
   // convert jni object whose type is String
   std::unique_ptr<platform_jsi::JSIObject> ConvertJSIObjectFieldString(
       JNIEnv* env, jobject field_obj);
@@ -96,6 +108,10 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
   std::unique_ptr<platform_jsi::JSIObject> ConvertJSIObjectFieldObject(
       JNIEnv* env, jobject field_obj,
       LynxPlatformJSIObjectAndroid::JObjectType type);
+
+  // convert jni object whose type is List
+  std::unique_ptr<platform_jsi::JSIObject> ConvertJSIObjectList(JNIEnv* env,
+                                                                jobject obj);
 
   base::android::ScopedGlobalJavaRef<jobject> jsi_object_;
   base::android::ScopedLocalJavaRef<jclass> jsi_object_class_;

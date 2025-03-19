@@ -7,6 +7,7 @@ package com.lynx.jsbridge.jsi;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * Class that collects, stores, and provides LynxJSIObjectDescriptors.
@@ -72,6 +73,12 @@ public class LynxJSIObjectHub {
     LONG_ARRAY_TYPE,
     FLOAT_ARRAY_TYPE,
     DOUBLE_ARRAY_TYPE,
+    LIST_TYPE,
+    BOOLEAN_WRAPPER_TYPE,
+    INT_WRAPPER_TYPE,
+    LONG_WRAPPER_TYPE,
+    FLOAT_WRAPPER_TYPE,
+    DOUBLE_WRAPPER_TYPE,
   }
 
   @CalledByNative
@@ -94,6 +101,18 @@ public class LynxJSIObjectHub {
       return JObjectType.DOUBLE_ARRAY_TYPE.ordinal();
     } else if (fieldObject.getClass().isArray()) {
       return JObjectType.OBJECT_ARRAY_TYPE.ordinal();
+    } else if (fieldObject instanceof List) {
+      return JObjectType.LIST_TYPE.ordinal();
+    } else if (fieldObject instanceof Boolean) {
+      return JObjectType.BOOLEAN_WRAPPER_TYPE.ordinal();
+    } else if (fieldObject instanceof Integer) {
+      return JObjectType.INT_WRAPPER_TYPE.ordinal();
+    } else if (fieldObject instanceof Long) {
+      return JObjectType.LONG_WRAPPER_TYPE.ordinal();
+    } else if (fieldObject instanceof Float) {
+      return JObjectType.FLOAT_WRAPPER_TYPE.ordinal();
+    } else if (fieldObject instanceof Double) {
+      return JObjectType.DOUBLE_WRAPPER_TYPE.ordinal();
     }
     return JObjectType.UNKNOWN_TYPE.ordinal();
   }

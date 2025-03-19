@@ -34,6 +34,16 @@ LynxPlatformJSIObjectAndroid::JObjectType GetJObjectTypeByFieldType(
           {"J", LynxPlatformJSIObjectAndroid::JObjectType::kLongType},
           {"F", LynxPlatformJSIObjectAndroid::JObjectType::kFloatType},
           {"D", LynxPlatformJSIObjectAndroid::JObjectType::kDoubleType},
+          {"Ljava/lang/Boolean;",
+           LynxPlatformJSIObjectAndroid::JObjectType::kBoolWrapperType},
+          {"Ljava/lang/Integer;",
+           LynxPlatformJSIObjectAndroid::JObjectType::kIntWrapperType},
+          {"Ljava/lang/Long;",
+           LynxPlatformJSIObjectAndroid::JObjectType::kLongWrapperType},
+          {"Ljava/lang/Float;",
+           LynxPlatformJSIObjectAndroid::JObjectType::kFloatWrapperType},
+          {"Ljava/lang/Double;",
+           LynxPlatformJSIObjectAndroid::JObjectType::kDoubleWrapperType},
           {"[Z", LynxPlatformJSIObjectAndroid::JObjectType::kBoolArrayType},
           {"[I", LynxPlatformJSIObjectAndroid::JObjectType::kIntArrayType},
           {"[J", LynxPlatformJSIObjectAndroid::JObjectType::kLongArrayType},
@@ -72,6 +82,18 @@ LynxPlatformJSIObjectAndroid::JObjectType GetJObjectTypeByJObject(
       return LynxPlatformJSIObjectAndroid::JObjectType::kFloatArrayType;
     case 8:
       return LynxPlatformJSIObjectAndroid::JObjectType::kDoubleArrayType;
+    case 9:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kListType;
+    case 10:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kBoolWrapperType;
+    case 11:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kIntWrapperType;
+    case 12:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kLongWrapperType;
+    case 13:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kFloatWrapperType;
+    case 14:
+      return LynxPlatformJSIObjectAndroid::JObjectType::kDoubleWrapperType;
     default:
       return LynxPlatformJSIObjectAndroid::JObjectType::kUnknownType;
   }
@@ -160,18 +182,24 @@ LynxPlatformJSIObjectAndroid::ConvertJSIObjectField(
     return nullptr;
   }
 
-  // 2. check string type
+  // 2. check primitive wrapper type
+  value = ConvertJSIObjectFieldPrimitiveWrapper(env, field_obj.Get(), type);
+  if (value) {
+    return value;
+  }
+
+  // 3. check string type
   if (type == JObjectType::kStringType) {
     return ConvertJSIObjectFieldString(env, field_obj.Get());
   }
 
-  // 3. check primitive array type
+  // 4. check primitive array type
   value = ConvertJSIObjectFieldPrimitiveArray(env, field_obj.Get(), type);
   if (value) {
     return value;
   }
 
-  // 4. check object type
+  // 5. check object type
   type = GetJObjectTypeByJObject(env, field_obj.Get());
   return ConvertJSIObjectFieldObject(env, field_obj.Get(), type);
 }
@@ -199,6 +227,39 @@ LynxPlatformJSIObjectAndroid::ConvertJSIObjectFieldPrimitive(
     default:
       return nullptr;
   }
+}
+
+std::unique_ptr<platform_jsi::JSIObject>
+LynxPlatformJSIObjectAndroid::ConvertJSIObjectFieldPrimitiveWrapper(
+    JNIEnv *env, jobject root_object,
+    LynxPlatformJSIObjectAndroid::JObjectType type) {
+#define PRIMITIVE_WRAPPER_CASE_CASTING(FIELD_TYPE, JAVA_CLASS_NAME,            \
+                                       RESULT_TYPE, SIG)                       \
+  {                                                                            \
+    static auto cls =                                                          \
+        base::android::GetGlobalClass(env, "java/lang/" #JAVA_CLASS_NAME);     \
+    static jfieldID value_field_id = env->GetFieldID(cls.Get(), "value", SIG); \
+    RESULT_TYPE result =                                                       \
+        env->Get##FIELD_TYPE##Field(root_object, value_field_id);              \
+    return platform_jsi::JSIObject::Create(result);                            \
+  }
+
+  switch (type) {
+    case JObjectType::kBoolWrapperType:
+      PRIMITIVE_WRAPPER_CASE_CASTING(Boolean, Boolean, bool, "Z")
+    case JObjectType::kIntWrapperType:
+      PRIMITIVE_WRAPPER_CASE_CASTING(Int, Integer, double, "I")
+    case JObjectType::kLongWrapperType:
+      PRIMITIVE_WRAPPER_CASE_CASTING(Long, Long, jlong, "J")
+    case JObjectType::kFloatWrapperType:
+      PRIMITIVE_WRAPPER_CASE_CASTING(Float, Float, double, "F")
+    case JObjectType::kDoubleWrapperType:
+      PRIMITIVE_WRAPPER_CASE_CASTING(Double, Double, double, "D")
+    default:
+      return nullptr;
+  }
+
+#undef PRIMITIVE_WRAPPER_CASE_CASTING
 }
 
 std::unique_ptr<platform_jsi::JSIObject>
@@ -265,9 +326,58 @@ LynxPlatformJSIObjectAndroid::ConvertJSIObjectFieldObject(
     }
     case JObjectType::kObjectArrayType:
       return ConvertJSIObjectArray(env, field_obj);
+    case JObjectType::kListType:
+      return ConvertJSIObjectList(env, field_obj);
+    case JObjectType::kBoolWrapperType:
+    case JObjectType::kIntWrapperType:
+    case JObjectType::kLongWrapperType:
+    case JObjectType::kFloatWrapperType:
+    case JObjectType::kDoubleWrapperType:
+      return ConvertJSIObjectFieldPrimitiveWrapper(env, field_obj, type);
     default:
       return ConvertJSIObjectFieldPrimitiveArray(env, field_obj, type);
   }
+}
+
+std::unique_ptr<platform_jsi::JSIObject>
+LynxPlatformJSIObjectAndroid::ConvertJSIObjectList(JNIEnv *env, jobject obj) {
+  static jclass jclass_copy_on_write_list =
+      // NOLINTNEXTLINE
+      static_cast<jclass>(env->NewGlobalRef(
+          env->FindClass("java/util/concurrent/CopyOnWriteArrayList")));
+  static jmethodID mid_copy_on_write_list_constructor = env->GetMethodID(
+      jclass_copy_on_write_list, "<init>", "(Ljava/util/Collection;)V");
+  auto j_copy_on_write_list = base::android::ScopedLocalJavaRef<jobject>(
+      env, env->NewObject(jclass_copy_on_write_list,
+                          mid_copy_on_write_list_constructor, obj));
+  if (j_copy_on_write_list.IsNull()) {
+    return nullptr;
+  }
+
+  static jmethodID mid_copy_on_write_list_size = mid_copy_on_write_list_size =
+      env->GetMethodID(jclass_copy_on_write_list, "size", "()I");
+  jint size = env->CallIntMethod(j_copy_on_write_list.Get(),
+                                 mid_copy_on_write_list_size);
+  std::vector<std::unique_ptr<platform_jsi::JSIObject>> raw_field_array;
+  JObjectType element_type = JObjectType::kUnknownType;
+  for (jint i = 0; i < size; ++i) {
+    static jmethodID mid_copy_on_write_list_get = env->GetMethodID(
+        jclass_copy_on_write_list, "get", "(I)Ljava/lang/Object;");
+    base::android::ScopedLocalJavaRef<jobject> element(
+        env, env->CallObjectMethod(j_copy_on_write_list.Get(),
+                                   mid_copy_on_write_list_get, i));
+    if (element.IsNull()) {
+      raw_field_array.emplace_back(nullptr);
+      continue;
+    }
+    jobject element_obj = element.Get();
+    if (element_type == JObjectType::kUnknownType) {
+      element_type = GetJObjectTypeByJObject(env, element_obj);
+    }
+    raw_field_array.emplace_back(
+        ConvertJSIObjectFieldObject(env, element_obj, element_type));
+  }
+  return platform_jsi::JSIObject::Create(std::move(raw_field_array));
 }
 
 std::unique_ptr<platform_jsi::JSIObject>
