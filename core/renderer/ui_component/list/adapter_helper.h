@@ -32,9 +32,29 @@ class AdapterHelper {
    public:
     virtual void OnErrorOccurred(lynx::base::LynxError error) = 0;
   };
+
+  class DiffResult {
+   public:
+    std::vector<std::string> item_keys_;
+    // the data structure of the map is the <item-key,position>
+    std::unordered_map<std::string, int> item_key_map_;
+    std::vector<int32_t> insertions_;
+    std::vector<int32_t> removals_;
+    std::vector<int32_t> update_from_;
+    std::vector<int32_t> update_to_;
+    std::vector<int32_t> move_from_;
+    std::vector<int32_t> move_to_;
+
+    bool HasValidDiff() const {
+      return insertions_.size() > 0 || removals_.size() > 0 ||
+             move_to_.size() > 0 || move_from_.size() > 0 ||
+             update_to_.size() > 0 || update_from_.size() > 0;
+    }
+    std::string ToString() const;
+  };
   // radon-diff
   bool UpdateDiffResult(const lepus::Value& diff_result);
-  void UpdateItemKeys(const lepus::Value& item_keys);
+  void UpdateItemKeys(const lepus::Value& item_keys_value);
   void UpdateEstimatedHeightsPx(const lepus::Value& estimated_heights_px);
   void UpdateEstimatedSizesPx(const lepus::Value& estimated_sizes_px);
   void UpdateFullSpans(const lepus::Value& full_spans);
@@ -52,37 +72,38 @@ class AdapterHelper {
   void SetDelegate(AdapterHelper::Delegate* delegate) { delegate_ = delegate; }
 
   int32_t GetDateCount() const {
-    return static_cast<int32_t>(item_keys().size());
+    return static_cast<int32_t>(diff_result_.item_keys_.size());
   }
 
   std::optional<std::string> GetItemKeyForIndex(int index) const {
     if (index >= 0 && index < GetDateCount()) {
-      return std::make_optional<std::string>(item_keys_[index]);
+      return std::make_optional<std::string>(diff_result_.item_keys_[index]);
     }
     return std::nullopt;
   }
 
-  bool HasValidDiff();
+  bool HasValidDiff() const { return diff_result_.HasValidDiff(); }
 
   int GetIndexForItemKey(const std::string& item_key) const {
-    auto it = item_key_map_.end();
-    if (item_key_map_.end() != (it = item_key_map_.find(item_key))) {
+    const auto& item_key_map = diff_result_.item_key_map_;
+    auto it = item_key_map.end();
+    if (item_key_map.end() != (it = item_key_map.find(item_key))) {
       return it->second;
     }
     return list::kInvalidIndex;
   }
 
   void ClearDiffInfo() {
-    insertions_.clear();
-    removals_.clear();
-    update_from_.clear();
-    update_to_.clear();
-    move_from_.clear();
-    move_to_.clear();
+    diff_result_.insertions_.clear();
+    diff_result_.removals_.clear();
+    diff_result_.update_from_.clear();
+    diff_result_.update_to_.clear();
+    diff_result_.move_from_.clear();
+    diff_result_.move_to_.clear();
   }
 
   inline const std::vector<std::string>& item_keys() const {
-    return item_keys_;
+    return diff_result_.item_keys_;
   }
   inline const std::vector<int32_t>& estimated_heights_px() const {
     return estimated_heights_px_;
@@ -91,7 +112,7 @@ class AdapterHelper {
     return estimated_sizes_px_;
   }
   inline const std::unordered_map<std::string, int>& item_key_map() const {
-    return item_key_map_;
+    return diff_result_.item_key_map_;
   }
   inline const std::unordered_set<int32_t>& full_spans() const {
     return full_spans_;
@@ -102,27 +123,30 @@ class AdapterHelper {
   inline const std::vector<int32_t>& sticky_tops() const {
     return sticky_tops_;
   }
-  inline const std::vector<int32_t>& insertions() const { return insertions_; }
-  inline const std::vector<int32_t>& removals() const { return removals_; }
-  inline const std::vector<int32_t>& update_from() const {
-    return update_from_;
+  inline const std::vector<int32_t>& insertions() const {
+    return diff_result_.insertions_;
   }
-  inline const std::vector<int32_t>& update_to() const { return update_to_; }
-  inline const std::vector<int32_t>& move_from() const { return move_from_; }
-  inline const std::vector<int32_t>& move_to() const { return move_to_; }
+  inline const std::vector<int32_t>& removals() const {
+    return diff_result_.removals_;
+  }
+  inline const std::vector<int32_t>& update_from() const {
+    return diff_result_.update_from_;
+  }
+  inline const std::vector<int32_t>& update_to() const {
+    return diff_result_.update_to_;
+  }
+  inline const std::vector<int32_t>& move_from() const {
+    return diff_result_.move_from_;
+  }
+  inline const std::vector<int32_t>& move_to() const {
+    return diff_result_.move_to_;
+  }
   fml::RefPtr<lepus::Dictionary> GenerateDiffInfo() const;
 
  private:
   AdapterHelper::Delegate* delegate_{nullptr};
-  std::vector<std::string> item_keys_;
-  // the data structure of the map is the <item-key,position>
-  std::unordered_map<std::string, int> item_key_map_;
-  std::vector<int32_t> insertions_;
-  std::vector<int32_t> removals_;
-  std::vector<int32_t> update_from_;
-  std::vector<int32_t> update_to_;
-  std::vector<int32_t> move_from_;
-  std::vector<int32_t> move_to_;
+  DiffResult diff_result_;
+  DiffResult last_diff_result_;
   std::unordered_set<int32_t> full_spans_;
   std::vector<int32_t> sticky_tops_;
   std::vector<int32_t> sticky_bottoms_;
