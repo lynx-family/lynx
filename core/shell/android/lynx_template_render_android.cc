@@ -190,7 +190,8 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
              jboolean enable_async_hydration, jboolean enable_js_group_thread,
              jstring js_group_thread_name, jobject tasm_platform_invoker,
              jlong white_board_ptr, jlong ui_delegate_ptr,
-             jboolean use_invoke_ui_method) {
+             jboolean use_invoke_ui_method,
+             jboolean force_layout_on_background_thread) {
   auto* ui_delegate =
       reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
 
@@ -267,6 +268,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
               std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
                   env, tasm_platform_invoker))
           .SetTimingCollectorPlatform(sp_timing_collector_android)
+          .SetForceLayoutOnBackgroundThread(force_layout_on_background_thread)
           .build());
 }
 

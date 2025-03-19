@@ -882,8 +882,8 @@ public class LynxEnv {
     return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP_GLOBAL, false);
   }
 
-  public boolean enableLayoutOnBackgroundThread() {
-    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_LAYOUT_ON_BACKGROUND_THREAD, false);
+  public boolean shouldForceLayoutOnBackgroundThread() {
+    return getBooleanFromExternalEnv(LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD, false);
   }
 
   public boolean isLayoutOnlyEnabled() {

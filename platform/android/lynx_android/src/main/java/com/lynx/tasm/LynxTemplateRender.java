@@ -209,7 +209,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private boolean mEnableSyncFlush;
 
-  private boolean mEnableLayoutOnBackgroundThread = LynxEnv.inst().enableLayoutOnBackgroundThread();
+  private boolean mForceLayoutOnBackgroundThread =
+      LynxEnv.inst().shouldForceLayoutOnBackgroundThread();
 
   private boolean mEnableJSRuntime;
 
@@ -303,13 +304,13 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
 
-    // force disabling mEnableLayoutOnBackgroundThread when mAutoConcurrency is enabled.
+    // force disabling mForceLayoutOnBackgroundThread when mAutoConcurrency is enabled.
     if (mAutoConcurrency) {
-      mEnableLayoutOnBackgroundThread = false;
+      mForceLayoutOnBackgroundThread = false;
     }
 
-    // Force enabling layout thread when mEnableLayoutOnBackgroundThread is enabled.
-    if (mEnableLayoutOnBackgroundThread) {
+    // Force enabling layout thread when mForceLayoutOnBackgroundThread is enabled.
+    if (mForceLayoutOnBackgroundThread) {
       mThreadStrategyForRendering = mAsyncRender ? ThreadStrategyForRendering.MULTI_THREADS
                                                  : ThreadStrategyForRendering.PART_ON_LAYOUT;
     }
@@ -403,7 +404,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     // use screen width as width measure spec by default
     // in order to avoid relayout when onMeasure in the maximum extent.
     // TODO(heshan): consider use screen width by default to avoid relayout
-    if ((mAutoConcurrency || mEnableLayoutOnBackgroundThread) && widthMeasureSpec == 0
+    if ((mAutoConcurrency || mForceLayoutOnBackgroundThread) && widthMeasureSpec == 0
         && heightMeasureSpec == 0) {
       widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(
           mLynxContext.getResources().getDisplayMetrics().widthPixels, View.MeasureSpec.EXACTLY);
@@ -688,7 +689,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
             || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal(),
         mLynxViewBuilder.enableAsyncHydration, mGroup != null && mGroup.enableJSGroupThread(),
         getJSGroupThreadNameIfNeed(), new TasmPlatformInvoker(mNativeFacade), whiteBoardPtr,
-        lynxUIRenderer.getUIDelegatePtr(), lynxUIRenderer.useInvokeUIMethod());
+        lynxUIRenderer.getUIDelegatePtr(), lynxUIRenderer.useInvokeUIMethod(),
+        mForceLayoutOnBackgroundThread);
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
     mNativeLifecycle = nativeLifecycleCreate();
     mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
@@ -1644,7 +1646,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
     onTraceEventBegin(eventName);
 
-    if (mEnableLayoutOnBackgroundThread && !mAsyncRender) {
+    if (mForceLayoutOnBackgroundThread && !mAsyncRender) {
       maybeSyncLayoutResultDuringLayoutOnBackgroundThread(widthMeasureSpec, heightMeasureSpec);
     } else {
       if (mEnableSyncFlush) {
@@ -3342,7 +3344,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       boolean enablePreUpdateData, boolean enableAutoConcurrency,
       boolean enableVSyncAlignedMessageLoop, boolean enableAsyncHydration,
       boolean enableJSGroupThread, String jsGroupThreadName, Object tasmPlatformInvoker,
-      long whiteboard, long uiDelegate, boolean useInvokeUIMethod);
+      long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
+      boolean forceLayoutOnBackgroundThread);
 
   private static native void nativeDestroy(long ptr);
 
