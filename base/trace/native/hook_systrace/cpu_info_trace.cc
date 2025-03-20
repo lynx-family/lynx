@@ -7,6 +7,7 @@
 #include <string>
 
 #include "base/include/log/logging.h"
+#include "base/trace/native/internal_trace_category.h"
 #include "base/trace/native/trace_event.h"
 
 #if OS_ANDROID

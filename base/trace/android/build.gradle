@@ -123,6 +123,18 @@ android {
        }
 
    }
+
+    buildFeatures {
+        prefabPublishing true
+    }
+
+
+    prefab {
+        lynxtrace {
+            headers "src/main/cpp/include"
+        }
+    }
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -170,6 +182,36 @@ task configGnCompileParas {
     }
     writeGnArgs(gnBuildArgs_map.toJSONString())
 }
+
+task copyPublicHeaders {
+    // public headers
+    def header_list = ['trace_event_utils_perfetto.h',
+                        'trace_event_utils_systrace.h',
+                        'trace_export.h',
+                        'track_event_wrapper.h']
+    if (enable_trace == "perfetto") {
+        header_list += ['trace_event_perfetto.h']
+    } else if (enable_trace == "systrace") {
+        header_list += ['trace_event_systrace.h']
+    } else {
+        header_list += ['trace_event_mock.h']
+    }
+    doFirst {
+        copy {
+            from fileTree(dir: '../native/', include: header_list)
+            into 'src/main/cpp/include/base/trace/native/'
+            rename { String fileName ->
+                if ((fileName == 'trace_event_perfetto.h') ||
+                    (fileName == 'trace_event_systrace.h') ||
+                    (fileName == 'trace_event_mock.h')) {
+                    return "trace_event.h"
+                }
+            }
+        }
+    }
+}
+
+preBuild.dependsOn copyPublicHeaders
 
 dependencies {
     compileOnly 'androidx.annotation:annotation:1.0.0'

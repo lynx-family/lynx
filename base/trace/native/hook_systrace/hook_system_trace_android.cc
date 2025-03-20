@@ -4,6 +4,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/trace/native/hook_systrace/hook_system_trace.h"
+#include "base/trace/native/internal_trace_category.h"
 #include "base/trace/native/trace_event.h"
 #include "third_party/xhook/libxhook/jni/xhook.h"
 

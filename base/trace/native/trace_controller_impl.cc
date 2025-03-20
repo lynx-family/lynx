@@ -30,6 +30,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/thread/timed_task.h"
+#include "base/trace/native/internal_trace_category.h"
 #include "base/trace/native/trace_event_utils_perfetto.h"
 #include "base/trace/native/track_event_wrapper.h"
 #include "third_party/rapidjson/document.h"

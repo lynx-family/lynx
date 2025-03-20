@@ -26,7 +26,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/trace/native/internal_trace_category.h"
 #include "base/trace/native/trace_export.h"
 #include "base/trace/native/track_event_wrapper.h"
 
