@@ -7,41 +7,33 @@
 #include <utility>
 
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/lynx_env_config.h"
+#include "core/renderer/ui_wrapper/layout/layout_computed_style_setter.h"
 
 namespace lynx {
 namespace tasm {
-
-namespace {
-void UpdateStyleWithEnvConfig(starlight::ComputedCSSStyle& css_style,
-                              const tasm::LynxEnvConfig& envs) {
-  css_style.SetScreenWidth(envs.ScreenWidth());
-  css_style.SetFontScale(envs.FontScale());
-  css_style.SetViewportWidth(envs.ViewportWidth());
-  css_style.SetViewportHeight(envs.ViewportHeight());
-}
-
-}  // namespace
 
 LayoutNode::LayoutNode(int id, const starlight::LayoutConfigs& layout_configs,
                        const tasm::LynxEnvConfig& envs,
                        const starlight::ComputedCSSStyle& init_style)
     : type_(LayoutNodeType::COMMON),
-      css_style_(std::make_unique<starlight::ComputedCSSStyle>(init_style)),
+      css_style_(std::make_unique<starlight::LayoutComputedStyle>(
+          *init_style.GetConstLayoutComputedStyle())),
+      measure_context_(init_style.GetMeasureContext()),
+      parser_configs_(init_style.ParserConfigs()),
+      style_setter_{measure_context_, parser_configs_,
+                    layout_configs.css_align_with_legacy_w3c_, *css_style_},
       id_(id) {
-  sl_node_ = std::make_unique<SLNode>(layout_configs,
-                                      css_style_->GetLayoutComputedStyle());
-  css_style_->SetFontScaleOnlyEffectiveOnSp(layout_configs.font_scale_sp_only_);
-  css_style_->SetCssAlignLegacyWithW3c(
-      layout_configs.css_align_with_legacy_w3c_);
-  UpdateStyleWithEnvConfig(*css_style_, envs);
+  sl_node_ = std::make_unique<SLNode>(layout_configs, css_style_.get());
+  UpdateStyleWithEnvConfig(envs);
 }
 
 LayoutNode::~LayoutNode() { sl_node_ = nullptr; }
 
 void LayoutNode::ConsumeStyle(CSSPropertyID id, const tasm::CSSValue& value,
-                              bool reset) {
-  if (css_style_->SetValue(id, value, reset)) {
+                              bool reset) const {
+  if (style_setter_.SetValue(id, value, reset)) {
     sl_node_->MarkDirty();
   }
 }
@@ -78,10 +70,29 @@ void LayoutNode::ConsumeAttribute(starlight::LayoutAttribute key,
 void LayoutNode::ConsumeFontSize(double cur_node_font_size,
                                  double root_node_font_size,
                                  double font_scale) {
-  if (css_style_->SetFontSize(cur_node_font_size, root_node_font_size) ||
-      css_style_->SetFontScale(font_scale)) {
+  if (SetFontSize(cur_node_font_size, root_node_font_size) ||
+      SetFontScale(font_scale)) {
     sl_node_->MarkDirty();
   }
+}
+
+bool LayoutNode::SetFontSize(double cur_node_font_size,
+                             double root_node_font_size) {
+  if (measure_context_.cur_node_font_size_ == cur_node_font_size &&
+      measure_context_.root_node_font_size_ == root_node_font_size) {
+    return false;
+  }
+  measure_context_.cur_node_font_size_ = cur_node_font_size;
+  measure_context_.root_node_font_size_ = root_node_font_size;
+  return true;
+}
+
+bool LayoutNode::SetFontScale(float font_scale) {
+  if (font_scale == measure_context_.font_scale_) {
+    return false;
+  }
+  measure_context_.font_scale_ = font_scale;
+  return true;
 }
 
 void LayoutNode::InsertNode(LayoutNode* child, int index) {
@@ -271,6 +282,13 @@ void LayoutNode::MarkDirtyInternal(bool request_layout) {
   }
   is_dirty_ = true;
 }
+void LayoutNode::UpdateStyleWithEnvConfig(const tasm::LynxEnvConfig& envs) {
+  measure_context_.screen_width_ = envs.ScreenWidth();
+  css_style_->SetScreenWidth(envs.ScreenWidth());
+  measure_context_.font_scale_ = envs.FontScale();
+  measure_context_.viewport_width_ = envs.ViewportWidth();
+  measure_context_.viewport_height_ = envs.ViewportHeight();
+}
 
 void LayoutNode::MarkUpdated() {
   is_dirty_ = false;
@@ -280,7 +298,7 @@ void LayoutNode::MarkUpdated() {
 }
 
 void LayoutNode::UpdateLynxEnv(const tasm::LynxEnvConfig& config) {
-  UpdateStyleWithEnvConfig(*css_style_, config);
+  UpdateStyleWithEnvConfig(config);
   for (auto& child : children_) {
     child->UpdateLynxEnv(config);
   }
@@ -293,6 +311,5 @@ void LayoutNode::SetTag(const base::String& tag) {
   }
 }
 
-#undef FOREACH_LAYOUT_PROPERTY
 }  // namespace tasm
 }  // namespace lynx

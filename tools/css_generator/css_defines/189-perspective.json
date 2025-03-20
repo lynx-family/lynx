@@ -5,7 +5,7 @@
     "default_value": "none",
     "version": "2.1",
     "author": "wujintian",
-    "consumption_status": "layout-wanted",
+    "consumption_status": "skip",
     "desc": "",
     "values": [
         {

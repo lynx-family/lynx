@@ -6,113 +6,25 @@
 #define CORE_RENDERER_UI_WRAPPER_LAYOUT_LAYOUT_NODE_H_
 
 #include <memory>
-#include <set>
 
 #include "base/include/string/string_utils.h"
 #include "base/include/vector.h"
 #include "core/public/layout_node_value.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/types/layout_measurefunc.h"
-#include "core/renderer/utils/base/base_def.h"
+#include "core/renderer/ui_wrapper/layout/layout_computed_style_setter.h"
 
 namespace lynx {
 namespace tasm {
 
-#define FOREACH_LAYOUT_PROPERTY(V)    \
-  V(Top, LAYOUT_ONLY)                 \
-  V(Left, LAYOUT_ONLY)                \
-  V(Right, LAYOUT_ONLY)               \
-  V(Bottom, LAYOUT_ONLY)              \
-  V(Width, LAYOUT_ONLY)               \
-  V(MaxWidth, LAYOUT_ONLY)            \
-  V(MinWidth, LAYOUT_ONLY)            \
-  V(Height, LAYOUT_ONLY)              \
-  V(MaxHeight, LAYOUT_ONLY)           \
-  V(MinHeight, LAYOUT_ONLY)           \
-  V(PaddingLeft, LAYOUT_ONLY)         \
-  V(PaddingRight, LAYOUT_ONLY)        \
-  V(PaddingTop, LAYOUT_ONLY)          \
-  V(PaddingBottom, LAYOUT_ONLY)       \
-  V(MarginLeft, LAYOUT_ONLY)          \
-  V(MarginRight, LAYOUT_ONLY)         \
-  V(MarginTop, LAYOUT_ONLY)           \
-  V(MarginBottom, LAYOUT_ONLY)        \
-  V(BorderLeftWidth, LAYOUT_WANTED)   \
-  V(BorderRightWidth, LAYOUT_WANTED)  \
-  V(BorderTopWidth, LAYOUT_WANTED)    \
-  V(BorderBottomWidth, LAYOUT_WANTED) \
-  V(FlexBasis, LAYOUT_ONLY)           \
-  V(FlexGrow, LAYOUT_ONLY)            \
-  V(FlexShrink, LAYOUT_ONLY)          \
-  V(LinearWeightSum, LAYOUT_ONLY)     \
-  V(LinearWeight, LAYOUT_ONLY)        \
-  V(AspectRatio, LAYOUT_ONLY)         \
-  V(RelativeId, LAYOUT_ONLY)          \
-  V(RelativeAlignTop, LAYOUT_ONLY)    \
-  V(RelativeAlignRight, LAYOUT_ONLY)  \
-  V(RelativeAlignBottom, LAYOUT_ONLY) \
-  V(RelativeAlignLeft, LAYOUT_ONLY)   \
-  V(RelativeTopOf, LAYOUT_ONLY)       \
-  V(RelativeRightOf, LAYOUT_ONLY)     \
-  V(RelativeBottomOf, LAYOUT_ONLY)    \
-  V(RelativeLeftOf, LAYOUT_ONLY)      \
-  V(RelativeLayoutOnce, LAYOUT_ONLY)  \
-  V(Order, LAYOUT_ONLY)               \
-  V(Flex, LAYOUT_ONLY)                \
-  V(BorderWidth, LAYOUT_WANTED)       \
-  V(Padding, LAYOUT_ONLY)             \
-  V(Margin, LAYOUT_ONLY)              \
-  V(Border, LAYOUT_WANTED)            \
-  V(BorderRight, LAYOUT_WANTED)       \
-  V(BorderLeft, LAYOUT_WANTED)        \
-  V(BorderTop, LAYOUT_WANTED)         \
-  V(BorderBottom, LAYOUT_WANTED)      \
-  V(Flex, LAYOUT_ONLY)                \
-  V(FlexDirection, LAYOUT_ONLY)       \
-  V(FlexWrap, LAYOUT_ONLY)            \
-  V(AlignItems, LAYOUT_ONLY)          \
-  V(AlignSelf, LAYOUT_ONLY)           \
-  V(AlignContent, LAYOUT_ONLY)        \
-  V(JustifyContent, LAYOUT_ONLY)      \
-  V(LinearOrientation, LAYOUT_ONLY)   \
-  V(LinearLayoutGravity, LAYOUT_ONLY) \
-  V(LinearGravity, LAYOUT_ONLY)       \
-  V(LinearCrossGravity, LAYOUT_ONLY)  \
-  V(RelativeCenter, LAYOUT_ONLY)      \
-  V(Position, LAYOUT_ONLY)            \
-  V(Display, LAYOUT_ONLY)             \
-  V(BoxSizing, LAYOUT_ONLY)           \
-  V(Content, LAYOUT_ONLY)             \
-  V(Direction, LAYOUT_WANTED)         \
-  V(GridTemplateColumns, LAYOUT_ONLY) \
-  V(GridTemplateRows, LAYOUT_ONLY)    \
-  V(GridAutoColumns, LAYOUT_ONLY)     \
-  V(GridAutoRows, LAYOUT_ONLY)        \
-  V(GridColumnSpan, LAYOUT_ONLY)      \
-  V(GridRowSpan, LAYOUT_ONLY)         \
-  V(GridColumnStart, LAYOUT_ONLY)     \
-  V(GridColumnEnd, LAYOUT_ONLY)       \
-  V(GridRowStart, LAYOUT_ONLY)        \
-  V(GridRowEnd, LAYOUT_ONLY)          \
-  V(GridColumnGap, LAYOUT_ONLY)       \
-  V(GridRowGap, LAYOUT_ONLY)          \
-  V(JustifyItems, LAYOUT_ONLY)        \
-  V(JustifySelf, LAYOUT_ONLY)         \
-  V(GridAutoFlow, LAYOUT_ONLY)        \
-  V(ListCrossAxisGap, LAYOUT_WANTED)  \
-  V(LinearDirection, LAYOUT_ONLY)     \
-  V(VerticalAlign, LAYOUT_WANTED)     \
-  V(Gap, LAYOUT_ONLY)                 \
-  V(ColumnGap, LAYOUT_ONLY)           \
-  V(RowGap, LAYOUT_ONLY)
-
 class LayoutContext;
 
 enum ConsumptionStatus { LAYOUT_ONLY = 0, LAYOUT_WANTED = 1, SKIP = 2 };
-
+struct LayoutComputedStyleSetter;
 class LayoutNode {
  public:
   explicit LayoutNode(int id, const starlight::LayoutConfigs& layout_configs,
@@ -143,7 +55,7 @@ class LayoutNode {
   void ConsumeFontSize(double cur_node_font_size, double root_node_font_size,
                        double font_scale);
   void ConsumeStyle(CSSPropertyID id, const tasm::CSSValue& value,
-                    bool reset = false);
+                    bool reset = false) const;
   void ConsumeAttribute(const starlight::LayoutAttribute key,
                         const lepus::Value& value, bool reset = false);
 
@@ -168,7 +80,6 @@ class LayoutNode {
   LayoutNode* FindNextNonVirtualChild(size_t before_index) const;
 
   void SetTag(const base::String& tag);
-  starlight::ComputedCSSStyle* GetCSSMutableStyle() { return css_style_.get(); }
 
  protected:
   bool is_dirty_ = false;
@@ -184,7 +95,10 @@ class LayoutNode {
   // Whether node is a native list element which needs to invoke
   // OnListElementUpdated() callback after layout.
   bool is_list_container_{false};
-  std::unique_ptr<starlight::ComputedCSSStyle> css_style_;
+  std::unique_ptr<starlight::LayoutComputedStyle> css_style_;
+  CssMeasureContext measure_context_;
+  CSSParserConfigs parser_configs_;
+  LayoutComputedStyleSetter style_setter_;
 
  private:
   int id_;
@@ -192,6 +106,9 @@ class LayoutNode {
   LayoutNode(const LayoutNode&) = delete;
   LayoutNode& operator=(const LayoutNode&) = delete;
   void MarkDirtyInternal(bool request_layout);
+  void UpdateStyleWithEnvConfig(const tasm::LynxEnvConfig& envs);
+  bool SetFontSize(double cur_node_font_size, double root_node_font_size);
+  bool SetFontScale(float font_scale);
 };
 
 }  // namespace tasm

@@ -7,6 +7,8 @@ import("//lynx/testing/test.gni")
 
 # ui_wrapper_layout_shared_sources
 ui_wrapper_layout_shared_sources = [
+  "layout_computed_style_setter.cc",
+  "layout_computed_style_setter.h",
   "layout_context.cc",
   "layout_context.h",
   "layout_context_data.h",

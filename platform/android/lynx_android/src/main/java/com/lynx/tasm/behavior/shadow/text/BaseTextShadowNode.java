@@ -1,7 +1,7 @@
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
  * All rights reserved.
- *
+ * <p>
  * This source code is licensed under the BSD-style license found in the
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
@@ -626,6 +626,10 @@ public class BaseTextShadowNode extends ShadowNode {
         }
 
         layoutNode.alignNativeNode(ctx, nParam);
+        // FIXME(renzhongyue): this is a workaround that NativeLayoutNodeRef will not receive the
+        // onLayout callback to reset the dirty mark, since it doesn't have a customized measure
+        // function, the engine thinks it doesn't need that layout result.
+        layoutNode.resetIsDirty();
       } else if (child instanceof InlineTextShadowNode
           || child instanceof InlineTruncationShadowNode) {
         ((BaseTextShadowNode) child).alignNativeNode(layout, sb, param, ctx, textTranslateOffset);

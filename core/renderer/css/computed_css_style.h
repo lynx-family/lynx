@@ -27,6 +27,7 @@
 #include "core/renderer/starlight/style/surround_data.h"
 #include "core/renderer/starlight/types/layout_types.h"
 #include "core/renderer/tasm/config.h"
+#include "core/renderer/ui_wrapper/layout/layout_computed_style_setter.h"
 #include "core/style/animation_data.h"
 #include "core/style/background_data.h"
 #include "core/style/default_computed_style.h"
@@ -40,6 +41,9 @@
 #include "core/style/transform_raw_data.h"
 #include "core/style/transition_data.h"
 
+namespace lynx::tasm {
+struct LayoutComputedStyleSetter;
+}
 namespace lynx {
 namespace starlight {
 /** CSSStyle stores the specified values of all CSS properties.
@@ -101,7 +105,9 @@ class ComputedCSSStyle {
         physical_pixels_per_layout_unit);
   }
 
-  const tasm::CssMeasureContext& GetMeasureContext() { return length_context_; }
+  const tasm::CssMeasureContext& GetMeasureContext() const {
+    return length_context_;
+  }
 
   void Reset();
   void ResetValue(tasm::CSSPropertyID id);
@@ -161,6 +167,10 @@ class ComputedCSSStyle {
     parser_configs_ = configs;
   }
 
+  const tasm::CSSParserConfigs& ParserConfigs() const {
+    return parser_configs_;
+  }
+
   int GetZIndex() const { return z_index_; }
 
   bool HasOpacity() const { return base::FloatsNotEqual(opacity_, 1.0f); }
@@ -210,7 +220,6 @@ class ComputedCSSStyle {
 
   int z_index_{DefaultComputedStyle::DEFAULT_LONG};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
-
   OverflowType overflow_{DefaultComputedStyle::DEFAULT_OVERFLOW};
   OverflowType overflow_x_{DefaultComputedStyle::DEFAULT_OVERFLOW};
   OverflowType overflow_y_{DefaultComputedStyle::DEFAULT_OVERFLOW};
@@ -256,16 +265,9 @@ class ComputedCSSStyle {
 
   void ResetOverflow();
 
-// style setter by CSSValue
-#define SET_WITH_CSS_VALUE(name, css_name, default_value) \
-  bool Set##name(const tasm::CSSValue& value, const bool reset = false);
-  FOREACH_ALL_PROPERTY(SET_WITH_CSS_VALUE)
-#undef SET_WITH_CSS_VALUE
-
 // platform style getter
 #define FOREACH_PLATFORM_PROPERTY(V)     \
   V(Opacity)                             \
-  V(Position)                            \
   V(Overflow)                            \
   V(OverflowX)                           \
   V(OverflowY)                           \
@@ -372,7 +374,15 @@ class ComputedCSSStyle {
   V(Hyphens)                             \
   V(XAppRegion)                          \
   V(XHandleSize)                         \
+  V(XAnimationColorInterpolation)        \
   V(XHandleColor)
+
+  // style setter by CSSValue
+#define SET_WITH_CSS_VALUE(name, name_str, default_value) \
+  bool Set##name(const tasm::CSSValue& value, const bool reset = false);
+  FOREACH_ALL_PROPERTY(SET_WITH_CSS_VALUE)
+#undef SET_WITH_CSS_VALUE
+
 #define GETTER_STYLE_STRING(name) lepus_value name##ToLepus();
   FOREACH_PLATFORM_PROPERTY(GETTER_STYLE_STRING)
 #undef GET_WITH_STRING
@@ -389,6 +399,8 @@ class ComputedCSSStyle {
 #undef INHERIT_CSS_VALUE
 
  private:
+  tasm::LayoutComputedStyleSetter layout_computed_style_setter_;
+
   float GetBorderFinalWidth(float width, BorderStyleType style) const {
     return (style != BorderStyleType::kNone && style != BorderStyleType::kHide)
                ? width
