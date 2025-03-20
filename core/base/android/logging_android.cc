@@ -57,8 +57,6 @@ void PrintLogMessageByLogDelegate(LogMessage* msg, const char* tag) {
 
 bool RegisterJNI(JNIEnv* env) { return RegisterNativesImpl(env); }
 
-long GetALogPtr(JNIEnv* env) { return Java_LLog_getALogPtr(env); }
-
 void InitLynxLog() {
   InitLynxLogging(InitAlog, PrintLogMessageByLogDelegate,
                   tasm::LynxEnv::GetInstance().IsDevToolEnabled());

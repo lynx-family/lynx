@@ -16,8 +16,6 @@ namespace logging {
 
 BASE_EXPORT_FOR_DEVTOOL bool RegisterJNI(JNIEnv* env);
 
-BASE_EXPORT_FOR_DEVTOOL long GetALogPtr(JNIEnv* env);
-
 BASE_EXPORT_FOR_DEVTOOL void InitLynxLog();
 
 }  // namespace logging

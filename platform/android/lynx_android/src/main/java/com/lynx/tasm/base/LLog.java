@@ -34,7 +34,6 @@ public class LLog {
 
   private static AbsLogDelegate sDebugLoggingDelegate;
   private static int sALogMinLogLevel = BuildConfig.DEBUG ? DEBUG : INFO;
-  private static long alogNativePtr = 0;
 
   private static boolean sIsNativeLibLoad = false;
   private static final int sDefaultRuntimeId = -1;
@@ -276,7 +275,7 @@ public class LLog {
       address = service.getDefaultWriteFunction();
     }
     if (address != 0) {
-      initALog(address);
+      nativeInitALogNative(address);
       Log.i(TAG, "LynxLog dependency load successfully. function native address is " + address);
       return;
     }
@@ -289,10 +288,8 @@ public class LLog {
     }
   }
 
-  public static void initALog(long addr) {
-    alogNativePtr = addr;
-    nativeInitALogNative(addr);
-  }
+  @Deprecated
+  public static void initALog(long addr) {}
 
   private static native void nativeSetNativeMinLogLevel(int level);
   private static native void nativeInitALogNative(long addr);
@@ -344,11 +341,6 @@ public class LLog {
   private static void logByte(int priority, String tag, byte[] msg, int source, long runtimeId,
       int channelType, int messageStart) {
     log(priority, tag, new String(msg), source, runtimeId, channelType, messageStart);
-  }
-
-  @CalledByNative
-  private static long getALogPtr() {
-    return alogNativePtr;
   }
 
   // deprecated functions
