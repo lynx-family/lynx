@@ -10,9 +10,6 @@ lynx_core_source_set("css") {
   check_includes = false
   sources = lynx_css_core_sources_path + lynx_css_runtime_sources_path
 
-  # FIXME(renzhongyue): Check file contents to prevent duplicated
-  # compilation for the generated file
-  exec_script("//lynx/tools/css_generator/css_parser_generator.py")
   public_deps = [
     "//lynx/core/base",
     "//lynx/core/runtime/vm/lepus",

@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/css/css_utils.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/element_manager.h"
@@ -19,6 +18,7 @@
 #include "core/renderer/starlight/style/auto_gen_css_type.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "core/style/css_property_id.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

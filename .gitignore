@@ -95,7 +95,7 @@ js_libraries/lynx-core/src/common/feature.ts
 
 /core/renderer/css/auto_gen_css_decoder.h
 /core/renderer/css/auto_gen_css_decoder.cc
-/core/renderer/css/css_property_id.h
+/core/style/css_property_id.h
 /core/renderer/css/css_property_auto_gen_unittest.cc
 /core/renderer/css/parser/animation_property_handler.h
 /core/renderer/css/parser/bool_handler.h

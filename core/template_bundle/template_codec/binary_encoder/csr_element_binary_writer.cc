@@ -12,12 +12,12 @@
 
 #include "base/include/sorted_for_each.h"
 #include "core/renderer/css/css_property.h"
-#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/runtime/vm/lepus/exception.h"
 #include "core/runtime/vm/lepus/json_parser.h"
+#include "core/style/css_property_id.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser_token.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 

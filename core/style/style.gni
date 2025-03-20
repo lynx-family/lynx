@@ -1,4 +1,5 @@
 style_shared_sources = rebase_path([
+                                     "css_property_id.h",
                                      "animation_data.cc",
                                      "animation_data.h",
                                      "background_data.cc",

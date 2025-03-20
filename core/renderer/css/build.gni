@@ -24,7 +24,6 @@ lynx_css_core_sources = [
   "css_parser_token.h",
   "css_property.cc",
   "css_property.h",
-  "css_property_id.h",
   "css_selector_constants.cc",
   "css_selector_constants.h",
   "css_sheet.cc",

@@ -6,6 +6,7 @@ import("//lynx/core/Lynx.gni")
 import("style.gni")
 
 lynx_core_source_set("style") {
+  exec_script("//lynx/tools/css_generator/css_parser_generator.py")
   sources = style_shared_sources
   deps = [ "//lynx/base/src:base_log_headers" ]
 }

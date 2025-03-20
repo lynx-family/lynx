@@ -14,8 +14,8 @@
 #include "base/include/linked_hash_map.h"
 #include "base/include/no_destructor.h"
 #include "base/include/value/base_string.h"
-#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/css/css_value.h"
+#include "core/style/css_property_id.h"
 
 namespace lynx {
 namespace tasm {

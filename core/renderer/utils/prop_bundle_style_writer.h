@@ -7,7 +7,7 @@
 
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/computed_css_style.h"
-#include "core/renderer/css/css_property_id.h"
+#include "core/style/css_property_id.h"
 
 namespace lynx {
 namespace tasm {

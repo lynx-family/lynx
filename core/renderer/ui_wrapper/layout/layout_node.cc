@@ -8,6 +8,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/lynx_env_config.h"
+#include "core/style/css_property_id.h"
 
 namespace lynx {
 namespace tasm {
@@ -293,6 +294,5 @@ void LayoutNode::SetTag(const base::String& tag) {
   }
 }
 
-#undef FOREACH_LAYOUT_PROPERTY
 }  // namespace tasm
 }  // namespace lynx

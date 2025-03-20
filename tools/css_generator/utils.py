@@ -4,10 +4,9 @@
 
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
-import re
+
 import string
 import os
-import sys
 from datetime import datetime
 
 
@@ -17,10 +16,11 @@ def underline2hump(text):
     if index == 0:
       newstr[index] = ch.upper()
     if (ch == '-'):
-      if (index+1 < len(text)):
+      if (index + 1 < len(text)):
         newstr[index] = ''
-        newstr[index+1] = newstr[index+1].upper()
+        newstr[index + 1] = newstr[index + 1].upper()
   return ''.join(newstr)
+
 
 def hump2underline(text):
     lst = []
@@ -29,6 +29,7 @@ def hump2underline(text):
             lst.append("_")
         lst.append(char)
     return "".join(lst).upper()
+
 
 def genFilename(css_name):
   return css_name.replace('-', '_') + "_handler"
@@ -72,7 +73,7 @@ def getOCStyleConstantPath():
 def getAutoGenOCStyleConstantPath():
   return getHomePath() + "platform/darwin/common/lynx/public/base/LynxAutoGenCSSType.h"
 def getCSSPropertyPath():
-  return getHomePath() + "core/renderer/css/css_property_id.h"
+  return getHomePath() + "core/style/css_property_id.h"
 
 # TODO(zhengsenyao): Change to path
 def getJavaCSSPropertyPath():
@@ -158,7 +159,7 @@ def generate_macros(file_path):
 """
   return ifndef_macro, define_macro, endif_macro
 
-def genPropID(path, css_types):
+def genPropID(path, css_types, layout_types, layout_property_macro):
   current_year = datetime.now().year
   copyright = f"""// Copyright {current_year} The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
@@ -204,20 +205,28 @@ enum CSSPropertyID : int32_t {
 #undef DECLARE_PROPERTY_ID
       kPropertyEnd
 };
+"""
+
+  namespace_suffix = """
+    
 }  // namespace tasm
 }  // namespace lynx
 #endif  // CORE_RENDERER_CSS_CSS_PROPERTY_ID_H_
 // AUTO INSERT END, DON'T CHANGE IT!
 
 """
+
   with open(path, 'w', encoding="utf-8") as file:
-    file.seek(0,0)
+    file.seek(0, 0)
     file.write(copyright)
     file.write(prefix)
     file.write(namespace)
     file.write(extra_prefix)
     file.write(css_types)
     file.write(suffix)
+    file.write(layout_types)
+    file.write(layout_property_macro)
+    file.write(namespace_suffix)
 
   formatCode(path)
 
@@ -287,7 +296,7 @@ def genTest(path, json_obj):
 // AUTO INSERT, DON'T CHANGE IT!
 
 #include "core/renderer/css/css_property.h"
-#include "core/renderer/css/css_property_id.h"
+#include "core/style/css_property_id.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
@@ -314,12 +323,13 @@ TEST(CSSProperty, Order) {
         val['name']), order=val['id'] + 1)
   test_str += "  EXPECT_EQ(kPropertyEnd, " + str(len(json_obj) + 1) + ");\n"
   with open(path, 'w', encoding="utf-8") as file:
-    file.seek(0,0)
+    file.seek(0, 0)
     file.write(copyright)
     file.write(prefix)
     file.write(test_str)
     file.write(suffix)
   formatCode(path)
+
 
 def genCSSType(path, css_types):
   current_year = datetime.now().year
@@ -391,6 +401,7 @@ def genOCLynxCSSType(path, css_types):
     file.write(css_types)
     file.write(suffix)
   formatCode(path)
+
 
 def genJavaStyleConstants(path, source):
   current_year = datetime.now().year

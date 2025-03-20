@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/css/css_property.h"
 
-#include "core/renderer/css/css_property_id.h"
+#include "core/style/css_property_id.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
