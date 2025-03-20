@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 apply plugin: 'java'
-
+apply from: '../publish.gradle'
 sourceCompatibility = "1.8"
 targetCompatibility = "1.8"
 
