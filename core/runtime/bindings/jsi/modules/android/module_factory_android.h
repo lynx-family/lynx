@@ -21,22 +21,16 @@ class ModuleFactoryAndroid : public NativeModuleFactory {
   ModuleFactoryAndroid(JNIEnv* env, jobject moduleFactory);
   ~ModuleFactoryAndroid() override;
 
-  std::shared_ptr<LynxModule> CreatePlatformModule(
+  std::shared_ptr<LynxNativeModule> CreateModule(
       const std::string& name) override;
 
   bool RetainJniObject();
-
-  // TODO(liyanbo.monster):refactor remove this.
-  void SetModuleExtraInfo(std::shared_ptr<ModuleDelegate> delegate) override {
-    module_delegate_ = std::move(delegate);
-  }
 
   static bool RegisterJNIUtils(JNIEnv* env);
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
   base::android::ScopedGlobalJavaRef<jobject> strong_jni_object_;
-  std::shared_ptr<ModuleDelegate> module_delegate_;
 };
 
 }  // namespace piper

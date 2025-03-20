@@ -42,15 +42,10 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     }
   }
 
+  // Use platform module factory to create module for Android & iOS
   std::shared_ptr<LynxModule> lynx_module;
   if (!native_module && platform_module_factory_) {
-    platform_module_factory_->SetModuleExtraInfo(delegate);
-    // TODO(zhangqun): when android refact finished, delete this.
-#if OS_IOS || OS_TVOS || OS_OSX
     native_module = platform_module_factory_->CreateModule(name);
-#else
-    lynx_module = platform_module_factory_->CreatePlatformModule(name);
-#endif
   }
 
   if (native_module) {
@@ -61,9 +56,6 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     lynx_module = std::move(lynx_module_impl);
   }
   if (lynx_module) {
-#if ENABLE_TESTBENCH_RECORDER
-    lynx_module->SetRecordID(record_id_);
-#endif
     lynx_module->SetModuleInterceptor(group_interceptor_);
     itr = module_map_.emplace(name, std::move(lynx_module)).first;
     return itr->second;

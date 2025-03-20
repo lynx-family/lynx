@@ -10,6 +10,7 @@
 #include "core/base/android/jni_helper.h"
 #include "core/build/gen/LynxModuleFactory_jni.h"
 #include "core/runtime/bindings/jsi/interceptor/android/request_interceptor_android.h"
+#include "core/value_wrapper/android/value_impl_android.h"
 
 jboolean RetainJniObject(JNIEnv* env, jobject jcaller, jlong nativePtr) {
   lynx::piper::ModuleFactoryAndroid* module_manager =
@@ -55,7 +56,7 @@ bool ModuleFactoryAndroid::RetainJniObject() {
   return !strong_jni_object_.IsNull();
 }
 
-std::shared_ptr<LynxModule> ModuleFactoryAndroid::CreatePlatformModule(
+std::shared_ptr<LynxNativeModule> ModuleFactoryAndroid::CreateModule(
     const std::string& name) {
   base::android::ScopedLocalJavaRef<jobject> local_ref(jni_object_);
   if (local_ref.IsNull()) {
@@ -63,7 +64,7 @@ std::shared_ptr<LynxModule> ModuleFactoryAndroid::CreatePlatformModule(
          << "ModuleFactoryAndroid::ModuleFactoryAndroid, "
          << "bindingPtr, failed to find module: " << name
          << ", local_ref is IsNull()");
-    return std::shared_ptr<LynxModule>(nullptr);
+    return std::shared_ptr<LynxNativeModule>(nullptr);
   }
   JNIEnv* localEnv = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> moduleName =
@@ -71,11 +72,12 @@ std::shared_ptr<LynxModule> ModuleFactoryAndroid::CreatePlatformModule(
   auto wrapper = Java_LynxModuleFactory_moduleWrapperForName(
       localEnv, local_ref.Get(), moduleName.Get());
   if (wrapper.Get() != NULL) {
-    auto module = std::make_shared<lynx::piper::LynxModuleAndroid>(
-        localEnv, wrapper.Get(), module_delegate_);
-    return module;
+    auto android_value_factory =
+        std::make_shared<pub::ValueImplAndroidFactory>();
+    return std::make_shared<lynx::piper::LynxModuleAndroid>(
+        localEnv, wrapper.Get(), std::move(android_value_factory));
   }
-  return std::shared_ptr<LynxModule>(nullptr);
+  return std::shared_ptr<LynxNativeModule>(nullptr);
 }
 
 }  // namespace piper
