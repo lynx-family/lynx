@@ -85,6 +85,12 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
         lepus::Context::CreateContext(is_lepusng_binary, disable_tracing_gc);
   }
 
+  // TODO(nihao.royal): maybe add a platform interface to enable the checker
+  // later;
+  if (LynxEnv::GetInstance().IsDevToolEnabled()) {
+    vm_context_->EnableRuntimeLeakCheck(true);
+  }
+
   if (!vm_context_) {
     return false;
   }

@@ -168,6 +168,8 @@ class QuickContext : private LEPUSRuntimeData, public Context {
   void RemoveRuntimeProfiler();
 #endif
 
+  virtual void EnableRuntimeLeakCheck(bool enable) override;
+
  private:
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count,

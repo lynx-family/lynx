@@ -995,6 +995,10 @@ lepus::Value QuickContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
   return lepus::Value(context(), current_this_);
 }
 
+void QuickContext::EnableRuntimeLeakCheck(bool enable) {
+  SetObjectCtxCheckStatus(context(), enable);
+}
+
 #if ENABLE_TRACE_PERFETTO
 void QuickContext::SetRuntimeProfiler(
     std::shared_ptr<profile::RuntimeProfiler> runtime_profile) {
@@ -1002,7 +1006,6 @@ void QuickContext::SetRuntimeProfiler(
   profile::RuntimeProfilerManager::GetInstance()->AddRuntimeProfiler(
       runtime_profiler_);
 }
-
 void QuickContext::RemoveRuntimeProfiler() {
   profile::RuntimeProfilerManager::GetInstance()->RemoveRuntimeProfiler(
       runtime_profiler_);

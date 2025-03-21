@@ -153,6 +153,8 @@ class VMContext : public Context {
   virtual lepus::Value GetCurrentThis(lepus::Value* argv,
                                       int32_t offset) override;
 
+  virtual void EnableRuntimeLeakCheck(bool enable) override;
+
   class DebugDelegate {
    public:
     virtual ~DebugDelegate() = default;

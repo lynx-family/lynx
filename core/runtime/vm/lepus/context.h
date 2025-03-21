@@ -232,6 +232,8 @@ class Context {
 
   const std::string& GetDebugInfoURL() { return debug_info_url_; }
 
+  virtual void EnableRuntimeLeakCheck(bool enable){};
+
  protected:
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count, bool pause_suppression_mode) = 0;

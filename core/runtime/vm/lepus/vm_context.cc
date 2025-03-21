@@ -1541,5 +1541,9 @@ lepus::Value VMContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
   return *(argv + offset);
 }
 
+void VMContext::EnableRuntimeLeakCheck(bool enable) {
+  // VMContext does not support `SetObjectCtxCheckStatus`;
+}
+
 }  // namespace lepus
 }  // namespace lynx
