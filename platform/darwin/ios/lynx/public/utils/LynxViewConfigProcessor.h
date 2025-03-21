@@ -11,7 +11,8 @@ static NSString *const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 static NSString *const KEY_LYNX_RUNTIME_TYPE = @"runtime_type";
 static NSString *const KEY_LYNX_ENABLE_BYTECODE = @"enable_bytecode";
 static NSString *const KEY_LYNX_BYTECODE_URL = @"bytecode_url";
-
+static NSString *const KEY_LYNX_ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP =
+    @"enable_vsync_aligned_message_loop";
 @interface LynxViewConfigProcessor : NSObject
 
 + (void)processorMap:(NSMutableDictionary *)dictionary

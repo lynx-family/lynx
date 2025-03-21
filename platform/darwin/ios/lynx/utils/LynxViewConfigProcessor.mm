@@ -39,6 +39,13 @@
   if ([bytecodeUrl isKindOfClass:NSString.class]) {
     lynxViewBuilder.bytecodeUrl = (NSString *)bytecodeUrl;
   }
+
+  id enableVSyncAlignedMessageLoop =
+      [dictionary objectForKey:KEY_LYNX_ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP];
+  if ([enableVSyncAlignedMessageLoop isKindOfClass:NSNumber.class]) {
+    lynxViewBuilder.enableVSyncAlignedMessageLoop =
+        [(NSNumber *)enableVSyncAlignedMessageLoop intValue] == 1;
+  }
 }
 
 @end

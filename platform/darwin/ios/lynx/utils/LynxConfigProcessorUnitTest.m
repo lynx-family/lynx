@@ -127,4 +127,15 @@
   XCTAssertEqual(config.contextDict[@"key"], @"value");
 }
 
+- (void)testEnableVSyncAlignedMessageLoop {
+  NSMutableDictionary *params = [@{@"enable_vsync_aligned_message_loop" : @(1)} mutableCopy];
+  LynxViewBuilder *builder = [[LynxViewBuilder alloc] init];
+  [LynxViewConfigProcessor processorMap:params lynxViewBuilder:builder];
+  XCTAssertTrue(builder.enableVSyncAlignedMessageLoop);
+
+  params[@"enable_vsync_aligned_message_loop"] = @(0);
+  [LynxViewConfigProcessor processorMap:params lynxViewBuilder:builder];
+  XCTAssertFalse(builder.enableVSyncAlignedMessageLoop);
+}
+
 @end
