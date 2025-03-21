@@ -11,6 +11,19 @@ if [ ${ANDROID_NAME_LENGTH} -ne ${LIBRARY_NAME_LENGTH} ]; then
     echo "Error: ANDROID_NAME and LIBRARY_NAME arrays are not of the same length!"
     exit 1
 fi
+python3 -c "import yaml"
+if [ $? -eq 0 ]; then
+    echo "PyYAML installed"
+else
+    echo "PyYAML is not installed"
+    pip3 install PyYAML
+    python3 -c "import yaml"
+    if [ $? -eq 0 ]; then
+        echo "PyYAML installed successfully"
+    else
+        echo "PyYAML installation failed"
+    fi
+fi
 for index in $(seq 0 $(($ANDROID_NAME_LENGTH - 1)))
 do
     GEN_FILE=$CURRENT_PATH"/yaml_to_jni_configs.py"
@@ -18,5 +31,5 @@ do
     JAVA_ROOT_PATH=$CURRENT_PATH"/../../platform/android/"${ANDROID_NAME[index]}"java/"
     OUTPUT_DIR=$CURRENT_PATH"/../../"${LIBRARY_NAME[index]}"/build/jni/gen"
     INCLUDE_ROOT_DIR=${LIBRARY_NAME[index]}"/build/jni/gen"
-    $CURRENT_PATH/../vpython $GEN_FILE $LIBRARY_ROOT_PATH $JAVA_ROOT_PATH $OUTPUT_DIR $INCLUDE_ROOT_DIR
+    python3 $GEN_FILE $LIBRARY_ROOT_PATH $JAVA_ROOT_PATH $OUTPUT_DIR $INCLUDE_ROOT_DIR
 done
