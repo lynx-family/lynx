@@ -44,6 +44,12 @@ if (build_lynx_lepus_node) {
     "//lynx/third_party/modp_b64",
   ]
 
+  lynx_decoder_deps = [
+    "//lynx/core/template_bundle:template_bundle",
+    "//lynx/core/template_bundle:template_bundle_converter",
+    "//lynx/core/template_bundle/template_codec:template_decoder",
+  ]
+
   if (is_wasm) {
     wasm_static_lib("oliver_tasm_wasm") {
       output_name = "lepus"
@@ -76,7 +82,7 @@ if (build_lynx_lepus_node) {
             ]),
       ]
 
-      deps = lynx_encoder_deps
+      deps = lynx_encoder_deps + lynx_decoder_deps
     }
   } else {
     oliver_node_lib("create_tasm_node") {
@@ -88,7 +94,7 @@ if (build_lynx_lepus_node) {
         ldflags = [ "-static-libstdc++" ]
       }
 
-      deps = lynx_encoder_deps
+      deps = lynx_encoder_deps + lynx_decoder_deps
       deps += [ "//lynx/third_party/quickjs:quickjs" ]
     }
 

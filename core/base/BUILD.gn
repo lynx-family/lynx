@@ -63,7 +63,7 @@ if (is_android) {
     "threading/task_runner_vsync.h",
   ]
 } else if (is_apple) {
-  if (!enable_unittests && !is_oliver_node_lynx) {
+  if (!enable_unittests && !is_oliver_node_lynx && !is_oliver_tasm) {
     base_shared_sources += [
       "darwin/logging_darwin.h",
       "darwin/logging_darwin.mm",

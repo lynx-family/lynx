@@ -94,6 +94,18 @@ function decrypt_wasm(plain) {
   return res;
 }
 
+function decode_napi(templateJS) {
+  console.log('decode_napi: ', templateJS)
+  const templateArray = Uint8Array.from(templateJS);
+  const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
+  const lepus = require(bindingPath);
+  const res = lepus.decode(templateArray);
+  if (res.status !== 0) {
+    throw new Error(`decode error: ${res.error_msg}`);
+  }
+  return res
+}
+
 let encode = encode_napi;
 module.exports = {
   supportNapi,
@@ -106,5 +118,6 @@ module.exports = {
   encrypt,
   decrypt,
   encrypt_wasm,
-  decrypt_wasm
+  decrypt_wasm,
+  decode_napi
 };

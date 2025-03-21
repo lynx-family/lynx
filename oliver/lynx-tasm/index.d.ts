@@ -20,3 +20,4 @@ export function encrypt(token: string): string;
 export function decrypt(token: string): string;
 export function encrypt_wasm(token: string): string;
 export function decrypt_wasm(token: string): string;
+export function decode_napi(template: Uint8Array): string;

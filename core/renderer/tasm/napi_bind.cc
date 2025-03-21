@@ -2,7 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#if defined(ENABLE_NAPI)
+#include "core/template_bundle/lynx_template_bundle.h"
+#include "core/template_bundle/lynx_template_bundle_converter.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "napi.h"
 #include "third_party/aes/aes.h"
@@ -15,6 +17,7 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
     DefineAddon(
         exports,
         {
+            InstanceMethod("decode", &TASMAddon::DecodeNapi, napi_enumerable),
             InstanceMethod("encode", &TASMAddon::EncodeNapi, napi_enumerable),
             InstanceMethod("qjsCheck", &TASMAddon::quickjsCheckNapi,
                            napi_enumerable),
@@ -94,6 +97,39 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
     std::string res = AES().EncryptECB(options);
     return Napi::String::New(env, res);
   }
+
+  Napi::Value DecodeNapi(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    napi_status status;
+    uint8_t* buffer_ptr;
+    size_t buffer_length;
+    Napi::Object obj = Napi::Object::New(env);
+    status = napi_get_buffer_info(
+        env, info[0], reinterpret_cast<void**>(&buffer_ptr), &buffer_length);
+    if (status != napi_ok) {
+      obj.Set("status", -1);
+      obj.Set("error_msg", "Invalid Buffer!");
+      return obj;
+    }
+    auto reader = lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(
+        std::vector<uint8_t>(buffer_ptr, buffer_ptr + buffer_length));
+    bool result = reader.Decode();
+    if (result) {
+      // decode success.
+      std::string res = lynx::tasm::LynxTemplateBundleConverter::
+          ConvertTemplateBundleToSerializedString(reader.GetTemplateBundle());
+      obj.Set("status", 0);
+      obj.Set("result", std::move(res));
+      return obj;
+    } else {
+      // decode failed.
+      std::cout << "ParseTemplate failed. error_msg is : "
+                << reader.error_message_ << std::endl;
+      obj.Set("status", -1);
+      obj.Set("error_msg", reader.error_message_);
+      return obj;
+    }
+  }
 };
 
 // The macro announces that instances of the class `TASMAddon` will be
@@ -101,5 +137,3 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
 NAPI_MODULE_INIT() {
   return Napi::RegisterModule(env, exports, &TASMAddon::Init);
 }
-
-#endif

@@ -35,26 +35,34 @@ lynx_core_source_set("lepus_compile") {
   }
 }
 
-lynx_core_source_set("template_decoder") {
-  sources = [
-              "compile_options.h",
-              "header_ext_info.h",
-              "magic_number.h",
-              "moulds.h",
-              "template_binary.h",
-              "ttml_constant.h",
-              "version.h",
-            ] + magic_source
-
-  public_deps = [ "binary_decoder:binary_decoder" ]
+lynx_core_source_set("magic_number") {
+  sources = [ "magic_number.h" ] + magic_source
 }
 
 lynx_core_source_set("template_encoder") {
   sources = [
-              "compile_options.h",
-              "magic_number.h",
-              "template_binary.h",
-            ] + magic_source
+    "compile_options.h",
+    "template_binary.h",
+  ]
 
-  public_deps = [ "binary_encoder:binary_encoder" ]
+  public_deps = [
+    ":magic_number",
+    "binary_encoder:binary_encoder",
+  ]
+}
+
+lynx_core_source_set("template_decoder") {
+  sources = [
+    "compile_options.h",
+    "header_ext_info.h",
+    "moulds.h",
+    "template_binary.h",
+    "ttml_constant.h",
+    "version.h",
+  ]
+
+  public_deps = [
+    ":magic_number",
+    "binary_decoder:binary_decoder",
+  ]
 }

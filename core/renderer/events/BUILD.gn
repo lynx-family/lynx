@@ -29,6 +29,19 @@ lynx_core_source_set("events") {
   }
 }
 
+lynx_core_source_set("events_tasm") {
+  sources = [
+    "event_handler.cc",
+    "events.h",
+  ]
+
+  public_deps = [ "//lynx/third_party/rapidjson" ]
+
+  if (enable_lepusng_worklet) {
+    public_deps += [ "//lynx/core/renderer/worklet:worklet" ]
+  }
+}
+
 unittest_set("events_test_testset") {
   testonly = true
 

@@ -729,6 +729,7 @@ subspec_target("tasm") {
 subspec_target("template_bundle") {
   deps = [
     "//lynx/core/template_bundle:template_bundle",
+    "//lynx/core/template_bundle/template_codec:magic_number",
     "//lynx/core/template_bundle/template_codec:template_decoder",
     "//lynx/core/template_bundle/template_codec/binary_decoder:binary_decoder",
   ]
