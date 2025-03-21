@@ -19,6 +19,7 @@
 __pycache__
 /venv
 .venv
+.venv.lock
 *.log*
 npm-debug.log*
 yarn-debug.log*

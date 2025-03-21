@@ -6,6 +6,8 @@
 
 CURRENT_PATH="$(dirname "$(realpath "$0")")"
 VENV_PATH=$CURRENT_PATH/../../.venv
+LOCK_DIR=$CURRENT_PATH/../../.venv.lock
+LOCK_TIMEOUT=300 # 5 min
 PACKAGE_TO_IMPORT="yaml, requests"
 PACKAGE_TO_INSTALL="PyYAML requests"
 USE_VENV=false
@@ -26,12 +28,59 @@ check_requirements_or_install_if_missing() {
   fi
 }
 
+try_lock_by_dir() {
+    if mkdir $LOCK_DIR; then
+        echo $$ > "$LOCK_DIR/pid"
+        echo "lock success"
+        return 0
+    else
+        echo "lock failed"
+        return 1
+    fi
+}
+
+try_unlock_by_dir() {
+    if [ -d "${LOCK_DIR}" ]; then
+        local pid
+        pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null)
+        if [ "$pid" = "$$" ]; then
+            rm -rf "${LOCK_DIR}"
+            return 0
+        else
+            echo "Can not release the lock not belong to current process" >&2
+            return 1
+        fi
+    else
+        echo "Lock dir is not exist" >&2
+        return 1
+    fi
+}
+
 python3 -c "import $PACKAGE_TO_IMPORT"
 if [ $? -eq 0 ]; then
     echo "All requirements installed"
 else
     echo "Some requirements are not installed, try to use venv $VENV_PATH"
     USE_VENV=true
+
+    wait_for_lock_count=0
+    while true; do
+        try_lock_by_dir
+        if [ $? -eq 0 ]; then
+            break
+        fi
+        echo "wait for other vpython process to complete the init process"
+        sleep 1
+        wait_for_lock_count=$((wait_for_lock_count + 1))
+        if [ $wait_for_lock_count -gt $LOCK_TIMEOUT ]; then
+            echo "TIMEOUT: wait for other vpython process to complete the init process timeout, maybe other process faces some unexpected issue? "
+            exit 1
+        fi
+    done
+
+    # make sure to release the lock when exit by external
+    trap try_unlock_by_dir SIGINT SIGTERM
+
     if [ -d $VENV_PATH ]; then
         echo "venv already exists, reuse it"
     else
@@ -40,6 +89,11 @@ else
     fi
     source $VENV_PATH/bin/activate
     check_requirements_or_install_if_missing
+
+    # break when unlock with any error
+    set -e
+
+    try_unlock_by_dir
 fi
 
 set -e
