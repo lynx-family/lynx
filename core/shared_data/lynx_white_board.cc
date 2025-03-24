@@ -77,7 +77,7 @@ void WhiteBoard::RegisterSharedDataListener(const WhiteBoardStorageType& type,
 void WhiteBoard::RemoveSharedDataListener(const WhiteBoardStorageType& type,
                                           const std::string& key,
                                           int32_t listener_id) {
-  fml::SharedLock lock(*listener_lock_[type]);
+  fml::UniqueLock lock(*listener_lock_[type]);
   auto& listener_map = listener_map_[type];
   auto listener_iter = listener_map.find(key);
   if (listener_iter != listener_map.end()) {
