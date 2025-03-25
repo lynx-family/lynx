@@ -17,7 +17,6 @@ import com.squareup.javapoet.TypeSpec;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +35,6 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
@@ -118,7 +116,7 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
       ClassName className = ClassName.get(classElement);
       System.out.println(TAG + ", find an element, name: " + element.getSimpleName()
           + "in class: " + className.simpleName());
-      checkJSPropertyValidate(element, className);
+      checkJSPropertyValidate(element);
 
       // collect class info
       if (!descriptorMap.containsKey(className)) {
@@ -134,17 +132,16 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
   /**
    * check if the JSProperty has valid type, currently only String is supported
    */
-  private void checkJSPropertyValidate(Element element, ClassName className) {
+  private void checkJSPropertyValidate(Element element) {
     if (element.getKind() != ElementKind.FIELD) {
-      throwException("@LynxJSProperty must be a field", element.getKind().toString(),
-          element.getSimpleName().toString(), className.simpleName());
+      throw new IllegalArgumentException("@LynxJSProperty must be a field");
     }
-    checkJSPropertyValidate(element.asType(), element, className);
+    checkJSPropertyValidate(element.asType());
   }
 
   // only support primitive types, string, ILynxJSIObject, array
-  private void checkJSPropertyValidate(TypeMirror fieldType, Element element, ClassName className) {
-    if (isPrimitiveOrWrapper(fieldType)) {
+  private void checkJSPropertyValidate(TypeMirror fieldType) {
+    if (isPrimitive(fieldType)) {
       return;
     }
 
@@ -155,48 +152,20 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
 
     if (fieldType.getKind() == TypeKind.ARRAY) {
       TypeMirror arrayType = ((ArrayType) fieldType).getComponentType();
-      checkJSPropertyValidate(arrayType, element, className);
+      checkJSPropertyValidate(arrayType);
       return;
     }
 
-    if (isAssignable(fieldType, List.class)) {
-      List<? extends TypeMirror> typeArguments = ((DeclaredType) fieldType).getTypeArguments();
-      if (typeArguments.isEmpty()) {
-        return;
-      }
-      TypeMirror typeArgument = typeArguments.get(0);
-      if (typeArgument.getKind() == TypeKind.WILDCARD) {
-        WildcardType wildcardType = (WildcardType) typeArgument;
-        TypeMirror upperBound = wildcardType.getExtendsBound();
-        if (upperBound != null
-            && mTypes.isSubtype(upperBound,
-                mElements.getTypeElement(I_LYNX_JSI_OBJECT.reflectionName()).asType())) {
-          return;
-        }
-      } else {
-        checkJSPropertyValidate(typeArgument, element, className);
-        return;
-      }
-    }
-
-    throwException(
-        "InValidate @LynxJSProperty type, supported type: int, Integer, long, Long, float, Float, double, Double, boolean, Boolean, String, array, List, ILynxJSIObject",
-        fieldType.toString(), element.getSimpleName().toString(), className.simpleName());
+    throw new IllegalArgumentException(
+        "InValidate @LynxJSProperty, Only support int, long, float, double, bool, String, ILynxJSIObject, array type, current type is "
+        + fieldType);
   }
 
-  // support int, long, float, double, bool, Integer, Long, Float, Double, Boolean
-  private boolean isPrimitiveOrWrapper(TypeMirror fieldType) {
+  // only support int, long, float, double, bool
+  private boolean isPrimitive(TypeMirror fieldType) {
     TypeKind kind = fieldType.getKind();
-    if (kind == TypeKind.INT || kind == TypeKind.LONG || kind == TypeKind.FLOAT
-        || kind == TypeKind.DOUBLE || kind == TypeKind.BOOLEAN) {
-      return true;
-    }
-    if (isAssignable(fieldType, Boolean.class) || isAssignable(fieldType, Integer.class)
-        || isAssignable(fieldType, Long.class) || isAssignable(fieldType, Float.class)
-        || isAssignable(fieldType, Double.class)) {
-      return true;
-    }
-    return false;
+    return kind == TypeKind.INT || kind == TypeKind.LONG || kind == TypeKind.FLOAT
+        || kind == TypeKind.DOUBLE || kind == TypeKind.BOOLEAN;
   }
 
   private boolean isAssignable(TypeMirror fieldType, Class clazz) {
@@ -216,9 +185,7 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
     // TODO(zhoupeng.z): collect parents class field
     System.out.println(TAG + ", collect fields for class: " + descriptor.simpleClassName);
     if (!isAssignable(jsiObject.asType(), I_LYNX_JSI_OBJECT.reflectionName())) {
-      throwException("Enclosing class must be a ILynxJSIObject",
-          jsiObject.asType().getKind().toString(), jsiObject.getSimpleName().toString(),
-          descriptor.simpleClassName);
+      throw new IllegalArgumentException("Enclosing class must be a ILynxJSIObject");
     }
     for (Element enclosedElement : jsiObject.getEnclosedElements()) {
       // collect all enclosed field with @LynxJSProperty
@@ -228,14 +195,13 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
       }
 
       String fieldName = enclosedElement.getSimpleName().toString();
-      String jniFieldDescriptor =
-          getJNIFieldDescriptor(enclosedElement.asType(), fieldName, descriptor.simpleClassName);
+      String jniFieldDescriptor = getJNIFieldDescriptor(enclosedElement.asType());
       descriptor.mFields.put(fieldName, new JSPropertyDescriptor(fieldName, jniFieldDescriptor));
       System.out.println(TAG + ", collect a field, name: " + fieldName);
     }
   }
 
-  private String getJNIFieldDescriptor(TypeMirror type, String fieldName, String className) {
+  private String getJNIFieldDescriptor(TypeMirror type) {
     switch (type.getKind()) {
       case BOOLEAN:
         return "Z";
@@ -255,18 +221,12 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
       case ARRAY:
         ArrayType arrayType = (ArrayType) type;
         TypeMirror commonType = arrayType.getComponentType();
-        String componentSig = getJNIFieldDescriptor(commonType, fieldName, className);
+        String componentSig = getJNIFieldDescriptor(commonType);
         return "[" + componentSig;
       default:
-        throwException(
-            "getJNIFieldDescriptor failed, current type: ", type.toString(), fieldName, className);
-        return null;
+        throw new IllegalArgumentException(
+            TAG + ", getJNIFieldDescriptor failed, current type: " + type);
     }
-  }
-
-  private void throwException(String msg, String typeName, String elementName, String className) {
-    throw new IllegalArgumentException(TAG + ", error: " + msg + ", type: " + typeName
-        + ", element name: " + elementName + ", in class: " + className);
   }
 
   private boolean generateJSIObjectDescriptorClasses(
