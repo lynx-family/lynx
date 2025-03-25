@@ -283,9 +283,9 @@ def method_context(interface, method, component_info, interfaces_info, is_visibl
         # is_raises_exception or is_check_security_for_receiver or any(
         #     argument for argument in arguments
         #     if argument_conversion_needs_exception_state(method, argument)),
-        # 'has_optional_argument_without_default_value':
-        # any(True for argument_context in argument_contexts
-        #     if argument_context['is_optional_without_default_value']),
+        'has_optional_argument_without_default_value':
+        any(True for argument_context in argument_contexts
+            if argument_context['is_optional_without_default_value']),
         'idl_type':
         idl_type.base_type,
         # 'is_call_with_execution_context':
@@ -566,9 +566,7 @@ def argument_context(interface, method, argument, index, interfaces_info={}, is_
     }
     context.update({
         'is_optional_without_default_value':
-        context['is_optional'] and not context['has_default']
-        and not context['is_dictionary']
-        and not context['is_callback_interface'],
+        context['is_optional'] and not context['has_default'],
     })
     return context
 
@@ -710,7 +708,7 @@ def property_attributes(interface, method):
 def argument_set_default_value(argument):
     idl_type = argument.idl_type
     default_value = argument.default_value
-    variable_name = NameStyleConverter(argument.name).to_snake_case()
+    variable_name = argument.name #NameStyleConverter(argument.name).to_snake_case()
     if not default_value:
         return None
     if idl_type.is_dictionary:

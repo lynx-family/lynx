@@ -184,9 +184,13 @@ void {{napi_class}}::Init{{'Overload' + constructor.overload_index | string if c
   {% endif %}
   {{ insufficient_argnum_defend('void', constructor, 'Constructor') | trim }}
 
+  {% if constructor.has_optional_argument_without_default_value %}
+  const int non_undefined_argument_length = binding::NonUndefinedArgumentLength(info);
+  {% endif %}
+
   {% for argument in constructor.arguments %}
-  {% if argument.is_optional %}
-  if (info.Length() <= {{argument.index}}) {
+  {% if argument.is_optional and not argument.has_default %}
+  if (non_undefined_argument_length <= {{argument.index}}) {
     {{ call_out_init(constructor, argument.index) | trim | indent(2) }}
     return;
   }
@@ -401,9 +405,13 @@ Value {{napi_class}}::{{method.camel_case_name}}Method{{'Overload' + method.over
 
   {{ insufficient_argnum_defend("Value", method, method.camel_case_name) | trim }}
 
+  {% if method.has_optional_argument_without_default_value %}
+  const int non_undefined_argument_length = binding::NonUndefinedArgumentLength(info);
+  {% endif %}
+
   {% for argument in method.arguments %}
-  {% if argument.is_optional %}
-  if (info.Length() <= {{argument.index}}) {
+  {% if argument.is_optional and not argument.has_default %}
+  if (non_undefined_argument_length <= {{argument.index}}) {
     {{ call_out_return_value(method, argument.index, callee(method) | trim) | trim | indent(2)}}
   }
   {% endif %}
