@@ -389,5 +389,9 @@ bool LynxEnv::EnableNewIntersectionObserver() {
   return GetBoolEnv(Key::ENABLE_NEW_INTERSECTION_OBSERVER, false);
 }
 
+bool LynxEnv::EnableCacheGlobalEvent() {
+  return GetBoolEnv(Key::ENABLE_CACHE_GLOBAL_EVENT, false);
+}
+
 }  // namespace tasm
 }  // namespace lynx

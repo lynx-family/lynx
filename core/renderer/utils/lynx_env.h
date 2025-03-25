@@ -86,6 +86,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_FIXED_NEW,
     ENABLE_MULTI_TOUCH,
     ENABLE_NEW_INTERSECTION_OBSERVER,
+    ENABLE_CACHE_GLOBAL_EVENT,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -178,6 +179,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_MULTI_TOUCH, "enable_multi_touch"},
             {Key::ENABLE_NEW_INTERSECTION_OBSERVER,
              "enable_new_intersection_observer"},
+            {Key::ENABLE_CACHE_GLOBAL_EVENT, "enable_cache_global_event"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -281,6 +283,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFixedNew();
   bool EnableMultiTouch();
   bool EnableNewIntersectionObserver();
+  bool EnableCacheGlobalEvent();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

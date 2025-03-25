@@ -470,8 +470,16 @@ void LynxRuntime::CallFunction(const std::string& module_id,
     }
   }
 #endif
-  app_->CallFunction(module_id, method_id, std::move(arguments),
-                     force_call_despite_app_state);
+  if (tasm::LynxEnv::GetInstance().EnableCacheGlobalEvent()) {
+    QueueOrExecTask([this, module_id, method_id, &arguments,
+                     force_call_despite_app_state]() mutable {
+      app_->CallFunction(module_id, method_id, std::move(arguments),
+                         force_call_despite_app_state);
+    });
+  } else {
+    app_->CallFunction(module_id, method_id, std::move(arguments),
+                       force_call_despite_app_state);
+  }
 }
 
 void LynxRuntime::FlushJSBTiming(piper::NativeModuleInfo timing) {
