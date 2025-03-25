@@ -21,6 +21,15 @@ Napi::Value GetArgument(const Napi::CallbackInfo &info, int32_t index) {
   return info[index];
 }
 
+int NonUndefinedArgumentLength(const Napi::CallbackInfo &info) {
+  for (int index = static_cast<int>(info.Length()) - 1; index >= 0; --index) {
+    if (!info[index].IsUndefined()) {
+      return index + 1;
+    }
+  }
+  return 0;
+}
+
 // boolean
 Napi::Boolean NativeValueTraits<IDLBoolean>::NativeValue(Napi::Value value,
                                                          int32_t index) {

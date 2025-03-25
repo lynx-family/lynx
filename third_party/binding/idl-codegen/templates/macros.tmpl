@@ -68,7 +68,14 @@
 
 {% macro convert_argument(return_type, argument) %}
   {% if argument.native_value_traits_support %}
+  {% if argument.is_optional and argument.has_default %}
+  {{argument.cpp_type}} arg{{argument.index}}_{{argument.set_default_value}};
+  if (!info[{{argument.index}}].IsUndefined()) {
+    arg{{argument.index}}_{{argument.name}} = NativeValueTraits<{{argument.idl_type_name}}>::NativeValue(info, {{argument.index}});
+  }
+  {% else %}
   auto arg{{argument.index}}_{{argument.name}} = NativeValueTraits<{{argument.idl_type_name}}>::NativeValue(info, {{argument.index}});
+  {% endif %}
   {% if argument.raises_exception %}
   if (info.Env().IsExceptionPending()) {
     {{ return_type }}
