@@ -40,7 +40,7 @@ namespace lepus {
 class BinaryReader {
  public:
   explicit BinaryReader(std::unique_ptr<InputStream> stream)
-      : error_message_("UnKnow Decode Error \n"), stream_(std::move(stream)) {}
+      : error_message_("unknown Decode Error \n"), stream_(std::move(stream)) {}
   virtual ~BinaryReader() = default;
 
   BinaryReader(const BinaryReader&) = delete;
