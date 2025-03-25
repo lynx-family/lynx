@@ -78,6 +78,9 @@ class TimingHandlerNg {
   std::unordered_map<PipelineID, PipelineOrigin> pipeline_id_to_origin_map_;
 
   std::unordered_set<TimingFlag> has_dispatched_timing_flags_;
+  bool is_background_runtime_ready_ = false;
+  base::InlineVector<std::unique_ptr<lynx::pub::Value>, 3>
+      pending_dispatched_performance_entries_;
 
   // Internal methods for processing timing information.
   void ProcessPipelineTiming(const TimestampKey &timing_key,
@@ -106,9 +109,14 @@ class TimingHandlerNg {
                                        const PipelineID &pipeline_id);
   void DispatchPipelineEntryIfNeeded(const TimestampKey &current_key,
                                      const PipelineID &pipeline_id);
+  // Send all pending performance entries. Note that the pending queue will be
+  // cleared after flushing.
+  void FlushPendingPerformanceEntries();
 
   // Internal methods for checking which pipeline type.
   bool IsLoadBundlePipeline(const PipelineID &pipeline_id) const;
+  bool ReadyToDispatch() const;
+  void SendPerformanceEntry(std::unique_ptr<lynx::pub::Value> entry);
 };
 }  // namespace timing
 }  // namespace tasm

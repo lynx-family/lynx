@@ -82,6 +82,10 @@ void TimingHandlerNg::ProcessPipelineTiming(
     const lynx::tasm::timing::TimestampUs us_timestamp,
     const lynx::tasm::PipelineID& pipeline_id) {
   if (timing_info_.SetPipelineTiming(timing_key, us_timestamp, pipeline_id)) {
+    if (timing_key == kLoadBackgroundEnd) {
+      is_background_runtime_ready_ = true;
+      FlushPendingPerformanceEntries();
+    }
     DispatchPerformanceEventIfNeeded(timing_key, pipeline_id);
   }
   // TODO(zhangkaijie.9): temporarily regard PaintEnd as PipelineEnd.
@@ -101,6 +105,8 @@ bool TimingHandlerNg::IsLoadBundlePipeline(
 void TimingHandlerNg::ClearAllTimingInfo() {
   timing_info_.ClearAllTimingInfo();
   has_dispatched_timing_flags_.clear();
+  pending_dispatched_performance_entries_.clear();
+  is_background_runtime_ready_ = false;
 }
 
 /*
@@ -126,10 +132,7 @@ void TimingHandlerNg::DispatchInitContainerEntryIfNeeded(
   if (init_container_entry != nullptr) {
     init_container_entry->PushStringToMap(kEntryType, kEntryTypeInit);
     init_container_entry->PushStringToMap(kEntryName, kEntryNameContainer);
-    if (delegate_) {
-      delegate_->OnPerformanceEvent(std::move(init_container_entry),
-                                    timing_info_.GetEnableEngineCallback());
-    }
+    SendPerformanceEntry(std::move(init_container_entry));
   }
 }
 
@@ -139,10 +142,7 @@ void TimingHandlerNg::DispatchInitLynxViewEntryIfNeeded(
   if (init_lynxview_entry != nullptr) {
     init_lynxview_entry->PushStringToMap(kEntryType, kEntryTypeInit);
     init_lynxview_entry->PushStringToMap(kEntryName, kEntryNameLynxView);
-    if (delegate_) {
-      delegate_->OnPerformanceEvent(std::move(init_lynxview_entry),
-                                    timing_info_.GetEnableEngineCallback());
-    }
+    SendPerformanceEntry(std::move(init_lynxview_entry));
   }
 }
 
@@ -154,10 +154,7 @@ void TimingHandlerNg::DispatchInitBackgroundRuntimeEntryIfNeeded(
     init_background_runtime_entry->PushStringToMap(kEntryType, kEntryTypeInit);
     init_background_runtime_entry->PushStringToMap(kEntryName,
                                                    kEntryNameBackgroundRuntime);
-    if (delegate_) {
-      delegate_->OnPerformanceEvent(std::move(init_background_runtime_entry),
-                                    timing_info_.GetEnableEngineCallback());
-    }
+    SendPerformanceEntry(std::move(init_background_runtime_entry));
   }
 }
 
@@ -172,8 +169,7 @@ void TimingHandlerNg::DispatchMetricFcpEntryIfNeeded(
   }
   entry->PushStringToMap(kEntryType, kEntryTypeMetric);
   entry->PushStringToMap(kEntryName, kEntryNameFCP);
-  delegate_->OnPerformanceEvent(std::move(entry),
-                                timing_info_.GetEnableEngineCallback());
+  SendPerformanceEntry(std::move(entry));
 }
 
 void TimingHandlerNg::DispatchMetricTtiEntryIfNeeded(
@@ -187,8 +183,7 @@ void TimingHandlerNg::DispatchMetricTtiEntryIfNeeded(
   }
   entry->PushStringToMap(kEntryType, kEntryTypeMetric);
   entry->PushStringToMap(kEntryName, kEntryNameTTI);
-  delegate_->OnPerformanceEvent(std::move(entry),
-                                timing_info_.GetEnableEngineCallback());
+  SendPerformanceEntry(std::move(entry));
 }
 
 void TimingHandlerNg::DispatchMetricFmpEntryIfNeeded(
@@ -218,8 +213,7 @@ void TimingHandlerNg::DispatchMetricFmpEntryIfNeeded(
   }
   entry->PushStringToMap(kEntryType, kEntryTypeMetric);
   entry->PushStringToMap(kEntryName, kEntryNameActualFMP);
-  delegate_->OnPerformanceEvent(std::move(entry),
-                                timing_info_.GetEnableEngineCallback());
+  SendPerformanceEntry(std::move(entry));
 }
 
 void TimingHandlerNg::DispatchLoadBundleEntryIfNeeded(
@@ -241,10 +235,7 @@ void TimingHandlerNg::DispatchLoadBundleEntryIfNeeded(
     if (!flag.empty()) {
       load_bundle_entry->PushStringToMap(kIdentifier, flag);
     }
-    if (delegate_) {
-      delegate_->OnPerformanceEvent(std::move(load_bundle_entry),
-                                    timing_info_.GetEnableEngineCallback());
-    }
+    SendPerformanceEntry(std::move(load_bundle_entry));
   };
 
   if (is_timing_flags_empty) {
@@ -303,12 +294,44 @@ void TimingHandlerNg::DispatchPipelineEntryIfNeeded(
       pipeline_entry->PushStringToMap(kEntryName, kEntryTypePipeline);
     }
     pipeline_entry->PushStringToMap(kIdentifier, flag);
-    if (delegate_) {
-      delegate_->OnPerformanceEvent(std::move(pipeline_entry),
-                                    timing_info_.GetEnableEngineCallback());
-    }
+    SendPerformanceEntry(std::move(pipeline_entry));
     has_dispatched_timing_flags_.emplace(flag);
   }
+}
+
+void TimingHandlerNg::FlushPendingPerformanceEntries() {
+  if (!delegate_) {
+    pending_dispatched_performance_entries_.clear();
+    return;
+  }
+
+  auto temp_pending_entries =
+      std::move(pending_dispatched_performance_entries_);
+  for (auto& entry : temp_pending_entries) {
+    if (entry) {
+      delegate_->OnPerformanceEvent(std::move(entry),
+                                    timing_info_.GetEnableEngineCallback());
+    }
+  }
+}
+
+void TimingHandlerNg::SendPerformanceEntry(
+    std::unique_ptr<lynx::pub::Value> entry) {
+  if (!delegate_) {
+    return;
+  }
+
+  if (ReadyToDispatch()) {
+    delegate_->OnPerformanceEvent(std::move(entry),
+                                  timing_info_.GetEnableEngineCallback());
+  } else {
+    pending_dispatched_performance_entries_.emplace_back(std::move(entry));
+  }
+}
+
+bool TimingHandlerNg::ReadyToDispatch() const {
+  return is_background_runtime_ready_ ||
+         !timing_info_.GetEnableBackgroundRuntime();
 }
 
 }  // namespace timing

@@ -154,11 +154,20 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetLoadBundleEntry(
   }
   const auto& timing_map = it->second;
   // check ready
-  static const std::initializer_list<std::string> check_keys = {
-      kLoadBundleEnd, kLoadBackgroundEnd};
-  bool ready = timing_map.CheckAllKeysExist(check_keys);
-  if (!ready) {
-    return nullptr;
+  if (enable_background_runtime_) {
+    static const std::initializer_list<std::string> check_keys = {
+        kLoadBundleEnd, kLoadBackgroundEnd};
+    bool ready = timing_map.CheckAllKeysExist(check_keys);
+    if (!ready) {
+      return nullptr;
+    }
+  } else {
+    static const std::initializer_list<std::string> check_keys = {
+        kLoadBundleEnd};
+    bool ready = timing_map.CheckAllKeysExist(check_keys);
+    if (!ready) {
+      return nullptr;
+    }
   }
   // pick timing
   TimingMap load_bundle_map = timing_map.GetSubMap(pick_keys);
@@ -201,7 +210,7 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
       pick_keys.end()) {
     return nullptr;
   }
-  // get timing mao
+  // get timing map
   auto it = pipeline_timing_info_.find(pipeline_id);
   if (it == pipeline_timing_info_.end()) {
     return nullptr;

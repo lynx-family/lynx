@@ -50,6 +50,9 @@ class TimingInfoNg {
   inline void SetEnableBackgroundRuntime(bool enable_background_runtime) {
     enable_background_runtime_ = enable_background_runtime;
   }
+  inline bool GetEnableBackgroundRuntime() const {
+    return enable_background_runtime_;
+  }
   inline void SetLoadBundlePipelineId(const PipelineID& pipeline_id) {
     load_bundle_pipeline_id_ = pipeline_id;
   }
