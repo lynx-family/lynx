@@ -15,7 +15,7 @@ jobs:
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:
-      - name: Get Version
+      - name: Get Version1
         id: get_version
         run: |-
           if [ ${{ github.event_name }} == 'workflow_dispatch' ]; then
