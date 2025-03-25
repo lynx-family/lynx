@@ -302,6 +302,8 @@ Value NapiLepusComponent::CallJSFunctionMethod(const CallbackInfo& info) {
     return Value();
   }
 
+  const int non_undefined_argument_length = binding::NonUndefinedArgumentLength(info);
+
   auto arg0_methodName = NativeValueTraits<IDLString>::NativeValue(info, 0);
 
   auto arg1_methodParam = NativeValueTraits<IDLObject>::NativeValue(info, 1);
@@ -309,7 +311,7 @@ Value NapiLepusComponent::CallJSFunctionMethod(const CallbackInfo& info) {
     return info.Env().Undefined();
   }
 
-  if (info.Length() <= 2) {
+  if (non_undefined_argument_length <= 2) {
     impl_->CallJSFunction(std::move(arg0_methodName), arg1_methodParam);
     return info.Env().Undefined();
   }

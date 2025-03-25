@@ -250,11 +250,7 @@ def cpp_type(idl_type,
         return CPP_SPECIAL_CONVERSION_RULES[base_idl_type]
 
     if idl_type.is_string_type:
-        if idl_type.has_string_context:
-            return 'String'
-        if not raw_type:
-            return 'const String&' if used_as_rvalue_type else 'String'
-        return 'V8StringResource<%s>' % string_resource_mode(idl_type)
+        return 'std::string'
 
     if base_idl_type == 'ArrayBufferView' and 'FlexibleArrayBufferView' in extended_attributes:
         return 'FlexibleArrayBufferView'

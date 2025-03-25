@@ -38,6 +38,8 @@ void InvalidType(const Napi::Env& env, int32_t index, const char* expecting);
 
 Napi::Value GetArgument(const Napi::CallbackInfo& info, int32_t index);
 
+int NonUndefinedArgumentLength(const Napi::CallbackInfo& info);
+
 std::string Utf16LeToUtf8(const char16_t* u16str, size_t length);
 
 template <typename T, typename SFINAEHelper = void>
