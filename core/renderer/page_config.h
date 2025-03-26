@@ -1103,11 +1103,11 @@ class PageConfig final : public EntryConfig {
     }
   }
 
-  bool GetEnableMicrotaskPromisePolyfill() const {
+  TernaryBool GetEnableMicrotaskPromisePolyfill() const {
     return enable_microtask_promise_polyfill_;
   }
 
-  void SetEnableMicrotaskPromisePolyfill(bool enable) {
+  void SetEnableMicrotaskPromisePolyfill(TernaryBool enable) {
     enable_microtask_promise_polyfill_ = enable;
   }
 
@@ -1408,7 +1408,7 @@ class PageConfig final : public EntryConfig {
   uint64_t pipeline_scheduler_config_{0};
 
   // enable microtask promise polyfill
-  bool enable_microtask_promise_polyfill_{false};
+  TernaryBool enable_microtask_promise_polyfill_{TernaryBool::UNDEFINE_VALUE};
 
   // disable tracing gc mode in quick context
   bool disable_quick_tracing_gc_{false};

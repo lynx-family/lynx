@@ -204,7 +204,8 @@ bool TemplateEntry::InitWithPageConfigger(
   }
 
   SetEnableMicrotaskPromisePolyfill(
-      page_config->GetEnableMicrotaskPromisePolyfill());
+      page_config->GetEnableMicrotaskPromisePolyfill() ==
+      TernaryBool::TRUE_VALUE);
   return true;
 }
 

@@ -1072,7 +1072,9 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   if (doc.HasMember(runtime::kEnableMicrotaskPromisePolyfill) &&
       doc[runtime::kEnableMicrotaskPromisePolyfill].IsBool()) {
     page_config->SetEnableMicrotaskPromisePolyfill(
-        doc[runtime::kEnableMicrotaskPromisePolyfill].GetBool());
+        doc[runtime::kEnableMicrotaskPromisePolyfill].GetBool()
+            ? TernaryBool::TRUE_VALUE
+            : TernaryBool::FALSE_VALUE);
   }
 
   // disableQuickTracingGC

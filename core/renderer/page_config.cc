@@ -46,6 +46,9 @@ const PageConfig::PageConfigMap<TernaryBool>& PageConfig::GetFuncBoolMap() {
            {"enableFiberElementForRadonDiff",
             {&PageConfig::SetEnableFiberElementForRadonDiff,
              &PageConfig::GetEnableFiberElementForRadonDiff}},
+           {"enableMicrotaskPromisePolyfill",
+            {&PageConfig::SetEnableMicrotaskPromisePolyfill,
+             &PageConfig::GetEnableMicrotaskPromisePolyfill}},
            {kEnableSignalAPI,
             {&PageConfig::SetEnableSignalAPI,
              &PageConfig::GetEnableSignalAPI}}}};
