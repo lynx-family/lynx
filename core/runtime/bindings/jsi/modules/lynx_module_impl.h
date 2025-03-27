@@ -48,6 +48,10 @@ class LynxModuleImpl : public LynxModule, public LynxNativeModule::Delegate {
                        const std::string& method_name,
                        base::LynxError error) override;
 
+#if OS_ANDROID
+  std::shared_ptr<LynxNativeModule> GetNativeModule() { return native_module_; }
+#endif
+
  private:
   void SetMethodMetadata();
   InvokeInfo* CurrentInvokeInfo();

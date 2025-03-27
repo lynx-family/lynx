@@ -211,10 +211,8 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                          .timing_collector = timing_collector,
                          .has_error = false};
   InvokeScope invoke_scope(invoke_scopes_, &invoke_info);
-#if (OS_IOS || OS_TVOS || OS_OSX) && \
+#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
-  // TODO(liyanbo.monster): when android refact finished, move this out of
-  // macro.
   //  We need these information to monitor network request information,
   //  the rate of success and the proportion of requests accomplished by
   //  Lynx. After fully switch to Lynx Network, we can remove these logics.
@@ -228,11 +226,11 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                           count, callback_map);
   // TODO(liyanbo.monster): after remove native promise, delete this.
   std::optional<piper::Value> promise_res;
-#if OS_IOS || OS_TVOS || OS_OSX
+#if OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID
   native_module_->ExitInvokeScope();
   // hack here, this will be deleted later.
   if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
-    auto promise_res = native_module_->TryGetPromiseRet();
+    promise_res = native_module_->TryGetPromiseRet();
   }
 #endif
   base::expected<piper::Value, piper::JSINativeException> response;
@@ -250,12 +248,13 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
     }
   }
 
-#if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::NativeModuleRecorder::GetInstance().RecordFunctionCall(
-      name_.c_str(), method.name.c_str(), static_cast<uint32_t>(count), args,
-      callback_ids.data(), static_cast<uint32_t>(callback_ids.size()),
-      response.value(), rt, record_id_);
-#endif  // ENABLE_TESTBENCH_RECORDER
+  // #if ENABLE_TESTBENCH_RECORDER
+  //   tasm::recorder::NativeModuleRecorder::GetInstance().RecordFunctionCall(
+  //       name_.c_str(), method.name.c_str(), static_cast<uint32_t>(count),
+  //       args, callback_ids.data(),
+  //       static_cast<uint32_t>(callback_ids.size()), response.value(), rt,
+  //       record_id_);
+  // #endif  // ENABLE_TESTBENCH_RECORDER
 
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);

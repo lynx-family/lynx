@@ -45,14 +45,6 @@ class NativeModuleFactory {
     return itr->second();
   };
 
-  // TODO(liyanbo.monster): after platform module refactored, merge this with
-  // upper code.
-  virtual std::shared_ptr<LynxModule> CreatePlatformModule(
-      const std::string& name) {
-    return nullptr;
-  };
-  virtual void SetModuleExtraInfo(std::shared_ptr<ModuleDelegate> delegate) {}
-
   virtual void Register(const std::string& name, ModuleCreator creator) {
     std::lock_guard<std::mutex> lock(mutex_);
     creators_.emplace(name, std::move(creator));
