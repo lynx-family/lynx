@@ -8,8 +8,8 @@ CURRENT_PATH="$(dirname "$(realpath "$0")")"
 VENV_PATH=$CURRENT_PATH/../../.venv
 LOCK_DIR=$CURRENT_PATH/../../.venv.lock
 LOCK_TIMEOUT=300 # 5 min
-PACKAGE_TO_IMPORT="yaml, requests"
-PACKAGE_TO_INSTALL="PyYAML requests"
+PACKAGE_TO_IMPORT="yaml, requests, fastjsonschema"
+PACKAGE_TO_INSTALL="PyYAML requests fastjsonschema==2.21.1"
 USE_VENV=false
 
 # avoid conflict with other venv like mechanism
