@@ -1238,7 +1238,7 @@ public abstract class LynxBaseUI
     // onPropsUpdated for processing.
     mContext.removeUIFromExposedMap(this);
     String id = exposureID.asString();
-    if (id.isEmpty()) {
+    if (id == null || id.isEmpty()) {
       id = null;
       mExposureID = id;
       String errMsg =
