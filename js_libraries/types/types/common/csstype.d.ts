@@ -41,7 +41,9 @@ export type CSSProperties = Modify<
     animationTimingFunction?: 'linear' | 'ease-in' | 'ease-out' | 'ease-in-ease-out' | 'ease' | 'ease-in-out' | 'square-bezier' | 'cubic-bezier' | (string & {});
     borderStyle?: 'solid' | 'dashed' | 'dotted' | 'double' | 'groove' | 'ridge' | 'inset' | 'outset' | 'hidden' | 'none' | (string & {});
     transformOrigin?: 'left' | 'right' | 'top' | 'bottom' | 'center' | (string & {});
+    linearDirection?: 'column' | 'row' | 'column-reverse' | 'row-reverse';
     linearOrientation?: 'horizontal' | 'vertical' | 'horizontal-reverse' | 'vertical-reverse';
+    linearWeight?: number;
     linearGravity?: 'none' | 'top' | 'bottom' | 'left' | 'right' | 'center-vertical' | 'center-horizontal' | 'space-between' | 'start' | 'end' | 'center';
     linearLayoutGravity?:
       | 'none'
