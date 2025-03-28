@@ -101,8 +101,6 @@ class TimingHandlerNg {
       const TimestampKey &current_key);
   void DispatchMetricFcpEntryIfNeeded(const TimestampKey &current_key,
                                       const PipelineID &pipeline_id);
-  void DispatchMetricTtiEntryIfNeeded(const TimestampKey &current_key,
-                                      const PipelineID &pipeline_id);
   void DispatchMetricFmpEntryIfNeeded(const TimestampKey &current_key,
                                       const PipelineID &pipeline_id);
   void DispatchLoadBundleEntryIfNeeded(const TimestampKey &current_key,

@@ -60,8 +60,6 @@ TimestampKey GetPolyfillTimingKey(const TimestampKey& timing_key) {
            {kPipelineEnd, kPipelineEndPolyfill},
            {kLayoutStart, kLayoutStartPolyfill},
            {kLayoutEnd, kLayoutEndPolyfill},
-           {kLynxTTI, kLynxTTIPolyfill},
-           {kTotalTTI, kTotalTTIPolyfill},
            {kLynxFCP, kLynxFCPPolyfill},
            {kTotalFCP, kTotalActualFMP},
            {kActualFMP, kActualFMPPolyfill},
