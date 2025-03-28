@@ -16,19 +16,18 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
 import android.widget.FrameLayout;
-import android.widget.OverScroller;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.view.NestedScrollingChild2;
+import androidx.core.view.NestedScrollingChild3;
 import androidx.core.view.NestedScrollingChildHelper;
-import androidx.core.view.NestedScrollingParent2;
+import androidx.core.view.NestedScrollingParent3;
 import androidx.core.view.NestedScrollingParentHelper;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
 
 public class NestedScrollContainerView
-    extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2 {
+    extends FrameLayout implements NestedScrollingParent3, NestedScrollingChild3 {
   private static final String TAG = "UIListContainer.NestedScrollContainerView";
   private static final boolean DEBUG = false;
   public LynxSnapHelper mSnapHelper = null;
@@ -378,7 +377,6 @@ public class NestedScrollContainerView
     scrollStep(deltaX, deltaY, mScrollStepConsumed);
     unconsumedX = deltaX - mScrollStepConsumed[0];
     unconsumedY = deltaY - mScrollStepConsumed[1];
-
     if (dispatchNestedScroll(mScrollStepConsumed[0], mScrollStepConsumed[1], unconsumedX,
             unconsumedY, mScrollOffset, TYPE_TOUCH)) {
       mLastMotionX -= mScrollOffset[0];
@@ -677,13 +675,20 @@ public class NestedScrollContainerView
         int unconsumedX = deltaX - consumedX;
         int unconsumedY = deltaY - consumedY;
 
-        dispatchNestedScroll(consumedX, consumedY, unconsumedX, unconsumedY, null, TYPE_NON_TOUCH);
+        scrollConsumed[0] = 0;
+        scrollConsumed[1] = 0;
+        dispatchNestedScroll(
+            consumedX, consumedY, unconsumedX, unconsumedY, null, TYPE_NON_TOUCH, scrollConsumed);
+        unconsumedX -= scrollConsumed[0];
+        unconsumedY -= scrollConsumed[1];
+
         final boolean fullyConsumedVertical =
             mIsVertical && (deltaY == 0 || (deltaY != 0 && unconsumedY == 0));
         final boolean fullyConsumedHorizontal =
             !mIsVertical && (deltaX == 0 || (deltaX != 0 && unconsumedX == 0));
         final boolean fullyConsumedAny = fullyConsumedHorizontal || fullyConsumedVertical;
-        if (!fullyConsumedAny && !hasNestedScrollingParent(TYPE_NON_TOUCH)) {
+
+        if (!fullyConsumedAny) {
           // setting state to idle will stop this.
           setScrollState(SCROLL_STATE_IDLE);
         }
@@ -877,6 +882,18 @@ public class NestedScrollContainerView
     return mIsVertical ? Math.max(0, super.computeVerticalScrollOffset()) : 0;
   }
 
+  /********* NestedScrollingChild3 begin *********/
+
+  @Override
+  public void dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, @Nullable int[] offsetInWindow, @ViewCompat.NestedScrollType int type,
+      @NonNull int[] consumed) {
+    mChildHelper.dispatchNestedScroll(
+        dxConsumed, dyConsumed, dxUnconsumed, dyUnconsumed, offsetInWindow, type, consumed);
+  }
+
+  /********* NestedScrollingChild3 end *********/
+
   /********* NestedScrollingChild2 begin *********/
 
   @Override
@@ -955,6 +972,28 @@ public class NestedScrollContainerView
   }
 
   /********* NestedScrollingChild2 end *********/
+
+  /********* NestedScrollingParent3 begin *********/
+
+  @Override
+  public void onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed,
+      int dyUnconsumed, @ViewCompat.NestedScrollType int type, @NonNull int[] consumed) {
+    if (mIsVertical) {
+      final int oldScrollY = getScrollY();
+      scrollBy(0, dyUnconsumed);
+      final int myConsumed = getScrollY() - oldScrollY;
+      final int myUnconsumed = dyUnconsumed - myConsumed;
+      this.dispatchNestedScroll(0, myConsumed, 0, myUnconsumed, null, type, consumed);
+    } else {
+      final int oldScrollX = getScrollX();
+      scrollBy(dxUnconsumed, 0);
+      final int myConsumed = getScrollX() - oldScrollX;
+      final int myUnconsumed = dxUnconsumed - myConsumed;
+      this.dispatchNestedScroll(myConsumed, 0, myUnconsumed, 0, null, type, consumed);
+    }
+  }
+
+  /********* NestedScrollingParent3 end *********/
 
   /********* NestedScrollingParent2 begin *********/
   @Override
