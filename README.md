@@ -10,6 +10,7 @@
 [![Latest release version](https://img.shields.io/github/v/release/lynx-family/lynx.svg)](https://github.com/lynx-family/lynx/releases)
 [![CI status](https://img.shields.io/github/actions/workflow/status/lynx-family/lynx/ci.yml)](https://github.com/lynx-family/lynx/actions)
 [![X (formerly Twitter) URL](https://img.shields.io/twitter/url?url=https%3A%2F%2Fx.com%2Flynxjs_org&style=social&label=Lynx)](https://x.com/lynxjs_org)
+[![Discord](https://img.shields.io/discord/1345754526174543964?logo=discord&style=social&label=Lynx)](https://discord.gg/mXk7jqdDXk)
 
 Empower the web community and invite more to build across platforms
 
@@ -75,7 +76,11 @@ Please refer to our [contributing guide][contributing] for details.
 [contributing]: CONTRIBUTING.md
 
 ## Discussions
+Bugs and feature requests are filed in [Github Issues](https://github.com/lynx-family/lynx/issues)
+
 Large discussions and proposals are discussed in [Github Discussions](https://github.com/lynx-family/lynx/discussions)
+
+You are always very welcome to join the [Discord Channel](https://discord.gg/mXk7jqdDXk) and meet others who are enthusiastic about making Lynx great.
 
 ## Credits
 Lynx makes use of several third-party libraries and draws inspiration from various projects. We would like to express our sincere gratitude to these sources.
