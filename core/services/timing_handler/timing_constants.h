@@ -83,11 +83,6 @@ static constexpr const char kEntryNameFCP[] = "fcp";
 static constexpr const char kFCP[] = "fcp";
 static constexpr const char kLynxFCP[] = "lynxFcp";
 static constexpr const char kTotalFCP[] = "totalFcp";
-// ------------------ name.tti ------------------
-static constexpr const char kEntryNameTTI[] = "tti";
-static constexpr const char kTTI[] = "tti";
-static constexpr const char kLynxTTI[] = "lynxTti";
-static constexpr const char kTotalTTI[] = "totalTti";
 // ------------------ name.actualFmp ------------------
 static constexpr const char kEntryNameActualFMP[] = "actualFmp";
 static constexpr const char kActualFMP[] = "actualFmp";

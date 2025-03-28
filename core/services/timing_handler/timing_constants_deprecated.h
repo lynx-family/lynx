@@ -69,6 +69,7 @@ static constexpr const char kLoadCoreEndPolyfill[] = "load_core_end";
 static constexpr const char kPipelineStartPolyfill[] = "pipeline_start";
 static constexpr const char kPipelineEndPolyfill[] = "pipeline_end";
 // metric
+static constexpr const char kTTI[] = "tti";
 static constexpr const char kLynxTTIPolyfill[] = "lynx_tti";
 static constexpr const char kTotalTTIPolyfill[] = "total_tti";
 static constexpr const char kActualFMPPolyfill[] = "actual_fmp";
