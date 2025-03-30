@@ -222,7 +222,8 @@ QuickContext::QuickContext(bool disable_tracing_gc)
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),
-      current_this_(LEPUS_UNDEFINED) {
+      current_this_(LEPUS_UNDEFINED),
+      lynx_api_env_(new lynx_api_env__()) {
   LEPUSLepusRefCallbacks callbacks = Context::GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);
   LEPUS_SetMaxStackSize(context(), static_cast<size_t>(ULLONG_MAX));
@@ -231,6 +232,7 @@ QuickContext::QuickContext(bool disable_tracing_gc)
   RegisterLepusType(runtime_, Value_Array, Value_Table);
   // data associated with debugger need to be initialized
   gc_flag_ = LEPUS_IsGCModeRT(runtime_);
+  lynx_value_api_attach_lepusng(lynx_api_env_, context());
 }
 
 QuickContext::~QuickContext() {
@@ -242,6 +244,8 @@ QuickContext::~QuickContext() {
     }
   }
   DestroyInspector();
+  lynx_value_api_detach_lepusng(lynx_api_env_);
+  delete lynx_api_env_;
 }
 
 void QuickContext::ReportErrorWithMsg(const std::string& msg,
