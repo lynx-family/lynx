@@ -13,7 +13,8 @@
 namespace lynx {
 namespace tasm {
 
-WhiteBoard::WhiteBoard() {
+WhiteBoard::WhiteBoard()
+    : listeners_{static_cast<uint8_t>(WhiteBoardStorageType::COUNT)} {
   data_center_lock_ =
       std::unique_ptr<fml::SharedMutex>(fml::SharedMutex::Create());
   listener_lock_.emplace(
@@ -53,7 +54,7 @@ void WhiteBoard::TriggerListener(const WhiteBoardStorageType& type,
                                  const std::string& key,
                                  const pub::Value& value) {
   fml::SharedLock lock(*listener_lock_[type]);
-  auto& listener_map = listener_map_[type];
+  auto& listener_map = listeners_.at(static_cast<uint8_t>(type));
   auto listener_iter = listener_map.find(key);
   if (listener_iter != listener_map.end()) {
     // iterator over listeners and trigger callbacks;
@@ -69,7 +70,7 @@ void WhiteBoard::RegisterSharedDataListener(const WhiteBoardStorageType& type,
                                             const std::string& key,
                                             WhiteBoardListener listener) {
   fml::UniqueLock lock(*listener_lock_[type]);
-  auto& listener_map = listener_map_[type];
+  auto& listener_map = listeners_.at(static_cast<uint8_t>(type));
   auto pair = listener_map.emplace(key, std::vector<WhiteBoardListener>());
   pair.first->second.emplace_back(std::move(listener));
 }
@@ -78,7 +79,7 @@ void WhiteBoard::RemoveSharedDataListener(const WhiteBoardStorageType& type,
                                           const std::string& key,
                                           int32_t listener_id) {
   fml::UniqueLock lock(*listener_lock_[type]);
-  auto& listener_map = listener_map_[type];
+  auto& listener_map = listeners_.at(static_cast<uint8_t>(type));
   auto listener_iter = listener_map.find(key);
   if (listener_iter != listener_map.end()) {
     auto& listeners = listener_iter->second;

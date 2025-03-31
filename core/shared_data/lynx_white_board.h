@@ -23,7 +23,14 @@ namespace tasm {
  `set` `get` `registerListener` to whiteboard for sharing data between multiple
  lynxViews.
  */
-enum class WhiteBoardStorageType : uint8_t { TYPE_LEPUS, TYPE_JS, TYPE_CLIENT };
+enum class WhiteBoardStorageType : uint8_t {
+  TYPE_LEPUS = 0,
+  TYPE_JS,
+  TYPE_CLIENT,
+
+  // ADDED_BEBORE!!
+  COUNT
+};
 
 struct WhiteBoardListener {
   double callback_id;
@@ -69,8 +76,7 @@ class WhiteBoard final {
   std::unique_ptr<fml::SharedMutex> data_center_lock_;
   std::unordered_map<WhiteBoardStorageType, std::unique_ptr<fml::SharedMutex>>
       listener_lock_;
-  std::unordered_map<WhiteBoardStorageType, WhiteBoardListenerMap>
-      listener_map_;
+  std::vector<WhiteBoardListenerMap> listeners_;
 };
 
 }  // namespace tasm
