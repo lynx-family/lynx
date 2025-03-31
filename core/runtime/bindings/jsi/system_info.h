@@ -6,18 +6,18 @@
 #define CORE_RUNTIME_BINDINGS_JSI_SYSTEM_INFO_H_
 #include <vector>
 
-#include "core/runtime/jsi/jsi.h"
+#include "lynx/core/runtime/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {
 class Runtime;
 
-class SystemInfo : public HostObject {
+class SystemInfo {
  public:
-  virtual Value get(Runtime*, const PropNameID& name) override;
-  virtual void set(Runtime*, const PropNameID& name,
-                   const Value& value) override;
-  virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
+  SystemInfo() = delete;
+  ~SystemInfo() = delete;
+
+  static piper::Object Bindings(Runtime &rt);
 };
 }  // namespace piper
 }  // namespace lynx

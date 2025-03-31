@@ -9,52 +9,26 @@
 namespace lynx {
 namespace piper {
 
-std::vector<PropNameID> SystemInfo::getPropertyNames(Runtime &rt) {
-  std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, "platform"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "pixelRatio"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "pixelWidth"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "pixelHeight"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "osVersion"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "runtimeType"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "lynxSdkVersion"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "engineVersion"));
-  return vec;
+piper::Object SystemInfo::Bindings(Runtime &rt) {
+  piper::Object obj(rt);
+  obj.setProperty(rt, "platform",
+                  String::createFromAscii(rt, tasm::Config::Platform()));
+  obj.setProperty(rt, "pixelWidth",
+                  Value(static_cast<double>(tasm::Config::pixelWidth())));
+  obj.setProperty(rt, "pixelHeight",
+                  Value(static_cast<double>(tasm::Config::pixelHeight())));
+  obj.setProperty(rt, "pixelRatio",
+                  Value(static_cast<double>(tasm::Config::pixelRatio())));
+  obj.setProperty(rt, "osVersion",
+                  String::createFromAscii(rt, tasm::Config::GetOsVersion()));
+  obj.setProperty(
+      rt, "lynxSdkVersion",
+      String::createFromAscii(rt, tasm::Config::GetCurrentLynxVersion()));
+  obj.setProperty(
+      rt, "engineVersion",
+      String::createFromAscii(rt, tasm::Config::GetCurrentLynxVersion()));
+  return obj;
 }
-
-Value SystemInfo::get(Runtime *rt, const PropNameID &name) {
-  piper::Scope scope(*rt);
-
-  auto methodName = name.utf8(*rt);
-  if (methodName == "platform") {
-    return String::createFromAscii(*rt, tasm::Config::Platform());
-  } else if (methodName == "pixelWidth") {
-    return Value(static_cast<double>(tasm::Config::pixelWidth()));
-  } else if (methodName == "pixelHeight") {
-    return Value(static_cast<double>(tasm::Config::pixelHeight()));
-  } else if (methodName == "pixelRatio") {
-    return Value(static_cast<double>(tasm::Config::pixelRatio()));
-  }
-  if (methodName == "osVersion") {
-    return String::createFromAscii(*rt, tasm::Config::GetOsVersion());
-  } else if (methodName == "runtimeType") {
-    switch (rt->type()) {
-      case JSRuntimeType::v8:
-        return String::createFromAscii(*rt, "v8");
-      case JSRuntimeType::jsc:
-        return String::createFromAscii(*rt, "jsc");
-      case JSRuntimeType::quickjs:
-        return String::createFromAscii(*rt, "quickjs");
-    }
-  } else if (methodName == "lynxSdkVersion") {
-    return String::createFromAscii(*rt, tasm::Config::GetCurrentLynxVersion());
-  } else if (methodName == "engineVersion") {
-    return String::createFromAscii(*rt, tasm::Config::GetCurrentLynxVersion());
-  }
-  return piper::Value::undefined();
-}
-
-void SystemInfo::set(Runtime *rt, const PropNameID &name, const Value &value) {}
 
 }  // namespace piper
 }  // namespace lynx

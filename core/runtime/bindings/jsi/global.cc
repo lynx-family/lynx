@@ -33,10 +33,8 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
   Object console_obj = Object::createFromHostObject(
       *js_runtime_, std::make_shared<Console>(js_runtime_.get(), post_man));
   global.setProperty(*js_runtime_, "nativeConsole", console_obj);
-
-  Object system_info_obj = Object::createFromHostObject(
-      *js_runtime_, std::make_shared<SystemInfo>());
-  global.setProperty(*js_runtime_, "SystemInfo", system_info_obj);
+  global.setProperty(*js_runtime_, "SystemInfo",
+                     SystemInfo::Bindings(*js_runtime_));
 
   Object jsbi_obj =
       Object::createFromHostObject(*js_runtime_, std::make_shared<JSBI>());
