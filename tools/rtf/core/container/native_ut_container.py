@@ -49,6 +49,7 @@ class NativeUTContainer(Container):
 
     def after_test(self):
         self.coverage.gen_report(self.serial_queue + self.parallel_queue)
+        self.coverage.export()
 
     def kill_all_process(self):
         for target in self.parallel_queue:

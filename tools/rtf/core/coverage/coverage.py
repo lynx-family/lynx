@@ -11,3 +11,6 @@ class Coverage:
 
     def gen_report(self, targets: [Target]):
         pass
+
+    def export(self):
+        pass

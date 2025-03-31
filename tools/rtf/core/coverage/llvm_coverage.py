@@ -118,3 +118,18 @@ class LLVMCoverage(Coverage):
             self.__gen_lcov_summary(targets)
         except Exception as e:
             Log.fatal(f"Generate coverage report failed! {e}")
+
+    def export(self):
+        summary = None
+        json_report_path = os.path.join(
+            RTFEnv.get_project_root_path(), self.output, "json"
+        )
+        with open(f"{json_report_path}/coverage_summary_total.json", "r") as rf:
+            summary = json.load(rf)
+
+        line_coverage = f"{summary['lines']['percent']:.2f}"
+
+        Log.info(f"Coverage is {line_coverage}")
+
+        with open(f"{RTFEnv.get_project_root_path()}/coverage.summary", "w") as wf:
+            wf.write(line_coverage)
