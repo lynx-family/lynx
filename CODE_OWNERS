@@ -1,0 +1,10 @@
+/test_code_owner/js @coolkiid @gongfeng98
+/test_code_owner/js/*.js @ZhaoSongGOO @gongfeng98
+/test_code_owner/python @gongfeng98
+/.github/workflows @jianliang00
+/test_code_owners/**/*.py @Kingatnuaa0528
+*.sh @coolkiid @OverWatch-Winder
+/core/render @jianliang00
+/core/render/css @Kingatnuaa0528
+/tools/css_generator @Kingatnuaa0528 @coolkiid
+/platform/android/lynx_android @nhsprite

@@ -1,0 +1,65 @@
+name: ci
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+defaults:
+  run:
+    working-directory: lynx
+
+jobs:
+  add_reviewers:
+    runs-on: lynx-ubuntu-22.04-avd-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lynx
+      - name: Check if PR has 'exported' label
+        id: check-label
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "${{ github.event.pull_request.labels_url }}")
+          has_exported_label=$(echo "$response" | jq '.[] | select(.name == "exported")' | wc -l)
+          if [ "$has_exported_label" -gt 0 ]; then
+            echo "PR has 'exported' label. Skipping the job."
+            echo "should_skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "PR does not have 'exported' label. Proceeding with the job."
+            echo "should_skip=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Python Setup
+        if: steps.check-label.outputs.should_skip == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Get changed files in HEAD commit
+        if: steps.check-label.outputs.should_skip == 'false'
+        id: changed-files
+        run: |
+          changed_files=$(git diff --name-only HEAD^ HEAD)
+          echo "changed_files=$changed_files" >> $GITHUB_OUTPUT
+        shell: bash
+      - name: Get Code Owners
+        if: steps.check-label.outputs.should_skip == 'false'
+        id: code-owners
+        run: |
+          if [ -f CODE_OWNERS ]; then
+            content=$(cat CODE_OWNERS)
+            echo "codeowners=$content" >> $GITHUB_OUTPUT
+          else
+            echo "CODEOWNERS file not found."
+            exit 1
+          fi
+        shell: bash
+      - name: Add Reviewers
+        if: steps.check-label.outputs.should_skip == 'false'
+        run: |
+          python3 tools/code_review/test.py --changed_files "${{ steps.changed-files.outputs.changed_files }}" --code_owners "${{ steps.code-owners.outputs.codeowners }}" --pr_number "${{ github.event.pull_request.number }}" --repo_name "{{ github.repository }}" 
+        shell: bash

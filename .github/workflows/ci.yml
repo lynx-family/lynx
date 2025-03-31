@@ -3,7 +3,7 @@ name: ci
 on:
   pull_request:
     branches:
-      - develop
+      - develop1
 
 defaults:
   run:
