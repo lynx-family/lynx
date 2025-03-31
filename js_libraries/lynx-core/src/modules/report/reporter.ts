@@ -63,9 +63,10 @@ export class Reporter {
   getSourceMapRelease = (url: string): string => {
     let ret = this.getNativeApp().__GetSourceMapRelease(url);
     if (!ret) {
-      return this.getNativeApp().__GetSourceMapRelease(
+      ret = this.getNativeApp().__GetSourceMapRelease(
         BaseApp.kDefaultSourceMapURL
       );
     }
+    return ret;
   };
 }
