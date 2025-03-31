@@ -903,12 +903,12 @@ public class LynxView extends UIBodyView {
       return;
     }
 
+    mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     if ((lynxUIRenderer != null) && lynxUIRenderer.shouldInvokeNativeViewMethod()) {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
-
-    mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
   }
 
   @Keep
