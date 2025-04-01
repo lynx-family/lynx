@@ -981,7 +981,7 @@ base::expected<piper::Value, JSINativeException> MethodInvoker::InvokeImpl(
                collector = timing_collector](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("module_name", module_name_);
                 ctx.event()->add_debug_annotations("method_name", method_name_);
-                ctx.event()->add_debug_annotations("first_arg", first_arg_str);
+                ctx.event()->add_debug_annotations("arg0", first_arg_str);
                 if (collector != nullptr) {
                   ctx.event()->add_flow_ids(collector->FlowId());
                 }

@@ -52,7 +52,7 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
             ctx.event()->add_debug_annotations("module_name", module_id);
             ctx.event()->add_debug_annotations("method_name", method_id);
             if (params->Length() > 0) {
-              ctx.event()->add_debug_annotations("first_arg", first_arg_str);
+              ctx.event()->add_debug_annotations("arg0", first_arg_str);
             }
           });
 

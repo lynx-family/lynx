@@ -88,7 +88,7 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
               [&, self = shared_from_this()](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("module_name", name_);
                 ctx.event()->add_debug_annotations("method_name", method.name);
-                ctx.event()->add_debug_annotations("first_arg", first_arg_str);
+                ctx.event()->add_debug_annotations("arg0", first_arg_str);
                 if (timing_collector != nullptr) {
                   ctx.event()->add_flow_ids(timing_collector->FlowId());
                 }
