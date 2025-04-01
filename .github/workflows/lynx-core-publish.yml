@@ -5,6 +5,9 @@ on: workflow_dispatch
 jobs:
   lynx_types_publish:
     runs-on: macOS-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
