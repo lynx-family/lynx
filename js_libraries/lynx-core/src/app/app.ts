@@ -464,7 +464,9 @@ export abstract class BaseApp<
       );
     }
     try {
-      nativeConsole.profile(`running ${path} init`);
+      this.lynx.performance.profileStart('executeLoadedScript', {
+        args: { path },
+      });
       const ret = factory<T>({ tt: this });
 
       // Here means that no error occurred when executing.
@@ -472,7 +474,7 @@ export abstract class BaseApp<
       BaseApp._$factoryCache[path] = factory;
       return ret;
     } finally {
-      nativeConsole.profileEnd();
+      this.lynx.performance.profileEnd();
     }
   }
 

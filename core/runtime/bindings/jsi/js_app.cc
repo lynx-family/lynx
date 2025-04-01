@@ -1998,14 +1998,14 @@ void App::handleLoadAppFailed(std::string error_msg) {
 }
 
 void App::LoadScriptAsync(const std::string& url, ApiCallBack callback) {
-  TRACE_EVENT_FUNC_NAME(LYNX_TRACE_CATEGORY, "url", url);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "App::LoadScriptAsync", "url", url);
   LOGI("App::LoadScriptAsync " << url << " " << this);
   delegate_->LoadScriptAsync(url, callback);
 }
 
 void App::EvaluateScript(const std::string& url, std::string script,
                          ApiCallBack callback) {
-  TRACE_EVENT_FUNC_NAME(LYNX_TRACE_CATEGORY, "url", url);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "App::EvalScript", "url", url);
   LOGI("App::EvaluateScript:" << url);
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
@@ -2670,7 +2670,8 @@ std::optional<JSINativeException> App::batchedUpdateData(
 
 base::expected<Value, JSINativeException> App::loadScript(
     const std::string entry_name, const std::string& url, long timeout) {
-  TRACE_EVENT_FUNC_NAME(LYNX_TRACE_CATEGORY, "url", url, "entry", entry_name);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "App::loadScript", "url", url, "entry",
+              entry_name);
 
   LOGI("loadscript:" << url);
 
