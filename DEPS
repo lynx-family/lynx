@@ -225,7 +225,7 @@ deps = {
     "third_party/quickjs/src": {
         "type": "git",
         "url": "https://github.com/lynx-family/primjs.git",
-        "commit": "ea4d2d5d6e5fa4d36d31af560f00fb1880f52fe7",
+        "commit": "861403cdcde85408bd68f39e0f3e042f17e0f355",
         "ignore_in_git": True,
     },
     '../buildtools/corepack/pnpm/7.33.6': {
