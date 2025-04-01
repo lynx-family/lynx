@@ -35,6 +35,11 @@ import java.util.Map;
 import org.json.JSONObject;
 
 public class LynxDevtool {
+  /**
+   * DevTool service instance that provides debugging functionality.
+   * Before using this service, check the LynxEnv.inst().isLynxDebugEnabled() switch status
+   * to ensure that debugging features are enabled.
+   */
   private static ILynxDevToolService sDevToolService = null;
   private static final String TAG = "LynxDevtool";
   @Keep private LynxBaseInspectorOwnerNG mOwner = null;
@@ -79,8 +84,6 @@ public class LynxDevtool {
         }
 
         if (LynxEnv.inst().isLogBoxEnabled() && sDevToolService != null) {
-          sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
-
           mLogBox = sDevToolService.createLogBoxProxy(this);
           LLog.i(TAG, "LogBox init");
         }
@@ -219,7 +222,6 @@ public class LynxDevtool {
       return;
     }
 
-    sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
     if (sDevToolService == null) {
       LLog.e(TAG, "sDevToolService is null");
       return;
