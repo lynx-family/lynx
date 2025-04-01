@@ -7,7 +7,6 @@ package com.lynx.devtool;
 import android.content.Context;
 import android.util.Log;
 import android.view.ViewGroup;
-import android.widget.RelativeLayout;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,16 +15,13 @@ import com.lynx.debugrouter.ConnectionType;
 import com.lynx.debugrouter.DebugRouter;
 import com.lynx.debugrouter.DebugRouterGlobalHandler;
 import com.lynx.debugrouter.StateListener;
-import com.lynx.devtool.testbench.SwitchLaunchRecord;
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
-import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.eventreport.ILynxEventReportObserver;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -37,10 +33,6 @@ import org.json.JSONObject;
 public class LynxGlobalDebugBridge
     implements DebugRouterGlobalHandler, StateListener, ILynxEventReportObserver {
   private static final String TAG = "LynxGlobalDebugBridge";
-
-  // app info
-  public static final String APP_NAME = "Unspecified";
-  public static final String APP_VERSION = "0.0";
 
   // protocol
   private static final String RECEIVE_STOP_JS_AT_ENTRY = "D2RStopAtEntry";
@@ -57,7 +49,6 @@ public class LynxGlobalDebugBridge
   private WeakReference<ViewGroup> mRootView = null;
 
   private DevToolAgentDispatcher mAgentDispatcher;
-  private SwitchLaunchRecord mSwitchLaunchRecord;
 
   private Set<LynxDevtoolCardListener> mCardListeners = new HashSet<>();
 
@@ -72,54 +63,10 @@ public class LynxGlobalDebugBridge
 
   private static class DevToolAgentDispatcher extends LynxInspectorOwner {}
 
-  private static boolean autoDevToolConnect(String scheme) {
-    LynxEnv.inst().lazyInitIfNeeded();
-    LynxEnv.inst().enableLynxDebug(true);
-    LynxEnv.inst().enableDevtool(true);
-    LynxEnv.inst().enablePixelCopy(true);
-    // when exec e2e test, disable longpress menu
-    LynxDevtoolEnv.inst().enableLongPressMenu(false);
-
-    /*
-     * Currently DebugRouter do not set lynx sdk version in Shoots-Lynx path,
-     * we set it here to get lynx sdk version info in 'sessionList' data structure afterwards
-     */
-    Map<String, String> lynxInfo = new HashMap<>();
-    lynxInfo.put("sdkVersion", LynxEnv.inst().getLynxVersion());
-    DebugRouter.getInstance().setAppInfo(null, lynxInfo);
-
-    LynxGlobalDebugBridge bridge = LynxGlobalDebugBridge.getInstance();
-    if (bridge.shouldPrepareRemoteDebug(scheme)) {
-      return bridge.prepareRemoteDebug(scheme);
-    } else {
-      Log.e(TAG, "prepareRemoteDebug failed with  " + scheme);
-      return false;
-    }
-  }
-
-  /**
-   * API usage: Shoots-Lynx
-   * @param enableV8 <code>true</code> use V8 engine, <code>false</code> use quickjs instead
-   */
-  private static void autoSwitchToV8(int enableV8) {
-    LynxEnv.inst().lazyInitIfNeeded();
-    LynxDevtoolEnv.inst().enableV8(enableV8);
-  }
-
-  /**
-   * API usage: Shoots-Lynx
-   * @param enableDebugMode <code>true</code> open debug mode, <code>false</code> close debug mode
-   */
-  private static void autoSwitchToDebugMode(boolean enableDebugMode) {
-    LynxEnv.inst().lazyInitIfNeeded();
-    LynxEnv.inst().enableDebugMode(enableDebugMode);
-  }
-
   private LynxGlobalDebugBridge() {
     mAgentDispatcher = new DevToolAgentDispatcher();
     DebugRouter.getInstance().addGlobalHandler(this);
     DebugRouter.getInstance().addStateListener(this);
-    mSwitchLaunchRecord = new SwitchLaunchRecord();
     LynxEventReporter.addObserver(this);
   }
 
@@ -190,7 +137,7 @@ public class LynxGlobalDebugBridge
   }
 
   public void startRecord() {
-    mSwitchLaunchRecord.startRecord();
+    RecorderController.nativeStartRecord();
   }
 
   @Override
