@@ -32,12 +32,12 @@ class WrapperElement : public FiberElement {
 
   double GetFontSize() override;
 
-  const InheritedProperty& GetInheritedProperty() override;
+  const InheritedProperty GetInheritedProperty() override;
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
-  // When exec UpdateInheritedProperty, do nothing for Wrapper Element.
-  void UpdateInheritedProperty() override {}
+  //  // When exec UpdateInheritedProperty, do nothing for Wrapper Element.
+  //  void UpdateInheritedProperty() override {}
 
   virtual void MarkDirtyLite(const uint32_t flag) override;
 

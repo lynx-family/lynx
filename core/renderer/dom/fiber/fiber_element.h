@@ -104,8 +104,8 @@ class FiberElement : public Element, public SelectorItem {
     // indicate it's children has been marked to propagate inherited properties.
     bool children_propagate_inherited_styles_flag_{false};
 
-    StyleMap* inherited_styles_{nullptr};
-    std::vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
+    const StyleMap* inherited_styles_{nullptr};
+    const std::vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
   };
 
   struct PerfStatistic {
@@ -190,9 +190,9 @@ class FiberElement : public Element, public SelectorItem {
 
   int32_t dirty() const { return dirty_; }
 
-  virtual const InheritedProperty& GetInheritedProperty();
+  virtual const InheritedProperty GetInheritedProperty();
 
-  const InheritedProperty& GetParentInheritedProperty();
+  const InheritedProperty GetParentInheritedProperty();
 
   virtual void SetKeyframesByNamesInner(
       std::unique_ptr<PropBundle> keyframes_data) override;
@@ -223,8 +223,6 @@ class FiberElement : public Element, public SelectorItem {
    * A key function to flush the tree with the current element as the root node.
    */
   virtual void FlushActionsAsRoot();
-
-  virtual void UpdateInheritedProperty();
 
   // This interface is currently only used by the inspector. The inspector
   // determines whether an element is created by the itself by checking whether
@@ -1007,6 +1005,8 @@ class FiberElement : public Element, public SelectorItem {
   StyleMap inherited_styles_;
   std::vector<tasm::CSSPropertyID> reset_inherited_ids_;
 
+  bool children_propagate_inherited_styles_flag_{false};
+
   bool is_first_created_{true};
   // indicates the node's layout node has been inserted to parent layout node
   // yet
@@ -1059,8 +1059,6 @@ class FiberElement : public Element, public SelectorItem {
   bool is_template_{false};
 
   base::String part_id_;
-
-  InheritedProperty inherited_property_;
 
   BuiltinAttrMap builtin_attr_map_;
 
