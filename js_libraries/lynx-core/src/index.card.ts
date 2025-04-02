@@ -47,6 +47,4 @@ nativeGlobal.Headers = Headers;
 nativeGlobal.AbortController = AbortController;
 nativeGlobal.AbortSignal = AbortSignal;
 nativeGlobal.URL = URL;
-nativeGlobal.TextDecoder = TextDecoder;
-nativeGlobal.TextEncoder = TextEncoder;
 URLSearchParamsPolyfill(nativeGlobal);
