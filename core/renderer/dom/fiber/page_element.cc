@@ -76,6 +76,7 @@ void PageElement::FlushActionsAsRoot() {
               });
   FiberElement::ParallelFlushAsRoot();
   FiberElement::FlushActions();
+  FiberElement::TraversalInsertFixedElementOfTree();
 }
 
 void PageElement::PostResolveTaskToThreadPool(

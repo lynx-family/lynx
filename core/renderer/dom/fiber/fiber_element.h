@@ -528,6 +528,8 @@ class FiberElement : public Element, public SelectorItem {
 
   void MarkPropsDirty() { MarkDirty(kDirtyForceUpdate); }
 
+  void TraversalInsertFixedElementOfTree();
+
   template <typename F>
   void ApplyFunctionRecursive(F&& func) {
     func(this);
@@ -830,6 +832,8 @@ class FiberElement : public Element, public SelectorItem {
   }
 
  protected:
+  bool need_handle_fixed_ = false;
+
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
   void ConsumeStyleInternal(

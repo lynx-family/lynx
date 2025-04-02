@@ -1662,7 +1662,11 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
           if (!child->is_fixed_ || GetEnableFixedNew()) {
             this->HandleInsertChildAction(child.get(), -1, nullptr);
           } else {
-            InsertFixedElement(child.get(), nullptr);
+            if (IsFiberArch()) {
+              InsertFixedElement(child.get(), nullptr);
+            } else {
+              need_handle_fixed_ = true;
+            }
           }
         }
       }
@@ -1677,7 +1681,11 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
                                     static_cast<int>(param.index_),
                                     param.ref_node_);
           } else {
-            InsertFixedElement(param.child_.get(), param.ref_node_);
+            if (IsFiberArch()) {
+              InsertFixedElement(param.child_.get(), param.ref_node_);
+            } else {
+              need_handle_fixed_ = true;
+            }
           }
         } break;
 
@@ -3097,14 +3105,43 @@ void FiberElement::ConvertToInlineElement() {
   }
 }
 
+void FiberElement::TraversalInsertFixedElementOfTree() {
+  if (!is_page() && need_handle_fixed_) {
+    HandleSelfFixedChange();
+    need_handle_fixed_ = false;
+  }
+  for (auto child : scoped_children_) {
+    child->TraversalInsertFixedElementOfTree();
+  }
+}
+
 void FiberElement::HandleSelfFixedChange() {
-  if (!fixed_changed_ || !render_parent_ || GetEnableFixedNew()) {
+  // 1. If enableFixedNew is `true`, return directly.
+  if (GetEnableFixedNew()) {
     return;
   }
+  // 2. When Using NoDiff, if the element's fixed status is not changed or the
+  // element don't have its render_parnet_, return directly.
+  // 3. When Using RadonDiff, if the element is not fixed and its fixed status
+  // is not changed, return directly.
+  bool early_return_condition = false;
+  if (IsFiberArch()) {
+    early_return_condition = !fixed_changed_ || !render_parent_;
+  } else if (IsRadonArch()) {
+    early_return_condition = !is_fixed_ && !fixed_changed_;
+  }
+  if (early_return_condition) {
+    return;
+  }
+
   if (is_fixed_) {
     // non-fixed to fixed
     auto *parent = render_parent_;
-    parent->HandleRemoveChildAction(this);
+    if (!IsFiberArch() && !parent) {
+      parent = element_manager()->GetPageElement();
+    } else if (parent) {
+      parent->HandleRemoveChildAction(this);
+    }
     parent->InsertFixedElement(this, next_render_sibling_);
   } else {
     // fixed to non-fixed
