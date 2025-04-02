@@ -35,8 +35,6 @@ void JSCContextWrapperImpl::init() {
 }
 
 JSCContextWrapperImpl::~JSCContextWrapperImpl() {
-  ctx_invalid_ = true;
-
   // remove all global object
   JSObjectRef global = JSContextGetGlobalObject(ctx_);
   JSPropertyNameArrayRef names = JSObjectCopyPropertyNames(ctx_, global);
@@ -45,6 +43,7 @@ JSCContextWrapperImpl::~JSCContextWrapperImpl() {
     JSStringRef name = JSPropertyNameArrayGetNameAtIndex(names, i);
     JSObjectDeleteProperty(ctx_, global, name, nullptr);
   }
+  ctx_invalid_ = true;
   JSGlobalContextRelease(ctx_);
 
 #ifdef DEBUG
