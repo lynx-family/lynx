@@ -45,6 +45,8 @@ class LEPUSValueHelper {
 
   static LEPUSValue ToJsValue(LEPUSContext* ctx, const lepus::Value& val,
                               bool deep_convert = false);
+  static LEPUSValue ToJsValue(LEPUSContext* ctx, const lynx_value& val,
+                              bool deep_convert = false);
 
   static std::string LepusRefToStdString(LEPUSContext* ctx,
                                          const LEPUSValue& val);
@@ -293,6 +295,8 @@ class LEPUSValueHelper {
   static LEPUSValue ArrayToJsValue(LEPUSContext* ctx, const CArray& val, bool);
 
   static LEPUSValue RefCountedToJSValue(LEPUSContext* ctx, const RefCounted&);
+  static lynx_value ConstructLepusRefToLynxValue(LEPUSContext* ctx,
+                                                 const LEPUSValue& val);
 
  private:
   static inline void IteratorCallback(LEPUSContext* ctx, LEPUSValue key,

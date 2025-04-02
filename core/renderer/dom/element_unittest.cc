@@ -212,28 +212,32 @@ TEST_F(ElementTest, GetRelatedCSSFragment) {
 TEST_F(ElementTest, Animate_Array) {
   auto element = manager->CreateNode("view", nullptr);
 
-  lepus::Value test_animate_args{lepus::CArray::Create()};
+  auto array1 = lepus::CArray::Create();
+  array1->set(0, lepus_value(0));
 
-  test_animate_args.val_carray_->set(0, lepus_value(0));
+  auto array2 = lepus::CArray::Create();
+  auto table1 = lepus::Dictionary::Create();
+  table1->SetValue("left", lepus_value("10px"));
+  lepus::Value test_keyframe_table_1{table1};
+  array2->set(0, test_keyframe_table_1);
+  auto table2 = lepus::Dictionary::Create();
+  table2->SetValue("left", lepus_value("100px"));
+  lepus::Value test_keyframe_table_2{table2};
+  array2->set(1, test_keyframe_table_2);
+  lepus::Value test_keyframes_array{array2};
+  array1->set(2, test_keyframes_array);
 
-  lepus::Value test_keyframes_array{lepus::CArray::Create()};
-  auto test_keyframe_table_1 = lepus::Value::CreateObject();
-  test_keyframe_table_1.val_table_->SetValue("left", lepus_value("10px"));
-  test_keyframes_array.val_carray_->set(0, test_keyframe_table_1);
-  auto test_keyframe_table_2 = lepus::Value::CreateObject();
-  test_keyframe_table_2.val_table_->SetValue("left", lepus_value("100px"));
-  test_keyframes_array.val_carray_->set(1, test_keyframe_table_2);
-  test_animate_args.val_carray_->set(2, test_keyframes_array);
-
-  auto test_data_table = lepus::Value::CreateObject();
-  test_data_table.val_table_->SetValue("name", lepus::Value("name1"));
-  test_data_table.val_table_->SetValue("duration", lepus::Value(2000));
-  test_data_table.val_table_->SetValue("iteration", lepus::Value(2));
-  test_data_table.val_table_->SetValue("fill", lepus::Value("forwards"));
-  test_data_table.val_table_->SetValue("play-state", lepus::Value("running"));
-  test_animate_args.val_carray_->set(3, test_data_table);
+  auto table3 = lepus::Dictionary::Create();
+  table3->SetValue("name", lepus::Value("name1"));
+  table3->SetValue("duration", lepus::Value(2000));
+  table3->SetValue("iteration", lepus::Value(2));
+  table3->SetValue("fill", lepus::Value("forwards"));
+  table3->SetValue("play-state", lepus::Value("running"));
+  lepus::Value test_data_table{table3};
+  array1->set(3, test_data_table);
 
   // 1.Check that the keyframe array was passed in correctly.
+  lepus::Value test_animate_args{array1};
   element->Animate(test_animate_args);
   auto iter = element->keyframes_map_.find("name1");
   EXPECT_EQ(iter != element->keyframes_map_.end(), true);
@@ -277,7 +281,7 @@ TEST_F(ElementTest, Animate_Array) {
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
       CSSValuePattern::ENUM);
-  test_animate_args.val_carray_->set(0, lepus_value(2));
+  array1->set(0, lepus_value(2));
   element->Animate(test_animate_args);
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
@@ -285,7 +289,7 @@ TEST_F(ElementTest, Animate_Array) {
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
       CSSValuePattern::ENUM);
-  test_animate_args.val_carray_->set(0, lepus_value(3));
+  array1->set(0, lepus_value(3));
   element->Animate(test_animate_args);
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
@@ -298,31 +302,36 @@ TEST_F(ElementTest, Animate_Array) {
 TEST_F(ElementTest, Animate_Table) {
   auto element = manager->CreateNode("view", nullptr);
 
-  lepus::Value test_animate_args{lepus::CArray::Create()};
+  auto array1 = lepus::CArray::Create();
+  array1->set(0, lepus_value(0));
 
-  test_animate_args.val_carray_->set(0, lepus_value(0));
+  auto table1 = lepus::Dictionary::Create();
+  auto table2 = lepus::Dictionary::Create();
+  table2->SetValue("left", lepus_value("10px"));
+  lepus::Value test_keyframe_table_1(std::move(table2));
+  table1->SetValue("0%", test_keyframe_table_1);
+  auto table3 = lepus::Dictionary::Create();
+  table3->SetValue("left", lepus_value("55px"));
+  lepus::Value test_keyframe_table_2(std::move(table3));
+  table1->SetValue("50%", test_keyframe_table_2);
+  auto table4 = lepus::Dictionary::Create();
+  table4->SetValue("left", lepus_value("100px"));
+  lepus::Value test_keyframe_table_3(std::move(table4));
+  table1->SetValue("100%", test_keyframe_table_3);
+  lepus::Value test_keyframes_table(table1);
+  array1->set(2, test_keyframes_table);
 
-  auto test_keyframes_table = lepus::Value::CreateObject();
-  auto test_keyframe_table_1 = lepus::Value::CreateObject();
-  test_keyframe_table_1.val_table_->SetValue("left", lepus_value("10px"));
-  test_keyframes_table.val_table_->SetValue("0%", test_keyframe_table_1);
-  auto test_keyframe_table_2 = lepus::Value::CreateObject();
-  test_keyframe_table_2.val_table_->SetValue("left", lepus_value("55px"));
-  test_keyframes_table.val_table_->SetValue("50%", test_keyframe_table_2);
-  auto test_keyframe_table_3 = lepus::Value::CreateObject();
-  test_keyframe_table_3.val_table_->SetValue("left", lepus_value("100px"));
-  test_keyframes_table.val_table_->SetValue("100%", test_keyframe_table_3);
-  test_animate_args.val_carray_->set(2, test_keyframes_table);
-
-  auto test_data_table = lepus::Value::CreateObject();
-  test_data_table.val_table_->SetValue("name", lepus::Value("name1"));
-  test_data_table.val_table_->SetValue("duration", lepus::Value(2000));
-  test_data_table.val_table_->SetValue("iteration", lepus::Value(2));
-  test_data_table.val_table_->SetValue("fill", lepus::Value("forwards"));
-  test_data_table.val_table_->SetValue("play-state", lepus::Value("running"));
-  test_animate_args.val_carray_->set(3, test_data_table);
+  auto table5 = lepus::Dictionary::Create();
+  table5->SetValue("name", lepus::Value("name1"));
+  table5->SetValue("duration", lepus::Value(2000));
+  table5->SetValue("iteration", lepus::Value(2));
+  table5->SetValue("fill", lepus::Value("forwards"));
+  table5->SetValue("play-state", lepus::Value("running"));
+  lepus::Value test_data_table(std::move(table5));
+  array1->set(3, test_data_table);
 
   // 1.Check that the keyframe table was passed in correctly.
+  lepus::Value test_animate_args{array1};
   element->Animate(test_animate_args);
   auto iter = element->keyframes_map_.find("name1");
   EXPECT_EQ(iter != element->keyframes_map_.end(), true);
@@ -376,7 +385,7 @@ TEST_F(ElementTest, Animate_Table) {
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
       CSSValuePattern::ENUM);
-  test_animate_args.val_carray_->set(0, lepus_value(2));
+  array1->set(0, lepus_value(2));
   element->Animate(test_animate_args);
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),
@@ -384,7 +393,7 @@ TEST_F(ElementTest, Animate_Table) {
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetPattern(),
       CSSValuePattern::ENUM);
-  test_animate_args.val_carray_->set(0, lepus_value(3));
+  array1->set(0, lepus_value(3));
   element->Animate(test_animate_args);
   EXPECT_EQ(
       element->styles_.find(kPropertyIDAnimationPlayState)->second.GetValue(),

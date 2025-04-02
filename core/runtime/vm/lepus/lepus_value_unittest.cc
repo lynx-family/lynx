@@ -1124,6 +1124,58 @@ TEST_F(LepusValueTest, LepusValueToJSValue) {
   }
 }
 
+TEST_F(LepusValueTest, LepusValueLepusRefStorage) {
+  LEPUSValue val_str1 =
+      LEPUS_NewStringLen(quick_ctx_.context(), "test_1234", 9);
+  LEPUSValue val_map1 = LEPUS_NewObject(quick_ctx_.context());
+  lepus::Dictionary* dict_ptr = nullptr;
+  lepus::CArray* array_ptr = nullptr;
+
+  {
+    auto dict1 = lepus::Dictionary::Create();
+    auto dict2 = lepus::Dictionary::Create();
+    dict_ptr = dict2.get();
+    auto array1 = lepus::CArray::Create();
+    array1->push_back(lepus::Value("test"));
+    array_ptr = array1.get();
+    {
+      lepus::Value v_dict(dict1);
+      lepus::Value v1(quick_ctx_.context(), val_str1);
+      v_dict.SetProperty("key1", std::move(v1));
+      lepus::Value v2(quick_ctx_.context(), val_map1);
+      dict2->SetValue("key1", lepus::Value(true));
+      dict2->SetValue("key2", lepus::Value("string"));
+      dict2->SetValue("key3", lepus::Value(array1));
+      lepus::Value v3(dict2);
+      v2.SetProperty("key", v3);
+      v_dict.SetProperty("key2", v2);
+      auto ret1 = v_dict.GetProperty("key2");
+      ASSERT_TRUE(ret1.IsJSTable());
+      auto ret2 = ret1.GetProperty("key");
+      ASSERT_TRUE(ret2.IsTable());
+
+      LEPUSValue ret3 =
+          lepus::LEPUSValueHelper::ToJsValue(quick_ctx_.context(), v_dict);
+      lepus::Value v4(quick_ctx_.context(), ret3);
+      auto ret4 = v4.ToLepusValue();
+      ASSERT_TRUE(ret4 == v_dict);
+      LEPUS_FreeValue(quick_ctx_.context(), ret3);
+    }
+    ASSERT_TRUE(dict1->HasOneRef());
+  }
+
+  ASSERT_TRUE(dict_ptr->HasOneRef());
+  ASSERT_TRUE(array_ptr->HasOneRef());
+  LEPUSRefCountHeader* p_ref1 =
+      (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str1);
+  ASSERT_TRUE(p_ref1->ref_count == 1);
+  LEPUS_FreeValue(quick_ctx_.context(), val_str1);
+  LEPUSRefCountHeader* p_ref2 =
+      (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_map1);
+  ASSERT_TRUE(p_ref2->ref_count == 1);
+  LEPUS_FreeValue(quick_ctx_.context(), val_map1);
+}
+
 }  // namespace test
 }  // namespace lepus
 }  // namespace lynx

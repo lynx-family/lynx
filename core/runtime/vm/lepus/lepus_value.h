@@ -16,13 +16,14 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
-#include "base/include/vector.h"
+#include "core/runtime/vm/lepus/lepus_context_cell.h"
 #include "core/runtime/vm/lepus/marco.h"
+#include "core/runtime/vm/lepus/ref_type.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "quickjs/include/quickjs.h"
+#include "base/include/value/lynx_value_api.h"
 #ifdef __cplusplus
 }
 #endif
@@ -51,15 +52,6 @@ typedef void* point_t;
   V(UInt64, uint64_t)
 
 #define NumberType(V) NormalNumberType(V) V(Int64, int64_t)
-
-#define ReferenceType(V)      \
-  V(base::String, string)     \
-  V(Table, table)             \
-  V(Array, array)             \
-  V(Closure, closure)         \
-  V(LEPUSObject, lepusobject) \
-  V(ByteArray, bytearray)     \
-  V(Date, date)
 
 /*
 LepusNG will add more types:
@@ -106,68 +98,12 @@ class QuickContext;
 class RefCounted;
 class LEPUSObject;
 
-class ContextCell {
- public:
-  ContextCell(lepus::QuickContext* qctx, LEPUSContext* ctx, LEPUSRuntime* rt)
-      : gc_enable_(false), ctx_(ctx), rt_(rt), qctx_(qctx) {
-    if (rt_) {
-      gc_enable_ = LEPUS_IsGCModeRT(rt_);
-    }
-  };
-  bool gc_enable_;
-  LEPUSContext* ctx_;
-  LEPUSRuntime* rt_;
-  lepus::QuickContext* qctx_;
-};
-
-class CellManager {
- public:
-  CellManager() : cells_(){};
-  ~CellManager();
-  ContextCell* AddCell(lepus::QuickContext* qctx);
-
- private:
-  base::InlineVector<ContextCell*, 16> cells_;
-};
-
 typedef Value (*CFunction)(Context*);
 
 class BASE_EXPORT_FOR_DEVTOOL Value {
  private:
-  union {
-    Dictionary* val_table_;
-
-    // guaranteed to be non-null for Value_String
-    base::RefCountedStringImpl* val_str_;
-    lepus::LEPUSObject* val_jsobject_;
-    lepus::ByteArray* val_bytearray_;
-    lepus::RefCounted* val_ref_counted_;
-    CArray* val_carray_;
-    lepus::CDate* val_date_;
-    lepus::RegExp* val_regexp_;
-    Closure* val_closure_;
-
-#define NumberStorage(name, type) type val_##type##_;
-    NumberType(NumberStorage)
-#undef NumberStorage
-
-        bool val_bool_;
-    void* val_ptr_ = nullptr;
-    bool val_nan_;
-  };
-
   ContextCell* cell_ = nullptr;
-  union {
-    ValueType type_ = Value_Nil;
-    int32_t tag_;
-  };
-
-#if !defined(__aarch64__) || defined(OS_WIN) || DISABLE_NANBOX
-  static constexpr int LEPUS_TAG_ADJUST = Value_TypeCount - LEPUS_TAG_FIRST + 1;
-
-#define EncodeJSTag(t) ((t) + LEPUS_TAG_ADJUST)
-#define DecodeJSTag(t) ((t)-LEPUS_TAG_ADJUST)
-#endif
+  lynx_value value_;
   GCPersistent* p_val_ = nullptr;
 
  public:
@@ -203,8 +139,14 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   explicit Value(CFunction val);
   explicit Value(bool for_nan, bool val);
 
-  inline bool IsCDate() const { return type_ == Value_CDate; }
-  inline bool IsRegExp() const { return type_ == Value_RegExp; }
+  inline bool IsCDate() const {
+    return value_.type == lynx_value_object &&
+           value_.tag == static_cast<int64_t>(CustomRefCountedType::kCDate);
+  }
+  inline bool IsRegExp() const {
+    return value_.type == lynx_value_object &&
+           value_.tag == static_cast<int64_t>(CustomRefCountedType::kRegExp);
+  }
 
   fml::RefPtr<lepus::Closure> GetClosure() const;
   fml::RefPtr<lepus::CDate> Date() const;
@@ -220,7 +162,10 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   inline void DupValue() const;
   void FreeValue();
 
-  inline bool IsClosure() const { return type_ == Value_Closure; }
+  inline bool IsClosure() const {
+    return value_.type == lynx_value_object &&
+           value_.tag == static_cast<int64_t>(CustomRefCountedType::kClosure);
+  }
   inline bool IsCallable() const { return IsClosure() || IsJSFunction(); }
 
 // add for compile
@@ -231,47 +176,67 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
       explicit Value(uint8_t data);
 #undef NumberConstructor
 
-#define SetNumberDefine(name, type) \
-  void SetNumber(type value) {      \
-    FreeValue();                    \
-    val_##type##_ = value;          \
-    type_ = Value_##name;           \
+  void SetNumber(double val) {
+    FreeValue();
+    value_ = {.val_double = val, .type = lynx_value_double};
   }
 
-  NumberType(SetNumberDefine)
-#undef SetNumberDefine
-
-      inline ValueType Type() const {
-    return type_;
+  void SetNumber(int32_t val) {
+    FreeValue();
+    value_ = {.val_int32 = val, .type = lynx_value_int32};
   }
+
+  void SetNumber(uint32_t val) {
+    FreeValue();
+    value_ = {.val_uint32 = val, .type = lynx_value_uint32};
+  }
+
+  void SetNumber(int64_t val) {
+    FreeValue();
+    value_ = {.val_int64 = val, .type = lynx_value_int64};
+  }
+
+  void SetNumber(uint64_t val) {
+    FreeValue();
+    value_ = {.val_uint64 = val, .type = lynx_value_uint64};
+  }
+
+  inline ValueType Type() const { return LegacyTypeFromLynxValue(value_); }
 
   static Value Clone(const Value& src, bool clone_as_jsvalue = false);
 
   static Value ShallowCopy(const Value& src, bool clone_as_jsvalue = false);
 
   inline bool IsReference() const {
-    return (type_ > Value_Bool && type_ < Value_CFunction) ||
-           ((type_ >= Value_CDate && type_ <= Value_RefCounted &&
-             type_ != Value_Undefined));
+    return (value_.type >= lynx_value_string &&
+            value_.type <= lynx_value_arraybuffer) ||
+           value_.type == lynx_value_object;
   }
-  inline void* Ptr() const { return val_ptr_; }
+  inline void* Ptr() const { return value_.val_ptr; }
 
-  inline bool IsBool() const { return type_ == Value_Bool || IsJSBool(); }
+  inline bool IsBool() const {
+    return value_.type == lynx_value_bool || IsJSBool();
+  }
 
-  inline bool IsString() const { return type_ == Value_String || IsJSString(); }
+  inline bool IsString() const {
+    return value_.type == lynx_value_string || IsJSString();
+  }
 
-  inline bool IsInt64() const { return type_ == Value_Int64 || IsJSInteger(); }
+  inline bool IsInt64() const {
+    return value_.type == lynx_value_int64 || IsJSInteger();
+  }
 
   inline bool IsNumber() const {
-    return (type_ == Value_Double) ||
-           (type_ >= Value_Int32 && type_ <= Value_UInt64) || IsJSNumber();
+    return (value_.type >= lynx_value_double &&
+            value_.type <= lynx_value_uint64) ||
+           IsJSNumber();
   }
 
-  inline bool IsDouble() const { return type_ == Value_Double; }
+  inline bool IsDouble() const { return value_.type == lynx_value_double; }
 
-  inline bool IsArray() const { return type_ == Value_Array; }
+  inline bool IsArray() const { return value_.type == lynx_value_array; }
 
-  inline bool IsTable() const { return type_ == Value_Table; }
+  inline bool IsTable() const { return value_.type == lynx_value_map; }
 
   inline bool IsObject() const {
     if (IsTable()) return true;
@@ -286,28 +251,41 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   }
 
   inline bool IsCPointer() const {
-    return type_ == Value_CPointer || IsJSCPointer();
+    return value_.type == lynx_value_external || IsJSCPointer();
   }
 
-  inline bool IsRefCounted() const { return type_ == Value_RefCounted; }
+  inline bool IsRefCounted() const {
+    return value_.type == lynx_value_object &&
+           value_.tag ==
+               static_cast<int64_t>(CustomRefCountedType::kRefCounted);
+  }
 
-  inline bool IsInt32() const { return type_ == Value_Int32; }
-  inline bool IsUInt32() const { return type_ == Value_UInt32; }
-  inline bool IsUInt64() const { return type_ == Value_UInt64; }
-  inline bool IsNil() const { return (type_ == Value_Nil) || IsJsNull(); }
+  inline bool IsInt32() const { return value_.type == lynx_value_int32; }
+  inline bool IsUInt32() const { return value_.type == lynx_value_uint32; }
+  inline bool IsUInt64() const { return value_.type == lynx_value_uint64; }
+  inline bool IsNil() const {
+    return (value_.type == lynx_value_null) || IsJsNull();
+  }
   inline bool IsUndefined() const {
-    return type_ == Value_Undefined || IsJSUndefined();
+    return value_.type == lynx_value_undefined || IsJSUndefined();
   }
-  inline bool IsCFunction() const { return type_ == Value_CFunction; }
-  inline bool IsJSObject() const { return type_ == Value_JSObject; }
-  inline bool IsByteArray() const { return type_ == Value_ByteArray; }
-  inline bool IsNaN() const { return type_ == Value_NaN; }
+  inline bool IsCFunction() const { return value_.type == lynx_value_function; }
+  inline bool IsJSObject() const {
+    return value_.type == lynx_value_object &&
+           value_.tag == static_cast<int64_t>(CustomRefCountedType::kJSObject);
+  }
+  inline bool IsByteArray() const {
+    return value_.type == lynx_value_arraybuffer;
+  }
+  inline bool IsNaN() const { return value_.type == lynx_value_nan; }
 
   inline bool Bool() const {
-    if (type_ != Value_Bool) return !IsFalse();
-    return val_bool_;
+    if (value_.type != lynx_value_bool) return !IsFalse();
+    return value_.val_bool;
   }
-  inline bool NaN() const { return type_ == Value_NaN && val_nan_; }
+  inline bool NaN() const {
+    return value_.type == lynx_value_nan && value_.val_bool;
+  }
 
   double Number() const;
 
@@ -451,9 +429,9 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   inline LEPUSValue WrapJSValue() const {
     if (!IsJSValue()) return LEPUS_UNDEFINED;
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
-    return (LEPUSValue){.as_int64 = val_int64_t_};
+    return (LEPUSValue){.as_int64 = value_.val_int64};
 #else
-    return LEPUS_MKPTR(DecodeJSTag(tag_), val_ptr_);
+    return LEPUS_MKPTR(value_.tag, value_.val_ptr);
 #endif
   }
 
@@ -511,26 +489,29 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   bool IsTrue() const { return !IsFalse(); }
 
   bool IsFalse() const {
-    return type_ == Value_Nil || type_ == Value_NaN ||
-           type_ == Value_Undefined || (type_ == Value_Bool && !Bool()) ||
+    return value_.type == lynx_value_null || value_.type == lynx_value_nan ||
+           value_.type == lynx_value_undefined ||
+           (value_.type == lynx_value_bool && !Bool()) ||
            (IsNumber() && Number() == 0) ||
-           (type_ == Value_String && StringView().empty()) || IsJSFalse();
+           (value_.type == lynx_value_string && StringView().empty()) ||
+           IsJSFalse();
   }
   inline bool IsEmpty() const {
-    return (type_ == Value_Nil) || (type_ == Value_Undefined) ||
-           IsJSUndefined() || IsJsNull();
+    return (value_.type == lynx_value_null) ||
+           (value_.type == lynx_value_undefined) || IsJSUndefined() ||
+           IsJsNull();
   }
 
   inline void SetNil() {
     FreeValue();
-    type_ = Value_Nil;
-    val_ptr_ = nullptr;
+    value_.type = lynx_value_null;
+    value_.val_ptr = nullptr;
   }
 
   inline void SetUndefined() {
     FreeValue();
-    type_ = Value_Undefined;
-    val_ptr_ = nullptr;
+    value_.type = lynx_value_undefined;
+    value_.val_ptr = nullptr;
   }
 
   bool IsEqual(const Value& value) const;
@@ -667,7 +648,9 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   }
 
   void IteratorJSValue(const LepusValueIterator& callback) const;
-  friend lepus::LEPUSValueHelper;
+  const lynx_value& value() const { return value_; }
+  static ValueType LegacyTypeFromLynxValue(const lynx_value& value);
+  static lynx_value_type ToLynxValueType(ValueType type);
 
  private:
   void Copy(const Value& value);

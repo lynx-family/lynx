@@ -41,18 +41,16 @@ Value::Value(Value&& value) noexcept {
   if (p_val_ && IsJSValue()) {
     p_val_->Reset(cell_->rt_);
   }
-  type_ = value.type_;
-  val_uint64_t_ = value.val_uint64_t_;
   cell_ = value.cell_;
+  value_ = value.value_;
 
-  value.type_ = Value_Nil;
-  value.val_int64_t_ = 0;
   if (value.p_val_ && IsJSValue()) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(cell_->rt_, value.p_val_->Get());
     value.p_val_->Reset(cell_->rt_);
   }
   value.cell_ = nullptr;
+  value.value_ = {.val_int64 = 0, .type = lynx_value_null, .tag = 0};
 }
 
 Value& Value::operator=(Value&& value) noexcept {
@@ -63,121 +61,135 @@ Value& Value::operator=(Value&& value) noexcept {
   return *this;
 }
 
-Value::Value(const base::String& data)
-    : val_str_(base::String::Unsafe::GetUntaggedStringRawRef(data)),
-      type_(Value_String) {
-  val_str_->AddRef();
+Value::Value(const base::String& data) {
+  auto* str = base::String::Unsafe::GetUntaggedStringRawRef(data);
+  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
+            .type = lynx_value_string};
+  str->AddRef();
 }
 
-Value::Value(base::String&& data)
-    : val_str_(base::String::Unsafe::GetUntaggedStringRawRef(data)),
-      type_(Value_String) {
-  if (val_str_ != base::String::Unsafe::GetStringRawRef(data)) {
-    val_str_->AddRef();
+Value::Value(base::String&& data) {
+  auto* str = base::String::Unsafe::GetUntaggedStringRawRef(data);
+  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
+            .type = lynx_value_string};
+  if (str != base::String::Unsafe::GetStringRawRef(data)) {
+    str->AddRef();
   }
   base::String::Unsafe::SetStringToEmpty(data);
 }
 
 Value::Value(const fml::RefPtr<lepus::LEPUSObject>& data)
-    : val_jsobject_(data.get()), type_(Value_JSObject) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kJSObject)}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<lepus::LEPUSObject>&& data)
-    : val_jsobject_(data.AbandonRef()), type_(Value_JSObject) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kJSObject)}) {}
 
 Value::Value(const fml::RefPtr<lepus::ByteArray>& data)
-    : val_bytearray_(data.get()), type_(Value_ByteArray) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_arraybuffer}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<lepus::ByteArray>&& data)
-    : val_bytearray_(data.AbandonRef()), type_(Value_ByteArray) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_arraybuffer}) {}
 
 Value::Value(const fml::RefPtr<lepus::RefCounted>& data)
-    : val_ref_counted_(data.get()), type_(Value_RefCounted) {
-  val_ref_counted_->AddRef();
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kRefCounted)}) {
+  data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<lepus::RefCounted>&& data)
-    : val_ref_counted_(data.AbandonRef()), type_(Value_RefCounted) {}
-
-Value::Value(bool val) : val_bool_(val), type_(Value_Bool) {}
-
-Value::Value(const char* val) : type_(Value_String) {
-  val_str_ = base::RefCountedStringImpl::Unsafe::RawCreate(val);
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kRefCounted)}) {
 }
 
-Value::Value(const std::string& str) : type_(Value_String) {
-  val_str_ = base::RefCountedStringImpl::Unsafe::RawCreate(str);
+Value::Value(bool val) : value_({.val_bool = val, .type = lynx_value_bool}) {}
+
+Value::Value(const char* val) {
+  auto* str = base::RefCountedStringImpl::Unsafe::RawCreate(val);
+  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(str),
+            .type = lynx_value_string};
 }
 
-Value::Value(std::string&& str) : type_(Value_String) {
-  val_str_ = base::RefCountedStringImpl::Unsafe::RawCreate(std::move(str));
+Value::Value(const std::string& str) {
+  auto* ptr = base::RefCountedStringImpl::Unsafe::RawCreate(str);
+  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
+            .type = lynx_value_string};
 }
 
-Value::Value(void* data) : val_ptr_(data), type_(Value_CPointer) {}
+Value::Value(std::string&& str) {
+  auto* ptr = base::RefCountedStringImpl::Unsafe::RawCreate(std::move(str));
+  value_ = {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
+            .type = lynx_value_string};
+}
+
+Value::Value(void* data)
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data),
+              .type = lynx_value_external}) {}
 Value::Value(CFunction val)
-    : val_ptr_(reinterpret_cast<void*>(val)), type_(Value_CFunction) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(val),
+              .type = lynx_value_function}) {}
 Value::Value(bool for_nan, bool val) {
   if (for_nan) {
-    val_nan_ = val;
-    type_ = Value_NaN;
+    value_.val_bool = val;
+    value_.type = lynx_value_nan;
   }
 }
 
-#define NumberConstructor(name, type) \
-  Value::Value(type val) : val_##type##_(val), type_(Value_##name) {}
-
-NumberType(NumberConstructor)
-#undef NumberConstructor
-
-    Value::Value(uint8_t data)
-    : val_uint32_t_(data), type_(Value_UInt32) {
-}
+Value::Value(double val)
+    : value_({.val_double = val, .type = lynx_value_double}) {}
+Value::Value(int32_t val)
+    : value_({.val_int32 = val, .type = lynx_value_int32}) {}
+Value::Value(uint32_t val)
+    : value_({.val_uint32 = val, .type = lynx_value_uint32}) {}
+Value::Value(int64_t val)
+    : value_({.val_int64 = val, .type = lynx_value_int64}) {}
+Value::Value(uint64_t val)
+    : value_({.val_uint64 = val, .type = lynx_value_uint64}) {}
+Value::Value(uint8_t data)
+    : value_({.val_uint32 = data, .type = lynx_value_uint32}) {}
 
 Value::Value(const fml::RefPtr<Dictionary>& data)
-    : val_table_(data.get()), type_(Value_Table) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_map}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<Dictionary>&& data)
-    : val_table_(data.AbandonRef()), type_(Value_Table) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_map}) {}
 
 Value::Value(const fml::RefPtr<CArray>& data)
-    : val_carray_(data.get()), type_(Value_Array) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_array}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<CArray>&& data)
-    : val_carray_(data.AbandonRef()), type_(Value_Array) {}
-
-void Value::ConstructValueFromLepusRef(LEPUSContext* ctx,
-                                       const LEPUSValue& val) {
-  if (LEPUS_IsLepusRef(val)) {
-    type_ = static_cast<ValueType>(LEPUS_GetLepusRefTag(val));
-    val_ptr_ = LEPUS_GetLepusRefPoint(val);
-    reinterpret_cast<fml::RefCountedThreadSafeStorage*>(val_ptr_)->AddRef();
-    LEPUSLepusRef* ref =
-        reinterpret_cast<LEPUSLepusRef*>(LEPUS_VALUE_GET_PTR(val));
-    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeValue(ctx, ref->lepus_val);
-    ref->lepus_val = LEPUS_UNDEFINED;
-  }
-}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_array}) {}
 
 Value::Value(LEPUSContext* ctx, const LEPUSValue& val) {
   if (LEPUS_IsLepusRef(val)) {
-    ConstructValueFromLepusRef(ctx, val);
+    value_ = lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx, val);
     return;
   }
 
   cell_ = Context::GetContextCellFromCtx(ctx);
-#if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
-  type_ = Value_PrimJsValue;
-#else
-  tag_ = EncodeJSTag(LEPUS_VALUE_GET_TAG(val));
-#endif
-  val_int64_t_ = LEPUS_VALUE_GET_INT64(val);
+  value_ = {
+      .val_ptr = reinterpret_cast<lynx_value_ptr>(LEPUS_VALUE_GET_INT64(val)),
+      .type = lynx_value_extended,
+      .tag = LEPUS_VALUE_GET_TAG(val)};
   if (cell_->gc_enable_) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(ctx, val);
@@ -188,19 +200,17 @@ Value::Value(LEPUSContext* ctx, const LEPUSValue& val) {
 
 Value::Value(LEPUSContext* ctx, LEPUSValue&& val) {
   if (LEPUS_IsLepusRef(val)) {
-    ConstructValueFromLepusRef(ctx, val);
+    value_ = lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx, val);
     if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeValue(ctx, val);
     val = LEPUS_UNDEFINED;
     return;
   }
 
   cell_ = Context::GetContextCellFromCtx(ctx);
-#if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
-  type_ = Value_PrimJsValue;
-#else
-  tag_ = EncodeJSTag(LEPUS_VALUE_GET_TAG(val));
-#endif
-  val_int64_t_ = LEPUS_VALUE_GET_INT64(val);
+  value_ = {
+      .val_ptr = reinterpret_cast<lynx_value_ptr>(LEPUS_VALUE_GET_INT64(val)),
+      .type = lynx_value_extended,
+      .tag = LEPUS_VALUE_GET_TAG(val)};
   if (cell_->gc_enable_) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(ctx, val);
@@ -218,7 +228,7 @@ LEPUSValue Value::ToJSValue(LEPUSContext* ctx, bool deep_convert) const {
   if (IsInt32()) {
     return LEPUS_NewInt32(ctx, Int32());
   } else if (IsCPointer()) {
-    return LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, val_ptr_);
+    return LEPUS_MKPTR(LEPUS_TAG_LEPUS_CPOINTER, value_.val_ptr);
   } else if (IsDouble()) {
     return LEPUS_NewFloat64(ctx, Double());
   }
@@ -237,13 +247,16 @@ Value Value::ToLepusValue(bool deep_convert) const {
 void Value::ToLepusValueRecursively(Value& value, bool deep_convert) {
   if (!value.IsJSValue()) {
     if (value.IsTable()) {
-      if (auto tbl = value.val_table_; tbl != nullptr) {
+      const auto tbl =
+          reinterpret_cast<lepus::Dictionary*>(value.value_.val_ptr);
+      if (tbl != nullptr) {
         for (auto& itr : *tbl) {
           ToLepusValueRecursively(itr.second, deep_convert);
         }
       }
     } else if (value.IsArray()) {
-      if (auto arr = value.val_carray_; arr != nullptr) {
+      const auto arr = reinterpret_cast<lepus::CArray*>(value.value_.val_ptr);
+      if (arr != nullptr) {
         for (std::size_t i = 0; i < arr->size(); ++i) {
           ToLepusValueRecursively(const_cast<lepus::Value&>(arr->get(i)),
                                   deep_convert);
@@ -260,111 +273,140 @@ void Value::ToLepusValueRecursively(Value& value, bool deep_convert) {
 Value::~Value() { FreeValue(); }
 
 double Value::Number() const {
-  switch (type_) {
-#define NumberCase(name, type) \
-  case Value_##name:           \
-    return val_##type##_;
-
-    NumberType(NumberCase)
-
-#undef NumberCase
-        default : if (IsJSNumber()) return LEPUSNumber();
+  switch (value_.type) {
+    case lynx_value_double:
+      return value_.val_double;
+    case lynx_value_int32:
+      return value_.val_int32;
+    case lynx_value_uint32:
+      return value_.val_uint32;
+    case lynx_value_int64:
+      return value_.val_int64;
+    case lynx_value_uint64:
+      return value_.val_uint64;
+    default:
+      if (IsJSNumber()) return LEPUSNumber();
   }
   return 0;
 }
 
 #if !ENABLE_JUST_LEPUSNG
 Value::Value(const fml::RefPtr<lepus::Closure>& data)
-    : val_closure_(data.get()), type_(Value_Closure) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kClosure)}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<Closure>&& data)
-    : val_closure_(data.AbandonRef()), type_(Value_Closure) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kClosure)}) {}
 
 Value::Value(const fml::RefPtr<lepus::CDate>& data)
-    : val_date_(data.get()), type_(Value_CDate) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kCDate)}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<CDate>&& data)
-    : val_date_(data.AbandonRef()), type_(Value_CDate) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kCDate)}) {}
 
 Value::Value(const fml::RefPtr<lepus::RegExp>& data)
-    : val_regexp_(data.get()), type_(Value_RegExp) {
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.get()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kRegExp)}) {
   data.get()->AddRef();
 }
 
 Value::Value(fml::RefPtr<lepus::RegExp>&& data)
-    : val_regexp_(data.AbandonRef()), type_(Value_RegExp) {}
+    : value_({.val_ptr = reinterpret_cast<lynx_value_ptr>(data.AbandonRef()),
+              .type = lynx_value_object,
+              .tag = static_cast<int64_t>(CustomRefCountedType::kRegExp)}) {}
 
 fml::RefPtr<lepus::RegExp> Value::RegExp() const {
-  if (val_regexp_ != nullptr && type_ == Value_RegExp) {
-    return fml::RefPtr<lepus::RegExp>(val_regexp_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_object &&
+      value_.tag == static_cast<int64_t>(CustomRefCountedType::kRegExp)) {
+    return fml::RefPtr<lepus::RegExp>(
+        reinterpret_cast<lepus::RegExp*>(value_.val_ptr));
   }
   return lepus::RegExp::Create();
 }
 
 fml::RefPtr<lepus::Closure> Value::GetClosure() const {
-  if (val_closure_ != nullptr && type_ == Value_Closure) {
-    return fml::RefPtr<lepus::Closure>(val_closure_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_object &&
+      value_.tag == static_cast<int64_t>(CustomRefCountedType::kClosure)) {
+    return fml::RefPtr<lepus::Closure>(
+        reinterpret_cast<lepus::Closure*>(value_.val_ptr));
   }
   return lepus::Closure::Create(nullptr);
 }
 
 fml::RefPtr<lepus::CDate> Value::Date() const {
-  if (val_date_ != nullptr && type_ == Value_CDate) {
-    return fml::RefPtr<lepus::CDate>(val_date_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_object &&
+      value_.tag == static_cast<int64_t>(CustomRefCountedType::kCDate)) {
+    return fml::RefPtr<lepus::CDate>(
+        reinterpret_cast<lepus::CDate*>(value_.val_ptr));
   }
   return lepus::CDate::Create();
 }
 
 void Value::SetClosure(const fml::RefPtr<lepus::Closure>& closure) {
   FreeValue();
-  this->val_closure_ = closure.get();
-  this->type_ = Value_Closure;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(closure.get());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kClosure);
   closure->AddRef();
 }
 
 void Value::SetClosure(fml::RefPtr<lepus::Closure>&& closure) {
   FreeValue();
-  this->val_closure_ = closure.AbandonRef();
-  this->type_ = Value_Closure;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(closure.AbandonRef());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kClosure);
 }
 
 void Value::SetDate(const fml::RefPtr<lepus::CDate>& date) {
   FreeValue();
-  this->val_date_ = date.get();
-  this->type_ = Value_CDate;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(date.get());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kCDate);
   date->AddRef();
 }
 
 void Value::SetDate(fml::RefPtr<lepus::CDate>&& date) {
   FreeValue();
-  this->val_date_ = date.AbandonRef();
-  this->type_ = Value_CDate;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(date.AbandonRef());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kCDate);
 }
 
 void Value::SetRegExp(const fml::RefPtr<lepus::RegExp>& regexp) {
   FreeValue();
-  this->type_ = Value_RegExp;
-  this->val_regexp_ = regexp.get();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(regexp.get());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kRegExp);
   regexp->AddRef();
 }
 
 void Value::SetRegExp(fml::RefPtr<lepus::RegExp>&& regexp) {
   FreeValue();
-  this->type_ = Value_RegExp;
-  this->val_regexp_ = regexp.AbandonRef();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(regexp.AbandonRef());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kRegExp);
 }
 #endif
 
 const std::string& Value::StdString() const {
-  if (type_ == Value_String) {
-    return val_str_->str();
-  } else if (type_ == Value_Bool) {
-    return val_bool_ ? base::RefCountedStringImpl::Unsafe::kTrueString().str()
-                     : base::RefCountedStringImpl::Unsafe::kFalseString().str();
+  if (value_.type == lynx_value_string) {
+    return reinterpret_cast<base::RefCountedStringImpl*>(value_.val_ptr)->str();
+  } else if (value_.type == lynx_value_bool) {
+    return value_.val_bool
+               ? base::RefCountedStringImpl::Unsafe::kTrueString().str()
+               : base::RefCountedStringImpl::Unsafe::kFalseString().str();
   } else if (IsJSString()) {
     return LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
                                                          WrapJSValue())
@@ -378,13 +420,15 @@ const std::string& Value::StdString() const {
 }
 
 base::String Value::String() const& {
-  if (type_ == Value_String) {
-    return base::String::Unsafe::ConstructWeakRefStringFromRawRef(val_str_);
-  } else if (type_ == Value_Bool) {
-    return val_bool_ ? base::String::Unsafe::ConstructWeakRefStringFromRawRef(
-                           &base::RefCountedStringImpl::Unsafe::kTrueString())
-                     : base::String::Unsafe::ConstructWeakRefStringFromRawRef(
-                           &base::RefCountedStringImpl::Unsafe::kFalseString());
+  if (value_.type == lynx_value_string) {
+    return base::String::Unsafe::ConstructWeakRefStringFromRawRef(
+        reinterpret_cast<base::RefCountedStringImpl*>(value_.val_ptr));
+  } else if (value_.type == lynx_value_bool) {
+    return value_.val_bool
+               ? base::String::Unsafe::ConstructWeakRefStringFromRawRef(
+                     &base::RefCountedStringImpl::Unsafe::kTrueString())
+               : base::String::Unsafe::ConstructWeakRefStringFromRawRef(
+                     &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
     return base::String::Unsafe::ConstructWeakRefStringFromRawRef(
         LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
@@ -400,13 +444,15 @@ base::String Value::String() const& {
 }
 
 base::String Value::String() && {
-  if (type_ == Value_String) {
-    return base::String::Unsafe::ConstructStringFromRawRef(val_str_);
-  } else if (type_ == Value_Bool) {
-    return val_bool_ ? base::String::Unsafe::ConstructStringFromRawRef(
-                           &base::RefCountedStringImpl::Unsafe::kTrueString())
-                     : base::String::Unsafe::ConstructStringFromRawRef(
-                           &base::RefCountedStringImpl::Unsafe::kFalseString());
+  if (value_.type == lynx_value_string) {
+    return base::String::Unsafe::ConstructStringFromRawRef(
+        reinterpret_cast<base::RefCountedStringImpl*>(value_.val_ptr));
+  } else if (value_.type == lynx_value_bool) {
+    return value_.val_bool
+               ? base::String::Unsafe::ConstructStringFromRawRef(
+                     &base::RefCountedStringImpl::Unsafe::kTrueString())
+               : base::String::Unsafe::ConstructStringFromRawRef(
+                     &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
     return base::String::Unsafe::ConstructStringFromRawRef(
         LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
@@ -422,42 +468,47 @@ base::String Value::String() && {
 }
 
 fml::RefPtr<lepus::LEPUSObject> Value::LEPUSObject() const {
-  if (val_jsobject_ != nullptr && type_ == Value_JSObject) {
-    return fml::RefPtr<lepus::LEPUSObject>(val_jsobject_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_object &&
+      value_.tag == static_cast<int>(CustomRefCountedType::kJSObject)) {
+    return fml::RefPtr<lepus::LEPUSObject>(
+        reinterpret_cast<lepus::LEPUSObject*>(value_.val_ptr));
   }
   return lepus::LEPUSObject::Create();
 }
 
 fml::RefPtr<lepus::ByteArray> Value::ByteArray() const {
-  if (val_bytearray_ != nullptr && type_ == Value_ByteArray) {
-    return fml::RefPtr<lepus::ByteArray>(val_bytearray_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_arraybuffer) {
+    return fml::RefPtr<lepus::ByteArray>(
+        reinterpret_cast<lepus::ByteArray*>(value_.val_ptr));
   }
   return lepus::ByteArray::Create();
 }
 
 fml::RefPtr<lepus::Dictionary> Value::Table() const {
-  if (val_table_ != nullptr && type_ == Value_Table) {
-    return fml::RefPtr<lepus::Dictionary>(val_table_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_map) {
+    return fml::RefPtr<lepus::Dictionary>(
+        reinterpret_cast<lepus::Dictionary*>(value_.val_ptr));
   }
   return lepus::Dictionary::Create();
 }
 
 fml::RefPtr<lepus::CArray> Value::Array() const {
-  if (val_carray_ != nullptr && type_ == Value_Array) {
-    return fml::RefPtr<lepus::CArray>(val_carray_);
+  if (value_.val_ptr != nullptr && value_.type == lynx_value_array) {
+    return fml::RefPtr<lepus::CArray>(
+        reinterpret_cast<lepus::CArray*>(value_.val_ptr));
   }
   return lepus::CArray::Create();
 }
 
 CFunction Value::Function() const {
-  if (likely(type_ == Value_CFunction)) {
+  if (likely(value_.type == lynx_value_function)) {
     return reinterpret_cast<CFunction>(Ptr());
   }
   return nullptr;
 }
 
 void* Value::CPoint() const {
-  if (type_ == Value_CPointer) {
+  if (value_.type == lynx_value_external) {
     return Ptr();
   }
   if (IsJSCPointer()) {
@@ -467,130 +518,145 @@ void* Value::CPoint() const {
 }
 
 fml::RefPtr<lepus::RefCounted> Value::RefCounted() const {
-  if (type_ == Value_RefCounted) {
-    return fml::RefPtr<lepus::RefCounted>(val_ref_counted_);
+  if (value_.type == lynx_value_object &&
+      value_.tag == static_cast<int>(CustomRefCountedType::kRefCounted)) {
+    return fml::RefPtr<lepus::RefCounted>(
+        reinterpret_cast<lepus::RefCounted*>(value_.val_ptr));
   }
   return nullptr;
 }
 
 void Value::SetNan(bool value) {
   FreeValue();
-  this->type_ = Value_NaN;
-  this->val_nan_ = value;
+  value_.type = lynx_value_nan;
+  value_.val_bool = value;
 }
 
 void Value::SetCPoint(void* point) {
   FreeValue();
-  this->type_ = Value_CPointer;
-  this->val_ptr_ = point;
+  value_.type = lynx_value_external;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(point);
 }
 
 void Value::SetCFunction(CFunction func) {
   FreeValue();
-  this->type_ = Value_CFunction;
-  this->val_ptr_ = reinterpret_cast<void*>(func);
+  value_.type = lynx_value_function;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(func);
 }
 
 void Value::SetBool(bool value) {
   FreeValue();
-  this->type_ = Value_Bool;
-  this->val_bool_ = value;
+  value_.type = lynx_value_bool;
+  value_.val_bool = value;
 }
 
 void Value::SetString(const base::String& str) {
   FreeValue();
-  type_ = Value_String;
-  val_str_ = base::String::Unsafe::GetUntaggedStringRawRef(str);
-  val_str_->AddRef();
+  auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(str);
+  ptr->AddRef();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
+  value_.type = lynx_value_string;
 }
 
 void Value::SetString(base::String&& str) {
   FreeValue();
-  type_ = Value_String;
-  val_str_ = base::String::Unsafe::GetUntaggedStringRawRef(str);
-  if (val_str_ != base::String::Unsafe::GetStringRawRef(str)) {
-    val_str_->AddRef();
+  auto* ptr = base::String::Unsafe::GetUntaggedStringRawRef(str);
+  if (ptr != base::String::Unsafe::GetStringRawRef(str)) {
+    ptr->AddRef();
   }
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
+  value_.type = lynx_value_string;
   base::String::Unsafe::SetStringToEmpty(str);
 }
 
 void Value::SetTable(const fml::RefPtr<lepus::Dictionary>& dictionary) {
   FreeValue();
-  this->val_table_ = dictionary.get();
-  this->type_ = Value_Table;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(dictionary.get());
+  value_.type = lynx_value_map;
   dictionary->AddRef();
 }
 
 void Value::SetTable(fml::RefPtr<lepus::Dictionary>&& dictionary) {
   FreeValue();
-  this->val_table_ = dictionary.AbandonRef();
-  this->type_ = Value_Table;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(dictionary.AbandonRef());
+  value_.type = lynx_value_map;
 }
 
 void Value::SetArray(const fml::RefPtr<lepus::CArray>& ary) {
   FreeValue();
-  this->val_carray_ = ary.get();
-  this->type_ = Value_Array;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ary.get());
+  value_.type = lynx_value_array;
   ary->AddRef();
 }
 
 void Value::SetArray(fml::RefPtr<lepus::CArray>&& ary) {
   FreeValue();
-  this->val_carray_ = ary.AbandonRef();
-  this->type_ = Value_Array;
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(ary.AbandonRef());
+  value_.type = lynx_value_array;
 }
 
 void Value::SetJSObject(const fml::RefPtr<lepus::LEPUSObject>& lepus_obj) {
   FreeValue();
-  this->type_ = Value_JSObject;
-  this->val_jsobject_ = lepus_obj.get();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(lepus_obj.get());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kJSObject);
   lepus_obj->AddRef();
 }
 
 void Value::SetJSObject(fml::RefPtr<lepus::LEPUSObject>&& lepus_obj) {
   FreeValue();
-  this->type_ = Value_JSObject;
-  this->val_jsobject_ = lepus_obj.AbandonRef();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(lepus_obj.AbandonRef());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kJSObject);
 }
 
 void Value::SetByteArray(const fml::RefPtr<lepus::ByteArray>& src) {
   FreeValue();
-  type_ = Value_ByteArray;
-  val_bytearray_ = src.get();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(src.get());
+  value_.type = lynx_value_arraybuffer;
   src->AddRef();
 }
 
 void Value::SetByteArray(fml::RefPtr<lepus::ByteArray>&& src) {
   FreeValue();
-  type_ = Value_ByteArray;
-  val_bytearray_ = src.AbandonRef();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(src.AbandonRef());
+  value_.type = lynx_value_arraybuffer;
 }
 
 void Value::SetRefCounted(const fml::RefPtr<lepus::RefCounted>& src) {
   FreeValue();
-  type_ = Value_RefCounted;
-  val_ref_counted_ = src.get();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(src.get());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kRefCounted);
   src->AddRef();
 }
 
 void Value::SetRefCounted(fml::RefPtr<lepus::RefCounted>&& src) {
   FreeValue();
-  type_ = Value_RefCounted;
-  val_ref_counted_ = src.AbandonRef();
+  value_.val_ptr = reinterpret_cast<lynx_value_ptr>(src.AbandonRef());
+  value_.type = lynx_value_object;
+  value_.tag = static_cast<int64_t>(CustomRefCountedType::kRefCounted);
 }
 
 int Value::GetLength() const {
+  if (value_.val_ptr == nullptr) {
+    return 0;
+  }
   if (IsJSValue()) {
     return LEPUS_GetLength(cell_->ctx_, WrapJSValue());
   }
 
-  switch (Type()) {
-    case lepus::Value_Array:
-      return val_carray_ ? static_cast<int>(val_carray_->size()) : 0;
-    case lepus::Value_Table:
-      return val_table_ ? static_cast<int>(val_table_->size()) : 0;
-    case lepus::Value_String:
-      return static_cast<int>(val_str_->length_utf8());
+  switch (value_.type) {
+    case lynx_value_array:
+      return static_cast<int>(
+          reinterpret_cast<lepus::CArray*>(value_.val_ptr)->size());
+    case lynx_value_map:
+      return static_cast<int>(
+          reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->size());
+    case lynx_value_string:
+      return static_cast<int>(
+          reinterpret_cast<base::RefCountedStringImpl*>(value_.val_ptr)
+              ->length_utf8());
     default:
       break;
   }
@@ -605,8 +671,8 @@ bool Value::SetProperty(uint32_t idx, const Value& val) {
     return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), idx, val);
   }
 
-  if (IsArray() && val_carray_ != nullptr) {
-    return val_carray_->set(idx, val);
+  if (IsArray() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::CArray*>(value_.val_ptr)->set(idx, val);
   }
   return false;
 }
@@ -616,8 +682,9 @@ bool Value::SetProperty(uint32_t idx, Value&& val) {
     return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), idx, val);
   }
 
-  if (IsArray() && val_carray_ != nullptr) {
-    return val_carray_->set(idx, std::move(val));
+  if (IsArray() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::CArray*>(value_.val_ptr)
+        ->set(idx, std::move(val));
   }
   return false;
 }
@@ -627,8 +694,8 @@ bool Value::SetProperty(const base::String& key, const Value& val) {
     return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
   }
 
-  if (IsTable() && val_table_ != nullptr) {
-    return val_table_->SetValue(key, val);
+  if (IsTable() && value_.val_ptr != nullptr) {
+    reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->SetValue(key, val);
   }
   return false;
 }
@@ -638,8 +705,9 @@ bool Value::SetProperty(base::String&& key, const Value& val) {
     return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
   }
 
-  if (IsTable() && val_table_ != nullptr) {
-    return val_table_->SetValue(std::move(key), val);
+  if (IsTable() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)
+        ->SetValue(std::move(key), val);
   }
   return false;
 }
@@ -649,8 +717,9 @@ bool Value::SetProperty(base::String&& key, Value&& val) {
     return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
   }
 
-  if (IsTable() && val_table_ != nullptr) {
-    return val_table_->SetValue(std::move(key), std::move(val));
+  if (IsTable() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)
+        ->SetValue(std::move(key), std::move(val));
   }
   return false;
 }
@@ -663,13 +732,14 @@ Value Value::GetProperty(uint32_t idx) const {
   }
 
   if (IsArray()) {
-    if (val_carray_ != nullptr) {
-      return val_carray_->get(idx);
+    if (value_.val_ptr != nullptr) {
+      return reinterpret_cast<lepus::CArray*>(value_.val_ptr)->get(idx);
     }
-  } else if (type_ == Value_String) {
-    if (val_str_->length() > idx) {
-      char ss[2] = {val_str_->str()[idx], 0};
-      return lepus::Value(base::String(ss, 1));
+  } else if (value_.type == lynx_value_string) {
+    auto* ptr = reinterpret_cast<base::RefCountedStringImpl*>(value_.val_ptr);
+    if (ptr->length() > idx) {
+      char ss[2] = {ptr->str()[idx], 0};
+      return Value(base::String(ss, 1));
     }
   } else if (IsJSString()) {
     const auto& s = StdString();
@@ -688,8 +758,8 @@ Value Value::GetProperty(const base::String& key) const {
     return lepus::Value(ctx, LEPUSValueHelper::GetPropertyJsValue(
                                  ctx, WrapJSValue(), key.c_str()));
   }
-  if (IsTable() && val_table_ != nullptr) {
-    return val_table_->GetValue(key);
+  if (IsTable() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->GetValue(key);
   }
   return Value();
 }
@@ -698,8 +768,8 @@ bool Value::Contains(const base::String& key) const {
   if (IsJSTable()) {
     return LEPUSValueHelper::HasProperty(cell_->ctx_, WrapJSValue(), key);
   }
-  if (IsTable() && val_table_ != nullptr) {
-    return val_table_->Contains(key);
+  if (IsTable() && value_.val_ptr != nullptr) {
+    return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->Contains(key);
   }
   return false;
 }
@@ -720,11 +790,15 @@ void Value::MergeValue(lepus::Value& target, const lepus::Value& update) {
   // 1. if update key is not path, simply add new k-v pair for the first level
   // 2. if update key is value path, clone the first level k-v pair and update
   //     the exact value.
-  auto update_table = update.val_table_;
+  auto update_table =
+      reinterpret_cast<lepus::Dictionary*>(update.value_.val_ptr);
   if (update_table == nullptr) {
     return;
   }
-  auto target_table = target.IsTable() ? target.val_table_ : nullptr;
+  auto target_table =
+      target.IsTable()
+          ? reinterpret_cast<lepus::Dictionary*>(target.value_.val_ptr)
+          : nullptr;
   for (auto it = update_table->begin(); it != update_table->end(); ++it) {
     auto result = lepus::ParseValuePath(it->first.str());
     if (result.size() == 1) {
@@ -811,37 +885,37 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
     return LEPUSValueHelper::DeepCopyJsValue(src.cell_->ctx_, src.WrapJSValue(),
                                              clone_as_jsvalue);
   }
-  ValueType type = src.Type();
-  switch (type) {
-    case Value_Nil:
+  switch (src.value_.type) {
+    case lynx_value_null:
       return Value();
-    case Value_Undefined: {
+    case lynx_value_undefined: {
       Value v;
       v.SetUndefined();
       return v;
     }
-    case Value_Double: {
+    case lynx_value_double: {
       double data = src.Number();
       return Value(data);
     }
-    case Value_Int32:
+    case lynx_value_int32:
       return Value(src.Int32());
-    case Value_Int64:
+    case lynx_value_int64:
       return Value(src.Int64());
-    case Value_UInt32:
+    case lynx_value_uint32:
       return Value(src.UInt32());
-    case Value_UInt64:
+    case lynx_value_uint64:
       return Value(src.UInt64());
-    case Value_Bool:
+    case lynx_value_bool:
       return Value(src.Bool());
-    case Value_NaN:
+    case lynx_value_nan:
       return Value(true, src.NaN());
-    case Value_String: {
+    case lynx_value_string: {
       return Value(src.String());
     }
-    case Value_Table: {
+    case lynx_value_map: {
       auto lepus_map = lepus::Dictionary::Create();
-      const auto src_tbl = src.val_table_;
+      const auto src_tbl =
+          reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         auto it = src_tbl->begin();
         for (; it != src_tbl->end(); it++) {
@@ -850,9 +924,9 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
       }
       return Value(std::move(lepus_map));
     }
-    case Value_Array: {
+    case lynx_value_array: {
       auto ary = CArray::Create();
-      const auto src_ary = src.val_carray_;
+      const auto src_ary = reinterpret_cast<lepus::CArray*>(src.value_.val_ptr);
       if (src_ary != nullptr) {
         ary->reserve(src_ary->size());
         for (size_t i = 0; i < src_ary->size(); ++i) {
@@ -861,23 +935,30 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
       }
       return Value(std::move(ary));
     }
-    case Value_JSObject: {
-      return Value(LEPUSObject::Create(src.LEPUSObject()->jsi_object_proxy()));
-    }
-    case Value_Closure:
-    case Value_CFunction:
-    case Value_CPointer:
-    case Value_RefCounted:
-      break;
+    case lynx_value_object: {
+      CustomRefCountedType ref_type =
+          static_cast<CustomRefCountedType>(src.value_.tag);
+      switch (ref_type) {
+        case CustomRefCountedType::kJSObject:
+          return Value(
+              LEPUSObject::Create(src.LEPUSObject()->jsi_object_proxy()));
 #if !ENABLE_JUST_LEPUSNG
-    case Value_CDate: {
-      auto date = CDate::Create(src.Date()->get_date_(), src.Date()->get_ms_(),
-                                src.Date()->get_language());
-      return Value(std::move(date));
-    }
+        case CustomRefCountedType::kCDate: {
+          auto date =
+              CDate::Create(src.Date()->get_date_(), src.Date()->get_ms_(),
+                            src.Date()->get_language());
+          return Value(std::move(date));
+        }
 #endif
+        default:
+          break;
+      }
+    } break;
+    case lynx_value_function:
+    case lynx_value_external:
+      break;
     default:
-      LOGE("!! Value::Clone unknow type: " << type);
+      LOGE("!! Value::Clone unknow type: " << src.value_.type);
       break;
   }
   return Value();
@@ -890,11 +971,11 @@ Value Value::ShallowCopy(const Value& src, bool clone_as_jsvalue) {
     return LEPUSValueHelper::ShallowCopyJsValue(
         src.cell_->ctx_, src.WrapJSValue(), clone_as_jsvalue);
   }
-  ValueType type = src.Type();
-  switch (type) {
-    case Value_Table: {
+  switch (src.value_.type) {
+    case lynx_value_map: {
       auto lepus_map = lepus::Dictionary::Create();
-      const auto src_tbl = src.val_table_;
+      const auto src_tbl =
+          reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         auto it = src_tbl->begin();
         for (; it != src_tbl->end(); it++) {
@@ -907,9 +988,9 @@ Value Value::ShallowCopy(const Value& src, bool clone_as_jsvalue) {
       }
       return Value(std::move(lepus_map));
     }
-    case Value_Array: {
+    case lynx_value_array: {
       auto ary = CArray::Create();
-      const auto src_ary = src.val_carray_;
+      const auto src_ary = reinterpret_cast<lepus::CArray*>(src.value_.val_ptr);
       if (src_ary != nullptr) {
         ary->reserve(src_ary->size());
         for (size_t i = 0; i < src_ary->size(); ++i) {
@@ -962,47 +1043,60 @@ bool operator==(const Value& left, const Value& right) {
   if (left.IsNumber() && right.IsNumber()) {
     return fabs(left.Number() - right.Number()) < 0.000001;
   }
-  if (left.type_ != right.type_) return false;
-  switch (left.type_) {
-    case Value_Nil:
+  if (left.value_.type != right.value_.type) return false;
+  switch (left.value_.type) {
+    case lynx_value_null:
       return true;
-    case Value_Undefined:
+    case lynx_value_undefined:
       return true;
-    case Value_Double:
+    case lynx_value_double:
       return fabs(left.Number() - right.Number()) < 0.000001;
-    case Value_Bool:
+    case lynx_value_bool:
       return left.Bool() == right.Bool();
-    case Value_NaN:
+    case lynx_value_nan:
       return false;
-    case Value_String:
+    case lynx_value_string:
       return left.StdString() == right.StdString();
-    case Value_CFunction:
+    case lynx_value_function:
       return left.Ptr() == right.Ptr();
-    case Value_CPointer:
+    case lynx_value_external:
       return left.Ptr() == right.Ptr();
-    case Value_RefCounted:
-      return left.RefCounted() == right.RefCounted();
-    case Value_Table:
+    case lynx_value_map:
       return *(left.Table().get()) == *(right.Table().get());
-    case Value_Array:
+    case lynx_value_array:
       return *(left.Array().get()) == *(right.Array().get());
+    case lynx_value_arraybuffer:
+      // TODO(frendy): add impl
+      break;
+    case lynx_value_object: {
+      CustomRefCountedType ref_type =
+          static_cast<CustomRefCountedType>(left.value_.tag);
+      switch (ref_type) {
+        case CustomRefCountedType::kRefCounted:
+          return left.RefCounted() == right.RefCounted();
+        case CustomRefCountedType::kJSObject:
+          return *(left.LEPUSObject().get()) == *(right.LEPUSObject().get());
 #if !ENABLE_JUST_LEPUSNG
-    case Value_Closure:
-      return left.GetClosure() == right.GetClosure();
-    case Value_CDate:
-      return *(left.Date().get()) == *(right.Date().get());
-    case Value_RegExp:
-      return left.RegExp()->get_pattern() == right.RegExp()->get_pattern() &&
-             left.RegExp()->get_flags() == right.RegExp()->get_flags();
+        case CustomRefCountedType::kClosure:
+          return left.GetClosure() == right.GetClosure();
+        case CustomRefCountedType::kCDate:
+          return *(left.Date().get()) == *(right.Date().get());
+        case CustomRefCountedType::kRegExp:
+          return left.RegExp()->get_pattern() ==
+                     right.RegExp()->get_pattern() &&
+                 left.RegExp()->get_flags() == right.RegExp()->get_flags();
 #endif
-    case Value_Int32:
-    case Value_Int64:
-    case Value_UInt32:
-    case Value_UInt64:
+        default:
+          break;
+      }
+    } break;
+    case lynx_value_int32:
+    case lynx_value_int64:
+    case lynx_value_uint32:
+    case lynx_value_uint64:
+    case lynx_value_extended:
       // handled, ignore
       break;
-    case Value_JSObject:
-      return *(left.LEPUSObject().get()) == *(right.LEPUSObject().get());
     default:
       break;
   }
@@ -1021,47 +1115,47 @@ void Value::PrintValue(std::ostream& output, bool ignore_other,
     LEPUSValueHelper::PrintValue(output, cell_->ctx_, WrapJSValue());
     return;
   }
-  switch (Type()) {
-    case Value_Nil:
+  switch (value_.type) {
+    case lynx_value_null:
       if (ignore_other) {
         output << "";
       } else {
         output << "null";
       }
       break;
-    case Value_Undefined:
+    case lynx_value_undefined:
       if (ignore_other) {
         output << "";
       } else {
         output << "undefined";
       }
       break;
-    case Value_Double:
+    case lynx_value_double:
       output << base::StringConvertHelper::DoubleToString(Number());
       break;
-    case Value_Int32:
+    case lynx_value_int32:
       output << Int32();
       break;
-    case Value_Int64:
+    case lynx_value_int64:
       output << Int64();
       break;
-    case Value_UInt32:
+    case lynx_value_uint32:
       output << UInt32();
       break;
-    case Value_UInt64:
+    case lynx_value_uint64:
       output << UInt64();
       break;
-    case Value_Bool:
+    case lynx_value_bool:
       output << (Bool() ? "true" : "false");
       break;
-    case Value_String:
+    case lynx_value_string:
       if (pretty) {
         output << "\"" << CString() << "\"";
       } else {
         output << CString();
       }
       break;
-    case Value_Table:
+    case lynx_value_map:
       output << "{";
       for (auto it = Table()->begin(); it != Table()->end(); it++) {
         if (it != Table()->begin()) {
@@ -1077,7 +1171,7 @@ void Value::PrintValue(std::ostream& output, bool ignore_other,
       }
       output << "}";
       break;
-    case Value_Array:
+    case lynx_value_array:
       output << "[";
       for (size_t i = 0; i < Array()->size(); i++) {
         Array()->get(i).PrintValue(output, ignore_other);
@@ -1087,49 +1181,60 @@ void Value::PrintValue(std::ostream& output, bool ignore_other,
       }
       output << "]";
       break;
-    case Value_Closure:
-    case Value_CFunction:
-    case Value_CPointer:
-    case Value_RefCounted:
+    case lynx_value_function:
+    case lynx_value_external:
       if (ignore_other) {
         output << "";
       } else {
         output << "closure/cfunction/cpointer/refcounted" << std::endl;
       }
       break;
+    case lynx_value_object: {
+      CustomRefCountedType ref_type =
+          static_cast<CustomRefCountedType>(value_.tag);
+      switch (ref_type) {
+        case CustomRefCountedType::kRefCounted:
+        case CustomRefCountedType::kClosure:
+          if (ignore_other) {
+            output << "";
+          } else {
+            output << "closure/cfunction/cpointer/refcounted" << std::endl;
+          }
+          break;
+        case CustomRefCountedType::kJSObject:
+          if (ignore_other) {
+            output << "";
+          } else {
+            output << "LEPUSObject id=" << LEPUSObject()->JSIObjectID();
+          }
+          break;
 #if !ENABLE_JUST_LEPUSNG
-    case Value_CDate:
-      if (ignore_other) {
-        output << "";
-      } else {
-        Date()->print(output);
-      }
-      break;
-    case Value_RegExp:
-      if (ignore_other) {
-        output << "";
-      } else {
-        output << "regexp" << std::endl;
-        output << "pattern: " << RegExp()->get_pattern().str() << std::endl;
-        output << "flags: " << RegExp()->get_flags().str() << std::endl;
-      }
-      break;
+        case CustomRefCountedType::kCDate:
+          if (ignore_other) {
+            output << "";
+          } else {
+            Date()->print(output);
+          }
+          break;
+        case CustomRefCountedType::kRegExp: {
+          output << "regexp" << std::endl;
+          output << "pattern: " << RegExp()->get_pattern().str() << std::endl;
+          output << "flags: " << RegExp()->get_flags().str() << std::endl;
+        } break;
 #endif
-    case Value_NaN:
+
+        default:
+          break;
+      }
+    } break;
+    case lynx_value_nan:
       if (ignore_other) {
         output << "";
       } else {
         output << "NaN";
       }
       break;
-    case Value_JSObject:
-      if (ignore_other) {
-        output << "";
-      } else {
-        output << "LEPUSObject id=" << LEPUSObject()->JSIObjectID();
-      }
-      break;
-    case Value_ByteArray:
+    case lynx_value_arraybuffer:
       if (ignore_other) {
         output << "";
       } else {
@@ -1147,19 +1252,27 @@ void Value::PrintValue(std::ostream& output, bool ignore_other,
 }
 
 bool Value::MarkConst() const {
-  switch (type_) {
-    case Value_Nil ... Value_String:
-    case Value_Closure ... Value_ByteArray:
+  switch (value_.type) {
+    case lynx_value_null ... lynx_value_string:
+    case lynx_value_arraybuffer:
+    case lynx_value_function:
+    case lynx_value_external:
       // ByteArray and Element objects don't cross thread, and don't need to
       // markConst.
       return true;
-    case Value_RefCounted:
-      val_ref_counted_->js_object_cache.reset();
+    case lynx_value_object: {
+      CustomRefCountedType ref_type =
+          static_cast<CustomRefCountedType>(value_.tag);
+      if (ref_type == CustomRefCountedType::kRefCounted) {
+        reinterpret_cast<lepus::RefCounted*>(value_.val_ptr)
+            ->js_object_cache.reset();
+      }
       return true;
-    case Value_Table:
-      return val_table_->MarkConst();
-    case Value_Array:
-      return val_carray_->MarkConst();
+    }
+    case lynx_value_map:
+      return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->MarkConst();
+    case lynx_value_array:
+      return reinterpret_cast<lepus::CArray*>(value_.val_ptr)->MarkConst();
     default:
       // JSValue
       if (LEPUS_VALUE_HAS_REF_COUNT(WrapJSValue())) {
@@ -1181,9 +1294,8 @@ void Value::Copy(const Value& value) {
   if (p_val_ && IsJSValue()) {
     p_val_->Reset(cell_->rt_);
   }
-  val_uint64_t_ = value.val_uint64_t_;
-  type_ = value.Type();
   cell_ = value.cell_;
+  value_ = value.value_;
   if (value.p_val_ && IsJSValue()) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(cell_->rt_, value.p_val_->Get());
@@ -1198,8 +1310,8 @@ void Value::DupValue() const {
     }
     return;
   }
-  if (!IsReference() || !val_ptr_) return;
-  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(val_ptr_)->AddRef();
+  if (!IsReference() || !value_.val_ptr) return;
+  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)->AddRef();
 }
 
 void Value::FreeValue() {
@@ -1218,22 +1330,41 @@ void Value::FreeValue() {
     }
     return;
   }
-  if (!IsReference() || !val_ptr_) return;
-  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(val_ptr_)->Release();
+  if (!IsReference() || !value_.val_ptr) return;
+  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
+      ->Release();
 }
 
-#define NumberValue(name, type)  \
-  type Value::name() const {     \
-    if (type_ != Value_##name) { \
-      return 0;                  \
-    }                            \
-    return val_##type##_;        \
+double Value::Double() const {
+  if (value_.type != lynx_value_double) {
+    return 0;
   }
-NormalNumberType(NumberValue)
-#undef NumberValue
+  return value_.val_double;
+}
 
-    int64_t Value::Int64() const {
-  if (type_ == Value_Int64) return val_int64_t_;
+int32_t Value::Int32() const {
+  if (value_.type != lynx_value_int32) {
+    return 0;
+  }
+  return value_.val_int32;
+}
+
+uint32_t Value::UInt32() const {
+  if (value_.type != lynx_value_uint32) {
+    return 0;
+  }
+  return value_.val_uint32;
+}
+
+uint64_t Value::UInt64() const {
+  if (value_.type != lynx_value_uint64) {
+    return 0;
+  }
+  return value_.val_uint64;
+}
+
+int64_t Value::Int64() const {
+  if (value_.type == lynx_value_int64) return value_.val_int64;
   if (IsJSInteger()) {
     return JSInteger();
   }
@@ -1333,9 +1464,9 @@ void Value::IteratorJSValue(const LepusValueIterator& callback) const {
 
 bool Value::IsJSValue() const {
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
-  return type_ == Value_PrimJsValue;
+  return value_.type == lynx_value_extended;
 #else
-  return cell_ && (type_ > Value_TypeCount || type_ < 0);
+  return cell_ && value_.type == lynx_value_extended;
 #endif
 }
 
@@ -1347,6 +1478,107 @@ double Value::LEPUSNumber() const {
   LEPUS_ToFloat64(cell_->ctx_, &val, temp_val);
   return val;
 }
+
+lynx_value_type Value::ToLynxValueType(ValueType type) {
+  switch (type) {
+    case Value_Nil:
+      return lynx_value_null;
+    case Value_Double:
+      return lynx_value_double;
+    case Value_Bool:
+      return lynx_value_bool;
+    case Value_String:
+      return lynx_value_string;
+    case Value_Table:
+      return lynx_value_map;
+    case Value_Array:
+      return lynx_value_array;
+    case Value_CFunction:
+      return lynx_value_function;
+    case Value_CPointer:
+      return lynx_value_external;
+    case Value_Int32:
+      return lynx_value_int32;
+    case Value_Int64:
+      return lynx_value_int64;
+    case Value_UInt32:
+      return lynx_value_uint32;
+    case Value_UInt64:
+      return lynx_value_uint64;
+    case Value_NaN:
+      return lynx_value_nan;
+    case Value_RefCounted:
+    case Value_Closure:
+    case Value_CDate:
+    case Value_RegExp:
+    case Value_JSObject:
+      return lynx_value_object;
+    case Value_Undefined:
+      return lynx_value_undefined;
+    case Value_ByteArray:
+      return lynx_value_arraybuffer;
+    default:
+      return lynx_value_extended;
+  }
+}
+
+ValueType Value::LegacyTypeFromLynxValue(const lynx_value& value) {
+  switch (value.type) {
+    case lynx_value_null:
+      return Value_Nil;
+    case lynx_value_undefined:
+      return Value_Undefined;
+    case lynx_value_bool:
+      return Value_Bool;
+    case lynx_value_double:
+      return Value_Double;
+    case lynx_value_int32:
+      return Value_Int32;
+    case lynx_value_uint32:
+      return Value_UInt32;
+    case lynx_value_int64:
+      return Value_Int64;
+    case lynx_value_uint64:
+      return Value_UInt64;
+    case lynx_value_nan:
+      return Value_NaN;
+    case lynx_value_string:
+      return Value_String;
+    case lynx_value_array:
+      return Value_Array;
+    case lynx_value_map:
+      return Value_Table;
+    case lynx_value_arraybuffer:
+      return Value_ByteArray;
+    case lynx_value_function:
+      return Value_CFunction;
+    case lynx_value_object: {
+      CustomRefCountedType type = static_cast<CustomRefCountedType>(value.tag);
+      switch (type) {
+        case CustomRefCountedType::kRefCounted:
+          return Value_RefCounted;
+        case CustomRefCountedType::kJSObject:
+          return Value_JSObject;
+        case CustomRefCountedType::kClosure:
+          return Value_Closure;
+        case CustomRefCountedType::kCDate:
+          return Value_CDate;
+        case CustomRefCountedType::kRegExp:
+          return Value_RegExp;
+        default:
+          break;
+      }
+    } break;
+    case lynx_value_external:
+      return Value_CPointer;
+    case lynx_value_extended:
+      return Value_TypeCount;
+    default:
+      break;
+  }
+  return Value_Nil;
+}
+
 // #endif
 }  // namespace lepus
 }  // namespace lynx

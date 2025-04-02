@@ -55,56 +55,81 @@ LEPUSValue LEPUSValueHelper::RefCountedToJSValue(
 LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx,
                                        const lepus::Value& val,
                                        bool deep_convert) {
-  switch (auto type = val.Type()) {
-    case Value_Nil:
+  return ToJsValue(ctx, val.value(), deep_convert);
+}
+
+LEPUSValue LEPUSValueHelper::ToJsValue(LEPUSContext* ctx, const lynx_value& val,
+                                       bool deep_convert) {
+  switch (val.type) {
+    case lynx_value_null:
       return LEPUS_NULL;
-    case Value_Undefined:
+    case lynx_value_undefined:
       return LEPUS_UNDEFINED;
-    case Value_Double:
-      return LEPUS_NewFloat64(ctx, val.val_double_);
-    case Value_Bool:
-      return LEPUS_NewBool(ctx, val.val_bool_);
-    case Value_String:
-      return LEPUS_NewStringLen(ctx, val.val_str_->c_str(),
-                                val.val_str_->length());
-    case Value_Int32:
-      return LEPUS_NewInt32(ctx, val.val_int32_t_);
-    case Value_Int64:
-      return NewInt64(ctx, val.val_int64_t_);
-    case Value_UInt32:
-      return NewUint32(ctx, val.val_uint32_t_);
-    case Value_UInt64:
-      return NewUint64(ctx, val.val_uint64_t_);
-    case Value_NaN:
-    case Value_CDate:
-    case Value_RegExp:
-    case Value_Closure:
-    case Value_CFunction:
+    case lynx_value_double:
+      return LEPUS_NewFloat64(ctx, val.val_double);
+    case lynx_value_bool:
+      return LEPUS_NewBool(ctx, val.val_bool);
+    case lynx_value_string: {
+      auto* str = reinterpret_cast<base::RefCountedStringImpl*>(val.val_ptr);
+      return LEPUS_NewStringLen(ctx, str->c_str(), str->length());
+    }
+    case lynx_value_int32:
+      return LEPUS_NewInt32(ctx, val.val_int32);
+    case lynx_value_int64:
+      return NewInt64(ctx, val.val_int64);
+    case lynx_value_uint32:
+      return NewUint32(ctx, val.val_uint32);
+    case lynx_value_uint64:
+      return NewUint64(ctx, val.val_uint64);
+    case lynx_value_nan:
+    case lynx_value_function:
       assert(false);
       break;
-    case Value_CPointer:
-      return NewPointer(val.val_ptr_);
-    case Value_Table:
+    case lynx_value_external:
+      return NewPointer(val.val_ptr);
+    case lynx_value_map:
       if (deep_convert) {
-        return TableToJsValue(ctx, *val.val_table_, true);
+        auto* table = reinterpret_cast<lepus::Dictionary*>(val.val_ptr);
+        return TableToJsValue(ctx, *table, true);
       }
-    case Value_Array:
+    case lynx_value_array:
       if (deep_convert) {
-        return ArrayToJsValue(ctx, *val.val_carray_, true);
+        auto* arr = reinterpret_cast<lepus::CArray*>(val.val_ptr);
+        return ArrayToJsValue(ctx, *arr, true);
       }
-    case Value_RefCounted:
-      if (deep_convert) {
-        return RefCountedToJSValue(ctx, *val.val_ref_counted_);
+    case lynx_value_arraybuffer:
+      return CreateLepusRef(ctx,
+                            reinterpret_cast<lepus::RefCounted*>(val.val_ptr),
+                            lepus::Value::LegacyTypeFromLynxValue(val));
+    case lynx_value_object: {
+      CustomRefCountedType ref_type =
+          static_cast<CustomRefCountedType>(val.tag);
+      switch (ref_type) {
+        case CustomRefCountedType::kRefCounted:
+          if (deep_convert) {
+            return RefCountedToJSValue(
+                ctx, *reinterpret_cast<lepus::RefCounted*>(val.val_ptr));
+          }
+        case CustomRefCountedType::kJSObject:
+          return CreateLepusRef(
+              ctx, reinterpret_cast<lepus::RefCounted*>(val.val_ptr),
+              lepus::Value::LegacyTypeFromLynxValue(val));
+
+        default:
+          assert(false);
+          break;
       }
-    case Value_JSObject:
-    case Value_ByteArray:
-      return CreateLepusRef(ctx, static_cast<lepus::RefCounted*>(val.val_ptr_),
-                            type);
-    default: {
-      if (val.IsJSValue()) {
-        return LEPUS_DupValue(ctx, val.WrapJSValue());
-      }
-    };
+    } break;
+    case lynx_value_extended: {
+#if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
+      LEPUSValue v = (LEPUSValue){.as_int64 = val.val_int64};
+#else
+      LEPUSValue v = LEPUS_MKPTR(val.tag, val.val_ptr);
+#endif
+      return LEPUS_DupValue(ctx, v);
+    }
+    default:
+      break;
   }
   return LEPUS_UNDEFINED;
 }
@@ -434,6 +459,29 @@ LEPUSClassID LEPUSValueHelper::GetRefCountedClassID(LEPUSContext* ctx,
     return ref_counted_class_id;
   }
   return 0;
+}
+
+lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
+    LEPUSContext* ctx, const LEPUSValue& val) {
+  ValueType old_type = static_cast<ValueType>(LEPUS_GetLepusRefTag(val));
+  lynx_value_type type = lepus::Value::ToLynxValueType(old_type);
+  int64_t tag = 0;
+  if (type == lynx_value_object) {
+    if (old_type == Value_RefCounted) {
+      tag = static_cast<int64_t>(CustomRefCountedType::kRefCounted);
+    } else if (old_type == Value_JSObject) {
+      tag = static_cast<int64_t>(CustomRefCountedType::kJSObject);
+    }
+  }
+  auto* ptr = LEPUS_GetLepusRefPoint(val);
+  reinterpret_cast<fml::RefCountedThreadSafeStorage*>(ptr)->AddRef();
+  LEPUSLepusRef* ref =
+      reinterpret_cast<LEPUSLepusRef*>(LEPUS_VALUE_GET_PTR(val));
+  if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeValue(ctx, ref->lepus_val);
+  ref->lepus_val = LEPUS_UNDEFINED;
+  return {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
+          .type = type,
+          .tag = tag};
 }
 
 }  // namespace lepus

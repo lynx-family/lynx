@@ -31,6 +31,16 @@ enum class RefType : int32_t {
   kOtherType,
 };
 
+enum class CustomRefCountedType : uint32_t {
+  kNone,
+  kRefCounted,  // TODO(frendy): Remove this type after lepus value is
+                // decoupled.
+  kJSObject,
+  kClosure,
+  kCDate,
+  kRegExp,
+};
+
 }  // namespace lepus
 }  // namespace lynx
 

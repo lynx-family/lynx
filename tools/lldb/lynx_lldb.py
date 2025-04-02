@@ -29,7 +29,8 @@ def __lldb_init_module(debugger, internal_dict):
     # All Lynx custom LLDB scripts managed by this list.
     scripts = [
         'base/include/linked_hash_map_lldb.py',
-        'base/include/vector_lldb.py'
+        'base/include/vector_lldb.py',
+        'base/include/value/lynx_value_lldb.py',
     ]
 
     for f in scripts:
