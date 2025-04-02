@@ -15,8 +15,9 @@ JSCContextGroupWrapperImpl::JSCContextGroupWrapperImpl()
 JSCContextGroupWrapperImpl::~JSCContextGroupWrapperImpl() {
   LOGI("~JSCContextGroupWrapperImpl " << this);
   if (group_ != nullptr) {
-    LOGI("JSContextGroupRelease");
+    LOGI("JSContextGroupRelease:" << group_);
     JSContextGroupRelease(group_);
+    group_ = nullptr;
   }
 }
 
