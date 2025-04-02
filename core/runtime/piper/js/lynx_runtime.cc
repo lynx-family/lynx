@@ -645,8 +645,17 @@ void LynxRuntime::OnAppReload(tasm::TemplateData data,
 
 void LynxRuntime::EvaluateScript(const std::string& url, std::string script,
                                  piper::ApiCallBack callback) {
-  QueueOrExecTask([this, url, script = std::move(script), callback] {
+  QueueOrExecTask([this, url, script = std::move(script), callback]() mutable {
     app_->EvaluateScript(url, std::move(script), callback);
+  });
+}
+
+void LynxRuntime::OnScriptLoaded(const std::string& url, std::string script,
+                                 std::string error,
+                                 piper::ApiCallBack callback) {
+  QueueOrExecTask([this, url, script = std::move(script),
+                   error = std::move(error), callback]() mutable {
+    app_->OnScriptLoaded(url, std::move(script), std::move(error), callback);
   });
 }
 

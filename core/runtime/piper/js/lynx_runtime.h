@@ -102,6 +102,9 @@ class LynxRuntime final {
                       piper::ApiCallBack callback);
   void EvaluateScriptStandalone(std::string url, std::string script);
 
+  void OnScriptLoaded(const std::string& url, std::string script,
+                      std::string err_msg, piper::ApiCallBack callback);
+
   void NotifyJSUpdatePageData();
   void NotifyJSUpdateCardConfigData();
   void InsertCallbackForDataUpdateFinishedOnRuntime(base::closure callback);

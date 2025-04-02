@@ -49,7 +49,7 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
 void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
                                              int32_t callback_id) {
   if (!resource_loader_) {
-    LOGE("LoadScriptAsync:resource_loader_ is null");
+    LOGE("LoadScriptAsync::resource_loader_ is null");
     return;
   }
   auto request =
@@ -60,19 +60,20 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
        weak_self = weak_from_this()](pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
-          LOGI("LoadScriptAsync:self is null");
+          LOGI("LoadScriptAsync::self is null");
           return;
         }
         auto runtime_actor = self->runtime_actor_.lock();
         if (!runtime_actor) {
-          LOGI("LoadScriptAsync:runtime_actor is null");
+          LOGI("LoadScriptAsync::runtime_actor is null");
           return;
         }
 
         std::string script(response.data.begin(), response.data.end());
         runtime_actor->Act([url, script = std::move(script),
+                            error = response.err_msg,
                             callback_id](auto& runtime) mutable {
-          runtime->EvaluateScript(url, std::move(script),
+          runtime->OnScriptLoaded(url, std::move(script), std::move(error),
                                   piper::ApiCallBack(callback_id));
         });
       });

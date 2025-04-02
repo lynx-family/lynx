@@ -97,7 +97,7 @@ void LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
       [_providerRegistry getResourceProviderByKey:LYNX_PROVIDER_TYPE_EXTERNAL_JS];
   if (provider == nil) {
     LOGE("lynx resource provider is null, url: " << url);
-    pub::LynxResourceResponse res;
+    pub::LynxResourceResponse res{.err_code = -1, .err_msg = "lynx resource provider is null."};
     callback(res);
     return;
   }

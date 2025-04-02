@@ -179,6 +179,9 @@ class App : public std::enable_shared_from_this<App> {
 
   void LoadScriptAsync(const std::string& url, ApiCallBack callback);
 
+  void OnScriptLoaded(const std::string& url, std::string script,
+                      std::string err_msg, ApiCallBack callback);
+
   void SetCSSVariable(const std::string& component_id,
                       const std::string& id_selector,
                       const lepus::Value& properties);

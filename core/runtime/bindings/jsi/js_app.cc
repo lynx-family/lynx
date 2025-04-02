@@ -2003,10 +2003,30 @@ void App::LoadScriptAsync(const std::string& url, ApiCallBack callback) {
   delegate_->LoadScriptAsync(url, callback);
 }
 
+void App::OnScriptLoaded(const std::string& url, std::string script,
+                         std::string err_msg, ApiCallBack callback) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "OnScriptLoaded", "url", url);
+  if (!err_msg.empty()) {
+    auto rt = rt_.lock();
+    if (rt) {
+      auto js_error_value = piper::Value(piper::String::createFromUtf8(
+          *rt, "load external js script failed! url: " + url +
+                   " error: " + err_msg));
+      rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
+          "load external js script failed! url: " + url +
+          " error: " + err_msg));
+      return api_callback_manager_.InvokeWithValue(rt.get(), callback.id(),
+                                                   std::move(js_error_value));
+    }
+  } else {
+    EvaluateScript(url, std::move(script), callback);
+  }
+}
+
 void App::EvaluateScript(const std::string& url, std::string script,
                          ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "App::EvalScript", "url", url);
-  LOGI("App::EvaluateScript:" << url);
+  LOGI("App::EvaluateScript:" << url << " length: " << script.length());
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
       url.c_str(), script.c_str());
@@ -2021,10 +2041,10 @@ void App::EvaluateScript(const std::string& url, std::string script,
     if (!ret.has_value()) {
       auto error_str = ret.error().ToString();
       auto js_error_value = piper::Value(piper::String::createFromUtf8(
-          *rt, "load external js script failed! url: " + url +
+          *rt, "eval external js script failed! url: " + url +
                    " error:" + error_str));
       rt->reportJSIException(BUILD_JSI_NATIVE_EXCEPTION(
-          "load external js script failed! url: " + url + error_str));
+          "eval external js script failed! url: " + url + error_str));
       return api_callback_manager_.InvokeWithValue(rt.get(), callback.id(),
                                                    std::move(js_error_value));
     }
