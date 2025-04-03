@@ -45,30 +45,16 @@ export function loadCard(
       `load card native app load app-service.js params.bundleSupportLoadScript ${params.bundleSupportLoadScript}`
     );
     loadSuccess = true;
-    if (__WEB__) {
-      tt.lynx.requireModuleAsync(APP_SERVICE_NAME, (error, ret) => {
-        if (error) {
-          tt.handleUserError(error);
-        } else {
-          if (tt.lynx._switches['allowUndefinedInNativeDataTypeSet']) {
-            tt.dataTypeSet.add('undefined');
-          }
-        }
-        nativeApp.setCard(tt);
-      });
-    }
-    if (!__WEB__) {
-      try {
-        delete tt.lynx.requireModule.cache[APP_SERVICE_NAME];
-        delete BaseApp._$factoryCache[APP_SERVICE_NAME];
-        tt.lynx.requireModule(APP_SERVICE_NAME, DEFAULT_ENTRY);
-        if (tt.lynx._switches['allowUndefinedInNativeDataTypeSet']) {
-          tt.dataTypeSet.add('undefined');
-        }
-      } catch (e) {
-        loadSuccess = false;
-        tt.handleUserError(e, undefined, undefined, 'loadCard failed');
+    try {
+      delete tt.lynx.requireModule.cache[APP_SERVICE_NAME];
+      delete BaseApp._$factoryCache[APP_SERVICE_NAME];
+      tt.lynx.requireModule(APP_SERVICE_NAME, DEFAULT_ENTRY);
+      if (tt.lynx._switches['allowUndefinedInNativeDataTypeSet']) {
+        tt.dataTypeSet.add('undefined');
       }
+    } catch (e) {
+      loadSuccess = false;
+      tt.handleUserError(e, undefined, undefined, 'loadCard failed');
     }
     nativeApp.setCard(tt);
   } catch (e) {
