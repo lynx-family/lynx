@@ -22,26 +22,26 @@ do
     new_stamp_content=""
     outputs_timestamp=""
 
-    current_script_timestamp=$(stat -f "%m" "$0")
+    current_script_timestamp=$(date -r "$0" +%s)
     new_stamp_content+="$0:$current_script_timestamp"$
 
-    jni_generator_timestamp=$(stat -f "%m" "$LYNX_GEN_FILE")
+    jni_generator_timestamp=$(date -r "$LYNX_GEN_FILE" +%s)
     new_stamp_content+="$LYNX_GEN_FILE:$jni_generator_timestamp"$
 
-    jni_files_timestamp=$(stat -f "%m" "$JNI_FILES_LIST")
+    jni_files_timestamp=$(date -r "$JNI_FILES_LIST" +%s)
     new_stamp_content+="$JNI_FILES_LIST:$jni_files_timestamp"$
 
     while read line || [ -n "$line" ]
     do
         input_file=$ROOT_LYNX_JAVA_PATH$line
-        current_timestamp=$(stat -f "%m" "$input_file")
+        current_timestamp=$(date -r "$input_file" +%s)
         new_stamp_content+="$input_file:$current_timestamp"$
 
         file_name=${line##*/}
         jni_file_name=${file_name%.*}"_jni.h"
         output_file=$LYNX_OUTPUT_DIR$jni_file_name
         if [ -f "$output_file" ]; then
-            output_timestamp=$(stat -f "%m" "$output_file")
+            output_timestamp=$(date -r "$output_file" +%s)
             outputs_timestamp+="$output_file:$output_timestamp"$
         fi
     done < "$JNI_FILES_LIST"
@@ -55,7 +55,7 @@ do
             output_file=$LYNX_OUTPUT_DIR$jni_file_name
             python3 $LYNX_GEN_FILE $input_file $output_file
             echo "python3 $LYNX_GEN_FILE $input_file $output_file"
-            output_timestamp=$(stat -f "%m" "$output_file")
+            output_timestamp=$(date -r "$output_file" +%s)
             new_stamp_content+="$output_file:$output_timestamp"$
         done < "$JNI_FILES_LIST"
 
