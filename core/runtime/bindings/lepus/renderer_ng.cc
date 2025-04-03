@@ -387,6 +387,7 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
       {kCFunctionCleanUp, &RendererFunctions::FiberCleanUp},
       {kCFunctionOnCleanUp, &RendererFunctions::FiberOnCleanUp},
       {kCFunctionUnTrack, &RendererFunctions::FiberUnTrack},
+      {kCFunctionRunUpdates, &RendererFunctions::FiberRunUpdates},
       /* Element API END */
   };
   lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));

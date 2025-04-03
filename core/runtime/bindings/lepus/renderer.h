@@ -170,6 +170,7 @@ static const char* kCFunctionCreateScope = "__CreateScope";
 static const char* kCFunctionGetScope = "__GetScope";
 static const char* kCFunctionCleanUp = "__CleanUp";
 static const char* kCFunctionOnCleanUp = "__OnCleanUp";
+static const char* kCFunctionRunUpdates = "__RunUpdates";
 
 // Element Info
 static const char* kCFunctionGetElementUniqueID = "__GetElementUniqueID";
