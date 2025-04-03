@@ -331,6 +331,128 @@ TEST_P(SignalContextTest, CreateAEffectWithExplicitDeps4) {
   EXPECT_EQ(value.StdString(), "impure thoughts");
 }
 
+TEST_P(SignalContextTest, TestRunUpdates0) {
+  if (!enable_ng_) {
+    GTEST_SKIP();
+  }
+
+  std::string js_source = R"(
+    let scope = null;
+    let count = 0;
+    let value = "world";
+    let signal_0 = __CreateSignal("thoughts");
+    let signal_1 = __CreateSignal("thoughts");
+    const fn = (pre) => {
+        count = count + 1;
+        let str_0 = __ReadSignal(signal_0);
+        let str_1 = __ReadSignal(signal_1);
+        value = `impure ${str_0} ${str_1}`
+        return value;
+    };
+    __CreateScope((s)=>{
+        scope = s;
+        __CreateComputation(fn, "init", false);
+    });
+    __WriteSignal(signal_0, "lynx0");
+    __WriteSignal(signal_1, "lynx1");
+  )";
+
+  Compile(js_source);
+  EXPECT_TRUE(Execute());
+
+  lepus::Value value = GetTopLevelVariableByName("value");
+  EXPECT_EQ(value.StdString(), "impure lynx0 lynx1");
+
+  lepus::Value count = GetTopLevelVariableByName("count");
+  EXPECT_EQ(count.Number(), 3);
+
+  tasm_->Destroy();
+}
+
+TEST_P(SignalContextTest, TestRunUpdates1) {
+  if (!enable_ng_) {
+    GTEST_SKIP();
+  }
+
+  std::string js_source = R"(
+    let scope = null;
+    let count = 0;
+    let value = "world";
+    let signal_0 = __CreateSignal("thoughts");
+    let signal_1 = __CreateSignal("thoughts");
+    const fn = (pre) => {
+        count = count + 1;
+        let str_0 = __ReadSignal(signal_0);
+        let str_1 = __ReadSignal(signal_1);
+        value = `impure ${str_0} ${str_1}`
+        return value;
+    };
+    __CreateScope((s)=>{
+      scope = s;
+      __CreateComputation(fn, "init", false);
+    })
+    __RunUpdates(()=>{
+        __WriteSignal(signal_0, "lynx0");
+        __WriteSignal(signal_1, "lynx1");
+    });
+  )";
+
+  Compile(js_source);
+  EXPECT_TRUE(Execute());
+
+  lepus::Value value = GetTopLevelVariableByName("value");
+  EXPECT_EQ(value.StdString(), "impure lynx0 lynx1");
+
+  lepus::Value count = GetTopLevelVariableByName("count");
+  EXPECT_EQ(count.Number(), 2);
+
+  tasm_->Destroy();
+}
+
+TEST_P(SignalContextTest, TestRunUpdates2) {
+  if (!enable_ng_) {
+    GTEST_SKIP();
+  }
+
+  std::string js_source = R"(
+    let scope = null;
+    let count = 0;
+    let value = "world";
+    let signal_0 = __CreateSignal("thoughts");
+    let signal_1 = __CreateSignal("thoughts");
+    const fn = (pre) => {
+        count = count + 1;
+        let str_0 = __ReadSignal(signal_0);
+        let str_1 = __ReadSignal(signal_1);
+        value = `impure ${str_0} ${str_1}`
+        return value;
+    };
+    __CreateScope((s)=>{
+      scope = s;
+      __CreateComputation(fn, "init", false);
+    })
+    let str = __RunUpdates(()=>{
+        __WriteSignal(signal_0, "lynx0");
+        __WriteSignal(signal_1, "lynx1");
+        return 'test';
+    });
+  )";
+
+  Compile(js_source);
+  EXPECT_TRUE(Execute());
+
+  lepus::Value value = GetTopLevelVariableByName("value");
+  EXPECT_EQ(value.StdString(), "impure lynx0 lynx1");
+
+  lepus::Value count = GetTopLevelVariableByName("count");
+  EXPECT_EQ(count.Number(), 2);
+
+  lepus::Value str = GetTopLevelVariableByName("str");
+  EXPECT_EQ(str.StdString(), "test");
+
+  tasm_->Destroy();
+}
+
 INSTANTIATE_TEST_SUITE_P(SignalContextTestModule, SignalContextTest,
                          ::testing::ValuesIn(test_params));
 

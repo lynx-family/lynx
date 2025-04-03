@@ -139,6 +139,7 @@
   V(FiberCreateComputation)           \
   V(FiberCreateMemo)                  \
   V(FiberUnTrack)                     \
+  V(FiberRunUpdates)                  \
   V(FiberCreateScope)                 \
   V(FiberGetScope)                    \
   V(FiberCleanUp)                     \

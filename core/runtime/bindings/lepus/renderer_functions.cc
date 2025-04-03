@@ -5196,6 +5196,21 @@ RENDERER_FUNCTION_CC(FiberUnTrack) {
   RETURN(value);
 }
 
+RENDERER_FUNCTION_CC(FiberRunUpdates) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberRunUpdates");
+  CHECK_ARGC_GE(FiberRunUpdates, 1);
+  CONVERT_ARG(arg0, 0);  // block
+
+  lepus::Value result;
+
+  GET_TASM_POINTER()->GetSignalContext()->RunUpdates(
+      [&result, arg0, context = LEPUS_CONTEXT()]() {
+        result = context->CallClosure(*arg0);
+      });
+
+  RETURN(result);
+}
+
 RENDERER_FUNCTION_CC(FiberCreateScope) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberCreateScope");
   CHECK_ARGC_GE(FiberCreateScope, 1);
