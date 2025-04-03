@@ -531,9 +531,13 @@ export abstract class BaseApp<
     }
     // cache miss
     if (path.split('?')[0].endsWith('.json')) {
-      const content = this.nativeApp.readScript(path);
-      const ret = this._$executeJSON<T>(content, { path });
-      callback(null, ret);
+      try {
+        const content = this.nativeApp.readScript(path);
+        const ret = this._$executeJSON<T>(content, { path });
+        callback(null, ret);
+      } catch (e) {
+        callback(e);
+      }
       return;
     }
 
