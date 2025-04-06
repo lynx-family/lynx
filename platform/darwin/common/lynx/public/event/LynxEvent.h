@@ -41,6 +41,7 @@ FOUNDATION_EXPORT int32_t const LynxTouchPseudoStateAll;
 @property(nonatomic, copy, readonly) NSString* eventName;
 @property(nonatomic, readonly) LynxEventType eventType;
 @property(nonatomic) NSTimeInterval timestamp;
+@property(nonatomic) int64_t eventID;
 
 - (instancetype)initWithName:(NSString*)name type:(LynxEventType)type;
 
@@ -53,6 +54,7 @@ FOUNDATION_EXPORT int32_t const LynxTouchPseudoStateAll;
 
 - (BOOL)canCoalesce;
 - (NSMutableDictionary*)generateEventBody;
+- (NSMutableArray*)getEventParams;
 
 @end
 

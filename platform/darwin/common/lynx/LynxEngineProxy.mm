@@ -85,4 +85,29 @@
   }
 }
 
+- (void)startEventGenerate:(LynxTouchEvent *)event {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->StartEventGenerate(
+        PubLepusValue(LynxConvertToLepusValue([event getEventParams])));
+  }
+}
+
+- (void)startEventCapture:(int64_t)eventID {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->StartEventCapture(eventID);
+  }
+}
+
+- (void)startEventBubble:(int64_t)eventID {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->StartEventBubble(eventID);
+  }
+}
+
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+  if (native_engine_proxy_) {
+    native_engine_proxy_->StartEventFire(isStop, eventID);
+  }
+}
+
 @end

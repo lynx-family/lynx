@@ -61,6 +61,30 @@ enum LynxEventPropStatus {
 
 - (NSInteger)getGestureArenaMemberId;
 
+- (id<LynxEventTarget>)parentLynxPageUI;
+
+- (void)setParentLynxPageUI:(id<LynxEventTarget>)ui;
+
+- (NSMutableDictionary*)childrenLynxPageUI;
+
+- (void)setChildrenLynxPageUI:(NSMutableDictionary*)dict;
+
+- (id<LynxEventTarget>)rootLynxPageUI;
+
+- (void)setEventID:(int64_t)eventID;
+
+- (void)startEventCapture:(int64_t)eventID;
+
+- (void)onEventCapture:(BOOL)isCatch withEventID:(int64_t)eventID;
+
+- (void)startEventBubble:(int64_t)eventID;
+
+- (void)onEventBubble:(BOOL)isCatch withEventID:(int64_t)eventID;
+
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
+
+- (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
+
 @end
 
 NS_ASSUME_NONNULL_END

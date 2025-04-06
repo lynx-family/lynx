@@ -1357,6 +1357,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return _enableAutoExpose && (!pageConfig_ || pageConfig_->GetAutoExpose());
 }
 
+- (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback {
+  [_lynxUIRenderer.uiOwner setAttachLynxPageUICallback:callback];
+}
+
 #pragma mark - Life Cycle
 
 - (void)dispatchViewDidStartLoading {
@@ -2508,12 +2512,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)onEventCapture:(NSInteger)targetID
         withEventCatch:(BOOL)isCatch
             andEventID:(int64_t)eventID {
+  [[_lynxUIRenderer.uiOwner findUIBySign:targetID] onEventCapture:isCatch withEventID:eventID];
 }
 
 - (void)onEventBubble:(NSInteger)targetID withEventCatch:(BOOL)isCatch andEventID:(int64_t)eventID {
+  [[_lynxUIRenderer.uiOwner findUIBySign:targetID] onEventBubble:isCatch withEventID:eventID];
 }
 
 - (void)onEventFire:(NSInteger)targetID withEventStop:(BOOL)isStop andEventID:(int64_t)eventID {
+  [[_lynxUIRenderer.uiOwner findUIBySign:targetID] onEventFire:isStop withEventID:eventID];
 }
 
 @end

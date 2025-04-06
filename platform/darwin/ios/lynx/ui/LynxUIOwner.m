@@ -422,6 +422,10 @@ extern NSString* const kDefaultComponentID;
     [ui setImplicitAnimation];
     [ui updateCSSDefaultValue];
 
+    if (ui == _rootUI && self.attachLynxPageUICallback) {
+      self.attachLynxPageUICallback(_rootUI);
+    }
+
     [self updateEventWithUI:ui
                    eventSet:eventSet
               lepusEventSet:lepusEventSet

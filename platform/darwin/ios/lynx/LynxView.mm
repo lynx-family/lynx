@@ -343,20 +343,23 @@
     return [_templateRender.lynxUIRenderer hitTest:point withEvent:event];
   }
 
-  id<LynxEventTarget> touchTarget = nil;
-  RUN_RENDER_SAFELY(touchTarget = [_templateRender hitTestInEventHandler:point withEvent:event];);
-  UIView* view = [super hitTest:point withEvent:event];
-
-  [_templateRender.lynxUIRenderer handleFocus:touchTarget
-                                       onView:view
-                                withContainer:self
-                                     andPoint:point
-                                     andEvent:event];
-  // If target eventThrough, return nil to let event through LynxView.
-  if ([touchTarget eventThrough]) {
-    return nil;
+  if (self.isChildLynxPage) {
+    return [super hitTest:point withEvent:event];
   } else {
-    return view;
+    id<LynxEventTarget> touchTarget = nil;
+    RUN_RENDER_SAFELY(touchTarget = [_templateRender hitTestInEventHandler:point withEvent:event];);
+    UIView* view = [super hitTest:point withEvent:event];
+    [_templateRender.lynxUIRenderer handleFocus:touchTarget
+                                         onView:view
+                                  withContainer:self
+                                       andPoint:point
+                                       andEvent:event];
+    // If target eventThrough, return nil to let event through LynxView.
+    if ([touchTarget eventThrough]) {
+      return nil;
+    } else {
+      return view;
+    }
   }
 }
 
@@ -737,6 +740,10 @@
   [_lifecycleDispatcher lynxViewDidChangeIntrinsicContentSize:self];
 }
 
+- (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback {
+  [_templateRender setAttachLynxPageUICallback:callback];
+}
+
 #pragma mark - Get Info
 
 - (NSDictionary*)getPageDataByKey:(NSArray*)keys {
@@ -935,6 +942,14 @@
 
 - (int32_t)instanceId {
   return _templateRender.instanceId;
+}
+
+- (BOOL)isChildLynxPage {
+  return _isChildLynxPage;
+}
+
+- (void)setIsChildLynxPage:(BOOL)isChildLynxPage {
+  _isChildLynxPage = isChildLynxPage;
 }
 
 #pragma mark - Preload

@@ -58,6 +58,12 @@ typedef BOOL (^onLynxEvent)(LynxEvent *event);
 - (void)removeObserver:(id<LynxEventObserver>)observer;
 - (void)notifyIntersectionObserver;
 
+- (void)startEventGenerate:(LynxEvent *)event;
+- (void)setEventID:(int64_t)eventID;
+- (void)startEventCapture:(int64_t)eventID;
+- (void)startEventBubble:(int64_t)eventID;
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LUIBodyView.h>
 #import <Lynx/LUIConfig.h>
 #import <Lynx/LynxForegroundProtocol.h>
 #import <Lynx/LynxModule.h>
@@ -24,7 +25,6 @@ NS_ASSUME_NONNULL_BEGIN
 @protocol LynxBaseInspectorOwner;
 @protocol LynxForegroundProtocol;
 @protocol LUIErrorHandling;
-@protocol LUIBodyView;
 
 @interface LynxUIContext (Internal)
 @property(nonatomic, weak, nullable, readwrite) id<LynxImageFetcher> imageFetcher;
@@ -43,6 +43,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) id<LynxBaseInspectorOwner> baseInspectOwner;
 @property(nonatomic, strong) LynxGestureArenaManager* _Nullable gestureArenaManager;
 @property(nonatomic, weak, readonly) LynxTemplateRender* templateRender;
+@property(nonatomic) attachLynxPageUI attachLynxPageUICallback;
 
 - (void)attachLynxView:(LynxView* _Nonnull)containerView;
 - (instancetype)initWithContainerView:(LynxView*)containerView

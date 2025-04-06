@@ -1697,6 +1697,9 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
         tasm->OnEventFire(target_sign, is_stop, event_id);
       }
     }
+    if (event_name == EVENT_TOUCH_CANCEL) {
+      current_touches_ = lepus_value(lepus::CArray::Create());
+    }
   }
 
   if (is_propagation) {

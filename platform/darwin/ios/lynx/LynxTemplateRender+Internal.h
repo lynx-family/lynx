@@ -41,6 +41,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (LynxUIOwner *)uiOwner;
 
+- (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback;
+
 @end
 
 NS_ASSUME_NONNULL_END

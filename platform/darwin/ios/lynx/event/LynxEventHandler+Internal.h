@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (id<LynxEventTarget>)hitTestInner:(CGPoint)point withEvent:(nullable UIEvent *)event;
 - (NSInteger)checkCanRespondTapOrClick:(id<LynxEventTarget>)ui withSet:(NSSet *)set;
+- (void)removeEventGestures;
 
 @end
 

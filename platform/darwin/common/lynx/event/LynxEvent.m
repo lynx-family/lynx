@@ -21,6 +21,7 @@ int32_t const LynxTouchPseudoStateAll = ~0;
     _eventName = name;
     _eventType = type;
     _timestamp = [[NSDate date] timeIntervalSince1970];
+    _eventID = (int64_t)(_timestamp * 1000);
   }
   return self;
 }
@@ -51,6 +52,16 @@ int32_t const LynxTouchPseudoStateAll = ~0;
   body[@"target"] = [NSNumber numberWithInteger:_targetSign];
   body[@"currentTarget"] = [NSNumber numberWithInteger:_currentTargetSign];
   return body;
+}
+
+- (NSMutableArray*)getEventParams {
+  NSMutableArray* params = [NSMutableArray new];
+  [params addObject:_eventName];
+  [params addObject:@(_eventType)];
+  [params addObject:@(_targetSign)];
+  [params addObject:@(_timestamp)];
+  [params addObject:@(_eventID)];
+  return params;
 }
 
 @end

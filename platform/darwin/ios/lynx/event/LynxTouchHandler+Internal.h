@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSInteger)setGestureArenaManagerAndGetIndex:(LynxGestureArenaManager *)gestureArenaManager;
 - (void)removeGestureArenaManager:(NSInteger)index;
 - (void)showMessageOnConsole:(NSString *)msg withLevel:(int32_t)level;
+- (void)resetTouchEnv;
 
 @end
 

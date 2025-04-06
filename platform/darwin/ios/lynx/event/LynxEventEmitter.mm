@@ -18,6 +18,7 @@ using namespace lynx::lepus;
   NSMutableArray* eventObservers_;
   onLynxEvent eventReporter_;
   dispatch_block_t intersectionObserver_;
+  int64_t eventID_;
 }
 
 - (instancetype)initWithLynxEngineProxy:(LynxEngineProxy*)engineProxy {
@@ -45,7 +46,21 @@ using namespace lynx::lepus;
   if ([self onLynxEvent:event]) {
     return YES;
   }
-  [_engineProxy sendSyncTouchEvent:event];
+  id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
+  if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
+    if ([target parentLynxPageUI] == nil) {
+      eventID_ = (int64_t)(event.timestamp * 1000);
+    }
+    event.eventID = eventID_;
+    [target setEventID:eventID_];
+    [self startEventGenerate:event];
+
+    if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
+      [target.rootLynxPageUI startEventCapture:eventID_];
+    }
+  } else {
+    [_engineProxy sendSyncTouchEvent:event];
+  }
   return NO;
 }
 
@@ -66,7 +81,22 @@ using namespace lynx::lepus;
   if ([self onLynxEvent:event]) {
     return;
   }
-  [_engineProxy sendSyncMultiTouchEvent:event];
+  id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
+  if ([target parentLynxPageUI] || [target childrenLynxPageUI]) {
+    id<LynxEventTarget> target = (id<LynxEventTarget>)event.eventTarget;
+    if ([target parentLynxPageUI] == nil) {
+      eventID_ = (int64_t)(event.timestamp * 1000);
+    }
+    event.eventID = eventID_;
+    [target setEventID:eventID_];
+    [self startEventGenerate:event];
+
+    if ([target childrenLynxPageUI][[NSString stringWithFormat:@"%p", target]] == nil) {
+      [target.rootLynxPageUI startEventCapture:eventID_];
+    }
+  } else {
+    [_engineProxy sendSyncMultiTouchEvent:event];
+  }
 }
 
 - (void)dispatchCustomEvent:(LynxCustomEvent*)event {
@@ -145,6 +175,26 @@ using namespace lynx::lepus;
     // if not on main thread, post to main thread
     dispatch_async(dispatch_get_main_queue(), intersectionObserver_);
   }
+}
+
+- (void)startEventGenerate:(LynxEvent*)event {
+  [_engineProxy startEventGenerate:(LynxTouchEvent*)event];
+}
+
+- (void)setEventID:(int64_t)eventID {
+  eventID_ = eventID;
+}
+
+- (void)startEventCapture:(int64_t)eventID {
+  [_engineProxy startEventCapture:eventID];
+}
+
+- (void)startEventBubble:(int64_t)eventID {
+  [_engineProxy startEventBubble:eventID];
+}
+
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+  [_engineProxy startEventFire:isStop withEventID:eventID];
 }
 
 @end

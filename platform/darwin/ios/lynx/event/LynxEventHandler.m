@@ -5,6 +5,7 @@
 #import <Lynx/LynxBaseLogBoxProxy.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTouchHandler.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
@@ -297,6 +298,15 @@
   }
 }
 
+- (void)removeEventGestures {
+  [_rootView removeGestureRecognizer:_tapRecognizer];
+  [_rootView removeGestureRecognizer:_longPressRecognizer];
+  [_rootView removeGestureRecognizer:_touchRecognizer];
+  if (_panGestureRecognizer != nil) {
+    [_rootView removeGestureRecognizer:_panGestureRecognizer];
+  }
+}
+
 - (LynxCustomEvent*)generateGestureEvent:(UIGestureRecognizer*)sender
                                 withName:(NSString*)name
                                       ui:(id<LynxEventTarget>)ui {
@@ -374,6 +384,13 @@
                                                           propsTargetSign]
                      withLevel:LynxLogBoxLevelWarning];
     }
+  }
+
+  LynxRootUI* childLynxPage =
+      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler dispatchTapEvent:sender];
   }
 }
 
@@ -455,6 +472,13 @@
     _longPressPoint = CGPointMake(-FLT_MAX, -FLT_MAX);
     self.gestureRecognized = NO;
     [self resetEventEnv];
+  }
+
+  LynxRootUI* childLynxPage =
+      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler dispatchLongPressEvent:sender];
   }
 }
 
@@ -546,6 +570,21 @@
     _rootUI = (LynxUI*)_uiOwner.rootUI;
   }
   _touchTarget = [self hitTestInner:point withEvent:event];
+
+  LynxRootUI* childLynxPage =
+      _touchTarget.childrenLynxPageUI[[NSString stringWithFormat:@"%p", _touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    CGPoint transPoint = [_rootUI.view convertPoint:point toView:((LynxUI*)_touchTarget).view];
+    [childLynxPage.context.eventHandler hitTest:transPoint withEvent:event];
+    // When two fingers are pressed on different child Lynx pages at the same time, the parent Lynx
+    // page will generate two different touchTargets successively, and the custom gesture interface
+    // can be triggered after hitTest, which will cause different child Lynx pages to fail to
+    // receive touchstart or touchend, and ultimately make it impossible to reset the touch state of
+    // a child Lynx page, resulting in click failure.
+    [childLynxPage.context.eventHandler.touchRecognizer resetTouchEnv];
+  }
+
   return _touchTarget;
 }
 

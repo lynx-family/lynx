@@ -19,6 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)onGestureRecognized;
 
+- (void)touchesBeganInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event;
+- (void)touchesMovedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event;
+- (void)touchesEndedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event;
+- (void)touchesCancelledInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event;
+
 @end
 
 NS_ASSUME_NONNULL_END

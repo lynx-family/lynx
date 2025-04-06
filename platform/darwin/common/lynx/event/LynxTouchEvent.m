@@ -61,4 +61,17 @@ NSString *const LynxEventClick = @"click";
   return self;
 }
 
+- (NSMutableArray *)getEventParams {
+  NSMutableArray *params = [super getEventParams];
+  if (_isMultiTouch) {
+    [params addObject:@[ @(_isMultiTouch), _uiTouchMap ]];
+  } else {
+    [params addObject:@[
+      @(_isMultiTouch), @(_clientPoint.x), @(_clientPoint.y), @(_pagePoint.x), @(_pagePoint.y),
+      @(_viewPoint.x), @(_viewPoint.y)
+    ]];
+  }
+  return params;
+}
+
 @end

@@ -4,6 +4,8 @@
 
 #import <Lynx/LUIErrorHandling.h>
 
+typedef void (^attachLynxPageUI)(__weak NSObject* _Nonnull ui);
+
 /// This protocol is a collection of abilities a root view of Lynx UI tree is required.
 ///
 ///
@@ -42,5 +44,18 @@
 /// This configuration will be removed soon and the optimization will always take effect.
 @required
 - (BOOL)enableTextNonContiguousLayout;
+
+/// This is the interface used to set the parent-child relationship of Lynx pages. The parent page
+/// uses this interface to set the relevant callback, and the child page will call the callback at
+/// the appropriate time.
+/// - Parameters:
+///   - callback: the callback used to set the parent-child relationship of Lynx pages.
+@optional
+- (void)setAttachLynxPageUICallback:(attachLynxPageUI _Nonnull)callback;
+
+/// This interface is used to identify whether the Lynx page is a child page in the Lynx page nested
+/// scenario.
+@optional
+@property(nonatomic) BOOL isChildLynxPage;
 
 @end

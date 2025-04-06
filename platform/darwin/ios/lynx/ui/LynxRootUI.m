@@ -7,7 +7,10 @@
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxViewInternal.h>
 
-@implementation LynxRootUI
+@implementation LynxRootUI {
+  id<LynxEventTarget> _parentLynxPageUI;
+  NSMutableDictionary *_childrenLynxPageUI;
+}
 
 - (instancetype)initWithLynxView:(UIView<LUIBodyView> *)lynxView {
   NSAssert(lynxView != nil, @"LynxRootUI can not be created with nil lynxView.");
@@ -106,6 +109,22 @@
     res |= self.context.enableEventThrough;
   }
   return res;
+}
+
+- (id<LynxEventTarget>)parentLynxPageUI {
+  return _parentLynxPageUI;
+}
+
+- (void)setParentLynxPageUI:(id<LynxEventTarget>)ui {
+  _parentLynxPageUI = ui;
+}
+
+- (NSMutableDictionary *)childrenLynxPageUI {
+  return _childrenLynxPageUI;
+}
+
+- (void)setChildrenLynxPageUI:(NSMutableDictionary *)dict {
+  _childrenLynxPageUI = dict;
 }
 
 @end

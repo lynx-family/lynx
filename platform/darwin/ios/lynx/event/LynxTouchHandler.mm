@@ -11,6 +11,7 @@
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxLog.h>
+#import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTouchEvent.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
@@ -264,6 +265,7 @@
                                   params {
   LynxTouchEvent* event = [[LynxTouchEvent alloc] initWithName:eventName uiTouchMap:params];
   event.activeUIMap = active_target_map_;
+  event.eventTarget = _eventHandler.touchTarget;
   event.timestamp = _timestamp;
   [_eventHandler.eventEmitter dispatchMultiTouchEvent:event];
 }
@@ -503,6 +505,10 @@
 }
 
 - (void)touchesBegan:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self touchesBeganInner:touches withEvent:event];
+}
+
+- (void)touchesBeganInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
@@ -600,6 +606,14 @@
     }
   }
   [_target dispatchTouch:LynxEventTouchStart touches:touches withEvent:event];
+
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:touches withEvent:event];
+  }
 }
 
 // OnTouchesMove, the touched event target may change. Disable the touch pseudo class for
@@ -661,6 +675,10 @@
 }
 
 - (void)touchesMoved:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self touchesMovedInner:touches withEvent:event];
+}
+
+- (void)touchesMovedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   if ([self checkOuterGestureChanged:touches]) {
     [self onTouchEndOrCancel];
     [self resetTouchEnv];
@@ -743,6 +761,14 @@
     [self dispatchTouchAndEvent:LynxEventTouchMove params:dict];
   }
   [_target dispatchTouch:LynxEventTouchMove touches:touches withEvent:event];
+
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler.touchRecognizer touchesMovedInner:touches withEvent:event];
+  }
 }
 
 // OnTouchEndOrCancel, the touched event target may change. Disable the touch pseudo class for all
@@ -768,6 +794,10 @@
 }
 
 - (void)touchesEnded:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self touchesEndedInner:touches withEvent:event];
+}
+
+- (void)touchesEndedInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
@@ -848,9 +878,21 @@
     [self onTouchEndOrCancel];
     [self resetTouchEnv];
   }
+
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler.touchRecognizer touchesEndedInner:touches withEvent:event];
+  }
 }
 
 - (void)touchesCancelled:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
+  [self touchesCancelledInner:touches withEvent:event];
+}
+
+- (void)touchesCancelledInner:(NSSet<UITouch*>*)touches withEvent:(UIEvent*)event {
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
     [self showMessageOnConsole:
               [NSString stringWithFormat:@"LynxTouchHandler: receive touch for lynx %ld, touch %d",
@@ -916,6 +958,15 @@
     }
     [self onTouchEndOrCancel];
     [self resetTouchEnv];
+  }
+
+  LynxRootUI* childLynxPage =
+      _eventHandler.touchTarget
+          .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+  if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+      childLynxPage.view.isChildLynxPage) {
+    [childLynxPage.context.eventHandler.touchRecognizer touchesCancelledInner:touches
+                                                                    withEvent:event];
   }
 }
 
@@ -1093,6 +1144,15 @@
       [self dispatchTouchAndEvent:LynxEventTouchCancel params:dict];
     }
     [_target dispatchTouch:LynxEventTouchCancel touches:_touches withEvent:_event];
+
+    LynxRootUI* childLynxPage =
+        _eventHandler.touchTarget
+            .childrenLynxPageUI[[NSString stringWithFormat:@"%p", _eventHandler.touchTarget]];
+    if ([childLynxPage.view respondsToSelector:@selector(isChildLynxPage)] &&
+        childLynxPage.view.isChildLynxPage) {
+      [childLynxPage.context.eventHandler.touchRecognizer touchesBeganInner:_touches
+                                                                  withEvent:_event];
+    }
 
     [self onTouchEndOrCancel];
     [self resetTouchEnv];

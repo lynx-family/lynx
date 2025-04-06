@@ -20,6 +20,7 @@
   BOOL _attached;
   LynxLifecycleDispatcher* _lifecycleDispatcher;
   LynxTemplateRender* _templateRender;
+  BOOL _isChildLynxPage;
 }
 
 @end

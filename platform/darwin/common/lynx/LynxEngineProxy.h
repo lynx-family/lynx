@@ -10,6 +10,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxEvent;
 @class LynxTouchEvent;
 @class LynxCustomEvent;
 
@@ -56,6 +57,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onPseudoStatusChanged:(int32_t)tag
                 fromPreStatus:(int32_t)preStatus
               toCurrentStatus:(int32_t)currentStatus;
+
+- (void)startEventGenerate:(LynxEvent *)event;
+- (void)startEventCapture:(int64_t)eventID;
+- (void)startEventBubble:(int64_t)eventID;
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
 
 @end
 

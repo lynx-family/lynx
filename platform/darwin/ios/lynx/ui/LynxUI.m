@@ -3371,6 +3371,83 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   return 0;
 }
 
+- (id<LynxEventTarget>)parentLynxPageUI {
+  return [self.context.rootUI parentLynxPageUI];
+}
+
+- (void)setParentLynxPageUI:(id<LynxEventTarget>)ui {
+  [self.context.rootUI setParentLynxPageUI:ui];
+}
+
+- (NSMutableDictionary*)childrenLynxPageUI {
+  return [self.context.rootUI childrenLynxPageUI];
+}
+
+- (void)setChildrenLynxPageUI:(NSMutableDictionary*)dict {
+  [self.context.rootUI setChildrenLynxPageUI:dict];
+}
+
+- (id<LynxEventTarget>)rootLynxPageUI {
+  id<LynxEventTarget> currentLynxPageUI = self.context.rootUI;
+  while ([currentLynxPageUI parentLynxPageUI] != nil) {
+    currentLynxPageUI = [currentLynxPageUI parentLynxPageUI];
+  }
+  return currentLynxPageUI;
+}
+
+- (void)setEventID:(int64_t)eventID {
+  LynxUI* childLynxPageUI = [self childrenLynxPageUI][[NSString stringWithFormat:@"%p", self]];
+  if (childLynxPageUI) {
+    [childLynxPageUI.context.eventEmitter setEventID:eventID];
+  }
+}
+
+- (void)startEventCapture:(int64_t)eventID {
+  [self.context.eventEmitter startEventCapture:eventID];
+}
+
+- (void)onEventCapture:(BOOL)isCatch withEventID:(int64_t)eventID {
+  if (isCatch) {
+    [self.rootLynxPageUI startEventFire:NO withEventID:eventID];
+  } else {
+    LynxUI* childLynxPageUI = [self childrenLynxPageUI][[NSString stringWithFormat:@"%p", self]];
+    if (childLynxPageUI != nil) {
+      [childLynxPageUI startEventCapture:eventID];
+    } else {
+      [self startEventBubble:eventID];
+    }
+  }
+}
+
+- (void)startEventBubble:(int64_t)eventID {
+  [self.context.eventEmitter startEventBubble:eventID];
+}
+
+- (void)onEventBubble:(BOOL)isCatch withEventID:(int64_t)eventID {
+  if (isCatch) {
+    [self.rootLynxPageUI startEventFire:NO withEventID:eventID];
+  } else {
+    LynxUI* parentLynxPageUI = (LynxUI*)[self parentLynxPageUI];
+    if (parentLynxPageUI != nil) {
+      [parentLynxPageUI startEventBubble:eventID];
+    } else {
+      [self startEventFire:NO withEventID:eventID];
+    }
+  }
+}
+
+- (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+  [self.context.eventEmitter startEventFire:isStop withEventID:eventID];
+  [self.context.eventEmitter setEventID:0];
+}
+
+- (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
+  LynxUI* childLynxPageUI = [self childrenLynxPageUI][[NSString stringWithFormat:@"%p", self]];
+  if (childLynxPageUI != nil) {
+    [childLynxPageUI startEventFire:isStop withEventID:eventID];
+  }
+}
+
 /* EventTarget Section End */
 
 // this can be overriden if a UI typically has more than three layers
