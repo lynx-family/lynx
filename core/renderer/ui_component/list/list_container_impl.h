@@ -33,7 +33,7 @@ class ListContainerImpl : public ListContainer::Delegate {
                             const PipelineOptions& option) override;
   void FinishBindItemHolders(const std::vector<Element*>& list_items,
                              const PipelineOptions& options) override;
-  void OnLayoutChildren() override;
+  void OnLayoutChildren(const PipelineOptions& options) override;
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y) override;
   void ScrollToPosition(int index, float offset, int align,

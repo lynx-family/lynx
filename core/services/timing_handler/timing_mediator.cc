@@ -277,6 +277,11 @@ void TimingMediator::ReportSetupEvent(const TimingInfo& timing_info) const {
                  CalculateDuration(
                      setup_timing, BASE_STATIC_STRING(kListRenderChildrenStart),
                      setup_timing, BASE_STATIC_STRING(kListRenderChildrenEnd)));
+  event.SetProps(
+      kListFullFillRenderChildrenEnd,
+      CalculateDuration(
+          setup_timing, BASE_STATIC_STRING(kListRenderChildrenStart),
+          setup_timing, BASE_STATIC_STRING(kListFullFillRenderChildrenEnd)));
 
   event.SetProps(
       kSetupLoadTemplateWaiting,
@@ -475,6 +480,12 @@ void TimingMediator::ReportUpdateEvent(const TimingInfo& timing_info,
                                    BASE_STATIC_STRING(kListRenderChildrenStart),
                                    update_lepus_timing_dict,
                                    BASE_STATIC_STRING(kListRenderChildrenEnd)));
+  event.SetProps(
+      kListFullFillRenderChildren,
+      CalculateDuration(update_lepus_timing_dict,
+                        BASE_STATIC_STRING(kListRenderChildrenStart),
+                        update_lepus_timing_dict,
+                        BASE_STATIC_STRING(kListFullFillRenderChildrenEnd)));
 
   event.SetProps(kListPatchChanges,
                  CalculateDuration(update_lepus_timing_dict,

@@ -83,6 +83,8 @@ static constexpr const char kListRenderChildrenStart[] =
     "list_render_children_start";
 static constexpr const char kListRenderChildrenEnd[] =
     "list_render_children_end";
+static constexpr const char kListFullFillRenderChildrenEnd[] =
+    "list_full_fill_render_children_end";
 static constexpr const char kListPatchChangesStart[] =
     "list_patch_changes_start";
 static constexpr const char kListPatchChangesEnd[] = "list_patch_changes_end";
@@ -145,6 +147,8 @@ static constexpr const char* kUpdateTiming = "update_timing";
 static constexpr const char* kLoadTemplateToUpdateDrawEnd =
     "load_template_to_update_draw_end";
 static constexpr const char* kListRenderChildren = "list_render_children";
+static constexpr const char* kListFullFillRenderChildren =
+    "list_full_fill_render_children";
 static constexpr const char* kListPatchChanges = "list_patch_changes";
 static constexpr const char* kListDiffVdom = "list_diff_vdom";
 

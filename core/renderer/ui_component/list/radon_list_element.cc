@@ -51,15 +51,7 @@ bool RadonListElement::OnAttributeSet(const base::String& key,
 void RadonListElement::OnListElementUpdated(const PipelineOptions& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "RadonListElement::OnListElementUpdated");
   if (list_container_delegate()) {
-    if (options.need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(
-          tasm::timing::kListRenderChildrenStart);
-    }
-    list_container_delegate()->OnLayoutChildren();
-    if (options.need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(
-          tasm::timing::kListRenderChildrenEnd);
-    }
+    list_container_delegate()->OnLayoutChildren(options);
   }
 }
 

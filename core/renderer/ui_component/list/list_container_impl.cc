@@ -16,6 +16,7 @@
 #include "core/renderer/ui_component/list/staggered_grid_layout_manager.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/services/timing_handler/timing_constants_deprecated.h"
 
 namespace lynx {
 namespace tasm {
@@ -424,8 +425,12 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   return should_set_props;
 };
 
-void ListContainerImpl::OnLayoutChildren() {
+void ListContainerImpl::OnLayoutChildren(const PipelineOptions& options) {
   if (list_layout_manager_) {
+    if (options.need_timestamps) {
+      tasm::TimingCollector::Instance()->Mark(
+          tasm::timing::kListRenderChildrenStart);
+    }
     list_layout_manager_->SetListLayoutInfoToAllItemHolders();
     if (need_recycle_all_item_holders_before_layout_) {
       list_adapter_->RecycleAllItemHolders();
@@ -438,6 +443,20 @@ void ListContainerImpl::OnLayoutChildren() {
         list_layout_manager_->OnLayoutChildren();
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
+      }
+    }
+    if (options.need_timestamps) {
+      tasm::TimingCollector::Instance()->Mark(
+          tasm::timing::kListRenderChildrenEnd);
+      const float list_main_size =
+          list_layout_manager_->list_orientation_helper_
+              ? list_layout_manager_->list_orientation_helper_->GetMeasurement()
+              : 0.f;
+      const float content_size = list_layout_manager_->content_size();
+      if (GetDataCount() > 0 && base::FloatsLarger(list_main_size, 0.f) &&
+          base::FloatsLargerOrEqual(content_size, list_main_size)) {
+        tasm::TimingCollector::Instance()->Mark(
+            tasm::timing::kListFullFillRenderChildrenEnd);
       }
     }
   }
