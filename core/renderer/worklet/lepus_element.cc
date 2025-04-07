@@ -32,7 +32,7 @@
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if OS_IOS
-#include "trace-gc.h"
+#include "gc/trace-gc.h"
 #else
 #include "quickjs/include/trace-gc.h"
 #endif
