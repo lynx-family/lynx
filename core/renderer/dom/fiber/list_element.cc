@@ -13,7 +13,6 @@
 #include "core/renderer/ui_component/list/list_types.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
-#include "core/services/timing_handler/timing_constants_deprecated.h"
 
 namespace lynx {
 namespace tasm {
@@ -410,15 +409,7 @@ void ListElement::PropsUpdateFinish() {
 void ListElement::OnListElementUpdated(const PipelineOptions& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "ListElement::OnListElementUpdated");
   if (DisableListPlatformImplementation() && list_container_delegate()) {
-    if (options.need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(
-          tasm::timing::kListRenderChildrenStart);
-    }
-    list_container_delegate()->OnLayoutChildren();
-    if (options.need_timestamps) {
-      tasm::TimingCollector::Instance()->Mark(
-          tasm::timing::kListRenderChildrenEnd);
-    }
+    list_container_delegate()->OnLayoutChildren(options);
   }
 }
 

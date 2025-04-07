@@ -22,7 +22,7 @@ class ListContainer {
     virtual ~Delegate() = default;
     virtual bool ResolveAttribute(const base::String& key,
                                   const lepus::Value& value) = 0;
-    virtual void OnLayoutChildren() = 0;
+    virtual void OnLayoutChildren(const PipelineOptions& options) = 0;
     virtual void OnNextFrame() {}
     virtual void FinishBindItemHolder(Element* component,
                                       const PipelineOptions& option) = 0;
