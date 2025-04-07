@@ -1554,6 +1554,7 @@ class VMInstance {
   // VMInstance createVM(StartupData data);
   // static VMInstance createVM();
  public:
+  virtual ~VMInstance() = default;
   virtual JSRuntimeType GetRuntimeType() = 0;
   static void SetReportFunction(report_func func) {
     trig_mem_info_event_ = func;

@@ -1,7 +1,7 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/jsi/jsc/jsc_context_wrapper_impl.h"
+#include "core/runtime/jsi/jsc/jsc_context_wrapper.h"
 
 #include <JavaScriptCore/JavaScript.h>
 
@@ -10,19 +10,19 @@
 
 #include "base/include/log/logging.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/jsi/jsc/jsc_context_group_wrapper_impl.h"
+#include "core/runtime/jsi/jsc/jsc_context_group_wrapper.h"
 #include "core/runtime/jsi/jsc/jsc_helper.h"
 #include "core/runtime/jsi/jsi.h"
 
 namespace lynx {
 namespace piper {
 
-JSCContextWrapperImpl::JSCContextWrapperImpl(std::shared_ptr<VMInstance> vm)
-    : JSCContextWrapper(vm), ctx_invalid_(false), objectCounter_(0) {}
+JSCContextWrapper::JSCContextWrapper(std::shared_ptr<VMInstance> vm)
+    : JSIContext(vm), ctx_invalid_(false), objectCounter_(0) {}
 
-void JSCContextWrapperImpl::init() {
-  std::shared_ptr<JSCContextGroupWrapperImpl> context_group_wrapper =
-      std::static_pointer_cast<JSCContextGroupWrapperImpl>(vm_);
+void JSCContextWrapper::init() {
+  std::shared_ptr<JSCContextGroupWrapper> context_group_wrapper =
+      std::static_pointer_cast<JSCContextGroupWrapper>(vm_);
   JSContextGroupRef jsc_context_group =
       context_group_wrapper->GetContextGroup();
   ctx_ = JSGlobalContextCreateInGroup(jsc_context_group, nullptr);
@@ -34,7 +34,7 @@ void JSCContextWrapperImpl::init() {
   JSStringRelease(name);
 }
 
-JSCContextWrapperImpl::~JSCContextWrapperImpl() {
+JSCContextWrapper::~JSCContextWrapper() {
   // remove all global object
   JSObjectRef global = JSContextGetGlobalObject(ctx_);
   JSPropertyNameArrayRef names = JSObjectCopyPropertyNames(ctx_, global);
@@ -59,21 +59,21 @@ JSCContextWrapperImpl::~JSCContextWrapperImpl() {
   LOGI("~JSCContextWrapper " << this);
 }
 
-const std::atomic<bool>& JSCContextWrapperImpl::contextInvalid() const {
+const std::atomic<bool>& JSCContextWrapper::contextInvalid() const {
   return ctx_invalid_;
 }
 
-std::atomic<intptr_t>& JSCContextWrapperImpl::objectCounter() const {
+std::atomic<intptr_t>& JSCContextWrapper::objectCounter() const {
   return objectCounter_;
 }
 
-JSGlobalContextRef JSCContextWrapperImpl::getContext() const { return ctx_; }
+JSGlobalContextRef JSCContextWrapper::getContext() const { return ctx_; }
 
 // static
-RegisterWasmFuncType JSCContextWrapperImpl::register_wasm_func_ = [](void*,
-                                                                     void*) {};
+RegisterWasmFuncType JSCContextWrapper::register_wasm_func_ = [](void*, void*) {
+};
 // static
-RegisterWasmFuncType& JSCContextWrapperImpl::RegisterWasmFunc() {
+RegisterWasmFuncType& JSCContextWrapper::RegisterWasmFunc() {
   static RegisterWasmFuncType RegisterWebAssembly = register_wasm_func_;
   return RegisterWebAssembly;
 }

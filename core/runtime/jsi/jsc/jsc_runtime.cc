@@ -18,8 +18,8 @@
 #include "base/include/log/logging.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/jsi/jsc/jsc_api.h"
-#include "core/runtime/jsi/jsc/jsc_context_group_wrapper_impl.h"
-#include "core/runtime/jsi/jsc/jsc_context_wrapper_impl.h"
+#include "core/runtime/jsi/jsc/jsc_context_group_wrapper.h"
+#include "core/runtime/jsi/jsc/jsc_context_wrapper.h"
 #include "core/runtime/jsi/jsc/jsc_exception.h"
 #include "core/runtime/jsi/jsc/jsc_host_function.h"
 #include "core/runtime/jsi/jsc/jsc_host_object.h"
@@ -64,7 +64,7 @@ void JSCRuntime::InitRuntime(std::shared_ptr<JSIContext> sharedContext,
 }
 
 std::shared_ptr<VMInstance> JSCRuntime::createVM(const StartupData*) const {
-  auto ctx_group = std::make_shared<JSCContextGroupWrapperImpl>();
+  auto ctx_group = std::make_shared<JSCContextGroupWrapper>();
   ctx_group->InitContextGroup();
   return ctx_group;
 }
@@ -74,7 +74,7 @@ std::shared_ptr<VMInstance> JSCRuntime::getSharedVM() { return ctx_group_; }
 
 std::shared_ptr<JSIContext> JSCRuntime::createContext(
     std::shared_ptr<VMInstance> vm) const {
-  auto ctx = std::make_shared<JSCContextWrapperImpl>(vm);
+  auto ctx = std::make_shared<JSCContextWrapper>(vm);
   ctx->init();
   return ctx;
 }

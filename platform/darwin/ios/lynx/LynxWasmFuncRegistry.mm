@@ -3,12 +3,12 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxWasmFuncRegistry.h>
-#include "core/runtime/jsi/jsc/jsc_context_wrapper_impl.h"
+#include "core/runtime/jsi/jsc/jsc_context_wrapper.h"
 
 @implementation LynxWasmFuncRegistry
 
 + (void)registerWasmFunc:(void*)func {
-  lynx::piper::JSCContextWrapperImpl::register_wasm_func_ =
+  lynx::piper::JSCContextWrapper::register_wasm_func_ =
       reinterpret_cast<void (*)(void*, void*)>(func);
 }
 

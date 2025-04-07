@@ -15,16 +15,27 @@
 namespace lynx {
 namespace piper {
 
+using RegisterWasmFuncType = void (*)(void*, void*);
+
 class JSCContextWrapper : public JSIContext {
  public:
-  JSCContextWrapper(std::shared_ptr<VMInstance> vm) : JSIContext(vm){};
-  virtual ~JSCContextWrapper() = default;
-  virtual void init() = 0;
+  JSCContextWrapper(std::shared_ptr<VMInstance> vm);
+  ~JSCContextWrapper() override;
+  void init();
 
-  virtual const std::atomic<bool>& contextInvalid() const = 0;
-  virtual std::atomic<intptr_t>& objectCounter() const = 0;
+  const std::atomic<bool>& contextInvalid() const;
+  std::atomic<intptr_t>& objectCounter() const;
 
-  virtual JSGlobalContextRef getContext() const = 0;
+  JSGlobalContextRef getContext() const;
+
+  static RegisterWasmFuncType& RegisterWasmFunc();
+
+  static RegisterWasmFuncType register_wasm_func_;
+
+ private:
+  JSGlobalContextRef ctx_;
+  std::atomic<bool> ctx_invalid_;
+  mutable std::atomic<intptr_t> objectCounter_;
 };
 
 }  // namespace piper

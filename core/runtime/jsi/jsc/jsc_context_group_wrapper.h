@@ -16,14 +16,14 @@ namespace piper {
 class JSCContextGroupWrapper : public VMInstance {
  public:
   JSCContextGroupWrapper() = default;
-  virtual ~JSCContextGroupWrapper() = default;
+  ~JSCContextGroupWrapper() override;
+  JSRuntimeType GetRuntimeType() override { return piper::JSRuntimeType::jsc; }
 
-  virtual void InitContextGroup() = 0;
-  JSRuntimeType GetRuntimeType() { return piper::JSRuntimeType::jsc; }
+  void InitContextGroup();
+  inline JSContextGroupRef GetContextGroup() { return group_; }
 
  private:
-  friend class JSCRuntime;
-  friend class JSCContextWrapper;
+  JSContextGroupRef group_;
 };
 
 }  // namespace piper
