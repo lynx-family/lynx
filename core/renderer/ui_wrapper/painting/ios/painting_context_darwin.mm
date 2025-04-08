@@ -35,6 +35,7 @@
 #import <Lynx/LynxUIView.h>
 #import <Lynx/UIDevice+Lynx.h>
 #import "LynxCallStackUtil.h"
+#import "LynxContext.h"
 #import "LynxEnv+Internal.h"
 #import "LynxTemplateData+Converter.h"
 #import "LynxTimingConstants.h"
