@@ -1402,7 +1402,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)setResourceFetcherInUIOwner:(id<LynxResourceFetcher>)resourceFetcher {
-  _resourceFetcher = resourceFetcher;
   [_lynxUIRenderer setResourceFetcherInUIOwner:resourceFetcher];
 }
 
