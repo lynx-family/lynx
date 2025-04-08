@@ -60,8 +60,8 @@ void InspectorTracingAgent::SetStartupTracingConfig(
 
 void InspectorTracingAgent::GetStartupTracingConfig(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
-  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingFile(sender,
-                                                                 message);
+  LynxGlobalDevToolMediator::GetInstance().GetStartupTracingConfig(sender,
+                                                                   message);
 }
 
 void InspectorTracingAgent::GetStartupTracingFile(
