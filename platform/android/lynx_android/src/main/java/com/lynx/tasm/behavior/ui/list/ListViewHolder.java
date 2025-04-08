@@ -54,7 +54,14 @@ public class ListViewHolder extends RecyclerView.ViewHolder {
 
   void removeUIComponent() {
     if (mRootView.mUIComponent != null) {
-      mRootView.removeAllViews();
+      String itemKey = mRootView.mUIComponent.getItemKey();
+      try {
+        mRootView.removeAllViews();
+      } catch (NullPointerException e) {
+        LLog.e(UIList.TAG,
+            "ListViewHolder removeUIComponent.the itemKey is " + itemKey
+                + " errorMessage:" + e.getMessage());
+      }
       mRootView.mUIComponent = null;
     }
   }
