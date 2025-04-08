@@ -275,8 +275,8 @@ public class TextRenderer {
           }
           // TODO(zhouzhuangzhuang): try to avoid call getLineWidth
           // Fix the incomplete display of ellipsis in certain fonts
-          if (mTextLayout.getLineWidth(mTextLayout.getLineCount() - 1)
-              > textContext.mDesiredWidth) {
+          if (mTextLayout.getLineWidth(mTextLayout.getLineCount() - 1) > textContext.mDesiredWidth
+              && mTextLayout.getEllipsisCount(mTextLayout.getLineCount() - 1) > 0) {
             // regenerate Builder
             builder = generateLayoutBuilder(
                 textContext.mSpan, alignment, textContext.mTextPaint, textContext.mDesiredWidth);
