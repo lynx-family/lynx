@@ -12,6 +12,9 @@ PACKAGE_TO_IMPORT="yaml, requests"
 PACKAGE_TO_INSTALL="PyYAML requests"
 USE_VENV=false
 
+# avoid conflict with other venv like mechanism
+unset PYTHONPATH
+
 check_requirements_or_install_if_missing() {
   python3 -c "import $PACKAGE_TO_IMPORT"
   if [ $? -eq 0 ]; then
@@ -40,6 +43,7 @@ try_lock_by_dir() {
 }
 
 try_unlock_by_dir() {
+    echo "try to release the lock"
     if [ -d "${LOCK_DIR}" ]; then
         local pid
         pid=$(cat "${LOCK_DIR}/pid" 2>/dev/null)
@@ -78,8 +82,8 @@ else
         fi
     done
 
-    # make sure to release the lock when exit by external
-    trap try_unlock_by_dir SIGINT SIGTERM
+    # make sure to release the lock when exit by external or error
+    trap try_unlock_by_dir SIGINT SIGTERM EXIT
 
     if [ -d $VENV_PATH ]; then
         echo "venv already exists, reuse it"
@@ -94,6 +98,7 @@ else
     set -e
 
     try_unlock_by_dir
+    trap - SIGINT SIGTERM EXIT
 fi
 
 set -e
