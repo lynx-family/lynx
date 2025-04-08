@@ -27,11 +27,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-#ifdef OS_IOS
-#include "persistent-handle.h"
-#else
-#include "quickjs/include/persistent-handle.h"
-#endif
 
 namespace lynx {
 namespace lepus {
@@ -44,7 +39,6 @@ using JSValueIteratorCallback =
 using LepusValueIterator =
     base::MoveOnlyClosure<void, const lepus::Value&, const lepus::Value&>;
 
-typedef void* point_t;
 #define NormalNumberType(V) \
   V(Double, double)         \
   V(Int32, int32_t)         \
@@ -94,7 +88,6 @@ class Closure;
 class RegExp;
 class LEPUSValueHelper;
 class ByteArray;
-class QuickContext;
 class RefCounted;
 class LEPUSObject;
 
@@ -103,8 +96,9 @@ typedef Value (*CFunction)(Context*);
 class BASE_EXPORT_FOR_DEVTOOL Value {
  private:
   ContextCell* cell_ = nullptr;
+  lynx_api_env env_ = nullptr;
   lynx_value value_;
-  GCPersistent* p_val_ = nullptr;
+  lynx_value_ref value_ref_ = nullptr;
 
  public:
   explicit Value() = default;
@@ -138,6 +132,8 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   explicit Value(void* data);
   explicit Value(CFunction val);
   explicit Value(bool for_nan, bool val);
+  Value(lynx_api_env env, const lynx_value& value);
+  Value(lynx_api_env env, lynx_value&& value);
 
   inline bool IsCDate() const {
     return value_.type == lynx_value_object &&
@@ -427,7 +423,7 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   Value ToLepusValue(bool deep_convert = false) const;
 
   inline LEPUSValue WrapJSValue() const {
-    if (!IsJSValue()) return LEPUS_UNDEFINED;
+    if (!IsExtendedValue()) return LEPUS_UNDEFINED;
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
     return (LEPUSValue){.as_int64 = value_.val_int64};
 #else
@@ -436,42 +432,43 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   }
 
   inline bool IsJSCPointer() const {
-    return IsJSValue() && LEPUS_VALUE_IS_LEPUS_CPOINTER(WrapJSValue());
+    return IsTypeForExtended(lynx_value_external);
   }
 
   inline void* LEPUSCPointer() const {
     DCHECK(IsJSCPointer());
-    return LEPUS_VALUE_GET_CPOINTER(WrapJSValue());
+    void* ret;
+    env_->lynx_value_get_external(env_, value_, &ret);
+    return ret;
   }
 
   bool IsJSArray() const;
   bool IsJSTable() const;
 
-  inline bool IsJSBool() const {
-    return IsJSValue() && LEPUS_VALUE_IS_BOOL(WrapJSValue());
-  }
+  inline bool IsJSBool() const { return IsTypeForExtended(lynx_value_bool); }
   inline bool LEPUSBool() const {
-    if (!IsJSBool()) return false;
-    return LEPUS_VALUE_GET_BOOL(WrapJSValue());
+    bool ret;
+    env_->lynx_value_get_bool(env_, value_, &ret);
+    return ret;
   }
   inline bool IsJSString() const {
-    return IsJSValue() && LEPUS_IsString(WrapJSValue());
+    return IsTypeForExtended(lynx_value_string);
   }
 
   inline bool IsJSUndefined() const {
-    return IsJSValue() && LEPUS_VALUE_IS_UNDEFINED(WrapJSValue());
+    return IsTypeForExtended(lynx_value_undefined);
   }
 
   inline bool IsJSNumber() const {
-    auto value = WrapJSValue();
-    return IsJSValue() &&
-           (LEPUS_VALUE_IS_INT(value) || LEPUS_VALUE_IS_FLOAT64(value) ||
-            LEPUS_VALUE_IS_BIG_INT(value));
+    if (!IsExtendedValue()) {
+      return false;
+    }
+    lynx_value_type result;
+    env_->lynx_value_typeof(env_, value_, &result);
+    return result >= lynx_value_double && result <= lynx_value_uint64;
   }
 
-  inline bool IsJsNull() const {
-    return IsJSValue() && LEPUS_VALUE_IS_NULL(WrapJSValue());
-  }
+  inline bool IsJsNull() const { return IsTypeForExtended(lynx_value_null); }
 
   double LEPUSNumber() const;
   bool IsJSInteger() const;
@@ -662,6 +659,25 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   static void ToLepusValueRecursively(Value& value, bool deep_convert);
   static Value CloneRecursively(const Value& src, bool clone_as_jsvalue);
+
+  inline bool IsTypeForExtended(lynx_value_type type) const {
+    if (!IsExtendedValue()) {
+      return false;
+    }
+    lynx_value_type result;
+    env_->lynx_value_typeof(env_, value_, &result);
+    return result == type;
+  }
+
+  inline bool IsExtendedValue() const {
+    return value_.type == lynx_value_extended && env_ != nullptr;
+  }
+
+  inline lynx_value DeepCopyExtendedValue() const {
+    lynx_value ret;
+    env_->lynx_value_deep_copy_value(env_, value_, &ret);
+    return ret;
+  }
 };
 }  // namespace lepus
 }  // namespace lynx

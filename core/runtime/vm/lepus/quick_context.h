@@ -21,6 +21,12 @@ extern "C" {
 }
 #endif
 
+#ifdef OS_IOS
+#include "persistent-handle.h"
+#else
+#include "quickjs/include/persistent-handle.h"
+#endif
+
 namespace lynx {
 namespace lepus {
 

@@ -146,8 +146,8 @@ TEST_F(LepusValueMethods, IsEqual) {
 
   LEPUSValue v1_js_val_ = v1_.ToJSValue(ctx_.context());
 
-  lepus::Value v3 =
-      lepus::LEPUSValueHelper::ToLepusValue(ctx_.context(), v1_js_val_);
+  lepus::Value v_js(ctx_.context(), v1_js_val_);
+  lepus::Value v3 = v_js.ToLepusValue();
 
   ASSERT_TRUE(v1_.IsEqual(v3));
   if (!LEPUS_IsGCMode(ctx_.context()))
@@ -338,8 +338,8 @@ TEST_F(LepusValueMethods, TestLepusValueOperatorEqual) {
   lepus::Value right;
   ASSERT_FALSE(left == right);
 
-  lepus::Value right2;
-  right2 = lepus::LEPUSValueHelper::ToLepusValue(qctx.context(), entry);
+  lepus::Value v_js(qctx.context(), entry);
+  lepus::Value right2 = v_js.ToLepusValue();
   ASSERT_TRUE(left == right2);
   if (!LEPUS_IsGCMode(ctx_.context())) LEPUS_FreeValue(qctx.context(), entry);
 }
@@ -358,8 +358,8 @@ TEST_F(LepusValueMethods, TestToLepusValueRC) {
   lepus::LEPUSValueHelper::SetProperty(qctx.context(), obj2_wrap, "test",
                                        obj_ref);
   // get a copy.
-  lepus::Value obj_result =
-      lepus::LEPUSValueHelper::ToLepusValue(qctx.context(), obj2_wrap, 1);
+  lepus::Value v1(qctx.context(), obj2_wrap);
+  lepus::Value obj_result = v1.ToLepusValue(true);
 
   auto p1 = obj_result.Table()->GetValue("test").Table();
   auto p2 = obj.Table();
@@ -383,8 +383,8 @@ TEST_F(LepusValueMethods, TestToLepusValueGC) {
   lepus::LEPUSValueHelper::SetProperty(qctx.context(), obj2_wrap, "test",
                                        obj_ref);
   // get a copy.
-  lepus::Value obj_result =
-      lepus::LEPUSValueHelper::ToLepusValue(qctx.context(), obj2_wrap, 1);
+  lepus::Value v1(qctx.context(), obj2_wrap);
+  lepus::Value obj_result = v1.ToLepusValue(true);
 
   auto p1 = obj_result.Table()->GetValue("test").Table();
   auto p2 = obj.Table();

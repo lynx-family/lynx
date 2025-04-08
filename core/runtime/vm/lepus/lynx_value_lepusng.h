@@ -21,6 +21,7 @@ extern "C" {
 
 void lynx_value_api_attach_lepusng(lynx_api_env env, LEPUSContext* ctx);
 void lynx_value_api_detach_lepusng(lynx_api_env env);
+LEPUSContext* lynx_value_api_get_context_from_env(lynx_api_env env);
 
 #define MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val)                                \
   {                                                                          \
