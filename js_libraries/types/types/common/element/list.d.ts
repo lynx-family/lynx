@@ -81,6 +81,12 @@ export interface ListScrollInfo {
    * @iOS
    */
   eventSource: ListEventSource;
+  /**
+   * attached cells
+   * @iOS
+   * @Android
+   */
+  attachedCells: ListAttachedCell[];
 }
 
 export interface ListScrollEvent extends BaseEvent<'scroll', ListScrollInfo> {}

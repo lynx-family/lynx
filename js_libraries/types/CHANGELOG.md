@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 3.2.2
+
+### Patch Changes
+
+- Add some missing types of built-in element `list`
+
 ## 3.2.1
 
 ### Patch Changes
