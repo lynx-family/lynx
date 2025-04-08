@@ -230,8 +230,7 @@ double ComponentElement::GetFontSize() {
   }
 }
 
-const FiberElement::InheritedProperty&
-ComponentElement::GetInheritedProperty() {
+const FiberElement::InheritedProperty ComponentElement::GetInheritedProperty() {
   if (is_wrapper()) {
     return WrapperElement::GetInheritedProperty();
   } else {
@@ -244,14 +243,6 @@ ParallelFlushReturn ComponentElement::PrepareForCreateOrUpdate() {
     return WrapperElement::PrepareForCreateOrUpdate();
   } else {
     return FiberElement::PrepareForCreateOrUpdate();
-  }
-}
-
-void ComponentElement::UpdateInheritedProperty() {
-  if (is_wrapper()) {
-    return WrapperElement::UpdateInheritedProperty();
-  } else {
-    return FiberElement::UpdateInheritedProperty();
   }
 }
 

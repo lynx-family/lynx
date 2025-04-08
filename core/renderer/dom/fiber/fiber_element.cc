@@ -135,7 +135,6 @@ FiberElement::FiberElement(const FiberElement &element,
     config_ = lepus::Value::ShallowCopy(element.config());
   }
 
-  UpdateInheritedProperty();
   // TODO(wujintian): Clone animation-related objects.
 }
 
@@ -220,23 +219,23 @@ void FiberElement::RequireFlush() {
   }
 }
 
-const FiberElement::InheritedProperty &FiberElement::GetInheritedProperty() {
-  return inherited_property_;
+const FiberElement::InheritedProperty FiberElement::GetInheritedProperty() {
+  return {children_propagate_inherited_styles_flag_, &inherited_styles_,
+          &reset_inherited_ids_};
 }
 
-const FiberElement::InheritedProperty &
+const FiberElement::InheritedProperty
 FiberElement::GetParentInheritedProperty() {
   // If in a parallel flush process or if the parent is null, return
-  // kInheritedProperty indicating that it is not necessary to consider the
+  // empty InheritedProperty indicating that it is not necessary to consider the
   // inheritance logic at this time.
-  static base::NoDestructor<InheritedProperty> kInheritedProperty{};
   if (this->is_parallel_flush()) {
-    return *kInheritedProperty;
+    return InheritedProperty();
   }
 
   FiberElement *real_parent = static_cast<FiberElement *>(parent());
   if (real_parent == nullptr) {
-    return *kInheritedProperty;
+    return InheritedProperty();
   }
 
   return real_parent->GetInheritedProperty();
@@ -376,11 +375,6 @@ void FiberElement::ProcessFullRawInlineStyle() {
 bool FiberElement::WillResolveStyle(StyleMap &merged_styles) {
   ProcessFullRawInlineStyle();
   return true;
-}
-
-void FiberElement::UpdateInheritedProperty() {
-  inherited_property_.inherited_styles_ = &inherited_styles_;
-  inherited_property_.reset_inherited_ids_ = &reset_inherited_ids_;
 }
 
 void FiberElement::AsyncResolveProperty() {
@@ -660,7 +654,7 @@ StyleMap FiberElement::GetStylesForWorklet() {
   }
 
   StyleMap result;
-  const auto &inherited_property = GetParentInheritedProperty();
+  const auto inherited_property = GetParentInheritedProperty();
   if (inherited_property.inherited_styles_ != nullptr) {
     result = *inherited_property.inherited_styles_;
   }
@@ -930,7 +924,7 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
                   UpdateTraceDebugInfo(ctx.event());
                 });
 
-    const auto &inherited_property = GetParentInheritedProperty();
+    const auto inherited_property = GetParentInheritedProperty();
     // process inherit related
     // quick check if any id in reset_style_ids is in parent inherited styles
     if (inherited_property.inherited_styles_) {
@@ -1332,8 +1326,6 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
 
   VerifyKeyframePropsChangedHandling();
 
-  UpdateInheritedProperty();
-
   return []() {};
 }
 
@@ -1442,13 +1434,6 @@ void FiberElement::FlushActions() {
   // Step I: Handle Action for current element: Prepare&HandleFixedChange
   FlushSelf();
 
-  // currently, page's parallel_flush_ is always false, so that there is no
-  // chance to mark kDirtyPropagateInherited. We have
-  // to force UpdateInheritedProperty for page
-  if (is_page() && IsCSSInheritanceEnabled()) {
-    UpdateInheritedProperty();
-  }
-
   // Step II: process insert or remove related actions
   PrepareAndGenerateChildrenActions();
 
@@ -1462,13 +1447,13 @@ void FiberElement::FlushActions() {
 
   // Step III: recursively call FlushActions for each child
   for (const auto &child : scoped_children_) {
-    if (inherited_property_.children_propagate_inherited_styles_flag_) {
+    if (children_propagate_inherited_styles_flag_) {
       child->MarkDirtyLite(kDirtyPropagateInherited);
     }
     child->FlushActions();
   }
   // below flags should be delayed until children flushed
-  inherited_property_.children_propagate_inherited_styles_flag_ = false;
+  children_propagate_inherited_styles_flag_ = false;
   reset_inherited_ids_.clear();
 
   flush_required_ = false;
@@ -1607,7 +1592,7 @@ void FiberElement::PrepareChildren() {
                 UpdateTraceDebugInfo(ctx.event());
               });
   for (const auto &child : scoped_children_) {
-    if (inherited_property_.children_propagate_inherited_styles_flag_) {
+    if (children_propagate_inherited_styles_flag_) {
       // mark propagateInherited when necessary
       child->MarkDirtyLite(kDirtyPropagateInherited);
     }
@@ -1625,7 +1610,7 @@ void FiberElement::PrepareChildren() {
 void FiberElement::PrepareChildForInsertion(FiberElement *child) {
   if (child->dirty() & FiberElement::kDirtyCreated) {
     // make sure the child has been created,before insert op
-    if (inherited_property_.children_propagate_inherited_styles_flag_) {
+    if (children_propagate_inherited_styles_flag_) {
       child->MarkDirtyLite(FiberElement::kDirtyPropagateInherited);
     }
     child->PrepareForCreateOrUpdate();
@@ -1645,8 +1630,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
               });
   // When need propagate inherited styles or tree structure is updated, prepare
   // children
-  if (dirty_ & kDirtyTree ||
-      inherited_property_.children_propagate_inherited_styles_flag_) {
+  if (dirty_ & kDirtyTree || children_propagate_inherited_styles_flag_) {
     PrepareChildren();
   }
   // process insert or remove related actions
@@ -2022,7 +2006,7 @@ void FiberElement::ConsumeStyleInternal(
         if (iter == inherited_styles_.end() || iter->second != style.second) {
           // save the css value to inherited styles map
           inherited_styles_.insert_or_assign(style.first, style.second);
-          inherited_property_.children_propagate_inherited_styles_flag_ = true;
+          children_propagate_inherited_styles_flag_ = true;
         }
       }
 
@@ -2867,9 +2851,9 @@ const tasm::CSSValue &FiberElement::ResolveCurrentStyleValue(
     return iter->second;
   }
 
-  const auto &inherited_property = GetParentInheritedProperty();
+  const auto inherited_property = GetParentInheritedProperty();
   if (inherited_property.inherited_styles_ != nullptr) {
-    iter = inherited_property.inherited_styles_->find(key);
+    auto iter = inherited_property.inherited_styles_->find(key);
     if (iter != inherited_property.inherited_styles_->end()) {
       return iter->second;
     }
@@ -3086,7 +3070,7 @@ void FiberElement::WillResetCSSValue(CSSPropertyID &css_id) {
   if (it != inherited_styles_.end()) {
     inherited_styles_.erase(it);
     reset_inherited_ids_.emplace_back(css_id);
-    inherited_property_.children_propagate_inherited_styles_flag_ = true;
+    children_propagate_inherited_styles_flag_ = true;
   }
 }
 
@@ -3307,7 +3291,7 @@ void FiberElement::UpdateDynamicElementStyle(uint32_t style,
     if (inner_force_update || font_scale_changed || viewport_changed ||
         screen_matrix_changed || rem_changed) {
       UpdateLengthContextValueForAllElement(env_config);
-      const auto &property = GetParentInheritedProperty();
+      const auto property = GetParentInheritedProperty();
 
       ConsumeStyleInternal(
           parsed_styles_map_, property.inherited_styles_,

@@ -85,11 +85,9 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   double GetFontSize() override;
 
-  const InheritedProperty& GetInheritedProperty() override;
+  const InheritedProperty GetInheritedProperty() override;
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
-
-  void UpdateInheritedProperty() override;
 
   void MarkAsListItem() override;
 

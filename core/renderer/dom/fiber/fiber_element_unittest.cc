@@ -3300,13 +3300,11 @@ TEST_P(FiberElementTest, FiberElementInheritCase05) {
       element000->computed_css_style()->GetLayoutComputedStyle()->direction_ ==
       starlight::DirectionType::kRtl);
 
-  EXPECT_FALSE(
-      element00->inherited_property_.children_propagate_inherited_styles_flag_);
+  EXPECT_FALSE(element00->children_propagate_inherited_styles_flag_);
   element00->SetStyle(CSSPropertyID::kPropertyIDBackground,
                       lepus::Value("green"));
   element00->FlushSelf();
-  EXPECT_FALSE(
-      element00->inherited_property_.children_propagate_inherited_styles_flag_);
+  EXPECT_FALSE(element00->children_propagate_inherited_styles_flag_);
 }
 
 TEST_P(FiberElementTest, FiberElementDirectionCase) {
