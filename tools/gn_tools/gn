@@ -9,6 +9,8 @@ additional_help_info() {
  echo "             or gn ... --ide=podspec [--podspec-target=\$PODSPEC_TARGET_NAME]"
  echo "  --ide=cmake: Converts the cmake_target in GN into the corresponding cmake script, all cmake_targets will be converted by default."
  echo "  --cmake-target: Specifies a single cmake_target to convert into a cmake script."
+ echo "  --gen-for-gradle: Specifies whether convert cmake scripts for Gradle."
+ echo "  --only-generate-entries: When enabled, only generates the CMake entry scripts for Gradle."
  echo "  --ide=podspec: Converts the podspec_target in GN into the corresponding podfile script, all podspec_targets will be converted by default."
  echo "  --podspec-target: Specifies a single podspec_target to convert into a podfile script."
  echo ""
@@ -18,6 +20,8 @@ additional_help_info() {
 file_type=""
 cmake_target=""
 podspec_target=""
+gen_for_gradle=false
+only_generate_entries=false
 new_args=()
 for arg in "$@"; do
   if [[ $arg == --ide=* ]]; then
@@ -26,6 +30,11 @@ for arg in "$@"; do
     cmake_target="${arg#*=}"
   elif [[ $arg == --podspec-target=* ]]; then
     podspec_target="${arg#*=}"
+  elif [[ $arg == --gen-for-gradle=* ]]; then
+    gen_for_gradle="${arg#*=}"
+  elif [[ $arg == --only-generate-entries=* ]]; then
+    only_generate_entries="${arg#*=}"
+    
   else
     new_args+=("$arg")
   fi
@@ -38,26 +47,33 @@ done
 current_dir=$(dirname "$0")
 parent_dir=$(dirname "$current_dir")
 LYNX_DIR=$(dirname "$parent_dir")
-PROJECT_ROOT_DIR=$(dirname "$LYNX_DIR")
+PROJECT_ROOT_DIR=$(realpath $(dirname "$LYNX_DIR"))
+gn_tool="${PROJECT_ROOT_DIR}/buildtools/gn/gn"
+
+if [ ! -f "$gn_tool" ]; then
+  echo "Error: ${gn_tool} not found!"
+  exit 0
+fi
 
 if [[ "$file_type" == "cmake" ]]; then
-  json_ide_args=''
+  json_ide_args="--json-ide-script-args="
   if [ -n "$cmake_target" ]; then
-    json_ide_args="--json-ide-script-args=${cmake_target}"
+    json_ide_args="--json-ide-script-args=--cmake-target=${cmake_target},"
   fi
-  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_cmake_script.py" $json_ide_args'
+  json_ide_args="${json_ide_args}--gen-for-gradle=${gen_for_gradle},--only-generate-entries=${only_generate_entries}"
+  cmd='${gn_tool} "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_cmake_script.py" $json_ide_args'
   eval $cmd
 elif [[ "$file_type" == "podspec" ]]; then
   json_ide_args=''
   if [ -n "$podspec_target" ]; then
     json_ide_args="--json-ide-script-args=${podspec_target}"
   fi
-  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_podspec_script.py" $json_ide_args'
+  cmd='${gn_tool} "${new_args[@]}" --ide="json" --json-ide-script="${LYNX_DIR}/tools/gn_tools/gn_to_podspec_script.py" $json_ide_args'
   eval $cmd
 else
   if [ -n "$file_type" ]; then
     new_args+=("--ide=$file_type")
   fi
-  cmd='${PROJECT_ROOT_DIR}/buildtools/gn/gn "${new_args[@]}"'
+  cmd='${gn_tool} "${new_args[@]}"'
   eval $cmd
 fi

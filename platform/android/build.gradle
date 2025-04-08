@@ -101,9 +101,18 @@ ext.writeGnArgs = { String gnArgs ->
     }
 }
 
+def evaluateSubProject() {
+    exec {
+        workingDir "../../"
+        commandLine "python3", "tools/android_tools/gen_cmake_entries_only_by_gn.py"
+        println commandLine
+    }
+    evaluationDependsOnChildren()
+}
+
 if(buildLynxDebugSo){
     // force Gradle to evaluate the child build.gradle files before the parent
-    evaluationDependsOnChildren()
+    evaluateSubProject()
     Project lynxTrace = project(':LynxTrace')
     Project lynxAndroid = project(':LynxAndroid')
     Project lynxDevtool = project(':LynxDevtool')
@@ -126,7 +135,7 @@ if(buildLynxDebugSo){
 
 task generateAllGnCmakeTargets {
     // force Gradle to evaluate the child build.gradle files before the parent
-    evaluationDependsOnChildren()
+    evaluateSubProject()
 
     rootProject.allprojects { Project project ->
         if(project.tasks.findByName('configGnCompileParas')) {

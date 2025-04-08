@@ -20,7 +20,7 @@ ANDROID_GN_ARGS_FILE_NAME = "gn_args.json"
 GN_OUT_DIR_PATH = "out/gn_to_cmake"
 
 
-def android_target_cpu(variant_type):
+def gn_target_cpu(variant_type):
   target_cpu = ''
   if 'x86_64' in variant_type:
     target_cpu = 'x64'
@@ -34,9 +34,8 @@ def android_target_cpu(variant_type):
     target_cpu = 'arm64'
   elif 'mips64' in variant_type:
     target_cpu = 'mips64el'
-  else:
-    print("Please pass the android ABI set by gradle as a part of the map key.")
-  return target_cpu
+
+  return f'target_cpu=\\\"{target_cpu}\\\"' if target_cpu else ''
 
 
 def format_gn_arg(key, value):
@@ -92,7 +91,12 @@ def run_gn_script(args, root_dir, build_lynx_dylib=False):
     gn_args_map = json.load(gn_args_file)
     gn_args_file.close()
   os.remove(gn_args_file_path)
+
+  return run_gn_to_cmake(root_dir, target, gn_args_map, project_name, build_lynx_dylib, False)
+
   
+def run_gn_to_cmake(root_dir, target, gn_args_map, project_name, build_lynx_dylib, only_generate_entries):
+
   r = 0
   gn_path = os.path.join(root_dir, 'lynx', 'tools', 'gn_tools', 'gn')
   gn_out_dir = os.path.join(root_dir, GN_OUT_DIR_PATH)
@@ -101,7 +105,7 @@ def run_gn_script(args, root_dir, build_lynx_dylib=False):
     gn_args_list = gn_args_map[gn_args_key]
     for key in gn_args_list:
       gn_args += format_gn_arg(key, gn_args_list[key])
-    gn_args += ' target_cpu=\\\"%s\\\"' % (android_target_cpu(gn_args_key))
+    gn_args += ' %s' % (gn_target_cpu(gn_args_key))
     gn_args += ' target_os=\\\"android\\\"'
     gn_args += ' use_ndk_cxx=true'
     gn_args += ' android_full_debug=true'
@@ -111,7 +115,8 @@ def run_gn_script(args, root_dir, build_lynx_dylib=False):
     if os.path.exists(gn_out_path) and os.path.isdir(gn_out_path):
       clean_gn_project_json_file(gn_out_path)
     set_cmake_target = '--cmake-target=%s' % (target) if target else ''
-    cmd = '%s gen %s --args="%s" --ide="cmake" %s' % (gn_path, gn_out_path, gn_args, set_cmake_target)
+    only_generate_entries = '--only-generate-entries=true' if only_generate_entries else ''
+    cmd = '%s gen %s --args="%s" --ide="cmake" --gen-for-gradle=true %s' % (gn_path, gn_out_path, gn_args, set_cmake_target)
     r |= subprocess.call(cmd, shell=True)
   return r
 
