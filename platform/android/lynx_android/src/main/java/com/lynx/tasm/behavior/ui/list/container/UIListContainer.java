@@ -1060,43 +1060,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @Override
-  public EventTarget hitTest(float x, float y) {
-    return hitTest(x, y, false);
+  public int getScrollX() {
+    return mView.getScrollX();
   }
 
   @Override
-  public EventTarget hitTest(float x, float y, boolean ignoreUserInteraction) {
-    for (int i = ((ViewGroup) mView.getLinearLayout()).getChildCount() - 1; i >= 0; i--) {
-      View childView = ((ViewGroup) mView.getLinearLayout()).getChildAt(i);
-      if (childView instanceof ComponentView) {
-        ComponentView componentView = (ComponentView) childView;
-        IDrawChildHook drawChildHook = componentView.getDrawChildHook();
-        if (drawChildHook instanceof UIComponent) {
-          if (childContainsHitPoint((LynxBaseUI) drawChildHook, x, y, ignoreUserInteraction)) {
-            return childHitTest((LynxBaseUI) drawChildHook, x, y, ignoreUserInteraction);
-          }
-        }
-      }
-    }
-    return this;
-  }
-
-  public boolean childContainsHitPoint(
-      LynxBaseUI child, float x, float y, boolean ignoreUserInteraction) {
-    if (child instanceof UIComponent) {
-      return child.containsPoint(x + mView.getScrollX()
-              - (mContext.getEnableEventRefactor() ? child.getLeft() + child.getTranslationX() : 0),
-          y + mView.getScrollY()
-              - (mContext.getEnableEventRefactor() ? child.getTop() + child.getTranslationY() : 0),
-          ignoreUserInteraction);
-    }
-    return false;
-  }
-
-  public EventTarget childHitTest(
-      LynxBaseUI child, float x, float y, boolean ignoreUserInteraction) {
-    return child.hitTest(x + mView.getScrollX() - child.getLeft() - child.getTranslationX(),
-        y + mView.getScrollY() - child.getTop() - child.getTranslationY(), ignoreUserInteraction);
+  public int getScrollY() {
+    return mView.getScrollY();
   }
 
   @Override
