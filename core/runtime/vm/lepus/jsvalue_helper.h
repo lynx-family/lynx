@@ -33,6 +33,9 @@ namespace lynx {
 namespace lepus {
 class Value;
 
+using ExtendedValueIteratorCallback =
+    base::MoveOnlyClosure<void, lynx_api_env, const lynx_value&,
+                          const lynx_value&>;
 class LEPUSValueHelper {
  public:
   static constexpr int64_t MAX_SAFE_INTEGER = 9007199254740991;
@@ -53,15 +56,6 @@ class LEPUSValueHelper {
 
   static std::string ToStdString(LEPUSContext* ctx, const LEPUSValue& val);
 
-  /* The function is used for :
-    1. convert jsvalue to lepus::Value when flag == 0;
-    2. deep clone jsvalue to lepus::Value when flag == 1;
-    3. shallow copy jsvalue to lepus::Value when flag == 2;
-  flag default's value is 0
-  */
-  static lepus::Value ToLepusValue(LEPUSContext* ctx, const LEPUSValue& val,
-                                   int32_t copy_flag = 0);
-
   /**
    * @brief This function converts value to base::String and initialize
    * string cache for it.
@@ -78,30 +72,6 @@ class LEPUSValueHelper {
     if (!IsJsObject(val)) return;
     LEPUS_IterateObject(ctx, val, IteratorCallback,
                         reinterpret_cast<void*>(pfunc), nullptr);
-  }
-
-  static inline lepus::Value DeepCopyJsValue(LEPUSContext* ctx,
-                                             const LEPUSValue& src,
-                                             bool copy_as_jsvalue) {
-    if (copy_as_jsvalue) {
-      Value ret(ctx, LEPUS_DeepCopy(ctx, src));
-      return ret;
-    }
-    return ToLepusValue(ctx, src, 1);
-  }
-
-  /*
-   The function is used for shallowCopy a JSValue to LepusValue. ref type will
-   be shallow copy.
-   */
-  static inline lepus::Value ShallowCopyJsValue(LEPUSContext* ctx,
-                                                const LEPUSValue& src,
-                                                bool copy_as_jsvalue) {
-    if (copy_as_jsvalue) {
-      Value ret(ctx, LEPUS_DeepCopy(ctx, src));
-      return ret;
-    }
-    return ToLepusValue(ctx, src, 2);
   }
 
   static inline LEPUSValue NewInt32(LEPUSContext* ctx, int32_t val) {
@@ -159,14 +129,6 @@ class LEPUSValueHelper {
     return LEPUS_GetLepusRefTag(val) == Value_ByteArray;
   }
 
-  static inline bool IsJSCpointer(const LEPUSValue& val) {
-    return LEPUS_VALUE_GET_TAG(val) == LEPUS_TAG_LEPUS_CPOINTER;
-  }
-
-  static inline void* JSCpointer(const LEPUSValue& val) {
-    return LEPUS_VALUE_GET_PTR(val);
-  }
-
   static inline LEPUSObject* GetLepusJSObject(const LEPUSValue& val) {
     return reinterpret_cast<LEPUSObject*>(LEPUS_GetLepusRefPoint(val));
   }
@@ -185,9 +147,6 @@ class LEPUSValueHelper {
   static inline lepus::RefCounted* GetRefCounted(const LEPUSValue& val) {
     return reinterpret_cast<lepus::RefCounted*>(LEPUS_GetLepusRefPoint(val));
   }
-
-  static LEPUSClassID GetRefCountedClassID(LEPUSContext* ctx,
-                                           const LEPUSValue& val);
 
   static inline bool IsJsObject(const LEPUSValue& val) {
     return LEPUS_IsObject(val);
@@ -218,28 +177,8 @@ class LEPUSValueHelper {
   }
 
   static inline bool SetProperty(LEPUSContext* ctx, LEPUSValue obj,
-                                 uint32_t idx, const LEPUSValue& prop) {
-    return !!LEPUS_SetPropertyUint32(ctx, obj, idx, prop);
-  }
-
-  static inline bool SetProperty(LEPUSContext* ctx, LEPUSValue obj,
                                  const char* name, const LEPUSValue& prop) {
     return !!LEPUS_SetPropertyStr(ctx, obj, name, prop);
-  }
-
-  static inline bool SetProperty(LEPUSContext* ctx, LEPUSValue obj,
-                                 uint32_t idx, const lepus::Value& prop) {
-    LEPUSValue v = prop.ToJSValue(ctx);
-    HandleScope block_scope(ctx, &v, HANDLE_TYPE_LEPUS_VALUE);
-    return !!LEPUS_SetPropertyUint32(ctx, obj, idx, v);
-  }
-
-  static inline bool SetProperty(LEPUSContext* ctx, LEPUSValue obj,
-                                 const base::String& key,
-                                 const lepus::Value& val) {
-    LEPUSValue v = val.ToJSValue(ctx);
-    HandleScope block_scope(ctx, &v, HANDLE_TYPE_LEPUS_VALUE);
-    return !!LEPUS_SetPropertyStr(ctx, obj, key.c_str(), v);
   }
 
   static inline LEPUSValue GetPropertyJsValue(LEPUSContext* ctx,
@@ -254,41 +193,9 @@ class LEPUSValueHelper {
     return LEPUS_GetPropertyUint32(ctx, obj, idx);
   }
 
-  static inline bool HasProperty(LEPUSContext* ctx, const LEPUSValue& obj,
-                                 const base::String& key) {
-    HandleScope func_scope(ctx);
-    LEPUSAtom atom = LEPUS_NewAtom(ctx, key.c_str());
-    func_scope.PushLEPUSAtom(atom);
-    int32_t ret = LEPUS_HasProperty(ctx, obj, atom);
-    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeAtom(ctx, atom);
-    return !!ret;
-  }
-
-  static inline bool IsLepusEqualJsValue(LEPUSContext* ctx,
-                                         const lepus::Value& src,
-                                         const LEPUSValue& dst) {
-    if (IsArray(ctx, dst)) {  // dst is arrary
-      if (!src.IsArray()) return false;
-      return IsLepusEqualJsArray(ctx, src.Array().get(), dst);
-    } else if (IsObject(dst)) {  // dst is object. including js object and lepus
-                                 // table ref
-      if (!src.IsTable()) return false;
-      return IsLepusEqualJsObject(ctx, src.Table().get(), dst);
-    } else if (IsJsFunction(ctx, dst)) {
-      return false;
-    }
-    // the last need to be translated to lepus::Value for doing equal,
-    // and the dst is not array or object, so the convert is light
-    return src == ToLepusValue(ctx, dst);
-  }
-
-  static bool IsJsValueEqualJsValue(LEPUSContext* ctx, const LEPUSValue& left,
-                                    const LEPUSValue& right);
-
   static void PrintValue(std::ostream& s, LEPUSContext* ctx,
                          const LEPUSValue& val, uint32_t prefix = 1);
   static void Print(LEPUSContext* ctx, const LEPUSValue& val);
-  static const char* GetType(LEPUSContext* ctx, const LEPUSValue& val);
 
   static LEPUSValue TableToJsValue(LEPUSContext*, const Dictionary&, bool);
 
@@ -297,6 +204,32 @@ class LEPUSValueHelper {
   static LEPUSValue RefCountedToJSValue(LEPUSContext* ctx, const RefCounted&);
   static lynx_value ConstructLepusRefToLynxValue(LEPUSContext* ctx,
                                                  const LEPUSValue& val);
+  static inline void IterateLynxValue(lynx_api_env env, const lynx_value& val,
+                                      ExtendedValueIteratorCallback* pfunc) {
+    if (!env || !val.val_ptr) {
+      LOGE("IterateLynxValue but env or value is nil");
+      return;
+    }
+    env->lynx_value_iterate_value(env, val, LynxValueIteratorCallback,
+                                  reinterpret_cast<void*>(pfunc), nullptr);
+  }
+
+  /* The function is used for :
+    1. convert lynx_value to lepus::Value when flag == 0;
+    2. deep clone lynx_value to lepus::Value when flag == 1;
+    3. shallow copy lynx_value to lepus::Value when flag == 2;
+  flag default's value is 0
+  */
+  static lepus::Value ToBaseValue(lynx_api_env env, const lynx_value& val,
+                                  int32_t flag = 0);
+  static lepus::Value ToBaseArray(lynx_api_env env, const lynx_value& val,
+                                  int32_t flag = 0);
+  static lepus::Value ToBaseMap(lynx_api_env env, const lynx_value& val,
+                                int32_t flag = 0);
+
+  static bool IsBaseValueEqualToLynxValue(lynx_api_env env,
+                                          const lepus::Value& src,
+                                          const lynx_value& dst);
 
  private:
   static inline void IteratorCallback(LEPUSContext* ctx, LEPUSValue key,
@@ -306,17 +239,18 @@ class LEPUSValueHelper {
                                                                   value);
   }
 
-  static bool IsLepusEqualJsArray(LEPUSContext* ctx, lepus::CArray* src,
-                                  const LEPUSValue& dst);
+  static inline void LynxValueIteratorCallback(lynx_api_env env, lynx_value key,
+                                               lynx_value value, void* pfunc,
+                                               void* raw_data) {
+    reinterpret_cast<ExtendedValueIteratorCallback*>(pfunc)->operator()(
+        env, key, value);
+  }
 
-  static bool IsLepusEqualJsObject(LEPUSContext* ctx, lepus::Dictionary* src,
-                                   const LEPUSValue& dst);
-
-  static lepus::Value ToLepusArray(LEPUSContext* ctx, const LEPUSValue& val,
-                                   int32_t flag = 0);
-
-  static lepus::Value ToLepusTable(LEPUSContext* ctx, const LEPUSValue& val,
-                                   int32_t flag = 0);
+  static bool IsBaseArrayEqualToLynxArray(lynx_api_env env, lepus::CArray* src,
+                                          const lynx_value& dst);
+  static bool IsBaseDictEqualToLynxDict(lynx_api_env env,
+                                        lepus::Dictionary* src,
+                                        const lynx_value& dst);
 };
 
 }  // namespace lepus

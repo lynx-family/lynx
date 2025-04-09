@@ -183,109 +183,6 @@ std::string LEPUSValueHelper::ToStdString(LEPUSContext* ctx,
   return "";
 }
 
-lepus::Value LEPUSValueHelper::ToLepusArray(LEPUSContext* ctx,
-                                            const LEPUSValue& val,
-                                            int32_t flag) {
-  auto arr = lepus::CArray::Create();
-  JSValueIteratorCallback to_lepus_array_callback =
-      [&arr, flag](LEPUSContext* ctx, const LEPUSValue& key,
-                   const LEPUSValue& value) {
-        arr->emplace_back(ToLepusValue(ctx, value, flag));
-      };
-
-  IteratorJsValue(ctx, val, &to_lepus_array_callback);
-  return Value(std::move(arr));
-}
-
-lepus::Value LEPUSValueHelper::ToLepusTable(LEPUSContext* ctx,
-                                            const LEPUSValue& val,
-                                            int32_t flag) {
-  auto tbl = lepus::Dictionary::Create();
-  JSValueIteratorCallback to_lepus_table_callback =
-      [&tbl, flag](LEPUSContext* ctx, const LEPUSValue& key,
-                   const LEPUSValue& value) {
-        tbl->SetValue(ToStdString(ctx, key), ToLepusValue(ctx, value, flag));
-      };
-
-  IteratorJsValue(ctx, val, &to_lepus_table_callback);
-  return Value(std::move(tbl));
-}  // namespace lepus
-
-lepus::Value LEPUSValueHelper::ToLepusValue(LEPUSContext* ctx,
-                                            const LEPUSValue& val,
-                                            int32_t flag) {
-  static lepus::Value empty_value;
-  switch (LEPUS_VALUE_GET_TAG(val)) {
-    case LEPUS_TAG_INT:
-      return Value(LEPUS_VALUE_GET_INT(val));
-    case LEPUS_TAG_BIG_INT: {
-      int64_t int64;
-      LEPUS_ToInt64(ctx, &int64, val);
-      return Value(int64);
-    } break;
-    case LEPUS_TAG_FLOAT64: {
-      double d;
-      LEPUS_ToFloat64(ctx, &d, val);
-      if (base::StringConvertHelper::IsInt64Double(d)) {
-        return Value(static_cast<int64_t>(d));
-      } else {
-        return Value(d);
-      }
-    } break;
-    case LEPUS_TAG_UNDEFINED: {
-      lepus::Value ret;
-      ret.SetUndefined();
-      return ret;
-    } break;
-    case LEPUS_TAG_NULL:
-      return Value();
-    case LEPUS_TAG_BOOL:
-      return Value(static_cast<bool>(LEPUS_VALUE_GET_BOOL(val)));
-    case LEPUS_TAG_LEPUS_CPOINTER:
-      return Value(JSCpointer(val));
-    case LEPUS_TAG_STRING:
-    case LEPUS_TAG_SEPARABLE_STRING:
-      return Value(ToLepusString(ctx, val));
-    case LEPUS_TAG_LEPUS_REF: {
-      if (likely(flag == 0)) {
-        return lepus::Value(ctx, val);
-      } else if (flag == 1) {
-        return Value::Clone(lepus::Value(ctx, val));
-      } else {
-        Value ret(ctx, val);
-        if (!ret.MarkConst()) {
-          ret = Value::Clone(ret);
-        }
-        return ret;
-      }
-    } break;
-    case LEPUS_TAG_OBJECT: {
-      if (IsJsArray(ctx, val)) {
-        return ToLepusArray(ctx, val, flag);
-      } else if (IsJsFunction(ctx, val)) {
-        if (flag == 0) {
-          return lepus::Value(ctx, val);
-        }
-        return empty_value;
-      } else {
-        return ToLepusTable(ctx, val, flag);
-      }
-    } break;
-    default:
-      if (LEPUS_IsNumber(val)) {
-        double d;
-        LEPUS_ToFloat64(ctx, &d, val);
-        if (base::StringConvertHelper::IsInt64Double(d)) {
-          return Value(static_cast<int64_t>(d));
-        } else {
-          return Value(d);
-        }
-      }
-      LOGE("ToLepusValue: unkown jsvalue type  " << GetType(ctx, val));
-  }
-  return empty_value;
-}
-
 base::RefCountedStringImpl* LEPUSValueHelper::ToLepusStringRefCountedImpl(
     LEPUSContext* ctx, const LEPUSValue& val) {
   if (ctx == nullptr) return nullptr;
@@ -301,95 +198,19 @@ base::RefCountedStringImpl* LEPUSValueHelper::ToLepusStringRefCountedImpl(
   return reinterpret_cast<base::RefCountedStringImpl*>(cache);
 }
 
-bool LEPUSValueHelper::IsLepusEqualJsArray(LEPUSContext* ctx,
-                                           lepus::CArray* src,
-                                           const LEPUSValue& dst) {
-  if (src->size() != static_cast<size_t>(GetLength(ctx, dst))) {
-    return false;
-  }
-  for (uint32_t i = 0; i < src->size(); i++) {
-    lepus::Value dst_element(ctx, GetPropertyJsValue(ctx, dst, i));
-    if (src->get(i) != dst_element) return false;
-  }
-  return true;
-}
-
-bool LEPUSValueHelper::IsLepusEqualJsObject(LEPUSContext* ctx,
-                                            lepus::Dictionary* src,
-                                            const LEPUSValue& dst) {
-  if (src->size() != static_cast<size_t>(GetLength(ctx, dst))) {
-    return false;
-  }
-  for (auto& it : *src) {
-    lepus::Value dst_property(ctx,
-                              GetPropertyJsValue(ctx, dst, it.first.c_str()));
-    if (it.second != dst_property) return false;
-  }
-  return true;
-}
-
-bool LEPUSValueHelper::IsJsValueEqualJsValue(LEPUSContext* ctx,
-                                             const LEPUSValue& left,
-                                             const LEPUSValue& right) {
-  return LEPUS_VALUE_GET_BOOL(LEPUS_DeepEqual(ctx, left, right));
-}
-
-const char* LEPUSValueHelper::GetType(LEPUSContext* ctx,
-                                      const LEPUSValue& val) {
-  switch (LEPUS_VALUE_GET_TAG(val)) {
-    case LEPUS_TAG_BIG_INT:
-      return "LEPUS_BIG_INT";
-    case LEPUS_TAG_BIG_FLOAT:
-      return "LEPUS_BIG_FLOAT";
-    case LEPUS_TAG_SYMBOL:
-      return "LEPUS_TAG_SYMBOL";
-    case LEPUS_TAG_STRING:
-      return "LEPUS_TAG_STRING";
-    case LEPUS_TAG_SEPARABLE_STRING:
-      return "LEPUS_TAG_SEPARABLE_STRING";
-    case LEPUS_TAG_SHAPE:
-      return "LEPUS_TAG_SHAPE";
-    case LEPUS_TAG_ASYNC_FUNCTION:
-      return "LEPUS_TAG_ASYNC_FUNCTION";
-    case LEPUS_TAG_VAR_REF:
-      return "LEPUS_TAG_VAR_REF";
-    case LEPUS_TAG_MODULE:
-      return "LEPUS_TAG_MODULE";
-    case LEPUS_TAG_FUNCTION_BYTECODE:
-      return "LEPUS_TAG_FUNCTION_BYTECODE";
-    case LEPUS_TAG_OBJECT: {
-      if (IsJsArray(ctx, val)) {
-        return "LEPUS_TAG_ARRAY";
-      }
-      return "LEPUS_TAG_OBJECT";
-    } break;
-    case LEPUS_TAG_INT:
-      return "LEPUS_TAG_INT";
-    case LEPUS_TAG_BOOL:
-      return "LEPUS_TAG_BOOL";
-    case LEPUS_TAG_NULL:
-      return "LEPUS_TAG_NULL";
-    case LEPUS_TAG_UNDEFINED:
-      return "LEPUS_TAG_UNDEFINED";
-    case LEPUS_TAG_UNINITIALIZED:
-      return "LEPUS_TAG_UNINITIALIZED";
-    case LEPUS_TAG_CATCH_OFFSET:
-      return "LEPUS_TAG_CATCH_OFFSET";
-    case LEPUS_TAG_EXCEPTION:
-      return "LEPUS_TAG_EXCEPTION";
-    case LEPUS_TAG_LEPUS_CPOINTER:
-      return "LEPUS_TAG_LEPUS_CFUNCTION";
-    case LEPUS_TAG_FLOAT64:
-      return "LEPUS_TAG_FLOAT64";
-  }
-  return "";
-}
-
 void LEPUSValueHelper::PrintValue(std::ostream& s, LEPUSContext* ctx,
                                   const LEPUSValue& val, uint32_t prefix) {
 #if ENABLE_PRINT_VALUE
   if (!IsJsObject(val)) {
-    ToLepusValue(ctx, val).PrintValue(s);
+    ContextCell* cell = Context::GetContextCellFromCtx(ctx);
+    if (LEPUS_IsLepusRef(val)) {
+      lepus::Value v1(cell->lynx_api_env_,
+                      ConstructLepusRefToLynxValue(ctx, val));
+      v1.ToLepusValue().PrintValue(s);
+    } else {
+      ToBaseValue(cell->lynx_api_env_, MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val))
+          .PrintValue(s);
+    }
     return;
   }
 
@@ -452,15 +273,6 @@ void LEPUSValueHelper::Print(LEPUSContext* ctx, const LEPUSValue& val) {
 #endif
 }
 
-LEPUSClassID LEPUSValueHelper::GetRefCountedClassID(LEPUSContext* ctx,
-                                                    const LEPUSValue& val) {
-  auto ref_counted_class_id = RefCounted::GetClassID();
-  if (LEPUS_GetClassID(ctx, val) == ref_counted_class_id) {
-    return ref_counted_class_id;
-  }
-  return 0;
-}
-
 lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
     LEPUSContext* ctx, const LEPUSValue& val) {
   ValueType old_type = static_cast<ValueType>(LEPUS_GetLepusRefTag(val));
@@ -482,6 +294,180 @@ lynx_value LEPUSValueHelper::ConstructLepusRefToLynxValue(
   return {.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr),
           .type = type,
           .tag = tag};
+}
+
+lepus::Value LEPUSValueHelper::ToBaseValue(lynx_api_env env,
+                                           const lynx_value& val,
+                                           int32_t flag) {
+  static lepus::Value empty_value;
+  if (!env) {
+    return empty_value;
+  }
+  if (val.type != lynx_value_extended) {
+    if (likely(flag == 0)) {
+      return lepus::Value(env, val);
+    } else if (flag == 1) {
+      return lepus::Value::Clone(lepus::Value(env, val));
+    } else {
+      lepus::Value ret(env, val);
+      if (!ret.MarkConst()) {
+        ret = lepus::Value::Clone(ret);
+      }
+      return ret;
+    }
+  }
+  lynx_value_type type;
+  env->lynx_value_typeof(env, val, &type);
+  switch (type) {
+    case lynx_value_null:
+      return lepus::Value();
+    case lynx_value_undefined: {
+      lepus::Value ret;
+      ret.SetUndefined();
+      return ret;
+    }
+    case lynx_value_bool: {
+      bool ret;
+      env->lynx_value_get_bool(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_double: {
+      double ret;
+      env->lynx_value_get_double(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_int32: {
+      int32_t ret;
+      env->lynx_value_get_int32(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_uint32: {
+      uint32_t ret;
+      env->lynx_value_get_uint32(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_int64: {
+      int64_t ret;
+      env->lynx_value_get_int64(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_uint64: {
+      uint64_t ret;
+      env->lynx_value_get_uint64(env, val, &ret);
+      return lepus::Value(ret);
+    }
+    case lynx_value_nan:
+      return lepus::Value(true, true);
+    case lynx_value_string: {
+      void* str;
+      env->lynx_value_get_string_ref(env, val, &str);
+      auto* base_str = reinterpret_cast<base::RefCountedStringImpl*>(str);
+      return lepus::Value(
+          base::String::Unsafe::ConstructWeakRefStringFromRawRef(base_str));
+    }
+    case lynx_value_array: {
+      return ToBaseArray(env, val, flag);
+    }
+    case lynx_value_map: {
+      return ToBaseMap(env, val, flag);
+    }
+    case lynx_value_function: {
+      if (flag == 0) {
+        return lepus::Value(env, val);
+      }
+      return empty_value;
+    }
+    case lynx_value_arraybuffer:
+    case lynx_value_object:
+    case lynx_value_external:
+    case lynx_value_extended:
+      LOGE("unkown type:" << type);
+      break;
+  }
+
+  return empty_value;
+}
+
+lepus::Value LEPUSValueHelper::ToBaseArray(lynx_api_env env,
+                                           const lynx_value& val,
+                                           int32_t flag) {
+  auto arr = lepus::CArray::Create();
+  ExtendedValueIteratorCallback callback =
+      [&arr, flag](lynx_api_env env, const lynx_value& key,
+                   const lynx_value& value) {
+        arr->emplace_back(ToBaseValue(env, value, flag));
+      };
+  IterateLynxValue(env, val, &callback);
+  return lepus::Value(std::move(arr));
+}
+
+lepus::Value LEPUSValueHelper::ToBaseMap(lynx_api_env env,
+                                         const lynx_value& val, int32_t flag) {
+  auto map = lepus::Dictionary::Create();
+  ExtendedValueIteratorCallback callback =
+      [&map, flag](lynx_api_env env, const lynx_value& key,
+                   const lynx_value& value) {
+        std::string str;
+        env->lynx_value_to_string_utf8(env, key, &str);
+        map->SetValue(std::move(str), ToBaseValue(env, value, flag));
+      };
+  IterateLynxValue(env, val, &callback);
+  return lepus::Value(std::move(map));
+}
+
+bool LEPUSValueHelper::IsBaseValueEqualToLynxValue(lynx_api_env env,
+                                                   const lepus::Value& src,
+                                                   const lynx_value& dst) {
+  lynx_value_type type;
+  env->lynx_value_typeof(env, dst, &type);
+  if (type == lynx_value_array) {
+    if (!src.IsArray()) return false;
+    return IsBaseArrayEqualToLynxArray(env, src.Array().get(), dst);
+  } else if (type == lynx_value_map) {
+    if (!src.IsTable()) return false;
+    return IsBaseDictEqualToLynxDict(env, src.Table().get(), dst);
+  } else if (type == lynx_value_function) {
+    return false;
+  }
+
+  return src == ToBaseValue(env, dst);
+}
+
+bool LEPUSValueHelper::IsBaseArrayEqualToLynxArray(lynx_api_env env,
+                                                   lepus::CArray* src,
+                                                   const lynx_value& dst) {
+  uint32_t len;
+  env->lynx_value_get_array_length(env, dst, &len);
+  if (src->size() != static_cast<size_t>(len)) {
+    return false;
+  }
+  for (uint32_t i = 0; i < src->size(); i++) {
+    lynx_value val;
+    lynx_api_status status = env->lynx_value_get_element(env, dst, i, &val);
+    if (status != lynx_api_ok) return false;
+    lepus::Value dst_element(env, std::move(val));
+    if (src->get(i) != dst_element) return false;
+  }
+  return true;
+}
+
+bool LEPUSValueHelper::IsBaseDictEqualToLynxDict(lynx_api_env env,
+                                                 lepus::Dictionary* src,
+                                                 const lynx_value& dst) {
+  uint32_t len;
+  env->lynx_value_get_length(env, dst, &len);
+  if (src->size() != static_cast<size_t>(len)) {
+    return false;
+  }
+  for (auto& it : *src) {
+    lynx_value val;
+    lynx_api_status status =
+        env->lynx_value_get_named_property(env, dst, it.first.c_str(), &val);
+    if (status != lynx_api_ok) return false;
+    lepus::Value dst_property(env, std::move(val));
+    if (it.second != dst_property) return false;
+  }
+  return true;
 }
 
 }  // namespace lepus

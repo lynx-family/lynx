@@ -24,6 +24,12 @@
 
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 
+#ifdef OS_IOS
+#include "persistent-handle.h"
+#else
+#include "quickjs/include/persistent-handle.h"
+#endif
+
 struct lynx_api_context__lepusng {
   lynx_api_context__lepusng(lynx_api_env env, LEPUSContext* ctx)
       : env(env), rt{LEPUS_GetRuntime(ctx)}, ctx{ctx} {
@@ -62,6 +68,11 @@ void lynx_value_api_attach_lepusng(lynx_api_env env, LEPUSContext* ctx) {
 void lynx_value_api_detach_lepusng(lynx_api_env env) {
   delete env->ctx;
   env->ctx = nullptr;
+}
+
+LEPUSContext* lynx_value_api_get_context_from_env(lynx_api_env env) {
+  if (env == nullptr) return nullptr;
+  return env->ctx->ctx;
 }
 
 namespace {
@@ -116,7 +127,8 @@ lynx_api_status lynx_value_typeof(lynx_api_env env, lynx_value value,
       break;
     case LEPUS_TAG_LEPUS_REF: {
       int tag = LEPUS_GetLepusRefTag(WrapJSValue(value));
-      *result = static_cast<lynx_value_type>(tag);
+      *result = lynx::lepus::Value::ToLynxValueType(
+          static_cast<lynx::lepus::ValueType>(tag));
     } break;
     case LEPUS_TAG_OBJECT: {
       auto js_value = WrapJSValue(value);
@@ -239,7 +251,7 @@ lynx_api_status lynx_value_get_string_utf8(lynx_api_env env, lynx_value value,
                                            char* buf, size_t bufsize,
                                            size_t* result) {
   auto js_value = WrapJSValue(value);
-  if (!LEPUS_VALUE_IS_STRING(js_value)) {
+  if (!LEPUS_IsString(js_value)) {
     return lynx_api_string_expected;
   }
   auto* ctx = env->ctx->ctx;
@@ -272,7 +284,7 @@ lynx_api_status lynx_value_is_array(lynx_api_env env, lynx_value value,
                                     bool* result) {
   LEPUSValue js_value = WrapJSValue(value);
   *result = LEPUS_IsArray(env->ctx->ctx, js_value) ||
-            LEPUS_GetLepusRefTag(js_value) == lynx_value_array;
+            LEPUS_GetLepusRefTag(js_value) == lynx::lepus::Value_Array;
   return lynx_api_ok;
 }
 
@@ -291,9 +303,14 @@ lynx_api_status lynx_value_get_array_length(lynx_api_env env, lynx_value value,
 
 lynx_api_status lynx_value_set_element(lynx_api_env env, lynx_value object,
                                        uint32_t index, lynx_value value) {
-  auto js_value = WrapJSValue(value);
+  LEPUSValue js_value;
   auto* ctx = env->ctx->ctx;
-  LEPUS_DupValue(ctx, js_value);
+  if (value.type == lynx_value_extended) {
+    js_value = WrapJSValue(value);
+    LEPUS_DupValue(ctx, js_value);
+  } else {
+    js_value = lynx::lepus::LEPUSValueHelper::ToJsValue(ctx, value);
+  }
   HandleScope block_scope(ctx, &js_value, HANDLE_TYPE_LEPUS_VALUE);
   int ret = LEPUS_SetPropertyUint32(ctx, WrapJSValue(object), index, js_value);
   if (ret == -1) {
@@ -319,7 +336,13 @@ lynx_api_status lynx_value_get_element(lynx_api_env env, lynx_value object,
                                        uint32_t index, lynx_value* result) {
   LEPUSValue val =
       LEPUS_GetPropertyUint32(env->ctx->ctx, WrapJSValue(object), index);
-  *result = MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+  if (LEPUS_IsLepusRef(val)) {
+    *result = lynx::lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(
+        env->ctx->ctx, val);
+    if (!LEPUS_IsGCMode(env->ctx->ctx)) LEPUS_FreeValue(env->ctx->ctx, val);
+  } else {
+    *result = MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+  }
   return lynx_api_ok;
 }
 
@@ -342,7 +365,7 @@ lynx_api_status lynx_value_is_map(lynx_api_env env, lynx_value value,
                                   bool* result) {
   LEPUSValue js_value = WrapJSValue(value);
   *result = LEPUS_IsObject(js_value) ||
-            (LEPUS_GetLepusRefTag(js_value) == lynx_value_map);
+            (LEPUS_GetLepusRefTag(js_value) == lynx::lepus::Value_Table);
   return lynx_api_ok;
 }
 
@@ -356,9 +379,14 @@ lynx_api_status lynx_value_set_named_property(lynx_api_env env,
                                               lynx_value object,
                                               const char* utf8name,
                                               lynx_value value) {
-  auto js_value = WrapJSValue(value);
+  LEPUSValue js_value;
   auto* ctx = env->ctx->ctx;
-  LEPUS_DupValue(ctx, js_value);
+  if (value.type == lynx_value_extended) {
+    js_value = WrapJSValue(value);
+    LEPUS_DupValue(ctx, js_value);
+  } else {
+    js_value = lynx::lepus::LEPUSValueHelper::ToJsValue(ctx, value);
+  }
   HandleScope block_scope(ctx, &js_value, HANDLE_TYPE_LEPUS_VALUE);
   int ret = LEPUS_SetPropertyStr(ctx, WrapJSValue(object), utf8name, js_value);
   if (ret == -1) {
@@ -387,7 +415,13 @@ lynx_api_status lynx_value_get_named_property(lynx_api_env env,
                                               lynx_value* result) {
   LEPUSValue val =
       LEPUS_GetPropertyStr(env->ctx->ctx, WrapJSValue(object), utf8name);
-  *result = MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+  if (LEPUS_IsLepusRef(val)) {
+    *result = lynx::lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(
+        env->ctx->ctx, val);
+    if (!LEPUS_IsGCMode(env->ctx->ctx)) LEPUS_FreeValue(env->ctx->ctx, val);
+  } else {
+    *result = MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+  }
   return lynx_api_ok;
 }
 
@@ -409,8 +443,15 @@ static void iterator_callback(LEPUSContext* ctx, LEPUSValue key,
                               LEPUSValue value, void* pfunc, void* raw_data) {
   auto* data = reinterpret_cast<iterator_raw_data*>(raw_data);
   auto func = reinterpret_cast<lynx_value_iterator_callback>(pfunc);
-  func(data->env, MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(key),
-       MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(value), data->pfunc, data->raw_data);
+  if (LEPUS_IsLepusRef(value)) {
+    func(
+        data->env, MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(key),
+        lynx::lepus::LEPUSValueHelper::ConstructLepusRefToLynxValue(ctx, value),
+        data->pfunc, data->raw_data);
+  } else {
+    func(data->env, MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(key),
+         MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(value), data->pfunc, data->raw_data);
+  }
 }
 
 lynx_api_status lynx_value_iterate_value(lynx_api_env env, lynx_value object,
@@ -478,14 +519,18 @@ lynx_api_status lynx_value_create_reference(lynx_api_env env, lynx_value value,
     *result = reinterpret_cast<lynx_value_ref>(p_val);
   } else {
     LEPUS_DupValue(env->ctx->ctx, val);
-    *result = reinterpret_cast<lynx_value_ref>(&value);
+    *result = nullptr;
   }
   return lynx_api_ok;
 }
 
 lynx_api_status lynx_value_delete_reference(lynx_api_env env,
                                             lynx_value_ref ref) {
-  if (LEPUS_IsGCMode(env->ctx->ctx)) {
+  if (env->ctx == nullptr) {
+    // There are some case that LEPUSValue is released in JS Thread.
+    return lynx_api_ok;
+  }
+  if (LEPUS_IsGCModeRT(env->ctx->rt)) {
     auto* p_val = reinterpret_cast<GCPersistent*>(ref);
     if (p_val == nullptr) {
       return lynx_api_invalid_arg;
@@ -509,7 +554,7 @@ lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
       dst_ref_val->Reset(env->ctx->rt);
     }
     if (src_ref) {
-      auto* src_ref_val = reinterpret_cast<GCPersistent*>(*result);
+      auto* src_ref_val = reinterpret_cast<GCPersistent*>(src_ref);
       dst_ref_val = (dst_ref_val == nullptr) ? new GCPersistent() : dst_ref_val;
       dst_ref_val->Reset(env->ctx->rt, src_ref_val->Get());
       src_ref_val->Reset(env->ctx->rt);
@@ -519,11 +564,7 @@ lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
     }
     *result = reinterpret_cast<lynx_value_ref>(dst_ref_val);
   } else {
-    if (src_ref) {
-      *result = src_ref;
-    } else {
-      *result = reinterpret_cast<lynx_value_ref>(&src_val);
-    }
+    *result = nullptr;
   }
   return lynx_api_ok;
 }
@@ -544,7 +585,7 @@ lynx_api_status lynx_value_deep_copy_value(lynx_api_env env, lynx_value src,
 lynx_api_status lynx_value_has_string_ref(lynx_api_env env, lynx_value value,
                                           bool* result) {
   auto js_value = WrapJSValue(value);
-  if (!LEPUS_VALUE_IS_STRING(js_value)) {
+  if (!LEPUS_IsString(js_value)) {
     *result = false;
     return lynx_api_string_expected;
   }
@@ -555,7 +596,7 @@ lynx_api_status lynx_value_has_string_ref(lynx_api_env env, lynx_value value,
 lynx_api_status lynx_value_get_string_ref(lynx_api_env env, lynx_value value,
                                           void** result) {
   auto val = WrapJSValue(value);
-  if (!LEPUS_VALUE_IS_STRING(val)) {
+  if (!LEPUS_IsString(val)) {
     *result = nullptr;
     return lynx_api_string_expected;
   }
@@ -568,21 +609,29 @@ lynx_api_status lynx_value_get_string_ref(lynx_api_env env, lynx_value value,
 lynx_api_status lynx_value_to_string_utf8(lynx_api_env env, lynx_value value,
                                           void* result) {
   LEPUSValue val = WrapJSValue(value);
+  if (LEPUS_IsUndefined(val)) {
+    (*reinterpret_cast<std::string*>(result)) = "";
+    return lynx_api_ok;
+  }
   LEPUSContext* ctx = env->ctx->ctx;
   if (LEPUS_IsLepusRef(val)) {
     (*reinterpret_cast<std::string*>(result)) =
         lynx::lepus::LEPUSValueHelper::LepusRefToStdString(ctx, val);
+    return lynx_api_ok;
   } else if (LEPUS_VALUE_IS_STRING(val)) {
-    (*reinterpret_cast<std::string*>(result)) =
-        LEPUS_GetStringUtf8(ctx, LEPUS_VALUE_GET_STRING(val));
-  } else {
-    size_t len;
-    const char* chr = LEPUS_ToCStringLen(ctx, &len, val);
-    if (chr) {
-      std::string ret(chr, len);
-      if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, chr);
-      (*reinterpret_cast<std::string*>(result)) = std::string(chr, len);
+    auto* str = LEPUS_GetStringUtf8(ctx, LEPUS_VALUE_GET_STRING(val));
+    if (str) {
+      (*reinterpret_cast<std::string*>(result)) = str;
+      return lynx_api_ok;
     }
+  }
+  size_t len;
+  const char* chr = LEPUS_ToCStringLen(ctx, &len, val);
+  if (chr) {
+    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, chr);
+    (*reinterpret_cast<std::string*>(result)) = std::string(chr, len);
+  } else {
+    (*reinterpret_cast<std::string*>(result)) = "";
   }
   return lynx_api_ok;
 }
@@ -590,7 +639,10 @@ lynx_api_status lynx_value_to_string_utf8(lynx_api_env env, lynx_value value,
 lynx_api_status lynx_value_print(lynx_api_env env, lynx_value value,
                                  void* stream,
                                  lynx_value_print_callback callback) {
-  // TODO(frendy): add impl later.
+  // TODO(frendy): implement with callback
+  LEPUSValue val = WrapJSValue(value);
+  std::ostream& s = *(reinterpret_cast<std::ostream*>(stream));
+  lynx::lepus::LEPUSValueHelper::PrintValue(s, env->ctx->ctx, val);
   return lynx_api_ok;
 }
 

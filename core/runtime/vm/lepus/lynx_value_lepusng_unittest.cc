@@ -369,7 +369,25 @@ TEST_F(LynxValueLepusNGTest, LynxValueMap) {
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(!has_property1);
 
+  auto dict1 = lepus::Dictionary::Create();
+  {
+    lynx_value l_val1 = {
+        .val_ptr = reinterpret_cast<lynx_value_ptr>(dict1.get()),
+        .type = lynx_value_map,
+        .tag = 0};
+    status =
+        env_->lynx_value_set_named_property(env_, l_val_map, "key3", l_val1);
+    ASSERT_TRUE(status == lynx_api_ok);
+    lynx_value ret1;
+    status =
+        env_->lynx_value_get_named_property(env_, l_val_map, "key3", &ret1);
+    ASSERT_TRUE(status == lynx_api_ok);
+    ASSERT_TRUE(ret1.type == lynx_value_map);
+    reinterpret_cast<fml::RefCountedThreadSafeStorage*>(ret1.val_ptr)
+        ->Release();
+  }
   LEPUS_FreeValue(ctx_, obj);
+  ASSERT_TRUE(dict1->HasOneRef());
 }
 
 TEST_F(LynxValueLepusNGTest, LynxValueReference) {
@@ -381,9 +399,10 @@ TEST_F(LynxValueLepusNGTest, LynxValueReference) {
   lynx_value_ref ref;
   status = env_->lynx_value_create_reference(env_, l_val_str, 1, &ref);
   ASSERT_TRUE(status == lynx_api_ok);
-  ASSERT_TRUE(ref != nullptr);
+  ASSERT_TRUE(ref == nullptr);
   p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
   ASSERT_TRUE(p->ref_count == 2);
+  ref = reinterpret_cast<lynx_value_ref>(&l_val_str);
   status = env_->lynx_value_delete_reference(env_, ref);
   ASSERT_TRUE(status == lynx_api_ok);
   p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
@@ -391,9 +410,10 @@ TEST_F(LynxValueLepusNGTest, LynxValueReference) {
   lynx_value_ref move_ref;
   status = env_->lynx_value_move_reference(env_, l_val_str, ref, &move_ref);
   ASSERT_TRUE(status == lynx_api_ok);
-  ASSERT_TRUE(move_ref != nullptr);
+  ASSERT_TRUE(move_ref == nullptr);
   p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
   ASSERT_TRUE(p->ref_count == 1);
+  LEPUS_FreeValue(ctx_, val_str);
 }
 
 TEST_F(LynxValueLepusNGTest, LynxValueRefCounted) {
@@ -401,7 +421,7 @@ TEST_F(LynxValueLepusNGTest, LynxValueRefCounted) {
   auto array = lepus::CArray::Create();
   auto* array_ptr = array.get();
   array_ptr->AddRef();
-  LEPUSValue val = LEPUS_NewLepusWrap(ctx_, array_ptr, lynx_value_array);
+  LEPUSValue val = LEPUS_NewLepusWrap(ctx_, array_ptr, lepus::Value_Array);
   lynx_value l_val_arr = ToLynxValue(val);
   bool ret;
   status = env_->lynx_value_is_refcounted_object(env_, l_val_arr, &ret);
