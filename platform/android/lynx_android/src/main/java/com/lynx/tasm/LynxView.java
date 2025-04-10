@@ -186,7 +186,7 @@ public class LynxView extends UIBodyView {
   }
 
   public void setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming) {
-    if (extraTiming == null) {
+    if (extraTiming == null || mLynxTemplateRender == null) {
       return;
     }
     mLynxTemplateRender.setExtraTiming(extraTiming);
@@ -205,7 +205,9 @@ public class LynxView extends UIBodyView {
    * kEnableLynxScrollFluency.
    */
   public void setFluencyTracerEnabled(LynxBooleanOption enabled) {
-    mLynxTemplateRender.setFluencyTracerEnabled(enabled);
+    if (mLynxTemplateRender != null) {
+      mLynxTemplateRender.setFluencyTracerEnabled(enabled);
+    }
   }
 
   /**
@@ -224,11 +226,17 @@ public class LynxView extends UIBodyView {
   @AnyThread
   @LynxTemplateRender.RenderPhaseName
   public String getRenderPhase() {
-    return mLynxTemplateRender.getRenderPhase();
+    if (mLynxTemplateRender != null) {
+      return mLynxTemplateRender.getRenderPhase();
+    }
+    return null;
   }
 
   public HashMap<String, Object> getAllTimingInfo() {
-    return mLynxTemplateRender.getAllTimingInfo();
+    if (mLynxTemplateRender != null) {
+      return mLynxTemplateRender.getAllTimingInfo();
+    }
+    return null;
   }
 
   /**
