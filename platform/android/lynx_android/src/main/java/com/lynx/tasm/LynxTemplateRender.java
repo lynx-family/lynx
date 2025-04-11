@@ -1006,6 +1006,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mDevTool.onLoadFromURL(urls[0], urls[1], initialData, callback.mData, callback.mJsonData);
     }
 
+    if (mLynxContext == null) {
+      LLog.e(TAG, "renderTemplate error, can't get LynxContext in " + this.toString());
+      return;
+    }
+
     if (mLynxContext.getTemplateResourceFetcher() != null) {
       loadTemplateWithGenericResourceFetcher(templateUrl, callback);
     } else {
