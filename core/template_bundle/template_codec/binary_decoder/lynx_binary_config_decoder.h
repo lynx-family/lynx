@@ -10,8 +10,8 @@
 #include <utility>
 
 #include "core/renderer/dom/component_config.h"
-#include "core/renderer/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_helper.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {

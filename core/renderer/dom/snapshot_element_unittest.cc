@@ -15,10 +15,10 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/lynx_env_config.h"
-#include "core/renderer/page_config.h"
 #include "core/renderer/starlight/style/auto_gen_css_type.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

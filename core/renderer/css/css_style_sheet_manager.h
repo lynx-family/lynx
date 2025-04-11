@@ -12,7 +12,7 @@
 #include <utility>
 
 #include "core/renderer/css/shared_css_fragment.h"
-#include "core/renderer/page_config.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/moulds.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 

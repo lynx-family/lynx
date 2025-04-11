@@ -9,11 +9,11 @@
 
 #include <memory>
 
-#include "core/renderer/page_config.h"
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
 #include "core/services/timing_handler/timing_collector_platform_impl.h"
 #include "core/shell/lynx_shell.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 @class LynxContext;
 @class LynxTemplateData;

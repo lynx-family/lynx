@@ -5,7 +5,7 @@
 #define private public
 #define protected public
 
-#include "core/renderer/page_config.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

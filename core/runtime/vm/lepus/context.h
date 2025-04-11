@@ -18,11 +18,11 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/lepus_inspector_manager.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
-#include "core/renderer/page_config.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/path_parser.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
 struct LEPUSRuntime;

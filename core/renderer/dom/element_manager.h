@@ -31,13 +31,13 @@
 #include "core/renderer/dom/fiber/page_element.h"
 #include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
-#include "core/renderer/page_config.h"
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/renderer/utils/base/tasm_worker_task_runner.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/timing_handler/timing_handler.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace base {

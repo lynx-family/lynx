@@ -15,7 +15,6 @@
 #include "core/public/prop_bundle.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
-#include "core/renderer/page_config.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/piper/js/template_delegate.h"
@@ -23,6 +22,7 @@
 #include "core/shell/common/platform_call_back.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/tasm_operation_queue.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace shell {

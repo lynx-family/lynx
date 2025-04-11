@@ -21,12 +21,12 @@
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/dom/layout_bundle.h"
 #include "core/renderer/lynx_env_config.h"
-#include "core/renderer/page_config.h"
 #include "core/renderer/starlight/layout/layout_object.h"
 #include "core/renderer/starlight/types/layout_constraints.h"
 #include "core/renderer/ui_wrapper/layout/layout_context_data.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/services/timing_handler/timing.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace starlight {

@@ -12,11 +12,11 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/base_component.h"
-#include "core/renderer/page_config.h"
 #include "core/renderer/template_themed.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/services/ssr/client/ssr_data_update_manager.h"
 #include "core/services/ssr/client/ssr_hydrate_info.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace lepus {

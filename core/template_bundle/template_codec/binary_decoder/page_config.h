@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RENDERER_PAGE_CONFIG_H_
-#define CORE_RENDERER_PAGE_CONFIG_H_
+#ifndef CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_PAGE_CONFIG_H_
+#define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_PAGE_CONFIG_H_
 
 #include <memory>
 #include <ostream>
@@ -1419,4 +1419,4 @@ class PageConfig final : public EntryConfig {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_RENDERER_PAGE_CONFIG_H_
+#endif  // CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_PAGE_CONFIG_H_

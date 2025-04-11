@@ -13,13 +13,13 @@
 
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
-#include "core/renderer/page_config.h"
 #include "core/runtime/bindings/jsi/api_call_back.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_timing.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/shell/native_facade.h"
 #include "core/shell/native_facade_reporter.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace base {

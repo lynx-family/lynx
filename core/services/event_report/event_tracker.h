@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "base/include/closure.h"
-#include "core/renderer/page_config.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace tasm {

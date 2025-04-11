@@ -10,7 +10,6 @@
 #include <vector>
 #define private public
 
-#include "core/renderer/page_config.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/context_binary_writer.h"
@@ -18,6 +17,7 @@
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "testing/lynx/tasm/databinding/databinding_test.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
