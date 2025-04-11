@@ -9,6 +9,8 @@
 
 @interface LynxTemplateBundle : NSObject
 
+@property(nonatomic, readonly, nullable) NSString* url;
+
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem;
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
                                     option:(nullable LynxTemplateBundleOption*)option;

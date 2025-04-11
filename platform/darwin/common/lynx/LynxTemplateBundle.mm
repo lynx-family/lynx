@@ -16,13 +16,14 @@
   NSDictionary* _extraInfo;
 }
 
-- (instancetype)initWithTemplate:(NSData*)tem {
+- (instancetype _Nullable)initWithTemplate:(NSData*)tem url:(NSString*)url {
   if (self = [super init]) {
+    _url = url;
     auto securityService = LynxService(LynxServiceSecurityProtocol);
     if (securityService != nil) {
       LynxVerificationResult* verification = [securityService verifyTASM:tem
                                                                     view:nil
-                                                                     url:nil
+                                                                     url:url
                                                                     type:LynxTASMTypeTemplate];
       if (!verification.verified) {
         _error = verification.errorMsg;
@@ -43,9 +44,13 @@
   return self;
 }
 
+- (instancetype _Nullable)initWithTemplate:(NSData*)tem {
+  return [self initWithTemplate:tem url:nil];
+}
+
 - (instancetype _Nullable)initWithTemplate:(nonnull NSData*)tem
                                     option:(nullable LynxTemplateBundleOption*)option {
-  if (self = [self initWithTemplate:tem]) {
+  if (self = [self initWithTemplate:tem url:[option url]]) {
     [self initWithOption:option];
   }
   return self;
