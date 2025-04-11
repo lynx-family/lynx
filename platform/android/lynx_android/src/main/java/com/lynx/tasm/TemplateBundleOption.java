@@ -10,14 +10,20 @@ package com.lynx.tasm;
 public final class TemplateBundleOption {
   private int mContextPoolSize = 0;
   private boolean mEnableContextAutoRefill = false;
+  private final String mUrl;
 
-  private TemplateBundleOption(int contextPoolSize, boolean enableContextAutoRefill) {
+  private TemplateBundleOption(int contextPoolSize, boolean enableContextAutoRefill, String url) {
     mContextPoolSize = contextPoolSize;
     mEnableContextAutoRefill = enableContextAutoRefill;
+    mUrl = url;
   }
 
   public int getContextPoolSize() {
     return mContextPoolSize;
+  }
+
+  public String getUrl() {
+    return mUrl;
   }
 
   public boolean getEnableContextAutoRefill() {
@@ -25,6 +31,7 @@ public final class TemplateBundleOption {
   }
 
   public static class Builder {
+    private String mUrl;
     private int mContextPoolSize = 0;
     private boolean mEnableContextAutoRefill = false;
 
@@ -52,8 +59,18 @@ public final class TemplateBundleOption {
       return this;
     }
 
+    /**
+     * Set the source-url of the loading template.
+     * @param url sourceUrl;
+     * @return Builder;
+     */
+    public Builder setUrl(String url) {
+      this.mUrl = url;
+      return this;
+    }
+
     public TemplateBundleOption build() {
-      return new TemplateBundleOption(mContextPoolSize, mEnableContextAutoRefill);
+      return new TemplateBundleOption(mContextPoolSize, mEnableContextAutoRefill, mUrl);
     }
   }
 }

@@ -24,18 +24,20 @@ import java.util.Map;
 public final class TemplateBundle {
   private static final String TEMPLATE_BUNDLE_FROM_TEMPLATE = "TemplateBundle.fromTemplate";
 
+  private final String url;
   private long nativePtr = 0; // native pointer for LynxTemplateBundle.
   private Map<String, Object> extraInfo;
   private String errorMsg = null;
-  private int templateSize;
+  private final int templateSize;
 
-  private TemplateBundle(long ptr, int templateSize, String errMsg) {
+  private TemplateBundle(long ptr, int templateSize, String url, String errMsg) {
     this.nativePtr = ptr;
-    this.errorMsg = errMsg;
     this.templateSize = templateSize;
+    this.url = url;
+    this.errorMsg = errMsg;
   }
 
-  public static TemplateBundle fromTemplate(byte[] template) {
+  private static TemplateBundle internalBuildTemplate(byte[] template, String url) {
     TemplateBundle result = null;
     TraceEvent.beginSection(TEMPLATE_BUNDLE_FROM_TEMPLATE);
     if (template != null) {
@@ -47,34 +49,37 @@ public final class TemplateBundle {
           SecurityResult securityResult = securityService.verifyTASM(
               null, template, null, ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE);
           if (!securityResult.isVerified()) {
-            result = new TemplateBundle(0, template.length,
+            result = new TemplateBundle(0, template.length, url,
                 "template verify failed, error message: " + securityResult.getErrorMsg());
             return result;
           }
         }
         String[] buffer = new String[1];
         long ptr = nativeParseTemplate(template, buffer);
-        result = new TemplateBundle(ptr, template.length, buffer[0]);
+        result = new TemplateBundle(ptr, template.length, url, buffer[0]);
       } else {
-        result = new TemplateBundle(0, template.length, "Lynx Env is not prepared");
+        result = new TemplateBundle(0, template.length, url, "Lynx Env is not prepared");
       }
-
       TraceEvent.endSection(TEMPLATE_BUNDLE_FROM_TEMPLATE);
     }
     return result;
   }
 
+  public static TemplateBundle fromTemplate(byte[] template) {
+    return internalBuildTemplate(template, null);
+  }
+
   public static TemplateBundle fromTemplate(byte[] template, TemplateBundleOption option) {
-    TemplateBundle result = TemplateBundle.fromTemplate(template);
+    TemplateBundle result = internalBuildTemplate(template, option.getUrl());
     result.initWithOption(option);
     return result;
   }
 
   @CalledByNative
   private static TemplateBundle fromNative(long nativePtr) {
-    // TODO(nihao.royal) add template size for recycled TemplateBundle.
+    // TODO(nihao.royal) add template size & template url for recycled TemplateBundle.
     String errMsg = nativePtr == 0 ? "native TemplateBundle doesn't exist" : null;
-    return new TemplateBundle(nativePtr, 0, errMsg);
+    return new TemplateBundle(nativePtr, 0, "", errMsg);
   }
 
   private void initWithOption(TemplateBundleOption option) {
@@ -178,6 +183,14 @@ public final class TemplateBundle {
    */
   public String getErrorMessage() {
     return errorMsg;
+  }
+
+  /**
+   * Return the sourceUrl of passing template.
+   * @return sourceUrl
+   */
+  public String getUrl() {
+    return url;
   }
 
   /**

@@ -26,4 +26,9 @@
  */
 @property(nonatomic, assign) BOOL enableContextAutoRefill;
 
+/**
+ * Set the source-url of the loading template.
+ */
+@property(nonatomic, nullable) NSString* url;
+
 @end
