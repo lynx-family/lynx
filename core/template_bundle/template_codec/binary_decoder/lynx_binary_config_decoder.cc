@@ -277,13 +277,6 @@ static constexpr const char* const kEnableBindICU = "enableICU";
 static constexpr const char* const kEnableQueryComponentSync =
     "enableQueryComponentSync";
 
-/**
- * @name: enableNativeList
- * @description: Indicates whether use c++ list.
- * @supportVersion: 3.2
- */
-static constexpr const char* const kEnableNativeList = "enableNativeList";
-
 bool LynxBinaryConfigDecoder::DecodePageConfig(
     const std::string& config_str, std::shared_ptr<PageConfig>& page_config) {
   rapidjson::Document doc;
@@ -838,10 +831,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableMultiTouch(doc[kEnableMultiTouch].GetBool());
   } else {
     page_config->SetEnableMultiTouch(LynxEnv::GetInstance().EnableMultiTouch());
-  }
-
-  if (doc.HasMember(kEnableNativeList) && doc[kEnableNativeList].IsBool()) {
-    page_config->SetEnableNativeList(doc[kEnableNativeList].GetBool());
   }
 
   page_config->SetTargetSDKVersion(target_sdk_version_);

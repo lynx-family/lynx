@@ -19,6 +19,13 @@ namespace tasm {
 static constexpr const char* const kPipelineSchedulerConfig =
     "pipelineSchedulerConfig";
 
+/**
+ * @name: enableNativeList
+ * @description: Indicates whether use c++ list.
+ * @supportVersion: 3.2
+ */
+static constexpr const char* const kEnableNativeList = "enableNativeList";
+
 const PageConfig::PageConfigMap<TernaryBool>& PageConfig::GetFuncBoolMap() {
   static const base::NoDestructor<const PageConfigMap<TernaryBool>>
       kPageConfigFuncBoolMap{
@@ -33,6 +40,9 @@ const PageConfig::PageConfigMap<TernaryBool>& PageConfig::GetFuncBoolMap() {
            {"enableUIOperationOptimize",
             {&PageConfig::SetEnableUIOperationOptimize,
              &PageConfig::GetEnableUIOperationOptimize}},
+           {kEnableNativeList,
+            {&PageConfig::SetEnableNativeList,
+             &PageConfig::GetEnableNativeList}},
            {"enableFiberElementForRadonDiff",
             {&PageConfig::SetEnableFiberElementForRadonDiff,
              &PageConfig::GetEnableFiberElementForRadonDiff}},

@@ -922,9 +922,11 @@ class PageConfig final : public EntryConfig {
     enable_data_processor_on_js_ = enable;
   }
 
-  inline bool GetEnableNativeList() const { return enable_native_list_; }
+  inline TernaryBool GetEnableNativeList() const { return enable_native_list_; }
 
-  inline void SetEnableNativeList(bool enable) { enable_native_list_ = enable; }
+  inline void SetEnableNativeList(TernaryBool enable) {
+    enable_native_list_ = enable;
+  }
 
   bool GetEnableMultiTouch() const { return enable_multi_touch_; }
 
@@ -1390,7 +1392,7 @@ class PageConfig final : public EntryConfig {
   bool enable_query_component_sync_{false};
 
   // Indicates whether use c++ list.
-  bool enable_native_list_{false};
+  TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
 
   // peferredFps
   std::string preferred_fps_ = "auto";
