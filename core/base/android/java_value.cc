@@ -218,7 +218,13 @@ JavaValue JavaValue::GetValueForIndex(uint32_t index) const {
 jvalue JavaValue::JByte() const {
   jvalue j_byte;
   // No exception is thrown, truncated from the last 8 bits
-  j_byte.b = static_cast<jbyte>(Int32());
+  if (IsInt32()) {
+    j_byte.b = static_cast<jbyte>(Int32());
+  } else if (IsDouble()) {
+    j_byte.b = static_cast<jbyte>(Double());
+  } else {
+    j_byte.b = 0;
+  }
   return j_byte;
 }
 
@@ -226,7 +232,7 @@ jvalue JavaValue::WrapperJByte() const {
   jvalue j_wrapper_byte;
   JNIEnv* env = base::android::AttachCurrentThread();
   // No exception is thrown, truncated from the last 8 bits
-  j_wrapper_byte.l = converter::byteValueOf(env, static_cast<jbyte>(Int32()));
+  j_wrapper_byte.l = converter::byteValueOf(env, JByte().b);
   return j_wrapper_byte;
 }
 
@@ -267,41 +273,58 @@ jvalue JavaValue::WrapperJBoolean() const {
 
 jvalue JavaValue::JShort() const {
   jvalue j_short;
-  j_short.s = static_cast<jshort>(Int32());
+  if (IsInt32()) {
+    j_short.s = static_cast<jshort>(Int32());
+  } else if (IsDouble()) {
+    j_short.s = static_cast<jshort>(Double());
+  } else {
+    j_short.s = 0;
+  }
   return j_short;
 }
 
 jvalue JavaValue::WrapperJShort() const {
   jvalue j_wrapper_short;
   JNIEnv* env = base::android::AttachCurrentThread();
-  j_wrapper_short.l =
-      converter::shortValueOf(env, static_cast<jshort>(Int32()));
+  j_wrapper_short.l = converter::shortValueOf(env, JShort().s);
   return j_wrapper_short;
 }
 
 jvalue JavaValue::JInt() const {
   jvalue j_int;
-  j_int.i = static_cast<jint>(Int32());
+  if (IsInt32()) {
+    j_int.i = static_cast<jint>(Int32());
+  } else if (IsDouble()) {
+    j_int.i = static_cast<jint>(Double());
+  } else {
+    j_int.i = 0;
+  }
   return j_int;
 }
 
 jvalue JavaValue::WrapperJInt() const {
   jvalue j_wrapper_int;
   JNIEnv* env = base::android::AttachCurrentThread();
-  j_wrapper_int.l = converter::integerValueOf(env, static_cast<jint>(Int32()));
+  j_wrapper_int.l = converter::integerValueOf(env, JInt().i);
   return j_wrapper_int;
 }
 
 jvalue JavaValue::JLong() const {
   jvalue j_long;
-  j_long.j = static_cast<jlong>(Int64());
+  if (IsInt64()) {
+    j_long.j = static_cast<jlong>(Int64());
+  } else if (IsDouble()) {
+    j_long.j = static_cast<jlong>(Double());
+  } else {
+    j_long.j = 0;
+  }
   return j_long;
 }
 
 jvalue JavaValue::WrapperJLong() const {
   jvalue j_wrapper_long;
   JNIEnv* env = base::android::AttachCurrentThread();
-  j_wrapper_long.l = converter::longValueOf(env, static_cast<jlong>(Int64()));
+  j_wrapper_long.l = converter::longValueOf(env, JLong().j);
   return j_wrapper_long;
 }
 
@@ -335,6 +358,17 @@ jvalue JavaValue::JNull() const {
   jvalue j_null;
   j_null.l = nullptr;
   return j_null;
+}
+int JavaValue::Length() const {
+  if (IsArray()) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    return JavaOnlyArray::JavaOnlyArrayGetSize(env, Array()->jni_object());
+  } else if (IsArrayBuffer()) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    return static_cast<int>(env->GetArrayLength(JByteArray()));
+  } else {
+    return 0;
+  }
 }
 
 }  // namespace android

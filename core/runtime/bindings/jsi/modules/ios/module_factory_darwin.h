@@ -54,7 +54,7 @@ class ModuleFactoryDarwin : public NativeModuleFactory {
   void addModuleParamWrapperIfAbsent(NSMutableDictionary<NSString *, id> *wrappers);
 
   std::shared_ptr<LynxNativeModule> CreateModule(const std::string &name) override;
-  void SetModuleExtraInfo(std::shared_ptr<ModuleDelegate> delegate) override {
+  void SetModuleExtraInfo(std::shared_ptr<ModuleDelegate> delegate) {
     module_delegate_ = std::move(delegate);
   }
 

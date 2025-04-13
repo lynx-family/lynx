@@ -239,18 +239,6 @@ class MockPlatformModuleFactory : public NativeModuleFactory {
       : delegate_(std::move(delegate)) {}
   virtual ~MockPlatformModuleFactory() = default;
 
-  virtual std::shared_ptr<LynxModule> CreatePlatformModule(
-      const std::string& name) {
-    auto itr = creators_.find(name);
-    if (itr == creators_.end()) {
-      return nullptr;
-    }
-    auto native_module = itr->second();
-    auto lynx_module =
-        std::make_shared<LynxModuleImpl>(name, delegate_, native_module);
-    return lynx_module;
-  };
-
   virtual void Register(const std::string& name, ModuleCreator creator) {
     creators_.emplace(name, std::move(creator));
   }

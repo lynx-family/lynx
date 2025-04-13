@@ -42,15 +42,10 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     }
   }
 
+  // Use platform module factory to create module for Android & iOS
   std::shared_ptr<LynxModule> lynx_module;
   if (!native_module && platform_module_factory_) {
-    platform_module_factory_->SetModuleExtraInfo(delegate);
-    // TODO(zhangqun): when android refact finished, delete this.
-#if OS_IOS || OS_TVOS || OS_OSX
     native_module = platform_module_factory_->CreateModule(name);
-#else
-    lynx_module = platform_module_factory_->CreatePlatformModule(name);
-#endif
   }
 
   if (native_module) {

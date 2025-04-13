@@ -76,7 +76,7 @@ class ValueImplAndroid : public pub::Value {
   double Number() const override { return backend_value_.Double(); }
   uint8_t* ArrayBuffer() const override;
   const std::string& str() const override { return backend_value_.String(); }
-  int Length() const override { return 0; }
+  int Length() const override { return backend_value_.Length(); }
 
   // Iterator
   void ForeachArray(pub::ForeachArrayFunc func) const override;

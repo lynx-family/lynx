@@ -49,18 +49,6 @@ class MockPlatformModuleFactory : public NativeModuleFactory {
             std::make_shared<piper::test::MockModuleDelegate>()){};
   virtual ~MockPlatformModuleFactory() = default;
 
-  virtual std::shared_ptr<LynxModule> CreatePlatformModule(
-      const std::string& name) {
-    auto itr = creators_.find(name);
-    if (itr == creators_.end()) {
-      return nullptr;
-    }
-    auto native_module = itr->second();
-    auto lynx_module = std::make_shared<LynxModuleImpl>(
-        name, mock_module_delegate_, native_module);
-    return lynx_module;
-  };
-
   virtual void Register(const std::string& name, ModuleCreator creator) {
     creators_.emplace(name, std::move(creator));
   }
@@ -79,12 +67,7 @@ class LynxModuleManagerTest : public ::testing::Test {
     module_manager_ = std::make_shared<LynxModuleManager>();
     module_manager_->initBindingPtr(module_manager_, nullptr);
 
-#if defined(OS_IOS) || defined(OS_OSX) || defined(OS_TVOS)
     auto platform_module_factory = std::make_unique<NativeModuleFactory>();
-#else
-    auto platform_module_factory =
-        std::make_unique<MockPlatformModuleFactory>();
-#endif
     platform_module_factory->Register("platform_module", []() {
       return std::make_shared<MockNativeModule>("platform_module");
     });

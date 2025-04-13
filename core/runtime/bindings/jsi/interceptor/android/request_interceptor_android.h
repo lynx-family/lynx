@@ -17,7 +17,7 @@ namespace piper {
 class ModuleCallbackRequest : public ModuleCallbackAndroid {
  public:
   ModuleCallbackRequest(int64_t callback_id,
-                        std::shared_ptr<MethodInvoker> invoker,
+                        std::shared_ptr<LynxModuleAndroid> invoker,
                         ModuleCallbackType type)
       : ModuleCallbackAndroid(callback_id, invoker), type_(type) {}
   void Invoke(Runtime* runtime, ModuleCallbackFunctionHolder* holder) override;

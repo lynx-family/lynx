@@ -211,10 +211,8 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                          .timing_collector = timing_collector,
                          .has_error = false};
   InvokeScope invoke_scope(invoke_scopes_, &invoke_info);
-#if (OS_IOS || OS_TVOS || OS_OSX) && \
+#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
     (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
-  // TODO(liyanbo.monster): when android refact finished, move this out of
-  // macro.
   //  We need these information to monitor network request information,
   //  the rate of success and the proportion of requests accomplished by
   //  Lynx. After fully switch to Lynx Network, we can remove these logics.
@@ -228,7 +226,7 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                           count, callback_map);
   // TODO(liyanbo.monster): after remove native promise, delete this.
   std::optional<piper::Value> promise_res;
-#if OS_IOS || OS_TVOS || OS_OSX
+#if OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID
   native_module_->ExitInvokeScope();
   // hack here, this will be deleted later.
   if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {

@@ -47,6 +47,10 @@ class LynxModuleImpl : public LynxModule, public LynxNativeModule::Delegate {
   void OnErrorOccurred(const std::string& module_name,
                        const std::string& method_name,
                        base::LynxError error) override;
+  // TODO(zhangqun.29): remove this method later
+#if OS_ANDROID
+  std::shared_ptr<LynxNativeModule> GetNativeModule() { return native_module_; }
+#endif
 
  private:
   void SetMethodMetadata();
