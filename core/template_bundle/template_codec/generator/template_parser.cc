@@ -59,7 +59,7 @@ std::string TemplateParser::AddAttributes(std::string &source, std::string key,
 }
 
 TemplateRenderMap TemplateParser::GenNecessaryRenders(Component *component) {
-  // Declare neccesary component & templates renderer
+  // Declare necessary component & templates renderer
   std::stringstream components_render_declare;
   std::stringstream components_data_processor_declare;
   std::stringstream templates_declare;
