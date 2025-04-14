@@ -1562,6 +1562,8 @@ void RadonComponent::RadonReusableDiffChildren(
   // OnComponentAdded lifecycle
   if (component_id_ == 0) {
     GenerateAndSetComponentId();
+  } else {
+    SetComponentId();
   }
   // flush component to update the map of component_id -> view
   if (NeedsElement() && element() && element()->is_radon_element()) {
@@ -1612,6 +1614,10 @@ void RadonComponent::triggerNewLifecycle(const DispatchOption& option) {
 
 void RadonComponent::GenerateAndSetComponentId() {
   component_id_ = page_proxy_->GetNextComponentID();
+  SetComponentId();
+}
+
+void RadonComponent::SetComponentId() {
   if (element() && element()->is_fiber_element()) {
     component_element()->set_component_id(ComponentStrId());
   }

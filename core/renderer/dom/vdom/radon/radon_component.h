@@ -300,6 +300,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
                        PipelineOptions& pipeline_options);
 
   void GenerateAndSetComponentId();
+  void SetComponentId();
 
   // methods to check properties undefined.
   // it's result will differ according to pageConfig `enableComponentNullProps`
