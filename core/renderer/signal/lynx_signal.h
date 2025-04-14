@@ -38,14 +38,26 @@ SOFTWARE.
 #include "core/runtime/vm/lepus/ref_type.h"
 
 namespace lynx {
+
+namespace lepus {
+class Context;
+}
+
 namespace tasm {
 
 class SignalContext;
 class Computation;
 
+enum class CheckEqualType : int32_t {
+  kDeepCheck = 0,
+  kStrictCheck,
+  kCustomCheck,
+};
+
 class Signal : public lepus::RefCounted {
  public:
-  Signal(SignalContext* context, const lepus::Value& init_value);
+  Signal(SignalContext* context, lepus::Context* vm_context,
+         const lepus::Value& init_value);
   virtual ~Signal();
 
   SignalContext* signal_context() { return signal_context_; }
@@ -59,10 +71,28 @@ class Signal : public lepus::RefCounted {
 
   virtual void LookUpstream(Computation* ignore) {}
 
+  void SetCheckEqualType(CheckEqualType type) { check_equal_type_ = type; }
+
+  void SetCustomEqualFunction(const lepus::Value& function) {
+    SetCheckEqualType(CheckEqualType::kCustomCheck);
+    check_equal_function_ = function;
+  }
+
+  void MarkSkipCompare(bool skip_compare) { skip_compare_ = skip_compare; }
+
  protected:
+  bool CheckEqual(const lepus::Value& new_value);
+
+  bool skip_compare_{false};
+  CheckEqualType check_equal_type_{CheckEqualType::kDeepCheck};
+
   SignalContext* signal_context_;
+  lepus::Context* vm_context_;
+
   lepus::Value value_;
   std::list<Computation*> computation_list_;
+
+  lepus::Value check_equal_function_;
 };
 
 }  // namespace tasm

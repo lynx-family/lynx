@@ -8,15 +8,20 @@
 #include <tuple>
 
 #include "core/renderer/signal/computation.h"
+#include "core/renderer/signal/signal_context_unittest.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
-namespace testing {
+namespace test {
 
-class ComputationTest : public ::testing::TestWithParam<std::tuple<bool>> {};
+class ComputationTest : public BaseSignalTest {
+ protected:
+  ComputationTest() : BaseSignalTest() {}
+  ~ComputationTest() override {}
+};
 
-}  // namespace testing
+}  // namespace test
 }  // namespace tasm
 }  // namespace lynx
 

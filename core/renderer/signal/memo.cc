@@ -36,12 +36,15 @@ namespace lynx {
 namespace tasm {
 
 Memo::Memo(SignalContext* signal_context, lepus::Context* vm_context,
-           const lepus::Value& closure, const lepus::Value& value)
-    : Signal(signal_context, value),
-      computation_(fml::MakeRefCounted<Computation>(
-          signal_context_, vm_context, closure, value, false, this)) {}
+           const lepus::Value& value)
+    : Signal(signal_context, vm_context, value) {}
 
 Memo::~Memo() {}
+
+void Memo::InitComputation(const lepus::Value& closure) {
+  computation_ = fml::MakeRefCounted<Computation>(signal_context_, vm_context_,
+                                                  closure, value_, false, this);
+}
 
 void Memo::CleanUp() { computation_->CleanUp(); }
 
@@ -53,7 +56,7 @@ void Memo::OnInvoked(const lepus::Value& value) { SetValue(value); }
 
 void Memo::MarkDownStream() {
   for (auto computation : computation_list_) {
-    if (computation->GetState() != ScopeState::kStateNone) {
+    if (computation->GetState() == ScopeState::kStateNone) {
       computation->SetState(ScopeState::kStatePending);
 
       signal_context()->EnqueueComputation(computation);
@@ -64,13 +67,7 @@ void Memo::MarkDownStream() {
 }
 
 void Memo::LookUpstream(Computation* ignore) {
-  if (computation_->GetState() == ScopeState::kStateStale) {
-    if (computation_.get() != ignore) {
-      signal_context()->RunComputation(computation_.get());
-    }
-  } else if (computation_->GetState() == ScopeState::kStatePending) {
-    computation_->LookUpstream(ignore);
-  }
+  computation_->LookUpstream(ignore);
 }
 
 }  // namespace tasm

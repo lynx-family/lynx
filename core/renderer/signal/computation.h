@@ -49,6 +49,8 @@ class Computation : public BaseScope {
 
   void RemoveSignal(Signal* signal);
 
+  Memo* memo() { return memo_; }
+
  private:
   lepus::Value closure_;
   lepus::Value value_;

@@ -9,25 +9,23 @@
 
 #include "core/renderer/signal/lynx_signal.h"
 #include "core/renderer/signal/signal_context.h"
+#include "core/renderer/signal/signal_context_unittest.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace tasm {
-namespace testing {
+namespace test {
 
-class SignalTest : public ::testing::TestWithParam<std::tuple<bool>> {
+class SignalTest : public BaseSignalTest {
  public:
   SignalTest() = default;
   ~SignalTest() = default;
-
-  void SetUp() override;
-  void TearDown() override;
 
  private:
   SignalContext signal_context_;
 };
 
-}  // namespace testing
+}  // namespace test
 }  // namespace tasm
 }  // namespace lynx
 

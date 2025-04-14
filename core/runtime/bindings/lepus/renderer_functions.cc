@@ -5060,7 +5060,15 @@ RENDERER_FUNCTION_CC(FiberCreateSignal) {
   CONVERT_ARG(arg0, 0);  // init value
 
   auto signal = fml::MakeRefCounted<Signal>(
-      GET_TASM_POINTER()->GetSignalContext(), *arg0);
+      GET_TASM_POINTER()->GetSignalContext(), LEPUS_CONTEXT(), *arg0);
+
+  if (argc >= 2) {
+    CONVERT_ARG(arg1, 1);
+    if (auto function = arg1->GetProperty(BASE_STATIC_STRING(runtime::kEquals));
+        function.IsCallable()) {
+      signal->SetCustomEqualFunction(function);
+    }
+  }
 
   RETURN(lepus::Value(signal));
 }
@@ -5071,25 +5079,38 @@ RENDERER_FUNCTION_CC(FiberWriteSignal) {
   CONVERT_ARG(arg0, 0);  // signal or signal array
   CONVERT_ARG(arg1, 1);  // value or value array
 
+  bool skip_compare = false;
+  if (argc >= 3) {
+    CONVERT_ARG(arg2, 2);
+    if (auto skip_compare_value =
+            arg2->GetProperty(BASE_STATIC_STRING(runtime::kSkipCompare));
+        skip_compare_value.IsBool()) {
+      skip_compare = skip_compare_value.Bool();
+    }
+  }
+
   if (!arg0->IsRefCounted() && !arg0->IsArrayOrJSArray()) {
     RenderWarning(
         "FiberWriteSignal failed since arg0 is not signal or signal array.");
     RETURN_UNDEFINED();
   }
 
-  GET_TASM_POINTER()->GetSignalContext()->RunUpdates([arg0, arg1]() {
+  GET_TASM_POINTER()->GetSignalContext()->RunUpdates([arg0, arg1,
+                                                      skip_compare]() {
     if (arg0->IsRefCounted() &&
         arg0->RefCounted()->GetRefType() == lepus::RefType::kSignal) {
       auto signal = fml::static_ref_ptr_cast<Signal>(arg0->RefCounted());
+      signal->MarkSkipCompare(skip_compare);
       signal->SetValue(*arg1);
     } else if (arg0->IsArrayOrJSArray() && arg1->IsArrayOrJSArray()) {
       int32_t index = 0;
 
-      tasm::ForEachLepusValue(*arg0, [&arg1, &index](const auto& key,
-                                                     const auto& value) {
+      tasm::ForEachLepusValue(*arg0, [&arg1, &index, skip_compare](
+                                         const auto& key, const auto& value) {
         if (value.IsRefCounted() &&
             value.RefCounted()->GetRefType() == lepus::RefType::kSignal) {
           auto signal = fml::static_ref_ptr_cast<Signal>(value.RefCounted());
+          signal->MarkSkipCompare(skip_compare);
           signal->SetValue(arg1->GetProperty(index));
         } else {
           RenderWarning(
@@ -5146,7 +5167,17 @@ RENDERER_FUNCTION_CC(FiberCreateMemo) {
   CONVERT_ARG(arg1, 1);  // init value
 
   auto memo = fml::MakeRefCounted<Memo>(GET_TASM_POINTER()->GetSignalContext(),
-                                        LEPUS_CONTEXT(), *arg0, *arg1);
+                                        LEPUS_CONTEXT(), *arg1);
+
+  if (argc >= 3) {
+    CONVERT_ARG(arg2, 2);
+    if (auto function = arg2->GetProperty(BASE_STATIC_STRING(runtime::kEquals));
+        function.IsCallable()) {
+      memo->SetCustomEqualFunction(function);
+    }
+  }
+
+  memo->InitComputation(*arg0);
 
   RETURN(lepus::Value(memo));
 }

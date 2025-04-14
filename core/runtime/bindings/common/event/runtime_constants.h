@@ -43,6 +43,9 @@ static constexpr const char kType[] = "type";
 static constexpr const char kData[] = "data";
 static constexpr const char kOrigin[] = "origin";
 
+static constexpr const char kEquals[] = "equals";
+static constexpr const char kSkipCompare[] = "skipCompare";
+
 static constexpr const char* kReplaceStyleSheetByIdWithBase64 =
     "replaceStyleSheetByIdWithBase64";
 static constexpr const char* kRemoveStyleSheetById = "removeStyleSheetById";

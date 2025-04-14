@@ -37,10 +37,6 @@ SOFTWARE.
 
 namespace lynx {
 
-namespace lepus {
-class Context;
-}
-
 namespace tasm {
 
 class SignalContext;
@@ -49,9 +45,11 @@ class Computation;
 class Memo : public Signal {
  public:
   Memo(SignalContext* signal_context, lepus::Context* vm_context,
-       const lepus::Value& closure, const lepus::Value& value);
+       const lepus::Value& value);
 
   virtual ~Memo();
+
+  void InitComputation(const lepus::Value& closure);
 
   lepus::RefType GetRefType() const override { return lepus::RefType::kMemo; }
 
@@ -65,8 +63,10 @@ class Memo : public Signal {
 
   void LookUpstream(Computation* ignore) override;
 
+  Computation* GetComputation() { return computation_.get(); }
+
  private:
-  fml::RefPtr<Computation> computation_;
+  fml::RefPtr<Computation> computation_{nullptr};
 };
 
 }  // namespace tasm

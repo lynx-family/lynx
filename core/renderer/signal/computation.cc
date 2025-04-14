@@ -57,11 +57,15 @@ Computation::Computation(SignalContext* signal_context_ptr,
     SetScopeType(ScopeType::kPureComputation);
   }
 
+  if (memo_ != nullptr) {
+    SetState(ScopeState::kStateNone);
+  } else {
+    SetState(ScopeState::kStateStale);
+  }
+
   scope->AdoptComputation(fml::RefPtr<Computation>(this));
 
   signal_context()->UpdateComputation(this);
-
-  SetState(ScopeState::kStateNone);
 }
 
 Computation::~Computation() {
@@ -103,7 +107,20 @@ void Computation::LookUpstream(Computation* ignore) {
   }
 
   for (auto source : signal_list_) {
-    source->LookUpstream(ignore);
+    if (source->GetRefType() == lepus::RefType::kMemo) {
+      auto* memo = static_cast<Memo*>(source);
+      auto* computation = memo->GetComputation();
+      if (computation == nullptr) {
+        continue;
+      }
+      if (computation->GetState() == ScopeState::kStateStale) {
+        if (computation != ignore) {
+          signal_context_->RunComputation(computation);
+        }
+      } else {
+        memo->LookUpstream(ignore);
+      }
+    }
   }
 }
 

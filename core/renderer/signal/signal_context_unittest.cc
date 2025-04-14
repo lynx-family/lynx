@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "core/renderer/signal/signal_context_unittest.h"
 
+#include "core/renderer/signal/computation.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/quick_context.h"
@@ -196,6 +197,59 @@ TEST_P(SignalContextTest, CreateAndReadAMemo1) {
 
   lepus::Value value = GetTopLevelVariableByName("value");
   EXPECT_EQ(value.StdString(), "hello lynx");
+}
+
+TEST_P(SignalContextTest, CreateAndReadAMemo2) {
+  if (!enable_ng_) {
+    GTEST_SKIP();
+  }
+
+  std::string js_source = R"(
+    let scope = null;
+    let value0 = "world";
+    let value1 = "world";
+    __CreateScope((s)=>{
+        scope = s;
+        let memo = __CreateMemo(i => `${i} lynx`, "hello");
+        value0 = __ReadSignal(memo);
+  
+        let signal = __CreateSignal("thoughts");
+        const fn = (pre) => {
+            let str = __ReadSignal(signal);
+            value1 = `impure ${str}`
+            return value1;
+        };
+        __CreateComputation(fn, "init", true)
+    });
+  )";
+
+  Compile(js_source);
+  EXPECT_TRUE(Execute());
+
+  lepus::Value value0 = GetTopLevelVariableByName("value0");
+  EXPECT_EQ(value0.StdString(), "hello lynx");
+
+  lepus::Value value1 = GetTopLevelVariableByName("value1");
+  EXPECT_EQ(value1.StdString(), "impure thoughts");
+
+  auto scope_value = GetTopLevelVariableByName("scope");
+  EXPECT_TRUE(scope_value.IsRefCounted());
+  auto ref =
+      fml::static_ref_ptr_cast<lepus::RefCounted>(scope_value.RefCounted());
+  EXPECT_EQ(ref->GetRefType(), lepus::RefType::kScope);
+  auto scope = fml::static_ref_ptr_cast<Scope>(scope_value.RefCounted());
+
+  EXPECT_EQ(scope->owner_, nullptr);
+  EXPECT_EQ(scope->owned_computation_.size(), 2);
+  EXPECT_NE((*scope->owned_computation_.begin())->memo(), nullptr);
+  EXPECT_EQ((*scope->owned_computation_.begin())->GetState(),
+            ScopeState::kStateNone);
+
+  EXPECT_EQ((*(++scope->owned_computation_.begin()))->memo(), nullptr);
+  EXPECT_EQ((*(++scope->owned_computation_.begin()))->GetState(),
+            ScopeState::kStateNone);
+
+  tasm_->Destroy();
 }
 
 TEST_P(SignalContextTest, CreateAEffectWithExplicitDeps0) {

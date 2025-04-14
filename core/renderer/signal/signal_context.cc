@@ -31,6 +31,8 @@ SOFTWARE.
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
+#include "core/base/lynx_trace_categories.h"
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/scope.h"
 
@@ -95,7 +97,16 @@ void SignalContext::RunUpdates(std::function<void()>&& func) {
 }
 
 void SignalContext::CompleteUpdates(bool wait) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "SignalContext::CompleteUpdates");
+
   if (memo_computation_list_ptr_ != nullptr) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, "SignalContext::CompleteUpdates::Updates",
+                [this](lynx::perfetto::EventContext ctx) {
+                  auto event = ctx.event();
+                  auto* tagInfo = event->add_debug_annotations();
+                  tagInfo->set_name("count");
+                  tagInfo->set_int_value(memo_computation_list_ptr_->size());
+                });
     auto u = memo_computation_list_ptr_;
     RunComputation(std::move(u));
     memo_computation_list_ptr_ = nullptr;
@@ -105,6 +116,15 @@ void SignalContext::CompleteUpdates(bool wait) {
     return;
   }
 
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "SignalContext::CompleteUpdates::Effects",
+              [this](lynx::perfetto::EventContext ctx) {
+                auto event = ctx.event();
+                auto* tagInfo = event->add_debug_annotations();
+                tagInfo->set_name("count");
+                tagInfo->set_int_value(pure_computation_list_ptr_ != nullptr
+                                           ? pure_computation_list_ptr_->size()
+                                           : 0);
+              });
   auto e = pure_computation_list_ptr_;
   pure_computation_list_ptr_ = nullptr;
 

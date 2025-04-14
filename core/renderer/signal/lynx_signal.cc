@@ -30,13 +30,19 @@ SOFTWARE.
 #include "core/renderer/signal/lynx_signal.h"
 
 #include "core/renderer/signal/computation.h"
+#include "core/renderer/signal/memo.h"
 #include "core/renderer/signal/signal_context.h"
+#include "core/runtime/vm/lepus/context.h"
 
 namespace lynx {
 namespace tasm {
 
-Signal::Signal(SignalContext* context, const lepus::Value& init_value)
-    : signal_context_(context), value_(init_value), computation_list_() {}
+Signal::Signal(SignalContext* context, lepus::Context* vm_context,
+               const lepus::Value& init_value)
+    : signal_context_(context),
+      vm_context_(vm_context),
+      value_(init_value),
+      computation_list_() {}
 
 Signal::~Signal() {
   for (auto computation : computation_list_) {
@@ -49,15 +55,21 @@ Signal::~Signal() {
 }
 
 void Signal::SetValue(const lepus::Value& value) {
-  if (value_.IsEqual(value)) {
-    return;
-  }
-  value_ = value;
   if (computation_list_.empty()) {
+    value_ = value;
+    MarkSkipCompare(false);
     return;
   }
+
+  if (!skip_compare_ && CheckEqual(value)) {
+    value_ = value;
+    return;
+  }
+
+  value_ = value;
   if (signal_context_ == nullptr) {
     LOGE("Signal trigger computation failed since signal_context_ is nullptr.");
+    MarkSkipCompare(false);
     return;
   }
   signal_context_->RunUpdates([this]() {
@@ -69,8 +81,13 @@ void Signal::SetValue(const lepus::Value& value) {
         }
       }
       computation->SetState(ScopeState::kStateStale);
+      if (computation->memo() != nullptr) {
+        computation->memo()->MarkSkipCompare(skip_compare_);
+      }
     }
   });
+
+  MarkSkipCompare(false);
 }
 
 lepus::Value Signal::GetValue() {
@@ -89,6 +106,20 @@ lepus::Value Signal::GetValue() {
 
 void Signal::CleanComputation(Computation* computation) {
   computation_list_.remove(computation);
+}
+
+bool Signal::CheckEqual(const lepus::Value& new_value) {
+  switch (check_equal_type_) {
+    case CheckEqualType::kDeepCheck:
+      return value_.IsEqual(new_value);
+    case CheckEqualType::kStrictCheck:
+      // TODO(songshourui.null): use strict equal later.
+      return value_.IsEqual(new_value);
+    case CheckEqualType::kCustomCheck:
+      return vm_context_->CallClosure(check_equal_function_, value_, new_value)
+          .Bool();
+  }
+  return false;
 }
 
 }  // namespace tasm
