@@ -321,6 +321,7 @@ LEPUSRuntimeData::~LEPUSRuntimeData() {
   cell->qctx_ = nullptr;
   LEPUS_FreeRuntime(runtime_);
   cell->rt_ = nullptr;
+  cell->DetachEnv();
 }
 
 Context::Context(ContextType type) : type_(type) {}

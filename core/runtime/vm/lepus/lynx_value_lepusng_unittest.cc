@@ -8,6 +8,7 @@
 
 #include "base/include/value/base_string.h"
 #include "core/runtime/vm/lepus/array.h"
+#include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -38,7 +39,14 @@ class LynxValueLepusNGTest : public ::testing::Test {
   }
 
   lynx_value ToLynxValue(const LEPUSValue& val) {
-    return MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+    int64_t val_tag = LEPUS_VALUE_GET_TAG(val);
+    int32_t tag =
+        (static_cast<int32_t>(
+             lynx::lepus::LEPUSValueHelper::LEPUSValueTagToLynxValueType(
+                 val_tag))
+         << 16) |
+        (val_tag & 0xff);
+    return MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val, tag);
   }
 
   LEPUSRuntime* rt_;
@@ -139,10 +147,6 @@ TEST_F(LynxValueLepusNGTest, LynxValueString) {
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_string);
 
-  bool has_str_ref;
-  status = env_->lynx_value_has_string_ref(env_, l_val_str, &has_str_ref);
-  ASSERT_TRUE(status == lynx_api_ok);
-  ASSERT_TRUE(has_str_ref);
   void* str_ref;
   status = env_->lynx_value_get_string_ref(env_, l_val_str, &str_ref);
   ASSERT_TRUE(status == lynx_api_ok);

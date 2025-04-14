@@ -186,10 +186,15 @@ Value::Value(LEPUSContext* ctx, const LEPUSValue& val) {
   }
 
   cell_ = Context::GetContextCellFromCtx(ctx);
+  int64_t val_tag = LEPUS_VALUE_GET_TAG(val);
+  int32_t tag = (static_cast<int32_t>(
+                     LEPUSValueHelper::LEPUSValueTagToLynxValueType(val_tag))
+                 << 16) |
+                (val_tag & 0xff);
   value_ = {
       .val_ptr = reinterpret_cast<lynx_value_ptr>(LEPUS_VALUE_GET_INT64(val)),
       .type = lynx_value_extended,
-      .tag = static_cast<int32_t>(LEPUS_VALUE_GET_TAG(val))};
+      .tag = tag};
   if (cell_->gc_enable_) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(ctx, val);
@@ -207,15 +212,46 @@ Value::Value(LEPUSContext* ctx, LEPUSValue&& val) {
   }
 
   cell_ = Context::GetContextCellFromCtx(ctx);
+  int64_t val_tag = LEPUS_VALUE_GET_TAG(val);
+  int32_t tag = (static_cast<int32_t>(
+                     LEPUSValueHelper::LEPUSValueTagToLynxValueType(val_tag))
+                 << 16) |
+                (val_tag & 0xff);
   value_ = {
       .val_ptr = reinterpret_cast<lynx_value_ptr>(LEPUS_VALUE_GET_INT64(val)),
       .type = lynx_value_extended,
-      .tag = static_cast<int32_t>(LEPUS_VALUE_GET_TAG(val))};
+      .tag = tag};
   if (cell_->gc_enable_) {
     p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
     p_val_->Reset(ctx, val);
   }
   val = LEPUS_UNDEFINED;
+}
+
+Value::Value(lynx_api_env env, const lynx_value& value) : value_(value) {
+  if (value.type == lynx_value_extended && env) {
+    auto* ctx = lynx_value_api_get_context_from_env(env);
+    cell_ = Context::GetContextCellFromCtx(ctx);
+    if (cell_->gc_enable_) {
+      p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
+      p_val_->Reset(ctx, WrapJSValue());
+    } else {
+      LEPUS_DupValue(ctx, WrapJSValue());
+    }
+  } else if (!env) {
+    DupValue();
+  }
+}
+
+Value::Value(lynx_api_env env, lynx_value&& value) : value_(std::move(value)) {
+  if (value.type == lynx_value_extended && env) {
+    auto* ctx = lynx_value_api_get_context_from_env(env);
+    cell_ = Context::GetContextCellFromCtx(ctx);
+    if (cell_->gc_enable_) {
+      p_val_ = (p_val_ == nullptr) ? new GCPersistent() : p_val_;
+      p_val_->Reset(ctx, WrapJSValue());
+    }
+  }
 }
 
 LEPUSValue Value::ToJSValue(LEPUSContext* ctx, bool deep_convert) const {
@@ -408,9 +444,9 @@ const std::string& Value::StdString() const {
                ? base::RefCountedStringImpl::Unsafe::kTrueString().str()
                : base::RefCountedStringImpl::Unsafe::kFalseString().str();
   } else if (IsJSString()) {
-    return LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
-                                                         WrapJSValue())
-        ->str();
+    void* str_ref;
+    cell_->env_->lynx_value_get_string_ref(cell_->env_, value_, &str_ref);
+    return reinterpret_cast<base::RefCountedStringImpl*>(str_ref)->str();
   } else if (IsJSBool()) {
     return LEPUSBool()
                ? base::RefCountedStringImpl::Unsafe::kTrueString().str()
@@ -430,9 +466,10 @@ base::String Value::String() const& {
                : base::String::Unsafe::ConstructWeakRefStringFromRawRef(
                      &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
+    void* str_ref;
+    cell_->env_->lynx_value_get_string_ref(cell_->env_, value_, &str_ref);
     return base::String::Unsafe::ConstructWeakRefStringFromRawRef(
-        LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
-                                                      WrapJSValue()));
+        reinterpret_cast<base::RefCountedStringImpl*>(str_ref));
   } else if (IsJSBool()) {
     return LEPUSBool()
                ? base::String::Unsafe::ConstructWeakRefStringFromRawRef(
@@ -454,9 +491,10 @@ base::String Value::String() && {
                : base::String::Unsafe::ConstructStringFromRawRef(
                      &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
+    void* str_ref;
+    cell_->env_->lynx_value_get_string_ref(cell_->env_, value_, &str_ref);
     return base::String::Unsafe::ConstructStringFromRawRef(
-        LEPUSValueHelper::ToLepusStringRefCountedImpl(cell_->ctx_,
-                                                      WrapJSValue()));
+        reinterpret_cast<base::RefCountedStringImpl*>(str_ref));
   } else if (IsJSBool()) {
     return LEPUSBool()
                ? base::String::Unsafe::ConstructStringFromRawRef(
@@ -642,8 +680,10 @@ int Value::GetLength() const {
   if (value_.val_ptr == nullptr) {
     return 0;
   }
-  if (IsJSValue()) {
-    return LEPUS_GetLength(cell_->ctx_, WrapJSValue());
+  if (IsExtendedValue()) {
+    uint32_t len;
+    cell_->env_->lynx_value_get_length(cell_->env_, value_, &len);
+    return len;
   }
 
   switch (value_.type) {
@@ -668,7 +708,8 @@ bool Value::IsEqual(const Value& value) const { return (*this == value); }
 
 bool Value::SetProperty(uint32_t idx, const Value& val) {
   if (IsJSArray()) {
-    return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), idx, val);
+    return cell_->env_->lynx_value_set_element(cell_->env_, value_, idx,
+                                               val.value_) == lynx_api_ok;
   }
 
   if (IsArray() && value_.val_ptr != nullptr) {
@@ -679,7 +720,8 @@ bool Value::SetProperty(uint32_t idx, const Value& val) {
 
 bool Value::SetProperty(uint32_t idx, Value&& val) {
   if (IsJSArray()) {
-    return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), idx, val);
+    return cell_->env_->lynx_value_set_element(cell_->env_, value_, idx,
+                                               val.value_) == lynx_api_ok;
   }
 
   if (IsArray() && value_.val_ptr != nullptr) {
@@ -691,7 +733,8 @@ bool Value::SetProperty(uint32_t idx, Value&& val) {
 
 bool Value::SetProperty(const base::String& key, const Value& val) {
   if (IsJSTable()) {
-    return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
+    return cell_->env_->lynx_value_set_named_property(
+               cell_->env_, value_, key.c_str(), val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -702,7 +745,8 @@ bool Value::SetProperty(const base::String& key, const Value& val) {
 
 bool Value::SetProperty(base::String&& key, const Value& val) {
   if (IsJSTable()) {
-    return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
+    return cell_->env_->lynx_value_set_named_property(
+               cell_->env_, value_, key.c_str(), val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -714,7 +758,8 @@ bool Value::SetProperty(base::String&& key, const Value& val) {
 
 bool Value::SetProperty(base::String&& key, Value&& val) {
   if (IsJSTable()) {
-    return LEPUSValueHelper::SetProperty(cell_->ctx_, WrapJSValue(), key, val);
+    return cell_->env_->lynx_value_set_named_property(
+               cell_->env_, value_, key.c_str(), val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -726,9 +771,9 @@ bool Value::SetProperty(base::String&& key, Value&& val) {
 
 Value Value::GetProperty(uint32_t idx) const {
   if (IsJSArray()) {
-    LEPUSContext* ctx = cell_->ctx_;
-    return lepus::Value(
-        ctx, LEPUSValueHelper::GetPropertyJsValue(ctx, WrapJSValue(), idx));
+    lynx_value result;
+    cell_->env_->lynx_value_get_element(cell_->env_, value_, idx, &result);
+    return Value(cell_->env_, std::move(result));
   }
 
   if (IsArray()) {
@@ -754,9 +799,10 @@ Value Value::GetProperty(uint32_t idx) const {
 
 Value Value::GetProperty(const base::String& key) const {
   if (IsJSTable()) {
-    LEPUSContext* ctx = cell_->ctx_;
-    return lepus::Value(ctx, LEPUSValueHelper::GetPropertyJsValue(
-                                 ctx, WrapJSValue(), key.c_str()));
+    lynx_value result;
+    cell_->env_->lynx_value_get_named_property(cell_->env_, value_, key.c_str(),
+                                               &result);
+    return Value(cell_->env_, std::move(result));
   }
   if (IsTable() && value_.val_ptr != nullptr) {
     return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->GetValue(key);
@@ -766,7 +812,10 @@ Value Value::GetProperty(const base::String& key) const {
 
 bool Value::Contains(const base::String& key) const {
   if (IsJSTable()) {
-    return LEPUSValueHelper::HasProperty(cell_->ctx_, WrapJSValue(), key);
+    bool ret;
+    cell_->env_->lynx_value_has_named_property(cell_->env_, value_, key.c_str(),
+                                               &ret);
+    return ret;
   }
   if (IsTable() && value_.val_ptr != nullptr) {
     return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)->Contains(key);
@@ -1372,17 +1421,17 @@ int64_t Value::Int64() const {
 }
 
 bool Value::IsJSArray() const {
-  if (unlikely(!cell_)) return false;
-  LEPUSValue temp_val = WrapJSValue();
-  return LEPUS_IsArray(cell_->ctx_, temp_val) ||
-         (LEPUS_GetLepusRefTag(temp_val) == Value_Array);
+  if (unlikely(!IsExtendedValue() || !value_.val_ptr)) return false;
+  bool ret;
+  cell_->env_->lynx_value_is_array(cell_->env_, value_, &ret);
+  return ret;
 }
 
 bool Value::IsJSTable() const {
-  if (unlikely(!cell_)) return false;
-  LEPUSValue temp_val = WrapJSValue();
-  return LEPUS_IsObject(temp_val) ||
-         (LEPUS_GetLepusRefTag(temp_val) == Value_Table);
+  if (unlikely(!IsExtendedValue() || !value_.val_ptr)) return false;
+  bool ret;
+  cell_->env_->lynx_value_is_map(cell_->env_, value_, &ret);
+  return ret;
 }
 
 bool Value::IsJSInteger() const {
@@ -1405,9 +1454,10 @@ bool Value::IsJSFunction() const {
 }
 
 int Value::GetJSLength() const {
-  if (!IsJSValue()) return 0;
-  LEPUSValue temp_val = WrapJSValue();
-  return LEPUS_GetLength(cell_->ctx_, temp_val);
+  if (!IsExtendedValue()) return 0;
+  uint32_t len;
+  cell_->env_->lynx_value_get_length(cell_->env_, value_, &len);
+  return (int)len;
 }
 
 bool Value::IsJSFalse() const {
@@ -1438,7 +1488,7 @@ int64_t Value::JSInteger() const {
 }
 
 std::string Value::ToString() const {
-  if (!IsJSValue()) {
+  if (!IsExtendedValue()) {
     // judge whether it is a lepus string type
     if (IsString()) {
       return StdString();
@@ -1446,7 +1496,12 @@ std::string Value::ToString() const {
     // it is not string then return ""
     return "";
   }
-  return LEPUSValueHelper::ToStdString(cell_->ctx_, WrapJSValue());
+  if (cell_->env_ && value_.val_ptr) {
+    std::string str;
+    cell_->env_->lynx_value_to_string_utf8(cell_->env_, value_, &str);
+    return str;
+  }
+  return "";
 }
 
 void Value::IteratorJSValue(const LepusValueIterator& callback) const {
@@ -1462,21 +1517,14 @@ void Value::IteratorJSValue(const LepusValueIterator& callback) const {
   }
 }
 
-bool Value::IsJSValue() const {
-#if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
-  return value_.type == lynx_value_extended;
-#else
-  return cell_ && value_.type == lynx_value_extended;
-#endif
-}
+bool Value::IsJSValue() const { return IsExtendedValue(); }
 
 double Value::LEPUSNumber() const {
   DCHECK(IsJSNumber());
-  if (unlikely(!cell_)) return 0;
-  LEPUSValue temp_val = WrapJSValue();
-  double val;
-  LEPUS_ToFloat64(cell_->ctx_, &val, temp_val);
-  return val;
+  if (unlikely(!IsExtendedValue())) return 0;
+  double ret;
+  cell_->env_->lynx_value_get_number(cell_->env_, value_, &ret);
+  return ret;
 }
 
 lynx_value_type Value::ToLynxValueType(ValueType type) {
