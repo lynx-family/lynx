@@ -35,7 +35,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSArray *)setTextSelection:(CGFloat)startX
                        startY:(CGFloat)startY
                          endX:(CGFloat)endX
-                         endY:(CGFloat)endY;
+                         endY:(CGFloat)endY
+              showStartHandle:(BOOL)showStartHandle
+                showEndHandle:(BOOL)showEndHandle;
 - (NSArray *)getHandlesInfo;
 
 @end

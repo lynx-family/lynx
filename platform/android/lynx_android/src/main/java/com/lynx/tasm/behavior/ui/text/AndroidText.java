@@ -96,6 +96,8 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private boolean mIsAdjustEndPos = false;
   private CheckForLongPress mCheckForLongPress = null;
   private boolean mShouldResponseMove = false;
+  private boolean mIsShowStartHandle = true;
+  private boolean mIsShowEndHandle = true;
 
   // save weak reference of selecting AndroidText to ensure that only one AndroidText is selected at
   // a time.
@@ -166,6 +168,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   private void resetSelectionState() {
     mSelectStart = mSelectEnd = mLastSelectStart = mLastSelectEnd = -1;
     mIsInSelection = mIsAdjustStartPos = mIsAdjustEndPos = mShouldResponseMove = false;
+    mIsShowStartHandle = mIsShowEndHandle = true;
     mSelectStartPos.set(-1.f, -1.f);
     mSelectEndPos.set(-1.f, -1.f);
   }
@@ -373,9 +376,12 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
    * @param startY The y-coordinate of the start of the selected text relative to the text component
    * @param endX The x-coordinate of the end of the selected text relative to the text component
    * @param endY The y-coordinate of the end of the selected text relative to the text component
+   * @param showStartHandle Whether to show start handle
+   * @param showEndHandle Whether to show end handle
    * @return The bounding boxes of each line
    */
-  public ArrayList<RectF> setTextSelection(float startX, float startY, float endX, float endY) {
+  public ArrayList<RectF> setTextSelection(float startX, float startY, float endX, float endY,
+      boolean showStartHandle, boolean showEndHandle) {
     invalidate();
     if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
       clearSelection();
@@ -396,6 +402,8 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
       }
     }
 
+    mIsShowStartHandle = showStartHandle;
+    mIsShowEndHandle = showEndHandle;
     mIsInSelection = true;
 
     updateSelectionRange(startIndex, endIndex);
@@ -438,8 +446,12 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
   }
 
   private void drawSelectHandle(Canvas canvas) {
-    drawSelectStartCursor(canvas);
-    drawSelectEndCursor(canvas);
+    if (mIsShowStartHandle) {
+      drawSelectStartCursor(canvas);
+    }
+    if (mIsShowEndHandle) {
+      drawSelectEndCursor(canvas);
+    }
   }
 
   private void drawSelectStartCursor(Canvas canvas) {
@@ -718,6 +730,9 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
    * Clear other AndroidText's selection if this is selected.
    */
   private void clearOtherSelection() {
+    if (mEnableCustomTextSelection) {
+      return;
+    }
     if (sWeakSelectingAndroidText != null) {
       AndroidText selectingText = sWeakSelectingAndroidText.get();
       if (selectingText != null && selectingText != this) {
@@ -864,6 +879,7 @@ public class AndroidText extends AndroidView implements ActionMode.Callback {
     updateSelectionRange(mSelectStart, mSelectEnd);
     hideToolbar();
     mShouldResponseMove = false;
+    mIsShowStartHandle = mIsShowEndHandle = true;
     if (mHighlightPath != null) {
       mHighlightPath.reset();
     }

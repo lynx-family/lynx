@@ -69,6 +69,8 @@ static const float kResponseTouchRadius = 20.f;
 @property(nonatomic, strong) UIPanGestureRecognizer *hoverGesture;
 @property(nonatomic, strong) UITapGestureRecognizer *tapGesture;
 @property(nonatomic, assign) BOOL isSelectionForward;
+@property(nonatomic, assign) BOOL isShowStartHandle;
+@property(nonatomic, assign) BOOL isShowEndHandle;
 
 @end
 
@@ -99,6 +101,7 @@ static const float kResponseTouchRadius = 20.f;
     self.selectionStart = self.selectionEnd = self.lastSelectionStart = self.lastSelectionEnd = -1;
     self.trackingLongPress = self.isInSelection = self.menuShowing = self.isAdjustStartPoint =
         self.isAdjustEndPoint = NO;
+    self.isShowStartHandle = self.isShowEndHandle = true;
     self.selectColor = [UIColor.systemBlueColor colorWithAlphaComponent:0.5f];
     self.handleColor = UIColor.systemBlueColor;
     self.handleSize = kDotSize;
@@ -187,6 +190,7 @@ static const float kResponseTouchRadius = 20.f;
   self.selectionStart = self.selectionEnd = self.lastSelectionStart = self.lastSelectionEnd = -1;
   self.trackingLongPress = self.isInSelection = self.menuShowing = self.isAdjustStartPoint =
       self.isAdjustEndPoint = NO;
+  self.isShowStartHandle = self.isShowEndHandle = YES;
 }
 
 - (void)layoutSublayersOfLayer:(CALayer *)layer {
@@ -264,7 +268,9 @@ static const float kResponseTouchRadius = 20.f;
 - (NSArray *)setTextSelection:(CGFloat)startX
                        startY:(CGFloat)startY
                          endX:(CGFloat)endX
-                         endY:(CGFloat)endY {
+                         endY:(CGFloat)endY
+              showStartHandle:(BOOL)showStartHandle
+                showEndHandle:(BOOL)showEndHandle {
   NSMutableArray *ret = [NSMutableArray array];
   if (startX < 0 || startY < 0 || endX < 0 || endY < 0) {
     [self clearSelectionHighlight];
@@ -285,6 +291,8 @@ static const float kResponseTouchRadius = 20.f;
     }
   }
 
+  self.isShowStartHandle = showStartHandle;
+  self.isShowEndHandle = showEndHandle;
   self.isInSelection = YES;
   [self updateSelectionRange:startIndex widthSelectEnd:endIndex];
   [self updateSelectStartEnd];
@@ -393,36 +401,40 @@ static const float kResponseTouchRadius = 20.f;
                                 }];
 
   // start cursor
-  CGRect startFrame = [self.textRenderer.layoutManager
-      boundingRectForGlyphRange:NSMakeRange(start, 0)
-                inTextContainer:self.textRenderer.layoutManager.textContainers.firstObject];
-  self.startDot.frame =
-      CGRectMake(self.handleStartPoint.x - self.handleSize / 2,
-                 self.handleStartPoint.y - self.handleSize / 2, self.handleSize, self.handleSize);
-  CALayer *startCursor = [LynxLayer new];
-  startCursor.frame = CGRectMake(self.handleStartPoint.x - kHandleWidth / 2,
-                                 self.handleStartPoint.y, kHandleWidth, startFrame.size.height);
-  startCursor.backgroundColor = self.handleColor.CGColor;
-  self.startDot.backgroundColor = self.handleColor.CGColor;
-  [self.selectionLayer addSublayer:self.startDot];
-  [self.selectionLayer addSublayer:startCursor];
+  if (self.isShowStartHandle) {
+    CGRect startFrame = [self.textRenderer.layoutManager
+        boundingRectForGlyphRange:NSMakeRange(start, 0)
+                  inTextContainer:self.textRenderer.layoutManager.textContainers.firstObject];
+    self.startDot.frame =
+        CGRectMake(self.handleStartPoint.x - self.handleSize / 2,
+                   self.handleStartPoint.y - self.handleSize / 2, self.handleSize, self.handleSize);
+    CALayer *startCursor = [LynxLayer new];
+    startCursor.frame = CGRectMake(self.handleStartPoint.x - kHandleWidth / 2,
+                                   self.handleStartPoint.y, kHandleWidth, startFrame.size.height);
+    startCursor.backgroundColor = self.handleColor.CGColor;
+    self.startDot.backgroundColor = self.handleColor.CGColor;
+    [self.selectionLayer addSublayer:self.startDot];
+    [self.selectionLayer addSublayer:startCursor];
+  }
 
   // end cursor
-  CGRect endFrame = [self.textRenderer.layoutManager
-      boundingRectForGlyphRange:NSMakeRange(start + length - 1, 1)
-                inTextContainer:self.textRenderer.layoutManager.textContainers.firstObject];
-  self.endDot.frame =
-      CGRectMake(self.handleEndPoint.x - self.handleSize / 2,
-                 self.handleEndPoint.y - self.handleSize / 2, self.handleSize, self.handleSize);
+  if (self.isShowEndHandle) {
+    CGRect endFrame = [self.textRenderer.layoutManager
+        boundingRectForGlyphRange:NSMakeRange(start + length - 1, 1)
+                  inTextContainer:self.textRenderer.layoutManager.textContainers.firstObject];
+    self.endDot.frame =
+        CGRectMake(self.handleEndPoint.x - self.handleSize / 2,
+                   self.handleEndPoint.y - self.handleSize / 2, self.handleSize, self.handleSize);
 
-  CALayer *endCursor = [LynxLayer new];
-  endCursor.frame =
-      CGRectMake(self.handleEndPoint.x - kHandleWidth / 2,
-                 self.handleEndPoint.y - endFrame.size.height, kHandleWidth, endFrame.size.height);
-  endCursor.backgroundColor = self.handleColor.CGColor;
-  self.endDot.backgroundColor = self.handleColor.CGColor;
-  [self.selectionLayer addSublayer:self.endDot];
-  [self.selectionLayer addSublayer:endCursor];
+    CALayer *endCursor = [LynxLayer new];
+    endCursor.frame = CGRectMake(self.handleEndPoint.x - kHandleWidth / 2,
+                                 self.handleEndPoint.y - endFrame.size.height, kHandleWidth,
+                                 endFrame.size.height);
+    endCursor.backgroundColor = self.handleColor.CGColor;
+    self.endDot.backgroundColor = self.handleColor.CGColor;
+    [self.selectionLayer addSublayer:self.endDot];
+    [self.selectionLayer addSublayer:endCursor];
+  }
 }
 
 - (void)clearSelectionHighlight {
@@ -439,6 +451,7 @@ static const float kResponseTouchRadius = 20.f;
   self.isAdjustEndPoint = NO;
   self.isAdjustStartPoint = NO;
   self.trackingLongPress = NO;
+  self.isShowStartHandle = self.isShowEndHandle = YES;
 
   [self hideMenu];
 
@@ -446,6 +459,9 @@ static const float kResponseTouchRadius = 20.f;
 }
 
 - (void)clearOtherSelection {
+  if (self.enableCustomTextSelection) {
+    return;
+  }
   if (sWeakSelectingTextView && sWeakSelectingTextView != self) {
     [sWeakSelectingTextView clearSelectionHighlight];
     [sWeakSelectingTextView.layer setNeedsLayout];
@@ -483,9 +499,6 @@ static const float kResponseTouchRadius = 20.f;
 }
 
 - (void)updateSelectionRange:(NSInteger)selectStart widthSelectEnd:(NSInteger)selectEnd {
-  if (self.selectionStart == selectStart && self.selectionEnd == selectEnd) {
-    return;
-  }
   if (!self.selectionLayer) {
     [self initSelectionLayers];
   }

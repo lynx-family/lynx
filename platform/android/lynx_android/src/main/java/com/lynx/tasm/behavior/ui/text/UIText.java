@@ -260,6 +260,8 @@ public class UIText
    * startY: The y-coordinate of the start of the selected text relative to the text component
    * endX: The x-coordinate of the end of the selected text relative to the text component
    * endY: The y-coordinate of the end of the selected text relative to the text component
+   * showStartHandle: Whether to show start handle
+   * showEndHandle: Whether to show end handle
    * @param callback
    * return value
    * boundingRect: The bounding box of the selected text
@@ -275,9 +277,12 @@ public class UIText
       double startY = params.getDouble("startY") * density - getPaddingTop() - getBorderTopWidth();
       double endX = params.getDouble("endX") * density - getPaddingLeft() - getBorderLeftWidth();
       double endY = params.getDouble("endY") * density - getPaddingTop() - getBorderTopWidth();
+      boolean showStartHandle =
+          !params.hasKey("showStartHandle") || params.getBoolean("showStartHandle");
+      boolean showEndHandle = !params.hasKey("showEndHandle") || params.getBoolean("showEndHandle");
       if (mView != null) {
-        ArrayList<RectF> boxes =
-            mView.setTextSelection((float) startX, (float) startY, (float) endX, (float) endY);
+        ArrayList<RectF> boxes = mView.setTextSelection((float) startX, (float) startY,
+            (float) endX, (float) endY, showStartHandle, showEndHandle);
         if (boxes.size() == 0) {
           callback.invoke(LynxUIMethodConstants.SUCCESS);
         } else {
