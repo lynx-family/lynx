@@ -17,6 +17,10 @@ import com.lynx.tasm.base.LLog;
 public class MatrixMathUtils {
   private static final double EPSILON = .00001d;
 
+  private static double[][] reusableMatrix = new double[4][4];
+  private static double[] reusablePerspectiveMatrix = new double[16];
+  private static double[][] reusableRow = new double[3][3];
+
   public static class MatrixDecompositionContext {
     public double[] perspective = new double[4];
     public double[] scale = new double[3];
@@ -239,8 +243,8 @@ public class MatrixMathUtils {
     if (isZero(transformMatrix[15])) {
       return;
     }
-    double[][] matrix = new double[4][4];
-    double[] perspectiveMatrix = new double[16];
+    double[][] matrix = reusableMatrix;
+    double[] perspectiveMatrix = reusablePerspectiveMatrix;
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 4; j++) {
         double value = transformMatrix[(i * 4) + j] / transformMatrix[15];
@@ -279,7 +283,7 @@ public class MatrixMathUtils {
 
     // Now get scale and shear.
     // 'row' is a 3 element array of 3 component vectors
-    double[][] row = new double[3][3];
+    double[][] row = reusableRow;
     for (int i = 0; i < 3; i++) {
       row[i][0] = matrix[i][0];
       row[i][1] = matrix[i][1];
