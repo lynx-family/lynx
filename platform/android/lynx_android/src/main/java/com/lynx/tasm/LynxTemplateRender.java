@@ -684,23 +684,23 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     lynxUIRenderer.onCreateTemplateRenderer(mLynxContext, mTimingCollector, mPageLoadListener,
         mThreadStrategyForRendering, mLynxViewBuilder.behaviorRegistry, layoutTick);
 
+    boolean enableVSyncAligned = mLynxViewBuilder.enableVSyncAlignedMessageLoop
+        || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     mNativePtr = nativeCreate(lynxUIRenderer.getNativeTimingCollectorPtr(), runtimeWrapperPtr,
         mNativeFacade, mNativeFacadeReporter, mLoader, mThreadStrategyForRendering.id(),
         mLynxViewBuilder.enableLayoutSafepoint, mLynxViewBuilder.enableLayoutOnly,
         screenMetrics.widthPixels, screenMetrics.heightPixels, screenMetrics.density,
         LynxEnv.inst().getLocale(), mLynxViewBuilder.enableJSRuntime(),
         mLynxViewBuilder.enableMultiAsyncThread, mLynxViewBuilder.enablePreUpdateData,
-        mAutoConcurrency,
-        mLynxViewBuilder.enableVSyncAlignedMessageLoop
-            || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal(),
-        mLynxViewBuilder.enableAsyncHydration, mGroup != null && mGroup.enableJSGroupThread(),
-        getJSGroupThreadNameIfNeed(), new TasmPlatformInvoker(mNativeFacade), whiteBoardPtr,
-        lynxUIRenderer.getUIDelegatePtr(), lynxUIRenderer.useInvokeUIMethod(),
-        mForceLayoutOnBackgroundThread);
+        mAutoConcurrency, enableVSyncAligned, mLynxViewBuilder.enableAsyncHydration,
+        mGroup != null && mGroup.enableJSGroupThread(), getJSGroupThreadNameIfNeed(),
+        new TasmPlatformInvoker(mNativeFacade), whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
+        lynxUIRenderer.useInvokeUIMethod(), mForceLayoutOnBackgroundThread);
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
     mNativeLifecycle = nativeLifecycleCreate();
     mCleanupReference = new CleanupReference(this, new CleanupOnUiThread(mNativeLifecycle), true);
     mLynxContext.setListNodeInfoFetcher(new ListNodeInfoFetcher(this));
+    mLynxContext.setEnableVSyncAligned(enableVSyncAligned);
 
     if (mDevTool != null) {
       mDevTool.onTemplateAssemblerCreated(mNativePtr);
