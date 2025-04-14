@@ -2953,35 +2953,29 @@ RENDERER_FUNCTION_CC(FiberReplaceElements) {
     RETURN_UNDEFINED();
   }
 
+  std::function<void(std::deque<fml::RefPtr<FiberElement>>&,
+                     const lepus::Value&)>
+      convert_function = [&](std::deque<fml::RefPtr<FiberElement>>& elements,
+                             const lepus::Value& input) {
+        if (input.IsRefCounted()) {
+          elements.emplace_back(
+              fml::static_ref_ptr_cast<FiberElement>(input.RefCounted()));
+        } else if (input.IsArrayOrJSArray()) {
+          tasm::ForEachLepusValue(
+              input, [&elements, &convert_function](const auto& index,
+                                                    const auto& value) {
+                convert_function(elements, value);
+              });
+        }
+      };
+
   // Get inserted elements.
   std::deque<fml::RefPtr<FiberElement>> inserted_elements{};
-  if (arg1->IsRefCounted()) {
-    inserted_elements.emplace_back(
-        fml::static_ref_ptr_cast<FiberElement>(arg1->RefCounted()));
-  } else if (arg1->IsArrayOrJSArray()) {
-    tasm::ForEachLepusValue(
-        *arg1, [&inserted_elements](const auto& index, const auto& value) {
-          if (value.IsRefCounted()) {
-            inserted_elements.emplace_back(
-                fml::static_ref_ptr_cast<FiberElement>(value.RefCounted()));
-          }
-        });
-  }
+  convert_function(inserted_elements, *arg1);
 
   // Get removed elements.
   std::deque<fml::RefPtr<FiberElement>> removed_elements{};
-  if (arg2->IsRefCounted()) {
-    removed_elements.emplace_back(
-        fml::static_ref_ptr_cast<FiberElement>(arg2->RefCounted()));
-  } else if (arg2->IsArrayOrJSArray()) {
-    tasm::ForEachLepusValue(*arg2, [&removed_elements](const auto& index,
-                                                       const auto& value) {
-      if (value.IsRefCounted()) {
-        removed_elements.emplace_back(
-            fml::static_ref_ptr_cast<FiberElement>(value.RefCounted()).get());
-      }
-    });
-  }
+  convert_function(removed_elements, *arg2);
 
   // Perform a simple diff on the inserted_elements and removed_elements,
   // removing each element one by one until either inserted_elements
