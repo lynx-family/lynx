@@ -254,7 +254,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
     const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
     _js_proxy = lynx::shell::JSProxyDarwin::Create(
-        runtime_actor, nil, runtime_actor->Impl()->GetRuntimeId(), group_thread_name, true);
+        runtime_actor, self, runtime_actor->Impl()->GetRuntimeId(), group_thread_name, true);
 
     if (_options.presetData) {
       lynx::lepus::Value presetData = *LynxGetLepusValueFromTemplateData(_options.presetData);
@@ -392,6 +392,10 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
        delegate = _runtime_standalone_bundle.white_board_delegate_](auto& runtime) mutable {
         delegate->UnsubscribeClientSessionStorage(std::move(key), callbackId);
       });
+}
+
+- (void)addRuntimeLifecycleListener:(nonnull id<LynxRuntimeLifecycleListener>)listener {
+  _js_proxy->AddLifecycleListener(listener);
 }
 
 - (void)dealloc {

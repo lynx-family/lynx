@@ -64,6 +64,7 @@ inputs:
   - java: com/lynx/tasm/behavior/PaintingContext.java
   - java: com/lynx/tasm/featurecount/LynxFeatureCounter.java
   - java: com/lynx/tasm/LynxBackgroundRuntime.java
+  - java: com/lynx/jsbridge/RuntimeLifecycleListenerDelegate.java
 special_cases:
   - header: base/include/fml/platform/android/message_loop_android.h
     method: lynx::fml::MessageLoopAndroid::Register(env);

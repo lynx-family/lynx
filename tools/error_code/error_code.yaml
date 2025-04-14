@@ -122,6 +122,15 @@ sections:
             level: warn
             description: 'Calling JS function too frequently. This may cause OOM issues.'
             fix-suggestion: 'Please throttle related calls.'
+      - name: LifecycleListenerError
+        mid-code: 3
+        description: 'Error occurred while calling RuntimeLifecycleListener.'
+        codes:
+          - name: Exception
+            low-code: 1
+            level: error
+            description: 'Calling RuntimeLifecycleListener has error.'
+            fix-suggestion: 'Please see error info.'
   - name: Resource
     description: 'Resource related errors'
     high-code: 3

@@ -16,6 +16,7 @@ public_shared_sources = [
   "LynxImageLoader.h",
   "LynxImageProcessor.h",
   "LynxNinePatchImageProcessor.h",
+  "LynxRuntimeLifecycleListener.h",
   "LynxUIFilterImage.h",
   "LynxUIImage.h",
   "LynxUIInlineImage.h",

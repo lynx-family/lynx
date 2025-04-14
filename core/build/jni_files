@@ -54,3 +54,4 @@ com/lynx/react/bridge/mapbuffer/ReadableCompactArrayBuffer.java
 com/lynx/tasm/behavior/PaintingContext.java
 com/lynx/tasm/featurecount/LynxFeatureCounter.java
 com/lynx/tasm/LynxBackgroundRuntime.java
+com/lynx/jsbridge/RuntimeLifecycleListenerDelegate.java

@@ -86,6 +86,8 @@ if (is_android) {
     "android/native_facade_reporter_android.h",
     "android/platform_call_back_android.cc",
     "android/platform_call_back_android.h",
+    "android/runtime_lifecycle_listener_delegate_android.cc",
+    "android/runtime_lifecycle_listener_delegate_android.h",
     "android/tasm_platform_invoker_android.cc",
     "android/tasm_platform_invoker_android.h",
   ]
@@ -103,6 +105,8 @@ if (is_android) {
     "ios/native_facade_darwin.mm",
     "ios/native_facade_reporter_darwin.h",
     "ios/native_facade_reporter_darwin.mm",
+    "ios/runtime_lifecycle_listener_delegate_darwin.h",
+    "ios/runtime_lifecycle_listener_delegate_darwin.mm",
     "ios/tasm_platform_invoker_darwin.h",
     "ios/tasm_platform_invoker_darwin.mm",
   ]

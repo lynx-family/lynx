@@ -20,8 +20,6 @@ class LynxExtensionDelegate {
  public:
   virtual ~LynxExtensionDelegate() = default;
   virtual std::unique_ptr<piper::NativeModuleFactory> CreateModuleFactory() = 0;
-  virtual std::shared_ptr<lynx::runtime::IRuntimeLifecycleObserver>
-  GetRuntimeLifecycleObserver() = 0;
   virtual void SetRuntimeTaskRunner(
       fml::RefPtr<fml::TaskRunner> task_runner) = 0;
 };

@@ -19,19 +19,14 @@ import androidx.annotation.RestrictTo;
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxExtensionModule;
+import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableMapKeySetIterator;
-import com.lynx.tasm.EventEmitter;
-import com.lynx.tasm.ListNodeInfoFetcher;
-import com.lynx.tasm.LynxError;
-import com.lynx.tasm.LynxSubErrorCode;
-import com.lynx.tasm.LynxView;
-import com.lynx.tasm.LynxViewClient;
-import com.lynx.tasm.PageConfig;
+import com.lynx.tasm.*;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -193,6 +188,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private Map<String, LynxExtensionModule> mExtensionModules = new HashMap<>();
   private LynxImageFetcher mImageFetcher;
+  private WeakReference<LynxTemplateRender> mWeakTemplateRender;
 
   private boolean mEnableVSyncAligned;
 
@@ -392,6 +388,11 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     }
   }
 
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  public void setTemplateRender(@NonNull LynxTemplateRender templateRender) {
+    this.mWeakTemplateRender = new WeakReference<>(templateRender);
+  }
+
   /**
    * Provide unique LynxView sessionID like "$currentTimestamp-$lynxViewIdentify" format
    * @return LynxSessionID generated in LynxTemplateRender
@@ -411,6 +412,22 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
       return null;
     }
     return mLynxView.get();
+  }
+
+  /**
+   * use {@link #getLynxView()} and {@link LynxView#addRuntimeLifecycleListener} instead
+   * @param listener
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  @Deprecated
+  public void addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener) {
+    if (null == mWeakTemplateRender) {
+      return;
+    }
+    LynxTemplateRender render = mWeakTemplateRender.get();
+    if (null != render) {
+      render.addRuntimeLifecycleListener(listener);
+    }
   }
 
   /**

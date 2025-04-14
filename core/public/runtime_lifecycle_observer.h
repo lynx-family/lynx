@@ -21,14 +21,13 @@ namespace runtime {
 
 // Runtime lifecycle observer used to listen the events of lynx runtime.
 // Triggered on runtime thread
-class BASE_EXPORT IRuntimeLifecycleObserver {
+class BASE_EXPORT RuntimeLifecycleObserver {
  public:
-  IRuntimeLifecycleObserver() = default;
-  virtual ~IRuntimeLifecycleObserver() = default;
+  RuntimeLifecycleObserver() = default;
+  virtual ~RuntimeLifecycleObserver() = default;
 
   virtual void OnRuntimeCreate(std::shared_ptr<IVSyncObserver> observer) = 0;
   virtual void OnRuntimeInit(int64_t runtime_id) = 0;
-  virtual void OnRuntimeDestroy() = 0;
   virtual void OnAppEnterForeground() = 0;
   virtual void OnAppEnterBackground() = 0;
   virtual void OnRuntimeAttach(Napi::Env env) = 0;

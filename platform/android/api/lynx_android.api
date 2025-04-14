@@ -2587,7 +2587,7 @@ public class com::lynx::jsbridge::JSModule :  {
 }
 
 public class com::lynx::tasm::core::JSProxy :  {
-  public com.lynx.tasm.core.JSProxy.JSProxy(long nativeCreator, WeakReference< LynxContext > context, String jsGroupThreadName);
+  public com.lynx.tasm.core.JSProxy.JSProxy(long nativeCreator, WeakReference< LynxContext > context, String jsGroupThreadName, List< RuntimeLifecycleListener > listeners);
   public com.lynx.tasm.core.JSProxy.JSProxy(LynxBackgroundRuntime runtime, String jsGroupThreadName);
   public JSModule com.lynx.tasm.core.JSProxy.getJSModule(String module);
   public long com.lynx.tasm.core.JSProxy.getRuntimeId();
@@ -2598,6 +2598,7 @@ public class com::lynx::tasm::core::JSProxy :  {
   public void com.lynx.tasm.core.JSProxy.evaluateScript(String url, byte[] data, int callbackId);
   public void com.lynx.tasm.core.JSProxy.rejectDynamicComponentLoad(String url, int callbackId, int errCode, String errMsg);
   public void com.lynx.tasm.core.JSProxy.runOnJSThread(@NonNull Runnable runnable);
+  public void com.lynx.tasm.core.JSProxy.addLifecycleListener(@NonNull RuntimeLifecycleListener listener);
 }
 
 public class com::lynx::tasm::behavior::KeyboardEvent :  {
@@ -3160,6 +3161,7 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public LynxBackgroundRuntimeOptions com.lynx.tasm.LynxBackgroundRuntime.getLynxRuntimeOptions();
   public LynxDevtool com.lynx.tasm.LynxBackgroundRuntime.getDevtool();
   public long com.lynx.tasm.LynxBackgroundRuntime.getNativePtr();
+  public void com.lynx.tasm.LynxBackgroundRuntime.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
 }
 
 public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
@@ -3676,8 +3678,10 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setLynxViewClient(LynxViewClient lynxViewClient);
   public LynxViewClient com.lynx.tasm.behavior.LynxContext.getLynxViewClient();
   public void com.lynx.tasm.behavior.LynxContext.setLynxView(LynxView lynxview);
+  public void com.lynx.tasm.behavior.LynxContext.setTemplateRender(@NonNull LynxTemplateRender templateRender);
   public String com.lynx.tasm.behavior.LynxContext.getLynxSessionID();
   public LynxView com.lynx.tasm.behavior.LynxContext.getLynxView();
+  public void com.lynx.tasm.behavior.LynxContext.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(String errMsg);
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(String src, String type, String error_msg);
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(int code, String src, String type, String error_msg);
@@ -4167,6 +4171,7 @@ public class com::lynx::tasm::LynxErrorBehavior :  {
   public final int com.lynx.tasm.LynxErrorBehavior.EB_APP_BUNDLE_VERIFY EB_APP_BUNDLE_VERIFY;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_RUNTIME_ERROR EB_BTS_RUNTIME_ERROR;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_PLATFORM_CALL_JS_FUNCTION EB_BTS_PLATFORM_CALL_JS_FUNCTION;
+  public final int com.lynx.tasm.LynxErrorBehavior.EB_BTS_LIFECYCLE_LISTENER_ERROR EB_BTS_LIFECYCLE_LISTENER_ERROR;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_IMAGE EB_RESOURCE_IMAGE;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_FONT EB_RESOURCE_FONT;
   public final int com.lynx.tasm.LynxErrorBehavior.EB_RESOURCE_EXTERNAL_RESOURCE EB_RESOURCE_EXTERNAL_RESOURCE;
@@ -5271,6 +5276,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR E_BTS_RUNTIME_ERROR_BYTECODE_SCRIPT_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_RUNTIME_ERROR_BINDINGS_ERROR E_BTS_RUNTIME_ERROR_BINDINGS_ERROR;
   public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY E_BTS_PLATFORM_CALL_JS_FUNCTION_TOO_FREQUENCY;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION E_BTS_LIFECYCLE_LISTENER_ERROR_EXCEPTION;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_BIG_IMAGE E_RESOURCE_IMAGE_BIG_IMAGE;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_PIC_SOURCE E_RESOURCE_IMAGE_PIC_SOURCE;
   public final int com.lynx.tasm.LynxSubErrorCode.E_RESOURCE_IMAGE_FROM_USER_OR_DESIGN E_RESOURCE_IMAGE_FROM_USER_OR_DESIGN;
@@ -5484,6 +5490,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.scrollStopped(int containerSign);
   public ILynxUIRenderer com.lynx.tasm.LynxTemplateRender.lynxUIRenderer();
   public void com.lynx.tasm.LynxTemplateRender.setAttachLynxPageUICallback(UIBody.UIBodyView.attachLynxPageUICallback callback);
+  public void com.lynx.tasm.LynxTemplateRender.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
 }
 
 public class abstract com::lynx::tasm::resourceprovider::template::LynxTemplateResourceFetcher :  {
@@ -5963,6 +5970,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public LynxConfigInfo com.lynx.tasm.LynxView.getLynxConfigInfo();
   public void com.lynx.tasm.LynxView.setEnableUserCodeCache(boolean enableUserCodeCache, String url);
   public void com.lynx.tasm.LynxView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
+  public void com.lynx.tasm.LynxView.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public static LynxViewBuilder com.lynx.tasm.LynxView.builder();
   public static LynxViewBuilder com.lynx.tasm.LynxView.builder(Context context);
 }
@@ -7534,6 +7542,29 @@ public class com::lynx::tasm::behavior::ui::utils::BackgroundDrawable::RoundRect
   public static float[] com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.newBorderRadius(float[] borderRadius, RectF borderWidth, float mul);
   public static float[] com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.newCenterBorderRadius(float[] borderRadius, RectF borderWidth, float mul);
   public static boolean com.lynx.tasm.behavior.ui.utils.BackgroundDrawable.RoundRectPath.checkAllCornersWithSameRadius(float[] radius);
+}
+
+public interface com::lynx::jsbridge::RuntimeFullLifecycleListener {
+  public void com.lynx.jsbridge.RuntimeFullLifecycleListener.onRuntimeCreate(long vsyncMonitorPtr);
+  public void com.lynx.jsbridge.RuntimeFullLifecycleListener.onRuntimeInit(long runtimeId);
+  public void com.lynx.jsbridge.RuntimeFullLifecycleListener.onAppEnterBackground();
+  public void com.lynx.jsbridge.RuntimeFullLifecycleListener.onAppEnterForeground();
+}
+
+public interface com::lynx::jsbridge::RuntimeLifecycleListener {
+  public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeAttach(long napiEnv);
+  public void com.lynx.jsbridge.RuntimeLifecycleListener.onRuntimeDetach();
+}
+
+public class com::lynx::jsbridge::RuntimeLifecycleListenerDelegate : com.lynx.jsbridge.RuntimeFullLifecycleListener {
+  public com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.RuntimeLifecycleListenerDelegate( @NonNull WeakReference< LynxContext > lynxContext, @NonNull RuntimeLifecycleListener listener);
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeCreate(long vsyncMonitorPtr);
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeAttach(long napiEnv);
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeDetach();
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onRuntimeInit(long runtimeId);
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onAppEnterBackground();
+  public void com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.onAppEnterForeground();
+  public int com.lynx.jsbridge.RuntimeLifecycleListenerDelegate.getListenerType();
 }
 
 public class abstract com::lynx::react::bridge::SafeRunnable : Runnable {

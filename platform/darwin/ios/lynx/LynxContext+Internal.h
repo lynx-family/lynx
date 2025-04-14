@@ -11,6 +11,8 @@
 @class LynxUIIntersectionObserverManager;
 @class LynxUIOwner;
 
+typedef void (^JSProxyReadyBlock)(void);
+
 @interface LynxContext () {
  @public
   std::shared_ptr<lynx::shell::JSProxyDarwin> proxy_;
@@ -23,6 +25,7 @@
 // Generated in the LynxShell, id of template instance.
 // instanceId is a value greater than or equal to 0, the initial value is -1.
 @property(nonatomic, assign) int32_t instanceId;
+@property(nonatomic, copy) JSProxyReadyBlock _Nullable js_proxy_ready_listener;
 
 - (nonnull instancetype)initWithLynxView:(LynxView* _Nullable)lynxView;
 - (void)setJSProxy:(const std::shared_ptr<lynx::shell::JSProxyDarwin>&)proxy;

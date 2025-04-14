@@ -7,6 +7,7 @@
 #import <Lynx/LynxMediaResourceFetcher.h>
 #import <Lynx/LynxModule.h>
 #import <Lynx/LynxResourceProvider.h>
+#import <Lynx/LynxRuntimeLifecycleListener.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
 
@@ -109,6 +110,12 @@ typedef NS_ENUM(NSInteger, LynxBackgroundJsRuntimeType) {
  * @param params event params
  */
 - (void)sendGlobalEvent:(nonnull NSString *)name withParams:(nullable NSArray *)params;
+
+/**
+ * Add a listener for runtime lifecycle
+ * @param listener the listener
+ */
+- (void)addRuntimeLifecycleListener:(nonnull id<LynxRuntimeLifecycleListener>)listener;
 
 #pragma mark - Storage
 /**

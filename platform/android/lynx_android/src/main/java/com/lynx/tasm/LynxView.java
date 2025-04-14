@@ -27,6 +27,7 @@ import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxModuleFactory;
+import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
@@ -1714,6 +1715,16 @@ public class LynxView extends UIBodyView {
   public void setAttachLynxPageUICallback(attachLynxPageUICallback callback) {
     if (mLynxTemplateRender != null) {
       mLynxTemplateRender.setAttachLynxPageUICallback(callback);
+    }
+  }
+
+  /**
+   * add a runtime lifecycle listener
+   * @param listener for listen event
+   */
+  public void addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener) {
+    if (null != mLynxTemplateRender) {
+      mLynxTemplateRender.addRuntimeLifecycleListener(listener);
     }
   }
 }

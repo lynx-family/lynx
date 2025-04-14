@@ -422,7 +422,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (_runtime) {
     shell_->AttachRuntime(module_manager);
     const auto& actor = _runtime.runtimeActor;
-    auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, _lynxView, actor->GetInstanceId(),
+    auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, actor->GetInstanceId(),
                                                        [_runtimeOptions groupThreadName]);
     [_context setJSProxy:js_proxy];
     return;
@@ -437,14 +437,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   __weak typeof(self) weakSelf = self;
   auto on_runtime_actor_created =
-      [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer, lynx_view = _lynxView,
-       context = _context, js_group_thread_name = [_runtimeOptions groupThreadName]](auto& actor) {
+      [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer, context = _context,
+       js_group_thread_name = [_runtimeOptions groupThreadName]](auto& actor) {
         std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
             std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
         module_manager->initBindingPtr(module_manager, module_delegate);
 
         auto js_proxy = lynx::shell::JSProxyDarwin::Create(
-            actor, lynx_view, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
+            actor, weakSelf, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
         [context setJSProxy:js_proxy];
 
         __strong LynxTemplateRender* strongSelf = weakSelf;
@@ -570,9 +570,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     auto* extension_delegate =
         reinterpret_cast<lynx::pub::LynxExtensionDelegate*>([instance getExtensionDelegate]);
     shell_->RegisterModuleFactory(extension_delegate->CreateModuleFactory());
-    shell_->RegisterRuntimeLifecycleObserver(
-        extension_delegate->GetRuntimeLifecycleObserver(),
-        [](fml::RefPtr<fml::TaskRunner> js_runner) {} /* TODO(chenyouhui) remove this param*/);
     extension_delegate->SetRuntimeTaskRunner(shell_->GetRunners()->GetJSTaskRunner());
     [instance setUp];
   }

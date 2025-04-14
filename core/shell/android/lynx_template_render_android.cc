@@ -1303,10 +1303,6 @@ void SetExtensionDelegate(JNIEnv* env, jobject jcaller, jlong ptr,
   auto* extension_delegate =
       reinterpret_cast<lynx::pub::LynxExtensionDelegate*>(delegate_ptr);
   shell->RegisterModuleFactory(extension_delegate->CreateModuleFactory());
-  shell->RegisterRuntimeLifecycleObserver(
-          extension_delegate->GetRuntimeLifecycleObserver(),
-          [](fml::RefPtr<fml::TaskRunner> js_runner) {} /* TODO(chenyouhui)
-          remove this param*/);
   extension_delegate->SetRuntimeTaskRunner(
       shell->GetRunners()->GetJSTaskRunner());
 
