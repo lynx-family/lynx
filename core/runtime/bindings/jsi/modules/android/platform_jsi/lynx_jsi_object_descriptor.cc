@@ -16,6 +16,9 @@ bool LynxJSIObjectDescriptor::RegisterJNI(JNIEnv* env) {
 
 std::vector<std::string> LynxJSIObjectDescriptor::GetJSPropertyDescriptorInfo(
     JNIEnv* env, const std::string& field_name) {
+  if (jsi_object_descriptor_.IsNull()) {
+    return {};
+  }
   auto j_field_name =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, field_name);
   auto j_field_info = Java_ILynxJSIObjectDescriptor_getLynxObjectDescriptorInfo(
