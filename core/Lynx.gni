@@ -57,10 +57,6 @@ if (is_win) {
     enable_testbench_replay = true
   }
   enable_testbench_recorder = lynx_in_debug
-
-  # the arg is up to enable_lite arg,
-  # gradle will not pass this arg when building Android.
-  enable_just_lepusng = enable_lite
 } else if (is_ios) {
   if (jsengine_type == "none") {
     jsengine_type = "jsc"
@@ -69,4 +65,11 @@ if (is_win) {
 
 if (enable_unittests) {
   enable_air = true
+}
+
+if (enable_lite) {
+  # these args are up to enable_lite arg
+  enable_just_lepusng = true
+  enable_air = false
+  disable_list_platform_implementation = true
 }

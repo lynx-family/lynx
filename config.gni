@@ -92,3 +92,9 @@ if (is_android) {
   enable_inspector_test = true
   v8_headers_search_path = "//$lynx_dir/third_party/NativeScript/include"
 }
+
+if (enable_lite) {
+  # these args are up to enable_lite arg
+  enable_v8 = false
+  enable_lepusng_worklet = false
+}

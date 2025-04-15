@@ -24,6 +24,10 @@ lepus_debug_source = [
   "lepus_internal/lepusng/lepusng_debugger.h",
 ]
 
+config("lepus_debug_config") {
+  defines = [ "ENABLE_JUST_LEPUSNG=${enable_just_lepusng}" ]
+}
+
 source_set("lepus_debug") {
   sources = lepus_debug_source
   deps = [
@@ -34,4 +38,5 @@ source_set("lepus_debug") {
   include_dirs = [ "//lynx/third_party" ]
   deps += [ "//lynx/third_party/rapidjson:rapidjson" ]
   public_configs = [ "//lynx/third_party/quickjs:quickjs_public_config" ]
+  configs += [ ":lepus_debug_config" ]
 }
