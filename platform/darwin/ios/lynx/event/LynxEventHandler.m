@@ -734,7 +734,8 @@
       ![target ignoreFocus] &&
       ![self tapOnUICalloutBarButton:container withPoint:point andEvent:event]) {
     // To free our touch handler from being blocked, dispatch endEditing asynchronously.
-    __weak UIView* weakView = view;
+    // TODO(hexionghui): Use resignFirstResponder and becomeFirstResponder to replace endEditing.
+    __weak UIView* weakView = container;
     dispatch_async(dispatch_get_main_queue(), ^{
       [weakView endEditing:true];
     });
