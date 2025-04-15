@@ -53,10 +53,8 @@
   V(iterate_value)                  \
   V(is_arraybuffer)                 \
   V(get_arraybuffer_info)           \
+  V(is_function)                    \
   V(call_function)                  \
-  V(get_callback_info)              \
-  V(set_instance_data)              \
-  V(get_instance_data)              \
   V(equals)                         \
   V(create_reference)               \
   V(move_reference)                 \
@@ -66,7 +64,6 @@
   V(close_handle_scope)             \
   V(get_length)                     \
   V(deep_copy_value)                \
-  V(has_string_ref)                 \
   V(get_string_ref)                 \
   V(to_string_utf8)                 \
   V(print)                          \
@@ -189,20 +186,12 @@ struct lynx_api_env__ {
                                                      size_t* byte_length);
 
   // function
+  lynx_api_status (*lynx_value_is_function)(lynx_api_env env, lynx_value value,
+                                            bool* result);
   lynx_api_status (*lynx_value_call_function)(lynx_api_env env, lynx_value recv,
                                               lynx_value func, size_t argc,
                                               const lynx_value* argv,
                                               lynx_value* result);
-  lynx_api_status (*lynx_value_get_callback_info)(
-      lynx_api_env env, const lynx_value_callback_info info, size_t* argc,
-      lynx_value* argv, lynx_value* this_arg, void** data);
-
-  // instance data
-  lynx_api_status (*lynx_value_set_instance_data)(
-      lynx_api_env env, uint64_t key, void* data,
-      lynx_value_finalizer finalizer, void* finalize_hint);
-  lynx_api_status (*lynx_value_get_instance_data)(lynx_api_env env,
-                                                  uint64_t key, void** result);
 
   // equals
   lynx_api_status (*lynx_value_equals)(lynx_api_env env, lynx_value lhs,
@@ -244,9 +233,6 @@ struct lynx_api_env__ {
   lynx_api_status (*lynx_value_deep_copy_value)(lynx_api_env env,
                                                 lynx_value src,
                                                 lynx_value* result);
-
-  lynx_api_status (*lynx_value_has_string_ref)(lynx_api_env env,
-                                               lynx_value value, bool* result);
   // Get a string object raw pointer.
   lynx_api_status (*lynx_value_get_string_ref)(lynx_api_env env,
                                                lynx_value value, void** result);

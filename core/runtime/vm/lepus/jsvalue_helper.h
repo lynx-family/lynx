@@ -297,6 +297,29 @@ class LEPUSValueHelper {
   static LEPUSValue RefCountedToJSValue(LEPUSContext* ctx, const RefCounted&);
   static lynx_value ConstructLepusRefToLynxValue(LEPUSContext* ctx,
                                                  const LEPUSValue& val);
+  static inline lynx_value_type LEPUSValueTagToLynxValueType(int64_t tag) {
+    switch (tag) {
+      case LEPUS_TAG_INT:
+        return lynx_value_int32;
+      case LEPUS_TAG_LEPUS_CPOINTER:
+        return lynx_value_external;
+      case LEPUS_TAG_STRING:
+      case LEPUS_TAG_SEPARABLE_STRING:
+        return lynx_value_string;
+      case LEPUS_TAG_FLOAT64:
+        return lynx_value_double;
+      case LEPUS_TAG_BOOL:
+        return lynx_value_bool;
+      case LEPUS_TAG_BIG_INT:
+        return lynx_value_int64;
+      case LEPUS_TAG_NULL:
+        return lynx_value_null;
+      case LEPUS_TAG_UNDEFINED:
+        return lynx_value_undefined;
+      default:
+        return lynx_value_extended;
+    }
+  }
 
  private:
   static inline void IteratorCallback(LEPUSContext* ctx, LEPUSValue key,

@@ -138,6 +138,8 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   explicit Value(void* data);
   explicit Value(CFunction val);
   explicit Value(bool for_nan, bool val);
+  Value(lynx_api_env env, const lynx_value& value);
+  Value(lynx_api_env env, lynx_value&& value);
 
   inline bool IsCDate() const {
     return value_.type == lynx_value_object &&
@@ -431,46 +433,51 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
     return (LEPUSValue){.as_int64 = value_.val_int64};
 #else
-    return LEPUS_MKPTR(value_.tag, value_.val_ptr);
+    return LEPUS_MKPTR(static_cast<int8_t>((value_.tag & 0xff)),
+                       value_.val_ptr);
 #endif
   }
 
   inline bool IsJSCPointer() const {
-    return IsJSValue() && LEPUS_VALUE_IS_LEPUS_CPOINTER(WrapJSValue());
+    return IsExtendedValue() && (value_.tag >> 16) == lynx_value_external;
   }
 
   inline void* LEPUSCPointer() const {
     DCHECK(IsJSCPointer());
-    return LEPUS_VALUE_GET_CPOINTER(WrapJSValue());
+    void* ret;
+    cell_->env_->lynx_value_get_external(cell_->env_, value_, &ret);
+    return ret;
   }
 
   bool IsJSArray() const;
   bool IsJSTable() const;
 
   inline bool IsJSBool() const {
-    return IsJSValue() && LEPUS_VALUE_IS_BOOL(WrapJSValue());
+    return IsExtendedValue() && (value_.tag >> 16) == lynx_value_bool;
   }
   inline bool LEPUSBool() const {
     if (!IsJSBool()) return false;
-    return LEPUS_VALUE_GET_BOOL(WrapJSValue());
+    bool ret;
+    cell_->env_->lynx_value_get_bool(cell_->env_, value_, &ret);
+    return ret;
   }
   inline bool IsJSString() const {
-    return IsJSValue() && LEPUS_IsString(WrapJSValue());
+    return IsExtendedValue() && (value_.tag >> 16) == lynx_value_string;
   }
 
   inline bool IsJSUndefined() const {
-    return IsJSValue() && LEPUS_VALUE_IS_UNDEFINED(WrapJSValue());
+    return IsExtendedValue() && (value_.tag >> 16) == lynx_value_undefined;
   }
 
   inline bool IsJSNumber() const {
-    auto value = WrapJSValue();
-    return IsJSValue() &&
-           (LEPUS_VALUE_IS_INT(value) || LEPUS_VALUE_IS_FLOAT64(value) ||
-            LEPUS_VALUE_IS_BIG_INT(value));
+    int32_t type = value_.tag >> 16;
+    return IsExtendedValue() &&
+           (type == lynx_value_int32 || type == lynx_value_int64 ||
+            type == lynx_value_double);
   }
 
   inline bool IsJsNull() const {
-    return IsJSValue() && LEPUS_VALUE_IS_NULL(WrapJSValue());
+    return IsExtendedValue() && (value_.tag >> 16) == lynx_value_null;
   }
 
   double LEPUSNumber() const;
@@ -662,6 +669,9 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   static void ToLepusValueRecursively(Value& value, bool deep_convert);
   static Value CloneRecursively(const Value& src, bool clone_as_jsvalue);
+  inline bool IsExtendedValue() const {
+    return value_.type == lynx_value_extended && cell_->env_ != nullptr;
+  }
 };
 }  // namespace lepus
 }  // namespace lynx

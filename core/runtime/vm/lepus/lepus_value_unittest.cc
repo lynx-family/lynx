@@ -33,7 +33,14 @@ class LepusValueTest : public ::testing::Test {
   ~LepusValueTest() = default;
 
   lynx_value ToLynxValue(const LEPUSValue& val) {
-    return MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val);
+    int64_t val_tag = LEPUS_VALUE_GET_TAG(val);
+    int32_t tag =
+        (static_cast<int32_t>(
+             lynx::lepus::LEPUSValueHelper::LEPUSValueTagToLynxValueType(
+                 val_tag))
+         << 16) |
+        (val_tag & 0xff);
+    return MAKE_LYNX_VALUE_FROM_LEPUS_VALUE(val, tag);
   }
 
   QuickContext quick_ctx_;
