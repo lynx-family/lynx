@@ -11,7 +11,7 @@ defaults:
 
 jobs:
   static-check:
-    runs-on: lynx-ubuntu-22.04-avd-medium
+    runs-on: lynx-ubuntu-22.04-avd-medium-verify
     steps:
       - name: Python Setup
         uses: actions/setup-python@v5
@@ -51,7 +51,7 @@ jobs:
           python3 tools_shared/git_lynx.py check --checkers android-check-style
 
   darwin-native-unittests-check:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -77,7 +77,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -96,7 +96,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-devtool-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -115,7 +115,7 @@ jobs:
           tools/rtf/rtf native-ut run --names devtool
 
   ios-unittests-check:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -163,7 +163,7 @@ jobs:
           popd
 
   tasm-linux-build:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -185,7 +185,7 @@ jobs:
           popd
 
   tasm-darwin-build:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -214,7 +214,7 @@ jobs:
           popd
 
   android-unittests-check:
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -232,7 +232,7 @@ jobs:
           tools/rtf/rtf android-ut run --name lynx
 
   android-explorer-build:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -249,7 +249,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
