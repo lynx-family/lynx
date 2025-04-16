@@ -43,6 +43,25 @@ lepus::Value LynxTemplateBundle::GetExtraInfo() {
   return lepus::Value();
 }
 
+void LynxTemplateBundle::PrepareVMByConfigs() {
+  // Contexts cannot be pre-created in two cases:
+  // 1. not lepusNG
+  // 2. will reuse context (dynamic component && no-diff)
+  if (!is_lepusng_binary() || ShouldReuseLepusContext()) {
+    return;
+  }
+
+  quick_context_pool_ = lepus::QuickContextPool::Create(context_bundle_);
+
+  // if FE disables it in card, do not pre-create contexts. However, we reserve
+  // the ability for the client to force pre-creation
+  if (page_configs_ && page_configs_->GetEnableUseContextPool() &&
+      !page_configs_->GetDisableQuickTracingGC()) {
+    constexpr int32_t kLocalQuickContextPoolSize = 1;
+    quick_context_pool_->FillPool(kLocalQuickContextPoolSize);
+  }
+}
+
 bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
   if (!quick_context_pool_ || count <= 0) {
     return false;

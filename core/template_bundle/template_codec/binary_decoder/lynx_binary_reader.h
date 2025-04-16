@@ -47,8 +47,7 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
 
   // decode lepus
   virtual bool DecodeContext() override;
-  // in predecoding, try to create a context pool in advance
-  virtual void PrepareContext();
+
   // decode lepus chunk
   bool DecodeLepusChunkRoute();
   virtual bool DecodeLepusChunk() override;

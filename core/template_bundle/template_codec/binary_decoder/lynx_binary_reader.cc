@@ -72,7 +72,6 @@ bool LynxBinaryReader::DidDecodeTemplate() {
   tb.dynamic_component_moulds_ = std::move(dynamic_component_moulds_);
   tb.dynamic_component_declarations_ =
       std::move(dynamic_component_declarations_);
-  PrepareContext();
   return true;
 }
 
@@ -176,26 +175,6 @@ bool LynxBinaryReader::DecodeContext() {
   ERROR_UNLESS(tb.context_bundle_);
   ERROR_UNLESS(DecodeContextBundle(tb.context_bundle_.get()));
   return true;
-}
-
-void LynxBinaryReader::PrepareContext() {
-  // Contexts cannot be pre-created in two cases:
-  // 1. not lepusNG
-  // 2. will reuse context (dynamic component && no-diff)
-  auto& tb = template_bundle();
-  if (!tb.is_lepusng_binary() || tb.ShouldReuseLepusContext()) {
-    return;
-  }
-
-  tb.quick_context_pool_ = lepus::QuickContextPool::Create(tb.context_bundle_);
-
-  // if FE disables it in card, do not pre-create contexts. However, we reserve
-  // the ability for the client to force pre-creation
-  if (tb.page_configs_ && tb.page_configs_->GetEnableUseContextPool() &&
-      !tb.page_configs_->GetDisableQuickTracingGC()) {
-    constexpr int32_t kLocalQuickContextPoolSize = 1;
-    tb.quick_context_pool_->FillPool(kLocalQuickContextPoolSize);
-  }
 }
 
 bool LynxBinaryReader::DecodeParsedStylesSection() {

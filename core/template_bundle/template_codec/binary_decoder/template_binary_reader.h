@@ -87,9 +87,6 @@ class TemplateBinaryReader : public LynxBinaryReader,
   bool GetCSSLazyDecode();
   bool GetCSSAsyncDecode();
 
-  // At runtime decoding, no need to prepare context
-  void PrepareContext() override {}
-
   virtual bool DidDecodeTemplate() override;
 
   // parsed styles

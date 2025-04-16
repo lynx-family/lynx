@@ -110,6 +110,10 @@ class LynxTemplateBundle final {
   bool ShouldReuseLepusContext() const;
 
   lepus::Value GetExtraInfo();
+
+  // Calling to prepare lepusNg context by pageConfig or settings;
+  // It should be called after decode success;
+  void PrepareVMByConfigs();
   bool PrepareLepusContext(int32_t count);
 
   bool EnableUseContextPool() const { return use_context_pool_; }

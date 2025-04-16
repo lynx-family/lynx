@@ -36,6 +36,7 @@
       // decode success.
       template_bundle_ =
           std::make_shared<lynx::tasm::LynxTemplateBundle>(decoder.GetTemplateBundle());
+      template_bundle_->PrepareVMByConfigs();
     } else {
       // decode failed.
       _error = [NSString stringWithUTF8String:decoder.error_message_.c_str()];

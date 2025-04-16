@@ -25,6 +25,7 @@ jlong ParseTemplate(JNIEnv* env, jclass jcaller, jbyteArray j_binary,
     // decode success.
     lynx::tasm::LynxTemplateBundle* bundle =
         new lynx::tasm::LynxTemplateBundle(reader.GetTemplateBundle());
+    bundle->PrepareVMByConfigs();
     return reinterpret_cast<int64_t>(bundle);
   } else {
     // decode failed.
