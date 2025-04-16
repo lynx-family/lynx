@@ -12,7 +12,7 @@ on:
 jobs:
   android-explorer-build:
     if: ${{ inputs.dry-run == false }}
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -31,7 +31,7 @@ jobs:
           allowUpdates: true
 
   ios-explorer-build:
-    runs-on: lynx-darwin-14-medium
+    runs-on: lynx-darwin-14-medium-verify
     strategy:
       matrix:
         arch: [arm64, x86_64]
