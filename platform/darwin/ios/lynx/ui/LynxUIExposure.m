@@ -393,7 +393,7 @@
 
   // There is no need to detect exposure when UI and LynxView haven't changed.
   if (_enableCheckExposureOptimize && !_flag && ![self isLynxViewChanged]) {
-    [LynxTraceEvent endSection:LYNX_TRACE_CATEGORY_WRAPPER];
+    LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     return;
   }
   // The flag should be reset to NO before the next runloop.

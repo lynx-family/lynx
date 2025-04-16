@@ -12,6 +12,7 @@
 #import <Lynx/LynxServiceResourceRequestParameters.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxTemplateRender+Internal.h"
@@ -538,7 +539,7 @@ typedef struct _LynxInnerFontInfo {
       [genericResourceFetcher respondsToSelector:@selector(fetchResource:onComplete:)]) {
     if ([self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
       LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxFontFaceManager requestFontfaceItemWithGenericResourceFetcher")
+                         FONT_FACE_MANAGER_REQUEST_WITH_GENERIC_FETCHER);
       LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:urlStr
                                                                          type:LynxResourceTypeFont];
       [genericResourceFetcher
@@ -599,8 +600,7 @@ typedef struct _LynxInnerFontInfo {
     if (![self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
       return;
     }
-    LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                       @"LynxFontFaceManager requestFontfaceByFontProvider")
+    LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, FONT_FACE_MANAGER_REQUEST_BY_FONT_PROVIDER);
     LynxResourceRequest *request = [[LynxResourceRequest alloc] initWithUrl:urlStr];
     [fontResProvider
            request:request
@@ -636,7 +636,7 @@ typedef struct _LynxInnerFontInfo {
     NSURL *url = [[NSURL alloc] initWithString:urlStr];
     if ([self onRequestStartForItem:item cache:cacheKey fontFaceObserver:fontFaceObserver]) {
       LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxFontFaceManager requestFontfaceByResourceFetcher")
+                         FONT_FACE_MANAGER_REQUEST_BY_RESOURCE_PROVIDER);
       [fetcher loadResourceWithURL:url
                               type:LynxFetchResFontFace
                         completion:^(BOOL isSyncCallback, NSData *_Nullable data,

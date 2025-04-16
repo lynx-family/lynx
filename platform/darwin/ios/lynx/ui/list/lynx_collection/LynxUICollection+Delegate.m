@@ -10,6 +10,7 @@
 #import <Lynx/LynxListScrollEventEmitter.h>
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Fluency.h>
 #import <Lynx/LynxUICollection+Delegate.h>
@@ -99,7 +100,7 @@ NSString *const kLynxEventListDebugInfo = @"listdebuginfo";
 
   for (id<LynxUIListDelegate> delegate in self.listDelegates) {
     if ([delegate respondsToSelector:@selector(listDidScroll:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxUIListDelegate::listDidScroll");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, LIST_DELEGATE_DID_SCROLL);
       [delegate listDidScroll:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -118,7 +119,7 @@ NSString *const kLynxEventListDebugInfo = @"listdebuginfo";
 
   for (id<LynxUIListDelegate> delegate in self.listDelegates) {
     if ([delegate respondsToSelector:@selector(listWillBeginDragging:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxUIListDelegate::listWillBeginDragging");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, LIST_DELEGATE_WILL_BEGIN_DRAGGING);
       [delegate listWillBeginDragging:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -138,8 +139,7 @@ NSString *const kLynxEventListDebugInfo = @"listdebuginfo";
 
   for (id<LynxUIListDelegate> delegate in self.listDelegates) {
     if ([delegate respondsToSelector:@selector(listDidEndDragging:willDecelerate:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIListDelegate::scrollerDidEndDragging");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, LIST_DELEGATE_DID_END_DRAGGING);
       [delegate listDidEndDragging:scrollView willDecelerate:decelerate];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -212,8 +212,7 @@ NSString *const kLynxEventListDebugInfo = @"listdebuginfo";
                                                  selector:@selector(scrollerDidEndDecelerating:)]];
   for (id<LynxUIListDelegate> delegate in self.listDelegates) {
     if ([delegate respondsToSelector:@selector(listDidEndDecelerating:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIListDelegate::listDidEndDecelerating");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, LIST_DELEGATE_DID_END_DECELERATING);
       [delegate listDidEndDecelerating:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }

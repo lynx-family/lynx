@@ -13,6 +13,7 @@
 #import <Lynx/LynxTextShadowNode.h>
 #import <Lynx/LynxTextUtils.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import "base/include/compiler_specific.h"
 
@@ -45,7 +46,7 @@
 
 - (instancetype)initWithAttributedString:(NSAttributedString *)attrStr
                               layoutSpec:(LynxLayoutSpec *)spec {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxTextRenderer.init");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, TEXT_RENDERER_INIT);
   if (self = [super init]) {
     _attrStr = attrStr;
     if (spec.textStyle.truncationAttributedStr.length > 0 && _attrStr.length > 0) {
@@ -85,7 +86,7 @@
 }
 
 - (void)ensureTextRenderLayout {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxTextRenderer.layout");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, TEXT_RENDERER_LAYOUT);
 
   _ellipsisCount = 0;
   // Adjust the overall line height spec.heightMode when the height of the text component is less
@@ -125,7 +126,7 @@
       h,
   };
 
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxTextRenderer.ensureLayout");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, TEXT_RENDERER_ENSURE_LAYOUT);
   if (!_textContainer) {
     _textContainer = [self createTextContainerWithSize:inputSize spec:_layoutSpec];
     [_layoutManager addTextContainer:_textContainer];

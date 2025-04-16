@@ -13,6 +13,7 @@
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxThreadSafeDictionary.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 
 @implementation LynxShadowNodeOwner {
@@ -180,7 +181,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
 }
 
 - (void)didLayoutStartOnNode:(NSInteger)sign {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxShadowNodeOwner.didLayoutStartOnNode");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SHADOW_NODE_OWNER_DID_LAYOUT_STATE);
   LynxShadowNode* node = _nodeHolder[[NSNumber numberWithInteger:sign]];
   [node layoutDidStart];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
@@ -191,7 +192,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
                       width:(CGFloat)width
                      height:(CGFloat)height
                      onNode:(NSInteger)sign {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxShadowNodeOwner.didUpdateLayout");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SHADOW_NODE_OWNER_DID_UPDATE_LAYOUT);
   LynxShadowNode* node = _nodeHolder[[NSNumber numberWithInteger:sign]];
   [node updateLayoutWithFrame:CGRectMake(left, top, width, height)];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
