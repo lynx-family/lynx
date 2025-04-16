@@ -127,9 +127,11 @@ public abstract class LynxBaseUI
     mNextDrawUI = nextDrawUI;
   }
 
+  // clang-format off
   public class Sticky extends RectF {
     float x, y;
-  }
+  };
+  // clang-format on
 
   public class TransOffset {
     public float[] left_top;
@@ -151,22 +153,6 @@ public abstract class LynxBaseUI
   protected boolean mIsTransformNode = false;
 
   protected final List<LynxBaseUI> mChildren = new ArrayList<>();
-
-  protected List<LynxBaseUI> mStableChildrenForTranslateZ;
-
-  public void resetTranslateZChildrenOrder() {
-    mChildren.clear();
-    mChildren.addAll(mStableChildrenForTranslateZ);
-  }
-
-  public void setStableChildrenForTranslateZ(List<LynxBaseUI> stableChildren) {
-    mStableChildrenForTranslateZ = stableChildren;
-  }
-
-  public List<LynxBaseUI> GetStableChildrenForTranslateZ() {
-    return mStableChildrenForTranslateZ;
-  }
-
   protected LynxBackground mLynxBackground;
 
   @Nullable protected LynxMask mLynxMask;
@@ -538,9 +524,6 @@ public abstract class LynxBaseUI
 
   public void insertChild(LynxBaseUI child, int index) {
     mChildren.add(index, child);
-    if (mStableChildrenForTranslateZ != null) {
-      mStableChildrenForTranslateZ.add(index, child);
-    }
     child.setParent(this);
   }
 
@@ -550,9 +533,6 @@ public abstract class LynxBaseUI
 
   public void removeChild(LynxBaseUI child) {
     mChildren.remove(child);
-    if (mStableChildrenForTranslateZ != null) {
-      mStableChildrenForTranslateZ.remove(child);
-    }
     child.setParent(null);
   }
 
@@ -627,7 +607,6 @@ public abstract class LynxBaseUI
       wrapper.handleMutationStyleUpdate(this, props);
     }
   }
-
   @LynxUIMethod
   public void boundingClientRect(ReadableMap params, Callback callback) {
     // If ui owner is null, exec boundingClientRectInner directly.
@@ -778,7 +757,7 @@ public abstract class LynxBaseUI
 
   /**
    * @deprecated this method will be removed in the future. Use {@link #scrollIntoView(ReadableMap,
-   * Callback)} instead.
+   *     Callback)} instead.
    */
   @Deprecated()
   public void scrollIntoView(ReadableMap params) {
@@ -816,7 +795,7 @@ public abstract class LynxBaseUI
 
   /**
    * @deprecated this method will be removed in the future. Use {@link #scrollIntoView(boolean,
-   * String, String, Callback)} instead.
+   *     String, String, Callback)} instead.
    */
   @Deprecated()
   public void scrollIntoView(boolean isSmooth, String block, String inline) {
@@ -847,7 +826,6 @@ public abstract class LynxBaseUI
       }
     }
   }
-
   @LynxProp(name = PropsConstants.FOCUSABLE)
   public void setFocusable(Boolean focusable) {
     mFocusable = (focusable != null ? focusable : false);
@@ -1438,7 +1416,6 @@ public abstract class LynxBaseUI
     }
     setOverflowWithMask(OVERFLOW_Y, value);
   }
-
   @LynxProp(name = PropsConstants.USER_INTERACTION_ENABLED, defaultBoolean = true)
   public void setUserInteractionEnabled(@Nullable boolean userInteractionEnabled) {
     this.userInteractionEnabled = userInteractionEnabled;
@@ -1688,9 +1665,7 @@ public abstract class LynxBaseUI
     // implemented by components
   }
 
-  /**
-   * ---------- Accessibility Section ----------
-   */
+  /** ---------- Accessibility Section ---------- */
 
   public boolean isAccessibilityHostUI() {
     return false;
@@ -1819,7 +1794,7 @@ public abstract class LynxBaseUI
   /**
    * @name: accessibility-exclusive-focus
    * @description: When set to true, only accessible elements within the current subtree can be
-   * focused.
+   *focused.
    * @category: different
    * @standardAction: keep
    * @supportVersion: 2.12
@@ -1841,7 +1816,7 @@ public abstract class LynxBaseUI
   /**
    * @name: android-consume-hover-event
    * @description: Let the certain view consume hover event and not dispatch hover event to other
-   * view.
+   *view.
    * @category: different
    * @standardAction: keep
    * @supportVersion: 2.12
@@ -1917,19 +1892,17 @@ public abstract class LynxBaseUI
 
   public String getAccessibilityStatus() {
     return mAccessibilityStatus;
-  }
+  };
 
   public ArrayList<String> getAccessibilityActions() {
     return mAccessibilityActions;
-  }
+  };
 
   public ArrayList<String> getAccessibilityElementsA11y() {
     return mAccessibilityElementsA11y;
   }
 
-  /**
-   * ---------- Accessibility Section end ----------
-   */
+  /** ---------- Accessibility Section end ---------- */
 
   @LynxProp(name = PropsConstants.POSITION, defaultFloat = StyleConstants.POSITION_RELATIVE)
   public final void setCSSPosition(int position) {
@@ -2263,15 +2236,12 @@ public abstract class LynxBaseUI
   public int getOriginTop() {
     return mOriginTop;
   }
-
   public int getOriginLeft() {
     return mOriginLeft;
   }
-
   public void setOriginLeft(int originLeft) {
     mOriginLeft = originLeft;
   }
-
   public void setOriginTop(int originTop) {
     mOriginTop = originTop;
   }
@@ -2328,9 +2298,8 @@ public abstract class LynxBaseUI
   /**
    * Used in layout with LynxFlattenUI. Update the position for drawing. Don't change the native
    * layout value.
-   *
-   * @param left   relative left value to drawParent
-   * @param top    relative top value to drawParent
+   * @param left relative left value to drawParent
+   * @param top relative top value to drawParent
    * @param bounds relative bounds value to drawParent
    */
   public boolean updateDrawingLayoutInfo(int left, int top, Rect bounds) {
@@ -2365,12 +2334,10 @@ public abstract class LynxBaseUI
     mOriginTop = top;
     onLayoutUpdated();
   }
-
   public void setWidth(int width) {
     mWidth = width;
     onLayoutUpdated();
   }
-
   public void setHeight(int height) {
     mHeight = height;
     onLayoutUpdated();
@@ -2444,7 +2411,6 @@ public abstract class LynxBaseUI
   }
 
   public void initTransitionAnimator(ReadableMap map) {}
-
   public TransitionAnimationManager getTransitionAnimator() {
     return null;
   }
@@ -3287,7 +3253,6 @@ public abstract class LynxBaseUI
   /**
    * The bytecode of this method will be modified during compilation.
    * Do not rewrite this method or modify this method.
-   *
    * @param map
    */
   @Override
@@ -3306,7 +3271,6 @@ public abstract class LynxBaseUI
   /**
    * Copy animated related props from another UI.
    * Should only be called in LynxUIOwner.updateFlatten
-   *
    * @param oldUI
    */
   @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -3495,7 +3459,7 @@ public abstract class LynxBaseUI
    * @description: Change the margin of ui for hit-test. A positive value means to expand the
    * boundary, and a negative value means to shrink the boundary. The changes in the four directions
    * can be controlled by top, bottom, left, and right. When no direction is specified, it means
-   * that the four directions are changed at the same time.
+   *that the four directions are changed at the same time.
    * @category: stable
    * @standardAction: keep
    * @supportVersion: 2.14
