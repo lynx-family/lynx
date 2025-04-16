@@ -728,10 +728,13 @@ public class TextRenderer {
     }
 
     Spanned spannedString = (Spanned) mTextLayout.getText();
-    EventTargetSpan[] spans =
+    EventTargetSpan[] eventTargetSpans =
         spannedString.getSpans(0, spannedString.length(), EventTargetSpan.class);
+    LynxTextBackgroundSpan[] backgroundSpans =
+        spannedString.getSpans(0, spannedString.length(), LynxTextBackgroundSpan.class);
 
-    return spans == null || spans.length <= 0;
+    return (eventTargetSpans == null || eventTargetSpans.length == 0)
+        && (backgroundSpans == null || backgroundSpans.length == 0);
   }
 
   private void handleWhiteSpaceWrap(TextContextDescriptor textContext) {
