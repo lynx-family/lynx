@@ -506,12 +506,12 @@ void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
                   pipeline_options.pipeline_start_timestamp);
   ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
   EnsureTemplateDataThreadSafe(data);
-  EnsureGlobalPropsThreadSafe(global_props);
+  auto global_props_safe = EnsureGlobalPropsThreadSafe(global_props);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
   engine_actor_->Act(
-      [data, global_props, order,
-       pipeline_options = std::move(pipeline_options)](auto& engine) {
-        engine->UpdateMetaData(data, global_props, order,
+      [data, global_props = std::move(global_props_safe), order,
+       pipeline_options = std::move(pipeline_options)](auto& engine) mutable {
+        engine->UpdateMetaData(data, std::move(global_props), order,
                                std::move(pipeline_options));
       });
 }
@@ -1070,7 +1070,6 @@ void LynxShell::EnsureTemplateDataThreadSafe(
     const std::shared_ptr<tasm::TemplateData>& template_data) {
   // need clone template data if consumed by tasm thread
   if (template_data != nullptr && !(engine_actor_->CanRunNow())) {
-    LOGI("EnsureTemplateDataThreadSafe CloneValue." << this);
     template_data->CloneValue();
   }
 }
@@ -1080,7 +1079,6 @@ lepus::Value LynxShell::EnsureGlobalPropsThreadSafe(
   // need clone global props if consumed by tasm thread
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxShell::EnsureGlobalPropsThreadSafe");
   if (!(engine_actor_->CanRunNow())) {
-    LOGI("EnsureGlobalPropsThreadSafe CloneValue." << this);
     return lynx::lepus::Value::Clone(global_props);
   } else {
     return global_props;
