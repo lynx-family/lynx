@@ -12,7 +12,7 @@ on:
 jobs:
   android-explorer-build:
     if: ${{ inputs.dry_run == false }}
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-avd-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
