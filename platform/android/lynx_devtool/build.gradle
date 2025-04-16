@@ -254,7 +254,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     testImplementation 'org.mockito:mockito-inline:4.8.1'
 
-    implementation project(':LynxJSSDK')
+    api project(':LynxJSSDK')
 
     implementation 'org.lynxsdk.lynx:debug-router:0.0.14'
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.3'

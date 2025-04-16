@@ -314,5 +314,5 @@ dependencies {
     extractJNI 'org.lynxsdk.lynx:primjs:2.11.1-rc.2'
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.3'
 
-    implementation project(':LynxJSSDK')
+    api project(':LynxJSSDK')
 }
