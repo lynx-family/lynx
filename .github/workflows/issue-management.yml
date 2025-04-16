@@ -1,0 +1,19 @@
+name: issue_management
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  issues: write
+
+jobs:
+  add-label-triage:
+    runs-on: lynx-ubuntu-22.04-mini
+
+    steps:
+      - name: Add 'status:need triage' label to new issues
+        uses: actions-ecosystem/action-add-labels@bd52874380e3909a1ac983768df6976535ece7f8
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: status:need triage
