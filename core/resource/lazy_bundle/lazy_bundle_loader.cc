@@ -116,10 +116,12 @@ void LazyBundleLoader::AppendUrlToLifecycleOptionMap(
 bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
                                                  const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
+  auto iter = url_to_lifecycle_option_map_.find(url);
+  if (iter == url_to_lifecycle_option_map_.end()) {
+    return false;
+  }
 
   bool need_dispatch = false;
-  auto iter = url_to_lifecycle_option_map_.find(url);
-
   for (const auto& option : iter->second) {
     need_dispatch = option->OnLazyBundleLifecycleEnd(tasm) || need_dispatch;
   }
