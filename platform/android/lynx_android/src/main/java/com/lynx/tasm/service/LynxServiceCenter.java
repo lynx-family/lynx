@@ -52,10 +52,13 @@ public class LynxServiceCenter extends LynxLazyInitializer {
 
   @Nullable
   public <T extends IServiceProvider> T getService(@NonNull Class<T> clazz) {
-    ensureInitialized();
     T service = (T) mServiceMap.get(clazz);
     if (service == null) {
-      Log.i(TAG, clazz.getSimpleName() + " is unregistered");
+      ensureInitialized();
+      service = (T) mServiceMap.get(clazz);
+      if (service == null) {
+        Log.i(TAG, clazz.getSimpleName() + " is unregistered");
+      }
     }
     return service;
   }
