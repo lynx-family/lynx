@@ -803,12 +803,13 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
   float detail_x = 0.f, detail_y = 0.f;
 
   ElementManager *manager = target->element_manager();
-  bool enable_multi_touch = manager ? manager->GetEnableMultiTouch() : false;
+  bool enable_multi_touch_params_compatible =
+      manager ? manager->GetEnableMultiTouchParamsCompatible() : false;
 
   // if touch_cancel, current_touches will be cleaned after send_event_function
   // is called, because GetTouchEventParam is called in loop
   if (handler == EVENT_TOUCH_CANCEL) {
-    if (enable_multi_touch) {
+    if (enable_multi_touch_params_compatible) {
       dict.get()->SetValue(kChangedTouches,
                            lepus::Value::Clone(current_touches_));
       dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
@@ -897,9 +898,13 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
   dict.get()->SetValue(kChangedTouches, std::move(changed_touches));
   // if not using clone, in further process, current_touches_ will be turned to
   // readonly.
-  if (enable_multi_touch && handler == EVENT_TOUCH_END) {
-    touches_with_deleted->push_back(lepus::Value::Clone(current_touches_));
-    dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
+  if (enable_multi_touch_params_compatible && handler == EVENT_TOUCH_END) {
+    if (touches_with_deleted->size() != 0) {
+      touches_with_deleted->push_back(lepus::Value::Clone(current_touches_));
+      dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
+    } else {
+      dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
+    }
   } else {
     dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
   }

@@ -938,6 +938,14 @@ class PageConfig final : public EntryConfig {
     }
   }
 
+  bool GetEnableMultiTouchParamsCompatible() const {
+    return enable_multi_touch_params_compatible_;
+  }
+
+  void SetEnableMultiTouchParamsCompatible(bool enable) {
+    enable_multi_touch_params_compatible_ = enable;
+  }
+
   bool GetEnableComponentAsyncDecode() const {
     switch (enable_component_async_decode_) {
       case TernaryBool::TRUE_VALUE:
@@ -1338,6 +1346,9 @@ class PageConfig final : public EntryConfig {
 
   // enable support multi-finger events
   bool enable_multi_touch_{false};
+
+  // enable support multi-finger event parameter compatibility.
+  bool enable_multi_touch_params_compatible_{false};
 
   // enable air mode to detect removed keys in updating data from native
   bool enable_air_detect_removed_keys_when_update_data_{false};

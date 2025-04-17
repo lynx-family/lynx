@@ -243,6 +243,15 @@ static constexpr const char* const kEnableJSDataProcessor =
 static constexpr const char* const kEnableMultiTouch = "enableMultiTouch";
 
 /**
+ * @name: enableMultiTouchParamsCompatible
+ * @description: Enable support multi-finger event parameter compatibility
+ * @platform: Both
+ * @supportVersion: 3.2
+ **/
+static constexpr const char* const kEnableMultiTouchParamsCompatible =
+    "enableMultiTouchParamsCompatible";
+
+/**
  * @name: enableComponentAsyncDecode
  * @description: Enable dynamic components to be decoded in child threads before
  *they are delivered into tasm in async-loading.
@@ -831,6 +840,15 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableMultiTouch(doc[kEnableMultiTouch].GetBool());
   } else {
     page_config->SetEnableMultiTouch(LynxEnv::GetInstance().EnableMultiTouch());
+  }
+
+  if (doc.HasMember(kEnableMultiTouchParamsCompatible) &&
+      doc[kEnableMultiTouchParamsCompatible].IsBool()) {
+    page_config->SetEnableMultiTouchParamsCompatible(
+        doc[kEnableMultiTouchParamsCompatible].GetBool());
+  } else {
+    page_config->SetEnableMultiTouchParamsCompatible(
+        LynxEnv::GetInstance().EnableMultiTouch());
   }
 
   page_config->SetTargetSDKVersion(target_sdk_version_);

@@ -2715,6 +2715,26 @@ void TemplateAssembler::FilterI18nResource(const lepus::Value& channel,
 void TemplateAssembler::OnPageConfigDecoded(
     const std::shared_ptr<PageConfig>& config) {
   delegate_.OnPageConfigDecoded(config);
+  if (!config->GetEnableMultiTouch()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_DISABLE_MULTI_TOUCH,
+        page_proxy()->element_manager()->GetInstanceId());
+  }
+  if (!config->GetEnableMultiTouchParamsCompatible()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_DISABLE_MULTI_TOUCH_PARAMS_COMPATIBLE,
+        page_proxy()->element_manager()->GetInstanceId());
+  }
+  if (!config->GetEnableTouchRefactor()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::OBJC_DISABLE_TOUCH_REFACTOR,
+        page_proxy()->element_manager()->GetInstanceId());
+  }
+  if (!config->GetEnableEventRefactor()) {
+    report::GlobalFeatureCounter::Count(
+        report::LynxFeature::CPP_DISABLE_EVENT_REFACTOR,
+        page_proxy()->element_manager()->GetInstanceId());
+  }
   report::EventTracker::UpdateGenericInfoByPageConfig(instance_id_, config);
 }
 

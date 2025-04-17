@@ -32,6 +32,7 @@ cpp:
   - list_node
   - disable_parallel_flush_fiber_arch
   - disable_parallel_flush_fiber_radon_arch
+  - disable_multi_touch_params_compatible
 typescript:
   - bundle_support_load_script
 objc:
