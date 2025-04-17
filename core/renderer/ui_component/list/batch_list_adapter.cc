@@ -122,6 +122,10 @@ int64_t BatchListAdapter::BindItemHolderInternal(
                    << "enqueue component before rendering with item_key = "
                    << item_key << ", index = " << index);
         RecycleItemHolder(item_holder);
+        if (list_container_->list_children_helper()) {
+          list_container_->list_children_helper()->EraseFromLastBindingChildren(
+              item_holder);
+        }
       }
       // Mark status kInBinding.
       (it->second).status_ = list::ItemStatus::kInBinding;

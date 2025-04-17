@@ -78,6 +78,7 @@ class ListChildrenHelper {
   const ItemHolderSet& last_binding_children() const {
     return last_binding_children_;
   }
+  void EraseFromLastBindingChildren(ItemHolder* item_holder);
   void HandleLayoutOrScrollResult(
       const std::function<bool(ItemHolder*)>& insert_handler,
       const std::function<bool(ItemHolder*)>& recycle_handler,

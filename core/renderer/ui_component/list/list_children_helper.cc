@@ -170,6 +170,12 @@ void ListChildrenHelper::UpdateInStickyChildren(
   });
 }
 
+void ListChildrenHelper::EraseFromLastBindingChildren(ItemHolder* item_holder) {
+  if (item_holder) {
+    last_binding_children_.erase(item_holder);
+  }
+}
+
 void ListChildrenHelper::HandleLayoutOrScrollResult(
     const std::function<bool(ItemHolder*)>& insert_handler,
     const std::function<bool(ItemHolder*)>& recycle_handler,
