@@ -370,7 +370,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         int offset = map.getInt("offset", 0);
 
         // The logic here is copied form the SnapHelper provided by Android.
-        double snapAlignmentMillisecondsPerPx = 100f / mContext.getScreenMetrics().densityDpi;
+        // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
+        double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
 
         mView.mSnapHelper = new LynxSnapHelper(
             factor, offset, snapAlignmentMillisecondsPerPx, new LynxSnapHelper.LynxSnapHooks() {
