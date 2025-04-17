@@ -146,9 +146,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   protected ListContainerView createView(Context context) {
-    LLog.i(TAG, "create UIListContainer");
     final ListContainerView listContainerView = new ListContainerView(context, this);
     listContainerView.setOnScrollStateChangeListener(this);
+    LLog.i(TAG, "create UIListContainer: " + this + ", " + listContainerView);
     return listContainerView;
   }
 
@@ -329,6 +329,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   @Override
   public void destroy() {
+    LLog.i(TAG, "destroy: " + this + ", listContainerView: " + mView);
     super.destroy();
     if (mView != null) {
       mView.destroy();

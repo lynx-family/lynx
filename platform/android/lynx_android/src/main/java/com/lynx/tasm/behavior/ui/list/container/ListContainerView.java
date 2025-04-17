@@ -50,6 +50,7 @@ public class ListContainerView
   private void createCustomLinearLayoutIfNeeded() {
     if (mCustomLinearLayout == null) {
       mCustomLinearLayout = new CustomLinearLayout(this.getContext());
+      LLog.i(TAG, "Create CustomLinearLayout: " + mCustomLinearLayout + ", " + this);
     }
     mCustomLinearLayout.setOrientation(LinearLayout.VERTICAL);
     mCustomLinearLayout.setWillNotDraw(true);
@@ -309,6 +310,12 @@ public class ListContainerView
     }
   }
 
+  @Override
+  protected void onDetachedFromWindow() {
+    LLog.e(TAG, "onDetachedFromWindow: " + this + ", ui = " + mUiListContainer);
+    super.onDetachedFromWindow();
+  }
+
   private class CustomLinearLayout extends LinearLayout {
     public CustomLinearLayout(Context context) {
       super(context);
@@ -316,8 +323,15 @@ public class ListContainerView
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-      setMeasuredDimension(mMeasuredWidth > 0 ? mMeasuredWidth : mUiListContainer.getWidth(),
-          mMeasuredHeight > 0 ? mMeasuredHeight : mUiListContainer.getHeight());
+      if (mUiListContainer == null) {
+        LLog.e(TAG,
+            "CustomLinearLayout$$onMeasure: mUiListContainer is null: " + this + ", "
+                + ListContainerView.this);
+        setMeasuredDimension(0, 0);
+      } else {
+        setMeasuredDimension(mMeasuredWidth > 0 ? mMeasuredWidth : mUiListContainer.getWidth(),
+            mMeasuredHeight > 0 ? mMeasuredHeight : mUiListContainer.getHeight());
+      }
     }
 
     @Override
