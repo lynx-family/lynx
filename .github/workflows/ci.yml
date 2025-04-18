@@ -8,7 +8,7 @@ on:
 defaults:
   run:
     working-directory: lynx
-
+# check the new runners
 jobs:
   static-check:
     runs-on: lynx-ubuntu-22.04-avd-medium
