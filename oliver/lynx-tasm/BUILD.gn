@@ -176,6 +176,7 @@ if (build_lynx_lepus_node) {
     deps = [
       "//lynx/base/src:base_log",
       "//lynx/base/src:string_utils",
+      "//lynx/base/src:time_utils",
       "//lynx/base/src:values",
       "//lynx/core:find_node_headers",
       "//lynx/core/base:json_utils",

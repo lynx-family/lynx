@@ -95,7 +95,6 @@ function decrypt_wasm(plain) {
 }
 
 function decode_napi(templateJS) {
-  console.log('decode_napi: ', templateJS)
   const templateArray = Uint8Array.from(templateJS);
   const bindingPath = path.resolve(__dirname, `./build/${process.platform}/Release/lepus.node`);
   const lepus = require(bindingPath);
