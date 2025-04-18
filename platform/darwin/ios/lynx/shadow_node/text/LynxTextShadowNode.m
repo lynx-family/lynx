@@ -728,7 +728,7 @@ LYNX_REGISTER_SHADOW_NODE("text")
 }
 
 - (void)alignWithAlignParam:(AlignParam *)param AlignContext:(AlignContext *)ctx {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxTextShadowNode.align");
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, TEXT_SHADOW_NODE_ALIGN);
   if (self.hasNonVirtualOffspring || self.isCalcVerticalAlignValue) {
     NSTextStorage *textStorage = self.textRenderer.textStorage;
     NSLayoutManager *layoutManager = textStorage.layoutManagers.firstObject;

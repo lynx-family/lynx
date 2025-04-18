@@ -9,6 +9,7 @@
 #import <Lynx/LynxServiceResourceProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxView+Internal.h>
 #import "LynxContext+Internal.h"
@@ -122,7 +123,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
 }
 
 - (void)cancelResourcePrefetch:(NSDictionary*)prefetchData callback:(LynxCallbackBlock)callback {
-  [LynxTraceEvent beginSection:LYNX_TRACE_CATEGORY_WRAPPER withName:@"cancelResourcePrefetch"];
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, RESOURCE_MODULE_CANCEL_PREFETCH);
 
   NSMutableDictionary* allResults = [[NSMutableDictionary alloc] init];
 
@@ -130,7 +131,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
   NSInteger globalCode = res.first;
   NSString* globalMsg = res.second;
 
-  [LynxTraceEvent endSection:LYNX_TRACE_CATEGORY_WRAPPER withName:@"cancelResourcePrefetch"];
+  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
   allResults[kCodeKey] = @(globalCode);
   allResults[kMsgKey] = globalMsg;
   if (callback) {
@@ -139,7 +140,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
 }
 
 - (void)requestResourcePrefetch:(NSDictionary*)prefetchData callback:(LynxCallbackBlock)callback {
-  [LynxTraceEvent beginSection:LYNX_TRACE_CATEGORY_WRAPPER withName:@"requestResourcePrefetch"];
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, RESOURCE_MODULE_REQUEST_PREFETCH);
 
   NSMutableDictionary* allResults = [[NSMutableDictionary alloc] init];
 
@@ -147,7 +148,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
   NSInteger globalCode = res.first;
   NSString* globalMsg = res.second;
 
-  [LynxTraceEvent endSection:LYNX_TRACE_CATEGORY_WRAPPER withName:@"requestResourcePrefetch"];
+  LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
   allResults[kCodeKey] = @(globalCode);
   allResults[kMsgKey] = globalMsg;
   if (callback) {

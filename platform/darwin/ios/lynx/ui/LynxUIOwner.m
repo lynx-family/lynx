@@ -15,6 +15,7 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUICollection.h>
@@ -134,7 +135,7 @@ extern NSString* const kDefaultComponentID;
                         screenMetrics:(LynxScreenMetrics*)screenMetrics
                          errorHandler:(id<LUIErrorHandling>)errorHandler
                              uiConfig:(id<LUIConfig> _Nullable)uiConfig {
-  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxUIOwner init")
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, UI_OWNER_INIT);
   self = [super init];
   if (self) {
     _enableDetailLog = [[LynxEnv sharedInstance] boolFromExternalEnv:LynxEnvEnableLynxDetailLog
@@ -382,11 +383,14 @@ extern NSString* const kDefaultComponentID;
                               callback:(LynxUIMethodCallbackBlock)callback
                                 toNode:(int)sign {
   LynxUI* targetUI = [self findUIBySign:sign];
+  NSString* name = [UI_OWNER_INVOKE_UI_METHOD_FOR_SELECTOR_QUERY
+      stringByAppendingFormat:@"%@.%@", targetUI.tagName ?: @"", method ?: @""];
   if (targetUI) {
-    LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                       [[targetUI.tagName ?: @"UIOwner"
-                           stringByAppendingString:@".invokeUIMethodForSelectorQuery."]
-                           stringByAppendingString:method ?: @""]);
+#if ENABLE_TRACE_PERFETTO
+    NSString* eventName = [UI_OWNER_INVOKE_UI_METHOD_FOR_SELECTOR_QUERY
+        stringByAppendingFormat:@"%@.%@", targetUI.tagName ?: @"", method ?: @""];
+    LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, eventName);
+#endif
     [LynxUIMethodProcessor invokeMethod:method
                              withParams:params
                              withResult:callback
@@ -413,7 +417,7 @@ extern NSString* const kDefaultComponentID;
                nodeIndex:(uint32_t)nodeIndex
       gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.createView." stringByAppendingString:tagName ?: @""])
+                     [UI_OWNER_CREATE_VIEW stringByAppendingString:tagName ?: @""])
   LynxUI* ui = [self createLynxUIWithTagName:tagName props:props];
   if (ui) {
     ui.context = _uiContext;
@@ -565,7 +569,7 @@ extern NSString* const kDefaultComponentID;
                    nodeIndex:(uint32_t)nodeIndex
           gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.createView." stringByAppendingString:tagName ?: @""])
+                     [UI_OWNER_CREATE_VIEW stringByAppendingString:tagName ?: @""])
   LynxUI* ui = [self createUIInnerWithSign:sign
                                    tagName:tagName
                                      clazz:clazz
@@ -590,7 +594,7 @@ extern NSString* const kDefaultComponentID;
                        nodeIndex:(uint32_t)nodeIndex
               gestureDetectorSet:(NSSet<LynxGestureDetectorDarwin*>*)gestureDetectorSet {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.createViewAsync." stringByAppendingString:tagName ?: @""])
+                     [UI_OWNER_CREATE_VIEW_ASYNC stringByAppendingString:tagName ?: @""])
   LynxUI* ui = [self createUIInnerWithSign:sign
                                    tagName:tagName
                                      clazz:clazz
@@ -704,7 +708,7 @@ extern NSString* const kDefaultComponentID;
   LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
   [self updateComponentIdToUiIdMapIfNeedWithSign:sign tagName:ui.tagName props:props];
   LYNX_TRACE_SECTION_WITH_INFO(LYNX_TRACE_CATEGORY_WRAPPER,
-                               [@"UIOwner.updateProps." stringByAppendingString:ui.tagName ?: @""],
+                               [UI_OWNER_UPDATE_PROPS stringByAppendingString:ui.tagName ?: @""],
                                props)
   [self updateEventWithUI:ui
                  eventSet:eventSet
@@ -743,9 +747,9 @@ extern NSString* const kDefaultComponentID;
   // stringByAppendingFormat is not suitable for the situation which may be executed frequently
   NSString* p2c =
       [[parent.tagName stringByAppendingString:@"->"] stringByAppendingString:child.tagName ?: @""];
-  [LynxTraceEvent beginSection:LYNX_TRACE_CATEGORY_WRAPPER
-                      withName:[[@"UIOwner.insertNode." stringByAppendingString:@"parent->child:"]
-                                   stringByAppendingString:p2c ?: @""]];
+  NSString* eventName =
+      [UI_OWNER_INSERT_NODE stringByAppendingFormat:@"parent->child:%@", p2c ?: @""];
+  LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, eventName);
 #endif
   if (_enableDetailLog && [parent isEqual:_rootUI]) {
     LLogInfo(@"LynxUIOwner insert node %p to rootUI %p", child, parent);
@@ -791,7 +795,7 @@ extern NSString* const kDefaultComponentID;
 
 - (void)removeUIFromHolderRecursively:(LynxUI*)node {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.removeRecursively." stringByAppendingString:node.tagName ?: @""])
+                     [UI_OWNER_REMOVE_RECURSIVELY stringByAppendingString:node.tagName ?: @""])
   [self removeUIFromHolder:node];
   for (LynxUI* child in node.children) {
     [self removeUIFromHolderRecursively:child];
@@ -801,7 +805,7 @@ extern NSString* const kDefaultComponentID;
 
 - (void)removeUIFromHolder:(LynxUI*)node {
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.remove." stringByAppendingString:node.tagName ?: @""])
+                     [UI_OWNER_REMOVE stringByAppendingString:node.tagName ?: @""])
 
   [_uiHolder removeObjectForKey:@(node.sign)];
   [self removeLynxUIFromNameLynxUIMap:node];
@@ -866,7 +870,7 @@ extern NSString* const kDefaultComponentID;
     return;
   }
   LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                     [@"UIOwner.updateLayout." stringByAppendingString:ui.tagName ?: @""])
+                     [UI_OWNER_UPDATE_LAYOUT stringByAppendingString:ui.tagName ?: @""])
   CGRect frame = CGRectMake(left, top, width, height);
   if (ui.alignHeight) {
     (&frame)->size.height = (NSInteger)height;
@@ -936,7 +940,7 @@ extern NSString* const kDefaultComponentID;
   LynxUI* ui = _uiHolder[[NSNumber numberWithInteger:sign]];
   if (ui) {
     LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                       [@"UIOwner.ReceiveUIOperation." stringByAppendingString:ui.tagName ?: @""]);
+                       [UI_OWNER_RECEIVE_UI_OPERATION stringByAppendingString:ui.tagName ?: @""]);
     [ui onReceiveUIOperation:value];
     LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   }
@@ -987,7 +991,7 @@ extern NSString* const kDefaultComponentID;
   [_uisThatHasNewLayout removeAllObjects];
   for (LynxUI* ui in uisThatHasNewLayout) {
     LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                       [@"UIOwner.layoutFinish." stringByAppendingString:ui.tagName ?: @""])
+                       [UI_OWNER_LAYOUT_FINISH stringByAppendingString:ui.tagName ?: @""])
     [ui layoutDidFinished];
     LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   }

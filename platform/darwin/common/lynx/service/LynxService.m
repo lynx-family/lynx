@@ -18,6 +18,7 @@
 #import <Lynx/LynxServiceSystemInvokeProtocol.h>
 #import <Lynx/LynxServiceTrailProtocol.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 
 #import <objc/runtime.h>
 
@@ -40,7 +41,7 @@ static NSString *const LYNX_AUTO_REGISTER_SERVICE_PREFIX = @"__lynx_auto_registe
 @implementation LynxServices
 
 LYNX_LOAD_LAZY(static dispatch_once_t onceToken; dispatch_once(&onceToken, ^{
-                 LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxServices registerServices")
+                 LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SERVICES_REGISTER_SERVICES);
                  NSMutableArray<NSString *> *autoRegisteredService = [NSMutableArray new];
                  unsigned int methodCount = 0;
                  Method *methods =

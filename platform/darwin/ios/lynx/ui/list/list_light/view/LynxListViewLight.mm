@@ -14,6 +14,7 @@
 #import <Lynx/LynxListViewLight.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUI.h>
 #import <Lynx/LynxUIComponent.h>
@@ -368,9 +369,8 @@ static NSString *traceSectionName = @"view_light";
   if (!context) {
     return;
   }
-  [LynxTraceEvent beginSection:traceSectionName
-                      withName:@"dispatchInvalidationContext"
-                     debugInfo:@{@"updateType" : @(context.listUpdateType)}];
+  LYNX_TRACE_SECTION_WITH_INFO(traceSectionName, LIST_LIGHT_VIEW_DISPATCH_INVALID_CONTEXT,
+                               @{@"updateType" : @(context.listUpdateType)});
   [[self layout] updateBasicInvalidationContext:context bounds:self.bounds];
   switch (context.listUpdateType) {
     case LynxListUpdateTypeDataUpdate:
@@ -397,7 +397,7 @@ static NSString *traceSectionName = @"view_light";
     default:
       break;
   }
-  [LynxTraceEvent endSection:traceSectionName withName:@"dispatchInvalidationContext"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 - (void)performBatchUpdatesWithContext:(LynxUIListInvalidationContext *)context {
@@ -546,9 +546,8 @@ static NSString *traceSectionName = @"view_light";
 
 #pragma mark load & recycle
 - (id<LynxListCell>)loadNewCellAtIndex:(NSInteger)index {
-  [LynxTraceEvent beginSection:traceSectionName
-                      withName:@"loadNewCellAtIndex"
-                     debugInfo:@{@"index" : @(index)}];
+  LYNX_TRACE_SECTION_WITH_INFO(traceSectionName, LIST_LIGHT_VIEW_LOAD_NEW_CELL_AT_INDEX,
+                               @{@"index" : @(index)});
   LYNX_LIST_DEBUG_LOG(@"(%@)loadNewCellAtIndex: %ld", self, (long)index);
   if (index < 0 || index >= [self layout].getCount) {
     return nil;
@@ -556,12 +555,12 @@ static NSString *traceSectionName = @"view_light";
   id<LynxListCell> cell = [self.dataSource listView:self cellForItemAtIndex:index];
   cell.updateToPath = index;
   cell.reuseIdentifier = self.reuseIdentifiers[index];
-  [LynxTraceEvent endSection:traceSectionName withName:@"loadNewCellAtIndex"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
   return cell;
 }
 
 - (void)onComponentLayoutUpdated:(LynxUIComponent *)component {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"onComponentLayoutUpdated"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_ON_COMPONENT_LAYOUT_UPDATE);
   UIView *cellView = component.view.superview.superview;
 
   if (![cellView respondsToSelector:NSSelectorFromString(@"updateToPath")]) {
@@ -576,12 +575,12 @@ static NSString *traceSectionName = @"view_light";
     [self invalidLayoutFromIndex:cell.updateToPath];
     [cell applyLayoutModel:[[self layout] attributesFromIndex:cell.updateToPath]];
   }
-  [LynxTraceEvent endSection:traceSectionName withName:@"onComponentLayoutUpdated"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 - (void)onAsyncComponentLayoutUpdated:(nonnull LynxUIComponent *)component
                           operationID:(int64_t)operationID {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"onAsyncComponentLayoutUpdated"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_ON_ASYNC_COMPONENT_LAYOUT_UPDATE);
   if (self.isAsync) {
     [self.cachedCells.allCachedCells
         enumerateObjectsUsingBlock:^(id<LynxListCell> _Nonnull obj, NSUInteger idx,
@@ -620,19 +619,18 @@ static NSString *traceSectionName = @"view_light";
           }
         }];
   }
-  [LynxTraceEvent endSection:traceSectionName withName:@"onAsyncComponentLayoutUpdated"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 - (void)recycleCell:(id<LynxListCell>)cell {
-  [LynxTraceEvent beginSection:traceSectionName
-                      withName:@"recycleCell"
-                     debugInfo:@{@"cell_info" : @(cell.updateToPath)}];
+  LYNX_TRACE_SECTION_WITH_INFO(traceSectionName, LIST_LIGHT_VIEW_RECYCLE_CELL,
+                               @{@"cell_info" : @(cell.updateToPath)});
   LYNX_LIST_DEBUG_LOG(@"(%@)recycleCell %ld info: %@", self, cell.updateToPath, cell.itemKey);
   [self.dataSource listView:self recycleCell:cell];
   [self.cachedCells removeCellAtIndex:cell.updateToPath];
   [_reusePool enqueueReusableCell:cell];
   LYNX_LIST_DEBUG_LOG(@"(%@)AfterRecycleCell %@", self, self.cachedCells.description);
-  [LynxTraceEvent endSection:traceSectionName withName:@"recycleCell"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 - (id<LynxListCell>)dequeueReusableCellForIndex:(NSInteger)index {
@@ -643,19 +641,19 @@ static NSString *traceSectionName = @"view_light";
 #pragma mark fill
 // Use flag cell
 - (void)adjustWithBoundsChange {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"adjustWithBoundsChange"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_ADJUST_WITH_BOUNDS_CHANGE);
   if (self.isSelfSizing || self.blockFillInMoveAndUpdate) {
-    [LynxTraceEvent endSection:traceSectionName withName:@"adjustWithBoundsChange"];
+    LYNX_TRACE_END_SECTION(traceSectionName);
     return;
   }
   // if componentCompleteInfo flush before diff info, return here.
   if ([[self layout] getCount] == 0) {
-    [LynxTraceEvent endSection:traceSectionName withName:@"adjustWithBoundsChange"];
+    LYNX_TRACE_END_SECTION(traceSectionName);
     return;
   }
   // if bouncing, don't trigger new layout.
   if ([self isBouncing]) {
-    [LynxTraceEvent endSection:traceSectionName withName:@"adjustWithBoundsChange"];
+    LYNX_TRACE_END_SECTION(traceSectionName);
     return;
   }
   [self refreshDisplayCells];
@@ -674,7 +672,7 @@ static NSString *traceSectionName = @"view_light";
 
   [self adjustLowerCache];
   [self adjustUpperCache];
-  [LynxTraceEvent endSection:traceSectionName withName:@"adjustWithBoundsChange"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 /**
@@ -706,7 +704,7 @@ static NSString *traceSectionName = @"view_light";
 }
 
 - (void)fillToUpperBoundsIfNecessary {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"fillToUpperBoundsIfNecessary"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_FILL_TO_UPPER_BOUNDS);
   NSMutableDictionary<NSNumber *, id<LynxListCell>> *topCells = [self.cachedCells topCells];
   [topCells enumerateKeysAndObjectsUsingBlock:^(
                 NSNumber *_Nonnull key, id<LynxListCell> _Nonnull obj, BOOL *_Nonnull stop) {
@@ -741,7 +739,7 @@ static NSString *traceSectionName = @"view_light";
           [self orientationTopOrigin:cell.frame] - [self orientationTopOrigin:self.bounds];
     }
   }];
-  [LynxTraceEvent endSection:traceSectionName withName:@"fillToUpperBoundsIfNecessary"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 - (BOOL)needFillToBottom:(NSMutableDictionary<NSNumber *, id<LynxListCell>> *)bottomCells {
@@ -759,7 +757,7 @@ static NSString *traceSectionName = @"view_light";
 }
 
 - (void)fillToLowerBoundsIfNecessary {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"fillToLowerBoundsIfNecessary"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_FILL_TO_LOWER_BOUNDS);
   NSMutableDictionary<NSNumber *, id<LynxListCell>> *bottomCells = [self.cachedCells bottomCells];
   // When the layoutModel didn't change its size, we should trigger lazy layout as the
   // invalidLayoutForCellIfNecessaryAndSync won't trigger layout.
@@ -810,7 +808,7 @@ static NSString *traceSectionName = @"view_light";
                          to:maxNextIndex + self.preloadBufferCount + self.numberOfColumns];
     self.contentSize = [[self layout] getContentSize];
   }
-  [LynxTraceEvent endSection:traceSectionName withName:@"fillToLowerBoundsIfNecessary"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 // If scrolls too fast and the lazy layout don't have enough valid layout models, trigger it
@@ -835,7 +833,7 @@ static NSString *traceSectionName = @"view_light";
 }
 
 - (void)refreshDisplayCells {
-  [LynxTraceEvent beginSection:traceSectionName withName:@"refreshDisplayCells"];
+  LYNX_TRACE_SECTION(traceSectionName, LIST_LIGHT_VIEW_REFRESH_DISPLAY_CELLS);
   LynxListCachedCellManager *adjustedCachedCells =
       [[LynxListCachedCellManager alloc] initWithColumnCount:self.cachedCells.numberOfColumns
                                                    uiContext:_context];
@@ -851,7 +849,7 @@ static NSString *traceSectionName = @"view_light";
     }
   }];
   self.cachedCells = adjustedCachedCells;
-  [LynxTraceEvent endSection:traceSectionName withName:@"refreshDisplayCells"];
+  LYNX_TRACE_END_SECTION(traceSectionName);
 }
 
 #pragma mark insert

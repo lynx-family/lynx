@@ -22,6 +22,7 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxViewConfigProcessor.h>
 #import "LynxAccessibilityModule.h"
@@ -1189,7 +1190,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 #pragma mark - Global Props
 
 - (void)updateGlobalPropsWithDictionary:(NSDictionary<NSString*, id>*)data {
-  LYNX_TRACE_SECTION_WITH_INFO(LYNX_TRACE_CATEGORY_WRAPPER, @"TemplateRender::updateGlobalProps",
+  LYNX_TRACE_SECTION_WITH_INFO(LYNX_TRACE_CATEGORY_WRAPPER, TEMPLATE_RENDER_UPDATE_GLOBAL_PROPS,
                                data);
   if (data.count > 0) {
     [self updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc] initWithDictionary:data]];

@@ -19,6 +19,7 @@
 #import <Lynx/LynxScrollEventManager.h>
 #import <Lynx/LynxScrollView.h>
 #import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUnitUtils.h>
@@ -796,7 +797,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
   for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
     if ([delegate respondsToSelector:@selector(scrollerDidScroll:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"LynxUIScrollerDelegate::scrollerDidScroll");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_SCROLL);
       [delegate scrollerDidScroll:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -812,8 +813,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
                                                  selector:@selector(scrollerDidEndDecelerating:)]];
   for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
     if ([delegate respondsToSelector:@selector(scrollerDidEndDecelerating:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIScrollerDelegate::scrollerDidEndDecelerating");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_END_DECELERATING);
       [delegate scrollerDidEndDecelerating:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -842,8 +842,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
   for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
     if ([delegate respondsToSelector:@selector(scrollerDidEndDragging:willDecelerate:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIScrollerDelegate::scrollerDidEndDragging");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_END_DRAGGING);
       [delegate scrollerDidEndDragging:scrollView willDecelerate:decelerate];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -857,8 +856,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
 
   for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
     if ([delegate respondsToSelector:@selector(scrollerWillBeginDragging:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIScrollerDelegate::scrollerWillBeginDragging");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_WILL_BEGIN_DRAGGING);
       [delegate scrollerWillBeginDragging:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER);
     }
@@ -873,8 +871,7 @@ static Class<LynxScrollViewUIDelegate> kUIDelegate = nil;
                                                  (scrollerDidEndScrollingAnimation:)]];
   for (id<LynxUIScrollerDelegate> delegate in _scrollerDelegates) {
     if ([delegate respondsToSelector:@selector(scrollerDidEndScrollingAnimation:)]) {
-      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER,
-                         @"LynxUIScrollerDelegate::scrollerDidEndScrollingAnimation");
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, SCROLLER_DELEGATE_DID_END_SCROLL_ANIMATION);
       [delegate scrollerDidEndScrollingAnimation:scrollView];
       LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
     }
