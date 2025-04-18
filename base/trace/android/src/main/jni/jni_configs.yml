@@ -1,0 +1,25 @@
+# jni register file configs.
+jni_register_configs:
+  output_path: lynx/base/trace/android/src/main/jni/gen/lynx_trace_so_load.cc
+  namespaces:
+    - lynx
+  custom_headers:
+    - base/include/platform/android/jni_utils.h
+  special_cases:
+    - header: base/include/fml/platform/android/message_loop_android.h
+      method: lynx::fml::MessageLoopAndroid::Register(env);
+# gn file configs.
+gn_configs:
+  output_path: lynx/base/trace/android/src/main/jni/BUILD.gn
+  template_name: source_set
+  custom_headers:
+    - //lynx/core/Lynx.gni
+  custom_configs:
+    - //lynx/base/trace/native:trace_private_config
+    - //lynx/base/trace/native:trace_public_config
+# jni files configs.
+jni_class_configs:
+  output_dir: lynx/base/trace/android/src/main/jni/gen
+  jni_classes:
+    - java: lynx/base/trace/android/src/main/java/com/lynx/tasm/base/TraceEvent.java
+    - java: lynx/base/trace/android/src/main/java/com/lynx/tasm/base/TraceController.java

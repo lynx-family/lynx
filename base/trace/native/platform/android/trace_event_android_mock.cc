@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "base/trace/native/platform/android/jni_headers/TraceEvent_jni.h"
-#include "base/trace/native/platform/android/trace_event_android.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_jni.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_register_jni.h"
 
 void BeginSection(JNIEnv* env, jclass jcaller, jstring category,
                   jstring sectionName) {}
@@ -41,11 +41,7 @@ jboolean SystemTraceEnabled(JNIEnv* env, jclass jcaller) { return false; }
 jboolean PerfettoTraceEnabled(JNIEnv* env, jclass jcaller) { return false; }
 
 namespace lynx {
-namespace trace {
-
-bool TraceEventAndroid::RegisterJNI(JNIEnv* env) {
-  return RegisterNativesImpl(env);
-}
-
-}  // namespace trace
+namespace jni {
+bool RegisterJNIForTraceEvent(JNIEnv* env) { return RegisterNativesImpl(env); }
+}  // namespace jni
 }  // namespace lynx

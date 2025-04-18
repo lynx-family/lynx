@@ -28,7 +28,7 @@ cmake_target("LynxTrace") {
   output_name = "lynxtrace"
 
   deps = [
-    ":trace_jni",
+    ":trace_jni_files",
     "//lynx/base/trace/native:trace",
   ]
 
@@ -37,35 +37,14 @@ cmake_target("LynxTrace") {
   configs = [ ":trace_android_private_config" ]
 }
 
-source_set("trace_jni") {
-  sources = [ "src/main/jni/LynxTraceSoLoad.cpp" ]
-  include_dirs = [ "$root_gen_dir/lynx" ]
-  deps = [ "//lynx/base/src:base" ]
-  public_deps = [ ":prebuild_jni_header" ]
-  configs += [
-    "//lynx/base/trace/native:trace_private_config",
-    "//lynx/base/trace/native:trace_public_config",
-  ]
-}
-
-action("prebuild_jni_header") {
-  script = "//lynx/base/trace/tools/build_jni/prebuild_jni.py"
-
-  java_classes_path = rebase_path("./src/main/java")
-  jni_file_path = rebase_path("../native/platform/android/jni_files")
-  output_path = "$target_gen_dir/../native/platform/android/jni_headers"
-  print(output_path)
-
-  args = [
-    java_classes_path,
-    jni_file_path,
-    rebase_path(output_path),
-  ]
-
-  inputs = []
-
-  outputs = [
-    "$output_path/TraceEvent_jni.h",
-    "$output_path/TraceController_jni.h",
-  ]
+group("trace_jni_files") {
+  exec_script("//lynx/tools/build_jni/generate_and_register_jni_files.py",
+              [
+                "-root",
+                rebase_path("//"),
+                "-path",
+                rebase_path("./src/main/jni/jni_configs.yml"),
+                "--use-base-jni-header",
+              ])
+  public_deps = [ "src/main/jni:build" ]
 }

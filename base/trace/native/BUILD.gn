@@ -141,7 +141,7 @@ source_set("trace") {
     if (enable_trace == "perfetto") {
       public_deps += [ "//third_party/xhook:xhook" ]
     }
-    public_deps += [ "//lynx/base/trace/android:trace_jni" ]
+    public_deps += [ "//lynx/base/trace/android:trace_jni_files" ]
   }
 
   if (enable_trace == "perfetto") {

@@ -4,8 +4,17 @@
 
 #include <memory>
 
-#include "base/trace/native/platform/android/jni_headers/TraceController_jni.h"
+#include "base/trace/android/src/main/jni/gen/TraceController_jni.h"
+#include "base/trace/android/src/main/jni/gen/TraceController_register_jni.h"
 #include "base/trace/native/platform/android/trace_controller_android.h"
+
+namespace lynx {
+namespace jni {
+bool RegisterJNIForTraceController(JNIEnv* env) {
+  return RegisterNativesImpl(env);
+}
+}  // namespace jni
+}  // namespace lynx
 
 static constexpr int kInvalidTraceSessionId = -1;
 
@@ -30,11 +39,6 @@ void StartStartupTracingIfNeeded(JNIEnv* env, jobject jcaller, jlong ptr) {}
 
 namespace lynx {
 namespace trace {
-
-// static
-bool TraceControllerDelegateAndroid::RegisterJNIUtils(JNIEnv* env) {
-  return RegisterNativesImpl(env);
-}
 
 std::string TraceControllerDelegateAndroid::GenerateTracingFileDir() {
   return "";

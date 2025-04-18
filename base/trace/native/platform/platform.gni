@@ -7,23 +7,12 @@ import("//lynx/config.gni")
 platform_public_headers = []
 platform_shared_sources = []
 
-if (is_android) {
-  platform_shared_sources += [
-    "$root_gen_dir/lynx/base/trace/native/platform/android/jni_headers/TraceController_jni.h",
-    "$root_gen_dir/lynx/base/trace/native/platform/android/jni_headers/TraceEvent_jni.h",
-  ]
-}
-
 if (enable_trace == "perfetto") {
   if (is_android) {
-    platform_public_headers += [
-      "platform/android/trace_event_android.h",
-      "platform/android/trace_controller_android.h",
-    ]
+    platform_public_headers += [ "platform/android/trace_controller_android.h" ]
     platform_shared_sources += [
       "platform/android/trace_controller_android.cc",
       "platform/android/trace_controller_android.h",
-      "platform/android/trace_event_android.h",
       "platform/android/trace_event_android_perfetto.cc",
     ]
   } else if (is_ios || is_mac) {
@@ -41,14 +30,10 @@ if (enable_trace == "perfetto") {
   }
 } else {
   if (is_android) {
-    platform_public_headers += [
-      "platform/android/trace_event_android.h",
-      "platform/android/trace_controller_android.h",
-    ]
+    platform_public_headers += [ "platform/android/trace_controller_android.h" ]
     platform_shared_sources += [
       "platform/android/trace_controller_android.h",
       "platform/android/trace_controller_android_mock.cc",
-      "platform/android/trace_event_android.h",
     ]
     if (enable_trace == "systrace") {
       platform_shared_sources +=

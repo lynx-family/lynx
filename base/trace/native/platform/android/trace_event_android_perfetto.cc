@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include "base/trace/native/platform/android/jni_headers/TraceEvent_jni.h"
-#include "base/trace/native/platform/android/trace_event_android.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_jni.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_register_jni.h"
 #include "base/trace/native/trace_event.h"
 #include "base/trace/native/track_event_wrapper.h"
 #include "core/base/android/jni_helper.h"
@@ -177,11 +177,7 @@ jboolean SystemTraceEnabled(JNIEnv* env, jclass jcaller) { return false; }
 jboolean PerfettoTraceEnabled(JNIEnv* env, jclass jcaller) { return true; }
 
 namespace lynx {
-namespace trace {
-
-bool TraceEventAndroid::RegisterJNI(JNIEnv* env) {
-  return RegisterNativesImpl(env);
-}
-
-}  // namespace trace
+namespace jni {
+bool RegisterJNIForTraceEvent(JNIEnv* env) { return RegisterNativesImpl(env); }
+}  // namespace jni
 }  // namespace lynx

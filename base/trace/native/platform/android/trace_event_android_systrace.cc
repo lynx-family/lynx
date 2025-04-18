@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include "base/trace/native/platform/android/jni_headers/TraceEvent_jni.h"
-#include "base/trace/native/platform/android/trace_event_android.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_jni.h"
+#include "base/trace/android/src/main/jni/gen/TraceEvent_register_jni.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
 
@@ -98,10 +98,14 @@ static void RuntimeLoadAtrace() {
   }
 }
 
-bool TraceEventAndroid::RegisterJNI(JNIEnv* env) {
+}  // namespace trace
+}  // namespace lynx
+
+namespace lynx {
+namespace jni {
+bool RegisterJNIForTraceEvent(JNIEnv* env) {
   lynx::trace::RuntimeLoadAtrace();
   return RegisterNativesImpl(env);
 }
-
-}  // namespace trace
+}  // namespace jni
 }  // namespace lynx

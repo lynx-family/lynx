@@ -20,5 +20,4 @@ lynx_source_set("build") {
     "//tools/build_jni/testing/gen/LynxTemplateRender_register_jni.h",
     "//tools/build_jni/testing/lynx_so_load.cc",
   ]
-  configs += []
 }
