@@ -243,7 +243,8 @@ enum class BackgroundImageType {
   kNone,
   kUrl,
   kLinearGradient,
-  kRadialGradient
+  kRadialGradient,
+  kConicGradient,
 };
 
 enum class CursorType {
