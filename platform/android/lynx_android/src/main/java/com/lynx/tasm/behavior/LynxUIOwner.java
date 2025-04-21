@@ -862,6 +862,9 @@ public class LynxUIOwner {
   }
 
   private void insertIntoDrawList(LynxBaseUI parent, LynxBaseUI child, int index) {
+    // set child.mNextDrawUI to null to prevent infinite loop in UIGroup.afterDispatchDraw.
+    child.setNextDrawUI(null);
+
     // Only LynxUI can have a draw list.
     LynxBaseUI realParent = parent.isFlatten() ? parent.getDrawParent() : parent;
     if (realParent == null) {
