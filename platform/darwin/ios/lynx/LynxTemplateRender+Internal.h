@@ -6,6 +6,8 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxUIOwner.h>
 
+#import "TemplateRenderCallbackProtocol.h"
+
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxEvent;
@@ -15,7 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @protocol LynxUIRendererProtocol;
 
-@interface LynxTemplateRender ()
+@interface LynxTemplateRender () <TemplateRenderCallbackProtocol>
 
 - (NSInteger)logBoxImageSizeWarningThreshold;
 
