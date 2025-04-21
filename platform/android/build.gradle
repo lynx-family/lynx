@@ -146,7 +146,7 @@ task generateJNIHeader {
     description "Because generated files should not checkin this repo, so generate JNI headers before build."
     exec {
         workingDir "../../"
-        commandLine "bash", "tools/build_jni/prebuild.sh"
+        commandLine "python3", "tools/build_jni/prebuild_jni.py"
         println commandLine
     }
 }
