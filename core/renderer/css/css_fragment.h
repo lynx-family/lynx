@@ -124,6 +124,20 @@ class CSSFragment {
 
   void SetEnableCSSLazyImport(bool enable) { enable_css_lazy_import_ = enable; }
 
+  static void CollectIdChangedInvalidation(CSSFragment*,
+                                           css::InvalidationLists&,
+                                           const std::string&,
+                                           const std::string&);
+
+  static void CollectClassChangedInvalidation(CSSFragment*,
+                                              css::InvalidationLists&,
+                                              const ClassList&,
+                                              const ClassList&);
+
+  static void CollectPseudoChangedInvalidation(CSSFragment*,
+                                               css::InvalidationLists&,
+                                               PseudoState, PseudoState);
+
  protected:
   bool has_touch_pseudo_token_{false};
   // FIXME(linxs): it's better to flush related fontface or keyframe only when

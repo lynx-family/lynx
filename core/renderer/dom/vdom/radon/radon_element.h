@@ -20,7 +20,7 @@ namespace tasm {
 class RadonElement : public Element {
  public:
   RadonElement(const base::String& tag,
-               const std::shared_ptr<AttributeHolder>& node,
+               const fml::RefPtr<AttributeHolder>& node,
                ElementManager* element_manager, uint32_t node_index = 0);
 
   ~RadonElement();

@@ -5,31 +5,15 @@
 #include "core/renderer/dom/attribute_holder.h"
 
 #include <algorithm>
-#include <map>
-#include <set>
-#include <string>
 
 #include "core/renderer/dom/element.h"
+#include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/selector/matching/attribute_selector_matching.h"
-#include "core/renderer/dom/vdom/radon/radon_component.h"
-#include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {
-
-void AttributeHolder::OnStyleChange() {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->OnStyleChange();
-  }
-}
-
-void AttributeHolder::OnPseudoStateChanged(PseudoState prev, PseudoState curr) {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->OnPseudoStateChanged(prev, curr);
-  }
-}
 
 void AttributeHolder::PresetInlineStyleMapCapacity(size_t count) {
   inline_styles_.reserve(count);
@@ -210,23 +194,14 @@ css::StyleNode* AttributeHolder::SelectorMatchingParent() const {
   return element_->parent()->data_model();
 }
 
-// RadonNode override this method, so only work in fiber mode
-// TODO(wangyifei.20010605): Use a delegate class rather than 'radon_node_ptr'.
 css::StyleNode* AttributeHolder::HolderParent() const {
-  if (radon_node_ptr_) {
-    return radon_node_ptr_->HolderParent();
-  } else {
-    if (!element_ || !element_->parent()) {
-      return nullptr;
-    }
-    return element_->parent()->data_model();
+  if (!element_ || !element_->parent()) {
+    return nullptr;
   }
+  return element_->parent()->data_model();
 }
 
 css::StyleNode* AttributeHolder::NextSibling() const {
-  if (radon_node_ptr_) {
-    return radon_node_ptr_->NextSibling();
-  }
   if (!element_) {
     return nullptr;
   }
@@ -237,9 +212,6 @@ css::StyleNode* AttributeHolder::NextSibling() const {
 }
 
 css::StyleNode* AttributeHolder::PreviousSibling() const {
-  if (radon_node_ptr_) {
-    return radon_node_ptr_->PreviousSibling();
-  }
   if (!element_) {
     return nullptr;
   }
@@ -249,105 +221,11 @@ css::StyleNode* AttributeHolder::PreviousSibling() const {
   return nullptr;
 }
 
-CSSFragment* AttributeHolder::ParentStyleSheet() const {
-  if (radon_node_ptr_) {
-    return radon_node_ptr_->ParentStyleSheet();
-  }
-  return nullptr;
-}
-
-bool AttributeHolder::GetRemoveCSSScopeEnabled() const {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->GetRemoveCSSScopeEnabled();
-  }
-  return false;
-}
-bool AttributeHolder::GetCascadePseudoEnabled() const {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->GetCascadePseudoEnabled();
-  }
-  return false;
-}
-bool AttributeHolder::GetRemoveDescendantSelectorScope() const {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->GetRemoveDescendantSelectorScope();
-  }
-  return true;
-}
-
-bool AttributeHolder::IsComponent() const {
-  if (radon_node_ptr_) {
-    radon_node_ptr_->IsComponent();
-  }
-  return false;
-}
-
 size_t AttributeHolder::ChildCount() const {
   if (!element_) {
     return 0;
   }
   return element_->GetChildCount();
-}
-
-void AttributeHolder::CollectIdChangedInvalidation(
-    CSSFragment* style_sheet, css::InvalidationLists& lists,
-    const std::string& old_id, const std::string& new_id) {
-  // We know the style_sheet is not empty
-  if (!old_id.empty()) style_sheet->CollectInvalidationSetsForId(lists, old_id);
-  if (!new_id.empty()) style_sheet->CollectInvalidationSetsForId(lists, new_id);
-}
-
-void AttributeHolder::CollectClassChangedInvalidation(
-    CSSFragment* style_sheet, css::InvalidationLists& lists,
-    const ClassList& old_classes, const ClassList& new_classes) {
-  if (old_classes.empty()) {
-    for (auto& class_name : new_classes) {
-      style_sheet->CollectInvalidationSetsForClass(lists, class_name.str());
-    }
-  } else {
-    base::InlineVector<bool, ClassList::kInlinedSize> remaining_class_bits(
-        old_classes.size());
-    for (auto& class_name : new_classes) {
-      bool found = false;
-      for (unsigned j = 0; j < old_classes.size(); ++j) {
-        if (class_name == old_classes[j]) {
-          // Mark each class that is still in the newClasses, so we can skip
-          // doing a n^2 search below when looking for removals. We can't
-          // break from this loop early since a class can appear more than
-          // once.
-          remaining_class_bits[j] = true;
-          found = true;
-        }
-      }
-      // Class was added.
-      if (!found) {
-        style_sheet->CollectInvalidationSetsForClass(lists, class_name.str());
-      }
-    }
-
-    for (unsigned i = 0; i < old_classes.size(); ++i) {
-      if (remaining_class_bits[i]) continue;
-      // Class was removed.
-      style_sheet->CollectInvalidationSetsForClass(lists, old_classes[i].str());
-    }
-  }
-}
-
-void AttributeHolder::CollectPseudoChangedInvalidation(
-    CSSFragment* style_sheet, css::InvalidationLists& lists, PseudoState prev,
-    PseudoState curr) {
-  if ((prev ^ curr) & kPseudoStateFocus) {
-    style_sheet->CollectInvalidationSetsForPseudoClass(
-        lists, css::LynxCSSSelector::kPseudoFocus);
-  }
-  if ((prev ^ curr) & kPseudoStateActive) {
-    style_sheet->CollectInvalidationSetsForPseudoClass(
-        lists, css::LynxCSSSelector::kPseudoActive);
-  }
-  if ((prev ^ curr) & kPseudoStateHover) {
-    style_sheet->CollectInvalidationSetsForPseudoClass(
-        lists, css::LynxCSSSelector::kPseudoHover);
-  }
 }
 
 }  // namespace tasm

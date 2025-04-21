@@ -23,7 +23,7 @@ namespace lynx {
 namespace tasm {
 
 RadonElement::RadonElement(const base::String& tag,
-                           const std::shared_ptr<AttributeHolder>& node,
+                           const fml::RefPtr<AttributeHolder>& node,
                            ElementManager* manager, uint32_t node_index)
     : Element(tag, manager, node_index),
       styles_manager_(

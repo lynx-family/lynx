@@ -17,6 +17,8 @@ lynx_core_source_set("radon") {
     "node_select_options.h",
     "node_selector.cc",
     "node_selector.h",
+    "radon_attribute_holder.cc",
+    "radon_attribute_holder.h",
     "radon_base.cc",
     "radon_base.h",
     "radon_component.cc",

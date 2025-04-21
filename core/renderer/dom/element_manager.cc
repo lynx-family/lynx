@@ -210,7 +210,7 @@ void ElementManager::WillDestroy() {
 }
 
 fml::RefPtr<RadonElement> ElementManager::CreateNode(
-    const base::String &tag, const std::shared_ptr<AttributeHolder> &node,
+    const base::String &tag, const fml::RefPtr<AttributeHolder> &node,
     uint32_t node_index, RadonNodeType radon_node_type) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "ElementManager::CreateNode", "tag",
               tag.str());

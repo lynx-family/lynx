@@ -110,7 +110,7 @@ class Element : public lepus::RefCounted {
     return lepus::RefType::kElement;
   };
 
-  void SetAttributeHolder(const std::shared_ptr<AttributeHolder>& data_model) {
+  void SetAttributeHolder(const fml::RefPtr<AttributeHolder>& data_model) {
     data_model_ = data_model;
     data_model_->SetElement(this);
     data_model_->set_tag(tag_);
@@ -676,7 +676,7 @@ class Element : public lepus::RefCounted {
 
   std::unique_ptr<ElementContainer> element_container_;
 
-  std::shared_ptr<AttributeHolder> data_model_{nullptr};
+  fml::RefPtr<AttributeHolder> data_model_;
 
   ElementArchTypeEnum arch_type_ = ElementArchTypeEnum::FiberArch;
   bool is_fixed_{false};

@@ -36,7 +36,7 @@ namespace tasm {
 RadonNode::RadonNode(PageProxy* const page_proxy_, const base::String& tag_name,
                      uint32_t node_index)
     : RadonBase(kRadonNode, tag_name, node_index), page_proxy_{page_proxy_} {
-  attribute_holder_ = std::make_shared<AttributeHolder>();
+  attribute_holder_ = fml::MakeRefCounted<RadonAttributeHolder>();
   attribute_holder_->set_radon_node_ptr(this);
   attribute_holder_->set_tag(tag());
   if (!page_proxy_) {
@@ -57,7 +57,7 @@ RadonNode::RadonNode(const RadonNode& node, PtrLookupMap& map)
       force_calc_new_style_{node.force_calc_new_style_} {
   if (node.attribute_holder_) {
     attribute_holder_ =
-        std::make_shared<AttributeHolder>(*node.attribute_holder_);
+        fml::MakeRefCounted<RadonAttributeHolder>(*node.attribute_holder_);
     attribute_holder_->set_radon_node_ptr(this);
     attribute_holder_->set_tag(node.tag());
   }
@@ -695,12 +695,12 @@ void RadonNode::CollectInvalidationSetsAndInvalidate(
   css::InvalidationLists invalidation_lists;
   // Works when CSS Selector is enabled
   if (id_dirty_) {
-    AttributeHolder::CollectIdChangedInvalidation(
+    CSSFragment::CollectIdChangedInvalidation(
         style_sheet, invalidation_lists, old_radon_node->id_selector().str(),
         id_selector().str());
   }
   if (class_dirty_) {
-    AttributeHolder::CollectClassChangedInvalidation(
+    CSSFragment::CollectClassChangedInvalidation(
         style_sheet, invalidation_lists, old_radon_node->classes(), classes());
   }
 
@@ -849,8 +849,8 @@ void RadonNode::CollectInvalidationSetsForPseudoAndInvalidate(
     return;
   }
   css::InvalidationLists invalidation_lists;
-  AttributeHolder::CollectPseudoChangedInvalidation(
-      style_sheet, invalidation_lists, prev, curr);
+  CSSFragment::CollectPseudoChangedInvalidation(style_sheet, invalidation_lists,
+                                                prev, curr);
 
   bool should_patch = false;
   for (auto* invalidation_set : invalidation_lists.descendants) {

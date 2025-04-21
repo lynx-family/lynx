@@ -6,12 +6,9 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "core/renderer/css/css_fragment.h"
-#include "core/renderer/css/css_property.h"
 #include "core/renderer/css/style_node.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/events/events.h"
@@ -39,12 +36,13 @@ void MapInsertOrAssign(T& map, const typename T::key_type& key,
   }
 }
 
-class AttributeHolder : public css::StyleNode {
+class AttributeHolder : public fml::RefCountedThreadSafeStorage,
+                        public css::StyleNode {
  public:
-  AttributeHolder(Element* element = nullptr)
+  explicit AttributeHolder(Element* element = nullptr)
       : pseudo_element_owner_(nullptr),
         element_(element),
-        ssr_attribute_holder_{false} {}
+        is_ssr_attribute_holder_{false} {}
 
   AttributeHolder(const AttributeHolder& holder)
       : classes_{holder.classes_},
@@ -55,8 +53,7 @@ class AttributeHolder : public css::StyleNode {
         pseudo_state_{holder.pseudo_state_},
         pseudo_element_owner_{holder.pseudo_element_owner_},
         element_(holder.element_),
-        radon_node_ptr_(holder.radon_node_ptr_),
-        ssr_attribute_holder_{holder.ssr_attribute_holder_} {
+        is_ssr_attribute_holder_{holder.is_ssr_attribute_holder_} {
     for (auto& static_event : holder.static_events_) {
       SetStaticEvent(static_event.second->type(), static_event.second->name(),
                      static_event.second->function());
@@ -65,7 +62,9 @@ class AttributeHolder : public css::StyleNode {
 
   virtual ~AttributeHolder() = default;
 
-  void OnStyleChange() override;
+  void ReleaseSelf() const override { delete this; }
+
+  void OnStyleChange() override {}
 
   void AddClass(const base::String& clazz) {
     classes_.push_back(clazz);
@@ -325,7 +324,7 @@ class AttributeHolder : public css::StyleNode {
   }
 
   virtual size_t ChildCount() const;
-  virtual CSSFragment* ParentStyleSheet() const;
+  virtual CSSFragment* ParentStyleSheet() const override { return nullptr; }
 
   void SetPseudoElementOwner(AttributeHolder* owner) {
     pseudo_element_owner_ = owner;
@@ -333,10 +332,10 @@ class AttributeHolder : public css::StyleNode {
 
   virtual CSSFragment* GetPageStyleSheet() { return nullptr; }
 
-  bool GetRemoveCSSScopeEnabled() const;
-  bool GetCascadePseudoEnabled() const;
-  bool GetRemoveDescendantSelectorScope() const;
-  bool IsComponent() const;
+  bool GetRemoveCSSScopeEnabled() const override { return false; }
+  bool GetCascadePseudoEnabled() const override { return false; }
+  bool GetRemoveDescendantSelectorScope() const override { return true; }
+  bool IsComponent() const override { return false; }
 
   void CloneAttributes(const AttributeHolder& src) {
     this->classes_ = src.classes_;
@@ -349,7 +348,7 @@ class AttributeHolder : public css::StyleNode {
 
   static constexpr const char kIdSelectorAttrName[] = "idSelector";
 
-  void OnPseudoStateChanged(PseudoState, PseudoState);
+  void OnPseudoStateChanged(PseudoState, PseudoState) override {}
 
   void SetPseudoState(PseudoState state) {
     // If pseudo_state_ == state, which means the
@@ -384,28 +383,17 @@ class AttributeHolder : public css::StyleNode {
 
   bool HasClass() const { return !classes_.empty(); }
 
-  bool IsSSRAttrHolder() { return ssr_attribute_holder_; }
+  bool IsSSRAttrHolder() { return is_ssr_attribute_holder_; }
 
-  void SetSSRAttrHolder(bool flag) { ssr_attribute_holder_ = flag; }
+  void SetSSRAttrHolder(bool flag) { is_ssr_attribute_holder_ = flag; }
 
-  static void CollectIdChangedInvalidation(CSSFragment*,
-                                           css::InvalidationLists&,
-                                           const std::string&,
-                                           const std::string&);
+  virtual RadonNode* radon_node_ptr() const { return nullptr; }
 
-  static void CollectClassChangedInvalidation(CSSFragment*,
-                                              css::InvalidationLists&,
-                                              const ClassList&,
-                                              const ClassList&);
-
-  static void CollectPseudoChangedInvalidation(CSSFragment*,
-                                               css::InvalidationLists&,
-                                               PseudoState, PseudoState);
-
-  RadonNode* radon_node_ptr() { return radon_node_ptr_; }
-  void set_radon_node_ptr(RadonNode* radon_node_ptr) {
-    radon_node_ptr_ = radon_node_ptr;
-  }
+  bool ContainsIdSelector(const std::string& selector) const override;
+  bool ContainsClassSelector(const std::string& selector) const override;
+  bool ContainsTagSelector(const std::string& selector) const override;
+  bool ContainsAttributeSelector(const std::string& selector) const;
+  void SetElement(Element* element) { element_ = element; }
 
  protected:
   ClassList classes_;
@@ -441,19 +429,8 @@ class AttributeHolder : public css::StyleNode {
   AttributeHolder* pseudo_element_owner_;
   // Reference the element for sibling and parent
   Element* element_;
-  // Save path to trail Element to RadonNode.
-  // TODO(wangyifei.20010605): Use a delegate class rather than
-  // 'radon_node_ptr_'.
-  RadonNode* radon_node_ptr_ = nullptr;
 
-  bool ssr_attribute_holder_;
-
- public:
-  bool ContainsIdSelector(const std::string& selector) const override;
-  bool ContainsClassSelector(const std::string& selector) const override;
-  bool ContainsTagSelector(const std::string& selector) const override;
-  bool ContainsAttributeSelector(const std::string& selector) const;
-  void SetElement(Element* element) { element_ = element; }
+  bool is_ssr_attribute_holder_;
 };
 
 }  // namespace tasm

@@ -64,7 +64,7 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
     : Element(tag, manager), dirty_(kDirtyCreated), css_id_(css_id) {
   css_patching_.SetEnableFiberArch(true);
   InitLayoutBundle();
-  SetAttributeHolder(std::make_shared<AttributeHolder>(this));
+  SetAttributeHolder(fml::MakeRefCounted<AttributeHolder>(this));
 
   if (tag.IsEquals("x-overlay-ng")) {
     can_has_layout_only_children_ = false;
@@ -113,7 +113,8 @@ FiberElement::FiberElement(const FiberElement &element,
       is_template_(element.is_template_),
       part_id_(element.part_id_),
       builtin_attr_map_(element.builtin_attr_map_) {
-  SetAttributeHolder(std::make_shared<AttributeHolder>(*element.data_model()));
+  SetAttributeHolder(
+      fml::MakeRefCounted<AttributeHolder>(*element.data_model()));
   data_model_->set_css_variables_map(element.data_model()->css_variables_map());
 
   if (clone_resolved_props) {
@@ -2945,7 +2946,7 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
       return;
     }
     css::InvalidationLists invalidation_lists;
-    AttributeHolder::CollectPseudoChangedInvalidation(
+    CSSFragment::CollectPseudoChangedInvalidation(
         css_fragment, invalidation_lists, prev_status, current_status);
     data_model_->SetPseudoState(current_status);
     for (auto *invalidation_set : invalidation_lists.descendants) {
@@ -3202,8 +3203,8 @@ bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
     return false;
   }
   auto old_size = invalidation_lists_.descendants.size();
-  AttributeHolder::CollectIdChangedInvalidation(
-      css_fragment, invalidation_lists_, old_id, new_id);
+  CSSFragment::CollectIdChangedInvalidation(css_fragment, invalidation_lists_,
+                                            old_id, new_id);
   return invalidation_lists_.descendants.size() != old_size;
 }
 
@@ -3215,7 +3216,7 @@ bool FiberElement::CheckHasInvalidationForClass(const ClassList &old_classes,
     return false;
   }
   auto old_size = invalidation_lists_.descendants.size();
-  AttributeHolder::CollectClassChangedInvalidation(
+  CSSFragment::CollectClassChangedInvalidation(
       css_fragment, invalidation_lists_, old_classes, new_classes);
   return invalidation_lists_.descendants.size() != old_size;
 }

@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "base/include/debug/lynx_assert.h"
-#include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/vdom/radon/radon_attribute_holder.h"
 #include "core/renderer/dom/vdom/radon/radon_base.h"
 #include "core/renderer/dom/vdom/radon/radon_factory.h"
 #include "core/renderer/dom/vdom/radon/radon_types.h"
@@ -337,7 +337,7 @@ class RadonNode : public RadonBase {
 
   bool IsSSRAttrHolder() { return attribute_holder_->IsSSRAttrHolder(); }
 
-  std::shared_ptr<AttributeHolder> attribute_holder() {
+  const fml::RefPtr<RadonAttributeHolder>& attribute_holder() const {
     return attribute_holder_;
   }
 
@@ -398,7 +398,7 @@ class RadonNode : public RadonBase {
   RadonNodeIndexType GetOriginalNodeIndex();
 
   // TODO(wangyifei.20010605): rename it to data_model_;
-  std::shared_ptr<AttributeHolder> attribute_holder_;
+  fml::RefPtr<RadonAttributeHolder> attribute_holder_;
   fml::RefPtr<Element> element_;
 
  private:

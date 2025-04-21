@@ -229,7 +229,7 @@ class FiberElement : public Element, public SelectorItem {
   // element has a data model. Since the data model of a fiber element is not
   // empty by default, this interface is provided to the inspector to reset the
   // data model and mark the element as created by the inspector.
-  void ResetDataModel() { data_model_.reset(); }
+  void ResetDataModel() { data_model_ = nullptr; }
 
   virtual bool CanBeLayoutOnly() const override;
 

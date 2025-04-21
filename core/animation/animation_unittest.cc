@@ -56,7 +56,8 @@ class AnimationTest : public ::testing::Test {
     auto effect = animation::KeyframeEffect::Create();
     InitTestEffect(*effect);
     test_animation->SetKeyframeEffect(std::move(effect));
-    element_ = manager->CreateNode("view", std::make_shared<AttributeHolder>());
+    element_ =
+        manager->CreateNode("view", fml::MakeRefCounted<AttributeHolder>());
     test_animation->BindElement(element_.get());
     return test_animation;
   }

@@ -278,7 +278,7 @@ class ElementManager {
   virtual ~ElementManager();
 
   virtual fml::RefPtr<RadonElement> CreateNode(
-      const base::String &tag, const std::shared_ptr<AttributeHolder> &node,
+      const base::String &tag, const fml::RefPtr<AttributeHolder> &node,
       uint32_t node_index = 0,
       RadonNodeType radon_node_type = RadonNodeType::kRadonUnknown);
 
