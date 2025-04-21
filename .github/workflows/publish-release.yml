@@ -46,11 +46,9 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: |-
-            python3 -m venv myenv
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
             rm -rf $GITHUB_WORKSPACE/third_party
+            source tools/envsetup.sh
             tools/hab sync .
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
@@ -61,7 +59,6 @@ jobs:
           max_attempts: 3
           command: |-
             set -e
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
             source tools/envsetup.sh
             pushd explorer/darwin/ios/lynx_explorer
@@ -70,8 +67,8 @@ jobs:
             popd
       - name: Build Explorer App
         run: |-
-          source myenv/bin/activate
           cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
           pushd explorer/darwin/ios/lynx_explorer
           xcodebuild -workspace LynxExplorer.xcworkspace -scheme LynxExplorer -configuration Debug -arch ${{ matrix.arch }} -archivePath build/LynxExplorer.xcarchive -derivedDataPath iOSCoreBuild/DerivedData -resultBundlePath results_bundle -showBuildTimingSummary -sdk iphonesimulator LD_GENERATE_MAP_FILE=YES LD_MAP_FILE_PATH=Build/linkmap.txt -jobs 24 build
           popd
@@ -162,18 +159,13 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: |-
-            python3 -m venv myenv
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            python3 -m pip install requests -i https://pypi.org/simple
             source tools/envsetup.sh
             tools/hab sync . -f
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Prepare cocoapods publish source
         run: |-
-          source myenv/bin/activate
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           cd $GITHUB_WORKSPACE
@@ -190,7 +182,6 @@ jobs:
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
         run: |-
-          source myenv/bin/activate
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           cd $GITHUB_WORKSPACE

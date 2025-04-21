@@ -52,7 +52,7 @@ jobs:
       - name: Run api check
         run: |
           source tools/envsetup.sh
-          tools/vpython tools_shared/git_lynx.py check --checkers api-check
+          python3 tools_shared/git_lynx.py check --checkers api-check
 
   darwin-native-unittests-check:
     runs-on: lynx-darwin-14-medium
@@ -68,15 +68,12 @@ jobs:
           max_attempts: 3
           command: |-
             set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+            source tools/envsetup.sh
             tools/hab sync .
       - name: Run Unittests
         run: |
           set -e
-          source ../myenv/bin/activate
           source tools/envsetup.sh
           tools/rtf/rtf native-ut run --names lynx
 
@@ -132,10 +129,8 @@ jobs:
           max_attempts: 3
           command: |-
             set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+            source tools/envsetup.sh
             tools/hab sync .
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
@@ -146,7 +141,6 @@ jobs:
           max_attempts: 3
           command: |
             set -e
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
             source tools/envsetup.sh
             pushd explorer/darwin/ios/lynx_explorer
@@ -156,7 +150,7 @@ jobs:
       - name: Run Unittests
         run: |
           set -e
-          source ../myenv/bin/activate
+          source tools/envsetup.sh
           pushd explorer/darwin/ios/lynx_explorer
           xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
           sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
@@ -202,14 +196,11 @@ jobs:
           max_attempts: 3
           command: |-
             set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+            source tools/envsetup.sh
             tools/hab sync .
       - name: Build Darwin Tasm
         run: |
-          source ../myenv/bin/activate
           source tools/envsetup.sh
           tools/hab sync . -f
           pushd oliver/lynx-tasm

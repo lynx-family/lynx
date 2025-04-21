@@ -18,5 +18,5 @@ do
     JAVA_ROOT_PATH=$CURRENT_PATH"/../../platform/android/"${ANDROID_NAME[index]}"java/"
     OUTPUT_DIR=$CURRENT_PATH"/../../"${LIBRARY_NAME[index]}"/build/jni/gen"
     INCLUDE_ROOT_DIR=${LIBRARY_NAME[index]}"/build/jni/gen"
-    $CURRENT_PATH/../vpython $GEN_FILE $LIBRARY_ROOT_PATH $JAVA_ROOT_PATH $OUTPUT_DIR $INCLUDE_ROOT_DIR
+    $CURRENT_PATH/../../../.venv/bin/python3 $GEN_FILE $LIBRARY_ROOT_PATH $JAVA_ROOT_PATH $OUTPUT_DIR $INCLUDE_ROOT_DIR
 done

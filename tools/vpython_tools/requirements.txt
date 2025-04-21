@@ -1,0 +1,4 @@
+PyYAML~=6.0.2
+requests~=2.32.3
+json5~=0.9.10
+qrcode~=8.1

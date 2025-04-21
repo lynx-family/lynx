@@ -47,5 +47,12 @@ function android_env_setup() {
   fi
 }
 
+function python_env_setup() {
+  VENV_PATH=$LYNX_ROOT_DIR/.venv
+  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py
+  source $VENV_PATH/bin/activate
+}
+
 lynx_envsetup "${BASH_SOURCE:-$0}"
 android_env_setup "${BASH_SOURCE:-$0}"
+python_env_setup

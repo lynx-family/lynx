@@ -5,4 +5,4 @@
 CURRENT_PATH="$(dirname "$(realpath "$0")")"
 GEN_FILE=$CURRENT_PATH"/../generate_and_register_jni_files.py"
 LIBRARY_ROOT_PATH=$CURRENT_PATH"/../../.."
-$CURRENT_PATH/../../vpython $GEN_FILE -root $LIBRARY_ROOT_PATH -path $CURRENT_PATH/jni_configs.yml
+$CURRENT_PATH/../../../.venv/bin/python3 $GEN_FILE -root $LIBRARY_ROOT_PATH -path $CURRENT_PATH/jni_configs.yml
