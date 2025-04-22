@@ -153,6 +153,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @Override
+  public boolean isScrollContainer() {
+    return true;
+  }
+
+  @Override
   public void insertChild(LynxBaseUI child, int index) {
     // The list container should manager the view of component on the interface of
     // "onLayoutFinish()"
