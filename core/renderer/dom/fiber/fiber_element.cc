@@ -2030,13 +2030,13 @@ void FiberElement::ConsumeStyleInternal(
         continue;
       }
 
-      bool complex_inherit_style =
+      const bool is_platform_inheritable_property =
           process_inherit && is_inherit_style &&
-          DynamicCSSStylesManager::IsPropertyComplexInheritable(style.first,
-                                                                style.second);
+          starlight::ComputedCSSStyle::IsPlatformInheritableProperty(
+              style.first);
 
-      if (auto parent_computed_css = GetParentComputedCSSStyle();
-          complex_inherit_style && parent_computed_css != nullptr) {
+      if (const auto *parent_computed_css = GetParentComputedCSSStyle();
+          is_platform_inheritable_property && parent_computed_css != nullptr) {
         const bool value_changed = computed_css_style()->InheritValue(
             style.first, *parent_computed_css);
         if (value_changed) {

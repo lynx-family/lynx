@@ -1461,6 +1461,11 @@ struct BinarySearchArray {
 
   BinarySearchArray() = default;
   BinarySearchArray(std::nullptr_t) {}  // NOLINT
+  BinarySearchArray(std::initializer_list<K> init) {
+    for (const auto& key : init) {
+      insert(key);
+    }
+  }
 
   size_t size() const { return array_.size(); }
 
