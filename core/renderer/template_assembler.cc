@@ -1515,7 +1515,7 @@ lepus::Value TemplateAssembler::GetPageDataByKey(
     }
     return lepus::Value();
   }
-  return page_proxy()->GetDataByKey(keys);
+  return lepus::Value::Clone(page_proxy()->GetDataByKey(keys));
 }
 
 void TemplateAssembler::UpdateComponentData(const runtime::UpdateDataTask& task,
