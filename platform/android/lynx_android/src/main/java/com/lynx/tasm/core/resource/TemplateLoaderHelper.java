@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.tasm.core;
+package com.lynx.tasm.core.resource;
 
 import static com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate;
 import static com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS;
@@ -35,12 +35,9 @@ class TemplateLoaderHelper {
     return mTemplateFetcher != null;
   }
 
-  public void fetchTemplateByGenericTemplateFetcher(
-      String url, LynxResourceLoader.TemplateLoaderCallback callback) {
+  public void fetchTemplateByGenericTemplateFetcher(String url, TemplateResourceCallback callback) {
     mTemplateFetcher.fetchTemplate(new LynxResourceRequest(url, LynxResourceTypeTemplate),
         new LynxResourceCallback<TemplateProviderResult>() {
-          private final LynxResourceLoader.TemplateLoaderCallback mCallback = callback;
-
           @Override
           public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
             TemplateProviderResult data = response.getData();

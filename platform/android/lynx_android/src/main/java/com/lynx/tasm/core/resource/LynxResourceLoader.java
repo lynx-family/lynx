@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.tasm.core;
+package com.lynx.tasm.core.resource;
 
 import android.text.TextUtils;
 import androidx.annotation.NonNull;
@@ -13,10 +13,10 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxInfoReportHelper;
 import com.lynx.tasm.LynxSubErrorCode;
-import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.component.DynamicComponentFetcher;
+import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceCallback;
@@ -25,9 +25,6 @@ import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
-import com.lynx.tasm.service.LynxServiceCenter;
-import com.lynx.tasm.service.security.ILynxSecurityService;
-import com.lynx.tasm.service.security.SecurityResult;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -37,92 +34,33 @@ import java.io.InputStream;
 import java.lang.ref.WeakReference;
 
 public class LynxResourceLoader {
-  private static final int LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE = 7;
-  private static final int LYNX_RESOURCE_TYPE_EXTERNAL_JS = 9;
-  private static final int LYNX_RESOURCE_TYPE_TEMPLATE_LAZY_BUNDLE = 10;
-  private static final int LYNX_RESOURCE_TYPE_ASSETS = 11;
+  static final int LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE = 7;
+  static final int LYNX_RESOURCE_TYPE_EXTERNAL_JS = 9;
+  static final int LYNX_RESOURCE_TYPE_TEMPLATE_LAZY_BUNDLE = 10;
+  static final int LYNX_RESOURCE_TYPE_ASSETS = 11;
+  static final String CORE_JS = "assets://lynx_core.js";
+  static final String CORE_DEBUG_JS = "lynx_core_dev.js";
+  static final String FILE_SCHEME = "file://";
+  static final String ASSETS_SCHEME = "assets://";
+  // For compatibility with iOS, on iOS the path of assets://lynx_core.js and assets://[others].js
+  // is different
+  static final String LYNX_ASSETS_SCHEME = "lynx_assets://";
+
+  static final int RESOURCE_LOADER_SUCCESS = 0;
+  static final int RESOURCE_LOADER_FAILED = -1;
+  static final String TAG = "LynxResourceLoader";
+  static final String METHOD_NAME_LOAD_SCRIPT = "loadExternalResource";
+  static final String METHOD_NAME_LOAD_LOCAL_SCRIPT = "loadLocalResource";
+  static final String MSG_NULL_DATA = "get null data for provider.";
 
   private final LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
-  private LynxExternalResourceFetcherWrapper mFetcherWrapper = null;
+  private LynxExternalResourceFetcherWrapper mFetcherWrapper;
   private final TemplateLoaderHelper mTemplateLoaderHelper;
   private final LynxGenericResourceFetcher mGenericResourceFetcher;
 
   private final WeakReference<ILynxErrorReceiver> mWeekErrorReceiver;
 
   private final LynxInfoReportHelper mReportHelper = new LynxInfoReportHelper();
-
-  private static final String CORE_JS = "assets://lynx_core.js";
-  private static final String CORE_DEBUG_JS = "lynx_core_dev.js";
-  private static final String FILE_SCHEME = "file://";
-  private static final String ASSETS_SCHEME = "assets://";
-  // For compatibility with iOS, on iOS the path of assets://lynx_core.js and assets://[others].js
-  // is different
-  private static final String LYNX_ASSETS_SCHEME = "lynx_assets://";
-
-  private static final int RESOURCE_LOADER_SUCCESS = 0;
-  private static final int RESOURCE_LOADER_FAILED = -1;
-  private static final String TAG = "LynxResourceLoader";
-  private static final String METHOD_NAME_LOAD_SCRIPT = "loadExternalResource";
-  private static final String METHOD_NAME_LOAD_LOCAL_SCRIPT = "loadLocalResource";
-  private static final String MSG_NULL_DATA = "get null data for provider.";
-  private static final String DOUBLE_INVOKE_ERROR_MSG =
-      "Illegal callback invocation from native. The loaded callback can only be invoked once! The url is ";
-
-  /**
-   * Provide unified lazy bundle loading callback
-   *
-   * Template loading of lazy bundles supports three protocols, so provides
-   * TemplateCallbackHelper to maintain consistency of behavior of each protocol
-   */
-  static class TemplateLoaderCallback {
-    private final String mUrl;
-    private final long mResponseHandler;
-    private volatile boolean mInvoked = false;
-    private final LynxInfoReportHelper mReportHelper;
-
-    public TemplateLoaderCallback(
-        String url, long responseHandler, LynxInfoReportHelper reportHelper) {
-      mUrl = url;
-      mResponseHandler = responseHandler;
-      mReportHelper = reportHelper;
-    }
-
-    public void onTemplateLoaded(
-        boolean success, byte[] data, TemplateBundle bundle, String errorMsg) {
-      synchronized (this) {
-        if (mInvoked) {
-          LLog.e(TAG, DOUBLE_INVOKE_ERROR_MSG + mUrl);
-          return;
-        }
-        mInvoked = true;
-      }
-
-      // Report only when loading async component data success
-      final boolean dataValid = data != null && data.length > 0;
-      final boolean bundleValid = bundle != null && bundle.isValid();
-      if (success && (dataValid || bundleValid) && mReportHelper != null) {
-        mReportHelper.reportLynxCrashContext(LynxInfoReportHelper.KEY_ASYNC_COMPONENT_URL, mUrl);
-      }
-
-      // verify only when data valid.
-      if (success && !bundleValid && dataValid) {
-        ILynxSecurityService securityService =
-            LynxServiceCenter.inst().getService(ILynxSecurityService.class);
-        if (securityService != null) {
-          SecurityResult result = securityService.verifyTASM(
-              null, data, mUrl, ILynxSecurityService.LynxTasmType.TYPE_DYNAMIC_COMPONENT);
-          if (!result.isVerified()) {
-            success = false;
-            errorMsg = "tasm verify failed, url: " + mUrl;
-          }
-        }
-      }
-
-      LynxResourceLoader.nativeInvokeCallback(mResponseHandler, data,
-          bundleValid ? bundle.getNativePtr() : 0L,
-          success ? RESOURCE_LOADER_SUCCESS : RESOURCE_LOADER_FAILED, errorMsg);
-    }
-  }
 
   public LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions,
       DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver,
@@ -163,7 +101,7 @@ public class LynxResourceLoader {
         break;
       case LYNX_RESOURCE_TYPE_EXTERNAL_JS:
         // 1. try to use GenericResourceFetcher
-        if (FetchResourceByGenericFetcher(responseHandler, url)) {
+        if (fetchResourceByGenericFetcher(responseHandler, url)) {
           break;
         }
         fetchScriptByProvider(responseHandler, url);
@@ -205,8 +143,8 @@ public class LynxResourceLoader {
     return "";
   }
 
-  private void reportError(final String methodName, final String url, final int code,
-      final String errorMsg, final String rootCause) {
+  void reportError(final String methodName, final String url, final int code, final String errorMsg,
+      final String rootCause) {
     UIThreadUtils.runOnUiThread(new Runnable() {
       @Override
       public void run() {
@@ -356,8 +294,8 @@ public class LynxResourceLoader {
   private void fetchTemplateByFetcherWrapper(long responseHandler, String url) {
     mFetcherWrapper.fetchResourceWithHandler(
         url, new LynxExternalResourceFetcherWrapper.LoadedHandler() {
-          private final TemplateLoaderCallback mCallback =
-              new TemplateLoaderCallback(url, responseHandler, mReportHelper);
+          private final TemplateResourceCallback mCallback =
+              new TemplateResourceCallback(url, responseHandler, mReportHelper);
 
           @Override
           public void onLoaded(@Nullable byte[] data, @Nullable Throwable error) {
@@ -378,8 +316,8 @@ public class LynxResourceLoader {
     }
     final LynxResourceRequest request = new LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
-      private final TemplateLoaderCallback mCallback =
-          new TemplateLoaderCallback(url, responseHandler, mReportHelper);
+      private final TemplateResourceCallback mCallback =
+          new TemplateResourceCallback(url, responseHandler, mReportHelper);
 
       @Override
       public void onResponse(@NonNull LynxResourceResponse<byte[]> response) {
@@ -401,38 +339,14 @@ public class LynxResourceLoader {
     if (!hasTemplateFetcher) {
       return false;
     }
-    mTemplateLoaderHelper.fetchTemplateByGenericTemplateFetcher(
-        url, new TemplateLoaderCallback(url, responseHandler, mReportHelper));
+    final TemplateResourceCallback callback =
+        new TemplateResourceCallback(url, responseHandler, mReportHelper);
+    mTemplateLoaderHelper.fetchTemplateByGenericTemplateFetcher(url, callback);
     return true;
   }
 
-  private void fetchScriptComplete(
-      byte[] data, boolean success, Throwable error, String url, long responseHandler) {
-    int errCode = RESOURCE_LOADER_SUCCESS;
-    String errMsg = null;
-    String rootCause = null;
-    if (success) {
-      LLog.i(TAG, "loadExternalResourceAsync onSuccess.");
-      if (data == null || data.length == 0) {
-        errCode = LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED;
-        errMsg = MSG_NULL_DATA;
-      }
-      InvokeNativeCallbackWithBytes(responseHandler, data, errCode, errMsg);
-    } else {
-      errCode = LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED;
-      errMsg = "Error when fetch script";
-      rootCause = error.getMessage();
-      InvokeNativeCallbackWithBytes(responseHandler, null, errCode, errMsg + ": " + rootCause);
-    }
-    // Report only when loading script, the lazy bundle error will be reported in C++
-    // TODO(zhoupeng.z): Report script error in C++
-    if (errCode != RESOURCE_LOADER_SUCCESS) {
-      reportError(METHOD_NAME_LOAD_SCRIPT, url, errCode, errMsg, rootCause);
-    }
-  }
-
-  // use full package path to avoid class name conflict
-  private boolean FetchResourceByGenericFetcher(long responseHandler, String url) {
+  // use package path to avoid class name conflict
+  private boolean fetchResourceByGenericFetcher(long responseHandler, String url) {
     if (mGenericResourceFetcher != null) {
       com.lynx.tasm.resourceprovider.LynxResourceRequest resourceRequest =
           new com.lynx.tasm.resourceprovider.LynxResourceRequest(url,
@@ -440,13 +354,17 @@ public class LynxResourceLoader {
                   .LynxResourceTypeExternalJSSource);
       mGenericResourceFetcher.fetchResource(
           resourceRequest, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
+            private final ExternalScriptResourceCallback callback =
+                new ExternalScriptResourceCallback(LynxResourceLoader.this, url, responseHandler);
+
             @Override
             public void onResponse(
                 com.lynx.tasm.resourceprovider.LynxResourceResponse<byte[]> response) {
-              fetchScriptComplete(response.getData(),
-                  response.getState()
-                      == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS,
-                  response.getError(), url, responseHandler);
+              boolean success = response.getState()
+                  == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS;
+              Throwable error = response.getError();
+              callback.onScriptLoaded(
+                  success, response.getData(), error != null ? error.getMessage() : "");
             }
           });
       return true;
@@ -464,11 +382,15 @@ public class LynxResourceLoader {
     }
     final LynxResourceRequest request = new LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
+      private final ExternalScriptResourceCallback callback =
+          new ExternalScriptResourceCallback(LynxResourceLoader.this, url, responseHandler);
+
       @Override
       public void onResponse(@NonNull LynxResourceResponse<byte[]> response) {
-        super.onResponse(response);
-        fetchScriptComplete(
-            response.getData(), response.success(), response.getError(), url, responseHandler);
+        boolean success = response.success();
+        Throwable error = response.getError();
+        callback.onScriptLoaded(
+            success, response.getData(), error != null ? error.getMessage() : null);
       }
     });
   }
@@ -488,12 +410,12 @@ public class LynxResourceLoader {
     mFetcherWrapper.SetEnableLynxResourceServiceProvider(enable);
   }
 
-  private static void InvokeNativeCallbackWithBytes(
+  static void InvokeNativeCallbackWithBytes(
       long responseHandler, byte[] data, int errCode, String errMsg) {
     nativeInvokeCallback(responseHandler, data, 0L, errCode, errMsg);
   }
 
-  private static native void nativeInvokeCallback(
+  static native void nativeInvokeCallback(
       long responseHandler, byte[] data, long bundleNativePtr, int errCode, String errMsg);
 
   private native void nativeConfigLynxResourceSetting();

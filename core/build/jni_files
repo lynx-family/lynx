@@ -30,7 +30,7 @@ com/lynx/jsbridge/network/HttpRequest.java
 com/lynx/jsbridge/network/HttpResponse.java
 com/lynx/jsbridge/network/LynxHttpRunner.java
 com/lynx/tasm/base/LLog.java
-com/lynx/tasm/core/LynxResourceLoader.java
+com/lynx/tasm/core/resource/LynxResourceLoader.java
 com/lynx/tasm/core/JSProxy.java
 com/lynx/tasm/core/LynxEngineProxy.java
 com/lynx/tasm/core/ResourceLoader.java

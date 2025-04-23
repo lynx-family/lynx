@@ -40,7 +40,7 @@ inputs:
   - java: com/lynx/jsbridge/network/HttpResponse.java
   - java: com/lynx/jsbridge/network/LynxHttpRunner.java
   - java: com/lynx/tasm/base/LLog.java
-  - java: com/lynx/tasm/core/LynxResourceLoader.java
+  - java: com/lynx/tasm/core/resource/LynxResourceLoader.java
   - java: com/lynx/tasm/core/JSProxy.java
   - java: com/lynx/tasm/core/LynxEngineProxy.java
   - java: com/lynx/tasm/utils/TextUtils.java

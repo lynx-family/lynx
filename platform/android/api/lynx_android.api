@@ -4985,9 +4985,9 @@ public class abstract com::lynx::tasm::provider::LynxResourceFetcher :  {
   public abstract LynxResourceResponse< ILynxResourceResponseDataInfo > com.lynx.tasm.provider.LynxResourceFetcher< T >.requestSync( @NonNull final LynxResourceRequest< T > request);
 }
 
-public class com::lynx::tasm::core::LynxResourceLoader :  {
-  public com.lynx.tasm.core.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
-  public byte[] com.lynx.tasm.core.LynxResourceLoader.loadLynxJSAsset(String name);
+public class com::lynx::tasm::core::resource::LynxResourceLoader :  {
+  public com.lynx.tasm.core.resource.LynxResourceLoader.LynxResourceLoader(LynxBackgroundRuntimeOptions runtimeOptions, DynamicComponentFetcher fetcher, ILynxErrorReceiver errorReceiver, LynxTemplateResourceFetcher templateFetcher, LynxGenericResourceFetcher genericResourceFetcher);
+  public byte[] com.lynx.tasm.core.resource.LynxResourceLoader.loadLynxJSAsset(String name);
 }
 
 public class com::lynx::jsbridge::LynxResourceModule : com.lynx.jsbridge.LynxContextModule {
