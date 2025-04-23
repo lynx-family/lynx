@@ -10,9 +10,11 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "base/include/string/string_utils.h"
+#include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/measure_context.h"
@@ -182,6 +184,10 @@ class ComputedCSSStyle {
 
   XAnimationColorInterpolationType new_animator_interpolation() {
     return new_animator_interpolation_;
+  }
+
+  static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id) {
+    return kPlatformInheritableProperty->contains(id);
   }
 
   static float SAFE_AREA_INSET_TOP_;
@@ -383,6 +389,9 @@ class ComputedCSSStyle {
   V(LineHeight)                                          \
   V(LetterSpacing)                                       \
   V(LineSpacing)
+
+  static const base::NoDestructor<std::unordered_set<tasm::CSSPropertyID>>
+      kPlatformInheritableProperty;
 
 #define INHERIT_CSS_VALUE(name) \
   bool Inherit##name(const ComputedCSSStyle& from);

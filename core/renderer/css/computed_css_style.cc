@@ -29,6 +29,12 @@ namespace starlight {
 
 using CSSValuePattern = tasm::CSSValuePattern;
 
+const base::NoDestructor<std::unordered_set<tasm::CSSPropertyID>>
+    ComputedCSSStyle::kPlatformInheritableProperty(
+        base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>{
+            tasm::kPropertyIDLineHeight, tasm::kPropertyIDLetterSpacing,
+            tasm::kPropertyIDLineSpacing});
+
 const ComputedCSSStyle::StyleFunc* ComputedCSSStyle::FuncMap() {
   static const StyleFunc* func_map_ = []() {
     static StyleFunc style_funcs[tasm::CSSPropertyID::kPropertyEnd] = {nullptr};
