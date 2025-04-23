@@ -1035,7 +1035,8 @@ public class LynxView extends UIBodyView {
   @Override
   public boolean dispatchTouchEvent(MotionEvent ev) {
     try {
-      LLog.i("Lynx", "LynxView dispatchTouchEvent, this: " + hashCode());
+      LLog.i("Lynx",
+          "LynxView dispatchTouchEvent, this: " + hashCode() + ", touch: " + ev.getActionMasked());
 
       if (mLynxTemplateRender == null) {
         return super.dispatchTouchEvent(ev);
