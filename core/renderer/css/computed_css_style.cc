@@ -5,6 +5,7 @@
 #include "core/renderer/css/computed_css_style.h"
 
 #include <cmath>
+#include <set>
 #include <utility>
 
 #include "base/include/algorithm.h"
@@ -28,6 +29,17 @@ using base::FloatsEqual;
 namespace starlight {
 
 using CSSValuePattern = tasm::CSSValuePattern;
+
+bool ComputedCSSStyle::IsPlatformInheritableProperty(
+    const tasm::CSSPropertyID id) {
+  static const base::NoDestructor<std::set<tasm::CSSPropertyID>>
+      kPlatformInheritableProperty(
+          {tasm::CSSPropertyID::kPropertyIDLineHeight,
+           tasm::CSSPropertyID::kPropertyIDLetterSpacing,
+           tasm::CSSPropertyID::kPropertyIDLineSpacing});
+
+  return kPlatformInheritableProperty->count(id) > 0;
+}
 
 const ComputedCSSStyle::StyleFunc* ComputedCSSStyle::FuncMap() {
   static const StyleFunc* func_map_ = []() {
