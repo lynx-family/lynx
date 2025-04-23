@@ -9,11 +9,14 @@
 #include <string>
 #include <utility>
 
+#include "base/include/closure.h"
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/shell/lynx_shell.h"
+#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 
 namespace lynx {
 namespace shell {
+
 class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
  public:
   explicit LynxRuntimeProxyImpl(
@@ -41,7 +44,20 @@ class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
                                   int32_t err_code,
                                   const std::string& err_msg) override;
 
+  void AddLifecycleListener(
+      std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate);
+
  protected:
+  using ParamsGetter = base::MoveOnlyClosure<std::unique_ptr<pub::Value>,
+                                             std::shared_ptr<piper::Runtime>&>;
+  void CallJSFunction(std::string module_id, std::string method_id,
+                      ParamsGetter getter);
+
+  void CallJSApiCallbackWithValue(int32_t callback_id, ParamsGetter getter);
+
+  void CallJSIntersectionObserver(int32_t observer_id, int32_t callback_id,
+                                  ParamsGetter getter);
+
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> actor_;
 
  private:

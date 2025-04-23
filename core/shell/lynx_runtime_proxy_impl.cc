@@ -20,20 +20,50 @@ namespace shell {
 void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
                                           std::string method_id,
                                           std::unique_ptr<pub::Value> params) {
+  CallJSFunction(module_id, method_id,
+                 [params = std::move(params)](auto& runtime) mutable {
+                   return std::move(params);
+                 });
+}
+
+void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
+    int32_t callback_id, std::unique_ptr<pub::Value> params) {
+  CallJSApiCallbackWithValue(
+      callback_id, [params = std::move(params)](auto& runtime) mutable {
+        return std::move(params);
+      });
+}
+
+void LynxRuntimeProxyImpl::CallJSIntersectionObserver(
+    int32_t observer_id, int32_t callback_id,
+    std::unique_ptr<pub::Value> params) {
+  CallJSIntersectionObserver(
+      observer_id, callback_id,
+      [params = std::move(params)](auto& runtime) mutable {
+        return std::move(params);
+      });
+}
+
+void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
+                                          std::string method_id,
+                                          ParamsGetter getter) {
   if (!actor_) {
     return;
   }
   actor_->Act([module_id = std::move(module_id),
-               method_id = std::move(method_id), params = std::move(params),
+               method_id = std::move(method_id), getter = std::move(getter),
                is_runtime_standalone_mode = is_runtime_standalone_mode_,
                instance_id = actor_->GetInstanceId()](auto& runtime) mutable {
     auto task = [&runtime, module_id = std::move(module_id),
-                 method_id = std::move(method_id), params = std::move(params),
+                 method_id = std::move(method_id), getter = std::move(getter),
                  instance_id] {
       auto js_runtime = runtime->GetJSRuntime();
-      if (js_runtime == nullptr) {
-        LOGE("try call js module before js context is ready! module:"
-             << module_id << " method:" << method_id << &runtime);
+      auto params = getter(js_runtime);
+      if (js_runtime == nullptr || params == nullptr) {
+        LOGE(
+            "try call js module before js context is ready or args is nullptr! "
+            "module:"
+            << module_id << " method:" << method_id << &runtime);
         return;
       }
       piper::Scope scope(*js_runtime);
@@ -111,16 +141,18 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
   });
 }
 
-void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
-    int32_t callback_id, std::unique_ptr<pub::Value> params) {
+void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
+                                                      ParamsGetter getter) {
   if (!actor_) {
     return;
   }
-  actor_->Act([callback_id, params = std::move(params)](auto& runtime) {
+  actor_->Act([callback_id, getter = std::move(getter)](auto& runtime) {
     auto js_runtime = runtime->GetJSRuntime();
-    if (js_runtime == nullptr) {
+    auto params = getter(js_runtime);
+    if (js_runtime == nullptr || params == nullptr) {
       LOGR(
-          "try CallJSApiCallbackWithValue before js context is ready! "
+          "try CallJSApiCallbackWithValue before js context is ready or params "
+          "is nullptr."
           "callback_id:"
           << callback_id << &runtime);
       return;
@@ -133,18 +165,20 @@ void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
   });
 }
 
-void LynxRuntimeProxyImpl::CallJSIntersectionObserver(
-    int32_t observer_id, int32_t callback_id,
-    std::unique_ptr<pub::Value> params) {
+void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
+                                                      int32_t callback_id,
+                                                      ParamsGetter getter) {
   if (!actor_) {
     return;
   }
   actor_->Act([observer_id, callback_id,
-               params = std::move(params)](auto& runtime) {
+               getter = std::move(getter)](auto& runtime) {
     auto js_runtime = runtime->GetJSRuntime();
-    if (js_runtime == nullptr) {
+    auto params = getter(js_runtime);
+    if (js_runtime == nullptr || params == nullptr) {
       LOGE(
-          "try CallJSIntersectionObserver before js context is ready! "
+          "try CallJSIntersectionObserver before js context is ready or params "
+          "is nullptr! "
           "observer_id:"
           << observer_id << " callback_id:" << callback_id << &runtime);
       return;
@@ -153,8 +187,8 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(
     auto piper_data =
         pub::ValueUtils::ConvertValueToPiperValue(*js_runtime, *params.get());
 
-    runtime->CallIntersectionObserver(
-        (int32_t)observer_id, (int32_t)callback_id, std::move(piper_data));
+    runtime->CallIntersectionObserver(observer_id, callback_id,
+                                      std::move(piper_data));
   });
 }
 
@@ -180,6 +214,13 @@ void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
     runtime->CallJSApiCallbackWithValue(
         piper::ApiCallBack(callback_id),
         tasm::lazy_bundle::ConstructErrorMessageForBTS(url, err_code, err_msg));
+  });
+}
+
+void LynxRuntimeProxyImpl::AddLifecycleListener(
+    std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate) {
+  actor_->Act([delegate = std::move(delegate)](auto& runtime) mutable {
+    runtime->AddLifecycleListener(std::move(delegate));
   });
 }
 

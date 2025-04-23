@@ -55,9 +55,7 @@ void JSProxyDarwin::AddLifecycleListener(id<LynxRuntimeLifecycleListener> listen
   }
   auto delegate = std::make_unique<lynx::shell::RuntimeLifecycleListenerDelegateDarwin>(
       listener, type, _error_handler);
-  actor_->Act([delegate = std::move(delegate)](auto& runtime) mutable {
-    runtime->AddLifecycleListener(std::move(delegate));
-  });
+  LynxRuntimeProxyImpl::AddLifecycleListener(std::move(delegate));
 }
 
 }  // namespace shell

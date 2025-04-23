@@ -32,6 +32,7 @@ class JSProxyDarwin : public LynxRuntimeProxyImpl {
 
   int64_t GetId() const { return id_; }
 
+  using LynxRuntimeProxyImpl::AddLifecycleListener;
   void AddLifecycleListener(id<LynxRuntimeLifecycleListener> listener);
 
  private:
