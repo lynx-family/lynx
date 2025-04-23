@@ -1204,7 +1204,7 @@ LYNX_UI_METHOD(scrollIntoView) {
 }
 
 LYNX_UI_METHOD(takeScreenshot) {
-  if (!_view || _view.frame.size.width <= 0 || _view.frame.size.height <= 0) {
+  if (!self.view || self.view.frame.size.width <= 0 || self.view.frame.size.height <= 0) {
     return callback(kUIMethodNoUiForNode, @{});
   }
   bool usePng = false;
@@ -1222,19 +1222,19 @@ LYNX_UI_METHOD(takeScreenshot) {
   id<LynxServiceSystemInvokeProtocol> invoker = LynxService(LynxServiceSystemInvokeProtocol);
   UIImage* image;
   if (invoker) {
-    image = [invoker takeScreenshot:_view
+    image = [invoker takeScreenshot:self.view
                 withBackgroundColor:_backgroundManager.backgroundColor
                               scale:[UIScreen mainScreen].scale * scale];
   } else {
-    UIGraphicsBeginImageContextWithOptions(_view.frame.size, NO,
+    UIGraphicsBeginImageContextWithOptions(self.view.frame.size, NO,
                                            [UIScreen mainScreen].scale * scale);
     if (_backgroundManager.backgroundColor &&
         ![_backgroundManager.backgroundColor isEqual:[UIColor clearColor]]) {
-      CGRect rect = CGRectMake(0, 0, _view.frame.size.width, _view.frame.size.height);
+      CGRect rect = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
       [_backgroundManager.backgroundColor setFill];
       UIRectFill(rect);
     }
-    [_view drawViewHierarchyInRect:_view.bounds afterScreenUpdates:NO];
+    [self.view drawViewHierarchyInRect:self.view.bounds afterScreenUpdates:NO];
     image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
   }
