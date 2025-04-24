@@ -26,6 +26,11 @@ struct EncodeResult {
   std::string section_size;
 };
 
+struct DecodeResult {
+  int status;
+  std::string result;
+};
+
 // Options used in encode time, but not be used in run time.
 struct GeneratorOptions {
   std::string cli_version_{};

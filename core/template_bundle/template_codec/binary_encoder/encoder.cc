@@ -18,6 +18,9 @@
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "core/runtime/vm/lepus/vm_context.h"
+#include "core/template_bundle/lynx_template_bundle.h"
+#include "core/template_bundle/lynx_template_bundle_converter.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_parser.h"
 #include "core/template_bundle/template_codec/binary_encoder/encode_util.h"
 #include "core/template_bundle/template_codec/binary_encoder/repack_binary_reader.h"
@@ -544,6 +547,25 @@ lynx::tasm::EncodeResult encode(const std::string& options_str) {
   }
 }
 
+lynx::tasm::DecodeResult decode(uintptr_t binaryPtr, size_t length) {
+  uint8_t* binary = reinterpret_cast<uint8_t*>(binaryPtr);
+  std::vector<uint8_t> binaryVector(binary, binary + length);
+  auto reader =
+      lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(binaryVector);
+  bool result = reader.Decode();
+  if (result) {
+    // decode success.
+    std::string res = lynx::tasm::LynxTemplateBundleConverter::
+        ConvertTemplateBundleToSerializedString(reader.GetTemplateBundle());
+    return {.status = 0, .result = std::move(res)};
+  } else {
+    // decode failed.
+    std::cout << "ParseTemplate failed. error_msg is : "
+              << reader.error_message_ << std::endl;
+    return {.status = -1, .result = reader.error_message_};
+  }
+}
+
 lynx::tasm::EncodeResult encode_ssr(const uint8_t* ptr, size_t buf_len,
                                     const std::string& mixin_data) {
   return encode_ssr_inner(ptr, buf_len, mixin_data);
@@ -645,6 +667,9 @@ EMSCRIPTEN_BINDINGS(encode) {
       .field("lepus_code", &lynx::tasm::EncodeResult::lepus_code)
       .field("lepus_debug", &lynx::tasm::EncodeResult::lepus_debug)
       .field("section_size", &lynx::tasm::EncodeResult::section_size);
+  emscripten::value_object<lynx::tasm::DecodeResult>("DecodeResult")
+      .field("status", &lynx::tasm::DecodeResult::status)
+      .field("result", &lynx::tasm::DecodeResult::result);
   function("_encode", &lynx::tasm::encode, emscripten::allow_raw_pointers());
   function("_quickjsCheck", &lynx::tasm::quickjsCheck,
            emscripten::allow_raw_pointers());
@@ -665,5 +690,6 @@ EMSCRIPTEN_BINDINGS(encode) {
              return AES().DecryptECB(cipher);
            }),
            emscripten::allow_raw_pointers());
+  function("_decode", &lynx::tasm::decode, emscripten::allow_raw_pointers());
 }
 #endif
