@@ -48,7 +48,7 @@ void InspectorClientDelegateBaseImpl::QuitMessageLoopOnPause() {
 }
 
 double InspectorClientDelegateBaseImpl::CurrentTimeMS() {
-  return static_cast<double>(base::CurrentTimeMilliseconds());
+  return static_cast<double>(base::CurrentSystemTimeMilliseconds());
 }
 
 void InspectorClientDelegateBaseImpl::StartRepeatingTimer(
