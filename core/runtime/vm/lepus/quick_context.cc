@@ -290,7 +290,6 @@ void QuickContext::ReportErrorWithMsg(const std::string& msg,
                     "ReportErrorWithMsg.engine version:" + target_sdk_version);
   if (tasm::Config::IsHigherOrEqual(target_sdk_version, LYNX_VERSION_2_7) &&
       debuginfo_outside_) {
-    OnBTSConsoleEvent("info", "ReportErrorWithMsg.msg:" + msg);
     auto error = js_error_reporter_.SendMTError(msg, error_code, error_level);
     if (error) {
       delegate_->ReportError(std::move(*error));
@@ -299,6 +298,7 @@ void QuickContext::ReportErrorWithMsg(const std::string& msg,
     ReportError(msg, error_code,
                 static_cast<base::LynxErrorLevel>(error_level));
   }
+  OnBTSConsoleEvent("error", msg);
 }
 
 void QuickContext::BeforeReportError(base::LynxError& error) {
