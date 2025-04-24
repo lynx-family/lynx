@@ -11,6 +11,9 @@ from core.target.observer import LogObserver, OwnersObserver
 from core.target.target_factory import TargetFactory
 from core.utils.emu_env_setup import EmulatorEnv
 from core.utils.log import Log
+from core.utils.result import Result
+from core.utils.constants import Constants
+from time import sleep
 
 
 class AndroidUTContainer(Container):
@@ -66,10 +69,29 @@ class AndroidUTContainer(Container):
             ["adb", "logcat", "-v", "time"], stdout=log_file, stderr=subprocess.STDOUT
         )
         for target in self.targets:
-            target.run()
+            result = target.run()
+            if (
+                result is not None
+                and result.is_err()
+                and result.code == Constants.ANDROID_APK_INSTALL_ERR
+            ):
+                Log.warning(
+                    f"{target.name} install apk error, try to restart emulator!"
+                )
+                self.emulator.close()
+                # The reason for needing a 10-second delay here is that the emulator takes time to shut down.
+                # During the shutdown process, the adb service may still be in a usable state. If an attempt
+                # is made to establish an adb connection at this time, it may result in an exception.
+                sleep(10)
+                self.emulator.prepare_android_emulator(
+                    use_real_device=self.use_real_device
+                )
+                result = target.run()
             if target.has_error():
                 for observer in self.observers:
                     observer.update(target)
                 Log.fatal(f"{target.name} has error!")
+            elif result is not None and result.is_err():
+                Log.fatal(f"{target.name} has error: {result.msg}")
             else:
                 Log.success(f"{target.name} success!")

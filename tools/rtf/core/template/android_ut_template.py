@@ -12,7 +12,7 @@ builder = {
             "-Penable_lynx_android_test=true",
             "-Penable_coverage=true",
         ],
-        "workspace": "platform/android", 
+        "workspace": "platform/android",
         "type": "gradle",
     }
 }

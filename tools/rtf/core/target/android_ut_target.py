@@ -8,6 +8,8 @@ import subprocess
 from core.env.env import RTFEnv
 from core.target.target import Target
 from core.utils.log import Log
+from core.utils.result import Err, Ok
+from core.utils.constants import Constants
 
 
 class AndroidTargetType(enum.Enum):
@@ -79,12 +81,17 @@ class AndroidUTTarget(Target):
             f"adb -s {self.global_info['device_name']} install -g {self.target_path}"
         )
         try:
-            subprocess.check_call(install_cmd, shell=True)
+            subprocess.check_call(install_cmd, shell=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            return Err(Constants.ANDROID_APK_INSTALL_ERR, "Apk Install timeout")
         except Exception as e:
             Log.fatal(f"adb install failed for {self.name} \n: {e}")
+        return Ok()
 
     def run(self):
-        self.install_apk()
+        result = self.install_apk()
+        if result.is_err():
+            return result
         run_command = (
             f"adb -s {self.global_info['device_name']} shell am instrument -w -e package "
             f"com -e debug false -e coverage true -e coverageFile /sdcard/coverage_{self.name}.ec "
