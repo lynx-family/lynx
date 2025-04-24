@@ -39,6 +39,7 @@ class ListAdapter : public AdapterHelper::Delegate {
         list_container_(rhs.list_container_),
         item_holder_map_(std::move(rhs.item_holder_map_)),
         adapter_helper_(std::move(rhs.adapter_helper_)) {
+    adapter_helper_->SetDelegate(this);
     rhs.Release();
   }
 
@@ -48,6 +49,7 @@ class ListAdapter : public AdapterHelper::Delegate {
       list_container_ = rhs.list_container_;
       item_holder_map_ = std::move(rhs.item_holder_map_);
       adapter_helper_ = std::move(rhs.adapter_helper_);
+      adapter_helper_->SetDelegate(this);
       rhs.Release();
     }
     return *this;

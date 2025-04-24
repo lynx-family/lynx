@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/renderer/ui_component/list/batch_list_adapter.h"
 
 #include <memory>
@@ -82,6 +85,15 @@ class BatchListAdapterTest : public ::testing::Test {
     return list_item_ref;
   }
 };  // BatchListAdapterTest
+
+TEST_F(BatchListAdapterTest, checkDelegate) {
+  list_container->list_adapter_ = std::make_unique<BatchListAdapter>(
+      std::move(*(list_container->list_adapter_)));
+  BatchListAdapter* batch_list_adapter_ptr =
+      static_cast<BatchListAdapter*>(list_container->list_adapter_.get());
+  EXPECT_TRUE(list_container->list_adapter_->adapter_helper_->delegate_ ==
+              batch_list_adapter_ptr);
+}
 
 TEST_F(BatchListAdapterTest, DiffCase0) {
   list::DiffResult diff_result{
