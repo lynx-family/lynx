@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { Component } from '@lynx-js/react';
+import { Component, useState } from '@lynx-js/react';
 import './index.scss';
 
 import ForwardIcon from '@assets/images/forward.png?inline';
@@ -66,7 +66,7 @@ export default class SettingsPage extends Component<
   render() {
     const { showPage } = this.props;
     const { themes, currentTheme, withTheme, withNotchScreen } = this.props;
-
+    const [listAsyncRender, setListAsyncRender] = useState(false);
     if (!showPage) {
       return <></>;
     }
@@ -125,6 +125,44 @@ export default class SettingsPage extends Component<
           </text>
           <view style="margin: auto 5% auto auto; justify-content: center">
             <image src={this.icon('Forward')} className="forward-icon" />
+          </view>
+        </view>
+
+        <view style="margin: 3% 5% 0px 5%; height: 5%">
+          <text className={withTheme('sub-title')}>Render Strategy</text>
+        </view>
+        <view
+          className={withTheme('theme')}
+          style="height: 8%;justify-content:center"
+        >
+          <view
+            className="option-item"
+            bindtap={() => {
+              NativeModules.ExplorerModule.setThreadMode(
+                !listAsyncRender ? 1 : 0
+              );
+              setListAsyncRender(!listAsyncRender);
+            }}
+            accessibility-element={true}
+            accessibility-label={`List Async Render`}
+            accessibility-traits="button"
+          >
+            <text className={withTheme('text')}>
+              {'Enable List Async Render'}
+            </text>
+            <view
+              className={
+                listAsyncRender
+                  ? withTheme('radio-button-container-active')
+                  : withTheme('radio-button-container-inactive')
+              }
+            >
+              {listAsyncRender ? (
+                <view className={withTheme('radio-button-active')} />
+              ) : (
+                <view className={withTheme('radio-button')} />
+              )}
+            </view>
           </view>
         </view>
       </view>

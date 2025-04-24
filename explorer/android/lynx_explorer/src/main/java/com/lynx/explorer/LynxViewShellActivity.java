@@ -26,6 +26,7 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.lynx.explorer.input.LynxExplorerInput;
+import com.lynx.explorer.modules.LynxSettingManager;
 import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
@@ -34,6 +35,7 @@ import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateData;
+import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.LynxContext;
@@ -221,6 +223,10 @@ public class LynxViewShellActivity extends AppCompatActivity {
     builder.setGenericResourceFetcher(new DemoGenericResourceFetcher());
     builder.setTemplateResourceFetcher(new DemoTemplateResourceFetcher(this));
     builder.setMediaResourceFetcher(new DemoMediaResourceFetcher());
+    builder.setThreadStrategyForRendering(
+        LynxSettingManager.getInstance().getSettingInfo().strategy == 0
+            ? ThreadStrategyForRendering.ALL_ON_UI
+            : ThreadStrategyForRendering.MOST_ON_TASM);
     // Parse the URL parameters and specify the LynxView width, height, and density according to the
     // parameters.
     QueryMapUtils queryMap = new QueryMapUtils();

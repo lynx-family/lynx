@@ -9,6 +9,7 @@
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
+#import "LynxSettingManager.h"
 #import "UIHelper.h"
 
 const NSString *const kParamHiddenNav = @"hidden_nav";
@@ -86,6 +87,8 @@ NSString *const kBackButtonImageDark = @"back_dark";
   } else {
     screenSize = screenFrame.size;
   }
+  LynxThreadStrategyForRender threadStrategy =
+      [LynxSettingManager sharedDataHandler].threadStrategy;
 
   LynxView *lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder *builder) {
     builder.config =
@@ -98,6 +101,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
     builder.genericResourceFetcher = [[DemoGenericResourceFetcher alloc] init];
     builder.templateResourceFetcher = [[DemoTemplateResourceFetcher alloc] init];
     builder.mediaResourceFetcher = [[DemoMediaResourceFetcher alloc] init];
+    [builder setThreadStrategyForRender:threadStrategy];
   }];
   lynxView.preferredLayoutWidth = screenSize.width;
   [lynxView setExtraTiming:extraTiming];
