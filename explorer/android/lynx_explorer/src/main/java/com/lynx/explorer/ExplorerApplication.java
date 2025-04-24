@@ -15,7 +15,6 @@ import com.lynx.service.http.LynxHttpService;
 import com.lynx.service.image.LynxImageService;
 import com.lynx.service.log.LynxLogService;
 import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.ILynxLogService;
@@ -39,8 +38,6 @@ public class ExplorerApplication extends Application {
     LynxServiceCenter.inst().registerService(
         ILynxImageService.class, LynxImageService.getInstance());
     LynxServiceCenter.inst().registerService(ILynxLogService.class, LynxLogService.INSTANCE);
-    LynxServiceCenter.inst().registerService(
-        ILynxDevToolService.class, LynxDevToolService.INSTANCE);
     LynxServiceCenter.inst().registerService(ILynxHttpService.class, LynxHttpService.INSTANCE);
   }
 

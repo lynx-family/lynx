@@ -4,6 +4,7 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
 apply from: '../../publish.gradle'
 
 android {
@@ -47,4 +48,6 @@ dependencies {
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxAndroid')
     compileOnly project(':LynxDevtool')
+    compileOnly "com.google.auto.service:auto-service:1.0-rc5"
+    kapt "com.google.auto.service:auto-service:1.0-rc5"
 }

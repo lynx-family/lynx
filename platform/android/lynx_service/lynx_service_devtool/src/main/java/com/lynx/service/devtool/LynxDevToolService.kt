@@ -7,6 +7,8 @@ package com.lynx.service.devtool
 import android.content.Context
 import android.view.ViewGroup
 import androidx.annotation.Keep
+import com.google.auto.service.AutoService
+import com.lynx.tasm.service.IServiceProvider
 import com.lynx.devtool.LynxDevtoolEnv
 import com.lynx.devtool.LynxGlobalDebugBridge
 import com.lynx.devtool.LynxInspectorOwner
@@ -14,20 +16,30 @@ import com.lynx.devtool.logbox.LynxLogBoxProxy
 import com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG
 import com.lynx.devtoolwrapper.LynxBaseLogBoxProxy
 import com.lynx.devtoolwrapper.LynxDevtool
-import com.lynx.tasm.LynxView
-import com.lynx.tasm.service.ILynxDevToolService
 import com.lynx.devtool.module.LynxDevToolSetModule
 import com.lynx.devtool.module.LynxTrailModule
 import com.lynx.devtool.module.LynxWebSocketModule
 import com.lynx.devtoolwrapper.LynxDevtoolCardListener
 import com.lynx.jsbridge.LynxModule
 import com.lynx.tasm.INativeLibraryLoader
+import com.lynx.tasm.LynxView
 import com.lynx.tasm.base.LLog
+import com.lynx.tasm.service.ILynxDevToolService
 import org.json.JSONObject
 
+private const val TAG = "LynxDevToolService"
+
 @Keep
-object LynxDevToolService : ILynxDevToolService {
-    private const val TAG = "LynxDevToolService"
+@AutoService(IServiceProvider::class)
+class LynxDevToolService : ILynxDevToolService {
+    companion object {
+        val INSTANCE: ILynxDevToolService by lazy {
+            LynxDevToolService()
+        }
+
+        operator fun invoke(): ILynxDevToolService = INSTANCE
+    }
+
 
     override fun createInspectorOwner(view: LynxView?): LynxBaseInspectorOwnerNG? {
         try {
