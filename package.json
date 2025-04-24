@@ -1,6 +1,6 @@
 {
   "name": "lynx-libs-mono",
-  "version": "1.0.0",
+  "version": "3.3.0",
   "description": "All JS libraries related to LynxCore",
   "main": "index.js",
   "keywords": [

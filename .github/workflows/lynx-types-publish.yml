@@ -1,6 +1,11 @@
 name: lynx_types_publish
 
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'js_libraries/types/types/**'
 
 jobs:
   lynx_types_publish:
@@ -34,6 +39,5 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          pushd js_libraries/types
-          npm publish --access public
-          popd
+          python3 -m pip install packaging
+          bash tools/js_tools/publish.sh
