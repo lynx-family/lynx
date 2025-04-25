@@ -160,8 +160,6 @@ class TasmMediator : public LynxEngine::Delegate {
       const tasm::PipelineOrigin& pipeline_origin,
       tasm::timing::TimestampUs pipeline_start_timestamp) override;
 
-  void ResetTimingBeforeReload(const std::string& flag) override;
-
   void RequestVsync(
       uintptr_t id,
       base::MoveOnlyClosure<void, int64_t, int64_t> callback) override;

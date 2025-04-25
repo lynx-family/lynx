@@ -574,6 +574,8 @@ void LynxShell::UnSubscribeSessionStorage(const std::string& key,
 
 void LynxShell::ReloadTemplate(const std::shared_ptr<tasm::TemplateData>& data,
                                const lepus::Value& global_props) {
+  timing_actor_->ActAsync(
+      [](auto& timing_handler) { timing_handler->ResetTimingBeforeReload(); });
   tasm::PipelineOptions pipeline_options;
   pipeline_options.need_timestamps = true;
   pipeline_options.pipeline_origin = tasm::timing::kReloadBundleFromNative;

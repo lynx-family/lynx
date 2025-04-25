@@ -213,7 +213,6 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   void SetRecordId(int64_t record_id) override {}
 #endif
   void SetTiming(tasm::Timing timing) override {}
-  void ResetTimingBeforeReload(const std::string& flag) override {}
   virtual void BindPipelineIDWithTimingFlag(
       const tasm::PipelineID& pipeline_id,
       const tasm::timing::TimingFlag& timing_flag) override{};
