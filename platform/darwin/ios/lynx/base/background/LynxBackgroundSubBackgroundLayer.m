@@ -199,7 +199,7 @@ dispatch_block_t mDispatchTask = NULL;
     }
   };
 
-  LynxBackgroundManager* manager = self.delegate;
+  LynxBackgroundManager* manager = self.manager;
   if (manager) {
     [manager.ui displayComplexBackgroundAsynchronouslyWithDisplay:displayBlock
                                                        completion:completionBlock];
@@ -370,7 +370,7 @@ dispatch_block_t mDispatchTask = NULL;
   // Regenerate the shadow with the updated bounds here. Normally, the frame would immediately
   // reflect the transform. However, when the CALayer is not part of the viewTree, the frame
   // does not change with transform3D until it is added. Adjust the size of the shadow here.
-  LynxBackgroundManager* manager = self.delegate;
+  LynxBackgroundManager* manager = self.manager;
   // Check if the current bounds size is the same as the previous shadow size (_shadowsBounds.size)
   // and ensure that manager and manager.shadowArray exist
   if (!(CGSizeEqualToSize(self.bounds.size, _shadowsBounds.size) &&

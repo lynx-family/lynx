@@ -39,6 +39,7 @@ typedef NS_ENUM(uint8_t, LynxBgShapeLayerProp) {
 @class LynxBoxShadow;
 @class LynxBackgroundImageLayerInfo;
 @class LynxBackgroundInfo;
+@class LynxBackgroundManager;
 
 @interface LynxBackgroundSubLayer : CALayer
 @property(nonatomic, assign) LynxBgTypes type;
@@ -57,6 +58,7 @@ typedef NS_ENUM(uint8_t, LynxBgShapeLayerProp) {
 @property(nonatomic) LynxBackgroundClipType backgroundColorClip;
 @property(nonatomic, assign) UIEdgeInsets paddingWidth;
 @property(nonatomic, assign) CGRect shadowsBounds;
+@property(nonatomic, weak) LynxBackgroundManager* manager;
 
 - (void)markDirtyWithSize:(CGSize)viewSize
                     radii:(LynxBorderRadii)cornerRadii
@@ -107,7 +109,7 @@ static inline bool LynxHasBorderRadii(LynxBorderRadii radii) {
 //    if radius values of all corners are same, just use layer cornerRadius,
 //      else use complex mode to draw a image as layer content
 //----------------------------------------------------------
-@interface LynxBackgroundManager : NSObject <CALayerDelegate>
+@interface LynxBackgroundManager : NSObject
 @property(nonatomic, weak) LynxUI* ui;
 @property(nonatomic) LynxBackgroundInfo* backgroundInfo;
 
