@@ -5,6 +5,9 @@
 import argparse
 import os.path
 import re
+import platform
+
+system = platform.system()
 
 def generate_gradle_local_properties(file, properties):
     content = ''
@@ -42,7 +45,15 @@ def main():
     args = parser.parse_args()
     file_list = args.file if isinstance(args.file, list) else [args.file]
     property_list = args.properties if isinstance(args.properties, list) else [args.properties]
-    properties = {item[0]: item[1] for item in [exp.split("=") for exp in property_list]}
+    properties = {}
+    for property in property_list:
+        exp_list = property.split("=")
+        key = exp_list[0]
+        value = exp_list[1]
+        if system == 'Windows':
+            value_list = value.split('\\')
+            value = '\\\\'.join(value_list)
+        properties[key] = value
     for file in file_list:
         generate_gradle_local_properties(file, properties)
 

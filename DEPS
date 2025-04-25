@@ -1,11 +1,19 @@
 import os
 import platform
+import shutil
 
 system = platform.system().lower()
 machine = platform.machine().lower()
 machine = "x86_64" if machine == "amd64" else machine
 
-venv_python = "python3"
+python_path = "python3"
+if system == "windows":
+    python_path = "python"
+
+def copy_gn_config():
+    gn_src_path = os.path.join(root_dir, 'root.gn')
+    gn_dest_path = os.path.join(root_dir, '..', '.gn')
+    shutil.copy2(gn_src_path, gn_dest_path)
 
 deps = {
     'platform/android/gradle/wrapper/gradle-6.7.1-all.zip': {
@@ -78,21 +86,19 @@ deps = {
     },
     'copy_root_gn_config': {
         "type": "action",
-        "cwd": "../",
-        "commands": [
-            "cp lynx/root.gn .gn",
-        ],
+        "cwd": root_dir,
+        "function": copy_gn_config
     },
     'python_venv_set': {
         "type": "action",
         "cwd": "../",
         "commands": [
-            venv_python + " lynx/tools/vpython_tools/vpython_env_setup.py",
+            python_path + " lynx/tools/vpython_tools/vpython_env_setup.py",
         ],
     },
     'change_executable_permission': {
         "type": "action",
-        "cwd": root_dir,
+        "cwd": "../",
         "commands": [
             "chmod +x buildtools/ninja/ninja",
         ],
@@ -116,34 +122,41 @@ deps = {
         "type": "action",
         "cwd": os.path.join(root_dir),
         "commands": [
-            "python3 " + os.path.join(root_dir, "tools", "android_tools", "update_local_properties.py") + ' '
+            f"{python_path} " + os.path.join(root_dir, "tools", "android_tools", "update_local_properties.py") + ' '
             "-f "
             f'{root_dir}/platform/android/local.properties '
             f'{root_dir}/explorer/android/local.properties '
             "-p "
             f'ndk.dir={os.environ.get("ANDROID_NDK", os.path.join(root_dir, "tools/android_tools/ndk") if target == "dev" else "")} '
             f'sdk.dir={os.environ.get("ANDROID_HOME", os.path.join(root_dir, "tools/android_tools/sdk") if target == "dev" else "")} '
-            f'cmake.dir={root_dir}/../buildtools/cmake'
+            f'cmake.dir={os.path.join(root_dir, "..", "buildtools", "cmake")}'
         ],
-        "condition": system in ['linux', 'darwin']
+        "condition": system in ['linux', 'darwin', 'windows']
     },
     '../buildtools/cmake': {
         "type": "http",
         "url": {
             "linux": f"https://cmake.org/files/v3.18/cmake-3.18.1-Linux-x86_64.tar.gz",
-            "darwin": f"https://dl.google.com/android/repository/ba34c321f92f6e6fd696c8354c262c122f56abf8.cmake-3.18.1-darwin.zip"
+            "darwin": f"https://cmake.org/files/v3.18/cmake-3.18.1-Darwin-x86_64.tar.gz",
+            "windows": f"https://cmake.org/files/v3.18/cmake-3.18.1-win64-x64.zip"
+        }.get(system, None),
+        "sha256": {
+            "linux": "537de8ad3a7fb4ec9b8517870db255802ad211aec00002c651e178848f7a769e",
+            "darwin": "f5c5a1f82f94b8eedcab3a95510ba59f9b1f598cb82aaf6bf8c0d72d2b245f46",
+            "windows": "2c6c06da43c1088fc3a673e4440c8ebb1531bb6511134892c0589aa0b94f11ad"
         }.get(system, None),
         "ignore_in_git": True,
-        "condition": system in ['linux', 'darwin']
+        "condition": system in ['linux', 'darwin', 'windows']
     },
     '../buildtools/android_sdk_manager': {
         "type": "http",
         "url": {
             "darwin": "https://dl.google.com/android/repository/commandlinetools-mac-8512546_latest.zip",
-            "linux": "https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip"
+            "linux": "https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip",
+            "windows": "https://dl.google.com/android/repository/commandlinetools-win-8512546_latest.zip"
         }.get(system, None),
         "ignore_in_git": True,
-        "condition": system in ['linux', 'darwin']
+        "condition": system in ['linux', 'darwin', 'windows']
     },
     '../third_party/gyp': {
         "type": "git",
@@ -270,21 +283,21 @@ deps = {
         "type": "action",
         "cwd": root_dir,
         "commands": [
-            venv_python + " tools/feature_count/generate_feature_count.py",
+            python_path + " tools/feature_count/generate_feature_count.py",
         ]
     },
     'gen_error_code': {
         "type": "action",
         "cwd": root_dir,
         "commands": [
-            venv_python + " tools/error_code/gen_error_code.py",
+            python_path + " tools/error_code/gen_error_code.py",
         ]
     },
     'gen_lynx_perfromance_entry': {
         "type": "action",
         "cwd": root_dir,
         "commands": [
-            venv_python + " tools/performance/performance_observer/generate_performance_entry.py",
+            python_path + " tools/performance/performance_observer/generate_performance_entry.py",
         ]
     },
     ### AUTO GENERATED SCRIPT END
