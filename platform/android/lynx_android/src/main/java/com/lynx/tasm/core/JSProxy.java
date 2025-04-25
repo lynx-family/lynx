@@ -6,21 +6,27 @@ package com.lynx.tasm.core;
 
 import androidx.annotation.GuardedBy;
 import androidx.annotation.NonNull;
+import androidx.annotation.RestrictTo;
 import com.lynx.jsbridge.JSModule;
+import com.lynx.jsbridge.RuntimeLifecycleListener;
+import com.lynx.jsbridge.RuntimeLifecycleListenerDelegate;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxBackgroundRuntime;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
 import java.lang.Runnable;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class JSProxy {
+  private static final String TAG = "JSProxy";
   // parameter maximum accumulation amount
   private static final int MAX_ARGS_COUNT = 200;
   // ensure thread safe
@@ -35,10 +41,13 @@ public class JSProxy {
   @GuardedBy("mLock") private HashMap<Long, Object> mArgsMap = new HashMap<Long, Object>();
   private boolean hasReport = false;
 
-  public JSProxy(long nativeCreator, WeakReference<LynxContext> context, String jsGroupThreadName) {
+  public JSProxy(long nativeCreator, WeakReference<LynxContext> context, String jsGroupThreadName,
+      List<RuntimeLifecycleListener> listeners) {
     mContext = context;
     mJSGroupThreadName = jsGroupThreadName;
     mNativePtr = nativeCreate(nativeCreator, jsGroupThreadName);
+    addLifecycleListeners(listeners);
+    listeners.clear();
   }
 
   public JSProxy(LynxBackgroundRuntime runtime, String jsGroupThreadName) {
@@ -149,6 +158,27 @@ public class JSProxy {
     }
   }
 
+  private void addLifecycleListeners(List<RuntimeLifecycleListener> listeners) {
+    for (RuntimeLifecycleListener listener : listeners) {
+      addLifecycleListener(listener);
+    }
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public void addLifecycleListener(@NonNull RuntimeLifecycleListener listener) {
+    if (null == listener) {
+      LLog.w(TAG, "add a null lifecycle listener.");
+      return;
+    }
+    RuntimeLifecycleListenerDelegate delegate =
+        new RuntimeLifecycleListenerDelegate(mContext, listener);
+    mLock.readLock().lock();
+    if (mNativePtr != 0) {
+      nativeAddLifecycleListener(mNativePtr, delegate, delegate.getListenerType());
+    }
+    mLock.readLock().unlock();
+  }
+
   private native long nativeCreate(long nativeCreator, String jsGroupThreadName);
 
   private native long nativeCreateWithRuntimeActor(long nativeCreator, String jsGroupThreadName);
@@ -174,4 +204,7 @@ public class JSProxy {
   private void setRuntimeId(long runtimeId) {
     mRuntimeId = runtimeId;
   }
+
+  private native void nativeAddLifecycleListener(
+      long nativePtr, RuntimeLifecycleListenerDelegate delegate, int listenerType);
 }

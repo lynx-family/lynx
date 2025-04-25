@@ -94,7 +94,8 @@ LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
       delegate_(std::move(delegate)),
       enable_user_bytecode_(enable_user_bytecode),
       bytecode_source_url_(bytecode_source_url),
-      enable_js_group_thread_(enable_js_group_thread) {
+      enable_js_group_thread_(enable_js_group_thread),
+      lifecycle_observer_(std::make_unique<RuntimeLifecycleObserverImpl>()) {
   cached_tasks_.reserve(8);
 }
 
@@ -103,19 +104,13 @@ LynxRuntime::~LynxRuntime() { Destroy(); }
 void LynxRuntime::Init(
     const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
-    std::shared_ptr<runtime::IRuntimeLifecycleObserver>
-        runtime_lifecycle_observer,
     std::vector<std::string> preload_js_paths, bool force_reload_js_core,
     bool force_use_light_weight_js_engine) {
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
                                      << instance_id_ << " this:" << this);
 
   tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get());
-
-  if (runtime_lifecycle_observer) {
-    runtime_lifecycle_observer_ = runtime_lifecycle_observer;
-    runtime_lifecycle_observer_->OnRuntimeInit(instance_id_);
-  }
+  lifecycle_observer_->OnRuntimeInit(instance_id_);
 
   js_executor_ = std::make_unique<lynx::piper::JSExecutor>(
       std::make_shared<JSIExceptionHandlerImpl>(this), group_id_,
@@ -158,18 +153,6 @@ void LynxRuntime::SetJsBundleHolder(
   if (app_) {
     app_->SetJsBundleHolder(weak_js_bundle_holder);
   }
-}
-
-void LynxRuntime::AdoptRuntimeLifecycleObserver(
-    const std::shared_ptr<runtime::IRuntimeLifecycleObserver>&
-        runtime_lifecycle_observer) {
-  if (runtime_lifecycle_observer) {
-    runtime_lifecycle_observer_ = runtime_lifecycle_observer;
-    runtime_lifecycle_observer_->OnRuntimeInit(instance_id_);
-  }
-#if ENABLE_NAPI_BINDING
-  RegisterNapiModules();
-#endif
 }
 
 std::vector<std::pair<std::string, std::string>>
@@ -235,13 +218,10 @@ void LynxRuntime::PrepareNapiEnvironment() {
 }
 
 void LynxRuntime::RegisterNapiModules() {
-  if (runtime_lifecycle_observer_) {
-    LOGI("napi registering module");
-    TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
-                "RuntimeLifecycleObserver::OnRuntimeAttach");
-    runtime_lifecycle_observer_->OnRuntimeAttach(
-        napi_environment_->proxy()->Env());
-  }
+  LOGI("napi registering module");
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
+              "RuntimeLifecycleObserver::OnRuntimeAttach");
+  lifecycle_observer_->OnRuntimeAttach(napi_environment_->proxy()->Env());
 }
 #endif
 
@@ -618,10 +598,7 @@ void LynxRuntime::Destroy() {
     napi_environment_->Detach();
   }
 #endif
-  if (runtime_lifecycle_observer_) {
-    runtime_lifecycle_observer_->OnRuntimeDetach();
-    runtime_lifecycle_observer_->OnRuntimeDestroy();
-  }
+  lifecycle_observer_->OnRuntimeDetach();
   app_->destroy();
   app_ = nullptr;
   js_executor_->Destroy();
@@ -743,17 +720,19 @@ void LynxRuntime::AddEventListeners() {
         kMessageEventTypeOnAppEnterForeground,
         std::make_unique<event::ClosureEventListener>(
             [this](lepus::Value args) {
-              if (runtime_lifecycle_observer_) {
-                runtime_lifecycle_observer_->OnAppEnterForeground();
-              }
+              lifecycle_observer_->OnAppEnterForeground();
             }));
     core_context_proxy->AddEventListener(
         kMessageEventTypeOnAppEnterBackground,
         std::make_unique<event::ClosureEventListener>(
             [this](lepus::Value args) {
-              if (runtime_lifecycle_observer_) {
-                runtime_lifecycle_observer_->OnAppEnterBackground();
-              }
+              lifecycle_observer_->OnAppEnterBackground();
+            }));
+    core_context_proxy->AddEventListener(
+        kMessageEventTypeOnRuntimeCreate,
+        std::make_unique<event::ClosureEventListener>(
+            [this](lepus::Value args) {
+              lifecycle_observer_->OnRuntimeCreate(GetVSyncObserver());
             }));
   }
 
@@ -904,6 +883,11 @@ void LynxRuntime::QueueOrExecAppTask(base::closure&& task) {
   } else {
     task();
   }
+}
+
+void LynxRuntime::AddLifecycleListener(
+    std::unique_ptr<RuntimeLifecycleListenerDelegate> listener) {
+  lifecycle_observer_->AddEventListener(std::move(listener));
 }
 
 }  // namespace runtime

@@ -13,6 +13,7 @@ import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxFetchModule;
 import com.lynx.jsbridge.LynxModuleFactory;
+import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.base.CalledByNative;
@@ -342,6 +343,18 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     String groupId = group != null ? group.getID() : LynxGroup.SINGNLE_GROUP;
     boolean enableJSGroupThread = group != null && group.enableJSGroupThread();
     mInspectorObserverPtr = mDevTool.onBackgroundRuntimeCreated(enableJSGroupThread ? groupId : "");
+  }
+
+  /**
+   * add a listener for runtime lifecycle.
+   * @param listener to listen.
+   */
+  public void addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener) {
+    if (null == listener || mNativePtr == 0) {
+      LLog.w(TAG, "add a null lifecycle listener or runtime has been destroy.");
+      return;
+    }
+    mJSProxy.addLifecycleListener(listener);
   }
 
   private static class CleanupOnUiThread implements Runnable {

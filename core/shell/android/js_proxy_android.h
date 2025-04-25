@@ -10,6 +10,7 @@
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/shell/lynx_shell.h"
+#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 
 namespace lynx {
 namespace shell {
@@ -58,6 +59,9 @@ class JSProxyAndroid {
                                   int32_t err_code, const std::string& err_msg);
 
   void RunOnJSThread(base::MoveOnlyClosure<> task);
+
+  void AddLifecycleListener(
+      std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate);
 
  private:
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> actor_;

@@ -86,7 +86,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
        vsync_monitor](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
-        runtime->Init(module_manager, runtime_observer, nullptr,
+        runtime->Init(module_manager, runtime_observer,
                       std::move(preload_js_paths), force_reload_js_core,
                       force_use_light_weight_js_engine);
       });

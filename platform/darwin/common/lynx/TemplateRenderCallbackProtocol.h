@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_TEMPLATERENDERCALLBACKPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxErrorReceiverProtocol.h>
 #import <Lynx/LynxTemplateBundle.h>
-#import "LynxErrorReceiverProtocol.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {

@@ -31,6 +31,9 @@ NSString *const kDefaultComponentID = @"-1";
 
 - (void)setJSProxy:(const std::shared_ptr<lynx::shell::JSProxyDarwin> &)proxy {
   proxy_ = proxy;
+  if (_js_proxy_ready_listener) {
+    _js_proxy_ready_listener();
+  }
 }
 
 - (void)sendGlobalEvent:(nonnull NSString *)name withParams:(nullable NSArray *)params {

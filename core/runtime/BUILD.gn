@@ -49,6 +49,9 @@ jsbridge_shared_sources = [
   "piper/js/lynx_runtime.h",
   "piper/js/lynx_runtime_helper.h",
   "piper/js/runtime_constant.h",
+  "piper/js/runtime_lifecycle_listener_delegate.h",
+  "piper/js/runtime_lifecycle_observer_impl.cc",
+  "piper/js/runtime_lifecycle_observer_impl.h",
   "piper/js/runtime_manager.cc",
   "piper/js/runtime_manager.h",
   "piper/js/template_delegate.h",
@@ -138,6 +141,7 @@ unittest_set("jsbridge_testset") {
     "bindings/jsi/modules/lynx_module_manager_unittest.cc",
     "bindings/jsi/modules/native_module_factory_unittest.cc",
     "piper/js/js_bundle_unittest.cc",
+    "piper/js/runtime_lifecycle_observer_unittest.cc",
   ]
 
   deps = [

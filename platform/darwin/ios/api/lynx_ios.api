@@ -404,6 +404,7 @@ public class LynxBackgroundRuntime : NSObject {
   public void LynxBackgroundRuntime::removeLifecycleClient:(nonnull id< LynxBackgroundRuntimeLifecycle > lifecycleClient);
   public void LynxBackgroundRuntime::evaluateJavaScript:withSources:(NSString *url,[withSources] NSString *sources);
   public void LynxBackgroundRuntime::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
+  public void LynxBackgroundRuntime::addRuntimeLifecycleListener:(nonnull id< LynxRuntimeLifecycleListener > listener);
   public void LynxBackgroundRuntime::setSessionStorageItem:withTemplateData:(nonnull NSString *key,[withTemplateData] nullable LynxTemplateData *data);
   public void LynxBackgroundRuntime::getSessionStorageItem:withCallback:(nonnull NSString *key,[withCallback] void(^_Nullable callback)(id< NSObject > _Nullable));
   public double LynxBackgroundRuntime::subscribeSessionStorage:withCallback:(nonnull NSString *key,[withCallback] void(^_Nullable callback)(id< NSObject > _Nullable));
@@ -954,6 +955,7 @@ public class LynxContext : NSObject {
   public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
   public LynxView* _Nullable LynxContext()::lynxView lynxView;
   public int32_t LynxContext()::instanceId instanceId;
+  public JSProxyReadyBlock _Nullable LynxContext()::js_proxy_ready_listener js_proxy_ready_listener;
 }
 
 public protocol LynxContextModule-p : <LynxModule> {
@@ -2645,6 +2647,18 @@ public class LynxRoute : NSObject {
   public instancetype LynxRoute::initWithUrl:routeName:param:(NSString *url,[routeName] NSString *routeName,[param] NSDictionary *param);
 }
 
+public protocol LynxRuntimeFullLifecycleListener-p : <LynxRuntimeLifecycleListener> {
+  public void LynxRuntimeFullLifecycleListener-p::onRuntimeCreate:(void *_Nonnull vsyncObserver);
+  public void LynxRuntimeFullLifecycleListener-p::onRuntimeInit:(long runtimeId);
+  public void LynxRuntimeFullLifecycleListener-p::onAppEnterForeground();
+  public void LynxRuntimeFullLifecycleListener-p::onAppEnterBackground();
+}
+
+public protocol LynxRuntimeLifecycleListener-p : <NSObject> {
+  public void LynxRuntimeLifecycleListener-p::onRuntimeAttach:(void *_Nonnull env);
+  public void LynxRuntimeLifecycleListener-p::onRuntimeDetach();
+}
+
 public protocol LynxSchemaInterceptor-p : <NSObject> {
   public bool LynxSchemaInterceptor-p::intercept:withParam:(nonnull NSString *schema,[withParam] nonnull NSDictionary *param);
 }
@@ -3048,6 +3062,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public id< LynxUIRendererProtocol > LynxTemplateRender()::lynxUIRenderer();
   public LynxUIOwner * LynxTemplateRender()::uiOwner();
   public void LynxTemplateRender()::setAttachLynxPageUICallback:(attachLynxPageUI callback);
+  public void LynxTemplateRender()::AddLifecycleListener(id< LynxRuntimeLifecycleListener > listener);
   public lynx::piper::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
 }
 
@@ -4909,6 +4924,7 @@ public interface UIViewController(LynxHeroTransition) {
   public FOUNDATION_EXPORT NSInteger const EBLynxAppBundleVerify EBLynxAppBundleVerify;
   public FOUNDATION_EXPORT NSInteger const EBLynxBTSRuntimeError EBLynxBTSRuntimeError;
   public FOUNDATION_EXPORT NSInteger const EBLynxBTSPlatformCallJSFunction EBLynxBTSPlatformCallJSFunction;
+  public FOUNDATION_EXPORT NSInteger const EBLynxBTSLifecycleListenerError EBLynxBTSLifecycleListenerError;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceImage EBLynxResourceImage;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceFont EBLynxResourceFont;
   public FOUNDATION_EXPORT NSInteger const EBLynxResourceExternalResource EBLynxResourceExternalResource;
@@ -4976,6 +4992,7 @@ public interface UIViewController(LynxHeroTransition) {
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSRuntimeErrorBytecodeScriptError ECLynxBTSRuntimeErrorBytecodeScriptError;
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSRuntimeErrorBindingsError ECLynxBTSRuntimeErrorBindingsError;
   public FOUNDATION_EXPORT NSInteger const ECLynxBTSPlatformCallJSFunctionTooFrequency ECLynxBTSPlatformCallJSFunctionTooFrequency;
+  public FOUNDATION_EXPORT NSInteger const ECLynxBTSLifecycleListenerErrorException ECLynxBTSLifecycleListenerErrorException;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImageBigImage ECLynxResourceImageBigImage;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImagePicSource ECLynxResourceImagePicSource;
   public FOUNDATION_EXPORT NSInteger const ECLynxResourceImageFromUserOrDesign ECLynxResourceImageFromUserOrDesign;
@@ -5144,6 +5161,8 @@ public interface UIViewController(LynxHeroTransition) {
   public const int LYNX_STATE_FAIL LYNX_STATE_FAIL;
   public const int LYNX_STATE_END LYNX_STATE_END;
   public const int LYNX_STATE_UNDETERMINED LYNX_STATE_UNDETERMINED;
+
+  typedef void(^ JSProxyReadyBlock) (void)
 
   public typedef NS_ENUM(NSInteger, LynxBooleanOption);
 

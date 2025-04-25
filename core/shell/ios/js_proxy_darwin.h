@@ -6,7 +6,8 @@
 #define CORE_SHELL_IOS_JS_PROXY_DARWIN_H_
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxView.h>
+#import <Lynx/LynxErrorReceiverProtocol.h>
+#import <Lynx/LynxRuntimeLifecycleListener.h>
 
 #include <memory>
 #include <string>
@@ -23,22 +24,23 @@ class JSProxyDarwin : public LynxRuntimeProxyImpl {
 
   static std::shared_ptr<JSProxyDarwin> Create(
       const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
-      LynxView* lynx_view, int64_t id, const std::string& js_group_thread_name,
+      id<LynxErrorReceiverProtocol> error_handler, int64_t id,
+      const std::string& js_group_thread_name,
       bool runtime_standalone_mode = false);
 
   void RunOnJSThread(dispatch_block_t task);
 
   int64_t GetId() const { return id_; }
 
-  LynxView* GetLynxView() const { return lynx_view_; }
+  void AddLifecycleListener(id<LynxRuntimeLifecycleListener> listener);
 
  private:
   JSProxyDarwin(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& actor,
-                LynxView* lynx_view, int64_t id,
+                id<LynxErrorReceiverProtocol> error_handler, int64_t id,
                 const std::string& js_group_thread_name,
                 bool runtime_standalone_mode);
 
-  __weak LynxView* const lynx_view_;
+  __weak id<LynxErrorReceiverProtocol> _error_handler;
 
   const int64_t id_;
 

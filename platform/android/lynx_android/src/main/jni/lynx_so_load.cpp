@@ -55,6 +55,8 @@
 #include "core/shell/android/native_facade_reporter_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
+#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "lynx/core/shell/android/runtime_lifecycle_listener_delegate_android.h"
 
 #if MEMORY_TRACING
 #include "core/base/debug/memory_tracer_android.h"
@@ -116,6 +118,7 @@ extern "C" JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   lynx::shell::LynxTemplateRendererAndroid::RegisterJni(env);
   lynx::shell::NativeFacadeAndroid::RegisterJni(env);
   lynx::shell::NativeFacadeReporterAndroid::RegisterJni(env);
+  lynx::shell::RuntimeLifecycleListenerDelegateAndroid::RegisterJNI(env);
 
 #if MEMORY_TRACING
   lynx::base::MemoryTracerAndroid::RegisterJNIUtils(env);

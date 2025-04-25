@@ -247,16 +247,15 @@ void LynxShell::InitRuntime(
 
   start_js_runtime_task_ =
       [module_manager, preload_js_paths = std::move(preload_js_paths),
-       runtime_observer = runtime_observer_,
-       runtime_lifecycle_observer = runtime_lifecycle_observer_,
-       force_reload_js_core, force_use_light_weight_js_engine, vsync_monitor,
+       runtime_observer = runtime_observer_, force_reload_js_core,
+       force_use_light_weight_js_engine, vsync_monitor,
        weak_js_bundle_holder = GetWeakJsBundleHolder()](
           std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(module_manager, runtime_observer,
-                      runtime_lifecycle_observer, std::move(preload_js_paths),
-                      force_reload_js_core, force_use_light_weight_js_engine);
+                      std::move(preload_js_paths), force_reload_js_core,
+                      force_use_light_weight_js_engine);
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       };
 
@@ -283,9 +282,7 @@ void LynxShell::AttachRuntime(
   runtime_actor_->ActAsync(
       [facade_actor = facade_actor_, engine_actor = engine_actor_,
        card_cached_data_mgr = card_cached_data_mgr_,
-       runtime_lifecycle_observer = runtime_lifecycle_observer_,
        weak_js_bundle_holder = GetWeakJsBundleHolder()](auto& runtime) mutable {
-        runtime->AdoptRuntimeLifecycleObserver(runtime_lifecycle_observer);
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
         static_cast<RuntimeMediator*>(runtime->GetDelegate())
             ->AttachToLynxShell(std::move(facade_actor),
@@ -1215,31 +1212,22 @@ void LynxShell::SetHierarchyObserver(
   });
 }
 
-void LynxShell::RegisterRuntimeLifecycleObserver(
-    const std::shared_ptr<lynx::runtime::IRuntimeLifecycleObserver>&
-        runtime_lifecycle_observer,
-    base::MoveOnlyClosure<void, fml::RefPtr<fml::TaskRunner>> on_complete) {
-  if (runtime_lifecycle_observer) {
-    runtime_lifecycle_observer_ = runtime_lifecycle_observer;
-    if (on_complete) {
-      on_complete(runners_.GetJSTaskRunner());
-    }
-  }
-}
-
 void LynxShell::RegisterModuleFactory(
     std::unique_ptr<lynx::piper::NativeModuleFactory> module_factory) {
   module_factories_.push_back(std::move(module_factory));
 }
 
 void LynxShell::OnRuntimeCreate() {
-  if (runtime_lifecycle_observer_) {
-    DCHECK(runtime_actor_);
-    runtime_actor_->Act([observer = runtime_lifecycle_observer_,
-                         runtime_actor = runtime_actor_](auto& runtime) {
-      observer->OnRuntimeCreate(runtime->GetVSyncObserver());
-    });
-  }
+  DCHECK(runtime_actor_);
+
+  runtime::MessageEvent event(runtime::kMessageEventTypeOnRuntimeCreate,
+                              runtime::ContextProxy::Type::kCoreContext,
+                              runtime::ContextProxy::Type::kJSContext,
+                              lepus::Value());
+  runtime_actor_->Act(
+      [message_event = std::move(event)](auto& runtime) mutable {
+        runtime->OnReceiveMessageEvent(std::move(message_event));
+      });
 }
 
 void LynxShell::ConsumeModuleFactory(piper::LynxModuleManager* module_manager) {
