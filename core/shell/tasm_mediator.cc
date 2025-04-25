@@ -159,14 +159,6 @@ void TasmMediator::OnPipelineStart(
   });
 }
 
-void TasmMediator::ResetTimingBeforeReload(const std::string& flag) {
-  // TODO(kechenglong): Temporary API, will be removed after pipelineOptions
-  // finished pre-created.
-  timing_actor_->ActAsync([flag](auto& timing_handler) mutable {
-    timing_handler->ResetTimingBeforeReload(flag);
-  });
-}
-
 lepus::Value TasmMediator::TriggerLepusMethod(const std::string& method_name,
                                               const lepus::Value& arguments) {
   return tasm_platform_invoker_->TriggerLepusMethod(method_name, arguments);

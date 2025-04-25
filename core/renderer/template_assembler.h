@@ -163,7 +163,6 @@ class TemplateAssembler final
         const tasm::PipelineID& pipeline_id,
         const tasm::PipelineOrigin& pipeline_origin,
         tasm::timing::TimestampUs pipeline_start_timestamp) = 0;
-    virtual void ResetTimingBeforeReload(const std::string& flag) = 0;
 
     virtual void CallJSApiCallback(piper::ApiCallBack callback) = 0;
     virtual void CallJSApiCallbackWithValue(piper::ApiCallBack callback,

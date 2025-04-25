@@ -163,7 +163,6 @@ void LynxEngine::ReloadTemplate(const std::shared_ptr<tasm::TemplateData>& data,
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       instance_id_, tasm::timing::kLoadTemplateTask,
       tasm::timing::kTaskNameLynxEngineReloadTemplate);
-  delegate_->ResetTimingBeforeReload(pipeline_options.pipeline_id);
   tasm_->ReloadTemplate(data, global_props, update_page_option,
                         pipeline_options);
 }

@@ -230,7 +230,7 @@ std::unique_ptr<lynx::pub::Value> TimingHandler::GetAllTimingInfo() const {
 }
 
 // Reset all timing information.
-void TimingHandler::ResetTimingBeforeReload(const PipelineID& pipeline_id) {
+void TimingHandler::ResetTimingBeforeReload() {
   ClearAllTimingInfo();
   timing_info_.SetHasReload(true);
 }

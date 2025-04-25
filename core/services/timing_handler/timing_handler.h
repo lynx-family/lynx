@@ -86,7 +86,7 @@ class TimingHandler {
                                tasm::timing::TimestampUs timestamp);
 
   // TODO(kechenglong): remove this API.
-  void ResetTimingBeforeReload(const PipelineID& pipeline_id);
+  void ResetTimingBeforeReload();
 
   void OnPipelineStart(const PipelineID& pipeline_id,
                        const PipelineOrigin& pipeline_origin,
