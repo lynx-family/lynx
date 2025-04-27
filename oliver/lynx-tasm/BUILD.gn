@@ -158,6 +158,10 @@ if (build_lynx_lepus_node) {
       sources += [ "//lynx/core/renderer/tasm/napi_bind.cc" ]
     }
 
+    if (is_wasm) {
+      sources += [ "//lynx/core/template_bundle/template_codec/wasm_bind.cc" ]
+    }
+
     # utils
     sources += lynx_renderer_utils_sources_path
     sources += lynx_env_shared_sources_path
