@@ -47,8 +47,35 @@ bool ListAdapter::UpdateDataSource(const lepus::Value& data_source) {
             has_updated = adapter_helper_->UpdateDiffResult(value);
           }
         });
-    // Mark dirty based on index.
-    MarkChildHolderDirty();
+    // TODO(@hujing.1):refactor the code according to the corresponding vector
+    // if the diffResult:insert[0,1,2,3],update from:[0,1,2,3],update
+    // To:[4,5,6,7].
+
+    // firstly:should handle the removed actions and inserted actions,to keep
+    //  the data size is right.
+
+    for (const auto& cur : adapter_helper_->removals()) {
+      ItemHolder* child_holder = GetItemHolderForIndex(cur);
+      if (child_holder) {
+        OnItemHolderRemoved(child_holder);
+      }
+    }
+
+    // secondly:according to the old data,to keep itemHolder status right
+    for (const auto& cur : adapter_helper_->move_from()) {
+      ItemHolder* child_holder = GetItemHolderForIndex(cur);
+      if (child_holder) {
+        OnItemHolderMovedFrom(child_holder);
+      }
+    }
+
+    for (const auto& cur : adapter_helper_->update_from()) {
+      ItemHolder* child_holder = GetItemHolderForIndex(cur);
+      if (child_holder) {
+        OnItemHolderUpdateFrom(child_holder);
+      }
+    }
+
     // init list_container_info
     auto list_container_info = lepus::Dictionary::Create();
     // TODO(dingwang.wxx): Check whether the following traversal can be skipped
@@ -77,6 +104,22 @@ bool ListAdapter::UpdateDataSource(const lepus::Value& data_source) {
                 BASE_STATIC_STRING(list::kDataSourceItemKeys), value);
           }
         });
+
+    // thirdly:update the item holder status according to the new diffResult
+    for (const auto& cur : adapter_helper_->move_to()) {
+      ItemHolder* child_holder = GetItemHolderForIndex(cur);
+      if (child_holder) {
+        OnItemHolderMovedTo(child_holder);
+      }
+    }
+
+    for (const auto& cur : adapter_helper_->update_to()) {
+      ItemHolder* child_holder = GetItemHolderForIndex(cur);
+      if (child_holder) {
+        OnItemHolderUpdateTo(child_holder);
+      }
+    }
+
     // flush list-container-info
     if (list_container_ && list_container_->element() &&
         list_container_->element_manager()) {
