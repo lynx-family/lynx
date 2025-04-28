@@ -36,6 +36,13 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
         [this, &start_item_holders, &end_item_holders,
          list_adapter =
              list_container_->list_adapter()](ItemHolder* item_holder) {
+          // Note: When updating layout status, we should exclude the item
+          // holder which is removed or in sticky but not intersected with
+          // visible area.
+          if (!IntersectVisibleArea(item_holder) ||
+              list_adapter->IsRemoved(item_holder)) {
+            return false;
+          }
           // span index of current item holder.
           int span_index = item_holder->item_col_index();
           int item_index = item_holder->index();
