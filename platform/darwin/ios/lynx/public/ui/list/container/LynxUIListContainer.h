@@ -21,5 +21,6 @@
                                      smooth:(BOOL)smooth
                                   scrolling:(BOOL)scrolling;
 - (void)insertListComponent:(LynxUIComponent *)component;
+- (void)removeListComponent:(LynxUIComponent *)component;
 - (void)detachedFromWindow;
 @end

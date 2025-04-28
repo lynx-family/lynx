@@ -1297,15 +1297,11 @@ extern NSString* const kDefaultComponentID;
 - (void)removeListComponent:(NSInteger)listSign componentSign:(NSInteger)componentSign {
   LynxUI* child = _uiHolder[[NSNumber numberWithInteger:componentSign]];
   LynxUI* list = _uiHolder[[NSNumber numberWithInteger:listSign]];
-  if ([child isKindOfClass:LynxUIComponent.class]) {
+  if ([child isKindOfClass:LynxUIComponent.class] &&
+      [list isKindOfClass:LynxUIListContainer.class]) {
     LynxUIComponent* component = (LynxUIComponent*)child;
-    LLogInfo(@" removeListComponent remove view: %p -> %p, %@", component, component.view.superview,
-             [component itemKey]);
-  }
-
-  if (child.view.superview.superview == list.view) {
-    [child.view.superview removeFromSuperview];
-    [child.view removeFromSuperview];
+    LynxUIListContainer* listContainer = (LynxUIListContainer*)list;
+    [listContainer removeListComponent:component];
   }
 }
 

@@ -168,6 +168,9 @@ void ListContainerImpl::FlushPatching() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "ListContainerImpl::FlushPatching");
   if (element_) {
     element_->painting_context()->UpdateLayoutPatching();
+    // Note: Add list's id to patching_node_ready_ids_ before invoking
+    // UpdateNodeReadyPatching(), and in list's OnNodeReady to handle sticky
+    // list items.
     element_->painting_context()->OnNodeReady(element_->impl_id());
     element_->painting_context()->UpdateNodeReadyPatching();
     if (should_flush_finish_layout_) {

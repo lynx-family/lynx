@@ -230,6 +230,18 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  @Override
+  public void removeView(LynxBaseUI child) {
+    super.removeView(child);
+    if (child instanceof UIComponent) {
+      UIComponent component = (UIComponent) child;
+      if (mEnableListSticky) {
+        updateStickyInfoForDeletedChild(component, mStickyTopItems);
+        updateStickyInfoForDeletedChild(component, mStickyBottomItems);
+      }
+    }
+  }
+
   private void insertListItemNodeInternal(@Nullable UIComponent component) {
     View childView = component.getView();
     if (childView != null && childView.getParent() == null) {

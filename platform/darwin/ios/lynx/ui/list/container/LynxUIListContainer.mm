@@ -317,6 +317,17 @@ LYNX_REGISTER_UI("list-container")
   }
 }
 
+- (void)removeListComponent:(LynxUIComponent *)component {
+  if (component.view.superview.superview == self.view) {
+    [component.view.superview removeFromSuperview];
+    [component.view removeFromSuperview];
+  }
+  if (self.enableListSticky) {
+    [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyTopItems];
+    [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyBottomItems];
+  }
+}
+
 #pragma mark prop setters
 
 LYNX_PROP_SETTER("experimental-disable-filter-scroll", setFilterScroll, BOOL) {
