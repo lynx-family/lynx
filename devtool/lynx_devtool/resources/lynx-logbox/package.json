@@ -7,7 +7,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rsbuild build && cp node_modules/source-map/lib/mappings.wasm dist",
+    "build": "rsbuild build && ncp node_modules/source-map/lib/mappings.wasm dist",
     "dev": "rsbuild dev"
   },
   "author": "Lynx Authors",
@@ -37,8 +37,10 @@
     "@rsbuild/plugin-node-polyfill": "^1.2.0",
     "@rsbuild/plugin-react": "^1.1.1",
     "anser": "1.4.9",
+    "antd": "^4.x",
     "copy-to-clipboard": "~3.3.1",
     "html-entities": "1.3.1",
+    "ncp": "^2.0.0",
     "vconsole": "3.5.1"
   }
 }
