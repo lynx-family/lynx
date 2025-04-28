@@ -171,7 +171,7 @@ LYNX_PROPS_GROUP_DECLARE(
       __weak typeof(self) weakSelf = self;
       self.view.selectionChangeEventCallback = ^(NSDictionary *detail) {
         LynxDetailEvent *event = [[LynxDetailEvent alloc] initWithName:@"selectionchange"
-                                                            targetSign:[self sign]
+                                                            targetSign:[weakSelf sign]
                                                                 detail:detail];
         [weakSelf.context.eventEmitter dispatchCustomEvent:event];
       };
