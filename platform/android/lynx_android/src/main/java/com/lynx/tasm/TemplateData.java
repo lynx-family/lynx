@@ -311,7 +311,7 @@ public final class TemplateData {
     }
   }
 
-  void recycleJsData() {
+  synchronized void recycleJsData() {
     if (checkIfEnvPrepared() && mJsNativeData != 0) {
       nativeReleaseData(mJsNativeData);
       mJsNativeData = 0;
@@ -517,13 +517,12 @@ public final class TemplateData {
     LynxThreadPool.getAsyncServiceExecutor().execute(new Runnable() {
       @Override
       public void run() {
-        getDataForJSThread();
+        getDataForJSThreadInner();
       }
     });
   }
 
-  @CalledByNative
-  synchronized long getDataForJSThread() {
+  synchronized long getDataForJSThreadInner() {
     // Init mJsNativeData or update mUpdateActions to mJsNativeData
     List<UpdateAction> actions = obtainUpdateActions();
     if (actions.isEmpty()) {
@@ -554,6 +553,11 @@ public final class TemplateData {
       }
     }
     return mJsNativeData;
+  }
+
+  @CalledByNative
+  long getDataForJSThread() {
+    return getDataForJSThreadInner();
   }
 
   @CalledByNative
