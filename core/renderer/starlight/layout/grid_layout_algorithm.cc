@@ -2049,7 +2049,7 @@ float GridLayoutAlgorithm::CalcContainingBlock(Dimension dimension,
   // non-existent line either by explicitly specifying such a line or by
   // spanning outside of the existing implicit grid, it is instead treated as
   // specifying auto (instead of creating new implicit grid lines).
-  if (start > grid_line_count - 2) {
+  if (start < kGridLineUnDefine || start > grid_line_count - 2) {
     start = kGridLineUnDefine;
   }
 
@@ -2058,7 +2058,7 @@ float GridLayoutAlgorithm::CalcContainingBlock(Dimension dimension,
   // corresponding padding edge of the grid container. These lines become the
   // first and last lines (0th and -0th) of the augmented grid used for
   // positioning absolutely-positioned items.
-  if (end == kGridLineUnDefine || end > grid_line_count - 2) {
+  if (end <= kGridLineUnDefine || end > grid_line_count - 2) {
     end = grid_line_count - 1;
   }
   if (start >= end) {

@@ -41,6 +41,13 @@ void GridItemInfo::InitSpanInfo(Dimension dimension, int32_t explicit_end,
   start = is_start_definite ? start + axis_offset : start;
   end = is_end_definite ? end + axis_offset : end;
 
+  // For absolutely positioned: if the position value remains negative after
+  // adjusting for negative integers, it should default to 'auto'.
+  if (if_absolutely_positioned) {
+    start = start < 0 ? 0 : start;
+    end = end < 0 ? 0 : end;
+  }
+
   // For grid item: If the placement for a grid item contains two lines, and the
   // start line is further end-ward than the end line, swap the two lines.
   if (!if_absolutely_positioned && start > end && is_start_definite &&
