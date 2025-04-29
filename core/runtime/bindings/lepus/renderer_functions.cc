@@ -412,7 +412,7 @@ GestureDetector InnerCreateGestureDetector(double gesture_id,
   BASE_STATIC_STRING_DECL(kCallbacks, "callbacks");
   BASE_STATIC_STRING_DECL(kConfig, "config");
   auto callbacks = callback_config->GetProperty(kCallbacks);
-  auto config = callback_config->GetProperty(kConfig).ToLepusValue();
+  auto config = callback_config->GetProperty(kConfig);
 
   // Initialize a vector to store gesture callbacks with their names and
   // functions.
@@ -459,14 +459,11 @@ GestureDetector InnerCreateGestureDetector(double gesture_id,
   // Extract "simultaneous", "waitFor", "continueWith" properties from the
   // "relationMap" argument.
   auto simultaneous_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureSimultaneous))
-          .ToLepusValue();
+      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureSimultaneous));
   auto wait_for_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureWaitFor))
-          .ToLepusValue();
+      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureWaitFor));
   auto continue_with_value =
-      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureContinueWith))
-          .ToLepusValue();
+      relation_map_value->GetProperty(BASE_STATIC_STRING(kGestureContinueWith));
 
   // Initialize vectors to store the gesture relation map (simultaneous,
   // wait_for and continue_with) values.
