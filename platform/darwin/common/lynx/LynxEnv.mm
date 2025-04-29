@@ -404,6 +404,7 @@
   lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_LEFT_ = 0;
   lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_RIGHT_ = 0;
   if (@available(iOS 11.0, *)) {
+    lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_TOP_ = keyWindow.safeAreaInsets.top;
     lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_BOTTOM_ = keyWindow.safeAreaInsets.bottom;
     lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_LEFT_ = keyWindow.safeAreaInsets.left;
     lynx::starlight::ComputedCSSStyle::SAFE_AREA_INSET_RIGHT_ = keyWindow.safeAreaInsets.right;
