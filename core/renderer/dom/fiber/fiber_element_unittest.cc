@@ -5541,9 +5541,9 @@ TEST_P(FiberElementTest, SetKeyframes) {
       page->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  auto platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  auto platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(
       platform_keyframe_value.Table()->size() == 1 &&
@@ -5564,9 +5564,9 @@ TEST_P(FiberElementTest, SetKeyframes) {
       lepus::Value("move 5000ms linear infinite, a 100ms, b 50ms"));
   page->FlushActionsAsRoot();
   painting_context->Flush();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(platform_keyframe_value.Table()->size() == 1);
   EXPECT_TRUE(platform_keyframe_value.Table()->Contains(keyframe_name1));
@@ -5582,9 +5582,9 @@ TEST_P(FiberElementTest, SetKeyframes) {
   page->FlushActionsAsRoot();
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(platform_keyframe_value.Table()->size() != 0);
   EXPECT_TRUE(platform_keyframe_value.Table()->Contains(keyframe_name1));
@@ -5736,9 +5736,9 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
       page->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  auto platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  auto platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(
       platform_keyframe_value.Table()->size() == 1 &&
@@ -5769,9 +5769,9 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
       lepus::Value("move 5000ms linear infinite, a 100ms, b 50ms"));
   page->FlushActionsAsRoot();
   painting_context->Flush();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(platform_keyframe_value.Table()->size() == 1);
   EXPECT_TRUE(platform_keyframe_value.Table()->Contains(keyframe_name1));
@@ -5787,9 +5787,9 @@ TEST_P(FiberElementTest, SetMultipleKeyframes) {
   page->FlushActionsAsRoot();
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 1);
-  EXPECT_TRUE(painting_context->keyframes_.count("keyframes"));
-  platform_keyframe_value = painting_context->keyframes_["keyframes"];
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 1);
+  EXPECT_TRUE(painting_context->GetKeyFrames().count("keyframes"));
+  platform_keyframe_value = painting_context->GetKeyFrames()["keyframes"];
 
   EXPECT_TRUE(platform_keyframe_value.Table()->size() != 0);
   EXPECT_TRUE(platform_keyframe_value.Table()->Contains(keyframe_name1));
@@ -5925,21 +5925,21 @@ TEST_P(FiberElementTest, SetKeyframes_new_animator) {
       page->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 
   element->SetStyle(
       CSSPropertyID::kPropertyIDAnimation,
       lepus::Value("move 5000ms linear infinite, a 100ms, b 50ms"));
   manager->element_vsync_proxy_->MarkNextFrameHasArrived();
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 
   element->SetStyle(
       CSSPropertyID::kPropertyIDAnimation,
       lepus::Value("move 1000ms linear infinite, a 100ms, b 50ms, c 1000ms"));
   manager->element_vsync_proxy_->MarkNextFrameHasArrived();
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 }
 
 TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
@@ -6073,21 +6073,21 @@ TEST_P(FiberElementTest, SetMultipleKeyframes_new_animator) {
       page->painting_context()->platform_impl_.get());
   painting_context->Flush();
 
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 
   element->SetStyle(
       CSSPropertyID::kPropertyIDAnimation,
       lepus::Value("move 5000ms linear infinite, a 100ms, b 50ms"));
   manager->element_vsync_proxy_->MarkNextFrameHasArrived();
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 
   element->SetStyle(
       CSSPropertyID::kPropertyIDAnimation,
       lepus::Value("move 1000ms linear infinite, a 100ms, b 50ms, c 1000ms"));
   manager->element_vsync_proxy_->MarkNextFrameHasArrived();
   page->FlushActionsAsRoot();
-  EXPECT_TRUE(painting_context->keyframes_.size() == 0);
+  EXPECT_TRUE(painting_context->GetKeyFrames().size() == 0);
 }
 
 TEST_P(FiberElementTest, ConsumeAnimationPropBundle) {

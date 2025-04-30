@@ -27,6 +27,8 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
   explicit PaintingContextDarwinRef(LynxUIOwner* owner) : uiOwner_(owner) {}
   ~PaintingContextDarwinRef() override = default;
 
+  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
+
   void InsertPaintingNode(int parent, int child, int index) override;
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
@@ -74,7 +76,6 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
                           bool flatten, bool create_node_async,
                           uint32_t node_index) override;
 
-  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const std::shared_ptr<PropBundle>& painting_data) override;

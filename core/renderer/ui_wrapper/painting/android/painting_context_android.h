@@ -32,6 +32,8 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
   PaintingContextAndroidRef(JNIEnv* env, jobject impl);
   ~PaintingContextAndroidRef() override = default;
 
+  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
+
   void InsertPaintingNode(int parent, int child, int index) override;
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
@@ -88,7 +90,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void RemovePaintingNode(int parent, int child, int index,
                           bool is_move) override;
   void DestroyPaintingNode(int parent, int child, int index) override;
-  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
   void UpdatePaintingNode(
