@@ -7,12 +7,6 @@
 namespace lynx {
 namespace tasm {
 
-void PaintingContext::SetTimingCollectorPlatform(
-    const std::shared_ptr<shell::TimingCollectorPlatform>& timing) {
-  timing_collector_platform_ = timing;
-  platform_impl_->SetTimingCollectorPlatform(timing);
-};
-
 void PaintingContext::SetUIOperationQueue(
     const std::shared_ptr<shell::DynamicUIOperationQueue>& queue) {
   ui_operation_queue_ = queue;
@@ -186,7 +180,6 @@ void PaintingContext::Enqueue(shell::UIOperation op, bool high_priority) {
     op();
     return;
   }
-
   auto task = platform_impl_->ExecuteOperationSafely(std::move(op));
   if (high_priority) {
     ui_operation_queue_->EnqueueHighPriorityUIOperation(std::move(task));
@@ -200,17 +193,17 @@ void PaintingContext::MarkUIOperationQueueFlushTiming(
   if (pipeline_id.empty()) {
     return;
   }
-
-  std::weak_ptr<shell::TimingCollectorPlatform> weak_timing_collector_platform =
-      timing_collector_platform_;
-  Enqueue(
-      [weak_timing_collector_platform, key = std::move(key), pipeline_id]() {
-        TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_MARK_TIMING);
-        if (auto timing_collector_platform =
-                weak_timing_collector_platform.lock()) {
-          timing_collector_platform->MarkTiming(pipeline_id, key);
-        }
-      });
+  Enqueue([perf_actor = perf_controller_actor_, key = std::move(key),
+           pipeline_id]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_MARK_TIMING);
+    perf_actor->ActAsync([key = std::move(key), pipeline_id,
+                          timestamp = base::CurrentSystemTimeMicroseconds()](
+                             auto& controller) mutable {
+      controller->GetTimingHandler().SetTiming(
+          key, static_cast<lynx::tasm::timing::TimestampUs>(timestamp),
+          pipeline_id);
+    });
+  });
 }
 
 void PaintingContext::SetNeedMarkDrawEndTiming(
@@ -218,13 +211,12 @@ void PaintingContext::SetNeedMarkDrawEndTiming(
   if (pipeline_id.empty()) {
     return;
   }
-
-  std::weak_ptr<shell::TimingCollectorPlatform> weak_timing_collector =
-      timing_collector_platform_;
-  Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
-           weak_timing_collector, pipeline_id]() {
-    platform_ref->SetNeedMarkDrawEndTiming(std::move(weak_timing_collector),
-                                           pipeline_id);
+  Enqueue([perf_actor = perf_controller_actor_,
+           platform_ref = platform_impl_->GetPlatformRef(), pipeline_id]() {
+    perf_actor->ActAsync([pipeline_id](auto& controller) {
+      controller->GetTimingHandler().SetNeedPaintEndTiming(pipeline_id);
+    });
+    platform_ref->SetNeedPaintEndTiming(pipeline_id);
   });
 }
 

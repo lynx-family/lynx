@@ -26,6 +26,8 @@
 #include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
+#include "core/services/performance/performance_controller.h"
+#include "core/services/performance/performance_mediator.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
@@ -35,7 +37,6 @@
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
-#include "core/shell/native_facade_reporter.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/thread_mode_auto_switch.h"
@@ -283,6 +284,11 @@ class LynxShell {
     return engine_actor_;
   }
 
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+  GetPerfControllerActor() {
+    return perf_controller_actor_;
+  }
+
   base::TaskRunnerManufactor* GetRunners() { return &runners_; }
 
   void RunOnTasmThread(std::function<void(void)>&& task);
@@ -370,15 +376,15 @@ class LynxShell {
   std::shared_ptr<LynxActor<NativeFacade>>
       facade_actor_;  // on platform UI runner
 
-  std::shared_ptr<LynxActor<NativeFacadeReporter>>
-      facade_reporter_actor_;  // on platform Reporter runner
-
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;  // on TASM runner
 
   std::shared_ptr<LynxActor<runtime::LynxRuntime>>
       runtime_actor_;  // on JS runner
   std::shared_ptr<LynxActor<tasm::LayoutContext>>
       layout_actor_;  // on Layout runner
+
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_controller_actor_;  // on Reporter runner
 
   base::TaskRunnerManufactor runners_;
 
@@ -393,9 +399,10 @@ class LynxShell {
       std::make_shared<LynxCardCacheDataManager>();
   std::shared_ptr<TASMOperationQueue> tasm_operation_queue_;
   std::shared_ptr<shell::DynamicUIOperationQueue> ui_operation_queue_;
-  TasmMediator* tasm_mediator_;                    // NOT OWNED
-  LayoutMediator* layout_mediator_;                // NOT OWNED
-  tasm::timing::TimingMediator* timing_mediator_;  // NOT OWNED
+  tasm::timing::TimingMediator* timing_mediator_;          // NOT OWNED
+  TasmMediator* tasm_mediator_;                            // NOT OWNED
+  LayoutMediator* layout_mediator_;                        // NOT OWNED
+  tasm::performance::PerformanceMediator* perf_mediator_;  // NOT OWNED
 
   std::function<void(std::unique_ptr<runtime::LynxRuntime>&)>
       start_js_runtime_task_;
@@ -417,8 +424,6 @@ class LynxShell {
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_ =
       std::make_shared<tasm::PropBundleCreatorDefault>();
   AppState app_state_{AppState::kUnknown};
-  std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>
-      timing_actor_;  // on timing runner
 
   std::unique_ptr<ThreadModeAutoSwitch> thread_mode_auto_switch_;
   std::shared_ptr<EngineThreadSwitch> engine_thread_switch_;

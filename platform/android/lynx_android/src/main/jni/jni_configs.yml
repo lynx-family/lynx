@@ -34,13 +34,13 @@ jni_class_configs:
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/eventreport/LynxEventReporter.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/performance/longtasktiming/LynxLongTaskMonitor.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/performance/TimingCollector.java
+    - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/performance/PerformanceController.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/LayoutContext.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/LayoutNodeManager.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/PlatformExtraBundleHolder.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/shadow/LayoutNode.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxWhiteBoard.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/NativeFacade.java
-    - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/NativeFacadeReporter.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/TemplateData.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxGetUIResult.java
     - java: lynx/platform/android/lynx_android/src/main/java/com/lynx/tasm/utils/CallStackUtil.java

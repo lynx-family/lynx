@@ -24,9 +24,6 @@ class TimingHandlerDelegate {
   virtual void OnTimingSetup(const TimingInfo &timing_info) const = 0;
   virtual void OnTimingUpdate(const TimingInfo &timing_info,
                               const TimingFlag &update_flag) const = 0;
-  virtual void OnPerformanceEvent(
-      const std::unique_ptr<lynx::pub::Value> performance_entry,
-      bool enable_engine_callback) const = 0;
 };
 }  // namespace timing
 }  // namespace tasm

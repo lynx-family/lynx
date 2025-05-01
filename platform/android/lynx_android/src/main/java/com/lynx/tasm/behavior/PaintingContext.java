@@ -28,6 +28,7 @@ import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.Iterator;
 import java.util.Map;
@@ -82,9 +83,7 @@ public final class PaintingContext {
   private final LynxUIOwner mUIOwner;
   private boolean mDestroyed;
   private ConcurrentHashMap<String, Boolean> mNeedCreateNodeAsyncCache;
-
   private long mNativePaintingContextPtr = 0;
-
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
     mDestroyed = false;
@@ -731,8 +730,21 @@ public final class PaintingContext {
     }
   }
 
-  private native void nativeInvokeCallback(long context, int callback, WritableArray array);
+  @CalledByNative
+  public void markTiming(String pipelineId, String timingKey) {
+    LynxContext lynxContext = mUIOwner.getContext();
+    if (lynxContext == null) {
+      return;
+    }
 
+    PerformanceController performanceController = lynxContext.getPerformanceController();
+
+    if (performanceController == null) {
+      return;
+    }
+    performanceController.markTiming(timingKey, pipelineId);
+  }
+  private native void nativeInvokeCallback(long context, int callback, WritableArray array);
   private native long nativeCreatePaintingContext(
       Object paintingContext, int threadStrategy, boolean isContextFree);
 }

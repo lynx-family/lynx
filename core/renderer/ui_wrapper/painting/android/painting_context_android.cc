@@ -301,15 +301,6 @@ void PaintingContextAndroidRef::UpdateContentOffsetForListContainer(
       target_content_offset_y);
 }
 
-void PaintingContextAndroidRef::SetNeedMarkDrawEndTiming(
-    std::weak_ptr<shell::TimingCollectorPlatform> weak_timing_collector,
-    const tasm::PipelineID& pipeline_id) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_SET_NEED_MARK_TIMING);
-  if (auto timing_collector_platform = weak_timing_collector.lock()) {
-    timing_collector_platform->SetNeedMarkDrawEndTiming(pipeline_id);
-  }
-}
-
 void PaintingContextAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {
   PropBundleAndroid* pda =

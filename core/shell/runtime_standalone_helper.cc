@@ -9,7 +9,7 @@
 
 #include "core/base/threading/vsync_monitor.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
-#include "core/services/timing_handler/timing_mediator.h"
+#include "core/services/performance/performance_mediator.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/runtime_mediator.h"
 
@@ -40,17 +40,23 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
   std::shared_ptr<base::VSyncMonitor> vsync_monitor =
       base::VSyncMonitor::Create();
 
+  auto perf_mediator =
+      std::make_unique<lynx::tasm::performance::PerformanceMediator>();
   auto timing_mediator =
       std::make_unique<lynx::tasm::timing::TimingMediator>(instance_id);
   timing_mediator->SetEnableJSRuntime(true);
   // TODO(huzhanbo.luc): use TimingHandler to set back actors to TimingMediator,
   // so that we can avoid raw ptr
+  auto perf_mediator_raw_ptr = perf_mediator.get();
   auto timing_mediator_raw_ptr = timing_mediator.get();
 
-  auto timing_actor = std::make_shared<LynxActor<tasm::timing::TimingHandler>>(
-      std::make_unique<tasm::timing::TimingHandler>(std::move(timing_mediator)),
-      tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
-      instance_id);
+  auto performance_actor =
+      std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
+          std::make_unique<tasm::performance::PerformanceController>(
+              std::move(perf_mediator), std::move(timing_mediator),
+              instance_id),
+          tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
+          instance_id);
 
   auto external_resource_loader =
       std::make_unique<ExternalResourceLoader>(resource_loader);
@@ -60,8 +66,8 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
       std::make_shared<tasm::WhiteBoardRuntimeDelegate>(white_board);
 
   auto delegate = std::make_unique<RuntimeMediator>(
-      native_runtime_facade, nullptr, timing_actor, nullptr, js_task_runner,
-      std::move(external_resource_loader));
+      native_runtime_facade, nullptr, performance_actor, nullptr,
+      js_task_runner, std::move(external_resource_loader));
   delegate->SetPropBundleCreator(prop_bundle_creator);
   delegate->SetWhiteBoardDelegate(white_board_delegate);
   auto* delegate_raw_ptr = delegate.get();
@@ -75,6 +81,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
   auto runtime_actor = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       std::move(runtime), js_task_runner, instance_id, true);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
+  perf_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
   timing_mediator_raw_ptr->SetRuntimeActor(runtime_actor);
 
   on_runtime_actor_created(runtime_actor, native_runtime_facade);
@@ -92,7 +99,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
                       std::move(preload_js_paths));
       });
 
-  return {runtime_actor, timing_actor, native_runtime_facade,
+  return {runtime_actor, performance_actor, native_runtime_facade,
           white_board_delegate};
 }
 

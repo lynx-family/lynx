@@ -19,12 +19,6 @@ static constexpr const char kTimestampMap[] = "timestampMap";
  * ensure that the related PerformanceEntry YAML has been updated accordingly.
  */
 
-// onPerformance event name. The global event name that needs to be listened
-// to in order to receive PerformanceObserver callbacks in the frontend
-// framework.
-static constexpr const char kPerformanceRuntimeCallback[] =
-    "lynx.performance.onPerformanceEvent";
-
 // The following area will store constants used by different PerformanceEntry,
 // categorized by entryType and name. common entryType and name constants
 static constexpr const char kEntryType[] = "entryType";

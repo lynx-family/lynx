@@ -18,13 +18,13 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
-#include "core/services/timing_handler/timing_collector_platform_impl.h"
+#include "core/services/performance/android/performance_controller_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
-#include "core/shell/android/native_facade_reporter_android.h"
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_performance_controller_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -224,12 +224,12 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
 }
 }  // namespace
 
-jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
-             jlong runtime_wrapper_ptr, jobject native_facade,
-             jobject native_facade_reporter, jobject platform_loader,
-             jint thread_strategy, jboolean enable_layout_safe_point,
-             jboolean enable_layout_only, jint screen_width, jint screen_height,
-             jfloat density, jstring locale, jboolean enable_js,
+jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
+             jobject native_facade, jobject j_performance_controller,
+             jobject platform_loader, jint thread_strategy,
+             jboolean enable_layout_safe_point, jboolean enable_layout_only,
+             jint screen_width, jint screen_height, jfloat density,
+             jstring locale, jboolean enable_js,
              jboolean enable_multi_async_thread,
              jboolean enable_pre_update_data, jboolean enable_auto_concurrency,
              jboolean enable_vsync_aligned_msg_loop,
@@ -279,22 +279,12 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
     white_board = *reinterpret_cast<std::shared_ptr<lynx::tasm::WhiteBoard>*>(
         white_board_ptr);
   }
-  std::shared_ptr<lynx::tasm::timing::TimingCollectorPlatformImpl>
-      sp_timing_collector_android = nullptr;
-  if (timing_collector_android != 0) {
-    sp_timing_collector_android = *reinterpret_cast<
-        std::shared_ptr<lynx::tasm::timing::TimingCollectorPlatformImpl>*>(
-        timing_collector_android);
-  }
 
   return reinterpret_cast<jlong>(
       lynx::shell::LynxShellBuilder()
           .SetUseInvokeUIMethodFunction(use_invoke_ui_method)
           .SetNativeFacade(std::make_unique<lynx::shell::NativeFacadeAndroid>(
               env, native_facade))
-          .SetNativeFacadeReporter(
-              std::make_unique<lynx::shell::NativeFacadeReporterAndroid>(
-                  env, native_facade_reporter))
           .SetPaintingContextPlatformImpl(ui_delegate->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)
@@ -311,15 +301,19 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
           .SetRuntimeActor((runtime_wrapper != nullptr)
                                ? runtime_wrapper->GetRuntimeActor()
                                : nullptr)
-          .SetTimingActor((runtime_wrapper != nullptr)
-                              ? runtime_wrapper->GetTimingActor()
-                              : nullptr)
+          .SetPerfControllerActor(
+              (runtime_wrapper != nullptr)
+                  ? runtime_wrapper->GetPerfControllerActor()
+                  : nullptr)
+          .SetPerformanceControllerPlatform(
+              std::make_unique<
+                  lynx::tasm::performance::PerformanceControllerAndroid>(
+                  env, j_performance_controller))
           .SetShellOption(shell_option)
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetTasmPlatformInvoker(
               std::make_unique<lynx::shell::TasmPlatformInvokerAndroid>(
                   env, tasm_platform_invoker))
-          .SetTimingCollectorPlatform(sp_timing_collector_android)
           .SetForceLayoutOnBackgroundThread(force_layout_on_background_thread)
           .build());
 }
@@ -400,9 +394,12 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
           shell->GetRuntimeActor());
       auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
           shell->GetEngineActor());
-      ui_delegate->OnLynxCreate(std::move(engine_proxy),
-                                std::move(runtime_proxy), nullptr, nullptr,
-                                nullptr);
+      auto perf_controller_proxy =
+          std::make_shared<lynx::shell::LynxPerformanceControllerProxyImpl>(
+              shell->GetPerfControllerActor());
+      ui_delegate->OnLynxCreate(
+          std::move(engine_proxy), std::move(runtime_proxy),
+          std::move(perf_controller_proxy), nullptr, nullptr, nullptr);
     }
   };
   shell->InitRuntime(group_id, loader, module_manager,

@@ -18,14 +18,11 @@ import com.lynx.tasm.NativeFacade;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LynxPageLoadListener;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
-import com.lynx.tasm.performance.TimingCollector;
 
 public interface ILynxUIRenderer {
   public void onInitLynxView(LynxView lynxView, Context context, LynxGroup group);
@@ -33,9 +30,9 @@ public interface ILynxUIRenderer {
   public void onInitLynxTemplateRender(LynxContext context, BehaviorRegistry behaviorRegistry,
       @Nullable UIBodyView body, @Nullable LynxBooleanOption longTaskMonitorEnabled);
 
-  public void onCreateTemplateRenderer(LynxContext context, TimingCollector timingCollector,
-      LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy,
-      BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
+  public void onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener,
+      ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry,
+      LayoutTick layoutTick);
 
   public void attachLynxView(LynxView lynxView, LynxContext lynxContext, Context context);
 
@@ -45,8 +42,6 @@ public interface ILynxUIRenderer {
 
   public void onReloadAndInitAnyThreadPart();
 
-  // Native pointer
-  long getNativeTimingCollectorPtr();
   long getUIDelegatePtr();
 
   DisplayMetrics getScreenMetrics();

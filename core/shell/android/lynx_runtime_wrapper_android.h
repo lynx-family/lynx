@@ -67,9 +67,9 @@ class LynxRuntimeWrapperAndroid {
     return runtime_standalone_bundle_.runtime_actor_;
   }
 
-  const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>&
-  GetTimingActor() {
-    return runtime_standalone_bundle_.timing_actor_;
+  const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>&
+  GetPerfControllerActor() {
+    return runtime_standalone_bundle_.perf_controller_actor_;
   }
 
   std::weak_ptr<lynx::piper::LynxModuleManager> GetModuleManager() {

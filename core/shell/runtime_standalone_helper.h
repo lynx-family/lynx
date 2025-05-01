@@ -15,7 +15,7 @@
 #include "core/public/lynx_resource_loader.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
-#include "core/services/timing_handler/timing_handler.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shared_data/white_board_runtime_delegate.h"
 #include "core/shell/native_facade.h"
 
@@ -26,7 +26,8 @@ struct InitRuntimeStandaloneResult {
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
   // will be bind to LynxShell when LynxBackgroundRuntime is attached to
   // LynxView
-  std::shared_ptr<LynxActor<tasm::timing::TimingHandler>> timing_actor_;
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_controller_actor_;
   // will be released by LynxBackgroundRuntime if not attached to LynxView
   std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade_;
   std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate_;

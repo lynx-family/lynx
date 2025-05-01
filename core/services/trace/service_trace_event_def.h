@@ -22,15 +22,6 @@ static constexpr const char* const TIMING_SET_NEED_MARK_DRAW_END =
     "Timing::SetNeedMarkDrawEndTiming";
 static constexpr const char* const TIMING_MARK = "Timing::Mark.";
 static constexpr const char* const
-    TIMING_MEDIATOR_TRIGGER_PERFORMANCE_CLIENT_CALLBACK =
-        "TimingMediator::TriggerPerformanceClientCallback";
-static constexpr const char* const
-    TIMING_MEDIATOR_TRIGGER_PERFORMANCE_RUNTIME_CALLBACK =
-        "TimingMediator::TriggerPerformanceRuntimeCallback";
-static constexpr const char* const
-    TIMING_MEDIATOR_TRIGGER_PERFORMANCE_ENGINE_CALLBACK =
-        "TimingMediator::TriggerPerformanceEngineCallback";
-static constexpr const char* const
     TIMING_MEDIATOR_TRIGGER_SETUP_CLIENT_CALLBACK =
         "TimingMediator::TriggerSetupClientCallback";
 static constexpr const char* const
@@ -54,6 +45,15 @@ static constexpr const char* const
         "TimingMediator::TriggerUpdateEngineCallback";
 static constexpr const char* const TIMING_MARK_FRAME_WORK_TIMING =
     "Timing::MarkFrameWorkTiming.";
+
+static constexpr const char* const PERFORMANCE_MEDIATOR_ON_PERFORMANCE_EVENT =
+    "PerformanceMediator::OnPerformanceEvent";
+static constexpr const char* const
+    PERFORMANCE_MEDIATOR_ON_PERFORMANCE_EVENT_MTS_ENGINE =
+        "PerformanceMediator::OnPerformanceEventMTSEngine";
+static constexpr const char* const
+    PERFORMANCE_MEDIATOR_ON_PERFORMANCE_EVENT_BTS_ENGINE =
+        "PerformanceMediator::OnPerformanceEventBTSEngine";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_SERVICES_TRACE_SERVICE_TRACE_EVENT_DEF_H_

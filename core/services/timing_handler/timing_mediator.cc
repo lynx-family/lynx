@@ -79,52 +79,6 @@ void TimingMediator::OnTimingUpdate(const TimingInfo& timing_info,
   ReportUpdateEvent(timing_info, update_flag);
 }
 
-void TimingMediator::OnPerformanceEvent(
-    std::unique_ptr<lynx::pub::Value> performance_entry,
-    bool enable_engine_callback) const {
-  lepus::Value lepus_entry =
-      pub::ValueUtils::ConvertValueToLepusValue(*performance_entry);
-  // Platform Performance Callback.
-  if (facade_reporter_actor_) {
-    facade_reporter_actor_->ActAsync(
-        [entry = lepus_entry, instance_id = instance_id_](auto& facade) {
-          TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                      TIMING_MEDIATOR_TRIGGER_PERFORMANCE_CLIENT_CALLBACK,
-                      "instance_id", instance_id);
-          (void)instance_id;  // Explicitly reference `instance_id` to suppress
-                              // the compiler warning.
-          facade->OnPerformanceEvent(entry);
-        });
-  }
-  // Runtime Performance Callback.
-  if (runtime_actor_ && enable_js_runtime_) {
-    runtime_actor_->ActAsync([entry = std::move(lepus_entry)](auto& runtime) {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                  TIMING_MEDIATOR_TRIGGER_PERFORMANCE_RUNTIME_CALLBACK,
-                  "instance_id", runtime->GetRuntimeId());
-      auto args = lepus::CArray::Create();
-      args->emplace_back(BASE_STATIC_STRING(kPerformanceRuntimeCallback));
-      args->emplace_back((lepus_value::ShallowCopy(entry)));
-      runtime::MessageEvent event(
-          runtime::kMessageEventTypeSendGlobalEvent,
-          runtime::ContextProxy::Type::kCoreContext,
-          runtime::ContextProxy::Type::kJSContext,
-          std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
-      runtime->OnReceiveMessageEvent(std::move(event));
-    });
-  } else if (engine_actor_ && enable_engine_callback) {
-    engine_actor_->ActAsync(
-        [entry = std::move(lepus_entry)](auto& engine) mutable {
-          TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                      TIMING_MEDIATOR_TRIGGER_PERFORMANCE_ENGINE_CALLBACK);
-          auto arguments = lepus::CArray::Create();
-          arguments->emplace_back(std::move(entry));
-          engine->TriggerEventBus(kSetupRuntimeCallback,
-                                  lepus_value(std::move(arguments)));
-        });
-  }
-}
-
 // OnTimingSetup callback
 void TimingMediator::TriggerSetupClientCallback(
     const TimingInfo& timing_info) const {

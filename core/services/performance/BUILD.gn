@@ -12,7 +12,31 @@ performance_shared_sources = [
   "memory_monitor/memory_record.h",
   "performance_controller.cc",
   "performance_controller.h",
+  "performance_entry_sender.h",
+  "performance_mediator.cc",
+  "performance_mediator.h",
 ]
+
+if (is_oliver_ssr) {
+  performance_shared_sources += [
+    "performance_controller_platform_impl.cc",
+    "performance_controller_platform_impl.h",
+  ]
+}
+
+if (!is_oliver_ssr && !is_oliver_node_lynx) {
+  if (is_android) {
+    performance_shared_sources += [
+      "android/performance_controller_android.cc",
+      "android/performance_controller_android.h",
+    ]
+  } else if (is_apple) {
+    performance_shared_sources += [
+      "darwin/performance_controller_darwin.h",
+      "darwin/performance_controller_darwin.mm",
+    ]
+  }
+}
 
 lynx_core_source_set("performance") {
   sources = performance_shared_sources

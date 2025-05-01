@@ -41,6 +41,7 @@ import com.lynx.tasm.fluency.FluencyTraceHelper;
 import com.lynx.tasm.fontface.FontFace;
 import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceFetcher;
 import com.lynx.tasm.provider.LynxResourceServiceProvider;
@@ -78,6 +79,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private Map<String, Object> mSharedData;
   private LynxViewClient mLynxViewClient = null;
   private WeakReference<LynxView> mLynxView = null;
+  private WeakReference<LynxTemplateRender> mLynxTemplateRender = null;
   private WeakReference<ShadowNodeOwner> mShadowNodeOwnerRef;
   private DisplayMetrics mVirtualScreenMetrics;
   private Boolean mEnableAsyncLoadImage;
@@ -451,6 +453,25 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     if (TextUtils.isEmpty(mLynxSessionId)) {
       updateLynxSessionID(lynxview);
     }
+  }
+
+  public void setTemplateRender(LynxTemplateRender templateRender) {
+    if (templateRender == null) {
+      return;
+    }
+    mLynxTemplateRender = new WeakReference<>(templateRender);
+  }
+
+  public WeakReference<LynxTemplateRender> getTemplateRender() {
+    return mLynxTemplateRender;
+  }
+
+  public PerformanceController getPerformanceController() {
+    LynxTemplateRender render = mLynxTemplateRender.get();
+    if (render == null) {
+      return null;
+    }
+    return render.getPerformanceController();
   }
 
   /**

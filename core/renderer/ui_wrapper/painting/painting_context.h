@@ -20,6 +20,7 @@
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
@@ -215,13 +216,17 @@ class PaintingContext {
                                            bool from_layout);
 
   void FinishLayoutOperation(const std::shared_ptr<PipelineOptions>& options);
-  void SetTimingCollectorPlatform(
-      const std::shared_ptr<shell::TimingCollectorPlatform>& timing);
   void SetNeedMarkDrawEndTiming(const tasm::PipelineID& pipeline_id);
   void MarkUIOperationQueueFlushTiming(tasm::TimingKey key,
                                        const tasm::PipelineID& pipeline_id);
   void MarkLayoutUIOperationQueueFlushStartIfNeed();
   void SetContextHasAttached();
+  inline void SetPerfActor(
+      const std::shared_ptr<
+          shell::LynxActor<performance::PerformanceController>>&
+          perf_controller_actor) {
+    perf_controller_actor_ = perf_controller_actor;
+  };
 
  private:
   void Enqueue(shell::UIOperation op, bool high_priority = false);
@@ -234,8 +239,6 @@ class PaintingContext {
   PaintingContext(const PaintingContext&) = delete;
   PaintingContext& operator=(const PaintingContext&) = delete;
 
-  std::shared_ptr<shell::TimingCollectorPlatform> timing_collector_platform_;
-
   std::shared_ptr<shell::DynamicUIOperationQueue> ui_operation_queue_;
 
   std::vector<int> patching_node_ready_ids_{};
@@ -247,6 +250,8 @@ class PaintingContext {
   // on the PaintingContext. The UI Flush stage reads the opions from the
   // PaintingContext for collecting timing, and clears the opions at the end.
   base::InlineVector<std::shared_ptr<PipelineOptions>, 1> options_for_timing_;
+  std::shared_ptr<shell::LynxActor<performance::PerformanceController>>
+      perf_controller_actor_;  // on Reporter runner
 };
 }  // namespace tasm
 }  // namespace lynx

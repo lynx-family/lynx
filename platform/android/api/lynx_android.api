@@ -2205,12 +2205,11 @@ public interface com::lynx::tasm::service::ILynxTrailService {
 public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onInitLynxView(LynxView lynxView, Context context, LynxGroup group);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onInitLynxTemplateRender(LynxContext context, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body, @Nullable LynxBooleanOption longTaskMonitorEnabled);
-  public void com.lynx.tasm.behavior.ILynxUIRenderer.onCreateTemplateRenderer(LynxContext context, TimingCollector timingCollector, LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
+  public void com.lynx.tasm.behavior.ILynxUIRenderer.onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.attachLynxView(LynxView lynxView, LynxContext lynxContext, Context context);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.attachNativeFacade(NativeFacade nativeFacade);
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onReloadAndInitUIThreadPart();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onReloadAndInitAnyThreadPart();
-  public long com.lynx.tasm.behavior.ILynxUIRenderer.getNativeTimingCollectorPtr();
   public long com.lynx.tasm.behavior.ILynxUIRenderer.getUIDelegatePtr();
   public DisplayMetrics com.lynx.tasm.behavior.ILynxUIRenderer.getScreenMetrics();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.onPageConfigDecoded(PageConfig config);
@@ -2400,6 +2399,16 @@ public class com::lynx::tasm::image::ImageUtils :  {
   public static LocalCacheState com.lynx.tasm.image.ImageUtils.parseLocalCache(Dynamic localCache);
 }
 
+public interface com::lynx::tasm::performance::memory::IMemoryMonitor {
+  public void com.lynx.tasm.performance.memory.IMemoryMonitor.allocateMemory(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.memory.IMemoryMonitor.deallocateMemory(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.memory.IMemoryMonitor.updateMemoryUsage(IMemoryRecordBuilder builder);
+}
+
+public interface com::lynx::tasm::performance::memory::IMemoryRecordBuilder {
+  public MemoryRecord com.lynx.tasm.performance.memory.IMemoryRecordBuilder.build();
+}
+
 public interface com::lynx::tasm::INativeLibraryLoader {
   public void com.lynx.tasm.INativeLibraryLoader.loadLibrary(String libName);
 }
@@ -2500,6 +2509,10 @@ public class com::lynx::tasm::animation::InterpolatorFactory :  {
   public static Interpolator com.lynx.tasm.animation.InterpolatorFactory.getInterpolator(AnimationInfo ai);
 }
 
+public interface com::lynx::tasm::performance::IPerformanceObserver {
+  public void com.lynx.tasm.performance.IPerformanceObserver.onPerformanceEvent(@NonNull PerformanceEntry entry);
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.setEnableSticky();
 }
@@ -2510,6 +2523,13 @@ public interface com::lynx::tasm::service::IServiceProvider {
 
 public interface com::lynx::tasm::EventEmitter::ITestTapTrack {
   public void com.lynx.tasm.EventEmitter.ITestTapTrack.onTap();
+}
+
+public interface com::lynx::tasm::performance::timing::ITimingCollector {
+  public void com.lynx.tasm.performance.timing.ITimingCollector.setMsTiming(final String key, final long msTimestamp, final String pipelineID);
+  public void com.lynx.tasm.performance.timing.ITimingCollector.markTiming(final String key, final String pipelineID);
+  public void com.lynx.tasm.performance.timing.ITimingCollector.setNeedPaintEndTiming(String pipelineId);
+  public void com.lynx.tasm.performance.timing.ITimingCollector.markPaintEndTimingIfNeeded();
 }
 
 public interface com::lynx::tasm::IUIRenderCreator {
@@ -3747,6 +3767,9 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setLynxViewClient(LynxViewClient lynxViewClient);
   public LynxViewClient com.lynx.tasm.behavior.LynxContext.getLynxViewClient();
   public void com.lynx.tasm.behavior.LynxContext.setLynxView(LynxView lynxview);
+  public void com.lynx.tasm.behavior.LynxContext.setTemplateRender(LynxTemplateRender templateRender);
+  public WeakReference< LynxTemplateRender > com.lynx.tasm.behavior.LynxContext.getTemplateRender();
+  public PerformanceController com.lynx.tasm.behavior.LynxContext.getPerformanceController();
   public String com.lynx.tasm.behavior.LynxContext.getLynxSessionID();
   public LynxView com.lynx.tasm.behavior.LynxContext.getLynxView();
   public void com.lynx.tasm.behavior.LynxContext.reportResourceError(String errMsg);
@@ -5456,6 +5479,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public com.lynx.tasm.LynxTemplateRender.LynxTemplateRender(Context context, LynxView lynxView, LynxViewBuilder builder);
   public boolean com.lynx.tasm.LynxTemplateRender.enableAirStrictMode();
   public LynxContext com.lynx.tasm.LynxTemplateRender.getLynxContext();
+  public PerformanceController com.lynx.tasm.LynxTemplateRender.getPerformanceController();
   public UIGroup< UIBody.UIBodyView > com.lynx.tasm.LynxTemplateRender.getLynxRootUI();
   public LynxDevtool com.lynx.tasm.LynxTemplateRender.getDevTool();
   public void com.lynx.tasm.LynxTemplateRender.onEnterForeground();
@@ -5884,8 +5908,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public void com.lynx.tasm.behavior.LynxUIRenderer.onInitLynxTemplateRender(LynxContext lynxContext, BehaviorRegistry behaviorRegistry, @Nullable UIBodyView body, LynxBooleanOption longTaskMonitorEnabled);
   public void com.lynx.tasm.behavior.LynxUIRenderer.attachLynxView(LynxView lynxView, LynxContext lynxContext, Context context);
   public void com.lynx.tasm.behavior.LynxUIRenderer.attachNativeFacade(NativeFacade nativeFacade);
-  public void com.lynx.tasm.behavior.LynxUIRenderer.onCreateTemplateRenderer(LynxContext context, TimingCollector timingCollector, LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
-  public long com.lynx.tasm.behavior.LynxUIRenderer.getNativeTimingCollectorPtr();
+  public void com.lynx.tasm.behavior.LynxUIRenderer.onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
   public long com.lynx.tasm.behavior.LynxUIRenderer.getUIDelegatePtr();
   public DisplayMetrics com.lynx.tasm.behavior.LynxUIRenderer.getScreenMetrics();
   public void com.lynx.tasm.behavior.LynxUIRenderer.onReloadAndInitUIThreadPart();
@@ -6028,7 +6051,6 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByIndex(int index);
   public void com.lynx.tasm.LynxView.setOnClickListener(@Nullable OnClickListener listener);
   public void com.lynx.tasm.LynxView.setVisibility(int visibility);
-  public void com.lynx.tasm.LynxView.setTimingCollector(TimingCollector timingCollector, ILynxUIRenderer lynxUIRenderer);
   public void com.lynx.tasm.LynxView.runOnTasmThread(Runnable runnable);
   public void com.lynx.tasm.LynxView.startLynxRuntime();
   public void com.lynx.tasm.LynxView.setEnableUIFlush(boolean enableUIFlush);
@@ -6224,7 +6246,7 @@ public class com::lynx::tasm::LynxViewClientGroupV2 : com.lynx.tasm.LynxViewClie
   public void com.lynx.tasm.LynxViewClientGroupV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
 }
 
-public class com::lynx::tasm::LynxViewClientV2 :  {
+public class com::lynx::tasm::LynxViewClientV2 : com.lynx.tasm.performance.IPerformanceObserver {
   public void com.lynx.tasm.LynxViewClientV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
 }
@@ -6369,6 +6391,14 @@ public class com::lynx::devtoolwrapper::MemoryListener :  {
   public boolean com.lynx.devtoolwrapper.MemoryListener.hasAvailableReporter();
 }
 
+public class com::lynx::tasm::performance::memory::MemoryRecord :  {
+  public com.lynx.tasm.performance.memory.MemoryRecord.MemoryRecord(String category, float sizeKb, Map< String, String > detail);
+  public String com.lynx.tasm.performance.memory.MemoryRecord.getCategory();
+  public float com.lynx.tasm.performance.memory.MemoryRecord.getSizeKb();
+  public Map< String, String > com.lynx.tasm.performance.memory.MemoryRecord.getDetails();
+  public static MemoryRecord com.lynx.tasm.performance.memory.MemoryRecord.create(String category, float sizeKb);
+}
+
 public interface com::lynx::devtoolwrapper::MemoryListener::MemoryReporter {
   public void com.lynx.devtoolwrapper.MemoryListener.MemoryReporter.uploadImageInfo(JSONObject data);
 }
@@ -6446,10 +6476,6 @@ public class com::lynx::tasm::NativeFacade : com.lynx.tasm.EventEmitter.LynxEven
   public void com.lynx.tasm.NativeFacade.getI18nResourceByNative(final String channelOrUrl, String fallbackUrl);
   public int com.lynx.tasm.NativeFacade.getInstanceId();
   public void com.lynx.tasm.NativeFacade.clearAllNativeTimingInfo();
-}
-
-public class com::lynx::tasm::NativeFacadeReporter :  {
-  public void com.lynx.tasm.NativeFacadeReporter.setTemplateLoadClientV2(LynxViewClientV2 client);
 }
 
 public class com::lynx::tasm::gesture::handler::NativeGestureHandler : com.lynx.tasm.gesture.handler.PanGestureHandler {
@@ -6826,6 +6852,7 @@ public class com::lynx::tasm::behavior::PaintingContext :  {
   public void com.lynx.tasm.behavior.PaintingContext.insertListItemNode(int listSign, int childSign);
   public void com.lynx.tasm.behavior.PaintingContext.updateContentSizeAndOffset(int listSign, float contentSize, float deltaX, float deltaY);
   public void com.lynx.tasm.behavior.PaintingContext.updateScrollInfo(int containerID, boolean smooth, float estimatedOffset, boolean scrolling);
+  public void com.lynx.tasm.behavior.PaintingContext.markTiming(String pipelineId, String timingKey);
 }
 
 public class com::lynx::tasm::gesture::handler::PanGestureHandler : com.lynx.tasm.gesture.handler.BaseGestureHandler {
@@ -6847,6 +6874,18 @@ public class com::lynx::jsbridge::ParamWrapper :  {
 
 public interface com::lynx::tasm::behavior::PatchFinishListener {
   public void com.lynx.tasm.behavior.PatchFinishListener.onPatchFinish();
+}
+
+public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm.performance.memory.IMemoryMonitor, com.lynx.tasm.performance.timing.ITimingCollector {
+  public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
+  public void com.lynx.tasm.performance.PerformanceController.allocateMemory(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(IMemoryRecordBuilder builder);
+  public void com.lynx.tasm.performance.PerformanceController.setMsTiming(String key, long msTimestamp, String pipelineID);
+  public void com.lynx.tasm.performance.PerformanceController.markTiming(final String key, final String pipelineID);
+  public void com.lynx.tasm.performance.PerformanceController.setNeedPaintEndTiming(String pipelineId);
+  public void com.lynx.tasm.performance.PerformanceController.markPaintEndTimingIfNeeded();
+  public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
 }
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry :  {
@@ -8398,23 +8437,16 @@ public enum com::lynx::tasm::ThreadStrategyForRendering {
   public int com.lynx.tasm.ThreadStrategyForRendering.id();
 }
 
-public class com::lynx::tasm::performance::TimingCollector :  {
-  public final String com.lynx.tasm.performance.TimingCollector.PIPELINE_START PIPELINE_START;
-  public final String com.lynx.tasm.performance.TimingCollector.LOAD_BUNDLE_START LOAD_BUNDLE_START;
-  public final String com.lynx.tasm.performance.TimingCollector.VERIFY_TASM_START VERIFY_TASM_START;
-  public final String com.lynx.tasm.performance.TimingCollector.VERIFY_TASM_END VERIFY_TASM_END;
-  public final String com.lynx.tasm.performance.TimingCollector.FFI_START FFI_START;
-  public final String com.lynx.tasm.performance.TimingCollector.LOAD_BUNDLE LOAD_BUNDLE;
-  public final String com.lynx.tasm.performance.TimingCollector.RELOAD_BUNDLE_FROM_NATIVE RELOAD_BUNDLE_FROM_NATIVE;
-  public final String com.lynx.tasm.performance.TimingCollector.PIPELINE_ORIGIN PIPELINE_ORIGIN;
-  public final String com.lynx.tasm.performance.TimingCollector.TIMESTAMP_MAP TIMESTAMP_MAP;
-  public com.lynx.tasm.performance.TimingCollector.TimingCollector();
-  public void com.lynx.tasm.performance.TimingCollector.init();
-  public long com.lynx.tasm.performance.TimingCollector.getNativeTimingCollectorPtr();
-  public void com.lynx.tasm.performance.TimingCollector.destroy();
-  public void com.lynx.tasm.performance.TimingCollector.markDrawEndTimingIfNeeded();
-  public void com.lynx.tasm.performance.TimingCollector.setMsTiming(final String key, final long msTimestamp, final String pipelineID);
-  public void com.lynx.tasm.performance.TimingCollector.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
+public class com::lynx::tasm::performance::timing::TimingConstants :  {
+  public final String com.lynx.tasm.performance.timing.TimingConstants.PIPELINE_START PIPELINE_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.LOAD_BUNDLE_START LOAD_BUNDLE_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_START VERIFY_TASM_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_END VERIFY_TASM_END;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.FFI_START FFI_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.LOAD_BUNDLE LOAD_BUNDLE;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.RELOAD_BUNDLE_FROM_NATIVE RELOAD_BUNDLE_FROM_NATIVE;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.PIPELINE_ORIGIN PIPELINE_ORIGIN;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.TIMESTAMP_MAP TIMESTAMP_MAP;
 }
 
 public class com::lynx::tasm::TimingHandler :  {
@@ -8433,6 +8465,10 @@ public class com::lynx::tasm::performance::TimingOption :  {
   public com.lynx.tasm.performance.TimingOption.TimingOption(String pipelineOrigin);
   public void com.lynx.tasm.performance.TimingOption.setTiming(String key, long msTimingStamp);
   public JavaOnlyMap com.lynx.tasm.performance.TimingOption.toJavaOnlyMap();
+}
+
+public class com::lynx::tasm::performance::timing::TimingUtil :  {
+  public static long com.lynx.tasm.performance.timing.TimingUtil.currentTimeUs();
 }
 
 public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
@@ -8727,7 +8763,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxAccessibilityWrapper(LynxAccessibilityWrapper wrapper);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.requestLayout();
   public long com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getMeaningfulPaintTiming();
-  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setTimingCollector(TimingCollector timingCollector);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setTimingCollector(ITimingCollector timingCollector);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setInstanceId(int instanceId);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setChildrenDrawingOrderEnabled(boolean enabled);
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.dispatchHoverEvent(MotionEvent event);

@@ -19,6 +19,7 @@ inputs:
   - java: com/lynx/tasm/eventreport/LynxEventReporter.java
   - java: com/lynx/tasm/performance/longtasktiming/LynxLongTaskMonitor.java
   - java: com/lynx/tasm/performance/TimingCollector.java
+  - java: com/lynx/tasm/performance/PerformanceController.java
   - java: com/lynx/tasm/behavior/LayoutContext.java
   - java: com/lynx/tasm/behavior/LayoutNodeManager.java
   - java: com/lynx/tasm/behavior/PlatformExtraBundleHolder.java

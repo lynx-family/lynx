@@ -29,10 +29,11 @@ TasmMediator::TasmMediator(
     const std::shared_ptr<base::VSyncMonitor>& vsync_monitor,
     const std::shared_ptr<LynxActor<tasm::LayoutContext>>& layout_actor,
     std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
-    const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>& timing_actor)
+    const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>&
+        perf_actor)
     : facade_actor_(facade_actor),
       layout_actor_(layout_actor),
-      timing_actor_(timing_actor),
+      perf_actor_(perf_actor),
       card_cached_data_mgr_(card_cached_data_mgr),
       vsync_monitor_(vsync_monitor),
       tasm_platform_invoker_(std::move(tasm_platform_invoker)) {}
@@ -123,16 +124,16 @@ void TasmMediator::OnPageConfigDecoded(
   // default enableAirStrictMode in timing_handler is false,
   // avoid using post task to send duplicate false value
   if (config->GetEnableLynxAir()) {
-    timing_actor_->ActAsync([](auto& timing_handler) mutable {
-      timing_handler->SetEnableAirStrictMode(true);
+    perf_actor_->ActAsync([](auto& performance) mutable {
+      performance->GetTimingHandler().SetEnableAirStrictMode(true);
     });
   }
 }
 
 void TasmMediator::SetTiming(tasm::Timing timing) {
-  timing_actor_->ActAsync(
-      [timing = std::move(timing)](auto& timing_handler) mutable {
-        timing_handler->SetTiming(std::move(timing));
+  perf_actor_->ActAsync(
+      [timing = std::move(timing)](auto& performance) mutable {
+        performance->GetTimingHandler().SetTiming(std::move(timing));
       });
 }
 
@@ -145,8 +146,9 @@ void TasmMediator::BindPipelineIDWithTimingFlag(
         ctx.event()->add_debug_annotations("pipeline_id", pipeline_id);
         ctx.event()->add_debug_annotations("timing_flag", timing_flag);
       });
-  timing_actor_->ActAsync([pipeline_id, timing_flag](auto& timing_handler) {
-    timing_handler->BindPipelineIDWithTimingFlag(pipeline_id, timing_flag);
+  perf_actor_->ActAsync([pipeline_id, timing_flag](auto& performance) {
+    performance->GetTimingHandler().BindPipelineIDWithTimingFlag(pipeline_id,
+                                                                 timing_flag);
   });
 }
 
@@ -164,10 +166,10 @@ void TasmMediator::OnPipelineStart(
             "pipeline_start_timestamp",
             std::to_string(pipeline_start_timestamp));
       });
-  timing_actor_->ActAsync([pipeline_id, pipeline_origin,
-                           pipeline_start_timestamp](auto& timing_actor) {
-    timing_actor->OnPipelineStart(pipeline_id, pipeline_origin,
-                                  pipeline_start_timestamp);
+  perf_actor_->ActAsync([pipeline_id, pipeline_origin,
+                         pipeline_start_timestamp](auto& performance) {
+    performance->GetTimingHandler().OnPipelineStart(
+        pipeline_id, pipeline_origin, pipeline_start_timestamp);
   });
 }
 

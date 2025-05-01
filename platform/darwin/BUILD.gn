@@ -18,6 +18,8 @@ darwin_include_dirs =
                   "common/lynx/public/navigator",
                   "common/lynx/public/navigator/cache",
                   "common/lynx/public/performance",
+                  "common/lynx/performance/memory",
+                  "common/lynx/performance/timing",
                   "common/lynx/public/resource",
                   "common/lynx/public/service",
                   "common/lynx/public/Trace",

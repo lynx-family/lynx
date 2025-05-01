@@ -42,8 +42,6 @@ import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.LynxPageLoadListener;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.shadow.LayoutTick;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -51,7 +49,6 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
-import com.lynx.tasm.performance.TimingCollector;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UnitUtils;
@@ -86,7 +83,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   private ShadowNodeOwner mShadowNodeOwner;
   private PaintingContext mPaintingContext;
-  private TimingCollector mTimingCollector;
   private long mNativeUIDelegatePtr = 0;
   private String mScreenshotMode = ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN;
   private LynxBooleanOption mLongTaskMonitorEnabled;
@@ -150,24 +146,15 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   }
 
   @Override
-  public void onCreateTemplateRenderer(LynxContext context, TimingCollector timingCollector,
-      LynxPageLoadListener pageLoadListener, ThreadStrategyForRendering threadStrategy,
-      BehaviorRegistry behaviorRegistry, LayoutTick layoutTick) {
+  public void onCreateTemplateRenderer(LynxContext context, LynxPageLoadListener pageLoadListener,
+      ThreadStrategyForRendering threadStrategy, BehaviorRegistry behaviorRegistry,
+      LayoutTick layoutTick) {
     if (mLynxUIOwner == null) {
       return;
     }
-    mTimingCollector = timingCollector;
     mPaintingContext = new PaintingContext(mLynxUIOwner, threadStrategy.id());
     mShadowNodeOwner = new ShadowNodeOwner(context, behaviorRegistry, layoutTick);
     context.setShadowNodeOwner(mShadowNodeOwner);
-  }
-
-  @Override
-  public long getNativeTimingCollectorPtr() {
-    if (mTimingCollector != null) {
-      return mTimingCollector.getNativeTimingCollectorPtr();
-    }
-    return 0;
   }
 
   @Override
@@ -226,10 +213,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public void onDestroyTemplateRenderer() {
-    if (mTimingCollector != null) {
-      mTimingCollector.destroy();
-      mTimingCollector = null;
-    }
     if (mShadowNodeOwner != null) {
       mShadowNodeOwner.destroy();
       mShadowNodeOwner = null;

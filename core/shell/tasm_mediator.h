@@ -16,7 +16,7 @@
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/lynx_runtime.h"
-#include "core/services/timing_handler/timing_handler.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
@@ -43,8 +43,8 @@ class TasmMediator : public LynxEngine::Delegate {
       const std::shared_ptr<base::VSyncMonitor>& vsync_monitor,
       const std::shared_ptr<LynxActor<tasm::LayoutContext>>& layout_actor,
       std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker,
-      const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>&
-          timing_actor);
+      const std::shared_ptr<
+          LynxActor<tasm::performance::PerformanceController>>& perf_actor);
 
   ~TasmMediator() override;
 
@@ -255,7 +255,8 @@ class TasmMediator : public LynxEngine::Delegate {
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
   std::shared_ptr<LynxActor<tasm::LayoutContext>> layout_actor_;
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
-  std::shared_ptr<LynxActor<tasm::timing::TimingHandler>> timing_actor_;
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_actor_;
 
   std::shared_ptr<LynxCardCacheDataManager> card_cached_data_mgr_;
 

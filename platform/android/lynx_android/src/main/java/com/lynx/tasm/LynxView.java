@@ -44,7 +44,6 @@ import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
-import com.lynx.tasm.performance.TimingCollector;
 import com.lynx.tasm.theme.LynxTheme;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
@@ -1311,16 +1310,6 @@ public class LynxView extends UIBodyView {
   public void setVisibility(int visibility) {
     super.setVisibility(visibility);
     LLog.i("Lynx", "setVisibility:" + hashCode() + " " + visibility);
-  }
-
-  public void setTimingCollector(TimingCollector timingCollector, ILynxUIRenderer lynxUIRenderer) {
-    if (timingCollector == null) {
-      return;
-    }
-    if ((lynxUIRenderer != null) && !lynxUIRenderer.enableTimingCollector()) {
-      return;
-    }
-    super.setTimingCollector(timingCollector);
   }
 
   public void runOnTasmThread(Runnable runnable) {

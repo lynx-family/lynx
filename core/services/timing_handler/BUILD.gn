@@ -29,24 +29,6 @@ timing_handler_delegate_shared_sources = [
   "timing_mediator.h",
 ]
 
-lynx_core_source_set("timing_handler_platform") {
-  sources = [
-    "timing_collector_platform_impl.cc",
-    "timing_collector_platform_impl.h",
-  ]
-  if (is_android) {
-    timing_handler_platform_shared_sources =
-        [ "android/timing_collector_android.cc" ]
-    sources += timing_handler_platform_shared_sources
-  }
-
-  deps = [
-    ":timing_handler",
-    "../../../base/src:base_log_headers",
-    "../trace:service_trace",
-  ]
-}
-
 lynx_core_source_set("timing_handler") {
   sources = timing_handler_shared_sources
   deps = [
