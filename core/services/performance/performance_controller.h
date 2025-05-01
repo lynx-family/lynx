@@ -18,7 +18,7 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-// @class Performance
+// @class PerformanceController
 // @brief Base class for performance monitoring system
 // Integrates memory monitoring with performance reporting functionality.
 // Serves as the delegate for MemoryMonitor and provides common infrastructure.

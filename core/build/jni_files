@@ -8,6 +8,7 @@ com/lynx/tasm/LynxError.java
 com/lynx/tasm/eventreport/LynxEventReporter.java
 com/lynx/tasm/performance/longtasktiming/LynxLongTaskMonitor.java
 com/lynx/tasm/performance/TimingCollector.java
+com/lynx/tasm/performance/PerformanceController.java
 com/lynx/tasm/behavior/LayoutContext.java
 com/lynx/tasm/behavior/LayoutNodeManager.java
 com/lynx/tasm/behavior/PlatformExtraBundleHolder.java

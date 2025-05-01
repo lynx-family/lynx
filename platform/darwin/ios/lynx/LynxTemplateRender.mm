@@ -67,6 +67,7 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/vm/lepus/json_parser.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_collector_platform_impl.h"
 #include "core/shell/ios/data_utils.h"
 #include "core/shell/ios/native_facade_darwin.h"
@@ -363,6 +364,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetRuntimeActor(_runtime ? _runtime.runtimeActor : nullptr)
           .SetTimingActor(_runtime ? _runtime.timingActor : nullptr)
+          .SetPerformanceController(
+              std::make_unique<lynx::tasm::performance::PerformanceController>())
           .SetShellOption([self setUpShellOption])
           .SetTasmPlatformInvoker(std::make_unique<lynx::shell::TasmPlatformInvokerDarwin>(self))
           .SetTimingCollectorPlatform(timing_collector_platform_impl_)

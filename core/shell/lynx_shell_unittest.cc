@@ -41,6 +41,9 @@ class LynxShellTest : public ::testing::Test {
     shell_.reset(
         lynx::shell::LynxShellBuilder()
             .SetNativeFacade(std::unique_ptr<NativeFacade>(facade_))
+            .SetPerformanceController(
+                std::make_unique<
+                    lynx::tasm::performance::PerformanceController>())
             .SetLynxEngineCreator(lynx_engine_creator)
             .SetLayoutContextPlatformImpl(nullptr)
             .SetStrategy(base::ThreadStrategyForRendering::ALL_ON_UI)

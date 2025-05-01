@@ -18,6 +18,7 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
+#include "core/services/performance/android/performance_controller_android.h"
 #include "core/services/timing_handler/timing_collector_platform_impl.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
@@ -188,10 +189,11 @@ std::shared_ptr<lynx::tasm::TemplateData> ConvertToTemplateData(
 
 jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
              jlong runtime_wrapper_ptr, jobject native_facade,
-             jobject native_facade_reporter, jobject platform_loader,
-             jint thread_strategy, jboolean enable_layout_safe_point,
-             jboolean enable_layout_only, jint screen_width, jint screen_height,
-             jfloat density, jstring locale, jboolean enable_js,
+             jobject native_facade_reporter, jobject j_performance_controller,
+             jobject platform_loader, jint thread_strategy,
+             jboolean enable_layout_safe_point, jboolean enable_layout_only,
+             jint screen_width, jint screen_height, jfloat density,
+             jstring locale, jboolean enable_js,
              jboolean enable_multi_async_thread,
              jboolean enable_pre_update_data, jboolean enable_auto_concurrency,
              jboolean enable_vsync_aligned_msg_loop,
@@ -246,7 +248,6 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
         std::shared_ptr<lynx::tasm::timing::TimingCollectorPlatformImpl>*>(
         timing_collector_android);
   }
-
   return reinterpret_cast<jlong>(
       lynx::shell::LynxShellBuilder()
           .SetUseInvokeUIMethodFunction(use_invoke_ui_method)
@@ -255,6 +256,10 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
           .SetNativeFacadeReporter(
               std::make_unique<lynx::shell::NativeFacadeReporterAndroid>(
                   env, native_facade_reporter))
+          .SetPerformanceController(
+              std::make_unique<
+                  lynx::tasm::performance::PerformanceControllerAndroid>(
+                  env, j_performance_controller))
           .SetPaintingContextPlatformImpl(ui_delegate->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)

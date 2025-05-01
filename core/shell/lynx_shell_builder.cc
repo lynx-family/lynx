@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/shell/common/shell_trace_event_def.h"
 
@@ -24,6 +25,12 @@ LynxShellBuilder& LynxShellBuilder::SetNativeFacade(
 LynxShellBuilder& LynxShellBuilder::SetNativeFacadeReporter(
     std::unique_ptr<shell::NativeFacadeReporter> native_facade_async) {
   this->native_facade_reporter_ = std::move(native_facade_async);
+  return *this;
+}
+LynxShellBuilder& LynxShellBuilder::SetPerformanceController(
+    std::unique_ptr<tasm::performance::PerformanceController>
+        performance_controller) {
+  this->performance_controller_ = std::move(performance_controller);
   return *this;
 }
 
@@ -189,6 +196,16 @@ LynxShell* LynxShellBuilder::build() {
           std::move(this->native_facade_reporter_),
           lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
           shell->instance_id_);
+  this->performance_controller_->SetInstanceId(shell->instance_id_);
+  shell->performance_controller_actor_ =
+      std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
+          std::move(this->performance_controller_),
+          lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
+          shell->instance_id_);
+  // Pass the `performance_controller_actor_` to the `PerformanceController`
+  // object of the platform layer to establish a mapping relationship.
+  shell->performance_controller_actor_->Impl()->SetActor(
+      shell->performance_controller_actor_);
 
   if (timing_actor_) {
     shell->timing_mediator_ = nullptr;
