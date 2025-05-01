@@ -2357,6 +2357,13 @@ public class LynxMemoryListener : NSObject {
   public void LynxMemoryListener::removeMemoryReporter:(id< LynxMemoryReporter > report);
 }
 
+public protocol LynxMemoryMonitorProtocol-p : <NSObject> {
+  public BOOL LynxMemoryMonitorProtocol-p::enableMemoryMonitor();
+  public void LynxMemoryMonitorProtocol-p::allocateMemoryWithCategory:sizeKb:detail:(NSString *_Nonnull category,[sizeKb] float sizeKb,[detail] NSDictionary< NSString *, NSString * > *_Nullable detail);
+  public void LynxMemoryMonitorProtocol-p::deallocateMemoryWithCategory:sizeKb:detail:(NSString *_Nonnull category,[sizeKb] float sizeKb,[detail] NSDictionary< NSString *, NSString * > *_Nullable detail);
+  public void LynxMemoryMonitorProtocol-p::updateMemoryUsageWithCategory:sizeKb:detail:(NSString *_Nonnull category,[sizeKb] float sizeKb,[detail] NSDictionary< NSString *, NSString * > *_Nullable detail);
+}
+
 public protocol LynxMemoryReporter-p : <NSObject> {
   public void LynxMemoryReporter-p::uploadImageInfo:(NSDictionary *data);
 }
@@ -2463,6 +2470,13 @@ public class LynxPerformance : NSObject {
   public NSString *_Nullable LynxPerformance::toPerfStampKey:(int index);
 }
 
+public class LynxPerformanceController :  {
+  public LynxPerformanceObserverProtocol id<LynxPerformanceObserverProtocol> LynxPerformanceController::observer observer;
+  public instancetype _Nonnull LynxPerformanceController::initWithObserver:(id< LynxPerformanceObserverProtocol > _Nonnull observer);
+  public void LynxPerformanceController()::setNativeActor:(const std::weak_ptr< lynx::shell::LynxActor< lynx::tasm::performance::PerformanceController > > &nativeActor);
+  public void LynxPerformanceController::setForceEnable:(BOOL forceEnable);
+}
+
 public class LynxPerformanceEntry : NSObject {
   public NSString* LynxPerformanceEntry::name name;
   public NSString* LynxPerformanceEntry::entryType entryType;
@@ -2483,6 +2497,10 @@ public class LynxPerformanceMetric : NSObject {
   public NSString* LynxPerformanceMetric::endTimestampName endTimestampName;
   public NSNumber* LynxPerformanceMetric::endTimestamp endTimestamp;
   public instancetype LynxPerformanceMetric::initWithDictionary:(NSDictionary *dictionary);
+}
+
+public protocol LynxPerformanceObserverProtocol-p : <NSObject> {
+  public void LynxPerformanceObserverProtocol-p::onPerformanceEvent:(nonnull LynxPerformanceEntry *entry);
 }
 
 public class LynxPipelineEntry : LynxPerformanceEntry {
@@ -4550,9 +4568,8 @@ public protocol LynxViewLifecycle-p : <NSObject>, <LynxTimingListener>, <LynxJSB
   public void LynxViewLifecycle-p::onTemplateBundleReady:(LynxTemplateBundle *bundle);
 }
 
-public protocol LynxViewLifecycleV2-p : <LynxViewBaseLifecycle> {
+public protocol LynxViewLifecycleV2-p : <LynxViewBaseLifecycle>, <LynxPerformanceObserverProtocol> {
   public void LynxViewLifecycleV2-p::onPageStartedWithLynxView:withPipelineInfo:(nonnull LynxView *lynxView,[withPipelineInfo] nonnull LynxPipelineInfo *info);
-  public void LynxViewLifecycleV2-p::onPerformanceEvent:(nonnull LynxPerformanceEntry *entry);
 }
 
 public protocol LynxViewStateListener-p : <NSObject> {

@@ -6,6 +6,7 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxViewEnum.h>
+#import "LynxPerformanceController.h"
 #import "TemplateRenderCallbackProtocol.h"
 
 #include <memory>
@@ -70,6 +71,7 @@ NS_ASSUME_NONNULL_BEGIN
   LynxTemplateData* _globalProps;
   PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
+  LynxPerformanceController* _performanceController;
 
   CGFloat _fontScale;
   CGSize _intrinsicContentSize;
