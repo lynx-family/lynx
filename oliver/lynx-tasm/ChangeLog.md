@@ -1,3 +1,6 @@
+# 0.0.7
+* support `decode_wasm` to resolve a tasm file.
+
 # 0.0.6
 * support `decode_napi` to resolve a tasm file.
 

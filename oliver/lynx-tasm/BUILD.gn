@@ -68,6 +68,7 @@ if (build_lynx_lepus_node) {
             " ",
             [
               "-s WASM=1",
+              "-s ERROR_ON_UNDEFINED_SYMBOLS=0",
               "-s WASM_ASYNC_COMPILATION=0",
               "-s ASSERTIONS=1",
               "-s NODEJS_CATCH_EXIT=0",
@@ -78,7 +79,7 @@ if (build_lynx_lepus_node) {
               "-s ALLOW_MEMORY_GROWTH=1",
               "-s MODULARIZE=1",
               "-s EXTRA_EXPORTED_RUNTIME_METHODS=\"['cwrap','ccall', 'allocateUTF8','UTF8ToString']\"",
-              "-s EXPORTED_FUNCTIONS=\"['_reencode_template_debug', '_lepusCheck', '_createBufferPool', '_dropBufferPool', '_readBufferPool_data', '_readBufferPool_len']\"",
+              "-s EXPORTED_FUNCTIONS=\"['_quickjsCheck', '_reencode_template_debug', '_lepusCheck', '_createBufferPool', '_dropBufferPool', '_readBufferPool_data', '_readBufferPool_len']\"",
             ]),
       ]
 
@@ -186,6 +187,7 @@ if (build_lynx_lepus_node) {
       "//lynx/core/base:json_utils",
       "//lynx/core/base:observer",
       "//lynx/core/build:build",
+      "//lynx/core/renderer/events:events_tasm",
       "//lynx/core/runtime:js_common",
       "//lynx/core/runtime/common:reporter",
       "//lynx/core/template_bundle/template_codec:template_encoder",

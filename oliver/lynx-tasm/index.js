@@ -102,7 +102,28 @@ function decode_napi(templateJS) {
   if (res.status !== 0) {
     throw new Error(`decode error: ${res.error_msg}`);
   }
-  return res
+  return JSON.parse(res.result);
+}
+
+function decode_wasm(buffer) {
+  const Module = loadModule();
+  // console.log(templateJs);
+  // const uint8array = new Uint8Array(templateJs.size());
+  // const res = m._decode(uint8array);
+  const byteArray = new Uint8Array(buffer);
+  const byteArrayLength = byteArray.length;
+  // Allocate memory in the Emscripten heap
+  const byteArrayPtr = Module._malloc(byteArrayLength);
+  // Copy the data to the Emscripten heap
+  Module.HEAPU8.set(byteArray, byteArrayPtr);
+  // Call the C++ function
+  const res = Module._decode(byteArrayPtr, byteArrayLength);
+  // Free the allocated memory
+  Module._free(byteArrayPtr);
+  if (res.status !== 0) {
+    throw new Error(`decode error: ${res.result}`);
+  }
+  return JSON.parse(res.result);
 }
 
 let encode = encode_napi;
@@ -118,5 +139,6 @@ module.exports = {
   decrypt,
   encrypt_wasm,
   decrypt_wasm,
-  decode_napi
+  decode_napi,
+  decode_wasm
 };

@@ -65,7 +65,7 @@ def gen_js_file(emsdk_path, binary_path, output_name, flags):
   path = os.path.join(binary_path, "lib{}.a".format(output_name))
   name = os.path.join(binary_path, "{}.js".format(output_name))
 
-  command = "{emsdk_path}/upstream/emscripten/emcc {path} \
+  command = "{emsdk_path}/upstream/emscripten/emcc --bind {path} \
             -o {name} \
             -g \
             {flags}".format(emsdk_path=emsdk_path, path=path, name=name, flags=flags)
