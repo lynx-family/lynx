@@ -8,6 +8,14 @@
 #include "core/template_bundle/template_codec/generator/base_struct.h"
 #include "third_party/aes/aes.h"
 
+extern "C" {
+// TODO(nihao.royal): it seems like a emcc issue that you must export a
+// function. update emcc to fix it later.
+void quickjsCheck(const char* source) {
+  lynx::tasm::quickjsCheck(std::string(source)).c_str();
+}
+}
+
 EMSCRIPTEN_BINDINGS(encode) {
   emscripten::register_vector<uint8_t>("VectorUInt8");
   emscripten::value_object<lynx::tasm::EncodeResult>("EncodeResult")
@@ -17,8 +25,15 @@ EMSCRIPTEN_BINDINGS(encode) {
       .field("lepus_code", &lynx::tasm::EncodeResult::lepus_code)
       .field("lepus_debug", &lynx::tasm::EncodeResult::lepus_debug)
       .field("section_size", &lynx::tasm::EncodeResult::section_size);
-  function("_encode", &lynx::tasm::encode, emscripten::allow_raw_pointers());
-  function("_quickjsCheck", &lynx::tasm::quickjsCheck,
+  function("_encode",
+           emscripten::optional_override([](const std::string& options_str) {
+             return lynx::tasm::encode(options_str);
+           }),
+           emscripten::allow_raw_pointers());
+  function("_quickjsCheck",
+           emscripten::optional_override([](const std::string& source) {
+             return lynx::tasm::quickjsCheck(source);
+           }),
            emscripten::allow_raw_pointers());
   function("_encode_ssr",
            emscripten::optional_override(
@@ -26,15 +41,5 @@ EMSCRIPTEN_BINDINGS(encode) {
                  return lynx::tasm::encode_ssr(
                      reinterpret_cast<const uint8_t*>(buf), size, data);
                }),
-           emscripten::allow_raw_pointers());
-  function("_encrypt",
-           emscripten::optional_override([](const std::string& plain) {
-             return AES().EncryptECB(plain);
-           }),
-           emscripten::allow_raw_pointers());
-  function("_decrypt",
-           emscripten::optional_override([](const std::string& cipher) {
-             return AES().DecryptECB(cipher);
-           }),
            emscripten::allow_raw_pointers());
 }
