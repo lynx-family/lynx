@@ -456,12 +456,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
-  // TODO(liyanbo): refactor this interface.
+  auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
+      false, _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
+      _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode);
   shell_->InitRuntime([_runtimeOptions groupID], resource_loader, module_manager,
-                      std::move(on_runtime_actor_created), [_runtimeOptions preloadJSPath], false,
-                      _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
-                      _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode,
-                      [_runtimeOptions bytecodeUrlString]);
+                      std::move(on_runtime_actor_created), [_runtimeOptions preloadJSPath],
+                      runtime_flags, [_runtimeOptions bytecodeUrlString]);
 }
 
 - (void)setUpLynxContextWithLastInstanceId:(int32_t)lastInstanceId {

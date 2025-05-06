@@ -3195,6 +3195,7 @@ public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.genericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher);
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.mediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher);
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.templateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher);
+  public static int com.lynx.tasm.LynxBackgroundRuntimeOptions.calcRuntimeFlags(boolean forceReloadJSCore, boolean useQuickJSEngine, boolean enablePendingJsTask, boolean enableUserBytecode, @Nullable Boolean enableJSGroupThread, @Nullable Boolean enablePendingCoreJsLoad);
 }
 
 public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {

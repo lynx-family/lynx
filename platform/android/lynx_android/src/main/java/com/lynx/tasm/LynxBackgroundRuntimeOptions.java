@@ -5,6 +5,7 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.ParamWrapper;
 import com.lynx.tasm.provider.LynxResourceProvider;
@@ -18,6 +19,16 @@ import java.util.Map;
 import java.util.Set;
 
 public class LynxBackgroundRuntimeOptions {
+  // These flag align with LynxRuntime.h's LynxRuntimeFlags define.
+  private static int RUNTIME_FLAG_INIT = 0;
+  private static int RUNTIME_FLAG_ENABLE_USER_BYTECODE = 1 << 0;
+  private static int RUNTIME_FLAG_ENABLE_JS_GROUP_THREAD = 1 << 1;
+  private static int RUNTIME_FLAG_FORCE_RELOAD_CORE_JS = 1 << 2;
+  private static int RUNTIME_FLAG_FORCE_USE_LIGHT_WEIGHT_JS_ENGINE = 1 << 3;
+  private static int RUNTIME_FLAG_PENDING_CORE_JS_LOAD = 1 << 4;
+  // Pending lynx_core.js load
+  private static int RUNTIME_FLAG_PENDING_JS_TASK = 1 << 5;
+
   private boolean mEnableUserBytecode;
   private String mBytecodeSourceUrl;
   private @Nullable LynxGroup mLynxGroup;
@@ -157,5 +168,42 @@ public class LynxBackgroundRuntimeOptions {
         mResourceProviders.put(local.getKey(), local.getValue());
       }
     }
+  }
+
+  /**
+   * calc runtime flags for native side.
+   * @param forceReloadJSCore
+   * @param useQuickJSEngine
+   * @param enablePendingJsTask
+   * @param enableUserBytecode
+   * @param enableJSGroupThread
+   * @param enablePendingCoreJsLoad
+   * @return flags
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public static int calcRuntimeFlags(boolean forceReloadJSCore, boolean useQuickJSEngine,
+      boolean enablePendingJsTask, boolean enableUserBytecode,
+      @Nullable Boolean enableJSGroupThread, @Nullable Boolean enablePendingCoreJsLoad) {
+    int flags = RUNTIME_FLAG_INIT;
+    flags = setRuntimeFlag(flags, forceReloadJSCore, RUNTIME_FLAG_FORCE_RELOAD_CORE_JS);
+    flags = setRuntimeFlag(flags, useQuickJSEngine, RUNTIME_FLAG_FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
+    flags = setRuntimeFlag(flags, enablePendingJsTask, RUNTIME_FLAG_PENDING_JS_TASK);
+    flags = setRuntimeFlag(flags, enableUserBytecode, RUNTIME_FLAG_ENABLE_USER_BYTECODE);
+    if (enableJSGroupThread != null) {
+      flags = setRuntimeFlag(flags, enableJSGroupThread, RUNTIME_FLAG_ENABLE_JS_GROUP_THREAD);
+    }
+    if (enablePendingCoreJsLoad != null) {
+      flags = setRuntimeFlag(flags, enablePendingCoreJsLoad, RUNTIME_FLAG_PENDING_CORE_JS_LOAD);
+    }
+    return flags;
+  }
+
+  private static int setRuntimeFlag(int currentFlag, boolean enable, int flag) {
+    if (enable) {
+      currentFlag |= flag;
+    } else {
+      currentFlag &= ~flag;
+    }
+    return currentFlag;
   }
 }

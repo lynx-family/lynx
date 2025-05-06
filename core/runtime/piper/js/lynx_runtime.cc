@@ -48,6 +48,8 @@ namespace runtime {
 
 namespace {
 
+constexpr uint32_t LynxRuntimeFlagsMask = 0xFFFFFFFF;
+
 class JSIExceptionHandlerImpl : public piper::JSIExceptionHandler {
  public:
   explicit JSIExceptionHandlerImpl(LynxRuntime* runtime) : runtime_(runtime) {}
@@ -85,18 +87,49 @@ class JSIExceptionHandlerImpl : public piper::JSIExceptionHandler {
 
 thread_local std::string* LynxRuntime::js_core_source_ = nullptr;
 
-LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
+void SetRuntimeFlags(uint32_t& flags, bool enable,
+                     lynx::runtime::LynxRuntimeFlags flag) {
+  if (enable) {
+    flags |= flag;
+  } else {
+    flags &= ~flag;
+  }
+}
+
+uint32_t CalcRuntimeFlags(bool force_reload_core_js, bool use_quickjs_engine,
+                          bool pending_js_task, bool enable_user_bytecode,
+                          bool* enable_js_group_thread,
+                          bool* pending_core_js_load) {
+  uint32_t flags = lynx::runtime::LynxRuntimeFlags::INIT;
+  SetRuntimeFlags(flags, force_reload_core_js,
+                  lynx::runtime::LynxRuntimeFlags::FORCE_RELOAD_CORE_JS);
+  SetRuntimeFlags(
+      flags, use_quickjs_engine,
+      lynx::runtime::LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
+  SetRuntimeFlags(flags, pending_js_task,
+                  lynx::runtime::LynxRuntimeFlags::PENDING_JS_TASK);
+  SetRuntimeFlags(flags, enable_user_bytecode,
+                  lynx::runtime::LynxRuntimeFlags::ENABLE_USER_BYTECODE);
+  if (enable_js_group_thread != nullptr) {
+    SetRuntimeFlags(flags, *enable_js_group_thread,
+                    lynx::runtime::LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD);
+  }
+  if (pending_core_js_load != nullptr) {
+    SetRuntimeFlags(flags, *pending_core_js_load,
+                    lynx::runtime::LynxRuntimeFlags::PENDING_CORE_JS_LOAD);
+  }
+  return flags;
+}
+
+LynxRuntime::LynxRuntime(const std::string& group_id,
                          std::unique_ptr<TemplateDelegate> delegate,
-                         bool enable_user_bytecode,
                          const std::string& bytecode_source_url,
-                         bool enable_js_group_thread,
+                         uint32_t runtime_flags,
                          const tasm::PageOptions& page_options)
     : group_id_(group_id),
-      instance_id_(instance_id),
       delegate_(std::move(delegate)),
-      enable_user_bytecode_(enable_user_bytecode),
       bytecode_source_url_(bytecode_source_url),
-      enable_js_group_thread_(enable_js_group_thread),
+      runtime_flags_(runtime_flags & LynxRuntimeFlagsMask),
       lifecycle_observer_(std::make_unique<RuntimeLifecycleObserverImpl>()),
       page_options_(page_options) {
   cached_tasks_.reserve(8);
@@ -107,22 +140,19 @@ LynxRuntime::~LynxRuntime() { Destroy(); }
 void LynxRuntime::Init(
     const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
-    std::vector<std::string> preload_js_paths, bool force_reload_js_core,
-    bool force_use_light_weight_js_engine, bool pending_core_js_load) {
+    std::vector<std::string> preload_js_paths) {
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
-                                     << instance_id_ << " this:" << this);
+                                     << GetRuntimeId() << " this:" << this);
 
   tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get());
-  lifecycle_observer_->OnRuntimeInit(instance_id_);
+  lifecycle_observer_->OnRuntimeInit(GetRuntimeId());
 
   js_executor_ = std::make_unique<lynx::piper::JSExecutor>(
       std::make_shared<JSIExceptionHandlerImpl>(this), group_id_,
-      module_manager, runtime_observer, force_use_light_weight_js_engine);
+      module_manager, runtime_observer,
+      runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
 
-  is_pending_core_js_ = pending_core_js_load;
-  force_reload_js_core_ = force_reload_js_core;
-
-  if (pending_core_js_load) {
+  if (runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) {
     InitPartRuntime(std::move(preload_js_paths));
   } else {
     InitFullRuntime(std::move(preload_js_paths));
@@ -145,7 +175,7 @@ void LynxRuntime::Init(
   LOGI(" lynxRuntime:" << this << " create APP " << app_.get());
   AddEventListeners();
 
-  if (!pending_core_js_load) {
+  if ((runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) == 0) {
     UpdateState(State::kJsCoreLoaded);
   }
 }
@@ -153,7 +183,7 @@ void LynxRuntime::Init(
 void LynxRuntime::InitFullRuntime(std::vector<std::string> preload_js_paths) {
   std::vector<std::pair<std::string, std::string>> preload_js_sources;
   // read lynx_core.js
-  ReadCoreJS(force_reload_js_core_, preload_js_sources);
+  ReadCoreJS(preload_js_sources);
   // read preload js
   ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
   // init jsvm runtime
@@ -173,24 +203,26 @@ void LynxRuntime::InitExecutor(
   // FIXME(wangboyong):invoke before decode...in fact in 1.4
   // here NeedGlobalConsole always return true...
   // bool need_console = delegate_->NeedGlobalConsole();
-  js_executor_->loadPreJSBundle(preload_js_sources, true, GetRuntimeId(),
-                                enable_user_bytecode_, bytecode_source_url_);
+  js_executor_->loadPreJSBundle(
+      preload_js_sources, true, GetRuntimeId(),
+      runtime_flags_ & LynxRuntimeFlags::ENABLE_USER_BYTECODE,
+      bytecode_source_url_);
 
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreEnd);
 }
 
 void LynxRuntime::TransitionToFullRuntime() {
-  if (!is_pending_core_js_) {
+  if ((runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) == 0) {
     return;
   }
-  is_pending_core_js_ = false;
+  runtime_flags_ &= ~LynxRuntimeFlags::PENDING_CORE_JS_LOAD;
   auto rt = js_executor_->GetJSRuntime();
   if (!rt) {
     return;
   }
   std::vector<std::pair<std::string, std::string>> preload_js_sources;
-  ReadCoreJS(force_reload_js_core_, preload_js_sources);
+  ReadCoreJS(preload_js_sources);
   // load the lynx_core.js
   piper::Scope scope(*rt);
   for (auto& [url, source] : preload_js_sources) {
@@ -223,10 +255,9 @@ void LynxRuntime::ReadPreloadJSSource(
 }
 
 void LynxRuntime::ReadCoreJS(
-    bool force_reload_js_core,
     std::vector<std::pair<std::string, std::string>>& ret) {
   if (!js_core_source_ || js_core_source_->length() <= 0 ||
-      force_reload_js_core) {
+      (runtime_flags_ & LynxRuntimeFlags::FORCE_RELOAD_CORE_JS)) {
     delete js_core_source_;
     static constexpr const char* core_js_name = "assets://lynx_core.js";
     js_core_source_ = new std::string(delegate_->LoadJSSource(core_js_name));
@@ -263,10 +294,10 @@ void LynxRuntime::UpdateState(State state) {
 #if ENABLE_NAPI_BINDING
 void LynxRuntime::PrepareNapiEnvironment() {
   napi_environment_ = std::make_unique<piper::NapiEnvironment>(
-      std::make_unique<piper::NapiLoaderJS>(std::to_string(instance_id_)));
+      std::make_unique<piper::NapiLoaderJS>(std::to_string(GetRuntimeId())));
   auto proxy = piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
   LOGI("napi attaching with proxy: " << proxy.get()
-                                     << ", id: " << instance_id_);
+                                     << ", id: " << GetRuntimeId());
   if (proxy) {
     napi_environment_->SetRuntimeProxy(std::move(proxy));
     napi_environment_->Attach();
@@ -291,7 +322,7 @@ void LynxRuntime::PrepareRestrictedNapiEnvironment() {
   auto proxy = std::make_unique<piper::RestrictedNapiRuntimeProxyDecorator>(
       piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get()));
   LOGI("napi attaching with restricted proxy: " << proxy.get()
-                                                << ", id: " << instance_id_);
+                                                << ", id: " << GetRuntimeId());
   if (proxy) {
     napi_restricted_environment_->SetRuntimeProxy(std::move(proxy));
     napi_restricted_environment_->Attach();
@@ -419,7 +450,9 @@ void LynxRuntime::CallJSCallback(
 
   if (state_ == State::kDestroying && callbacks_.empty()) {
     shell::LynxRuntimeActorHolder::GetInstance()->Release(
-        GetRuntimeId(), enable_js_group_thread_ ? group_id_ : "");
+        GetRuntimeId(),
+        (runtime_flags_ & LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD) ? group_id_
+                                                                    : "");
     return;
   }
 }
@@ -598,7 +631,7 @@ void LynxRuntime::OnJSSourcePrepared(
         page_options_, tasm::timing::kLoadJSTask, url);
     tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get(),
                                                          pipeline_options);
-    LOGI("lynx runtime loadApp, napi id:" << instance_id_);
+    LOGI("lynx runtime loadApp, napi id:" << GetRuntimeId());
     // TODO(huzhanbo): This is needed by Lynx Network now, will be removed
     // after we fully switch to it.
     js_executor_->SetUrl(url);
@@ -681,7 +714,7 @@ bool LynxRuntime::TryToDestroy() {
 }
 
 void LynxRuntime::Destroy() {
-  LOGI("LynxRuntime::Destroy, runtime_id: " << instance_id_
+  LOGI("LynxRuntime::Destroy, runtime_id: " << GetRuntimeId()
                                             << " this: " << this);
   if (state_ == State::kNotStarted) {
     return;
@@ -691,12 +724,12 @@ void LynxRuntime::Destroy() {
   callbacks_.clear();
 #if ENABLE_NAPI_BINDING
   if (napi_environment_) {
-    LOGI("napi detaching runtime, id: " << instance_id_);
+    LOGI("napi detaching runtime, id: " << GetRuntimeId());
     napi_environment_->Detach();
     napi_environment_.reset();
   }
   if (napi_restricted_environment_) {
-    LOGI("restricted napi detaching runtime, id: " << instance_id_);
+    LOGI("restricted napi detaching runtime, id: " << GetRuntimeId());
     napi_restricted_environment_->Detach();
     napi_restricted_environment_.reset();
   }

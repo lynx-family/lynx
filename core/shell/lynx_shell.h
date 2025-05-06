@@ -87,10 +87,8 @@ class LynxShell {
       const std::function<
           void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
           on_runtime_actor_created,
-      std::vector<std::string> preload_js_paths, bool force_reload_js_core,
-      bool force_use_light_weight_js_engine = false,
-      bool pending_js_task = false, bool enable_user_bytecode = false,
-      const std::string& bytecode_source_url = "");
+      std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
+      const std::string& bytecode_source_url);
 
   // This method attaches a pre-created LynxRuntime to the LynxShell:
   // so only one of `AttachRuntime` and `InitRuntime` will be called

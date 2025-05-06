@@ -28,10 +28,8 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
         void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&,
              const std::shared_ptr<LynxActor<NativeFacade>>&)>&
         on_runtime_actor_created,
-    std::vector<std::string> preload_js_paths, bool enable_js_group_thread,
-    bool force_reload_js_core, bool force_use_light_weight_js_engine,
-    bool pending_js_task, bool enable_user_bytecode,
-    const std::string& bytecode_source_url, bool pending_core_js_load,
+    std::vector<std::string> preload_js_paths,
+    const std::string& bytecode_source_url, uint32_t runtime_flag,
     bool long_task_monitor_disabled) {
   auto instance_id = lynx::shell::LynxShell::NextInstanceId();
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner =
@@ -72,8 +70,8 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
   page_options.SetLongTaskMonitorDisabled(long_task_monitor_disabled);
 
   auto runtime = std::make_unique<runtime::LynxRuntime>(
-      group_id, instance_id, std::move(delegate), enable_user_bytecode,
-      bytecode_source_url, enable_js_group_thread, page_options);
+      group_id, std::move(delegate), bytecode_source_url, runtime_flag,
+      page_options);
   auto runtime_actor = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       std::move(runtime), js_task_runner, instance_id, true);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor);
@@ -86,14 +84,12 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
 
   runtime_actor->ActAsync(
       [module_manager, preload_js_paths = std::move(preload_js_paths),
-       runtime_observer, force_reload_js_core, force_use_light_weight_js_engine,
-       vsync_monitor, pending_core_js_load](
-          std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       runtime_observer,
+       vsync_monitor](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(module_manager, runtime_observer,
-                      std::move(preload_js_paths), force_reload_js_core,
-                      force_use_light_weight_js_engine, pending_core_js_load);
+                      std::move(preload_js_paths));
       });
 
   return {runtime_actor, timing_actor, native_runtime_facade,

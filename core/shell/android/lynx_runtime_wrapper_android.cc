@@ -36,11 +36,8 @@ static jlong CreateBackgroundRuntimeWrapper(
     JNIEnv *env, jobject jcaller, jobject java_resource_loader,
     jobject java_module_factory, jlong inspectorObserverPtr,
     jlong white_board_ptr, jstring java_group_id, jstring java_group_name,
-    jobjectArray preload_js_paths, jboolean useProviderJsEnv,
-    jboolean force_reload_js_core, jboolean force_use_light_weight_js_engine,
-    jboolean enable_pending_js_task, jboolean enable_user_bytecode,
-    jstring bytecode_source_url, jboolean enable_js_group_thread,
-    jboolean pending_core_js_load) {
+    jobjectArray preload_js_paths, jstring bytecode_source_url,
+    jint runtime_flags) {
   auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
   module_manager->SetPlatformModuleFactory(
       std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
@@ -85,10 +82,8 @@ static jlong CreateBackgroundRuntimeWrapper(
   auto result = lynx::shell::InitRuntimeStandalone(
       group_name, group_id, std::move(native_facade_runtime),
       observer ? *observer : nullptr, loader, module_manager, bundle_creator,
-      white_board, on_runtime_actor_created, std::move(paths),
-      enable_js_group_thread, force_reload_js_core,
-      force_use_light_weight_js_engine, enable_pending_js_task,
-      enable_user_bytecode, source_url, pending_core_js_load);
+      white_board, on_runtime_actor_created, std::move(paths), source_url,
+      runtime_flags);
 
   // Delete observer to decrease ref count.
   delete observer;

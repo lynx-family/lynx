@@ -38,15 +38,31 @@ class NapiEnvironment;
 
 namespace runtime {
 
+enum LynxRuntimeFlags : uint32_t {
+  INIT = 0,
+  ENABLE_USER_BYTECODE = 1 << 0,
+  ENABLE_JS_GROUP_THREAD = 1 << 1,
+  FORCE_RELOAD_CORE_JS = 1 << 2,
+  FORCE_USE_LIGHT_WEIGHT_JS_ENGINE = 1 << 3,
+  PENDING_CORE_JS_LOAD = 1 << 4,
+  PENDING_JS_TASK = 1 << 5,
+};
+
+void SetRuntimeFlags(uint32_t& flags, bool enable,
+                     lynx::runtime::LynxRuntimeFlags flag);
+uint32_t CalcRuntimeFlags(bool force_reload_js_core, bool use_quickjs_engine,
+                          bool pending_js_task, bool enable_user_bytecode,
+                          bool* enable_js_group_thread = nullptr,
+                          bool* pending_core_js_load = nullptr);
+
 /*
  * now only run on js thread
  */
 class LynxRuntime final {
  public:
-  LynxRuntime(const std::string& group_id, int32_t instance_id,
+  LynxRuntime(const std::string& group_id,
               std::unique_ptr<TemplateDelegate> delegate,
-              bool enable_user_bytecode, const std::string& bytecode_source_url,
-              bool enable_js_group_thread,
+              const std::string& bytecode_source_url, uint32_t runtime_flags,
               const tasm::PageOptions& page_options);
   ~LynxRuntime();
   LynxRuntime(const LynxRuntime&) = delete;
@@ -57,8 +73,7 @@ class LynxRuntime final {
       const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
       const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
           runtime_observer,
-      std::vector<std::string> preload_js_paths, bool force_reload_js_core,
-      bool force_use_light_weight_js_engine, bool pending_core_js_load = false);
+      std::vector<std::string> preload_js_paths);
 
   void CallJSCallback(const std::shared_ptr<piper::ModuleCallback>& callback,
                       int64_t id_to_delete);
@@ -113,7 +128,7 @@ class LynxRuntime final {
                              const std::string& method, int32_t error_code);
 
   std::shared_ptr<piper::Runtime> GetJSRuntime();
-  int64_t GetRuntimeId() const { return instance_id_; }
+  int64_t GetRuntimeId() const { return page_options_.GetInstanceID(); }
 
 #if ENABLE_NAPI_BINDING
   piper::NapiEnvironment* GetNapiEnvironment() const {
@@ -173,8 +188,7 @@ class LynxRuntime final {
   void ReadPreloadJSSource(
       std::vector<std::string> preload_js_paths,
       std::vector<std::pair<std::string, std::string>>& ret);
-  void ReadCoreJS(bool force_reload_js_core,
-                  std::vector<std::pair<std::string, std::string>>& ret);
+  void ReadCoreJS(std::vector<std::pair<std::string, std::string>>& ret);
   void InitPartRuntime(std::vector<std::string> preload_js_paths);
   void InitFullRuntime(std::vector<std::string> preload_js_paths);
   void InitExecutor(
@@ -203,7 +217,6 @@ class LynxRuntime final {
   static int64_t GenerateRuntimeId();
 
   const std::string group_id_;
-  const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;
   std::unique_ptr<lynx::piper::JSExecutor> js_executor_;
   std::shared_ptr<piper::App> app_;
@@ -235,14 +248,11 @@ class LynxRuntime final {
 
   std::unordered_map<int64_t, piper::ModuleCallbackFunctionHolder> callbacks_;
   int64_t callback_id_index_ = 0;
-  bool enable_user_bytecode_ = false;
   std::string bytecode_source_url_;
-  bool enable_js_group_thread_{false};
+  uint32_t runtime_flags_;
   std::unique_ptr<RuntimeLifecycleObserverImpl> lifecycle_observer_;
   tasm::PageOptions page_options_;
   lepus::Value init_global_props_;
-  bool is_pending_core_js_{false};
-  bool force_reload_js_core_{false};
 };
 
 }  // namespace runtime

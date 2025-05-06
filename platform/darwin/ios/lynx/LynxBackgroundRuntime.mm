@@ -245,13 +245,16 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 
     auto group_thread_name = [_options groupThreadName];
 
+    bool enableJSGroupThread = [_options enableJSGroupThread] == YES;
+    bool pendingCoreJsLoad = [_options pendingCoreJsLoad] == YES;
+    auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
+        false, _options.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs, false,
+        _options.enableBytecode, &enableJSGroupThread, &pendingCoreJsLoad);
     _runtime_standalone_bundle = lynx::shell::InitRuntimeStandalone(
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         module_manager, bundle_creator, _options.group.whiteBoard,
-        std::move(on_runtime_actor_created), [_options preloadJSPath],
-        [_options enableJSGroupThread], false,
-        _options.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs, false,
-        _options.enableBytecode, [_options bytecodeUrlString], [_options pendingCoreJsLoad]);
+        std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
+        runtime_flags);
 
     const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
     _js_proxy = lynx::shell::JSProxyDarwin::Create(

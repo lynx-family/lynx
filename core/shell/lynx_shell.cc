@@ -194,9 +194,8 @@ void LynxShell::InitRuntime(
     const std::function<
         void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
         on_runtime_actor_created,
-    std::vector<std::string> preload_js_paths, bool force_reload_js_core,
-    bool force_use_light_weight_js_engine, bool pending_js_task,
-    bool enable_user_code_cache, const std::string& code_cache_source_url) {
+    std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
+    const std::string& code_cache_source_url) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME);
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
@@ -226,8 +225,8 @@ void LynxShell::InitRuntime(
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
   auto runtime = std::make_unique<runtime::LynxRuntime>(
-      group_id, instance_id_, std::move(delegate), enable_user_code_cache,
-      code_cache_source_url, enable_js_group_thread_, page_options_);
+      group_id, std::move(delegate), code_cache_source_url, runtime_flags,
+      page_options_);
   runtime_actor_ = std::make_shared<LynxActor<runtime::LynxRuntime>>(
       std::move(runtime), js_task_runner, instance_id_, enable_runtime_);
   delegate_raw_ptr->set_vsync_monitor(vsync_monitor, runtime_actor_);
@@ -249,19 +248,17 @@ void LynxShell::InitRuntime(
 
   start_js_runtime_task_ =
       [module_manager, preload_js_paths = std::move(preload_js_paths),
-       runtime_observer = runtime_observer_, force_reload_js_core,
-       force_use_light_weight_js_engine, vsync_monitor,
+       runtime_observer = runtime_observer_, vsync_monitor,
        weak_js_bundle_holder = GetWeakJsBundleHolder()](
           std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(module_manager, runtime_observer,
-                      std::move(preload_js_paths), force_reload_js_core,
-                      force_use_light_weight_js_engine);
+                      std::move(preload_js_paths));
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       };
 
-  if (!pending_js_task) {
+  if ((runtime_flags & runtime::LynxRuntimeFlags::PENDING_JS_TASK) == 0) {
     runtime_actor_->ActAsync(std::move(start_js_runtime_task_));
   }
 }
