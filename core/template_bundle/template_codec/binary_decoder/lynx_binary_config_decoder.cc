@@ -286,6 +286,14 @@ static constexpr const char* const kEnableBindICU = "enableICU";
 static constexpr const char* const kEnableQueryComponentSync =
     "enableQueryComponentSync";
 
+/**
+ * @name: enableParallelElement
+ * @description: Enable parallel element for RadonDiff Arch.
+ * @platform: Both
+ * @supportVersion: 3.2
+ **/
+static constexpr const char* kEnableParallelElement = "enableParallelElement";
+
 bool LynxBinaryConfigDecoder::DecodePageConfig(
     const std::string& config_str, std::shared_ptr<PageConfig>& page_config) {
   rapidjson::Document doc;
@@ -992,6 +1000,13 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kEnableFiberElementForRadonDiff].GetBool()
             ? TernaryBool::TRUE_VALUE
             : TernaryBool::FALSE_VALUE);
+  }
+
+  if (doc.HasMember(kEnableParallelElement) &&
+      doc[kEnableParallelElement].IsBool() &&
+      !page_config->GetEnableFiberArch()) {
+    page_config->SetEnableParallelElement(
+        doc[kEnableParallelElement].GetBool());
   }
 
   // enableLynxScrollFluency
