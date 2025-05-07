@@ -2,7 +2,7 @@ name: publish-release
 on:
   workflow_call:
     inputs:
-      dry_run:
+      dry-run:
         required: true
         type: boolean
       version:
@@ -11,7 +11,7 @@ on:
 
 jobs:
   android-explorer-build:
-    if: ${{ inputs.dry_run == false }}
+    if: ${{ inputs.dry-run == false }}
     runs-on: lynx-ubuntu-22.04-avd-large
     steps:
       - name: Download Source
@@ -41,15 +41,7 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            cd $GITHUB_WORKSPACE/lynx
-            rm -rf $GITHUB_WORKSPACE/third_party
-            source tools/envsetup.sh
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Install iOS Dependencies
@@ -75,14 +67,15 @@ jobs:
           tar --strip-components 10 -czvf LynxExplorer-${{ matrix.arch }}.app.tar.gz explorer/darwin/ios/lynx_explorer/iOSCoreBuild/DerivedData/Build/Products/Debug-iphonesimulator/LynxExplorer.app
       - name: push explorer to release
         uses: ncipollo/release-action@v1
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ inputs.dry-run == false }}
         with:
           tag: ${{ inputs.version }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
           allowUpdates: true
+
   android-sdk-release:
-    runs-on: ${{ inputs.dry_run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-avd-large' }}
+    runs-on: ${{ inputs.dry-run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-avd-large' }}
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -93,26 +86,12 @@ jobs:
         with:
           python-version: '3.13'
       - name: Setup Android enviroment
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ inputs.dry-run == false }}
         uses: ./lynx/.github/actions/setup-android-env
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-      - name: Install Common Dependencies With Cache
-        if: ${{ inputs.dry_run == true }}
         uses: ./lynx/.github/actions/common-deps
-      - name: Install Common Dependencies
-        if: ${{ inputs.dry_run == false }}
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          python3 -m pip install PyYAML -i https://pypi.org/simple
-          source tools/envsetup.sh
-          tools/hab sync . -f
+        with:
+          cache-backend: ${{ inputs.dry-run == false && 'github' || 'lynx-infra' }}
       - name: Build artifact
         run: |-
           cd $GITHUB_WORKSPACE/lynx
@@ -121,7 +100,7 @@ jobs:
           ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
           popd
       - name: Package maven artifacts
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ inputs.dry-run == false }}
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           pushd platform/android
@@ -138,14 +117,15 @@ jobs:
           popd
         id: build_artifact
       - name: Publish artifact to maven
-        if: ${{ inputs.dry_run == false }}
+        if: ${{ inputs.dry-run == false }}
         uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
         with:
           portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
           artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
+
   ios-sdk-publish:
     runs-on: macos-13
-    if: ${{ inputs.dry_run == false }}
+    if: ${{ inputs.dry-run == false }}
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -154,14 +134,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
+        uses: ./lynx/.github/actions/common-deps
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            tools/hab sync . -f
+          cache-backend: github
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Prepare cocoapods publish source

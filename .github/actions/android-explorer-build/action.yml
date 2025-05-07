@@ -20,6 +20,8 @@ runs:
         python-version: '3.13'
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
+      with:
+        cache-backend: github
     - name: Build Explorer App
       env:
         BUILD_TYPE: ${{ inputs.build-type }}

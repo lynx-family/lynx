@@ -7,29 +7,46 @@ inputs:
     description: concurrency of requests
     default: '2'
     required: false
-  skip-cache:
-    description: whether to skip cache
-    default: 'false'
+  cache-backend:
+    description: cache backend for habitat
+    default: 'lynx-infra'
     required: false
 
 runs:
   using: composite
   steps:
     - name: setup cache action
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
       uses: lynx-infra/cache@main
-      if: ${{ inputs.skip-cache == 'false' }}
       with:
         path: ~/.habitat_cache
         key: ${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
         restore-keys: |
           ${{ runner.os }}-
 
+    - name: setup cache action
+      if: ${{ inputs.cache-backend == 'github' }}
+      uses: actions/cache@v4
+      with:
+        path: ~/.habitat_cache
+        key: ${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
+        restore-keys: |
+          ${{ runner.os }}-
+
+    - name: install Python dependencies
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" == "macOS" ]; then
+          python3 -m pip install PyYAML --break-system-packages
+          python3 -m pip install requests --break-system-packages
+        else
+          python3 -m pip install PyYAML
+          python3 -m pip install requests
+        fi
+
     - name: run habitat sync
       shell: bash
       working-directory: lynx
-      run: |
-        python3 -m pip install PyYAML
-        python3 -m pip install requests
-        tools/hab sync .
+      run: tools/hab sync .
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}

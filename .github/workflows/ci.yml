@@ -62,15 +62,7 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Run Unittests
         run: |
           set -e
@@ -123,15 +115,7 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Install iOS Dependencies
@@ -190,15 +174,7 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            source tools/envsetup.sh
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Build Darwin Tasm
         run: |
           source tools/envsetup.sh
@@ -413,5 +389,5 @@ jobs:
   release-workflow:
     uses: ./.github/workflows/publish-release.yml
     with:
-      dry_run: true
+      dry-run: true
     secrets: inherit

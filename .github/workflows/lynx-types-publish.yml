@@ -18,15 +18,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
+        uses: ./lynx/.github/actions/common-deps
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync . -f
+          cache-backend: github
       - uses: actions/setup-node@v4
         with:
           node-version: 18
