@@ -60,6 +60,8 @@ lynx_renderer_dom_sources = [
   "css_patching.h",
   "element_bundle.cc",
   "element_bundle.h",
+  "element_context_task_queue.cc",
+  "element_context_task_queue.h",
   "element_vsync_proxy.cc",
   "element_vsync_proxy.h",
   "layout_bundle.h",

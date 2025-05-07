@@ -784,7 +784,10 @@ TEST_P(FiberElementTest, TestCheckDynamicUnit7) {
                 DynamicCSSStylesManager::kUpdateViewport);
 }
 
-TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle) {
+TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle00) {
+  if (enable_batch_layout_operation) {
+    GTEST_SKIP();
+  }
   auto view = manager->CreateFiberPage("0", 0);
   view->InitLayoutBundle();
   EXPECT_NE(view->layout_bundle_, nullptr);
@@ -799,6 +802,27 @@ TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle) {
   EXPECT_EQ(!view->parallel_reduce_tasks_.empty(),
             manager->GetParallelWithSyncLayout());
   view->parallel_reduce_tasks_.clear();
+}
+
+TEST_P(FiberElementTest, TestUpdateLayoutNodeByBundle01) {
+  if (!enable_batch_layout_operation) {
+    GTEST_SKIP();
+  }
+  auto view = manager->CreateFiberPage("0", 0);
+  view->InitLayoutBundle();
+  EXPECT_NE(view->layout_bundle_, nullptr);
+  view->UpdateLayoutNodeByBundle();
+  EXPECT_EQ(view->layout_bundle_, nullptr);
+
+  view->parallel_flush_ = true;
+  view->InitLayoutBundle();
+  EXPECT_NE(view->layout_bundle_, nullptr);
+  view->UpdateLayoutNodeByBundle();
+  EXPECT_EQ(view->layout_bundle_, nullptr);
+  EXPECT_EQ(!(manager->layout_tasks_->task_queue_.Empty()),
+            manager->GetParallelWithSyncLayout());
+  EXPECT_TRUE(view->parallel_reduce_tasks_.empty());
+  manager->layout_tasks_->task_queue_.ReversePopAll();
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle00) {
@@ -12734,6 +12758,11 @@ TEST_P(FiberElementTest, MarkRenderRootElementTest) {
   auto list = manager->CreateFiberList(nullptr, "list", component_at_index,
                                        enqueue_component, component_at_indexes);
   parent->InsertNode(list);
+  list->disable_list_platform_implementation_ = true;
+  list->list_container_delegate_ =
+      list::CreateListContainerDelegate(list.get());
+  list->list_container_delegate_->UpdateBatchRenderStrategy(
+      list::BatchRenderStrategy::kAsyncResolveProperty);
   EXPECT_TRUE(list->render_root_element_ == nullptr);
 
   base::String component_id("21");

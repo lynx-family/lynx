@@ -172,6 +172,8 @@ ElementManager::ElementManager(
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
   enable_new_animator_radon_ = false;
+  layout_tasks_ = std::make_unique<ElementContextTaskQueue>(
+      [this]() { return GetParallelWithSyncLayout(); });
 }
 
 static bool EnableLayoutOnlyStatistic() {
@@ -1306,6 +1308,29 @@ void ElementManager::SetEnableFiberElementForRadonDiff(TernaryBool value) {
     enable_fiber_element_for_radon_diff_ = LynxEnv::GetInstance().GetBoolEnv(
         lynx::tasm::LynxEnv::Key::ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF, false);
   }
+}
+
+void ElementManager::LegacyHandleLayoutTask(
+    FiberElement *target, base::MoveOnlyClosure<void> operation) {
+  // Dispatch operation according to batch rendering state
+  auto *parent = target;
+  if (parent->GetRenderRootElement() != nullptr &&
+      parent->GetRenderRootElement()->GetSchedulerAdapter() &&
+      parent->GetRenderRootElement()
+          ->GetSchedulerAdapter()
+          ->IsBatchResolvingTree()) {
+    parent->GetRenderRootElement()
+        ->GetSchedulerAdapter()
+        ->resolve_element_tree_queue()
+        .emplace_back(std::move(operation));
+    return;
+  }
+  if (this->GetParallelWithSyncLayout() &&
+      target->ShouldProcessParallelTasks()) {
+    target->EnqueueReduceTask(std::move(operation));
+    return;
+  }
+  operation();
 }
 
 namespace {

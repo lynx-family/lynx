@@ -6,9 +6,12 @@
 #define CORE_RENDERER_DOM_FIBER_LIST_ITEM_SCHEDULER_ADAPTER_H_
 
 #include <list>
+#include <memory>
 
 #include "base/include/closure.h"
+#include "base/include/concurrent_queue.h"
 #include "core/base/thread/once_task.h"
+#include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/ui_component/list/list_types.h"
 
 namespace lynx {
@@ -18,8 +21,7 @@ class FiberElement;
 class ListItemSchedulerAdapter {
  public:
   ListItemSchedulerAdapter(FiberElement* sub_root,
-                           list::BatchRenderStrategy batch_render_strategy)
-      : render_root_{sub_root}, batch_render_strategy_(batch_render_strategy) {}
+                           list::BatchRenderStrategy batch_render_strategy);
 
   std::list<base::OnceTaskRefptr<base::closure>>& resolve_property_queue() {
     return resolve_property_queue_;
@@ -42,7 +44,17 @@ class ListItemSchedulerAdapter {
   void PostResolveElementTree(std::list<base::OnceTaskRefptr<base::closure>>&
                                   parallel_resolve_element_tree_queue);
 
+  bool IsBatchResolvingTree() { return batch_resolving_tree_; }
+
   bool IsBatchRendering() { return batch_rendering_; }
+
+  ElementContextTaskQueue* GetLayoutTaskQueue() {
+    if (layout_tasks_) {
+      return layout_tasks_.get();
+    }
+
+    return nullptr;
+  }
 
  private:
   FiberElement* render_root_;
@@ -52,7 +64,10 @@ class ListItemSchedulerAdapter {
   std::list<base::OnceTaskRefptr<base::closure>> resolve_property_queue_{};
 
   std::list<base::closure> resolve_element_tree_queue_{};
+  bool batch_resolving_tree_{false};
   bool batch_rendering_{false};
+
+  std::unique_ptr<ElementContextTaskQueue> layout_tasks_ = nullptr;
 };
 
 }  // namespace tasm

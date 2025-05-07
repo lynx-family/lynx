@@ -28,15 +28,21 @@ static constexpr int64_t kFrameDuration = 16;  // ms
 
 static constexpr double COMPARE_EPSILON = 0.00001;
 
-const std::tuple<bool, int> fiber_element_generation_params[] = {
-    std::make_tuple(
-        false, 0),  // disable parallel flush with ALL_ON_UI thread strategy
-    std::make_tuple(
-        false, 3),  // disable parellel flush with MULTI_THREADS thread strategy
-    std::make_tuple(true,
-                    0),  // enable parallel flush with ALL_ON_UI thread strategy
-    std::make_tuple(
-        true, 3),  // enable parallel flush with MULTI_THREADS thread strategy
+const std::tuple<bool, int, bool> fiber_element_generation_params[] = {
+    std::make_tuple(false, 0,
+                    false),  // disable parallel flush/ALL_ON_UI thread
+                             // strategy/disable batch layout operation
+    std::make_tuple(false, 3,
+                    false),  // disable parellel flush/MULTI_THREADS thread
+                             // strategy/disable batch layout operation
+    std::make_tuple(true, 0,
+                    false),  // enable parallel flush/ALL_ON_UI thread strategy
+                             // /disable batch layout operation
+    std::make_tuple(true, 0, true),  // enable parallel flush/ALL_ON_UI thread
+                                     // strategy /enable batch layout operation
+    std::make_tuple(true, 3,
+                    false),  // enable parallel flush/MULTI_THREADS thread
+                             // strategy/disable batch layout operation
 };
 
 class TestVSyncMonitor : public base::VSyncMonitor {
@@ -70,7 +76,7 @@ class FiberElementMockTasmDelegate : public test::MockTasmDelegate {
 };
 
 class FiberElementTest
-    : public ::testing::TestWithParam<std::tuple<bool, int>> {
+    : public ::testing::TestWithParam<std::tuple<bool, int, bool>> {
  public:
   FiberElementTest() { current_parameter_ = GetParam(); }
   ~FiberElementTest() override {}
@@ -83,6 +89,8 @@ class FiberElementTest
   static void SetUpTestSuite() { base::UIThread::Init(); }
 
   void SetUp() override;
+
+  void TearDown() override;
 
   bool HasCapturePlatformNodeTag(int32_t target_id, std::string expected_tag);
 
@@ -114,9 +122,10 @@ class FiberElementTest
                                   int32_t count = 1);
 
  protected:
-  std::tuple<bool, int> current_parameter_;
+  std::tuple<bool, int, bool> current_parameter_;
   int32_t thread_strategy;
   bool enable_parallel_element_flush;
+  bool enable_batch_layout_operation;
 };
 
 }  // namespace testing

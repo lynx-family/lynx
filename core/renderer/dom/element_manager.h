@@ -28,6 +28,7 @@
 #include "core/renderer/dom/css_patching.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_container.h"
+#include "core/renderer/dom/element_context_task_queue.h"
 #include "core/renderer/dom/element_manager_delegate.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/frame_element.h"
@@ -1060,6 +1061,17 @@ class ElementManager {
     return element_manager_delegate_;
   }
 
+  ElementContextTaskQueue *GetLayoutTaskQueue() {
+    if (layout_tasks_) {
+      return layout_tasks_.get();
+    }
+
+    return nullptr;
+  }
+
+  void LegacyHandleLayoutTask(FiberElement *target,
+                              base::MoveOnlyClosure<void> operation);
+
  protected:
   /**
    * call this function to request layout
@@ -1202,6 +1214,8 @@ class ElementManager {
       devtool_func_map_;
 
   ElementManagerDelegate *element_manager_delegate_{nullptr};
+
+  std::unique_ptr<ElementContextTaskQueue> layout_tasks_ = nullptr;
 
  public:
   // fixed node attached to the page node.

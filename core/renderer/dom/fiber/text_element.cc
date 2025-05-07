@@ -36,7 +36,7 @@ void TextElement::SetStyleInternal(CSSPropertyID id,
   FiberElement::SetStyleInternal(id, value, force_update);
 
   if (id == kPropertyIDFontFamily) {
-    HandleLayoutTask([this, value]() {
+    EnqueueLayoutTask([this, value]() {
       ResolveAndFlushFontFaces(value.GetValue().String());
     });
   }

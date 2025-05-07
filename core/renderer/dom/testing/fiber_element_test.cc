@@ -40,8 +40,21 @@ void FiberElementTest::SetUp() {
   }
   enable_parallel_element_flush = std::get<0>(current_parameter_);
   manager->SetEnableParallelElement(enable_parallel_element_flush);
+  enable_batch_layout_operation = std::get<2>(current_parameter_);
+  if (enable_batch_layout_operation) {
+    LynxEnv::GetInstance().external_env_map_
+        [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "true";
+  } else {
+    LynxEnv::GetInstance().external_env_map_
+        [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "false";
+  }
   const_cast<DynamicCSSConfigs&>(manager->GetDynamicCSSConfigs())
       .unify_vw_vh_behavior_ = true;
+}
+
+void FiberElementTest::TearDown() {
+  LynxEnv::GetInstance().external_env_map_
+      [LynxEnv::Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT] = "false";
 }
 
 bool FiberElementTest::HasCapturePlatformNodeTag(int32_t target_id,

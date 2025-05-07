@@ -173,6 +173,7 @@ class ListElement : public FiberElement,
            batch_render_strategy ==
                list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
   }
+  bool UseNewResolveStrategy();
 
   list::BatchRenderStrategy
   ResolveBatchRenderStrategyFromPipelineSchedulerConfig(

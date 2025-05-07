@@ -332,9 +332,7 @@ class Element : public lepus::RefCounted {
   ElementContainer* element_container() { return element_container_.get(); }
   void CreateElementContainer(bool platform_is_flatten);
 
-  virtual void HandleLayoutTask(base::MoveOnlyClosure<void> operation) {
-    operation();
-  }
+  virtual void EnqueueLayoutTask(base::MoveOnlyClosure<void> operation);
 
   virtual void HandleDelayTask(base::MoveOnlyClosure<void> operation) {
     operation();

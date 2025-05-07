@@ -47,6 +47,17 @@ ListNode* ListElement::GetListNode() {
   return static_cast<RadonListBase*>(data_model_->radon_node_ptr());
 }
 
+bool ListElement::UseNewResolveStrategy() {
+  auto batch_render_strategy =
+      DisableListPlatformImplementation() && list_container_delegate()
+          ? list_container_delegate()->GetBatchRenderStrategy()
+          : list::BatchRenderStrategy::kDefault;
+  return batch_render_strategy ==
+             list::BatchRenderStrategy::kAsyncResolveProperty ||
+         batch_render_strategy ==
+             list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree;
+}
+
 void ListElement::OnNodeAdded(FiberElement* child) {
   // List's child should not be flatten.
   child->set_config_flatten(false);
@@ -55,14 +66,16 @@ void ListElement::OnNodeAdded(FiberElement* child) {
   // Mark list's child as list item
   child->MarkAsListItem();
   // Create scheduler for each list-item
-  if (DisableListPlatformImplementation() && list_container_delegate()) {
+  if (UseNewResolveStrategy()) {
     child->CreateListItemScheduler(
         list_container_delegate()->GetBatchRenderStrategy());
+    child->UpdateElementContextQueue(
+        child->GetSchedulerAdapter()->GetLayoutTaskQueue());
+    // Mark inserted child as render_root of its subtree
+    // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
+    // concept is introduced.
+    child->RecursivelyMarkRenderRootElement(child);
   }
-  // Mark inserted child as render_root of its subtree
-  // TODO: Override UpdateRenderRootElementIfNecessary when list-item-element
-  // concept is introduced.
-  child->RecursivelyMarkRenderRootElement(child);
 }
 
 void ListElement::ParallelFlushAsRoot() {
@@ -70,14 +83,7 @@ void ListElement::ParallelFlushAsRoot() {
   if (!element_manager()->GetEnableParallelElement()) {
     return;
   }
-  auto batch_render_strategy =
-      DisableListPlatformImplementation() && list_container_delegate()
-          ? list_container_delegate()->GetBatchRenderStrategy()
-          : list::BatchRenderStrategy::kDefault;
-  if (batch_render_strategy !=
-          list::BatchRenderStrategy::kAsyncResolveProperty &&
-      batch_render_strategy !=
-          list::BatchRenderStrategy::kAsyncResolvePropertyAndElementTree) {
+  if (!UseNewResolveStrategy()) {
     FiberElement::ParallelFlushAsRoot();
     return;
   }
