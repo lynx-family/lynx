@@ -105,6 +105,7 @@ void LazyBundleLoader::MarkComponentLoading(const std::string& url) {
 void LazyBundleLoader::AppendUrlToLifecycleOptionMap(
     const std::string& url,
     std::unique_ptr<LazyBundleLifecycleOption> lifecycle_option) {
+  LOGI("LazyBundleLifecycleMap, append: " << url);
   auto& options = url_to_lifecycle_option_map_[url];
   // sync some information of previous options if need
   if (!options.empty()) {
@@ -116,6 +117,7 @@ void LazyBundleLoader::AppendUrlToLifecycleOptionMap(
 bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
                                                  const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
+  LOGI("LazyBundleLifecycleMap, find: " << url);
   auto iter = url_to_lifecycle_option_map_.find(url);
   if (iter == url_to_lifecycle_option_map_.end()) {
     return false;
@@ -125,7 +127,10 @@ bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
   for (const auto& option : iter->second) {
     need_dispatch = option->OnLazyBundleLifecycleEnd(tasm) || need_dispatch;
   }
-  url_to_lifecycle_option_map_.erase(iter);
+  // FIXME(zhoupeng.z): erase url rather than iter, because map maybe change in
+  // `OnLazyBundleLifecycleEnd`. Fix this double check later.
+  LOGI("LazyBundleLifecycleMap, erase: " << url);
+  url_to_lifecycle_option_map_.erase(url);
 
   return need_dispatch;
 }
@@ -233,6 +238,7 @@ bool LazyBundleLoader::SyncRequiring(const std::string& url) {
 void LazyBundleLoader::StartRecordRequireTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->start_require_time = time;
   }
@@ -242,6 +248,7 @@ void LazyBundleLoader::EndRecordRequireTime(const CallBackInfo& callback_info) {
   DCHECK(engine_actor_->CanRunNow());
   std::string url = callback_info.component_url;
   uint64_t time = base::CurrentSystemTimeMilliseconds();
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->sync = callback_info.sync;
     option->end_require_time = time;
@@ -254,6 +261,7 @@ void LazyBundleLoader::EndRecordRequireTime(const CallBackInfo& callback_info) {
 void LazyBundleLoader::StartRecordDecodeTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->start_decode_time = time;
   }
@@ -262,6 +270,7 @@ void LazyBundleLoader::StartRecordDecodeTime(const std::string& url) {
 void LazyBundleLoader::EndRecordDecodeTime(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
   uint64_t time = base::CurrentSystemTimeMilliseconds();
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->end_decode_time = time;
   }
@@ -270,6 +279,7 @@ void LazyBundleLoader::EndRecordDecodeTime(const std::string& url) {
 void LazyBundleLoader::MarkComponentLoadedFailed(
     const std::string& url, int32_t error_code, const lepus::Value& error_msg) {
   DCHECK(engine_actor_->CanRunNow());
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->is_success = false;
     option->error_code = error_code;
@@ -280,6 +290,7 @@ void LazyBundleLoader::MarkComponentLoadedFailed(
 void LazyBundleLoader::MarkComponentLoadedSuccess(
     const std::string& url, const lepus::Value& success_msg) {
   DCHECK(engine_actor_->CanRunNow());
+  LOGI("LazyBundleLifecycleMap, record: " << url);
   for (const auto& option : url_to_lifecycle_option_map_[url]) {
     option->is_success = true;
     option->message = success_msg;
@@ -288,6 +299,7 @@ void LazyBundleLoader::MarkComponentLoadedSuccess(
 
 lepus::Value LazyBundleLoader::GetPerfInfo(const std::string& url) {
   DCHECK(engine_actor_->CanRunNow());
+  LOGI("LazyBundleLifecycleMap, get: " << url);
   auto options = url_to_lifecycle_option_map_.find(url);
   if (options != url_to_lifecycle_option_map_.end() &&
       !options->second.empty()) {
