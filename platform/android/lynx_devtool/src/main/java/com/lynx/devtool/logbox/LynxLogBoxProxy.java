@@ -7,15 +7,12 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.ContextWrapper;
 import androidx.annotation.Keep;
-import com.lynx.BuildConfig;
 import com.lynx.devtool.LynxDevtoolEnv;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.devtoolwrapper.LynxBaseLogBoxProxy;
 import com.lynx.devtoolwrapper.LynxDevtool;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.behavior.LynxContext;
-import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -28,6 +25,7 @@ import org.json.JSONObject;
 @Keep
 public class LynxLogBoxProxy implements LynxBaseLogBoxProxy {
   private static final String TAG = "LynxLogBoxProxy";
+  private static final String ERR_NAMESPACE = "lynx";
   private WeakReference<LynxDevtool> mDevtool;
   private WeakReference<Context> mActivity;
   private Map<LogBoxLogLevel, List<String>> mLogs;
@@ -39,6 +37,17 @@ public class LynxLogBoxProxy implements LynxBaseLogBoxProxy {
     mLogs.put(LogBoxLogLevel.Warn, new ArrayList<String>());
     Context context = devtool.getLynxContext();
     attachContext(context);
+    registerErrorParserLoader();
+  }
+
+  private void registerErrorParserLoader() {
+    DevToolLogBoxEnv.inst().registerErrorParserLoader(
+        ERR_NAMESPACE, new DevToolLogBoxEnv.ILogBoxErrorParserLoader() {
+          @Override
+          public void loadErrorParser(Context context, DevToolLogBoxCallback callback) {
+            LogBoxFileLoadUtils.loadFileFromLocal(context, "logbox/lynx-error-parser.js", callback);
+          }
+        });
   }
 
   public void attachContext(Context context) {
@@ -154,6 +163,10 @@ public class LynxLogBoxProxy implements LynxBaseLogBoxProxy {
 
   public void onLoadTemplate() {
     LynxLogBoxOwner.getInstance().onLoadTemplate(mActivity.get(), this);
+  }
+
+  public String getErrorNamespace() {
+    return ERR_NAMESPACE;
   }
 
   private Context findActivityByContext(Context context) {

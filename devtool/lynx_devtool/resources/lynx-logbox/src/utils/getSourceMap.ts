@@ -60,10 +60,6 @@ class SourceMap {
   getSource(sourceName: string): string | null {
     return this.__source_map.sourceContentFor(sourceName);
   }
-
-  // getSources(): string[] {
-  //   return this.__source_map.sources;
-  // }
 }
 
 function extractSourceMapUrl(fileUri: string, fileContents: string): string {
@@ -77,10 +73,8 @@ function extractSourceMapUrl(fileUri: string, fileContents: string): string {
     match = next;
   }
   if (!(match && match[1])) {
-    // return Promise.reject(`Cannot find a source map directive for ${fileUri}.`);
     return '';
   }
-  // return Promise.resolve(match[1].toString());
   return match[1].toString();
 }
 
@@ -90,9 +84,6 @@ function extractSourceMapUrl(fileUri: string, fileContents: string): string {
  * @param {string} fileContents The contents of the source file.
  */
 async function getSourceMap(fileUri: string, fileContents: string): Promise<SourceMap> {
-  // SourceMapConsumer.initialize({
-  //   'lib/mappings.wasm': getMappingsWasm(),
-  // });
   let sm: any = extractSourceMapUrl(fileUri, fileContents);
   if (sm.indexOf('data:') === 0) {
     const base64 = /^data:application\/json;([\w=:"-]+;)*base64,/;

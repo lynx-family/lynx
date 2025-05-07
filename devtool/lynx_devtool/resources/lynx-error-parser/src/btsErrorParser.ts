@@ -2,11 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { IErrorParser, DEFAULT_CONTEXT_SIZE, parseJsonStringSafely, E_CODE_BTS, MAX_STACK_FRAME_LEN } from './base';
-import { IErrorProps, IErrorRecord } from '@/common/interface';
-import parseStack from '@/utils/stackParser';
-import { map } from '@/utils/mapper';
-import { getBridge } from '@/jsbridge';
+import { DEFAULT_CONTEXT_SIZE, parseJsonStringSafely, E_CODE_BTS, MAX_STACK_FRAME_LEN } from './base';
+import { IErrorProps, IErrorRecord, IErrorParser } from '@lynx-dev/logbox-types';
 
 function resourceNameMapping(name: string): string {
   if (name.indexOf('lynx_core.js') !== -1) {
@@ -33,15 +30,15 @@ export class BTSErrorParser implements IErrorParser {
       return null;
     }
     errorProps.stack = json.rawError.stack;
-    let rawFrames = parseStack(json.rawError);
+    let rawFrames = window.logBoxCore.parseStack(json.rawError);
     if (rawFrames.length > MAX_STACK_FRAME_LEN) {
       rawFrames = rawFrames.slice(0, MAX_STACK_FRAME_LEN);
     }
     // get the real stack line and col number
-    const parsedFrames = await map(rawFrames, DEFAULT_CONTEXT_SIZE, {
+    const parsedFrames = await window.logBoxCore.map(rawFrames, DEFAULT_CONTEXT_SIZE, {
       async getResource(name: string): Promise<string> {
         const resName = resourceNameMapping(name);
-        const res = await getBridge().queryResource(resName);
+        const res = await window.logBoxCore.queryResource(resName);
         return res ?? '';
       },
     });

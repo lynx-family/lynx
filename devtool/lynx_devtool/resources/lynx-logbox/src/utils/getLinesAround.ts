@@ -6,7 +6,7 @@
  */
 
 /* @flow */
-import { ScriptLine } from '../common/stackFrame';
+import { ScriptLine } from '@/common/stackFrame';
 
 /**
  *

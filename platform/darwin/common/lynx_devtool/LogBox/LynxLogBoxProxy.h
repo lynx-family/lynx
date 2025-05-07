@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithLynxView:(nullable LynxView *)view;
 - (nullable NSMutableArray *)logMessagesWithLevel:(LynxLogBoxLevel)level;
 - (void)removeLogMessagesWithLevel:(LynxLogBoxLevel)level;
+- (NSString *)getErrorNamespace;
 
 @end
 

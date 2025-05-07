@@ -25,13 +25,13 @@ function addEventListener(event: string, handler: (...args: unknown[]) => unknow
 
 export const ImmBridgeImpl: ILogBoxBridge = {
   addEventListeners(): void {
-    addEventListener('receiveNewLog', (log: any) => {
-      console.log('onNewLog: ', log);
+    addEventListener('receiveNewLog', (data: any) => {
+      console.log('onNewLog: ', data);
       if (receiveErrorCount < maxImmediateHandleErrorNumber) {
-        add(log);
+        add(data);
         receiveErrorCount += 1;
       } else {
-        getAppStore().dispatch(pushErrorCache(log));
+        getAppStore().dispatch(pushErrorCache(data));
       }
     });
     addEventListener('receiveViewInfo', (groupsInfo) => {
@@ -67,6 +67,17 @@ export const ImmBridgeImpl: ILogBoxBridge = {
           resolve(`${res}`);
         },
         { name: url },
+      ),
+    );
+  },
+  loadErrorParser(errNamespace: string): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) =>
+      callBridge(
+        'loadErrorParser',
+        (res: unknown) => {
+          resolve(res === true);
+        },
+        { namespace: errNamespace },
       ),
     );
   },

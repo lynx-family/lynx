@@ -24,13 +24,12 @@ import android.widget.LinearLayout;
 import com.lynx.basedevtool.utils.DevToolDownloader;
 import com.lynx.basedevtool.utils.DownloadCallback;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Map;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -82,36 +81,16 @@ abstract public class LogBoxDialogBase extends Dialog {
 
   private LinearLayout mRootLayout;
 
-  private Boolean mIsMappingsWasmLoaded = false;
-
   public class Callback {
     @JavascriptInterface
     public void on(String event, Object handler) {
       LLog.e(TAG, "onEvent " + event);
     }
 
-    public void sendResult(int callbackId, ArrayList<String> result) {
-      if (result != null) {
-        JSONObject obj = new JSONObject();
-        try {
-          obj.put("callbackId", callbackId);
-          obj.put("data", new JSONArray(result));
-        } catch (JSONException e) {
-          LLog.e(TAG, e.getMessage());
-          return;
-        }
-
-        final String js = "javascript: window.logbox.sendResult(" + obj.toString() + ");";
-        mWebView.post(new Runnable() {
-          @Override
-          public void run() {
-            evaluateJs(js);
-          }
-        });
+    public void sendResult(int callbackId, Object result) {
+      if (result == null) {
+        return;
       }
-    }
-
-    public void sendResult(int callbackId, String result) {
       JSONObject obj = new JSONObject();
       try {
         obj.put("callbackId", callbackId);
@@ -125,12 +104,7 @@ abstract public class LogBoxDialogBase extends Dialog {
       strBuilder.append("javascript: window.logbox.sendResult(")
           .append(obj.toString())
           .append(");");
-      mWebView.post(new Runnable() {
-        @Override
-        public void run() {
-          evaluateJs(strBuilder.toString());
-        }
-      });
+      evaluateJs(strBuilder.toString());
     }
 
     public void getResource(final int callbackId, final String name) {
@@ -289,32 +263,27 @@ abstract public class LogBoxDialogBase extends Dialog {
     mJsSource = jsSource;
   }
 
-  private void evaluateJs(String js) {
-    if (Build.VERSION.SDK_INT >= 19) {
-      mWebView.evaluateJavascript(js, null);
-    } else {
-      mWebView.loadUrl(js);
-    }
+  protected void evaluateJs(String js) {
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        if (Build.VERSION.SDK_INT >= 19) {
+          mWebView.evaluateJavascript(js, null);
+        } else {
+          mWebView.loadUrl(js);
+        }
+      }
+    });
   }
 
   protected void sendEvent(JSONObject event) {
     final String js = "javascript: window.logbox.sendEvent(" + event.toString() + ");";
-    mWebView.post(new Runnable() {
-      @Override
-      public void run() {
-        evaluateJs(js);
-      }
-    });
+    evaluateJs(js);
   }
 
   protected void sendEvent(String event) {
     final String js = "javascript: window.logbox.sendEvent({event: \"" + event + "\"});";
-    mWebView.post(new Runnable() {
-      @Override
-      public void run() {
-        evaluateJs(js);
-      }
-    });
+    evaluateJs(js);
   }
 
   public void destroyWebView() {

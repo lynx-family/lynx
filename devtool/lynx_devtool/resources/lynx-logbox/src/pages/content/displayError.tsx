@@ -3,8 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import type { IErrorState } from '@/models/errorReducer';
-import type { IErrorRecord } from '@/common/interface';
-import { LogLevels } from '@/common/interface';
+import { LogLevels, IErrorRecord } from '@lynx-dev/logbox-types';
 import { ErrorContainer } from './error-container';
 import styles from './displayError.less';
 import React from 'react';

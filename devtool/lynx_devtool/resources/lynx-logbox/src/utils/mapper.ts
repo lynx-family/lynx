@@ -6,14 +6,11 @@
  */
 
 /* @flow */
+import { IResourceProvider } from '@lynx-dev/logbox-types';
 import StackFrame from '../common/stackFrame';
 import { getSourceMap } from './getSourceMap';
 import { getLinesAround } from './getLinesAround';
 import { settle } from 'settle-promise';
-
-export interface IResourceProvider {
-  getResource: (name: string) => Promise<string>;
-}
 
 function getFilesInFrames(frames: StackFrame[]): string[] {
   let files: string[] = [];
@@ -35,7 +32,7 @@ function getFilesInFrames(frames: StackFrame[]): string[] {
  * @param {StackFrame[]} frames A set of <code>StackFrame</code>s which contain (generated) code positions.
  * @param {number} [contextLines=3] The number of lines to provide before and after the line specified in the <code>StackFrame</code>.
  */
-export async function map(frames: StackFrame[], contextLines: number = 3, resProvider: IResourceProvider): Promise<StackFrame[]> {
+export async function map(frames: StackFrame[], contextLines: number, resProvider: IResourceProvider): Promise<StackFrame[]> {
   const cache: any = {};
   const files = getFilesInFrames(frames);
   await settle(

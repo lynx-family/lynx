@@ -10,4 +10,5 @@ export interface ILogBoxBridge {
   changeView: (viewNumber: number) => void;
   deleteCurrentView: (viewNumber: number) => void;
   queryResource: (url: string) => Promise<string>;
+  loadErrorParser: (errNamespace: string) => Promise<boolean>;
 }

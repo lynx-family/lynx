@@ -31,11 +31,24 @@ importers:
       '@lynx-js/types': link:../../../../js_libraries/types
       '@types/react': 18.3.18
 
+  devtool/lynx_devtool/resources/logbox-types:
+    specifiers: {}
+
+  devtool/lynx_devtool/resources/lynx-error-parser:
+    specifiers:
+      '@lynx-dev/logbox-types': workspace:*
+      '@rsbuild/core': ^1.1.11
+    dependencies:
+      '@lynx-dev/logbox-types': link:../logbox-types
+    devDependencies:
+      '@rsbuild/core': 1.3.11
+
   devtool/lynx_devtool/resources/lynx-logbox:
     specifiers:
       '@ant-design/icons': ^5.5.2
       '@ant-design/pro-layout': ^5.0.12
       '@babel/code-frame': ^7.12.11
+      '@lynx-dev/logbox-types': workspace:*
       '@reduxjs/toolkit': ^1.4.0
       '@rsbuild/core': ^1.1.11
       '@rsbuild/plugin-less': ^1.1.0
@@ -61,6 +74,7 @@ importers:
       utf8: ^3.0.0
       vconsole: 3.5.1
     dependencies:
+      '@lynx-dev/logbox-types': link:../logbox-types
       '@reduxjs/toolkit': 1.9.7_yjltjvdrhae75cq22pbeoecbae
       '@types/react': 18.3.18
       '@types/react-dom': 18.3.5_@types+react@18.3.18

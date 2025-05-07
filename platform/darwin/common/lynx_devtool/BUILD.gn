@@ -76,6 +76,10 @@ devtool_source_set("logbox") {
   ]
 
   sources = [
+    "LogBox/DevToolLogBoxEnv.h",
+    "LogBox/DevToolLogBoxEnv.mm",
+    "LogBox/LogBoxFileLoadUtils.h",
+    "LogBox/LogBoxFileLoadUtils.mm",
     "LogBox/LynxLogBox.h",
     "LogBox/LynxLogBox.mm",
     "LogBox/LynxLogBoxHelper.h",

@@ -9,8 +9,11 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxView+Internal.h>
 #import <LynxDevtool/LynxDevtoolEnv.h>
+#import "DevToolLogBoxEnv.h"
 #import "LynxLogBoxHelper.h"
 #import "LynxLogBoxOwner.h"
+
+NSString* const ERR_NAMESPACE = @"lynx";
 
 @implementation LynxLogBoxProxy {
   __weak LynxView* _lynxView;
@@ -26,12 +29,20 @@
   if (self) {
     _lynxView = view;
     _logMessages = [NSMutableDictionary dictionary];
-    // See LynxLog.h, -1 for all logs.
-    // When using shared js context, global js runtime does not have runtimeId, so we need to get
-    // all console logs and filter out the logs belonging to current lynxview in showConsoleMessage.
     _needFlush = NO;
+    [self registerErrorParserLoader];
   }
   return self;
+}
+
+- (void)registerErrorParserLoader {
+  [[DevToolLogBoxEnv sharedInstance]
+      registerErrorParserLoader:^(LogBoxFileLoadCallback callback) {
+        [LogBoxFileLoadUtils loadFileFromLocal:@"logbox/lynx-error-parser"
+                                          type:@".js"
+                                    completion:callback];
+      }
+                  withNamespace:ERR_NAMESPACE];
 }
 
 - (UIViewController*)pageViewController {
@@ -200,6 +211,10 @@
 
 - (void)setLynxDevtool:(LynxDevtool*)devtool {
   _lynxDevtool = devtool;
+}
+
+- (NSString*)getErrorNamespace {
+  return ERR_NAMESPACE;
 }
 
 @end

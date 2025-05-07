@@ -8,7 +8,6 @@ import android.content.Context;
 import android.text.TextUtils;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.eventreport.LynxEventReporter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -79,7 +78,7 @@ public class LynxLogBoxManager {
         return;
       }
       if (proxyList.isCurrentProxy(logBoxProxy)) {
-        mLogBox.showLogMessage(level, msg);
+        mLogBox.showLogMessage(logBoxProxy.getErrorNamespace(), msg);
       } else if (isNewPoxy) {
         // if new log comes from a view that is not recorded
         // before by view list, update view count of log box
@@ -163,7 +162,7 @@ public class LynxLogBoxManager {
       mLogBox.setJSSource(getAllJsSourceOfCurrentView(level));
       LynxLogBoxProxy proxy = proxyList.currentProxy();
       if (proxy != null) {
-        mLogBox.showLogMessages(level, proxy.getLogMessages(level));
+        mLogBox.showLogMessages(proxy.getErrorNamespace(), proxy.getLogMessages(level));
       }
     }
   }

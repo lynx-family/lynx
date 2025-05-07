@@ -6,7 +6,7 @@ import { getAppStore } from '@/models/store';
 import { addError } from './errorReducer';
 import { parseErrorWrapper } from '@/parser';
 
-export async function add(error: string) {
+export async function add(error: any) {
   try {
     const errorRecord = await parseErrorWrapper(error);
     getAppStore().dispatch(addError({ errorRecord }));

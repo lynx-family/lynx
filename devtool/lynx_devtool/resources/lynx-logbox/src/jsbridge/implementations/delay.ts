@@ -29,6 +29,10 @@ export const DelayBridgeImpl: ILogBoxBridge = {
     await getBridgeReadyPromise();
     return ImmBridgeImpl.queryResource(url);
   },
+  async loadErrorParser(errNamespace: string): Promise<boolean> {
+    await getBridgeReadyPromise();
+    return ImmBridgeImpl.loadErrorParser(errNamespace);
+  },
   changeView(viewNumber: number): void {
     getBridgeReadyPromise().then(() => ImmBridgeImpl.changeView(viewNumber));
   },

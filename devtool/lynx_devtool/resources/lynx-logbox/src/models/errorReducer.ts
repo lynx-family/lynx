@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { createSlice } from '@reduxjs/toolkit';
-import { IErrorRecord } from '@/common/interface';
+import { IErrorRecord } from '@lynx-dev/logbox-types';
 
 export interface IErrorState {
   errorsOnDisplay: IErrorRecord[];

@@ -13,6 +13,7 @@
   "author": "Lynx Authors",
   "license": "Apache-2.0",
   "dependencies": {
+    "@lynx-dev/logbox-types": "workspace:*",
     "@reduxjs/toolkit": "^1.4.0",
     "@types/react": "^18.0.2",
     "@types/react-dom": "18",

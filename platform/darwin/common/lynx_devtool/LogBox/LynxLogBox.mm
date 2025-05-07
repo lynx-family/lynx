@@ -11,6 +11,7 @@
 #import <LynxDevtool/LynxDevtoolEnv.h>
 #import <TargetConditionals.h>
 #import <WebKit/WebKit.h>
+#import "DevToolLogBoxEnv.h"
 
 #if OS_OSX
 #define LynxLogBoxBaseWindow NSView
@@ -71,6 +72,7 @@ NSString *const BRIDGE_JS =
 
 @property(nonatomic, readwrite) NSMutableArray *errorMessages;
 @property(nonatomic, readwrite) NSDictionary *jsSource;
+@property(nonatomic, readwrite) NSString *errNamespace;
 
 - (instancetype)init;
 
@@ -155,6 +157,10 @@ NSString *const BRIDGE_JS =
         @"queryResource": ^(NSDictionary *params, NSNumber *callbackId) {
             NSString *name = params ? params[@"name"] : nil;
             [weakSelf getResource:name withCallbackId:callbackId];
+        },
+        @"loadErrorParser": ^(NSDictionary *params, NSNumber *callbackId) {
+            NSString* errNamespace = params ? params[@"namespace"] : nil;
+           [weakSelf loadErrorParser:errNamespace withCallbackId:callbackId];
         },
     };
     _templateUrl = templateUrl;
@@ -320,6 +326,14 @@ NSString *const BRIDGE_JS =
 - (void)sendJsResult:(NSDictionary *)msg {
   NSString *js =
       [NSString stringWithFormat:@"window.logbox.sendResult(%@);", [self dict2JsonString:msg]];
+  [self evaluateJS:js];
+}
+
+- (void)evaluateJS:(NSString *)js {
+  if (!js) {
+    NSLog(@"Failed to evaluate the script, the js is nil");
+    return;
+  }
   [_stackTraceWebView evaluateJavaScript:js
                        completionHandler:^(id _Nullable result, NSError *_Nullable error) {
                          if (error) {
@@ -344,8 +358,11 @@ NSString *const BRIDGE_JS =
 
 #pragma mark - Public Method
 
-- (void)showLogMessage:(NSString *)message {
-  [self sendJsEvent:@{@"event" : @"receiveNewLog", @"data" : message}];
+- (void)showLogMessage:(NSString *)message withNamespace:(NSString *)errNamespace {
+  [self sendJsEvent:@{
+    @"event" : @"receiveNewLog",
+    @"data" : @{@"log" : message, @"namespace" : errNamespace}
+  }];
 }
 
 - (void)updateViewInfo:(NSDictionary *)viewInfo {
@@ -501,6 +518,19 @@ NSString *const BRIDGE_JS =
   [self sendJsResult:emptyData];
 }
 
+- (void)loadErrorParser:(NSString *)errNamespace withCallbackId:(NSNumber *)callbackId {
+  [[DevToolLogBoxEnv sharedInstance]
+      loadErrorParser:errNamespace
+           completion:^(NSString *_Nullable data, NSError *_Nullable error) {
+             if (!error) {
+               [self evaluateJS:data];
+               [self sendJsResult:@{@"callbackId" : callbackId, @"data" : @YES}];
+             } else {
+               [self sendJsResult:@{@"callbackId" : callbackId, @"data" : @NO}];
+             }
+           }];
+}
+
 - (BOOL)isShowing {
   return !self.isHidden;
 }
@@ -521,7 +551,7 @@ NSString *const BRIDGE_JS =
     [self.logBoxCache.errorMessages
         enumerateObjectsUsingBlock:^(NSString *_Nonnull message, NSUInteger idx,
                                      BOOL *_Nonnull stop) {
-          [self showLogMessage:message];
+          [self showLogMessage:message withNamespace:self.logBoxCache.errNamespace];
         }];
   }
 }
@@ -675,13 +705,13 @@ NSString *const BRIDGE_JS =
   NSString *url = [proxy templateUrl];
   _templateUrl = url != nil ? url : @"";
   if (_isLoadingFinished) {
-    [self showLogMessageOnWindow:message];
+    [self showLogMessageOnWindow:message withNamespace:[proxy getErrorNamespace]];
   }
   [self showOnMainThread];
 }
 
-- (void)showLogMessageOnWindow:(NSString *)message {
-  [_window showLogMessage:message];
+- (void)showLogMessageOnWindow:(NSString *)message withNamespace:(NSString *)errNamespace {
+  [_window showLogMessage:message withNamespace:errNamespace];
 }
 
 - (void)showOnMainThread {
@@ -700,20 +730,17 @@ NSString *const BRIDGE_JS =
       if (strongSelf) {
         strongSelf->_isLoadingFinished = true;
         [strongSelf updateViewInfoOnWindow];
-        [[strongSelf getCurrentLogMsgs]
+        __strong typeof(_currentProxy) currentProxy = _currentProxy;
+        [[currentProxy logMessagesWithLevel:_currentLevel]
             enumerateObjectsUsingBlock:^(NSString *_Nonnull message, NSUInteger idx,
                                          BOOL *_Nonnull stop) {
-              [strongSelf showLogMessageOnWindow:message];
+              [strongSelf showLogMessageOnWindow:message
+                                   withNamespace:[currentProxy getErrorNamespace]];
             }];
       }
     }];
   }
   [self->_window show];
-}
-
-- (NSMutableArray *)getCurrentLogMsgs {
-  __strong typeof(_currentProxy) currentProxy = _currentProxy;
-  return [currentProxy logMessagesWithLevel:_currentLevel];
 }
 
 - (BOOL)isShowing {
@@ -759,9 +786,11 @@ NSString *const BRIDGE_JS =
 }
 
 - (void)copySnapShotToWindow {
+  __strong typeof(_currentProxy) currentProxy = _currentProxy;
   LynxLogBoxCache *cache = [[LynxLogBoxCache alloc] init];
-  cache.errorMessages = [self getCurrentLogMsgs];
-  cache.jsSource = [self getAllJsSource];
+  cache.errorMessages = [currentProxy logMessagesWithLevel:_currentLevel];
+  cache.jsSource = [currentProxy allJsSource];
+  cache.errNamespace = [currentProxy getErrorNamespace];
   _window.logBoxCache = cache;
 }
 

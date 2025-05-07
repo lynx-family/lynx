@@ -7,16 +7,11 @@ import android.content.Context;
 import android.text.TextUtils;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
 import com.lynx.devtoolwrapper.LogBoxLogLevel;
 import com.lynx.tasm.base.LLog;
-import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -24,9 +19,9 @@ class LogBoxDialog extends LogBoxDialogBase {
   private static final String TAG = "LogBoxDialog";
   // json key in message of call back
   private static final String KEY_CALLBACK_ID = "callbackId";
+  private static final String KEY_LOG = "log";
+  private static final String KEY_NAMESPACE = "namespace";
   private static final String KEY_DATA = "data";
-  private static final String KEY_NAME = "name";
-  private static final String KEY_URL = "url";
   private static final String KEY_VIEW_NUMBER = "viewNumber";
   private static final String KEY_EVENT = "event";
   private static final String KEY_CURRENT_VIEW = "currentView";
@@ -37,13 +32,6 @@ class LogBoxDialog extends LogBoxDialogBase {
   private static final String EVENT_NEW_LOG = "receiveNewLog";
   private static final String EVENT_VIEW_INFO = "receiveViewInfo";
   private static final String EVENT_RESET = "reset";
-
-  // error types
-  private static final int UNKNOWN_ERROR = -1;
-  private static final int JS_ERROR = 1;
-  private static final int LEPUS_ERROR = 2;
-  private static final int LEPUS_NG_ERROR = 3;
-  private static final int NATIVE_ERROR = 4;
 
   private LogBoxLogLevel mLevel;
   private WeakReference<LynxLogBoxManager> mManager;
@@ -75,20 +63,23 @@ class LogBoxDialog extends LogBoxDialogBase {
     }
   }
 
-  public void showLogMessages(LogBoxLogLevel level, List<String> logs) {
+  protected void showLogMessages(String namespace, List<String> logs) {
     if (logs == null) {
       return;
     }
     for (String log : logs) {
-      showLogMessage(level, log);
+      showLogMessage(namespace, log);
     }
   }
 
-  public void showLogMessage(LogBoxLogLevel level, String log) {
+  protected void showLogMessage(String namespace, String log) {
     JSONObject event = new JSONObject();
+    JSONObject data = new JSONObject();
     try {
+      data.put(KEY_LOG, log);
+      data.put(KEY_NAMESPACE, namespace);
       event.put(KEY_EVENT, EVENT_NEW_LOG);
-      event.put(KEY_DATA, log);
+      event.put(KEY_DATA, data);
       sendEvent(event);
     } catch (JSONException e) {
       LLog.e(TAG, e.getMessage());
@@ -142,16 +133,17 @@ class LogBoxDialog extends LogBoxDialogBase {
     private static final String CASE_SWITCH_LOGS = "changeView";
     private static final String CASE_TOAST = "toast";
     private static final String CASE_QUERY_RESOURCE = "queryResource";
+    private static final String CASE_LOAD_ERROR_PARSER = "loadErrorParser";
 
     @JavascriptInterface
     public void postMessage(String strParams) {
       try {
         JSONObject params = new JSONObject(strParams);
+        JSONObject data = new JSONObject((params.getString(KEY_DATA)));
         switch (params.getString(BRIDGE_NAME)) {
           case CASE_GET_EXCEPTION_STACK:
             loadMappingsWasm();
             UIThreadUtils.runOnUiThread(mLoadingFinishCallback);
-            sendResult(params.getInt(KEY_CALLBACK_ID), new ArrayList<String>());
             break;
           case CASE_DISMISS:
             dismiss();
@@ -164,13 +156,11 @@ class LogBoxDialog extends LogBoxDialogBase {
             requestLogsOfCurrentView();
             break;
           case CASE_SWITCH_LOGS:
-            JSONObject changeViewData = new JSONObject((params.getString(KEY_DATA)));
-            int nextViewIndex = changeViewData.getInt(KEY_VIEW_NUMBER);
+            int nextViewIndex = data.getInt(KEY_VIEW_NUMBER);
             requestLogsOfViewIndex(nextViewIndex);
             break;
           case CASE_TOAST:
-            JSONObject toastData = new JSONObject((params.getString(KEY_DATA)));
-            String toastMsg = toastData.getString("message");
+            String toastMsg = data.getString("message");
             if (!TextUtils.isEmpty(toastMsg)) {
               UIThreadUtils.runOnUiThread(new Runnable() {
                 @Override
@@ -181,9 +171,12 @@ class LogBoxDialog extends LogBoxDialogBase {
             }
             break;
           case CASE_QUERY_RESOURCE:
-            JSONObject resData = new JSONObject((params.getString(KEY_DATA)));
-            String name = resData.getString("name");
+            String name = data.getString("name");
             getResource(params.getInt(KEY_CALLBACK_ID), name);
+            break;
+          case CASE_LOAD_ERROR_PARSER:
+            String namespace = data.getString("namespace");
+            loadErrorParser(params.getInt(KEY_CALLBACK_ID), namespace);
             break;
           default:
             break;
@@ -191,6 +184,21 @@ class LogBoxDialog extends LogBoxDialogBase {
       } catch (Exception e) {
         LLog.e(TAG, e.getMessage());
       }
+    }
+
+    private void loadErrorParser(int callbackId, String namespace) {
+      DevToolLogBoxEnv.inst().loadErrorParser(getContext(), namespace, new DevToolLogBoxCallback() {
+        @Override
+        public void onSuccess(String data) {
+          evaluateJs(data);
+          sendResult(callbackId, true);
+        }
+
+        @Override
+        public void onFailure(String reason) {
+          sendResult(callbackId, false);
+        }
+      });
     }
 
     private void dismiss() {

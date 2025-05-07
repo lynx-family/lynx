@@ -1,13 +1,9 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-
-import { IErrorParser, DEFAULT_CONTEXT_SIZE, parseJsonStringSafely, E_CODE_MTS, MAX_STACK_FRAME_LEN } from './base';
-import { IErrorProps, IErrorRecord } from '@/common/interface';
-import parseStack from '@/utils/stackParser';
-import { getBridge } from '@/jsbridge';
-import { map, IResourceProvider } from '@/utils/mapper';
-import StackFrame from '@/common/stackFrame';
+import { DEFAULT_CONTEXT_SIZE, parseJsonStringSafely, E_CODE_MTS, MAX_STACK_FRAME_LEN } from './base';
+import { IErrorProps, IErrorRecord, IErrorParser, IResourceProvider } from '@lynx-dev/logbox-types';
+import type { StackFrame } from '@lynx-dev/logbox-types';
 
 interface IMTJSErrorInfo {
   message: string;
@@ -40,7 +36,7 @@ class MTSResourceProvider implements IResourceProvider {
       console.log('MTSResourceProvider: invalid function info in debug info');
     }
     console.log('MTSResourceProvider: cannot find function source in debug info');
-    return null;
+    return '';
   }
 }
 
@@ -64,7 +60,7 @@ export class MTSErrorParser implements IErrorParser {
     const errorInfo = this.extractErrorInfo(originalErrorInfo);
     errorProps.stack = errorInfo.stack;
     // get the origin stack frames
-    let rawFrames = parseStack(errorInfo.stack);
+    let rawFrames = window.logBoxCore.parseStack(errorInfo.stack);
     if (rawFrames.length > MAX_STACK_FRAME_LEN) {
       rawFrames = rawFrames.slice(0, MAX_STACK_FRAME_LEN);
     }
@@ -77,7 +73,7 @@ export class MTSErrorParser implements IErrorParser {
     if (!errorInfo.debugInfoUrl) {
       return errorRecord;
     }
-    const debugInfo = await getBridge().queryResource(errorInfo.debugInfoUrl);
+    const debugInfo = await window.logBoxCore.queryResource(errorInfo.debugInfoUrl);
     const debugInfoJson = parseJsonStringSafely(debugInfo);
     if (!debugInfoJson) {
       console.log('Failed to parse main thread js error caused by invalid debug info');
@@ -92,7 +88,7 @@ export class MTSErrorParser implements IErrorParser {
       }
     }
     rawFrames = this.getStackFramesInProduction(rawFrames, debugInfoJson);
-    const parsedFrames = await map(rawFrames, DEFAULT_CONTEXT_SIZE, new MTSResourceProvider(debugInfoJson));
+    const parsedFrames = await window.logBoxCore.map(rawFrames, DEFAULT_CONTEXT_SIZE, new MTSResourceProvider(debugInfoJson));
     errorRecord.stackFrames = parsedFrames;
     return errorRecord;
   }
@@ -107,7 +103,7 @@ export class MTSErrorParser implements IErrorParser {
     };
   }
 
-  getCallerInfo(functionId, pcIndex, debugInfoJson: any): string {
+  getCallerInfo(functionId: number | null, pcIndex: number | null, debugInfoJson: any): string {
     if (!functionId || !pcIndex) {
       console.log('Failed to get caller info caused by invalid function id or pc index');
       return '';
@@ -121,7 +117,7 @@ export class MTSErrorParser implements IErrorParser {
     }
     const functionInfoList = debugInfo ? debugInfo.function_info : null;
     if (functionInfoList) {
-      const functionInfo = functionInfoList.find((info) => info.function_id == functionId);
+      const functionInfo = functionInfoList.find((info: any) => info.function_id == functionId);
       if (functionInfo && functionInfo.pc2caller_info && pcIndex in functionInfo.pc2caller_info) {
         return functionInfo.pc2caller_info[pcIndex];
       }
