@@ -58,21 +58,12 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Run Unittests
         run: |
           set -e
-          source ../myenv/bin/activate
+          python3 -m venv myenv
+          source myenv/bin/activate
           source tools/envsetup.sh
           tools/rtf/rtf native-ut run --names lynx
 
@@ -122,17 +113,7 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Setup Ruby Cache
         uses: ./lynx/.github/actions/ios-common-deps
       - name: Install iOS Dependencies
@@ -142,6 +123,7 @@ jobs:
           max_attempts: 3
           command: |
             set -e
+            python3 -m venv myenv
             source myenv/bin/activate
             cd $GITHUB_WORKSPACE/lynx
             source tools/envsetup.sh
@@ -152,7 +134,7 @@ jobs:
       - name: Run Unittests
         run: |
           set -e
-          source ../myenv/bin/activate
+          source myenv/bin/activate
           pushd explorer/darwin/ios/lynx_explorer
           xcodebuild -showsdks | grep -Eo -m 1 "iphonesimulator([0-9]{1,}\.)+[0-9]{1,}" > sdk.txt
           sdkVersion=$(awk '{ sub(/iphonesimulator/,""); print $0 }' sdk.txt)
@@ -192,20 +174,11 @@ jobs:
         with:
           path: lynx
       - name: Install Common Dependencies
-        uses: nick-fields/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m venv myenv
-            source myenv/bin/activate
-            cd $GITHUB_WORKSPACE/lynx
-            python3 -m pip install PyYAML -i https://pypi.org/simple
-            tools/hab sync .
+        uses: ./lynx/.github/actions/common-deps
       - name: Build Darwin Tasm
         run: |
-          source ../myenv/bin/activate
+          python3 -m venv myenv
+          source myenv/bin/activate
           source tools/envsetup.sh
           tools/hab sync . -f
           pushd oliver/lynx-tasm
@@ -397,5 +370,5 @@ jobs:
   release-workflow:
     uses: ./.github/workflows/publish-release.yml
     with:
-      dry_run: true
+      dry-run: true
     secrets: inherit
