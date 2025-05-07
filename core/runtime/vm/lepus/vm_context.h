@@ -40,6 +40,7 @@ class VMContext : public Context {
         closures_(),
         block_context_() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, VM_CONTEXT_CONSTRUCTION);
+    Initialize();
   }
   ~VMContext() override;
   virtual void Initialize() override;

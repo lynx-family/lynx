@@ -41,7 +41,6 @@ TemplateEntry::TemplateEntry(const std::shared_ptr<lepus::Context>& context,
       std::make_shared<CSSStyleSheetManager>(this);
 
   vm_context_->SetSdkVersion(targetSdkVersion);
-  vm_context_->Initialize();
 }
 
 bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
@@ -96,7 +95,6 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   }
 
   vm_context_->SetSdkVersion(assembler->target_sdk_version_);
-  vm_context_->Initialize();
 #if ENABLE_TRACE_PERFETTO
   if (is_lepusng_binary) {
     std::shared_ptr<lepus::QuickContext> context =
