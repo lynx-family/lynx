@@ -23,28 +23,31 @@
   // class.
 }
 
-- (void)empty {
+- (void)testEmpty {
   LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithJson:@""];
   auto* value = LynxGetLepusValueFromTemplateData(templateData);
-  XCTAssertTrue(value->IsEmpty());
+  XCTAssertTrue(value->IsTable());
+  XCTAssertTrue(value->Table()->size() == 0);
 }
 
-- (void)markReadOnly {
+- (void)testMarkReadOnly {
   LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithJson:@""];
   XCTAssertFalse(templateData.isReadOnly);
   [templateData markReadOnly];
   XCTAssertTrue(templateData.isReadOnly);
 }
 
-- (void)fromMap {
-  NSDictionary* dict = @{@"a" : @"1"};
+- (void)testFromMap {
+  NSDictionary* dict = @{@"a" : @"1", @"b" : [NSNull null]};
   LynxTemplateData* templateData = [[LynxTemplateData alloc] initWithDictionary:dict];
   auto* value = LynxGetLepusValueFromTemplateData(templateData);
 
   XCTAssertFalse(value->IsEmpty());
   XCTAssertTrue(value->IsTable());
-  XCTAssertTrue(value->Contains("a"));
-  XCTAssertTrue([dict isEqual:[templateData dictionary]]);
+  XCTAssertEqual(value->GetProperty("a").String(), "1");
+  XCTAssertTrue(value->GetProperty("b").IsNil());
+
+  XCTAssertTrue([@{@"a" : @"1"} isEqual:[templateData dictionary]]);
 }
 
 - (void)testLong {
