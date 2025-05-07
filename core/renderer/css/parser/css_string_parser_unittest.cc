@@ -26,6 +26,40 @@ namespace lynx {
 namespace tasm {
 namespace test {
 
+TEST(CSSStringParser, offset_rotate_value) {
+  CSSParserConfigs configs;
+  {
+    std::string raw = "auto";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    auto result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+
+    auto auto_value = result.Number();
+    EXPECT_FLOAT_EQ(auto_value, -1024.0);
+
+    raw = "45deg";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsNumber());
+    auto deg_value = result.Number();
+    EXPECT_FLOAT_EQ(deg_value, 45.0);
+
+    raw = "100%";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsEmpty());
+
+    raw = "wrongvalue";
+    parser = CSSStringParser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                             configs};
+    result = parser.ParseOffsetRotate();
+    EXPECT_TRUE(result.IsEmpty());
+  }
+}
+
 TEST(CSSStringParser, parse_cursor) {
   CSSParserConfigs configs;
   {
@@ -390,7 +424,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px)";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -400,7 +434,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10 10 10 10))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -409,7 +443,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px 10px 10px 10px) asd)";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -418,7 +452,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px 10px circle))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -427,7 +461,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px 10px 10px 10px 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -436,7 +470,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px round 10px // 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -445,7 +479,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
     std::string raw = R"(inset(10px round 10px 10px 10px 10px 10px / 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -455,7 +489,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
         R"(inset(10px round 10px 10px / 10px 10px 10px 10px 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -465,7 +499,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
         R"(inset(10px super-ellipse 10 10px 10px / 10px 10px 10px 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 
@@ -475,7 +509,7 @@ TEST(CSSStringParser, basic_shape_inset_invalid) {
         R"(inset(10px super-ellipse 10px 10px / 10px 10px 10px 10px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_FALSE(result.IsArray());
   }
 }
@@ -487,7 +521,7 @@ TEST(CSSStringParser, basic_shape_inset_rect) {
     std::string raw = R"(inset(5%))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -510,7 +544,7 @@ TEST(CSSStringParser, basic_shape_inset_rect) {
     std::string raw = R"(inset(10px 20px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -529,7 +563,7 @@ TEST(CSSStringParser, basic_shape_inset_rect) {
     std::string raw = R"(inset(10px 20% 30ppx))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -551,7 +585,7 @@ TEST(CSSStringParser, basic_shape_inset_rect) {
     std::string raw = R"(inset(10px 20% 30ppx 40rpx))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -577,7 +611,7 @@ TEST(CSSStringParser, basic_shape_inset_rounded) {
     std::string raw = R"(inset(10px round 10px / 20px))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -629,7 +663,7 @@ TEST(CSSStringParser, basic_shape_inset_rounded) {
     std::string raw = R"(inset(10px round 10px 20ppx / 20px 30% 40%))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();
@@ -676,7 +710,7 @@ TEST(CSSStringParser, basic_shape_inset_ellipse_corner) {
         R"(inset(10px super-ellipse 5 6 10px 20ppx / 20px 30% 40%))";
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
-    auto result = parser.ParseClipPath();
+    auto result = parser.ParseShapePath();
     EXPECT_TRUE(result.IsArray());
 
     auto arr = result.Array();

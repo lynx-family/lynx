@@ -26,6 +26,9 @@ struct DefaultComputedStyle {
   static constexpr float DEFAULT_LETTER_SPACING = -1.0f;
   static constexpr float DEFAULT_FLOAT = 0.0f;
   static constexpr float DEFAULT_OPACITY = 1.0f;
+  static constexpr float DEFAULT_OFFSET_DISTANCE = 0.0f;
+  static constexpr float DEFAULT_OFFSET_ROTATE =
+      -1.0f * static_cast<int>(starlight::OffsetRotateType::kAuto);
 
   static constexpr bool DEFAULT_AUTO_FONT_SIZE = false;
   static constexpr float DEFAULT_AUTO_FONT_SIZE_STEP_GRANULARITY = 1.0f;

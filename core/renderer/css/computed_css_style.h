@@ -288,6 +288,14 @@ class ComputedCSSStyle {
     return new_animator_interpolation_;
   }
 
+  const fml::RefPtr<lepus::CArray>& GetOffsetPath() const {
+    return offset_path_;
+  }
+
+  float GetOffsetDistance() const { return offset_distance_; }
+
+  float GetOffsetRotate() const { return offset_rotate_; }
+
   static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id) {
     return kPlatformInheritableProperty->contains(id);
   }
@@ -318,6 +326,8 @@ class ComputedCSSStyle {
 
   int z_index_{DefaultComputedStyle::DEFAULT_LONG};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
+  float offset_distance_{DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE};
+  float offset_rotate_ = {DefaultComputedStyle::DEFAULT_OFFSET_ROTATE};
 
   OverflowType overflow_{DefaultComputedStyle::DEFAULT_OVERFLOW};
   OverflowType overflow_x_{DefaultComputedStyle::DEFAULT_OVERFLOW};
@@ -344,6 +354,8 @@ class ComputedCSSStyle {
   base::flex_optional<lepus_value> cursor_;
   // clip-path array [type, args..]
   fml::RefPtr<lepus::CArray> clip_path_{nullptr};
+  // offset-path array [type, args..]
+  fml::RefPtr<lepus::CArray> offset_path_{nullptr};
   ImageRenderingType image_rendering_ = ImageRenderingType::kAuto;
   XAppRegionType app_region_ = XAppRegionType::kNone;
   XAnimationColorInterpolationType new_animator_interpolation_ =
@@ -480,7 +492,10 @@ class ComputedCSSStyle {
   V(Hyphens)                             \
   V(XAppRegion)                          \
   V(XHandleSize)                         \
-  V(XHandleColor)
+  V(XHandleColor)                        \
+  V(OffsetDistance)                      \
+  V(OffsetPath)                          \
+  V(OffsetRotate)
 
 #define GETTER_STYLE_STRING(name) lepus_value name##ToLepus();
   FOREACH_PLATFORM_PROPERTY(GETTER_STYLE_STRING)

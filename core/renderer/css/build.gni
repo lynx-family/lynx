@@ -138,6 +138,8 @@ lynx_css_core_sources = [
   "parser/mask_shorthand_handler.h",
   "parser/number_handler.cc",
   "parser/number_handler.h",
+  "parser/offset_rotate_handler.cc",
+  "parser/offset_rotate_handler.h",
   "parser/relative_align_handler.cc",
   "parser/relative_align_handler.h",
   "parser/shadow_handler.cc",

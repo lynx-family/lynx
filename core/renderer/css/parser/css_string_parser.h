@@ -38,6 +38,8 @@ static constexpr uint32_t PATTERN_PERCENT =
     static_cast<uint32_t>(CSSValuePattern::PERCENT);
 static constexpr int SIZE_AUTO =
     -1.f * static_cast<int>(starlight::BackgroundSizeType::kAuto);
+static constexpr int ANGLE_AUTO =
+    -1.f * static_cast<int>(starlight::OffsetRotateType::kAuto);
 
 class CSSStringParser final {
   struct StackValue {
@@ -194,7 +196,9 @@ class CSSStringParser final {
   std::string ParseUrl();
 
   // <basic-shape>
-  lepus::Value ParseClipPath();
+  lepus::Value ParseShapePath();
+
+  lepus::Value ParseOffsetRotate();
 
   CSSValue ParseLength();
   void ParseLengthTo(CSSValue& target);

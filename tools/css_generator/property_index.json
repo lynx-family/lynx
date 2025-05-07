@@ -1,6 +1,6 @@
 [
     {
-        "count": 213
+        "count": 216
     },
     {
         "id": 1,
@@ -853,5 +853,17 @@
     {
         "id": 213,
         "name": "-x-handle-color"
+    },
+    {
+        "id": 214,
+        "name": "offset-distance"
+    },
+    {
+        "id": 215,
+        "name": "offset-path"
+    },
+    {
+        "id": 216,
+        "name": "offset-rotate"
     }
 ]

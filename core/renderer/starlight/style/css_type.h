@@ -364,6 +364,11 @@ enum class LinearGradientDirection : int32_t {
   kAngle = 9,
 };
 
+enum class OffsetRotateType : uint32_t {
+  kAuto = (1 << 10),
+  kAngle,
+};
+
 }  // namespace starlight
 }  // namespace lynx
 

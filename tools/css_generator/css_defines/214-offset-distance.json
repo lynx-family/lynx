@@ -1,0 +1,10 @@
+{
+  "name": "offset-distance",
+  "id": 214,
+  "type": "number",
+  "default_value": "0",
+  "version": "3.2",
+  "author": "wangyifei.20010605",
+  "consumption_status": "skip",
+  "desc": ""
+}

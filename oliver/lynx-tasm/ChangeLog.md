@@ -1,3 +1,6 @@
+# 0.0.7
+* support new css properties: `offset-path`, `offset-distance`, `offset-rotate`.
+
 # 0.0.6
 * support `decode_napi` to resolve a tasm file.
 

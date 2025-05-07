@@ -2818,6 +2818,91 @@ bool ComputedCSSStyle::SetClipPath(const tasm::CSSValue& value,
   return last_path.get() == nullptr || *last_path != *clip_path_;
 }
 
+bool ComputedCSSStyle::SetOffsetDistance(const tasm::CSSValue& value,
+                                         const bool reset) {
+  return CSSStyleUtils::ComputeFloatStyle(
+      value, reset, offset_distance_,
+      DefaultComputedStyle::DEFAULT_OFFSET_DISTANCE,
+      "offset_distance must be a float!", parser_configs_);
+}
+
+bool ComputedCSSStyle::SetOffsetRotate(const tasm::CSSValue& value,
+                                       const bool reset) {
+  return CSSStyleUtils::ComputeFloatStyle(
+      value, reset, offset_rotate_, DefaultComputedStyle::DEFAULT_OFFSET_ROTATE,
+      "offset_rotate must be a float!", parser_configs_);
+}
+
+bool ComputedCSSStyle::SetOffsetPath(const tasm::CSSValue& value,
+                                     const bool reset) {
+  // ref to old array
+  fml::RefPtr<lepus::CArray> last_path = offset_path_;
+  offset_path_ = lepus::CArray::Create();
+
+  fml::RefPtr<lepus::CArray> raw_array;
+  BasicShapeType type = BasicShapeType::kUnknown;
+  if (reset || !value.IsArray() || value.GetValue().Array()->size() == 0) {
+    // if not reset, it means value is invalid and launch warning.
+    LynxWarning(reset, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
+                "clip-path must be an array")
+  } else {
+    raw_array = value.GetValue().Array();
+    type = static_cast<starlight::BasicShapeType>(raw_array->get(0).Number());
+  }
+
+  switch (type) {
+    case BasicShapeType::kUnknown:
+      // Unknown type, reset the clip-path.
+      break;
+    case BasicShapeType::kCircle:
+      if (raw_array->size() != 7) {
+        LOGW("Error in parsing basic shape circle.");
+        return false;
+      }
+      CSSStyleUtils::ComputeBasicShapeCircle(raw_array, reset, offset_path_,
+                                             length_context_, parser_configs_);
+      break;
+    case BasicShapeType::kEllipse:
+      if (raw_array->size() != 9) {
+        LOGW("Error in parsing basic shape circle.");
+        return false;
+      }
+      CSSStyleUtils::ComputeBasicShapeEllipse(raw_array, reset, offset_path_,
+                                              length_context_, parser_configs_);
+      break;
+    case BasicShapeType::kPath:
+      if (raw_array->size() != 2) {
+        LOGW("Error in parsing basic shape path.");
+        return false;
+      }
+      CSSStyleUtils::ComputeBasicShapePath(raw_array, reset, offset_path_);
+      break;
+    case BasicShapeType::kSuperEllipse:
+      if (raw_array->size() != 11) {
+        LOGW("Error in parsing super ellipse.");
+        return false;
+      }
+      CSSStyleUtils::ComputeSuperEllipse(raw_array, reset, offset_path_,
+                                         length_context_, parser_configs_);
+      break;
+    case BasicShapeType::kInset:
+      constexpr int INSET_ARRAY_LENGTH_RECT = 9;
+      constexpr int INSET_ARRAY_LENGTH_ROUND = 25;
+      constexpr int INSET_ARRAY_LENGTH_SUPER_ELLIPSE = 27;
+      if (raw_array->size() != INSET_ARRAY_LENGTH_RECT &&
+          raw_array->size() != INSET_ARRAY_LENGTH_ROUND &&
+          raw_array->size() != INSET_ARRAY_LENGTH_SUPER_ELLIPSE) {
+        LOGW("Error in parsing basic shape inset.");
+        return false;
+      }
+      CSSStyleUtils::ComputeBasicShapeInset(raw_array, reset, offset_path_,
+                                            length_context_, parser_configs_);
+      break;
+  }
+  // Check last path equals to current path.
+  return last_path.get() == nullptr || *last_path != *offset_path_;
+}
+
 // TODO(liyanbo): this will replace by drawInfo.
 // getter
 
@@ -3625,6 +3710,20 @@ lepus::Value ComputedCSSStyle::ClipPathToLepus() {
   // Parse failed or reset, return an empty array.
   return clip_path_.get() ? lepus::Value(clip_path_)
                           : lepus::Value(lepus::CArray::Create());
+}
+
+lepus::Value ComputedCSSStyle::OffsetPathToLepus() {
+  // Parse failed or reset, return an empty array.
+  return offset_path_.get() ? lepus::Value(offset_path_)
+                            : lepus::Value(lepus::CArray::Create());
+}
+
+lepus::Value ComputedCSSStyle::OffsetDistanceToLepus() {
+  return lepus::Value(offset_distance_);
+}
+
+lepus::Value ComputedCSSStyle::OffsetRotateToLepus() {
+  return lepus::Value(offset_rotate_);
 }
 
 bool ComputedCSSStyle::SetMaskImage(const tasm::CSSValue& value,

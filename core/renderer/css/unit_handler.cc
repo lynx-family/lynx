@@ -51,6 +51,7 @@
 #include "core/renderer/css/parser/list_gap_handler.h"
 #include "core/renderer/css/parser/mask_shorthand_handler.h"
 #include "core/renderer/css/parser/number_handler.h"
+#include "core/renderer/css/parser/offset_rotate_handler.h"
 #include "core/renderer/css/parser/relative_align_handler.h"
 #include "core/renderer/css/parser/shadow_handler.h"
 #include "core/renderer/css/parser/string_handler.h"
