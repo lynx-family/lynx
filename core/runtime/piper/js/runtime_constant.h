@@ -75,6 +75,9 @@ constexpr const char kMessageEventTypeOnBTSConsoleEvent[] =
     "__OnBTSConsoleEvent";
 constexpr const char kMessageEventTypeOnRuntimeCreate[] = "__OnRuntimeCreate";
 constexpr const char kMessageEventTypeGlobalEvent[] = "GlobalEvent";
+constexpr const char kMessageEventTypeRenderPage[] = "RenderPage";
+constexpr const char kMessageEventTypeUpdatePage[] = "UpdatePage";
+constexpr const char kMessageEventTypeUpdateGlobalProps[] = "UpdateGlobalProps";
 
 /**
  * @name: enableMicrotaskPromisePolyfill

@@ -548,7 +548,7 @@ void LynxRuntime::CallFunction(const std::string& module_id,
         ContextProxy::Type::kCoreContext,
         std::make_unique<pub::ValueImplLepus>(*app_->ParseJSValueToLepusValue(
             piper::Value(*js_runtime, arguments), PAGE_GROUP_ID)));
-    native_context_proxy->DispatchEvent(coreContextEvent);
+    delegate_->DispatchMessageEvent(std::move(coreContextEvent));
     return;
   }
   app_->CallFunction(module_id, method_id, std::move(arguments),

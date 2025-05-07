@@ -251,7 +251,22 @@ void TemplateAssembler::UpdateGlobalProps(const lepus::Value& data,
       LOGE("TemplateAssembler::UpdateGlobalProps since the context is null!!");
       return;
     }
-    context->Call(BASE_STATIC_STRING(kUpdateGlobalProps), data);
+    auto engine_context_proxy =
+        GetContextProxy(runtime::ContextProxy::Type::kEngineContext);
+    if (engine_context_proxy != nullptr &&
+        engine_context_proxy->HasEventListener(
+            runtime::kMessageEventTypeUpdateGlobalProps)) {
+      auto args = lepus::CArray::Create();
+      args->emplace_back(data);
+      runtime::MessageEvent event(
+          runtime::kMessageEventTypeUpdateGlobalProps,
+          runtime::ContextProxy::Type::kEngineContext,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+      engine_context_proxy->DispatchEvent(event);
+    } else {
+      context->Call(BASE_STATIC_STRING(kUpdateGlobalProps), data);
+    }
   } else {
     // Update `__globalProps` for LazyBundle, used only in Radon.
     ForEachEntry([card_entry = this->FindEntry(DEFAULT_ENTRY_NAME).get(),
@@ -629,10 +644,26 @@ void TemplateAssembler::UpdateTemplate(
                           lepus::Value(data.PreprocessorName()));
     }
 
-    FindEntry(tasm::DEFAULT_ENTRY_NAME)
-        ->GetVm()
-        ->Call(BASE_STATIC_STRING(kUpdatePage), data.GetValue(),
-               std::move(options));
+    auto engine_context_proxy =
+        GetContextProxy(runtime::ContextProxy::Type::kEngineContext);
+    if (engine_context_proxy != nullptr &&
+        engine_context_proxy->HasEventListener(
+            runtime::kMessageEventTypeUpdatePage)) {
+      auto args = lepus::CArray::Create();
+      args->emplace_back(data.GetValue());
+      args->emplace_back(std::move(options));
+      runtime::MessageEvent event(
+          runtime::kMessageEventTypeUpdatePage,
+          runtime::ContextProxy::Type::kEngineContext,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+      engine_context_proxy->DispatchEvent(event);
+    } else {
+      FindEntry(tasm::DEFAULT_ENTRY_NAME)
+          ->GetVm()
+          ->Call(BASE_STATIC_STRING(kUpdatePage), data.GetValue(),
+                 std::move(options));
+    }
 
     if (!update_page_option.reload_template &&
         pipeline_options.need_timestamps) {
@@ -696,8 +727,24 @@ void TemplateAssembler::RenderTemplateForFiber(
 
   // No need to re-render nodes during SSR
   if (!page_proxy_.IsWaitingSSRHydrate()) {
-    card->GetVm()->Call(BASE_STATIC_STRING(kRenderPage), data.GetValue(),
-                        std::move(render_options));
+    auto engine_context_proxy =
+        GetContextProxy(runtime::ContextProxy::Type::kEngineContext);
+    if (engine_context_proxy != nullptr &&
+        engine_context_proxy->HasEventListener(
+            runtime::kMessageEventTypeRenderPage)) {
+      auto args = lepus::CArray::Create();
+      args->emplace_back(data.GetValue());
+      args->emplace_back(std::move(render_options));
+      runtime::MessageEvent event(
+          runtime::kMessageEventTypeRenderPage,
+          runtime::ContextProxy::Type::kEngineContext,
+          runtime::ContextProxy::Type::kCoreContext,
+          std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+      engine_context_proxy->DispatchEvent(event);
+    } else {
+      card->GetVm()->Call(BASE_STATIC_STRING(kRenderPage), data.GetValue(),
+                          std::move(render_options));
+    }
   } else {
     // When Hydrating SSR page, the extreme_parsed_style flag has to be cleared
     // to make element do full CSS resolving when the classes is updated after
