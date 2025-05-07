@@ -29,36 +29,42 @@ public final class CallbackImpl implements Callback {
   @Keep
   @Override
   public void invoke(Object... args) {
-    if (mInvoked) {
-      LLog.report("LynxModule",
-          "Illegal callback invocation from native "
-              + "module. This callback type only permits a single invocation from "
-              + "native code.");
-      return;
+    synchronized (this) {
+      if (mInvoked) {
+        LLog.report("LynxModule",
+            "Illegal callback invocation from native "
+                + "module. This callback type only permits a single invocation from "
+                + "native code.");
+        return;
+      }
+      mInvoked = true;
     }
+
     if (mNativePtr == 0) {
       LLog.e("LynxModule", "callback invoke failed: mNativePtr is NULL");
       return;
     }
     nativeInvoke(mNativePtr, JavaOnlyArray.of(args));
-    mInvoked = true;
   }
 
   @Keep
   public void invokeCallback(Object... args) {
-    if (mInvoked) {
-      LLog.report("LynxModule",
-          "Illegal callback invocation from native "
-              + "module. This callback type only permits a single invocation from "
-              + "native code.");
-      return;
+    synchronized (this) {
+      if (mInvoked) {
+        LLog.report("LynxModule",
+            "Illegal callback invocation from native "
+                + "module. This callback type only permits a single invocation from "
+                + "native code.");
+        return;
+      }
+      mInvoked = true;
     }
+
     if (mNativePtr == 0) {
       LLog.e("LynxModule", "callback invoke failed: mNativePtr is NULL");
       return;
     }
     nativeInvoke(mNativePtr, JavaOnlyArray.of(args));
-    mInvoked = true;
   }
 
   @Keep private native void nativeInvoke(long nativePtr, WritableArray array);
