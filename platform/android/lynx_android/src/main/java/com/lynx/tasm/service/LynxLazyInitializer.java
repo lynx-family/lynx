@@ -4,7 +4,6 @@
 
 package com.lynx.tasm.service;
 
-import android.os.Looper;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.core.LynxThreadPool;
 import java.util.concurrent.CountDownLatch;
@@ -52,11 +51,7 @@ public abstract class LynxLazyInitializer {
       }
     };
 
-    if (Looper.myLooper() == Looper.getMainLooper()) {
-      LynxThreadPool.getBriefIOExecutor().execute(initTask);
-    } else {
-      initTask.run();
-    }
+    LynxThreadPool.getBriefIOExecutor().execute(initTask);
   }
 
   /**
