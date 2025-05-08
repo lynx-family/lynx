@@ -74,6 +74,7 @@ public class abstract com::lynx::jsbridge::jsi::AbsLynxJSIObjectDescriptor : com
   public abstract String com.lynx.jsbridge.jsi.AbsLynxJSIObjectDescriptor.getClassName();
   public String[] com.lynx.jsbridge.jsi.AbsLynxJSIObjectDescriptor.getFields();
   public String[] com.lynx.jsbridge.jsi.AbsLynxJSIObjectDescriptor.getLynxObjectDescriptorInfo(String fieldName);
+  public void com.lynx.jsbridge.jsi.AbsLynxJSIObjectDescriptor.warmUp();
 }
 
 public class abstract com::lynx::tasm::behavior::ui::list::AbsLynxList : com::lynx::tasm::behavior::ui::view::UISimpleView< T > {
@@ -2081,6 +2082,7 @@ public interface com::lynx::jsbridge::jsi::ILynxJSIObjectDescriptor {
   public String com.lynx.jsbridge.jsi.ILynxJSIObjectDescriptor.getClassName();
   public String[] com.lynx.jsbridge.jsi.ILynxJSIObjectDescriptor.getFields();
   public String[] com.lynx.jsbridge.jsi.ILynxJSIObjectDescriptor.getLynxObjectDescriptorInfo(String fieldName);
+  public void com.lynx.jsbridge.jsi.ILynxJSIObjectDescriptor.warmUp();
 }
 
 public interface com::lynx::devtoolwrapper::ILynxLogBox {
@@ -4712,6 +4714,7 @@ public class com::lynx::jsbridge::LynxIntersectionObserverModule : com.lynx.jsbr
 public class com::lynx::jsbridge::jsi::LynxJSIObjectHub :  {
   public static LynxJSIObjectHub com.lynx.jsbridge.jsi.LynxJSIObjectHub.inst();
   public ILynxJSIObjectDescriptor com.lynx.jsbridge.jsi.LynxJSIObjectHub.getLynxJSIObjectDescriptor(String className);
+  public void com.lynx.jsbridge.jsi.LynxJSIObjectHub.warmUpLynxJSIObject(Class<? extends ILynxJSIObject > jsiObjectClass);
 }
 
 public class com::lynx::jsbridge::jsi::LynxJSPropertyDescriptor :  {

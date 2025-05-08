@@ -32,6 +32,7 @@ class JSIObject {
 
   virtual std::optional<Value> ConvertToValue(lynx::piper::Runtime *rt) = 0;
 
+  static std::unique_ptr<JSIObject> Null();
   static std::unique_ptr<JSIObject> Create(bool value);
   static std::unique_ptr<JSIObject> Create(double value);
   static std::unique_ptr<JSIObject> Create(jlong value);

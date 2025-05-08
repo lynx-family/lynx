@@ -9,6 +9,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/platform/android/scoped_java_ref.h"
@@ -73,6 +74,9 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
 
   std::unique_ptr<LynxJSIObjectDescriptor>& GetJSIObjectDescriptor(JNIEnv* env);
 
+  std::unique_ptr<platform_jsi::JSIObject> GetJSIObject(
+      const std::string& field_name);
+
   // convert jni object to jsi object
   std::unique_ptr<platform_jsi::JSIObject> ConvertJSIObjectField(
       JNIEnv* env, jobject root_obj, const std::string& field_type,
@@ -114,6 +118,8 @@ class LynxPlatformJSIObjectAndroid : public HostObject {
   base::android::ScopedGlobalJavaRef<jobject> jsi_object_;
   base::android::ScopedGlobalJavaRef<jclass> jsi_object_class_;
   std::unique_ptr<LynxJSIObjectDescriptor> jsi_object_descriptor_ = nullptr;
+  std::unordered_map<std::string, std::unique_ptr<platform_jsi::JSIObject>>
+      cache_fields_;
 };
 
 }  // namespace piper

@@ -17,6 +17,10 @@ static constexpr const char* const MESSAGE_LOOP_ANDROID_VASYNC_FLUSH_TASKS =
     "MessageLoopAndroidVSync::FlushTasks";
 static constexpr const char* const VSYNC_MONITOR_DARWIN_ON_MAIN_DISPLAY =
     "LynxVSyncPulse::onMainDisplay";
+static constexpr const char* const JSI_OBJECT_GET =
+    "LynxPlatformJSIObjectAndroid::get";
+static constexpr const char* const JSI_OBJECT_GET_DESCRIPTOR =
+    "LynxPlatformJSIObjectAndroid::GetJSIObjectDescriptor";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

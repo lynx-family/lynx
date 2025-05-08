@@ -15,6 +15,7 @@ package com.lynx.jsbridge;
 import static com.lynx.tasm.base.Assertions.assertNotNull;
 
 import androidx.annotation.Nullable;
+import com.lynx.jsbridge.jsi.ILynxJSIObject;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.PiperData;
@@ -78,6 +79,8 @@ public class LynxMethodWrapper {
       return 'a';
     } else if (returnClass == PiperData.class) {
       return 'J';
+    } else if (returnClass == ILynxJSIObject.class) {
+      return 'O';
     } else {
       throw new RuntimeException("Got unknown return class: " + returnClass.getSimpleName());
     }

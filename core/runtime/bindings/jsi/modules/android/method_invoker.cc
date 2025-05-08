@@ -21,6 +21,7 @@
 #include "core/base/android/piper_data.h"
 #include "core/base/js_constants.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/jsi/jsi.h"
@@ -646,6 +647,20 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Fire(
       return std::make_unique<lynx::pub::ValueImplAndroid>(
           base::android::JavaValue(
               json_data, base::android::JavaValue::JavaValueType::Transfer));
+    }
+    case 'O': {
+      lynx::base::android::ScopedLocalJavaRef<jobject> lynx_object(
+          env, env->CallObjectMethodA(module, method_, java_arguments));
+      // create a lynx object module
+      auto error = ReportPendingJniException();
+      if (error.has_value()) {
+        return base::unexpected(
+            std::make_pair(std::move(jni_error_hit), std::move(error)));
+      }
+      return std::make_unique<lynx::pub::ValueImplAndroid>(
+          base::android::JavaValue(
+              lynx_object,
+              base::android::JavaValue::JavaValueType::LynxObject));
     }
     default:
       LOGF("Unknown return type: " << return_type);

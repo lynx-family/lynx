@@ -10,6 +10,10 @@ namespace lynx {
 namespace piper {
 namespace platform_jsi {
 
+std::unique_ptr<JSIObject> JSIObject::Null() {
+  return std::unique_ptr<JSIObject>(new JSIObjectHostObject(nullptr));
+}
+
 std::unique_ptr<JSIObject> JSIObject::Create(bool value) {
   return std::unique_ptr<JSIObject>(new JSIObjectBool(value));
 }
@@ -57,7 +61,8 @@ std::optional<Value> JSIObjectString::ConvertToValue(lynx::piper::Runtime *rt) {
 
 std::optional<Value> JSIObjectHostObject::ConvertToValue(
     lynx::piper::Runtime *rt) {
-  return piper::Object::createFromHostObject(*rt, value_);
+  return value_ ? piper::Object::createFromHostObject(*rt, value_)
+                : piper::Value::null();
 }
 
 std::optional<Value> JSIObjectArray::ConvertToValue(lynx::piper::Runtime *rt) {

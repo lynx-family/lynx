@@ -31,4 +31,9 @@ public interface ILynxJSIObjectDescriptor {
    * This method is concurrent.
    */
   @CalledByNative String[] getLynxObjectDescriptorInfo(String fieldName);
+
+  /**
+   * warm up the descriptor info of JSProperty field
+   */
+  void warmUp();
 }
