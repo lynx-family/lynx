@@ -7,6 +7,7 @@ package com.lynx.jsbridge.jsi;
 import androidx.annotation.RestrictTo;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.base.TraceEvent;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 /**
@@ -42,6 +43,17 @@ public class LynxJSIObjectHub {
       }
     }
     return descriptor;
+  }
+
+  public void warmUpLynxJSIObject(Class<? extends ILynxJSIObject> jsiObjectClass) {
+    final String className = jsiObjectClass.getName();
+    final String warmUpTraceName = "warmUpLynxJSIObject, class: " + className;
+    TraceEvent.beginSection(warmUpTraceName);
+    ILynxJSIObjectDescriptor descriptor = cacheDescriptors.get(className);
+    if (descriptor != null) {
+      descriptor.warmUp();
+    }
+    TraceEvent.endSection(warmUpTraceName);
   }
 
   private static ILynxJSIObjectDescriptor reflectJSIObjectDescriptor(String className) {

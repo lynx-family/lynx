@@ -12,7 +12,9 @@
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
 #include "base/include/platform/android/jni_convert_helper.h"
+#include "base/trace/native/trace_event.h"
 #include "build/gen/LynxJSIObjectHub_jni.h"
+#include "core/base/lynx_trace_categories.h"
 
 namespace lynx {
 namespace piper {
@@ -116,6 +118,8 @@ LynxPlatformJSIObjectAndroid::LynxPlatformJSIObjectAndroid(JNIEnv *env,
 
 std::unique_ptr<LynxJSIObjectDescriptor> &
 LynxPlatformJSIObjectAndroid::GetJSIObjectDescriptor(JNIEnv *env) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              "LynxPlatformJSIObjectAndroid::GetJSIObjectDescriptor");
   if (!jsi_object_descriptor_) {
     // lazy get JSIObjectDescriptor from java LynxJSIObjectHub
     auto jsi_object_descriptor_object =
@@ -139,6 +143,26 @@ lynx::piper::Value LynxPlatformJSIObjectAndroid::get(
   }
 
   auto field_name = name.utf8(*rt);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxPlatformJSIObjectAndroid::get",
+              "field_name", field_name);
+
+  constexpr auto convert_to_value = [](const auto &jsi_object, auto *rt) {
+    return jsi_object ? *jsi_object->ConvertToValue(rt)
+                      : piper::Value::undefined();
+  };
+
+  auto field_iter = cache_fields_.find(field_name);
+  if (field_iter != cache_fields_.end()) {
+    return convert_to_value(field_iter->second, rt);
+  }
+  auto jsi_object = GetJSIObject(field_name);
+  Value value = convert_to_value(jsi_object, rt);
+  cache_fields_.emplace(std::move(field_name), std::move(jsi_object));
+  return value;
+}
+
+std::unique_ptr<platform_jsi::JSIObject>
+LynxPlatformJSIObjectAndroid::GetJSIObject(const std::string &field_name) {
   JNIEnv *env = lynx::base::android::AttachCurrentThread();
 
   // get j field info
@@ -146,7 +170,7 @@ lynx::piper::Value LynxPlatformJSIObjectAndroid::get(
       GetJSIObjectDescriptor(env)->GetJSPropertyDescriptorInfo(env, field_name);
   if (field_info.size() != 2) {
     LOGE(kTag << "fail to get JSPropertyDescriptor, fieldName: " << field_name);
-    return Value::undefined();
+    return nullptr;
   }
 
   const std::string &j_field_name = field_info[0];
@@ -164,8 +188,8 @@ lynx::piper::Value LynxPlatformJSIObjectAndroid::get(
 
   auto jsi_object_field = ConvertJSIObjectField(
       env, jsi_object_.Get(), j_field_type, j_js_property_field_id);
-  return jsi_object_field ? *jsi_object_field->ConvertToValue(rt)
-                          : piper::Value::null();
+  return jsi_object_field ? std::move(jsi_object_field)
+                          : platform_jsi::JSIObject::Null();
 }
 
 std::unique_ptr<platform_jsi::JSIObject>

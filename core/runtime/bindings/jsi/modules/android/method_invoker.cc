@@ -21,6 +21,7 @@
 #include "core/base/js_constants.h"
 #include "core/base/lynx_trace_categories.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/jsi/jsi.h"
@@ -951,6 +952,21 @@ base::expected<piper::Value, JSINativeException> MethodInvoker::Fire(
         return base::unexpected(
             BUILD_JSI_NATIVE_EXCEPTION("jsObjectFromPiperData failed."));
       }
+    }
+    case 'O': {
+      lynx::base::android::ScopedLocalJavaRef<jobject> lynx_object(
+          env, env->CallObjectMethodA(module, method_, javaArguments));
+
+      if (reportPendingJniException()) {
+        return base::unexpected(
+            BUILD_JSI_NATIVE_EXCEPTION("JNI Exception occurred."));
+      }
+      // create a lynx object module
+      auto object_module = lynx::piper::LynxPlatformJSIObjectAndroid::Create(
+          env, lynx_object.Get());
+      auto host_object =
+          piper::Object::createFromHostObject(*rt, std::move(object_module));
+      return base::ok(std::move(host_object));
     }
     default:
       LOGF("Unknown return type: " << returnType);

@@ -73,4 +73,9 @@ public abstract class AbsLynxJSIObjectDescriptor implements ILynxJSIObjectDescri
       mFieldInfos = createFieldInfos();
     }
   }
+
+  @Override
+  public void warmUp() {
+    ensureFieldInfos();
+  }
 }
