@@ -17,6 +17,7 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/value_utils.h"
+#include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/path_parser.h"
 #include "core/services/event_report/event_tracker.h"
@@ -331,6 +332,9 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
   {
     // using radon diff
     TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, RADON_UPDATE_PAGE_DIFF);
+    auto *tasm = static_cast<TemplateAssembler *>(context_->GetDelegate());
+    auto engine_context_proxy =
+        tasm->GetContextProxy(runtime::ContextProxy::Type::kEngineContext);
     if (update_page_option.update_first_time) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderStart);
       lepus::Value p1(this);
@@ -348,7 +352,22 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       radon_children_.clear();
       dispatched_ = false;
       // Before lynx 2.1, $renderPage accept only the previous two params.
-      context_->Call(ss, p1, p2, data_);
+      if (engine_context_proxy != nullptr &&
+          engine_context_proxy->HasEventListener(
+              runtime::kMessageEventTypeRenderPage)) {
+        auto args = lepus::CArray::Create();
+        args->emplace_back(p1);
+        args->emplace_back(p2);
+        args->emplace_back(data_);
+        runtime::MessageEvent event(runtime::kMessageEventTypeRenderPage,
+                                    runtime::ContextProxy::Type::kEngineContext,
+                                    runtime::ContextProxy::Type::kCoreContext,
+                                    std::make_unique<pub::ValueImplLepus>(
+                                        lepus::Value(std::move(args))));
+        engine_context_proxy->DispatchEvent(event);
+      } else {
+        context_->Call(ss, p1, p2, data_);
+      }
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
       // when the page is first updated
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
@@ -393,7 +412,22 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       lepus::Value p3(data_);
       std::string ss = "$renderPage" + std::to_string(this->node_index_);
       // Before lynx 2.1, $renderPage accept only the previous two params.
-      context_->Call(ss, p1, p2, p3);
+      if (engine_context_proxy != nullptr &&
+          engine_context_proxy->HasEventListener(
+              runtime::kMessageEventTypeRenderPage)) {
+        auto args = lepus::CArray::Create();
+        args->emplace_back(p1);
+        args->emplace_back(p2);
+        args->emplace_back(p3);
+        runtime::MessageEvent event(runtime::kMessageEventTypeRenderPage,
+                                    runtime::ContextProxy::Type::kEngineContext,
+                                    runtime::ContextProxy::Type::kCoreContext,
+                                    std::make_unique<pub::ValueImplLepus>(
+                                        lepus::Value(std::move(args))));
+        engine_context_proxy->DispatchEvent(event);
+      } else {
+        context_->Call(ss, p1, p2, p3);
+      }
       if (element() != nullptr) {
         EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeSetted());
       }

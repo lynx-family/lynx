@@ -1776,6 +1776,8 @@ void App::Init() {
           CallJSFunctionInLepusEvent(component_id, name, params);
         }
       }));
+  // TODO(hexionghui): delete this and add
+  // lynx.getCoreContext().addEventListener for kMessageEventTypeGlobalEvent.
   core_context_proxy->AddEventListener(
       runtime::kMessageEventTypeSendGlobalEvent,
       std::make_unique<event::ClosureEventListener>([this](lepus::Value args) {
