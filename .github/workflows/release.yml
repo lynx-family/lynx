@@ -36,7 +36,7 @@ jobs:
     uses: ./.github/workflows/publish-release.yml
     needs: get-version
     with:
-      dry_run: false
+      dry-run: false
       version: ${{ needs.get-version.outputs.version }}
     permissions:
       contents: write
