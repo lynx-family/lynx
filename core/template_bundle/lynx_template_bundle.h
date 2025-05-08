@@ -116,7 +116,7 @@ class LynxTemplateBundle final {
   void PrepareVMByConfigs();
   bool PrepareLepusContext(int32_t count);
 
-  bool EnableUseContextPool() const { return use_context_pool_; }
+  bool EnableUseContextPool() const { return force_use_context_pool_; }
 
   void SetEnableVMAutoGenerate(bool enable);
 
@@ -203,7 +203,7 @@ class LynxTemplateBundle final {
   ElementBundle element_bundle_;
 
   // force to use context pool in runtime
-  bool use_context_pool_{false};
+  bool force_use_context_pool_{false};
 
   lepus::Value custom_sections_{};
 

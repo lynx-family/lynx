@@ -71,7 +71,7 @@ bool LynxTemplateBundle::PrepareLepusContext(int32_t count) {
   constexpr int32_t kOnePatchMaxSize = 20;
   quick_context_pool_->FillPool(std::min(kOnePatchMaxSize, count));
 
-  use_context_pool_ = true;
+  force_use_context_pool_ = true;
   return true;
 }
 
