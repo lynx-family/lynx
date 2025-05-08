@@ -368,8 +368,6 @@ public class TouchEventDispatcher {
     mDownPoint = new PointF(ev.getX(), ev.getY());
     mGestureRecognized = false;
     mPrePoint = new PointF(ev.getX(), ev.getY());
-    mGestureRecognizedUISet.clear();
-    mPropsChangedUISet.clear();
     mHasMultiTouch = false;
     mActiveUIMap.clear();
     mActiveTargetMap.clear();
