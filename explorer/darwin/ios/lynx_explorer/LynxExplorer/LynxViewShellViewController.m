@@ -275,7 +275,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
       }
       break;
     case UIGestureRecognizerStateChanged: {
-      if (self.previousViewControllerView) {
+      if (self.previousViewControllerView && translation.x >= 0) {
         CGRect previousFrame = self.previousViewControllerView.frame;
         previousFrame.size.width = self.view.bounds.size.width * progress;
         self.previousViewControllerView.frame = previousFrame;
@@ -288,8 +288,12 @@ NSString *const kBackButtonImageDark = @"back_dark";
     }
     case UIGestureRecognizerStateEnded: {
       if (self.previousViewControllerView) {
-        if (progress > 0.5) {
-          [UIView animateWithDuration:0.3
+        // get velocity of gesture
+        CGPoint velocity = [gesture velocityInView:self.view];
+        CGFloat flingVelocity = 1000;
+
+        if (velocity.x >= flingVelocity || progress > 0.5) {
+          [UIView animateWithDuration:0.15
               animations:^{
                 CGRect previousFrame = self.previousViewControllerView.frame;
                 previousFrame.size.width = self.view.bounds.size.width;
@@ -303,7 +307,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
                 [self.navigationController popViewControllerAnimated:NO];
               }];
         } else {
-          [UIView animateWithDuration:0.3
+          [UIView animateWithDuration:0.15
               animations:^{
                 CGRect previousFrame = self.previousViewControllerView.frame;
                 previousFrame.size.width = 0;
