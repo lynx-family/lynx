@@ -5,10 +5,7 @@
 #define CORE_RENDERER_UTILS_BASE_BASE_DEF_H_
 
 #include <memory>
-#include <string>
-#include <unordered_map>
 #include <utility>
-#include <vector>
 
 #include "base/include/vector.h"
 #include "core/renderer/events/events.h"
@@ -26,18 +23,18 @@ namespace tasm {
 // 0 to 6 children account for more than 99%.
 constexpr const static size_t kChildrenInlineVectorSize = 6;
 
-// 8-CSS-classes covers most cases.
-using ClassList = base::InlineVector<base::String, 8>;
-using AttrMap = std::unordered_map<base::String, lepus::Value>;
-using DataMap = std::unordered_map<base::String, lepus::Value>;
+// 4-CSS-classes covers most cases.
+using ClassList = base::InlineVector<base::String, 4>;
+using AttrMap = base::OrderedFlatMap<base::String, lepus::Value>;
+using DataMap = base::OrderedFlatMap<base::String, lepus::Value>;
 using EventMap =
-    std::unordered_map<base::String, std::unique_ptr<EventHandler>>;
+    base::OrderedFlatMap<base::String, std::unique_ptr<EventHandler>>;
 using GestureMap =
-    std::unordered_map<uint32_t, std::shared_ptr<GestureDetector>>;
+    base::OrderedFlatMap<uint32_t, std::shared_ptr<GestureDetector>>;
 
-using AttrUMap = std::unordered_map<base::String, lepus::Value>;
+using AttrUMap = base::OrderedFlatMap<base::String, lepus::Value>;
 
-using BuiltinAttrMap = std::unordered_map<uint32_t, lepus::Value>;
+using BuiltinAttrMap = base::OrderedFlatMap<uint32_t, lepus::Value>;
 
 static constexpr const char kListNodeTag[] = "list";
 static constexpr const char kGlobalBind[] = "global-bindEvent";

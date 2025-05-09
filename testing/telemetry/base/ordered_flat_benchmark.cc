@@ -10,12 +10,16 @@
 #include <unordered_map>
 
 #include "base/include/vector.h"
+#include "core/runtime/vm/lepus/lepus_value.h"
+#include "core/runtime/vm/lepus/table.h"
 #include "third_party/benchmark/include/benchmark/benchmark.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 
-using namespace std;  // NOLINT
+using namespace std;          // NOLINT
+using namespace lynx::base;   // NOLINT
+using namespace lynx::lepus;  // NOLINT
 
 namespace lynx {
 namespace base {
@@ -36,6 +40,22 @@ string Cast(size_t v) {
 template <>
 shared_ptr<string> Cast(size_t v) {
   return make_shared<string>(to_string(v));
+}
+
+template <>
+String Cast(size_t v) {
+  return String(std::string("string_") + to_string(v));
+}
+
+template <>
+Value Cast(size_t v) {
+  if (v % 3 == 1) {
+    return Value(std::to_string(v));
+  } else if (v % 3 == 2) {
+    return Value(lepus::Dictionary::Create());
+  } else {
+    return Value((int32_t)v);
+  }
 }
 }  // namespace
 
@@ -134,6 +154,10 @@ shared_ptr<string> Cast(size_t v) {
   TEST_FUNC_MAP_INSERT(is, DATA_COUNT, MAP, __VA_ARGS__) \
   BENCHMARK(BM_##MAP##_insert_##DATA_COUNT##_is)
 
+#define TEST_MAP_INSERT_SV(DATA_COUNT, MAP, ...)         \
+  TEST_FUNC_MAP_INSERT(sv, DATA_COUNT, MAP, __VA_ARGS__) \
+  BENCHMARK(BM_##MAP##_insert_##DATA_COUNT##_sv)
+
 TEST_MAP_INSERT_II(8, map, int, int);
 TEST_MAP_INSERT_II(8, unordered_map, int, int);
 TEST_MAP_INSERT_II(8, OrderedFlatMap, int, int);
@@ -163,6 +187,16 @@ TEST_MAP_INSERT_IS(96, map, int, shared_ptr<string>);
 TEST_MAP_INSERT_IS(96, unordered_map, int, shared_ptr<string>);
 TEST_MAP_INSERT_IS(96, OrderedFlatMap, int, shared_ptr<string>);
 TEST_MAP_INSERT_IS(96, InlineOrderedFlatMap, int, shared_ptr<string>, 96);
+
+TEST_MAP_INSERT_SV(8, map, String, Value);
+TEST_MAP_INSERT_SV(8, unordered_map, String, Value);
+TEST_MAP_INSERT_SV(8, OrderedFlatMap, String, Value);
+TEST_MAP_INSERT_SV(8, InlineOrderedFlatMap, String, Value, 8);
+
+TEST_MAP_INSERT_SV(12, map, String, Value);
+TEST_MAP_INSERT_SV(12, unordered_map, String, Value);
+TEST_MAP_INSERT_SV(12, OrderedFlatMap, String, Value);
+TEST_MAP_INSERT_SV(12, InlineOrderedFlatMap, String, Value, 32);
 
 #define TEST_MAP_FIND_I(DATA_COUNT, NOT_FOUND_COUNT, MAP, ...)         \
   TEST_FUNC_MAP_FIND(i, DATA_COUNT, NOT_FOUND_COUNT, MAP, __VA_ARGS__) \

@@ -1433,6 +1433,78 @@ TEST(Vector, Trivial) {
   }
 
   {
+    // Erase and emplace
+    int buffer[5] = {10, 11, 12, 13, 14};
+    Vector<int> array(sizeof(buffer) / sizeof(buffer[0]), buffer);
+    for (int i = 0; i < 5; i++) {
+      auto it = array.erase(array.begin());
+      CheckVector(array);
+      EXPECT_EQ(it, array.begin());
+      if (i == 2) {
+        EXPECT_EQ(to_s(array), "1314");
+      }
+    }
+
+    EXPECT_TRUE(array.empty());
+    for (int i = 4; i >= 0; i--) {
+      array.emplace(array.begin(), i);
+      CheckVector(array);
+    }
+    EXPECT_EQ(array.size(), 5);
+    EXPECT_EQ(to_s(array), "01234");
+
+    auto it = array.erase(array.begin() + 1, array.begin() + 3);
+    CheckVector(array);
+    EXPECT_EQ(to_s(array), "034");
+    EXPECT_EQ(*it, 3);
+
+    it = array.erase(array.end() - 1);
+    CheckVector(array);
+    EXPECT_EQ(to_s(array), "03");
+    EXPECT_EQ(it, array.end());
+
+    it = array.erase(array.begin(), array.end());
+    CheckVector(array);
+    EXPECT_TRUE(array.empty());
+    EXPECT_EQ(it, array.end());
+
+    array.emplace(array.begin(), 50);
+    CheckVector(array);
+    array.emplace(array.end(), 51);
+    CheckVector(array);
+    array.emplace(array.end(), 52);
+    CheckVector(array);
+    array.emplace(array.begin() + 1, 49);
+    CheckVector(array);
+    array.emplace(array.begin(), 48);
+    CheckVector(array);
+    EXPECT_EQ(array.size(), 5);
+    EXPECT_EQ(to_s(array), "4850495152");
+
+    Vector<int> array2;
+    for (int i = 1; i <= 100; i++) {
+      array2.emplace(array2.begin() + i - 1, i);
+    }
+    CheckVector(array2);
+    int sum = 0;
+    for (int i : array2) {
+      sum += i;
+    }
+    EXPECT_EQ(sum, 5050);
+
+    Vector<int> array3;
+    for (int i = 1; i <= 100; i++) {
+      array3.emplace(array3.begin(), i);
+    }
+    CheckVector(array3);
+    sum = 0;
+    for (int i : array3) {
+      sum += i;
+    }
+    EXPECT_EQ(sum, 5050);
+  }
+
+  {
     // Reserve
     Vector<int> array;
     EXPECT_TRUE(array.reserve(100));
@@ -1916,6 +1988,79 @@ TEST(Vector, Nontrivial) {
     Vector<NontrivialInt> array3;
     for (int i = 1; i <= 100; i++) {
       array3.insert(array3.begin(), i);
+    }
+    CheckVector(array3);
+    sum = 0;
+    for (int i : array3) {
+      sum += i;
+    }
+    EXPECT_EQ(sum, 5050);
+  }
+
+  {
+    // Erase and emplace
+    int buffer[5] = {10, 11, 12, 13, 14};
+    Vector<NontrivialInt> array =
+        to_nt_int_array(sizeof(buffer) / sizeof(buffer[0]), buffer);
+    for (int i = 0; i < 5; i++) {
+      auto it = array.erase(array.begin());
+      CheckVector(array);
+      EXPECT_EQ(it, array.begin());
+      if (i == 2) {
+        EXPECT_EQ(to_s(array), "1314");
+      }
+    }
+
+    EXPECT_TRUE(array.empty());
+    for (int i = 4; i >= 0; i--) {
+      array.emplace(array.begin(), i);
+      CheckVector(array);
+    }
+    EXPECT_EQ(array.size(), 5);
+    EXPECT_EQ(to_s(array), "01234");
+
+    auto it = array.erase(array.begin() + 1, array.begin() + 3);
+    CheckVector(array);
+    EXPECT_EQ(to_s(array), "034");
+    EXPECT_EQ(*it, 3);
+
+    it = array.erase(array.end() - 1);
+    CheckVector(array);
+    EXPECT_EQ(to_s(array), "03");
+    EXPECT_EQ(it, array.end());
+
+    it = array.erase(array.begin(), array.end());
+    CheckVector(array);
+    EXPECT_TRUE(array.empty());
+    EXPECT_EQ(it, array.end());
+
+    array.emplace(array.begin(), 50);
+    CheckVector(array);
+    array.emplace(array.end(), 51);
+    CheckVector(array);
+    array.emplace(array.end(), 52);
+    CheckVector(array);
+    array.emplace(array.begin() + 1, 49);
+    CheckVector(array);
+    array.emplace(array.begin(), 48);
+    CheckVector(array);
+    EXPECT_EQ(array.size(), 5);
+    EXPECT_EQ(to_s(array), "4850495152");
+
+    Vector<NontrivialInt> array2;
+    for (int i = 1; i <= 100; i++) {
+      array2.emplace(array2.begin() + i - 1, i);
+    }
+    CheckVector(array2);
+    int sum = 0;
+    for (int i : array2) {
+      sum += i;
+    }
+    EXPECT_EQ(sum, 5050);
+
+    Vector<NontrivialInt> array3;
+    for (int i = 1; i <= 100; i++) {
+      array3.emplace(array3.begin(), i);
     }
     CheckVector(array3);
     sum = 0;
@@ -2695,7 +2840,7 @@ static void TestMap1() {
 
   EXPECT_EQ(map.size(), 8);
 
-  typename MAP::Pair pair{0, "0"};
+  typename MAP::value_type pair{0, "0"};
   map.insert(pair);
   EXPECT_EQ(to_s(map), "012345678");
 
@@ -2730,6 +2875,38 @@ static void TestMap1() {
   map[8] = "888";
   EXPECT_EQ(map.size(), 8);
   EXPECT_EQ(to_s(map), "0124567888");
+
+  {
+    auto result = map.insert_or_assign(5, "555");
+    auto result2 = map.insert_or_assign(9, "9");
+    EXPECT_EQ(result.first->first, 5);
+    EXPECT_EQ(result.first->second, "555");
+    EXPECT_FALSE(result.second);
+
+    EXPECT_EQ(result2.first->first, 9);
+    EXPECT_EQ(result2.first->second, "9");
+    EXPECT_TRUE(result2.second);
+  }
+  EXPECT_EQ(map.size(), 9);
+  EXPECT_EQ(to_s(map), "0124555678889");
+
+  {
+    auto er = map.emplace(1, "1");
+    EXPECT_EQ(er.first->first, 1);
+    EXPECT_EQ(er.first->second, "1");
+    EXPECT_FALSE(er.second);
+    EXPECT_EQ(map.size(), 9);
+    EXPECT_EQ(to_s(map), "0124555678889");
+  }
+
+  {
+    auto er = map.emplace(10, "abcdef", 3);
+    EXPECT_EQ(er.first->first, 10);
+    EXPECT_EQ(er.first->second, "abc");
+    EXPECT_TRUE(er.second);
+    EXPECT_EQ(map.size(), 10);
+    EXPECT_EQ(to_s(map), "0124555678889abc");
+  }
 
   map.clear();
   EXPECT_TRUE(map.empty());
@@ -2770,7 +2947,7 @@ static void TestMap2() {
 
   EXPECT_EQ(map.size(), 8);
 
-  typename MAP::Pair pair{"0", 0};
+  typename MAP::value_type pair{"0", 0};
   map.insert(pair);
   EXPECT_EQ(to_s(map), "012345678");
 
@@ -2829,6 +3006,483 @@ TEST(Structure_Array, OrderedFlatMap) {
 TEST(Structure_Array, InlineOrderedFlatMap) {
   TestMap1<InlineOrderedFlatMap<int, std::string, 20>>();
   TestMap2<InlineOrderedFlatMap<std::string, int, 20>>();
+}
+
+TEST(Structure_Array, ArrayEmplace) {
+  Vector<std::string> vec;
+  vec.emplace_back("abc", 2);
+  vec.emplace_back("123", 2);
+  EXPECT_EQ(*vec.emplace(vec.begin(), "xyz", 2), "xy");
+  EXPECT_EQ(*vec.emplace(vec.begin() + 1, "opq", 2), "op");
+  EXPECT_EQ(*vec.emplace(vec.end(), "lmn", 2), "lm");
+  EXPECT_EQ(vec.size(), 5);
+  EXPECT_TRUE(vec[0] == "xy");
+  EXPECT_TRUE(vec[1] == "op");
+  EXPECT_TRUE(vec[2] == "ab");
+  EXPECT_TRUE(vec[3] == "12");
+  EXPECT_TRUE(vec[4] == "lm");
+
+  Vector<int> vec2;
+  vec2.emplace_back(9);
+  vec2.emplace_back(8);
+  EXPECT_EQ(*vec2.emplace(vec2.begin(), 7), 7);
+  EXPECT_EQ(*vec2.emplace(vec2.begin() + 1, 6), 6);
+  EXPECT_EQ(*vec2.emplace(vec2.end(), 5), 5);
+  EXPECT_EQ(vec2.size(), 5);
+  EXPECT_TRUE(vec2[0] == 7);
+  EXPECT_TRUE(vec2[1] == 6);
+  EXPECT_TRUE(vec2[2] == 9);
+  EXPECT_TRUE(vec2[3] == 8);
+  EXPECT_TRUE(vec2[4] == 5);
+}
+
+TEST(Structure_Array, MapInsertOrAssign) {
+  InlineOrderedFlatMap<std::string, std::string, 5> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.insert_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  std::string s5 = "5";
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  std::string s6 = "6";
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  std::string s7 = "7";
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Structure_Array, SetInsert) {
+  OrderedFlatSet<std::string> set{"1", "2", "3"};
+  auto r = set.insert("3");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(set.size(), 3);
+
+  auto r2 = set.insert("4");
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(set.size(), 4);
+
+  std::string s5 = "5";
+  auto r3 = set.insert(std::move(s5));
+  EXPECT_TRUE(r3.second);
+  EXPECT_TRUE(s5.empty());
+
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains("1"));
+  EXPECT_TRUE(set.contains("2"));
+  EXPECT_TRUE(set.contains("3"));
+  EXPECT_TRUE(set.contains("4"));
+  EXPECT_TRUE(set.contains("5"));
+  EXPECT_FALSE(set.contains("6"));
+}
+
+TEST(Structure_Array, MapEmplace) {
+  OrderedFlatMap<std::string, std::string> map;
+  auto r = map.emplace(std::piecewise_construct,
+                       std::tuple<const char*, size_t>("123", 2),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(r.first->first, "12");
+  EXPECT_EQ(r.first->second, "ab");
+  auto r2 = map.emplace(std::piecewise_construct,
+                        std::tuple<const char*, size_t>("112", 2),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(r2.first->first, "11");
+  EXPECT_EQ(r2.first->second, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple("12"),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "12");
+  EXPECT_EQ(r3.first->second, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace("11", "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(r4.first->first, "11");
+  EXPECT_EQ(r4.first->second, "xy");
+
+  std::string s11 = "11";
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(std::move(s11), std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(r5.first->first, "11");
+  EXPECT_EQ(r5.first->second, "xy");
+  EXPECT_EQ(s11, "11");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  std::string s13 = "13";
+  auto r6 = map.try_emplace(std::move(s13), std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(r6.first->first, "13");
+  EXPECT_EQ(r6.first->second, "xyz");
+  EXPECT_TRUE(s13.empty());
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+
+  std::string s14 = "14";
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(s14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(r7.first->first, "14");
+  EXPECT_EQ(r7.first->second, "uvw");
+  EXPECT_EQ(s14, "14");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+  EXPECT_EQ(map["14"], "uvw");
+}
+
+TEST(VectorIntTest, BasicOperations) {
+  Vector<int> v1;
+  ASSERT_TRUE(v1.empty());
+
+  Vector<int> v2{1, 2, 3};
+  ASSERT_EQ(v2.size(), 3);
+  EXPECT_EQ(v2.front(), 1);
+  EXPECT_EQ(v2.back(), 3);
+
+  Vector<int> copy(v2);
+  ASSERT_EQ(copy.size(), 3);
+
+  Vector<int> moved(std::move(copy));
+  ASSERT_EQ(moved.size(), 3);
+  EXPECT_TRUE(copy.empty());
+}
+
+TEST(VectorStringTest, BasicOperations) {
+  Vector<std::string> sv{"Hello", "World"};
+  ASSERT_EQ(sv.size(), 2);
+  EXPECT_EQ(sv[0].length(), 5);
+
+  std::string s = "Test";
+  sv.push_back(std::move(s));
+  EXPECT_TRUE(s.empty());
+  EXPECT_EQ(sv.back(), "Test");
+}
+
+TEST(VectorIntTest, ElementAccess) {
+  Vector<int> v{10, 20, 30};
+
+  v[1] = 99;
+  EXPECT_EQ(v.at(1), 99);
+
+  int* ptr = v.data();
+  EXPECT_EQ(ptr[0], 10);
+}
+
+TEST(VectorStringTest, ElementAccess) {
+  Vector<std::string> sv{"A", "B", "C"};
+
+  sv.back() += "_suffix";
+  EXPECT_EQ(sv[2], "C_suffix");
+}
+
+TEST(VectorIntTest, CapacityManagement) {
+  Vector<int> v;
+  v.shrink_to_fit();
+  EXPECT_EQ(v.capacity(), 0);
+
+  v.reserve(100);
+  ASSERT_GE(v.capacity(), 100);
+
+  v.resize<true>(5, 42);
+  ASSERT_EQ(v.size(), 5);
+  EXPECT_EQ(v[3], 42);
+
+  v.shrink_to_fit();
+  EXPECT_EQ(v.capacity(), 5);
+  EXPECT_EQ(v, (Vector<int>{42, 42, 42, 42, 42}));
+
+  InlineVector<int, 5> v2{1, 2, 3};
+  EXPECT_TRUE(v2.is_static_buffer());
+  EXPECT_EQ(v2.size(), 3);
+  EXPECT_EQ(v2.capacity(), 5);
+  v2.shrink_to_fit();
+  EXPECT_EQ(v2.capacity(), 5);
+  EXPECT_EQ(v2, (Vector<int>{1, 2, 3}));
+
+  v2.push_back(4);
+  v2.push_back(5);
+  v2.push_back(6);
+  EXPECT_FALSE(v2.is_static_buffer());
+  EXPECT_EQ(v2.size(), 6);
+  EXPECT_EQ(v2, (Vector<int>{1, 2, 3, 4, 5, 6}));
+  v2.pop_back();
+  EXPECT_EQ(v2.size(), 5);
+  v2.shrink_to_fit();
+  EXPECT_EQ(v2.capacity(), 5);
+  EXPECT_FALSE(
+      v2.is_static_buffer());  // Unable to use static buffer event if after
+                               // shrink_to_fit(), the buffer is fit.
+  EXPECT_EQ(v2, (Vector<int>{1, 2, 3, 4, 5}));
+
+  InlineVector<std::string, 5> v3;
+  v3.shrink_to_fit();
+  EXPECT_EQ(v.capacity(), 5);
+  v3.emplace_back("1");
+  v3.emplace_back("2");
+  v3.emplace_back("3");
+  v3.shrink_to_fit();
+  EXPECT_EQ(v.capacity(), 5);
+  EXPECT_TRUE(v3.is_static_buffer());
+  v3.emplace_back("4");
+  v3.emplace_back("5");
+  v3.emplace_back("6");
+  EXPECT_FALSE(v3.is_static_buffer());
+  v3.pop_back();
+  v3.shrink_to_fit();
+  EXPECT_EQ(v3.capacity(), 5);
+  EXPECT_EQ(v3.size(), 5);
+  EXPECT_FALSE(v3.is_static_buffer());
+  EXPECT_EQ(v3[0], "1");
+  EXPECT_EQ(v3[1], "2");
+  EXPECT_EQ(v3[2], "3");
+  EXPECT_EQ(v3[3], "4");
+  EXPECT_EQ(v3[4], "5");
+}
+
+TEST(VectorStringTest, CapacityManagement) {
+  Vector<std::string> sv(3, "Init");
+  sv.reserve(100);
+
+  sv.emplace_back("NewString");
+  EXPECT_GT(sv.capacity(), 3);
+  EXPECT_EQ(sv.back().length(), 9);
+}
+
+TEST(VectorIntTest, InsertOperations) {
+  Vector<int> v{1, 3};
+
+  auto it = v.insert(v.begin() + 1, 2);
+  ASSERT_EQ(v.size(), 3);
+  EXPECT_EQ(*it, 2);
+  EXPECT_EQ(v, (Vector<int>{1, 2, 3}));
+
+  v.insert(v.end(), 4);
+  EXPECT_EQ(v.back(), 4);
+}
+
+TEST(VectorStringTest, InsertOperations) {
+  Vector<std::string> sv{"Start", "End"};
+
+  sv.insert(sv.begin(), "Header");
+  EXPECT_EQ(sv.front(), "Header");
+
+  sv.emplace(sv.begin() + 1, 3, 'X');  // 构造 "XXX"
+  EXPECT_EQ(sv[1], "XXX");
+}
+
+TEST(VectorIntTest, EdgeCases) {
+  Vector<int> v;
+
+  v.insert(v.end(), 42);
+  ASSERT_EQ(v.size(), 1);
+
+  v.reserve(2);
+  v = {1, 2};  // capacity=2
+  v.insert(v.begin(), 0);
+  EXPECT_GT(v.capacity(), 2);
+  EXPECT_EQ(v, (Vector<int>{0, 1, 2}));
+}
+
+TEST(MapStringTest, BasicOperations) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({"apple", "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(ret.first->first, "apple");
+  EXPECT_EQ(ret.first->second, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapStringTest, ElementAccess) {
+  OrderedFlatMap<std::string, std::string> m{{"apple", "red"},
+                                             {"banana", "yellow"}};
+
+  EXPECT_EQ(m["apple"], "red");
+
+  m["apple"] = "green";
+  EXPECT_EQ(m["apple"], "green");
+  EXPECT_EQ(m.at("apple"), "green");
+
+  EXPECT_EQ(m["grape"], "");
+  EXPECT_EQ(m.at("grape"), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapStringTest, InsertUpdate) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  auto ret1 = m.insert({"fruit", "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({"fruit", "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(ret2.first->second, "apple");
+
+  auto emp_ret = m.emplace("color", "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(emp_ret.first->first, "color");
+
+  m["color"] = "red";
+  EXPECT_EQ(m["color"], "red");
+}
+
+TEST(MapStringTest, EraseOperations) {
+  OrderedFlatMap<std::string, std::string> m{
+      {"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m["A"], "1");
+  EXPECT_EQ(m["B"], "2");
+  EXPECT_EQ(m["C"], "3");
+
+  size_t cnt = m.erase("B");
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains("B"));
+
+  auto it = m.find("A");
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+
+  EXPECT_EQ(m.erase("X"), 0);
+}
+
+TEST(SetStringTest, Iterators) {
+  InlineOrderedFlatSet<std::string, 10> s{"a", "z", "c", "b",
+                                          "m", "g", "q", "h"};
+  std::string order;
+  for (auto it = s.begin(); it != s.end(); it++) {
+    order += *it;
+  }
+  EXPECT_EQ(order, "abcghmqz");
+
+  order = "";
+  for (auto it = s.rbegin(); it != s.rend(); it++) {
+    order += *it;
+  }
+  EXPECT_EQ(order, "zqmhgcba");
+}
+
+TEST(MapStringTest, Iterators) {
+  OrderedFlatMap<std::string, std::string> m{
+      {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, "A");
+  ++it;
+  EXPECT_EQ(it->first, "M");
+  ++it;
+  EXPECT_EQ(it->first, "Z");
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(rit->first, "Z");
+  ++rit;
+  EXPECT_EQ(rit->first, "M");
+  ++rit;
+  EXPECT_EQ(rit->first, "A");
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapStringTest, EdgeCases) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  m[""] = "empty_key";
+  m.emplace("empty_value", "");
+  EXPECT_EQ(m[""], "empty_key");
+  EXPECT_EQ(m["empty_value"], "");
+
+  std::string big_key(1000, 'K');
+  std::string big_value(10000, 'V');
+  m[big_key] = big_value;
+  EXPECT_EQ(m[big_key].size(), 10000);
+}
+
+TEST(MapStringTest, InsertOrAssign) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");  // 确保迭代器指向正确位置
+}
+
+TEST(MapStringTest, EmplacePiecewise) {
+  OrderedFlatMap<std::string, std::string> m;
+
+  auto emp_it =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(emp_it.first->second, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple(3, 'K'),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m["KKK"], "kkk");
+
+  auto emp_fail =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m["piece_key"], "XXXXX");
 }
 
 }  // namespace base

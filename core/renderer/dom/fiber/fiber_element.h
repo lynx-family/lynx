@@ -393,6 +393,11 @@ class FiberElement : public Element, public SelectorItem {
   void DestroyPlatformNode();
 
   /**
+   * Before SetAttribute(), reserve array size.
+   */
+  virtual void ReserveForAttribute(size_t count) override;
+
+  /**
    * Element API for appending single attribute to element
    * @param key the attribute String type name
    * @param value the attribute value

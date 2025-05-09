@@ -321,8 +321,6 @@ class RadonNode : public RadonBase {
     attribute_holder_->SetPseudoState(state);
   }
 
-  bool IsSSRAttrHolder() { return attribute_holder_->IsSSRAttrHolder(); }
-
   const fml::RefPtr<AttributeHolder>& attribute_holder() {
     return attribute_holder_;
   }

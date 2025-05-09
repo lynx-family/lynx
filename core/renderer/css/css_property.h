@@ -14,6 +14,7 @@
 #include "base/include/linked_hash_map.h"
 #include "base/include/no_destructor.h"
 #include "base/include/value/base_string.h"
+#include "base/include/vector.h"
 #include "core/renderer/css/css_property_id.h"
 #include "core/renderer/css/css_value.h"
 
@@ -170,14 +171,14 @@ static constexpr PseudoState kPseudoStateSelection = 1 << 11;
     kPropertyIDRelativeLeftOf)
 
 using StyleMap = base::LinkedHashMap<CSSPropertyID, tasm::CSSValue>;
-using CSSVariableMap = base::LinkedHashMap<base::String, base::String>;
+using CSSVariableMap = base::OrderedFlatMap<base::String, base::String>;
 using ParsedStyles = std::pair<StyleMap, CSSVariableMap>;
 using ParsedStylesMap =
-    std::unordered_map<std::string, std::shared_ptr<ParsedStyles>>;
+    base::OrderedFlatMap<std::string, std::shared_ptr<ParsedStyles>>;
 
 using AirCompStylesMap =
-    std::unordered_map<std::string, std::shared_ptr<StyleMap>>;
-using AirParsedStylesMap = std::unordered_map<std::string, AirCompStylesMap>;
+    base::OrderedFlatMap<std::string, std::shared_ptr<StyleMap>>;
+using AirParsedStylesMap = base::OrderedFlatMap<std::string, AirCompStylesMap>;
 
 using RawStyleMap = base::LinkedHashMap<CSSPropertyID, tasm::CSSValue>;
 using RawLepusStyleMap = base::LinkedHashMap<CSSPropertyID, lepus::Value>;

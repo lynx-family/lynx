@@ -159,6 +159,7 @@ class Element : public lepus::RefCounted {
       const base::Vector<CSSPropertyID>& style_names);
 
   // For attr op
+  virtual void ReserveForAttribute(size_t count) {}
   BASE_EXPORT_FOR_DEVTOOL virtual void SetAttribute(
       const base::String& key, const lepus::Value& value,
       bool need_update_data_model = true) = 0;

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/vector.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/style_node.h"
@@ -21,22 +22,6 @@ namespace lynx {
 namespace tasm {
 class Element;
 class RadonNode;
-
-template <class T>
-void MapInsertOrAssign(T& map, const typename T::key_type& key,
-                       const typename T::mapped_type& value) {
-  if (auto result = map.emplace(key, value); !result.second) {
-    result.first->second = value;
-  }
-}
-
-template <class T>
-void MapInsertOrAssign(T& map, const typename T::key_type& key,
-                       typename T::mapped_type&& value) {
-  if (auto result = map.try_emplace(key, std::move(value)); !result.second) {
-    result.first->second = std::move(value);
-  }
-}
 
 class AttributeHolder : public fml::RefCountedThreadSafeStorage,
                         public css::StyleNode {
@@ -142,9 +127,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   void RemoveAttribute(const base::String& key) { attributes_.erase(key); }
 
   void SetDataSet(const base::String& key, const lepus::Value& value) {
-    // Specific optimization
-    // data_set_[key] = value;
-    MapInsertOrAssign(data_set_, key, value);
+    data_set_.insert_or_assign(key, value);
   }
 
   void SetDataSet(const lepus::Value& data_set);
@@ -170,19 +153,15 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   void SetStaticEvent(const base::String& type, const base::String& name,
                       const base::String& value) {
-    if (type == kGlobalBind) {
-      MapInsertOrAssign(global_bind_events_, name,
-                        std::make_unique<EventHandler>(type, name, value));
-    } else {
-      MapInsertOrAssign(static_events_, name,
-                        std::make_unique<EventHandler>(type, name, value));
-    }
+    (type == kGlobalBind ? global_bind_events_ : static_events_)
+        .insert_or_assign(name,
+                          std::make_unique<EventHandler>(type, name, value));
   }
 
   // set gesture detector to map
   void SetGestureDetector(const uint32_t key, const GestureDetector& detector) {
-    MapInsertOrAssign(gesture_detectors_, key,
-                      std::make_unique<GestureDetector>(detector));
+    gesture_detectors_.insert_or_assign(
+        key, std::make_unique<GestureDetector>(detector));
   }
 
   // remove gesture detector from map
@@ -201,42 +180,24 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
       auto an_event = PiperEventContent(iter.first, iter.second);
       piper_event_vec.push_back(an_event);
     }
-    if (type == kGlobalBind) {
-      MapInsertOrAssign(
-          global_bind_events_, name,
-          std::make_unique<EventHandler>(type, name, piper_event_vec));
-    } else {
-      MapInsertOrAssign(
-          static_events_, name,
-          std::make_unique<EventHandler>(type, name, piper_event_vec));
-    }
+    (type == kGlobalBind ? global_bind_events_ : static_events_)
+        .insert_or_assign(
+            name, std::make_unique<EventHandler>(type, name, piper_event_vec));
   }
 
   void SetLepusEvent(const base::String& type, const base::String& name,
                      const lepus::Value& script, const lepus::Value& func) {
-    if (type == kGlobalBind) {
-      MapInsertOrAssign(
-          global_bind_events_, name,
-          std::make_unique<EventHandler>(type, name, script, func));
-    } else {
-      MapInsertOrAssign(
-          static_events_, name,
-          std::make_unique<EventHandler>(type, name, script, func));
-    }
+    (type == kGlobalBind ? global_bind_events_ : static_events_)
+        .insert_or_assign(
+            name, std::make_unique<EventHandler>(type, name, script, func));
   }
 
   void SetWorkletEvent(const base::String& type, const base::String& name,
                        const lepus::Value& worklet_info, lepus::Context* ctx) {
     // TODO(luochangan.adrian): Add UI Worklet Event
-    if (type == kGlobalBind) {
-      MapInsertOrAssign(
-          global_bind_events_, name,
-          std::make_unique<EventHandler>(type, name, worklet_info, ctx));
-    } else {
-      MapInsertOrAssign(
-          lepus_events_, name,
-          std::make_unique<EventHandler>(type, name, worklet_info, ctx));
-    }
+    (type == kGlobalBind ? global_bind_events_ : lepus_events_)
+        .insert_or_assign(name, std::make_unique<EventHandler>(
+                                    type, name, worklet_info, ctx));
   }
 
   void RemoveEvent(const base::String& name, const base::String& type);
@@ -280,7 +241,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     css_variable_related_.insert_or_assign(key, value);
   }
 
-  const CSSVariableMap& css_variable_related() { return css_variable_related_; }
+  const auto& css_variable_related() { return css_variable_related_; }
 
   // GetCSSVariableValue.
   // variable_from_js first. css_variable_ from comes second.

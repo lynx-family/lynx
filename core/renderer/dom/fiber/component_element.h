@@ -113,15 +113,15 @@ class ComponentElement : public WrapperElement, public BaseComponent {
   // In Nodiff mode, the data and prop variables are initialized and not
   // modified afterwards. The LepusRuntime intercepts the functions setStore,
   // getStore, getData, and getProperties.
-  lepus::Value data_{};
-  lepus::Value prop_{};
+  lepus::Value data_;
+  lepus::Value prop_;
 
-  base::String component_id_{};
+  base::String component_id_;
+  base::String entry_name_;
+  base::String name_;
+  base::String path_;
+
   int32_t component_css_id_{-1};
-  base::String entry_name_{};
-  base::String name_{};
-  base::String path_{};
-
   bool is_wrapper_component_{false};
 };
 

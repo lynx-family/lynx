@@ -123,6 +123,9 @@ CSSValue CSSStringParser::ParseBackgroundOrMask(bool mask) {
   } while (!AtEnd() && Consume(TokenType::COMMA));
 
   auto bg_array = lepus::CArray::Create();
+  if (!legacy_parser_) {
+    bg_array->reserve(7);
+  }
   bg_array->emplace_back(color.has_value() ? *color : 0);
   bg_array->emplace_back(std::move(image_array));
   // Old version parser not handle <position> <size> <repeat> <origin> in

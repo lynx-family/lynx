@@ -34,7 +34,7 @@ class SnapshotElement {
   std::string name;
   base::String id_selector;
   tasm::ClassList classes;
-  std::unordered_map<base::String, lepus::Value> attributes;
+  tasm::AttrMap attributes;
   std::vector<SnapshotElement*> children;
 };
 static rapidjson::Value DumpSnapshotElementTreeRecursively(

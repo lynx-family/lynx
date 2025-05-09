@@ -738,6 +738,10 @@ void FiberElement::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
   }
 }
 
+void FiberElement::ReserveForAttribute(size_t count) {
+  updated_attr_map_.reserve(count);
+}
+
 void FiberElement::SetAttribute(const base::String &key,
                                 const lepus::Value &value,
                                 bool need_update_data_model) {

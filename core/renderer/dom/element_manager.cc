@@ -521,6 +521,7 @@ void ElementManager::ResolveAttributesAndStyle(AttributeHolder *node,
 
   shadow_node->ConsumeStyle(styles);
 
+  shadow_node->ReserveForAttribute(node->attributes().size());
   for (const auto &attribute : node->attributes()) {
     shadow_node->SetAttribute(attribute.first, attribute.second);
   }

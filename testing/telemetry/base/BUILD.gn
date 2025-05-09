@@ -21,7 +21,10 @@ benchmark_test("vector_benchmark") {
     "./ordered_flat_benchmark.cc",
     "./vector_benchmark.cc",
   ]
-  deps = [ "//lynx/base/src:base" ]
+  deps = [
+    "//lynx/base/src:base",
+    "//lynx/core/runtime/bindings/lepus",
+  ]
 }
 
 # These tests are created to tune LinkedHashMap for proper template

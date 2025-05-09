@@ -414,7 +414,7 @@ TEST_F(AirElementTest, AddAndRemoveElement) {
 }
 
 TEST_F(AirElementTest, StyleGet) {
-  std::unordered_map<std::string, std::shared_ptr<StyleMap>> parsed_styles;
+  AirCompStylesMap parsed_styles;
   lepus::Value styles(lepus::Dictionary::Create());
   // class1 style
   lepus::Value class1_style(lepus::Dictionary::Create());
@@ -477,7 +477,7 @@ TEST_F(AirElementTest, StyleGet) {
 }
 
 TEST_F(AirElementTest, RefreshStylesAndUpdatePatch) {
-  std::unordered_map<std::string, std::shared_ptr<StyleMap>> parsed_styles;
+  AirCompStylesMap parsed_styles;
   int lepus_id = 0;
   AirPageElement *page =
       static_cast<AirPageElement *>(CreateAirPage(lepus_id++)->Get());
@@ -688,7 +688,7 @@ TEST_F(AirElementTest, ResolveKeyframesMap) {
   page->SetInlineStyle(
       "animation: translateX-ani 2s ease 0s infinite alternate both running;",
       true);
-  //   std::unordered_map<std::string, std::shared_ptr<StyleMap>> keyframes_map;
+
   lepus::Value keyframes_map(lepus::Dictionary::Create());
   lepus::Value keyframe_map(lepus::Dictionary::Create());
   lepus::Value transform0(lepus::Dictionary::Create());

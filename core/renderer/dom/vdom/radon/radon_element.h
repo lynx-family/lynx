@@ -64,6 +64,7 @@ class RadonElement : public Element {
   virtual void SetNativeProps(const lepus::Value& args,
                               PipelineOptions& pipeline_options) override;
 
+  virtual void ReserveForAttribute(size_t count) override;
   virtual void SetAttribute(const base::String& key, const lepus::Value& value,
                             bool need_update_data_model = true) override;
 

@@ -233,6 +233,10 @@ void RadonElement::SetNativeProps(const lepus::Value& args,
   element_manager_->OnPatchFinish(pipeline_options);
 }
 
+void RadonElement::ReserveForAttribute(size_t count) {
+  attributes_.reserve(count);
+}
+
 void RadonElement::SetAttribute(const base::String& key,
                                 const lepus::Value& value,
                                 bool need_update_data_model) {

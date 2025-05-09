@@ -29,10 +29,10 @@ ComponentElement::ComponentElement(ElementManager* manager,
                                    const base::String& path,
                                    const base::String& tag_name)
     : WrapperElement(manager, tag_name),
-      component_css_id_(component_css_id),
       entry_name_(entry_name),
       name_(name),
-      path_(path) {
+      path_(path),
+      component_css_id_(component_css_id) {
   is_layout_only_ = false;
   MarkCanBeLayoutOnly(true);
   set_component_id(component_id);
@@ -47,10 +47,10 @@ ComponentElement::ComponentElement(const ComponentElement& element,
                                    bool clone_resolved_props)
     : WrapperElement(element, clone_resolved_props),
       component_id_(element.component_id_),
-      component_css_id_(element.component_css_id_),
       entry_name_(element.entry_name_),
       name_(element.name_),
       path_(element.path_),
+      component_css_id_(element.component_css_id_),
       is_wrapper_component_(element.is_wrapper_component_) {
   MarkCanBeLayoutOnly(true);
 }
