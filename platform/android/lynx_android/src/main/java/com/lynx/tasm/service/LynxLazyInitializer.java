@@ -51,7 +51,7 @@ public abstract class LynxLazyInitializer {
       }
     };
 
-    LynxThreadPool.getBriefIOExecutor().execute(initTask);
+    LynxThreadPool.getAsyncServiceExecutor().execute(initTask);
   }
 
   /**
