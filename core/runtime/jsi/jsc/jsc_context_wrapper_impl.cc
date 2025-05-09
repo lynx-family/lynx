@@ -43,6 +43,7 @@ JSCContextWrapperImpl::~JSCContextWrapperImpl() {
     JSStringRef name = JSPropertyNameArrayGetNameAtIndex(names, i);
     JSObjectDeleteProperty(ctx_, global, name, nullptr);
   }
+  JSPropertyNameArrayRelease(names);
   ctx_invalid_ = true;
   JSGlobalContextRelease(ctx_);
 
