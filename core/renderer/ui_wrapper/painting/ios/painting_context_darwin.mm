@@ -98,6 +98,13 @@ void ExecuteSafely(const F& func) {
 
 }  // namespace
 
+void PaintingContextDarwinRef::SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "UIOperationQueue::SetKeyframesTask");
+
+  [uiOwner_
+      updateAnimationKeyframes:static_cast<PropBundleDarwin*>(keyframes_data.get())->dictionary()];
+}
+
 void PaintingContextDarwinRef::InsertPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
 
@@ -231,16 +238,6 @@ void PaintingContextDarwinRef::SetNeedMarkDrawEndTiming(
     if (auto timing_collector_platform = weak_timing_collector.lock()) {
       timing_collector_platform->MarkDrawEndTimingIfNeeded();
     }
-  });
-}
-
-void PaintingContextDarwin::SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) {
-  __weak LynxUIOwner* uiOwner = uiOwner_;
-  Enqueue([uiOwner,
-           keyframesDict = static_cast<PropBundleDarwin*>(keyframes_data.get())->dictionary()]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_SET_KEYFRAME_TASK);
-
-    [uiOwner updateAnimationKeyframes:keyframesDict];
   });
 }
 

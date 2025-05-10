@@ -48,8 +48,6 @@ class PaintingContextPlatformImpl : public PaintingCtxPlatformImpl {
                             const float* bounds, const float* sticky,
                             float max_height,
                             uint32_t node_index = 0) override {}
-  virtual void SetKeyframes(
-      std::unique_ptr<PropBundle> keyframes_data) override {}
   virtual void Flush() override {}
   virtual void HandleValidate(int tag) override {}
   virtual void FinishTasmOperation(const PipelineOptions& options) override {}

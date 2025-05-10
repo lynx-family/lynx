@@ -19,6 +19,7 @@ namespace testing {
 
 class FiberMockPaintingContext : public PaintingContextPlatformImpl {
  public:
+  FiberMockPaintingContext();
   void ResetFlushFlag();
 
   bool HasFlushed();
@@ -51,8 +52,6 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
                     const float* sticky, float max_height,
                     uint32_t node_index = 0) override;
 
-  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
-
   int32_t GetTagInfo(const std::string& tag_name) override;
 
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
@@ -61,10 +60,11 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
 
   void EnqueueOperation(shell::UIOperation op);
 
+  std::unordered_map<std::string, lepus::Value>& GetKeyFrames();
+
  private:
   bool flush_{false};
   std::unordered_map<int, std::unique_ptr<MockNode>> node_map_;
-  std::unordered_map<std::string, lepus::Value> keyframes_;
   std::unordered_map<std::string, int32_t> mock_virtuality_map = {
       {"inline-text", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"view", LayoutNodeType::COMMON},

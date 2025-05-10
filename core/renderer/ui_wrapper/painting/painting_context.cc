@@ -27,6 +27,13 @@ void PaintingContext::OnNodeReload(int tag) {
   patching_node_reload_ids_.emplace_back(tag);
 }
 
+void PaintingContext::SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) {
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
+           t_keyframes_data = std::move(keyframes_data)]() mutable {
+    platform_ref->SetKeyframes(std::move(t_keyframes_data));
+  });
+}
+
 void PaintingContext::InsertPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_INSERT_NODE);
   if (platform_impl_->HasEnableUIOperationBatching()) {

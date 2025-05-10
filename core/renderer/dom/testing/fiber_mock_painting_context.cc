@@ -12,6 +12,31 @@
 namespace lynx {
 namespace tasm {
 namespace testing {
+namespace {
+class FiberMockPaintingContextRef : public PaintingCtxPlatformRef {
+ public:
+  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
+
+ private:
+  std::unordered_map<std::string, lepus::Value> keyframes_;
+
+  friend FiberMockPaintingContext;
+};
+
+void FiberMockPaintingContextRef::SetKeyframes(
+    std::unique_ptr<PropBundle> keyframes_data) {
+  auto props_map = static_cast<PropBundleMock*>(keyframes_data.get())->props_;
+  for (const auto& item : props_map) {
+    keyframes_[item.first] = item.second;
+  }
+}
+}  // namespace
+
+std::unordered_map<std::string, lepus::Value>&
+FiberMockPaintingContext::GetKeyFrames() {
+  return static_cast<FiberMockPaintingContextRef*>(platform_ref_.get())
+      ->keyframes_;
+}
 
 void FiberMockPaintingContext::ResetFlushFlag() { flush_ = false; }
 
@@ -28,6 +53,10 @@ std::unique_ptr<pub::Value> FiberMockPaintingContext::GetTextInfo(
 }
 
 std::unordered_map<int, std::string> captured_create_tags_map_;
+
+FiberMockPaintingContext::FiberMockPaintingContext() {
+  platform_ref_ = std::make_unique<FiberMockPaintingContextRef>();
+}
 
 // TODO(liting.src): remove after painting context refactor.
 bool FiberMockPaintingContext::HasEnableUIOperationBatching() { return true; }
@@ -124,17 +153,6 @@ void FiberMockPaintingContext::UpdateLayout(
       node->frame_ = {x, y, width, height};
     }
   });
-}
-
-void FiberMockPaintingContext::SetKeyframes(
-    std::unique_ptr<PropBundle> keyframes_data) {
-  EnqueueOperation(
-      [this, props_map =
-                 static_cast<PropBundleMock*>(keyframes_data.get())->props_]() {
-        for (const auto& item : props_map) {
-          keyframes_[item.first] = item.second;
-        }
-      });
 }
 
 int32_t FiberMockPaintingContext::GetTagInfo(const std::string& tag_name) {

@@ -28,6 +28,8 @@ class PaintingCtxPlatformRef {
  public:
   virtual ~PaintingCtxPlatformRef() = default;
 
+  virtual void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) {}
+
   virtual void InsertPaintingNode(int parent, int child, int index) {}
   virtual void RemovePaintingNode(int parent, int child, int index,
                                   bool is_move) {}
@@ -95,7 +97,6 @@ class PaintingCtxPlatformImpl {
   virtual void UpdatePlatformExtraBundle(int32_t id,
                                          PlatformExtraBundle* bundle) {}
 
-  virtual void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) = 0;
   virtual void Flush() = 0;
   virtual void FlushImmediately() { Flush(); };
   virtual void HandleValidate(int tag) = 0;

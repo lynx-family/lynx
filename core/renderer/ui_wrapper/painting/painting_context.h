@@ -89,9 +89,7 @@ class PaintingContext {
                                  node_index);
   }
 
-  inline void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) {
-    platform_impl_->SetKeyframes(std::move(keyframes_data));
-  }
+  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data);
 
   inline void FinishTasmOperation(const PipelineOptions& options) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_FINISH_TASM_OPERATION);

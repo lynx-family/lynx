@@ -60,6 +60,23 @@ bool PaintingContextAndroidRef::RegisterJNI(JNIEnv* env) {
 PaintingContextAndroidRef::PaintingContextAndroidRef(JNIEnv* env, jobject impl)
     : java_ref_(base::android::ScopedWeakGlobalJavaRef<jobject>(env, impl)) {}
 
+void PaintingContextAndroidRef::SetKeyframes(
+    std::unique_ptr<PropBundle> keyframes_data) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "UIOperationQueue::SetKeyframesTask");
+  PropBundleAndroid* pda =
+      static_cast<PropBundleAndroid*>(keyframes_data.get());
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedGlobalJavaRef<jobject> props_ref{
+      env, pda->jni_map()->jni_object()};
+
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  Java_PaintingContext_setKeyframes(env, local_ref.Get(), props_ref.Get());
+}
+
 void PaintingContextAndroidRef::InsertPaintingNode(int parent, int child,
                                                    int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
@@ -305,26 +322,6 @@ void PaintingContextAndroidRef::SetNeedMarkDrawEndTiming(
   }
 }
 
-void PaintingContextAndroid::SetKeyframes(
-    std::unique_ptr<PropBundle> keyframes_data) {
-  PropBundleAndroid* pda =
-      static_cast<PropBundleAndroid*>(keyframes_data.get());
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedGlobalJavaRef<jobject> props_ref{
-      env, pda->jni_map()->jni_object()};
-  Enqueue([impl = impl_, props_ref = std::move(props_ref)]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_SET_KEYFRAME_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_setKeyframes(env, local_ref.Get(), props_ref.Get());
-  });
-}
-
 bool PaintingContextAndroid::RegisterJNI(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }
@@ -568,17 +565,6 @@ void PaintingContextAndroid::InsertPaintingNode(int parent, int child,
     ui_operation_batch_builder_->putInt(index);
     return;
   }
-  Enqueue([impl = impl_, parent, child, index]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_insertNode(env, local_ref.Get(), parent, child, index);
-  });
 }
 
 void PaintingContextAndroid::RemovePaintingNode(int parent, int child,
@@ -590,18 +576,6 @@ void PaintingContextAndroid::RemovePaintingNode(int parent, int child,
     ui_operation_batch_builder_->putInt(child);
     return;
   }
-
-  Enqueue([impl = impl_, parent, child]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_removeNode(env, local_ref.Get(), parent, child);
-  });
 }
 
 void PaintingContextAndroid::DestroyPaintingNode(int parent, int child,
@@ -613,17 +587,6 @@ void PaintingContextAndroid::DestroyPaintingNode(int parent, int child,
     ui_operation_batch_builder_->putInt(child);
     return;
   }
-  Enqueue([impl = impl_, parent, child]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_destroyNode(env, local_ref.Get(), parent, child);
-  });
 }
 
 void PaintingContextAndroid::UpdateLayout(

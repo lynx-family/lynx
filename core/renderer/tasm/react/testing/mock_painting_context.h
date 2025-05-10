@@ -44,6 +44,15 @@ class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override {
     reload_ids_ = std::move(reload_ids);
   }
+
+  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override {
+    auto* keyframes = keyframes_data.get();
+    for (const auto& item : static_cast<PropBundleMock*>(keyframes)->props_) {
+      keyframes_[item.first] = item.second;
+    }
+  }
+
+  std::unordered_map<std::string, lepus::Value> keyframes_;
   std::vector<int32_t> reload_ids_;
 };
 
@@ -159,15 +168,6 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
     }
   }
 
-  void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override {
-    std::lock_guard guard(lock_);
-
-    auto* keyframes = keyframes_data.get();
-    for (const auto& item : static_cast<PropBundleMock*>(keyframes)->props_) {
-      keyframes_[item.first] = item.second;
-    }
-  }
-
   int32_t GetTagInfo(const std::string& tag_name) override {
     std::lock_guard guard(lock_);
 
@@ -191,7 +191,6 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
  private:
   bool flush_{false};
   std::unordered_map<int, std::unique_ptr<MockNode>> node_map_;
-  std::unordered_map<std::string, lepus::Value> keyframes_;
   std::unordered_map<std::string, int32_t> mock_virtuality_map = {
       {"inline-text", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"view", LayoutNodeType::COMMON},
