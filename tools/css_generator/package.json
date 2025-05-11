@@ -1,8 +1,13 @@
 {
   "name": "@lynx-js/css-defines",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Property definitions of Lynx Styling module",
   "scripts": {
+    "gen:types": "ts-node scripts/generate-types.ts",
+    "copy:types": "cp dist/csstype.d.ts ../../js_libraries/types/types/common/",
+    "build": "npm run gen:types && npm run copy:types",
+    "validate": "ts-node scripts/validate.ts",
+    "test": "ts-node scripts/test-validation.ts"
   },
   "files": [
     "./property_index.json",
@@ -12,7 +17,15 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/lynx-family/lynx.git",
-    "directory":"tools/css_generator"
+    "directory": "tools/css_generator"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ajv": "^8.12.0",
+    "ajv-errors": "^3.0.0",
+    "ajv-formats": "^2.1.1",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
 }

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.3.1
+
+- [Infra][Types] Codegen csstype.d.ts from css_defines
+
 ## 3.3.0
 
 ### Major Changes
