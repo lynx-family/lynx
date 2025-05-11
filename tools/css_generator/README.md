@@ -1,3 +1,41 @@
+# CSS Generator
+
+This tool generates TypeScript type definitions for CSS properties from JSON schema and CSS define files.
+
+## Type Generation
+
+The type definitions in `dist/csstype.d.ts` are automatically generated from CSS define files in the `css_defines` directory. The generation process follows these rules:
+
+1. For enum types (properties with `"type": "enum"`):
+   - Uses the `values` array to generate a union type of string literals
+   - Example: `display?: 'none' | 'flex' | 'grid' | 'linear' | 'relative' | 'block' | 'auto';`
+
+2. For properties with keywords:
+   - Uses the `keywords` array to generate a union type of string literals
+   - Adds `(string & {})` for open-ended string types
+   - Example: `animationTimingFunction?: 'linear' | 'ease-in' | 'ease-out' | ... | (string & {});`
+
+3. For other types:
+   - Uses `string` type
+   - Example: `color?: string;`
+
+## Usage
+
+```bash
+# Generate type definitions
+npm run gen:types
+
+# Validate CSS define files
+npm run validate
+
+# Run tests
+npm run test
+```
+
+## Schema
+
+The schema in `css_define_json_schema/css_define_with_doc.schema.json` defines the structure of CSS define files and is used for both validation and type generation.
+
 # How to add a property for styling module
 
 ## First, make sure you're actually adding a property
@@ -226,4 +264,3 @@ bool ComputedCSSValue::SetTest(const tasm::CSSValue& value, bool reset);
 
 
 ## JSON field reference
-

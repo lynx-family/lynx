@@ -1,0 +1,10 @@
+{
+  "name": "test-property",
+  "type": "enum",
+  "values": [
+    {
+      "value": "test",
+      "version": "1.0"
+    }
+  ]
+}

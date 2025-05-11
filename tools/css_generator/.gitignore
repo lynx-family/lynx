@@ -1,3 +1,6 @@
 //__pycache__
 *.pyc
 css_defines_sha256.txt
+node_modules/
+dist/
+*.log

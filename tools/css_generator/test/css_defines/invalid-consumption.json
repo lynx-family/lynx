@@ -1,0 +1,16 @@
+{
+  "name": "test-property",
+  "id": 999,
+  "type": "enum",
+  "default_value": "test",
+  "version": "1.0",
+  "author": "test",
+  "consumption_status": "invalid-status",
+  "desc": "test",
+  "values": [
+    {
+      "value": "test",
+      "version": "1.0"
+    }
+  ]
+}

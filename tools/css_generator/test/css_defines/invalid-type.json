@@ -1,0 +1,10 @@
+{
+  "name": "test-property",
+  "id": 999,
+  "type": 123,
+  "default_value": "test",
+  "version": "1.0",
+  "author": "test",
+  "consumption_status": "layout-wanted",
+  "desc": "test"
+}
