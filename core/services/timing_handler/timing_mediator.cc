@@ -278,7 +278,7 @@ void TimingMediator::ReportSetupEvent(const TimingInfo& timing_info) const {
                      setup_timing, BASE_STATIC_STRING(kListRenderChildrenStart),
                      setup_timing, BASE_STATIC_STRING(kListRenderChildrenEnd)));
   event.SetProps(
-      kListFullFillRenderChildrenEnd,
+      kListFullFillRenderChildren,
       CalculateDuration(
           setup_timing, BASE_STATIC_STRING(kListRenderChildrenStart),
           setup_timing, BASE_STATIC_STRING(kListFullFillRenderChildrenEnd)));
