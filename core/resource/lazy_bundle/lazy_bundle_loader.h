@@ -141,12 +141,6 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   bool DispatchOnComponentLoaded(TemplateAssembler* tasm,
                                  const std::string& url);
 
-  virtual void SetEnableLynxResourceService(bool enable) {
-    if (resource_loader_) {
-      resource_loader_->SetEnableLynxResourceService(enable);
-    }
-  }
-
   virtual void PreloadTemplates(const std::vector<std::string>& urls);
 
   void DidPreloadTemplate(LazyBundleLoader::CallBackInfo callback_info);

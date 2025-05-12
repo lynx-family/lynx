@@ -28,59 +28,16 @@ public class LynxExternalResourceFetcherWrapper {
 
   private final static String TAG = "LynxExternalResourceFetcherWrapper";
 
-  private AtomicBoolean mEnableLynxService = new AtomicBoolean(false);
   private LynxResourceServiceProvider mLynxServiceProvider = null;
   // dynamic component fetcher from client
   private DynamicComponentFetcher mDynamicComponentFetcher = null;
 
   public LynxExternalResourceFetcherWrapper(DynamicComponentFetcher fetcher) {
     mDynamicComponentFetcher = fetcher;
-    if (LynxResourceServiceProvider.ensureLynxService()) {
-      mLynxServiceProvider = new LynxResourceServiceProvider();
-    }
-  }
-
-  public void SetEnableLynxResourceServiceProvider(boolean enable) {
-    mEnableLynxService.set(enable);
   }
 
   // pass data and error
   public void fetchResourceWithHandler(String url, @NonNull LoadedHandler handler) {
-    // firstly, try lynx resource service
-    if (mEnableLynxService.get()) {
-      TraceEvent.beginSection(TraceEventDef.FETCHER_WRAPPER_USE_RESOURCE_SERVICE);
-      // if lynx resource service provider exists, use it, otherwise, try other fetchers
-      if (mLynxServiceProvider != null) {
-        mLynxServiceProvider.request(new LynxResourceRequest(url),
-            new LynxResourceCallback<ILynxResourceResponseDataInfo>() {
-              @Override
-              public void onResponse(
-                  @NonNull LynxResourceResponse<ILynxResourceResponseDataInfo> response) {
-                // if lynx service exception, retry. Otherwise callback with error, do not retry.
-                if (response.getCode()
-                    == LynxSubErrorCode.E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED) {
-                  LLog.w(TAG, "Lynx service exception, retry with other fetchers, url: " + url);
-                  fetchResourceWithDynamicComponentFetcher(url, handler);
-                } else {
-                  byte[] data = null;
-                  if (null != response.getData()) {
-                    data = response.getData().provideBytes();
-                  }
-                  handler.onLoaded(data, response.getError());
-                }
-              }
-            });
-        TraceEvent.endSection(TraceEventDef.FETCHER_WRAPPER_USE_RESOURCE_SERVICE);
-        return;
-      } else {
-        // try other fetchers
-        LLog.w(TAG,
-            "LynxResourceServiceProvider is null, switch to the fetchers registered in by host. ");
-      }
-      TraceEvent.endSection(TraceEventDef.FETCHER_WRAPPER_USE_RESOURCE_SERVICE);
-    }
-
-    // if failed to launch a lynx service request, try other fetchers
     fetchResourceWithDynamicComponentFetcher(url, handler);
   }
 

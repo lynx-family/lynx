@@ -809,14 +809,6 @@ class PageConfig final : public EntryConfig {
 
   inline CompileOptionAirMode GetLynxAirMode() { return air_mode_; }
 
-  inline void SetEnableLynxResourceServiceProvider(bool option) {
-    enable_lynx_resource_service_provider_ = option;
-  }
-
-  inline bool GetEnableLynxResourceServiceProvider() {
-    return enable_lynx_resource_service_provider_;
-  }
-
   inline bool GetEnableTextOverflow() { return enable_text_overflow_; }
   void SetEnableTextOverflow(bool enable_text_overflow) {
     enable_text_overflow_ = enable_text_overflow;
@@ -1293,9 +1285,6 @@ class PageConfig final : public EntryConfig {
   bool enable_background_shape_layer_{true};
 
   CompileOptionAirMode air_mode_{CompileOptionAirMode::AIR_MODE_OFF};
-
-  // Enable LynxResourceService to fetch external resource.
-  bool enable_lynx_resource_service_provider_{false};
 
   // set text overflow as visible if true
   bool enable_text_overflow_{false};

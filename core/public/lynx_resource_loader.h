@@ -102,8 +102,6 @@ class LynxResourceLoader
   virtual void LoadStream(
       const LynxResourceRequest& request,
       const std::shared_ptr<LynxStreamDelegate>& stream_delegate){};
-
-  virtual void SetEnableLynxResourceService(bool enable) {}
 };
 
 }  // namespace pub

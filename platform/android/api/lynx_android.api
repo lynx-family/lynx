@@ -4341,7 +4341,6 @@ public class abstract com::lynx::jsbridge::LynxExtensionModule :  {
 
 public class com::lynx::tasm::provider::LynxExternalResourceFetcherWrapper :  {
   public com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.LynxExternalResourceFetcherWrapper(DynamicComponentFetcher fetcher);
-  public void com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.SetEnableLynxResourceServiceProvider(boolean enable);
   public void com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.fetchResourceWithHandler(String url, @NonNull LoadedHandler handler);
 }
 

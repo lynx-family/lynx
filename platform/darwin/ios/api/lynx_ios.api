@@ -1450,7 +1450,6 @@ public protocol LynxExtensionModule-p : <NSObject> {
 }
 
 public class LynxExternalResourceFetcherWrapper : NSObject {
-  public BOOL LynxExternalResourceFetcherWrapper::enableLynxService enableLynxService;
   public instancetype LynxExternalResourceFetcherWrapper::initWithDynamicComponentFetcher:(id< LynxDynamicComponentFetcher > fetcher);
   public void LynxExternalResourceFetcherWrapper::fetchResource:withLoadedBlock:(NSString *url,[withLoadedBlock] LoadedBlock block);
 }

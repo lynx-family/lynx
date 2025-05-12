@@ -41,8 +41,6 @@ class LynxResourceLoaderAndroid : public pub::LynxResourceLoader {
                     base::MoveOnlyClosure<void, pub::LynxResourceResponse&>
                         callback) override;
 
-  void SetEnableLynxResourceService(bool enable) override;
-
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
 };

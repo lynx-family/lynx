@@ -360,8 +360,6 @@ void TemplateAssembler::DidDecodeTemplate(
     const std::shared_ptr<TemplateEntry>& entry, bool post_js,
     const PipelineOptions& pipeline_options) {
   if (component_loader_) {
-    component_loader_->SetEnableLynxResourceService(
-        page_config_->GetEnableLynxResourceServiceProvider());
     component_loader_->SetEnableComponentAsyncDecode(
         page_config_->GetEnableComponentAsyncDecode());
   }

@@ -18,8 +18,6 @@ typedef void (^LoadedBlock)(NSData* _Nullable data, NSError* _Nullable error);
 
 @interface LynxExternalResourceFetcherWrapper : NSObject
 
-@property(atomic, readwrite) BOOL enableLynxService;
-
 - (instancetype)initWithDynamicComponentFetcher:(id<LynxDynamicComponentFetcher>)fetcher;
 
 - (void)fetchResource:(NSString*)url withLoadedBlock:(LoadedBlock)block;

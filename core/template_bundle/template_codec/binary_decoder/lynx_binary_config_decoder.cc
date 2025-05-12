@@ -126,8 +126,6 @@ static constexpr const char* const kIncludeFontPadding = "includeFontPadding";
 static constexpr const char* const kEnableBackgroundShapeLayer =
     "enableBackgroundShapeLayer";
 static constexpr const char* const kCompileRender = "compileRender";
-static constexpr const char* const kEnableLynxResourceServiceProvider =
-    "enableLynxResourceServiceProvider";
 static constexpr const char* const kEnableTextLanguageAlignment =
     "enableTextLanguageAlignment";
 static constexpr const char* const kEnableXTextLayoutReused =
@@ -906,19 +904,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   }
 
   /**
-   * @name: enableLynxResourceServiceProvider
-   * @description: Enable LynxResourceService to fetch external resource
-   * @note: None
-   * @platform: Both
-   * @supportVersion: 2.8
-   **/
-  if (doc.HasMember(kEnableLynxResourceServiceProvider) &&
-      doc[kEnableLynxResourceServiceProvider].IsBool()) {
-    page_config->SetEnableLynxResourceServiceProvider(
-        doc[kEnableLynxResourceServiceProvider].GetBool());
-  }
-
-  /**
    * @name: extraInfo
    * @description: user defined extra info.
    * @note: None
@@ -1194,8 +1179,6 @@ void LynxBinaryConfigDecoder::ReportGlobalFeatureSwitch(
                    page_config->GetEnableExposureUIMargin());
     event.SetProps(kFlatten, page_config->GetGlobalFlattern());
     event.SetProps(kForceCalcNewStyleKey, page_config->GetForceCalcNewStyle());
-    event.SetProps(kEnableLynxResourceServiceProvider,
-                   page_config->GetEnableLynxResourceServiceProvider());
     event.SetProps(kEnableComponentNullProp,
                    page_config->GetEnableComponentNullProp());
     event.SetProps(kRemoveDescendantSelectorScope,

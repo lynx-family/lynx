@@ -74,15 +74,5 @@ void LynxResourceLoaderAndroid::ResponseHandler::HandleResponse(
   callback_(response);
 }
 
-void LynxResourceLoaderAndroid::SetEnableLynxResourceService(bool enable) {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedLocalJavaRef<jobject> local_ref(jni_object_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-  Java_LynxResourceLoader_setEnableLynxResourceService(env, local_ref.Get(),
-                                                       enable);
-}
-
 }  // namespace shell
 }  // namespace lynx

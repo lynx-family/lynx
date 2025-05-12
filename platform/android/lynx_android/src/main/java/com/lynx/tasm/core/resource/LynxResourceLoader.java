@@ -405,11 +405,6 @@ public class LynxResourceLoader {
     return provider;
   }
 
-  @CalledByNative
-  private void setEnableLynxResourceService(boolean enable) {
-    mFetcherWrapper.SetEnableLynxResourceServiceProvider(enable);
-  }
-
   static void InvokeNativeCallbackWithBytes(
       long responseHandler, byte[] data, int errCode, String errMsg) {
     nativeInvokeCallback(responseHandler, data, 0L, errCode, errMsg);

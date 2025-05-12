@@ -305,10 +305,6 @@ void LynxResourceLoaderDarwin::LoadResource(
   callback(resp);
 }
 
-void LynxResourceLoaderDarwin::SetEnableLynxResourceService(bool enable) {
-  _fetcher_wrapper.enableLynxService = enable;
-}
-
 // private
 /**
  * 1. the name is "lynx_core.js"
