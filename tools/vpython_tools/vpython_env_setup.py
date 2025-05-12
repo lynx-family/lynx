@@ -34,7 +34,7 @@ def create_venv(python_bin_path):
       cmd_prefix = f'set PYTHONPATH= & '
     else:
       cmd_prefix = 'unset PYTHONPATH && '
-    cmd = f'{cmd_prefix}"{sys.executable}" -m venv {VENV_PATH}'
+    cmd = f'{cmd_prefix}"{sys.executable.replace("python3.exe", "python.exe")}" -m venv {VENV_PATH}'
     subprocess.run(cmd, check=True, shell=True, stderr=subprocess.PIPE)
     return True
   except subprocess.CalledProcessError as e:
