@@ -184,8 +184,6 @@ class ComputedCSSStyle {
     return new_animator_interpolation_;
   }
 
-  static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id);
-
   static float SAFE_AREA_INSET_TOP_;
   static float SAFE_AREA_INSET_BOTTOM_;
   static float SAFE_AREA_INSET_LEFT_;

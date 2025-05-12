@@ -55,24 +55,6 @@ namespace lynx {
 namespace tasm {
 namespace testing {
 
-TEST_P(FiberElementTest, TestIsPlatformInheritableProperty) {
-#define TEST_EACH_PROPERTY_ID(name, c, value)                                \
-  if (tasm::CSSPropertyID::kPropertyID##name ==                              \
-          tasm::CSSPropertyID::kPropertyIDLineHeight ||                      \
-      tasm::CSSPropertyID::kPropertyID##name ==                              \
-          tasm::CSSPropertyID::kPropertyIDLetterSpacing ||                   \
-      tasm::CSSPropertyID::kPropertyID##name ==                              \
-          tasm::CSSPropertyID::kPropertyIDLineSpacing) {                     \
-    EXPECT_TRUE(starlight::ComputedCSSStyle::IsPlatformInheritableProperty(  \
-        tasm::CSSPropertyID::kPropertyID##name));                            \
-  } else {                                                                   \
-    EXPECT_FALSE(starlight::ComputedCSSStyle::IsPlatformInheritableProperty( \
-        tasm::CSSPropertyID::kPropertyID##name));                            \
-  }
-  FOREACH_ALL_PROPERTY(TEST_EACH_PROPERTY_ID);
-#undef TEST_EACH_PROPERTY_ID
-}
-
 TEST_P(FiberElementTest, ElementInitTest0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
