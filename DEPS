@@ -89,13 +89,6 @@ deps = {
         "cwd": root_dir,
         "function": copy_gn_config
     },
-    'python_venv_set': {
-        "type": "action",
-        "cwd": "../",
-        "commands": [
-            python_path + " lynx/tools/vpython_tools/vpython_env_setup.py",
-        ],
-    },
     'change_executable_permission': {
         "type": "action",
         "cwd": "../",

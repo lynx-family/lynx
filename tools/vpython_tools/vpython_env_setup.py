@@ -27,14 +27,7 @@ def create_venv(python_bin_path):
           return True
   print("python venv not exists, create it. venv path: ", VENV_PATH)
   try:
-    cmd_prefix = ''
-    # avoid conflict with other venv like mechanism.
-    # TODO(yongjie): delete it later.
-    if system == "Windows":
-      cmd_prefix = f'set PYTHONPATH= & '
-    else:
-      cmd_prefix = 'unset PYTHONPATH && '
-    cmd = f'{cmd_prefix}"{sys.executable}" -m venv {VENV_PATH}'
+    cmd = f'"{sys.executable}" -m venv {VENV_PATH}'
     subprocess.run(cmd, check=True, shell=True, stderr=subprocess.PIPE)
     return True
   except subprocess.CalledProcessError as e:
