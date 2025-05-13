@@ -116,3 +116,4 @@ We respect the intellectual property rights of all these projects and adhere to 
 Lynx is Apache licensed, as found in the [LICENSE][license] file.
 
 [license]: LICENSE
+
