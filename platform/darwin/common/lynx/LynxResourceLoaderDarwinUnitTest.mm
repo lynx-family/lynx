@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#import <Lynx/LynxBaseTemplateRender+Internal.h>
 #import <Lynx/LynxErrorBehavior.h>
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxView+Internal.h>

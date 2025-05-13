@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/JSModule.h>
+#import <Lynx/LynxBaseTemplateRender+Internal.h>
 #import <Lynx/LynxDebugger.h>
 #import <Lynx/LynxDevtool+Internal.h>
 #import <Lynx/LynxError.h>
@@ -20,7 +21,6 @@
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTemplateRender.h>
-#import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
@@ -214,6 +214,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self setUpLynxView:lynxView builder:builder];
 }
 
+- (UIView<LUIBodyView>*)containerView {
+  return _lynxView;
+}
+
 - (void)setUpLynxView:(LynxView*)lynxView builder:(LynxViewBuilder*)builder {
   if (lynxView != nil) {
     _lynxView = lynxView;
@@ -279,6 +283,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)setUpTiming {
   [self setTiming:_initStartTiming key:kTimingCreateLynxStart pipelineID:nil];
   [self setTiming:_initEndTiming key:kTimingCreateLynxEnd pipelineID:nil];
+}
+
+- (void)setUpPerformanceController:
+    (const std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl>&)painting_context {
+  _performanceController =
+      [[LynxPerformanceController alloc] initWithObserver:[_lynxView getLifecycleDispatcher]];
+  auto* a = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
+      painting_context->GetPlatformRef().get());
+  a->SetPerformanceController(_performanceController);
 }
 
 #pragma mark - Clean & Reuse
@@ -1342,13 +1355,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (LynxThreadStrategyForRender)getThreadStrategyForRender {
   return _threadStrategyForRendering;
-}
-
-- (void)setNeedPendingUIOperation:(BOOL)needPendingUIOperation {
-  _needPendingUIOperation = needPendingUIOperation;
-  if (!self->shell_->IsDestroyed()) {
-    self->shell_->SetEnableUIFlush(!needPendingUIOperation);
-  }
 }
 
 - (LynxSSRHelper*)lynxSSRHelper {

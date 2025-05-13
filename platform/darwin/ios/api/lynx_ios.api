@@ -615,6 +615,17 @@ public class LynxBaselineShiftLayoutManager : NSLayoutManager {
   public instancetype LynxBaselineShiftLayoutManager::initWithVerticalAlign:(LynxVerticalAlign verticalAlign);
 }
 
+public class LynxBaseTemplateRender : NSObject, <TemplateRenderCallbackProtocol> {
+  public LynxDevtool* LynxBaseTemplateRender::devTool devTool;
+  public BOOL LynxBaseTemplateRender::enableJSRuntime enableJSRuntime;
+  public NSMutableDictionary<NSString*, id>* LynxBaseTemplateRender::lepusModulesClasses lepusModulesClasses;
+  public void LynxBaseTemplateRender::setNeedPendingUIOperation:(BOOL needPendingUIOperation);
+  public UIView< LUIBodyView > * LynxBaseTemplateRender()::containerView();
+  public void LynxBaseTemplateRender()::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
+  public void LynxBaseTemplateRender()::reset:(int32_t lastInstanceId);
+  public void LynxBaseTemplateRender()::setUpPerformanceController:(const std::unique_ptr< lynx::tasm::PaintingCtxPlatformImpl > &painting_context);
+}
+
 public class LynxBaseTextShadowNode : LynxShadowNode {
   public LynxTextStyle* LynxBaseTextShadowNode::textStyle textStyle;
   public BOOL LynxBaseTextShadowNode::hasNonVirtualOffspring hasNonVirtualOffspring;
@@ -1610,7 +1621,7 @@ public class LynxFPSRecord : NSObject, <NSCopying> {
   public void LynxFPSRecord::reset();
 }
 
-public class LynxFrameRender : NSObject {
+public class LynxFrameRender : LynxBaseTemplateRender {
 }
 
 public class LynxFrameView : UIView, <LUIBodyView> {
@@ -3144,7 +3155,7 @@ public protocol LynxTemplateProvider-p : <NSObject> {
   public void LynxTemplateProvider-p::loadTemplateWithUrl:onComplete:(NSString *url,[onComplete] LynxTemplateLoadBlock callback);
 }
 
-public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <TemplateRenderCallbackProtocol> {
+public class LynxTemplateRender : LynxBaseTemplateRender, <LynxTemplateRenderProtocol>, <TemplateRenderCallbackProtocol> {
   public LynxViewSizeMode LynxTemplateRender::layoutWidthMode layoutWidthMode;
   public LynxViewSizeMode LynxTemplateRender::layoutHeightMode layoutHeightMode;
   public CGFloat LynxTemplateRender::preferredMaxLayoutWidth preferredMaxLayoutWidth;
@@ -3155,12 +3166,9 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public BOOL LynxTemplateRender::isDestroyed isDestroyed;
   public BOOL LynxTemplateRender::hasRendered hasRendered;
   public NSString* LynxTemplateRender::url url;
-  public BOOL LynxTemplateRender::enableJSRuntime enableJSRuntime;
-  public LynxDevtool* LynxTemplateRender::devTool devTool;
   public BOOL LynxTemplateRender::enablePrePainting enablePrePainting;
   public BOOL LynxTemplateRender::enableDumpElement enableDumpElement;
   public BOOL LynxTemplateRender::enableRecycleTemplateBundle enableRecycleTemplateBundle;
-  public NSMutableDictionary<NSString*, id>* LynxTemplateRender::lepusModulesClasses lepusModulesClasses;
   public id<LynxResourceFetcher> LynxTemplateRender::resourceFetcher resourceFetcher;
   public nullable id< LynxEventTarget > LynxTemplateRender::hitTestInEventHandler:withEvent:(CGPoint point,[withEvent] UIEvent *_Nonnull event);
   public void LynxTemplateRender::willMoveToWindow:(nonnull UIWindow *newWindow);
@@ -3168,7 +3176,6 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public void LynxTemplateRender::setScrollListener:(id< LynxScrollListener > _Nullable scrollListener);
   public void LynxTemplateRender::setImageFetcherInUIOwner:(id< LynxImageFetcher > _Nullable imageFetcher);
   public void LynxTemplateRender::setResourceFetcherInUIOwner:(id< LynxResourceFetcher > _Nullable resourceFetcher);
-  public void LynxTemplateRender::setNeedPendingUIOperation:(BOOL needPendingUIOperation);
   public BOOL LynxTemplateRender::enableAirStrictMode();
   public BOOL LynxTemplateRender::enableLayoutOnly();
   public BOOL LynxTemplateRender::enableFiberArch();
@@ -3214,13 +3221,6 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxPerformanceController * LynxTemplateRender()::performanceController();
   public void LynxTemplateRender()::setAttachLynxPageUICallback:(attachLynxPageUI callback);
   public lynx::piper::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
-  public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
-  public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
-}
-
-public interface LynxTemplateRender(Helper) {
-  public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder,[screenSize] CGSize screenSize);
-  public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
 }
 
 public protocol LynxTemplateRenderDelegate-p : <NSObject> {

@@ -2,9 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxTemplateRenderHelper.h>
-
 #import <Lynx/LynxAccessibilityModule.h>
+#import <Lynx/LynxBaseTemplateRender+Internal.h>
 #import <Lynx/LynxConfig+Internal.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxDevtool+Internal.h>
@@ -49,14 +48,25 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
 
-@implementation LynxTemplateRender (Helper)
+@implementation LynxBaseTemplateRender
+
+- (void)setNeedPendingUIOperation:(BOOL)needPendingUIOperation {
+  _needPendingUIOperation = needPendingUIOperation;
+  if (!self->shell_->IsDestroyed()) {
+    self->shell_->SetEnableUIFlush(!needPendingUIOperation);
+  }
+}
+
+- (UIView<LUIBodyView> *)containerView {
+  return nil;
+}
 
 - (void)setUpShadowNodeOwner {
   if (!_uilayoutTick) {
     __weak typeof(self) weakSelf = self;
-    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_lynxView
+    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:[self containerView]
                                                      block:^() {
-                                                       __strong LynxTemplateRender* strongSelf =
+                                                       __strong LynxBaseTemplateRender *strongSelf =
                                                            weakSelf;
                                                        strongSelf->shell_->TriggerLayout();
                                                      }];
@@ -69,7 +79,7 @@
 }
 
 - (void)setUpUIDelegate {
-  lynx::tasm::UIDelegateDarwin* ui_delegate = new lynx::tasm::UIDelegateDarwin(
+  lynx::tasm::UIDelegateDarwin *ui_delegate = new lynx::tasm::UIDelegateDarwin(
       [_lynxUIRenderer uiOwner], [[LynxEnv sharedInstance] enableCreateUIAsync], _shadowNodeOwner);
   [_lynxUIRenderer onSetupUIDelegate:ui_delegate];
 }
@@ -79,7 +89,7 @@
 
   // Env
   lynx::tasm::LynxEnvDarwin::initNativeUIThread();
-  LynxScreenMetrics* screenMetrics = [_lynxUIRenderer getScreenMetrics];
+  LynxScreenMetrics *screenMetrics = [_lynxUIRenderer getScreenMetrics];
   auto lynx_env_config = lynx::tasm::LynxEnvConfig(
       screenMetrics.screenSize.width, screenMetrics.screenSize.height, 1.f, screenMetrics.scale);
 
@@ -96,16 +106,12 @@
   auto painting_context = ui_delegate->CreatePaintingContext();
   if ([_lynxUIRenderer needPaintingContextProxy]) {
     _paintingContextProxy = [[PaintingContextProxy alloc]
-        initWithPaintingContext:reinterpret_cast<lynx::tasm::PaintingContextDarwin*>(
+        initWithPaintingContext:reinterpret_cast<lynx::tasm::PaintingContextDarwin *>(
                                     painting_context.get())];
     [_shadowNodeOwner setDelegate:_paintingContextProxy];
   }
 
-  _performanceController =
-      [[LynxPerformanceController alloc] initWithObserver:[_lynxView getLifecycleDispatcher]];
-  auto* a = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
-      painting_context->GetPlatformRef().get());
-  a->SetPerformanceController(_performanceController);
+  [self setUpPerformanceController:painting_context];
 
   shell_.reset(
       lynx::shell::LynxShellBuilder()
@@ -122,7 +128,7 @@
           .SetLayoutContextPlatformImpl(ui_delegate->CreateLayoutContext())
           .SetStrategy(
               static_cast<lynx::base::ThreadStrategyForRendering>(_threadStrategyForRendering))
-          .SetEngineActor([loader, lynxEngineProxy = _lynxEngineProxy](auto& actor) {
+          .SetEngineActor([loader, lynxEngineProxy = _lynxEngineProxy](auto &actor) {
             loader->SetEngineActor(actor);
             [lynxEngineProxy
                 setNativeEngineProxy:std::make_shared<lynx::shell::LynxEngineProxyDarwin>(actor)];
@@ -162,7 +168,7 @@
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_SETUP_EVENT_HANDLER);
   [_lynxUIRenderer setupEventHandler:self
                          engineProxy:_lynxEngineProxy
-                       containerView:_lynxView
+                       containerView:[self containerView]
                              context:_context
                             shellPtr:reinterpret_cast<int64_t>(shell_.get())];
 }
@@ -177,7 +183,7 @@
   // Attach runtime
   if (_runtime) {
     shell_->AttachRuntime(module_manager);
-    const auto& actor = _runtime.runtimeActor;
+    const auto &actor = _runtime.runtimeActor;
     auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, actor->GetInstanceId(),
                                                        [_runtimeOptions groupThreadName]);
     [_context setJSProxy:js_proxy];
@@ -195,7 +201,7 @@
   __weak typeof(self) weakSelf = self;
   auto on_runtime_actor_created =
       [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer, context = _context,
-       js_group_thread_name = [_runtimeOptions groupThreadName]](auto& actor) {
+       js_group_thread_name = [_runtimeOptions groupThreadName]](auto &actor) {
         std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
             std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
         module_manager->initBindingPtr(module_manager, module_delegate);
@@ -204,7 +210,7 @@
             actor, weakSelf, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
         [context setJSProxy:js_proxy];
 
-        __strong LynxTemplateRender* strongSelf = weakSelf;
+        __strong LynxBaseTemplateRender *strongSelf = weakSelf;
         [lynx_ui_renderer onSetupUIDelegate:strongSelf->shell_.get()
                           withModuleManager:module_manager.get()
                                 withJSProxy:std::move(js_proxy)];
@@ -225,18 +231,18 @@
   if (!_enableJSRuntime) {
     return;
   }
-  NSDictionary* modules = _context.extentionModules;
-  for (NSString* key in modules) {
+  NSDictionary *modules = _context.extentionModules;
+  for (NSString *key in modules) {
     id<LynxExtensionModule> instance = modules[key];
-    auto* extension_delegate =
-        reinterpret_cast<lynx::pub::LynxExtensionDelegate*>([instance getExtensionDelegate]);
+    auto *extension_delegate =
+        reinterpret_cast<lynx::pub::LynxExtensionDelegate *>([instance getExtensionDelegate]);
     extension_delegate->SetRuntimeActor(shell_->GetRuntimeActor());
     [instance setUp];
   }
 }
 
 - (void)setUpLynxContextWithLastInstanceId:(int32_t)lastInstanceId {
-  _context = [[LynxContext alloc] initWithContainerView:_lynxView];
+  _context = [[LynxContext alloc] initWithContainerView:[self containerView]];
   _context.instanceId = shell_->GetInstanceId();
   auto layout_proxy =
       std::make_shared<lynx::shell::LynxLayoutProxyDarwin>(shell_->GetLayoutActor());
@@ -254,11 +260,11 @@
 
 - (std::shared_ptr<lynx::piper::LynxModuleManager>)setUpModuleManager {
   std::shared_ptr<lynx::piper::LynxModuleManager> module_manager;
-  lynx::piper::ModuleFactoryDarwin* module_factory = nullptr;
+  lynx::piper::ModuleFactoryDarwin *module_factory = nullptr;
   if (_runtime) {
     module_manager = [_runtime moduleManagerPtr].lock();
     if (module_manager) {
-      module_factory = static_cast<lynx::piper::ModuleFactoryDarwin*>(
+      module_factory = static_cast<lynx::piper::ModuleFactoryDarwin *>(
           module_manager->GetPlatformModuleFactory());
       // Merge NativeModules
       module_factory->addModuleParamWrapperIfAbsent(_config.moduleFactoryPtr->getModuleClasses());
@@ -278,7 +284,7 @@
   }
   module_manager_ = module_manager;
 
-  LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
+  LynxConfig *globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
     module_factory->parent = globalConfig.moduleFactoryPtr;
   }
@@ -308,15 +314,15 @@
   return module_manager;
 }
 
-- (void)setUpLepusModulesWithFactory:(lynx::piper::ModuleFactoryDarwin*)module_factory {
-  self.lepusModulesClasses = [NSMutableDictionary new];
+- (void)setUpLepusModulesWithFactory:(lynx::piper::ModuleFactoryDarwin *)module_factory {
+  _lepusModulesClasses = [NSMutableDictionary new];
   if (module_factory->parent) {
-    [self.lepusModulesClasses addEntriesFromDictionary:module_factory->parent->modulesClasses_];
+    [_lepusModulesClasses addEntriesFromDictionary:module_factory->parent->modulesClasses_];
   }
-  [self.lepusModulesClasses addEntriesFromDictionary:module_factory->modulesClasses_];
+  [_lepusModulesClasses addEntriesFromDictionary:module_factory->modulesClasses_];
 }
 
-- (void)setUpBuiltModuleWithFactory:(lynx::piper::ModuleFactoryDarwin*)module_factory {
+- (void)setUpBuiltModuleWithFactory:(lynx::piper::ModuleFactoryDarwin *)module_factory {
   // register built in module
   module_factory->registerModule(LynxIntersectionObserverModule.class);
   module_factory->registerModule(LynxUIMethodModule.class);
@@ -326,12 +332,13 @@
   module_factory->registerModule(LynxExposureModule.class);
   module_factory->registerModule(LynxFetchModule.class);
   module_factory->registerModule(LynxSetModule.class);
-  [_devTool registerModule:self];
+  if ([self isKindOfClass:[LynxTemplateRender class]])
+    [_devTool registerModule:(LynxTemplateRender *)self];
 }
 
 - (lynx::shell::ShellOption)setUpShellOption {
   lynx::shell::ShellOption option;
-  option.enable_js_ = self.enableJSRuntime;
+  option.enable_js_ = _enableJSRuntime;
   option.enable_js_group_thread_ = _enableJSGroupThread;
   if (_enableJSGroupThread) {
     option.js_group_thread_name_ = [_runtimeOptions groupID];
@@ -354,7 +361,7 @@
 
 #pragma mark-- Setup
 
-- (void)setUpWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
+- (void)setUpWithBuilder:(LynxViewBuilder *)builder screenSize:(CGSize)screenSize {
   /// UIRenderer
   [self setUpUIRendererWithBuilder:builder screenSize:screenSize];
 
@@ -365,8 +372,10 @@
   [self setUpEventHandler];
 }
 
-- (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
-  [builder.lynxUIRenderer setupWithContainerView:_lynxView builder:builder screenSize:screenSize];
+- (void)setUpUIRendererWithBuilder:(LynxViewBuilder *)builder screenSize:(CGSize)screenSize {
+  [builder.lynxUIRenderer setupWithContainerView:[self containerView]
+                                         builder:builder
+                                      screenSize:screenSize];
   [_devTool attachLynxUIOwner:[builder.lynxUIRenderer uiOwner]];
 
   [self setUpResourceProviderWithBuilder:builder];
@@ -374,20 +383,24 @@
   [self setUpUIDelegate];
 }
 
-- (void)setUpResourceProviderWithBuilder:(LynxViewBuilder*)builder {
-  LynxProviderRegistry* registry = [[LynxProviderRegistry alloc] init];
-  NSDictionary* providers = [LynxEnv sharedInstance].resoureProviders;
-  for (NSString* globalKey in providers) {
+- (void)setUpResourceProviderWithBuilder:(LynxViewBuilder *)builder {
+  LynxProviderRegistry *registry = [[LynxProviderRegistry alloc] init];
+  NSDictionary *providers = [LynxEnv sharedInstance].resoureProviders;
+  for (NSString *globalKey in providers) {
     [registry addLynxResourceProvider:globalKey provider:providers[globalKey]];
   }
   providers = [builder getLynxResourceProviders];
-  for (NSString* key in providers) {
+  for (NSString *key in providers) {
     [registry addLynxResourceProvider:key provider:providers[key]];
   }
   _providerRegistry = registry;
 
   [_lynxUIRenderer setupResourceProvider:[registry getResourceProviderByKey:LYNX_PROVIDER_TYPE_FONT]
                              withBuilder:builder];
+}
+
+- (void)setUpPerformanceController:
+    (const std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> &)painting_context {
 }
 
 #pragma mark-- Reset
@@ -397,6 +410,90 @@
   [self setUpUIDelegate];
   [self setUpLynxShellWithLastInstanceId:lastInstanceId];
   [self setUpEventHandler];
+}
+
+#pragma mark - TemplateRenderCallbackProtocol
+
+- (void)onErrorOccurred:(nonnull LynxError *)error {
+}
+
+- (void)didInvokeMethod:(nonnull NSString *)method
+               inModule:(nonnull NSString *)module
+              errorCode:(int32_t)code {
+}
+
+- (void)getI18nResourceForChannel:(nonnull NSString *)channel
+                  withFallbackUrl:(nonnull NSString *)url {
+}
+
+- (long)initEndTiming {
+  return 0;
+}
+
+- (long)initStartTiming {
+  return 0;
+}
+
+- (void)invokeLepusFunc:(nonnull NSDictionary *)data callbackID:(int32_t)callbackID {
+}
+
+- (void)onCallJSBFinished:(nonnull NSDictionary *)info {
+}
+
+- (void)onDataUpdated {
+}
+
+- (void)onDynamicComponentPerf:(nonnull NSDictionary *)perf {
+}
+
+- (void)onErrorOccurred:(NSInteger)code message:(nonnull NSString *)errMessage {
+}
+
+- (void)onFirstLoadPerf:(nonnull NSDictionary *)perf {
+}
+
+- (void)onJSBInvoked:(nonnull NSDictionary *)info {
+}
+
+- (void)onPageChanged:(BOOL)isFirstScreen {
+}
+
+- (void)onPerformanceEvent:(nonnull NSDictionary *)originDict {
+}
+
+- (void)onReceiveMessageEvent:(nonnull NSDictionary *)event {
+}
+
+- (void)onRuntimeReady {
+}
+
+- (void)onTasmFinishByNative {
+}
+
+- (void)onTemplateLoaded:(nonnull NSString *)url {
+}
+
+- (void)onTimingSetup:(nonnull NSDictionary *)timingInfo {
+}
+
+- (void)onTimingUpdate:(nonnull NSDictionary *)timingInfo
+          updateTiming:(nonnull NSDictionary *)updateTiming {
+}
+
+- (void)onUpdatePerfReady:(nonnull NSDictionary *)perf {
+}
+
+- (void)setPageConfig:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {
+}
+
+- (void)setTiming:(uint64_t)timestamp
+              key:(nonnull NSString *)key
+       pipelineID:(nullable NSString *)pipelineID {
+}
+
+- (nonnull NSString *)translatedResourceWithId:(nonnull NSString *)resId
+                                      themeKey:(nonnull NSString *)key {
+  return nil;
 }
 
 @end

@@ -7,36 +7,22 @@
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxViewEnum.h>
 #import <Lynx/TemplateRenderCallbackProtocol.h>
-#import "LynxPerformanceController.h"
 
 #include <memory>
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
-#include "core/shell/lynx_shell.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
-@class LynxContext;
 @class LynxTemplateData;
-@class LynxConfig;
-@class PaintingContextProxy;
-@class LynxUILayoutTick;
-@class LynxShadowNodeOwner;
 @class LynxEventHandler;
 @class LynxEventEmitter;
 @class LynxKeyboardEventDispatcher;
-@class LynxBackgroundRuntime;
-@class LynxBackgroundRuntimeOptions;
 @class LynxTheme;
-@class LynxProviderRegistry;
-@class LynxEngineProxy;
 @class LynxSSRHelper;
 @class LynxView;
 @class LynxViewBuilder;
 typedef NS_ENUM(NSInteger, LynxBooleanOption);
-
-@protocol LynxDynamicComponentFetcher;
-@protocol LynxUIRendererProtocol;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -45,49 +31,21 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableAsyncDisplayFromNative;
   BOOL _enableImageDownsampling;
   BOOL _enableTextNonContiguousLayout;
-  BOOL _enableLayoutOnly;
-  EmbeddedMode _embeddedMode;
 
   BOOL _hasStartedLoad;
   BOOL _enableLayoutSafepoint;
   BOOL _enableAutoExpose;
   BOOL _enableAirStrictMode;
-  BOOL _needPendingUIOperation;
-  BOOL _enablePendingJSTaskOnLayout;
-  BOOL _enablePreUpdateData;
-  BOOL _enableAsyncHydration;
-  BOOL _enableMultiAsyncThread;
-  BOOL _enableJSGroupThread;
-  BOOL _enableVSyncAlignedMessageLoop;
-  BOOL _enableUnifiedPipeline;
 
-  LynxConfig* _config;
-  LynxContext* _context;
-  LynxUILayoutTick* _uilayoutTick;
-  LynxShadowNodeOwner* _shadowNodeOwner;
-  LynxThreadStrategyForRender _threadStrategyForRendering;
-  LynxBackgroundRuntime* _runtime;
-  LynxBackgroundRuntimeOptions* _runtimeOptions;
   LynxTheme* _localTheme;
   LynxTemplateData* _globalProps;
-  PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
-  LynxPerformanceController* _performanceController;
-  CGFloat _fontScale;
   CGSize _intrinsicContentSize;
-  std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
-  std::weak_ptr<lynx::piper::LynxModuleManager> module_manager_;
-  id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property
-  NSMutableDictionary* _extra;
   NSMutableDictionary<NSString*, id>* _originLynxViewConfig;
-  LynxProviderRegistry* _providerRegistry;
-  id<LynxDynamicComponentFetcher> _fetcher;
-  LynxEngineProxy* _lynxEngineProxy;
   long _initStartTiming;
   long _initEndTiming;
-  id _lynxModuleExtraData;
   __weak LynxView* _lynxView;
 
   __weak id<LynxTemplateRenderDelegate> _delegate;
@@ -102,12 +60,9 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _isDestroyed;
   BOOL _hasRendered;
   NSString* _url;
-  BOOL _enableJSRuntime;
-  LynxDevtool* _devTool;
   BOOL _enablePrePainting;
   BOOL _enableDumpElement;
   BOOL _enableRecycleTemplateBundle;
-  NSMutableDictionary<NSString*, id>* _lepusModulesClasses;
 
   BOOL _enableGenericResourceFetcher;
 }

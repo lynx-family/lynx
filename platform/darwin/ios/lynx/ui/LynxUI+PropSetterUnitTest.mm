@@ -10,6 +10,7 @@
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
+#import <Lynx/LynxBaseTemplateRender+Internal.h>
 #import <Lynx/LynxCSSType.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxListScrollEventEmitter.h>
@@ -144,7 +145,7 @@ static const void *applyRTLArrayKey = &applyRTLArrayKey;
   prop_bundle_creator_ = std::make_shared<lynx::tasm::PropBundleCreatorDarwin>();
 
   unsigned int count = 0;
-  Ivar *ivars = class_copyIvarList([LynxTemplateRender class], &count);
+  Ivar *ivars = class_copyIvarList([LynxBaseTemplateRender class], &count);
 
   for (unsigned int i = 0; i < count; i++) {
     Ivar var = ivars[i];

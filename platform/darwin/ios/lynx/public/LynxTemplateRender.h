@@ -3,22 +3,22 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <Lynx/LynxBaseTemplateRender.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxExtensionModule.h>
+#import <Lynx/LynxImageFetcher.h>
 #import <Lynx/LynxResourceFetcher.h>
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateRenderDelegateExternal.h>
 #import <Lynx/LynxTemplateRenderProtocol.h>
 #import <Lynx/LynxUIListProtocol.h>
 #import <Lynx/LynxViewEnum.h>
-#import "LynxImageFetcher.h"
 
-@class LynxDevtool;
 @class LynxTemplateBundle;
 @class LynxUIIntersectionObserverManager;
 @class LynxUI;
 
-@interface LynxTemplateRender : NSObject <LynxTemplateRenderProtocol>
+@interface LynxTemplateRender : LynxBaseTemplateRender <LynxTemplateRenderProtocol>
 
 // Layout, must call invalidateIntrinsicContentSize after change layout props
 // If you use view.frame to set view frame, the layout mode will all be
@@ -33,13 +33,10 @@
 @property(nonatomic, assign) BOOL isDestroyed;
 @property(nonatomic, assign) BOOL hasRendered;
 @property(nonatomic, strong, readonly, nullable) NSString* url;
-@property(nonatomic, assign) BOOL enableJSRuntime;
-@property(nonatomic, strong, nonnull) LynxDevtool* devTool;
 
 @property(nonatomic, assign) BOOL enablePrePainting;
 @property(nonatomic, assign) BOOL enableDumpElement;
 @property(nonatomic, assign) BOOL enableRecycleTemplateBundle;
-@property(nonatomic, strong, nullable) NSMutableDictionary<NSString*, id>* lepusModulesClasses;
 @property(nonatomic, weak, nullable) id<LynxResourceFetcher> resourceFetcher;
 
 - (nullable id<LynxEventTarget>)hitTestInEventHandler:(CGPoint)point
@@ -54,7 +51,6 @@
 - (void)setScrollListener:(id<LynxScrollListener> _Nullable)scrollListener;
 - (void)setImageFetcherInUIOwner:(id<LynxImageFetcher> _Nullable)imageFetcher;
 - (void)setResourceFetcherInUIOwner:(id<LynxResourceFetcher> _Nullable)resourceFetcher;
-- (void)setNeedPendingUIOperation:(BOOL)needPendingUIOperation;
 - (BOOL)enableAirStrictMode;
 - (BOOL)enableLayoutOnly;
 - (BOOL)enableFiberArch;
