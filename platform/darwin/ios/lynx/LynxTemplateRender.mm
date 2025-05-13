@@ -20,6 +20,8 @@
 #import <Lynx/LynxTemplateBundle.h>
 #import <Lynx/LynxTemplateData.h>
 #import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxTemplateRenderContext+Internal.h>
+#import <Lynx/LynxTemplateRenderContext.h>
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -138,7 +140,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [self setUpDevTool:builder.debuggable];
 
     /// UIRender + LynxShell + Event
-    [self setUpWithBuilder:builder screenSize:screenSize];
+    [LynxTemplateRenderHelper setUpTemplateRender:self builder:builder screenSize:screenSize];
 
     // Update info
     [self updateNativeTheme];
@@ -281,6 +283,54 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [self setTiming:_initEndTiming key:kTimingCreateLynxEnd pipelineID:nil];
 }
 
+- (LynxTemplateRenderContext*)getRenderContext {
+  LynxTemplateRenderContext* context = [[LynxTemplateRenderContext alloc] init];
+  context->_enableAsyncHydration = _enableAsyncHydration;
+  context->_enableJSGroupThread = _enableJSGroupThread;
+  context->_enableJSRuntime = _enableJSRuntime;
+  context->_enableLayoutOnly = _enableLayoutOnly;
+  context->_enableMultiAsyncThread = _enableMultiAsyncThread;
+  context->_enablePendingJSTaskOnLayout = _enablePendingJSTaskOnLayout;
+  context->_enablePreUpdateData = _enablePreUpdateData;
+  context->_enableVSyncAlignedMessageLoop = _enableVSyncAlignedMessageLoop;
+  context->_enableUnifiedPipeline = _enableUnifiedPipeline;
+  context->_needPendingUIOperation = _needPendingUIOperation;
+  context->_embeddedMode = _embeddedMode;
+  context->_fontScale = _fontScale;
+  __weak LynxTemplateRender* weakSelf = self;
+  context->_layoutBlock = ^() {
+    __strong LynxTemplateRender* strongSelf = weakSelf;
+    strongSelf->shell_->TriggerLayout();
+  };
+  context->_threadStrategyForRendering = _threadStrategyForRendering;
+  context->_fetcher = _fetcher;
+  context->_lynxModuleExtraData = _lynxModuleExtraData;
+  context->_lynxUIRenderer = _lynxUIRenderer;
+  context->_config = _config;
+  context->_containerView = _lynxView;
+  context->_devTool = _devTool;
+  context->_lifecycleDispatcher = [_lynxView getLifecycleDispatcher];
+  context->_lynxEngineProxy = _lynxEngineProxy;
+  context->_providerRegistry = _providerRegistry;
+  context->_runtime = _runtime;
+  context->_runtimeOptions = _runtimeOptions;
+  context->_extra = _extra;
+  context->_uilayoutTick = _uilayoutTick;
+  return context;
+}
+
+- (void)attachRenderContext:(LynxTemplateRenderContext*)context {
+  _extra = context->_extra;
+  _uilayoutTick = context->_uilayoutTick;
+  module_manager_ = context->module_manager_;
+  shell_ = std::move(context->shell_);
+  _lepusModulesClasses = context->_lepusModulesClasses;
+  _context = context->_context;
+  _paintingContextProxy = context->_paintingContextProxy;
+  _performanceController = context->_performanceController;
+  _shadowNodeOwner = context->_shadowNodeOwner;
+}
+
 #pragma mark - Clean & Reuse
 
 - (void)reset {
@@ -315,7 +365,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [_shadowNodeOwner destroySelf];
   }
 
-  [self reset:lastInstanceId];
+  [LynxTemplateRenderHelper resetTemplateRender:self lastInstanceId:lastInstanceId];
 
   [self updateViewport];
   [self setUpTiming];

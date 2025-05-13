@@ -1607,7 +1607,7 @@ public class LynxFPSRecord : NSObject, <NSCopying> {
   public void LynxFPSRecord::reset();
 }
 
-public class LynxFrameRender : NSObject {
+public class LynxFrameRender : NSObject, <TemplateRenderCallbackProtocol>, <LynxTemplateRenderContextProtocol> {
 }
 
 public class LynxFrameView : UIView, <LUIBodyView> {
@@ -3139,7 +3139,7 @@ public protocol LynxTemplateProvider-p : <NSObject> {
   public void LynxTemplateProvider-p::loadTemplateWithUrl:onComplete:(NSString *url,[onComplete] LynxTemplateLoadBlock callback);
 }
 
-public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <TemplateRenderCallbackProtocol> {
+public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <TemplateRenderCallbackProtocol>, <LynxTemplateRenderContextProtocol> {
   public LynxViewSizeMode LynxTemplateRender::layoutWidthMode layoutWidthMode;
   public LynxViewSizeMode LynxTemplateRender::layoutHeightMode layoutHeightMode;
   public CGFloat LynxTemplateRender::preferredMaxLayoutWidth preferredMaxLayoutWidth;
@@ -3209,13 +3209,48 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxPerformanceController * LynxTemplateRender()::performanceController();
   public void LynxTemplateRender()::setAttachLynxPageUICallback:(attachLynxPageUI callback);
   public lynx::piper::ModuleFactoryDarwin * LynxTemplateRender()::getModuleFactory();
-  public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder, [screenSize] CGSize screenSize);
-  public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
 }
 
-public interface LynxTemplateRender(Helper) {
-  public void LynxTemplateRender(Helper)::setUpWithBuilder:screenSize:(LynxViewBuilder *builder,[screenSize] CGSize screenSize);
-  public void LynxTemplateRender(Helper)::reset:(int32_t lastInstanceId);
+public class LynxTemplateRenderContext : NSObject {
+  public BOOL LynxTemplateRenderContext()::_enableAsyncHydration _enableAsyncHydration;
+  public BOOL LynxTemplateRenderContext()::_enableJSGroupThread _enableJSGroupThread;
+  public BOOL LynxTemplateRenderContext()::_enableJSRuntime _enableJSRuntime;
+  public BOOL LynxTemplateRenderContext()::_enableLayoutOnly _enableLayoutOnly;
+  public BOOL LynxTemplateRenderContext()::_enableMultiAsyncThread _enableMultiAsyncThread;
+  public BOOL LynxTemplateRenderContext()::_enablePendingJSTaskOnLayout _enablePendingJSTaskOnLayout;
+  public BOOL LynxTemplateRenderContext()::_enablePreUpdateData _enablePreUpdateData;
+  public BOOL LynxTemplateRenderContext()::_enableVSyncAlignedMessageLoop _enableVSyncAlignedMessageLoop;
+  public BOOL LynxTemplateRenderContext()::_enableUnifiedPipeline _enableUnifiedPipeline;
+  public BOOL LynxTemplateRenderContext()::_needPendingUIOperation _needPendingUIOperation;
+  public EmbeddedMode LynxTemplateRenderContext()::_embeddedMode _embeddedMode;
+  public CGFloat LynxTemplateRenderContext()::_fontScale _fontScale;
+  public LynxOnLayoutBlock LynxTemplateRenderContext()::_layoutBlock _layoutBlock;
+  public LynxThreadStrategyForRender LynxTemplateRenderContext()::_threadStrategyForRendering _threadStrategyForRendering;
+  public id<LynxDynamicComponentFetcher> LynxTemplateRenderContext()::_fetcher _fetcher;
+  public id LynxTemplateRenderContext()::_lynxModuleExtraData _lynxModuleExtraData;
+  public id<LynxUIRendererProtocol> LynxTemplateRenderContext()::_lynxUIRenderer _lynxUIRenderer;
+  public LynxConfig* LynxTemplateRenderContext()::_config _config;
+  public UIView<LUIBodyView>* LynxTemplateRenderContext()::_containerView _containerView;
+  public LynxDevtool* LynxTemplateRenderContext()::_devTool _devTool;
+  public LynxLifecycleDispatcher* LynxTemplateRenderContext()::_lifecycleDispatcher _lifecycleDispatcher;
+  public LynxEngineProxy* LynxTemplateRenderContext()::_lynxEngineProxy _lynxEngineProxy;
+  public LynxProviderRegistry* LynxTemplateRenderContext()::_providerRegistry _providerRegistry;
+  public LynxBackgroundRuntime* LynxTemplateRenderContext()::_runtime _runtime;
+  public LynxBackgroundRuntimeOptions* LynxTemplateRenderContext()::_runtimeOptions _runtimeOptions;
+  public NSMutableDictionary* LynxTemplateRenderContext()::_extra _extra;
+  public LynxUILayoutTick* LynxTemplateRenderContext()::_uilayoutTick _uilayoutTick;
+  public std::weak_ptr<lynx::piper::LynxModuleManager> LynxTemplateRenderContext()::module_manager_ module_manager_;
+  public std::unique_ptr<lynx::shell::LynxShell> LynxTemplateRenderContext()::shell_ shell_;
+  public NSMutableDictionary<NSString*, id>* LynxTemplateRenderContext()::_lepusModulesClasses _lepusModulesClasses;
+  public LynxContext* LynxTemplateRenderContext()::_context _context;
+  public PaintingContextProxy* LynxTemplateRenderContext()::_paintingContextProxy _paintingContextProxy;
+  public LynxPerformanceController* LynxTemplateRenderContext()::_performanceController _performanceController;
+  public LynxShadowNodeOwner* LynxTemplateRenderContext()::_shadowNodeOwner _shadowNodeOwner;
+}
+
+public protocol LynxTemplateRenderContextProtocol-p : <NSObjectNSObject> {
+  public LynxTemplateRenderContext * LynxTemplateRenderContextProtocol-p::getRenderContext();
+  public void LynxTemplateRenderContextProtocol-p::attachRenderContext:(LynxTemplateRenderContext *context);
 }
 
 public protocol LynxTemplateRenderDelegate-p : <NSObject> {
@@ -3246,6 +3281,12 @@ public protocol LynxTemplateRenderDelegate-p : <NSObject> {
 }
 
 public class LynxTemplateRenderDelegateExternal : NSObject, <LynxTemplateRenderDelegate> {
+}
+
+public class LynxTemplateRenderHelper : NSObject {
+  public void LynxTemplateRenderHelper::setUpTemplateRender:builder:screenSize:(LynxTemplateRender *render,[builder] LynxViewBuilder *builder,[screenSize] CGSize screenSize);
+  public void LynxTemplateRenderHelper::resetTemplateRender:lastInstanceId:(LynxTemplateRender *render,[lastInstanceId] int32_t lastInstanceId);
+  public void LynxTemplateRenderHelper::setUpFrameRender:builder:screenSize:(LynxFrameRender *render,[builder] LynxViewBuilder *builder,[screenSize] CGSize screenSize);
 }
 
 public protocol LynxTemplateRenderProtocol-p : <NSObject> {
