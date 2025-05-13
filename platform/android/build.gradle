@@ -141,16 +141,6 @@ task generateAllGnCmakeTargets {
     }
 }
 
-
-task generateJNIHeader {
-    description "Because generated files should not checkin this repo, so generate JNI headers before build."
-    exec {
-        workingDir "../../"
-        commandLine "bash", "tools/build_jni/prebuild.sh"
-        println commandLine
-    }
-}
-
 task clean(type: Delete) {
     dependsOn generateAllGnCmakeTargets
     dependsOn subprojects*.tasks*.matching { it.name.contains('clean') }

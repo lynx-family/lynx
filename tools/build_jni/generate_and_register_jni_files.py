@@ -404,10 +404,10 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
     jni_register_header_name = java_base_name + '_register_jni.h'
     jni_register_source_name = java_base_name + '_register_jni.cc'
     # file path
-    jni_file_path = os.path.join(root_path, jni_output_path, jni_file_name)
-    jni_file_rel_path = os.path.relpath(jni_file_path, root_path)
-    jni_register_header_abs_path = os.path.join(root_path, jni_output_path, jni_register_header_name)
-    jni_register_header_rel_path = os.path.relpath(jni_register_header_abs_path, root_path)
+    jni_file_path = os.path.join(root_path, jni_output_path, jni_file_name).replace("\\", "/")
+    jni_file_rel_path = os.path.relpath(jni_file_path, root_path).replace("\\", "/")
+    jni_register_header_abs_path = os.path.join(root_path, jni_output_path, jni_register_header_name).replace("\\", "/")
+    jni_register_header_rel_path = os.path.relpath(jni_register_header_abs_path, root_path).replace("\\", "/")
 
     include_header = f'#include "{jni_register_header_rel_path}"'
     include_headers.append([include_header, macro])
