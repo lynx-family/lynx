@@ -21,7 +21,7 @@ namespace lynx {
 namespace tasm {
 namespace recorder {
 
-class TestBenchBaseRecorder {
+class TestBenchBaseRecorder                     {
  public:
   static TestBenchBaseRecorder& GetInstance();
 
