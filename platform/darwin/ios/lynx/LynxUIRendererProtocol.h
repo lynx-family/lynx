@@ -28,6 +28,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxUIOwner;
 @class LynxTemplateResourceFetcher;
 @class LynxViewBuilder;
+@class LynxTemplateRenderContext;
 
 @protocol LynxResourceProvider;
 
@@ -81,8 +82,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (LynxRootUI *)rootUI;
 
 - (void)setupWithContainerView:(UIView<LUIBodyView> *)containerView
-
-                       builder:(LynxViewBuilder *)builder
+                       context:(LynxTemplateRenderContext *)context
                     screenSize:(CGSize)screenSize;
 
 - (void)setLynxContext:(LynxContext *)context;

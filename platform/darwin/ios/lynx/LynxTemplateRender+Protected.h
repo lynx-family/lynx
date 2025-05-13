@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxRuntimeLifecycleListener.h>
 #import <Lynx/LynxTemplateRender.h>
+#import <Lynx/LynxTemplateRenderContext.h>
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxViewEnum.h>
 #import <Lynx/TemplateRenderCallbackProtocol.h>
@@ -40,7 +41,8 @@ typedef NS_ENUM(NSInteger, LynxBooleanOption);
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxTemplateRender () <TemplateRenderCallbackProtocol> {
+@interface LynxTemplateRender () <TemplateRenderCallbackProtocol,
+                                  LynxTemplateRenderContextProtocol> {
  @protected
   BOOL _enableAsyncDisplayFromNative;
   BOOL _enableImageDownsampling;

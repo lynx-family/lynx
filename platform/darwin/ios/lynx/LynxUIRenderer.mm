@@ -9,6 +9,8 @@
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
+#import <Lynx/LynxTemplateRenderContext+Internal.h>
+#import <Lynx/LynxTemplateRenderContext.h>
 #import <Lynx/LynxWeakProxy.h>
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
@@ -183,19 +185,19 @@
 }
 
 - (void)setupWithContainerView:(UIView<LUIBodyView> *)containerView
-                       builder:(LynxViewBuilder *)builder
+                       context:(LynxTemplateRenderContext *)context
                     screenSize:(CGSize)screenSize {
   LynxScreenMetrics *screenMetrics =
       [[LynxScreenMetrics alloc] initWithScreenSize:screenSize scale:[UIScreen mainScreen].scale];
   _uiOwner = [[LynxUIOwner alloc] initWithContainerView:containerView
-                                      componentRegistry:builder.config.componentRegistry
+                                      componentRegistry:context->_config.componentRegistry
                                           screenMetrics:screenMetrics
                                            errorHandler:containerView
                                                uiConfig:nil
-                                           embeddedMode:[builder getEmbeddedMode]];
+                                           embeddedMode:context->_embeddedMode];
 
-  _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
-  _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
+  _uiOwner.uiContext.contextDict = [context->_config.contextDict copy];
+  _uiOwner.uiContext.lynxModuleExtraData = context->_lynxModuleExtraData;
 }
 
 - (void)setLynxContext:(LynxContext *)context {

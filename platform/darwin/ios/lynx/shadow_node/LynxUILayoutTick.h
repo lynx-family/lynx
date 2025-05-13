@@ -6,17 +6,15 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@class LynxView;
-
 @interface LynxUILayoutTick : LynxLayoutTick
 
-- (instancetype)initWithRoot:(LynxView*)root block:(nonnull LynxOnLayoutBlock)block;
+- (instancetype)initWithRoot:(UIView*)root block:(nonnull LynxOnLayoutBlock)block;
 
 /**
  * attach view for request layout
  * @param root root view
  */
-- (void)attach:(LynxView* _Nonnull)root;
+- (void)attach:(UIView* _Nonnull)root;
 
 @end
 

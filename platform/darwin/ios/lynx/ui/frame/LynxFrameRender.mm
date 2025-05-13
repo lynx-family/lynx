@@ -4,14 +4,48 @@
 
 #import <Lynx/LynxFrameRender.h>
 
+#import <Lynx/LynxTemplateRenderContext+Internal.h>
+#import <Lynx/LynxTemplateRenderHelper.h>
+#import <Lynx/LynxUIRenderer.h>
 #import <Lynx/TemplateRenderCallbackProtocol.h>
 
 #pragma mark - LynxFrameRender
 
-@interface LynxFrameRender () <TemplateRenderCallbackProtocol>
-@end
+@implementation LynxFrameRender {
+  LynxTemplateRenderContext *_renderContext;
+}
 
-@implementation LynxFrameRender
+- (instancetype)init {
+  if (self = [super init]) {
+    // TODO(zhoupeng.z): get context from root view
+    _renderContext = [[LynxTemplateRenderContext alloc] init];
+    _renderContext->_lynxUIRenderer = [[LynxUIRenderer alloc] init];
+    [LynxTemplateRenderHelper setUpFrameRender:self screenSize:[UIScreen mainScreen].bounds.size];
+  }
+  return self;
+}
+
+- (void)dealloc {
+  [_renderContext->_lynxUIRenderer reset];
+  _renderContext->timing_collector_platform_impl_.reset();
+  // ios block cannot capture std::unique_ptr, tricky...
+  auto *shell = _renderContext->shell_.release();
+  // LynxView maybe release in main flow of TemplateAssembler,
+  // so need just release LynxShell delay, avoid crash
+  dispatch_async(dispatch_get_main_queue(), ^{
+    delete shell;
+  });
+}
+
+#pragma mark - LynxTemplateRenderContextProtocol
+
+- (LynxTemplateRenderContext *)getRenderContext {
+  return _renderContext;
+}
+
+- (void)attachRenderContext:(LynxTemplateRenderContext *)context {
+  _renderContext = context;
+}
 
 #pragma mark - LynxErrorReceiverProtocol
 
