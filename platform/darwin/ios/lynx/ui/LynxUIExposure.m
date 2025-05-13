@@ -465,7 +465,7 @@
   _isStopExposure = YES;
   [self removeFromRunLoop];
   // Use the sendEvent field in options to control whether to send disexposure events.
-  if ([[options valueForKey:@"sendEvent"] boolValue]) {
+  if (options == nil || [[options valueForKey:@"sendEvent"] boolValue]) {
     [self sendEvent:_uiInWindowMapBefore eventName:@"disexposure"];
     [_uiInWindowMapBefore removeAllObjects];
   }

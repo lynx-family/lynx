@@ -149,6 +149,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::enableNewImage();
   public bool LUIConfig-p::trailUseNewImage();
   public NSUInteger LUIConfig-p::logBoxImageSizeWarningThreshold();
+  public bool LUIConfig-p::enableExposureWhenReload();
 }
 
 public class LUIConfigAdapter : NSObject, <LUIConfig> {
@@ -3770,6 +3771,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::enableNewImage enableNewImage;
   public BOOL LynxUIContext::trailUseNewImage trailUseNewImage;
   public NSInteger LynxUIContext::logBoxImageSizeWarningThreshold logBoxImageSizeWarningThreshold;
+  public BOOL LynxUIContext::enableExposureWhenReload enableExposureWhenReload;
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
@@ -3790,6 +3792,8 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext::removeUIFromExposedMap:(LynxUI *ui);
   public void LynxUIContext::removeUIFromExposedMap:withUniqueIdentifier:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID);
   public void LynxUIContext::removeUIFromIntersectionManager:(LynxUI *ui);
+  public void LynxUIContext::stopExposure();
+  public void LynxUIContext::resumeExposure();
   public nullable id< LynxResourceFetcher > LynxUIContext::getGenericResourceFetcher();
   public void LynxUIContext()::setUIConfig:(id< LUIConfig > config);
   public void LynxUIContext()::setDefaultOverflowVisible:(BOOL enable);

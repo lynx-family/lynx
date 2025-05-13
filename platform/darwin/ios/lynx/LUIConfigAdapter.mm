@@ -128,4 +128,8 @@
   return _config->GetTrailNewImage() == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
+- (bool)enableExposureWhenReload {
+  return _config->GetEnableExposureWhenReload();
+}
+
 @end

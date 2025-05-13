@@ -81,6 +81,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) BOOL enableNewImage;
 @property(nonatomic, readonly) BOOL trailUseNewImage;
 @property(nonatomic, readonly) NSInteger logBoxImageSizeWarningThreshold;
+@property(nonatomic, readonly) BOOL enableExposureWhenReload;
 
 - (instancetype)initWithScreenMetrics:(LynxScreenMetrics*)screenMetrics;
 - (void)updateScreenSize:(CGSize)screenSize;
@@ -107,6 +108,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)removeUIFromExposedMap:(LynxUI*)ui;
 - (void)removeUIFromExposedMap:(LynxUI*)ui withUniqueIdentifier:(NSString* _Nullable)uniqueID;
 - (void)removeUIFromIntersectionManager:(LynxUI*)ui;
+- (void)stopExposure;
+- (void)resumeExposure;
 
 - (nullable id<LynxResourceFetcher>)getGenericResourceFetcher;
 

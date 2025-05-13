@@ -89,6 +89,8 @@ constexpr const char* kEnableDisexposureWhenLynxHidden =
     "enableDisexposureWhenLynxHidden";
 static constexpr const char* const kEnableExposureWhenLayout =
     "enableExposureWhenLayout";
+static constexpr const char* const kEnableExposureWhenReload =
+    "enableExposureWhenReload";
 constexpr const char* kEnableNewIntersectionObserver =
     "enableNewIntersectionObserver";
 constexpr const char* kIncludeFontPadding = "includeFontPadding";
@@ -191,6 +193,8 @@ void TasmPlatformInvokerAndroid::OnPageConfigDecoded(
                           config->GetEnableDisexposureWhenLynxHidden());
   java_config.PushBoolean(kEnableExposureWhenLayout,
                           config->GetEnableExposureWhenLayout());
+  java_config.PushBoolean(kEnableExposureWhenReload,
+                          config->GetEnableExposureWhenReload());
   java_config.PushBoolean(kEnableNewIntersectionObserver,
                           config->GetEnableNewIntersectionObserver());
   java_config.PushInt(kObserverFrameRate, config->GetObserverFrameRate());

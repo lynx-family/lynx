@@ -462,7 +462,7 @@ public class UIExposure extends LynxObserverManager {
     mIsStopExposure = true;
     destroy();
     // Use the sendEvent field in options to control whether to send disexposure events.
-    if (options.containsKey("sendEvent") && (Boolean) options.get("sendEvent")) {
+    if (options == null || options.containsKey("sendEvent") && (Boolean) options.get("sendEvent")) {
       sendEvent(mUiInWindowBefore, "disexposure");
       mUiInWindowBefore.clear();
     }
@@ -471,6 +471,14 @@ public class UIExposure extends LynxObserverManager {
   public void resumeExposure() {
     mIsStopExposure = false;
     addToObserverTree();
+  }
+
+  @Override
+  public void addToObserverTree() {
+    if (mIsStopExposure || mExposureDetailMap.isEmpty()) {
+      return;
+    }
+    super.addToObserverTree();
   }
 
   protected void sendEvent(HashSet<UIExposureDetail> uiList, String eventName) {
@@ -599,7 +607,7 @@ public class UIExposure extends LynxObserverManager {
       // Ensure add to Observer once.
       // After calling stopExposure, the exposure detection task should only be started in
       // resumeExposure.
-      if (!mIsStopExposure && mExposureDetailMap.size() == 1) {
+      if (mExposureDetailMap.size() == 1) {
         addToObserverTree();
       }
       return true;

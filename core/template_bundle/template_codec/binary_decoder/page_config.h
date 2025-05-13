@@ -742,6 +742,14 @@ class PageConfig final : public EntryConfig {
     return enable_exposure_when_layout_;
   }
 
+  inline void SetEnableExposureWhenReload(bool value) {
+    enable_exposure_when_reload_ = value;
+  }
+
+  inline bool GetEnableExposureWhenReload() const {
+    return enable_exposure_when_reload_;
+  }
+
   inline void SetEnableAirDetectRemovedKeysWhenUpdateData(bool value) {
     enable_air_detect_removed_keys_when_update_data_ = value;
   }
@@ -1272,6 +1280,8 @@ class PageConfig final : public EntryConfig {
   bool enable_exposure_when_layout_{false};
 
   bool enable_exposure_ui_margin_{false};
+
+  bool enable_exposure_when_reload_{false};
 
   bool enable_new_gesture_{false};
 

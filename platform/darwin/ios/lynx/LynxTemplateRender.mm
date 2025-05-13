@@ -1055,6 +1055,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       template_data->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
       [self resetLayoutStatus];
       [self markDirty];
+      LynxUIContext* uiContext = _context.uiOwner.uiContext;
+      if (uiContext.enableExposureWhenReload) {
+        [uiContext stopExposure];
+        [uiContext resumeExposure];
+      }
 
       /**
        * Null globalProps -> Nil Value;

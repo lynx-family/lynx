@@ -29,4 +29,5 @@
 - (bool)enableNewImage;
 - (bool)trailUseNewImage;
 - (NSUInteger)logBoxImageSizeWarningThreshold;
+- (bool)enableExposureWhenReload;
 @end
