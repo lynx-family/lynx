@@ -112,6 +112,7 @@ The design of some APIs and some implementations in Lynx have been inspired by a
 
 We respect the intellectual property rights of all these projects and adhere to relevant open-source licenses and usage guidelines.
 
+
 ## [License][license]
 Lynx is Apache licensed, as found in the [LICENSE][license] file.
 
