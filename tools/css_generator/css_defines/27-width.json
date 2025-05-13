@@ -117,5 +117,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

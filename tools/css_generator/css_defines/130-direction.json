@@ -92,5 +92,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

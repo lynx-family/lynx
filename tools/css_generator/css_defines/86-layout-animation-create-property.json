@@ -12,5 +12,6 @@
     "scaleY",
     "scaleXY"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

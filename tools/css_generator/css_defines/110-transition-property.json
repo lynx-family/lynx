@@ -23,5 +23,6 @@
     "transform",
     "all"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

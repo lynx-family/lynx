@@ -23,5 +23,6 @@
       "version": "2.17",
       "desc": ""
     }
-  ]
+  ],
+  "is_shorthand": false
 }

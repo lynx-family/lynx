@@ -188,5 +188,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

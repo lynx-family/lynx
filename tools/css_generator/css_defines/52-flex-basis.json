@@ -70,5 +70,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

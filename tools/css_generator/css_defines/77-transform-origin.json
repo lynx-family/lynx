@@ -13,5 +13,6 @@
     "bottom",
     "center"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

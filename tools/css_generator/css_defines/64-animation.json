@@ -6,5 +6,6 @@
   "author": "liyanbo, linxiaosong",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": ""
+  "desc": "",
+  "is_shorthand": true
 }

@@ -23,5 +23,6 @@
       "version": "2.14",
       "desc": ""
     }
-  ]
+  ],
+  "is_shorthand": false
 }

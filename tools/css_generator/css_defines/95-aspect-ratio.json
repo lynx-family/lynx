@@ -66,5 +66,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

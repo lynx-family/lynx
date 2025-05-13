@@ -94,5 +94,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": true
 }
