@@ -817,6 +817,8 @@ public class NestedScrollContainerView
     return false;
   }
 
+  protected void onGestureRecognizedDuringNestedScroll(boolean consumeScroll) {}
+
   @Override
   public boolean canScrollHorizontally(int direction) {
     return !mIsVertical && super.canScrollHorizontally(direction);
@@ -936,7 +938,14 @@ public class NestedScrollContainerView
   @Override
   public boolean dispatchNestedPreScroll(
       int dx, int dy, int[] consumed, int[] offsetInWindow, int type) {
-    return mChildHelper.dispatchNestedPreScroll(dx, dy, consumed, offsetInWindow, type);
+    boolean consumedScroll =
+        mChildHelper.dispatchNestedPreScroll(dx, dy, consumed, offsetInWindow, type);
+
+    // In a nested scenario, if the parent view consumes this gesture, the child view should not
+    // trigger the click event
+
+    onGestureRecognizedDuringNestedScroll(consumedScroll);
+    return consumedScroll;
   }
 
   @Override

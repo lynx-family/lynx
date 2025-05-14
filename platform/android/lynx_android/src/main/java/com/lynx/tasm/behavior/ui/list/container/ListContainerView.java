@@ -107,6 +107,14 @@ public class ListContainerView
     return super.onTouchEvent(ev);
   }
 
+  @Override
+  protected void onGestureRecognizedDuringNestedScroll(boolean consumeScroll) {
+    super.onGestureRecognizedDuringNestedScroll(consumeScroll);
+    if (mUiListContainer != null && consumeScroll) {
+      mUiListContainer.recognizeGesturere();
+    }
+  }
+
   public void consumeGesture(boolean consume) {
     mConsumeGesture = consume;
     if (consume) {
