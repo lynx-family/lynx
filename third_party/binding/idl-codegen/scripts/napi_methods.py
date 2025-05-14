@@ -312,6 +312,8 @@ def method_context(interface, method, component_info, interfaces_info, is_visibl
         # 'PartialInterfaceImplementedAs' in extended_attributes,
         # 'is_per_world_bindings':
         # 'PerWorldBindings' in extended_attributes,
+        'is_enum':
+        idl_type.is_enum,
         'is_raises_exception':
         is_raises_exception,
         'is_nullable':

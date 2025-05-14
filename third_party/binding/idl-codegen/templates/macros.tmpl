@@ -225,7 +225,7 @@
   return Napi::Boolean::New(info.Env(), result);
   {% elif method.is_numeric_type %}
   return Number::New(info.Env(), result);
-  {% elif method.is_string_type %}
+  {% elif method.is_string_type or method.is_enum %}
   return String::New(info.Env(), result);
   {% elif method.is_wrapper_type %}
   {% if method.may_chain %}
