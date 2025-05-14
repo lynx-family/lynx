@@ -53,6 +53,19 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
 }
 @end
 
+@interface LynxOpacityView : UIView
+
+@end
+
+@implementation LynxOpacityView
+
+- (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
+  UIView* ret = [super hitTest:point withEvent:event];
+  return ret == self ? nil : ret;
+}
+
+@end
+
 #pragma mark LynxBackgroundManager
 @implementation LynxBackgroundManager {
   // TODO(linxs):_isBGChangedImage&_isBGChangedNoneImage to be removed later, use LynxBackgroundInfo
@@ -132,7 +145,7 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   UIView* superView = _ui.view.superview;
 
   if (!_opacityView) {
-    _opacityView = [[UIView alloc] init];
+    _opacityView = [[LynxOpacityView alloc] init];
     CALayer* opacityLayer = _opacityView.layer;
     [superView insertSubview:_opacityView belowSubview:_ui.view];
     [superLayer insertSublayer:opacityLayer below:mainLayer];
