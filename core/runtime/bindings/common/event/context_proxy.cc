@@ -56,15 +56,17 @@ event::EventListener* ContextProxy::GetListenerBeforePublishEvent() {
 
 event::DispatchEventResult ContextProxy::DispatchEvent(event::Event& event) {
   if (event.event_type() != event::Event::EventType::kMessageEvent) {
-    return event::DispatchEventResult::kNotCanceled;
+    return {event::EventCancelType::kNotCanceled, false};
   }
   MessageEvent& message_event = static_cast<MessageEvent&>(event);
   if (message_event.GetTargetType() == origin_type_) {
+    bool consumed = false;
     if (event_listener_ != nullptr) {
       event_listener_->Invoke(&event);
+      consumed = true;
     }
-    EventTarget::DispatchEvent(message_event);
-    return event::DispatchEventResult::kNotCanceled;
+    consumed |= EventTarget::DispatchEvent(message_event).consumed;
+    return {event::EventCancelType::kNotCanceled, consumed};
   }
   return delegate_.DispatchMessageEvent(std::move(message_event));
 }

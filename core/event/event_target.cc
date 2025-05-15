@@ -49,7 +49,7 @@ EventTarget::EventTarget()
 DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   auto vector = event_listener_map_->Find(event.type());
   if (vector == nullptr) {
-    return DispatchEventResult::kNotCanceled;
+    return {EventCancelType::kNotCanceled, false};
   }
 
   // Fire all listeners registered for this event. Don't fire listeners removed
@@ -58,13 +58,15 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   // index |size|, so iterating up to (but not including) |size| naturally
   // excludes new event listeners.
   EventListenerVector copy = *vector;
+  bool consumed = false;
   for (auto& listener : copy) {
     if (listener->removed()) {
       continue;
     }
     listener->Invoke(&event);
+    consumed = true;
   }
-  return DispatchEventResult::kNotCanceled;
+  return {EventCancelType::kNotCanceled, consumed};
 }
 
 bool EventTarget::AddEventListener(

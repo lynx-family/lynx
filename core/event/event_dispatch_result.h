@@ -14,7 +14,7 @@
 namespace lynx {
 namespace event {
 
-enum class DispatchEventResult : uint8_t {
+enum class EventCancelType : uint8_t {
   // Event was not canceled by event handler or default event handler.
   kNotCanceled = 0,
   // Event was canceled by event handler; i.e. a script handler calling
@@ -31,6 +31,16 @@ enum class DispatchEventResult : uint8_t {
   // events likely should always execute the event handler the developer intends
   // to execute.
   kCanceledBeforeDispatch,
+};
+
+struct DispatchEventResult {
+  EventCancelType cancel_type;
+  // Whether the event was consumed by front-end.
+  bool consumed;
+
+  bool IsCanceled() const {
+    return cancel_type != EventCancelType::kNotCanceled;
+  }
 };
 
 }  // namespace event

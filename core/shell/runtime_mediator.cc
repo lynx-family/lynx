@@ -453,7 +453,7 @@ event::DispatchEventResult RuntimeMediator::DispatchMessageEvent(
   if (runtime_standalone_mode_) {
     // In standalone mode, runtime don't have other target, reject event message
     // here.
-    return event::DispatchEventResult::kCanceledByEventHandler;
+    return {event::EventCancelType::kCanceledByEventHandler, false};
   }
   auto copy_event = runtime::MessageEvent::ShallowCopy(event);
   if (event.IsSendingToCoreThread()) {
@@ -467,7 +467,7 @@ event::DispatchEventResult RuntimeMediator::DispatchMessageEvent(
           facade->OnReceiveMessageEvent(std::move(message_event));
         });
   }
-  return event::DispatchEventResult::kNotCanceled;
+  return {event::EventCancelType::kNotCanceled, true};
 }
 
 std::string RuntimeMediator::LoadJSSource(const std::string& name) {

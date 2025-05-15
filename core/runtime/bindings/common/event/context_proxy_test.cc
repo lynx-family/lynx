@@ -41,9 +41,9 @@ event::DispatchEventResult MockContextProxyDelegate::DispatchMessageEvent(
     auto target = proxy_map_in_lepus_[event.GetOriginType()].get();
     target->DispatchEvent(event);
   } else {
-    return event::DispatchEventResult::kCanceledBeforeDispatch;
+    return {event::EventCancelType::kCanceledBeforeDispatch, false};
   }
-  return event::DispatchEventResult::kNotCanceled;
+  return {event::EventCancelType::kNotCanceled, true};
 }
 
 TEST_F(ContextProxyTest, TestContextProxyTest0) {

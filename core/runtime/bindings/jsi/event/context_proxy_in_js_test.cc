@@ -17,7 +17,7 @@ event::DispatchEventResult JSRuntimeTestMockDelegate::DispatchMessageEvent(
   ss_ << "target: " << event.GetTargetString()
       << ", origin: " << event.GetOriginString()
       << ", message: " << event.message_;
-  return event::DispatchEventResult::kNotCanceled;
+  return {event::EventCancelType::kNotCanceled, true};
 }
 
 void JSRuntimeTestMockDelegate::ClearResult() {

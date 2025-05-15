@@ -561,9 +561,9 @@ event::DispatchEventResult TasmMediator::DispatchMessageEvent(
           facade->OnReceiveMessageEvent(std::move(message_event));
         });
   } else {
-    return event::DispatchEventResult::kCanceledBeforeDispatch;
+    return {event::EventCancelType::kCanceledBeforeDispatch, false};
   }
-  return event::DispatchEventResult::kNotCanceled;
+  return {event::EventCancelType::kNotCanceled, true};
 }
 
 void TasmMediator::OnGlobalPropsUpdated(const lepus::Value& props) {

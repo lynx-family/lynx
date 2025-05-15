@@ -53,9 +53,10 @@ DispatchEventResult EventDispatcher::Dispatch() {
   if (!event_->bubbles()) {
     event_->set_event_phase(Event::PhaseType::kAtTarget);
     event_->set_current_target(target_);
-    target_->DispatchEvent(*event_);
-    return DispatchEventResult::kCanceledByDefaultEventHandler;
+    auto result = target_->DispatchEvent(*event_);
+    return {EventCancelType::kCanceledByDefaultEventHandler, result.consumed};
   }
+  bool consumed = false;
   auto path = event_->event_path();
   // capture
   for (auto item = path.rbegin(); item != path.rend(); ++item) {
@@ -64,7 +65,8 @@ DispatchEventResult EventDispatcher::Dispatch() {
                                 : Event::PhaseType::kCapturingPhase);
     event_->set_current_target(*item);
     auto result = (*item)->DispatchEvent(*event_);
-    if (result != DispatchEventResult::kNotCanceled) {
+    consumed |= result.consumed;
+    if (result.IsCanceled()) {
       return result;
     }
   }
@@ -77,11 +79,12 @@ DispatchEventResult EventDispatcher::Dispatch() {
     event_->set_event_phase(Event::PhaseType::kBubblingPhase);
     event_->set_current_target(item);
     auto result = item->DispatchEvent(*event_);
-    if (result != DispatchEventResult::kNotCanceled) {
+    consumed |= result.consumed;
+    if (result.IsCanceled()) {
       return result;
     }
   }
-  return DispatchEventResult::kNotCanceled;
+  return {EventCancelType::kNotCanceled, consumed};
 }
 
 }  // namespace event

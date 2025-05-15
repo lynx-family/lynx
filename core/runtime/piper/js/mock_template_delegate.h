@@ -128,7 +128,7 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 
   event::DispatchEventResult DispatchMessageEvent(
       runtime::MessageEvent event) override {
-    return event::DispatchEventResult::kNotCanceled;
+    return {event::EventCancelType::kNotCanceled, false};
   }
 
   std::unique_ptr<tasm::PropBundle> CreatePropBundle() override {

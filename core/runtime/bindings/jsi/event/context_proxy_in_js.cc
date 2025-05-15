@@ -148,8 +148,8 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
             }
 
             auto message_event = CreateMessageEvent(rt, app, event);
-            auto success = DispatchEvent(message_event);
-            return piper::Value(static_cast<int>(success));
+            auto result = DispatchEvent(message_event);
+            return piper::Value(static_cast<int>(result.cancel_type));
           } else if (type == PropType::kAddEventListener) {
             if (count < 2) {
               return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
