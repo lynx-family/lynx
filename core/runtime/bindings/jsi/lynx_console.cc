@@ -25,8 +25,8 @@
 namespace lynx {
 namespace piper {
 
-Console::Console(Runtime* rt, std::shared_ptr<ConsoleMessagePostMan> post_man)
-    : rt_(rt), post_man_(post_man) {}
+Console::Console(std::shared_ptr<ConsoleMessagePostMan> post_man)
+    : post_man_(post_man) {}
 
 Value Console::get(Runtime* rt, const PropNameID& name) {
   auto methodName = name.utf8(*rt);
@@ -103,8 +103,8 @@ Value Console::get(Runtime* rt, const PropNameID& name) {
   if (methodName == "test") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "test"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
+        [](Runtime& rt, const Value& thisVal, const Value* args,
+           size_t count) -> base::expected<Value, JSINativeException> {
           rapidjson::StringBuffer s;
           rapidjson::Writer<rapidjson::StringBuffer> writer(s);
           writer.StartObject();
@@ -114,7 +114,7 @@ Value Console::get(Runtime* rt, const PropNameID& name) {
           writer.String("page/component/index");
           writer.EndObject();
 
-          return Value(String::createFromUtf8(*rt_, s.GetString()));
+          return Value(String::createFromUtf8(rt, s.GetString()));
           //  return LogWithLevel(&rt, logging::LOG_WARNING, args, count);
         });
   }

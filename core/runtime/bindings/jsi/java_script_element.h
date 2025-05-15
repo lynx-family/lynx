@@ -21,12 +21,9 @@ class JavaScriptElement : public HostObject {
  public:
   enum AnimationOperation : int32_t { START = 0, PLAY, PAUSE, CANCEL, FINISH };
 
-  JavaScriptElement(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app,
-                    const std::string& root_id, const std::string& selector_id)
-      : rt_(rt),
-        native_app_(app),
-        root_id_(root_id),
-        selector_id_(selector_id){};
+  JavaScriptElement(std::weak_ptr<App> app, const std::string& root_id,
+                    const std::string& selector_id)
+      : native_app_(app), root_id_(root_id), selector_id_(selector_id){};
   virtual ~JavaScriptElement() override {
     LOGI("LYNX ~NativeElement destroy");
   };
@@ -37,7 +34,6 @@ class JavaScriptElement : public HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
  private:
-  std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
   std::string root_id_;
   std::string selector_id_;

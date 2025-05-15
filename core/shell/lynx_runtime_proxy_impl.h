@@ -48,8 +48,7 @@ class LynxRuntimeProxyImpl : public LynxRuntimeProxy {
       std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate);
 
  protected:
-  using ParamsGetter = base::MoveOnlyClosure<std::unique_ptr<pub::Value>,
-                                             std::shared_ptr<piper::Runtime>&>;
+  using ParamsGetter = base::MoveOnlyClosure<std::unique_ptr<pub::Value>>;
   void CallJSFunction(std::string module_id, std::string method_id,
                       ParamsGetter getter);
 

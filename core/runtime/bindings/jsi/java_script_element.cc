@@ -75,6 +75,9 @@ Value JavaScriptElement::get(lynx::piper::Runtime *rt,
                const piper::Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
           auto ptr = native_app_.lock();
+          if (!ptr || ptr->IsDestroying()) {
+            return piper::Value::undefined();
+          }
           if (count < 1) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx.setProperty args is empty! args count is 0."));

@@ -24,8 +24,7 @@ class Runtime;
 class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
  public:
   ContextProxyInJS(runtime::ContextProxy::Delegate&,
-                   runtime::ContextProxy::Type, std::weak_ptr<Runtime>,
-                   std::weak_ptr<App>);
+                   runtime::ContextProxy::Type, std::weak_ptr<App>);
   virtual ~ContextProxyInJS() override = default;
 
   runtime::MessageEvent CreateMessageEvent(Runtime& rt,
@@ -38,7 +37,6 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
  protected:
-  std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
 };
 

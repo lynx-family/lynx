@@ -189,7 +189,7 @@ bool RuntimeManager::IsSingleJSContext(const std::string& group_id) {
   return group_id == "-1";
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
+std::unique_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     const std::string& group_id,
     std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
     std::vector<std::pair<std::string, std::string>>& js_pre_sources,
@@ -202,7 +202,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
         force_use_lightweight_js_engine);
   }
   bool is_single_context = IsSingleJSContext(group_id);
-  std::shared_ptr<piper::Runtime> js_runtime;
+  std::unique_ptr<piper::Runtime> js_runtime;
   std::shared_ptr<piper::JSIContext> js_context;
   // This variable indicates 'false' only when it has been created previously
   // and the context is being shared.
@@ -211,7 +211,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     js_runtime = CreateRuntime(group_id, exception_handler,
                                force_use_lightweight_js_engine, rt_id,
                                enable_bytecode, bytecode_source_url);
-    js_context = CreateJSIContext(js_runtime, group_id);
+    js_context = CreateJSIContext(*js_runtime, group_id);
     LOGI("create single_context:" << js_context.get());
   } else {
     js_context = GetSharedJSContext(group_id);
@@ -259,7 +259,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
       js_runtime = CreateRuntime(group_id, exception_handler,
                                  force_use_lightweight_js_engine, rt_id,
                                  enable_bytecode, bytecode_source_url);
-      js_context = CreateJSIContext(js_runtime, group_id);
+      js_context = CreateJSIContext(*js_runtime, group_id);
       LOGI("get shared_context failed, create context:"
            << js_context.get() << ", group:" << group_id);
     }
@@ -271,11 +271,11 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
   // none share context and first create share context.
   if (need_create_context_wrapper) {
     std::shared_ptr<JSContextWrapper> context_wrapper;
-    std::shared_ptr<piper::Runtime> global_runtime;
+    std::unique_ptr<piper::Runtime> global_runtime;
     if (is_single_context) {
       context_wrapper = std::make_shared<NoneSharedJSContextWrapper>(
           js_context, runtime_manager_delegate_ == nullptr ? this : nullptr);
-      global_runtime = js_runtime;
+      global_runtime = std::move(js_runtime);
     } else {
       context_wrapper =
           std::make_shared<SharedJSContextWrapper>(js_context, group_id, this);
@@ -305,25 +305,30 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
     if (ensure_console) {
       context_wrapper->EnsureConsole(post_man);
     }
+    if (is_single_context) {
+      js_runtime = std::move(global_runtime);
+    }
 
     // should call brefore loadPreJS.
     if (IsInspectEnabled(force_use_lightweight_js_engine)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);
+      runtime_manager_delegate_->OnRuntimeReady(executor, *(js_runtime.get()),
+                                                group_id);
     }
 
-    piper::GCPauseSuppressionMode mode(global_runtime.get());
-    context_wrapper->loadPreJS(js_runtime, js_pre_sources);
+    piper::GCPauseSuppressionMode mode(js_runtime.get());
+    context_wrapper->loadPreJS(js_runtime.get(), js_pre_sources);
   } else {
     // share context also need call this, because lynx_runtime is different.
     if (IsInspectEnabled(force_use_lightweight_js_engine)) {
-      runtime_manager_delegate_->OnRuntimeReady(executor, js_runtime, group_id);
+      runtime_manager_delegate_->OnRuntimeReady(executor, *(js_runtime.get()),
+                                                group_id);
     }
   }
 
   return js_runtime;
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::CreateRuntime(
+std::unique_ptr<piper::Runtime> RuntimeManager::CreateRuntime(
     const std::string& group_id,
     std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
     bool force_use_lightweight_js_engine, int64_t rt_id, bool enable_bytecode,
@@ -364,40 +369,40 @@ std::shared_ptr<piper::JSIContext> RuntimeManager::GetSharedJSContext(
 }
 
 std::shared_ptr<piper::JSIContext> RuntimeManager::CreateJSIContext(
-    std::shared_ptr<piper::Runtime>& rt, const std::string& group_id) {
+    piper::Runtime& rt, const std::string& group_id) {
   std::shared_ptr<piper::JSIContext> js_context;
   bool need_create_vm = false;
-  if (rt->type() == piper::JSRuntimeType::jsc ||
-      rt->type() == piper::JSRuntimeType::quickjs) {
+  if (rt.type() == piper::JSRuntimeType::jsc ||
+      rt.type() == piper::JSRuntimeType::quickjs) {
     need_create_vm = true;
 #if JS_ENGINE_TYPE == 1 || JS_ENGINE_TYPE == 2
-    auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt->type());
-    return rt->createContext(vm_instance == nullptr ? rt->createVM(nullptr)
-                                                    : vm_instance);
+    auto vm_instance = VMInstancePool::Instance().TakeVMInstance(rt.type());
+    return rt.createContext(vm_instance == nullptr ? rt.createVM(nullptr)
+                                                   : vm_instance);
 #else
-    return rt->createContext(rt->createVM(nullptr));
+    return rt.createContext(rt.createVM(nullptr));
 #endif
   } else {
     need_create_vm = EnsureVM(rt);
-    js_context = rt->createContext(mVMContainer_[rt->type()]);
+    js_context = rt.createContext(mVMContainer_[rt.type()]);
   }
   InitJSRuntimeCreatedType(need_create_vm, rt);
   return js_context;
 }
 
-void RuntimeManager::InitJSRuntimeCreatedType(
-    bool need_create_vm, std::shared_ptr<piper::Runtime>& rt) {
+void RuntimeManager::InitJSRuntimeCreatedType(bool need_create_vm,
+                                              piper::Runtime& rt) {
   piper::JSRuntimeCreatedType type =
       need_create_vm ? piper::JSRuntimeCreatedType::vm_context
                      : piper::JSRuntimeCreatedType::context;
-  rt->setCreatedType(type);
+  rt.setCreatedType(type);
 }
 
-bool RuntimeManager::EnsureVM(std::shared_ptr<piper::Runtime>& rt) {
-  if (mVMContainer_.find(rt->type()) == mVMContainer_.end()) {
+bool RuntimeManager::EnsureVM(piper::Runtime& rt) {
+  if (mVMContainer_.find(rt.type()) == mVMContainer_.end()) {
     piper::StartupData* data = nullptr;
 
-    mVMContainer_.insert(std::make_pair(rt->type(), rt->createVM(data)));
+    mVMContainer_.insert(std::make_pair(rt.type(), rt.createVM(data)));
     return true;
   }
   return false;
@@ -420,7 +425,7 @@ void RuntimeManager::EnsureConsolePostMan(
   }
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
+std::unique_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
     bool force_use_lightweight_js_engine) {
   if (IsInspectEnabled(force_use_lightweight_js_engine)) {
     return runtime_manager_delegate_->MakeRuntime(

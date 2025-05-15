@@ -46,8 +46,7 @@ class LynxProxy;
 // now this do nothing!
 class AppProxy : public HostObject {
  public:
-  AppProxy(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app)
-      : rt_(rt), native_app_(app) {}
+  AppProxy(std::weak_ptr<App> app) : native_app_(app) {}
   ~AppProxy() { LOGI("LYNX ~AppProxy destroy"); }
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -57,15 +56,13 @@ class AppProxy : public HostObject {
   enum AnimationOperation : int32_t { START = 0, PLAY, PAUSE, CANCEL, FINISH };
 
  protected:
-  std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
 };
 
 class App : public std::enable_shared_from_this<App> {
  public:
   static std::shared_ptr<App> Create(
-      int64_t rt_id, std::weak_ptr<Runtime> rt,
-      runtime::TemplateDelegate* delegate,
+      int64_t rt_id, Runtime* rt, runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSIExceptionHandler> exception_handler,
       piper::Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
@@ -199,7 +196,6 @@ class App : public std::enable_shared_from_this<App> {
   void AddReporterCustomInfo(
       const std::unordered_map<std::string, std::string>& info);
 
-  std::shared_ptr<Runtime> GetRuntime();
   std::optional<lepus_value> ParseJSValueToLepusValue(
       const piper::Value& data, const std::string& component_id);
 
@@ -265,10 +261,12 @@ class App : public std::enable_shared_from_this<App> {
 
   void SetPageOptions(const tasm::PageOptions& options);
   const tasm::PageOptions& GetPageOptions() { return page_options_; }
+  // This method will return nullptr after the class has been destroyed.
+  // Please ensure to check before using.
+  Runtime* GetJSRuntime() { return rt_; }
 
  private:
-  App(int64_t rt_id, std::weak_ptr<Runtime> rt,
-      runtime::TemplateDelegate* delegate,
+  App(int64_t rt_id, Runtime* rt, runtime::TemplateDelegate* delegate,
       std::shared_ptr<JSIExceptionHandler> exception_handler,
       piper::Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
@@ -313,7 +311,7 @@ class App : public std::enable_shared_from_this<App> {
   State state_ = State::kNotStarted;
 
   std::string app_guid_;
-  std::weak_ptr<Runtime> rt_;
+  Runtime* rt_;
   std::string i18_resource_;
   piper::Value js_app_;
   runtime::TemplateDelegate* const delegate_;

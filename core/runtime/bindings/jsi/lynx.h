@@ -15,8 +15,7 @@ namespace lynx {
 namespace piper {
 class LynxProxy : public HostObject {
  public:
-  LynxProxy(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app)
-      : rt_(rt), native_app_(app){};
+  LynxProxy(std::weak_ptr<App> app) : native_app_(app){};
   ~LynxProxy() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -25,7 +24,6 @@ class LynxProxy : public HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt) override;
 
  private:
-  std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
 
   piper::Value GetCustomSectionSync(Runtime& rt, const char* prop_name);

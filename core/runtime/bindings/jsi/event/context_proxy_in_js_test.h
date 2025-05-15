@@ -35,7 +35,7 @@ class JSRuntimeTestMockDelegate : public runtime::test::MockTemplateDelegate {
 
 class JSRuntimeTestMockJSApp : public HostObject {
  public:
-  JSRuntimeTestMockJSApp(std::shared_ptr<Runtime> rt) : rt_(rt) {}
+  JSRuntimeTestMockJSApp() {}
   ~JSRuntimeTestMockJSApp() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -46,7 +46,6 @@ class JSRuntimeTestMockJSApp : public HostObject {
   size_t call_count{0};
   std::vector<size_t> count_ary{0};
   std::vector<std::vector<piper::Value>> args_ary;
-  std::weak_ptr<Runtime> rt_;
 };
 
 class ContextProxyInJSTest : public JSITestBase {

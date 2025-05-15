@@ -110,8 +110,8 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
             id = args[1].getString(rt).utf8(rt);
           }
           return piper::Value(Object::createFromHostObject(
-              rt, std::make_shared<JavaScriptElement>(rt_, native_app_, root_id,
-                                                      id)));
+              rt,
+              std::make_shared<JavaScriptElement>(native_app_, root_id, id)));
         });
   }
 

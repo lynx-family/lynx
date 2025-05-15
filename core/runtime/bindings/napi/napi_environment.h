@@ -77,7 +77,7 @@ class NapiEnvironment {
     proxy_ = std::move(proxy);
   }
 
-  std::weak_ptr<Runtime> GetJSRuntime() { return proxy_->GetJSRuntime(); }
+  Runtime* GetJSRuntime() { return proxy_->GetJSRuntime(); }
 
   BASE_EXPORT void RegisterModule(const std::string& name,
                                   std::unique_ptr<Module> module);

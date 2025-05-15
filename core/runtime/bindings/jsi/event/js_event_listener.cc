@@ -14,12 +14,14 @@
 namespace lynx {
 namespace piper {
 
-JSClosureEventListener::JSClosureEventListener(std::shared_ptr<Runtime> rt,
-                                               std::shared_ptr<App> app,
+JSClosureEventListener::JSClosureEventListener(std::shared_ptr<App> app,
                                                const piper::Value& closure)
     : event::EventListener(event::EventListener::Type::kJSClosureEventListener),
-      rt_(rt),
       native_app_(app) {
+  if (!app) {
+    return;
+  }
+  auto rt = app->GetJSRuntime();
   if (rt == nullptr) {
     return;
   }
@@ -32,15 +34,18 @@ void JSClosureEventListener::Invoke(event::Event* event) {
                 auto type = event ? event->type() : "null";
                 ctx.event()->add_debug_annotations("type", type);
               });
-  auto rt = rt_.lock();
-  if (rt == nullptr) {
-    return;
-  }
   if (!closure_.isObject()) {
     return;
   }
 
   auto app = native_app_.lock();
+  if (!app || app->IsDestroying()) {
+    return;
+  }
+  auto* rt = app->GetJSRuntime();
+  if (!rt) {
+    return;
+  }
   auto page_options = app ? app->GetPageOptions() : tasm::PageOptions();
   tasm::timing::LongTaskMonitor::Scope long_task_scope(
       page_options, tasm::timing::kJSFuncTask,
@@ -64,10 +69,18 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
   }
   auto* other = static_cast<JSClosureEventListener*>(listener);
 
-  auto rt = rt_.lock();
-  auto other_rt = other->rt_.lock();
+  Runtime* other_rt = nullptr;
+  Runtime* rt = nullptr;
+  auto other_native_app = other->native_app_.lock();
+  if (other_native_app) {
+    other_rt = other_native_app->GetJSRuntime();
+  }
+  auto native_app = native_app_.lock();
+  if (native_app) {
+    rt = native_app->GetJSRuntime();
+  }
 
-  if (rt.get() != other_rt.get()) {
+  if (!rt || rt != other_rt) {
     return false;
   }
 
@@ -75,7 +88,11 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 }
 
 piper::Value JSClosureEventListener::GetClosure() {
-  auto rt = rt_.lock();
+  auto native_app = native_app_.lock();
+  Runtime* rt = nullptr;
+  if (native_app && !native_app->IsDestroying()) {
+    rt = native_app->GetJSRuntime();
+  }
   if (rt == nullptr) {
     return piper::Value::undefined();
   }
@@ -86,8 +103,11 @@ piper::Value JSClosureEventListener::ConvertEventToPiperValue(
     event::Event* event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
-  auto rt = rt_.lock();
   auto app = native_app_.lock();
+  Runtime* rt = nullptr;
+  if (app && !app->IsDestroying()) {
+    rt = app->GetJSRuntime();
+  }
   if (rt == nullptr || event == nullptr || app == nullptr) {
     return piper::Value::undefined();
   }

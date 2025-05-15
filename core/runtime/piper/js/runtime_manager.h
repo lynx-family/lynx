@@ -33,7 +33,7 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
 
   virtual void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) = 0;
   virtual void OnRuntimeReady(piper::JSExecutor& executor,
-                              std::shared_ptr<piper::Runtime>& current_runtime,
+                              piper::Runtime& current_runtime,
                               const std::string& group_id) = 0;
   virtual void AfterSharedContextCreate(const std::string& group_id,
                                         piper::JSRuntimeType type) = 0;
@@ -45,7 +45,7 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
   // InspectorJavaScriptDebugger to determine the type. After refactoring,
   // LynxDevtool will use the switch "enable_v8" together with this parameter to
   // determine the type.
-  virtual std::shared_ptr<piper::Runtime> MakeRuntime(
+  virtual std::unique_ptr<piper::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine) = 0;
 #if ENABLE_TRACE_PERFETTO
   virtual std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
@@ -73,7 +73,7 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
 
   bool IsSingleJSContext(const std::string& group_id);
 
-  std::shared_ptr<piper::Runtime> CreateJSRuntime(
+  std::unique_ptr<piper::Runtime> CreateJSRuntime(
       const std::string& group_id,
       std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
       std::vector<std::pair<std::string, std::string>>& js_pre_sources,
@@ -93,7 +93,7 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
   }
 
  private:
-  std::shared_ptr<piper::Runtime> CreateRuntime(
+  std::unique_ptr<piper::Runtime> CreateRuntime(
       const std::string& group_id,
       std::shared_ptr<piper::JSIExceptionHandler> exception_handler,
       bool force_use_lightweight_js_engine, int64_t rt_id, bool enable_bytecode,
@@ -103,9 +103,9 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
       const std::string& group_id);
 
   std::shared_ptr<piper::JSIContext> CreateJSIContext(
-      std::shared_ptr<piper::Runtime>& rt, const std::string& group_id);
+      piper::Runtime& rt, const std::string& group_id);
 
-  std::shared_ptr<piper::Runtime> MakeRuntime(
+  std::unique_ptr<piper::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine);
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
@@ -113,13 +113,12 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
       bool force_use_lightweight_js_engine);
 #endif
 
-  bool EnsureVM(std::shared_ptr<piper::Runtime>& rt);
+  bool EnsureVM(piper::Runtime& rt);
   void EnsureConsolePostMan(std::shared_ptr<piper::JSIContext>& context,
                             piper::JSExecutor& executor,
                             bool force_use_lightweight_js_engine);
 
-  void InitJSRuntimeCreatedType(bool need_create_vm,
-                                std::shared_ptr<piper::Runtime>& rt);
+  void InitJSRuntimeCreatedType(bool need_create_vm, piper::Runtime& rt);
 
   bool IsInspectEnabled(bool force_use_lightweight_js_engine);
 

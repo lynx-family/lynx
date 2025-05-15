@@ -101,7 +101,7 @@ class JSITestBase : public ::testing::TestWithParam<RuntimeFactory> {
 
   std::shared_ptr<MockExceptionHandler> exception_handler_;
   RuntimeFactory factory;
-  std::shared_ptr<Runtime> runtime;
+  std::unique_ptr<Runtime> runtime;
   Runtime& rt;
 };
 

@@ -53,7 +53,6 @@ class JSProxyAndroid : public LynxRuntimeProxyImpl {
 
  private:
   static std::unique_ptr<pub::Value> GetArgs(
-      std::shared_ptr<piper::Runtime>& runtime,
       std::shared_ptr<base::android::ScopedWeakGlobalJavaRef<jobject>> jobject,
       long args_id, bool is_array);
   const int64_t id_;

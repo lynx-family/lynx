@@ -32,9 +32,8 @@ JSExecutor::JSExecutor(
   }
 }
 
-JSExecutor::~JSExecutor() { LOGI("lynx ~JSExecutor"); }
-
-void JSExecutor::Destroy() {
+JSExecutor::~JSExecutor() {
+  LOGI("lynx ~JSExecutor");
   // must detroy all the runtime object before Runtime is destroyed
   module_manager_.reset();
 
@@ -98,8 +97,8 @@ std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
         *js_runtime_, module_manager_testBench_.get()->bindingPtr);
   }
 #endif
-  return piper::App::Create(rt_id, js_runtime_, delegate, exception_handler_,
-                            std::move(nativeModuleProxy),
+  return piper::App::Create(rt_id, js_runtime_.get(), delegate,
+                            exception_handler_, std::move(nativeModuleProxy),
                             std::move(api_handler), group_id_, page_options);
 }
 
@@ -110,9 +109,7 @@ piper::JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {
   return piper::JSRuntimeCreatedType::unknown;
 }
 
-std::shared_ptr<piper::Runtime> JSExecutor::GetJSRuntime() {
-  return js_runtime_;
-}
+piper::Runtime* JSExecutor::GetJSRuntime() { return js_runtime_.get(); }
 
 void JSExecutor::SetUrl(const std::string& url) {
   module_manager_->SetTemplateUrl(url);

@@ -45,8 +45,6 @@ class BASE_EXPORT_FOR_DEVTOOL JSExecutor {
   JSExecutor(const JSExecutor&) = delete;
   JSExecutor& operator=(const JSExecutor&) = delete;
 
-  void Destroy();
-
   void loadPreJSBundle(
       std::vector<std::pair<std::string, std::string>>& js_pre_sources,
       bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
@@ -64,7 +62,7 @@ class BASE_EXPORT_FOR_DEVTOOL JSExecutor {
 
   piper::JSRuntimeCreatedType getJSRuntimeType();
 
-  std::shared_ptr<piper::Runtime> GetJSRuntime();
+  piper::Runtime* GetJSRuntime();
 
   void SetUrl(const std::string& url);
 
@@ -92,7 +90,7 @@ class BASE_EXPORT_FOR_DEVTOOL JSExecutor {
 #endif
 
   // set by  the child class
-  std::shared_ptr<piper::Runtime> js_runtime_;
+  std::unique_ptr<piper::Runtime> js_runtime_;
 };
 
 }  // namespace piper

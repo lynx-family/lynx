@@ -43,18 +43,22 @@ class AdapterTask {
 
 }  // namespace
 
-JsTaskAdapter::JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
-                             const std::string& group_id,
+JsTaskAdapter::JsTaskAdapter(Runtime* rt, const std::string& group_id,
                              const tasm::PageOptions& page_options)
     : manager_(std::make_unique<base::TimedTaskManager>()),
       micro_tasks_(
           std::make_shared<std::unordered_map<uint64_t, base::closure>>()),
       current_micro_task_id_(0),
+      is_alive_(std::make_shared<bool>(true)),
       runner_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
       rt_(rt),
       page_options_(page_options) {}
 
-JsTaskAdapter::~JsTaskAdapter() { manager_->StopAllTasks(); }
+JsTaskAdapter::~JsTaskAdapter() {
+  manager_->StopAllTasks();
+  *is_alive_ = false;
+  rt_ = nullptr;
+}
 
 piper::Value JsTaskAdapter::SetTimeout(Function func, int32_t delay) {
   auto task = MakeTask(std::move(func), TaskType::kSetTimeout);
@@ -88,10 +92,11 @@ void JsTaskAdapter::QueueMicrotask(Function func) {
 }
 
 base::closure JsTaskAdapter::MakeTask(Function func, TaskType task_type) {
-  return fml::MakeCopyable([weak_rt = rt_, func = std::move(func), task_type,
+  return fml::MakeCopyable([weak_is_alive = std::weak_ptr<bool>(is_alive_),
+                            rt = rt_, func = std::move(func), task_type,
                             page_options = page_options_]() {
-    auto rt = weak_rt.lock();
-    if (rt) {
+    auto is_alive = weak_is_alive.lock();
+    if (rt && is_alive && *is_alive) {
       std::string task_name;
       switch (task_type) {
         case TaskType::kSetTimeout:

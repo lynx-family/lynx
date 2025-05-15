@@ -18,20 +18,18 @@ namespace piper {
 
 class JSClosureEventListener : public event::EventListener {
  public:
-  JSClosureEventListener(std::shared_ptr<Runtime>, std::shared_ptr<App>,
-                         const piper::Value&);
-  virtual ~JSClosureEventListener() override = default;
+  JSClosureEventListener(std::shared_ptr<App>, const piper::Value&);
+  ~JSClosureEventListener() override = default;
 
-  virtual void Invoke(event::Event* event) override;
+  void Invoke(event::Event* event) override;
 
-  virtual bool Matches(EventListener* listener) override;
+  bool Matches(EventListener* listener) override;
 
   piper::Value GetClosure();
 
  private:
   piper::Value ConvertEventToPiperValue(event::Event* event);
 
-  std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
   piper::Value closure_;
 };

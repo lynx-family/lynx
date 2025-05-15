@@ -302,7 +302,12 @@ void LynxRuntime::UpdateState(State state) {
 void LynxRuntime::PrepareNapiEnvironment() {
   napi_environment_ = std::make_unique<piper::NapiEnvironment>(
       std::make_unique<piper::NapiLoaderJS>(std::to_string(GetRuntimeId())));
-  auto proxy = piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get());
+  auto rt = GetJSRuntime();
+  DCHECK(rt);
+  if (!rt) {
+    return;
+  }
+  auto proxy = piper::NapiRuntimeProxy::Create(rt, delegate_.get());
   LOGI("napi attaching with proxy: " << proxy.get()
                                      << ", id: " << GetRuntimeId());
   if (proxy) {
@@ -323,11 +328,16 @@ void LynxRuntime::PrepareNapiEnvironment() {
 // for users to implement custom modules. Therefore, users can still provide
 // complete native capabilities to JS in their custom modules.
 void LynxRuntime::PrepareRestrictedNapiEnvironment() {
+  auto rt = GetJSRuntime();
+  DCHECK(rt);
+  if (!rt) {
+    return;
+  }
   // Create a restricted environment with an dummy delegate.
   napi_restricted_environment_ = std::make_unique<piper::NapiEnvironment>(
       std::make_unique<piper::NapiEnvironment::Delegate>());
   auto proxy = std::make_unique<piper::RestrictedNapiRuntimeProxyDecorator>(
-      piper::NapiRuntimeProxy::Create(GetJSRuntime(), delegate_.get()));
+      piper::NapiRuntimeProxy::Create(rt, delegate_.get()));
   LOGI("napi attaching with restricted proxy: " << proxy.get()
                                                 << ", id: " << GetRuntimeId());
   if (proxy) {
@@ -564,7 +574,7 @@ void LynxRuntime::CallFunction(const std::string& module_id,
         }
       }
       tasm::recorder::NativeModuleRecorder::GetInstance().RecordGlobalEvent(
-          module_id, method_id, values, *size, js_runtime.get(), record_id_);
+          module_id, method_id, values, *size, GetJSRuntime(), record_id_);
     }
   }
 #endif
@@ -745,7 +755,6 @@ void LynxRuntime::Destroy() {
   lifecycle_observer_->OnRuntimeDetach();
   app_->destroy();
   app_ = nullptr;
-  js_executor_->Destroy();
   js_executor_ = nullptr;
 }
 
@@ -914,8 +923,11 @@ void LynxRuntime::OnModuleMethodInvoked(const std::string& module,
   delegate_->OnModuleMethodInvoked(module, method, code);
 }
 
-std::shared_ptr<piper::Runtime> LynxRuntime::GetJSRuntime() {
-  return js_executor_->GetJSRuntime();
+piper::Runtime* LynxRuntime::GetJSRuntime() {
+  if (js_executor_) {
+    return js_executor_->GetJSRuntime();
+  }
+  return nullptr;
 }
 
 int64_t LynxRuntime::GenerateRuntimeId() {

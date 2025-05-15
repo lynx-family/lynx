@@ -40,15 +40,14 @@ void RuntimeManagerDelegateImpl::BeforeRuntimeCreate(
 #endif
 }
 
-void RuntimeManagerDelegateImpl::OnRuntimeReady(
-    piper::JSExecutor& executor,
-    std::shared_ptr<piper::Runtime>& current_runtime,
-    const std::string& group_id) {
+void RuntimeManagerDelegateImpl::OnRuntimeReady(piper::JSExecutor& executor,
+                                                piper::Runtime& current_runtime,
+                                                const std::string& group_id) {
   // `enable_bytecode` and `bytecode_source_url` parameters are ignored
   // since bytecode is not allowed to work with devtool.
-  current_runtime->SetEnableUserBytecode(false);
-  current_runtime->SetBytecodeSourceUrl("");
-  current_runtime->InitInspector(executor.GetRuntimeObserver());
+  current_runtime.SetEnableUserBytecode(false);
+  current_runtime.SetBytecodeSourceUrl("");
+  current_runtime.InitInspector(executor.GetRuntimeObserver());
 }
 
 void RuntimeManagerDelegateImpl::AfterSharedContextCreate(
@@ -66,7 +65,7 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
   }
 }
 
-std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
+std::unique_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
     bool force_use_lightweight_js_engine) {
 #if !ENABLE_UNITTESTS
   long v8_enable = tasm::LynxEnv::GetInstance().GetV8Enabled();

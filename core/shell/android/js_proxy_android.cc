@@ -143,12 +143,11 @@ namespace lynx {
 namespace shell {
 
 std::unique_ptr<pub::Value> JSProxyAndroid::GetArgs(
-    std::shared_ptr<piper::Runtime>& runtime,
     std::shared_ptr<base::android::ScopedWeakGlobalJavaRef<jobject>> jni_object,
     long args_id, bool is_array) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(*jni_object);
-  if (local_ref.IsNull() || runtime == nullptr) {
+  if (local_ref.IsNull()) {
     return nullptr;
   }
   auto args = Java_JSProxy_getArgs(env, local_ref.Get(), args_id);
@@ -170,9 +169,9 @@ void JSProxyAndroid::CallJSFunctionByArgsId(std::string module_id,
                                             long args_id) {
   LynxRuntimeProxyImpl::CallJSFunction(
       module_id, method_id,
-      [args_id, jni_object = jni_object_](
-          auto& runtime) mutable -> std::unique_ptr<pub::Value> {
-        return GetArgs(runtime, jni_object, args_id, true);
+      [args_id,
+       jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {
+        return GetArgs(jni_object, args_id, true);
       });
 }
 
@@ -181,9 +180,9 @@ void JSProxyAndroid::CallJSIntersectionObserverByArgsId(int32_t observer_id,
                                                         long args_id) {
   LynxRuntimeProxyImpl::CallJSIntersectionObserver(
       observer_id, callback_id,
-      [args_id, jni_object = jni_object_](
-          auto& runtime) mutable -> std::unique_ptr<pub::Value> {
-        return GetArgs(runtime, jni_object, args_id, false);
+      [args_id,
+       jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {
+        return GetArgs(jni_object, args_id, false);
       });
 }
 
@@ -191,9 +190,9 @@ void JSProxyAndroid::CallJSApiCallbackWithValueByArgsId(int32_t callback_id,
                                                         long args_id) {
   LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(
       callback_id,
-      [args_id, jni_object = jni_object_](
-          auto& runtime) mutable -> std::unique_ptr<pub::Value> {
-        return GetArgs(runtime, jni_object, args_id, false);
+      [args_id,
+       jni_object = jni_object_]() mutable -> std::unique_ptr<pub::Value> {
+        return GetArgs(jni_object, args_id, false);
       });
 }
 

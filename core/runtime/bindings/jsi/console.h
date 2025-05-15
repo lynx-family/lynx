@@ -19,7 +19,7 @@ class Runtime;
 
 class Console : public HostObject {
  public:
-  Console(Runtime* rt, std::shared_ptr<ConsoleMessagePostMan> post_man);
+  Console(std::shared_ptr<ConsoleMessagePostMan> post_man);
 
   // void RegFunctionToJs(Runtime& rt, Object& jsbridge);
 
@@ -50,7 +50,6 @@ class Console : public HostObject {
   base::logging::LogChannel GetChannelType(Runtime* rt, const Value* args);
 
  private:
-  Runtime* rt_;
   std::weak_ptr<ConsoleMessagePostMan> post_man_;
 };
 }  // namespace piper

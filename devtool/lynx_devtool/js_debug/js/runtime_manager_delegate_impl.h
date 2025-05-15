@@ -17,12 +17,12 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
 
   void BeforeRuntimeCreate(bool force_use_lightweight_js_engine) override;
   void OnRuntimeReady(piper::JSExecutor& executor,
-                      std::shared_ptr<piper::Runtime>& current_runtime,
+                      piper::Runtime& current_runtime,
                       const std::string& group_id) override;
   void AfterSharedContextCreate(const std::string& group_id,
                                 piper::JSRuntimeType type) override;
   void OnRelease(const std::string& group_id) override;
-  std::shared_ptr<piper::Runtime> MakeRuntime(
+  std::unique_ptr<piper::Runtime> MakeRuntime(
       bool force_use_lightweight_js_engine) override;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(

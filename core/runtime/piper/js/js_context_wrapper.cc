@@ -14,13 +14,12 @@ JSContextWrapper::JSContextWrapper(std::shared_ptr<piper::JSIContext> context)
     : js_context_(context), js_core_loaded_(false), global_inited_(false) {}
 
 void JSContextWrapper::loadPreJS(
-    std::weak_ptr<piper::Runtime> js_runtime,
+    piper::Runtime* rt,
     std::vector<std::pair<std::string, std::string>>& js_preload) {
   if (js_core_loaded_) {
     return;
   }
 
-  std::shared_ptr<piper::Runtime> rt = js_runtime.lock();
   if (!rt) {
     return;
   }
@@ -81,14 +80,14 @@ void SharedJSContextWrapper::EnsureConsole(
 }
 
 void SharedJSContextWrapper::initGlobal(
-    std::shared_ptr<piper::Runtime>& rt,
+    std::unique_ptr<piper::Runtime>& rt,
     std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
   if (global_inited_) {
     return;
   }
   std::shared_ptr<piper::SharedContextGlobal> global =
-      std::make_shared<piper::SharedContextGlobal>();
-  global->Init(rt, post_man);
+      std::make_shared<piper::SharedContextGlobal>(std::move(rt));
+  global->Init(post_man);
   global_inited_ = true;
   global_ = global;
 }
@@ -121,14 +120,14 @@ void NoneSharedJSContextWrapper::EnsureConsole(
 }
 
 void NoneSharedJSContextWrapper::initGlobal(
-    std::shared_ptr<piper::Runtime>& js_runtime,
+    std::unique_ptr<piper::Runtime>& rt,
     std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
   if (global_inited_) {
     return;
   }
   std::shared_ptr<piper::SingleGlobal> global =
-      std::make_shared<piper::SingleGlobal>();
-  global->Init(js_runtime, post_man);
+      std::make_shared<piper::SingleGlobal>(rt.get());
+  global->Init(post_man);
   global_inited_ = true;
   global_ = global;
 }

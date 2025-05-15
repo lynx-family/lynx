@@ -131,7 +131,7 @@ class LynxRuntime final {
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t error_code);
 
-  std::shared_ptr<piper::Runtime> GetJSRuntime();
+  piper::Runtime* GetJSRuntime();
   int64_t GetRuntimeId() const { return instance_id_; }
 
 #if ENABLE_NAPI_BINDING

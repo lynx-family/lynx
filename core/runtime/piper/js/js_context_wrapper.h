@@ -29,12 +29,12 @@ class BASE_EXPORT_FOR_DEVTOOL JSContextWrapper
   virtual void EnsureConsole(
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) = 0;
   virtual void initGlobal(
-      std::shared_ptr<piper::Runtime>& js_runtime,
+      std::unique_ptr<piper::Runtime>& js_runtime,
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) = 0;
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
-  void loadPreJS(std::weak_ptr<piper::Runtime> js_runtime,
+  void loadPreJS(piper::Runtime* js_runtime,
                  std::vector<std::pair<std::string, std::string>>& js_preload);
   std::shared_ptr<piper::JSIContext> getJSContext() {
     return js_context_.lock();
@@ -69,7 +69,7 @@ class BASE_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
 
   void initGlobal(
-      std::shared_ptr<piper::Runtime>& rt,
+      std::unique_ptr<piper::Runtime>& rt,
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
 
  protected:
@@ -91,7 +91,7 @@ class BASE_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
 
   void initGlobal(
-      std::shared_ptr<piper::Runtime>& js_runtime,
+      std::unique_ptr<piper::Runtime>& rt,
       std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
 
  protected:

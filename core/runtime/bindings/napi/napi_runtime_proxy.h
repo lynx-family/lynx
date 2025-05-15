@@ -42,8 +42,8 @@ class BASE_EXPORT NapiRuntimeProxyInterface {
   virtual void Attach() = 0;
   virtual void Detach() = 0;
   virtual Napi::Env Env() = 0;
-  virtual void SetJSRuntime(std::shared_ptr<Runtime> runtime) = 0;
-  virtual std::weak_ptr<Runtime> GetJSRuntime() = 0;
+  virtual void SetJSRuntime(Runtime* runtime) = 0;
+  virtual Runtime* GetJSRuntime() = 0;
   virtual void SetupLoader() = 0;
   virtual void RemoveLoader() = 0;
   virtual void SetUncaughtExceptionHandler() = 0;
@@ -52,8 +52,7 @@ class BASE_EXPORT NapiRuntimeProxyInterface {
 class BASE_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
-      std::shared_ptr<Runtime> runtime,
-      runtime::TemplateDelegate* delegate = nullptr);
+      Runtime* runtime, runtime::TemplateDelegate* delegate = nullptr);
   NapiRuntimeProxy(runtime::TemplateDelegate* delegate);
   virtual ~NapiRuntimeProxy();
 
@@ -61,11 +60,9 @@ class BASE_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
   void Detach() override;
 
   Napi::Env Env() override { return env_; }
-  void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
-    js_runtime_ = runtime;
-  }
+  void SetJSRuntime(Runtime* runtime) override { js_runtime_ = runtime; }
 
-  std::weak_ptr<Runtime> GetJSRuntime() override { return js_runtime_; }
+  Runtime* GetJSRuntime() override { return js_runtime_; }
 
   static void SetFactory(NapiRuntimeProxyV8Factory* factory);
   static void SetQuickjsFactory(NapiRuntimeProxyQuickjsFactory* factory);
@@ -79,7 +76,7 @@ class BASE_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  protected:
   Napi::Env env_;
   std::shared_ptr<DelegateObserver> delegate_observer_;
-  std::weak_ptr<Runtime> js_runtime_;
+  Runtime* js_runtime_{nullptr};
   std::string loader_;
 
  private:
@@ -99,12 +96,10 @@ class RestrictedNapiRuntimeProxyDecorator : public NapiRuntimeProxyInterface {
   void Attach() override { proxy_->Attach(); }
   void Detach() override { proxy_->Detach(); }
   Napi::Env Env() override { return proxy_->Env(); }
-  void SetJSRuntime(std::shared_ptr<Runtime> runtime) override {
-    proxy_->SetJSRuntime(std::move(runtime));
+  void SetJSRuntime(Runtime* runtime) override {
+    proxy_->SetJSRuntime(runtime);
   }
-  std::weak_ptr<Runtime> GetJSRuntime() override {
-    return proxy_->GetJSRuntime();
-  }
+  Runtime* GetJSRuntime() override { return proxy_->GetJSRuntime(); }
   void SetupLoader() override;
   void RemoveLoader() override;
   void SetUncaughtExceptionHandler() override {
