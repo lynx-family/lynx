@@ -2016,7 +2016,7 @@ void TemplateAssembler::UpdateDataByPreParsedData(
        << " loadTemplate enablePreUpdateData:"
        << this->enable_pre_update_data_);
 
-  if (template_loaded_) {
+  if (template_loaded_ && !page_proxy_.IsWaitingSSRHydrate()) {
     uint64_t update_data_trigger = base::CurrentSystemTimeMicroseconds();
 
     TemplateData data = ProcessTemplateData(template_data, false);
