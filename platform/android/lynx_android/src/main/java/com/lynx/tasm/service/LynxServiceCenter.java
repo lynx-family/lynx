@@ -9,6 +9,7 @@ import androidx.annotation.Nullable;
 import com.lynx.tasm.base.TraceEvent;
 import java.util.ServiceLoader;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LynxServiceCenter extends LynxLazyInitializer {
   private static final String TAG = "LynxServiceCenter";
@@ -17,6 +18,12 @@ public class LynxServiceCenter extends LynxLazyInitializer {
   private final ConcurrentHashMap<Class, IServiceProvider> mServiceMap = new ConcurrentHashMap<>();
 
   private static volatile LynxServiceCenter instance = null;
+
+  /**
+   * whether the service is manually registered by user.
+   * if true, LynxServiceCenter will not waiting for `ensureInitialized()` for saving time.
+   */
+  private final AtomicBoolean mManualRegister = new AtomicBoolean(false);
 
   public static LynxServiceCenter inst() {
     if (instance == null) {
@@ -53,7 +60,7 @@ public class LynxServiceCenter extends LynxLazyInitializer {
   @Nullable
   public <T extends IServiceProvider> T getService(@NonNull Class<T> clazz) {
     T service = (T) mServiceMap.get(clazz);
-    if (service == null) {
+    if (service == null && !mManualRegister.get()) {
       ensureInitialized();
       service = (T) mServiceMap.get(clazz);
       if (service == null) {
@@ -81,16 +88,20 @@ public class LynxServiceCenter extends LynxLazyInitializer {
 
   /**
    * @param instance service instance
-   * @param force whether force to replace the existing service
+   * @param manualRegister whether is manually registered by user, indicates whether force to
+   *     replace the existing service
    */
-  private void registerService(@NonNull IServiceProvider instance, boolean force) {
+  private void registerService(@NonNull IServiceProvider instance, boolean manualRegister) {
+    if (manualRegister) {
+      mManualRegister.set(true);
+    }
     Class<? extends IServiceProvider> clazz = instance.getServiceClass();
     if (!clazz.isInstance(instance)) {
       Log.e(TAG, "Incorrect service type: " + clazz.getSimpleName());
       return;
     }
-    IServiceProvider service =
-        force ? mServiceMap.put(clazz, instance) : mServiceMap.putIfAbsent(clazz, instance);
+    IServiceProvider service = manualRegister ? mServiceMap.put(clazz, instance)
+                                              : mServiceMap.putIfAbsent(clazz, instance);
     if (service != null) {
       Log.w(TAG, service.getServiceClass().getSimpleName() + " is already registered");
     }
