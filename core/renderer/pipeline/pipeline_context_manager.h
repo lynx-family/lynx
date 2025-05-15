@@ -15,7 +15,7 @@ namespace lynx {
 namespace tasm {
 class PipelineContextManager {
  public:
-  PipelineContextManager() = default;
+  PipelineContextManager();
   ~PipelineContextManager() = default;
 
   PipelineContext* CreateAndUpdateCurrentPipelineContext(
@@ -31,6 +31,8 @@ class PipelineContextManager {
   std::map<PipelineVersion, const std::unique_ptr<PipelineContext>>
       pipeline_contexts_{};
   PipelineContext* current_pipeline_context_{nullptr};
+
+  bool enable_unified_pixel_pipeline_{false};
 };
 }  // namespace tasm
 }  // namespace lynx

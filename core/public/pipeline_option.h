@@ -131,6 +131,9 @@ struct PipelineOptions {
   }
 #endif
 
+  // flag for unified pixel pipeline
+  bool enable_unified_pixel_pipeline{false};
+
   // Switches for pipeline stage.
   bool resolve_requested{false};
   bool layout_requested{false};

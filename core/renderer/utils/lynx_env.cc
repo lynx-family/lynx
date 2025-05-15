@@ -410,5 +410,9 @@ bool LynxEnv::EnableJSVMRuntime() {
          GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false, EnvType::LOCAL);
 }
 
+bool LynxEnv::EnableUnifiedPixelPipeline() {
+  return GetBoolEnv(Key::ENABLE_UNIFIED_PIXEL_PIPELINE, false);
+}
+
 }  // namespace tasm
 }  // namespace lynx

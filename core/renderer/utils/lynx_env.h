@@ -94,6 +94,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     OPT_PUSH_STYLE_TO_BUNDLE,
     ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT,
     ENABLE_JSVM_RUNTIME,
+    ENABLE_UNIFIED_PIXEL_PIPELINE,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -196,6 +197,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_BATCH_LAYOUT_TASK_WITH_SYNC_LAYOUT,
              "enable_batch_layout_task_with_sync_layout"},
             {Key::ENABLE_JSVM_RUNTIME, kLyneEnableJSVMRuntime},
+            {Key::ENABLE_UNIFIED_PIXEL_PIPELINE,
+             "enable_unified_pixel_pipeline"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -307,6 +310,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewIntersectionObserver();
   bool EnableBatchLayoutTaskWithSyncLayout();
   bool EnableJSVMRuntime();
+  bool EnableUnifiedPixelPipeline();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
