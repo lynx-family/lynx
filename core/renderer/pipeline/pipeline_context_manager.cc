@@ -8,9 +8,16 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
 namespace tasm {
+
+PipelineContextManager::PipelineContextManager() {
+  enable_unified_pixel_pipeline_ =
+      LynxEnv::GetInstance().EnableUnifiedPixelPipeline();
+}
+
 PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
     const std::shared_ptr<PipelineOptions>& pipeline_options,
     bool is_major_updated) {
@@ -23,7 +30,8 @@ PipelineContext* PipelineContextManager::CreateAndUpdateCurrentPipelineContext(
     LOGE("create pipeline context get nullptr");
     return nullptr;
   }
-
+  pipeline_options->enable_unified_pixel_pipeline =
+      enable_unified_pixel_pipeline_;
   pipeline_context->SetOptions(pipeline_options);
   current_pipeline_context_ = pipeline_context.get();
   pipeline_contexts_.emplace(pipeline_context->GetVersion(),
