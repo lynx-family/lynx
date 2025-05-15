@@ -17,9 +17,9 @@ public abstract class LynxLazyInitializer {
   private static final String TAG = "LynxLazyInitializer";
 
   /**
-   * timeout 5s
+   * timeout 3s
    */
-  private static final long TIMEOUT = 5;
+  private static final long TIMEOUT = 3;
 
   private final AtomicBoolean mIsInitializeStarted = new AtomicBoolean(false);
   protected final AtomicBoolean mIsInitialized = new AtomicBoolean(false);
