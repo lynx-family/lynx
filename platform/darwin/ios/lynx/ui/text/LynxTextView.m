@@ -29,6 +29,8 @@
                             layer.frame.size.height);
 
   UIGraphicsPushContext(ctx);
+  // Avoid glyph clipping.
+  CGContextSetAllowsFontSubpixelQuantization(ctx, NO);
   [strongRender drawRect:frame padding:self.padding border:self.border];
   UIGraphicsPopContext();
 }
@@ -90,7 +92,9 @@ static const float kResponseTouchRadius = 20.f;
     self.layer.contentsScale = [[UIScreen mainScreen] scale];
     // https://developer.apple.com/documentation/quartzcore/calayer/1410974-drawsasynchronously?language=objc
     // make drawInContext method queued draw command and execute in background thread
-    self.contentLayer.drawsAsynchronously = YES;
+    // Turning on this switch will cause more jamming.Use drawInCotext instead of generating UIImage
+    // when drawing synchronously.
+    // self.contentLayer.drawsAsynchronously = YES;
 
     [self.layer addSublayer:self.contentLayer];
 

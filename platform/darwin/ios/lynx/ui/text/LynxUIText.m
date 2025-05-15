@@ -302,7 +302,14 @@ LYNX_PROPS_GROUP_DECLARE(
 }
 
 - (BOOL)enableLayerRender {
-  return self.context.enableTextLayerRender;
+  static BOOL isSupportedIOSVersion;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    CGFloat systemVersion = [UIDevice currentDevice].systemVersion.floatValue;
+    isSupportedIOSVersion = systemVersion >= 18.5 || systemVersion < 18.4;
+  });
+
+  return self.context.enableTextLayerRender && isSupportedIOSVersion;
 }
 
 - (void)onNodeReady {
