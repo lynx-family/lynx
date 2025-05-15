@@ -24,7 +24,7 @@ uint32_t {{argument.name}};
 float {{argument.name}};
 {% elif argument.idl_type == 'long' or argument.idl_type == 'short' %}
 int32_t {{argument.name}};
-{% elif argument.idl_type == 'long long' or  argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' %}
+{% elif argument.idl_type == 'long long' or  argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' or argument.idl_type == 'double' %}
 double {{argument.name}};
 {% else %}
 uint32_t {{argument.name}};
@@ -52,7 +52,7 @@ case {{method.buffered_method_id}}: { // {{method.class_name}}.{{method.name}}{{
     {% set ns.count = 0 %}
     {% for argument in method.arguments %}
     {% if argument.is_numeric_type or argument.is_boolean_type %}
-    {% if argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double'%}
+    {% if argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' or argument.idl_type == 'double' %}
     {% set ns.count = ns.count + 2 %}
     {% else %}
     {% set ns.count = ns.count + 1 %}

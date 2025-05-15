@@ -123,11 +123,11 @@ const commandBufferCreator = function(appendTarget, idGen) {
     uint32View[end + {{ns.count}}] = {{argument.name}};
     {% set ns.count = ns.count + 1 %}
     {% elif argument.is_numeric_type %}
-    {% if argument.idl_type == 'unrestricted float' %}
+    {% if argument.idl_type == 'unrestricted float' or argument.idl_type == 'float' %}
     float32View[end + {{ns.count}}] = {{argument.name}};
     {% elif argument.idl_type == 'long' or argument.idl_type == 'short' or argument.idl_type == 'byte' %}
     int32View[end + {{ns.count}}] = {{argument.name}};
-    {% elif argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' %}
+    {% elif argument.idl_type == 'long long' or argument.idl_type == 'unsigned long long' or argument.idl_type == 'unrestricted double' or argument.idl_type == 'double' %}
     dataView.setFloat64((end + {{ns.count}}) * 4, {{argument.name}}, isLittleEndian);
     {% set ns.count = ns.count + 1 %}
     {% else %}
