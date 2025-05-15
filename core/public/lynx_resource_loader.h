@@ -26,10 +26,6 @@ enum class LynxResourceType : int32_t {
   kLazyBundle = 7,  // LazyBundle from js
   kLynxCoreJs = 8,
   kExternalJs = 9,
-  // There are some differences between JSLazyBundle and
-  // TemplateLazyBundlein the old logic, so here is a new type to be
-  // compatible with the old logic.
-  kTemplateLazyBundle = 10,  // LazyBundle from template
   kAssets = 11,
   kI18nText = 12,
   kGraphics = 13,

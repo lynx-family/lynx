@@ -51,7 +51,7 @@ public class LynxResourceLoader {
   static final String MSG_NULL_DATA = "get null data for provider.";
 
   private final LynxBackgroundRuntimeOptions mLynxRuntimeOptions;
-  private LynxExternalResourceFetcherWrapper mFetcherWrapper;
+  private final LynxExternalResourceFetcherWrapper mFetcherWrapper;
   private final TemplateLoaderHelper mTemplateLoaderHelper;
   private final LynxGenericResourceFetcher mGenericResourceFetcher;
 
@@ -108,24 +108,24 @@ public class LynxResourceLoader {
         if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
           break;
         }
+        // 3. try to use LynxExternalResourceFetcherWrapper
+        if (fetchTemplateByFetcherWrapper(responseHandler, url, type)) {
+          break;
+        }
         // 2. try to use LynxResourceProvider
         if (fetchTemplateByProvider(responseHandler, url, type)) {
           break;
         }
-        // 3. try to use LynxExternalResourceFetcherWrapper
-        fetchTemplateByFetcherWrapper(responseHandler, url, type);
-        break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_TEMPLATE_LAZY_BUNDLE:
-        // 1. try to use LynxTemplateResourceFetcher
-        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
-          break;
-        }
-        // 2. try to use LynxExternalResourceFetcherWrapper
-        fetchTemplateByFetcherWrapper(responseHandler, url, type);
+        InvokeNativeCallbackWithBytes(
+            responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
         break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_FRAME:
         // 1. frame only support LynxTemplateResourceFetcher
-        fetchTemplateByGenericTemplateFetcher(responseHandler, url, type);
+        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
+          break;
+        }
+        InvokeNativeCallbackWithBytes(
+            responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
         break;
       default:
         InvokeNativeCallbackWithBytes(
@@ -292,8 +292,9 @@ public class LynxResourceLoader {
   /**
    * fetch lazy bundle template by LynxExternalResourceFetcherWrapper
    */
-  private void fetchTemplateByFetcherWrapper(long responseHandler, String url, int resourceType) {
-    mFetcherWrapper.fetchResourceWithHandler(
+  private boolean fetchTemplateByFetcherWrapper(
+      long responseHandler, String url, int resourceType) {
+    return mFetcherWrapper.fetchResourceWithDynamicComponentFetcher(
         url, new LynxExternalResourceFetcherWrapper.LoadedHandler() {
           private final TemplateResourceCallback mCallback =
               new TemplateResourceCallback(url, responseHandler, mReportHelper, resourceType);

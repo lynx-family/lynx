@@ -21,11 +21,6 @@ class LynxResourceType {
   static final int LYNX_RESOURCE_TYPE_EXTERNAL_JS = 9;
 
   /**
-   * Load load bundle on MTS
-   */
-  static final int LYNX_RESOURCE_TYPE_TEMPLATE_LAZY_BUNDLE = 10;
-
-  /**
    * Load asset js source on BTS
    */
   static final int LYNX_RESOURCE_TYPE_ASSETS = 11;

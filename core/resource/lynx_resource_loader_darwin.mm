@@ -247,17 +247,9 @@ bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& 
                                    .err_msg = [errMsg UTF8String]};
     callback(resp);
   };
-  if (request_in_current_thread) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_TEMPLATE_BY_FETCHER_WRAPPER, "url", url);
-    [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock];
-  } else {
-    // TODO(nihao.royal): it's only used in preloadTemplate by now, and need to be deleted later.
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^() {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_TEMPLATE_BY_FETCHER_WRAPPER);
-      [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock];
-    });
-  }
-  return true;
+  return [_fetcher_wrapper fetchResource:nsUrl
+                         withLoadedBlock:fetcherBlock
+                                    sync:request_in_current_thread];
 }
 
 void LynxResourceLoaderDarwin::LoadResource(
@@ -298,15 +290,20 @@ void LynxResourceLoaderDarwin::LoadResource(
     if (FetchTemplateByGenericFetcher(request.url, copyable_wrapper_callback)) {
       return;
     }
-    // 2. try to use LynxResourceProvider
-    if (FetchTemplateByProvider(request.url, copyable_wrapper_callback)) {
-      return;
-    }
-    // 3. try to use LynxExternalResourceFetcherWrapper
+
+    // 2. try to use LynxExternalResourceFetcherWrapper
     if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback,
                                       request_in_current_thread)) {
       return;
     }
+    // 3. try to use LynxResourceProvider
+    if (FetchTemplateByProvider(request.url, copyable_wrapper_callback)) {
+      return;
+    }
+
+    // No available provider or fetcher
+    pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
+    copyable_wrapper_callback(resp);
     return;
   }
 
@@ -320,29 +317,12 @@ void LynxResourceLoaderDarwin::LoadResource(
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
     // 1. try to use LynxTemplateResourceFetcher
-    FetchTemplateByGenericFetcher(request.url, copyable_wrapper_callback);
-    return;
-  }
-
-  if (request.type == pub::LynxResourceType::kTemplateLazyBundle) {
-    auto copyable_callback = fml::MakeCopyable(std::move(callback));
-    std::string url_copy = request.url;
-    base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback_wrapper = ^(
-        pub::LynxResourceResponse& response) {
-      VerifyLynxTemplateResource(url_copy, response, pub::LynxResourceType::kTemplateLazyBundle);
-      copyable_callback(response);
-    };
-    auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
-    // 1. try to use LynxTemplateResourceFetcher
     if (FetchTemplateByGenericFetcher(request.url, copyable_wrapper_callback)) {
       return;
     }
-
-    // 2. try to use LynxExternalResourceFetcherWrapper;
-    if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback,
-                                      request_in_current_thread)) {
-      return;
-    }
+    // No available provider or fetcher
+    pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
+    copyable_wrapper_callback(resp);
     return;
   }
 

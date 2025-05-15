@@ -4348,7 +4348,7 @@ public class abstract com::lynx::jsbridge::LynxExtensionModule :  {
 
 public class com::lynx::tasm::provider::LynxExternalResourceFetcherWrapper :  {
   public com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.LynxExternalResourceFetcherWrapper(DynamicComponentFetcher fetcher);
-  public void com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.fetchResourceWithHandler(String url, @NonNull LoadedHandler handler);
+  public boolean com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper.fetchResourceWithDynamicComponentFetcher(final String url, @NonNull LoadedHandler handler);
 }
 
 public class com::lynx::tasm::featurecount::LynxFeatureCounter :  {

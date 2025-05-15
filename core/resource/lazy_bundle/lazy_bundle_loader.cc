@@ -190,7 +190,7 @@ void LazyBundleLoader::RequireTemplate(RadonLazyComponent* lazy_bundle,
     return;
   }
   auto request =
-      pub::LynxResourceRequest{url, pub::LynxResourceType::kTemplateLazyBundle};
+      pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
   resource_loader_->LoadResource(
       request, true,
       [url, weak_self = weak_from_this(), lazy_bundle,
@@ -225,8 +225,8 @@ void LazyBundleLoader::PreloadTemplates(const std::vector<std::string>& urls) {
     return;
   }
   std::for_each(urls.begin(), urls.end(), [this](const auto& url) {
-    auto request = pub::LynxResourceRequest{
-        url, pub::LynxResourceType::kTemplateLazyBundle};
+    auto request =
+        pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
     resource_loader_->LoadResource(
         request, false,
         [url,

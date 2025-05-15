@@ -36,12 +36,7 @@ public class LynxExternalResourceFetcherWrapper {
     mDynamicComponentFetcher = fetcher;
   }
 
-  // pass data and error
-  public void fetchResourceWithHandler(String url, @NonNull LoadedHandler handler) {
-    fetchResourceWithDynamicComponentFetcher(url, handler);
-  }
-
-  private void fetchResourceWithDynamicComponentFetcher(
+  public boolean fetchResourceWithDynamicComponentFetcher(
       final String url, @NonNull LoadedHandler handler) {
     if (mDynamicComponentFetcher != null) {
       TraceEvent.beginSection(TraceEventDef.FETCHER_WRAPPER_USE_LAZY_BUNDLE_FETCHER);
@@ -53,10 +48,8 @@ public class LynxExternalResourceFetcherWrapper {
             }
           });
       TraceEvent.endSection(TraceEventDef.FETCHER_WRAPPER_USE_LAZY_BUNDLE_FETCHER);
-      return;
+      return true;
     }
-
-    // No available provider or fetcher
-    handler.onLoaded(null, new Throwable("No available provider or fetcher"));
+    return false;
   }
 }
