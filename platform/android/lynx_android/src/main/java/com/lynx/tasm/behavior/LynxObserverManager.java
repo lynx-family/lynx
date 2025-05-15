@@ -156,6 +156,7 @@ public abstract class LynxObserverManager {
   }
 
   public void addToObserverTree() {
+    LLog.i(TAG, "addToObserverTree");
     LynxContext context = null;
     UIBody body = mRootBodyRef.get();
     if (body != null) {
@@ -304,6 +305,7 @@ public abstract class LynxObserverManager {
   }
 
   public void destroy() {
+    LLog.i(TAG, "destroy");
     if (mHandler != null) {
       mHandler.removeCallbacksAndMessages(null);
       mHandler = null;

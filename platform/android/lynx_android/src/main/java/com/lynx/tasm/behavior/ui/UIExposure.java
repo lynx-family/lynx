@@ -459,6 +459,7 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void stopExposure(HashMap<String, Object> options) {
+    LLog.i(TAG, "stopExposure");
     mIsStopExposure = true;
     destroy();
     // Use the sendEvent field in options to control whether to send disexposure events.
@@ -469,6 +470,7 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void resumeExposure() {
+    LLog.i(TAG, "resumeExposure");
     mIsStopExposure = false;
     addToObserverTree();
   }
@@ -595,13 +597,13 @@ public class UIExposure extends LynxObserverManager {
       } else {
         key = ui.getExposureScene() + "_" + ui.getExposureID() + "_" + ui.getSign();
       }
-      mExposureDetailMap.put(key, new UIExposureDetail(ui, uniqueID, data, options));
       // Ensure add to Observer once.
       // After calling stopExposure, the exposure detection task should only be started in
       // resumeExposure.
-      if (!mIsStopExposure && mExposureDetailMap.size() == 1) {
+      if (!mIsStopExposure && mExposureDetailMap.isEmpty()) {
         addToObserverTree();
       }
+      mExposureDetailMap.put(key, new UIExposureDetail(ui, uniqueID, data, options));
       return true;
     }
     return false;
