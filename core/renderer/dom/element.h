@@ -831,6 +831,8 @@ class Element : public lepus::RefCounted {
 
   // for devtool
   std::unique_ptr<InspectorAttribute> inspector_attribute_;
+
+  float record_parent_font_size_ = -1;
 };
 
 }  // namespace tasm
