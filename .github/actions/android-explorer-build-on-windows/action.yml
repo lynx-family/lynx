@@ -1,0 +1,47 @@
+name: build android explorer on windows
+
+description: build android explorer apk on windows.
+
+inputs:
+  build-type:
+    description: The type of explorer we are building. It could be release or debug.
+    required: true
+  build-params:
+    description: Set project properties for gradle when building explorer.
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.9.13'
+    - name: Setup Java SDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: 11
+        distribution: 'zulu'
+    - name: Install Common Dependencies
+      shell: PowerShell
+      run: |-
+        cd $GITHUB_WORKSPACE\\lynx
+        tools\\envsetup.ps1
+        tools\\hab.ps1 sync .
+        python3 tools\\vpython_tools\\vpython_env_setup.py
+    - name: Build Explorer App
+      env:
+        BUILD_TYPE: ${{ inputs.build-type }}
+      shell: PowerShell
+      run: |-
+        $env:JAVA_HOME = $env:JAVA_HOME_11_X64
+        cd $GITHUB_WORKSPACE\\lynx
+        tools\\envsetup.ps1
+        cd explorer\\android
+        if ($BUILD_TYPE -eq "release") {
+          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon ${{ inputs.build-params }}
+        }
+        if ($BUILD_TYPE -eq "debug") {
+          ./gradlew :LynxExplorer:assembleNoasanDebug -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon ${{ inputs.build-params }}
+        }

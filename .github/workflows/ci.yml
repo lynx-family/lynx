@@ -239,6 +239,19 @@ jobs:
           build-type: dry-run
           build-params: -PIntegrationTest
 
+  android-explorer-build-on-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Explorer App on Windows
+        uses: ./lynx/.github/actions/android-explorer-build-on-windows
+        with:
+          build-type: dry-run
+          build-params: -PIntegrationTest
+
   android-e2e-test:
     needs: [android-explorer-build]
     env:
