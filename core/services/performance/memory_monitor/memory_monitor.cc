@@ -66,9 +66,9 @@ void MemoryMonitor::AllocateMemory(MemoryRecord&& record) {
   auto ret_record_it = memory_records_.find(record.category_);
   if (ret_record_it == memory_records_.end()) {
     memory_records_.emplace(record.category_, std::move(record));
-    return;
+  } else {
+    ret_record_it->second += record;
   }
-  ret_record_it->second += record;
   ReportMemory();
 }
 

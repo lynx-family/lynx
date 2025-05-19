@@ -340,6 +340,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                                     painting_context.get())];
     [_shadowNodeOwner setDelegate:_paintingContextProxy];
   }
+  _performanceController =
+      [[LynxPerformanceController alloc] initWithObserver:[_lynxView getLifecycleDispatcher]];
+
   shell_.reset(
       lynx::shell::LynxShellBuilder()
           .SetNativeFacade(std::make_unique<lynx::shell::NativeFacadeDarwin>(self))
