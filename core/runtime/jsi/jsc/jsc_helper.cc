@@ -367,6 +367,10 @@ bool JSCHelper::smellsLikeES6Symbol(JSGlobalContextRef ctx, JSValueRef ref) {
 std::optional<Value> JSCHelper::call(JSGlobalContextRef ctx, JSCRuntime& rt,
                                      const Function& f, const Value& jsThis,
                                      const Value* args, size_t nArgs) {
+  if (!ctx || !rt.Valid()) {
+    LOGE("jsc runtime has been destroyed.");
+    return std::optional<Value>();
+  }
   JSValueRef exc = nullptr;
   auto converter =
       ArgsConverter<JSValueRef>(nArgs, args, [&ctx, &rt](const auto& value) {
@@ -387,6 +391,10 @@ std::optional<Value> JSCHelper::callAsConstructor(JSGlobalContextRef ctx,
                                                   const Function& f,
                                                   const Value* args,
                                                   size_t nArgs) {
+  if (!ctx || !rt.Valid()) {
+    LOGE("jsc runtime has been destroyed.");
+    return std::optional<Value>();
+  }
   JSValueRef exc = nullptr;
   auto converter =
       ArgsConverter<JSValueRef>(nArgs, args, [&ctx, &rt](const auto& value) {

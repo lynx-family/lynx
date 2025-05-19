@@ -45,10 +45,11 @@ JSCRuntime::JSCRuntime()
     : ctx_group_(nullptr), ctx_(nullptr), temp_ctx_invalid_(true) {}
 
 JSCRuntime::~JSCRuntime() {
-  *is_runtime_destroyed_ = true;
-  ClearHostContainers();
   ctx_->Release();
   ctx_.reset();
+  ctx_group_.reset();
+  ClearHostContainers();
+  *is_runtime_destroyed_ = true;
   LOGI("lynx ~JSCRuntime " << ctx_.use_count());
 }
 
