@@ -16,7 +16,7 @@ namespace lynx {
 namespace base {
 namespace android {
 
-BASE_EXPORT_FOR_DEVTOOL void CheckException(JNIEnv *env);
+BASE_EXPORT void CheckException(JNIEnv *env);
 
 // Used to indicate whether there is an jni exception after a jni call.
 // It should be noted that only the result checked by calling this method
