@@ -466,7 +466,7 @@ public class TouchEventDispatcher {
     }
   }
 
-  private void fireTap(MotionEvent e) {
+  public void fireTap(MotionEvent e) {
     // For the tap event, it only support single finger.
     int slideTargetSign = canRespondTapOrClick(mActiveUI);
     int propsTargetSign = canRespondTapOrClickWhenUISlideWithProps(mActiveUI);
