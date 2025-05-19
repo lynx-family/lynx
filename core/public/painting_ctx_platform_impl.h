@@ -10,11 +10,11 @@
 #include <vector>
 
 #include "base/include/lynx_actor.h"
-#include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
 #include "core/public/prop_bundle.h"
 #include "core/public/timing_collector_platform.h"
 #include "core/public/timing_key.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 
 namespace lynx {
 

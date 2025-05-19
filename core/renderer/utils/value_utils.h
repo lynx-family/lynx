@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "base/include/compiler_specific.h"
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/table.h"

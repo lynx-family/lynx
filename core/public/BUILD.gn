@@ -19,7 +19,6 @@ lynx_core_source_set("public") {
     "lynx_runtime_proxy.h",
     "page_options.h",
     "painting_ctx_platform_impl.h",
-    "pipeline_option.h",
     "platform_extra_bundle.h",
     "prop_bundle.h",
     "pub_value.h",

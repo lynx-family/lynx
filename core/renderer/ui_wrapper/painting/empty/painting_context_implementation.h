@@ -11,12 +11,12 @@
 #include <utility>
 #include <vector>
 
-#include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_font_face_token.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_keyframes_token.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/shell/dynamic_ui_operation_queue.h"

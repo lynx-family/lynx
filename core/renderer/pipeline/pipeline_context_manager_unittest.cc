@@ -6,9 +6,9 @@
 
 #include <memory>
 
-#include "core/public/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_context.h"
 #include "core/renderer/pipeline/pipeline_context_manager.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

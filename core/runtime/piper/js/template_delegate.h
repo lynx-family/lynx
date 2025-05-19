@@ -10,10 +10,10 @@
 #include <vector>
 
 #include "base/include/closure.h"
-#include "core/public/pipeline_option.h"
 #include "core/public/prop_bundle.h"
 #include "core/public/vsync_observer_interface.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/jsi/api_call_back.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"

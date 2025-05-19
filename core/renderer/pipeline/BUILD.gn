@@ -11,6 +11,7 @@ lynx_core_source_set("pipeline") {
     "pipeline_context.h",
     "pipeline_context_manager.cc",
     "pipeline_context_manager.h",
+    "pipeline_option.h",
     "pipeline_version.h",
   ]
 

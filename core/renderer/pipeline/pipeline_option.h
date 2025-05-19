@@ -1,9 +1,9 @@
-// Copyright 2019 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_PUBLIC_PIPELINE_OPTION_H_
-#define CORE_PUBLIC_PIPELINE_OPTION_H_
+#ifndef CORE_RENDERER_PIPELINE_PIPELINE_OPTION_H_
+#define CORE_RENDERER_PIPELINE_PIPELINE_OPTION_H_
 
 #include <sys/types.h>
 
@@ -170,4 +170,4 @@ struct PipelineOptions {
 }  // namespace tasm
 }  // namespace lynx
 
-#endif  // CORE_PUBLIC_PIPELINE_OPTION_H_
+#endif  // CORE_RENDERER_PIPELINE_PIPELINE_OPTION_H_

@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "base/include/fml/hash_combine.h"
-#include "core/public/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {

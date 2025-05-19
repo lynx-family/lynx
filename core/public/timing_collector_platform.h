@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 
 namespace lynx {
 namespace shell {

@@ -13,8 +13,8 @@
 #include "base/include/linked_hash_map.h"
 #include "base/include/timer/time_utils.h"
 #include "base/include/vector.h"
-#include "core/public/pipeline_option.h"
 #include "core/public/timing_key.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 
 namespace lynx {
 namespace tasm {

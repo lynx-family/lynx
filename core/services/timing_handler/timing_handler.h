@@ -13,7 +13,7 @@
 
 #include "base/include/fml/thread.h"
 #include "base/include/vector.h"
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
 #include "core/services/timing_handler/timing_handler_ng.h"
