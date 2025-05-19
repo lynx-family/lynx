@@ -26,15 +26,53 @@
 namespace lynx {
 namespace tasm {
 
+// TODO(chenyouhui): Define following enum type to private after
+// PaintingContextAndroid and PaintingContextAndroidRef are merged.
+enum class IntValueIndex {
+  LEFT,
+  TOP,
+  WIDTH,
+  HEIGHT,
+  PADDING_LEFT,
+  PADDING_TOP,
+  PADDING_RIGHT,
+  PADDING_BOTTOM,
+  MARGIN_LEFT,
+  MARGIN_TOP,
+  MARGIN_RIGHT,
+  MARGIN_BOTTOM,
+  BORDER_LEFT,
+  BORDER_TOP,
+  BORDER_RIGHT,
+  BORDER_BOTTOM,
+  HAS_BOUND,
+  HAS_STICKY,
+  MAX_HEIGHT,
+  SIZE
+};
+
+enum class UIOperationType : int32_t {
+  kInsert = 0,
+  kRemove = 1,
+  kDestroy = 2,
+  kReadyBatching = 3,
+  kRemoveBatching = 4,
+  kUpdateLayoutPatching = 5,
+  kTasmFinish = 6,
+  kLayoutFinish = 7,
+};
+
 class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
  public:
   PaintingContextAndroidRef(JNIEnv* env, jobject impl);
   ~PaintingContextAndroidRef() override = default;
 
-  void InsertPaintingNode(int parent, int child, int index) override;
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override;
-  void DestroyPaintingNode(int parent, int child, int index) override;
+  base::closure GetInsertPaintingNodeOperation(int parent, int child,
+                                               int index) override;
+  base::closure GetRemovePaintingNodeOperation(int parent, int child, int index,
+                                               bool is_move) override;
+  base::closure GetDestroyPaintingNodeOperation(int parent, int child,
+                                                int index) override;
 
   void UpdateScrollInfo(int32_t container_id, bool smooth,
                         float estimated_offset, bool scrolling) override;
@@ -42,8 +80,8 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
   void SetGestureDetectorState(int64_t idx, int32_t gesture_id,
                                int32_t state) override;
 
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  base::closure GetUpdateNodeReadyPatchingOperation(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) override;
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override;
 
   void UpdateEventInfo(bool has_touch_pseudo) override;
@@ -65,6 +103,10 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
       const tasm::PipelineID& pipeline_id) override;
 
  private:
+  friend class PaintingContextAndroid;
+  std::optional<base::android::CompactArrayBufferBuilder>
+      ui_operation_batch_builder_{std::nullopt};
+
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
 };
 
@@ -82,10 +124,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
                           const std::shared_ptr<PropBundle>& painting_data,
                           bool flatten, bool create_node_async,
                           uint32_t node_index) override;
-  void InsertPaintingNode(int parent, int child, int index) override;
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override;
-  void DestroyPaintingNode(int parent, int child, int index) override;
   void SetKeyframes(std::unique_ptr<PropBundle> keyframes_data) override;
   std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                           const pub::Value& info) override;
@@ -128,9 +166,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void UpdateLayoutPatching() override;
 
   void OnFirstMeaningfulLayout() override;
-  // TODO(liting.src): remove this method after ui operation queue refactor.
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
   void SetContextHasAttached() override;
 
   void SetEnableVsyncAlignedFlush(bool enabled) override {
@@ -156,44 +191,10 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   bool EnableUIOperationQueue() override { return true; }
 
   bool HasEnableUIOperationBatching() override {
-    return ui_operation_batch_builder_.has_value();
+    return PlatformRefAndroid()->ui_operation_batch_builder_.has_value();
   }
 
  private:
-  enum class IntValueIndex {
-    LEFT,
-    TOP,
-    WIDTH,
-    HEIGHT,
-    PADDING_LEFT,
-    PADDING_TOP,
-    PADDING_RIGHT,
-    PADDING_BOTTOM,
-    MARGIN_LEFT,
-    MARGIN_TOP,
-    MARGIN_RIGHT,
-    MARGIN_BOTTOM,
-    BORDER_LEFT,
-    BORDER_TOP,
-    BORDER_RIGHT,
-    BORDER_BOTTOM,
-    HAS_BOUND,
-    HAS_STICKY,
-    MAX_HEIGHT,
-    SIZE
-  };
-
-  enum class UIOperationType : int32_t {
-    kInsert = 0,
-    kRemove = 1,
-    kDestroy = 2,
-    kReadyBatching = 3,
-    kRemoveBatching = 4,
-    kUpdateLayoutPatching = 5,
-    kTasmFinish = 6,
-    kLayoutFinish = 7,
-  };
-
   void Enqueue(shell::UIOperation op);
   void EnqueueHighPriorityUIOperation(shell::UIOperation op);
   void BeforeFlush();
@@ -205,6 +206,9 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       const std::shared_ptr<PropBundle>& painting_data);
   static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 19,
                 "size has changed, make sure stay in sync with platform");
+  PaintingContextAndroidRef* PlatformRefAndroid() {
+    return static_cast<PaintingContextAndroidRef*>(platform_ref_.get());
+  }
 
   std::vector<int> patching_ids_;
   std::vector<int> patching_node_index_;
@@ -244,9 +248,6 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
       backward_create_node_async_task_iterator_;
 
   int32_t instance_id_ = 0;
-
-  std::optional<base::android::CompactArrayBufferBuilder>
-      ui_operation_batch_builder_{std::nullopt};
 };
 }  // namespace tasm
 }  // namespace lynx

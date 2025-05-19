@@ -17,8 +17,32 @@ namespace lynx {
 namespace tasm {
 namespace testing {
 
+class FiberMockPaintingContextRef : public PaintingCtxPlatformRef {
+ public:
+  FiberMockPaintingContextRef(
+      std::unordered_map<int, std::unique_ptr<MockNode>>& node_map,
+      const std::shared_ptr<shell::LynxUIOperationQueue>& queue)
+      : node_map_(node_map), queue_(queue) {}
+  base::closure GetInsertPaintingNodeOperation(int parent, int child,
+                                               int index) override;
+  base::closure GetRemovePaintingNodeOperation(int parent, int child, int index,
+                                               bool is_move) override;
+  base::closure GetDestroyPaintingNodeOperation(int parent, int child,
+                                                int index) override;
+
+ private:
+  void EnqueueOperation(shell::UIOperation op);
+
+  std::unordered_map<int, std::unique_ptr<MockNode>>& node_map_;
+  std::shared_ptr<shell::LynxUIOperationQueue> queue_;
+};
+
 class FiberMockPaintingContext : public PaintingContextPlatformImpl {
  public:
+  FiberMockPaintingContext() {
+    platform_ref_ =
+        std::make_shared<FiberMockPaintingContextRef>(node_map_, queue_);
+  }
   void ResetFlushFlag();
 
   bool HasFlushed();
@@ -38,10 +62,6 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
                           const std::shared_ptr<PropBundle>& painting_data,
                           bool flatten, bool create_node_async,
                           uint32_t node_index) override;
-  void InsertPaintingNode(int parent, int child, int index) override;
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override;
-  void DestroyPaintingNode(int parent, int child, int index) override;
   void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const std::shared_ptr<PropBundle>& painting_data) override;

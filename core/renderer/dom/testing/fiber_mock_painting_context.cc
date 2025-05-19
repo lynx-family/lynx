@@ -13,6 +13,63 @@ namespace lynx {
 namespace tasm {
 namespace testing {
 
+base::closure FiberMockPaintingContextRef::GetInsertPaintingNodeOperation(
+    int parent, int child, int index) {
+  EnqueueOperation([this, parent, child, index]() {
+    auto* parent_node = node_map_.at(parent).get();
+    auto* child_node = node_map_.at(child).get();
+    if (index == -1) {
+      parent_node->children_.push_back(child_node);
+    } else {
+      parent_node->children_.insert((parent_node->children_).begin() + index,
+                                    child_node);
+    }
+    child_node->parent_ = parent_node;
+  });
+  return base::closure();
+}
+base::closure FiberMockPaintingContextRef::GetRemovePaintingNodeOperation(
+    int parent, int child, int index, bool is_move) {
+  EnqueueOperation([this, parent, child]() {
+    auto* parent_node = node_map_.at(parent).get();
+    auto* child_node = node_map_.at(child).get();
+
+    auto it_child = std::find(parent_node->children_.begin(),
+                              parent_node->children_.end(), child_node);
+    if (it_child != parent_node->children_.end()) {
+      child_node->parent_ = nullptr;
+
+      parent_node->children_.erase(it_child);
+    }
+  });
+  return base::closure();
+}
+base::closure FiberMockPaintingContextRef::GetDestroyPaintingNodeOperation(
+    int parent, int child, int index) {
+  EnqueueOperation([this, parent, child]() -> void {
+    auto* child_node = node_map_.at(child).get();
+    child_node->parent_ = nullptr;
+    if (node_map_.find(parent) != node_map_.end()) {
+      auto* parent_node = node_map_.at(parent).get();
+      auto it_child = std::find(parent_node->children_.begin(),
+                                parent_node->children_.end(), child_node);
+      if (it_child != parent_node->children_.end()) {
+        parent_node->children_.erase(it_child);
+      }
+    }
+
+    auto it = node_map_.find(child);
+    if (it != node_map_.end()) {
+      node_map_.erase(it);
+    }
+  });
+  return base::closure();
+}
+
+void FiberMockPaintingContextRef::EnqueueOperation(shell::UIOperation op) {
+  queue_->EnqueueUIOperation(std::move(op));
+}
+
 void FiberMockPaintingContext::ResetFlushFlag() { flush_ = false; }
 
 bool FiberMockPaintingContext::HasFlushed() { return flush_; }
@@ -46,55 +103,7 @@ void FiberMockPaintingContext::CreatePaintingNode(
         node_map_.insert(std::make_pair(id, std::move(node)));
       });
 }
-void FiberMockPaintingContext::InsertPaintingNode(int parent, int child,
-                                                  int index) {
-  EnqueueOperation([this, parent, child, index]() {
-    auto* parent_node = node_map_.at(parent).get();
-    auto* child_node = node_map_.at(child).get();
-    if (index == -1) {
-      parent_node->children_.push_back(child_node);
-    } else {
-      parent_node->children_.insert((parent_node->children_).begin() + index,
-                                    child_node);
-    }
-    child_node->parent_ = parent_node;
-  });
-}
-void FiberMockPaintingContext::RemovePaintingNode(int parent, int child,
-                                                  int index, bool is_move) {
-  EnqueueOperation([this, parent, child]() {
-    auto* parent_node = node_map_.at(parent).get();
-    auto* child_node = node_map_.at(child).get();
 
-    auto it_child = std::find(parent_node->children_.begin(),
-                              parent_node->children_.end(), child_node);
-    if (it_child != parent_node->children_.end()) {
-      child_node->parent_ = nullptr;
-
-      parent_node->children_.erase(it_child);
-    }
-  });
-}
-void FiberMockPaintingContext::DestroyPaintingNode(int parent, int child,
-                                                   int index) {
-  EnqueueOperation([this, parent, child]() -> void {
-    auto* child_node = node_map_.at(child).get();
-    child_node->parent_ = nullptr;
-    if (node_map_.find(parent) != node_map_.end()) {
-      auto* parent_node = node_map_.at(parent).get();
-      auto it_child = std::find(parent_node->children_.begin(),
-                                parent_node->children_.end(), child_node);
-      if (it_child != parent_node->children_.end()) {
-        parent_node->children_.erase(it_child);
-      }
-    }
-
-    auto it = node_map_.find(child);
-    if (it != node_map_.end()) {
-      node_map_.erase(it);
-    }
-  });
-}
 void FiberMockPaintingContext::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const std::shared_ptr<PropBundle>& painting_data) {

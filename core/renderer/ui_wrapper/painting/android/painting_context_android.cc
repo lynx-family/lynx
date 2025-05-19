@@ -65,43 +65,72 @@ namespace tasm {
 PaintingContextAndroidRef::PaintingContextAndroidRef(JNIEnv* env, jobject impl)
     : java_ref_(base::android::ScopedWeakGlobalJavaRef<jobject>(env, impl)) {}
 
-void PaintingContextAndroidRef::InsertPaintingNode(int parent, int child,
-                                                   int index) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
-
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
+base::closure PaintingContextAndroidRef::GetInsertPaintingNodeOperation(
+    int parent, int child, int index) {
+  if (ui_operation_batch_builder_) {
+    ui_operation_batch_builder_->putInt(
+        static_cast<int32_t>(UIOperationType::kInsert));
+    ui_operation_batch_builder_->putInt(parent);
+    ui_operation_batch_builder_->putInt(child);
+    ui_operation_batch_builder_->putInt(index);
+    return base::closure();
   }
+  return [impl = java_ref_, parent, child, index]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
 
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PaintingContext_insertNode(env, local_ref.Get(), parent, child, index);
+    base::android::ScopedLocalJavaRef<jobject> local_ref(impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    JNIEnv* env = base::android::AttachCurrentThread();
+    Java_PaintingContext_insertNode(env, local_ref.Get(), parent, child, index);
+  };
 }
 
-void PaintingContextAndroidRef::RemovePaintingNode(int parent, int child,
-                                                   int index, bool is_move) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
-
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
+base::closure PaintingContextAndroidRef::GetRemovePaintingNodeOperation(
+    int parent, int child, int index, bool is_move) {
+  if (ui_operation_batch_builder_) {
+    ui_operation_batch_builder_->putInt(
+        static_cast<int32_t>(UIOperationType::kRemove));
+    ui_operation_batch_builder_->putInt(parent);
+    ui_operation_batch_builder_->putInt(child);
+    return base::closure();
   }
 
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PaintingContext_removeNode(env, local_ref.Get(), parent, child);
+  return [impl = java_ref_, parent, child]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
+
+    base::android::ScopedLocalJavaRef<jobject> local_ref(impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    JNIEnv* env = base::android::AttachCurrentThread();
+    Java_PaintingContext_removeNode(env, local_ref.Get(), parent, child);
+  };
 }
 
-void PaintingContextAndroidRef::DestroyPaintingNode(int parent, int child,
-                                                    int index) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
-
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
+base::closure PaintingContextAndroidRef::GetDestroyPaintingNodeOperation(
+    int parent, int child, int index) {
+  if (ui_operation_batch_builder_) {
+    ui_operation_batch_builder_->putInt(
+        static_cast<int32_t>(UIOperationType::kDestroy));
+    ui_operation_batch_builder_->putInt(parent);
+    ui_operation_batch_builder_->putInt(child);
+    return base::closure();
   }
+  return [impl = java_ref_, parent, child]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
 
-  JNIEnv* env = base::android::AttachCurrentThread();
-  Java_PaintingContext_destroyNode(env, local_ref.Get(), parent, child);
+    base::android::ScopedLocalJavaRef<jobject> local_ref(impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
+
+    JNIEnv* env = base::android::AttachCurrentThread();
+    Java_PaintingContext_destroyNode(env, local_ref.Get(), parent, child);
+  };
 }
 
 void PaintingContextAndroidRef::UpdateScrollInfo(int32_t container_id,
@@ -139,31 +168,48 @@ void PaintingContextAndroidRef::SetGestureDetectorState(int64_t idx,
                                                gesture_id, state);
 }
 
-void PaintingContextAndroidRef::UpdateNodeReadyPatching(
+base::closure PaintingContextAndroidRef::GetUpdateNodeReadyPatchingOperation(
     std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  if (ready_ids.empty() && remove_ids.empty()) {
-    return;
+  // only for EnableUIOperationBatching now!
+  if (ui_operation_batch_builder_) {
+    if (!ready_ids.empty()) {
+      ui_operation_batch_builder_->putInt(
+          static_cast<int32_t>(UIOperationType::kReadyBatching));
+      ui_operation_batch_builder_->putIntArray(std::move(ready_ids));
+    }
+
+    if (!remove_ids.empty()) {
+      ui_operation_batch_builder_->putInt(
+          static_cast<int32_t>(UIOperationType::kRemoveBatching));
+      ui_operation_batch_builder_->putIntArray(std::move(remove_ids));
+    }
+    return base::closure();
   }
 
-  TRACE_EVENT(LYNX_TRACE_CATEGORY,
-              UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
-  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
-  if (local_ref.IsNull()) {
-    return;
-  }
+  return [impl = java_ref_, patching_node_ready_ids = std::move(ready_ids),
+          patching_node_remove_ids = std::move(remove_ids)]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
+    base::android::ScopedLocalJavaRef<jobject> local_ref(impl);
+    if (local_ref.IsNull()) {
+      return;
+    }
 
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
-      env, env->NewIntArray(ready_ids.size()));
-  env->SetIntArrayRegion(node_ready_ids.Get(), 0, ready_ids.size(),
-                         &ready_ids[0]);
-  base::android::ScopedLocalJavaRef<jintArray> node_remove_ids(
-      env, env->NewIntArray(remove_ids.size()));
-  env->SetIntArrayRegion(node_remove_ids.Get(), 0, remove_ids.size(),
-                         &remove_ids[0]);
+    JNIEnv* env = base::android::AttachCurrentThread();
+    base::android::ScopedLocalJavaRef<jintArray> node_ready_ids(
+        env, env->NewIntArray(patching_node_ready_ids.size()));
+    env->SetIntArrayRegion(node_ready_ids.Get(), 0,
+                           patching_node_ready_ids.size(),
+                           &patching_node_ready_ids[0]);
+    base::android::ScopedLocalJavaRef<jintArray> node_remove_ids(
+        env, env->NewIntArray(patching_node_remove_ids.size()));
+    env->SetIntArrayRegion(node_remove_ids.Get(), 0,
+                           patching_node_remove_ids.size(),
+                           &patching_node_remove_ids[0]);
 
-  Java_PaintingContext_updateNodeReadyPatching(
-      env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get());
+    Java_PaintingContext_updateNodeReadyPatching(
+        env, local_ref.Get(), node_ready_ids.Get(), node_remove_ids.Get());
+  };
 }
 
 void PaintingContextAndroidRef::UpdateNodeReloadPatching(
@@ -559,74 +605,6 @@ void PaintingContextAndroid::SetContextHasAttached() {
   }
 }
 
-void PaintingContextAndroid::InsertPaintingNode(int parent, int child,
-                                                int index) {
-  if (ui_operation_batch_builder_) {
-    ui_operation_batch_builder_->putInt(
-        static_cast<int32_t>(UIOperationType::kInsert));
-    ui_operation_batch_builder_->putInt(parent);
-    ui_operation_batch_builder_->putInt(child);
-    ui_operation_batch_builder_->putInt(index);
-    return;
-  }
-  Enqueue([impl = impl_, parent, child, index]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_insertNode(env, local_ref.Get(), parent, child, index);
-  });
-}
-
-void PaintingContextAndroid::RemovePaintingNode(int parent, int child,
-                                                int index, bool is_move) {
-  if (ui_operation_batch_builder_) {
-    ui_operation_batch_builder_->putInt(
-        static_cast<int32_t>(UIOperationType::kRemove));
-    ui_operation_batch_builder_->putInt(parent);
-    ui_operation_batch_builder_->putInt(child);
-    return;
-  }
-
-  Enqueue([impl = impl_, parent, child]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_removeNode(env, local_ref.Get(), parent, child);
-  });
-}
-
-void PaintingContextAndroid::DestroyPaintingNode(int parent, int child,
-                                                 int index) {
-  if (ui_operation_batch_builder_) {
-    ui_operation_batch_builder_->putInt(
-        static_cast<int32_t>(UIOperationType::kDestroy));
-    ui_operation_batch_builder_->putInt(parent);
-    ui_operation_batch_builder_->putInt(child);
-    return;
-  }
-  Enqueue([impl = impl_, parent, child]() {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
-
-    base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-    if (local_ref.IsNull()) {
-      return;
-    }
-
-    JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_destroyNode(env, local_ref.Get(), parent, child);
-  });
-}
-
 void PaintingContextAndroid::UpdateLayout(
     int id, float x, float y, float width, float height, const float* paddings,
     const float* margins, const float* borders, const float* bounds,
@@ -752,11 +730,13 @@ void PaintingContextAndroid::HandleValidate(int tag) {
 
 void PaintingContextAndroid::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
-  if (ui_operation_batch_builder_) {
-    ui_operation_batch_builder_->putInt(
+  if (PlatformRefAndroid()->ui_operation_batch_builder_) {
+    PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
         static_cast<int32_t>(UIOperationType::kLayoutFinish));
-    ui_operation_batch_builder_->putInt(options->list_comp_id_);
-    ui_operation_batch_builder_->putLong(options->operation_id);
+    PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
+        options->list_comp_id_);
+    PlatformRefAndroid()->ui_operation_batch_builder_->putLong(
+        options->operation_id);
   } else {
     Enqueue([impl = impl_, options = options]() {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -813,10 +793,11 @@ void PaintingContextAndroid::FinishTasmOperation(
       });
     }
   }
-  if (ui_operation_batch_builder_) {
-    ui_operation_batch_builder_->putInt(
+  if (PlatformRefAndroid()->ui_operation_batch_builder_) {
+    PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
         static_cast<int32_t>(UIOperationType::kTasmFinish));
-    ui_operation_batch_builder_->putLong(options->operation_id);
+    PlatformRefAndroid()->ui_operation_batch_builder_->putLong(
+        options->operation_id);
   } else {
     Enqueue([impl = impl_, options]() {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -992,44 +973,48 @@ void PaintingContextAndroid::InvokeUIMethodCallback(int32_t id, int32_t code,
 
 void PaintingContextAndroid::UpdateLayoutPatching() {
   if (!patching_ids_.empty()) {
-    if (ui_operation_batch_builder_) {
-      ui_operation_batch_builder_->putInt(
+    if (PlatformRefAndroid()->ui_operation_batch_builder_) {
+      PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
           static_cast<int32_t>(UIOperationType::kUpdateLayoutPatching));
 
       size_t patching_count = patching_ids_.size();
       // patching id
-      ui_operation_batch_builder_->putIntArray(std::move(patching_ids_));
+      PlatformRefAndroid()->ui_operation_batch_builder_->putIntArray(
+          std::move(patching_ids_));
 
       // patching ints
-      ui_operation_batch_builder_->putInt(
+      PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
           static_cast<int>(IntValueIndex::SIZE) * patching_count);
       for (auto& e : patching_ints_) {
         for (int i : e) {
-          ui_operation_batch_builder_->putInt(i);
+          PlatformRefAndroid()->ui_operation_batch_builder_->putInt(i);
         }
       }
       patching_ints_.clear();
 
       // patching bounds
-      ui_operation_batch_builder_->putInt(4 * patching_bounds_.size());
+      PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
+          4 * patching_bounds_.size());
       for (auto& e : patching_bounds_) {
         for (float i : e) {
-          ui_operation_batch_builder_->putDouble(i);
+          PlatformRefAndroid()->ui_operation_batch_builder_->putDouble(i);
         }
       }
       patching_bounds_.clear();
 
       // patching stickies
-      ui_operation_batch_builder_->putInt(4 * patching_stickies_.size());
+      PlatformRefAndroid()->ui_operation_batch_builder_->putInt(
+          4 * patching_stickies_.size());
       for (auto& e : patching_stickies_) {
         for (float i : e) {
-          ui_operation_batch_builder_->putDouble(i);
+          PlatformRefAndroid()->ui_operation_batch_builder_->putDouble(i);
         }
       }
       patching_stickies_.clear();
 
       // patching node index
-      ui_operation_batch_builder_->putIntArray(std::move(patching_node_index_));
+      PlatformRefAndroid()->ui_operation_batch_builder_->putIntArray(
+          std::move(patching_node_index_));
       return;
     }
 
@@ -1092,29 +1077,6 @@ void PaintingContextAndroid::UpdateLayoutPatching() {
 // TODO(huzhanbo.luc): remove this later
 void PaintingContextAndroid::OnFirstMeaningfulLayout() {}
 
-void PaintingContextAndroid::UpdateNodeReadyPatching(
-    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
-  if (ready_ids.empty() && remove_ids.empty()) {
-    return;
-  }
-
-  // only for EnableUIOperationBatching now!
-  if (ui_operation_batch_builder_) {
-    if (!ready_ids.empty()) {
-      ui_operation_batch_builder_->putInt(
-          static_cast<int32_t>(UIOperationType::kReadyBatching));
-      ui_operation_batch_builder_->putIntArray(std::move(ready_ids));
-    }
-
-    if (!remove_ids.empty()) {
-      ui_operation_batch_builder_->putInt(
-          static_cast<int32_t>(UIOperationType::kRemoveBatching));
-      ui_operation_batch_builder_->putIntArray(std::move(remove_ids));
-    }
-    return;
-  }
-}
-
 void PaintingContextAndroid::Enqueue(shell::UIOperation op) {
   queue_->EnqueueUIOperation(std::move(op));
 }
@@ -1145,9 +1107,12 @@ void PaintingContextAndroid::BeforeFlush() {
 
   std::optional<base::android::CompactArrayBuffer> ui_operation_batch =
       std::nullopt;
-  if (ui_operation_batch_builder_ && !ui_operation_batch_builder_->empty()) {
-    ui_operation_batch = ui_operation_batch_builder_->build();
-    ui_operation_batch_builder_ = base::android::CompactArrayBufferBuilder{};
+  if (PlatformRefAndroid()->ui_operation_batch_builder_ &&
+      !PlatformRefAndroid()->ui_operation_batch_builder_->empty()) {
+    ui_operation_batch =
+        PlatformRefAndroid()->ui_operation_batch_builder_->build();
+    PlatformRefAndroid()->ui_operation_batch_builder_ =
+        base::android::CompactArrayBufferBuilder{};
   }
 
   if (!ui_operation_batch || ui_operation_batch->count() == 0) {
@@ -1176,7 +1141,8 @@ void PaintingContextAndroid::BeforeFlush() {
 }
 
 void PaintingContextAndroid::EnableUIOperationBatching() {
-  ui_operation_batch_builder_ = base::android::CompactArrayBufferBuilder{};
+  PlatformRefAndroid()->ui_operation_batch_builder_ =
+      base::android::CompactArrayBufferBuilder{};
 }
 std::unique_ptr<pub::Value> PaintingContextAndroid::GetTextInfo(
     const std::string& content, const pub::Value& info) {

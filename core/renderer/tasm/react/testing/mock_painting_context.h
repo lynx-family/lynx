@@ -41,16 +41,80 @@ struct MockNode {
 
 class MockPaintingContextPlatformRef : public PaintingCtxPlatformRef {
  public:
+  MockPaintingContextPlatformRef(
+      std::mutex& lock,
+      std::unordered_map<int, std::unique_ptr<MockNode>>& node_map)
+      : lock_(lock), node_map_(node_map) {}
+
+  base::closure GetInsertPaintingNodeOperation(int parent, int child,
+                                               int index) override {
+    std::lock_guard guard(lock_);
+
+    auto* parent_node = node_map_.at(parent).get();
+    auto* child_node = node_map_.at(child).get();
+    if (index == -1) {
+      parent_node->children_.push_back(child_node);
+    } else {
+      parent_node->children_.insert((parent_node->children_).begin() + index,
+                                    child_node);
+    }
+    child_node->parent_ = parent_node;
+    return base::closure();
+  }
+  base::closure GetRemovePaintingNodeOperation(int parent, int child, int index,
+                                               bool is_move) override {
+    std::lock_guard guard(lock_);
+
+    auto* parent_node = node_map_.at(parent).get();
+    auto* child_node = node_map_.at(child).get();
+
+    auto it_child = std::find(parent_node->children_.begin(),
+                              parent_node->children_.end(), child_node);
+    if (it_child != parent_node->children_.end()) {
+      child_node->parent_ = nullptr;
+
+      parent_node->children_.erase(it_child);
+    }
+    return base::closure();
+  }
+  base::closure GetDestroyPaintingNodeOperation(int parent, int child,
+                                                int index) override {
+    std::lock_guard guard(lock_);
+
+    auto* child_node = node_map_.at(child).get();
+    child_node->parent_ = nullptr;
+    if (node_map_.find(parent) != node_map_.end()) {
+      auto* parent_node = node_map_.at(parent).get();
+      auto it_child = std::find(parent_node->children_.begin(),
+                                parent_node->children_.end(), child_node);
+      if (it_child != parent_node->children_.end()) {
+        parent_node->children_.erase(it_child);
+      }
+    }
+
+    auto it = node_map_.find(child);
+    if (it != node_map_.end()) {
+      node_map_.erase(it);
+    }
+    return base::closure();
+  }
+
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override {
     reload_ids_ = std::move(reload_ids);
   }
+
+ private:
   std::vector<int32_t> reload_ids_;
+  // TODO(chenyouhui): Remove reference
+  std::mutex& lock_;
+  std::unordered_map<int, std::unique_ptr<MockNode>>& node_map_;
 };
 
 class MockPaintingContext : public PaintingContextPlatformImpl {
  public:
   MockPaintingContext() {
-    platform_ref_ = std::make_shared<MockPaintingContextPlatformRef>();
+    platform_ref_ =
+        std::make_shared<MockPaintingContextPlatformRef>(lock_, node_map_);
   }
   void ResetFlushFlag() { flush_ = false; }
 
@@ -81,53 +145,7 @@ class MockPaintingContext : public PaintingContextPlatformImpl {
     }
     node_map_.insert(std::make_pair(id, std::move(node)));
   }
-  virtual void InsertPaintingNode(int parent, int child, int index) override {
-    std::lock_guard guard(lock_);
 
-    auto* parent_node = node_map_.at(parent).get();
-    auto* child_node = node_map_.at(child).get();
-    if (index == -1) {
-      parent_node->children_.push_back(child_node);
-    } else {
-      parent_node->children_.insert((parent_node->children_).begin() + index,
-                                    child_node);
-    }
-    child_node->parent_ = parent_node;
-  }
-  virtual void RemovePaintingNode(int parent, int child, int index,
-                                  bool is_move) override {
-    std::lock_guard guard(lock_);
-
-    auto* parent_node = node_map_.at(parent).get();
-    auto* child_node = node_map_.at(child).get();
-
-    auto it_child = std::find(parent_node->children_.begin(),
-                              parent_node->children_.end(), child_node);
-    if (it_child != parent_node->children_.end()) {
-      child_node->parent_ = nullptr;
-
-      parent_node->children_.erase(it_child);
-    }
-  }
-  virtual void DestroyPaintingNode(int parent, int child, int index) override {
-    std::lock_guard guard(lock_);
-
-    auto* child_node = node_map_.at(child).get();
-    child_node->parent_ = nullptr;
-    if (node_map_.find(parent) != node_map_.end()) {
-      auto* parent_node = node_map_.at(parent).get();
-      auto it_child = std::find(parent_node->children_.begin(),
-                                parent_node->children_.end(), child_node);
-      if (it_child != parent_node->children_.end()) {
-        parent_node->children_.erase(it_child);
-      }
-    }
-
-    auto it = node_map_.find(child);
-    if (it != node_map_.end()) {
-      node_map_.erase(it);
-    }
-  }
   virtual void UpdatePaintingNode(
       int id, bool tend_to_flatten,
       const std::shared_ptr<PropBundle>& painting_data) override {

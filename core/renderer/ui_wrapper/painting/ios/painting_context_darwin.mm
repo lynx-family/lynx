@@ -98,22 +98,34 @@ void ExecuteSafely(const F& func) {
 
 }  // namespace
 
-void PaintingContextDarwinRef::InsertPaintingNode(int parent, int child, int index) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
+base::closure PaintingContextDarwinRef::GetInsertPaintingNodeOperation(int parent, int child,
+                                                                       int index) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  return [uiOwner, parent, child, index]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_INSERT_PAINTING_TASK);
 
-  [uiOwner_ insertNode:child toParent:parent atIndex:index];
+    [uiOwner insertNode:child toParent:parent atIndex:index];
+  };
 }
 
-void PaintingContextDarwinRef::RemovePaintingNode(int parent, int child, int index, bool is_move) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
+base::closure PaintingContextDarwinRef::GetRemovePaintingNodeOperation(int parent, int child,
+                                                                       int index, bool is_move) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  return [uiOwner, child]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_REMOVE_PAINTING_TASK);
 
-  [uiOwner_ detachNode:child];
+    [uiOwner detachNode:child];
+  };
 }
 
-void PaintingContextDarwinRef::DestroyPaintingNode(int parent, int child, int index) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
+base::closure PaintingContextDarwinRef::GetDestroyPaintingNodeOperation(int parent, int child,
+                                                                        int index) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  return [uiOwner, child]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_DESTORY_PAINTING_TASK);
 
-  [uiOwner_ recycleNode:child];
+    [uiOwner recycleNode:child];
+  };
 }
 
 void PaintingContextDarwinRef::UpdateScrollInfo(int32_t container_id, bool smooth,
@@ -137,20 +149,19 @@ void PaintingContextDarwinRef::SetGestureDetectorState(int64_t idx, int32_t gest
   [ui setGestureDetectorState:gesture_id state:(LynxGestureState)state];
 }
 
-void PaintingContextDarwinRef::UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                                       std::vector<int32_t> remove_ids) {
-  if (ready_ids.empty() && remove_ids.empty()) {
-    return;
-  }
+base::closure PaintingContextDarwinRef::GetUpdateNodeReadyPatchingOperation(
+    std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+  __weak LynxUIOwner* uiOwner = uiOwner_;
+  return [uiOwner, ready_ids = std::move(ready_ids), remove_ids = std::move(remove_ids)]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
 
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_UPDATE_NODE_READY_PATCHING);
-
-  for (const auto& tag : ready_ids) {
-    [uiOwner_ onNodeReady:tag];
-  }
-  for (const auto& tag : remove_ids) {
-    [uiOwner_ onNodeRemoved:tag];
-  }
+    for (const auto& tag : ready_ids) {
+      [uiOwner onNodeReady:tag];
+    }
+    for (const auto& tag : remove_ids) {
+      [uiOwner onNodeRemoved:tag];
+    }
+  };
 }
 
 void PaintingContextDarwinRef::UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {

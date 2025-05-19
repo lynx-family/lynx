@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/lynx_actor.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
@@ -28,10 +29,19 @@ class PaintingCtxPlatformRef {
  public:
   virtual ~PaintingCtxPlatformRef() = default;
 
-  virtual void InsertPaintingNode(int parent, int child, int index) {}
-  virtual void RemovePaintingNode(int parent, int child, int index,
-                                  bool is_move) {}
-  virtual void DestroyPaintingNode(int parent, int child, int index) {}
+  virtual base::closure GetInsertPaintingNodeOperation(int parent, int child,
+                                                       int index) {
+    return base::closure();
+  }
+  virtual base::closure GetRemovePaintingNodeOperation(int parent, int child,
+                                                       int index,
+                                                       bool is_move) {
+    return base::closure();
+  }
+  virtual base::closure GetDestroyPaintingNodeOperation(int parent, int child,
+                                                        int index) {
+    return base::closure();
+  }
 
   // update the data of the method of "scrolling"
   virtual void UpdateScrollInfo(int32_t container_id, bool smooth,
@@ -40,8 +50,10 @@ class PaintingCtxPlatformRef {
   virtual void SetGestureDetectorState(int64_t id, int32_t gesture_id,
                                        int32_t state) {}
 
-  virtual void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                                       std::vector<int32_t> remove_ids) {}
+  virtual base::closure GetUpdateNodeReadyPatchingOperation(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) {
+    return base::closure();
+  }
   virtual void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) {}
   virtual void UpdateEventInfo(bool has_touch_pseudo) {}
   virtual void UpdateFlattenStatus(int id, bool flatten) {}
