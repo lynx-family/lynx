@@ -12,7 +12,7 @@
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/renderer/ui_component/list/adapter_helper.h"
 #include "core/renderer/ui_component/list/item_holder.h"
 #include "core/renderer/ui_component/list/list_children_helper.h"

@@ -8,7 +8,7 @@
 #include <memory>
 #include <utility>
 
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {

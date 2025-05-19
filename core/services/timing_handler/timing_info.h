@@ -13,8 +13,8 @@
 #include <vector>
 
 #include "core/base/threading/task_runner_manufactor.h"
-#include "core/public/pipeline_option.h"
 #include "core/public/pub_value.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/services/timing_handler/timing_map.h"
 
 namespace lynx {

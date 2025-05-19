@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "core/public/pipeline_option.h"
+#include "core/renderer/pipeline/pipeline_option.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
