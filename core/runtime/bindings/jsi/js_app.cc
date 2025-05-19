@@ -1803,6 +1803,12 @@ void App::destroy() {
   if (jsi_object_wrapper_manager_) {
     jsi_object_wrapper_manager_->DestroyOnJSThread();
   }
+  // clear js object
+  for (auto ptr : context_proxy_vector_) {
+    if (ptr) {
+      ptr->Destroy();
+    }
+  }
 
   exception_handler_->Destroy();
 }
