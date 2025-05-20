@@ -91,7 +91,7 @@ LynxResourceLoaderDarwin::LynxResourceLoaderDarwin(
       _genericResourceFetcher(genericResourceFetcher),
       _errorReceiver(errorReceiver) {}
 
-void LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
+bool LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
                                                      CopyableClosure callback) {
   id<LynxResourceProvider> provider =
       [_providerRegistry getResourceProviderByKey:LYNX_PROVIDER_TYPE_EXTERNAL_JS];
@@ -99,7 +99,7 @@ void LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
     LOGE("lynx resource provider is null, url: " << url);
     pub::LynxResourceResponse res;
     callback(res);
-    return;
+    return false;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FetchScriptByProvider", "url", url);
   NSString* nsUrl = [NSString stringWithUTF8String:url.c_str()];
@@ -110,6 +110,7 @@ void LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
            FetchExternalResourceComplete(response.data, response.error, nsUrl, weakErrorReceiver,
                                          std::move(callback));
          }];
+  return true;
 }
 
 bool LynxResourceLoaderDarwin::FetchTemplateByGenericFetcher(const std::string& url,
@@ -250,7 +251,13 @@ void LynxResourceLoaderDarwin::LoadResource(
     if (FetchResourceByGenericFetcher(request.url, copyable_callback)) {
       return;
     }
-    FetchScriptByProvider(request.url, std::move(copyable_callback));
+    // 2. try to use external js provider
+    if (FetchScriptByProvider(request.url, copyable_callback)) {
+      return;
+    }
+    // invoke callback directly if no provider or fetcher set;
+    pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
+    copyable_callback(resp);
     return;
   }
 
