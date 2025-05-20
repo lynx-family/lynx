@@ -101,21 +101,28 @@ public class LynxResourceLoader {
         if (fetchResourceByGenericFetcher(responseHandler, url)) {
           break;
         }
-        fetchScriptByProvider(responseHandler, url);
+        // 2. try to use external js provider;
+        if (fetchScriptByProvider(responseHandler, url)) {
+          break;
+        }
+        // invoke callback directly if no provider or fetcher set;
+        InvokeNativeCallbackWithBytes(
+            responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
         break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE:
         // 1. try to use LynxTemplateResourceFetcher
         if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
           break;
         }
-        // 3. try to use LynxExternalResourceFetcherWrapper
+        // 2. try to use LynxExternalResourceFetcherWrapper
         if (fetchTemplateByFetcherWrapper(responseHandler, url, type)) {
           break;
         }
-        // 2. try to use LynxResourceProvider
+        // 3. try to use LynxResourceProvider
         if (fetchTemplateByProvider(responseHandler, url, type)) {
           break;
         }
+        // invoke callback directly if no provider or fetcher set;
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
         break;
@@ -124,6 +131,7 @@ public class LynxResourceLoader {
         if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
           break;
         }
+        // invoke callback directly if no provider or fetcher set;
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
         break;
@@ -378,12 +386,14 @@ public class LynxResourceLoader {
 
   /**
    * fetch script by LynxResourceProvider
+   *
+   * @return false if provider not set;
    */
-  private void fetchScriptByProvider(long responseHandler, String url) {
+  private boolean fetchScriptByProvider(long responseHandler, String url) {
     LynxResourceProvider provider =
         getResourceProviderByType(LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS);
     if (provider == null) {
-      return;
+      return false;
     }
     final LynxResourceRequest request = new LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
@@ -398,6 +408,7 @@ public class LynxResourceLoader {
             success, response.getData(), error != null ? error.getMessage() : null);
       }
     });
+    return true;
   }
 
   private LynxResourceProvider getResourceProviderByType(int type) {

@@ -44,13 +44,19 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
   NSData* LoadJSSource(const std::string& name);
   NSData* LoadLynxJSAsset(const std::string& name, NSURL& bundleUrl, NSURL& debugBundleUrl);
 
-  void FetchScriptByProvider(const std::string& url, CopyableClosure callback);
+  /**
+   * Try to fetch script by ExternalJS Provider, if provider not set, return false;
+   */
+  bool FetchScriptByProvider(const std::string& url, CopyableClosure callback);
 
   /**
-   * Try to fetch template by Generic Fetcher. if generic fetcher not registered, it will fallback.
+   * Try to fetch template by Generic Fetcher. if generic fetcher not set, return false;
    */
   bool FetchTemplateByGenericFetcher(const std::string& url, CopyableClosure callback);
 
+  /**
+   * Try to fetch resource by Generic Fetcher. if generic fetcher not set, return false;
+   */
   bool FetchResourceByGenericFetcher(const std::string& url, CopyableClosure callback);
 
   /**
