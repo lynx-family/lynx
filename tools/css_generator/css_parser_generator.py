@@ -240,6 +240,30 @@ def checkJsonFileFormat():
     print("JSON validate success!")
 
 
+def checkJsonFileFormatTsVersion():
+    try:
+        subprocess.run(['npm', 'install'],
+                       cwd=os.path.dirname(__file__),
+                       check=True,
+                       text=True,
+                       capture_output=True)
+        subprocess.run(['npm', 'install', '-g', 'ts-node', 'typescript'],
+                       cwd=os.path.dirname(__file__),
+                       check=True,
+                       text=True,
+                       capture_output=True)
+        result = subprocess.run(['npm', 'run', 'validate'],
+                                cwd=os.path.dirname(__file__),
+                                check=True,
+                                text=True,
+                                capture_output=True)
+        print("CSS define validation success:")
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("CSS define validation fail:")
+        print(e.stderr)
+        sys.exit(1)
+
 def main_generator(json_obj):
     css_property_generator.genCSSProperty(json_obj)
     genSource(sortJson(json_obj))
@@ -249,6 +273,7 @@ def main_generator(json_obj):
 def generate_files(json_obj):
     # TODO: fastjsonschema fatal, DISABLE
     # checkJsonFileFormat()
+    checkJsonFileFormatTsVersion()
     main_generator(json_obj)
 
 
