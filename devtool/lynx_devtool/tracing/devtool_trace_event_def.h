@@ -41,6 +41,7 @@ inline constexpr const char* const FRAME_TRACE_SERVICE_BEGIN_FRAME =
 inline constexpr const char* const FRAME_TRACE_SERVICE_DRAW_FRAME = "DrawFrame";
 inline constexpr const char* const INSTANCE_COUNTER_TRACE_UPDATE_COUNTERS =
     "UpdateCounters";
+inline constexpr const char* const LYNX_GLOBAL_CONFIG = "LynxGlobalConfig";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // DEVTOOL_LYNX_DEVTOOL_TRACING_DEVTOOL_TRACE_EVENT_DEF_H_

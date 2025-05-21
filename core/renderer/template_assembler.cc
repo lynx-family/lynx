@@ -915,6 +915,10 @@ void TemplateAssembler::LoadTemplateInternal(
         ctx.event()->add_debug_annotations(INSTANCE_ID,
                                            std::to_string(instance_id));
       });
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  trace::TraceController::Instance()->AddGlobalConfig(
+      "instance_id_" + std::to_string(instance_id_), url);
+#endif
 
 #if ENABLE_TRACE_SYSTRACE
   // This trace event is used for developer to get url info using systrace which
@@ -1843,6 +1847,10 @@ void TemplateAssembler::Destroy() {
   destroyed_ = true;
   page_proxy_.Destroy();
   signal_context_.WillDestroy();
+#if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
+  trace::TraceController::Instance()->RemoveGlobalConfig(
+      "instance_id_" + std::to_string(instance_id_));
+#endif
 }
 
 void TemplateAssembler::GetDecodedJSSource(
