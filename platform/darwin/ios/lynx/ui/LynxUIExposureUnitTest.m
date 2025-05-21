@@ -36,12 +36,20 @@
 
 - (void)testResumeExposure {
   LynxUIExposure *mockExposure = OCMPartialMock([[LynxUIExposure alloc] init]);
+  NSMutableDictionary<NSString *, LynxUIExposureDetail *> *map =
+      OCMPartialMock([NSMutableDictionary dictionary]);
+  mockExposure.exposedLynxUIMap = map;
+  OCMStub([map count]).andReturn(2);
   [mockExposure resumeExposure];
   OCMVerify([mockExposure addExposureToRunLoop]);
 }
 
 - (void)testAddExposureToRunLoop {
   LynxUIExposure *mockExposure = OCMPartialMock([[LynxUIExposure alloc] init]);
+  NSMutableDictionary<NSString *, LynxUIExposureDetail *> *map =
+      OCMPartialMock([NSMutableDictionary dictionary]);
+  mockExposure.exposedLynxUIMap = map;
+  OCMStub([map count]).andReturn(2);
   [mockExposure stopExposure:@{@"sendEvent" : @YES}];
   [mockExposure addExposureToRunLoop];
   XCTAssertNil(mockExposure.displayLink);
