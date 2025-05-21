@@ -5159,6 +5159,7 @@ public enum com::lynx::tasm::resourceprovider::LynxResourceRequest::LynxResource
   public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeI18NText LynxResourceTypeI18NText;
   public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeTheme LynxResourceTypeTheme;
   public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeExternalJSSource LynxResourceTypeExternalJSSource;
+  public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType.LynxResourceTypeExternalByteCode LynxResourceTypeExternalByteCode;
 }
 
 public class com::lynx::tasm::provider::LynxResRequest :  {

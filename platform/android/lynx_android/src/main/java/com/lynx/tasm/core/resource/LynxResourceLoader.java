@@ -96,9 +96,16 @@ public class LynxResourceLoader {
         byte[] data = loadJSSource(url);
         InvokeNativeCallbackWithBytes(responseHandler, data, RESOURCE_LOADER_SUCCESS, null);
         break;
+      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE:
+        if (fetchExternalByteCodeByGenericFetcher(responseHandler, url)) {
+          break;
+        }
+        InvokeNativeCallbackWithBytes(
+            responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
+        break;
       case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS:
         // 1. try to use GenericResourceFetcher
-        if (fetchResourceByGenericFetcher(responseHandler, url)) {
+        if (fetchScriptByGenericFetcher(responseHandler, url)) {
           break;
         }
         // 2. try to use external js provider;
@@ -357,8 +364,35 @@ public class LynxResourceLoader {
     return true;
   }
 
+  // TODO(nihao.royal): merge api called for generic fetcher;
+  private boolean fetchExternalByteCodeByGenericFetcher(long responseHandler, String url) {
+    if (mGenericResourceFetcher == null) {
+      return false;
+    }
+    com.lynx.tasm.resourceprovider.LynxResourceRequest request =
+        new com.lynx.tasm.resourceprovider.LynxResourceRequest(url,
+            com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceType
+                .LynxResourceTypeExternalByteCode);
+    mGenericResourceFetcher.fetchResource(
+        request, new com.lynx.tasm.resourceprovider.LynxResourceCallback<byte[]>() {
+          private final GenericResourceCallback callback =
+              new GenericResourceCallback(LynxResourceLoader.this, url, responseHandler);
+
+          @Override
+          public void onResponse(
+              com.lynx.tasm.resourceprovider.LynxResourceResponse<byte[]> response) {
+            boolean success = response.getState()
+                == com.lynx.tasm.resourceprovider.LynxResourceResponse.ResponseState.SUCCESS;
+            Throwable error = response.getError();
+            callback.onResourceLoaded(
+                success, response.getData(), error != null ? error.getMessage() : "");
+          }
+        });
+    return true;
+  }
+
   // use package path to avoid class name conflict
-  private boolean fetchResourceByGenericFetcher(long responseHandler, String url) {
+  private boolean fetchScriptByGenericFetcher(long responseHandler, String url) {
     if (mGenericResourceFetcher != null) {
       com.lynx.tasm.resourceprovider.LynxResourceRequest resourceRequest =
           new com.lynx.tasm.resourceprovider.LynxResourceRequest(url,

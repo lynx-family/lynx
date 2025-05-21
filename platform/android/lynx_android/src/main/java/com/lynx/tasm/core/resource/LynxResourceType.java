@@ -29,4 +29,9 @@ class LynxResourceType {
    * Load frame bundle on MTS
    */
   static final int LYNX_RESOURCE_TYPE_FRAME = 15;
+
+  /**
+   * Load script byteCode from external
+   */
+  static final int LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE = 16;
 }

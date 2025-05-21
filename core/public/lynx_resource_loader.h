@@ -31,6 +31,7 @@ enum class LynxResourceType : int32_t {
   kGraphics = 13,
   kTheme = 14,
   kFrame = 15,
+  kExternalByteCode = 16,  // external byteCode loaded from outside;
 };
 
 struct ResourceLoadTiming {

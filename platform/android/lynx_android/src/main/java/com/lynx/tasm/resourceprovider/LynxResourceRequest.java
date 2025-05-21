@@ -18,7 +18,8 @@ public final class LynxResourceRequest {
     LynxResourceTypeDynamicComponent,
     LynxResourceTypeI18NText,
     LynxResourceTypeTheme,
-    LynxResourceTypeExternalJSSource
+    LynxResourceTypeExternalJSSource,
+    LynxResourceTypeExternalByteCode,
   }
 
   public enum AsyncMode {

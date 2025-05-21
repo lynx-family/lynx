@@ -28,7 +28,8 @@ typedef NS_ENUM(NSInteger, LynxResourceRequestType) {
   LynxResourceTypeDynamicComponent,
   LynxResourceTypeI18NText,
   LynxResourceTypeTheme,
-  LynxResourceTypeExternalJS
+  LynxResourceTypeExternalJS,
+  LynxResourceTypeExternalByteCode,
 };
 
 @interface LynxResourceRequest : NSObject
