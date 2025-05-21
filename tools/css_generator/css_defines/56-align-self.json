@@ -453,5 +453,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

@@ -9,5 +9,6 @@
   "keywords": [
     "grayscale"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

@@ -179,5 +179,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

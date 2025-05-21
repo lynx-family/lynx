@@ -18,5 +18,6 @@
     "hidden",
     "none"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": true
 }

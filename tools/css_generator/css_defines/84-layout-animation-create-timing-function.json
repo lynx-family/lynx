@@ -16,5 +16,6 @@
     "square-bezier",
     "cubic-bezier"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

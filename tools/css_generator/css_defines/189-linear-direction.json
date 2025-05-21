@@ -191,5 +191,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

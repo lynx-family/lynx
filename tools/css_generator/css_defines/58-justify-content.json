@@ -376,5 +376,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

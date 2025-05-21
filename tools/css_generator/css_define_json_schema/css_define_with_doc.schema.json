@@ -448,6 +448,11 @@
       },
       "maxProperties": 1,
       "minProperties": 1
+    },
+    "is_shorthand": {
+      "type": "boolean",
+      "default": false,
+      "description": "This value will be true if the feature is a shorthand."
     }
   },
   "required": [
@@ -458,6 +463,7 @@
     "version",
     "author",
     "consumption_status",
-    "desc"
+    "desc",
+    "is_shorthand"
   ]
 }

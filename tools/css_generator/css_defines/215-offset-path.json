@@ -6,5 +6,6 @@
   "version": "3.2",
   "author": "wangyifei.20010605",
   "consumption_status": "skip",
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

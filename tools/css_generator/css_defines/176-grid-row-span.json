@@ -35,5 +35,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": false
 }

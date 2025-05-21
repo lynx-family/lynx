@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 3.3.3
+
+- [Infra][Types] Codegen longhand and shorthand properties from css_defines
+
 ## 3.3.2
 
 - Add typing for MessageEvent.

@@ -63,5 +63,6 @@
       "version": "1.0",
       "desc": ""
     }
-  ]
+  ],
+  "is_shorthand": false
 }

@@ -1,74 +1,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
 import { validateCSSDefine } from './validate';
-
-interface JSONSchemaProperty {
-  type?: string;
-  enum?: string[];
-  properties?: Record<string, JSONSchemaProperty>;
-  items?: JSONSchemaProperty;
-  required?: boolean;
-}
-
-interface JSONSchema {
-  properties?: Record<string, JSONSchemaProperty>;
-}
-
-// Load and parse the schema
-const schemaPath = path.join(
-  __dirname,
-  '..',
-  'css_define_json_schema',
-  'css_define_with_doc.schema.json'
-);
-const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8'));
-
-// Generate TypeScript interface from schema
-function generateInterfaceFromSchema(schema: JSONSchema): string {
-  const properties = Object.entries(schema.properties || {}).map(
-    ([key, prop]: [string, JSONSchemaProperty]) => {
-      let type = 'unknown';
-
-      if (prop.type === 'string') {
-        if (prop.enum) {
-          type = prop.enum.map((e: string) => `'${e}'`).join(' | ');
-        } else {
-          type = 'string';
-        }
-      } else if (prop.type === 'number' || prop.type === 'integer') {
-        type = 'number';
-      } else if (prop.type === 'boolean') {
-        type = 'boolean';
-      } else if (prop.type === 'array') {
-        const itemsType = prop.items?.type || 'unknown';
-        type = `${itemsType}[]`;
-      } else if (prop.type === 'object') {
-        type = generateInterfaceFromSchema(prop);
-      }
-
-      return `  ${key}${prop.required ? '' : '?'}: ${type};`;
-    }
-  );
-
-  return `{\n${properties.join('\n')}\n}`;
-}
-
-// Generate the CSSDefine interface
-const cssDefineInterface = `interface CSSDefine ${generateInterfaceFromSchema(
-  schema
-)}`;
 
 // Define CSSDefine interface for internal use
 interface CSSDefine {
   name: string;
   type: string;
-  values?: Array<{
-    value: string;
-    version: string;
-    desc?: string;
-  }>;
+  values?: Array<{ value: string; version: string; desc?: string }>;
   default_value: string;
   keywords?: string[];
+  is_shorthand: boolean;
 }
 
 function toCamelCase(str: string): string {
@@ -106,6 +48,25 @@ function generateTypeDefinition(property: CSSDefine): string {
 
   // Default to string type
   return `${camelName}?: string;`;
+}
+
+function generateShorthandsOrLonghands(
+  groups: { [key: string]: CSSDefine[] },
+  isShorthand: boolean
+) {
+  return Object.entries(groups)
+    .map(([category, props]) => {
+      const types = props
+        .filter((p) => p.is_shorthand === isShorthand)
+        .map((p) => {
+          const camelName = toCamelCase(p.name);
+          return JSON.stringify(camelName);
+        })
+        .join(' | ');
+      return `\n  // ${category}\n  ${types}`;
+    })
+    .map((t) => t.trimEnd())
+    .join(' |');
 }
 
 // Group properties by category for better organization
@@ -184,10 +145,13 @@ function generateTypeDefinitions(): string {
       const types = props
         .map(generateTypeDefinition)
         .filter(Boolean)
-        .join('\n    ');
-      return `    // ${category}\n    ${types}`;
+        .join('\n  ');
+      return `  // ${category}\n  ${types}`;
     })
     .join('\n\n');
+
+  const shorthandDefinitions = generateShorthandsOrLonghands(groups, true);
+  const longhandsDefinitions = generateShorthandsOrLonghands(groups, false);
 
   return `// Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
@@ -201,16 +165,16 @@ function generateTypeDefinitions(): string {
  * 3. For other types: Uses string type
  */
 
-import type * as CSS from 'csstype';
-
-export type Modify<T, R> = Omit<T, keyof R> & R;
-
-export type CSSProperties = Modify<
-  CSS.Properties<string | number>,
-  {
+export type CSSProperties = {
 ${typeDefinitions}
-  }
->;`;
+};
+
+export type Shorthands = ${shorthandDefinitions};
+export type Longhands = ${longhandsDefinitions};
+
+export type CSSPropertiesWithShorthands = Pick<CSSProperties, Shorthands>;
+export type CSSPropertiesWithLonghands = Pick<CSSProperties, Longhands>;
+`;
 }
 
 // Create dist directory if it doesn't exist

@@ -6,5 +6,6 @@
   "consumption_status": "skip",
   "version": "2.4",
   "author": "baiqiang",
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

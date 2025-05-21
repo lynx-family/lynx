@@ -33,5 +33,6 @@
       "version": "2.1",
       "desc": ""
     }
-  ]
+  ],
+  "is_shorthand": false
 }

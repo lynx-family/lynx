@@ -11,5 +11,6 @@
     "underline",
     "line-through"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": true
 }

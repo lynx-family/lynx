@@ -16,5 +16,6 @@
     "bottom",
     "text-bottom"
   ],
-  "desc": ""
+  "desc": "",
+  "is_shorthand": false
 }

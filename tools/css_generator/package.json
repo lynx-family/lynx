@@ -1,6 +1,6 @@
 {
   "name": "@lynx-js/css-defines",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Property definitions of Lynx Styling module",
   "scripts": {
     "gen:types": "ts-node scripts/generate-types.ts",

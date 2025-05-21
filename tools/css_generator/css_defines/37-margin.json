@@ -232,5 +232,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": true
 }

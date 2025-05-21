@@ -38,5 +38,6 @@
         }
       }
     }
-  }
+  },
+  "is_shorthand": true
 }
