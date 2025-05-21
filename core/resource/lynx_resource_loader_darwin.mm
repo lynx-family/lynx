@@ -7,6 +7,7 @@
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import "LynxTemplateBundle+Converter.h"
 #include "base/trace/native/trace_event.h"
@@ -353,11 +354,13 @@ NSData* LynxResourceLoaderDarwin::LoadJSSource(const std::string& name) {
   NSString* str = [NSString stringWithUTF8String:name.c_str()];
 
   NSString* path = nil;
-  NSBundle* frameworkBundle = [NSBundle mainBundle];
+  NSBundle* frameworkBundle = [NSBundle bundleForClass:[LynxEnv class]];
+  Class debuggerBridgeClass = [LynxService(LynxServiceDevToolProtocol) debuggerBridgeClass];
+  NSBundle* devtoolFrameworkBundle = [NSBundle bundleForClass:debuggerBridgeClass];
   if ([kAssetsCoreScheme isEqualToString:str]) {
     str = [str componentsSeparatedByString:@"."][0];
-    NSURL* debugBundleUrl = [frameworkBundle URLForResource:@"LynxDebugResources"
-                                              withExtension:@"bundle"];
+    NSURL* debugBundleUrl = [devtoolFrameworkBundle URLForResource:@"LynxDebugResources"
+                                                     withExtension:@"bundle"];
     if (path == nil && debugBundleUrl && LynxEnv.sharedInstance.devtoolEnabled) {
       NSBundle* bundle = [NSBundle bundleWithURL:debugBundleUrl];
       path = [bundle pathForResource:kCoreDebugJS ofType:@"js"];

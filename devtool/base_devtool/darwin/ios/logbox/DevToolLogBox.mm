@@ -269,8 +269,9 @@ NSString *const BRIDGE_JS =
 
 - (NSURL *)getLogBoxPageUrl {
   NSURL *url;
-  NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxBaseDevToolResources"
-                                                  withExtension:@"bundle"];
+  NSURL *debugBundleUrl =
+      [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
+                                               withExtension:@"bundle"];
   if (debugBundleUrl) {
     NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
     url = [bundle URLForResource:@"logbox/index" withExtension:@".html"];
@@ -600,8 +601,9 @@ NSString *const BRIDGE_JS =
 }
 
 - (void)loadMappingsWasm {
-  NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxBaseDevToolResources"
-                                                  withExtension:@"bundle"];
+  NSURL *debugBundleUrl =
+      [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
+                                               withExtension:@"bundle"];
   if (!debugBundleUrl) {
     NSLog(@"Failed to load mappings.wasm: resource bundle not exists");
     return;

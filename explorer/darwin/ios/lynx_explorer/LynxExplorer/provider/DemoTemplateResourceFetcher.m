@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "DemoTemplateResourceFetcher.h"
+#import <Lynx/LynxService.h>
+#import <Lynx/LynxServiceDevToolProtocol.h>
 #import <TestBenchReplay/TestBenchEnv.h>
 
 @implementation DemoTemplateResourceFetcher
@@ -21,8 +23,10 @@
       res.url = [[NSBundle mainBundle] pathForResource:[localUrl stringByDeletingPathExtension]
                                                 ofType:@"bundle"];
       if (res.url == nil) {
-        NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxDebugResources"
-                                                        withExtension:@"bundle"];
+        Class debuggerBridgeClass = [LynxService(LynxServiceDevToolProtocol) debuggerBridgeClass];
+        NSBundle *devtoolFrameworkBundle = [NSBundle bundleForClass:debuggerBridgeClass];
+        NSURL *debugBundleUrl = [devtoolFrameworkBundle URLForResource:@"LynxDebugResources"
+                                                         withExtension:@"bundle"];
         NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
         localUrl = [NSString stringWithFormat:@"%@%@", subSourceUrl.host, subSourceUrl.path];
         res.url = [bundle pathForResource:[localUrl stringByDeletingPathExtension]

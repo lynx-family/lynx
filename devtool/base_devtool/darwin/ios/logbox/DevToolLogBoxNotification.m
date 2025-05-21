@@ -206,8 +206,9 @@ static CGFloat imageMargin = 3.0;
     _closeButton.layer.masksToBounds = YES;
 
     // Set image to _closeButton(iOS)/_closeImage(MacOS).
-    NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxBaseDevToolResources"
-                                                    withExtension:@"bundle"];
+    NSURL *debugBundleUrl =
+        [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
+                                                 withExtension:@"bundle"];
     if (debugBundleUrl) {
       NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
       NSString *path = [bundle pathForResource:@"notification_cancel" ofType:@"png"];
