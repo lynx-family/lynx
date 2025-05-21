@@ -84,7 +84,7 @@ void V8HostFunctionProxy::FunctionCallback(
   v8::Local<v8::Object> obj = info.Holder();
   V8HostFunctionProxy* proxy = static_cast<V8HostFunctionProxy*>(
       obj->GetAlignedPointerFromInternalField(0));
-  Runtime* rt = nullptr;
+  V8Runtime* rt = nullptr;
   std::shared_ptr<HostFunctionType> host_func;
   if (UNLIKELY(proxy == nullptr || !proxy->GetRuntimeAndHost(rt, host_func))) {
     LOGE("V8HostFunctionProxy::FunctionCallback Error!");
@@ -109,8 +109,7 @@ void V8HostFunctionProxy::FunctionCallback(
     return V8Helper::ThrowJsException(info.GetIsolate(), *exception);
   }
   if (ret.has_value()) {
-    info.GetReturnValue().Set(
-        static_cast<V8Runtime*>(rt)->valueRef(ret.value()));
+    info.GetReturnValue().Set(rt->valueRef(ret.value()));
     return;
   } else {
     // TODO(huzhanbo.luc): we can merge this usage into

@@ -29,8 +29,6 @@
 #include "base/include/expected.h"
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
-#include "core/base/observer/observer.h"
-#include "core/base/observer/observer_list.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -148,6 +146,51 @@ class HostObject {
   virtual std::vector<PropNameID> getPropertyNames(Runtime& rt);
 };
 
+template <typename Rt, typename Host>
+class HostObjectWrapperBase {
+ public:
+  explicit HostObjectWrapperBase(Rt* rt, std::shared_ptr<Host> host_object)
+      : rt_(rt),
+        host_obj_(host_object),
+        is_runtime_destroyed_(rt->GetRuntimeDestroyedFlag()) {
+    rt->AddHostObject(std::move(host_object));
+  }
+
+  virtual ~HostObjectWrapperBase() {
+    auto lock_host = host_obj_.lock();
+    if (!(*is_runtime_destroyed_) && lock_host) {
+      rt_->RemoveHostObject(lock_host.get());
+    }
+    rt_ = nullptr;
+  }
+
+  Rt* GetRuntime() {
+    if (!(*is_runtime_destroyed_) && rt_ != nullptr) {
+      return rt_;
+    }
+    return nullptr;
+  }
+
+  std::shared_ptr<Host> GetHost() {
+    return *is_runtime_destroyed_ ? nullptr : host_obj_.lock();
+  }
+
+  bool GetRuntimeAndHost(Rt*& rt, std::shared_ptr<Host>& host) {
+    auto lock_obj = host_obj_.lock();
+    if (!(*is_runtime_destroyed_) && lock_obj && rt_ != nullptr) {
+      rt = rt_;
+      host = std::move(lock_obj);
+      return true;
+    }
+    return false;
+  }
+
+ private:
+  Rt* rt_;
+  std::weak_ptr<Host> host_obj_;
+  std::shared_ptr<bool> is_runtime_destroyed_;
+};
+
 enum class JSRuntimeCreatedType {
   unknown = 0,
   vm_context,           // create vm + context
@@ -194,6 +237,10 @@ class BASE_EXPORT Runtime {
                                   const piper::Value& value) {
     abort();
     return true;
+  }
+
+  std::shared_ptr<bool> GetRuntimeDestroyedFlag() {
+    return is_runtime_destroyed_;
   }
 
   void SetInJSErrorConstructionProcessing(bool flag) {
@@ -320,8 +367,6 @@ class BASE_EXPORT Runtime {
       const std::shared_ptr<InspectorRuntimeObserverNG>& observer) {}
   virtual void DestroyInspector() {}
 
-  void AddObserver(base::Observer* obs);
-  void RemoveObserver(base::Observer* obs);
   template <typename Host>
   void AddHostObject(std::shared_ptr<Host> host_object) {
     static_assert(std::is_same<Host, HostObject>::value ||
@@ -496,7 +541,6 @@ class BASE_EXPORT Runtime {
   bool gc_flag_{false};
 
  private:
-  base::ObserverList observers_;
   std::unordered_map<HostObject*, std::shared_ptr<HostObject>>
       host_object_containers_;
   std::unordered_map<HostFunctionType*, std::shared_ptr<HostFunctionType>>
@@ -1609,58 +1653,6 @@ class JSIContext {
 // v8 snapshot data
 class StartupData {
  public:
-};
-
-template <typename Host>
-class HostObjectWrapperBase : public base::Observer {
- public:
-  explicit HostObjectWrapperBase(Runtime* rt, std::shared_ptr<Host> host_object)
-      : rt_(rt), host_obj_(host_object), is_runtime_destroyed_(false) {
-    rt->AddObserver(this);
-    rt->AddHostObject(std::move(host_object));
-  }
-
-  void Update() override {
-    is_runtime_destroyed_ = true;
-    rt_ = nullptr;
-  }
-
-  ~HostObjectWrapperBase() override {
-    if (!is_runtime_destroyed_ && rt_ != nullptr) {
-      rt_->RemoveObserver(this);
-      auto lock_host = host_obj_.lock();
-      if (lock_host) {
-        rt_->RemoveHostObject(lock_host.get());
-      }
-    }
-    rt_ = nullptr;
-  }
-
-  Runtime* GetRuntime() {
-    if (!is_runtime_destroyed_ && rt_ != nullptr) {
-      return rt_;
-    }
-    return nullptr;
-  }
-
-  std::shared_ptr<Host> GetHost() {
-    return is_runtime_destroyed_ ? nullptr : host_obj_.lock();
-  }
-
-  bool GetRuntimeAndHost(Runtime*& rt, std::shared_ptr<Host>& host) {
-    auto lock_obj = host_obj_.lock();
-    if (!is_runtime_destroyed_ && lock_obj && rt_ != nullptr) {
-      rt = rt_;
-      host = std::move(lock_obj);
-      return true;
-    }
-    return false;
-  }
-
- private:
-  Runtime* rt_;
-  std::weak_ptr<Host> host_obj_;
-  bool is_runtime_destroyed_;
 };
 
 }  // namespace piper

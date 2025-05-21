@@ -17,7 +17,7 @@ std::weak_ptr<piper::HostFunctionType> getHostFunction(
     QuickjsRuntime* rt, const piper::Function& obj);
 
 class QuickjsHostFunctionProxy
-    : public HostObjectWrapperBase<HostFunctionType> {
+    : public HostObjectWrapperBase<QuickjsRuntime, HostFunctionType> {
   friend class QuickjsRuntimeInstance;
 
  public:

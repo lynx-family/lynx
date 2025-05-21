@@ -22,7 +22,7 @@ QuickjsHostFunctionProxy::QuickjsHostFunctionProxy(
                                     std::move(hostFunction))) {}
 
 QuickjsHostFunctionProxy::~QuickjsHostFunctionProxy() {
-  auto quickjs_runtime = static_cast<QuickjsRuntime*>(GetRuntime());
+  auto quickjs_runtime = GetRuntime();
   if (quickjs_runtime) {
     if (LEPUS_IsGCMode(quickjs_runtime->getJSContext())) {
       p_val_.Reset(quickjs_runtime->getJSRuntime());
@@ -60,7 +60,7 @@ LEPUSValue QuickjsHostFunctionProxy::FunctionCallback(
   }
   QuickjsHostFunctionProxy* proxy = static_cast<QuickjsHostFunctionProxy*>(
       LEPUS_GetOpaque(func_obj, functionId));
-  Runtime* rt = nullptr;
+  QuickjsRuntime* rt = nullptr;
   std::shared_ptr<HostFunctionType> host_func;
   if (UNLIKELY(proxy == nullptr || !proxy->GetRuntimeAndHost(rt, host_func))) {
     LOGE("QuickjsHostFunctionProxy::FunctionCallback Error! LEPUSContext:"
@@ -68,14 +68,13 @@ LEPUSValue QuickjsHostFunctionProxy::FunctionCallback(
     // TODO(liyanbo): Throw exception without js binding api switch.
     return LEPUS_UNDEFINED;
   }
-  QuickjsRuntime* qjs_rt = static_cast<QuickjsRuntime*>(rt);
   auto converter = ArgsConverter<Value>(
-      argc, argv, [&ctx, qjs_rt](const LEPUSValueConst& value) {
-        return QuickjsHelper::createValue(LEPUS_DupValue(ctx, value), qjs_rt);
+      argc, argv, [&ctx, rt](const LEPUSValueConst& value) {
+        return QuickjsHelper::createValue(LEPUS_DupValue(ctx, value), rt);
       });
   JSINativeExceptionCollector::Scope scope;
   auto ret = (*host_func)(
-      *rt, QuickjsHelper::createValue(LEPUS_DupValue(ctx, this_obj), qjs_rt),
+      *rt, QuickjsHelper::createValue(LEPUS_DupValue(ctx, this_obj), rt),
       converter, argc);
   const auto& exception =
       JSINativeExceptionCollector::Instance()->GetException();
@@ -84,7 +83,7 @@ LEPUSValue QuickjsHostFunctionProxy::FunctionCallback(
   }
 
   if (ret.has_value()) {
-    return LEPUS_DupValue(ctx, qjs_rt->valueRef(ret.value()));
+    return LEPUS_DupValue(ctx, rt->valueRef(ret.value()));
   } else if (rt->IsEnableJsBindingApiThrowException()) {
     // TODO(huzhanbo.luc): we can merge this usage into
     // JSINativeExceptionCollector

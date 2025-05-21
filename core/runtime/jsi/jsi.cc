@@ -95,15 +95,8 @@ Instrumentation& Runtime::instrumentation() {
 }
 
 void Runtime::ClearHostContainers() {
-  observers_.ForEachObserver();
   host_function_containers_.clear();
   host_object_containers_.clear();
-}
-
-void Runtime::AddObserver(base::Observer* obs) { observers_.AddObserver(obs); }
-
-void Runtime::RemoveObserver(base::Observer* obs) {
-  observers_.RemoveObserver(obs);
 }
 
 Pointer& Pointer::operator=(Pointer&& other) {

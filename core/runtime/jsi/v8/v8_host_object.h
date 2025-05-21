@@ -21,7 +21,7 @@ class V8Runtime;
 namespace detail {
 
 // HostObject details
-struct V8HostObjectProxy : public HostObjectWrapperBase<HostObject> {
+struct V8HostObjectProxy : public HostObjectWrapperBase<V8Runtime, HostObject> {
  public:
   V8HostObjectProxy(V8Runtime* rt, std::shared_ptr<piper::HostObject> sho);
   ~V8HostObjectProxy() override = default;

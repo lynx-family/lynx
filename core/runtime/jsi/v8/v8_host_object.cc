@@ -29,22 +29,22 @@ void V8HostObjectProxy::getProperty(
   v8::Local<v8::Object> obj = info.Holder();
   V8HostObjectProxy* proxy = static_cast<V8HostObjectProxy*>(
       obj->GetAlignedPointerFromInternalField(0));
-  Runtime* rt = nullptr;
+  V8Runtime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
     LOGE("V8HostObjectProxy::getProperty Error!");
     return;
   }
-  V8Runtime* v8_rt = static_cast<V8Runtime*>(rt);
+
 #if OS_ANDROID
   piper::Value va = lock_host_object->get(
-      v8_rt, V8Helper::createPropNameID(property, info.GetIsolate()));
+      rt, V8Helper::createPropNameID(property, info.GetIsolate()));
 #else
   piper::Value va = lock_host_object->get(
-      v8_rt, V8Helper::createPropNameID(property, v8_rt->getContext()));
+      rt, V8Helper::createPropNameID(property, rt->getContext()));
 #endif
-  info.GetReturnValue().Set(v8_rt->valueRef(va));
+  info.GetReturnValue().Set(rt->valueRef(va));
 }
 
 void V8HostObjectProxy::setProperty(
@@ -53,22 +53,21 @@ void V8HostObjectProxy::setProperty(
   v8::Local<v8::Object> obj = info.Holder();
   V8HostObjectProxy* proxy = static_cast<V8HostObjectProxy*>(
       obj->GetAlignedPointerFromInternalField(0));
-  Runtime* rt = nullptr;
+  V8Runtime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
     LOGE("V8HostObjectProxy::setProperty Error!");
     return;
   }
-  V8Runtime* v8_rt = static_cast<V8Runtime*>(rt);
 #if OS_ANDROID
   lock_host_object->set(rt,
                         V8Helper::createPropNameID(property, info.GetIsolate()),
-                        V8Helper::createValue(value, v8_rt->getContext()));
+                        V8Helper::createValue(value, rt->getContext()));
 #else
-  lock_host_object->set(
-      rt, V8Helper::createPropNameID(property, v8_rt->getContext()),
-      V8Helper::createValue(value, v8_rt->getContext()));
+  lock_host_object->set(rt,
+                        V8Helper::createPropNameID(property, rt->getContext()),
+                        V8Helper::createValue(value, rt->getContext()));
 #endif
 }
 
@@ -77,7 +76,7 @@ void V8HostObjectProxy::getPropertyNames(
   v8::Local<v8::Object> obj = info.Holder();
   V8HostObjectProxy* proxy = static_cast<V8HostObjectProxy*>(
       obj->GetAlignedPointerFromInternalField(0));
-  Runtime* rt = nullptr;
+  V8Runtime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {

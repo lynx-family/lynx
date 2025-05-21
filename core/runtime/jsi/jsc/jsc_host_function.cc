@@ -54,7 +54,7 @@ JSClassRef HostFunctionMetadata::getHostFunctionClass() {
 void HostFunctionMetadata::initialize(JSContextRef ctx, JSObjectRef object) {
   HostFunctionMetadata* metadata =
       static_cast<HostFunctionMetadata*>(JSObjectGetPrivate(object));
-  Runtime* rt = nullptr;
+  JSCRuntime* rt = nullptr;
   if (UNLIKELY(metadata == nullptr ||
                (rt = metadata->GetRuntime()) == nullptr)) {
     LOGE("HostFunctionMetadata::initialize Error!");
@@ -105,7 +105,7 @@ JSValueRef HostFunctionMetadata::call(JSContextRef ctx, JSObjectRef function,
                                       JSValueRef* exception) {
   HostFunctionMetadata* metadata =
       static_cast<HostFunctionMetadata*>(JSObjectGetPrivate(function));
-  Runtime* rt = nullptr;
+  JSCRuntime* rt = nullptr;
   std::shared_ptr<HostFunctionType> host_func;
   if (UNLIKELY(metadata == nullptr ||
                !metadata->GetRuntimeAndHost(rt, host_func))) {
@@ -113,17 +113,15 @@ JSValueRef HostFunctionMetadata::call(JSContextRef ctx, JSObjectRef function,
     // TODO(liyanbo): Throw exception without js binding api switch.
     return JSValueMakeUndefined(ctx);
   }
-  JSCRuntime* jsc_rt = static_cast<JSCRuntime*>(rt);
   JSGlobalContextRef global_ctx = JSContextGetGlobalContext(ctx);
   auto converter = ArgsConverter<Value>(
-      argumentCount, arguments, [jsc_rt](const auto& value) {
-        return JSCHelper::createValue(*jsc_rt, value);
-      });
+      argumentCount, arguments,
+      [rt](const auto& value) { return JSCHelper::createValue(*rt, value); });
   JSValueRef res;
-  Value thisVal(JSCHelper::createObject(global_ctx, jsc_rt->getCtxInvalid(),
-                                        jsc_rt->objectCounter(), thisObject));
+  Value thisVal(JSCHelper::createObject(global_ctx, rt->getCtxInvalid(),
+                                        rt->objectCounter(), thisObject));
   JSINativeExceptionCollector::Scope scope;
-  auto ret = (*host_func)(*jsc_rt, thisVal, converter, argumentCount);
+  auto ret = (*host_func)(*rt, thisVal, converter, argumentCount);
   const auto& native_exception =
       JSINativeExceptionCollector::Instance()->GetException();
   if (native_exception && rt->IsEnableJsBindingApiThrowException()) {
@@ -132,7 +130,7 @@ JSValueRef HostFunctionMetadata::call(JSContextRef ctx, JSObjectRef function,
   }
 
   if (ret.has_value()) {
-    res = JSCHelper::valueRef(global_ctx, *jsc_rt, ret.value());
+    res = JSCHelper::valueRef(global_ctx, *rt, ret.value());
   } else {
     // TODO(huzhanbo.luc): we can merge this usage into
     // JSINativeExceptionCollector

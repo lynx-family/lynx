@@ -26,7 +26,8 @@ namespace piper {
 class JSCRuntime;
 namespace detail {
 
-class HostFunctionMetadata : public HostObjectWrapperBase<HostFunctionType> {
+class HostFunctionMetadata
+    : public HostObjectWrapperBase<JSCRuntime, HostFunctionType> {
  public:
   HostFunctionMetadata(JSCRuntime* rt, HostFunctionType hf, unsigned ac,
                        JSStringRef n)

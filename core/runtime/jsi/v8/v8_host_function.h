@@ -24,7 +24,7 @@ std::weak_ptr<piper::HostFunctionType> getHostFunction(
     V8Runtime* rt, const piper::Function& obj);
 
 class V8HostFunctionProxy
-    : public HostObjectWrapperBase<piper::HostFunctionType> {
+    : public HostObjectWrapperBase<V8Runtime, piper::HostFunctionType> {
  public:
   V8HostFunctionProxy(piper::HostFunctionType hostFunction, V8Runtime* rt);
 

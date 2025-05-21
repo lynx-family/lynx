@@ -15,7 +15,8 @@ namespace piper {
 class QuickjsRuntime;
 namespace detail {
 
-struct QuickjsHostObjectProxy : public HostObjectWrapperBase<HostObject> {
+struct QuickjsHostObjectProxy
+    : public HostObjectWrapperBase<QuickjsRuntime, HostObject> {
  public:
   QuickjsHostObjectProxy(QuickjsRuntime* rt,
                          std::shared_ptr<piper::HostObject> sho);

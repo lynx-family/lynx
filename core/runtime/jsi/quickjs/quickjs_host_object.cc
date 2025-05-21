@@ -32,7 +32,7 @@ QuickjsHostObjectProxy::QuickjsHostObjectProxy(
     : HostObjectWrapperBase(rt, std::move(sho)){};
 
 QuickjsHostObjectProxy::~QuickjsHostObjectProxy() {
-  auto quickjs_runtime = static_cast<QuickjsRuntime*>(GetRuntime());
+  auto quickjs_runtime = GetRuntime();
   if (quickjs_runtime) {
     if (LEPUS_IsGCMode(quickjs_runtime->getJSContext())) {
       p_val_.Reset(quickjs_runtime->getJSRuntime());
@@ -74,7 +74,7 @@ LEPUSValue QuickjsHostObjectProxy::getProperty(LEPUSContext* ctx,
     LEPUS_FreeValue(ctx, atom_val);
     return LEPUS_EXCEPTION;
   }
-  Runtime* rt = nullptr;
+  QuickjsRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
@@ -86,8 +86,7 @@ LEPUSValue QuickjsHostObjectProxy::getProperty(LEPUSContext* ctx,
 
   piper::Value va =
       lock_host_object->get(rt, QuickjsHelper::createPropNameID(ctx, atom_val));
-  LEPUSValue ret =
-      LEPUS_DupValue(ctx, static_cast<QuickjsRuntime*>(rt)->valueRef(va));
+  LEPUSValue ret = LEPUS_DupValue(ctx, rt->valueRef(va));
 
   if (LEPUS_IsException(ret) || LEPUS_IsError(ctx, ret)) {
     LOGE(std::string("Exception in HostObject::getProperty(propName:") +
@@ -124,18 +123,17 @@ int QuickjsHostObjectProxy::getOwnProperty(LEPUSContext* ctx,
     }
     return 0;
   }
-  Runtime* rt = nullptr;
+  QuickjsRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
     LOGE("QuickjsHostObjectProxy::getOwnProperty Error! LEPUSContext:" << ctx);
     return 0;
   }
-  QuickjsRuntime* qjs_rt = static_cast<QuickjsRuntime*>(rt);
   HandleScope func_scope(ctx, &atom_val, HANDLE_TYPE_LEPUS_VALUE);
   piper::Value va =
       lock_host_object->get(rt, QuickjsHelper::createPropNameID(ctx, atom_val));
-  LEPUSValue ret = LEPUS_DupValue(ctx, qjs_rt->valueRef(va));
+  LEPUSValue ret = LEPUS_DupValue(ctx, rt->valueRef(va));
   //  LOGE( "LYNX host_object_getPropertyNames jsvalueptr=" <<
   //  LEPUS_VALUE_GET_PTR(ret));
   if (desc) {
@@ -159,7 +157,7 @@ int QuickjsHostObjectProxy::setProperty(LEPUSContext* ctx, LEPUSValueConst obj,
   }
   QuickjsHostObjectProxy* proxy =
       static_cast<QuickjsHostObjectProxy*>(LEPUS_GetOpaque(obj, objectId));
-  Runtime* rt = nullptr;
+  QuickjsRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
@@ -170,8 +168,7 @@ int QuickjsHostObjectProxy::setProperty(LEPUSContext* ctx, LEPUSValueConst obj,
   HandleScope func_scope(ctx, &atom_val, HANDLE_TYPE_LEPUS_VALUE);
   lock_host_object->set(
       rt, QuickjsHelper::createPropNameID(ctx, atom_val),
-      QuickjsHelper::createValue(LEPUS_DupValue(ctx, value),
-                                 static_cast<QuickjsRuntime*>(rt)));
+      QuickjsHelper::createValue(LEPUS_DupValue(ctx, value), rt));
   return 1;
 }
 
@@ -186,7 +183,7 @@ int QuickjsHostObjectProxy::getPropertyNames(LEPUSContext* ctx,
   }
   QuickjsHostObjectProxy* proxy =
       static_cast<QuickjsHostObjectProxy*>(LEPUS_GetOpaque(obj, objectId));
-  Runtime* rt = nullptr;
+  QuickjsRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {

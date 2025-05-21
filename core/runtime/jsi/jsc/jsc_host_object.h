@@ -27,7 +27,8 @@ namespace piper {
 class JSCRuntime;
 namespace detail {
 
-struct JSCHostObjectProxy : public HostObjectWrapperBase<HostObject> {
+struct JSCHostObjectProxy
+    : public HostObjectWrapperBase<JSCRuntime, HostObject> {
  public:
   JSCHostObjectProxy(JSCRuntime* rt, std::shared_ptr<HostObject> sho)
       : HostObjectWrapperBase(rt, std::move(sho)) {}

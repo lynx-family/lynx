@@ -22,36 +22,35 @@ JSValueRef JSCHostObjectProxy::getProperty(JSContextRef ctx, JSObjectRef object,
                                            JSStringRef propertyName,
                                            JSValueRef* exception) {
   auto proxy = static_cast<JSCHostObjectProxy*>(JSObjectGetPrivate(object));
-  Runtime* rt = nullptr;
+  JSCRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
     LOGE("JSCHostObjectProxy::getProperty Error!");
     return JSValueMakeUndefined(ctx);
   }
-  PropNameID sym = JSCHelper::createPropNameID(
-      static_cast<JSCRuntime*>(rt)->objectCounter(), propertyName);
+  PropNameID sym =
+      JSCHelper::createPropNameID(rt->objectCounter(), propertyName);
   Value ret;
   JSGlobalContextRef global_ctx = JSContextGetGlobalContext(ctx);
   ret = lock_host_object->get(rt, sym);
-  return JSCHelper::valueRef(global_ctx, *static_cast<JSCRuntime*>(rt), ret);
+  return JSCHelper::valueRef(global_ctx, *rt, ret);
 }
 
 bool JSCHostObjectProxy::setProperty(JSContextRef ctx, JSObjectRef object,
                                      JSStringRef propertyName, JSValueRef value,
                                      JSValueRef* exception) {
   auto proxy = static_cast<JSCHostObjectProxy*>(JSObjectGetPrivate(object));
-  Runtime* rt = nullptr;
+  JSCRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
     LOGE("JSCHostObjectProxy::setProperty Error!");
     return JSValueMakeUndefined(ctx);
   }
-  JSCRuntime* jsc_rt = static_cast<JSCRuntime*>(rt);
   PropNameID sym =
-      JSCHelper::createPropNameID(jsc_rt->objectCounter(), propertyName);
-  lock_host_object->set(jsc_rt, sym, JSCHelper::createValue(*jsc_rt, value));
+      JSCHelper::createPropNameID(rt->objectCounter(), propertyName);
+  lock_host_object->set(rt, sym, JSCHelper::createValue(*rt, value));
   return true;
 }
 
@@ -59,7 +58,7 @@ void JSCHostObjectProxy::getPropertyNames(
     JSContextRef ctx, JSObjectRef object,
     JSPropertyNameAccumulatorRef propertyNames) noexcept {
   auto proxy = static_cast<JSCHostObjectProxy*>(JSObjectGetPrivate(object));
-  Runtime* rt = nullptr;
+  JSCRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (UNLIKELY(proxy == nullptr ||
                !proxy->GetRuntimeAndHost(rt, lock_host_object))) {
