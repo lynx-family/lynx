@@ -367,6 +367,14 @@ void LynxGlobalDevToolMediator::TracingStart(
         TRACE_EVENT_INSTANT(
             "vitals", LYNX_ENGINE_VERSION, "version",
             GlobalDevToolPlatformFacade::GetInstance().GetLynxVersion());
+        TRACE_EVENT_INSTANT(
+            "lynx", LYNX_GLOBAL_CONFIG,
+            [&controller](lynx::perfetto::EventContext ctx) {
+              const auto& config_map = controller->GetGlobalConfigMap();
+              for (auto it = config_map.begin(); it != config_map.end(); ++it) {
+                ctx.event()->add_debug_annotations(it->first, it->second);
+              }
+            });
         Json::Value res;
         res["result"] = Json::Value(Json::ValueType::objectValue);
         res["id"] = id;

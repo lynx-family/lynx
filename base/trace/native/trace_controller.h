@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -103,6 +104,13 @@ class TRACE_EXPORT TraceController {
   virtual std::string GetStartupTracingConfig() { return ""; }
   virtual std::string GetStartupTracingFilePath() { return ""; }
   virtual bool IsTracingStarted() { return false; }
+
+  virtual void AddGlobalConfig(const std::string& key,
+                               const std::string& value) {}
+  virtual void RemoveGlobalConfig(const std::string& key) {}
+  virtual std::unordered_map<std::string, std::string> GetGlobalConfigMap() {
+    return std::unordered_map<std::string, std::string>();
+  }
 
  protected:
   std::unique_ptr<Delegate> delegate_ = nullptr;

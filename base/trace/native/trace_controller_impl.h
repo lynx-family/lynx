@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/fml/thread.h"
@@ -67,6 +68,10 @@ class TraceControllerImpl : public TraceController {
   std::string GetStartupTracingConfig() override;
   std::string GetStartupTracingFilePath() override;
   bool IsTracingStarted() override;
+  void AddGlobalConfig(const std::string& key,
+                       const std::string& value) override;
+  void RemoveGlobalConfig(const std::string& key) override;
+  std::unordered_map<std::string, std::string> GetGlobalConfigMap() override;
 
  private:
   TracingSession& CreateNewSession(const std::shared_ptr<TraceConfig> config);
@@ -82,6 +87,7 @@ class TraceControllerImpl : public TraceController {
   std::string trace_file_dir_;
   std::string startup_tracing_file_;
   bool is_tracing_started_ = false;
+  std::unordered_map<std::string, std::string> global_config_map_;
 };
 
 }  // namespace trace

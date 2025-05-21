@@ -566,5 +566,19 @@ std::string TraceControllerImpl::GenerateTraceFilePath(
   return file_path;
 }
 
+void TraceControllerImpl::AddGlobalConfig(const std::string& key,
+                                          const std::string& value) {
+  global_config_map_[key] = value;
+}
+
+void TraceControllerImpl::RemoveGlobalConfig(const std::string& key) {
+  global_config_map_.erase(key);
+}
+
+std::unordered_map<std::string, std::string>
+TraceControllerImpl::GetGlobalConfigMap() {
+  return global_config_map_;
+}
+
 }  // namespace trace
 }  // namespace lynx
