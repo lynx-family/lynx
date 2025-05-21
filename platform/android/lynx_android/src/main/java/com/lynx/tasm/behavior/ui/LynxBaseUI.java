@@ -58,6 +58,7 @@ import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.behavior.ui.utils.TransformOrigin;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
+import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.PropsUpdater;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
@@ -2717,9 +2718,13 @@ public abstract class LynxBaseUI
       // when ignoreUserInteraction set true:
       // nodes only need to be visible will be added to the reponse chain
       // TODO(hexionghui): use shouldHitTest interface.
+      boolean forbidHitTestForListItem = ui instanceof UIComponent
+          && ((UIComponent) ui).getView() != null
+          && ((UIComponent) ui).getView().getParent() == null;
       if ((!ignoreUserInteraction && !ui.isUserInteractionEnabled()) || !ui.getVisibility()
           || (ui.getDrawParent() != null && ((LynxUI) ui.getDrawParent()).getView() != null
-              && ((LynxUI) ui.getDrawParent()).getView().getParent() == null)) {
+              && ((LynxUI) ui.getDrawParent()).getView().getParent() == null)
+          || forbidHitTestForListItem) {
         continue;
       }
 
