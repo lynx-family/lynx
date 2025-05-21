@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
@@ -462,6 +463,7 @@
 }
 
 - (void)stopExposure:(NSDictionary *)options {
+  LLogInfo(@"LynxUIExposure stopExposure");
   _isStopExposure = YES;
   [self removeFromRunLoop];
   // Use the sendEvent field in options to control whether to send disexposure events.
@@ -472,8 +474,11 @@
 }
 
 - (void)resumeExposure {
-  _isStopExposure = NO;
-  [self addExposureToRunLoop];
+  LLogInfo(@"LynxUIExposure resumeExposure");
+  if ([_exposedLynxUIMap count] != 0) {
+    _isStopExposure = NO;
+    [self addExposureToRunLoop];
+  }
 }
 
 - (void)sendEvent:(NSMutableSet<LynxUIExposureDetail *> *)uiSet eventName:(NSString *)eventName {
@@ -639,6 +644,7 @@
 }
 
 - (void)addExposureToRunLoop {
+  LLogInfo(@"LynxUIExposure addExposureToRunLoop");
   // After calling stopExposure, the exposure detection task should not be started in
   // didMoveToWindow, but will only be started in resumeExposure.
   if (!_isStopExposure && _displayLink == nil) {
@@ -668,14 +674,14 @@
       key = [NSString stringWithFormat:@"%@_%@_%ld_%@", ui.exposureScene, ui.exposureID,
                                        (long)ui.sign, ui.internalSignature];
     }
+    if (!_isStopExposure && [_exposedLynxUIMap count] == 0) {
+      [self addExposureToRunLoop];
+    }
     [_exposedLynxUIMap setObject:[[LynxUIExposureDetail alloc] initWithUI:ui
                                                          uniqueIdentifier:uniqueID
                                                                 extraData:data
                                                                useOptions:options]
                           forKey:key];
-    if ([_exposedLynxUIMap count] == 1) {
-      [self addExposureToRunLoop];
-    }
     return YES;
   }
 
@@ -703,6 +709,7 @@
 }
 
 - (void)destroyExposure {
+  LLogInfo(@"LynxUIExposure destroyExposure");
   [self removeFromRunLoop];
   [_exposedLynxUIMap removeAllObjects];
 
