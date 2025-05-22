@@ -100,8 +100,8 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       sectionName = ON_EVENT;
       Map<String, String> args = new HashMap<>();
-      args.put("eventName", eventName);
-      args.put("instanceId", instanceId + "");
+      args.put("event_name", eventName);
+      args.put("instance_id", instanceId + "");
       TraceEvent.beginSection(sectionName, args);
     }
     runOnReportThread(
@@ -127,8 +127,8 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       sectionName = ON_EVENT;
       Map<String, String> args = new HashMap<>();
-      args.put("eventName", eventName);
-      args.put("instanceId", instanceId + "");
+      args.put("event_name", eventName);
+      args.put("instance_id", instanceId + "");
       TraceEvent.beginSection(sectionName, args);
     }
     runOnReportThread(() -> {
@@ -161,7 +161,7 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       Map<String, String> args = new HashMap<>();
       args.put("key", key);
-      args.put("instanceId", instanceId + "");
+      args.put("instance_id", String.valueOf(instanceId));
       args.put("value", value.toString());
       TraceEvent.beginSection(sectionName, args);
     }
@@ -185,7 +185,7 @@ public class LynxEventReporter {
     final String sectionName = REMOVE_GENERIC_INFO;
     if (TraceEvent.enableTrace()) {
       Map<String, String> args = new HashMap<>();
-      args.put("instanceId", instanceId + "");
+      args.put("instance_id", String.valueOf(instanceId));
       TraceEvent.beginSection(sectionName, args);
     }
 
@@ -285,8 +285,8 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       sectionName = HANDLE_EVENT;
       Map<String, String> args = new HashMap<>();
-      args.put("instanceId", instanceId + "");
-      args.put("eventName", eventName);
+      args.put("instance_id", String.valueOf(instanceId));
+      args.put("event_name", eventName);
       TraceEvent.beginSection(sectionName, args);
     }
     ILynxEventReporterService eventReporterService =
@@ -372,8 +372,8 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       sectionName = ON_EVENT;
       Map<String, String> args = new HashMap<>();
-      args.put("instanceId", instanceId + "");
-      args.put("eventName", eventName);
+      args.put("instance_id", String.valueOf(instanceId));
+      args.put("event_name", eventName);
       TraceEvent.beginSection(sectionName, args);
     }
     LynxEventReporter.getInstance().handleEvent(instanceId, eventName, props.asHashMap());
@@ -392,7 +392,7 @@ public class LynxEventReporter {
     if (TraceEvent.enableTrace()) {
       sectionName = UPDATE_GENERIC_INFO;
       Map<String, String> args = new HashMap<>();
-      args.put("instanceId", instanceId + "");
+      args.put("instance_id", String.valueOf(instanceId));
       TraceEvent.beginSection(sectionName, args);
     }
     getGenericInfo(instanceId).putAll(props.asHashMap());

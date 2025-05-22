@@ -39,8 +39,8 @@ public final class TemplateBundle {
 
   private static TemplateBundle internalBuildTemplate(byte[] template, String url) {
     TemplateBundle result = null;
-    TraceEvent.beginSection(TEMPLATE_BUNDLE_FROM_TEMPLATE);
     if (template != null) {
+      TraceEvent.beginSection(TEMPLATE_BUNDLE_FROM_TEMPLATE);
       if (checkIfEnvPrepared()) {
         ILynxSecurityService securityService =
             LynxServiceCenter.inst().getService(ILynxSecurityService.class);

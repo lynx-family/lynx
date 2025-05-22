@@ -377,7 +377,8 @@ void RadonDiffListNode2::DispatchFirstTime() {
 int32_t RadonDiffListNode2::ComponentAtIndex(uint32_t index,
                                              int64_t operationId,
                                              bool enable_reuse_notification) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "RadonDiffListNode2::ComponentAtIndex");
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "RadonDiffListNode2::ComponentAtIndex",
+              "instance_id", tasm_->GetInstanceId());
   if (index >= components_.size()) {
     LOGE("index out of range in RadonDiffListNode2::ComponentAtIndex.");
     return 0;

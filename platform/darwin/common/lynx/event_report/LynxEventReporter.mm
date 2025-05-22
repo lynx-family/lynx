@@ -55,12 +55,12 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [&](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("eventName");
+                  debug->set_name("event_name");
                   debug->set_string_value([eventName UTF8String]);
                 }
               });
@@ -80,12 +80,12 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [&](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("eventName");
+                  debug->set_name("event_name");
                   debug->set_string_value([eventName UTF8String]);
                 }
               });
@@ -110,7 +110,7 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [&](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
                 {
@@ -124,7 +124,7 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
                 [&](lynx::perfetto::EventContext ctx) {
                   {
                     auto *debug = ctx.event()->add_debug_annotations();
-                    debug->set_name("instanceId");
+                    debug->set_name("instance_id");
                     debug->set_string_value(std::to_string(instanceId));
                   }
                   {
@@ -153,14 +153,14 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxEventReporter::removeGenericInfo",
               [&](lynx::perfetto::EventContext ctx) {
                 auto *debug = ctx.event()->add_debug_annotations();
-                debug->set_name("instanceId");
+                debug->set_name("instance_id");
                 debug->set_string_value(std::to_string(instanceId));
               });
   [self runOnReportThread:^{
     TRACE_EVENT(LYNX_TRACE_CATEGORY, "LynxEventReporter::removeGenericInfo.run",
                 [&](lynx::perfetto::EventContext ctx) {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 });
     [[[self sharedInstance] allGenericInfo] removeObjectForKey:@(instanceId)];
@@ -195,7 +195,7 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [instanceId](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
               });
@@ -220,7 +220,7 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [instanceId](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
               });
@@ -289,12 +289,12 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
               [&](lynx::perfetto::EventContext ctx) {
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("instanceId");
+                  debug->set_name("instance_id");
                   debug->set_string_value(std::to_string(instanceId));
                 }
                 {
                   auto *debug = ctx.event()->add_debug_annotations();
-                  debug->set_name("eventName");
+                  debug->set_name("event_name");
                   debug->set_string_value([eventName UTF8String]);
                 }
               });

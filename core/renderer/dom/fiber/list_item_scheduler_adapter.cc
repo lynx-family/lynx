@@ -100,7 +100,18 @@ void ListItemSchedulerAdapter::PostResolveElementTree(
               TRACE_EVENT(
                   LYNX_TRACE_CATEGORY,
                   "ListItemSchedulerAdapter::AsyncFlushActionWithListItem",
-                  "list_item", std::to_string(render_root_->impl_id()));
+                  [render_root = render_root_,
+                   impl_id = render_root_->impl_id()](
+                      lynx::perfetto::EventContext ctx) {
+                    if (render_root->element_manager()) {
+                      ctx.event()->add_debug_annotations(
+                          "instance_id",
+                          std::to_string(
+                              render_root->element_manager()->GetInstanceId()));
+                    }
+                    ctx.event()->add_debug_annotations("list_item",
+                                                       std::to_string(impl_id));
+                  });
               batch_rendering_ = true;
               render_root_->FlushActions();
               batch_rendering_ = false;

@@ -10,6 +10,7 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/template_assembler.h"
+#include "lynx/core/services/event_report/event_tracker.h"
 
 namespace lynx {
 namespace tasm {
@@ -106,10 +107,18 @@ void PageElement::PostResolveTaskToThreadPool(
   std::future<ParallelFlushReturn> future = promise.get_future();
 
   auto task_info_ptr = fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
-      [promise = std::move(promise),
-       task = std::move(remaining_task)]() mutable {
+      [promise = std::move(promise), task = std::move(remaining_task),
+       instance_id = element_manager()
+                         ? element_manager()->GetInstanceId()
+                         : tasm::report::kUnknownInstanceId]() mutable {
         TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                    "FiberElement::PrepareForCreateOrUpdateAsync");
+                    "FiberElement::PrepareForCreateOrUpdateAsync",
+                    [instance_id](lynx::perfetto::EventContext ctx) {
+                      if (instance_id != tasm::report::kUnknownInstanceId) {
+                        ctx.event()->add_debug_annotations(
+                            "instance_id", std::to_string(instance_id));
+                      }
+                    });
         promise.set_value(std::move(task));
       },
       std::move(future));

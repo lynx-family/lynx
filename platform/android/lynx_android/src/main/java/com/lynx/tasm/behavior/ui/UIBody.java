@@ -200,7 +200,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         return;
       }
       HashMap map = new HashMap<String, String>();
-      map.put("instance_id", mInstanceId + "");
+      map.put("instance_id", String.valueOf(mInstanceId));
       if (isEnd) {
         TraceEvent.endSection(TraceEvent.CATEGORY_VITALS, event);
       } else {

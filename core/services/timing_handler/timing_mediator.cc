@@ -84,17 +84,22 @@ void TimingMediator::OnPerformanceEvent(
       pub::ValueUtils::ConvertValueToLepusValue(*performance_entry);
   // Platform Performance Callback.
   if (facade_reporter_actor_) {
-    facade_reporter_actor_->ActAsync([entry = lepus_entry](auto& facade) {
-      TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                  "TimingMediator::TriggerPerformanceClientCallback");
-      facade->OnPerformanceEvent(entry);
-    });
+    facade_reporter_actor_->ActAsync(
+        [entry = lepus_entry, instance_id = instance_id_](auto& facade) {
+          TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                      "TimingMediator::TriggerPerformanceClientCallback",
+                      "instance_id", instance_id);
+          (void)instance_id;  // Explicitly reference `instance_id` to suppress
+                              // the compiler warning.
+          facade->OnPerformanceEvent(entry);
+        });
   }
   // Runtime Performance Callback.
   if (runtime_actor_ && enable_js_runtime_) {
     runtime_actor_->ActAsync([entry = std::move(lepus_entry)](auto& runtime) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                  "TimingMediator::TriggerPerformanceRuntimeCallback");
+                  "TimingMediator::TriggerPerformanceRuntimeCallback",
+                  "instance_id", runtime->GetRuntimeId());
       auto args = lepus::CArray::Create();
       args->emplace_back(BASE_STATIC_STRING(kPerformanceRuntimeCallback));
       args->emplace_back((lepus_value::ShallowCopy(entry)));
@@ -147,7 +152,8 @@ void TimingMediator::TriggerSetupRuntimeCallback(
   if (runtime_actor_ && enable_js_runtime_) {
     runtime_actor_->ActAsync([timing = std::move(lepus_timing)](auto& runtime) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                  "TimingMediator::TriggerSetupRuntimeCallback");
+                  "TimingMediator::TriggerSetupRuntimeCallback", "instance_id",
+                  runtime->GetRuntimeId());
       auto args = lepus::CArray::Create();
       args->emplace_back(BASE_STATIC_STRING(kSetupRuntimeCallback));
       args->emplace_back((lepus_value::ShallowCopy(timing)));
@@ -158,20 +164,24 @@ void TimingMediator::TriggerSetupRuntimeCallback(
       runtime->OnReceiveMessageEvent(std::move(event));
     });
   } else if (engine_actor_ && timing_info.GetEnableAirStrictMode()) {
-    engine_actor_->ActAsync(
-        [timing = std::move(lepus_timing)](auto& engine) mutable {
-          TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                      "TimingMediator::TriggerSetupEngineCallback");
-          auto arguments = lepus::CArray::Create();
-          arguments->emplace_back(std::move(timing));
-          engine->TriggerEventBus(kSetupRuntimeCallback,
-                                  lepus_value(std::move(arguments)));
-        });
+    engine_actor_->ActAsync([timing = std::move(lepus_timing),
+                             instance_id = instance_id_](auto& engine) mutable {
+      (void)instance_id;  // Explicitly reference `instance_id` to suppress the
+                          // compiler warning.
+      TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                  "TimingMediator::TriggerSetupEngineCallback", "instance_id",
+                  instance_id);
+      auto arguments = lepus::CArray::Create();
+      arguments->emplace_back(std::move(timing));
+      engine->TriggerEventBus(kSetupRuntimeCallback,
+                              lepus_value(std::move(arguments)));
+    });
   }
 }
 
 void TimingMediator::ReportSetupEvent(const TimingInfo& timing_info) const {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingMediator::ReportSetupEvent");
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingMediator::ReportSetupEvent",
+              "instance_id", instance_id_);
   tasm::report::MoveOnlyEvent event;
   event.SetName(kLynxSDKSetupTiming);
   auto timing = timing_info.GetAllTimingInfoAsMicrosecond();
@@ -319,14 +329,18 @@ void TimingMediator::TriggerUpdateClientCallback(
 
     facade_actor_->ActAsync([timing = std::move(all_lepus_timing),
                              update_timing = std::move(update_lepus_timing),
-                             update_flag](auto& facade) {
+                             update_flag,
+                             instance_id_out = instance_id_](auto& facade) {
       // TODO(kechenglong): set timingHandler PropBundleCreator before
       //  TimingHandler ctor, covert lepus to platform data structure
       //  in timing thread.
+      [[maybe_unused]] auto instance_id_in = instance_id_out;
       TRACE_EVENT(
           LYNX_TRACE_CATEGORY, "TimingMediator::TriggerUpdateClientCallback",
-          [&update_flag](lynx::perfetto::EventContext ctx) {
+          [&update_flag, instance_id_in](lynx::perfetto::EventContext ctx) {
             ctx.event()->add_debug_annotations("timing_flag", update_flag);
+            ctx.event()->add_debug_annotations("instance_id",
+                                               std::to_string(instance_id_in));
           });
       facade->OnTimingUpdate(timing, update_timing, update_flag);
     });
@@ -353,8 +367,11 @@ void TimingMediator::TriggerUpdateRuntimeCallback(
                               update_flag](auto& runtime) {
       TRACE_EVENT(
           LYNX_TRACE_CATEGORY, "TimingMediator::TriggerUpdateRuntimeCallback",
-          [&update_flag](lynx::perfetto::EventContext ctx) {
+          [&update_flag, instance_id = runtime->GetRuntimeId()](
+              lynx::perfetto::EventContext ctx) {
             ctx.event()->add_debug_annotations("timing_flag", update_flag);
+            ctx.event()->add_debug_annotations("instance_id",
+                                               std::to_string(instance_id));
           });
       auto args = lepus::CArray::Create();
       args->emplace_back(BASE_STATIC_STRING(kUpdateRuntimeCallback));
@@ -384,8 +401,11 @@ void TimingMediator::TriggerUpdateRuntimeCallback(
 void TimingMediator::ReportUpdateEvent(const TimingInfo& timing_info,
                                        const std::string& update_flag) const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "TimingMediator::ReportUpdateEvent",
-              [&update_flag](lynx::perfetto::EventContext ctx) {
+              [&update_flag,
+               instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("timing_flag", update_flag);
+                ctx.event()->add_debug_annotations("instance_id",
+                                                   std::to_string(instance_id));
               });
   tasm::report::MoveOnlyEvent event;
   event.SetName(kLynxSDKUpdateTiming);

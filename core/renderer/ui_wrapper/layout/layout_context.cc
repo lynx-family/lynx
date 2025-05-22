@@ -619,7 +619,8 @@ void LayoutContext::AttachLayoutNodeTypeInner(
     node->set_type(LayoutNodeType::COMMON);
     return;
   }
-  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, "LayoutContext.CreateLayoutNode");
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY, "LayoutContext.CreateLayoutNode",
+                    "instance_id", instance_id_);
   int result = platform_impl_->CreateLayoutNode(node->id(), tag.str(),
                                                 props.get(), allow_inline);
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
@@ -1098,10 +1099,13 @@ void LayoutContext::UpdateLynxEnvForLayoutThread(LynxEnvConfig env) {
 }
 
 void LayoutContext::RequestLayout(const PipelineOptions& options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, "LayoutContext.RequestLayout",
-              [&options](lynx::perfetto::EventContext ctx) {
-                options.UpdateTraceDebugInfo(ctx.event());
-              });
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, "LayoutContext.RequestLayout",
+      [&options, instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
+        options.UpdateTraceDebugInfo(ctx.event());
+        ctx.event()->add_debug_annotations("instance_id",
+                                           std::to_string(instance_id));
+      });
   if (root() && root()->slnode()->IsDirty()) {
     if (layout_wanted_) {
       Layout(options);
