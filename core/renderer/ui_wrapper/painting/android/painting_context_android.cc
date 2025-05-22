@@ -497,8 +497,8 @@ void PaintingContextAndroid::CreatePaintingNode(
 
   auto create_node_async_task = fml::MakeRefCounted<
       base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>(
-      [this, impl = impl_, id, tag, painting_data, flatten, node_index,
-       promise = std::move(promise)]() mutable {
+      [this, impl = impl_, id, tag, painting_data = painting_data, flatten,
+       node_index, promise = std::move(promise)]() mutable {
         base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
         if (local_ref.IsNull()) {
           return;
@@ -519,6 +519,10 @@ void PaintingContextAndroid::CreatePaintingNode(
                      pda->GetStyleMapBuffer().Get(), listeners_object, flatten,
                      node_index, gestures_object)
                      .Get()));
+
+        // Set painting_data to null to release the Java GlobalRef immediately
+        // after the once-task execution completes.
+        painting_data = nullptr;
 
         if (lynx::base::android::HasJNIException()) {
           base::ErrorStorage::GetInstance().AddCustomInfoToError(
