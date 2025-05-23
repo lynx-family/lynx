@@ -50,11 +50,6 @@ std::optional<piper::JsBundle> JsBundleHolderImpl::GetJSBundleInternal(
 
 void JsBundleHolderImpl::InsertJSBundle(const std::string& url,
                                         const piper::JsBundle& js_bundle) {
-  // will dismiss the JsBundle of DEFAULT_ENTRY_NAME, but it will not be got by
-  // js so it's acceptable
-  if (!enable_.load()) {
-    return;
-  }
   std::unique_lock<std::mutex> lock(mutex_);
   js_bundle_map_.emplace(url, js_bundle);
 }

@@ -122,6 +122,8 @@ class LynxTemplateBundle final {
 
   void GreedyConstructElements();
 
+  bool EnableFiberArch() const { return compile_options_.enable_fiber_arch_; }
+
   std::optional<Elements> TryGetElements(const std::string &key);
 
  private:

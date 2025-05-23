@@ -16,8 +16,10 @@ namespace tasm {
 
 void TemplateEntryHolder::InsertEntry(const std::string& name,
                                       std::shared_ptr<TemplateEntry> entry) {
-  template_entries_.emplace(std::make_pair(name, entry));
-  js_bundle_holder_->InsertJSBundle(name, entry->GetJsBundle());
+  if (!entry->IsCard()) {
+    TryPostJSBundle(name, entry->template_bundle());
+  }
+  template_entries_.try_emplace(name, std::move(entry));
 }
 
 const std::shared_ptr<TemplateEntry>& TemplateEntryHolder::FindEntry(
@@ -54,7 +56,17 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
    * items in template_entries_ do not need to be inserted.
    */
   if (template_entries_.find(url) == template_entries_.end()) {
-    preload_template_bundles_.insert_or_assign(url, std::move(bundle));
+    TryPostJSBundle(url, bundle);
+    preload_template_bundles_.try_emplace(url, std::move(bundle));
+  }
+}
+
+void TemplateEntryHolder::TryPostJSBundle(const std::string& url,
+                                          const LynxTemplateBundle& bundle) {
+  // Only needed by Fiber because Fiber will not fetch lazy bundle resources
+  // from the Engine Thread except for the first screen.
+  if (bundle.EnableFiberArch()) {
+    js_bundle_holder_->InsertJSBundle(url, bundle.GetJsBundle());
   }
 }
 
