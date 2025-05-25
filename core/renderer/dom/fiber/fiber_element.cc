@@ -262,8 +262,7 @@ bool FiberElement::NeedFastFlushPath(
   return style.second.IsEmpty() || LayoutNode::IsLayoutOnly(style.first) ||
          LayoutNode::IsLayoutWanted(style.first) ||
          starlight::CSSStyleUtils::IsLayoutRelatedTransform(style) ||
-         style.first == kPropertyIDColor || style.first == kPropertyIDFilter ||
-         style.first == kPropertyIDOffsetDistance;
+         style.first == kPropertyIDColor || style.first == kPropertyIDFilter;
 }
 
 void FiberElement::SetKeyframesByNamesInner(

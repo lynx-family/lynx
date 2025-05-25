@@ -6,12 +6,14 @@ package com.lynx.tasm.behavior.ui.shapes;
 
 import android.graphics.Path;
 import android.graphics.PathMeasure;
+import com.lynx.tasm.utils.LRUHashMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.WeakHashMap;
 
 public class LynxOffsetCalculator {
-  private static final WeakHashMap<Path, PathLengthCache> pathCache = new WeakHashMap<>();
+  private static final int MAX_CACHE_SIZE = 10;
+  private static final LRUHashMap<Path, PathLengthCache> lruPathCache =
+      new LRUHashMap<>(MAX_CACHE_SIZE);
 
   // Path length cache
   private static class PathLengthCache {
@@ -36,7 +38,7 @@ public class LynxOffsetCalculator {
     progress = Math.max(0, Math.min(1, progress));
 
     // Get or create a cache
-    PathLengthCache cache = pathCache.get(path);
+    PathLengthCache cache = lruPathCache.get(path);
     if (cache == null) {
       cache = new PathLengthCache();
 
@@ -48,7 +50,8 @@ public class LynxOffsetCalculator {
         cache.totalLength += length;
       } while (pathMeasure.nextContour());
 
-      pathCache.put(path, cache);
+      // LRU cache
+      lruPathCache.put(path, cache);
     }
 
     // Calculate target distance

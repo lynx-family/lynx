@@ -3057,6 +3057,11 @@ public class com::lynx::tasm::gesture::handler::LongPressGestureHandler : com.ly
   public void com.lynx.tasm.gesture.handler.LongPressGestureHandler.reset();
 }
 
+public class com::lynx::tasm::utils::LRUHashMap : LinkedHashMap< K, V > {
+  public com.lynx.tasm.utils.LRUHashMap< K, V >.LRUHashMap(int capacity);
+  public int com.lynx.tasm.utils.LRUHashMap< K, V >.getCapacity();
+}
+
 public class com::lynx::tasm::behavior::ui::accessibility::LynxAccessibilityDelegate : AccessibilityDelegateCompat {
   public final String com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityDelegate.TAG TAG;
   public final boolean com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityDelegate.DEBUG DEBUG;

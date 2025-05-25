@@ -1512,6 +1512,9 @@ bool Element::FlushAnimatedStyle() {
           case kPropertyIDOpacity:
             bundle->SetProps(property_name, style_value.Number());
             break;
+          case kPropertyIDOffsetDistance:
+            bundle->SetProps(property_name, style_value.Number());
+            break;
           default:
             LOGE("[animation] unsupported animation value type for css:"
                  << style.first);

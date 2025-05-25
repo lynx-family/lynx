@@ -149,9 +149,12 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI {
   protected ReadableArray mRawOffsetShape;
   protected BasicShape mOffsetPath;
   protected float mOffsetDistance;
-  protected float mOffsetRotate;
+  protected float mOffsetRotate = OFFSET_ROTATE_AUTO;
   protected boolean mIsAutoOffsetRotate = true;
   protected boolean mOffsetHasChanged = false;
+  protected float mLastOffsetEffectX;
+  protected float mLastOffsetEffectY;
+  protected float mLastOffsetEffectRotate;
 
   @Override
   public void onDrawingPositionChanged() {
@@ -759,13 +762,22 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI {
   public void applyOffsetAndRotate(float offsetX, float offsetY, float rotate) {
     List<TransformRaw> offsetEffect = new ArrayList<>();
     offsetEffect.add(TransformRaw.createTransformRaw(TRANSFORM_TRANSLATE,
-        new PlatformLength(offsetX, PLATFORM_LENGTH_UNIT_NUMBER), PLATFORM_LENGTH_UNIT_NUMBER,
-        new PlatformLength(offsetY, PLATFORM_LENGTH_UNIT_NUMBER), PLATFORM_LENGTH_UNIT_NUMBER,
-        new PlatformLength(0, PLATFORM_LENGTH_UNIT_NUMBER), PLATFORM_LENGTH_UNIT_NUMBER));
-    offsetEffect.add(
-        TransformRaw.createTransformRaw(TRANSFORM_ROTATE, rotate, PLATFORM_LENGTH_UNIT_NUMBER, 0,
-            PLATFORM_LENGTH_UNIT_NUMBER, 0, PLATFORM_LENGTH_UNIT_NUMBER));
-    mBackgroundManager.appendTransform(offsetEffect);
+        new PlatformLength(offsetX - mLastOffsetEffectX, PLATFORM_LENGTH_UNIT_NUMBER),
+        PLATFORM_LENGTH_UNIT_NUMBER,
+        new PlatformLength(offsetY - mLastOffsetEffectY, PLATFORM_LENGTH_UNIT_NUMBER),
+        PLATFORM_LENGTH_UNIT_NUMBER, new PlatformLength(0, PLATFORM_LENGTH_UNIT_NUMBER),
+        PLATFORM_LENGTH_UNIT_NUMBER));
+    offsetEffect.add(TransformRaw.createTransformRaw(TRANSFORM_ROTATE,
+        rotate - mLastOffsetEffectRotate, PLATFORM_LENGTH_UNIT_NUMBER, 0,
+        PLATFORM_LENGTH_UNIT_NUMBER, 0, PLATFORM_LENGTH_UNIT_NUMBER));
+    mLastOffsetEffectX = offsetX;
+    mLastOffsetEffectY = offsetY;
+    mLastOffsetEffectRotate = rotate;
+    if (mBackgroundManager.getTransformProps() == null) {
+      mBackgroundManager.setTransform(offsetEffect);
+    } else {
+      mBackgroundManager.appendTransform(offsetEffect);
+    }
   }
 
   public int getBackgroundColor() {

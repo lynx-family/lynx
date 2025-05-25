@@ -111,6 +111,14 @@ public class LineSpacingAdaptation : NSObject, <NSLayoutManagerDelegate> {
   public CGFloat LineSpacingAdaptation::baseline baseline;
 }
 
+public class LRUMap : NSObject {
+  public instancetype LRUMap::initWithCapacity:(NSUInteger capacity);
+  public id LRUMap::get:(id key);
+  public void LRUMap::set:value:(id key,[value] id value);
+  public NSUInteger LRUMap::getCapacity();
+  public NSString * LRUMap::description();
+}
+
 public protocol LUIBodyView-p : <NSObject>, <LUIErrorHandling> {
   public BOOL LUIBodyView-p::enableAsyncDisplay enableAsyncDisplay;
   public NSString* LUIBodyView-p::url url;
@@ -3456,6 +3464,9 @@ public class LynxUI : <__covariant V UIView> {
   public CGPathRef LynxUI::offsetPathRef offsetPathRef;
   public CGFloat LynxUI::offsetDistance offsetDistance;
   public CGFloat LynxUI::offsetRotate offsetRotate;
+  public CATransform3D LynxUI::offsetEffectTransform offsetEffectTransform;
+  public CGFloat LynxUI::lastOffsetX lastOffsetX;
+  public CGFloat LynxUI::lastOffsetY lastOffsetY;
   public BOOL LynxUI::isAutoOffsetRotate isAutoOffsetRotate;
   public BOOL LynxUI::offsetHasChanged offsetHasChanged;
   public LynxUIContext* LynxUI::context context;

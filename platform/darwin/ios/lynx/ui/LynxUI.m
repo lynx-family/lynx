@@ -1326,8 +1326,8 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("background-capInsets", setBackgroundCapInsets, NSString*),
     LYNX_PROP_DECLARE("clip-path", setClipPath, NSArray*),
     LYNX_PROP_DECLARE("offset-path", setOffsetPath, NSArray*),
-    LYNX_PROP_DECLARE("offset-distance", setOffsetDistance, CGFLoat),
-    LYNX_PROP_DECLARE("offset-rotate", setOffsetRotate, CGFLoat),
+    LYNX_PROP_DECLARE("offset-distance", setOffsetDistance, CGFloat),
+    LYNX_PROP_DECLARE("offset-rotate", setOffsetRotate, CGFloat),
     LYNX_PROP_DECLARE("opacity", setOpacity, CGFloat),
     LYNX_PROP_DECLARE("visibility", setVisibility, LynxVisibilityType),
     LYNX_PROP_DECLARE("direction", setLynxDirection, LynxDirectionType),
@@ -4071,12 +4071,23 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
 
 - (void)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg toLayer:(CALayer*)layer {
   if (layer) {
+    // Remove the old offset effect.
     CGPoint newPosition = layer.position;
-    newPosition.x += resultPoint.x;
-    newPosition.y += resultPoint.y;
+    newPosition.x -= _lastOffsetX;
+    newPosition.y -= _lastOffsetY;
+    CATransform3D inverseTransform = CATransform3DInvert(_offsetEffectTransform);
+    layer.transform = CATransform3DConcat(layer.transform, inverseTransform);
+
+    // Record new offset effect to old offset effect.
+    _lastOffsetX = resultPoint.x;
+    _lastOffsetY = resultPoint.y;
+    _offsetEffectTransform = CATransform3DMakeRotation(rotateDeg, 0, 0, 1);
+    newPosition.x += _lastOffsetX;
+    newPosition.y += _lastOffsetY;
+
+    // Apply the new offset effect.
     layer.position = newPosition;
-    layer.transform =
-        CATransform3DConcat(layer.transform, CATransform3DMakeRotation(rotateDeg, 0, 0, 1));
+    layer.transform = CATransform3DConcat(layer.transform, _offsetEffectTransform);
   }
 }
 
