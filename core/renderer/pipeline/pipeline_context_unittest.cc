@@ -5,19 +5,28 @@
 #define private public
 #define protected public
 
-#include "core/renderer/pipeline/pipeline_context_unittest.h"
+#include "core/renderer/pipeline/pipeline_context.h"
 
 #include <memory>
 #include <vector>
 
 #include "base/include/fml/hash_combine.h"
 #include "core/public/pipeline_option.h"
-#include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_context_unittest.h"
+#include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {
 namespace tasm {
 namespace test {
+class TestLifecycleObserver : public PipelineLifecycleObserver {
+ public:
+  TestLifecycleObserver() = default;
+  ~TestLifecycleObserver() override = default;
+  void OnLifecycleChanged(const Data& data) override { data_ = data; }
+  Data data_;
+};
+
 PipelineContextTest::PipelineContextTest()
     : options_(std::make_shared<PipelineOptions>()) {}
 
@@ -124,6 +133,57 @@ TEST_F(PipelineContextTest, TestPipelineContextGetHash) {
                          contexts[i]->GetVersion().GetMinor());
     EXPECT_EQ(seed, contexts[i]->GetHash());
   }
+}
+
+TEST_F(PipelineContextTest, TestPipelineContextAdvanceLifecycle) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  EXPECT_NE(context, nullptr);
+  context->SetOptions(options_);
+
+  context->RequestResolve();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
+  EXPECT_TRUE(context->observer_data_.is_state_executed);
+
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve));
+  EXPECT_TRUE(context->observer_data_.is_state_executed);
+
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInPerformLayout));
+  EXPECT_FALSE(context->observer_data_.is_state_executed);
+
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterPerformLayout));
+  EXPECT_FALSE(context->observer_data_.is_state_executed);
+
+  context->RequestFlushUIOperation();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kUIOpFlush));
+  EXPECT_TRUE(context->observer_data_.is_state_executed);
+
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kStopped));
+  EXPECT_TRUE(context->observer_data_.is_state_executed);
+}
+
+TEST_F(PipelineContextTest, TestPipelineContextObserver) {
+  auto context = PipelineContext::Create(PipelineVersion::Create(), true);
+  EXPECT_NE(context, nullptr);
+  options_->pipeline_id = "test";
+  options_->pipeline_origin = "TestPipelineContextObserver";
+  context->SetOptions(options_);
+
+  auto observer = std::make_unique<TestLifecycleObserver>();
+  context->AddObserver(observer.get());
+
+  context->RequestResolve();
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kInStyleResolve));
+  EXPECT_EQ(observer->data_.prev_state, LifecycleState::kInactive);
+  EXPECT_EQ(observer->data_.cur_state, LifecycleState::kInStyleResolve);
+  EXPECT_EQ(observer->data_.is_state_executed, true);
+  EXPECT_EQ(observer->data_.pipeline_version, context->version_);
+  EXPECT_EQ(observer->data_.pipeline_id, options_->pipeline_id);
+  EXPECT_EQ(observer->data_.pipeline_origin, options_->pipeline_origin);
+
+  context->RemoveObserver(observer.get());
+  EXPECT_TRUE(context->AdvanceLifecycleTo(LifecycleState::kAfterStyleResolve));
+  EXPECT_NE(observer->data_.prev_state, LifecycleState::kInStyleResolve);
+  EXPECT_NE(observer->data_.cur_state, LifecycleState::kAfterStyleResolve);
 }
 }  // namespace test
 }  // namespace tasm

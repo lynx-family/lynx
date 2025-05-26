@@ -172,6 +172,10 @@ struct PipelineOptions {
   bool reload{false};
   const PipelineVersion* version{nullptr};
 
+  // Store the timestamp when layout finished, used for
+  // PipelineLifecycleObserver lifecycle data.
+  uint64_t after_layout_timestamp{0};
+
  private:
   // Helper class to generate pipelineID
   class PipelineIDGenerator {

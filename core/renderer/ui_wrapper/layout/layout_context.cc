@@ -806,6 +806,9 @@ void LayoutContext::Layout(const std::shared_ptr<PipelineOptions>& options) {
         base::CurrentTimeMicroseconds();
   }
 
+  // Store after layout timestamp for lifecycle observer data.
+  options->after_layout_timestamp = base::CurrentSystemTimeMicroseconds();
+
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAYOUT_CONTEXT_ON_LAYOUT_AFTER);
 
   auto root_size = root()->slnode()->GetLayoutResult().size_;
