@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import java.util.Set;
 
@@ -13,7 +14,7 @@ import java.util.Set;
  * Give the host application a chance to take control when a lynx template is about to be loaded in
  * the current LynxView.
  */
-public class LynxViewClientV2 {
+public class LynxViewClientV2 implements IPerformanceObserver {
   /**
    * Provide information about the lynx pixel pipeline
    */
@@ -82,16 +83,6 @@ public class LynxViewClientV2 {
    */
   public void onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info) {}
 
-  /**
-   * Notify the client that a performance event has been sent. It will be called every time a
-   * performance event is generated, including but not limited to container initialization, engine
-   * rendering, rendering metrics update, etc.
-   *
-   * Note: This method is for performance events and will be executed on the reporter thread, so do
-   * not execute complex logic or UI modification logic in this method.
-   *
-   * @param entry the PerformanceEntry about the performance event
-   *
-   */
+  @Override
   public void onPerformanceEvent(@NonNull PerformanceEntry entry) {}
 }

@@ -26,6 +26,7 @@
 #include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
@@ -419,6 +420,8 @@ class LynxShell {
   AppState app_state_{AppState::kUnknown};
   std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>
       timing_actor_;  // on timing runner
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      performance_controller_actor_;  // on Reporter runner
 
   std::unique_ptr<ThreadModeAutoSwitch> thread_mode_auto_switch_;
   std::shared_ptr<EngineThreadSwitch> engine_thread_switch_;

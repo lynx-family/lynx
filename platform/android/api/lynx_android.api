@@ -2491,6 +2491,10 @@ public class com::lynx::tasm::animation::InterpolatorFactory :  {
   public static Interpolator com.lynx.tasm.animation.InterpolatorFactory.getInterpolator(AnimationInfo ai);
 }
 
+public interface com::lynx::tasm::performance::IPerformanceObserver {
+  public void com.lynx.tasm.performance.IPerformanceObserver.onPerformanceEvent(@NonNull PerformanceEntry entry);
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.setEnableSticky();
 }
@@ -6204,7 +6208,7 @@ public class com::lynx::tasm::LynxViewClientGroupV2 : com.lynx.tasm.LynxViewClie
   public void com.lynx.tasm.LynxViewClientGroupV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
 }
 
-public class com::lynx::tasm::LynxViewClientV2 :  {
+public class com::lynx::tasm::LynxViewClientV2 : com.lynx.tasm.performance.IPerformanceObserver {
   public void com.lynx.tasm.LynxViewClientV2.onPageStarted(@Nullable LynxView lynxView, @NonNull LynxPipelineInfo info);
   public void com.lynx.tasm.LynxViewClientV2.onPerformanceEvent(@NonNull PerformanceEntry entry);
 }
@@ -6826,6 +6830,15 @@ public class com::lynx::jsbridge::ParamWrapper :  {
 
 public interface com::lynx::tasm::behavior::PatchFinishListener {
   public void com.lynx.tasm.behavior.PatchFinishListener.onPatchFinish();
+}
+
+public class com::lynx::tasm::performance::PerformanceController :  {
+  public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
+  public void com.lynx.tasm.performance.PerformanceController.init();
+  public void com.lynx.tasm.performance.PerformanceController.destroy();
+  public void com.lynx.tasm.performance.PerformanceController.allocateMemory(String category, float sizeKb, String detailKey, String detailValue);
+  public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(String category, float sizeKb, String detailKey, String detailValue);
+  public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(String category, float sizeKb, String detailKey, String detailValue);
 }
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry :  {

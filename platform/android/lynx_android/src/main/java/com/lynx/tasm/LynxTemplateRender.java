@@ -65,6 +65,7 @@ import com.lynx.tasm.core.LynxEngineProxy;
 import com.lynx.tasm.core.resource.LynxResourceLoader;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.performance.TimingCollector;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.provider.*;
@@ -172,6 +173,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private LynxInfoReportHelper mReportHelper = new LynxInfoReportHelper();
 
   private TimingCollector mTimingCollector = new TimingCollector();
+
+  private PerformanceController mPerformanceController = new PerformanceController();
 
   // LynxView render phase consts
   @Retention(RetentionPolicy.SOURCE)
@@ -637,7 +640,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
     mTimingCollector.init();
-
+    mPerformanceController.init();
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
     // recreate
     LayoutTick layoutTick;
@@ -676,10 +679,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     boolean enableVSyncAligned = mLynxViewBuilder.enableVSyncAlignedMessageLoop
         || LynxEnv.inst().enableVSyncAlignedMessageLoopGlobal();
     mNativePtr = nativeCreate(lynxUIRenderer.getNativeTimingCollectorPtr(), runtimeWrapperPtr,
-        mNativeFacade, mNativeFacadeReporter, mLoader, mThreadStrategyForRendering.id(),
-        mLynxViewBuilder.enableLayoutSafepoint, mLynxViewBuilder.enableLayoutOnly,
-        screenMetrics.widthPixels, screenMetrics.heightPixels, screenMetrics.density,
-        LynxEnv.inst().getLocale(), mLynxViewBuilder.enableJSRuntime(),
+        mNativeFacade, mNativeFacadeReporter, mPerformanceController, mLoader,
+        mThreadStrategyForRendering.id(), mLynxViewBuilder.enableLayoutSafepoint,
+        mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
+        screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.enableJSRuntime(),
         mLynxViewBuilder.enableMultiAsyncThread, mLynxViewBuilder.enablePreUpdateData,
         mAutoConcurrency, enableVSyncAligned, mLynxViewBuilder.enableAsyncHydration,
         mGroup != null && mGroup.enableJSGroupThread(), getJSGroupThreadNameIfNeed(),
@@ -1137,6 +1140,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     updateGenericInfoURL(mUrl);
     if (mNativeFacadeReporter != null) {
       mNativeFacadeReporter.setTemplateLoadClientV2(mClientV2);
+    }
+    if (mPerformanceController != null) {
+      mPerformanceController.setPerformanceObserver(mClientV2);
     }
     if (mNativeFacade != null) {
       mNativeFacade.setTemplateLoadClient(mClient);
@@ -3190,6 +3196,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (lynxUIRenderer != null) {
       lynxUIRenderer.onDestroyTemplateRenderer();
     }
+    mPerformanceController.destroy();
 
     if (mNativeFacade != null) {
       mNativeFacade.destroyAnyThreadPart();
@@ -3404,10 +3411,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   }
 
   private static native long nativeCreate(long timingCollector, long runtimePtr,
-      Object nativeFacade, Object nativeFacadeV2, Object loader, int renderStrategy,
-      boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth, int screenHeight,
-      float density, String locale, boolean enableJSRuntime, boolean enableMultiAsyncThread,
-      boolean enablePreUpdateData, boolean enableAutoConcurrency,
+      Object nativeFacade, Object nativeFacadeV2, Object performanceController, Object loader,
+      int renderStrategy, boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth,
+      int screenHeight, float density, String locale, boolean enableJSRuntime,
+      boolean enableMultiAsyncThread, boolean enablePreUpdateData, boolean enableAutoConcurrency,
       boolean enableVSyncAlignedMessageLoop, boolean enableAsyncHydration,
       boolean enableJSGroupThread, String jsGroupThreadName, Object tasmPlatformInvoker,
       long whiteboard, long uiDelegate, boolean useInvokeUIMethod, boolean longTaskMonitorDisabled,

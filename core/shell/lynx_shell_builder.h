@@ -9,6 +9,7 @@
 #include <string>
 
 #include "core/renderer/ui_wrapper/common/prop_bundle_creator_default.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/services/timing_handler/timing_collector_platform_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/native_facade_reporter.h"
@@ -29,6 +30,10 @@ class LynxShellBuilder {
 
   LynxShellBuilder& SetNativeFacadeReporter(
       std::unique_ptr<shell::NativeFacadeReporter> native_facade_reporter);
+
+  LynxShellBuilder& SetPerformanceController(
+      std::unique_ptr<tasm::performance::PerformanceController>
+          performance_controller);
 
   LynxShellBuilder& SetUseInvokeUIMethodFunction(
       bool use_invoke_ui_method_func);
@@ -112,6 +117,9 @@ class LynxShellBuilder {
   // to the reporter thread. This should be refactored after native_facade_ can
   // send events to the async thread.
   std::unique_ptr<shell::NativeFacadeReporter> native_facade_reporter_;
+
+  std::unique_ptr<tasm::performance::PerformanceController>
+      performance_controller_;
 
   bool use_invoke_ui_method_func_;
 

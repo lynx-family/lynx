@@ -139,6 +139,8 @@ void LynxShell::Destroy() {
 
   timing_actor_->ActAsync(
       [](auto& timing_handler) { timing_handler = nullptr; });
+  performance_controller_actor_->ActAsync(
+      [](auto& performance_controller) { performance_controller = nullptr; });
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
     facade = nullptr;
