@@ -911,8 +911,6 @@ class FiberElement : public Element, public SelectorItem {
 
   void ConsumeTransitionStyles(const StyleMap& styles) {}
 
-  bool CheckHasIdMapInCSSFragment();
-
   FiberElement* FindEnclosingNoneWrapper(FiberElement* parent,
                                          FiberElement* node);
 

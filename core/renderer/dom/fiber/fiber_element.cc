@@ -780,16 +780,6 @@ void FiberElement::SetIdSelector(const base::String &idSelector) {
   MarkDirty(kDirtyStyle | kDirtyAttr);
 }
 
-bool FiberElement::CheckHasIdMapInCSSFragment() {
-  auto *css_fragment = GetRelatedCSSFragment();
-  // resolve styles from css fragment
-  if (css_fragment && css_fragment->HasIdSelector()) {
-    return true;
-  }
-
-  return false;
-}
-
 static bool DiffStyleImpl(StyleMap &old_map, StyleMap &new_map,
                           StyleMap &update_styles) {
   if (new_map.empty()) {
