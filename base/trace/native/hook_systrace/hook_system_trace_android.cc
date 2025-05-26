@@ -89,7 +89,7 @@ void HookSystemTrace::InstallSystemTraceHooks() {
       LOGE("failed to hook symbol:" << func.name << " ret " << ret);
     }
   }
-  xhook_refresh(0);
+  xhook_refresh(1);
 }
 
 void HookSystemTrace::UninstallSystemTraceHooks() {
@@ -103,7 +103,7 @@ void HookSystemTrace::UninstallSystemTraceHooks() {
       LOGE("failed to uninstall symbol:" << func.name << " ret " << ret);
     }
   }
-  xhook_refresh(0);
+  xhook_refresh(1);
 }
 
 void HookSystemTrace::Install() {
