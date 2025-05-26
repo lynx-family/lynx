@@ -1305,6 +1305,10 @@ void ElementManager::SetEnableFiberElementForRadonDiff(TernaryBool value) {
   }
 }
 
+bool ElementManager::CSSFragmentParsingOnTASMWorkerMTSRender() {
+  return css_fragment_parsing_tasm_worker_thread_;
+}
+
 namespace {
 void ClearExtremeParsedStylesRecursively(FiberElement *cur) {
   cur->ClearExtremeParsedStyles();

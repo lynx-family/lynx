@@ -759,7 +759,18 @@ void FiberElement::SetAttribute(const base::String &key,
 
 void FiberElement::SetIdSelector(const base::String &idSelector) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "FiberElement::SetIdSelector");
-  CheckHasInvalidationForId(data_model_->idSelector().str(), idSelector.str());
+  if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
+    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
+      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
+          [this, old_id = data_model_->idSelector().str(),
+           new_id = idSelector.str()]() {
+            CheckHasInvalidationForId(old_id, new_id);
+          });
+    } else {
+      CheckHasInvalidationForId(data_model_->idSelector().str(),
+                                idSelector.str());
+    }
+  }
 
   updated_attr_map_[BASE_STATIC_STRING(AttributeHolder::kIdSelectorAttrName)]
       .SetString(idSelector);
@@ -2931,7 +2942,14 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
 void FiberElement::OnClassChanged(const ClassList &old_classes,
                                   const ClassList &new_classes) {
   if (element_manager() && element_manager()->GetEnableStandardCSSSelector()) {
-    CheckHasInvalidationForClass(old_classes, new_classes);
+    if (element_manager()->CSSFragmentParsingOnTASMWorkerMTSRender()) {
+      element_manager()->GetTasmWorkerTaskRunner()->PostTask(
+          [this, old_classes_ = old_classes, new_classes_ = new_classes]() {
+            CheckHasInvalidationForClass(old_classes_, new_classes_);
+          });
+    } else {
+      CheckHasInvalidationForClass(old_classes, new_classes);
+    }
   }
 }
 
@@ -3204,10 +3222,6 @@ void FiberElement::CheckDynamicUnit(CSSPropertyID id, const CSSValue &value,
 
 bool FiberElement::CheckHasInvalidationForId(const std::string &old_id,
                                              const std::string &new_id) {
-  if (!element_manager() ||
-      !element_manager()->GetEnableStandardCSSSelector()) {
-    return false;
-  }
   auto *css_fragment = GetRelatedCSSFragment();
   // resolve styles from css fragment
   if (!css_fragment || !css_fragment->enable_css_invalidation()) {

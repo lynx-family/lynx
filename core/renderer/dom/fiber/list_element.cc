@@ -186,6 +186,7 @@ void ListElement::ComponentAtIndexes(
     return;
   }
   bool async_resolve = NeedAsyncResolveListItem();
+  element_manager()->SetCSSFragmentParsingOnTASMWorkerMTSRender(async_resolve);
 
   tasm_->GetLepusContext(tasm::DEFAULT_ENTRY_NAME)
       ->CallClosure(
@@ -193,6 +194,8 @@ void ListElement::ComponentAtIndexes(
           lepus::Value(impl_id()), lepus::Value(std::move(index_array)),
           lepus::Value(std::move(operation_id_array)),
           lepus::Value(enable_reuse_notification), lepus::Value(async_resolve));
+
+  element_manager()->SetCSSFragmentParsingOnTASMWorkerMTSRender(false);
 }
 
 void ListElement::EnqueueComponent(int32_t sign) {

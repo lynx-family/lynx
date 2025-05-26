@@ -1040,6 +1040,12 @@ class ElementManager {
 
   inline int32_t GetTaskWaitTimeout() { return task_wait_timeout_; }
 
+  bool CSSFragmentParsingOnTASMWorkerMTSRender();
+
+  inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
+    css_fragment_parsing_tasm_worker_thread_ = enable;
+  }
+
  protected:
   /**
    * call this function to request layout
@@ -1084,6 +1090,9 @@ class ElementManager {
   bool devtool_flag_ = false;
   bool dom_tree_enabled_ = true;
   const int instance_id_;
+
+  bool css_fragment_parsing_tasm_worker_thread_{false};
+
   std::shared_ptr<PageConfig> config_;
 
   std::vector<Element *> current_insert_plug_vector_;
