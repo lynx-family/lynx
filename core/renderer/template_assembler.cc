@@ -2491,18 +2491,6 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::RequestTemplateEntryInternal(
   return nullptr;
 }
 
-std::shared_ptr<TemplateEntry> TemplateAssembler::QueryComponent(
-    const std::string& url) {
-  LOGI("QueryComponent from LEPUS: " << url);
-  // check if the lazy-bundle is already loaded.
-  auto entry = FindTemplateEntry(url);
-  if (entry == nullptr && component_loader_ != nullptr) {
-    component_loader_->RequireTemplate(nullptr, url, instance_id_);
-  }
-  // check if the lazy-bundle is loaded success.
-  return FindTemplateEntry(url);
-}
-
 void TemplateAssembler::PreloadLazyBundles(
     const std::vector<std::string>& urls) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LAZY_BUNDLE_PRELOAD, "preload_urls",

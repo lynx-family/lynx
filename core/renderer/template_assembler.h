@@ -463,8 +463,6 @@ class TemplateAssembler final
   void GetDecodedJSSource(
       std::unordered_map<std::string, std::string>& js_source);
 
-  std::shared_ptr<TemplateEntry> QueryComponent(const std::string& url);
-
   void SendAirPageEvent(const std::string& event, const lepus::Value& value);
 
   void RenderTemplateForAir(const std::shared_ptr<TemplateEntry>& card,
