@@ -79,7 +79,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     POST_DATA_BEFORE_UPDATE,
     ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC,
     ENABLE_NATIVE_LIST_NESTED,
-    ENABLE_ASYNC_DESTROY_ENGINE,
+    ASYNC_DESTROY_ENGINE_COUNT,
     CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT,
     ENABLE_USE_CONTEXT_POOL,
     ENABLE_FIBER_ELEMENT_FOR_RADON_DIFF,
@@ -177,7 +177,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_REPORT_LIST_ITEM_LIFE_STATISTIC,
              "enable_report_list_item_life_statistic"},
             {Key::ENABLE_NATIVE_LIST_NESTED, "enable_native_list_nested"},
-            {Key::ENABLE_ASYNC_DESTROY_ENGINE, "enable_async_destroy_engine"},
+            {Key::ASYNC_DESTROY_ENGINE_COUNT, "async_destroy_engine_count"},
             {Key::CONCURRENT_LOOP_HIGH_PRIORITY_WORKER_COUNT_PERCENT,
              "concurrent_loop_high_priority_worker_count_percent"},
             {Key::ENABLE_USE_CONTEXT_POOL, "enable_use_context_pool"},
@@ -302,7 +302,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnablePostDataBeforeUpdateTemplate();
   bool EnableReportListItemLifeStatistic();
   bool EnableNativeListNested();
-  bool EnableAsyncDestroyEngine();
+  int32_t EnableAsyncDestroyEngine();
   bool EnableComponentAsyncDecode();
   bool EnableUseContextPool();
   bool EnableNativeCreateViewAsync();

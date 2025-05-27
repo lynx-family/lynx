@@ -21,6 +21,9 @@ inline constexpr const char* const LYNX_ENGINE_LOAD_TEMPLATE =
 inline constexpr const char* const LYNX_ENGINE_LOAD_TEMPLATE_BUNDLE =
     "LynxEngine::LoadTemplateBundle";
 
+inline constexpr const char* const LYNX_ENGINE_DESTRUCTOR =
+    "LynxEngine::~LynxEngine";
+
 /**
  * @trace_description: Execute the @args{module_name}.@args{method} method on
  * the background scripting thread (historically known as "JS Thread").
@@ -93,12 +96,18 @@ inline constexpr const char* const CALL_JS_FUNCTION_FIRE =
     "CallJSFunction:Fire";
 inline constexpr const char* const LYNX_SHELL_BUILDER_BUILD =
     "LynxShell::Create";
+inline constexpr const char* const LYNX_SHELL_DESTRUCTOR =
+    "LynxShell::~LynxShell";
 inline constexpr const char* const LYNX_SHELL_BUILDER_CREATE_ENGINE_ACTOR =
     "LynxShell::Create::CreateEngineActor";
 inline constexpr const char* const LYNX_SHELL_INIT_RUNTIME =
     "LynxShell::InitRuntime";
 inline constexpr const char* const LYNX_SHELL_START_JS_RUNTIME =
     "LynxShell::StartJsRuntime";
+inline constexpr const char* const LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD =
+    "LynxShell::AttachEngineToUIThread";
+inline constexpr const char* const LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD =
+    "LynxShell::DetachEngineFromUIThread";
 inline constexpr const char* const LYNX_SHELL_UPDATE_VIEWPORT =
     "LynxShell.UpdateViewport";
 inline constexpr const char* const LYNX_SHELL_ENSURE_GLOBAL_PROPS_THREAD_SAFE =

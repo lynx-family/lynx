@@ -69,6 +69,24 @@ void UnmergeToAsyncEngineIfNeeded(
   }
 }
 
+// Limit the number of Engine releases in asynchronous threads.
+bool TryIncrementAsyncDestroyCounter(std::atomic<int>& counter) {
+  int current = counter.load();
+  int max_limit = tasm::LynxEnv::GetInstance().EnableAsyncDestroyEngine();
+  while (current < max_limit) {
+    if (counter.compare_exchange_weak(current, current + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void DecrementAsyncDestroyCounter(std::atomic<int>& counter) {
+  int current = counter.load();
+  while (current > 0 && !counter.compare_exchange_weak(current, current - 1)) {
+  }
+}
+
 }  // namespace
 
 int32_t LynxShell::NextInstanceId() {
@@ -125,6 +143,7 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
 }
 
 LynxShell::~LynxShell() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DESTRUCTOR);
   LOGI("LynxShell release, this:" << this);
   Destroy();
 }
@@ -147,13 +166,17 @@ void LynxShell::Destroy() {
 
   facade_reporter_actor_->Act([](auto& facade) { facade = nullptr; });
 
-  if (tasm::LynxEnv::GetInstance().EnableAsyncDestroyEngine()) {
+  static std::atomic<int32_t> async_destroy_counter{0};
+  if (TryIncrementAsyncDestroyCounter(async_destroy_counter)) {
     DetachEngineFromUIThread();
   }
+
   engine_actor_->Act([instance_id = instance_id_](auto& engine) {
     engine = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
+    DecrementAsyncDestroyCounter(async_destroy_counter);
   });
+
   layout_actor_->Act([instance_id = instance_id_](auto& layout) {
     layout = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
@@ -1019,6 +1042,7 @@ void LynxShell::AttachEngineToUIThread() {
   tasm::recorder::TemplateAssemblerRecorder::RecordSwitchEngineFromUIThread(
       true, reinterpret_cast<int64_t>(this));
 #endif
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD);
   if (engine_thread_switch_) {
     switch (current_strategy_) {
       case base::ThreadStrategyForRendering::MOST_ON_TASM:
@@ -1040,6 +1064,7 @@ void LynxShell::DetachEngineFromUIThread() {
   tasm::recorder::TemplateAssemblerRecorder::RecordSwitchEngineFromUIThread(
       false, reinterpret_cast<int64_t>(this));
 #endif
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD);
   if (engine_thread_switch_) {
     switch (current_strategy_) {
       case base::ThreadStrategyForRendering::ALL_ON_UI:

@@ -52,6 +52,7 @@ inline std::string& GetCoreJS() {
 }  // namespace
 
 LynxEngine::~LynxEngine() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENGINE_DESTRUCTOR);
   // TODO(heshan): now is nullptr when run unittest, in fact cannot be nullptr
   // when runtime, will remove when LynxEngine no longer be a wrapper for tasm
   if (tasm_ != nullptr) {

@@ -364,8 +364,8 @@ bool LynxEnv::EnableNativeListNested() {
   return GetBoolEnv(Key::ENABLE_NATIVE_LIST_NESTED, true);
 }
 
-bool LynxEnv::EnableAsyncDestroyEngine() {
-  return GetBoolEnv(Key::ENABLE_ASYNC_DESTROY_ENGINE, false);
+int32_t LynxEnv::EnableAsyncDestroyEngine() {
+  return static_cast<int32_t>(GetLongEnv(Key::ASYNC_DESTROY_ENGINE_COUNT, 0));
 }
 
 bool LynxEnv::EnableComponentAsyncDecode() {
