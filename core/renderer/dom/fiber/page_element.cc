@@ -11,7 +11,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "lynx/core/services/event_report/event_tracker.h"
+#include "core/services/event_report/event_tracker.h"
 
 namespace lynx {
 namespace tasm {

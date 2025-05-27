@@ -96,7 +96,8 @@ def run_gn_script(args, root_dir, target_exclude_patterns:list=None):
   os.remove(gn_args_file_path)
   
   r = 0
-  gn_path = os.path.join(root_dir, 'lynx', 'tools', 'gn_tools', 'gn_wrapper.py')
+  current_dir = os.path.dirname(os.path.realpath(__file__))
+  gn_path = os.path.join(current_dir, '..', 'gn_tools', 'gn_wrapper.py')
   gn_out_dir = os.path.join(root_dir, GN_OUT_DIR_PATH)
   for gn_args_key in gn_args_map.keys():
     gn_args = ""
@@ -116,7 +117,7 @@ def run_gn_script(args, root_dir, target_exclude_patterns:list=None):
     if os.path.exists(gn_out_path) and os.path.isdir(gn_out_path):
       clean_gn_project_json_file(gn_out_path)
     set_cmake_target = '--cmake-target=%s' % (target) if target else ''
-    cmd = 'python3 %s gen %s --args="%s" --ide="cmake" %s' % (gn_path, gn_out_path, gn_args, set_cmake_target)
+    cmd = 'python3 %s gen %s --root="%s" --args="%s" --ide="cmake" %s' % (gn_path, gn_out_path, root_dir, gn_args, set_cmake_target)
     r |= subprocess.call(cmd, shell=True)
   return r
 
@@ -126,9 +127,9 @@ def main():
   parser.add_argument('-t', '--target', type=str, required=False, help='The GN name of the cmake target you want to generate automatically.')
   parser.add_argument('-n', '--project-name', type=str, required=False, help='Inject the project name to isolate GN args among different projects.')
   parser.add_argument('--clean', action='store_true', required=False, help='Delete all products.')
+  parser.add_argument('--root', type=str, required=False, help='The root directory of the project.')
   args, unknown = parser.parse_known_args()
-  root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-  return run_gn_script(args, root_dir)
+  return run_gn_script(args, args.root)
 
 if __name__ == "__main__":
   sys.exit(main())

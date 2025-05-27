@@ -9,12 +9,16 @@ import subprocess
 # Get the directory where the current script is located
 current_dir = os.path.dirname(os.path.realpath(__file__))
 # Get the root directory
-root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
+lynx_dir = os.path.abspath(os.path.join(current_dir, '../../'))
+root_dir = os.path.abspath(os.path.join(lynx_dir, '../'))
 # Get development system
 system = platform.system().lower()
 is_win = system == "windows"
 node_bin_path = os.path.join(
-    root_dir, "../buildtools/node" if is_win else "../buildtools/node/bin")
+    lynx_dir, "buildtools/node" if is_win else "buildtools/node/bin")
+if not os.path.exists(node_bin_path):
+    node_bin_path = os.path.join(
+        root_dir, "buildtools/node" if is_win else "buildtools/node/bin")
 
 
 def get_pnpm_env():

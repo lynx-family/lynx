@@ -2,9 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "lynx/core/public/vsync_observer_interface.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
+#include "core/public/vsync_observer_interface.h"
+#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

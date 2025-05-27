@@ -135,7 +135,7 @@ base_devtool_source_set("base_devtool") {
 base_devtool_source_set("base_devtool_common") {
   sources = []
   if (!enable_unittests) {
-    include_dirs = [ "//lynx/third_party/debug_router/src/" ]
+    include_dirs = [ "../../../third_party/debug_router/src/" ]
     sources += common_devtool_shared_sources
   } else {
     not_needed(common_devtool_shared_sources)

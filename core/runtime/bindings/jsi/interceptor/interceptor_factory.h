@@ -8,9 +8,9 @@
 #include <memory>
 #include <string>
 
+#include "base/include/debug/lynx_error.h"
 #include "core/public/prop_bundle.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
-#include "lynx/base/include/debug/lynx_error.h"
 
 namespace lynx {
 namespace piper {

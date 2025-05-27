@@ -8,7 +8,7 @@
 #include <string>
 
 #include "base/include/value/base_value.h"
-#include "lynx/core/public/pub_value.h"
+#include "core/public/pub_value.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 
 namespace lynx {

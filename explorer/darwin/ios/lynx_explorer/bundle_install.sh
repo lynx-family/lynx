@@ -72,16 +72,11 @@ handle_options "$@"
 build_card_resources
 
 pushd $root_dir
-gn_root_dir=$root_dir/../
-gn_root_dir=$(readlink -f $gn_root_dir)
+gn_root_dir=$(readlink -f $root_dir)
+echo "gn_root_dir: $gn_root_dir"
 generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param"
 echo $generate_ios_podspec_cmd
 eval "$generate_ios_podspec_cmd"
-for file in ./*.podspec; do
-    if [ -e "$file" ]; then
-        mv "$file" "$gn_root_dir"
-    fi
-done
 popd
 
 # prepare source cache

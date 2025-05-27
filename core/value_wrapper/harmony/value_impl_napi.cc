@@ -4,9 +4,9 @@
 
 #include "core/value_wrapper/harmony/value_impl_napi.h"
 
+#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "core/base/js_constants.h"
-#include "lynx/base/include/log/logging.h"
 
 namespace lynx {
 namespace pub {

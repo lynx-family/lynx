@@ -9,8 +9,8 @@
 #include <string>
 
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
-#include "lynx/core/shell/lynx_runtime_proxy_impl.h"
 
 namespace lynx {
 namespace shell {

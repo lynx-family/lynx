@@ -15,10 +15,10 @@
 
 #include "base/include/expected.h"
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "core/runtime/bindings/jsi/modules/android/callback_impl.h"
 #include "core/runtime/bindings/jsi/modules/android/java_attribute_descriptor.h"
 #include "core/runtime/bindings/jsi/modules/android/method_invoker.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
-#include "lynx/core/runtime/bindings/jsi/modules/android/callback_impl.h"
 
 namespace lynx {
 

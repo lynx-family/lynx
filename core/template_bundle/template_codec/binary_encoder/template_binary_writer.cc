@@ -1,7 +1,7 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "lynx/core/template_bundle/template_codec/binary_encoder/template_binary_writer.h"
+#include "core/template_bundle/template_codec/binary_encoder/template_binary_writer.h"
 
 #include <dirent.h>
 #include <stdio.h>

@@ -19,26 +19,26 @@ end
 
 target 'LynxExplorer' do
   use_frameworks! :linkage => :static
-  pod 'Lynx', :path => '../../../../..', :subspecs => [
+  pod 'Lynx', :path => '../../../..', :subspecs => [
    'Framework',
    'Replay',
   ],:testspecs => [ 'UnitTests' ]
 
-  pod 'LynxDevtool', :path => '../../../../..', :subspecs => [
+  pod 'LynxDevtool', :path => '../../../..', :subspecs => [
    'Framework',
    'LynxRecorder',
   ],:testspecs => [ 'UnitTests' ]
 
-  pod 'BaseDevtool', :path => '../../../../..'
+  pod 'BaseDevtool', :path => '../../../..'
 
-  pod 'LynxService', :path => '../../../../..', :subspecs => [
+  pod 'LynxService', :path => '../../../..', :subspecs => [
     'Image',
     'Log',
     'Devtool',
     'Http',
   ]
 
-  pod 'XElement', :path => '../../../../..', :subspecs => [
+  pod 'XElement', :path => '../../../..', :subspecs => [
     'Behavior',
   ]
 

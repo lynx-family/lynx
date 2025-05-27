@@ -2,13 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
+#include "core/runtime/piper/js/runtime_lifecycle_observer_impl.h"
 
 #include <utility>
 
 #include "base/include/fml/task_runner.h"
 #include "base/include/log/logging.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/napi.h"

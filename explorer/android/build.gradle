@@ -21,6 +21,7 @@ buildscript {
         abiList = value? value.toString().split(",") : ["arm64-v8a"]
 
         pythonExec = project.file(python_exec).absolutePath
+        grandparentDir = projectDir.parentFile.parentFile
 
         if (project.hasProperty("IntegrationTest")) {
             buildIntegrationDemo = true
@@ -99,7 +100,7 @@ ext.getFlavorNamesAndBuildTypes = { Project project ->
 ext.writeGnArgs = { String gnArgs ->
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#')
+        commandLine pythonExec, "tools/android_tools/write_gn_args.py", "--gn-args", gnArgs.replaceAll('"', '#'), "--root", "${grandparentDir.absolutePath}"
     }
 }
 
@@ -138,7 +139,7 @@ task generateAllGnCmakeTargets {
     }
     exec {
         workingDir "../../"
-        commandLine pythonExec, "tools/android_tools/generate_cmake_scripts_by_gn.py"
+        commandLine pythonExec, "tools/android_tools/generate_cmake_scripts_by_gn.py", "--root", "${grandparentDir.absolutePath}"
         println commandLine
     }
 }
@@ -188,7 +189,8 @@ task clean(type: Delete) {
     doLast {
         exec {
             workingDir "../../"
-            commandLine pythonExec, "tools/android_tools/generate_cmake_scripts_by_gn.py", "--clean"
+            def grandparentDir = projectDir.parentFile.parentFile
+            commandLine pythonExec, "tools/android_tools/generate_cmake_scripts_by_gn.py", "--root", "${ grandparentDir.absolutePath}", "--clean"
             println commandLine
         }
     }

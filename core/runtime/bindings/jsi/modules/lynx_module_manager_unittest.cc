@@ -13,7 +13,6 @@
 #include "core/runtime/bindings/jsi/modules/lynx_module_timing.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "lynx/core/public/jsb/native_module_factory.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

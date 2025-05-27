@@ -8,7 +8,7 @@
 #import <Lynx/LynxLayoutNodeManager.h>
 #import "LynxMeasureFuncDarwin.h"
 
-#include "lynx/core/public/layout_node_manager.h"
+#include "core/public/layout_node_manager.h"
 
 using namespace lynx::tasm;
 

@@ -11,7 +11,7 @@
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/public/vsync_observer_interface.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 namespace lynx {

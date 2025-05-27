@@ -8,10 +8,11 @@ if [ -d "out" ]; then
   rm -rf out
 fi
 
+root_dir=$(git rev-parse --show-toplevel)
 # generate cmake 
-python3 lynx/tools/gn_tools/gn_wrapper.py gen out/gn_cmake_test --args="enable_unittests=true use_flutter_cxx=false" --ide=cmake --cmake-target="//lynx/tools/gn_tools/test:cmake_test"
+python3 lynx/tools/gn_tools/gn_wrapper.py gen out/gn_cmake_test --root=$root_dir --args="enable_unittests=true use_flutter_cxx=false" --ide=cmake --cmake-target="//lynx/tools/gn_tools/test:cmake_test"
 # generate podspec 
-python3 lynx/tools/gn_tools/gn_wrapper.py gen out/gn_podspec_test --args="enable_unittests=true use_flutter_cxx=false" --ide=podspec --podspec-target="//lynx/tools/gn_tools/test:podspec_test"
+python3 lynx/tools/gn_tools/gn_wrapper.py gen out/gn_podspec_test --root=$root_dir--args="enable_unittests=true use_flutter_cxx=false" --ide=podspec --podspec-target="//lynx/tools/gn_tools/test:podspec_test"
 
 # print cmake diff
 sed -i '8d' 'lynx/tools/gn_tools/test/CMakeLists_impl/gn_cmake_test/CMakeLists.txt'

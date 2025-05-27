@@ -11,8 +11,8 @@
 
 #include "base/include/closure.h"
 #include "core/public/lynx_runtime_proxy.h"
+#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 #include "core/shell/lynx_shell.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 
 namespace lynx {
 namespace shell {

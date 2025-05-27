@@ -13,6 +13,7 @@ def main():
   parser.add_argument('--cmake-target', help='Specifies a single cmake_target to convert into a cmake script')
   parser.add_argument('--podspec-target', help='Specifies a single podspec_target to convert into a podfile script')
   parser.add_argument('--args', help='GN build arguments')
+  parser.add_argument('--root', help='Specify the root directory of the project')
   args, remaining_args = parser.parse_known_args()
   
   file_type = args.ide
@@ -23,25 +24,25 @@ def main():
   gn_args = new_gn_args
   
   current_dir = os.path.dirname(os.path.abspath(__file__))
-  parent_dir = os.path.dirname(current_dir)
-  LYNX_DIR = os.path.dirname(parent_dir)
-  PROJECT_ROOT_DIR = os.path.dirname(LYNX_DIR)
+  root_dir = args.root
   gn_cmd = 'gn'
   if sys.platform.startswith(('cygwin', 'win')):
     gn_cmd += ".exe"
-  cmd = [f'{os.path.join(PROJECT_ROOT_DIR, "buildtools", "gn", gn_cmd)}']
+  cmd = [f'{os.path.join(root_dir, "buildtools", "gn", gn_cmd)}']
   for new_arg in remaining_args:
     cmd.append(new_arg.replace('"', '\\"'))
   cmd.append('--args=%s' % ' '.join(gn_args))
   
   if file_type == "cmake":
     cmd.append('--ide=json')
-    cmd.append(f'--json-ide-script=//lynx/tools/gn_tools/gn_to_cmake_script.py')
+    gn_to_cmake_script_path = os.path.join(current_dir, "gn_to_cmake_script.py")
+    cmd.append(f'--json-ide-script={gn_to_cmake_script_path}')
     if cmake_target:
       cmd.append(f"--json-ide-script-args={cmake_target}")
   elif file_type == "podspec":
     cmd.append('--ide=json')
-    cmd.append(f'--json-ide-script=//lynx/tools/gn_tools/gn_to_podspec_script.py')
+    gn_to_podspec_script_path = os.path.join(current_dir, "gn_to_podspec_script.py")
+    cmd.append(f'--json-ide-script={gn_to_podspec_script_path}')
     if podspec_target:
       cmd.append(f"--json-ide-script-args={podspec_target}")
   else:

@@ -8,9 +8,9 @@
 #include <utility>
 
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_layout_proxy.h"
-#include "lynx/core/renderer/ui_wrapper/layout/layout_context.h"
 
 namespace lynx {
 namespace shell {

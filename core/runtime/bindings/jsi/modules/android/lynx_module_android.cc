@@ -31,7 +31,7 @@ bool RegisterJNIForLynxModuleWrapper(JNIEnv* env) {
 }  // namespace jni
 }  // namespace lynx
 
-#include "lynx/core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
+#include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 namespace lynx {
 namespace piper {
 

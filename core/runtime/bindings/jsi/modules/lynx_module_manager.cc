@@ -4,8 +4,8 @@
 
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 
+#include "core/runtime/bindings/jsi/interceptor/interceptor_factory.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module.h"
-#include "lynx/core/runtime/bindings/jsi/interceptor/interceptor_factory.h"
 
 namespace lynx {
 namespace piper {

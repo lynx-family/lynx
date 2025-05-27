@@ -9,11 +9,11 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "base/include/debug/lynx_error.h"
+#include "core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
 #include "core/runtime/jsi/jsi.h"
-#include "lynx/base/include/closure.h"
-#include "lynx/core/runtime/bindings/jsi/modules/lynx_jsi_module_callback.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

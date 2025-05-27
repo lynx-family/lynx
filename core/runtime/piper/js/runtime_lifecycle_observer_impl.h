@@ -12,9 +12,9 @@
 #include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
+#include "core/public/runtime_lifecycle_observer.h"
 #include "core/public/vsync_observer_interface.h"
-#include "lynx/core/public/runtime_lifecycle_observer.h"
-#include "lynx/core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
+#include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"
 
 namespace Napi {
 class Env;

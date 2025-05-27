@@ -114,6 +114,12 @@ def write_content_to_file(file_path, content):
   with open(file_path, 'w') as file:
     file.write(content)
 
+def get_relative_path(path1, path2):
+    return os.path.relpath(path2, start=os.path.dirname(path1))
+
+def convert_to_relative_path(root_path, src_path, des_path):
+    return get_relative_path(os.path.join(root_path, src_path), os.path.join(root_path, des_path))
+
 def generate_register_header(java_file, function_name, register_header_path):
   # generate XXX_register_jni.h which contains RegisterJNIForXXX method.
   guard_string = java_file.replace('/', '_')

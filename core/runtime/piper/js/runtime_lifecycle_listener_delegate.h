@@ -9,8 +9,8 @@
 
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
+#include "core/public/runtime_lifecycle_observer.h"
 #include "core/public/vsync_observer_interface.h"
-#include "lynx/core/public/runtime_lifecycle_observer.h"
 
 namespace lynx {
 namespace runtime {

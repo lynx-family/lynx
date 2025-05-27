@@ -8,9 +8,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "core/public/pub_value.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "lynx/core/public/pub_value.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/devtool_env_harmony.h"
 
 namespace lynx {

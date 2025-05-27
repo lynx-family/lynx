@@ -225,7 +225,7 @@ def main():
   sysroot = args.sysroot
 
   file_path = os.path.dirname(os.path.abspath(__file__))
-  root_path = os.path.join(file_path, '../..')
+  root_path = os.path.join(file_path, '..')
   result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot)
   if result != 0:
     return result

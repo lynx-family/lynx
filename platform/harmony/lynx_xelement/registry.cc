@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "lynx/platform/harmony/lynx_xelement/registry.h"
+#include "platform/harmony/lynx_xelement/registry.h"
 
-#include "lynx/platform/harmony/lynx_xelement/input/input_shadow_node.h"
-#include "lynx/platform/harmony/lynx_xelement/input/ui_input.h"
-#include "lynx/platform/harmony/lynx_xelement/input/ui_textarea.h"
+#include "platform/harmony/lynx_xelement/input/input_shadow_node.h"
+#include "platform/harmony/lynx_xelement/input/ui_input.h"
+#include "platform/harmony/lynx_xelement/input/ui_textarea.h"
 
 namespace lynx {
 namespace tasm {

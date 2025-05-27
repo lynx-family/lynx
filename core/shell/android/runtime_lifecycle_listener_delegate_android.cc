@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "lynx/core/shell/android/runtime_lifecycle_listener_delegate_android.h"
+#include "core/shell/android/runtime_lifecycle_listener_delegate_android.h"
 
 #include "base/include/log/logging.h"
 #include "platform/android/lynx_android/src/main/jni/gen/RuntimeLifecycleListenerDelegate_jni.h"
