@@ -12,7 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxTextView : UIView
 
-@property(nonatomic, strong) CALayer *contentLayer;
 @property(nonatomic, weak) LynxUIText *ui;
 @property(nonatomic, weak) LynxTextRenderer *textRenderer;
 @property(nonatomic, assign) UIEdgeInsets border;

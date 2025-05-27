@@ -47,9 +47,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (CGSize)textsize;
 - (CGFloat)maxFontSize;
 - (CGFloat)textContentOffsetX;
+- (CGRect)textBoundingRect;
 
 - (void)drawRect:(CGRect)bounds padding:(UIEdgeInsets)padding border:(UIEdgeInsets)border;
 - (void)genSubSpan;
+- (void)setOverflowOffset:(CGPoint)offset;
 
 /// ensure LayoutManager layout text
 - (void)ensureTextRenderLayout;

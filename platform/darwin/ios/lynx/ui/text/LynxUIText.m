@@ -89,29 +89,18 @@ LYNX_PROPS_GROUP_DECLARE(
 }
 
 - (void)_lynxUIRequestDisplay {
-  self.view.layer.contents = nil;
-  [self.view.contentLayer setContents:nil];
   [_overflow_layer setContents:nil];
-
-  if (self.renderer == nil || self.frame.size.width <= 0 || self.frame.size.height <= 0) {
+  if (self.renderer == nil || ((self.frame.size.width <= 0 || self.frame.size.height <= 0) &&
+                               self.overflow == OVERFLOW_HIDDEN_VAL)) {
     return;
   }
-  [self requestDisplayAsynchronsly];
-}
 
-- (void)adjustContentLayerPosition {
-  CGPoint offset = [self overflowLayerOffset];
-  self.view.contentLayer.frame =
-      CGRectMake(-offset.x, -offset.y, self.frameSize.width, self.frameSize.height);
-  [self.view setOverflowOffset:offset];
+  [self calcOverflowLayerFrame];
+  [self requestDisplayAsynchronously];
 }
 
 - (void)frameDidChange {
   [super frameDidChange];
-  self.view.contentLayer.frame = CGRectMake(0, 0, self.frameSize.width, self.frameSize.height);
-  self.view.border = self.border;
-  self.view.padding = self.padding;
-
   _isDirty = true;
   [self requestDisplay];
 }
@@ -192,29 +181,29 @@ LYNX_PROPS_GROUP_DECLARE(
   }
 }
 
-- (void)requestDisplayAsynchronsly {
+- (void)requestDisplayAsynchronously {
   __weak typeof(self) weakSelf = self;
   [self displayAsyncWithCompletionBlock:^(UIImage *_Nonnull image) {
-    CALayer *layer = nil;
+    CALayer *layer = [weakSelf getOverflowLayer];
     if (weakSelf.overflow != OVERFLOW_HIDDEN_VAL) {
-      layer = [weakSelf getOverflowLayer];
       CGPoint offset = [weakSelf overflowLayerOffset];
       layer.frame = CGRectMake(-offset.x, -offset.y, image.size.width, image.size.height);
     } else {
-      layer = weakSelf.view.contentLayer;
+      layer.frame = CGRectMake(0.f, 0.f, image.size.width, image.size.height);
     }
     layer.contents = (id)image.CGImage;
-    layer.contentsScale = [LynxUIUnitUtils screenScale];
   }];
 }
 
 - (CGSize)frameSize {
   if (self.overflow != OVERFLOW_HIDDEN_VAL) {
-    CGSize size = [_renderer textsize];
-    CGFloat width = size.width > self.frame.size.width ? size.width : self.frame.size.width;
-    CGFloat height = size.height > self.frame.size.height ? size.height : self.frame.size.height;
-    CGPoint offset = [self overflowLayerOffset];
-    return CGSizeMake(width + 2 * offset.x, height + 2 * offset.y);
+    CGRect textBoundingRect = [self.renderer textBoundingRect];
+    CGSize size = CGSizeMake(
+        MAX(self.frame.size.width, textBoundingRect.size.width + self.padding.left +
+                                       self.padding.right + self.border.left + self.border.right),
+        MAX(self.frame.size.height,
+            textBoundingRect.size.height + self.padding.top + self.border.top));
+    return size;
   }
   return self.frame.size;
 }
@@ -232,9 +221,7 @@ LYNX_PROPS_GROUP_DECLARE(
   if (!_overflow_layer) {
     [self addOverflowLayer];
   }
-  CGPoint offset = self.overflowLayerOffset;
-  _overflow_layer.frame =
-      CGRectMake(-offset.x, -offset.y, self.frameSize.width, self.frameSize.height);
+
   return _overflow_layer;
 }
 
@@ -270,16 +257,12 @@ LYNX_PROPS_GROUP_DECLARE(
 }
 
 - (CGPoint)overflowLayerOffset {
-  if (self.overflow == 0x00 || _renderer == nil) {
+  if (self.overflow == OVERFLOW_HIDDEN_VAL || _renderer == nil) {
     return CGPointZero;
   }
-  // TODO use a more suitable offset?
-  if ([self enableLayerRender]) {
-    // we use half fontSize to adjust the layer ,for avoiding text clip issue
-    return CGPointMake(0, _renderer.maxFontSize / 2);
-  }
 
-  return CGPointMake(0, _renderer.maxFontSize);
+  CGRect textBoundingRect = [self.renderer textBoundingRect];
+  return CGPointMake(0.f, -textBoundingRect.origin.y);
 }
 
 + (void)drawRect:(CGRect)bounds withParameters:(id)drawParameters {
@@ -343,14 +326,35 @@ LYNX_PROPS_GROUP_DECLARE(
   }
   [self updateAttachmentsFrame];
 
+  self.view.border = self.border;
+  self.view.padding = self.padding;
+
   if ([self enableLayerRender]) {
-    [self adjustContentLayerPosition];
-    [self.view.contentLayer setNeedsDisplay];
+    if (self.overflow != OVERFLOW_HIDDEN_VAL) {
+      CALayer *layer = [self getOverflowLayer];
+      layer.contents = nil;
+      [layer setNeedsDisplay];
+    } else {
+      [self.view setNeedsDisplay];
+    }
+    [self calcOverflowLayerFrame];
   } else {
     [self _lynxUIRequestDisplay];
   }
+}
 
-  _isDirty = false;
+- (void)calcOverflowLayerFrame {
+  CGPoint overflowOffset = [self overflowLayerOffset];
+  [self.view setOverflowOffset:overflowOffset];
+
+  if (!_overflow_layer) {
+    return;
+  }
+
+  CGSize size = [self frameSize];
+  CGRect overflowLayerFrame =
+      CGRectMake(-overflowOffset.x, -overflowOffset.y, size.width, size.height);
+  _overflow_layer.frame = overflowLayerFrame;
 }
 
 #pragma mark prop setter

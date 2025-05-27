@@ -3674,8 +3674,10 @@ public class LynxTextRenderer : NSObject {
   public CGSize LynxTextRenderer::textsize();
   public CGFloat LynxTextRenderer::maxFontSize();
   public CGFloat LynxTextRenderer::textContentOffsetX();
+  public CGRect LynxTextRenderer::textBoundingRect();
   public void LynxTextRenderer::drawRect:padding:border:(CGRect bounds,[padding] UIEdgeInsets padding,[border] UIEdgeInsets border);
   public void LynxTextRenderer::genSubSpan();
+  public void LynxTextRenderer::setOverflowOffset:(CGPoint offset);
   public void LynxTextRenderer::ensureTextRenderLayout();
 }
 
@@ -3757,7 +3759,6 @@ public class LynxTextUtils : NSObject {
 }
 
 public class LynxTextView : UIView {
-  public CALayer* LynxTextView::contentLayer contentLayer;
   public LynxUIText* LynxTextView::ui ui;
   public LynxTextRenderer* LynxTextView::textRenderer textRenderer;
   public UIEdgeInsets LynxTextView::border border;
@@ -4829,8 +4830,8 @@ public protocol LynxUITarget-p : <NSObject> {
 
 public class LynxUIText : LynxUI, <LynxTextView> {
   public LynxTextRenderer* LynxUIText::renderer renderer;
-  public CGPoint LynxUIText::overflowLayerOffset overflowLayerOffset;
   public CALayer * LynxUIText::getOverflowLayer();
+  public BOOL LynxUIText::enableLayerRender();
 }
 
 public class LynxUIUnitTestUtils : NSObject {

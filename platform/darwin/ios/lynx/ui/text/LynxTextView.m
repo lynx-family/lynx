@@ -12,7 +12,7 @@
 #import <Lynx/LynxWeakProxy.h>
 
 #pragma mark - LynxTextLayerRender
-@interface LynxTextLayerRender : NSObject <CALayerDelegate>
+@interface LynxTextLayerRender : NSObject
 @property(nonatomic, weak) LynxTextRenderer *textRenderer;
 @property(nonatomic, assign) UIEdgeInsets border;
 @property(nonatomic, assign) UIEdgeInsets padding;
@@ -21,18 +21,6 @@
 @end
 
 @implementation LynxTextLayerRender
-
-- (void)drawLayer:(CALayer *)layer inContext:(CGContextRef)ctx {
-  LynxTextRenderer *strongRender = self.textRenderer;
-
-  CGRect frame = CGRectMake(_overflowOffset.x, _overflowOffset.y, layer.frame.size.width,
-                            layer.frame.size.height);
-
-  UIGraphicsPushContext(ctx);
-  [strongRender drawRect:frame padding:self.padding border:self.border];
-  UIGraphicsPopContext();
-}
-
 @end
 
 #pragma mark - LynxTextView
@@ -85,17 +73,7 @@ static const float kResponseTouchRadius = 20.f;
 - (instancetype)init {
   self = [super init];
   if (self) {
-    self.contentLayer = [LynxLayer new];
-    self.contentLayer.contentsScale = [[UIScreen mainScreen] scale];
-    self.layer.contentsScale = [[UIScreen mainScreen] scale];
-    // https://developer.apple.com/documentation/quartzcore/calayer/1410974-drawsasynchronously?language=objc
-    // make drawInContext method queued draw command and execute in background thread
-    self.contentLayer.drawsAsynchronously = YES;
-
-    [self.layer addSublayer:self.contentLayer];
-
     _layerRender = [LynxTextLayerRender new];
-    self.contentLayer.delegate = _layerRender;
 
     self.enableTextSelection = self.enableCustomContextMenu = self.enableCustomTextSelection = NO;
     self.selectionStart = self.selectionEnd = self.lastSelectionStart = self.lastSelectionEnd = -1;
@@ -111,9 +89,19 @@ static const float kResponseTouchRadius = 20.f;
   return self;
 }
 
+- (void)drawRect:(CGRect)rect {
+  if (self.ui.overflow != OVERFLOW_HIDDEN_VAL || !self.ui.enableLayerRender ||
+      !_layerRender.textRenderer) {
+    return;
+  }
+
+  [super drawRect:rect];
+  [_layerRender.textRenderer drawRect:rect padding:_layerRender.padding border:_layerRender.border];
+}
+
 - (void)initSelectionLayers {
   self.selectionLayer = [LynxLayer new];
-  [self.layer insertSublayer:self.selectionLayer below:self.contentLayer];
+  [self.layer addSublayer:self.selectionLayer];
 
   self.startDot = [LynxLayer new];
   self.endDot = [LynxLayer new];
@@ -150,6 +138,7 @@ static const float kResponseTouchRadius = 20.f;
 
 - (void)setOverflowOffset:(CGPoint)offset {
   _layerRender.overflowOffset = offset;
+  [_layerRender.textRenderer setOverflowOffset:offset];
 }
 
 - (NSString *)description {

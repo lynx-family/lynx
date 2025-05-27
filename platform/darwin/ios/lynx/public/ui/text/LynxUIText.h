@@ -13,9 +13,10 @@ NS_ASSUME_NONNULL_BEGIN
 @interface LynxUIText : LynxUI <LynxTextView *>
 
 @property(nonatomic, readonly, nullable) LynxTextRenderer *renderer;
-@property(nonatomic, readonly) CGPoint overflowLayerOffset;
 
 - (CALayer *)getOverflowLayer;
+
+- (BOOL)enableLayerRender;
 
 @end
 

@@ -42,6 +42,7 @@
   NSTextStorage *_textStorage;
   NSTextContainer *_textContainer;
   CGSize _truncatedSize;
+  CGRect _textBoundingRect;
 }
 
 - (instancetype)initWithAttributedString:(NSAttributedString *)attrStr
@@ -256,6 +257,9 @@
                     }];
 
   self.baseline = ((LineSpacingAdaptation *)_layoutManager.delegate).baseline;
+  NSRange glyphRange = [_layoutManager glyphRangeForTextContainer:_textContainer];
+  _textBoundingRect = [_layoutManager boundingRectForGlyphRange:glyphRange
+                                                inTextContainer:_textContainer];
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
 }
 
@@ -801,6 +805,10 @@
   return _textSize;
 }
 
+- (CGRect)textBoundingRect {
+  return _textBoundingRect;
+}
+
 - (CGFloat)maxFontSize {
   // TODO: (linxs)check performance and run times
   if (_maxFontSize == 0) {
@@ -847,18 +855,19 @@
 - (void)drawRect:(CGRect)bounds padding:(UIEdgeInsets)padding border:(UIEdgeInsets)border {
   if ([_layoutManager isKindOfClass:[LynxTextLayoutManager class]]) {
     ((LynxTextLayoutManager *)_layoutManager).isGradientOpt = _isGradientOpt;
-    NSRange glyphRange = [_layoutManager glyphRangeForTextContainer:_textContainer];
-    CGRect textBoundingRect = [_layoutManager boundingRectForGlyphRange:glyphRange
-                                                        inTextContainer:_textContainer];
-    [(id)_layoutManager setOverflowOffset:CGPointMake(bounds.origin.x + textBoundingRect.origin.x,
-                                                      bounds.origin.y + textBoundingRect.origin.y)];
-    // _calculatedSize.width is larger than textBoundingRect.size.width when font style is italic
     [(id)_layoutManager
         setTextBoundingRectSize:CGSizeMake(
-                                    MAX(_calculatedSize.width, textBoundingRect.size.width),
-                                    MAX(_calculatedSize.height, textBoundingRect.size.height))];
+                                    MAX(_calculatedSize.width, _textBoundingRect.size.width),
+                                    MAX(_calculatedSize.height, _textBoundingRect.size.height))];
   }
+
   [self drawTextRect:bounds padding:padding border:border];
+}
+
+- (void)setOverflowOffset:(CGPoint)offset {
+  if ([_layoutManager isKindOfClass:[LynxTextLayoutManager class]]) {
+    [(id)_layoutManager setOverflowOffset:offset];
+  }
 }
 
 - (NSTextContainer *)createTextContainerWithSize:(CGSize)inputSize spec:(LynxLayoutSpec *)spec {
