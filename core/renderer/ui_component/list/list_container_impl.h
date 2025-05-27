@@ -110,7 +110,7 @@ class ListContainerImpl : public ListContainer::Delegate {
     list_event_manager_->SendDebugEvent(detail);
   }
   void MarkShouldFlushFinishLayout(bool has_layout) {
-    should_flush_finish_layout_ = has_layout;
+    should_flush_finish_layout_ |= has_layout;
   }
   bool should_flush_finish_layout() const {
     return should_flush_finish_layout_;
