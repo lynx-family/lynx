@@ -116,8 +116,9 @@ class TASMAddon : public Napi::Addon<TASMAddon> {
     bool result = reader.Decode();
     if (result) {
       // decode success.
+      auto template_bundle = reader.GetTemplateBundle();
       std::string res = lynx::tasm::LynxTemplateBundleConverter::
-          ConvertTemplateBundleToSerializedString(reader.GetTemplateBundle());
+          ConvertTemplateBundleToSerializedString(template_bundle);
       obj.Set("status", 0);
       obj.Set("result", std::move(res));
       return obj;

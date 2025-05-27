@@ -509,8 +509,8 @@ bool LynxBinaryBaseTemplateReader::DecodeSpecificSection(
       page_config_offset_ = stream_->offset();
       DECODE_STDSTR(config_str);
       EnsurePageConfig();
-      ERROR_UNLESS(
-          config_decoder_->DecodePageConfig(config_str, page_configs_));
+      ERROR_UNLESS(config_decoder_->DecodePageConfig(std::move(config_str),
+                                                     page_configs_));
       break;
     }
     case BinarySection::DYNAMIC_COMPONENT: {

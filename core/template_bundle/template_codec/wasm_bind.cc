@@ -27,8 +27,9 @@ lynx::tasm::DecodeResult decode(uintptr_t binaryPtr, size_t length) {
   bool result = reader.Decode();
   if (result) {
     // decode success.
+    auto template_bundle = reader.GetTemplateBundle();
     std::string res = lynx::tasm::LynxTemplateBundleConverter::
-        ConvertTemplateBundleToSerializedString(reader.GetTemplateBundle());
+        ConvertTemplateBundleToSerializedString(template_bundle);
     return {.status = 0, .result = std::move(res)};
   } else {
     // decode failed.

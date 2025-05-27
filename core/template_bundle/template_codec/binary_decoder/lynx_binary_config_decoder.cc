@@ -300,7 +300,7 @@ static constexpr const char* const kEnableAsyncFlushSubtree =
     "enableAsyncResolveSubtree";
 
 bool LynxBinaryConfigDecoder::DecodePageConfig(
-    const std::string& config_str, std::shared_ptr<PageConfig>& page_config) {
+    std::string config_str, std::shared_ptr<PageConfig>& page_config) {
   rapidjson::Document doc;
   if (doc.Parse(config_str.c_str()).HasParseError()) {
     LOGE("DecodePageConfig Error!");
@@ -1145,7 +1145,7 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   }
 
   config_helper_.HandlePageConfig(doc, page_config);
-
+  page_config->SetOriginalConfig(std::move(config_str));
   ReportGlobalFeatureSwitch(page_config);
   return true;
 }

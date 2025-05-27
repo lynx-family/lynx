@@ -33,7 +33,7 @@ class LynxBinaryConfigDecoder {
   LynxBinaryConfigDecoder(LynxBinaryConfigDecoder&&) = delete;
   LynxBinaryConfigDecoder& operator=(LynxBinaryConfigDecoder&&) = delete;
 
-  bool DecodePageConfig(const std::string& config_str,
+  bool DecodePageConfig(std::string config_str,
                         std::shared_ptr<PageConfig>& page_config);
   bool DecodeComponentConfig(
       const std::string& config_str,

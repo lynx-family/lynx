@@ -15,7 +15,7 @@ namespace tasm {
 class LynxTemplateBundleConverter final {
  public:
   static std::string ConvertTemplateBundleToSerializedString(
-      const LynxTemplateBundle& template_bundle);
+      LynxTemplateBundle& template_bundle);
 };
 }  // namespace tasm
 }  // namespace lynx

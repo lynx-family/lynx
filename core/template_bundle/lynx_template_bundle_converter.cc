@@ -65,7 +65,7 @@ void SerializeMTSBundle(
 
 std::string
 LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
-    const LynxTemplateBundle &template_bundle) {
+    LynxTemplateBundle &template_bundle) {
   rapidjson::Document main_document;
   main_document.SetObject();
   rapidjson::Document::AllocatorType &allocator = main_document.GetAllocator();
@@ -81,6 +81,11 @@ LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
                           template_bundle.enable_css_variable_, allocator);
   main_document.AddMember("enable-css-parser",
                           template_bundle.enable_css_parser_, allocator);
+
+  // put page config;
+  auto page_config = template_bundle.GetPageConfig();
+  main_document.AddMember("page-config", page_config->GetOriginalConfig(),
+                          allocator);
 
   // css
   rapidjson::Document css_document(&allocator);

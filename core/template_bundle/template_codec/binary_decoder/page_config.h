@@ -172,6 +172,12 @@ class PageConfig final : public EntryConfig {
     return map;
   }
 
+  inline void SetOriginalConfig(std::string config_str) {
+    original_config_ = std::move(config_str);
+  }
+
+  inline std::string GetOriginalConfig() { return original_config_; }
+
   inline void SetVersion(const std::string& version) { page_version = version; }
 
   inline std::string GetVersion() { return page_version; }
@@ -1474,6 +1480,8 @@ class PageConfig final : public EntryConfig {
   bool need_post_to_platform_{true};
 
   TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
+
+  std::string original_config_{};
 
   template <typename T>
   using PageConfigSetter = void (PageConfig::*)(T);
