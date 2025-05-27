@@ -437,8 +437,10 @@ void ListContainerImpl::OnLayoutChildren(const PipelineOptions& options) {
       need_recycle_all_item_holders_before_layout_ = false;
     }
     if (intercept_depth_ == 0) {
-      // reset should_flush_finish_layout_ flag to false.
-      should_flush_finish_layout_ = false;
+      // Note: we should reset should_flush_finish_layout_ to
+      // options->has_layout to make sure invoke FinishLayoutOperation() to
+      // trigger layoutDidfinished lifecycle of all list's children.
+      should_flush_finish_layout_ = options.has_layout;
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
       } else {
