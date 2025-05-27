@@ -78,7 +78,7 @@ public final class TemplateBundle {
   private static TemplateBundle fromNative(long nativePtr) {
     // TODO(nihao.royal) add template size & template url for recycled TemplateBundle.
     String errMsg = nativePtr == 0 ? "native TemplateBundle doesn't exist" : null;
-    return new TemplateBundle(nativePtr, 0, "", errMsg);
+    return new TemplateBundle(nativePtr, 0, null, errMsg);
   }
 
   private void initWithOption(TemplateBundleOption option) {
