@@ -68,6 +68,24 @@ void UnmergeToAsyncEngineIfNeeded(
   }
 }
 
+// Limit the number of Engine releases in asynchronous threads.
+bool TryIncrementAsyncDestroyCounter(std::atomic<int>& counter) {
+  int current = counter.load();
+  int max_limit = tasm::LynxEnv::GetInstance().EnableAsyncDestroyEngine();
+  while (current < max_limit) {
+    if (counter.compare_exchange_weak(current, current + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void DecrementAsyncDestroyCounter(std::atomic<int>& counter) {
+  int current = counter.load();
+  while (current > 0 && !counter.compare_exchange_weak(current, current - 1)) {
+  }
+}
+
 }  // namespace
 
 int32_t LynxShell::NextInstanceId() {
@@ -143,13 +161,17 @@ void LynxShell::Destroy() {
 
   facade_reporter_actor_->Act([](auto& facade) { facade = nullptr; });
 
-  if (tasm::LynxEnv::GetInstance().EnableAsyncDestroyEngine()) {
+  static std::atomic<int32_t> async_destroy_counter{0};
+  if (TryIncrementAsyncDestroyCounter(async_destroy_counter)) {
     DetachEngineFromUIThread();
   }
+
   engine_actor_->Act([instance_id = instance_id_](auto& engine) {
     engine = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
+    DecrementAsyncDestroyCounter(async_destroy_counter);
   });
+
   layout_actor_->Act([instance_id = instance_id_](auto& layout) {
     layout = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
