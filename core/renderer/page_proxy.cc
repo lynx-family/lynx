@@ -1156,10 +1156,6 @@ void PageProxy::HydrateOnFirstScreenIfPossible(
     TemplateAssembler *tasm, PipelineOptions &pipeline_options) {
   // radon ttml hydrate
   if (!IsReact() && HasSSRRadonPage() && HasRadonPage()) {
-    // Temporarily closed EnableFiberElementForRadonDiff in RadonElement SSR
-    // hydrating
-    element_manager()->SetEnableFiberElementForRadonDiff(
-        TernaryBool::FALSE_VALUE);
     radon_page_->Hydrate(pipeline_options);
     return;
   }

@@ -369,37 +369,6 @@ void TemplateAssembler::DidDecodeTemplate(
     component_loader_->SetEnableComponentAsyncDecode(
         page_config_->GetEnableComponentAsyncDecode());
   }
-  SetEnableQueryComponentSync(page_config_->GetEnableQueryComponentSync());
-
-  page_proxy()->element_manager()->SetEnableUIOperationOptimize(
-      page_config_->GetEnableUIOperationOptimize());
-
-  page_proxy()->element_manager()->SetEnableFiberElementForRadonDiff(
-      page_config_->GetEnableFiberElementForRadonDiff());
-
-  if (page_config_) {
-    bool enableParallelElementConfig =
-        (page_config_->GetPipelineSchedulerConfig() &
-         kEnableParallelElementMask) > 0;
-    if ((enableParallelElementConfig ||
-         page_config_->GetEnableParallelElement()) &&
-        page_proxy()
-            ->element_manager()
-            ->painting_context()
-            ->impl()
-            ->EnableParallelElement()) {
-      page_proxy()->element_manager()->SetEnableParallelElement(true);
-      bool enable_report_statistic =
-          lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
-              lynx::tasm::LynxEnv::Key::
-                  ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
-              false);
-      page_proxy()
-          ->element_manager()
-          ->SetEnableReportThreadedElementFlushStatistic(
-              enable_report_statistic);
-    }
-  }
 
   // Ensure that only one page config is set.
   if (!page_proxy_.HasSSRRadonPage()) {
@@ -452,13 +421,13 @@ void TemplateAssembler::OnVMExecute() {
 }
 
 void TemplateAssembler::DidVMExecute() {
-  // timing actions
-  tasm::TimingCollector::Instance()->MarkFrameworkTiming(
-      tasm::timing::kVmExecuteEnd);
   // Ensure that only one page config is set
   if (!page_proxy_.HasSSRRadonPage()) {
     OnPageConfigDecoded(page_config_);
   }
+  // timing actions
+  tasm::TimingCollector::Instance()->MarkFrameworkTiming(
+      tasm::timing::kVmExecuteEnd);
 }
 
 /**
@@ -2715,25 +2684,49 @@ void TemplateAssembler::FilterI18nResource(const lepus::Value& channel,
 void TemplateAssembler::OnPageConfigDecoded(
     const std::shared_ptr<PageConfig>& config) {
   delegate_.OnPageConfigDecoded(config);
+  SetEnableQueryComponentSync(config->GetEnableQueryComponentSync());
+
+  const auto& element_manager = page_proxy()->element_manager();
+  element_manager->SetEnableUIOperationOptimize(
+      config->GetEnableUIOperationOptimize());
+
+  element_manager->SetEnableFiberElementForRadonDiff(
+      config->GetEnableFiberElementForRadonDiff());
+
+  bool enableParallelElementConfig =
+      (page_config_->GetPipelineSchedulerConfig() &
+       kEnableParallelElementMask) > 0;
+  if ((enableParallelElementConfig ||
+       page_config_->GetEnableParallelElement()) &&
+      element_manager->painting_context()->impl()->EnableParallelElement()) {
+    element_manager->SetEnableParallelElement(true);
+    bool enable_report_statistic =
+        lynx::tasm::LynxEnv::GetInstance().GetBoolEnv(
+            lynx::tasm::LynxEnv::Key::
+                ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
+            false);
+    element_manager->SetEnableReportThreadedElementFlushStatistic(
+        enable_report_statistic);
+  }
   if (!config->GetEnableMultiTouch()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_MULTI_TOUCH,
-        page_proxy()->element_manager()->GetInstanceId());
+        element_manager->GetInstanceId());
   }
   if (!config->GetEnableMultiTouchParamsCompatible()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_MULTI_TOUCH_PARAMS_COMPATIBLE,
-        page_proxy()->element_manager()->GetInstanceId());
+        element_manager->GetInstanceId());
   }
   if (!config->GetEnableTouchRefactor()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::OBJC_DISABLE_TOUCH_REFACTOR,
-        page_proxy()->element_manager()->GetInstanceId());
+        element_manager->GetInstanceId());
   }
   if (!config->GetEnableEventRefactor()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_DISABLE_EVENT_REFACTOR,
-        page_proxy()->element_manager()->GetInstanceId());
+        element_manager->GetInstanceId());
   }
   report::EventTracker::UpdateGenericInfoByPageConfig(instance_id_, config);
 }
