@@ -29,12 +29,11 @@ void PaintingContext::OnNodeReload(int tag) {
 
 void PaintingContext::InsertPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_INSERT_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->InsertPaintingNode(parent, child, index);
-  } else {
-    Enqueue(
-        [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-         index]() { platform_ref->InsertPaintingNode(parent, child, index); });
+  auto operation =
+      platform_impl_->GetPlatformRef()->GetInsertPaintingNodeOperation(
+          parent, child, index);
+  if (operation) {
+    Enqueue(std::move(operation));
   }
 }
 
@@ -49,13 +48,12 @@ void PaintingContext::InsertPaintingNode(int parent, int child, int index) {
 void PaintingContext::RemovePaintingNode(int parent, int child, int index,
                                          bool is_move) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_REMOVE_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->RemovePaintingNode(parent, child, index, is_move);
-  } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-             index, is_move]() {
-      platform_ref->RemovePaintingNode(parent, child, index, is_move);
-    });
+
+  auto operation =
+      platform_impl_->GetPlatformRef()->GetRemovePaintingNodeOperation(
+          parent, child, index, is_move);
+  if (operation) {
+    Enqueue(std::move(operation));
   }
 
   if (!is_move) {
@@ -66,26 +64,25 @@ void PaintingContext::RemovePaintingNode(int parent, int child, int index,
 
 void PaintingContext::DestroyPaintingNode(int parent, int child, int index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAINTING_CONTEXT_DESTROY_NODE);
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->DestroyPaintingNode(parent, child, index);
-  } else {
-    Enqueue(
-        [platform_ref = platform_impl_->GetPlatformRef(), parent, child,
-         index]() { platform_ref->DestroyPaintingNode(parent, child, index); });
+
+  auto operation =
+      platform_impl_->GetPlatformRef()->GetDestroyPaintingNodeOperation(
+          parent, child, index);
+  if (operation) {
+    Enqueue(std::move(operation));
   }
 }
 
 void PaintingContext::UpdateNodeReadyPatching() {
-  if (platform_impl_->HasEnableUIOperationBatching()) {
-    platform_impl_->UpdateNodeReadyPatching(patching_node_ready_ids_,
-                                            patching_node_remove_ids_);
-  } else {
-    Enqueue([platform_ref = platform_impl_->GetPlatformRef(),
-             ready_ids = patching_node_ready_ids_,
-             remove_ids = patching_node_remove_ids_]() {
-      platform_ref->UpdateNodeReadyPatching(std::move(ready_ids),
-                                            std::move(remove_ids));
-    });
+  if (patching_node_ready_ids_.empty() && patching_node_remove_ids_.empty()) {
+    return;
+  }
+
+  auto operation =
+      platform_impl_->GetPlatformRef()->GetUpdateNodeReadyPatchingOperation(
+          patching_node_ready_ids_, patching_node_remove_ids_);
+  if (operation) {
+    Enqueue(std::move(operation));
   }
 
   patching_node_ready_ids_.clear();

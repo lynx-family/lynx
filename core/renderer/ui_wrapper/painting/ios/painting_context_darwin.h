@@ -27,18 +27,20 @@ class PaintingContextDarwinRef : public PaintingCtxPlatformRef {
   explicit PaintingContextDarwinRef(LynxUIOwner* owner) : uiOwner_(owner) {}
   ~PaintingContextDarwinRef() override = default;
 
-  void InsertPaintingNode(int parent, int child, int index) override;
-  void RemovePaintingNode(int parent, int child, int index,
-                          bool is_move) override;
-  void DestroyPaintingNode(int parent, int child, int index) override;
+  base::closure GetInsertPaintingNodeOperation(int parent, int child,
+                                               int index) override;
+  base::closure GetRemovePaintingNodeOperation(int parent, int child, int index,
+                                               bool is_move) override;
+  base::closure GetDestroyPaintingNodeOperation(int parent, int child,
+                                                int index) override;
 
   void SetGestureDetectorState(int64_t idx, int32_t gesture_id,
                                int32_t state) override;
   void UpdateScrollInfo(int32_t container_id, bool smooth,
                         float estimated_offset, bool scrolling) override;
 
-  void UpdateNodeReadyPatching(std::vector<int32_t> ready_ids,
-                               std::vector<int32_t> remove_ids) override;
+  base::closure GetUpdateNodeReadyPatchingOperation(
+      std::vector<int32_t> ready_ids, std::vector<int32_t> remove_ids) override;
   void UpdateNodeReloadPatching(std::vector<int32_t> reload_ids) override;
 
   void UpdateEventInfo(bool has_touch_pseudo) override;
