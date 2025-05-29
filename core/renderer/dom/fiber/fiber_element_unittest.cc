@@ -2127,6 +2127,34 @@ TEST_P(FiberElementTest, ZIndexFlushUnExpectedFiberCase) {
   EXPECT_TRUE(child->dirty_ != 0);
 }
 
+TEST_P(FiberElementTest, ZIndexFlushUnExpectedFiberCase1) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto parent_element_0 = manager->CreateFiberView();
+  page->InsertNode(parent_element_0);
+
+  auto parent_element_1 = manager->CreateFiberView();
+  parent_element_0->InsertNode(parent_element_1);
+
+  auto parent_element = manager->CreateFiberView();
+  parent_element_1->InsertNode(parent_element);
+
+  auto z_index_change_node = manager->CreateFiberView();
+  parent_element->InsertNode(z_index_change_node);
+
+  page->FlushActionsAsRoot();
+
+  z_index_change_node->SetStyle(CSSPropertyID::kPropertyIDZIndex,
+                                lepus::Value(1));
+
+  for (int i = 0; i < 100; ++i) {
+    auto new_z_index = manager->CreateFiberView();
+    new_z_index->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(1));
+    z_index_change_node->InsertNode(new_z_index);
+  }
+  page->FlushActionsAsRoot();
+}
+
 // update inline style
 TEST_P(FiberElementTest, TestCSSResolveCase02) {
   // styles for fiber_element

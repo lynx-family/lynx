@@ -171,6 +171,10 @@ ElementManager::ElementManager(
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();
   enable_new_animator_radon_ = false;
+  // TODO(songshourui.null): A temporary config is being introduced with the
+  // bugfix to avoid breaks. This config will be removed after verifying the
+  // bugfix online.
+  fix_parallel_z_index_crash_ = LynxEnv::GetInstance().FixParallelZIndexCrash();
 }
 
 static bool EnableLayoutOnlyStatistic() {

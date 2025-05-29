@@ -389,5 +389,9 @@ bool LynxEnv::EnableNewIntersectionObserver() {
   return GetBoolEnv(Key::ENABLE_NEW_INTERSECTION_OBSERVER, false);
 }
 
+bool LynxEnv::FixParallelZIndexCrash() {
+  return GetBoolEnv(Key::FIX_PARALLEL_Z_INDEX_CRASH, true);
+}
+
 }  // namespace tasm
 }  // namespace lynx

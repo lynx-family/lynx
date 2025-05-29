@@ -2137,7 +2137,13 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update) {
     if (prop_bundle_) {
       TriggerElementUpdate();
     }
-    HandleDelayTask([this]() { element_container()->StyleChanged(); });
+
+    if (element_manager() && element_manager()->FixZIndexCrash()) {
+      HandleBeforeFlushActionsTask(
+          [this]() { element_container()->StyleChanged(); });
+    } else {
+      HandleDelayTask([this]() { element_container()->StyleChanged(); });
+    }
   }
   dirty_ &= ~kDirtyForceUpdate;
 }

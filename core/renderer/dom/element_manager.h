@@ -1040,6 +1040,8 @@ class ElementManager {
 
   inline int32_t GetTaskWaitTimeout() { return task_wait_timeout_; }
 
+  bool FixZIndexCrash() { return fix_parallel_z_index_crash_; }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1090,6 +1092,8 @@ class ElementManager {
   bool devtool_flag_ = false;
   bool dom_tree_enabled_ = true;
   const int instance_id_;
+
+  bool fix_parallel_z_index_crash_{true};
 
   bool css_fragment_parsing_tasm_worker_thread_{false};
 

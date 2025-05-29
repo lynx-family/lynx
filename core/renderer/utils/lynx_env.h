@@ -88,6 +88,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_NEW_INTERSECTION_OBSERVER,
     MULTI_JS_THREAD_COUNT,
     FIX_FIBER_REMOVE_TWICE_BUG,
+    FIX_PARALLEL_Z_INDEX_CRASH,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -182,6 +183,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_new_intersection_observer"},
             {Key::MULTI_JS_THREAD_COUNT, "multi_js_thread_count"},
             {Key::FIX_FIBER_REMOVE_TWICE_BUG, "fix_fiber_remove_twice_bug"},
+            {Key::FIX_PARALLEL_Z_INDEX_CRASH, "fix_parallel_z_index_crash"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -285,6 +287,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFixedNew();
   bool EnableMultiTouch();
   bool EnableNewIntersectionObserver();
+  bool FixParallelZIndexCrash();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
