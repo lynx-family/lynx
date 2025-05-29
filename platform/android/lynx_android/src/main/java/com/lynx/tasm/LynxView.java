@@ -122,7 +122,6 @@ public class LynxView extends UIBodyView {
     // thread-safety concern because there will be only one Choreographer instance for ui thread.
     VSyncMonitor.initUIThreadChoreographer();
     initLynxTemplateRender(context, builder);
-    mKeyboardEvent = new KeyboardEvent(getLynxContext());
   }
 
   private void initLynxViewWithRuntime(Context context, LynxViewBuilder builder) {
@@ -956,8 +955,8 @@ public class LynxView extends UIBodyView {
     mLynxTemplateRender.onLayout(changed, left, top, right, bottom);
 
     if (changed && getLynxContext() != null && getLynxContext().useRelativeKeyboardHeightApi()) {
-      if (mKeyboardEvent.isStart()) {
-        mKeyboardEvent.detectKeyboardChangeAndSendEvent();
+      if (getKeyboardEvent().isStart()) {
+        getKeyboardEvent().detectKeyboardChangeAndSendEvent();
       }
     }
   }
@@ -1005,8 +1004,8 @@ public class LynxView extends UIBodyView {
   public void destroy() {
     LLog.i(TAG, "lynxview destroy " + this.toString());
     TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXVIEW);
-    if (mKeyboardEvent.isStart()) {
-      mKeyboardEvent.stop();
+    if (getKeyboardEvent().isStart()) {
+      getKeyboardEvent().stop();
     }
 
     if (mLynxTemplateRender != null) {
@@ -1399,6 +1398,9 @@ public class LynxView extends UIBodyView {
   }
 
   public KeyboardEvent getKeyboardEvent() {
+    if (mKeyboardEvent == null) {
+      mKeyboardEvent = new KeyboardEvent(getLynxContext());
+    }
     return mKeyboardEvent;
   }
 
