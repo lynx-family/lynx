@@ -187,6 +187,24 @@ jobs:
           npm run build:release:darwin
           popd
 
+  tasm-wasm-build:
+    runs-on: lynx-darwin-14-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Build Wasm Tasm
+        run: |
+          source tools/envsetup.sh
+          tools/hab sync . -f --target tasm
+          pushd oliver/lynx-tasm
+          npm install
+          npm run build:wasm
+          popd
+
   lynx-types-check:
     runs-on: lynx-ubuntu-22.04-avd-medium
     steps:
