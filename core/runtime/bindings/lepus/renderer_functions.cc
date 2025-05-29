@@ -3517,7 +3517,7 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
   element->RemoveAllInlineStyles();
 
   if (arg1->IsString()) {
-    element->SetRawInlineStyles(arg1->ToLepusValue());
+    element->SetRawInlineStyles(arg1->String());
   } else if (arg1->IsObject()) {
     // TODO(linxs): opt this function, should diff first. Use
     tasm::ForEachLepusValue(
@@ -3548,7 +3548,7 @@ RENDERER_FUNCTION_CC(FiberGetInlineStyles) {
                                         FiberGetInlineStyles);
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  RETURN(element->GetRawInlineStyles());
+  RETURN(lepus::Value(element->GetRawInlineStyles()));
   RETURN_UNDEFINED();
 }
 

@@ -170,8 +170,6 @@ TEST_P(ListItemSchedulerAdapterTest, ListItemResolveSubtreePropertyTest) {
   CSSFontFaceRuleMap fontfaces;
   auto indexFragment = std::make_shared<SharedCSSFragment>(
       1, dependent_ids, indexTokensMap, keyframes, fontfaces);
-  auto style_sheet =
-      std::make_shared<CSSFragmentDecorator>(indexFragment.get());
 
   auto config = std::make_shared<PageConfig>();
   config->SetPipelineSchedulerConfig(kEnableParallelElementMask);
@@ -180,7 +178,8 @@ TEST_P(ListItemSchedulerAdapterTest, ListItemResolveSubtreePropertyTest) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  page->style_sheet_ = style_sheet;
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
 
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());
@@ -312,8 +311,6 @@ TEST_P(ListItemSchedulerAdapterTest, RecordingRenderRootComponentElementTest) {
   CSSFontFaceRuleMap fontfaces;
   auto indexFragment = std::make_shared<SharedCSSFragment>(
       1, dependent_ids, indexTokensMap, keyframes, fontfaces);
-  auto style_sheet =
-      std::make_shared<CSSFragmentDecorator>(indexFragment.get());
 
   auto config = std::make_shared<PageConfig>();
   config->SetPipelineSchedulerConfig(kEnableParallelElementMask);
@@ -322,7 +319,8 @@ TEST_P(ListItemSchedulerAdapterTest, RecordingRenderRootComponentElementTest) {
 
   // page
   auto page = manager->CreateFiberPage("page", 10);
-  page->style_sheet_ = style_sheet;
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
 
   auto list = manager->CreateFiberList(tasm.get(), "list", lepus::Value(),
                                        lepus::Value(), lepus::Value());

@@ -95,7 +95,7 @@ ComponentElement::~ComponentElement() {
 CSSFragment* ComponentElement::GetCSSFragment() {
   if (!style_sheet_) {
     if (css_style_sheet_manager_) {
-      style_sheet_ = std::make_shared<CSSFragmentDecorator>(
+      style_sheet_ = std::make_unique<CSSFragmentDecorator>(
           css_style_sheet_manager_->GetCSSStyleSheetForComponent(
               component_css_id_));
     }

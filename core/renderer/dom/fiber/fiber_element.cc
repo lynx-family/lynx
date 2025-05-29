@@ -94,7 +94,6 @@ FiberElement::FiberElement(const FiberElement &element,
     : Element(element, clone_resolved_props),
       invalidation_lists_(element.invalidation_lists_),
       parent_component_unique_id_(element.parent_component_unique_id_),
-      path_(element.path_),
       dirty_(element.dirty_ | kDirtyCreated),
       css_id_(element.css_id_),
       dynamic_style_flags_(element.dynamic_style_flags_),
@@ -133,8 +132,8 @@ FiberElement::FiberElement(const FiberElement &element,
     }
   }
 
-  if (element.config().IsObject() && element.config().GetLength() > 0) {
-    config_ = lepus::Value::ShallowCopy(element.config());
+  if (element.config().IsTable() && element.config().GetLength() > 0) {
+    config_ = lepus::Value::ShallowCopy(element.config()).Table();
   }
 
   element_context_delegate_ = element.element_context_delegate_;
@@ -331,11 +330,11 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
             static_cast<ComponentElement *>(GetParentComponentElement())
                 ->style_sheet_manager();
       }
-      if (!fragment_ && css_style_sheet_manager_) {
-        fragment_ =
-            css_style_sheet_manager_->GetCSSStyleSheetForComponent(css_id_);
-      }
-      style_sheet_ = std::make_shared<CSSFragmentDecorator>(fragment_);
+      CSSFragment *fragment =
+          css_style_sheet_manager_
+              ? css_style_sheet_manager_->GetCSSStyleSheetForComponent(css_id_)
+              : nullptr;
+      style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment);
     }
     return style_sheet_.get();
   } else {
@@ -382,9 +381,9 @@ void FiberElement::ProcessFullRawInlineStyle() {
   // If self has raw inline styles, parse to current_raw_inline_styles_ but do
   // not process to final style map. Inline styles will be merged finally by
   // MergeInlineStyles.
-  if (!full_raw_inline_style_.IsEmpty()) {
-    ParseRawInlineStyles(full_raw_inline_style_, nullptr);
-    full_raw_inline_style_.SetNil();
+  if (!full_raw_inline_style_.empty()) {
+    ParseRawInlineStyles(nullptr);
+    full_raw_inline_style_ = base::String();
   }
 }
 
@@ -689,7 +688,7 @@ const AttrMap &FiberElement::GetAttributesForWorklet() {
   return data_model()->attributes();
 }
 
-const lepus::Value &FiberElement::GetRawInlineStyles() {
+const base::String &FiberElement::GetRawInlineStyles() {
   return full_raw_inline_style_;
 }
 
@@ -697,8 +696,8 @@ const RawLepusStyleMap &FiberElement::GetCurrentRawInlineStyles() const {
   return current_raw_inline_styles_;
 }
 
-void FiberElement::SetRawInlineStyles(const lepus::Value &value) {
-  full_raw_inline_style_ = value;
+void FiberElement::SetRawInlineStyles(base::String value) {
+  full_raw_inline_style_ = std::move(value);
   MarkDirty(kDirtyStyle);
 }
 
@@ -715,7 +714,7 @@ void FiberElement::RemoveAllInlineStyles() {
     }
   });
 
-  full_raw_inline_style_.SetNil();
+  full_raw_inline_style_ = base::String();
   current_raw_inline_styles_.clear();
   MarkDirty(kDirtyStyle);
 }
@@ -734,7 +733,13 @@ void FiberElement::SetBuiltinAttribute(ElementBuiltInAttributeEnum key,
       MarkPartElement(value.String());
       break;
     case ElementBuiltInAttributeEnum::CONFIG:
-      config_ = value;
+      if (value.IsTable()) {
+        config_ = value.Table();
+      } else if (value.IsJSTable()) {
+        config_ = value.ToLepusValue().Table();
+      } else {
+        DCHECK(false);
+      }
       break;
     default:
       key_is_legal = false;
@@ -1752,7 +1757,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
     has_to_store_insert_remove_actions_ = (scoped_children_.size() > 0);
   }
 
-  action_param_list_.clear();
+  action_param_list_.clear_and_shrink();
 
   if (dirty_ & kDirtyReAttachContainer) {
     if (is_fixed_ && !GetEnableFixedNew()) {
@@ -2410,10 +2415,12 @@ void FiberElement::SetParsedStyles(StyleMap &&parsed_styles,
 void FiberElement::AddConfig(const base::String &key,
                              const lepus::Value &value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_ADD_CONFIG);
-  if (config_.IsTable() && config_.Table()->IsConst()) {
-    config_ = lepus::Value::ShallowCopy(config_);
+  if (config_ == nullptr) {
+    config_ = lepus::Dictionary::Create();
+  } else if (config_->IsConst()) {
+    config_ = lepus::Value::ShallowCopy(lepus::Value(config_)).Table();
   }
-  config_.SetProperty(key, value);
+  config_->SetValue(key, value);
 }
 
 void FiberElement::SetConfig(const lepus::Value &config) {
@@ -2422,7 +2429,13 @@ void FiberElement::SetConfig(const lepus::Value &config) {
   // To improve performance, ensure that the isObject check is performed before
   // calling SetConfig, and the check and LOGW in SetConfig are no longer
   // performed.
-  config_ = config;
+  if (config.IsTable()) {
+    config_ = config.Table();
+  } else if (config.IsJSTable()) {
+    config_ = config.ToLepusValue().Table();
+  } else {
+    DCHECK(false);
+  }
 }
 
 void FiberElement::MarkStyleDirty(bool recursive) {
@@ -2834,43 +2847,40 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(const lepus::Value &input,
-                                        StyleMap *parsed_styles) {
+void FiberElement::ParseRawInlineStyles(StyleMap *parsed_styles) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
-  if (input.IsString()) {
-    const auto &str = input.StdString();
-    ParseStyleDeclarationList(
-        str.c_str(), static_cast<uint32_t>(str.size()),
-        [this, parsed_styles, &configs](
-            const char *key_start, uint32_t key_length, const char *value_start,
-            uint32_t value_length) {
-          auto id = CSSProperty::GetPropertyID(
-              base::static_string::GenericCacheKey(key_start, key_length));
-          if (CSSProperty::IsPropertyValid(id)) {
-            auto value = lepus::Value(base::String(value_start, value_length));
-            if (parsed_styles != nullptr) {
-              UnitHandler::Process(id, value, *parsed_styles, configs);
-            }
-            current_raw_inline_styles_.insert_or_assign(id, std::move(value));
+  const auto &str = full_raw_inline_style_.str();
+  ParseStyleDeclarationList(
+      str.c_str(), static_cast<uint32_t>(str.size()),
+      [this, parsed_styles, &configs](
+          const char *key_start, uint32_t key_length, const char *value_start,
+          uint32_t value_length) {
+        auto id = CSSProperty::GetPropertyID(
+            base::static_string::GenericCacheKey(key_start, key_length));
+        if (CSSProperty::IsPropertyValid(id)) {
+          auto value = lepus::Value(base::String(value_start, value_length));
+          if (parsed_styles != nullptr) {
+            UnitHandler::Process(id, value, *parsed_styles, configs);
           }
+          current_raw_inline_styles_.insert_or_assign(id, std::move(value));
+        }
 
-          // DevTool needs to get InlineStyle information from DataModel's
-          // InlineStyle, so when DevTool is enabled, it needs to set the
-          // corresponding InlineStyle for DataModel.
-          EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
-            if (data_model() == nullptr) {
-              return;
-            }
-            data_model()->SetInlineStyle(
-                id, base::String(value_start, value_length), configs);
-          });
+        // DevTool needs to get InlineStyle information from DataModel's
+        // InlineStyle, so when DevTool is enabled, it needs to set the
+        // corresponding InlineStyle for DataModel.
+        EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
+          if (data_model() == nullptr) {
+            return;
+          }
+          data_model()->SetInlineStyle(
+              id, base::String(value_start, value_length), configs);
         });
+      });
 
-    EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
-      element_manager()->OnElementNodeSetForInspector(this);
-    });
-  }
+  EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
+    element_manager()->OnElementNodeSetForInspector(this);
+  });
 }
 
 void FiberElement::DoFullCSSResolving() {
@@ -3445,7 +3455,7 @@ void FiberElement::UpdateDynamicElementStyle(uint32_t style,
 
 void FiberElement::SetCSSID(int32_t id) {
   if (css_id_ != id) {
-    style_sheet_ = nullptr;
+    ResetStyleSheet();
     css_id_ = id;
   }
 }
@@ -3465,7 +3475,7 @@ void FiberElement::ResetSheetRecursively(
   }
 
   // reset style sheet.
-  style_sheet_ = nullptr;
+  ResetStyleSheet();
   for (const auto &child : children()) {
     child->ResetSheetRecursively(manager);
   }
@@ -3599,7 +3609,7 @@ void FiberElement::AsyncResolveSubtreeProperty() {
         auto task_info_ptr =
             fml::MakeRefCounted<base::OnceTask<ParallelFlushReturn>>(
                 [promise = std::move(promise),
-                 scheduler = scheduler_adapter_]() mutable {
+                 scheduler = scheduler_adapter_.get()]() mutable {
                   promise.set_value(
                       scheduler->GenerateReduceTaskForResolveProperty());
                 },
@@ -3622,7 +3632,7 @@ void FiberElement::CreateListItemScheduler(
     element_context_delegate_ = element_context_delegate_ptr.get();
     parent_context->OnChildElementContextAdded(element_context_delegate_ptr);
   } else {
-    scheduler_adapter_ = std::make_shared<ListItemSchedulerAdapter>(
+    scheduler_adapter_ = std::make_unique<ListItemSchedulerAdapter>(
         this, batch_render_strategy, parent_context, continuous_resolve_tree);
   }
 }

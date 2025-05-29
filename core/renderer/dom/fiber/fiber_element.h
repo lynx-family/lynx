@@ -501,16 +501,18 @@ class FiberElement : public Element, public SelectorItem {
   /**
    * A key function to get element's config
    */
-  const lepus::Value& config() { return config_; }
-  const lepus::Value& config() const { return config_; }
+  lepus::Value config() const {
+    return lepus::Value(
+        config_ ?: fml::RefPtr<lepus::Dictionary>(lepus::Value::DummyTable()));
+  }
 
   virtual StyleMap GetStylesForWorklet() override;
 
   virtual const AttrMap& GetAttributesForWorklet() override;
 
-  const lepus::Value& GetRawInlineStyles();
+  const base::String& GetRawInlineStyles();
   const RawLepusStyleMap& GetCurrentRawInlineStyles() const;
-  void SetRawInlineStyles(const lepus::Value& value);
+  void SetRawInlineStyles(base::String value);
 
   void MarkDirty(const uint32_t flag) {
     dirty_ |= flag;
@@ -540,10 +542,7 @@ class FiberElement : public Element, public SelectorItem {
     }
   }
 
-  void ResetStyleSheet() {
-    fragment_ = nullptr;
-    style_sheet_ = nullptr;
-  };
+  void ResetStyleSheet() { style_sheet_ = nullptr; };
 
   void MarkStyleDirty(bool recursive = false);
 
@@ -655,10 +654,6 @@ class FiberElement : public Element, public SelectorItem {
                                    const lepus::Value changing_css_variables);
 
   bool HasElementContainer() { return element_container_ != nullptr; }
-
-  void set_path(const std::string path) { path_ = path; }
-
-  std::string path() { return path_; }
 
   void set_style_sheet_manager(
       const std::shared_ptr<CSSStyleSheetManager>& manager) {
@@ -963,7 +958,7 @@ class FiberElement : public Element, public SelectorItem {
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(const lepus::Value& input, StyleMap* parsed_styles);
+  void ParseRawInlineStyles(StyleMap* parsed_styles);
   void DoFullCSSResolving();
   const tasm::CSSValue& ResolveCurrentStyleValue(
       const CSSPropertyID& key, const tasm::CSSValue& default_value);
@@ -994,10 +989,8 @@ class FiberElement : public Element, public SelectorItem {
 
   FiberElement* enclosing_none_wrapper_{nullptr};
 
-  std::string path_{};
-  std::shared_ptr<CSSStyleSheetManager> css_style_sheet_manager_{nullptr};
-  CSSFragment* fragment_{nullptr};
-  std::shared_ptr<CSSFragmentDecorator> style_sheet_{nullptr};
+  std::shared_ptr<CSSStyleSheetManager> css_style_sheet_manager_;
+  std::unique_ptr<CSSFragmentDecorator> style_sheet_;
 
   uint32_t dirty_{0};
   uint32_t wrapper_element_count_{false};
@@ -1048,7 +1041,7 @@ class FiberElement : public Element, public SelectorItem {
   bool is_first_created_{true};
 
   // indicate the value of SetRawInlineStyles, we need to split it
-  lepus::Value full_raw_inline_style_;
+  base::String full_raw_inline_style_;
 
   StyleMap parsed_styles_map_;
 
@@ -1075,7 +1068,7 @@ class FiberElement : public Element, public SelectorItem {
 
   // Configuration set for elements through the LepusRuntime will be stored in
   // the config variable
-  lepus::Value config_{lepus::Dictionary::Create()};
+  fml::RefPtr<lepus::Dictionary> config_;
 
   std::list<base::closure> parallel_reduce_tasks_;
 
@@ -1092,7 +1085,7 @@ class FiberElement : public Element, public SelectorItem {
   base::LinearFlatMap<PseudoState, std::unique_ptr<PseudoElement>>
       pseudo_elements_;
 
-  std::shared_ptr<ListItemSchedulerAdapter> scheduler_adapter_;
+  std::unique_ptr<ListItemSchedulerAdapter> scheduler_adapter_;
 
  protected:
   ElementContextDelegate* element_context_delegate_{nullptr};
