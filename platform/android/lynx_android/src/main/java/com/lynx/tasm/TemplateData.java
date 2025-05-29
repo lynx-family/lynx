@@ -79,7 +79,7 @@ public final class TemplateData {
   }
 
   private volatile long mNativeData;
-  private Map<String, Object> mData;
+  private volatile Map<String, Object> mData;
   private String mProcessorName;
   private volatile boolean mIsConcurrent;
   private boolean readOnly = false;
@@ -319,7 +319,7 @@ public final class TemplateData {
     }
   }
 
-  private void ensureInternalMap() {
+  private synchronized void ensureInternalMap() {
     if (mData == null) {
       mData = mIsConcurrent ? new NullableConcurrentHashMap<String, Object>()
                             : new HashMap<String, Object>();
