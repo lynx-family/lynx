@@ -6,7 +6,6 @@
 #define DARWIN_COMMON_LYNX_ENGINE_PROXY_H_
 
 #import <Foundation/Foundation.h>
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

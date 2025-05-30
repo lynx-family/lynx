@@ -15,7 +15,6 @@ common_lynx_shared_sources = [
   "LynxContext.mm",
   "LynxDebugger.m",
   "LynxEngineProxy+Native.h",
-  "LynxEngineProxy.h",
   "LynxEngineProxy.mm",
   "LynxEnv+Internal.h",
   "LynxEnv.mm",
