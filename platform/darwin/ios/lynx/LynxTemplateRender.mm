@@ -1910,9 +1910,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   if (errorMsg) {
-    if (_delegate) {
-      [_delegate templateRenderOnResetViewAndLayer:self];
-    }
+    __weak LynxTemplateRender* weakSelf = self;
+    [LynxTemplateRender runOnMainThread:^() {
+      __strong LynxTemplateRender* strongSelf = weakSelf;
+      if (strongSelf) {
+        [strongSelf->_delegate templateRenderOnResetViewAndLayer:strongSelf];
+      }
+    }];
 
     [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
     _context.instanceId = kUnknownInstanceId;
