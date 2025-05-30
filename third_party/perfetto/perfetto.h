@@ -7233,8 +7233,8 @@ class TracePacket_Decoder : public ::protozero::TypedProtoDecoder</*MAX_FIELD_ID
   ::protozero::ConstBytes extension_descriptor() const { return at<72>().as_bytes(); }
   bool has_for_testing() const { return at<900>().valid(); }
   ::protozero::ConstBytes for_testing() const { return at<900>().as_bytes(); }
-  bool has_js_profile_packet() const { return at<84>().valid(); }
-  ::protozero::ConstBytes js_profile_packet() const { return at<84>().as_bytes(); }
+  bool has_js_profile_packet() const { return at<899>().valid(); }
+  ::protozero::ConstBytes js_profile_packet() const { return at<899>().as_bytes(); }
   bool has_trusted_uid() const { return at<3>().valid(); }
   int32_t trusted_uid() const { return at<3>().as_int32(); }
   bool has_trusted_packet_sequence_id() const { return at<10>().valid(); }
@@ -7307,7 +7307,7 @@ class TracePacket : public ::protozero::Message {
     kSynchronizationMarkerFieldNumber = 36,
     kCompressedPacketsFieldNumber = 50,
     kExtensionDescriptorFieldNumber = 72,
-    kJsProfilePacketFieldNumber = 84,
+    kJsProfilePacketFieldNumber = 899,
     kForTestingFieldNumber = 900,
     kTrustedUidFieldNumber = 3,
     kTrustedPacketSequenceIdFieldNumber = 10,
@@ -8458,7 +8458,7 @@ class TracePacket : public ::protozero::Message {
   
   using FieldMetadata_JsProfilePacket =
     ::protozero::proto_utils::FieldMetadata<
-      84,
+      899,
       ::protozero::proto_utils::RepetitionType::kNotRepeated,
       ::protozero::proto_utils::ProtoSchemaType::kMessage,
       JSProfilePacket,
@@ -8473,7 +8473,7 @@ class TracePacket : public ::protozero::Message {
   // TODO(altimin): Use inline variable instead after adopting C++17.
   static constexpr FieldMetadata_JsProfilePacket kJsProfilePacket() { return {}; }
   template <typename T = JSProfilePacket> T* set_js_profile_packet() {
-    return BeginNestedMessage<T>(84);
+    return BeginNestedMessage<T>(899);
   }
 
 
