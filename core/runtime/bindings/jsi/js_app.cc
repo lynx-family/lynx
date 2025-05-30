@@ -2095,6 +2095,7 @@ void App::OnScriptLoaded(const std::string& url, std::string script,
   if (!err_msg.empty()) {
     auto rt = rt_.lock();
     if (rt) {
+      Scope scope(*rt);
       auto js_error_value = piper::Value(piper::String::createFromUtf8(
           *rt, "load external js script failed! url: " + url +
                    " error: " + err_msg));
