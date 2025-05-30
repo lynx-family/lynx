@@ -1434,6 +1434,14 @@ void Element::SetDataToNativeTransitionAnimator() {
   has_transition_props_changed_ = false;
 }
 
+void Element::ClearTransitionPreviousEndValue(
+    const std::string& transition_name) {
+  auto css_id = CSSProperty::GetPropertyID(transition_name);
+  if (css_transition_manager_) {
+    css_transition_manager_->ClearPreviousEndValue(css_id);
+  }
+}
+
 bool Element::TickAllAnimation(fml::TimePoint& frame_time,
                                std::shared_ptr<PipelineOptions>& options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_TICK_ALL_ANIMATION);
