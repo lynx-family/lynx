@@ -1,13 +1,13 @@
-# Build Lynx Explorer for iOS
+# Building Lynx Explorer for iOS
 
-This document will help you build LynxExplorer for iOS on macOS.
+This document provides instructions for building the Lynx Explorer iOS app from source. If you just want to try out Lynx, you can download the pre-built app from the releases page instead.
 
-## System requirements
+## System Requirements
 
 - 100GB or more of disk space
 - Git/Python3(>=3.9)/Ruby(>=2.7, <3.4) installed
 
-## Install dependencies
+## Install Dependencies
 
 The following dependencies are needed:
 
@@ -23,7 +23,7 @@ Lynx requires Xcode 15.0 or later. It is recommended to keep Xcode up to date. Y
 - Open Xcode->Settings->Locations, to make sure the `Command Line Tools` are configured
 - You can run `xcode-select -p` in the terminal, and if it prints a correct path, it's configure successfully.
 
-### Python library
+### Python Library
 
 The yaml dependency needs to be installed to execute some auto-generation logic.
 
@@ -35,9 +35,9 @@ source venv/bin/activate
 pip3 install pyyaml
 ```
 
-## Get the source code
+## Get the Source Code
 
-### Pull the repository
+### Pull the Repository
 
 Pull the code from the Github repository and specify the path(`src/lynx`) to avoid contaminating the directory when installing dependencies.
 
@@ -45,7 +45,7 @@ Pull the code from the Github repository and specify the path(`src/lynx`) to avo
 git clone https://github.com/lynx-family/lynx.git src/lynx
 ```
 
-### Install third-party library
+### Install Third-party Library
 
 Run the following commands from the root of the repository to install the dependencies.
 
@@ -67,7 +67,7 @@ cd explorer/darwin/ios/lynx_explorer
 
 ## Troubleshooting
 
-### Using a Personal Team to run on device
+### Using a Personal Team to Run on Device
 
 By default, the project doesn't configure the "Team" for signing. If you want to change it to your Personal Team (associated with your Apple ID), follow these steps:
 
@@ -76,11 +76,10 @@ By default, the project doesn't configure the "Team" for signing. If you want to
 3. Update the "Bundle Identifier" from `com.lynx.LynxExplorer` to a unique identifier like `com.<your-name>.LynxExplorer`. This step ensures the identifier is unique and available for your use.
 4. Enable the "Automatically manage signing" option to allow Xcode to handle the app signing process automatically.
 
-### Handle error when installing ruby gems
+### Handle Error when Installing Ruby Gems
 
 When running `./bundle_install.sh` command, if you encounter the following problems: *Bundler::GemNotFound: Your bundle is lock to xxx, but that version could not be found in any of the sources listed in Gemfile...* You can try running the following commands to fix the problem:
 ```
 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install
 ./bundle_install.sh
 ```
-

@@ -1,0 +1,10 @@
+{
+  "name": "lynx-explorer",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:homepage": "pnpm --filter homepage build",
+    "build:showcase": "pnpm --filter showcase build",
+    "build": "pnpm run build:homepage && pnpm run build:showcase"
+  }
+}

@@ -1,15 +1,11 @@
 {
   "name": "showcase",
-  "version": "1.0.0",
-  "description": "Showcases for lynx explorer",
-  "author": "Lynx Authors",
+  "version": "0.0.1",
   "license": "Apache-2.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "build": "pnpm --filter @showcase/menu run build"
-  },
-  "engines": {
-    "node": ">=18"
   },
   "dependencies": {
     "@lynx-example/animation": "0.3.0",
@@ -22,5 +18,8 @@
     "@lynx-example/scroll-view": "0.3.0",
     "@lynx-example/text": "0.3.0",
     "@lynx-example/view": "0.3.0"
+  },
+  "devDependencies": {
+    "@lynx-js/qrcode-rsbuild-plugin": "0.3.6"
   }
 }
