@@ -8,17 +8,18 @@
     "dev": "rspeedy dev"
   },
   "dependencies": {
-    "@lynx-js/react": "0.105.0",
+    "@lynx-js/react": "0.107.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "6",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@lynx-js/qrcode-rsbuild-plugin": "^0.3.3",
+    "@lynx-js/qrcode-rsbuild-plugin": "0.3.6",
     "@lynx-js/react-rsbuild-plugin": "0.9.8",
     "@lynx-js/rspeedy": "0.9.3",
+    "@lynx-js/types": "3.3.0",
     "@rsbuild/plugin-sass": "^1.1.2",
-    "@types/react": "^18.3.2",
+    "@types/react": "18.3.18",
     "prettier": "3.4.2"
   }
 }

@@ -2,23 +2,24 @@
   "name": "homepage",
   "version": "0.0.1",
   "license": "Apache-2.0",
+  "type": "module",
+  "private": true,
   "scripts": {
     "build": "rspeedy build",
     "build:dev": "rspeedy build --mode=development",
     "dev": "rspeedy dev"
   },
   "dependencies": {
-    "@lynx-js/react": "^0.105.0"
+    "@lynx-js/react": "0.107.0"
   },
   "devDependencies": {
-    "@lynx-js/qrcode-rsbuild-plugin": "^0.3.3",
-    "@lynx-js/react-rsbuild-plugin": "^0.9.8",
-    "@lynx-js/rspeedy": "^0.9.3",
+    "@lynx-js/qrcode-rsbuild-plugin": "0.3.6",
+    "@lynx-js/react-rsbuild-plugin": "0.9.8",
+    "@lynx-js/rspeedy": "0.9.3",
+    "@lynx-js/types": "3.3.0",
     "@rsbuild/core": "^1.1.11",
     "@rsbuild/plugin-sass": "^1.1.2",
-    "@rspack/core": "^1.3.7",
-    "@types/react": "^18.3.2",
-    "prettier": "3.4.2",
-    "webpack": "^5.0.0"
+    "@types/react": "18.3.18",
+    "prettier": "3.4.2"
   }
 }

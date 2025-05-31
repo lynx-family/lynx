@@ -14,6 +14,7 @@ importers:
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.3.0
       '@lynx-example/view': 0.3.0
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
     dependencies:
       '@lynx-example/animation': 0.3.0
       '@lynx-example/css': 0.3.0
@@ -25,28 +26,32 @@ importers:
       '@lynx-example/scroll-view': 0.3.0
       '@lynx-example/text': 0.3.0
       '@lynx-example/view': 0.3.0
+    devDependencies:
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
 
   menu:
     specifiers:
-      '@lynx-js/qrcode-rsbuild-plugin': ^0.3.3
-      '@lynx-js/react': 0.105.0
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
+      '@lynx-js/react': 0.107.0
       '@lynx-js/react-rsbuild-plugin': 0.9.8
       '@lynx-js/rspeedy': 0.9.3
+      '@lynx-js/types': 3.3.0
       '@rsbuild/plugin-sass': ^1.1.2
-      '@types/react': ^18.3.2
+      '@types/react': 18.3.18
       prettier: 3.4.2
       react-dom: ^19.0.0
       react-router-dom: '6'
       zustand: ^5.0.3
     dependencies:
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
+      '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
       react-dom: 19.0.0
       react-router-dom: 6.28.2_react-dom@19.0.0
       zustand: 5.0.3_@types+react@18.3.18
     devDependencies:
-      '@lynx-js/qrcode-rsbuild-plugin': 0.3.3
-      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.105.0
+      '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
+      '@lynx-js/react-rsbuild-plugin': 0.9.8_@lynx-js+react@0.107.0
       '@lynx-js/rspeedy': 0.9.3
+      '@lynx-js/types': 3.3.0
       '@rsbuild/plugin-sass': 1.2.0
       '@types/react': 18.3.18
       prettier: 3.4.2
@@ -69,21 +74,6 @@ packages:
 
   /@bufbuild/protobuf/2.2.3:
     resolution: {integrity: sha512-tFQoXHJdkEOSwj5tRIZSPNUuXK3RaR7T1nUrPgbYX1pUbvqqaaZAsfo+NXBPsz5rZMSKVFrgK1WL8Q/MSLvprg==}
-    dev: true
-
-  /@clack/core/0.4.1:
-    resolution: {integrity: sha512-Pxhij4UXg8KSr7rPek6Zowm+5M22rbd2g1nfojHJkxp5YkFqiZ2+YLEM/XGVIzvGOcM0nqjIFxrpDwWRZYWYjA==}
-    dependencies:
-      picocolors: 1.1.1
-      sisteransi: 1.0.5
-    dev: true
-
-  /@clack/prompts/0.10.0:
-    resolution: {integrity: sha512-H3rCl6CwW1NdQt9rE3n373t7o5cthPv7yUoxF2ytZvyvlJv89C5RYMJu83Hed8ODgys5vpBU0GKxIRG83jd8NQ==}
-    dependencies:
-      '@clack/core': 0.4.1
-      picocolors: 1.1.1
-      sisteransi: 1.0.5
     dev: true
 
   /@discoveryjs/json-ext/0.5.7:
@@ -251,13 +241,9 @@ packages:
       css-tree: 3.1.0
     dev: true
 
-  /@lynx-js/qrcode-rsbuild-plugin/0.3.3:
-    resolution: {integrity: sha512-0Kkr2TWqIicgUrc3VJcCEzhuuaYLdFWdcIXJIZ1shChsuH9nRJCFqG29bfGlqLK5P3KV5WImXvF/+sC93KEPMw==}
+  /@lynx-js/qrcode-rsbuild-plugin/0.3.6:
+    resolution: {integrity: sha512-Ba7O0PPd5uB/Oraqt/OHzr4nZ2LcZ1QhSJ9c4OMzZJU3z4DZ0sFnXUKirN5vBTPUJU7ak1Xo7gce+BDxKDco+Q==}
     engines: {node: '>=18'}
-    dependencies:
-      '@clack/prompts': 0.10.0
-      picocolors: 1.1.1
-      qrcode-terminal: 0.12.0
     dev: true
 
   /@lynx-js/react-alias-rsbuild-plugin/0.9.8:
@@ -273,10 +259,10 @@ packages:
     peerDependencies:
       '@lynx-js/react-webpack-plugin': ^0.3.0 || ^0.4.0 || ^0.5.0 || ^0.6.0
     dependencies:
-      '@lynx-js/react-webpack-plugin': 0.6.12_n6reo457asavhbiluf3jdyba3e
+      '@lynx-js/react-webpack-plugin': 0.6.12_o66m7vpldtthz3u3zprr2bidr4
     dev: true
 
-  /@lynx-js/react-rsbuild-plugin/0.9.8_@lynx-js+react@0.105.0:
+  /@lynx-js/react-rsbuild-plugin/0.9.8_@lynx-js+react@0.107.0:
     resolution: {integrity: sha512-SzHlW8JjEIcVREdWLlmgZ20ccV9wy7a/8wSmr5rXdC/ofBi7dNySsaaZKLQP9jGSl8GkuAuV/7SkCfO+dBqByA==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -286,10 +272,10 @@ packages:
         optional: true
     dependencies:
       '@lynx-js/css-extract-webpack-plugin': 0.5.3_b7ec2zvp5zocbp52glrt6wg7xy
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
+      '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
       '@lynx-js/react-alias-rsbuild-plugin': 0.9.8
       '@lynx-js/react-refresh-webpack-plugin': 0.3.2_7audffj57tknge2rlry6jcnpwe
-      '@lynx-js/react-webpack-plugin': 0.6.12_n6reo457asavhbiluf3jdyba3e
+      '@lynx-js/react-webpack-plugin': 0.6.12_o66m7vpldtthz3u3zprr2bidr4
       '@lynx-js/runtime-wrapper-webpack-plugin': 0.0.9
       '@lynx-js/template-webpack-plugin': 0.6.10
       '@lynx-js/web-webpack-plugin': 0.6.6_b7ec2zvp5zocbp52glrt6wg7xy
@@ -298,7 +284,7 @@ packages:
       - webpack
     dev: true
 
-  /@lynx-js/react-webpack-plugin/0.6.12_n6reo457asavhbiluf3jdyba3e:
+  /@lynx-js/react-webpack-plugin/0.6.12_o66m7vpldtthz3u3zprr2bidr4:
     resolution: {integrity: sha512-Rk6HB12WPJTg3OkBaqFZn8EGtfWVaFQVROtr+hMwnQbgU5r3wP8gPZLBmdnH/xUNLhJGKw0YadluTbotG87XiQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -308,7 +294,7 @@ packages:
       '@lynx-js/react':
         optional: true
     dependencies:
-      '@lynx-js/react': 0.105.0_@types+react@18.3.18
+      '@lynx-js/react': 0.107.0_smdqjdvvdjbjwyrr673xzocrfm
       '@lynx-js/template-webpack-plugin': 0.6.10
       '@lynx-js/webpack-runtime-globals': 0.0.5
       tiny-invariant: 1.3.3
@@ -326,8 +312,8 @@ packages:
       preact: /@hongzhiyuan/preact/10.24.0-319c684e
     dev: false
 
-  /@lynx-js/react/0.105.0_@types+react@18.3.18:
-    resolution: {integrity: sha512-xGXoB4ETdWHl3t8tVRfdOig8fNCKyGNqbi1uDAvC2KJPvIPMG2MuPM5HC7FacDx+P1WEkAO/eFKJnTgikzAj1Q==}
+  /@lynx-js/react/0.107.0_smdqjdvvdjbjwyrr673xzocrfm:
+    resolution: {integrity: sha512-nheLQcObZ1cjHo4OTiejJ2+0ceAlhxm3qeEDkFXgG81DnAqApxKkqCCSz43r7oAZ1qx0XHVIufb9PnMxoGv0eQ==}
     peerDependencies:
       '@lynx-js/types': '*'
       '@types/react': ^18
@@ -335,6 +321,7 @@ packages:
       '@lynx-js/types':
         optional: true
     dependencies:
+      '@lynx-js/types': 3.3.0
       '@types/react': 18.3.18
       preact: /@hongzhiyuan/preact/10.24.0-319c684e
 
@@ -391,6 +378,11 @@ packages:
       css-tree: 3.1.0
       object.groupby: 1.0.3
     dev: true
+
+  /@lynx-js/types/3.3.0:
+    resolution: {integrity: sha512-URUszZQBFGumpNDXm4FoLMMSSZAgH+NBvBOaERe8UWrnH0XB9Z8N2sAj28jfg57G+eZpRasbvu/ZR6NzFe5feQ==}
+    dependencies:
+      csstype: 3.1.3
 
   /@lynx-js/web-style-transformer/0.3.0:
     resolution: {integrity: sha512-UpXNSVOYH+CYUJuv5VU0xCf1iUiMNhY8Scj8OSS/Ny+D4dylu0L8J1hUklqvTiCvCopiE+yQCFCqXemFCZlKcg==}
@@ -2647,11 +2639,6 @@ packages:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
     dev: true
 
-  /qrcode-terminal/0.12.0:
-    resolution: {integrity: sha512-EXtzRZmC+YGmGlDFbXKxQiMZNwCLEO6BANKXG4iCtSIM0yqc/pappSx3RIKr4r0uh5JsBckOXeKrB3Iz7mdQpQ==}
-    hasBin: true
-    dev: true
-
   /qs/6.13.0:
     resolution: {integrity: sha512-+38qI9SOr8tfZ4QmJNplMUxqjbe7LKvvZgWdExBOmd+egZTtjLB67Gu0HRX3u/XOq7UU2Nx6nsjvS16Z9uwfpg==}
     engines: {node: '>=0.6'}
@@ -3110,10 +3097,6 @@ packages:
       '@polka/url': 1.0.0-next.28
       mrmime: 2.0.0
       totalist: 3.0.1
-    dev: true
-
-  /sisteransi/1.0.5:
-    resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
     dev: true
 
   /socket.io-adapter/2.5.5:

@@ -5,6 +5,17 @@ packages:
   - devtool/base_devtool/js_libraries/logbox
   - devtool/lynx_devtool/resources/devtool-switch
   - devtool/lynx_devtool/resources/lynx-error-parser
+  - explorer
   - explorer/homepage
+  - explorer/showcase
+  - explorer/showcase/menu
   # base devtool
   - 'lynx/devtool/base_devtool/js_libraries/logbox'
+
+catalog:
+  '@lynx-js/qrcode-rsbuild-plugin': '0.3.6'
+  '@lynx-js/rspeedy': '0.9.3'
+  '@lynx-js/react': '0.107.0'
+  '@lynx-js/react-rsbuild-plugin': '0.9.8'
+  '@lynx-js/types': '3.3.0'
+  '@types/react': '18.3.18'
