@@ -730,6 +730,10 @@ void LynxRuntime::Destroy() {
   cached_tasks_.clear();
   ssr_global_event_cached_tasks_.clear();
   callbacks_.clear();
+  // App destroy might invoke front-page's destroy, which could call a NAPI API,
+  // so it's important to call destroy first, and then call NAPI destroy.
+  app_->destroy();
+  app_ = nullptr;
 #if ENABLE_NAPI_BINDING
   if (napi_environment_) {
     LOGI("napi detaching runtime, id: " << GetRuntimeId());
@@ -743,8 +747,6 @@ void LynxRuntime::Destroy() {
   }
 #endif
   lifecycle_observer_->OnRuntimeDetach();
-  app_->destroy();
-  app_ = nullptr;
   js_executor_->Destroy();
   js_executor_ = nullptr;
 }
