@@ -62,6 +62,7 @@ public abstract class LynxObserverManager {
   protected boolean mEnableExposureWhenLayout = false;
 
   protected boolean mDelayedTaskPosted = false;
+  protected int[] mWindowSize;
 
   final private String TAG;
 
@@ -77,6 +78,7 @@ public abstract class LynxObserverManager {
     mIntervalRunnable = null;
     mDelayedInInner = false;
     mLocationOnScreen = new int[2];
+    mWindowSize = new int[2];
     mEnableDisexposureWhenLynxHidden = true;
 
     TAG = tag;
@@ -370,6 +372,17 @@ public abstract class LynxObserverManager {
     return outBounds;
   }
 
+  /**
+   * @brief Update window size for Exposure.
+   * @detail This function should be called when window size changed.
+   * @param context LynxContext.
+   */
+  public void updateWindowSize(LynxContext context) {
+    DisplayMetrics metrics = DisplayMetricsHolder.getRealScreenDisplayMetrics(context);
+    mWindowSize[0] = metrics.widthPixels;
+    mWindowSize[1] = metrics.heightPixels;
+  }
+
   protected RectF getWindowRect(LynxContext context) {
     if (context != null) {
       Activity activity = context.getActivity();
@@ -380,9 +393,8 @@ public abstract class LynxObserverManager {
           window.getDecorView().getLocationOnScreen(position);
         }
       }
-      return new RectF(position[0], position[1],
-          position[0] + context.getScreenMetrics().widthPixels,
-          position[1] + context.getScreenMetrics().heightPixels);
+      return new RectF(
+          position[0], position[1], position[0] + mWindowSize[0], position[1] + mWindowSize[1]);
     } else {
       LLog.e(TAG, "getWindowRect func failed since context is null");
     }

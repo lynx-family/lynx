@@ -380,6 +380,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   public void updateScreenSize(int screenWidth, int screenHeight) {
     mVirtualScreenMetrics.widthPixels = screenWidth;
     mVirtualScreenMetrics.heightPixels = screenHeight;
+    if (mExposure != null) {
+      mExposure.updateWindowSize(this);
+    }
   }
 
   public void setImageInterceptor(ImageInterceptor imageInterceptor) {
@@ -560,6 +563,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   public void setIntersectionObserverManager(LynxIntersectionObserverManager manager) {
+    if (manager != null) {
+      manager.updateWindowSize(this);
+    }
     mIntersectionObserverManager = new WeakReference<>(manager);
   }
 
@@ -1325,6 +1331,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     }
     final WeakReference<LynxContext> weakContext = new WeakReference<>(this);
     mExposure.setCallback(new UIExposure.ExposureCallback(weakContext));
+    mExposure.updateWindowSize(this);
   }
 
   // This is a experimental API, it is unstable and may break at any time.

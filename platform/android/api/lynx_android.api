@@ -4947,6 +4947,7 @@ public class abstract com::lynx::tasm::behavior::LynxObserverManager :  {
   public void com.lynx.tasm.behavior.LynxObserverManager.onRootViewDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.LynxObserverManager.requestCheckUI();
   public void com.lynx.tasm.behavior.LynxObserverManager.destroy();
+  public void com.lynx.tasm.behavior.LynxObserverManager.updateWindowSize(LynxContext context);
 }
 
 public class com::lynx::tasm::behavior::ui::shapes::LynxOffsetCalculator :  {
