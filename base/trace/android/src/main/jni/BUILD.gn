@@ -4,18 +4,18 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("../../../../../../core/Lynx.gni")
+import("//lynx/core/Lynx.gni")
 
 source_set("build") {
   sources = [
-    "gen/TraceController_jni.h",
-    "gen/TraceController_register_jni.h",
-    "gen/TraceEvent_jni.h",
-    "gen/TraceEvent_register_jni.h",
-    "gen/lynx_trace_so_load.cc",
+    "//lynx/base/trace/android/src/main/jni/gen/TraceController_jni.h",
+    "//lynx/base/trace/android/src/main/jni/gen/TraceController_register_jni.h",
+    "//lynx/base/trace/android/src/main/jni/gen/TraceEvent_jni.h",
+    "//lynx/base/trace/android/src/main/jni/gen/TraceEvent_register_jni.h",
+    "//lynx/base/trace/android/src/main/jni/gen/lynx_trace_so_load.cc",
   ]
   configs += [
-    "../../../../native:trace_private_config",
-    "../../../../native:trace_public_config",
+    "//lynx/base/trace/native:trace_private_config",
+    "//lynx/base/trace/native:trace_public_config",
   ]
 }

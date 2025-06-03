@@ -4,32 +4,32 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("../../../../../../devtool/lynx_devtool/devtool.gni")
+import("//lynx/devtool/lynx_devtool/devtool.gni")
 
 devtool_source_set("build") {
   sources = [
-    "gen/CDPResultCallbackWrapper_jni.h",
-    "gen/CDPResultCallbackWrapper_register_jni.h",
-    "gen/DevToolMessageHandlerDelegate_jni.h",
-    "gen/DevToolMessageHandlerDelegate_register_jni.h",
-    "gen/DevToolPlatformAndroidDelegate_jni.h",
-    "gen/DevToolPlatformAndroidDelegate_register_jni.h",
-    "gen/FPSTrace_jni.h",
-    "gen/FPSTrace_register_jni.h",
-    "gen/FrameTraceService_jni.h",
-    "gen/FrameTraceService_register_jni.h",
-    "gen/FrameViewTrace_jni.h",
-    "gen/FrameViewTrace_register_jni.h",
-    "gen/GlobalDevToolPlatformAndroidDelegate_jni.h",
-    "gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h",
-    "gen/InstanceTrace_jni.h",
-    "gen/InstanceTrace_register_jni.h",
-    "gen/LynxDevToolNGDelegate_jni.h",
-    "gen/LynxDevToolNGDelegate_register_jni.h",
-    "gen/LynxInspectorOwner_jni.h",
-    "gen/LynxInspectorOwner_register_jni.h",
-    "gen/RecorderController_jni.h",
-    "gen/RecorderController_register_jni.h",
-    "gen/lynx_devtool_so_load.cc",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/CDPResultCallbackWrapper_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/CDPResultCallbackWrapper_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/DevToolMessageHandlerDelegate_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/DevToolMessageHandlerDelegate_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/DevToolPlatformAndroidDelegate_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/DevToolPlatformAndroidDelegate_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FPSTrace_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FPSTrace_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FrameTraceService_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FrameTraceService_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FrameViewTrace_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/FrameViewTrace_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/InstanceTrace_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/InstanceTrace_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/LynxDevToolNGDelegate_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/LynxDevToolNGDelegate_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/LynxInspectorOwner_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/LynxInspectorOwner_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/RecorderController_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/RecorderController_register_jni.h",
+    "//lynx/platform/android/lynx_devtool/src/main/jni/gen/lynx_devtool_so_load.cc",
   ]
 }
