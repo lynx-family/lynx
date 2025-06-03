@@ -123,10 +123,8 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   std::string& GetName() { return name_; }
 
-  inline std::optional<LynxTemplateBundle> GetCompleteTemplateBundle() {
-    return is_template_bundle_complete_
-               ? std::optional<LynxTemplateBundle>(template_bundle_)
-               : std::nullopt;
+  inline LynxTemplateBundle* GetCompleteTemplateBundle() {
+    return is_template_bundle_complete_ ? &template_bundle_ : nullptr;
   }
 
   void SetIsCard(bool is_card) { is_card_ = is_card; }

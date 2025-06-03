@@ -615,7 +615,7 @@ void TemplateAssembler::RenderTemplateForFiber(
     const std::shared_ptr<TemplateEntry>& card, const TemplateData& data,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomStart);
-
+  auto time1 = base::CurrentSystemTimeMicroseconds();
   lepus::Value render_options(lepus::Dictionary::Create());
   if (EnableDataProcessorOnJs()) {
     auto kProcessorName_str = BASE_STATIC_STRING(kProcessorName);
@@ -641,19 +641,27 @@ void TemplateAssembler::RenderTemplateForFiber(
   render_options.SetProperty(BASE_STATIC_STRING(kPipelineOptions),
                              PipelineOptionsToLepusValue(pipeline_options));
 
-  fml::RefPtr<FiberElement> element_cache = card->TryToGetElementCache();
-  if (element_cache.get()) {
-    TreeResolver::AttachRootToElementManager(
-        element_cache, page_proxy()->element_manager().get(),
-        style_sheet_manager(DEFAULT_ENTRY_NAME), true);
-    render_options.SetProperty(BASE_STATIC_STRING(kInitPage),
-                               lepus::Value(element_cache));
+  {
+    auto time1 = base::CurrentSystemTimeMicroseconds();
+    fml::RefPtr<FiberElement> element_cache = card->TryToGetElementCache();
+    if (element_cache.get()) {
+      TreeResolver::AttachRootToElementManager(
+          element_cache, page_proxy()->element_manager().get(),
+          style_sheet_manager(DEFAULT_ENTRY_NAME), true);
+      render_options.SetProperty(BASE_STATIC_STRING(kInitPage),
+                                 lepus::Value(element_cache));
+    }
+    auto time2 = base::CurrentSystemTimeMicroseconds();
+    LOGE("NIHAO TryToGetElementCache :" << (time2 - time1));
   }
 
   // No need to re-render nodes during SSR
   if (!page_proxy_.IsWaitingSSRHydrate()) {
+    auto time1 = base::CurrentSystemTimeMicroseconds();
     card->GetVm()->Call(BASE_STATIC_STRING(kRenderPage), data.GetValue(),
                         std::move(render_options));
+    auto time2 = base::CurrentSystemTimeMicroseconds();
+    LOGE("NIHAO RenderPage :" << (time2 - time1));
   } else {
     // When Hydrating SSR page, the extreme_parsed_style flag has to be cleared
     // to make element do full CSS resolving when the classes is updated after
@@ -661,6 +669,8 @@ void TemplateAssembler::RenderTemplateForFiber(
     page_proxy()->element_manager()->ClearExtremeParsedStyles();
   }
 
+  auto time2 = base::CurrentSystemTimeMicroseconds();
+  LOGE("NIHAO CreateVDOM :" << (time2 - time1));
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomEnd);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
 
