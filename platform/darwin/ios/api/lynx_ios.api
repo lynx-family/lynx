@@ -111,14 +111,6 @@ public class LineSpacingAdaptation : NSObject, <NSLayoutManagerDelegate> {
   public CGFloat LineSpacingAdaptation::baseline baseline;
 }
 
-public class LRUMap : NSObject {
-  public instancetype LRUMap::initWithCapacity:(NSUInteger capacity);
-  public id LRUMap::get:(id key);
-  public void LRUMap::set:value:(id key,[value] id value);
-  public NSUInteger LRUMap::getCapacity();
-  public NSString * LRUMap::description();
-}
-
 public protocol LUIBodyView-p : <NSObject>, <LUIErrorHandling> {
   public BOOL LUIBodyView-p::enableAsyncDisplay enableAsyncDisplay;
   public NSString* LUIBodyView-p::url url;
@@ -2350,6 +2342,14 @@ public class LynxLruCacheNode : NSObject, <NSCoding> {
   public LynxLruCacheNode* LynxLruCacheNode::prev prev;
   public instancetype LynxLruCacheNode::nodeWithValue:key:(id value,[key] id< NSCopying > key);
   public instancetype LynxLruCacheNode::initWithValue:key:(id value,[key] id< NSCopying > key);
+}
+
+public class LynxLRUMap : NSObject {
+  public instancetype LynxLRUMap::initWithCapacity:(NSUInteger capacity);
+  public id LynxLRUMap::get:(id key);
+  public void LynxLRUMap::set:value:(id key,[value] id value);
+  public NSUInteger LynxLRUMap::getCapacity();
+  public NSString * LynxLRUMap::description();
 }
 
 public protocol LynxMeasureDelegate-p : <NSObject> {

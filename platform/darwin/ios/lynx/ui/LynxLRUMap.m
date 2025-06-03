@@ -1,20 +1,20 @@
 // Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#import "LRUMap.h"
+#import "LynxLRUMap.h"
 
-@interface LRUNode : NSObject
+@interface LynxLRUNode : NSObject
 
 @property(nonatomic, weak) id key;
 @property(nonatomic, strong) id value;
-@property(nonatomic, strong) LRUNode *prev;
-@property(nonatomic, strong) LRUNode *next;
+@property(nonatomic, strong) LynxLRUNode *prev;
+@property(nonatomic, strong) LynxLRUNode *next;
 
 - (instancetype)initWithKey:(id)key value:(id)value;
 
 @end
 
-@implementation LRUNode
+@implementation LynxLRUNode
 
 - (instancetype)initWithKey:(id)key value:(id)value {
   self = [super init];
@@ -27,17 +27,17 @@
 
 @end
 
-@interface LRUMap ()
+@interface LynxLRUMap ()
 
 @property(nonatomic, assign) NSUInteger capacity;
 @property(nonatomic, assign) NSUInteger count;
 @property(nonatomic, strong) NSMapTable *cacheDict;
-@property(nonatomic, strong) LRUNode *head;
-@property(nonatomic, strong) LRUNode *tail;
+@property(nonatomic, strong) LynxLRUNode *head;
+@property(nonatomic, strong) LynxLRUNode *tail;
 
 @end
 
-@implementation LRUMap
+@implementation LynxLRUMap
 
 - (instancetype)initWithCapacity:(NSUInteger)capacity {
   self = [super init];
@@ -55,7 +55,7 @@
 }
 
 - (id)get:(id)key {
-  LRUNode *node = [self.cacheDict objectForKey:key];
+  LynxLRUNode *node = [self.cacheDict objectForKey:key];
   if (node) {
     [self moveToHead:node];
     return node.value;
@@ -64,12 +64,12 @@
 }
 
 - (void)set:(id)key value:(id)value {
-  LRUNode *node = [self.cacheDict objectForKey:key];
+  LynxLRUNode *node = [self.cacheDict objectForKey:key];
   if (node) {
     node.value = value;
     [self moveToHead:node];
   } else {
-    LRUNode *newNode = [[LRUNode alloc] initWithKey:key value:value];
+    LynxLRUNode *newNode = [[LynxLRUNode alloc] initWithKey:key value:value];
     if (self.count >= self.capacity) {
       [self removeTail];
     }
@@ -79,13 +79,13 @@
   }
 }
 
-- (void)moveToHead:(LRUNode *)node {
+- (void)moveToHead:(LynxLRUNode *)node {
   if (node == self.head) return;
   [self removeNode:node];
   [self addToHead:node];
 }
 
-- (void)addToHead:(LRUNode *)node {
+- (void)addToHead:(LynxLRUNode *)node {
   node.next = self.head;
   node.prev = nil;
   if (self.head) {
@@ -97,7 +97,7 @@
   }
 }
 
-- (void)removeNode:(LRUNode *)node {
+- (void)removeNode:(LynxLRUNode *)node {
   if (node.prev) {
     node.prev.next = node.next;
   } else {
@@ -120,7 +120,7 @@
 
 - (NSString *)description {
   NSMutableString *desc = [NSMutableString string];
-  LRUNode *node = self.head;
+  LynxLRUNode *node = self.head;
   while (node) {
     [desc appendFormat:@"%@: %@ ", node.key, node.value];
     node = node.next;

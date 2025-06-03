@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #import "LynxOffsetCalculator.h"
 #import <Lynx/LynxLog.h>
-#import "LRUMap.h"
+#import "LynxLRUMap.h"
 
 @implementation PathLengthCache
 - (instancetype)init {
@@ -18,7 +18,7 @@
 @end
 
 static int32_t kMaxCacheSize = 10;
-static LRUMap *lruPathCache;
+static LynxLRUMap *lruPathCache;
 
 @implementation LynxOffsetCalculator
 
@@ -322,7 +322,7 @@ static void findTargetPoint(void *info, const CGPathElement *element) {
 
 + (void)initialize {
   if (self == [LynxOffsetCalculator class]) {
-    lruPathCache = [[LRUMap alloc] initWithCapacity:kMaxCacheSize];
+    lruPathCache = [[LynxLRUMap alloc] initWithCapacity:kMaxCacheSize];
   }
 }
 

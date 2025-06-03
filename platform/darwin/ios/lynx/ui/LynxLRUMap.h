@@ -6,7 +6,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LRUMap : NSObject
+@interface LynxLRUMap : NSObject
 
 - (instancetype)initWithCapacity:(NSUInteger)capacity;
 - (id)get:(id)key;
