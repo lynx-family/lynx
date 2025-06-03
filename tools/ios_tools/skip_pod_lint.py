@@ -20,7 +20,7 @@ def skip_pod_lint(source):
     pattern = "validate_podspec"
     with open(path,"r",encoding='utf8') as f:
         file_content = f.read()
-        file_content = re.sub(pattern, r"#validate_podspec", file_content, 1)
+        file_content = re.sub(pattern, r"#validate_podspec", file_content, count=1)
     with open(path,"w",encoding='utf8') as f:
         f.write(file_content)
 
