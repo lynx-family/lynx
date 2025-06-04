@@ -3989,6 +3989,245 @@ TEST_P(FiberElementTest, FiberElementFixedRemovedCase) {
   EXPECT_TRUE(page_children[0] == element_before_painting_node);
 }
 
+// insert before fixed
+TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto element_before = manager->CreateFiberNode("view");
+  element_before->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                           lepus::Value("red"));
+  page->InsertNode(element_before);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                     lepus::Value("green"));
+  page->InsertNode(element0);
+
+  // fixed
+  auto element1 = manager->CreateFiberNode("view");
+  element1->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("red"));
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  element0->InsertNode(element1);
+
+  // check painting node
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto* element_before_painting_node =
+      painting_context->node_map_.at(element_before->impl_id()).get();
+  auto* element0_painting_node =
+      painting_context->node_map_.at(element0->impl_id()).get();
+  auto* element1_painting_node =
+      painting_context->node_map_.at(element1->impl_id()).get();
+  auto page_children = page_painting_node->children_;
+  EXPECT_TRUE(page_children.size() == 3);
+  EXPECT_TRUE(page_children[0] == element_before_painting_node);
+  EXPECT_TRUE(page_children[1] == element0_painting_node);
+  EXPECT_TRUE(page_children[2] == element1_painting_node);
+
+  // insert before fixed
+  auto element_insert_before = manager->CreateFiberNode("view");
+  element0->InsertNodeBefore(element_insert_before, element1);
+
+  auto element_not_ref = manager->CreateFiberNode("view");
+  element0->InsertNode(element_not_ref);
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_insert_before->impl_id(), -1));
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_not_ref->impl_id(), -1));
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+}
+
+// insert before fixed
+TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase1) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto element_before = manager->CreateFiberNode("view");
+  element_before->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                           lepus::Value("red"));
+  page->InsertNode(element_before);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                     lepus::Value("green"));
+  page->InsertNode(element0);
+
+  // fixed
+  auto element1 = manager->CreateFiberNode("view");
+  element1->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("red"));
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  element0->InsertNode(element1);
+
+  // check painting node
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto* element_before_painting_node =
+      painting_context->node_map_.at(element_before->impl_id()).get();
+  auto* element0_painting_node =
+      painting_context->node_map_.at(element0->impl_id()).get();
+  auto* element1_painting_node =
+      painting_context->node_map_.at(element1->impl_id()).get();
+  auto page_children = page_painting_node->children_;
+  EXPECT_TRUE(page_children.size() == 3);
+  EXPECT_TRUE(page_children[0] == element_before_painting_node);
+  EXPECT_TRUE(page_children[1] == element0_painting_node);
+  EXPECT_TRUE(page_children[2] == element1_painting_node);
+
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("absolute"));
+
+  auto element_insert_before = manager->CreateFiberNode("view");
+  element0->InsertNodeBefore(element_insert_before, element1);
+
+  EXPECT_CALL(tasm_mediator,
+              RemoveLayoutNode(page->impl_id(), element1->impl_id()));
+
+  EXPECT_CALL(tasm_mediator, InsertLayoutNodeBefore(element0->impl_id(),
+                                                    element1->impl_id(), -1));
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_insert_before->impl_id(), -1));
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+}
+
+// insert before fixed
+TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase2) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto element_before = manager->CreateFiberNode("view");
+  element_before->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                           lepus::Value("red"));
+  page->InsertNode(element_before);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                     lepus::Value("green"));
+  page->InsertNode(element0);
+
+  // fixed
+  auto element1 = manager->CreateFiberNode("view");
+  element1->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("red"));
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+  element0->InsertNode(element1);
+
+  // check painting node
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto* element_before_painting_node =
+      painting_context->node_map_.at(element_before->impl_id()).get();
+  auto* element0_painting_node =
+      painting_context->node_map_.at(element0->impl_id()).get();
+  auto* element1_painting_node =
+      painting_context->node_map_.at(element1->impl_id()).get();
+  auto page_children = page_painting_node->children_;
+  EXPECT_TRUE(page_children.size() == 3);
+  EXPECT_TRUE(page_children[0] == element_before_painting_node);
+  EXPECT_TRUE(page_children[1] == element0_painting_node);
+  EXPECT_TRUE(page_children[2] == element1_painting_node);
+
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("absolute"));
+
+  auto element_insert_before = manager->CreateFiberNode("view");
+  element0->InsertNodeBefore(element_insert_before, element1);
+
+  auto element_not_ref = manager->CreateFiberNode("view");
+  element0->InsertNode(element_not_ref);
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_insert_before->impl_id(), -1));
+
+  EXPECT_CALL(tasm_mediator,
+              RemoveLayoutNode(page->impl_id(), element1->impl_id()));
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(), element1->impl_id(),
+                                     element_not_ref->impl_id()));
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_not_ref->impl_id(), -1));
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+}
+
+// insert before fixed
+TEST_P(FiberElementTest, FiberElementInsertBeforeFixedCase3) {
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto element_before = manager->CreateFiberNode("view");
+  element_before->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                           lepus::Value("red"));
+  page->InsertNode(element_before);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                     lepus::Value("green"));
+  page->InsertNode(element0);
+
+  auto element1 = manager->CreateFiberNode("view");
+  element1->SetStyle(CSSPropertyID::kPropertyIDBackground, lepus::Value("red"));
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                     lepus::Value("absolute"));
+  element0->InsertNode(element1);
+
+  // check painting node
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+
+  element1->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+
+  auto element_insert_before = manager->CreateFiberNode("view");
+  element0->InsertNodeBefore(element_insert_before, element1);
+
+  auto element_not_ref = manager->CreateFiberNode("view");
+  element0->InsertNode(element_not_ref);
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_insert_before->impl_id(), -1));
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(element0->impl_id(),
+                                     element_not_ref->impl_id(), -1));
+
+  EXPECT_CALL(tasm_mediator,
+              RemoveLayoutNode(element0->impl_id(), element1->impl_id()));
+
+  EXPECT_CALL(tasm_mediator,
+              InsertLayoutNodeBefore(page->impl_id(), element1->impl_id(), -1));
+
+  page->FlushActionsAsRoot();
+  painting_context->Flush();
+}
+
 TEST_P(FiberElementTest, FiberElementFixedChangedBeforeWrapper) {
   auto page = manager->CreateFiberPage("page", 11);
 

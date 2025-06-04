@@ -97,6 +97,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_JSVM_RUNTIME,
     ENABLE_UNIFIED_PIXEL_PIPELINE,
     FIX_PARALLEL_Z_INDEX_CRASH,
+    FIX_INSERT_BEFORE_FIXED_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -203,6 +204,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_UNIFIED_PIXEL_PIPELINE,
              "enable_unified_pixel_pipeline"},
             {Key::FIX_PARALLEL_Z_INDEX_CRASH, "fix_parallel_z_index_crash"},
+            {Key::FIX_INSERT_BEFORE_FIXED_BUG, "fix_insert_before_fixed_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -317,6 +319,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableJSVMRuntime();
   bool EnableUnifiedPixelPipeline();
   bool FixParallelZIndexCrash();
+  bool FixInsertBeforeFixedBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

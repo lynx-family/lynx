@@ -1788,8 +1788,11 @@ void FiberElement::HandleInsertChildAction(FiberElement *child, int to_index,
   }
 
   if (!GetEnableFixedNew()) {
-    while (ref_node != nullptr &&
-           (ref_node->is_fixed() || ref_node->fixed_changed_)) {
+    while (
+        ref_node != nullptr &&
+        (ref_node->is_fixed() || ref_node->fixed_changed_ ||
+         (element_manager() && element_manager()->FixInsertBeforeFixedBug() &&
+          ref_node->render_parent() == nullptr))) {
       // Two cases:
       // 1. `ref_node` is a fixed node, find its `next_sibling`.
       // 2. `ref_node` changed from fixed to non-fixed; since

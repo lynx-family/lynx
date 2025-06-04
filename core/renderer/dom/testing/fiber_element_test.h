@@ -41,6 +41,9 @@ const std::tuple<bool, int, bool> fiber_element_generation_params[] = {
     std::make_tuple(true, 0, true),  // enable parallel flush/ALL_ON_UI thread
                                      // strategy /enable batch layout operation
     std::make_tuple(true, 3,
+                    true),  // enable parallel flush/MULTI_THREADS thread
+                            // strategy/disable batch layout operation
+    std::make_tuple(true, 3,
                     false),  // enable parallel flush/MULTI_THREADS thread
                              // strategy/disable batch layout operation
 };

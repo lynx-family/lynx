@@ -413,6 +413,10 @@ bool LynxEnv::FixParallelZIndexCrash() {
   return GetBoolEnv(Key::FIX_PARALLEL_Z_INDEX_CRASH, true);
 }
 
+bool LynxEnv::FixInsertBeforeFixedBug() {
+  return GetBoolEnv(Key::FIX_INSERT_BEFORE_FIXED_BUG, true);
+}
+
 bool LynxEnv::EnableJSVMRuntime() {
   return GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false) ||
          GetBoolEnv(Key::ENABLE_JSVM_RUNTIME, false, EnvType::LOCAL);
