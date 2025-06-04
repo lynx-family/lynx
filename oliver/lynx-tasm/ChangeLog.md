@@ -1,3 +1,6 @@
+# 0.0.10
+* remove `FeatureCount` from template_codec module.
+
 # 0.0.9
 * add 'enableSimpleStyling' to compileOptions. And support encode style objects into template for simplified styling mode.
 

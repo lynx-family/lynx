@@ -13,7 +13,6 @@
 
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
-#include "core/services/feature_count/feature_counter.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 
 #if ENABLE_AIR
@@ -145,12 +144,6 @@ bool LynxBinaryBaseTemplateReader::DecodeHeader() {
     // never use it
     lepus::Value trial_options;
     ERROR_UNLESS(DecodeValue(&trial_options, true));
-  }
-  if (compile_options_.enable_css_class_merge_) {
-    if (compile_options_.enable_css_class_merge_) {
-      report::FeatureCounter::Instance()->Count(
-          report::LynxFeature::CPP_ENABLE_CLASS_MERGE);
-    }
   }
   enable_css_font_face_extension_ = Config::IsHigherOrEqual(
       compile_options_.target_sdk_version_, FEATURE_CSS_FONT_FACE_EXTENSION);

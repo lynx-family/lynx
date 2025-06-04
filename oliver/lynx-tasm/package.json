@@ -1,6 +1,6 @@
 {
     "name": "@lynx-js/tasm",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "description": "",
     "main": "index.js",
     "types": "index.d.ts",
