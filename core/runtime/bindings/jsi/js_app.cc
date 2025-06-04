@@ -3574,7 +3574,9 @@ void App::SetJsBundleHolder(
 
 void App::SetPageOptions(const tasm::PageOptions& options) {
   page_options_ = options;
-  js_task_adapter_->SetPageOptions(options);
+  if (js_task_adapter_) {
+    js_task_adapter_->SetPageOptions(options);
+  }
 }
 
 }  // namespace piper
