@@ -8,3 +8,5 @@ packages:
   - explorer/homepage
   # base devtool
   - 'lynx/devtool/base_devtool/js_libraries/logbox'
+  # For CSS define validation
+  - tools/css_generator
