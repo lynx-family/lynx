@@ -58,11 +58,6 @@ void AnimationFrameTaskHandler::DoFrame(int64_t time_stamp,
   doing_frame_ = false;
 }
 
-void AnimationFrameTaskHandler::Destroy() {
-  task_map_first_.clear();
-  task_map_second_.clear();
-}
-
 bool AnimationFrameTaskHandler::HasPendingRequest() {
   return !task_map_first_.empty() || !task_map_second_.empty();
 }

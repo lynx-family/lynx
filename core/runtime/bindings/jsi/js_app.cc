@@ -1920,7 +1920,7 @@ void App::CallDestroyLifetimeFun() {
   js_task_adapter_.reset();
   // destroy raf
   if (animation_frame_handler_) {
-    animation_frame_handler_->Destroy();
+    animation_frame_handler_.reset();
   }
   LOGI(" App::CallDestroyLifetimeFun end " << this);
 }
@@ -3520,8 +3520,11 @@ piper::Value App::RequestAnimationFrame(piper::Function func) {
   if (observer) {
     observer->RequestAnimationFrame(
         reinterpret_cast<uintptr_t>(this),
-        [this](int64_t frame_start, int64_t frame_end) {
-          DoFrame(frame_start);
+        [weak_self = weak_from_this()](int64_t frame_start, int64_t frame_end) {
+          auto lock_self = weak_self.lock();
+          if (lock_self) {
+            lock_self->DoFrame(frame_start);
+          }
         });
   }
 
@@ -3539,7 +3542,8 @@ void App::CancelAnimationFrame(int64_t id) {
 
 void App::DoFrame(int64_t time_stamp) {
   static constexpr int64_t kNanoSecondsPerMilliSecond = 1e+6;
-  if (animation_frame_handler_ && !has_paused_animation_frame_) {
+  if (animation_frame_handler_ && !has_paused_animation_frame_ &&
+      !IsDestroying() && IsJsAppStateValid()) {
     // W3C window.requestAnimationFrame request milliseconds
     TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_DO_FRAME, "timestamp", time_stamp);
     animation_frame_handler_->DoFrame(time_stamp / kNanoSecondsPerMilliSecond,
@@ -3561,8 +3565,11 @@ void App::ResumeAnimationFrame() {
     has_paused_animation_frame_ = false;
     observer->RequestAnimationFrame(
         reinterpret_cast<uintptr_t>(this),
-        [this](int64_t frame_start, int64_t frame_end) {
-          DoFrame(frame_start);
+        [weak_self = weak_from_this()](int64_t frame_start, int64_t frame_end) {
+          auto lock_self = weak_self.lock();
+          if (lock_self) {
+            lock_self->DoFrame(frame_start);
+          }
         });
   }
 }
