@@ -164,7 +164,7 @@ def generate_objc_converter(entry_mapping, file_imports):
     oc_code = '@implementation LynxPerformanceEntryConverter\n' \
               '+ (LynxPerformanceEntry *)makePerformanceEntry:(NSDictionary *)dict {\n' \
               '    NSString *name = dict[@"name"];\n' \
-              '    NSString *type = dict[@"entry_type"];\n' \
+              '    NSString *type = dict[@"entryType"];\n' \
               '    LynxPerformanceEntry *entry;\n'
 
     # Add default import
