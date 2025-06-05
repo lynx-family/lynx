@@ -230,11 +230,12 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
                                             count, callback_map);
     // TODO(liyanbo.monster): after remove native promise, delete this.
     std::optional<piper::Value> promise_res;
-#if OS_IOS || OS_TVOS || OS_OSX
+#if (OS_IOS || OS_TVOS || OS_OSX || OS_ANDROID) && \
+    (!defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST)
     native_module_->ExitInvokeScope();
     // hack here, this will be deleted later.
     if (!ret.has_value() && ret.error() == "__IS_NATIVE_PROMISE__") {
-      auto promise_res = native_module_->TryGetPromiseRet();
+      promise_res = native_module_->TryGetPromiseRet();
     }
 #endif
     if (promise_res) {
