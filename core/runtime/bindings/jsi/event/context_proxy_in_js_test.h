@@ -58,7 +58,7 @@ class ContextProxyInJSTest : public JSITestBase {
   void TearDown() override {}
 
   std::shared_ptr<JSRuntimeTestMockJSApp> mock_js_app_;
-  std::shared_ptr<App> app_;
+  std::unique_ptr<App> app_;
   std::shared_ptr<LynxProxy> lynx_proxy_;
 
   JSRuntimeTestMockDelegate delegate_;

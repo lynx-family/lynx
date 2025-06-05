@@ -24,6 +24,7 @@
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/jsi/jsi.h"
+#include "core/runtime/jsi/unsafe_weak_ptr_factory.h"
 #include "core/runtime/piper/js/js_bundle_holder.h"
 #include "core/runtime/piper/js/lynx_api_handler.h"
 #include "core/runtime/piper/js/template_delegate.h"
@@ -46,8 +47,9 @@ class LynxProxy;
 // now this do nothing!
 class AppProxy : public HostObject {
  public:
-  AppProxy(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app)
-      : rt_(rt), native_app_(app) {}
+  AppProxy(std::weak_ptr<Runtime> rt, std::weak_ptr<App> app,
+           UnsafeWeakPtr<App> unsafe_weak_app)
+      : rt_(rt), native_app_(app), unsafe_weak_app_(unsafe_weak_app) {}
   ~AppProxy() { LOGI("LYNX ~AppProxy destroy"); }
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -57,23 +59,31 @@ class AppProxy : public HostObject {
   enum AnimationOperation : int32_t { START = 0, PLAY, PAUSE, CANCEL, FINISH };
 
  protected:
+  // Note: please use this instead of use native_app_ or
+  // unsafe_weak_app_ directly.
+  App* GetApp();
+
   std::weak_ptr<Runtime> rt_;
   std::weak_ptr<App> native_app_;
+  UnsafeWeakPtr<App> unsafe_weak_app_;
 };
 
-class App : public std::enable_shared_from_this<App> {
+class App : public std::enable_shared_from_this<App>,
+            public UnsafeWeakPtrFactory<App> {
  public:
-  static std::shared_ptr<App> Create(
-      int64_t rt_id, std::weak_ptr<Runtime> rt,
-      runtime::TemplateDelegate* delegate,
-      std::shared_ptr<JSIExceptionHandler> exception_handler,
-      piper::Object nativeModuleProxy,
-      std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const std::string& group_id, const tasm::PageOptions& page_options) {
-    auto app = std::shared_ptr<App>(new App(
-        rt_id, rt, delegate, exception_handler, std::move(nativeModuleProxy),
-        std::move(api_handler), group_id, page_options));
+  static App* Create(int64_t rt_id, std::weak_ptr<Runtime> rt,
+                     runtime::TemplateDelegate* delegate,
+                     std::shared_ptr<JSIExceptionHandler> exception_handler,
+                     piper::Object nativeModuleProxy,
+                     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
+                     const std::string& group_id,
+                     const tasm::PageOptions& page_options,
+                     bool use_unsafe_ptr) {
+    auto* app = new App(rt_id, rt, delegate, exception_handler,
+                        std::move(nativeModuleProxy), std::move(api_handler),
+                        group_id, page_options, use_unsafe_ptr);
     app->Init();
+    // will be wrapper by LynxRuntime, that will be a shared_ptr or unique_ptr
     return app;
   }
 
@@ -273,7 +283,8 @@ class App : public std::enable_shared_from_this<App> {
       std::shared_ptr<JSIExceptionHandler> exception_handler,
       piper::Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const std::string& group_id, const tasm::PageOptions& page_options)
+      const std::string& group_id, const tasm::PageOptions& page_options,
+      bool use_unsafe_ptr)
       : app_guid_(std::to_string(rt_id)),
         rt_(rt),
         js_app_(),
@@ -290,7 +301,8 @@ class App : public std::enable_shared_from_this<App> {
             tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
         page_options_(page_options),
         animation_frame_handler_(
-            std::make_unique<runtime::AnimationFrameTaskHandler>()) {}
+            std::make_unique<runtime::AnimationFrameTaskHandler>()),
+        use_unsafe_ptr_(use_unsafe_ptr) {}
 
   void Init();
   std::optional<Value> SendPageEvent(const std::string& page_name,
@@ -359,6 +371,7 @@ class App : public std::enable_shared_from_this<App> {
   std::unique_ptr<runtime::AnimationFrameTaskHandler> animation_frame_handler_;
   bool has_paused_animation_frame_{false};
   lynx::tasm::FluencyTracer fluency_tracer_;
+  bool use_unsafe_ptr_;
 };
 
 }  // namespace piper

@@ -10,6 +10,7 @@
 
 #include "core/runtime/bindings/jsi/event/js_event_listener.h"
 #include "core/runtime/jsi/jsi_unittest.h"
+#include "core/runtime/jsi/unsafe_weak_ptr_factory.h"
 #include "core/runtime/piper/js/mock_template_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -27,7 +28,7 @@ class JSClosureEventListenerTest : public JSITestBase {
   void TearDown() override {}
 
  protected:
-  std::shared_ptr<App> app_;
+  std::unique_ptr<App> app_;
   runtime::test::MockTemplateDelegate delegate_;
 };
 

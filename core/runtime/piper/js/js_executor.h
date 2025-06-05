@@ -57,10 +57,10 @@ class BASE_EXPORT_FOR_DEVTOOL JSExecutor {
 
   runtime::RuntimeManager* runtimeManagerInstance();
 
-  std::shared_ptr<piper::App> createNativeAppInstance(
+  piper::App* createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const tasm::PageOptions& page_options);
+      const tasm::PageOptions& page_options, bool use_unsafe_ptr);
 
   piper::JSRuntimeCreatedType getJSRuntimeType();
 

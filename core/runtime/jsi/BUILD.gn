@@ -15,6 +15,7 @@ jsi_sources = [
   "jsi.cc",
   "jsi.h",
   "jslib.h",
+  "unsafe_weak_ptr_factory.h",
 ]
 
 lynx_core_source_set("jsi") {
@@ -32,7 +33,10 @@ config("jsi_unittest_config") {
 }
 
 unittest_set("jsi_unittests_testset") {
-  sources = [ "jsi_unittest.cc" ]
+  sources = [
+    "jsi_unittest.cc",
+    "unsafe_weak_ptr_factory_unittest.cc",
+  ]
 
   deps = [
     ":jsi",

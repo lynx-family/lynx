@@ -13,6 +13,7 @@
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/jsi/jsi.h"
+#include "core/runtime/jsi/unsafe_weak_ptr_factory.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
@@ -24,11 +25,11 @@ class Runtime;
 class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
  public:
   ContextProxyInJS(runtime::ContextProxy::Delegate&,
-                   runtime::ContextProxy::Type, std::weak_ptr<App>);
+                   runtime::ContextProxy::Type, std::weak_ptr<App>,
+                   UnsafeWeakPtr<App>);
   virtual ~ContextProxyInJS() override = default;
 
   runtime::MessageEvent CreateMessageEvent(Runtime& rt,
-                                           std::shared_ptr<App> native_app,
                                            const piper::Value& event);
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -41,6 +42,11 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
 
  protected:
   std::weak_ptr<App> native_app_;
+  UnsafeWeakPtr<App> unsafe_weak_app_;
+
+  // Note: please use this instead of use native_app_ or
+  // unsafe_weak_app_ directly.
+  App* GetApp();
 };
 
 }  // namespace piper

@@ -226,11 +226,14 @@ class LynxRuntime final {
 
   static int64_t GenerateRuntimeId();
 
+  piper::App* GetApp();
+
   const std::string group_id_;
   const int32_t instance_id_;
   const std::unique_ptr<runtime::TemplateDelegate> delegate_;
   std::unique_ptr<lynx::piper::JSExecutor> js_executor_;
   std::shared_ptr<piper::App> app_;
+  std::unique_ptr<piper::App> unique_app_;
 #if ENABLE_NAPI_BINDING
   std::unique_ptr<piper::NapiEnvironment> napi_environment_;
   std::unique_ptr<piper::NapiEnvironment> napi_restricted_environment_;
@@ -267,6 +270,7 @@ class LynxRuntime final {
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       cached_native_factories_;
   bool destroy_js_app_early_{false};
+  bool use_unsafe_ptr_;
 };
 
 }  // namespace runtime

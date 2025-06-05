@@ -48,13 +48,14 @@ void ContextProxyInJSTest::SetUp() {
 
   auto nativeModule =
       eval("(function() { return {}; })()")->asObject(rt).value();
-  app_ =
-      App::Create(0, runtime, &delegate_, exception_handler_,
-                  std::move(nativeModule), nullptr, "-1", tasm::PageOptions());
+  app_ = std::unique_ptr<App>(App::Create(
+      0, runtime, &delegate_, exception_handler_, std::move(nativeModule),
+      nullptr, "-1", tasm::PageOptions(), true));
 
   app_->setJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
 
-  lynx_proxy_ = std::make_shared<piper::LynxProxy>(app_);
+  lynx_proxy_ = std::make_shared<piper::LynxProxy>(std::weak_ptr<App>(),
+                                                   app_->WeakFromThis());
   Object lynx_obj = Object::createFromHostObject(rt, lynx_proxy_);
   function(R"--(
     function registerLynx(lynx) {
@@ -308,9 +309,11 @@ TEST_P(ContextProxyInJSTest, ContextProxyInJSOnTriggerEventTest) {
       .call(rt, piper::Value::undefined());
 
   auto compare_event_listener = std::make_unique<JSClosureEventListener>(
-      app_, *(runtime->global().getProperty(rt, "onEvent")));
+      std::weak_ptr<App>(), app_->WeakFromThis(),
+      *(runtime->global().getProperty(rt, "onEvent")));
   auto compare_event_listener_1 = std::make_unique<JSClosureEventListener>(
-      app_, *(runtime->global().getProperty(rt, "onEvent_1")));
+      std::weak_ptr<App>(), app_->WeakFromThis(),
+      *(runtime->global().getProperty(rt, "onEvent_1")));
 
   EXPECT_TRUE(app_
                   ->context_proxy_vector_[static_cast<int32_t>(

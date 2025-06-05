@@ -18,11 +18,23 @@
 
 namespace lynx {
 namespace piper {
+
+App *LynxProxy::GetApp() {
+  if (unsafe_weak_app_) {
+    return unsafe_weak_app_.Lock();
+  }
+  auto lock_app = native_app_.lock();
+  if (lock_app) {
+    return lock_app.get();
+  }
+  return nullptr;
+}
+
 Value LynxProxy::get(lynx::piper::Runtime *rt,
                      const lynx::piper::PropNameID &name) {
   auto methodName = name.utf8(*rt);
   if (methodName == "__globalProps") {
-    auto native_app = native_app_.lock();
+    auto native_app = GetApp();
     if (!native_app) {
       return piper::Value::undefined();
     }
@@ -35,7 +47,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
   }
 
   if (methodName == "__presetData") {
-    auto native_app = native_app_.lock();
+    auto native_app = GetApp();
     if (!native_app) {
       return piper::Value::undefined();
     }
@@ -52,7 +64,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
         [this](Runtime &rt, const piper::Value &this_val,
                const piper::Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app) {
             return piper::Value::undefined();
           }
@@ -70,7 +82,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx.getComponentContext args count must be 3"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr && !ptr->IsDestroying()) {
             std::string id;
             if (args[0].isString()) {
@@ -128,7 +140,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
                 "be no less than 3"));
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr) {
             std::string url;
             ApiCallBack callback;
@@ -171,7 +183,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
         [this](Runtime &rt, const piper::Value &thisVal,
                const piper::Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr) {
             lepus::Value value(lepus::Dictionary::Create());
             ApiCallBack callback;
@@ -215,7 +227,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
         [this](Runtime &rt, const piper::Value &thisVal,
                const piper::Value *args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr) {
             std::string url;
             ApiCallBack callback;
@@ -244,7 +256,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
         [this](
             Runtime &rt, const piper::Value &thisVal, const piper::Value *args,
             size_t count) -> base::expected<piper::Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr) {
             return piper::Value::undefined();
           }
@@ -286,7 +298,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
         [this, methodName = std::move(methodName)](
             Runtime &rt, const piper::Value &thisVal, const piper::Value *args,
             size_t count) -> base::expected<piper::Value, JSINativeException> {
-          auto app = native_app_.lock();
+          auto app = GetApp();
           if (!app) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "lynx." + methodName +
@@ -335,7 +347,7 @@ Value LynxProxy::get(lynx::piper::Runtime *rt,
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "queueMicrotask args count must = 1"));
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -372,7 +384,7 @@ piper::Value LynxProxy::GetCustomSectionSync(Runtime &rt,
               "'s args count must be 1."));
         }
 
-        auto native_app = native_app_.lock();
+        auto native_app = GetApp();
         if (native_app) {
           std::string url;
           if (!args[0].isString()) {

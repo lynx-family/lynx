@@ -18,7 +18,10 @@ namespace piper {
 
 class JSClosureEventListener : public event::EventListener {
  public:
-  JSClosureEventListener(std::shared_ptr<App>, const piper::Value&);
+  // TODO(liyanbo.monster): if UnsafeWeakPtr has no error, remove
+  // std::weak_ptr
+  JSClosureEventListener(std::weak_ptr<App>, UnsafeWeakPtr<App> unsafe_weak_app,
+                         const piper::Value&);
   ~JSClosureEventListener() override = default;
 
   void Invoke(event::Event* event) override;
@@ -29,8 +32,12 @@ class JSClosureEventListener : public event::EventListener {
 
  private:
   piper::Value ConvertEventToPiperValue(event::Event* event);
+  // Note: please use this instead of use native_app_ or
+  // unsafe_weak_app_ directly.
+  App* GetApp();
 
   std::weak_ptr<App> native_app_;
+  UnsafeWeakPtr<App> unsafe_weak_app_;
   piper::Value closure_;
 };
 

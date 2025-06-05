@@ -66,8 +66,7 @@ inline std::unordered_map<std::string, JsContent>& GetJSAssetsMap() {
   return *js_assets_map_;
 }
 
-inline tasm::PageOptions GetPageOptions(std::weak_ptr<App> native_app) {
-  auto app = native_app.lock();
+inline tasm::PageOptions GetPageOptions(App* app) {
   if (!app) {
     return tasm::PageOptions();
   }
@@ -81,8 +80,7 @@ constexpr long DEFAULT_RESOURCE_TIMEOUT = 5;
 
 #if ENABLE_TRACE_PERFETTO
 static void HandleProfileNameAndOption(const piper::Value* args, size_t count,
-                                       Runtime& rt,
-                                       std::weak_ptr<App> native_app,
+                                       Runtime& rt, App* ptr,
                                        lynx::perfetto::EventContext& ctx) {
   // arg0: trace_name
   if (count < 1 || !args[0].isString()) {
@@ -93,7 +91,6 @@ static void HandleProfileNameAndOption(const piper::Value* args, size_t count,
 
   // args1: TraceOption
   if (count > 1) {
-    auto ptr = native_app.lock();
     if (!ptr || ptr->IsDestroying()) {
       return;
     }
@@ -122,17 +119,28 @@ static void HandleProfileNameAndOption(const piper::Value* args, size_t count,
 }
 #endif
 
+App* AppProxy::GetApp() {
+  if (unsafe_weak_app_) {
+    return unsafe_weak_app_.Lock();
+  }
+  auto lock_app = native_app_.lock();
+  if (lock_app) {
+    return lock_app.get();
+  }
+  return nullptr;
+}
+
 Value AppProxy::get(Runtime* rt, const PropNameID& name) {
   auto methodName = name.utf8(*rt);
   if (methodName == "id") {
-    auto native_app = native_app_.lock();
+    auto native_app = GetApp();
     if (!native_app || native_app->IsDestroying()) {
       return piper::Value::undefined();
     }
     auto guid = piper::String::createFromUtf8(*rt, native_app->getAppGUID());
     return piper::Value(*rt, guid);
   } else if (methodName == "__pageUrl") {
-    auto native_app = native_app_.lock();
+    auto native_app = GetApp();
     if (!native_app) {
       return piper::Value::undefined();
     }
@@ -167,7 +175,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (count > 2 && args[2].isNumber()) {
             timeout = static_cast<long>(args[2].getNumber());
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -218,7 +226,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           if (count > 2 && args[2].isObject()) {
             auto timeout = args[2].getObject(rt).getProperty(rt, "timeout");
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -241,14 +249,14 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                size_t count) -> base::expected<Value, JSINativeException> {
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PROXY_UPDATE_DATA);
           tasm::timing::LongTaskMonitor::Scope long_task_scope(
-              GetPageOptions(native_app_), tasm::timing::kUpdateDataByJSTask,
+              GetPageOptions(GetApp()), tasm::timing::kUpdateDataByJSTask,
               tasm::timing::kTaskNameJSAppUpdateData);
           if (count < 1) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("updateData arg count must be 1"));
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -302,14 +310,14 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           tasm::timing::LongTaskMonitor::Scope long_task_scope(
-              GetPageOptions(native_app_), tasm::timing::kUpdateDataByJSTask,
+              GetPageOptions(GetApp()), tasm::timing::kUpdateDataByJSTask,
               tasm::timing::kTaskNameJSAppBatchedUpdateData);
           if (count < 1) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "batchedUpdateData arg count must be 1"));
           }
 
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (native_app && !native_app->IsDestroying()) {
             auto opt_jsi_native_exception =
                 native_app->batchedUpdateData(args[0]);
@@ -333,7 +341,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 BUILD_JSI_NATIVE_EXCEPTION("setCard arg count must be 1"));
           }
 
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -357,7 +365,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("setTimeout args count must >= 1"));
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -389,7 +397,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("setInterval arg count must be 2"));
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -417,7 +425,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("clearTimeout arg count must be 1"));
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -439,7 +447,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "clearInterval arg count must be 1"));
           }
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -452,7 +460,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           return piper::Value::undefined();
         });
   } else if (methodName == "nativeModuleProxy") {
-    auto native_app = native_app_.lock();
+    auto native_app = GetApp();
     if (!native_app || native_app->IsDestroying()) {
       return piper::Value::undefined();
     }
@@ -533,7 +541,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             error_info.error_level = static_cast<base::LynxErrorLevel>(num);
           }
 
-          auto native_app = native_app_.lock();
+          auto native_app = GetApp();
           if (!native_app || native_app->IsDestroying()) {
             LOGE("js_app reportException when native_app is destroying: "
                  << error_info.message);
@@ -553,12 +561,12 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "updateComponentData arg count must >= 3"));
           }
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PROXY_UPDATE_COMPONENT_DATA);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
           tasm::timing::LongTaskMonitor::Scope long_task_scope(
-              GetPageOptions(native_app_), tasm::timing::kUpdateDataByJSTask,
+              GetPageOptions(GetApp()), tasm::timing::kUpdateDataByJSTask,
               tasm::timing::kTaskNameJSAppUpdateComponentData);
           std::string id;
           if (args[0].isString()) {
@@ -623,7 +631,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "triggerLepusGlobalEvent arg error"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr && !ptr->IsDestroying()) {
             auto lepus_value_opt = ptr->ParseJSValueToLepusValue(
                 std::move(args[1]), PAGE_GROUP_ID);
@@ -652,7 +660,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             id = args[0].getString(rt).utf8(rt);
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (ptr && !ptr->IsDestroying()) {
             auto lepus_value_opt = ptr->ParseJSValueToLepusValue(
                 std::move(args[1]), PAGE_GROUP_ID);
@@ -680,7 +688,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PROXY_SELECT_COMPONENT);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -721,7 +729,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "loadScriptAsync arg count must be 2"));
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           // not allow invoke when destroy lifecycle
           if (ptr == nullptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -753,7 +761,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "onPiperInvoked arg count must be 2"));
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           // not allow invoke when destroy lifecycle
           if (ptr == nullptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -782,7 +790,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_PATH_INFO);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -823,7 +831,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_ENV);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return Value::undefined();
           }
@@ -856,7 +864,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
 
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_INVOKE_UI_METHOD);
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -894,7 +902,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           }
 
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_FIELDS);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -931,7 +939,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         [this](Runtime& rt, const piper::Value& this_val,
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -974,7 +982,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         [this](Runtime& rt, const piper::Value& this_val,
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1024,7 +1032,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "getSessionStorageItem args count must be 2."));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1057,7 +1065,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "subscribeSessionStorage's args count must be 3."));
           }
 
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1115,12 +1123,12 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "callLepusMethod arg count must >= 2"));
           }
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_CALL_LEPUS_METHOD);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
           tasm::timing::LongTaskMonitor::Scope long_task_scope(
-              GetPageOptions(native_app_), tasm::timing::kJSFuncTask,
+              GetPageOptions(GetApp()), tasm::timing::kJSFuncTask,
               tasm::timing::kTaskNameJSAppCallLepusMethod);
 
           std::string method_name;
@@ -1179,7 +1187,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "GeneratePipelineOptions arg count must == 0"));
           }
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GENERATE_PIPELINE_OPTIONS);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1204,7 +1212,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "OnPipelineStart arg count must == 1 or == 2"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1255,7 +1263,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "MarkPipelineTiming arg count must == 2"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1286,7 +1294,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "BindPipelineIdWithTimingFlag arg count must == 2"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1317,7 +1325,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("MarkTiming arg count must == 2"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1352,7 +1360,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "triggerWorkletFunction arg count must >= 3"));
           }
           TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_TRIGGER_WORKLET_FUNC);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1406,7 +1414,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(
                 BUILD_JSI_NATIVE_EXCEPTION("featureCount arg count must == 1"));
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1432,7 +1440,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "createJSObjectDestructionObserver arg count must == 1"));
             return base::expected<piper::Value, JSINativeException>();
           }
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1447,7 +1455,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
 
           return piper::Value(Object::createFromHostObject(
               rt, std::make_shared<JSObjectDestructionObserver>(
-                      native_app_, std::move(callback))));
+                      native_app_, unsafe_weak_app_, std::move(callback))));
         });
   } else if (methodName == "pauseGcSuppressionMode") {
     return Function::createFromHostFunction(
@@ -1456,7 +1464,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           LOGI("LYNX App get -> pauseGcSuppressionMode");
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1470,7 +1478,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           LOGI("LYNX App get -> resumeGcSuppressionMode");
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1484,7 +1492,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           LOGI("LYNX App get -> __SetSourceMapRelease");
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1525,7 +1533,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           LOGI("LYNX App get -> __GetSourceMapRelease");
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1547,7 +1555,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         [this](Runtime& rt, const piper::Value& thisVal,
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1574,7 +1582,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
         [this](Runtime& rt, const piper::Value& thisVal,
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1597,7 +1605,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                const piper::Value* args,
                size_t count) -> base::expected<Value, JSINativeException> {
           LOGI("LYNX App get ->" << runtime::kAddReporterCustomInfo);
-          auto ptr = native_app_.lock();
+          auto ptr = GetApp();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
           }
@@ -1639,11 +1647,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           // parameter size >= 1
           // [0] trace name -> String
           // optional ->  Object  {args: {}, flowId: number}
-          auto native_app = native_app_;
+          ALLOW_UNUSED_TYPE auto* native_app = GetApp();
 
           TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JAVASCRIPT, nullptr,
                             [&args, &count, &rt,
-                             &native_app](lynx::perfetto::EventContext ctx) {
+                             native_app](lynx::perfetto::EventContext ctx) {
                               HandleProfileNameAndOption(args, count, rt,
                                                          native_app, ctx);
                             });
@@ -1667,11 +1675,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           // parameter size >= 1
           // [0] trace name -> String
           // optional: -> Object {args: {}, flowId: number}
-          auto native_app = native_app_;
+          ALLOW_UNUSED_TYPE auto native_app = GetApp();
 
           TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JAVASCRIPT, nullptr,
                               [&args, &count, &rt,
-                               &native_app](lynx::perfetto::EventContext ctx) {
+                               native_app](lynx::perfetto::EventContext ctx) {
                                 HandleProfileNameAndOption(args, count, rt,
                                                            native_app, ctx);
                               });
@@ -1956,7 +1964,14 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
     return;
   }
 
-  auto page_proxy = std::make_shared<piper::AppProxy>(rt, shared_from_this());
+  std::weak_ptr<App> weak_app;
+  UnsafeWeakPtr<App> unsafe_app;
+  if (use_unsafe_ptr_) {
+    unsafe_app = WeakFromThis();
+  } else {
+    weak_app = weak_from_this();
+  }
+  auto page_proxy = std::make_shared<piper::AppProxy>(rt, weak_app, unsafe_app);
   piper::Object page_object =
       piper::Object::createFromHostObject(*rt, page_proxy);
 
@@ -2057,7 +2072,7 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
     return;
   }
 
-  lynx_proxy_ = std::make_shared<piper::LynxProxy>(shared_from_this());
+  lynx_proxy_ = std::make_shared<piper::LynxProxy>(weak_app, unsafe_app);
   piper::Object lynx_object =
       piper::Object::createFromHostObject(*rt, lynx_proxy_);
 
@@ -2872,8 +2887,15 @@ std::shared_ptr<ContextProxyInJS> App::GetContextProxy(
   }
   auto result = context_proxy_vector_[static_cast<int32_t>(type)];
   if (result == nullptr) {
-    result =
-        std::make_shared<ContextProxyInJS>(*delegate_, type, weak_from_this());
+    std::weak_ptr<App> weak_app;
+    UnsafeWeakPtr<App> unsafe_app;
+    if (use_unsafe_ptr_) {
+      unsafe_app = WeakFromThis();
+    } else {
+      weak_app = weak_from_this();
+    }
+    result = std::make_shared<ContextProxyInJS>(*delegate_, type, weak_app,
+                                                unsafe_app);
     context_proxy_vector_[static_cast<int32_t>(type)] = result;
   }
   return result;

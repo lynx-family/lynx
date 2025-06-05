@@ -75,10 +75,10 @@ void JSExecutor::invokeCallback(std::shared_ptr<piper::ModuleCallback> callback,
   callback->Invoke(js_runtime_.get(), holder);
 }
 
-std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
+piper::App* JSExecutor::createNativeAppInstance(
     int64_t rt_id, runtime::TemplateDelegate* delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-    const tasm::PageOptions& page_options) {
+    const tasm::PageOptions& page_options, bool use_unsafe_ptr) {
   Scope scope(*js_runtime_);
   piper::Object nativeModuleProxy = piper::Object::createFromHostObject(
       *js_runtime_, module_manager_.get()->bindingPtr);
@@ -100,7 +100,8 @@ std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
 #endif
   return piper::App::Create(rt_id, js_runtime_, delegate, exception_handler_,
                             std::move(nativeModuleProxy),
-                            std::move(api_handler), group_id_, page_options);
+                            std::move(api_handler), group_id_, page_options,
+                            use_unsafe_ptr);
 }
 
 piper::JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {

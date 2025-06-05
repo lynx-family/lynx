@@ -8,8 +8,10 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "core/runtime/bindings/jsi/js_app.h"
 #include "core/runtime/jsi/jsi.h"
+#include "core/runtime/jsi/unsafe_weak_ptr_factory.h"
 
 namespace lynx {
 namespace piper {
@@ -26,20 +28,43 @@ namespace piper {
 class JSObjectDestructionObserver final : public HostObject {
  public:
   explicit JSObjectDestructionObserver(std::weak_ptr<App> app,
+                                       UnsafeWeakPtr<App> unsafe_app,
                                        ApiCallBack destruction_callback)
       : native_app_(std::move(app)),
+        unsafe_weak_app_(std::move(unsafe_app)),
         destruction_callback_(std::move(destruction_callback)) {}
 
   ~JSObjectDestructionObserver() override { CallDestructionCallback(); }
 
  private:
+  App* GetApp() {
+    if (unsafe_weak_app_) {
+      return unsafe_weak_app_.Lock();
+    }
+    auto lock_app = native_app_.lock();
+    if (lock_app) {
+      return lock_app.get();
+    }
+    return nullptr;
+  }
   // Can only be called once at destruction.
   void CallDestructionCallback() {
-    if (auto app = native_app_.lock()) {
+    if (auto* app = GetApp()) {
       app->RunOnJSThreadWhenIdle(
           [destruction_callback = std::move(destruction_callback_),
-           weak_app = std::move(native_app_)]() {
-            if (auto app = weak_app.lock()) {
+           weak_app = std::move(native_app_),
+           unsafe_app = std::move(unsafe_weak_app_)]() {
+            App* app = nullptr;
+            std::shared_ptr<App> lock_app = nullptr;
+            if (unsafe_app) {
+              app = unsafe_app.Lock();
+            } else {
+              lock_app = weak_app.lock();
+              if (lock_app) {
+                app = lock_app.get();
+              }
+            }
+            if (app) {
               app->InvokeApiCallBack(destruction_callback);
             }
           });
@@ -47,6 +72,7 @@ class JSObjectDestructionObserver final : public HostObject {
   }
 
   std::weak_ptr<App> native_app_;
+  UnsafeWeakPtr<App> unsafe_weak_app_;
   ApiCallBack destruction_callback_;
 };
 }  // namespace piper

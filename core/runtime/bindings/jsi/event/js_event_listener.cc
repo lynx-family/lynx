@@ -14,14 +14,28 @@
 namespace lynx {
 namespace piper {
 
-JSClosureEventListener::JSClosureEventListener(std::shared_ptr<App> app,
-                                               const piper::Value& closure)
+App* JSClosureEventListener::GetApp() {
+  if (unsafe_weak_app_) {
+    return unsafe_weak_app_.Lock();
+  }
+  auto lock_app = native_app_.lock();
+  if (lock_app) {
+    return lock_app.get();
+  }
+  return nullptr;
+}
+
+JSClosureEventListener::JSClosureEventListener(
+    std::weak_ptr<App> app, UnsafeWeakPtr<App> unsafe_weak_app,
+    const piper::Value& closure)
     : event::EventListener(event::EventListener::Type::kJSClosureEventListener),
-      native_app_(app) {
-  if (!app) {
+      native_app_(app),
+      unsafe_weak_app_(unsafe_weak_app) {
+  auto* app_ptr = GetApp();
+  if (!app_ptr) {
     return;
   }
-  auto rt = app->GetRuntime();
+  auto rt = app_ptr->GetRuntime();
   if (rt == nullptr) {
     return;
   }
@@ -38,7 +52,7 @@ void JSClosureEventListener::Invoke(event::Event* event) {
     return;
   }
 
-  auto app = native_app_.lock();
+  auto* app = GetApp();
   if (!app || app->IsDestroying()) {
     return;
   }
@@ -71,11 +85,11 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 
   std::shared_ptr<Runtime> other_rt = nullptr;
   std::shared_ptr<Runtime> rt = nullptr;
-  auto other_native_app = other->native_app_.lock();
+  auto other_native_app = other->GetApp();
   if (other_native_app) {
     other_rt = other_native_app->GetRuntime();
   }
-  auto native_app = native_app_.lock();
+  auto native_app = GetApp();
   if (native_app) {
     rt = native_app->GetRuntime();
   }
@@ -88,7 +102,7 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
 }
 
 piper::Value JSClosureEventListener::GetClosure() {
-  auto native_app = native_app_.lock();
+  auto native_app = GetApp();
   std::shared_ptr<Runtime> rt = nullptr;
   if (native_app && !native_app->IsDestroying()) {
     rt = native_app->GetRuntime();
@@ -103,7 +117,7 @@ piper::Value JSClosureEventListener::ConvertEventToPiperValue(
     event::Event* event) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               CLOSURE_EVENT_LISTENER_CONVERT_TO_PIPER_VALUE);
-  auto app = native_app_.lock();
+  auto app = GetApp();
   std::shared_ptr<Runtime> rt = nullptr;
   if (app && !app->IsDestroying()) {
     rt = app->GetRuntime();

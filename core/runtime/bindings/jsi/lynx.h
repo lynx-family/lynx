@@ -10,12 +10,16 @@
 
 #include "core/runtime/bindings/jsi/js_app.h"
 #include "core/runtime/jsi/jsi.h"
+#include "core/runtime/jsi/unsafe_weak_ptr_factory.h"
 
 namespace lynx {
 namespace piper {
 class LynxProxy : public HostObject {
  public:
-  LynxProxy(std::weak_ptr<App> app) : native_app_(app){};
+  // TODO(liyanbo.monster): if  UnsafeWeakPtr has no error, remove
+  // std::weak_ptr
+  LynxProxy(std::weak_ptr<App> app, UnsafeWeakPtr<App> unsafe_weak_app)
+      : native_app_(app), unsafe_weak_app_(unsafe_weak_app){};
   ~LynxProxy() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -25,8 +29,13 @@ class LynxProxy : public HostObject {
 
  private:
   std::weak_ptr<App> native_app_;
+  UnsafeWeakPtr<App> unsafe_weak_app_;
 
   piper::Value GetCustomSectionSync(Runtime& rt, const char* prop_name);
+
+  // Note: please use this instead of use native_app_ or
+  // unsafe_weak_app_ directly.
+  App* GetApp();
 };
 }  // namespace piper
 }  // namespace lynx
