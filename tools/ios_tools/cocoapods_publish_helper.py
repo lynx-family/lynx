@@ -108,6 +108,9 @@ def run_pod_lint(component):
     use_local_pod_source('LynxService')
     run_command(f'bundle exec pod ipc spec LynxService.podspec > LynxService.podspec.json')
     run_command(f'bundle exec pod repo push {local_pod_source_name} LynxService.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
+    use_local_pod_source('XElement')
+    run_command(f'bundle exec pod ipc spec XElement.podspec > XElement.podspec.json')
+    run_command(f'bundle exec pod repo push {local_pod_source_name} XElement.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
     
     if component == 'all':
         # skip lint and push pod to local pod source
@@ -115,6 +118,7 @@ def run_pod_lint(component):
         pod_lint_component('BaseDevtool',local_pod_source_name)
         pod_lint_component('LynxDevtool',local_pod_source_name)
         pod_lint_component('LynxService',local_pod_source_name)
+        pod_lint_component('XElement',local_pod_source_name)
     else:
         pod_lint_component(component,'local_pod_source_name')
         
@@ -142,6 +146,7 @@ def publish_to_cocoapods(component, sources, tag):
         publish_component('BaseDevtool', sources, tag)
         publish_component('LynxDevtool', sources, tag)
         publish_component('LynxService', sources, tag)
+        publish_component('XElement', sources, tag)
     else:
         publish_component(component, sources, tag)
 

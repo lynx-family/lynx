@@ -6,6 +6,8 @@ import groovy.json.JsonSlurper
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 apply plugin: "kotlin-kapt"
+apply from: '../../publish.gradle'
+
 //apply plugin: "com.lynx.plugin"
 project.ext {
     kotlin_version = '1.3.72'
