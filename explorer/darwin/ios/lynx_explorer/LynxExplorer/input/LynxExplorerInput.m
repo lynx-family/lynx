@@ -35,8 +35,6 @@
 
 @implementation LynxExplorerInput
 
-LYNX_LAZY_REGISTER_UI("input")
-
 - (UITextField *)createView {
   UITextField *textField = [[LynxTextField alloc] init];
   textField.autoresizesSubviews = NO;
