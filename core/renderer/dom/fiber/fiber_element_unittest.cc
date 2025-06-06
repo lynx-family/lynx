@@ -9630,9 +9630,10 @@ TEST_P(FiberElementTest, TestGenerateResponseChain0) {
   // remove inherit styles
   element00->RemoveAllClass();
   page->FlushActionsAsRoot();
-  EXPECT_FALSE(tasm->touch_event_handler_
-                   ->GenerateResponseChain(text->impl_id(), EventOption())
-                   .empty());
+  EXPECT_FALSE(
+      tasm->touch_event_handler_
+          ->GenerateResponseChain(nullptr, text->impl_id(), EventOption())
+          .empty());
 
   element0_props = element0_painting_node->props_;
   text_props = text_painting_node->props_;
@@ -9640,9 +9641,10 @@ TEST_P(FiberElementTest, TestGenerateResponseChain0) {
   element0->RemoveNode(element00);
   page->FlushActionsAsRoot();
 
-  EXPECT_TRUE(tasm->touch_event_handler_
-                  ->GenerateResponseChain(text->impl_id(), EventOption())
-                  .empty());
+  EXPECT_TRUE(
+      tasm->touch_event_handler_
+          ->GenerateResponseChain(nullptr, text->impl_id(), EventOption())
+          .empty());
   EXPECT_TRUE(raw_text->IsAttached());
 }
 
@@ -9764,6 +9766,323 @@ TEST_P(FiberElementTest, TestGenerateResponseChain1) {
   EXPECT_TRUE(tasm->touch_event_handler_
                   ->GenerateResponseChain(nullptr, comp.get(), EventOption())
                   .empty());
+}
+
+TEST_P(FiberElementTest, TestGenerateResponseChain2) {
+  tasm->EnsureTouchEventHandler();
+
+  // styles for fiber_element
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs configs;
+  auto tokens = std::make_shared<CSSParseToken>(configs);
+
+  CSSParserTokenMap indexTokensMap;
+  // class .test
+  {
+    auto id = CSSPropertyID::kPropertyIDOpacity;
+    auto impl = lepus::Value(0.3);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".test";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  // class .test01
+  {
+    auto tokens = std::make_shared<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDWidth;
+    auto impl = lepus::Value("20px");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".test01";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  // child
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+  fiber_element->SetClass("test01");
+  // force the element to overflow hidden
+  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+
+  page->FlushActionsAsRoot();
+
+  // child0
+  auto fiber_element_0 = manager->CreateFiberView();
+  fiber_element_0->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element_0);
+  fiber_element_0->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+
+  page->FlushActionsAsRoot();
+
+  // child1
+  auto fiber_element_1 = manager->CreateFiberView();
+  fiber_element_1->parent_component_element_ = page.get();
+  fiber_element_1->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+
+  // child2
+  auto fiber_element_2 = manager->CreateFiberView();
+  fiber_element_2->parent_component_element_ = page.get();
+  fiber_element_2->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                            lepus::Value("fixed"));
+  fiber_element_1->InsertNode(fiber_element_2);
+
+  auto scroll_view = manager->CreateFiberScrollView("scroll-view");
+  scroll_view->InsertNode(fiber_element_1);
+  page->InsertNode(scroll_view);
+
+  page->FlushActionsAsRoot();
+
+  // child2 component
+  base::String component_id("21");
+  int32_t css_id = 100;
+  base::String entry_name("__Card__");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+
+  auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
+                                            component_name, path);
+
+  comp->SetClass("test01");
+  // force the element to overflow visible
+  comp->overflow_ = Element::OVERFLOW_XY;
+
+  lepus::Value component_at_index(10);
+  lepus::Value enqueue_component;
+  lepus::Value component_at_indexes;
+
+  auto list = manager->CreateFiberList(nullptr, "list", component_at_index,
+                                       enqueue_component, component_at_indexes);
+  list->InsertNode(comp);
+  list->SetAttribute("column-count", lepus::Value(2));
+  page->InsertNode(list);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_FALSE(tasm->touch_event_handler_
+                   ->GenerateResponseChain(nullptr, comp.get(), EventOption())
+                   .empty());
+
+  EventOption options;
+  options.bubbles_ = true;
+  auto chain = tasm->touch_event_handler_->GenerateResponseChain(
+      tasm->page_proxy(), fiber_element_2->impl_id(), options);
+  EXPECT_EQ(chain.size(), 4);
+  EXPECT_EQ(chain[0], fiber_element_2.get());
+  EXPECT_EQ(chain[1], fiber_element_1.get());
+  EXPECT_EQ(chain[2], scroll_view.get());
+  EXPECT_EQ(chain[3], page.get());
+
+  page->RemoveNode(list);
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(tasm->touch_event_handler_
+                  ->GenerateResponseChain(nullptr, comp.get(), EventOption())
+                  .empty());
+}
+
+TEST_P(FiberElementTest, TestGenerateResponseChain3) {
+  tasm->EnsureTouchEventHandler();
+  manager->config_->enable_fiber_arch_ = false;
+  tasm->touch_event_handler_->enable_fiber_element_for_radon_diff_ = true;
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+
+  // child
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+  fiber_element->SetClass("test01");
+  // force the element to overflow hidden
+  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+
+  page->FlushActionsAsRoot();
+
+  // child0
+  auto fiber_element_0 = manager->CreateFiberView();
+  fiber_element_0->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element_0);
+  fiber_element_0->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+
+  page->FlushActionsAsRoot();
+
+  // child1
+  auto fiber_element_1 = manager->CreateFiberView();
+  fiber_element_1->parent_component_element_ = page.get();
+  fiber_element_1->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+
+  // child2
+  auto fiber_element_2 = manager->CreateFiberView();
+  fiber_element_2->parent_component_element_ = page.get();
+  fiber_element_2->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                            lepus::Value("fixed"));
+  fiber_element_1->InsertNode(fiber_element_2);
+
+  auto scroll_view = manager->CreateFiberScrollView("scroll-view");
+  scroll_view->InsertNode(fiber_element_1);
+  page->InsertNode(scroll_view);
+
+  page->FlushActionsAsRoot();
+
+  // child2 component
+  base::String component_id("21");
+  int32_t css_id = 100;
+  base::String entry_name("__Card__");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+
+  auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
+                                            component_name, path);
+
+  comp->SetClass("test01");
+  // force the element to overflow visible
+  comp->overflow_ = Element::OVERFLOW_XY;
+
+  lepus::Value component_at_index(10);
+  lepus::Value enqueue_component;
+  lepus::Value component_at_indexes;
+
+  auto list = manager->CreateFiberList(nullptr, "list", component_at_index,
+                                       enqueue_component, component_at_indexes);
+  list->InsertNode(comp);
+  list->SetAttribute("column-count", lepus::Value(2));
+  page->InsertNode(list);
+
+  page->FlushActionsAsRoot();
+
+  EventOption options;
+  options.bubbles_ = true;
+  auto chain = tasm->touch_event_handler_->GenerateResponseChain(
+      tasm->page_proxy(), fiber_element_2->impl_id(), options);
+  EXPECT_EQ(chain.size(), 2);
+  EXPECT_EQ(chain[0], fiber_element_2.get());
+  EXPECT_EQ(chain[1], page.get());
+}
+
+TEST_P(FiberElementTest, TestGenerateResponseChain4) {
+  tasm->EnsureTouchEventHandler();
+  manager->config_->enable_fiber_arch_ = false;
+  tasm->touch_event_handler_->enable_fiber_element_for_radon_diff_ = true;
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->SetStyle(CSSPropertyID::kPropertyIDPosition, lepus::Value("fixed"));
+
+  // child
+  auto fiber_element = manager->CreateFiberView();
+  fiber_element->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element);
+  fiber_element->SetClass("test01");
+  // force the element to overflow hidden
+  fiber_element->overflow_ = Element::OVERFLOW_HIDDEN;
+
+  page->FlushActionsAsRoot();
+
+  // child0
+  auto fiber_element_0 = manager->CreateFiberView();
+  fiber_element_0->parent_component_element_ = page.get();
+  page->InsertNode(fiber_element_0);
+  fiber_element_0->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_0->overflow_ = Element::OVERFLOW_XY;
+
+  page->FlushActionsAsRoot();
+
+  // child1
+  auto fiber_element_1 = manager->CreateFiberView();
+  fiber_element_1->parent_component_element_ = page.get();
+  fiber_element_1->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_1->overflow_ = Element::OVERFLOW_XY;
+
+  // child2
+  auto fiber_element_2 = manager->CreateFiberView();
+  fiber_element_2->parent_component_element_ = page.get();
+  fiber_element_2->SetClass("test01");
+  // force the element to overflow visible
+  fiber_element_2->overflow_ = Element::OVERFLOW_XY;
+  fiber_element_2->SetStyle(CSSPropertyID::kPropertyIDPosition,
+                            lepus::Value("fixed"));
+  fiber_element_1->InsertNode(fiber_element_2);
+
+  auto scroll_view = manager->CreateFiberScrollView("scroll-view");
+  scroll_view->InsertNode(fiber_element_1);
+  page->InsertNode(scroll_view);
+
+  page->FlushActionsAsRoot();
+
+  // child2 component
+  base::String component_id("21");
+  int32_t css_id = 100;
+  base::String entry_name("__Card__");
+  base::String component_name("TestComp");
+  base::String path("/index/components/TestComp");
+
+  auto comp = manager->CreateFiberComponent(component_id, css_id, entry_name,
+                                            component_name, path);
+
+  comp->SetClass("test01");
+  // force the element to overflow visible
+  comp->overflow_ = Element::OVERFLOW_XY;
+
+  lepus::Value component_at_index(10);
+  lepus::Value enqueue_component;
+  lepus::Value component_at_indexes;
+
+  auto list = manager->CreateFiberList(nullptr, "list", component_at_index,
+                                       enqueue_component, component_at_indexes);
+  list->InsertNode(comp);
+  list->SetAttribute("column-count", lepus::Value(2));
+  page->InsertNode(list);
+
+  page->FlushActionsAsRoot();
+
+  EventOption options;
+  options.bubbles_ = true;
+  auto chain = tasm->touch_event_handler_->GenerateResponseChain(
+      tasm->page_proxy(), fiber_element_2->impl_id(), options);
+  EXPECT_EQ(chain.size(), 2);
+  EXPECT_EQ(chain[0], fiber_element_2.get());
+  EXPECT_EQ(chain[1], page.get());
+
+  chain = tasm->touch_event_handler_->GenerateResponseChain(
+      tasm->page_proxy(), page->impl_id(), options);
+  EXPECT_EQ(chain.size(), 1);
+  EXPECT_EQ(chain[0], page.get());
 }
 
 TEST_P(FiberElementTest, ExtendedLayoutOnlyOpt) {
