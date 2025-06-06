@@ -68,11 +68,10 @@
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/resource/lynx_resource_loader_darwin.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/services/timing_handler/timing_collector_platform_impl.h"
+#include "core/services/performance/darwin/performance_controller_darwin.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/ios/data_utils.h"
 #include "core/shell/ios/native_facade_darwin.h"
-#include "core/shell/ios/native_facade_reporter_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
@@ -327,10 +326,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
           nil, _fetcher, self, templateResourceFetcher, genericResourceFetcher));
 
-  // Timing
-  timing_collector_platform_impl_ =
-      std::make_shared<lynx::tasm::timing::TimingCollectorPlatformImpl>();
-
   // Build shell
   auto ui_delegate = [_lynxUIRenderer uiDelegate];
   auto painting_context = ui_delegate->CreatePaintingContext();
@@ -340,10 +335,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                                     painting_context.get())];
     [_shadowNodeOwner setDelegate:_paintingContextProxy];
   }
+  _performanceController =
+      [[LynxPerformanceController alloc] initWithObserver:[_lynxView getLifecycleDispatcher]];
+  auto* a = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
+      painting_context->GetPlatformRef().get());
+  a->SetPerformanceController(_performanceController);
+
   shell_.reset(
       lynx::shell::LynxShellBuilder()
           .SetNativeFacade(std::make_unique<lynx::shell::NativeFacadeDarwin>(self))
-          .SetNativeFacadeReporter(std::make_unique<lynx::shell::NativeFacadeReporterDarwin>(self))
           .SetPaintingContextPlatformImpl(std::move(painting_context))
           .SetLynxEnvConfig(lynx_env_config)
           .SetEnableElementManagerVsyncMonitor(true)
@@ -362,10 +362,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
           })
           .SetPropBundleCreator(ui_delegate->CreatePropBundleCreator())
           .SetRuntimeActor(_runtime ? _runtime.runtimeActor : nullptr)
-          .SetTimingActor(_runtime ? _runtime.timingActor : nullptr)
+          .SetPerfControllerActor(_runtime ? _runtime.perfControllerActor : nullptr)
+          .SetPerformanceControllerPlatform(
+              std::make_unique<lynx::tasm::performance::PerformanceControllerDarwin>(
+                  _performanceController))
           .SetShellOption([self setUpShellOption])
           .SetTasmPlatformInvoker(std::make_unique<lynx::shell::TasmPlatformInvokerDarwin>(self))
-          .SetTimingCollectorPlatform(timing_collector_platform_impl_)
           .SetUseInvokeUIMethodFunction(_lynxUIRenderer.useInvokeUIMethodFunction)
           .build());
 
@@ -628,7 +630,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   [LynxEventReporter removeGenericInfo:_context.instanceId];
   int32_t lastInstanceId = _context.instanceId;
   _context.instanceId = kUnknownInstanceId;
-  timing_collector_platform_impl_.reset();
   shell_->Destroy();
 
   if ([_delegate respondsToSelector:@selector(templateRenderOnTransitionUnregister:)]) {
@@ -653,14 +654,12 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
   _context.instanceId = kUnknownInstanceId;
-  timing_collector_platform_impl_.reset();
   shell_->Destroy();
 }
 
 - (void)dealloc {
   [_lynxUIRenderer reset];
   pageConfig_.reset();
-  timing_collector_platform_impl_.reset();
   // ios block cannot capture std::unique_ptr, tricky...
   auto* shell = shell_.release();
   // LynxView maybe release in main flow of TemplateAssembler,
@@ -1686,6 +1685,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   return [_lynxUIRenderer uiOwner];
 }
 
+- (LynxPerformanceController*)performanceController {
+  return _performanceController;
+}
+
 - (LynxEngineProxy*)getEngineProxy {
   return _lynxEngineProxy;
 }
@@ -1968,7 +1971,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
     [LynxEventReporter clearCacheForInstanceId:_context.instanceId];
     _context.instanceId = kUnknownInstanceId;
-    timing_collector_platform_impl_.reset();
     shell_->Destroy();
     if (onError) {
       onError(errorMsg, errorStack);
@@ -2099,35 +2101,24 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)setTiming:(uint64_t)timestamp key:(NSString*)key pipelineID:(nullable NSString*)pipelineID {
-  if (!timing_collector_platform_impl_) {
-    return;
-  }
-  std::string keyStr = std::string([key UTF8String]);
-  std::string pipelineIDStr = pipelineID ? std::string([pipelineID UTF8String]) : std::string();
-  timing_collector_platform_impl_->SetTiming(pipelineIDStr, keyStr, timestamp);
+  [_performanceController setTiming:timestamp key:key pipelineID:pipelineID];
 }
 
 - (void)resetTimingBeforeReload {
-  if (!timing_collector_platform_impl_) {
-    return;
-  }
-  timing_collector_platform_impl_->ResetTimingBeforeReload();
+  [_performanceController resetTimingBeforeReload];
 }
 
 - (void)onPipelineStart:(std::string)pipelineID
             pipelineOrigin:(std::string)pipelineOrigin
     pipelineStartTimestamp:(uint64_t)timestamp {
-  if (!timing_collector_platform_impl_) {
-    return;
-  }
-  timing_collector_platform_impl_->OnPipelineStart(pipelineID, pipelineOrigin, timestamp);
+  [_performanceController onPipelineStart:[NSString stringWithUTF8String:pipelineID.c_str()]
+                           pipelineOrigin:[NSString stringWithUTF8String:pipelineOrigin.c_str()]
+                                timestamp:timestamp];
 }
 
 - (void)markTiming:(const char*)key pipelineID:(const char*)pipelineID {
-  if (!timing_collector_platform_impl_) {
-    return;
-  }
-  timing_collector_platform_impl_->MarkTiming(std::string{pipelineID}, std::string{key});
+  [_performanceController markTiming:[NSString stringWithUTF8String:key]
+                          pipelineID:[NSString stringWithUTF8String:pipelineID]];
 }
 
 /**

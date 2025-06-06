@@ -60,9 +60,6 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
                                            float delta_y,
                                            bool is_init_scroll_offset,
                                            bool from_layout) override;
-  void SetNeedMarkDrawEndTiming(
-      std::weak_ptr<shell::TimingCollectorPlatform> weak_timing_collector,
-      const tasm::PipelineID& pipeline_id) override;
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;

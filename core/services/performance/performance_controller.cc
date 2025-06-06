@@ -6,43 +6,30 @@
 
 #include <utility>
 
+#include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/performance_entry_sender.h"
+
 namespace lynx {
 namespace tasm {
 namespace performance {
 
-PerformanceController::PerformanceController(PerformanceController&& other)
-    : instance_id_(other.instance_id_),
-      value_factory_(std::move(other.value_factory_)),
-      memory_monitor_(std::move(other.memory_monitor_)) {
-  memory_monitor_.delegate_ = this;
-  // reset other
-  other.instance_id_ = report::kUninitializedInstanceId;
-  other.value_factory_ = nullptr;
+fml::RefPtr<fml::TaskRunner> PerformanceController::GetTaskRunner() {
+  return report::EventTrackerPlatformImpl::GetReportTaskRunner();
 }
 
-PerformanceController& PerformanceController::operator=(
-    PerformanceController&& other) {
-  if (this != &other) {
-    // move
-    instance_id_ = other.instance_id_;
-    value_factory_ = std::move(other.value_factory_);
-    memory_monitor_ = std::move(other.memory_monitor_);
-    // update delegate_
-    memory_monitor_.delegate_ = this;
-    // reset other
-    other.instance_id_ = report::kUninitializedInstanceId;
-    other.value_factory_ = nullptr;
-  }
-  return *this;
-}
-void PerformanceController::SetActor(
-    const std::shared_ptr<shell::LynxActor<PerformanceController>>& actor) {
-  // TODO: Implement Darwin & Android platform support later.
+void PerformanceController::SetPlatformImpl(
+    std::unique_ptr<PerformanceControllerPlatform<PerformanceController>>
+        platform_impl) {
+  platform_impl_ = std::move(platform_impl);
 }
 
 void PerformanceController::OnPerformanceEvent(
-    const std::unique_ptr<pub::Value> entry) {
-  // TODO: Implement Darwin & Android platform support later.
+    std::unique_ptr<pub::Value> entry, PerformanceObserverEnv env) {
+  entry->PushInt32ToMap("instanceId", instance_id_);
+  if ((env & kPerformanceObserverOfPlatform) && platform_impl_) {
+    platform_impl_->OnPerformanceEvent(entry);
+  }
+  delegate_->OnPerformanceEvent(std::move(entry), env);
 }
 
 }  // namespace performance

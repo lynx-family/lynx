@@ -4,7 +4,7 @@
 package com.lynx.tasm.performance;
 
 import com.lynx.react.bridge.JavaOnlyMap;
-import com.lynx.tasm.performance.TimingCollector;
+import com.lynx.tasm.performance.timing.TimingConstants;
 import java.util.HashMap;
 
 public class TimingOption {
@@ -23,8 +23,8 @@ public class TimingOption {
 
   public JavaOnlyMap toJavaOnlyMap() {
     JavaOnlyMap result = new JavaOnlyMap();
-    result.putString(TimingCollector.PIPELINE_ORIGIN, this.pipelineOrigin);
-    result.putMap(TimingCollector.TIMESTAMP_MAP, JavaOnlyMap.from(this.timingInfo));
+    result.putString(TimingConstants.PIPELINE_ORIGIN, this.pipelineOrigin);
+    result.putMap(TimingConstants.TIMESTAMP_MAP, JavaOnlyMap.from(this.timingInfo));
     return result;
   }
 }

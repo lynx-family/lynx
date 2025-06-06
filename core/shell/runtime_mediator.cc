@@ -30,14 +30,6 @@ void RuntimeMediator::AttachToLynxShell(
   // TODO(chenyouhui): Use LynxResourceLoader directly.
   external_resource_loader_->SetEngineActor(engine_actor);
   card_cached_data_mgr_ = card_cached_data_mgr;
-
-  // attach NativeFacadeActor to TimingActor, so the TmingHandler is fully
-  // functional.
-  timing_actor_->ActAsync([facade_actor](auto& timing) {
-    static_cast<lynx::tasm::timing::TimingMediator*>(timing->GetDelegate())
-        ->SetFacadeActor(facade_actor);
-  });
-
   runtime_standalone_mode_ = false;
 }
 
@@ -385,27 +377,29 @@ void RuntimeMediator::ReloadFromJS(runtime::UpdateDataTask task) {
 }
 
 void RuntimeMediator::SetTiming(tasm::Timing timing) {
-  timing_actor_->ActAsync(
-      [timing = std::move(timing)](auto& timing_handler) mutable {
-        timing_handler->SetTiming(std::move(timing));
+  perf_controller_actor_->ActAsync(
+      [timing = std::move(timing)](auto& performance) mutable {
+        performance->GetTimingHandler().SetTiming(std::move(timing));
       });
 }
 
 void RuntimeMediator::SetFrameworkExtraTimingInfo(
     const std::string& pipeline_id, const std::string& key,
     const std::string& value) {
-  timing_actor_->ActAsync([pipeline_id, key, value](auto& timing_handler) {
-    timing_handler->SetFrameworkExtraTimingInfo(pipeline_id, key, value);
-  });
+  perf_controller_actor_->ActAsync(
+      [pipeline_id, key, value](auto& performance) {
+        performance->GetTimingHandler().SetFrameworkExtraTimingInfo(pipeline_id,
+                                                                    key, value);
+      });
 }
 
 void RuntimeMediator::SetTimingWithTimingFlag(
     const tasm::timing::TimingFlag& timing_flag,
     const std::string& timestamp_key, tasm::timing::TimestampUs timestamp) {
-  timing_actor_->ActAsync(
-      [timing_flag, timestamp_key, timestamp](auto& timing_handler) {
-        timing_handler->SetTimingWithTimingFlag(timing_flag, timestamp_key,
-                                                timestamp);
+  perf_controller_actor_->ActAsync(
+      [timing_flag, timestamp_key, timestamp](auto& performance) {
+        performance->GetTimingHandler().SetTimingWithTimingFlag(
+            timing_flag, timestamp_key, timestamp);
       });
 }
 
@@ -433,11 +427,12 @@ void RuntimeMediator::OnPipelineStart(
             "pipeline_start_timestamp",
             std::to_string(pipeline_start_timestamp));
       });
-  timing_actor_->ActAsync([pipeline_id, pipeline_origin,
-                           pipeline_start_timestamp](auto& timing_actor) {
-    timing_actor->OnPipelineStart(pipeline_id, pipeline_origin,
-                                  pipeline_start_timestamp);
-  });
+  perf_controller_actor_->ActAsync(
+      [pipeline_id, pipeline_origin,
+       pipeline_start_timestamp](auto& performance) {
+        performance->GetTimingHandler().OnPipelineStart(
+            pipeline_id, pipeline_origin, pipeline_start_timestamp);
+      });
 }
 
 void RuntimeMediator::BindPipelineIDWithTimingFlag(
@@ -449,9 +444,11 @@ void RuntimeMediator::BindPipelineIDWithTimingFlag(
         ctx.event()->add_debug_annotations("pipeline_id", pipeline_id);
         ctx.event()->add_debug_annotations("timing_flag", timing_flag);
       });
-  timing_actor_->ActAsync([pipeline_id, timing_flag](auto& timing_handler) {
-    timing_handler->BindPipelineIDWithTimingFlag(pipeline_id, timing_flag);
-  });
+  perf_controller_actor_->ActAsync(
+      [pipeline_id, timing_flag](auto& performance) {
+        performance->GetTimingHandler().BindPipelineIDWithTimingFlag(
+            pipeline_id, timing_flag);
+      });
 }
 
 void RuntimeMediator::CallLepusMethod(const std::string& method_name,

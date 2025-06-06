@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxPerformanceEntry.h>
+#import <Lynx/LynxPerformanceObserverProtocol.h>
 
 @class LynxView;
 
@@ -42,7 +42,7 @@ typedef NS_ENUM(NSInteger, LynxPipelineOrigin) {
  * Give the host application a chance to take control when a lynx template is about to be loaded in
  * the current LynxView.
  */
-@protocol LynxViewLifecycleV2 <LynxViewBaseLifecycle>
+@protocol LynxViewLifecycleV2 <LynxViewBaseLifecycle, LynxPerformanceObserverProtocol>
 
 /**
  * Notify that a lynx template has started loading. It will be call at both `loadTemplate` and
@@ -58,19 +58,5 @@ typedef NS_ENUM(NSInteger, LynxPipelineOrigin) {
 @optional
 - (void)onPageStartedWithLynxView:(nonnull LynxView *)lynxView
                  withPipelineInfo:(nonnull LynxPipelineInfo *)info;
-
-/**
- * Notify the client that a performance event has been sent. It will be called every time a
- * performance event is generated, including but not limited to container initialization, engine
- * rendering, rendering metrics update, etc.
- *
- * Note: This method is for performance events and will be executed on the reporter thread, so do
- * not execute complex logic or UI modification logic in this method.
- *
- * @param entry the LynxPerformanceEntry about the performance event
- *
- */
-@optional
-- (void)onPerformanceEvent:(nonnull LynxPerformanceEntry *)entry;
 
 @end

@@ -76,6 +76,9 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   shell_.reset((*shell_builder_)
                    .SetNativeFacade(std::move(facade))
+                   .SetPerformanceController(
+                       std::make_unique<
+                           lynx::tasm::performance::PerformanceController>())
                    .SetPaintingContextCreator(painting_context_creator)
                    .SetLynxEnvConfig(*lynx_env_config_)
                    .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
@@ -166,6 +169,9 @@ TEST_F(LynxShellBuilderTest,
 
   shell_.reset((*shell_builder_)
                    .SetNativeFacade(std::move(facade))
+                   .SetPerformanceController(
+                       std::make_unique<
+                           lynx::tasm::performance::PerformanceController>())
                    .SetPaintingContextCreator(painting_context_creator)
                    .SetLynxEnvConfig(*lynx_env_config_)
                    .SetEnableDiffWithoutLayout(enable_diff_without_layout_)
@@ -202,6 +208,9 @@ TEST_F(LynxShellBuilderTest,
 
   shell_.reset((*shell_builder_)
                    .SetNativeFacade(std::move(facade))
+                   .SetPerformanceController(
+                       std::make_unique<
+                           lynx::tasm::performance::PerformanceController>())
                    .SetPaintingContextCreator(painting_context_creator)
                    .SetLynxEnvConfig(*lynx_env_config_)
                    .SetEnableDiffWithoutLayout(enable_diff_without_layout_)

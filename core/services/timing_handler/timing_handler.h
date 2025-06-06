@@ -10,10 +10,12 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "base/include/fml/thread.h"
 #include "base/include/vector.h"
 #include "core/public/pipeline_option.h"
+#include "core/services/performance/performance_entry_sender.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/services/timing_handler/timing_handler_delegate.h"
 #include "core/services/timing_handler/timing_handler_ng.h"
@@ -66,7 +68,9 @@ enum PipelineType { Setup, Update };
 class TimingHandler {
  public:
   // Delegate interface for handling timing events.
-  TimingHandler(std::unique_ptr<TimingHandlerDelegate> delegate = nullptr);
+  explicit TimingHandler(
+      performance::PerformanceEntrySender* sender,
+      std::unique_ptr<TimingHandlerDelegate> delegate = nullptr);
 
   // Methods for setting timing information.
   void SetTiming(tasm::Timing timing);
@@ -102,6 +106,10 @@ class TimingHandler {
   void BindPipelineIDWithTimingFlag(const PipelineID& pipeline_id,
                                     const TimingFlag& timing_flag);
 
+  void SetNeedPaintEndTiming(const PipelineID& pipeline_id);
+
+  void SetPaintEndTimingIfNeeded(TimestampUs timestamp);
+
   // Clears all stored timing information.
   void ClearAllTimingInfo();
 
@@ -134,6 +142,8 @@ class TimingHandler {
   TimingHandlerNg handler_ng_;
   // Internal storage and delegate for timing information.
   TimingInfo timing_info_;
+  std::vector<tasm::PipelineID> pending_paint_end_pipeline_ids_queue_;
+
   std::unique_ptr<TimingHandlerDelegate> delegate_;
   bool has_dispatched_setup_timing_{false};
   std::unordered_map<PipelineID, base::InlineVector<TimingFlag, 2>>

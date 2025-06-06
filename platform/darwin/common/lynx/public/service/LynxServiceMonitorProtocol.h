@@ -16,7 +16,7 @@ typedef enum : NSUInteger {
   LynxContextTagLastLynxAsyncComponentURL,
 } LynxContextTagType;
 
-@protocol LynxServiceMonitorProtocol <LynxServiceProtocol>
+@protocol LynxServiceMonitorProtocol <LynxServiceProtocol, LynxPerformanceObserverProtocol>
 
 /**
  * report data about loading LynxView

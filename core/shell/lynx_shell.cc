@@ -156,15 +156,13 @@ void LynxShell::Destroy() {
 
   is_destroyed_ = true;
 
-  timing_actor_->ActAsync(
-      [](auto& timing_handler) { timing_handler = nullptr; });
+  perf_controller_actor_->ActAsync(
+      [](auto& performance_controller) { performance_controller = nullptr; });
 
   facade_actor_->Act([instance_id = instance_id_](auto& facade) {
     facade = nullptr;
     tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
   });
-
-  facade_reporter_actor_->Act([](auto& facade) { facade = nullptr; });
 
   static std::atomic<int32_t> async_destroy_counter{0};
   if (TryIncrementAsyncDestroyCounter(async_destroy_counter)) {
@@ -224,6 +222,7 @@ void LynxShell::InitRuntimeWithRuntimeDisabled(
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
   timing_mediator_->SetRuntimeActor(runtime_actor_);
+  perf_mediator_->SetRuntimeActor(runtime_actor_);
 }
 
 void LynxShell::InitRuntime(
@@ -258,8 +257,9 @@ void LynxShell::InitRuntime(
       std::make_unique<ExternalResourceLoader>(resource_loader);
   auto external_resource_loader_ptr = external_resource_loader.get();
   auto delegate = std::make_unique<RuntimeMediator>(
-      facade_actor_, engine_actor_, timing_actor_, card_cached_data_mgr_,
-      js_task_runner, std::move(external_resource_loader));
+      facade_actor_, engine_actor_, perf_controller_actor_,
+      card_cached_data_mgr_, js_task_runner,
+      std::move(external_resource_loader));
   delegate->SetPropBundleCreator(prop_bundle_creator_);
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);
@@ -277,6 +277,7 @@ void LynxShell::InitRuntime(
   tasm_mediator_->SetRuntimeActor(runtime_actor_);
   layout_mediator_->SetRuntimeActor(runtime_actor_);
   timing_mediator_->SetRuntimeActor(runtime_actor_);
+  perf_mediator_->SetRuntimeActor(runtime_actor_);
 
 #if ENABLE_TESTBENCH_RECORDER
   runtime_actor_->Act(
@@ -386,7 +387,9 @@ void LynxShell::LoadTemplate(
 
   EnsureTemplateDataThreadSafe(template_data);
   hydration_pending_ = false;
-  timing_actor_->ActAsync([url](auto& timing) { timing->SetURL(url); });
+  perf_controller_actor_->ActAsync([url](auto& performance) {
+    performance->GetTimingHandler().SetURL(url);
+  });
   engine_actor_->Act([url, source = std::move(source), template_data,
                       pipeline_options = std::move(pipeline_options),
                       enable_pre_painting, enable_recycle_template_bundle,
@@ -1111,9 +1114,9 @@ void LynxShell::DetachEngineFromUIThread() {
 
 void LynxShell::OnThreadStrategyUpdated() {
   runners_.OnThreadStrategyUpdated(current_strategy_);
-  timing_actor_->ActAsync(
-      [current_strategy = current_strategy_](auto& timing_handler) {
-        timing_handler->SetThreadStrategy(current_strategy);
+  perf_controller_actor_->ActAsync(
+      [current_strategy = current_strategy_](auto& performance) {
+        performance->GetTimingHandler().SetThreadStrategy(current_strategy);
       });
   engine_actor_->Act([current_strategy = current_strategy_](auto& engine) {
     engine->GetTasm()->page_proxy()->element_manager()->SetThreadStrategy(
@@ -1214,16 +1217,17 @@ void LynxShell::DispatchMessageEvent(runtime::MessageEvent event) {
 void LynxShell::SetTiming(uint64_t us_timestamp,
                           tasm::timing::TimestampKey timing_key,
                           tasm::PipelineID pipeline_id) const {
-  timing_actor_->ActAsync(
+  perf_controller_actor_->ActAsync(
       [us_timestamp, timing_key = std::move(timing_key),
-       pipeline_id = std::move(pipeline_id)](auto& timing_handler) mutable {
-        timing_handler->SetTiming(timing_key, us_timestamp, pipeline_id);
+       pipeline_id = std::move(pipeline_id)](auto& performance) mutable {
+        performance->GetTimingHandler().SetTiming(timing_key, us_timestamp,
+                                                  pipeline_id);
       });
 }
 
 BASE_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
-  return timing_actor_->ActSync([](auto& timing_handler) {
-    auto all_timing_info = timing_handler->GetAllTimingInfo();
+  return perf_controller_actor_->ActSync([](auto& performance) {
+    auto all_timing_info = performance->GetTimingHandler().GetAllTimingInfo();
     lepus::Value lepus_all_info =
         pub::ValueUtils::ConvertValueToLepusValue(*all_timing_info);
 
@@ -1232,15 +1236,16 @@ BASE_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
 }
 
 void LynxShell::SetSSRTimingData(std::string url, uint64_t data_size) const {
-  timing_actor_->ActAsync(
-      [url = std::move(url), data_size](auto& timing_actor) {
-        timing_actor->SetSSRTimingData(url, data_size);
+  perf_controller_actor_->ActAsync(
+      [url = std::move(url), data_size](auto& performance) {
+        performance->GetTimingHandler().SetSSRTimingData(url, data_size);
       });
 }
 
 void LynxShell::ClearAllTimingInfo() const {
-  timing_actor_->ActAsync(
-      [](auto& timing_handler) { timing_handler->ClearAllTimingInfo(); });
+  perf_controller_actor_->ActAsync([](auto& performance) {
+    performance->GetTimingHandler().ClearAllTimingInfo();
+  });
 }
 
 void LynxShell::OnPipelineStart(
@@ -1257,16 +1262,18 @@ void LynxShell::OnPipelineStart(
             "pipeline_start_timestamp",
             std::to_string(pipeline_start_timestamp));
       });
-  timing_actor_->ActAsync([pipeline_id, pipeline_origin,
-                           pipeline_start_timestamp](auto& timing_handler) {
-    timing_handler->OnPipelineStart(pipeline_id, pipeline_origin,
-                                    pipeline_start_timestamp);
-  });
+  perf_controller_actor_->ActAsync(
+      [pipeline_id, pipeline_origin,
+       pipeline_start_timestamp](auto& performance) {
+        performance->GetTimingHandler().OnPipelineStart(
+            pipeline_id, pipeline_origin, pipeline_start_timestamp);
+      });
 }
 
 void LynxShell::ResetTimingBeforeReload() const {
-  timing_actor_->ActAsync(
-      [](auto& timing_handler) { timing_handler->ResetTimingBeforeReload(); });
+  perf_controller_actor_->ActAsync([](auto& performance) {
+    performance->GetTimingHandler().ResetTimingBeforeReload();
+  });
 }
 
 void LynxShell::BindLynxEngineToUIThread() {

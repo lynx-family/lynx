@@ -5,15 +5,10 @@
 #ifndef CORE_SERVICES_PERFORMANCE_MEMORY_MONITOR_MEMORY_MONITOR_H_
 #define CORE_SERVICES_PERFORMANCE_MEMORY_MONITOR_MEMORY_MONITOR_H_
 
-#include <memory>
-#include <string>
 #include <unordered_map>
-#include <utility>
-#include <vector>
 
-#include "core/public/pub_value.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
-#include "core/value_wrapper/value_impl_lepus.h"
+#include "core/services/performance/performance_entry_sender.h"
 
 namespace lynx {
 namespace tasm {
@@ -30,15 +25,6 @@ class MemoryMonitor {
   friend class PerformanceController;
 
  public:
-  class Delegate {
-   public:
-    virtual ~Delegate() = default;
-    virtual void OnPerformanceEvent(
-        const std::unique_ptr<lynx::pub::Value> entry) = 0;
-    virtual const std::unique_ptr<pub::PubValueFactory>& GetValueFactory() = 0;
-    virtual int32_t GetInstanceId() = 0;
-  };
-
   // Increments memory usage and sends a PerformanceEntry.
   // This interface will increase the total memory usage for the category found
   // in the record.
@@ -77,7 +63,8 @@ class MemoryMonitor {
   /// @return uint32_t Combined configuration bitmask
   static uint32_t ScriptingEngineMode();
 
-  explicit MemoryMonitor(Delegate* delegate) : delegate_(delegate){};
+  explicit MemoryMonitor(PerformanceEntrySender* observer)
+      : sender_(observer){};
   ~MemoryMonitor();
   MemoryMonitor(const MemoryMonitor& timing) = delete;
   MemoryMonitor& operator=(const MemoryMonitor&) = delete;
@@ -87,7 +74,7 @@ class MemoryMonitor {
  private:
   void ReportMemory();
 
-  Delegate* delegate_;
+  PerformanceEntrySender* sender_;
   std::unordered_map<MemoryCategory, MemoryRecord> memory_records_;
 };
 

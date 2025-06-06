@@ -23,9 +23,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
-import com.lynx.tasm.performance.TimingCollector;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
-import com.lynx.tasm.utils.LynxConstants;
+import com.lynx.tasm.performance.timing.ITimingCollector;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
@@ -157,7 +156,7 @@ public class UIBody extends UIGroup<UIBodyView> {
     private boolean mInterceptRequestLayout;
     private boolean mHasPendingRequestLayout;
 
-    private WeakReference<TimingCollector> mTimingCollector = new WeakReference<>(null);
+    private WeakReference<ITimingCollector> mTimingCollector = new WeakReference<>(null);
 
     private int mInstanceId = LynxContext.INSTANCE_ID_DEFAULT;
 
@@ -221,9 +220,9 @@ public class UIBody extends UIGroup<UIBodyView> {
         mHasMeaningfulPaint = true;
       }
 
-      TimingCollector timingCollector = mTimingCollector.get();
+      ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
-        timingCollector.markDrawEndTimingIfNeeded();
+        timingCollector.markPaintEndTimingIfNeeded();
       }
       if (needLongTaskMonitor) {
         LynxLongTaskMonitor.didProcessTask();
@@ -245,7 +244,7 @@ public class UIBody extends UIGroup<UIBodyView> {
       mMeaningfulPaintTiming = 0;
     }
 
-    public void setTimingCollector(TimingCollector timingCollector) {
+    public void setTimingCollector(ITimingCollector timingCollector) {
       mTimingCollector = new WeakReference<>(timingCollector);
     }
 

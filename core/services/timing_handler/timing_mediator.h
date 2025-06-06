@@ -16,7 +16,6 @@
 #include "core/services/timing_handler/timing_info.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
-#include "core/shell/native_facade_reporter.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -33,7 +32,7 @@ namespace timing {
  */
 class TimingMediator : public TimingHandlerDelegate {
  public:
-  TimingMediator(int32_t instance_id);
+  explicit TimingMediator(int32_t instance_id);
   ~TimingMediator() override = default;
 
   // Setter methods for various properties.
@@ -49,11 +48,6 @@ class TimingMediator : public TimingHandlerDelegate {
       const std::shared_ptr<shell::LynxActor<shell::NativeFacade>>& actor) {
     facade_actor_ = actor;
   }
-  void SetFacadeReporterActor(
-      const std::shared_ptr<shell::LynxActor<shell::NativeFacadeReporter>>&
-          actor) {
-    facade_reporter_actor_ = actor;
-  }
   inline void SetEnableJSRuntime(bool enable_js_runtime) {
     enable_js_runtime_ = enable_js_runtime;
   }
@@ -66,17 +60,12 @@ class TimingMediator : public TimingHandlerDelegate {
   void OnTimingSetup(const TimingInfo& timing_info) const override;
   void OnTimingUpdate(const TimingInfo& timing_info,
                       const std::string& update_flag) const override;
-  void OnPerformanceEvent(
-      const std::unique_ptr<lynx::pub::Value> performance_entry,
-      bool enable_engine_callback) const override;
 
  private:
   const int32_t instance_id_ = 0;
   bool enable_js_runtime_{true};
   std::shared_ptr<shell::LynxActor<runtime::LynxRuntime>> runtime_actor_;
   std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor_;
-  std::shared_ptr<shell::LynxActor<shell::NativeFacadeReporter>>
-      facade_reporter_actor_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
   std::shared_ptr<pub::PubValueFactory> value_factory_ =
       std::make_shared<pub::PubValueFactoryDefault>();

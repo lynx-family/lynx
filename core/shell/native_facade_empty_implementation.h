@@ -18,7 +18,6 @@
 #include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/shell/native_facade.h"
-#include "core/shell/native_facade_reporter.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -27,7 +26,7 @@ struct LynxError;
 }
 namespace shell {
 
-class NativeFacadeEmptyImpl : public NativeFacade, NativeFacadeReporter {
+class NativeFacadeEmptyImpl : public NativeFacade {
  public:
   NativeFacadeEmptyImpl() = default;
   virtual ~NativeFacadeEmptyImpl() = default;
@@ -57,8 +56,6 @@ class NativeFacadeEmptyImpl : public NativeFacade, NativeFacadeReporter {
   virtual void OnTimingUpdate(const lepus::Value& timing_info,
                               const lepus::Value& update_timing,
                               const std::string& update_flag) override {}
-
-  virtual void OnPerformanceEvent(const lepus::Value& entry) override{};
 
   virtual void OnDynamicComponentPerfReady(
       const lepus::Value& perf_info) override {}

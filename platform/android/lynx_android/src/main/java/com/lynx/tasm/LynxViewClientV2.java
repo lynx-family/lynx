@@ -6,6 +6,7 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import java.util.Set;
 
@@ -13,7 +14,7 @@ import java.util.Set;
  * Give the host application a chance to take control when a lynx template is about to be loaded in
  * the current LynxView.
  */
-public class LynxViewClientV2 {
+public class LynxViewClientV2 implements IPerformanceObserver {
   /**
    * Provide information about the lynx pixel pipeline
    */
@@ -93,5 +94,6 @@ public class LynxViewClientV2 {
    * @param entry the PerformanceEntry about the performance event
    *
    */
+  @Override
   public void onPerformanceEvent(@NonNull PerformanceEntry entry) {}
 }

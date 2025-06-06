@@ -19,7 +19,7 @@
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/piper/js/update_data_type.h"
-#include "core/services/timing_handler/timing_handler.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
@@ -35,14 +35,15 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   RuntimeMediator(
       const std::shared_ptr<LynxActor<NativeFacade>>& facade_actor,
       const std::shared_ptr<LynxActor<LynxEngine>>& engine_actor,
-      const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>&
-          timing_actor,
+      const std::shared_ptr<
+          LynxActor<tasm::performance::PerformanceController>>&
+          performance_controller_actor,
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
       const fml::RefPtr<fml::TaskRunner>& js_runner,
       std::unique_ptr<ExternalResourceLoader> external_resource_loader)
       : facade_actor_(facade_actor),
         engine_actor_(engine_actor),
-        timing_actor_(timing_actor),
+        perf_controller_actor_(performance_controller_actor),
         card_cached_data_mgr_(card_cached_data_mgr),
         js_runner_(js_runner),
         external_resource_loader_(std::shared_ptr<ExternalResourceLoader>(
@@ -203,7 +204,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
 
-  std::shared_ptr<LynxActor<tasm::timing::TimingHandler>> timing_actor_;
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_controller_actor_;
 
   std::shared_ptr<LynxCardCacheDataManager> card_cached_data_mgr_;
 

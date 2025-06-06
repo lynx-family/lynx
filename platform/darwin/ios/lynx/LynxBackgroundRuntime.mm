@@ -177,8 +177,9 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   return _runtime_standalone_bundle.runtime_actor_;
 }
 
-- (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::timing::TimingHandler>>)timingActor {
-  return _runtime_standalone_bundle.timing_actor_;
+- (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>>)
+    perfControllerActor {
+  return _runtime_standalone_bundle.perf_controller_actor_;
 }
 
 - (LynxDevtool*)devtool {
@@ -413,14 +414,16 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     return;
   }
 
-  _runtime_standalone_bundle.timing_actor_->Act(
-      [instance_id = _runtime_standalone_bundle.timing_actor_->GetInstanceId()](auto& facade) {
+  _runtime_standalone_bundle.perf_controller_actor_->Act(
+      [instance_id =
+           _runtime_standalone_bundle.perf_controller_actor_->GetInstanceId()](auto& facade) {
         facade = nullptr;
         lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
       });
 
   _runtime_standalone_bundle.native_runtime_facade_->Act(
-      [instance_id = _runtime_standalone_bundle.timing_actor_->GetInstanceId()](auto& facade) {
+      [instance_id =
+           _runtime_standalone_bundle.perf_controller_actor_->GetInstanceId()](auto& facade) {
         facade = nullptr;
         lynx::tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
       });

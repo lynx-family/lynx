@@ -7,12 +7,12 @@
 #import <Lynx/LynxTemplateRenderDelegate.h>
 #import <Lynx/LynxViewEnum.h>
 #import <Lynx/TemplateRenderCallbackProtocol.h>
+#import "LynxPerformanceController.h"
 
 #include <memory>
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
-#include "core/services/timing_handler/timing_collector_platform_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
@@ -71,12 +71,11 @@ NS_ASSUME_NONNULL_BEGIN
   LynxTemplateData* _globalProps;
   PaintingContextProxy* _paintingContextProxy;
   LynxSSRHelper* _lynxSSRHelper;
-
+  LynxPerformanceController* _performanceController;
   CGFloat _fontScale;
   CGSize _intrinsicContentSize;
   std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
-  std::shared_ptr<lynx::tasm::timing::TimingCollectorPlatformImpl> timing_collector_platform_impl_;
   std::weak_ptr<lynx::piper::LynxModuleManager> module_manager_;
   id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property

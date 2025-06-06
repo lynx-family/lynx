@@ -13,7 +13,7 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
-#include "core/services/timing_handler/timing_handler.h"
+#include "core/services/performance/performance_controller.h"
 #include "core/shell/layout_result_manager.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/lynx_engine.h"
@@ -52,16 +52,16 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
       const tasm::layout::CalculatedViewport &viewport, int tag) override;
   void SetTiming(tasm::Timing timing) override;
   void OnFirstMeaningfulLayout() override;
-  void Init(const std::shared_ptr<LynxActor<LynxEngine>> &actor,
-            const std::shared_ptr<LynxActor<NativeFacade>> &facade_actor,
-            const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>
-                &timing_actor,
-            tasm::NodeManager *node_manager,
-            tasm::AirNodeManager *air_node_manager,
-            tasm::Catalyzer *catalyzer) {
+  void Init(
+      const std::shared_ptr<LynxActor<LynxEngine>> &actor,
+      const std::shared_ptr<LynxActor<NativeFacade>> &facade_actor,
+      const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+          &perf_controller_actor,
+      tasm::NodeManager *node_manager, tasm::AirNodeManager *air_node_manager,
+      tasm::Catalyzer *catalyzer) {
     engine_actor_ = actor;
     facade_actor_ = facade_actor;
-    timing_actor_ = timing_actor;
+    perf_controller_actor_ = perf_controller_actor;
     node_manager_ = node_manager;
     air_node_manager_ = air_node_manager;
     catalyzer_ = catalyzer;
@@ -92,7 +92,8 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
   std::shared_ptr<LynxActor<LynxEngine>> engine_actor_;
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;
   std::shared_ptr<LynxActor<runtime::LynxRuntime>> runtime_actor_;
-  std::shared_ptr<LynxActor<tasm::timing::TimingHandler>> timing_actor_;
+  std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
+      perf_controller_actor_;
 
   std::shared_ptr<LayoutResultManager> layout_result_manager_;
 

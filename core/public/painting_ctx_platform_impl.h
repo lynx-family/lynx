@@ -14,7 +14,6 @@
 #include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
 #include "core/public/prop_bundle.h"
-#include "core/public/timing_collector_platform.h"
 #include "core/public/timing_key.h"
 
 namespace lynx {
@@ -61,10 +60,7 @@ class PaintingCtxPlatformRef {
                                                    float delta_x, float delta_y,
                                                    bool is_init_scroll_offset,
                                                    bool from_layout) {}
-
-  virtual void SetNeedMarkDrawEndTiming(
-      std::weak_ptr<shell::TimingCollectorPlatform> weak_timing_collector,
-      const tasm::PipelineID& pipeline_id) {}
+  virtual void SetNeedPaintEndTiming(const tasm::PipelineID& pipeline_id) {}
 };
 
 struct PaintingCtxPlatformImplConfig {
@@ -149,13 +145,6 @@ class PaintingCtxPlatformImpl {
                               int32_t callback_id) {}
   virtual void getAbsolutePosition(int id, float* position) {}
 
-  // TODO(liting.src): remove this method after ui operation queue refactor.
-  inline void SetTimingCollectorPlatform(
-      const std::shared_ptr<shell::TimingCollectorPlatform>&
-          timing_collector_platform) {
-    timing_collector_platform_ = timing_collector_platform;
-  };
-
   virtual void EnableUIOperationBatching(){};
 
   virtual bool DefaultOverflowAlwaysVisible() { return false; }
@@ -178,7 +167,6 @@ class PaintingCtxPlatformImpl {
 
  protected:
   std::shared_ptr<PaintingCtxPlatformRef> platform_ref_;
-  std::shared_ptr<shell::TimingCollectorPlatform> timing_collector_platform_;
   PaintingCtxPlatformImplConfig config_;
 };
 }  // namespace tasm

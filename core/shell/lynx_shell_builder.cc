@@ -8,7 +8,8 @@
 #include <string>
 #include <utility>
 
-#include "core/services/event_report/event_tracker_platform_impl.h"
+#include "core/services/performance/performance_controller.h"
+#include "core/services/performance/performance_mediator.h"
 #include "core/shared_data/lynx_white_board.h"
 #include "core/shell/common/shell_trace_event_def.h"
 
@@ -18,12 +19,6 @@ namespace shell {
 LynxShellBuilder& LynxShellBuilder::SetNativeFacade(
     std::unique_ptr<shell::NativeFacade> native_facade) {
   this->native_facade_ = std::move(native_facade);
-  return *this;
-}
-
-LynxShellBuilder& LynxShellBuilder::SetNativeFacadeReporter(
-    std::unique_ptr<shell::NativeFacadeReporter> native_facade_async) {
-  this->native_facade_reporter_ = std::move(native_facade_async);
   return *this;
 }
 
@@ -139,17 +134,19 @@ LynxShellBuilder& LynxShellBuilder::SetRuntimeActor(
   return *this;
 }
 
-LynxShellBuilder& LynxShellBuilder::SetTimingActor(
-    const std::shared_ptr<LynxActor<tasm::timing::TimingHandler>>&
-        timing_actor) {
-  this->timing_actor_ = timing_actor;
+LynxShellBuilder& LynxShellBuilder::SetPerfControllerActor(
+    const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>&
+        perf_actor) {
+  this->perf_controller_actor_ = perf_actor;
   return *this;
 }
 
-LynxShellBuilder& LynxShellBuilder::SetTimingCollectorPlatform(
-    const std::shared_ptr<tasm::timing::TimingCollectorPlatformImpl>&
-        timing_collector_platform) {
-  this->timing_collector_platform_ = timing_collector_platform;
+LynxShellBuilder& LynxShellBuilder::SetPerformanceControllerPlatform(
+    std::unique_ptr<tasm::performance::PerformanceControllerPlatform<
+        tasm::performance::PerformanceController>>
+        performance_controller_platform) {
+  this->performance_controller_platform_ =
+      std::move(performance_controller_platform);
   return *this;
 }
 
@@ -184,35 +181,43 @@ LynxShell* LynxShellBuilder::build() {
   shell->facade_actor_ = std::make_shared<LynxActor<NativeFacade>>(
       std::move(this->native_facade_), shell->runners_.GetUITaskRunner(),
       shell->instance_id_);
-  shell->facade_reporter_actor_ =
-      std::make_shared<LynxActor<NativeFacadeReporter>>(
-          std::move(this->native_facade_reporter_),
-          lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
-          shell->instance_id_);
 
-  if (timing_actor_) {
-    shell->timing_mediator_ = nullptr;
-    shell->timing_actor_ = timing_actor_;
+  if (perf_controller_actor_) {
+    shell->perf_mediator_ = nullptr;
+    shell->perf_controller_actor_ = perf_controller_actor_;
   } else {
     // create timing mediator & actor
     auto timing_mediator = std::make_unique<lynx::tasm::timing::TimingMediator>(
         shell->instance_id_);
     timing_mediator->SetFacadeActor(shell->facade_actor_);
-    timing_mediator->SetFacadeReporterActor(shell->facade_reporter_actor_);
     timing_mediator->SetEnableJSRuntime(this->shell_option_.enable_js_);
     shell->timing_mediator_ = timing_mediator.get();
+    // create PerformanceController mediator & actor
+    auto performance_mediator =
+        std::make_unique<lynx::tasm::performance::PerformanceMediator>();
+    shell->perf_mediator_ = performance_mediator.get();
 
     // Temporarily disable TimingActor in Embedded mode
     const auto enable_timing = !shell_option_.page_options_.IsEmbeddedModeOn();
-    shell->timing_actor_ =
-        std::make_shared<LynxActor<tasm::timing::TimingHandler>>(
-            std::make_unique<tasm::timing::TimingHandler>(
-                std::move(timing_mediator)),
-            tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner(),
-            shell->instance_id_, enable_timing);
-    shell->timing_actor_->Impl()->SetEnableJSRuntime(
+    auto perf_controller =
+        std::make_unique<tasm::performance::PerformanceController>(
+            std::move(performance_mediator), std::move(timing_mediator),
+            shell->instance_id_);
+
+    perf_controller->GetTimingHandler().SetEnableJSRuntime(
         this->shell_option_.enable_js_);
-    shell->timing_actor_->Impl()->SetThreadStrategy(this->strategy_);
+    perf_controller->GetTimingHandler().SetThreadStrategy(this->strategy_);
+
+    shell->perf_controller_actor_ =
+        std::make_shared<LynxActor<tasm::performance::PerformanceController>>(
+            std::move(perf_controller),
+            tasm::performance::PerformanceController::GetTaskRunner(),
+            shell->instance_id_, enable_timing);
+    // Pass the `perf_controller_actor_` to the `PerformanceController`
+    // object of the platform layer to establish a mapping relationship.
+    performance_controller_platform_->SetActor(shell->perf_controller_actor_);
+    shell->perf_controller_actor_->Impl()->SetPlatformImpl(
+        std::move(this->performance_controller_platform_));
   }
 
   // create layout actor
@@ -246,7 +251,7 @@ LynxShell* LynxShellBuilder::build() {
   auto tasm_mediator = std::make_unique<TasmMediator>(
       shell->facade_actor_, shell->card_cached_data_mgr_, vsync_monitor,
       shell->layout_actor_, std::move(tasm_platform_invoker_),
-      shell->timing_actor_);
+      shell->perf_controller_actor_);
   tasm_mediator->SetPageOptions(shell_option_.page_options_);
   shell->tasm_mediator_ = tasm_mediator.get();
   shell->engine_actor_ = std::make_shared<LynxActor<LynxEngine>>(
@@ -257,8 +262,8 @@ LynxShell* LynxShellBuilder::build() {
   this->on_engine_actor_created_(shell->engine_actor_);
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
   shell->tasm_mediator_->SetEngineActor(shell->engine_actor_);
-  if (shell->timing_mediator_) {
-    shell->timing_mediator_->SetEngineActor(shell->engine_actor_);
+  if (shell->perf_mediator_) {
+    shell->perf_mediator_->SetEngineActor(shell->engine_actor_);
   }
   // after set shell members
   shell->engine_actor_->Impl()->SetOperationQueue(shell->tasm_operation_queue_);
@@ -289,17 +294,12 @@ LynxShell* LynxShellBuilder::build() {
         shell->ui_operation_queue_);
     element_manager->painting_context()->impl()->SetInstanceId(
         shell->instance_id_);
-    if (!timing_collector_platform_) {
-      timing_collector_platform_ =
-          std::make_shared<tasm::timing::TimingCollectorPlatformImpl>();
-    }
-    timing_collector_platform_->SetTimingActor(shell->timing_actor_);
-    element_manager->painting_context()->SetTimingCollectorPlatform(
-        std::move(timing_collector_platform_));
+    element_manager->painting_context()->SetPerfActor(
+        shell->perf_controller_actor_);
     shell->layout_mediator_->Init(
-        shell->engine_actor_, shell->facade_actor_, shell->timing_actor_,
-        element_manager->node_manager(), element_manager->air_node_manager(),
-        element_manager->catalyzer());
+        shell->engine_actor_, shell->facade_actor_,
+        shell->perf_controller_actor_, element_manager->node_manager(),
+        element_manager->air_node_manager(), element_manager->catalyzer());
     // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest
     if (vsync_monitor) {
       vsync_monitor->BindTaskRunner(shell->runners_.GetTASMTaskRunner());
@@ -340,6 +340,7 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
   if (painting_context_ == nullptr) {
     painting_context_ = painting_context_creator_(shell);
   }
+
   auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::move(painting_context_), tasm_mediator.get(), this->lynx_env_config_,
       instance_id, this->element_manager_vsync_monitor_,
