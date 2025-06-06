@@ -10,7 +10,7 @@ import com.lynx.react.bridge.WritableMap;
 
 public class ExplorerModule extends LynxModule {
   static final String DEVTOOL_SWITCH_ASSETS =
-      "file://lynx?local://devtool_switch/switchPage/devtoolSwitch.lynx.bundle";
+      "file://lynx?local://switchPage/devtoolSwitch.lynx.bundle";
 
   public ExplorerModule(Context context) {
     super(context);
