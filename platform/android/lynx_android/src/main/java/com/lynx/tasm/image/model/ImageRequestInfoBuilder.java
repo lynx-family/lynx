@@ -41,6 +41,8 @@ public class ImageRequestInfoBuilder {
 
   private boolean mUseLocalCache;
 
+  private boolean mForceStaticImage = false;
+
   public static ImageRequestInfoBuilder newBuilderWithSource(String url) {
     return new ImageRequestInfoBuilder().setUrl(url);
   }
@@ -176,6 +178,15 @@ public class ImageRequestInfoBuilder {
 
   public ImageRequestInfoBuilder setEnableAsyncRequest(boolean mEnableAsyncRequest) {
     this.mEnableAsyncRequest = mEnableAsyncRequest;
+    return this;
+  }
+
+  public boolean isForceStaticImage() {
+    return mForceStaticImage;
+  }
+
+  public ImageRequestInfoBuilder setForceStaticImage(boolean forceStaticImage) {
+    this.mForceStaticImage = forceStaticImage;
     return this;
   }
 

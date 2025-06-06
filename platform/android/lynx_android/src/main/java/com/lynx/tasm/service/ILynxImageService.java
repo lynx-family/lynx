@@ -95,6 +95,14 @@ public interface ILynxImageService extends IServiceProvider {
       @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
 
   /**
+   * Retrieve Bitmap of input requestInfo;
+   *
+   * @param imageRequestInfo Information about the image request.
+   * @param listener Listener for image loading callbacks.
+   */
+  void decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
+
+  /**
    * Releases resources associated with the given image request.
    *
    * @param imageRequestInfo Information about the image request to release.

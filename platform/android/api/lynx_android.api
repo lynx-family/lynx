@@ -2066,6 +2066,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public boolean com.lynx.tasm.service.ILynxImageService.pauseAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.stopAnimation(@NonNull Drawable animatable);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
+  public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
   public void com.lynx.tasm.service.ILynxImageService.releaseImage(@NonNull ImageRequestInfo imageRequestInfo);
   public void com.lynx.tasm.service.ILynxImageService.releaseAnimDrawable(@NonNull Drawable drawable);
   public boolean com.lynx.tasm.service.ILynxImageService.canParseUrl(@NonNull String url);
@@ -2345,6 +2346,7 @@ public class com::lynx::tasm::image::model::ImageRequestInfo :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableResourceHint();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableDownSampling();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isUseLocalCache();
+  public boolean com.lynx.tasm.image.model.ImageRequestInfo.isForceStaticImage();
   public Integer com.lynx.tasm.image.model.ImageRequestInfo.getDiskCacheChoice();
   public boolean com.lynx.tasm.image.model.ImageRequestInfo.isEnableAsyncRequest();
   public Object com.lynx.tasm.image.model.ImageRequestInfo.getCallerContext();
@@ -2385,6 +2387,8 @@ public class com::lynx::tasm::image::model::ImageRequestInfoBuilder :  {
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isEnableResourceHint();
   public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isUseLocalCache();
   public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setEnableAsyncRequest(boolean mEnableAsyncRequest);
+  public boolean com.lynx.tasm.image.model.ImageRequestInfoBuilder.isForceStaticImage();
+  public ImageRequestInfoBuilder com.lynx.tasm.image.model.ImageRequestInfoBuilder.setForceStaticImage(boolean forceStaticImage);
   public int com.lynx.tasm.image.model.ImageRequestInfoBuilder.getCacheChoice();
   public List< BitmapPostProcessor > com.lynx.tasm.image.model.ImageRequestInfoBuilder.getProcessors();
   public ImageRequestInfo com.lynx.tasm.image.model.ImageRequestInfoBuilder.build();

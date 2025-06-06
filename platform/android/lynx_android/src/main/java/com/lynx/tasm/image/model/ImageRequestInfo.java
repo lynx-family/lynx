@@ -42,6 +42,8 @@ public class ImageRequestInfo {
 
   private boolean mUseLocalCache;
 
+  private boolean mForceStaticImage = false;
+
   ImageRequestInfo(ImageRequestInfoBuilder builder) {
     mUrl = builder.getUrl();
     mResizeWidth = builder.getResizeWidth();
@@ -59,6 +61,7 @@ public class ImageRequestInfo {
     mCallerContext = builder.getCallerContext();
     mAutoPlay = builder.isEnableAnimationAutoPlay();
     mUseLocalCache = builder.isUseLocalCache();
+    mForceStaticImage = builder.isForceStaticImage();
   }
 
   public String getUrl() {
@@ -107,6 +110,10 @@ public class ImageRequestInfo {
 
   public boolean isUseLocalCache() {
     return mUseLocalCache;
+  }
+
+  public boolean isForceStaticImage() {
+    return mForceStaticImage;
   }
 
   public @DiskCacheChoice Integer getDiskCacheChoice() {

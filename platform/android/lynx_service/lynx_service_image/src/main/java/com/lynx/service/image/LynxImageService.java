@@ -15,6 +15,7 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.facebook.cache.common.CacheKey;
+import com.facebook.common.executors.CallerThreadExecutor;
 import com.facebook.common.executors.UiThreadImmediateExecutorService;
 import com.facebook.common.references.CloseableReference;
 import com.facebook.datasource.BaseDataSubscriber;
@@ -25,8 +26,12 @@ import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.fresco.animation.drawable.AnimatedDrawable2;
 import com.facebook.fresco.animation.drawable.BaseAnimationListener;
 import com.facebook.imagepipeline.cache.MemoryCache;
+import com.facebook.imagepipeline.common.ImageDecodeOptions;
 import com.facebook.imagepipeline.common.ImageDecodeOptionsBuilder;
 import com.facebook.imagepipeline.common.Priority;
+import com.facebook.imagepipeline.common.ResizeOptions;
+import com.facebook.imagepipeline.core.ImagePipeline;
+import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber;
 import com.facebook.imagepipeline.image.CloseableImage;
 import com.facebook.imagepipeline.image.CloseableStaticBitmap;
 import com.facebook.imagepipeline.request.ImageRequest;
@@ -297,6 +302,52 @@ public class LynxImageService implements ILynxImageService {
       prefetchImageToBitmapCache(builder.build(), callerContext);
     } else {
       prefetchImageToDiskCache(builder.build(), callerContext, priorityString);
+    }
+  }
+
+  @Override
+  public void decodeImage(
+      @NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener) {
+    if (imageRequestInfo != null) {
+      ImagePipeline imagePipeline = Fresco.getImagePipeline();
+      ImageRequest imageRequest =
+          ImageRequestBuilder.newBuilderWithSource(Uri.parse(imageRequestInfo.getUrl()))
+              .setResizeOptions(
+                  new ResizeOptions(Integer.MAX_VALUE, Integer.MAX_VALUE, Integer.MAX_VALUE))
+              .setImageDecodeOptions(ImageDecodeOptions.newBuilder()
+                                         .setBitmapConfig(imageRequestInfo.getConfig())
+                                         .setForceStaticImage(imageRequestInfo.isForceStaticImage())
+                                         .build())
+              .build();
+
+      DataSource<CloseableReference<CloseableImage>> dataSource =
+          imagePipeline.fetchDecodedImage(imageRequest, null);
+
+      BaseBitmapDataSubscriber subscriber = new BaseBitmapDataSubscriber() {
+        @Override
+        protected void onNewResultImpl(Bitmap bitmap) {
+          if (bitmap != null) {
+            listener.onSuccess(new ImageContent(bitmap), imageRequestInfo,
+                new ImageInfo(bitmap.getWidth(), bitmap.getHeight(), false));
+          } else {
+            listener.onFailure(
+                ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION, new Throwable("empty bitmap!"));
+          }
+        }
+
+        @Override
+        protected void onFailureImpl(DataSource<CloseableReference<CloseableImage>> dataSource) {
+          if (dataSource.getFailureCause() != null) {
+            listener.onFailure(
+                ImageErrorCodeUtils.checkImageException(dataSource.getFailureCause()),
+                dataSource.getFailureCause());
+          } else {
+            listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
+                new Throwable("imageLoadFailed."));
+          }
+        }
+      };
+      dataSource.subscribe(subscriber, CallerThreadExecutor.getInstance());
     }
   }
 
