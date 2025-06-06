@@ -9,6 +9,7 @@
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxUI+Fluency.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIImage.h>
 #import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
@@ -447,6 +448,7 @@ LYNX_REGISTER_UI("list-container")
            adjustLayersFrame:NO];
     [self.view addSubview:wrapper];
     wrapper.layer.zPosition = component.zIndex;
+    LynxUIListContainerRestartAnimationRecursively(component);
     // Invoke fade-in animation.
     if (self.enableFadeInAnimation) {
       component.view.alpha = 0;
@@ -1770,6 +1772,21 @@ LYNX_UI_METHOD(getVisibleCells) {
     }
   }];
   return hitTarget;
+}
+
+void LynxUIListContainerRestartAnimationRecursively(LynxUI *ui) {
+  if ([ui isKindOfClass:[LynxUIImage class]]) {
+    LynxUIImage *uiImage = (LynxUIImage *)ui;
+
+    if (uiImage.isAnimated) {
+      // to avoid GIF from being stopped after reuse, we manually call startAnimating here.
+      [uiImage startAnimating];
+    }
+  }
+  [ui.animationManager restartAnimation];
+  [ui.children enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+    LynxUIListContainerRestartAnimationRecursively(obj);
+  }];
 }
 
 @end
