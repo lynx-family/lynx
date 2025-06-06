@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm;
 
+import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 public final class LynxLoadMeta {
   String url;
   byte[] binaryData;
+  ByteBuffer byteBuffer;
   TemplateBundle bundle;
   TemplateData initialData;
   TemplateData globalProps;
@@ -20,11 +22,12 @@ public final class LynxLoadMeta {
   int loadOptions;
   Map<String, String> lynxViewConfig;
 
-  private LynxLoadMeta(String url, byte[] binaryData, TemplateBundle bundle,
+  private LynxLoadMeta(String url, byte[] binaryData, ByteBuffer byteBuffer, TemplateBundle bundle,
       TemplateData initialData, TemplateData globalProps, LynxLoadMode loadMode, int loadOptions,
       Map<String, String> lynxViewConfig) {
     this.url = url;
     this.binaryData = binaryData;
+    this.byteBuffer = byteBuffer;
     this.bundle = bundle;
     this.initialData = initialData;
     this.globalProps = globalProps;
@@ -49,6 +52,15 @@ public final class LynxLoadMeta {
    */
   public boolean isBinaryValid() {
     return this.binaryData != null && this.binaryData.length > 0;
+  }
+
+  /**
+   * Check whether the incoming byteBuffer is valid;
+   *
+   * @return True if byteBuffer is valid;
+   */
+  public boolean isByteBufferValid() {
+    return this.byteBuffer != null;
   }
 
   public byte[] getTemplateBinary() {
@@ -92,6 +104,10 @@ public final class LynxLoadMeta {
     return set;
   }
 
+  public ByteBuffer getByteBuffer() {
+    return byteBuffer;
+  }
+
   public boolean enableDumpElementTree() {
     return (this.loadOptions & LynxLoadOption.DUMP_ELEMENT.id()) != 0;
   }
@@ -116,43 +132,40 @@ public final class LynxLoadMeta {
     private TemplateData globalProps;
     private LynxLoadMode loadMode;
     private int loadOptions = 0;
-
+    private ByteBuffer byteBuffer;
     private Map<String, String> lynxViewConfig;
 
     public void setUrl(String url) {
       this.url = url;
     }
-
     public void setBinaryData(byte[] binaryData) {
       this.binaryData = binaryData;
     }
-
     public void setTemplateBundle(TemplateBundle bundle) {
       this.bundle = bundle;
     }
-
     public void setInitialData(TemplateData initialData) {
       this.initialData = initialData;
     }
     public void setGlobalProps(TemplateData globalProps) {
       this.globalProps = globalProps;
     }
-
     public void setLoadMode(LynxLoadMode loadMode) {
       this.loadMode = loadMode;
     }
-
     public void addLoadOption(LynxLoadOption loadOption) {
       this.loadOptions |= loadOption.id();
     }
-
     public void setLynxViewConfig(Map<String, String> lynxViewConfig) {
       this.lynxViewConfig = lynxViewConfig;
     }
+    public void setByteBuffer(ByteBuffer buffer) {
+      this.byteBuffer = buffer;
+    }
 
     public LynxLoadMeta build() {
-      return new LynxLoadMeta(this.url, this.binaryData, this.bundle, this.initialData,
-          this.globalProps, this.loadMode, this.loadOptions, this.lynxViewConfig);
+      return new LynxLoadMeta(this.url, this.binaryData, this.byteBuffer, this.bundle,
+          this.initialData, this.globalProps, this.loadMode, this.loadOptions, this.lynxViewConfig);
     }
   }
 }

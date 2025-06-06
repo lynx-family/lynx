@@ -48,10 +48,9 @@ std::optional<lynx::base::android::JavaOnlyMap> GetPageConfigMap(
 }
 }  // namespace
 
-jlong ParseTemplate(JNIEnv* env, jclass jcaller, jbyteArray j_binary,
-                    jobjectArray j_buffer) {
-  auto binary =
-      lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, j_binary);
+jlong ParseTemplateInternal(JNIEnv* env, jclass jcaller,
+                            std::vector<uint8_t>&& binary,
+                            jobjectArray options) {
   auto reader =
       lynx::tasm::LynxBinaryReader::CreateLynxBinaryReader(std::move(binary));
   if (reader.Decode()) {
@@ -61,7 +60,7 @@ jlong ParseTemplate(JNIEnv* env, jclass jcaller, jbyteArray j_binary,
     bundle->PrepareVMByConfigs();
     auto page_config = GetPageConfigMap(env, bundle);
     env->SetObjectArrayElement(
-        j_buffer, 1, page_config ? page_config->jni_object() : nullptr);
+        options, 1, page_config ? page_config->jni_object() : nullptr);
     return reinterpret_cast<int64_t>(bundle);
   } else {
     // decode failed.
@@ -69,9 +68,35 @@ jlong ParseTemplate(JNIEnv* env, jclass jcaller, jbyteArray j_binary,
     auto j_err_str =
         lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
             env, reader.error_message_);
-    env->SetObjectArrayElement(j_buffer, 0, j_err_str.Get());
+    env->SetObjectArrayElement(options, 0, j_err_str.Get());
     return 0;
   }
+}
+
+jlong ParseTemplateFromByteArray(JNIEnv* env, jclass jcaller,
+                                 jbyteArray j_binary, jobjectArray options) {
+  auto binary =
+      lynx::base::android::JNIConvertHelper::ConvertJavaBinary(env, j_binary);
+  return ParseTemplateInternal(env, jcaller, std::move(binary), options);
+}
+
+jlong ParseTemplateFromByteBuffer(JNIEnv* env, jclass jcaller,
+                                  jobject bufferPtr, jobjectArray options) {
+  auto* buffer_ptr =
+      static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
+  if (buffer_ptr == nullptr) {
+    LOGE("Error: Not a direct buffer!");
+    return 0;
+  }
+
+  jlong capacity = env->GetDirectBufferCapacity(bufferPtr);
+  if (capacity <= 0) {
+    LOGE("Error: Invalid direct buffer capacity!");
+    return 0;
+  }
+
+  std::vector<uint8_t> buffer(buffer_ptr, buffer_ptr + capacity);
+  return ParseTemplateInternal(env, jcaller, std::move(buffer), options);
 }
 
 jobject GetExtraInfo(JNIEnv* env, jclass jcaller, jlong ptr) {

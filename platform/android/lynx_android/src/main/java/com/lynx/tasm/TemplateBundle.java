@@ -9,9 +9,8 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import com.lynx.jsbridge.LynxBytecodeCallback;
 import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.LynxEnv;
-import com.lynx.tasm.TemplateBundleOption;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.common.LepusBuffer;
@@ -29,6 +28,8 @@ import java.util.Map;
  * in advance to obtain the `TemplateBundle` object and consume the App Bundle product.
  */
 public final class TemplateBundle {
+  public static final String TAG = "TemplateBundle";
+
   private final String url;
   private long nativePtr = 0; // native pointer for LynxTemplateBundle.
   private Map<String, Object> extraInfo;
@@ -76,7 +77,7 @@ public final class TemplateBundle {
         // 0: string, error message
         // 1: ReadableMap, pageConfig
         Object[] buffer = new Object[2];
-        long ptr = nativeParseTemplate(template, buffer);
+        long ptr = nativeParseTemplateFromByteArray(template, buffer);
         result = new TemplateBundle(
             ptr, template.length, url, (String) buffer[0], (ReadableMap) buffer[1]);
       } else {
@@ -89,7 +90,7 @@ public final class TemplateBundle {
 
   /**
    * @apidoc
-   * @brief Input Lynx template binary content and return the parsed `TemplateBundle` object.
+   * @brief Input Lynx Bundle binary content and return the parsed `TemplateBundle` object.
    * @param template Template binary content.
    * @return The `TemplateBundle` object.
    * @note When the input `template` is `null`, this method returns `null` directly.
@@ -98,6 +99,47 @@ public final class TemplateBundle {
    */
   public static TemplateBundle fromTemplate(byte[] template) {
     return internalBuildTemplate(template, null);
+  }
+
+  /**
+   * @apidoc
+   * @brief Input ByteBuffer that represents Lynx Bundle content and return the parsed
+   * `TemplateBundle` object.
+   * @param buffer ByteBuffer that represents Lynx Bundle content
+   * @return The `TemplateBundle` object.
+   * @note When the input `buffer` is `null`, this method returns `null` directly.
+   * @note When the input `buffer` is not `DirectByteBuffer`, returns an invalid TemplateBundle.
+   * @note When the input `template` is not a correct `Lynx` template data,
+   * an invalid `TemplateBundle` is returned.
+   */
+  public static TemplateBundle fromTemplate(ByteBuffer buffer, TemplateBundleOption option) {
+    TemplateBundle bundle = null;
+    if (buffer == null) {
+      return bundle;
+    }
+    if (!buffer.isDirect()) {
+      LLog.i(TAG, "TemplateBundle only supports DirectByteBuffer.");
+      bundle = new TemplateBundle(0, buffer.limit(), option.getUrl(),
+          "TemplateBundle only supports DirectByteBuffer.", null);
+      return bundle;
+    }
+
+    // TODO(nihao.royal): support security check after SecurityService support buffer.
+    TraceEvent.beginSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER);
+    if (checkIfEnvPrepared()) {
+      // 0: string, error message
+      // 1: ReadableMap, pageConfig
+      Object[] options = new Object[2];
+      long ptr = nativeParseTemplateFromByteBuffer(buffer, options);
+      bundle = new TemplateBundle(
+          ptr, buffer.limit(), option.getUrl(), (String) options[0], (ReadableMap) options[1]);
+    } else {
+      bundle =
+          new TemplateBundle(0, buffer.limit(), option.getUrl(), "LynxEnv is not prepared.", null);
+    }
+    bundle.initWithOption(option);
+    TraceEvent.endSection(TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER);
+    return bundle;
   }
 
   public static TemplateBundle fromTemplate(byte[] template, TemplateBundleOption option) {
@@ -284,7 +326,8 @@ public final class TemplateBundle {
   private static native void nativePostJsCacheGenerationTask(
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
 
-  private static native long nativeParseTemplate(byte[] temp, Object[] buffer);
+  private static native long nativeParseTemplateFromByteArray(byte[] temp, Object[] options);
+  private static native long nativeParseTemplateFromByteBuffer(ByteBuffer bytes, Object[] options);
   private static native void nativeReleaseBundle(long ptr);
   private static native Object nativeGetExtraInfo(long ptr);
   private static native boolean nativeGetContainsElementTree(long ptr);

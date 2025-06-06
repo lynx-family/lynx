@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public final class ResourceHelper {
   /**
@@ -33,6 +34,17 @@ public final class ResourceHelper {
       }
     }
     return bytes;
+  }
+
+  public static ByteBuffer loadAssertAsBuffer(@NonNull Context context, @NonNull String name) {
+    byte[] bytes = loadByteArray(context, name);
+    if (bytes != null) {
+      ByteBuffer directBuffer = ByteBuffer.allocateDirect(bytes.length);
+      directBuffer.put(bytes);
+      directBuffer.flip();
+      return directBuffer;
+    }
+    return null;
   }
 
   /**

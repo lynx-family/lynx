@@ -1033,6 +1033,7 @@ public class com::lynx::tasm::LynxLoadMeta::Builder :  {
   public void com.lynx.tasm.LynxLoadMeta.Builder.setLoadMode(LynxLoadMode loadMode);
   public void com.lynx.tasm.LynxLoadMeta.Builder.addLoadOption(LynxLoadOption loadOption);
   public void com.lynx.tasm.LynxLoadMeta.Builder.setLynxViewConfig(Map< String, String > lynxViewConfig);
+  public void com.lynx.tasm.LynxLoadMeta.Builder.setByteBuffer(ByteBuffer buffer);
   public LynxLoadMeta com.lynx.tasm.LynxLoadMeta.Builder.build();
 }
 
@@ -5083,6 +5084,7 @@ public class com::lynx::tasm::LynxLoadMeta :  {
   public String com.lynx.tasm.LynxLoadMeta.getUrl();
   public boolean com.lynx.tasm.LynxLoadMeta.isBundleValid();
   public boolean com.lynx.tasm.LynxLoadMeta.isBinaryValid();
+  public boolean com.lynx.tasm.LynxLoadMeta.isByteBufferValid();
   public byte[] com.lynx.tasm.LynxLoadMeta.getTemplateBinary();
   public TemplateBundle com.lynx.tasm.LynxLoadMeta.getTemplateBundle();
   public TemplateData com.lynx.tasm.LynxLoadMeta.getInitialData();
@@ -5090,6 +5092,7 @@ public class com::lynx::tasm::LynxLoadMeta :  {
   public Map< String, String > com.lynx.tasm.LynxLoadMeta.getLynxViewConfig();
   public LynxLoadMode com.lynx.tasm.LynxLoadMeta.getLoadMode();
   public EnumSet< LynxLoadOption > com.lynx.tasm.LynxLoadMeta.getLoadOption();
+  public ByteBuffer com.lynx.tasm.LynxLoadMeta.getByteBuffer();
   public boolean com.lynx.tasm.LynxLoadMeta.enableDumpElementTree();
   public boolean com.lynx.tasm.LynxLoadMeta.enableRecycleTemplateBundle();
   public boolean com.lynx.tasm.LynxLoadMeta.enableProcessLayout();
@@ -8597,6 +8600,7 @@ public class com::lynx::tasm::TemplateAssembler :  {
 }
 
 public class com::lynx::tasm::TemplateBundle :  {
+  public final String com.lynx.tasm.TemplateBundle.TAG TAG;
   public boolean com.lynx.tasm.TemplateBundle.equals(Object o);
   public Map< String, Object > com.lynx.tasm.TemplateBundle.getExtraInfo();
   public boolean com.lynx.tasm.TemplateBundle.isElementBundleValid();
@@ -8612,6 +8616,7 @@ public class com::lynx::tasm::TemplateBundle :  {
   public PageConfig com.lynx.tasm.TemplateBundle.getPageConfig();
   public boolean com.lynx.tasm.TemplateBundle.constructContext();
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(byte[] template);
+  public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(ByteBuffer buffer, TemplateBundleOption option);
   public static TemplateBundle com.lynx.tasm.TemplateBundle.fromTemplate(byte[] template, TemplateBundleOption option);
 }
 
@@ -9027,6 +9032,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_FLING CLIENT_FLING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_FIRST_SCREEN CLIENT_ON_FIRST_SCREEN;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE TEMPLATE_BUNDLE_FROM_TEMPLATE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER TEMPLATE_BUNDLE_FROM_BYTEBUFFER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_DATA_FROM_MAP TEMPLATE_DATA_FROM_MAP;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_DATA_FROM_STRING TEMPLATE_DATA_FROM_STRING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLEAN_REF_RUN_CLEAN_TASK_REAPER_THREAD CLEAN_REF_RUN_CLEAN_TASK_REAPER_THREAD;
