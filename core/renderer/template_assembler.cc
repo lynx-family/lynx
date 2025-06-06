@@ -2194,7 +2194,8 @@ void TemplateAssembler::EnsureTouchEventHandler() {
     if (client != nullptr) {
       touch_event_handler_ = std::make_unique<TouchEventHandler>(
           client->node_manager(), delegate_, support_component_js_,
-          UseLepusNG(), target_sdk_version_);
+          UseLepusNG(), client->GetEnableFiberElementForRadonDiff(),
+          target_sdk_version_);
     } else {
       LYNX_ERROR(error::E_EVENT_EXCEPTION,
                  "Element manager of page proxy is nullptr",

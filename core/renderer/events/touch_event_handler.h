@@ -119,6 +119,7 @@ class TouchEventHandler {
   TouchEventHandler(NodeManager *node_manager,
                     runtime::ContextProxy::Delegate &context_proxy_delegate,
                     bool support_component_js, bool use_lepus_ng,
+                    bool enable_fiber_element_for_radon_diff,
                     const std::string &version);
 
   // TODO(songshourui.null) : unify the following three functions.
@@ -184,7 +185,8 @@ class TouchEventHandler {
     EventContext &operator=(EventContext &&info) noexcept = default;
   };
 
-  ResponseChainVector GenerateResponseChain(int tag, const EventOption &option);
+  ResponseChainVector GenerateResponseChain(PageProxy *proxy, int tag,
+                                            const EventOption &option);
   ResponseChainVector GenerateResponseChain(PageProxy *proxy,
                                             Element *component_element,
                                             const EventOption &option);
@@ -287,6 +289,7 @@ class TouchEventHandler {
   bool long_press_consumed_{false};
 
   bool use_lepus_ng_{false};
+  bool enable_fiber_element_for_radon_diff_;
   std::string version_;
 
   lepus::Value current_touches_;

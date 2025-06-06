@@ -60,11 +60,13 @@ static void AddTimestampProperty(lepus::Dictionary *params,
 TouchEventHandler::TouchEventHandler(
     NodeManager *node_manager,
     runtime::ContextProxy::Delegate &context_proxy_delegate,
-    bool support_component_js, bool use_lepus_ng, const std::string &version)
+    bool support_component_js, bool use_lepus_ng,
+    bool enable_fiber_element_for_radon_diff, const std::string &version)
     : node_manager_(node_manager),
       context_proxy_delegate_(context_proxy_delegate),
       support_component_js_(support_component_js),
       use_lepus_ng_(use_lepus_ng),
+      enable_fiber_element_for_radon_diff_(enable_fiber_element_for_radon_diff),
       version_(version),
       current_touches_(lepus_value(lepus::CArray::Create())) {
 #if ENABLE_LEPUSNG_WORKLET
@@ -195,7 +197,8 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
   if (info.is_multi_finger) {
     for (auto events : *info.params.Table()) {
       int tag = std::stoi(events.first.str());
-      const auto &chain = GenerateResponseChain(tag, context.option);
+      const auto &chain = GenerateResponseChain(
+          tasm ? tasm->page_proxy() : nullptr, tag, context.option);
       auto ops = f(chain, context.option, long_press_consumed_);
       HandleEventOperations(tasm, context, ops);
     }
@@ -203,7 +206,8 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
       current_touches_ = lepus_value(lepus::CArray::Create());
     }
   } else {
-    const auto &chain = GenerateResponseChain(info.tag, context.option);
+    const auto &chain = GenerateResponseChain(
+        tasm ? tasm->page_proxy() : nullptr, info.tag, context.option);
     auto ops = f(chain, context.option, long_press_consumed_);
     HandleEventOperations(tasm, context, ops);
   }
@@ -326,7 +330,8 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                         .lepus_event_ = false,
                         .from_frontend_ = false};
   EventOpsVector ops;
-  const auto &chain = GenerateResponseChain(tag, option);
+  const auto &chain =
+      GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr, tag, option);
   HandleEventInternal(chain, name, option, ops);
   EventContext context = {
       .event_type = EventType::kCustom,
@@ -469,7 +474,8 @@ void TouchEventHandler::HandleBubbleEvent(TemplateAssembler *tasm,
         ApplyEventTargetParams(params, target, current_target, is_js_event);
         return lepus::Value::Clone(lepus::Value(params));
       }};
-  const auto &chain = GenerateResponseChain(tag, context.option);
+  const auto &chain = GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr,
+                                            tag, context.option);
   EventOpsVector ops;
   HandleEventInternal(chain, name, context.option, ops);
   HandleEventOperations(tasm, context, ops);
@@ -607,7 +613,7 @@ void TouchEventHandler::HandleJSCallbackLepusEvent(const int64_t callback_id,
 }
 
 ResponseChainVector TouchEventHandler::GenerateResponseChain(
-    int tag, const EventOption &option) {
+    PageProxy *proxy, int tag, const EventOption &option) {
   // Should always return variable chain to make NRVO work.
   ResponseChainVector chain;
   Element *target_node = node_manager_->Get(tag);
@@ -630,6 +636,30 @@ ResponseChainVector TouchEventHandler::GenerateResponseChain(
   if (option.bubbles_) {
     while (target_node != nullptr) {
       chain.push_back(target_node);
+
+      // TODO(songshourui.null): When using RadonDiff + RadonElement, the fixed
+      // element must be root's child and the chain will not contain the
+      // elements between root and fixed element. However, when using RadonDiff
+      // + FiberElement, fixed element's postion will not be changed and the
+      // chain will contain the elements between root and fixed element. Thus,
+      // when enable_fiber_element_for_radon_diff_, to avoid break, we need to
+      // stop the while loop when target node is fixed. And the following code
+      // will be removed when there is no RadonDiff online. Not that we can add
+      // a bubble_parent interface to the Element class. Then RadonElement can
+      // return parent by default, while FiberElement implements compatible
+      // logic. This approach avoids the need to modify the TouchEventHandler
+      // itself.
+      if (enable_fiber_element_for_radon_diff_ && target_node->IsRadonArch() &&
+          target_node->is_fixed()) {
+        auto root = proxy != nullptr && proxy->element_manager() != nullptr
+                        ? proxy->element_manager()->root()
+                        : nullptr;
+        if (root != nullptr && target_node != root) {
+          chain.emplace_back(root);
+        }
+        break;
+      }
+
       target_node = static_cast<Element *>(target_node->parent());
     }
   } else {
@@ -1427,13 +1457,15 @@ void TouchEventHandler::StartEventGenerate(TemplateAssembler *tasm,
       for (auto &event : *event_info.params.Table()) {
         int target_sign = std::stoi(event.first.str());
         const auto &event_chain =
-            GenerateResponseChain(target_sign, event_context.option);
+            GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr,
+                                  target_sign, event_context.option);
         event_context.event_chain_map.insert_or_assign(target_sign,
                                                        std::move(event_chain));
       }
     } else {
       const auto &event_chain =
-          GenerateResponseChain(target_sign, event_context.option);
+          GenerateResponseChain(tasm ? tasm->page_proxy() : nullptr,
+                                target_sign, event_context.option);
       event_context.event_chain_map.insert_or_assign(target_sign,
                                                      std::move(event_chain));
     }
