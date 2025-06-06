@@ -44,16 +44,6 @@ function Lynx-Env-Setup {
     Setup-Environment 'COREPACK_HOME' (Join-Path $buildtoolsDir 'corepack')
 }
 
-function Run-cmdLists($cmdLists) {
-  $arguments = @()
-  foreach ($cmd in $cmdLists) {
-    $arguments += "$cmd;"
-  }
-  if ($arguments.Count -gt 0) {
-    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList "-Command", "$arguments" -Wait
-  }
-}
-
 function Android-Env-Setup {
   $androidHome = Get-Environment 'ANDROID_HOME'
   
@@ -62,21 +52,6 @@ function Android-Env-Setup {
     Setup-Environment 'ANDROID_NDK' $androidNdk
     Setup-Environment 'ANDROID_NDK_21' $androidNdk
     Setup-Environment 'ANDROID_SDK' $androidNdk
-
-    $sdkSoftwarePath = Join-Path $tools_path 'android_tools/sdk'
-    $ndkSoftwarePath = Join-Path $tools_path 'android_tools/ndk'
-    $cmdLists = @()
-    if (!(Test-Path $sdkSoftwarePath)) {
-      $SdkLinkCmd = "New-Item -ItemType SymbolicLink -Path '$sdkSoftwarePath' -Target '$androidHome' -Force"
-      $cmdLists += $SdkLinkCmd
-    }
-    if (!(Test-Path $ndkSoftwarePath)) {
-      $NdkLinkCmd = "New-Item -ItemType SymbolicLink -Path '$ndkSoftwarePath' -Target '$androidNdk' -Force"
-      $cmdLists += $NdkLinkCmd
-    }
-    Run-cmdLists $cmdLists
-    Write-Host "$sdkSoftwarePath --> $androidHome"
-    Write-Host "$ndkSoftwarePath --> $androidNdk"
   } else {
     Write-Host "Please setup ANDROID_HOME environment variable for android build first."
   }
