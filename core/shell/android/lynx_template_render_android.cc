@@ -145,11 +145,14 @@ std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
   return pipeline_options;
 }
 
-void InternalLoadTemplate(
-    JNIEnv* env, jlong ptr, jlong lifecycle, jstring j_url, jbyteArray j_binary,
-    const Value& value, const bool read_only_value, bool enable_pre_painting,
-    const std::string& processor_name, jobject android_template_data,
-    bool enable_recycle_template_bundle, jobject j_timing_option) {
+void InternalLoadTemplate(JNIEnv* env, jlong ptr, jlong lifecycle,
+                          jstring j_url, std::vector<uint8_t> j_binary,
+                          const Value& value, const bool read_only_value,
+                          bool enable_pre_painting,
+                          const std::string& processor_name,
+                          jobject android_template_data,
+                          bool enable_recycle_template_bundle,
+                          jobject j_timing_option) {
   // TODO(songshourui.null): add a method to get template_data with
   // android_template_data
   std::shared_ptr<lynx::tasm::TemplateData> template_data =
@@ -172,9 +175,9 @@ void InternalLoadTemplate(
   auto pipeline_options =
       ProcessLoadTemplateTimingOption(env, ptr, j_timing_option);
   reinterpret_cast<LynxShell*>(ptr)->LoadTemplate(
-      JNIConvertHelper::ConvertToString(env, j_url),
-      JNIConvertHelper::ConvertJavaBinary(env, j_binary), pipeline_options,
-      template_data, enable_pre_painting, enable_recycle_template_bundle);
+      JNIConvertHelper::ConvertToString(env, j_url), std::move(j_binary),
+      pipeline_options, template_data, enable_pre_painting,
+      enable_recycle_template_bundle);
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
@@ -481,11 +484,36 @@ void LoadTemplateByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                                  jobject template_data,
                                  jobject j_timing_option) {
   std::string processor_name = JNIConvertHelper::ConvertToString(env, name);
-  InternalLoadTemplate(env, ptr, lifecycle, j_url, j_binary,
+  std::vector<uint8_t> vec = JNIConvertHelper::ConvertJavaBinary(env, j_binary);
+  InternalLoadTemplate(env, ptr, lifecycle, j_url, std::move(vec),
                        data ? *(reinterpret_cast<Value*>(data)) : Value(),
                        readOnly, is_pre_painting == 1, processor_name,
                        template_data, enable_recycle_template_bundle,
                        j_timing_option);
+}
+
+void LoadTemplateBufferByPreParsedData(
+    JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle, jstring url,
+    jobject bufferPtr, jint isPrePainting, jboolean enableRecycleTemplateBundle,
+    jlong data, jboolean readOnly, jstring processorName, jobject templateData,
+    jobject timingOption) {
+  std::string processor_name =
+      JNIConvertHelper::ConvertToString(env, processorName);
+  auto* buffer_ptr =
+      static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
+  if (buffer_ptr == nullptr) {
+    LOGE("Error: Not a direct buffer!");
+    return;
+  }
+  jlong capacity = env->GetDirectBufferCapacity(bufferPtr);
+  if (capacity <= 0) {
+    return;
+  }
+  std::vector<uint8_t> vec(buffer_ptr, buffer_ptr + capacity);
+  InternalLoadTemplate(env, ptr, lifecycle, url, std::move(vec),
+                       data ? *(reinterpret_cast<Value*>(data)) : Value(),
+                       readOnly, isPrePainting == 1, processor_name,
+                       templateData, enableRecycleTemplateBundle, timingOption);
 }
 
 void LoadTemplateBundleByPreParsedData(
