@@ -85,6 +85,7 @@ public class LynxIntersectionObserverManager
         if (mObservers.size() == 1) {
           LynxContext context = observer.getContext();
           if (context != null) {
+            updateWindowSize(context);
             mEnableNewIntersectionObserver = context.getEnableNewIntersectionObserver();
           }
           if (mEnableNewIntersectionObserver) {

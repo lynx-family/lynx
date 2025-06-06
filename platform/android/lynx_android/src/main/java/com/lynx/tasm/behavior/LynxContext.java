@@ -563,9 +563,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   public void setIntersectionObserverManager(LynxIntersectionObserverManager manager) {
-    if (manager != null) {
-      manager.updateWindowSize(this);
-    }
     mIntersectionObserverManager = new WeakReference<>(manager);
   }
 
