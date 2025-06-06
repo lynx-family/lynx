@@ -86,12 +86,13 @@ LYNX_PROPS_GROUP_DECLARE(
 }
 
 - (void)_lynxUIRequestDisplay {
-  if (self.renderer == nil || self.frame.size.width <= 0 || self.frame.size.height <= 0) {
-    return;
-  }
   self.view.layer.contents = nil;
   [self.view.contentLayer setContents:nil];
   [_overflow_layer setContents:nil];
+
+  if (self.renderer == nil || self.frame.size.width <= 0 || self.frame.size.height <= 0) {
+    return;
+  }
   [self requestDisplayAsynchronsly];
 }
 
