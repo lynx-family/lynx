@@ -65,6 +65,11 @@ public class ListContainerView
     if (mUiListContainer == null) {
       return super.onInterceptTouchEvent(e);
     }
+
+    if (isNotIncludeNativeGesture()) {
+      return false;
+    }
+
     if (isConsumeGesture(e)) {
       // If new gestures are enabled, return false to indicate that the event is not intercept, So
       // this event can be passed to child node, do not intercept the down event, otherwise will not
@@ -103,6 +108,10 @@ public class ListContainerView
         && ev.getActionMasked() != MotionEvent.ACTION_DOWN;
   }
 
+  private boolean isNotIncludeNativeGesture() {
+    return mUiListContainer.isEnableNewGesture() && !mUiListContainer.getIncludeNativeGesture();
+  }
+
   private boolean isInterceptGestureNotNull() {
     return mUiListContainer.isEnableNewGesture() && mInterceptGesture != null;
   }
@@ -116,6 +125,11 @@ public class ListContainerView
     if (mUiListContainer == null) {
       return super.onTouchEvent(ev);
     }
+
+    if (isNotIncludeNativeGesture()) {
+      return false;
+    }
+
     if (isConsumeGesture(ev)) {
       // If new gestures are enabled, return false to indicate that the event is not consumed,
       // So this event can be passed to parent node, do not intercept the down event, otherwise will
@@ -159,7 +173,7 @@ public class ListContainerView
 
   /**
    * @breif Dynamically intercepting native gestures
-   * @param interceptGesture true: intercept native gesture, false: not intercept native gesture
+   * @param intercept true: intercept native gesture, false: not intercept native gesture
    * @return void
    */
   public void interceptGesture(boolean intercept) {

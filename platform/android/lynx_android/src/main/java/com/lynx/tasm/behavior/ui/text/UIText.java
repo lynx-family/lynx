@@ -199,15 +199,6 @@ public class UIText
   public void destroy() {
     super.destroy();
     mView.release();
-    // remove arena member if destroy
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager != null) {
-      manager.removeMember(this);
-    }
-    // clear gesture map if destroy
-    if (mGestureHandlers != null) {
-      mGestureHandlers.clear();
-    }
   }
 
   @Override
@@ -371,14 +362,6 @@ public class UIText
 
   public void onPropsUpdated() {
     super.onPropsUpdated();
-    if (mGestureHandlers != null) {
-      GestureArenaManager manager = getGestureArenaManager();
-      // Check if the current UIList instance is already a member of the gesture arena
-      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
-        // If not a member, add the UIList instance as a new member to the gesture arena
-        mGestureArenaMemberId = manager.addMember(UIText.this);
-      }
-    }
   }
 
   @Override
@@ -424,35 +407,12 @@ public class UIText
     if (gestureDetectors == null || gestureDetectors.isEmpty()) {
       return;
     }
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
-      return;
-    }
-    if (manager.isMemberExist(getGestureArenaMemberId())) {
-      // when update gesture handlers, need to reset it
-      if (mGestureHandlers != null) {
-        mGestureHandlers.clear();
-        mGestureHandlers = null;
-      }
-    }
-    if (mGestureHandlers == null) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIText.this, getGestureDetectorMap());
-    }
-    mView.setGestureManager(manager);
+    mView.setGestureManager(getGestureArenaManager());
   }
 
   @Nullable
   @Override
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
-    if (!isEnableNewGesture()) {
-      return null;
-    }
-
-    if (mGestureHandlers == null) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIText.this, getGestureDetectorMap());
-    }
-    return mGestureHandlers;
+    return super.getGestureHandlers();
   }
 }

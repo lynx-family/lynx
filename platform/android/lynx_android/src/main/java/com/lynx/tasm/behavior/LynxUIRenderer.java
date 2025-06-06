@@ -213,6 +213,10 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     mEnableMultiTouch = config.getEnableMultiTouch();
     mEnableFiberArc = config.getEnableFiberArc();
     mEnableNewGesture = config.isEnableNewGesture();
+    if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
+      LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
+      mLynxUIOwner.initGestureArenaManager(lynxContext);
+    }
     if ((mLynxUIOwner != null) && (mLynxUIOwner.getRootUI() != null)) {
       mLynxUIOwner.getRootUI().onPageConfigDecoded(config);
     }
@@ -385,7 +389,6 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       mEventDispatcher.setEnableMultiTouch(mEnableMultiTouch);
       // init if Enable new gesture in page config
       if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
-        mLynxUIOwner.initGestureArenaManager(lynxContext);
         mEventDispatcher.setGestureArenaManager(mLynxUIOwner.getGestureArenaManager());
       }
     }

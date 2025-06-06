@@ -86,9 +86,6 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
   private static final int DIRECTION_UP_OR_LEFT = -1;
   private static final int DIRECTION_DOWN_OR_RIGHT = 1;
 
-  // for new gesture
-  private Map<Integer, BaseGestureHandler> mGestureHandlers;
-
   private ViewGroup mContainerView;
   private ListStickyManager mListStickyManager;
   private AppearEventCourier mAppearEventCourier;
@@ -241,50 +238,12 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
   @Nullable
   @Override
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
-    // Check if the new gesture feature is enabled
-    if (!isEnableNewGesture()) {
-      return null;
-    }
-
-    // Lazy initialization of gesture handlers
-    if (mGestureHandlers == null) {
-      // Convert gesture data to gesture handlers if not already initialized
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIList.this, getGestureDetectorMap());
-    }
-    // Return the initialized gesture handlers
-    return mGestureHandlers;
+    return super.getGestureHandlers();
   }
 
   @Override
   public void setGestureDetectors(Map<Integer, GestureDetector> gestureDetectors) {
     super.setGestureDetectors(gestureDetectors);
-
-    // Check if gesture detectors are not available
-    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
-      return;
-    }
-
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
-      return;
-    }
-
-    // Check if the current UIList instance is already a member of the gesture arena
-    if (manager.isMemberExist(getGestureArenaMemberId())) {
-      // when update gesture handlers, need to reset it
-      if (mGestureHandlers != null) {
-        mGestureHandlers.clear();
-        mGestureHandlers = null;
-      }
-    }
-
-    // Lazy initialization of gesture handlers
-    if (mGestureHandlers == null && getSign() > 0) {
-      // Convert gesture data to gesture handlers if not already initialized
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIList.this, getGestureDetectorMap());
-    }
   }
 
   // Override dispatchNestedPreScroll & dispatchNestedPreScroll function to detect nested-scroll
@@ -482,6 +441,10 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
           && ev.getActionMasked() != MotionEvent.ACTION_DOWN;
     }
 
+    private boolean isNotIncludeNativeGesture(UIList list) {
+      return list.isEnableNewGesture() && !list.getIncludeNativeGesture();
+    }
+
     private boolean isInterceptGestureNotNull(UIList list) {
       return list.isEnableNewGesture() && mInterceptGesture != null;
     }
@@ -499,6 +462,11 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
       if (list == null) {
         return super.onInterceptTouchEvent(e);
       }
+
+      if (isNotIncludeNativeGesture(list)) {
+        return false;
+      }
+
       if (isConsumeGesture(list, e)) {
         // If new gestures are enabled, return false to indicate that the event is not intercept, So
         // this event can be passed to child node, do not intercept the down event, otherwise will
@@ -539,6 +507,11 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
       if (list == null) {
         return super.onTouchEvent(ev);
       }
+
+      if (isNotIncludeNativeGesture(list)) {
+        return false;
+      }
+
       if (isConsumeGesture(list, ev)) {
         // If new gestures are enabled, return false to indicate that the event is not consumed,
         // So this event can be passed to parent node, do not intercept the down event, otherwise
@@ -627,15 +600,6 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
 
     if (mView.getAdapter() == null) {
       mView.setAdapter(mAdapter);
-    }
-
-    if (mGestureHandlers != null) {
-      GestureArenaManager manager = getGestureArenaManager();
-      // Check if the current UIList instance is already a member of the gesture arena
-      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
-        // If not a member, add the UIList instance as a new member to the gesture arena
-        mGestureArenaMemberId = manager.addMember(UIList.this);
-      }
     }
 
     if (!isNeedRenderComponents()) {
@@ -1716,15 +1680,6 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
     // when list is destroyed, in order to avoid memory leak, should remove FrameCallback
     removeFrameCallback();
     nativeListStateCache.clear();
-    // remove arena member if destroy
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager != null) {
-      manager.removeMember(this);
-    }
-    // clear gesture map if destroy
-    if (mGestureHandlers != null) {
-      mGestureHandlers.clear();
-    }
   }
 
   @Override
