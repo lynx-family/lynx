@@ -89,6 +89,7 @@ subspec_target("Framework") {
     "-Wextra",
     "-Wno-unused-parameter",
     "-Wmissing-field-initializers",
+    "-Wno-documentation",
     "-Werror",
   ]
   flatten_deps = framework_podspec_deps
@@ -466,6 +467,7 @@ subspec_target("JSRuntime") {
     "-Wextra",
     "-Wno-unused-parameter",
     "-Wmissing-field-initializers",
+    "-Wno-vla",
     "-Werror",
   ]
   framework = "JavaScriptCore"
@@ -585,6 +587,7 @@ subspec_target("Native") {
     "-Wno-documentation",
     "-Wno-unused-parameter",
     "-Wmissing-field-initializers",
+    "-Wno-vla",
     "-Werror",
   ]
   pod_target_xcconfig = {
@@ -625,6 +628,7 @@ subspec_target("zlib") {
     "-Wno-comma",
     "-Wno-unused-function",
     "-Wno-sign-compare",
+    "-Wno-macro-redefined",
   ]
   libraries = [ "stdc++" ]
   deps = [ "//third_party/zlib" ]

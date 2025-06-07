@@ -93,18 +93,20 @@ class LynxActor : public LynxActorMixin<LynxActor<T>, T>,
     });
   }
 
-  template <typename F, typename = std::enable_if_t<!std::is_void<
-                            std::result_of_t<F(std::unique_ptr<T>&)>>::value>>
+  template <typename F,
+            typename = std::enable_if_t<!std::is_void<
+                std::invoke_result_t<F, std::unique_ptr<T>&>>::value>>
   auto ActSync(F&& func) {
-    std::result_of_t<F(std::unique_ptr<T>&)> result;
+    std::invoke_result_t<F, std::unique_ptr<T>&> result;
     ActSync([&result, func = std::forward<F>(func)](auto& impl) mutable {
       result = func(impl);
     });
     return result;
   }
 
-  template <typename F, typename = std::enable_if_t<std::is_void<
-                            std::result_of_t<F(std::unique_ptr<T>&)>>::value>>
+  template <typename F,
+            typename = std::enable_if_t<std::is_void<
+                std::invoke_result_t<F, std::unique_ptr<T>&>>::value>>
   void ActSync(F&& func) {
     if (!enable_) {
       return;

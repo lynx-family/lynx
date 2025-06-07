@@ -505,7 +505,7 @@ static const CATransform3D kEmptyCATransform3D = {0};
 // state can only be changed by these five functions(pause, resume, cancel, run, finish).
 - (void)pause:(LynxAnimationInfo*)info {
   NSAssert(info.playState == LynxAnimationPlayStatePaused, @"info.playState must be paused");
-  NSAssert(_state == LynxAnimationPlayStateRunning, @"_state must be running");
+  NSAssert(_state == LynxKFAnimatorStateRunning, @"_state must be running");
 
   _state = LynxKFAnimatorStatePaused;
   NSDictionary* layerStyles = [self recordPresentationLayerStyles];
