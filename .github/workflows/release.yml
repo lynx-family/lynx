@@ -11,7 +11,7 @@ on:
 
 jobs:
   get-version:
-    runs-on: lynx-ubuntu-22.04-avd-medium
+    runs-on: lynx-ubuntu-22.04-medium
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:
