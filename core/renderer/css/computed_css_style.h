@@ -300,7 +300,7 @@ class ComputedCSSStyle {
   float GetOffsetRotate() const { return offset_rotate_; }
 
   static bool IsPlatformInheritableProperty(const tasm::CSSPropertyID id) {
-    return kPlatformInheritableProperty->contains(id);
+    return GetPlatformInheritableProperty().contains(id);
   }
 
   static float SAFE_AREA_INSET_TOP_;
@@ -508,9 +508,8 @@ class ComputedCSSStyle {
   V(LetterSpacing)                                       \
   V(LineSpacing)
 
-  static const base::NoDestructor<
-      base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>>
-      kPlatformInheritableProperty;
+  static const base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>&
+  GetPlatformInheritableProperty();
 
 #define INHERIT_CSS_VALUE(name) \
   bool Inherit##name(const ComputedCSSStyle& from);

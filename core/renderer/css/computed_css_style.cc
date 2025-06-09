@@ -30,11 +30,17 @@ namespace starlight {
 
 using CSSValuePattern = tasm::CSSValuePattern;
 
-const base::NoDestructor<base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>>
-    ComputedCSSStyle::kPlatformInheritableProperty(
-        base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>{
-            tasm::kPropertyIDLineHeight, tasm::kPropertyIDLetterSpacing,
-            tasm::kPropertyIDLineSpacing});
+const base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>&
+ComputedCSSStyle::GetPlatformInheritableProperty() {
+  static const base::NoDestructor<
+      base::InlineOrderedFlatSet<tasm::CSSPropertyID, 3>>
+      kPlatformInheritableProperty({
+          tasm::kPropertyIDLineHeight,
+          tasm::kPropertyIDLetterSpacing,
+          tasm::kPropertyIDLineSpacing,
+      });
+  return *kPlatformInheritableProperty;
+}
 
 const ComputedCSSStyle::StyleFunc* ComputedCSSStyle::FuncMap() {
   static const StyleFunc* func_map_ = []() {
