@@ -664,6 +664,7 @@ sections:
       - name: Custom
         description: 'Custom error of components'
         mid-code: 98
+        level: undecided
         codes:
           - name: Default
             low-code: 0
