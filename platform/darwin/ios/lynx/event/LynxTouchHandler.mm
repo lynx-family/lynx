@@ -233,12 +233,19 @@
 
 - (void)mainThreadDisableGesture {
   if ([NSThread isMainThread]) {
+    if (_velocityTracker && _velocityTracker.tracker) {
+      [_velocityTracker.tracker.view removeGestureRecognizer:_velocityTracker.tracker];
+    }
     _velocityTracker = nil;
   } else {
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
       __strong typeof(weakSelf) strongSelf = weakSelf;
       if (strongSelf) {
+        if (strongSelf->_velocityTracker && strongSelf->_velocityTracker.tracker) {
+          [strongSelf->_velocityTracker.tracker.view
+              removeGestureRecognizer:strongSelf->_velocityTracker.tracker];
+        }
         strongSelf->_velocityTracker = nil;
       }
     });
@@ -1205,6 +1212,14 @@
     }
   }
   return NO;
+}
+
+- (void)dealloc {
+  // Remove the gesture recognizer to break the circular reference
+  if (_velocityTracker && _velocityTracker.tracker) {
+    [_velocityTracker.tracker.view removeGestureRecognizer:_velocityTracker.tracker];
+    _velocityTracker = nil;
+  }
 }
 
 @end
