@@ -10,11 +10,11 @@ namespace lynx {
 namespace tasm {
 
 namespace {
-BASE_STATIC_STRING_DECL(kDefaultFrameTag, "frame");
+constexpr char kDefaultFrameTag[] = "frame";
 }
 
 FrameElement::FrameElement(ElementManager* element_manager)
-    : FiberElement(element_manager, kDefaultFrameTag) {}
+    : FiberElement(element_manager, BASE_STATIC_STRING(kDefaultFrameTag)) {}
 
 void FrameElement::OnNodeAdded(FiberElement* child) {
   LOGE("frame element cannot adopt any child");
