@@ -93,6 +93,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   bool need_layout_complete_info() const { return need_layout_complete_info_; }
   int layout_id() const { return layout_id_; }
   bool sticky_enabled() const { return sticky_enabled_; }
+  bool recycle_sticky_item() const { return recycle_sticky_item_; }
   float sticky_offset() const { return sticky_offset_; }
   void ResetLayoutID() { layout_id_ = -1; }
   bool should_request_state_restore() const {
@@ -136,6 +137,8 @@ class ListContainerImpl : public ListContainer::Delegate {
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
   bool batch_adapter_initialized_{false};
   bool sticky_enabled_{false};
+  bool recycle_sticky_item_{false};
+  int sticky_buffer_count_{list::kInvalidItemCount};
   float sticky_offset_{0.f};
   int intercept_depth_{0};
   bool should_flush_finish_layout_{false};

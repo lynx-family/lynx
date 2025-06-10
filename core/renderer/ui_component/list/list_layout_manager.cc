@@ -266,7 +266,7 @@ void ListLayoutManager::RecycleOffScreenItemHolders() {
       list_children_helper_->attached_children(),
       [this, &off_screen_item_holders](ItemHolder* item_holder) {
         if (item_holder && ShouldRecycleItemHolder(item_holder) &&
-            IsItemHolderNotSticky(item_holder)) {
+            ShouldRecycleStickyItemHolder(item_holder)) {
           off_screen_item_holders.push_back(item_holder);
         }
         return false;
@@ -380,11 +380,14 @@ int ListLayoutManager::UpdateStickyItems() {
   }
   int minimum_layout_changed_item_holder_index = list::kInvalidIndex;
   float sticky_offset = list_container_->sticky_offset();
-
-  // enumerate from end to begin, find the first visible sticky-top item
+  // If recycle sticky item, clear sticky item holder set firstly.
+  if (list_container_->recycle_sticky_item()) {
+    list_children_helper_->InitStickyItemHolderSet(
+        list_container_->element_manager()->GetThreadStrategy());
+  }
+  // Enumerate from end to begin, find the first visible sticky-top item.
   const std::vector<int32_t>& sticky_top_items =
       list_container_->list_adapter()->GetStickyTops();
-
   for (auto iter = sticky_top_items.rbegin(); iter != sticky_top_items.rend();
        iter++) {
     int index = *iter;
@@ -393,11 +396,9 @@ int ListLayoutManager::UpdateStickyItems() {
       break;
     }
   }
-
-  // enumerate from begin to end, find the first visible sticky-bottom item
+  // Enumerate from begin to end, find the first visible sticky-bottom item.
   const std::vector<int32_t>& sticky_bottom_items =
       list_container_->list_adapter()->GetStickyBottoms();
-
   for (auto iter = sticky_bottom_items.begin();
        iter != sticky_bottom_items.end(); iter++) {
     int index = *iter;
@@ -406,7 +407,6 @@ int ListLayoutManager::UpdateStickyItems() {
       break;
     }
   }
-
   return minimum_layout_changed_item_holder_index;
 }
 
@@ -414,18 +414,15 @@ bool ListLayoutManager::UpdateStickyItemsInternal(int& layout_changed_position,
                                                   float sticky_offset,
                                                   int index) {
   ItemHolder* item_holder = list_container_->GetItemHolderForIndex(index);
-
   if (item_holder->IsAtStickyPosition(
           content_offset_, GetHeight(), content_size_, sticky_offset,
-          list_orientation_helper_->GetDecoratedStart(item_holder),
-          list_orientation_helper_->GetDecoratedEnd(item_holder))) {
+          list_orientation_helper_->GetStart(item_holder),
+          list_orientation_helper_->GetEnd(item_holder))) {
     float size_before_bind =
         list_orientation_helper_->GetDecoratedMeasurement(item_holder);
-
-    // bind it
+    // Bind item_holder if needed.
     list_container_->list_adapter()->BindItemHolder(item_holder, index);
-
-    // check if size changed
+    // Check if size changed.
     if (base::FloatsNotEqual(
             list_orientation_helper_->GetDecoratedMeasurement(item_holder),
             size_before_bind)) {
@@ -434,7 +431,11 @@ bool ListLayoutManager::UpdateStickyItemsInternal(int& layout_changed_position,
         layout_changed_position = item_holder->index();
       }
     }
-    return true;
+    // If recycle sticky item, we need to add item holder to sticky item set and
+    // return whether need to bind next sticky item holder.
+    return list_container_->recycle_sticky_item()
+               ? !list_children_helper_->AddToStickyItemHolderSet(item_holder)
+               : true;
   }
   return false;
 }
@@ -468,7 +469,8 @@ void ListLayoutManager::HandleLayoutOrScrollResult(bool is_layout) {
         list_adapter->GetListItemElement(item_holder));
     return false;
   };
-  if (list_container_->sticky_enabled()) {
+  if (list_container_->sticky_enabled() &&
+      !list_container_->recycle_sticky_item()) {
     list_children_helper_->UpdateInStickyChildren(
         list_orientation_helper_.get(), content_offset_, content_size_,
         list_container_->sticky_offset());
@@ -515,16 +517,25 @@ float ListLayoutManager::ClampContentOffsetToEdge(float content_offset,
   return std::max(0.f, std::min(content_offset, scroll_range));
 }
 
-bool ListLayoutManager::IsItemHolderNotSticky(
+bool ListLayoutManager::ShouldRecycleStickyItemHolder(
+    const ItemHolder* item_holder) const {
+  if (list_container_->recycle_sticky_item()) {
+    return !list_container_->sticky_enabled() || !item_holder->sticky() ||
+           !list_children_helper_->InStickyItemHolderSet(item_holder);
+  } else {
+    return IsItemHolderNotAtStickyPosition(item_holder);
+  }
+}
+
+bool ListLayoutManager::IsItemHolderNotAtStickyPosition(
     const ItemHolder* item_holder) const {
   int sticky_offset = list_container_->sticky_offset();
-
   bool sticky_enabled = list_container_->sticky_enabled();
   return !sticky_enabled || !item_holder->sticky() ||
          !item_holder->IsAtStickyPosition(
              content_offset_, GetHeight(), content_size_, sticky_offset,
-             list_orientation_helper_->GetDecoratedStart(item_holder),
-             list_orientation_helper_->GetDecoratedEnd(item_holder));
+             list_orientation_helper_->GetStart(item_holder),
+             list_orientation_helper_->GetEnd(item_holder));
 }
 
 #if ENABLE_TRACE_PERFETTO

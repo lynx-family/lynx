@@ -53,6 +53,9 @@ static constexpr const char* const kSpanCount = "span-count";
 static constexpr const char* const kAnchorPriority = "anchor-priority";
 static constexpr const char* const kAnchorVisibility = "anchor-visibility";
 static constexpr const char* const kAnchorAlign = "anchor-align";
+static constexpr const char* const kExperimentalRecycleStickyItem =
+    "experimental-recycle-sticky-item";
+static constexpr const char* const kStickyBufferCount = "sticky-buffer-count";
 static constexpr const char* const kNeedsVisibleCells = "needs-visible-cells";
 static constexpr const char* const kNeedVisibleItemInfo =
     "need-visible-item-info";
@@ -81,7 +84,10 @@ static constexpr const char kExperimentalContinuousResolveTree[] =
 
 // constant value
 static constexpr int kInvalidIndex = -1;
+static constexpr int kInvalidItemCount = -1;
 static constexpr int kInvalidDimensionSize = -1.f;
+static constexpr int kStickyItemSetCapacityForSyncMode = 1;
+static constexpr int kStickyItemSetCapacityForASyncMode = 2;
 static constexpr const char* const kList = "list";
 static constexpr const char* const kListTypeSingle = "single";
 static constexpr const char* const kListTypeFlow = "flow";

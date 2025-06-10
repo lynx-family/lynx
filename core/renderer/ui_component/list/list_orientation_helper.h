@@ -46,9 +46,11 @@ class ListOrientationHelper {
   virtual float GetDecoratedStart(const ItemHolder* item_holder) const = 0;
   // Get child ItemHolder end layout offset in main axis.
   virtual float GetDecoratedEnd(const ItemHolder* item_holder) const = 0;
-  // Get child ItemHolder start layout offset without main-axis-gap in main
-  // axis.
+  // Get child ItemHolder start layout offset without main-axis-gap and
+  // margin-top in main axis.
   virtual float GetStart(const ItemHolder* item_holder) const = 0;
+  // Get child ItemHolder end layout offset without margin-bottom in main axis.
+  virtual float GetEnd(const ItemHolder* item_holder) const = 0;
   // Get child ItemHolder's margin in main axis.
   virtual float GetItemHolderMainMargin(
       const ItemHolder* item_holder) const = 0;

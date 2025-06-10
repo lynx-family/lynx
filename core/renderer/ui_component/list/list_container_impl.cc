@@ -406,6 +406,14 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     sticky_offset_ = value.Number();
   } else if (key.IsEqual(list::kSticky)) {
     sticky_enabled_ = value.Bool();
+  } else if (key.IsEqual(list::kExperimentalRecycleStickyItem)) {
+    // experimental-recycle-sticky-item
+    // TODO(dingwang.wxx): experimental prop, the default value is true in
+    // release3.4.
+    recycle_sticky_item_ = value.Bool();
+  } else if (key.IsEqual(list::kStickyBufferCount)) {
+    // sticky-buffer-count
+    sticky_buffer_count_ = static_cast<int>(value.Number());
   } else if (key.IsEqual(list::kEnablePreloadSection)) {
     enable_preload_section_ = value.Bool();
     list_layout_manager_->SetEnablePreloadSection(enable_preload_section_);
@@ -508,6 +516,16 @@ void ListContainerImpl::PropsUpdateFinish() {
     list_adapter_->UpdateItemHolderToLatest(list_children_helper_.get());
     need_update_item_holders_ = false;
   }
+  if (sticky_buffer_count_ > list::kInvalidItemCount) {
+    if (!recycle_sticky_item_) {
+      // Note: A valid sticky buffer count means need to recycle sticky
+      // item.
+      recycle_sticky_item_ = true;
+    }
+    list_children_helper_->SetCustomStickyItemHolderCapacity(
+        sticky_buffer_count_);
+  }
+  list_children_helper_->SetRecycleStickyItem(recycle_sticky_item_);
   list_adapter()->list_adapter_helper()->ClearDiffInfo();
 }
 

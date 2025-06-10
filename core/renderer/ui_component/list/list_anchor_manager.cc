@@ -118,7 +118,8 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
        finishing_binding_index,
        &finishing_binding_item_holder](ItemHolder* item_holder) {
         // Sticky item_holder can not be choosen as anchor
-        if (!IsItemHolderNotSticky(item_holder)) {
+        if (!list_layout_manager_->IsItemHolderNotAtStickyPosition(
+                item_holder)) {
           return false;
         }
         int index = item_holder->index();
@@ -242,12 +243,14 @@ void ListAnchorManager::UpdateDiffAnchorReference() {
   ItemHolder* first_visible_item_holder = list_children_helper_->GetFirstChild(
       on_screen_children, [this](const ItemHolder* item_holder) {
         return !list_adapter_->IsRemoved(item_holder) &&
-               IsItemHolderNotSticky(item_holder);
+               list_layout_manager_->IsItemHolderNotAtStickyPosition(
+                   item_holder);
       });
   ItemHolder* last_visible_item_holder = list_children_helper_->GetLastChild(
       on_screen_children, [this](const ItemHolder* item_holder) {
         return !list_adapter_->IsRemoved(item_holder) &&
-               IsItemHolderNotSticky(item_holder);
+               list_layout_manager_->IsItemHolderNotAtStickyPosition(
+                   item_holder);
       });
   if (!first_visible_item_holder || !last_visible_item_holder ||
       !list_children_helper_) {
@@ -272,19 +275,6 @@ void ListAnchorManager::UpdateDiffAnchorReference() {
     }
     return false;
   });
-}
-
-bool ListAnchorManager::IsItemHolderNotSticky(
-    const ItemHolder* item_holder) const {
-  int sticky_offset = list_container_->sticky_offset();
-  bool sticky_enabled = list_container_->sticky_enabled();
-  return !sticky_enabled || !item_holder->sticky() ||
-         !item_holder->IsAtStickyPosition(
-             list_layout_manager_->content_offset(),
-             list_layout_manager_->GetHeight(),
-             list_layout_manager_->content_size(), sticky_offset,
-             list_orientation_helper_->GetDecoratedStart(item_holder),
-             list_orientation_helper_->GetDecoratedEnd(item_holder));
 }
 
 bool ListAnchorManager::IsValidInitialScrollIndex() {

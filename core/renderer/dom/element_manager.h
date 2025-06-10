@@ -492,6 +492,8 @@ class ElementManager : public ElementContextDelegate {
     thread_strategy_ = thread_strategy;
   }
 
+  int GetThreadStrategy() { return thread_strategy_; }
+
   void SetEnableNewAnimatorRadon(bool enable) {
     enable_new_animator_radon_ = enable;
   }

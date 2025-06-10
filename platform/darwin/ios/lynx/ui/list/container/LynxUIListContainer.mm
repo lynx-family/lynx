@@ -109,6 +109,7 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, weak) LynxUI *prevStickyBottomItem;
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
+@property(nonatomic, assign) BOOL enableRecycleStickyItem;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
 @property(nonatomic, assign) CGFloat updateAnimationFadeInDuration;
@@ -141,6 +142,7 @@ LYNX_REGISTER_UI("list-container")
     _pagingAlignFactor = kInvalidSnapFactor;
     _updateAnimationFadeInDuration = kFadeInAnimationDefaultDuration;
     _maxFlingDistanceRatio = -1;
+    _enableRecycleStickyItem = NO;
     _listNativeStateCache = [NSMutableDictionary dictionary];
     _initialFlushPropCache = [NSMutableDictionary dictionary];
     _enableBatchRender = NO;
@@ -318,13 +320,13 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)removeListComponent:(LynxUIComponent *)component {
-  if (component.view.superview.superview == self.view) {
-    [component.view.superview removeFromSuperview];
-    [component.view removeFromSuperview];
-  }
   if (self.enableListSticky) {
     [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyTopItems];
     [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyBottomItems];
+  }
+  if (component.view.superview.superview == self.view) {
+    [component.view.superview removeFromSuperview];
+    [component.view removeFromSuperview];
   }
 }
 
@@ -403,11 +405,17 @@ LYNX_PROP_SETTER("ios-scrolls-to-top", iosScrollsToTop, BOOL) {
 
 // Sticky for horizontal layout is not supported.
 LYNX_PROP_SETTER("sticky", setEnableSticky, BOOL) { self.enableListSticky = value; }
+
+LYNX_PROP_SETTER("experimental-recycle-sticky-item", setEnableRecycleStickyItem, BOOL) {
+  self.enableRecycleStickyItem = value;
+}
+
 LYNX_PROP_SETTER("sticky-offset", setStickyOffset, CGFloat) { self.stickyOffset = value; }
 
 LYNX_PROP_SETTER("enable-fade-in-animation", setEnableFadeInAnimation, BOOL) {
   self.enableFadeInAnimation = value;
 }
+
 LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDuration, NSInteger) {
   self.updateAnimationFadeInDuration = value / 1000.;
 }
@@ -526,6 +534,9 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   [[stickyItems copy] enumerateKeysAndObjectsUsingBlock:^(
                           NSNumber *_Nonnull key, LynxUI *_Nonnull obj, BOOL *_Nonnull stop) {
     if (obj == child) {
+      if (self.enableRecycleStickyItem) {
+        [self resetStickyItem:child];
+      }
       [stickyItems removeObjectForKey:key];
       *stop = YES;
     }
@@ -556,6 +567,14 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
       }];
 }
 
+- (void)resetStickyItem:(LynxUIComponent *)component {
+  if (component.view && component.view.superview) {
+    component.view.superview.frame = component.frame;
+    component.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:component.frame];
+    component.view.superview.layer.zPosition = component.zIndex;
+  }
+}
+
 - (void)updateStickyTops {
   if (!self.enableListSticky) {
     return;
@@ -577,14 +596,10 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
       // cache potential next sticky item
       nextStickyTopItem = top;
       // hold its position
-      top.view.superview.frame = top.frame;
-      top.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:top.frame];
-      top.view.superview.layer.zPosition = ((LynxUIComponent *)top).zIndex;
+      [self resetStickyItem:(LynxUIComponent *)top];
     } else if (stickyTopItem) {
       // sticky top item found, hold upper sticky top's position
-      top.view.superview.frame = top.frame;
-      top.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:top.frame];
-      top.view.superview.layer.zPosition = ((LynxUIComponent *)top).zIndex;
+      [self resetStickyItem:(LynxUIComponent *)top];
     } else {
       stickyTopItem = top;
     }
@@ -646,14 +661,10 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
       // cache potential next sticky item
       nextStickyBottomItem = bottom;
       // hold its position
-      bottom.view.superview.frame = bottom.frame;
-      bottom.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:bottom.frame];
-      bottom.view.superview.layer.zPosition = ((LynxUIComponent *)bottom).zIndex;
+      [self resetStickyItem:(LynxUIComponent *)bottom];
     } else if (stickyBottomItem) {
       // sticky bottom item found, hold upper sticky top's position
-      bottom.view.superview.frame = bottom.frame;
-      bottom.view.frame = [LynxListContainerComponentWrapper getAlignedFrame:bottom.frame];
-      bottom.view.superview.layer.zPosition = ((LynxUIComponent *)bottom).zIndex;
+      [self resetStickyItem:(LynxUIComponent *)bottom];
     } else {
       stickyBottomItem = bottom;
     }

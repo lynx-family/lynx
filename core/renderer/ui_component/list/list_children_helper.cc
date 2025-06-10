@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -128,6 +129,39 @@ ItemHolder* ListChildrenHelper::GetLastChild(
   return res;
 }
 
+void ListChildrenHelper::InitStickyItemHolderSet(int thread_mode) {
+  in_sticky_top_children_.Clear();
+  in_sticky_bottom_children_.Clear();
+  if (use_default_sticky_buffer_count_) {
+    int capacity = list::kStickyItemSetCapacityForSyncMode;
+    if (thread_mode > base::ThreadStrategyForRendering::ALL_ON_UI &&
+        thread_mode <= base::ThreadStrategyForRendering::MULTI_THREADS) {
+      capacity = list::kStickyItemSetCapacityForASyncMode;
+    }
+    in_sticky_top_children_.SetCapacity(capacity);
+    in_sticky_bottom_children_.SetCapacity(capacity);
+  }
+}
+
+bool ListChildrenHelper::AddToStickyItemHolderSet(ItemHolder* item_holder) {
+  if (item_holder->sticky_top()) {
+    return in_sticky_top_children_.AddItemHolder(item_holder);
+  } else if (item_holder->sticky_bottom()) {
+    return in_sticky_bottom_children_.AddItemHolder(item_holder);
+  }
+  return false;
+}
+
+bool ListChildrenHelper::InStickyItemHolderSet(
+    const ItemHolder* item_holder) const {
+  if (item_holder->sticky_top()) {
+    return in_sticky_top_children_.Contain(item_holder);
+  } else if (item_holder->sticky_bottom()) {
+    return in_sticky_bottom_children_.Contain(item_holder);
+  }
+  return false;
+}
+
 void ListChildrenHelper::UpdateOnScreenChildren(
     ListOrientationHelper* orientation_helper, float content_offset) {
   if (!orientation_helper) {
@@ -162,8 +196,8 @@ void ListChildrenHelper::UpdateInStickyChildren(
     if (item_holder &&
         item_holder->IsAtStickyPosition(
             content_offset, orientation_helper->GetMeasurement(), content_size,
-            sticky_offset, orientation_helper->GetDecoratedStart(item_holder),
-            orientation_helper->GetDecoratedEnd(item_holder))) {
+            sticky_offset, orientation_helper->GetStart(item_holder),
+            orientation_helper->GetEnd(item_holder))) {
       in_sticky_children_.insert(item_holder);
     }
     return false;
@@ -188,9 +222,14 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
   // in_preload_children_ / in_sticky_children_.
   ForEachChild(attached_children_, [this, &new_binding_children](
                                        ItemHolder* item_holder) {
-    if (on_screen_children_.find(item_holder) != on_screen_children_.end() ||
-        in_preload_children_.find(item_holder) != in_preload_children_.end() ||
-        in_sticky_children_.find(item_holder) != in_sticky_children_.end()) {
+    bool in_sticky = recycle_item_holder_
+                         ? (in_sticky_top_children_.Contain(item_holder) ||
+                            in_sticky_bottom_children_.Contain(item_holder))
+                         : (in_sticky_children_.find(item_holder) !=
+                            in_sticky_children_.end());
+    if (in_sticky ||
+        on_screen_children_.find(item_holder) != on_screen_children_.end() ||
+        in_preload_children_.find(item_holder) != in_preload_children_.end()) {
       new_binding_children.insert(item_holder);
     }
     return false;

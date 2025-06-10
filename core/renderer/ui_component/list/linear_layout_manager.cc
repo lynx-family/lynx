@@ -424,10 +424,10 @@ void LinearLayoutManager::RecycleOffPreloadItemHolders(bool recycle_to_end,
           if (item_holder) {
             int index = item_holder->index();
             if (recycle_to_end && index > target_index &&
-                IsItemHolderNotSticky(item_holder)) {
+                ShouldRecycleStickyItemHolder(item_holder)) {
               list_container_->list_adapter()->RecycleItemHolder(item_holder);
             } else if (!recycle_to_end && index < target_index &&
-                       IsItemHolderNotSticky(item_holder)) {
+                       ShouldRecycleStickyItemHolder(item_holder)) {
               list_container_->list_adapter()->RecycleItemHolder(item_holder);
             }
           }
@@ -563,7 +563,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           const ItemHolder* item_holder) {
         return !list_adapter->IsDirty(item_holder) &&
                list_adapter->GetListItemElement(item_holder) &&
-               IsItemHolderNotSticky(item_holder);
+               IsItemHolderNotAtStickyPosition(item_holder);
       });
   ItemHolder* last_visible_item_holder = list_children_helper_->GetLastChild(
       on_screen_children,
@@ -571,7 +571,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           const ItemHolder* item_holder) {
         return !list_adapter->IsDirty(item_holder) &&
                list_adapter->GetListItemElement(item_holder) &&
-               IsItemHolderNotSticky(item_holder);
+               IsItemHolderNotAtStickyPosition(item_holder);
       });
   ItemHolder* anchor_item_holder = nullptr;
   if (!first_visible_item_holder || !last_visible_item_holder) {
@@ -580,7 +580,7 @@ void LinearLayoutManager::UpdateScrollAnchorInfo(
           return base::FloatsLargerOrEqual(
                      list_orientation_helper_->GetStart(item_holder),
                      content_offset_) &&
-                 IsItemHolderNotSticky(item_holder);
+                 IsItemHolderNotAtStickyPosition(item_holder);
         });
     if (!anchor_item_holder) {
       anchor_item_holder = *(on_screen_children.begin());

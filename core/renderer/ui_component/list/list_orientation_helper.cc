@@ -97,6 +97,10 @@ class VerticalOrientationHelper : public ListOrientationHelper {
                        : 0.f;
   }
 
+  float GetEnd(const ItemHolder* item_holder) const override {
+    return item_holder ? item_holder->top() + item_holder->height() : 0.f;
+  }
+
   float GetItemHolderCrossMargin(const ItemHolder* item_holder) const override {
     return item_holder ? item_holder->GetMargin(list::FrameDirection::kLeft)
                        : 0.f;
@@ -198,6 +202,10 @@ class HorizontalOrientationHelper : public ListOrientationHelper {
     return item_holder ? item_holder->left() -
                              item_holder->GetMargin(list::FrameDirection::kLeft)
                        : 0.f;
+  }
+
+  float GetEnd(const ItemHolder* item_holder) const override {
+    return item_holder ? item_holder->left() + item_holder->width() : 0.f;
   }
 };
 
