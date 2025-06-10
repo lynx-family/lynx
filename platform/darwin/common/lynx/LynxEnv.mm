@@ -27,6 +27,7 @@
 #import <Lynx/LynxDevToolUtils.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
+#import <Lynx/LynxServiceExtensionProtocol.h>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"
@@ -95,6 +96,7 @@
 #if OS_IOS
     lynx::tasm::Config::InitializeVersion([[UIDevice currentDevice].systemVersion UTF8String]);
 #endif
+    [LynxService(LynxServiceExtensionProtocol) onLynxEnvSetup];
   }
   _LogI(@"LynxEnv: init success");
   return self;
