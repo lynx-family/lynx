@@ -133,3 +133,4 @@ InOutBuffer
 DeferredSetters
 SkipForRemote
 NeedsNativeSetter
+ImplicitBufferSize
