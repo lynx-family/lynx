@@ -87,6 +87,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private UIComponent mPrevStickyBottomItem = null;
   private boolean mEnableFadeInAnimation = false;
   private int mUpdateAnimationFadeInDuration = DEFAULT_FADE_IN_ANIMATION_DURATION;
+  private boolean mEnableRecycleStickyItem = false;
   private boolean mEnableScrollEndEvent = false;
   private boolean mEnableScrollStateChangeEvent = false;
   private boolean mEnableBatchRender = false;
@@ -578,6 +579,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     mUpdateAnimationFadeInDuration = value;
   }
 
+  @LynxProp(name = "experimental-recycle-sticky-item", defaultBoolean = true)
+  public void setEnableRecycleStickyItem(boolean value) {
+    mEnableRecycleStickyItem = value;
+  }
+
   @LynxProp(name = "need-visible-item-info", defaultBoolean = false)
   public void setNeedVisibleItemInfo(boolean value) {
     mEnableNeedVisibleItemInfo = value;
@@ -943,7 +949,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       while (iterator.hasNext()) {
         Map.Entry<Integer, UIComponent> entry = iterator.next();
         if (entry.getValue() == child) {
-          stickyItems.remove(entry.getKey());
+          if (mEnableRecycleStickyItem) {
+            resetStickyItem((UIComponent) child);
+          }
+          iterator.remove();
           break;
         }
       }
@@ -971,6 +980,13 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
+  private void resetStickyItem(UIComponent component) {
+    if (component.getView() != null) {
+      component.getView().setTranslationY(0);
+      setChildTranslationZ(component);
+    }
+  }
+
   public void updateStickyTops(int offsetTop) {
     if (!mEnableListSticky) {
       return;
@@ -990,12 +1006,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         // cache potential next sticky item
         nextStickyTopItem = top;
         // hold its position
-        top.getView().setTranslationY(0);
-        setChildTranslationZ(top);
+        resetStickyItem(top);
       } else if (stickyTopItem != null) {
         // sticky top item found, hold upper sticky top's position
-        top.getView().setTranslationY(0);
-        setChildTranslationZ(top);
+        resetStickyItem(top);
       } else {
         stickyTopItem = top;
       }
@@ -1042,12 +1056,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         // cache potential next sticky item
         nextStickyBottomItem = bottom;
         // hold its position
-        bottom.getView().setTranslationY(0);
-        setChildTranslationZ(bottom);
+        resetStickyItem(bottom);
       } else if (stickyBottomItem != null) {
         // sticky bottom item found, hold upper sticky top's position
-        bottom.getView().setTranslationY(0);
-        setChildTranslationZ(bottom);
+        resetStickyItem(bottom);
       } else {
         stickyBottomItem = bottom;
       }

@@ -66,19 +66,15 @@ class ListLayoutManager {
   void SetCrossAxisGap(float cross_axis_gap) {
     cross_axis_gap_ = cross_axis_gap;
   }
-
   int GetInitialScrollIndex() const {
     return list_anchor_manager_->initial_scroll_index();
   }
-
   list::InitialScrollIndexStatus GetInitialScrollIndexStatus() const {
     return list_anchor_manager_->initial_scroll_index_status();
   }
-
   void SetInitialScrollStatus(list::InitialScrollIndexStatus status) {
     list_anchor_manager_->SetInitialScrollIndexStatus(status);
   }
-
   void SetInitialScrollIndex(int initial_scroll_index) {
     list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
   }
@@ -127,6 +123,7 @@ class ListLayoutManager {
     return orientation_ == list::Orientation::kHorizontal;
   }
   bool ItemHolderVisibleInList(ItemHolder* item_holder);
+  bool IsItemHolderNotAtStickyPosition(const ItemHolder* item_holder) const;
   void ResetContentOffsetAndContentSize(float content_offset,
                                         float content_size) {
     content_size_ = content_size;
@@ -154,7 +151,7 @@ class ListLayoutManager {
                         list::EventSource event_source);
   // Sticky methods
   int UpdateStickyItems();
-  bool IsItemHolderNotSticky(const ItemHolder* item_holder) const;
+  bool ShouldRecycleStickyItemHolder(const ItemHolder* item_holder) const;
   void UpdateStickyItemsAfterLayout(ListAnchorManager::AnchorInfo& anchor_info);
   // Calculated content_offset must be clamped to [0, content_size], or Android
   // may stop at an over-edge index

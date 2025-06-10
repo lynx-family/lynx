@@ -140,7 +140,6 @@ class ListAnchorManager {
                   int finishing_binding_index);
   void UpdateAnchorInfoWithoutDiff(AnchorInfo& anchor_info,
                                    int component_index /* = -1 */);
-  bool IsItemHolderNotSticky(const ItemHolder* item_holder) const;
   void UpdateAnchorWithItemHolder(AnchorInfo& anchor_info,
                                   ItemHolder& item_holder);
 

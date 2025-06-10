@@ -1,6 +1,8 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+#define private public
+#define protected public
 
 #include "core/renderer/ui_component/list/list_children_helper.h"
 
@@ -45,7 +47,7 @@ class ListChildrenHelperTest : public ::testing::Test {
 
   void Init(const std::vector<std::string>& on_screen_keys,
             const std::vector<std::string>& in_preload_keys,
-            const std::vector<std::string>& in_sticky_keys,
+            const std::vector<std::pair<std::string, bool>>& in_sticky_keys,
             const std::vector<std::string>& attached_keys) {
     list_children_helper->ClearOnScreenChildren();
     list_children_helper->ClearInPreloadChildren();
@@ -65,9 +67,23 @@ class ListChildrenHelperTest : public ::testing::Test {
       list_children_helper->AddChild(in_preload_children,
                                      GetItemHolder(item_key));
     }
-    for (const std::string& item_key : in_sticky_keys) {
-      list_children_helper->AddChild(in_sticky_children,
-                                     GetItemHolder(item_key));
+    if (list_children_helper->recycle_item_holder_) {
+      list_children_helper->InitStickyItemHolderSet(
+          base::ThreadStrategyForRendering::ALL_ON_UI);
+    }
+    for (const auto& item : in_sticky_keys) {
+      if (list_children_helper->recycle_item_holder_) {
+        if (item.second) {
+          list_children_helper->in_sticky_top_children_.AddItemHolder(
+              GetItemHolder(item.first));
+        } else {
+          list_children_helper->in_sticky_bottom_children_.AddItemHolder(
+              GetItemHolder(item.first));
+        }
+      } else {
+        list_children_helper->AddChild(in_sticky_children,
+                                       GetItemHolder(item.first));
+      }
     }
     for (const std::string& item_key : attached_keys) {
       ItemHolder* item_holder = GetItemHolder(item_key);
@@ -105,11 +121,38 @@ class ListChildrenHelperTest : public ::testing::Test {
   }
 };  // ListChildrenHelperTest
 
+TEST_F(ListChildrenHelperTest, InitStickyItemHolderSet) {
+  list_children_helper->InitStickyItemHolderSet(
+      base::ThreadStrategyForRendering::ALL_ON_UI);
+  EXPECT_EQ(list_children_helper->in_sticky_top_children_.capacity_,
+            list::kStickyItemSetCapacityForSyncMode);
+  EXPECT_EQ(list_children_helper->in_sticky_bottom_children_.capacity_,
+            list::kStickyItemSetCapacityForSyncMode);
+  list_children_helper->InitStickyItemHolderSet(
+      base::ThreadStrategyForRendering::MOST_ON_TASM);
+  EXPECT_EQ(list_children_helper->in_sticky_top_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+  EXPECT_EQ(list_children_helper->in_sticky_bottom_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+  list_children_helper->InitStickyItemHolderSet(
+      base::ThreadStrategyForRendering::PART_ON_LAYOUT);
+  EXPECT_EQ(list_children_helper->in_sticky_top_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+  EXPECT_EQ(list_children_helper->in_sticky_bottom_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+  list_children_helper->InitStickyItemHolderSet(
+      base::ThreadStrategyForRendering::MULTI_THREADS);
+  EXPECT_EQ(list_children_helper->in_sticky_top_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+  EXPECT_EQ(list_children_helper->in_sticky_bottom_children_.capacity_,
+            list::kStickyItemSetCapacityForASyncMode);
+}
+
 TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult0) {
   // Case0: No attached children.
   std::vector<std::string> on_screen_keys = {"A_0", "B_1", "C_2", "D_3"};
   std::vector<std::string> in_preload_keys = {"E_4"};
-  std::vector<std::string> in_sticky_keys = {"I_8"};
+  std::vector<std::pair<std::string, bool>> in_sticky_keys = {{"I_8", false}};
   Init(on_screen_keys, in_preload_keys, in_sticky_keys, {});
   int insert_times = 0;
   int recycle_times = 0;
@@ -138,7 +181,7 @@ TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult1) {
   // Case1: No attached children.
   std::vector<std::string> on_screen_keys = {"A_0", "B_1", "C_2", "D_3"};
   std::vector<std::string> in_preload_keys = {"E_4"};
-  std::vector<std::string> in_sticky_keys = {"I_8"};
+  std::vector<std::pair<std::string, bool>> in_sticky_keys = {{"I_8", false}};
   std::vector<std::string> attached_keys = {"A_0", "B_1", "C_2",
                                             "D_3", "E_4", "I_8"};
   Init(on_screen_keys, in_preload_keys, in_sticky_keys, attached_keys);
@@ -171,7 +214,7 @@ TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult2) {
   // Before scroll
   std::vector<std::string> on_screen_keys = {"A_0", "B_1", "C_2", "D_3"};
   std::vector<std::string> in_preload_keys = {"E_4"};
-  std::vector<std::string> in_sticky_keys = {"I_8"};
+  std::vector<std::pair<std::string, bool>> in_sticky_keys = {{"I_8", false}};
   std::vector<std::string> attached_keys = {"A_0", "B_1", "C_2",
                                             "D_3", "E_4", "I_8"};
   Init(on_screen_keys, in_preload_keys, in_sticky_keys, attached_keys);
@@ -201,7 +244,7 @@ TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult2) {
   // After scroll
   on_screen_keys = {"C_2", "D_3", "E_4", "F_5"};
   in_preload_keys = {"B_1", "G_6"};
-  in_sticky_keys = {"I_8", "J_9"};
+  in_sticky_keys = {{"I_8", false}, {"J_9", false}};
   attached_keys = {"B_1", "C_2", "D_3", "E_4", "F_5", "G_6", "I_8", "J_9"};
   Init(on_screen_keys, in_preload_keys, in_sticky_keys, attached_keys);
   insert_times = 0;
@@ -214,6 +257,56 @@ TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult2) {
   EXPECT_EQ(insert_times, 3);
   EXPECT_EQ(recycle_times, 1);
   EXPECT_EQ(update_times, 8);
+}
+
+TEST_F(ListChildrenHelperTest, HandleLayoutOrScrollResult3) {
+  // Case3: Enable recycle item holder
+  // Before scroll
+  list_children_helper->recycle_item_holder_ = true;
+  std::vector<std::string> on_screen_keys = {"B_1", "C_2", "D_3", "E_4"};
+  std::vector<std::string> in_preload_keys = {};
+  std::vector<std::pair<std::string, bool>> in_sticky_keys = {{"A_0", true}};
+  std::vector<std::string> attached_keys = {"A_0", "B_1", "C_2", "D_3", "E_4"};
+  Init(on_screen_keys, in_preload_keys, in_sticky_keys, attached_keys);
+  int insert_times = 0;
+  int recycle_times = 0;
+  int update_times = 0;
+  auto insert_handler = [&insert_times](ItemHolder* item_holder) {
+    insert_times += 1;
+    return false;
+  };
+  auto recycle_handler = [&recycle_times](ItemHolder* item_holder) {
+    recycle_times += 1;
+    return false;
+  };
+  auto update_handler = [&update_times](ItemHolder* item_holder) {
+    update_times += 1;
+    return false;
+  };
+  list_children_helper->HandleLayoutOrScrollResult(
+      insert_handler, recycle_handler, update_handler);
+  EXPECT_EQ(list_children_helper->last_binding_children().size(),
+            attached_keys.size());
+  EXPECT_EQ(insert_times, 5);
+  EXPECT_EQ(recycle_times, 0);
+  EXPECT_EQ(update_times, 5);
+
+  // After scroll
+  on_screen_keys = {"D_3", "E_4", "F_5", "G_6"};
+  in_preload_keys = {};
+  in_sticky_keys = {{"C_2", true}};
+  attached_keys = {"C_2", "D_3", "E_4", "F_5", "G_6"};
+  Init(on_screen_keys, in_preload_keys, in_sticky_keys, attached_keys);
+  insert_times = 0;
+  recycle_times = 0;
+  update_times = 0;
+  list_children_helper->HandleLayoutOrScrollResult(
+      insert_handler, recycle_handler, update_handler);
+  EXPECT_EQ(list_children_helper->last_binding_children().size(),
+            attached_keys.size());
+  EXPECT_EQ(insert_times, 2);
+  EXPECT_EQ(recycle_times, 2);
+  EXPECT_EQ(update_times, 5);
 }
 
 TEST_F(ListChildrenHelperTest, GetChildCount) {

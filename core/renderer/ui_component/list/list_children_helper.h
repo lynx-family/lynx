@@ -21,6 +21,37 @@ using ItemHolderSet = std::set<ItemHolder*, ItemHolder::Compare>;
 // Utility class for traversing all child nodes.
 class ListChildrenHelper {
  public:
+  class StickyItemHolderSet {
+   public:
+    bool AddItemHolder(ItemHolder* item_holder) {
+      if (item_holder &&
+          static_cast<int>(inline_item_holders_.size()) < capacity_ &&
+          inline_item_holders_.find(item_holder) ==
+              inline_item_holders_.end()) {
+        inline_item_holders_.insert(item_holder);
+        count_ += 1;
+      }
+      return count_ < capacity_;
+    }
+
+    void SetCapacity(int capacity) { capacity_ = capacity; }
+
+    void Clear() {
+      count_ = 0;
+      inline_item_holders_.clear();
+    }
+
+    bool Contain(const ItemHolder* item_holder) const {
+      return inline_item_holders_.find(const_cast<ItemHolder*>(item_holder)) !=
+             inline_item_holders_.end();
+    }
+
+   private:
+    int capacity_{1};
+    int count_{0};
+    ItemHolderSet inline_item_holders_;
+  };
+
 #if ENABLE_TRACE_PERFETTO
   void UpdateTraceDebugInfo(TraceEvent* event);
 #endif
@@ -83,8 +114,25 @@ class ListChildrenHelper {
       const std::function<bool(ItemHolder*)>& insert_handler,
       const std::function<bool(ItemHolder*)>& recycle_handler,
       const std::function<bool(ItemHolder*)>& update_handler);
+  void InitStickyItemHolderSet(int thread_mode);
+  bool AddToStickyItemHolderSet(ItemHolder* item_holder);
+  bool InStickyItemHolderSet(const ItemHolder* item_holder) const;
+  void SetRecycleStickyItem(bool recycle_sticky_item) {
+    recycle_item_holder_ = recycle_sticky_item;
+  }
+  void SetCustomStickyItemHolderCapacity(int capacity) {
+    if (capacity > 0) {
+      use_default_sticky_buffer_count_ = false;
+      in_sticky_top_children_.SetCapacity(capacity);
+      in_sticky_bottom_children_.SetCapacity(capacity);
+    }
+  }
 
  private:
+  bool recycle_item_holder_{false};
+  bool use_default_sticky_buffer_count_{true};
+  StickyItemHolderSet in_sticky_top_children_;
+  StickyItemHolderSet in_sticky_bottom_children_;
   std::unordered_map<Element*, ItemHolder*> attached_element_item_holder_map_;
   ItemHolderSet children_;
   ItemHolderSet attached_children_;
