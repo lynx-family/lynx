@@ -5,6 +5,7 @@
 #import "LynxUIRenderer.h"
 
 #import <Lynx/LUIConfigAdapter.h>
+#import <Lynx/ListNodeInfoFetcher.h>
 #import <Lynx/LynxEventHandler.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
@@ -73,6 +74,7 @@
                   context:(LynxContext *)context
                  shellPtr:(int64_t)shellPtr {
   _uiOwner.uiContext.shellPtr = shellPtr;
+  _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithShell:shellPtr];
   _eventEmitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
   __weak typeof(templateRenderer) weakRender = templateRenderer;
   onLynxEvent eventReporter = ^BOOL(LynxEvent *event) {

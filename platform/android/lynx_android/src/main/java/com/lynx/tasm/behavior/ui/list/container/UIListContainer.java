@@ -27,7 +27,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
-import com.lynx.tasm.ListNodeInfoFetcher;
+import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -745,7 +745,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
     // Tell ListElement that we want scroll to some position
     LynxContext context = getLynxContext();
-    ListNodeInfoFetcher listNodeInfoFetcher = null;
+    IListNodeInfoFetcher listNodeInfoFetcher = null;
     if (context != null) {
       listNodeInfoFetcher = context.getListNodeInfoFetcher();
     }

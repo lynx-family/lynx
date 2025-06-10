@@ -9,13 +9,14 @@ import androidx.annotation.RestrictTo;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxTemplateRender;
 
-public class ListNodeInfoFetcher {
+public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
   private LynxTemplateRender mRenderer;
 
   public ListNodeInfoFetcher(LynxTemplateRender renderer) {
     mRenderer = renderer;
   }
 
+  @Override
   public JavaOnlyMap getPlatformInfo(int listSign) {
     if (mRenderer != null) {
       return mRenderer.getListPlatformInfo(listSign);
@@ -23,24 +24,28 @@ public class ListNodeInfoFetcher {
     return null;
   }
 
+  @Override
   public void renderChild(int listSign, int index, long operationId) {
     if (mRenderer != null) {
       mRenderer.renderChild(listSign, index, operationId);
     }
   }
 
+  @Override
   public void updateChild(int listSign, int oldSign, int newIndex, long operationId) {
     if (mRenderer != null) {
       mRenderer.updateChild(listSign, oldSign, newIndex, operationId);
     }
   }
 
+  @Override
   public void removeChild(int listSign, int childSign) {
     if (mRenderer != null) {
       mRenderer.removeChild(listSign, childSign);
     }
   }
 
+  @Override
   public int obtainChild(
       int listSign, int index, long operationId, boolean enableReuseNotification) {
     if (mRenderer != null) {
@@ -49,28 +54,29 @@ public class ListNodeInfoFetcher {
     return -1;
   }
 
+  @Override
   public void recycleChild(int listSign, int childSign) {
     if (mRenderer != null) {
       mRenderer.recycleChild(listSign, childSign);
     }
   }
 
+  @Override
   public void obtainChildAsync(int listSign, int index, long operationId) {
     if (mRenderer != null) {
       mRenderer.obtainChildAsync(listSign, index, operationId);
     }
   }
 
+  @Override
   public void recycleChildAsync(int listSign, int childSign) {
     if (mRenderer != null) {
       mRenderer.recycleChildAsync(listSign, childSign);
     }
   }
 
-  /**
-   *  notify the scrolled distance to C++
-   */
   @RestrictTo(LIBRARY)
+  @Override
   public void scrollByListContainer(
       int containerSign, float x, float y, float originalX, float originalY) {
     if (mRenderer != null) {
@@ -78,11 +84,8 @@ public class ListNodeInfoFetcher {
     }
   }
 
-  /**
-   *  notify the target scroll position to C++
-   *
-   */
   @RestrictTo(LIBRARY)
+  @Override
   public void scrollToPosition(
       int containerSign, int position, float offset, int align, boolean smooth) {
     if (mRenderer != null) {
@@ -90,11 +93,8 @@ public class ListNodeInfoFetcher {
     }
   }
 
-  /**
-   *
-   * notify the  stopped status to C++
-   */
   @RestrictTo(LIBRARY)
+  @Override
   public void scrollStopped(int containerSign) {
     if (mRenderer != null) {
       mRenderer.scrollStopped(containerSign);

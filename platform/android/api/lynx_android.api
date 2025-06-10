@@ -2001,6 +2001,20 @@ public interface com::lynx::tasm::fluency::LynxFpsTracer::IFluencyCallback {
   public void com.lynx.tasm.fluency.LynxFpsTracer.IFluencyCallback.report(LynxFpsRawMetrics rawMetrics);
 }
 
+public interface com::lynx::tasm::IListNodeInfoFetcher {
+  public JavaOnlyMap com.lynx.tasm.IListNodeInfoFetcher.getPlatformInfo(int listSign);
+  public void com.lynx.tasm.IListNodeInfoFetcher.renderChild(int listSign, int index, long operationId);
+  public void com.lynx.tasm.IListNodeInfoFetcher.updateChild(int listSign, int oldSign, int newIndex, long operationId);
+  public void com.lynx.tasm.IListNodeInfoFetcher.removeChild(int listSign, int childSign);
+  public int com.lynx.tasm.IListNodeInfoFetcher.obtainChild(int listSign, int index, long operationId, boolean enableReuseNotification);
+  public void com.lynx.tasm.IListNodeInfoFetcher.recycleChild(int listSign, int childSign);
+  public void com.lynx.tasm.IListNodeInfoFetcher.obtainChildAsync(int listSign, int index, long operationId);
+  public void com.lynx.tasm.IListNodeInfoFetcher.recycleChildAsync(int listSign, int childSign);
+  public void com.lynx.tasm.IListNodeInfoFetcher.scrollByListContainer(int containerSign, float x, float y, float originalX, float originalY);
+  public void com.lynx.tasm.IListNodeInfoFetcher.scrollToPosition(int containerSign, int position, float offset, int align, boolean smooth);
+  public void com.lynx.tasm.IListNodeInfoFetcher.scrollStopped(int containerSign);
+}
+
 public interface com::lynx::tasm::base::ILogDelegate {
   public int com.lynx.tasm.base.ILogDelegate.type();
   public void com.lynx.tasm.base.ILogDelegate.setMinimumLoggingLevel(int level);
@@ -2989,7 +3003,7 @@ public class com::lynx::tasm::behavior::ui::list::ListLayoutManager::ListLinearL
   public boolean com.lynx.tasm.behavior.ui.list.ListLayoutManager.ListLinearLayoutManager.canScrollHorizontally();
 }
 
-public class com::lynx::tasm::ListNodeInfoFetcher :  {
+public class com::lynx::tasm::ListNodeInfoFetcher : com.lynx.tasm.IListNodeInfoFetcher {
   public com.lynx.tasm.ListNodeInfoFetcher.ListNodeInfoFetcher(LynxTemplateRender renderer);
   public JavaOnlyMap com.lynx.tasm.ListNodeInfoFetcher.getPlatformInfo(int listSign);
   public void com.lynx.tasm.ListNodeInfoFetcher.renderChild(int listSign, int index, long operationId);
@@ -3855,8 +3869,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isTouchMoving();
   public void com.lynx.tasm.behavior.LynxContext.setEventEmitter(EventEmitter eventEmitter);
   public EventEmitter com.lynx.tasm.behavior.LynxContext.getEventEmitter();
-  public ListNodeInfoFetcher com.lynx.tasm.behavior.LynxContext.getListNodeInfoFetcher();
-  public void com.lynx.tasm.behavior.LynxContext.setListNodeInfoFetcher(ListNodeInfoFetcher listNodeInfoFetcher);
+  public IListNodeInfoFetcher com.lynx.tasm.behavior.LynxContext.getListNodeInfoFetcher();
+  public void com.lynx.tasm.behavior.LynxContext.setListNodeInfoFetcher(IListNodeInfoFetcher listNodeInfoFetcher);
   public void com.lynx.tasm.behavior.LynxContext.setIntersectionObserverManager(LynxIntersectionObserverManager manager);
   public LynxIntersectionObserverManager com.lynx.tasm.behavior.LynxContext.getIntersectionObserverManager();
   public Long com.lynx.tasm.behavior.LynxContext.getRuntimeId();

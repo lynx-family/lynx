@@ -8,6 +8,8 @@ import("../../../../../tools/gn_tools/podspec_target_template.gni")
 
 # public_shared_sources
 public_shared_sources = [
+  "ListNodeInfoFetcher.h",
+  "ListNodeInfoFetcherProtocol.h",
   "LynxBackgroundRuntime.h",
   "LynxBlurImageProcessor.h",
   "LynxBooleanOption.h",

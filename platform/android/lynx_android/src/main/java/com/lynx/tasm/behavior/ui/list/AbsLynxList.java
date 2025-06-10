@@ -9,7 +9,7 @@ import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
-import com.lynx.tasm.ListNodeInfoFetcher;
+import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
@@ -34,7 +34,7 @@ public abstract class AbsLynxList<T extends ViewGroup> extends UISimpleView<T> {
 
   private int[] mCellViewLocation = new int[2];
   private int[] mRootViewLocation = new int[2];
-  private ListNodeInfoFetcher mListNodeInfoFetcher;
+  private IListNodeInfoFetcher mListNodeInfoFetcher;
   private LynxBaseUI mCurrentChild;
 
   public AbsLynxList(LynxContext context) {

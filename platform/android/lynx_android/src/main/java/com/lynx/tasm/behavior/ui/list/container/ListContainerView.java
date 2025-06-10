@@ -12,7 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
-import com.lynx.tasm.ListNodeInfoFetcher;
+import com.lynx.tasm.IListNodeInfoFetcher;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -245,7 +245,7 @@ public class ListContainerView
     }
     if (!mShouldBlockScrollByListContainer && mUiListContainer != null
         && mUiListContainer.getLynxContext() != null) {
-      ListNodeInfoFetcher listNodeInfoFetcher =
+      IListNodeInfoFetcher listNodeInfoFetcher =
           mUiListContainer.getLynxContext().getListNodeInfoFetcher();
       if (listNodeInfoFetcher == null) {
         LLog.e(TAG, "onScrollChanged: listNodeInfoFetcher is nullptr");

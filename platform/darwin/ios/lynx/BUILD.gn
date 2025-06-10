@@ -288,6 +288,7 @@ subspec_target("lynx") {
     "ui/list/LynxListAppearEventEmitter.m",
     "ui/list/LynxListScrollEventEmitter.m",
     "ui/list/LynxUIListLoader.mm",
+    "ui/list/container/ListNodeInfoFetcher.mm",
     "ui/list/container/LynxUIListContainer.mm",
     "ui/list/list_light/layout/LynxListHorizontalLayoutManager.mm",
     "ui/list/list_light/layout/LynxListLayoutManager.mm",
