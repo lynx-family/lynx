@@ -94,7 +94,12 @@ public class ImageUrlRedirectUtils {
       TraceEvent.beginSection(TraceEventDef.IMAGE_SHOULD_REDIRECT_IMAGE_URL, props);
     }
 
-    String redirectUrl = interceptor.shouldRedirectImageUrl(origUrl);
+    String redirectUrl = null;
+    try {
+      redirectUrl = interceptor.shouldRedirectImageUrl(origUrl);
+    } catch (Exception e) {
+      LLog.d(TAG, "shouldRedirectImageUrl occurred with exception: " + e.getMessage());
+    }
     TraceEvent.endSection(TraceEventDef.IMAGE_SHOULD_REDIRECT_IMAGE_URL);
 
     if (redirectUrl != null) {

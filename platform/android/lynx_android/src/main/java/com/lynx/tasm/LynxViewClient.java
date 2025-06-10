@@ -236,7 +236,7 @@ public abstract class LynxViewClient
    * @return A url string that fit int with the support scheme list or null
    */
   @Deprecated
-  public String shouldRedirectImageUrl(String url) {
+  public @Nullable String shouldRedirectImageUrl(String url) {
     return null;
   }
 
