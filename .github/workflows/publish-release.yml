@@ -12,7 +12,7 @@ on:
 jobs:
   android-explorer-build:
     if: ${{ inputs.dry-run == false }}
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -75,7 +75,7 @@ jobs:
           allowUpdates: true
 
   android-sdk-release:
-    runs-on: ${{ inputs.dry-run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-avd-large' }}
+    runs-on: ${{ inputs.dry-run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-large' }}
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2

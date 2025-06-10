@@ -14,7 +14,7 @@ defaults:
 
 jobs:
   static-check:
-    runs-on: lynx-ubuntu-22.04-avd-medium
+    runs-on: lynx-ubuntu-22.04-medium
     steps:
       - name: Python Setup
         uses: actions/setup-python@v5
@@ -73,7 +73,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -92,7 +92,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-devtool-unittests-check:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -148,7 +148,7 @@ jobs:
           popd
 
   tasm-linux-build:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -188,7 +188,7 @@ jobs:
           popd
 
   lynx-types-check:
-    runs-on: lynx-ubuntu-22.04-avd-medium
+    runs-on: lynx-ubuntu-22.04-medium
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -227,7 +227,7 @@ jobs:
           tools/rtf/rtf android-ut run --name lynx
 
   android-explorer-build:
-    runs-on: lynx-ubuntu-22.04-avd-large
+    runs-on: lynx-ubuntu-22.04-large
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
