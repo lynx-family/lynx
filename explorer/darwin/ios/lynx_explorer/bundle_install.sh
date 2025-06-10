@@ -8,6 +8,7 @@ root_dir=$(readlink -f $root_dir)
 echo "root_dir: $root_dir"
 command="pod install --verbose --repo-update"
 project_name="LynxExplorer.xcodeproj"
+enable_trace=true
 
 usage() {
     echo "Usage: $0 [OPTIONS]"
@@ -15,6 +16,7 @@ usage() {
     echo " -h, --help         Show this help message"
     echo " --skip-card-build  Skip card build task"
     echo " --integration-test  Build integration test demo pages"
+    echo " --disable-trace    Disable trace"
 }
 
 build_card_resources() {
@@ -49,6 +51,9 @@ handle_options() {
             --integration-test)
                 INTEGRATION_TEST=true
                 ;;
+            --disable-trace)
+                enable_trace=false
+                ;;
             *)
                 usage
                 exit 1
@@ -60,13 +65,15 @@ handle_options() {
 SKIP_CARD_BUILD=false
 INTEGRATION_TEST=false
 
+enable_trace_param=$([ $enable_trace == true ] && echo "--enable-trace" || echo "")
+
 handle_options "$@"
 build_card_resources
 
 pushd $root_dir
 gn_root_dir=$root_dir/../
 gn_root_dir=$(readlink -f $gn_root_dir)
-generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir"
+generate_ios_podspec_cmd="python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root $gn_root_dir $enable_trace_param"
 echo $generate_ios_podspec_cmd
 eval "$generate_ios_podspec_cmd"
 for file in ./*.podspec; do

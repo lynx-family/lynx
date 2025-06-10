@@ -112,6 +112,15 @@ android {
             ndk {
                 abiFilters(*rootProject.ext.abiList)
             }
+
+            if (enable_lite_production == "true") {
+                buildConfigField "String", "enable_trace", "\"none\""
+            } else if (enable_trace == "none") {
+                buildConfigField "String", "enable_trace", "\"perfetto\""
+            } else {
+                buildConfigField "String", "enable_trace", "\"${enable_trace}\""
+            }
+            
             debuggable true
         }
     }
