@@ -87,7 +87,6 @@ class FiberElementTest
   ::testing::NiceMock<FiberElementMockTasmDelegate> tasm_mediator;
   std::shared_ptr<lynx::tasm::TemplateAssembler> tasm;
   FiberMockPaintingContext* platform_impl_;
-  std::shared_ptr<TestVSyncMonitor> vsync_monitor_;
 
   static void SetUpTestSuite() { base::UIThread::Init(); }
 

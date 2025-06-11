@@ -297,7 +297,8 @@ class ElementManager : public ElementContextDelegate {
       std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
       Delegate *delegate, const LynxEnvConfig &lynx_env_config,
       int32_t instance_id = tasm::report::kUnknownInstanceId,
-      const std::shared_ptr<base::VSyncMonitor> &vsync_monitor = nullptr,
+      const std::function<std::shared_ptr<base::VSyncMonitor>()>
+          &vsync_monitor_creator = nullptr,
       const bool enable_diff_without_layout = false);
 
   // avoid pImpl idiom type of compilation error when self inlclude
@@ -757,10 +758,6 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetEnableMultiTouchParamsCompatible() const {
     return config_ ? config_->GetEnableMultiTouchParamsCompatible() : false;
-  }
-
-  std::shared_ptr<base::VSyncMonitor> &vsync_monitor() {
-    return vsync_monitor_;
   }
 
   bool Hydrate(AttributeHolder *node, Element *shadow_node);
@@ -1253,7 +1250,6 @@ class ElementManager : public ElementContextDelegate {
 
   Delegate *delegate_;
   ElementManagerDelegate *element_manager_delegate_{nullptr};
-  std::shared_ptr<base::VSyncMonitor> vsync_monitor_;
 
   CSSFragment *preresolving_style_sheet_{nullptr};
   std::unique_ptr<starlight::ComputedCSSStyle> platform_computed_css_;
@@ -1275,8 +1271,11 @@ class ElementManager : public ElementContextDelegate {
   // that they are not flushed repeatedly.
   std::unordered_set<std::string> resolved_keyframes_set_;
 
+  // used only for creating ElementVsyncProxy.
+  fml::RefPtr<fml::TaskRunner> tasm_task_runner_;
+  std::function<std::shared_ptr<base::VSyncMonitor>()> vsync_monitor_creator_;
   // Animation proxy class
-  std::shared_ptr<ElementVsyncProxy> element_vsync_proxy_;
+  std::unique_ptr<ElementVsyncProxy> element_vsync_proxy_;
 
   // TODO(yuyang), optimize these two to reduce memory repeatedly allocations.
   std::unordered_set<tasm::Element *> animation_element_set_;

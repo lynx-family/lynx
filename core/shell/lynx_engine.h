@@ -57,8 +57,6 @@ class LynxEngine {
         instance_id_(instance_id) {}
   ~LynxEngine();
 
-  void Init();
-
   void LoadTemplate(const std::string& url, std::vector<uint8_t> source,
                     const std::shared_ptr<tasm::TemplateData>& template_data,
                     std::shared_ptr<tasm::PipelineOptions> pipeline_options,

@@ -297,7 +297,6 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong timing_collector_android,
                   env, native_facade_reporter))
           .SetPaintingContextPlatformImpl(ui_delegate->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
-          .SetEnableElementManagerVsyncMonitor(true)
           .SetEnableLayoutOnly(enable_layout_only)
           .SetWhiteBoard(white_board)
           .SetLazyBundleLoader(loader)

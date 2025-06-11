@@ -147,7 +147,8 @@ ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
     Delegate *delegate, const LynxEnvConfig &lynx_env_config,
     int32_t instance_id,
-    const std::shared_ptr<base::VSyncMonitor> &vsync_monitor,
+    const std::function<std::shared_ptr<base::VSyncMonitor>()>
+        &vsync_monitor_creator,
     const bool enable_diff_without_layout)
     : ElementContextDelegate(nullptr, nullptr),
       node_manager_(new NodeManager),
@@ -163,10 +164,10 @@ ElementManager::ElementManager(
           LynxEnv::GetInstance().EnableUseMapBufferForUIProps()),
       lynx_env_config_(lynx_env_config),
       delegate_(delegate),
-      vsync_monitor_(vsync_monitor),
       platform_computed_css_(std::make_unique<starlight::ComputedCSSStyle>(
           lynx_env_config.LayoutsUnitPerPx(),
-          lynx_env_config.PhysicalPixelsPerLayoutUnit())) {
+          lynx_env_config.PhysicalPixelsPerLayoutUnit())),
+      vsync_monitor_creator_(vsync_monitor_creator) {
   dom_tree_enabled_ = lynx::tasm::LynxEnv::GetInstance().IsDomTreeEnabled();
   platform_computed_css_->SetCSSParserConfigs(GetCSSParserConfigs());
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
@@ -958,8 +959,8 @@ void ElementManager::SetNeedsLayout() { need_layout_ = true; }
 void ElementManager::RequestNextFrame(Element *element) {
   animation_element_set_.insert(element);
   if (element_vsync_proxy_ == nullptr) {
-    element_vsync_proxy_ = std::make_shared<ElementVsyncProxy>(
-        ElementVsyncProxy(this, vsync_monitor_));
+    element_vsync_proxy_ = std::make_unique<ElementVsyncProxy>(
+        ElementVsyncProxy(this, vsync_monitor_creator_()));
   }
   element_vsync_proxy_->SetPreferredFps(config_->GetPreferredFps());
   element_vsync_proxy_->RequestNextFrame();

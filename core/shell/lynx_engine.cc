@@ -60,19 +60,6 @@ LynxEngine::~LynxEngine() {
   }
 }
 
-void LynxEngine::Init() {
-  auto& client = tasm_->page_proxy()->element_manager();
-  /**
-   * Init vsync_monitor here to ensure CADisplayLink on iOS platform
-   * can be added to the right runloop when applying MostOnTasm or other
-   * non-AllOnUI thread strategies.
-   */
-  if (client != nullptr && client->vsync_monitor() != nullptr) {
-    client->vsync_monitor()->BindToCurrentThread();
-    client->vsync_monitor()->Init();
-  }
-}
-
 void LynxEngine::LoadTemplate(
     const std::string& url, std::vector<uint8_t> source,
     const std::shared_ptr<tasm::TemplateData>& template_data,

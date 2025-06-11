@@ -83,14 +83,6 @@ LynxShellBuilder& LynxShellBuilder::SetWhiteBoard(
   return *this;
 }
 
-LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
-    bool enable_element_manager_vsync_monitor) {
-  this->element_manager_vsync_monitor_ = enable_element_manager_vsync_monitor
-                                             ? base::VSyncMonitor::Create()
-                                             : nullptr;
-  return *this;
-}
-
 LynxShellBuilder& LynxShellBuilder::SetEnableNewAnimator(
     bool enable_new_animator) {
   this->enable_new_animator_ = enable_new_animator;
@@ -285,10 +277,6 @@ LynxShell* LynxShellBuilder::build() {
     element_manager->SetEnableNativeListFromShell(enable_native_list_);
     element_manager->SetPropBundleCreator(prop_bundle_creator_);
     element_manager->SetThreadStrategy(this->strategy_);
-    if (element_manager->vsync_monitor()) {
-      element_manager->vsync_monitor()->BindTaskRunner(
-          shell->runners_.GetTASMTaskRunner());
-    }
     element_manager->painting_context()->SetUIOperationQueue(
         shell->ui_operation_queue_);
     element_manager->painting_context()->impl()->SetInstanceId(
@@ -304,8 +292,6 @@ LynxShell* LynxShellBuilder::build() {
         shell->engine_actor_, shell->facade_actor_, shell->timing_actor_,
         element_manager->node_manager(), element_manager->air_node_manager(),
         element_manager->catalyzer());
-    // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest
-    shell->engine_actor_->Act([](auto& engine) { engine->Init(); });
 
     auto painting_context = element_manager->painting_context();
     if (use_invoke_ui_method_func_) {
@@ -341,9 +327,17 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
   if (painting_context_ == nullptr) {
     painting_context_ = painting_context_creator_(shell);
   }
+  const auto vsync_monitor_creator = [task_runner =
+                                          runners.GetTASMTaskRunner()]() {
+    auto vsync_monitor = base::VSyncMonitor::Create();
+    vsync_monitor->BindTaskRunner(task_runner);
+    vsync_monitor->BindToCurrentThread();
+    vsync_monitor->Init();
+    return vsync_monitor;
+  };
   auto element_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::move(painting_context_), tasm_mediator.get(), this->lynx_env_config_,
-      instance_id, this->element_manager_vsync_monitor_,
+      instance_id, std::move(vsync_monitor_creator),
       this->enable_diff_without_layout_);
   auto tasm = std::make_shared<lynx::tasm::TemplateAssembler>(
       *tasm_mediator, std::move(element_manager), instance_id,

@@ -48,9 +48,6 @@ class LynxShellBuilder {
 
   LynxShellBuilder& SetEnableDiffWithoutLayout(bool enable_diff_without_layout);
 
-  LynxShellBuilder& SetEnableElementManagerVsyncMonitor(
-      bool enable_element_manager_vsync_monitor);
-
   LynxShellBuilder& SetEnableNewAnimator(bool enable_new_animator);
 
   LynxShellBuilder& SetEnableNativeList(bool enable_native_list);
@@ -125,7 +122,6 @@ class LynxShellBuilder {
   tasm::LynxEnvConfig lynx_env_config_{0, 0, 1, 1};
   std::shared_ptr<lynx::tasm::LazyBundleLoader> loader_;
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board_;
-  std::shared_ptr<lynx::base::VSyncMonitor> element_manager_vsync_monitor_;
   bool enable_new_animator_{false};
   bool enable_native_list_{false};
   bool enable_layout_only_{true};

@@ -11,11 +11,14 @@ namespace testing {
 void FiberElementTest::SetUp() {
   LynxEnvConfig lynx_env_config(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
                                 kDefaultPhysicalPixelsPerLayoutUnit);
-  vsync_monitor_ = std::make_shared<TestVSyncMonitor>();
-  vsync_monitor_->BindToCurrentThread();
+  const auto vsync_monitor_creator = []() {
+    auto vsync_monitor = std::make_shared<TestVSyncMonitor>();
+    vsync_monitor->BindToCurrentThread();
+    return vsync_monitor;
+  };
   auto unique_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
-      lynx_env_config, tasm::report::kUnknownInstanceId, vsync_monitor_);
+      lynx_env_config, tasm::report::kUnknownInstanceId, vsync_monitor_creator);
   manager = unique_manager.get();
   platform_impl_ = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());
