@@ -3,7 +3,7 @@ name: ci
 on:
   pull_request:
     branches:
-      - develop
+      - release/3.3
   push:
     branches:
       - CQ-*
