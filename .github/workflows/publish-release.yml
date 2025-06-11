@@ -11,6 +11,7 @@ on:
 
 jobs:
   android-explorer-build:
+    timeout-minutes: 60
     if: ${{ inputs.dry-run == false }}
     runs-on: lynx-ubuntu-22.04-large
     steps:
@@ -31,6 +32,7 @@ jobs:
           allowUpdates: true
 
   ios-explorer-build:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     strategy:
       matrix:
@@ -76,6 +78,7 @@ jobs:
 
   android-sdk-release:
     runs-on: ${{ inputs.dry-run == false && 'ubuntu-latest' || 'lynx-ubuntu-22.04-large' }}
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -124,6 +127,7 @@ jobs:
           artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
 
   ios-sdk-publish:
+    timeout-minutes: 60
     runs-on: macos-13
     if: ${{ inputs.dry-run == false }}
     steps:

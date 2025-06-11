@@ -12,6 +12,7 @@ on:
 jobs:
   get-version:
     runs-on: lynx-ubuntu-22.04-medium
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     steps:

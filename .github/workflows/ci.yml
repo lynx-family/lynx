@@ -15,6 +15,7 @@ defaults:
 jobs:
   static-check:
     runs-on: lynx-ubuntu-22.04-medium
+    timeout-minutes: 30
     steps:
       - name: Python Setup
         uses: actions/setup-python@v5
@@ -58,6 +59,7 @@ jobs:
           python3 tools_shared/git_lynx.py check --checkers api-check
 
   darwin-native-unittests-check:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
@@ -74,6 +76,7 @@ jobs:
 
   linux-native-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -93,6 +96,7 @@ jobs:
 
   linux-native-devtool-unittests-check:
     runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -111,6 +115,7 @@ jobs:
           tools/rtf/rtf native-ut run --names devtool
 
   ios-unittests-check:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
@@ -149,6 +154,7 @@ jobs:
 
   tasm-linux-build:
     runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -170,6 +176,7 @@ jobs:
           popd
 
   tasm-darwin-build:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
@@ -188,6 +195,7 @@ jobs:
           popd
 
   tasm-wasm-build:
+    timeout-minutes: 60
     runs-on: lynx-darwin-14-medium
     steps:
       - name: Download Source
@@ -207,6 +215,7 @@ jobs:
 
   lynx-types-check:
     runs-on: lynx-ubuntu-22.04-medium
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -227,6 +236,7 @@ jobs:
           popd
 
   android-unittests-check:
+    timeout-minutes: 60
     runs-on: lynx-ubuntu-22.04-physical-medium
     steps:
       - name: Download Source
@@ -246,6 +256,7 @@ jobs:
 
   android-explorer-build:
     runs-on: lynx-ubuntu-22.04-large
+    timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -258,6 +269,7 @@ jobs:
           build-params: -PIntegrationTest
 
   # android-e2e-test:
+  #   timeout-minutes: 60
   #   needs: [android-explorer-build]
   #   env:
   #     APPIUM_TEST_SERVER_PORT: 4723

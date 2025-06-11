@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   add-label-triage:
+    timeout-minutes: 30
     runs-on: lynx-ubuntu-22.04-mini
 
     steps:
