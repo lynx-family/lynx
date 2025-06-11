@@ -127,8 +127,8 @@ deps = {
             f'{root_dir}/platform/android/local.properties '
             f'{root_dir}/explorer/android/local.properties '
             "-p "
-            f'ndk.dir={os.environ.get("ANDROID_NDK", os.path.join(root_dir, "tools/android_tools/ndk") if target == "dev" else "")} '
-            f'sdk.dir={os.environ.get("ANDROID_HOME", os.path.join(root_dir, "tools/android_tools/sdk") if target == "dev" else "")} '
+            f'ndk.dir={os.environ.get("ANDROID_NDK", "")} '
+            f'sdk.dir={os.environ.get("ANDROID_HOME", "")} '
             f'cmake.dir={os.path.join(root_dir, "..", "buildtools", "cmake")}'
         ],
         "condition": system in ['linux', 'darwin', 'windows']

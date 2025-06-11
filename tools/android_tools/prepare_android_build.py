@@ -31,9 +31,9 @@ def main():
   if not sdk_path:
     print("Error: Please configure the ANDROID_HOME environment variable first.")
     return -1
-  buildtools_dir = os.getenv('BUILDTOOLS_DIR')
-  if not buildtools_dir:
-    print("Error: BUILDTOOLS_DIR environment variable is not set. Please run `source tools/envsetup.sh` and `tools/hab sync . -f` first.")
+  buildtools_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'buildtools')
+  if not os.path.exists(buildtools_dir):
+    print("Error: buildtools directory not found. Please run `tools/hab sync . -f` first.")
     return -1
   
   sdk_manager_dir = os.path.join(buildtools_dir, 'android_sdk_manager')

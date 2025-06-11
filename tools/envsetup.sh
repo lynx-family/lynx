@@ -39,9 +39,6 @@ function android_env_setup() {
     export ANDROID_NDK=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_NDK_21=$ANDROID_HOME/ndk/21.1.6352462
     export ANDROID_SDK=$ANDROID_HOME
-
-    ln -vsnf "$ANDROID_HOME" "$TOOLS_REAL_PATH"/android_tools/sdk
-    ln -vsnf "$ANDROID_NDK" "$TOOLS_REAL_PATH"/android_tools/ndk
   else
     echo "Please setup ANDROID_HOME for android build first."
   fi

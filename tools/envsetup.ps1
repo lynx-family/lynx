@@ -30,29 +30,10 @@ function Add-Environ($key, $value) {
 }
 
 function Lynx-Env-Setup {
-    Setup-Environment 'LYNX_DIR' $lynx_dir_path
-    Setup-Environment 'LYNX_ROOT_DIR' $lynx_root_dir_path
     $buildtoolsDir = Join-Path $lynx_root_dir_path 'buildtools'
-
-    Setup-Environment 'BUILDTOOLS_DIR' $buildtoolsDir
-    Add-Environ 'PATH' (Join-Path $buildtoolsDir 'llvm\bin')
     Add-Environ 'PATH' (Join-Path $buildtoolsDir 'ninja')
-    Add-Environ 'PATH' (Join-Path $buildtoolsDir 'gn')
-    Add-Environ 'PATH' (Join-Path $buildtoolsDir 'node')
-    Add-Environ 'PATH' (Join-Path $lynx_dir_path 'tools_shared')
-    
-    Setup-Environment 'COREPACK_HOME' (Join-Path $buildtoolsDir 'corepack')
 }
 
-function Run-cmdLists($cmdLists) {
-  $arguments = @()
-  foreach ($cmd in $cmdLists) {
-    $arguments += "$cmd;"
-  }
-  if ($arguments.Count -gt 0) {
-    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList "-Command", "$arguments" -Wait
-  }
-}
 
 function Android-Env-Setup {
   $androidHome = Get-Environment 'ANDROID_HOME'
@@ -60,23 +41,6 @@ function Android-Env-Setup {
   if ($androidHome) {
     $androidNdk = Join-Path $androidHome 'ndk/21.1.6352462'
     Setup-Environment 'ANDROID_NDK' $androidNdk
-    Setup-Environment 'ANDROID_NDK_21' $androidNdk
-    Setup-Environment 'ANDROID_SDK' $androidNdk
-
-    $sdkSoftwarePath = Join-Path $tools_path 'android_tools/sdk'
-    $ndkSoftwarePath = Join-Path $tools_path 'android_tools/ndk'
-    $cmdLists = @()
-    if (!(Test-Path $sdkSoftwarePath)) {
-      $SdkLinkCmd = "New-Item -ItemType SymbolicLink -Path '$sdkSoftwarePath' -Target '$androidHome' -Force"
-      $cmdLists += $SdkLinkCmd
-    }
-    if (!(Test-Path $ndkSoftwarePath)) {
-      $NdkLinkCmd = "New-Item -ItemType SymbolicLink -Path '$ndkSoftwarePath' -Target '$androidNdk' -Force"
-      $cmdLists += $NdkLinkCmd
-    }
-    Run-cmdLists $cmdLists
-    Write-Host "$sdkSoftwarePath --> $androidHome"
-    Write-Host "$ndkSoftwarePath --> $androidNdk"
   } else {
     Write-Host "Please setup ANDROID_HOME environment variable for android build first."
   }
@@ -86,7 +50,6 @@ function Python-Env-Setup {
   python $lynx_dir_path\tools\vpython_tools\vpython_env_setup.py
   $venv_path = Join-Path $lynx_root_dir_path '.venv'
   & $venv_path\Scripts\Activate.ps1
-  Add-Environ 'PATH' (Join-Path $venv_path 'bin')
 }
 
 Lynx-Env-Setup

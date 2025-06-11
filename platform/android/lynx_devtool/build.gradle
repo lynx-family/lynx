@@ -230,7 +230,7 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../../'
-            commandLine 'python3', './devtool/lynx_devtool/resources/copy_resources.py'
+            commandLine pythonExec, './devtool/lynx_devtool/resources/copy_resources.py'
         }
     }
 }

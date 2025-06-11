@@ -85,7 +85,7 @@ task copyResources() {
     doLast {
         exec {
             workingDir '../../'
-            commandLine 'python3', './resources/copy_resources.py'
+            commandLine pythonExec, './resources/copy_resources.py'
         }
     }
 }

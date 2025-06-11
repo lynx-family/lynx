@@ -102,7 +102,7 @@ afterEvaluate {
                     println "========= execute jssdk build in ${task.name} =========="
                     ignoreExitValue true
                     workingDir '../../'
-                    commandLine 'python3', "./android/lynx_js_sdk/jssdk_build.py", "--build", "--version", VERSION, \
+                    commandLine pythonExec, "./android/lynx_js_sdk/jssdk_build.py", "--build", "--version", VERSION, \
                                 "--jssdkMainDestPath", jssdkMainDestPath, \
                                 "--jssdkDebugDestPath", jssdkDebugDestPath, \
                                 "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath
@@ -120,7 +120,7 @@ afterEvaluate {
                     ExecResult result = exec {
                         workingDir '../../'
                         ignoreExitValue true
-                        commandLine 'python3', "./android/lynx_js_sdk/jssdk_build.py", "--clear", "--version", VERSION, \
+                        commandLine pythonExec, "./android/lynx_js_sdk/jssdk_build.py", "--clear", "--version", VERSION, \
                                 "--jssdkMainDestPath", jssdkMainDestPath, \
                                 "--jssdkDebugDestPath", jssdkDebugDestPath, \
                                 "--lynxCoreBuildToolsPath", lynxCoreBuildToolsPath
