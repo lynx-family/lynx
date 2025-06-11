@@ -54,6 +54,14 @@ public class LynxFlattenUI extends LynxBaseUI {
   }
 
   @Override
+  protected void detachWithView() {
+    if (enableRenderNode()) {
+      mRenderNode = RenderNodeFactory.getInstance().createRenderNodeCompat();
+    }
+    super.detachWithView();
+  }
+
+  @Override
   public boolean isFlatten() {
     return true;
   }
@@ -219,6 +227,15 @@ public class LynxFlattenUI extends LynxBaseUI {
       return;
     }
     mRenderNode.drawRenderNode(canvas);
+  }
+
+  public final RenderNodeCompat updateRenderNode() {
+    boolean isValidate = mIsValidate;
+    mIsValidate = true;
+    if (!isValidate || !mRenderNode.hasDisplayList()) {
+      updateRenderNode(mRenderNode);
+    }
+    return mRenderNode;
   }
 
   protected void updateRenderNode(RenderNodeCompat renderNode) {

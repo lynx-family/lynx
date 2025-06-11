@@ -244,6 +244,12 @@ public abstract class LynxBaseUI
   private int mBorderSpacingIndex;
   private int mBorderWidth;
 
+  protected void detachWithView() {
+    for (LynxBaseUI ui : mChildren) {
+      ui.detachWithView();
+    }
+  }
+
   public float getSkewX() {
     return mSkewX;
   }

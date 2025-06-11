@@ -19,6 +19,10 @@ public class ViewGroupDrawingOrderHelper {
     mViewGroup = viewGroup;
   }
 
+  public int[] getDrawingOrderIndices() {
+    return mDrawingOrderIndices;
+  }
+
   /**
    * This should be called every time a view is added to the ViewGroup in {@link ViewGroup#addView}.
    *
@@ -60,6 +64,12 @@ public class ViewGroupDrawingOrderHelper {
    * ViewGroup#getChildDrawingOrder}.
    */
   public int getChildDrawingOrder(int childCount, int index) {
+    prepareChildDrawingOrder();
+    return mDrawingOrderIndices[index];
+  }
+
+  public void prepareChildDrawingOrder() {
+    int childCount = mViewGroup.getChildCount();
     if (mDrawingOrderIndices == null) {
       ArrayList<View> viewsToSort = new ArrayList<>();
       for (int i = 0; i < childCount; i++) {
@@ -89,7 +99,6 @@ public class ViewGroupDrawingOrderHelper {
         mDrawingOrderIndices[i] = mViewGroup.indexOfChild(child);
       }
     }
-    return mDrawingOrderIndices[index];
   }
 
   /** Recheck all children for z-index changes. */

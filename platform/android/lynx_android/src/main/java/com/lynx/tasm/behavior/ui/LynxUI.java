@@ -78,6 +78,7 @@ import com.lynx.tasm.behavior.ui.utils.BackgroundManager;
 import com.lynx.tasm.behavior.ui.utils.PlatformLength;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
+import com.lynx.tasm.behavior.ui.view.ViewInfo;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
 import com.lynx.tasm.service.LynxServiceCenter;
@@ -91,9 +92,10 @@ import java.util.List;
 /**
  * Responsible for rendering the view
  */
-public abstract class LynxUI<T extends View> extends LynxBaseUI {
+public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProcessViewInfoHook {
   private static final String TAG = "LynxUI";
   protected T mView;
+  protected ViewInfo mViewInfo;
 
   private float mGrayscaleAmount = 1.0f;
   private static final float OFFSET_ROTATE_AUTO = -1024.0f;
@@ -231,6 +233,78 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI {
   public T getView() {
     return mView;
   }
+
+  @Override
+  protected void detachWithView() {
+    mViewInfo.detachFromUI();
+    mViewInfo = null;
+    mView = null;
+
+    super.detachWithView();
+  }
+
+  @Override
+  public void processViewInfo() {
+    beforeProcessViewInfo(mViewInfo);
+
+    beforeDispatchProcessViewInfo(mViewInfo);
+
+    dispatchProcessViewInfo();
+
+    afterDispatchProcessViewInfo(mViewInfo);
+
+    afterProcessViewInfo(mViewInfo);
+  }
+
+  @Override
+  public void dispatchProcessViewInfo() {
+    for (LynxBaseUI ui : mChildren) {
+      if (ui instanceof LynxUI) {
+        processChildViewInfo((LynxUI) ui);
+      }
+    }
+  }
+
+  @Override
+  public void processChildViewInfo(IProcessViewInfoHook child) {
+    LynxUI ui = (LynxUI) child;
+
+    beforeProcessChildViewInfo(mViewInfo, ui.getView(), 0);
+
+    ui.processViewInfo();
+
+    afterProcessChildViewInfo(mViewInfo, ui.getView(), 0);
+  }
+
+  @Override
+  public void beforeProcessViewInfo(ViewInfo info) {
+    info.setSkewX(getSkewX());
+    info.setSkewY(getSkewY());
+    info.setClipPath(mClipPath);
+    info.setWidth(getWidth());
+    info.setHeight(getHeight());
+  }
+
+  @Override
+  public void beforeDispatchProcessViewInfo(ViewInfo info) {}
+
+  @Override
+  public void beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime) {}
+
+  @Override
+  public void afterProcessChildViewInfo(ViewInfo info, View child, long drawingTime) {}
+
+  @Override
+  public void afterDispatchProcessViewInfo(ViewInfo info) {}
+
+  @Override
+  public void afterProcessViewInfo(ViewInfo info) {}
+
+  @Override
+  public void processLayoutChildren() {}
+
+  @Override
+  public void processMeasureChildren() {}
 
   @Override
   public void setSign(int sign, String tagName) {

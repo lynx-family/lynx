@@ -20,6 +20,8 @@ import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.list.UIList;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
+import com.lynx.tasm.behavior.ui.view.ViewInfo;
+import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -54,8 +56,119 @@ public abstract class UIGroup<T extends ViewGroup>
     super.initialize();
     mDrawingOrderHelper = new ViewGroupDrawingOrderHelper(getView());
     if (mView instanceof IDrawChildHookBinding) {
-      ((IDrawChildHookBinding) mView).bindDrawChildHook(this);
+      if (mContext != null && mContext.isEmbeddedModeOn()) {
+        mViewInfo = new ViewInfo(this, mView);
+        ((IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+      } else {
+        ((IDrawChildHookBinding) mView).bindDrawChildHook(this);
+      }
     }
+  }
+
+  @Override
+  public void beforeProcessViewInfo(ViewInfo info) {
+    super.beforeProcessViewInfo(info);
+
+    if (mDrawingOrderHelper != null) {
+      mDrawingOrderHelper.prepareChildDrawingOrder();
+      info.setDrawingOrder(mDrawingOrderHelper.getDrawingOrderIndices());
+    }
+
+    info.setHasOverlappingRendering(hasOverlappingRendering());
+  }
+
+  @Override
+  public void beforeDispatchProcessViewInfo(ViewInfo info) {
+    super.beforeDispatchProcessViewInfo(info);
+    mCurrentDrawUI = mDrawHead;
+    mCurrentDrawIndex = 0;
+    info.clearSubDrawInfo();
+
+    boolean clipRadius = getClipToRadius()
+        || (mContext.getDefaultOverflowVisible() && mOverflow == OVERFLOW_HIDDEN
+            && enableAutoClipRadius());
+
+    info.setClipToRadius(clipRadius);
+    if (clipRadius) {
+      BackgroundDrawable drawable =
+          getLynxBackground() != null ? getLynxBackground().getDrawable() : null;
+      Path path = drawable != null ? drawable.getInnerClipPathForBorderRadius() : null;
+      boolean hasShear = getSkewX() != 0 || getSkewY() != 0;
+      if (path != null) {
+        info.setClipPathInBeforeDispatchDraw(path);
+        info.setClipRectInBeforeDispatchDraw(null);
+      } else if (hasShear) {
+        info.setClipPathInBeforeDispatchDraw(null);
+        info.setClipRectInBeforeDispatchDraw(getClipBounds());
+      } else {
+        info.setClipPathInBeforeDispatchDraw(null);
+        info.setClipRectInBeforeDispatchDraw(null);
+      }
+    }
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR2
+        && getOverflow() != OVERFLOW_XY) {
+      // setClipBounds can not be used prior to API 18, force clip here
+      int w = getWidth(), h = getHeight();
+      int x = 0, y = 0;
+      DisplayMetrics dm = mContext.getScreenMetrics();
+      if ((getOverflow() & OVERFLOW_X) != 0) {
+        x -= dm.widthPixels;
+        w += 2 * dm.widthPixels;
+      }
+      if ((getOverflow() & OVERFLOW_Y) != 0) {
+        y -= dm.heightPixels;
+        h += 2 * dm.heightPixels;
+      }
+      mOverflowClipRect.set(x, y, x + w, y + h);
+      info.setOverflowClipRect(mOverflowClipRect);
+    } else {
+      info.setOverflowClipRect(null);
+    }
+  }
+
+  @Override
+  public void beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime) {
+    super.beforeProcessChildViewInfo(info, child, drawingTime);
+    for (LynxBaseUI ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI, mCurrentDrawIndex++) {
+      if (!ui.isFlatten()) {
+        if (((LynxUI) ui).getView() == child) {
+          mCurrentDrawUI = ui.mNextDrawUI;
+          info.addSubDrawInfo(
+              mCurrentDrawIndex, new ViewInfo.SubDrawInfo(false, ui.getBound(), null));
+          mCurrentDrawIndex++;
+          break;
+        }
+      } else if (ui.isFlatten()) {
+        RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
+        info.addSubDrawInfo(
+            mCurrentDrawIndex, new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode));
+      }
+    }
+  }
+
+  @Override
+  public void afterDispatchProcessViewInfo(ViewInfo info) {
+    super.afterDispatchProcessViewInfo(info);
+
+    LynxBaseUI ui;
+    for (ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI, mCurrentDrawIndex++) {
+      if (ui.isFlatten() && !(ui instanceof UIShadowProxy)) {
+        RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
+        info.addSubDrawInfo(
+            mCurrentDrawIndex, new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode));
+      }
+    }
+  }
+
+  @Override
+  public void processLayoutChildren() {
+    performLayoutChildrenUI();
+  }
+
+  @Override
+  public void processMeasureChildren() {
+    performMeasureChildrenUI();
   }
 
   protected View getRealParentView() {

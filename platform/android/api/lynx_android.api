@@ -2504,6 +2504,20 @@ public class com::lynx::tasm::animation::InterpolatorFactory :  {
   public static Interpolator com.lynx.tasm.animation.InterpolatorFactory.getInterpolator(AnimationInfo ai);
 }
 
+public interface com::lynx::tasm::behavior::ui::IProcessViewInfoHook {
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processViewInfo();
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.dispatchProcessViewInfo();
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processChildViewInfo(IProcessViewInfoHook child);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.beforeProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.beforeDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.afterProcessChildViewInfo(ViewInfo info, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.afterDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.afterProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processLayoutChildren();
+  public void com.lynx.tasm.behavior.ui.IProcessViewInfoHook.processMeasureChildren();
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.setEnableSticky();
 }
@@ -4469,6 +4483,7 @@ public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavi
   public float com.lynx.tasm.behavior.ui.LynxFlattenUI.getRealTimeTranslationZ();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setAlpha(float alpha);
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.setTransform(@Nullable ReadableArray transform);
+  public final RenderNodeCompat com.lynx.tasm.behavior.ui.LynxFlattenUI.updateRenderNode();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.onAttach();
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.draw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.LynxFlattenUI.onDraw(Canvas canvas);
@@ -5665,7 +5680,7 @@ public class com::lynx::tasm::event::LynxTouchEvent : com.lynx.tasm.event.LynxEv
   public ArrayList< Object > com.lynx.tasm.event.LynxTouchEvent.getEventParams();
 }
 
-public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.behavior.ui.LynxBaseUI {
+public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.behavior.ui.LynxBaseUI, com.lynx.tasm.behavior.ui.IProcessViewInfoHook {
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setDrawHead(LynxBaseUI ui);
   public LynxBaseUI com.lynx.tasm.behavior.ui.LynxUI< T extends View >.getDrawHead();
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.insertDrawList(LynxBaseUI pre, LynxBaseUI child);
@@ -5677,6 +5692,17 @@ public class abstract com::lynx::tasm::behavior::ui::LynxUI : com.lynx.tasm.beha
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.onDetach();
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.onAttach();
   public T com.lynx.tasm.behavior.ui.LynxUI< T extends View >.getView();
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.processViewInfo();
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.dispatchProcessViewInfo();
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.processChildViewInfo(IProcessViewInfoHook child);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.beforeProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.beforeDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.afterProcessChildViewInfo(ViewInfo info, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.afterDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.afterProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.processLayoutChildren();
+  public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.processMeasureChildren();
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setSign(int sign, String tagName);
   public void com.lynx.tasm.behavior.ui.LynxUI< T extends View >.setAlpha(float alpha);
   public float com.lynx.tasm.behavior.ui.LynxUI< T extends View >.getTranslationX();
@@ -8073,6 +8099,10 @@ public class com::lynx::tasm::behavior::StylesDiffMap :  {
   public String com.lynx.tasm.behavior.StylesDiffMap.toString();
 }
 
+public class com::lynx::tasm::behavior::ui::view::ViewInfo::SubDrawInfo :  {
+  public com.lynx.tasm.behavior.ui.view.ViewInfo.SubDrawInfo.SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode);
+}
+
 public class com::lynx::tasm::behavior::ui::swiper::SwiperShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
   public void com.lynx.tasm.behavior.ui.swiper.SwiperShadowNode.attachNativePtr(long ptr);
   public void com.lynx.tasm.behavior.ui.swiper.SwiperShadowNode.setMode(String mode);
@@ -8719,6 +8749,7 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
   public com.lynx.tasm.behavior.ui.UIBody.UIBody(LynxContext context, final UIBodyView view);
   public UIBodyView com.lynx.tasm.behavior.ui.UIBody.getBodyView();
   public void com.lynx.tasm.behavior.ui.UIBody.attachUIBodyView(UIBodyView view);
+  public void com.lynx.tasm.behavior.ui.UIBody.detachUIBodyView();
   public void com.lynx.tasm.behavior.ui.UIBody.initialize();
   public void com.lynx.tasm.behavior.ui.UIBody.onPageConfigDecoded(PageConfig config);
   public void com.lynx.tasm.behavior.ui.UIBody.onLayoutUpdated();
@@ -8730,12 +8761,14 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
   public void com.lynx.tasm.behavior.ui.UIBody.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.ui.UIBody.getChildrenLynxPageUI();
   public void com.lynx.tasm.behavior.ui.UIBody.setChildrenLynxPageUI(HashMap< String, EventTarget > childrenLynxPageUI);
+  public void com.lynx.tasm.behavior.ui.UIBody.detachWithView();
 }
 
 public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.bindDrawChildHook(IDrawChildHook hook);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.processViewInfoBeforeDetach();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxAccessibilityWrapper(LynxAccessibilityWrapper wrapper);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.requestLayout();
   public long com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getMeaningfulPaintTiming();
@@ -8796,6 +8829,12 @@ public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.beh
   public com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.UIGroup(final LynxContext context);
   public com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.UIGroup(final LynxContext context, Object param);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.initialize();
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.afterDispatchProcessViewInfo(ViewInfo info);
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.processLayoutChildren();
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.processMeasureChildren();
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.onInsertChild(LynxBaseUI child, int index);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.insertChild(LynxBaseUI child, int index);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.insertView(LynxUI child);
@@ -9324,10 +9363,12 @@ public class com::lynx::tasm::utils::Value :  {
 
 public class com::lynx::tasm::behavior::ui::ViewGroupDrawingOrderHelper :  {
   public com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.ViewGroupDrawingOrderHelper(ViewGroup viewGroup);
+  public int[] com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.getDrawingOrderIndices();
   public void com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.handleAddView(View view);
   public void com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.handleRemoveView(View view);
   public boolean com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.shouldEnableCustomDrawingOrder();
   public int com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.getChildDrawingOrder(int childCount, int index);
+  public void com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.prepareChildDrawingOrder();
   public void com.lynx.tasm.behavior.ui.ViewGroupDrawingOrderHelper.update();
 }
 
@@ -9340,6 +9381,40 @@ public class com::lynx::tasm::behavior::ui::utils::ViewHelper :  {
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromAncestorToDescendant(final View ancestor, final View descendant, RectF rect);
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromDescendantToAncestor(final View descendant, final View ancestor, RectF rect);
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromViewToAnother(final View view, final View another, RectF rect);
+}
+
+public class com::lynx::tasm::behavior::ui::view::ViewInfo : com.lynx.tasm.behavior.ui.IDrawChildHook {
+  public com.lynx.tasm.behavior.ui.view.ViewInfo.ViewInfo(IProcessViewInfoHook hook, View view);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.detachFromUI();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.processViewInfo();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.detachWithUI();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setWidth(int width);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setHeight(int height);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setSkewX(float x);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setSkewY(float y);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setClipPath(BasicShape path);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setDrawingOrder(int[] order);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setHasOverlappingRendering(boolean enable);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setClipToRadius(boolean enable);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setBackgroundDrawable(BackgroundDrawable drawable);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setClipPathInBeforeDispatchDraw(Path path);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setClipRectInBeforeDispatchDraw(Rect rect);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setOverflowClipRect(Rect rect);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.addSubDrawInfo(int index, SubDrawInfo info);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.clearSubDrawInfo();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setBoundsWidth(int width);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setBoundsHeight(int height);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.setMaskDrawable(MaskDrawable drawable);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.beforeDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.beforeDispatchDraw(Canvas canvas);
+  public Rect com.lynx.tasm.behavior.ui.view.ViewInfo.beforeDrawChild(Canvas canvas, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.afterDrawChild(Canvas canvas, View child, long drawingTime);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.afterDispatchDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.afterDraw(Canvas canvas);
+  public int com.lynx.tasm.behavior.ui.view.ViewInfo.getChildDrawingOrder(int childCount, int index);
+  public boolean com.lynx.tasm.behavior.ui.view.ViewInfo.hasOverlappingRendering();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.performLayoutChildrenUI();
+  public void com.lynx.tasm.behavior.ui.view.ViewInfo.performMeasureChildrenUI();
 }
 
 public class com::lynx::tasm::behavior::shadow::ViewLayoutTick : com.lynx.tasm.behavior.shadow.LayoutTick {

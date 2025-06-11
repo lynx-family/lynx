@@ -23,6 +23,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
+import com.lynx.tasm.behavior.ui.view.ViewInfo;
 import com.lynx.tasm.performance.TimingCollector;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.utils.LynxConstants;
@@ -52,6 +53,14 @@ public class UIBody extends UIGroup<UIBodyView> {
   public void attachUIBodyView(UIBodyView view) {
     mBodyView = view;
     initialize();
+  }
+
+  public void detachUIBodyView() {
+    // process view info
+    processViewInfo();
+
+    // detach
+    detachWithView();
   }
 
   @Override
@@ -147,6 +156,14 @@ public class UIBody extends UIGroup<UIBodyView> {
     mChildrenLynxPageUI = childrenLynxPageUI;
   }
 
+  @Override
+  public void detachWithView() {
+    if (mView != null) {
+      ((UIBodyView) mView).processViewInfoBeforeDetach();
+    }
+    super.detachWithView();
+  }
+
   public static class UIBodyView
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
     private IDrawChildHook mDrawChildHook;
@@ -180,6 +197,13 @@ public class UIBody extends UIGroup<UIBodyView> {
     @Override
     public void bindDrawChildHook(IDrawChildHook hook) {
       mDrawChildHook = hook;
+    }
+
+    public void processViewInfoBeforeDetach() {
+      if (mDrawChildHook instanceof ViewInfo) {
+        ((ViewInfo) mDrawChildHook).processViewInfo();
+        ((ViewInfo) mDrawChildHook).detachWithUI();
+      }
     }
 
     public void setLynxAccessibilityWrapper(LynxAccessibilityWrapper wrapper) {
