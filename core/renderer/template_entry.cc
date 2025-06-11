@@ -593,8 +593,7 @@ TemplateEntry::GetTemplateBundleRecycler() {
 
 fml::RefPtr<FiberElement> TemplateEntry::TryToGetElementCache() {
   fml::RefPtr<FiberElement> page_ref;
-  const std::optional<LynxTemplateBundle>& template_bundle =
-      GetCompleteTemplateBundle();
+  const auto* template_bundle = GetCompleteTemplateBundle();
   if (template_bundle && template_bundle->GetContainsElementTree()) {
     auto& element_bundle = template_bundle->GetElementBundle();
     if (element_bundle.IsValid()) {
