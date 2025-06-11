@@ -142,6 +142,8 @@ class UIOwner {
 
   bool CanConsumeTouchEvent(float point[2]);
 
+  void UpdateRootTarget(UIBase* root);
+
   void SendGlobalEvent(lepus::Value params) const;
   void PostTaskOnUIThread(base::closure task) const;
   const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() const;
@@ -172,6 +174,7 @@ class UIOwner {
   static napi_value Destroy(napi_env, napi_callback_info info);
   static napi_value RequestLayout(napi_env env, napi_callback_info info);
   static napi_value CanConsumeTouchEvent(napi_env env, napi_callback_info info);
+  static napi_value UpdateRootTarget(napi_env env, napi_callback_info info);
   void DestroySubTree(UIBase* root);
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);

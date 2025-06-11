@@ -458,6 +458,12 @@ class PageConfig final : public EntryConfig {
 
   bool GetUseNewSwiper() const { return use_new_swiper; }
 
+  void SetUseHarmonyNewOverlay(bool enable) {
+    use_harmony_new_overlay = enable;
+  }
+
+  bool GetUseHarmonyNewOverlay() { return use_harmony_new_overlay; }
+
   void SetEnableAsyncInitTTVideoEngine(bool enable) {
     async_init_tt_video_engine = enable;
   }
@@ -1247,6 +1253,7 @@ class PageConfig final : public EntryConfig {
   std::string cli_version_;
   std::string custom_data_;
   bool use_new_swiper{true};
+  bool use_harmony_new_overlay{true};
   bool async_init_tt_video_engine{false};
   CSSParserConfigs css_parser_configs_;
   std::string target_sdk_version_;

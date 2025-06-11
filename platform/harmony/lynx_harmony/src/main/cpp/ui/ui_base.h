@@ -154,7 +154,10 @@ class BASE_EXPORT
   virtual bool IsVisible();
   virtual bool IsScrollable();
   virtual bool IsList() const { return false; }
-  virtual bool IsOverlay() const { return false; }
+  virtual bool IsOverlayContent() const { return is_overlay_content_; }
+  void SetIsOverlayContent(bool is_overlay_content) {
+    is_overlay_content_ = is_overlay_content;
+  }
   void GestureRecognized();
   const std::string& ExposureID() { return exposure_id_; }
   const std::string& ExposureScene() { return exposure_scene_; }
@@ -194,6 +197,10 @@ class BASE_EXPORT
   PseudoStatus GetPseudoStatus() override;
   bool HasUI() override { return true; };
   starlight::ImageRenderingType RenderingType();
+
+  ArkUI_NodeHandle RootNode() override {
+    return is_overlay_content_ ? node_ : nullptr;
+  };
 
   float left_{0};
   float top_{0};
@@ -379,6 +386,7 @@ class BASE_EXPORT
   ArkUI_NodeHandle draw_node_{nullptr};
 
   bool user_interaction_enabled_{true};
+  bool is_overlay_content_{false};
   float hit_slop_left_{0};
   float hit_slop_right_{0};
   float hit_slop_top_{0};

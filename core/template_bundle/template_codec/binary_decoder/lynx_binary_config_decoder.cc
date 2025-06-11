@@ -54,6 +54,8 @@ static constexpr const char* const kSyncImageAttach = "syncImageAttach";
 static constexpr const char* const kUseImagePostProcessor =
     "useImagePostProcessor";
 static constexpr const char* const kUseNewSwiper = "useNewSwiper";
+static constexpr const char* const kUseHarmonyNewOverlay =
+    "useHarmonyNewOverlay";
 static constexpr const char* const kEnableAsyncInitVideoEngine =
     "enableAsyncInitVideoEngine";
 static constexpr const char* const kCliVersion = "cli";
@@ -514,6 +516,11 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
   if (doc.HasMember(kUseNewSwiper) && doc[kUseNewSwiper].IsBool()) {
     page_config->SetUseNewSwiper(doc[kUseNewSwiper].GetBool());
+  }
+
+  if (doc.HasMember(kUseHarmonyNewOverlay) &&
+      doc[kUseHarmonyNewOverlay].IsBool()) {
+    page_config->SetUseHarmonyNewOverlay(doc[kUseHarmonyNewOverlay].GetBool());
   }
 
   if (doc.HasMember(kEnableAsyncInitVideoEngine) &&

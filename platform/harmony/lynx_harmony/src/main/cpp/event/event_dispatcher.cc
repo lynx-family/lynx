@@ -831,17 +831,26 @@ ConsumeSlideDirection EventDispatcher::ShouldConsumeSlideEvent() {
   return ConsumeSlideDirection::kNone;
 }
 
+void EventDispatcher::UpdateRootTarget(UIBase* root) {
+  if (root) {
+    root_target_ = root->WeakTarget();
+  }
+}
+
 bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
-  if (ui_owner_->Destroyed()) {
+  if (root_target_.expired()) {
     return false;
   }
-  auto root = ui_owner_->Root();
 
+  auto root = root_target_.lock();
+  if (!root || !root->RootNode()) {
+    return false;
+  }
   ArkUI_IntOffset page_offset;
-  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->GetProxyNode(),
+  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->RootNode(),
                                                       &page_offset);
   float node_point_x = point[0], node_point_y = point[1];
-  float scaled_density = root->GetContext()->ScaledDensity();
+  float scaled_density = ui_owner_->Context()->ScaledDensity();
   point[0] = node_point_x - page_offset.x / scaled_density;
   point[1] = node_point_y - page_offset.y / scaled_density;
 

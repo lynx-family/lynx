@@ -102,6 +102,10 @@ void LynxContext::SetHasTouchPseudo(bool has_touch_pseudo) {
   ui_owner_->SetHasTouchPseudo(has_touch_pseudo);
 }
 
+void LynxContext::SetUseHarmonyNewOverlay(bool use_harmony_new_overlay) {
+  use_harmony_new_overlay_ = use_harmony_new_overlay;
+}
+
 void LynxContext::SetLongPressDuration(int32_t long_press_duration) {
   if (!ui_owner_) {
     return;

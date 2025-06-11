@@ -101,6 +101,8 @@ class EventDispatcher {
 
   bool CanConsumeTouchEvent(float point[2]);
 
+  void UpdateRootTarget(UIBase* root);
+
  private:
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 

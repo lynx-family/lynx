@@ -1745,7 +1745,7 @@ bool UIBase::IsVisibleForExposure(
     if (!current->IsVisible()) {
       return false;
     }
-    if (current->IsOverlay()) {
+    if (current->IsOverlayContent()) {
       break;
     }
     if (current->EnableExposureUIClip() == LynxEventPropStatus::kEnable ||
