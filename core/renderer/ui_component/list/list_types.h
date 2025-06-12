@@ -71,6 +71,8 @@ static constexpr const char* const kInitialScrollIndex = "initial-scroll-index";
 static constexpr const char kEstimatedHeightPx[] = "estimated-height-px";
 static constexpr const char kEstimatedMainAxisSizePx[] =
     "estimated-main-axis-size-px";
+static constexpr const char* const kExperimentalUpdateStickyForDiff =
+    "experimental-update-sticky-for-diff";
 static constexpr const char* const kSticky = "sticky";
 static constexpr const char kStickyTop[] = "sticky-top";
 static constexpr const char kStickyBottom[] = "sticky-bottom";

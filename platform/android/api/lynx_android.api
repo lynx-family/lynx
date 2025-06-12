@@ -6635,6 +6635,10 @@ public class com::lynx::tasm::image::NinePatchHelper :  {
   public static boolean com.lynx.tasm.image.NinePatchHelper.drawNinePatch(int availableWidth, int availableHeight, int sourceWidth, int sourceHeight, ScalingUtils.ScaleType scaleType, String capInsets, String capInsetsScale, Canvas canvas, Bitmap bitmap);
 }
 
+public interface com::lynx::tasm::behavior::ui::view::UIComponent::NodeReadyListener {
+  public void com.lynx.tasm.behavior.ui.view.UIComponent.NodeReadyListener.onComponentNodeReady(UIComponent ui);
+}
+
 public class com::lynx::tasm::common::NullableConcurrentHashMap : ConcurrentHashMap< K, V > {
   public V com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.put(@NonNull K key, @NonNull V value);
   public void com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.putAll(@NonNull Map<? extends K, ? extends V > m);
@@ -8765,6 +8769,8 @@ public class com::lynx::tasm::behavior::ui::view::UIComponent : com.lynx.tasm.be
   public void com.lynx.tasm.behavior.ui.view.UIComponent.setType(String type);
   public void com.lynx.tasm.behavior.ui.view.UIComponent.destroy();
   public boolean com.lynx.tasm.behavior.ui.view.UIComponent.isAccessibilityHostUI();
+  public void com.lynx.tasm.behavior.ui.view.UIComponent.onNodeReady();
+  public void com.lynx.tasm.behavior.ui.view.UIComponent.setNodeReadyListener(NodeReadyListener listener);
   public void com.lynx.tasm.behavior.ui.view.UIComponent.setItemKey(String key);
   public String com.lynx.tasm.behavior.ui.view.UIComponent.getItemKey();
   public void com.lynx.tasm.behavior.ui.view.UIComponent.setZIndex(int zIndex);
@@ -8986,13 +8992,14 @@ public class abstract com::lynx::tasm::behavior::ui::list::container::UIListAuto
   public void com.lynx.tasm.behavior.ui.list.container.UIListAutoScroller.removeFrameCallback();
 }
 
-public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : com::lynx::tasm::behavior::ui::view::UISimpleView< ListContainerView >, com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.OnScrollStateChangeListener, com.lynx.tasm.gesture.GestureArenaMember {
+public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : com::lynx::tasm::behavior::ui::view::UISimpleView< ListContainerView >, com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.OnScrollStateChangeListener, com.lynx.tasm.gesture.GestureArenaMember, com.lynx.tasm.behavior.ui.view.UIComponent.NodeReadyListener {
   public final int com.lynx.tasm.behavior.ui.list.container.UIListContainer.INVALID_SCROLL_ESTIMATED_OFFSET INVALID_SCROLL_ESTIMATED_OFFSET;
   public Map<String, Object> com.lynx.tasm.behavior.ui.list.container.UIListContainer.nativeListStateCache nativeListStateCache;
   public Map<String, HashSet<String> > com.lynx.tasm.behavior.ui.list.container.UIListContainer.initialFlushPropCache initialFlushPropCache;
   public com.lynx.tasm.behavior.ui.list.container.UIListContainer.UIListContainer(LynxContext context);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isScrollContainer();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.insertChild(LynxBaseUI child, int index);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onComponentNodeReady(UIComponent component);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.removeChild(LynxBaseUI child);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onLayoutFinish(long operationId, @Nullable LynxBaseUI component);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.insertListItemNode(@Nullable LynxBaseUI component);
@@ -9025,6 +9032,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setUpdateAnimationFadeInDuration(int value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableRecycleStickyItem(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setNeedVisibleItemInfo(boolean value);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setUpdateStickyForDiff(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.getScrollInfo(Callback callback);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.scrollToPosition(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.scrollBy(ReadableMap params, Callback callback);

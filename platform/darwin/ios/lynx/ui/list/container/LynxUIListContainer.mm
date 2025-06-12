@@ -105,6 +105,13 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
 @property(nonatomic, strong) NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyTopItems;
 @property(nonatomic, strong) NSArray<NSNumber *> *stickyBottomIndexes;
 @property(nonatomic, strong) NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyBottomItems;
+@property(nonatomic, assign) BOOL updateStickyForDiff;
+@property(nonatomic, strong) NSMutableSet<NSString *> *stickyTopItemKeySet;
+@property(nonatomic, strong) NSMutableSet<NSString *> *stickyBottomItemKeySet;
+@property(nonatomic, strong)
+    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyTopListItemDict;
+@property(nonatomic, strong)
+    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyBottomListItemDict;
 @property(nonatomic, weak) LynxUI *prevStickyTopItem;
 @property(nonatomic, weak) LynxUI *prevStickyBottomItem;
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
@@ -147,6 +154,11 @@ LYNX_REGISTER_UI("list-container")
     _initialFlushPropCache = [NSMutableDictionary dictionary];
     _enableBatchRender = NO;
     _currentScrollState = LynxListScrollStateIdle;
+    _updateStickyForDiff = NO;
+    _stickyTopItemKeySet = [NSMutableSet set];
+    _stickyBottomItemKeySet = [NSMutableSet set];
+    _stickyTopListItemDict = [NSMutableDictionary dictionary];
+    _stickyBottomListItemDict = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -242,7 +254,7 @@ LYNX_REGISTER_UI("list-container")
   LynxUIComponent *componentChild = (LynxUIComponent *)child;
   componentChild.layoutObserver = self;
 
-  if (self.enableListSticky) {
+  if (self.enableListSticky && !self.updateStickyForDiff) {
     NSInteger indexFromItemKey = [self getIndexFromItemKey:componentChild.itemKey];
 
     [self updateStickyInfoForInsertedChild:componentChild
@@ -259,9 +271,34 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)removeChild:(id)child atIndex:(NSInteger)index {
   [super removeChild:child atIndex:index];
+  if (self.enableListSticky && !self.updateStickyForDiff) {
+    [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyTopItems];
+    [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyBottomItems];
+  }
+}
 
-  [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyTopItems];
-  [self updateStickyInfoForDeletedChild:child stickyItems:self.stickyBottomItems];
+- (void)propsDidUpdate {
+  [super propsDidUpdate];
+  if (self.enableListSticky && self.updateStickyForDiff) {
+    [self.stickyTopItemKeySet removeAllObjects];
+    [self.stickyBottomItemKeySet removeAllObjects];
+    // Generate sticky top item key set
+    [self.stickyTopIndexes
+        enumerateObjectsUsingBlock:^(NSNumber *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+          NSInteger index = obj.integerValue;
+          if (index >= 0 && (NSUInteger)index < self.itemKeys.count) {
+            [self.stickyTopItemKeySet addObject:self.itemKeys[index]];
+          }
+        }];
+    // Generate sticky bottom item key set
+    [self.stickyBottomIndexes
+        enumerateObjectsUsingBlock:^(NSNumber *_Nonnull obj, NSUInteger idx, BOOL *_Nonnull stop) {
+          NSInteger index = obj.integerValue;
+          if (index >= 0 && (NSUInteger)index < self.itemKeys.count) {
+            [self.stickyBottomItemKeySet addObject:self.itemKeys[index]];
+          }
+        }];
+  }
 }
 
 #pragma mark component update
@@ -271,6 +308,46 @@ LYNX_REGISTER_UI("list-container")
   if ([wrapper isKindOfClass:LynxListContainerComponentWrapper.class]) {
     [wrapper addListItemView:component.view withFrame:component.frame];
     wrapper.layer.zPosition = component.zIndex;
+  }
+  if (self.enableListSticky && self.updateStickyForDiff) {
+    // This callback is invoked by component's onNodeReady(), which means component has valid
+    // item-key info, so handle component's item-key changed for sticky.
+    NSString *itemKey = component.itemKey;
+    if (itemKey != nil) {
+      if ([self.stickyTopItemKeySet containsObject:itemKey]) {
+        // Update sticky top list item dict.
+        [self updateStickyItemDictWithItem:component stickyItemDict:self.stickyTopListItemDict];
+      } else if ([self.stickyBottomItemKeySet containsObject:itemKey]) {
+        // Update sticky bottom list item dict.
+        [self updateStickyItemDictWithItem:component stickyItemDict:self.stickyBottomListItemDict];
+      } else {
+        // Not sticky top or bottom list item, remove it from dict.
+        [self.stickyTopListItemDict removeObjectForKey:itemKey];
+        [self.stickyBottomListItemDict removeObjectForKey:itemKey];
+      }
+    }
+  }
+}
+
+- (void)updateStickyItemDictWithItem:(LynxUIComponent *)component
+                      stickyItemDict:
+                          (NSMutableDictionary<NSString *, LynxUIComponent *> *)stickyItemDict {
+  if (component && component.itemKey) {
+    NSString *newUpdatedItemKey = component.itemKey;
+    if (stickyItemDict[newUpdatedItemKey] == component) {
+      // No need to update sticky item dict.
+      return;
+    }
+    [[stickyItemDict copy]
+        enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, LynxUIComponent *_Nonnull obj,
+                                            BOOL *_Nonnull stop) {
+          if (![newUpdatedItemKey isEqualToString:key] && obj == component) {
+            // Delete old and insert new <item-key, list-item> pair to finish updating item-key.
+            [stickyItemDict removeObjectForKey:key];
+            [stickyItemDict setObject:component forKey:newUpdatedItemKey];
+            *stop = YES;
+          }
+        }];
   }
 }
 
@@ -306,23 +383,55 @@ LYNX_REGISTER_UI("list-container")
     }
   }
   if (self.enableListSticky) {
-    NSInteger indexFromItemKey = [self getIndexFromItemKey:component.itemKey];
-    [self updateStickyInfoForUpdatedChild:component
-                              stickyItems:self.stickyTopItems
-                            stickyIndexes:self.stickyTopIndexes
-                                    index:indexFromItemKey];
+    if (self.updateStickyForDiff) {
+      // This method is invoked in FinishLayoutOperation or by c++ list element which means
+      // component has valid item-key info.
+      NSString *itemKey = component.itemKey;
+      if (itemKey != nil) {
+        // Add <item-key, list-item> to dict if current component is sticky item.
+        if ([self.stickyTopItemKeySet containsObject:itemKey]) {
+          [self.stickyTopListItemDict setObject:component forKey:itemKey];
+        } else if ([self.stickyBottomItemKeySet containsObject:itemKey]) {
+          [self.stickyBottomListItemDict setObject:component forKey:itemKey];
+        }
+      }
+    } else {
+      NSInteger indexFromItemKey = [self getIndexFromItemKey:component.itemKey];
+      [self updateStickyInfoForUpdatedChild:component
+                                stickyItems:self.stickyTopItems
+                              stickyIndexes:self.stickyTopIndexes
+                                      index:indexFromItemKey];
 
-    [self updateStickyInfoForUpdatedChild:component
-                              stickyItems:self.stickyBottomItems
-                            stickyIndexes:self.stickyBottomIndexes
-                                    index:indexFromItemKey];
+      [self updateStickyInfoForUpdatedChild:component
+                                stickyItems:self.stickyBottomItems
+                              stickyIndexes:self.stickyBottomIndexes
+                                      index:indexFromItemKey];
+    }
   }
 }
 
 - (void)removeListComponent:(LynxUIComponent *)component {
   if (self.enableListSticky) {
-    [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyTopItems];
-    [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyBottomItems];
+    if (self.updateStickyForDiff) {
+      NSString *itemKey = component.itemKey;
+      if (itemKey != nil) {
+        // Remove <item-key, list-item> from dict if current component is sticky item.
+        if ([self.stickyTopListItemDict objectForKey:itemKey]) {
+          [self.stickyTopListItemDict removeObjectForKey:itemKey];
+          if (self.enableRecycleStickyItem) {
+            [self resetStickyItem:component];
+          }
+        } else if ([self.stickyBottomListItemDict objectForKey:itemKey]) {
+          [self.stickyBottomListItemDict removeObjectForKey:itemKey];
+          if (self.enableRecycleStickyItem) {
+            [self resetStickyItem:component];
+          }
+        }
+      }
+    } else {
+      [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyTopItems];
+      [self updateStickyInfoForDeletedChild:component stickyItems:self.stickyBottomItems];
+    }
   }
   if (component.view.superview.superview == self.view) {
     [component.view.superview removeFromSuperview];
@@ -422,6 +531,10 @@ LYNX_PROP_SETTER("update-animation-fade-in-duration", setUpdateAnimationFadeInDu
 
 LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   self.enableNeedVisibleItemInfo = value;
+}
+
+LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, BOOL) {
+  self.updateStickyForDiff = value;
 }
 
 - (void)setEnableScroll:(BOOL)value requestReset:(BOOL)requestReset {
@@ -575,6 +688,26 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   }
 }
 
+- (LynxUIComponent *)getStickyItemWithIndex:(NSNumber *)indexValue isStickyTop:(BOOL)isStickyTop {
+  LynxUIComponent *component = nil;
+  if (self.updateStickyForDiff) {
+    NSMutableDictionary<NSString *, LynxUIComponent *> *stickyItemDict =
+        isStickyTop ? self.stickyTopListItemDict : self.stickyBottomListItemDict;
+    NSInteger index = indexValue.integerValue;
+    if (index >= 0 && (NSUInteger)index < self.itemKeys.count) {
+      NSString *itemKey = self.itemKeys[index];
+      if (itemKey != nil) {
+        component = stickyItemDict[itemKey];
+      }
+    }
+  } else {
+    NSMutableDictionary<NSNumber *, LynxUIComponent *> *stickyItems =
+        isStickyTop ? self.stickyTopItems : self.stickyBottomItems;
+    component = stickyItems[indexValue];
+  }
+  return component;
+}
+
 - (void)updateStickyTops {
   if (!self.enableListSticky) {
     return;
@@ -588,7 +721,7 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
 
   // enumerate from bottom to top to find sticky top item
   for (NSNumber *topIndex in self.stickyTopIndexes.reverseObjectEnumerator) {
-    LynxUIComponent *top = self.stickyTopItems[topIndex];
+    LynxUIComponent *top = [self getStickyItemWithIndex:topIndex isStickyTop:YES];
     if (!top) {
       continue;
     }
@@ -651,9 +784,9 @@ LYNX_PROP_SETTER("need-visible-item-info", setNeedVisibleItemInfo, BOOL) {
   LynxUI *stickyBottomItem = nil;
   LynxUI *nextStickyBottomItem = nil;
 
-  // enumrate from top to bottom to find sticky top item
+  // enumerate from top to bottom to find sticky top item
   for (NSNumber *bottomIndex in self.stickyBottomIndexes) {
-    LynxUI *bottom = self.stickyBottomItems[bottomIndex];
+    LynxUIComponent *bottom = [self getStickyItemWithIndex:bottomIndex isStickyTop:NO];
     if (!bottom) {
       continue;
     }
