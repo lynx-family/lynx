@@ -106,8 +106,25 @@ LYNX_PROPS_GROUP_DECLARE(
 - (void)frameDidChange {
   [super frameDidChange];
   self.view.contentLayer.frame = CGRectMake(0, 0, self.frameSize.width, self.frameSize.height);
+  self.view.border = self.border;
+  self.view.padding = self.padding;
 
   _isDirty = true;
+  [self requestDisplay];
+}
+
+- (void)updateFrame:(CGRect)frame
+            withPadding:(UIEdgeInsets)padding
+                 border:(UIEdgeInsets)border
+                 margin:(UIEdgeInsets)margin
+    withLayoutAnimation:(BOOL)with {
+  [super updateFrame:frame
+              withPadding:padding
+                   border:border
+                   margin:margin
+      withLayoutAnimation:with];
+
+  [self requestDisplay];
 }
 
 - (void)updateAttachmentsFrame {
@@ -308,23 +325,24 @@ LYNX_PROPS_GROUP_DECLARE(
 
 - (void)onNodeReady {
   [super onNodeReady];
-  if (_isDirty) {
-    [self requestDisplay];
-    _isDirty = false;
-  }
+
   [self.view initSelectionGesture];
 }
 
 - (void)requestDisplay {
+  if (!_isDirty) {
+    return;
+  }
   [self updateAttachmentsFrame];
+
   if ([self enableLayerRender]) {
-    self.view.border = self.border;
-    self.view.padding = self.padding;
     [self adjustContentLayerPosition];
     [self.view.contentLayer setNeedsDisplay];
   } else {
     [self _lynxUIRequestDisplay];
   }
+
+  _isDirty = false;
 }
 
 #pragma mark prop setter
