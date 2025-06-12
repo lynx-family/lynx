@@ -63,11 +63,12 @@
         (UIGestureRecognizer*)otherGestureRecognizer {
   BOOL res = NO;
   if ([otherGestureRecognizer.view isDescendantOfView:self.eventHandler.rootView]) {
-    if (otherGestureRecognizer.view.lynxEnableTapGestureSimultaneously) {
-      res = YES;
-    } else if ([otherGestureRecognizer.view isKindOfClass:[UIScrollView class]] &&
-               ((UIScrollView*)otherGestureRecognizer.view).isDecelerating) {
+    if ([otherGestureRecognizer.view isKindOfClass:[UIScrollView class]] &&
+        (((UIScrollView*)otherGestureRecognizer.view).isDecelerating ||
+         ((UIScrollView*)otherGestureRecognizer.view).isDragging)) {
       [self.eventHandler onGestureRecognizedByEventTarget:self.eventHandler.touchTarget];
+    } else if (otherGestureRecognizer.view.lynxEnableTapGestureSimultaneously) {
+      res = YES;
     }
   } else if (self.eventHandler.enableSimultaneousTap) {
     res = YES;
