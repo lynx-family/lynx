@@ -79,6 +79,38 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
       });
 }
 
+ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
+    const std::string& url, long timeout) {
+  if (!resource_loader_) {
+    auto error_msg = "LoadByteCode: resource_loader_ is null.";
+    return ExternalResourceInfo(
+        error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+        std::move(error_msg));
+  }
+
+  std::promise<ExternalResourceInfo> promise;
+  std::future<ExternalResourceInfo> future = promise.get_future();
+  auto request =
+      pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalByteCode};
+  resource_loader_->LoadResource(
+      request, true,
+      [promise =
+           std::move(promise)](pub::LynxResourceResponse& response) mutable {
+        promise.set_value(ExternalResourceInfo(std::move(response.data),
+                                               response.err_code,
+                                               std::move(response.err_msg)));
+      });
+
+  timeout = timeout > 0 ? timeout : 5;
+  if (future.wait_for(std::chrono::seconds(timeout)) !=
+      std::future_status::ready) {
+    return ExternalResourceInfo(
+        error::E_RESOURCE_EXTERNAL_RESOURCE_REQUEST_FAILED,
+        "loadByteCode timeout");
+  }
+  return future.get();
+}
+
 void ExternalResourceLoader::LoadLazyBundle(const std::string& url,
                                             int32_t callback_id) {
   LoadLazyBundle(url, callback_id, {});

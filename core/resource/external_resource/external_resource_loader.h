@@ -54,6 +54,8 @@ class ExternalResourceLoader
 
   ExternalResourceInfo LoadScript(const std::string& url, long timeout);
 
+  ExternalResourceInfo LoadByteCode(const std::string& url, long timeout);
+
   void LoadScriptAsync(const std::string& url, int32_t callback_id);
 
   void LoadLazyBundle(const std::string& url, int32_t callback_id);
