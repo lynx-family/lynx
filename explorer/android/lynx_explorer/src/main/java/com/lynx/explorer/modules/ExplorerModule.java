@@ -9,6 +9,7 @@ import com.lynx.jsbridge.LynxModule;
 import com.lynx.react.bridge.WritableMap;
 
 public class ExplorerModule extends LynxModule {
+  @Deprecated
   static final String DEVTOOL_SWITCH_ASSETS =
       "file://lynx?local://switchPage/devtoolSwitch.lynx.bundle";
 
@@ -51,6 +52,7 @@ public class ExplorerModule extends LynxModule {
     LynxModuleAdapter.getInstance().pageBack();
   }
 
+  @Deprecated
   @LynxMethod
   public void openDevtoolSwitchPage() {
     LynxModuleAdapter.getInstance().openSchema(DEVTOOL_SWITCH_ASSETS);

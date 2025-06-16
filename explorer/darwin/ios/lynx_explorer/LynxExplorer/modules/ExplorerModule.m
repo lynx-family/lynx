@@ -10,7 +10,8 @@
 #import "TasmDispatcher.h"
 #import "UIHelper.h"
 
-NSString *const DEVTOOL_SWITCH_URL = @"file://lynx?local://switchPage/devtoolSwitch.lynx.bundle";
+NSString *const DEVTOOL_SWITCH_URL __attribute__((deprecated)) =
+    @"file://lynx?local://switchPage/devtoolSwitch.lynx.bundle";
 
 @implementation ExplorerModule
 
@@ -78,7 +79,7 @@ NSString *const DEVTOOL_SWITCH_URL = @"file://lynx?local://switchPage/devtoolSwi
   };
 }
 
-- (void)openDevToolSwitchPage {
+- (void)openDevToolSwitchPage __attribute__((deprecated)) {
   [[TasmDispatcher sharedInstance] openTargetUrl:DEVTOOL_SWITCH_URL];
 }
 

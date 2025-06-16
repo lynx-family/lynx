@@ -48,7 +48,9 @@ export default function SettingsPage(props: SettingsPageProps) {
   type Theme = 'Dark' | 'Light';
 
   const openDevtoolSwitchPage = () => {
-    NativeModules.ExplorerModule.openDevtoolSwitchPage();
+    NativeModules.ExplorerModule.openSchema(
+      'file://lynx?local://switchPage/devtoolSwitch.lynx.bundle'
+    );
   };
 
   const getIcon = (name: keyof typeof icons) => {
