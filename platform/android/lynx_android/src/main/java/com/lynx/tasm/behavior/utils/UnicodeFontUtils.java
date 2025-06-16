@@ -284,19 +284,17 @@ public class UnicodeFontUtils {
       int charStart = stringBuffer.length() - (mHighSurrogateBefore ? 2 : 1);
       int codePoint = stringBuffer.codePointAt(charStart);
       if (decodeProperty == DECODE_INSERT_ZERO_WIDTH_CHAR) {
-        if (isLatinOrSymbol(codePoint)) {
-          if (mBreakCharBefore) {
-            //&#8203; is a zero-width space character, and the corresponding Unicode encoding is
-            // U+200B.
-            // It can be used to adjust the alignment and formatting of text.
-            stringBuffer.delete(charStart, stringBuffer.length());
-            stringBuffer.append((char) 8203);
-            stringBuffer.appendCodePoint(codePoint);
-          } else {
-            mBreakCharBefore = true;
-          }
-        } else {
-          mBreakCharBefore = false;
+        // Insert zero width space char on both side of Latin or symbol char.
+        boolean isLastCharLatinOrSymbol = isLatinOrSymbol(codePoint);
+        if (isLastCharLatinOrSymbol || mBreakCharBefore) {
+          //&#8203; is a zero-width space character, and the corresponding Unicode encoding is
+          // U+200B.
+          // It can be used to adjust the alignment and formatting of text.
+          stringBuffer.delete(charStart, stringBuffer.length());
+          stringBuffer.append((char) 8203);
+          stringBuffer.appendCodePoint(codePoint);
+
+          mBreakCharBefore = isLastCharLatinOrSymbol;
         }
       } else if (decodeProperty == DECODE_CJK_INSERT_WORD_JOINER) {
         if (isCJK(codePoint)) {
@@ -323,9 +321,7 @@ public class UnicodeFontUtils {
           || block == Character.UnicodeBlock.LATIN_EXTENDED_B
           || block == Character.UnicodeBlock.GENERAL_PUNCTUATION
           || block == Character.UnicodeBlock.CURRENCY_SYMBOLS
-          || block == Character.UnicodeBlock.MATHEMATICAL_OPERATORS
-          || block == Character.UnicodeBlock.MISCELLANEOUS_SYMBOLS
-          || block == Character.UnicodeBlock.DINGBATS;
+          || block == Character.UnicodeBlock.MATHEMATICAL_OPERATORS;
     }
 
     private static boolean isCJK(int codepoint) {
