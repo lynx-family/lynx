@@ -37,9 +37,10 @@ void ListEventManager::OnScroll(float distance,
 
   // sendScrollEvent
   auto now = std::chrono::steady_clock::now();
-  if (std::chrono::duration_cast<std::chrono::microseconds>(
-          now - last_scroll_event_time_)
-          .count() > scroll_event_throttle_ms_) {
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      now - last_scroll_event_time_)
+                      .count();
+  if (duration > scroll_event_throttle_ms_) {
     SendCustomScrollEvent(list::kScroll, distance, event_source);
     last_scroll_event_time_ = now;
   }
