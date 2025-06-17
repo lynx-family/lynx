@@ -363,7 +363,12 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       option.ignore_component_lifecycle_ = page_proxy_->GetPrePaintingStage() !=
                                            PrePaintingStage::kPrePaintingOFF;
       DispatchForDiff(option);
-      tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveEnd);
+      // In RadonDiff-Fiber arch, we should mark resolve end after
+      // OnPatchFinish.
+      if (!page_proxy_->element_manager()
+               ->GetEnableFiberElementForRadonDiff()) {
+        tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveEnd);
+      }
     } else if (need_update) {
       option.ignore_component_lifecycle_ = page_proxy_->GetPrePaintingStage() !=
                                            PrePaintingStage::kPrePaintingOFF;
@@ -413,7 +418,11 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
         tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
       }
       RadonMyersDiff(original_radon_children, option);
-      if (pipeline_options->need_timestamps) {
+      // In RadonDiff-Fiber arch, we should mark resolve end after
+      // OnPatchFinish.
+      if (pipeline_options->need_timestamps &&
+          !page_proxy_->element_manager()
+               ->GetEnableFiberElementForRadonDiff()) {
         tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveEnd);
       }
     }

@@ -1223,7 +1223,12 @@ void ElementManager::OnPatchFinishForFiber(
   if (options->need_timestamps) {
     painting_context()->MarkUIOperationQueueFlushTiming(
         tasm::timing::kPaintingUiOperationExecuteStart, options->pipeline_id);
-    tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
+    // In RadonDiff-Fiber arch, we have marked resolve start at RadonPage
+    // dispatch stage by now.
+    // TODO(kechenglong): unify kResolveStart timing for radon & fiber arch.
+    if (element->IsFiberArch()) {
+      tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
+    }
   }
   if (options->enable_report_list_item_life_statistic_ &&
       options->IsRenderListItem()) {
