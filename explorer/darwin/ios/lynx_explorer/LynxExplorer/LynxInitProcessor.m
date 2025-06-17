@@ -8,6 +8,7 @@
 #import <SDWebImage/SDWebImage.h>
 #import <SDWebImageWebPCoder/SDWebImageWebPCoder.h>
 #import "ExplorerModule.h"
+#import "ImageGeneratorModule.h" // Import for the new module
 #import "TemplateProvider.h"
 
 @implementation LynxInitProcessor
@@ -34,6 +35,7 @@ static LynxInitProcessor *_instance = nil;
 
   // register global JS module
   [globalConfig registerModule:ExplorerModule.class];
+  [globalConfig registerModule:ImageGeneratorModule.class]; // Register the new module
 
   // prepare global config
   [[LynxEnv sharedInstance] prepareConfig:globalConfig];

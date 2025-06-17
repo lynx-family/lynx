@@ -21,6 +21,7 @@ import com.lynx.explorer.shell.TemplateDispatcher;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.LynxEnv;
+import com.lynx.explorer.modules.ImageGeneratorModule; // Import for the new module
 
 public class LynxModuleAdapter {
   private Context mContext;
@@ -58,6 +59,7 @@ public class LynxModuleAdapter {
       }
     };
     LynxEnv.inst().registerModule("ExplorerModule", ExplorerModule.class);
+    LynxEnv.inst().registerModule("ImageGeneratorModule", ImageGeneratorModule.class);
 
     LynxDevtoolGlobalHelper.getInstance().registerCardListener(mListener);
   }

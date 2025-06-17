@@ -7,10 +7,12 @@ import { Component, root } from '@lynx-js/react';
 import HomePage from '@components/homepage';
 import Navigator from '@components/navigator';
 import SettingsPage from '@components/settingspage';
+import ImageGenerator from '@components/ImageGenerator'; // 1. Import
 
 interface ContainerPageState {
   showHomePage: boolean;
   showSettingsPage: boolean;
+  showImageGeneratorPage: boolean; // 2. Add to state interface
 
   themes: string[];
   currentTheme: string;
@@ -22,6 +24,7 @@ export default class Explorer extends Component<unknown, ContainerPageState> {
     this.state = {
       showHomePage: true,
       showSettingsPage: false,
+      showImageGeneratorPage: false, // 2. Initialize in state
       themes: ['Auto', 'Light', 'Dark'],
       currentTheme: lynx.__globalProps.preferredTheme || 'Auto',
     };
@@ -34,6 +37,7 @@ export default class Explorer extends Component<unknown, ContainerPageState> {
     this.setState({
       showHomePage: true,
       showSettingsPage: false,
+      showImageGeneratorPage: false, // Ensure others are false
     });
   };
 
@@ -44,6 +48,19 @@ export default class Explorer extends Component<unknown, ContainerPageState> {
     this.setState({
       showHomePage: false,
       showSettingsPage: true,
+      showImageGeneratorPage: false, // Ensure others are false
+    });
+  };
+
+  // 3. Add new toggle function
+  openImageGeneratorPage = () => {
+    if (this.state.showImageGeneratorPage) {
+      return;
+    }
+    this.setState({
+      showHomePage: false,
+      showSettingsPage: false,
+      showImageGeneratorPage: true,
     });
   };
 
@@ -88,11 +105,16 @@ export default class Explorer extends Component<unknown, ContainerPageState> {
           setTheme={this.setTheme}
           showPage={this.state.showSettingsPage}
         />
+        {/* 5. Render ImageGenerator */}
+        {this.state.showImageGeneratorPage && (
+          <ImageGenerator />
+        )}
         <Navigator
-          {...this.state}
+          {...this.state} // showImageGeneratorPage will be passed via spread
           withTheme={this.withTheme}
           openHomePage={this.openHomePage}
           openSettingsPage={this.openSettingsPage}
+          openImageGeneratorPage={this.openImageGeneratorPage} // 4. Pass toggle function
         />
       </view>
     );
