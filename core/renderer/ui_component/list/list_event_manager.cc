@@ -242,11 +242,14 @@ fml::RefPtr<lepus::Dictionary> ListEventManager::GenerateScrollInfo(
                           is_vertical ? 0.f : content_offset);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kScrollTop),
                           !is_vertical ? 0.f : content_offset);
+    scroll_info->SetValue(BASE_STATIC_STRING(list::kScrollWidth),
+                          is_vertical ? list_width : content_size);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kScrollWith),
                           is_vertical ? list_width : content_size);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kScrollHeight),
                           !is_vertical ? list_height : content_size);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kListWidth), list_width);
+    scroll_info->SetValue(BASE_STATIC_STRING(list::kListWith), list_width);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kListHeight), list_height);
     scroll_info->SetValue(BASE_STATIC_STRING(list::kDeltaX),
                           deltaX / layouts_unit_per_px);
