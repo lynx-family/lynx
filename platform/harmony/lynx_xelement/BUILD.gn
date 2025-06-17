@@ -1,0 +1,22 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+import("../../../core/base_targets.gni")
+
+lynx_core_source_set("lynx_xelement") {
+  sources = [
+    "input/input_shadow_node.cc",
+    "input/input_shadow_node.h",
+    "input/ui_base_input.cc",
+    "input/ui_base_input.h",
+    "input/ui_input.cc",
+    "input/ui_input.h",
+    "input/ui_textarea.cc",
+    "input/ui_textarea.h",
+    "registry.cc",
+    "registry.h",
+  ]
+  deps = [ "../lynx_harmony:native" ]
+}
