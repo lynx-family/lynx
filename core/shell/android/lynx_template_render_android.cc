@@ -375,10 +375,19 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
                  jstring bytecode_source_url, jint runtime_flag,
                  jlong ui_delegate_ptr) {
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
-  auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
-  module_manager->SetPlatformModuleFactory(
+  std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_unique<lynx::pub::LynxNativeModuleManager>();
+  native_module_manager->SetPlatformModuleFactory(
       std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
                                                           java_module_factory));
+  if (ui_delegate_ptr != 0) {
+    auto ui_delegate =
+        reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+    native_module_manager->SetModuleFactory(
+        ui_delegate->GetCustomModuleFactory());
+  }
+  auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>(
+      std::move(native_module_manager));
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
   std::string source_url =
       JNIConvertHelper::ConvertToString(env, bytecode_source_url);
@@ -395,7 +404,6 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
     if (ui_delegate_ptr != 0) {
       auto ui_delegate =
           reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
-      module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
       auto runtime_proxy = std::make_shared<lynx::shell::LynxRuntimeProxyImpl>(
           shell->GetRuntimeActor());
       auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(

@@ -23,6 +23,8 @@ lynx_core_source_set("js_common") {
 
 # jsbridge_shared_sources
 jsbridge_shared_sources = [
+  "bindings/common/modules/lynx_native_module_manager.cc",
+  "bindings/common/modules/lynx_native_module_manager.h",
   "bindings/jsi/modules/lynx_jsi_module.cc",
   "bindings/jsi/modules/lynx_jsi_module.h",
   "bindings/jsi/modules/lynx_jsi_module_binding.cc",

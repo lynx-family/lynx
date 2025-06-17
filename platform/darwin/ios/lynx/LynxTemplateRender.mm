@@ -513,10 +513,13 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     }
   }
   if (!module_manager) {
-    module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
+    std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+        std::make_unique<lynx::pub::LynxNativeModuleManager>();
     auto factory = std::make_unique<lynx::piper::ModuleFactoryDarwin>();
     module_factory = factory.get();
-    module_manager->SetPlatformModuleFactory(std::move(factory));
+    native_module_manager->SetPlatformModuleFactory(std::move(factory));
+    module_manager =
+        std::make_shared<lynx::piper::LynxModuleManager>(std::move(native_module_manager));
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
       module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
