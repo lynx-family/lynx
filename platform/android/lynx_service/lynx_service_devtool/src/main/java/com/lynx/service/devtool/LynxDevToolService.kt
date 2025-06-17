@@ -33,6 +33,7 @@ private const val TAG = "LynxDevToolService"
 @AutoService(IServiceProvider::class)
 class LynxDevToolService : ILynxDevToolService {
     companion object {
+        @JvmStatic
         val INSTANCE: ILynxDevToolService by lazy {
             LynxDevToolService()
         }
