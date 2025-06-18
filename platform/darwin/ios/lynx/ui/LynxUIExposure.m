@@ -278,33 +278,29 @@
 }
 
 - (CGRect)borderOfExposureScreen:(LynxUI *)ui {
+  CGRect windowFrame = [LynxUIKitAPIAdapter getKeyWindow].frame;
   if ([ui enableExposureUIMargin]) {
     // get screen's frame, calculate the needed rect with exposureMargin (not exposureUIMargin)
-    CGRect borderOfExposureScreen = [LynxUIKitAPIAdapter getKeyWindow].bounds;
-
     // screenRect's area < 0
-    if (borderOfExposureScreen.size.width + ui.exposureMarginLeft + ui.exposureMarginRight <= 0 ||
-        borderOfExposureScreen.size.height + ui.exposureMarginTop + ui.exposureMarginBottom <= 0) {
+    if (windowFrame.size.width + ui.exposureMarginLeft + ui.exposureMarginRight <= 0 ||
+        windowFrame.size.height + ui.exposureMarginTop + ui.exposureMarginBottom <= 0) {
       return CGRectNull;
     }
-    borderOfExposureScreen.origin.x -= ui.exposureMarginLeft;
-    borderOfExposureScreen.origin.y -= ui.exposureMarginTop;
-    borderOfExposureScreen.size.width += ui.exposureMarginLeft + ui.exposureMarginRight;
-    borderOfExposureScreen.size.height += ui.exposureMarginTop + ui.exposureMarginBottom;
+
+    CGRect borderOfExposureScreen = CGRectMake(
+        windowFrame.origin.x -= ui.exposureMarginLeft, windowFrame.origin.y -= ui.exposureMarginTop,
+        windowFrame.size.width += ui.exposureMarginLeft + ui.exposureMarginRight,
+        windowFrame.size.height += ui.exposureMarginTop + ui.exposureMarginBottom);
     return borderOfExposureScreen;
   } else {
     // old logic, when exposureMargin < 0, calculate screen's rect side
-    CGRect borderOfExposureScreen =
-        CGRectMake([UIScreen mainScreen].bounds.origin.x -
-                       (ui.exposureMarginLeft < 0 ? ui.exposureMarginLeft : 0),
-                   [UIScreen mainScreen].bounds.origin.y -
-                       (ui.exposureMarginTop < 0 ? ui.exposureMarginTop : 0),
-                   [UIScreen mainScreen].bounds.size.width +
-                       (ui.exposureMarginLeft < 0 ? ui.exposureMarginLeft : 0) +
-                       (ui.exposureMarginRight < 0 ? ui.exposureMarginRight : 0),
-                   [UIScreen mainScreen].bounds.size.height +
-                       (ui.exposureMarginTop < 0 ? ui.exposureMarginTop : 0) +
-                       (ui.exposureMarginBottom < 0 ? ui.exposureMarginBottom : 0));
+    CGRect borderOfExposureScreen = CGRectMake(
+        windowFrame.origin.x - (ui.exposureMarginLeft < 0 ? ui.exposureMarginLeft : 0),
+        windowFrame.origin.y - (ui.exposureMarginTop < 0 ? ui.exposureMarginTop : 0),
+        windowFrame.size.width + (ui.exposureMarginLeft < 0 ? ui.exposureMarginLeft : 0) +
+            (ui.exposureMarginRight < 0 ? ui.exposureMarginRight : 0),
+        windowFrame.size.height + (ui.exposureMarginTop < 0 ? ui.exposureMarginTop : 0) +
+            (ui.exposureMarginBottom < 0 ? ui.exposureMarginBottom : 0));
     return borderOfExposureScreen;
   }
 }
