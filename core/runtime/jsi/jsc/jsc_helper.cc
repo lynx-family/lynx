@@ -291,11 +291,13 @@ bool JSCHelper::smellsLikeES6Symbol(JSGlobalContextRef ctx, JSValueRef ref) {
 std::optional<Value> JSCHelper::call(JSGlobalContextRef ctx, JSCRuntime& rt,
                                      const Function& f, const Value& jsThis,
                                      const Value* args, size_t nArgs) {
-  if (!ctx || !rt.Valid()) {
+  auto js_func = objectRef(f);
+  if (!ctx || !rt.Valid() || !js_func) {
 #if defined(DEBUG) || (defined(LYNX_UNIT_TEST) && LYNX_UNIT_TEST)
     LOGF("Error: " << __FILE__ << ":" << __LINE__ << ":"
                    << "JSCRuntime destroyed with a nullptr ctx.");
 #endif
+    LOGE("call after jsc destroy.");
     return std::nullopt;
   }
   JSValueRef exc = nullptr;
@@ -304,7 +306,7 @@ std::optional<Value> JSCHelper::call(JSGlobalContextRef ctx, JSCRuntime& rt,
         return JSCHelper::valueRef(ctx, rt, value);
       });
   auto res = JSObjectCallAsFunction(
-      ctx, objectRef(f),
+      ctx, js_func,
       jsThis.isUndefined() ? nullptr : objectRef(jsThis.getObject(rt)), nArgs,
       converter, &exc);
   if (!JSCException::ReportExceptionIfNeeded(ctx, rt, exc)) {
@@ -318,11 +320,13 @@ std::optional<Value> JSCHelper::callAsConstructor(JSGlobalContextRef ctx,
                                                   const Function& f,
                                                   const Value* args,
                                                   size_t nArgs) {
-  if (!ctx || !rt.Valid()) {
+  auto js_func = objectRef(f);
+  if (!ctx || !rt.Valid() || !js_func) {
 #if defined(DEBUG) || (defined(LYNX_UNIT_TEST) && LYNX_UNIT_TEST)
     LOGF("Error: " << __FILE__ << ":" << __LINE__ << ":"
                    << "JSCRuntime destroyed with a nullptr ctx.");
 #endif
+    LOGE("callAsConstructor after jsc destroy.");
     return std::nullopt;
   }
   JSValueRef exc = nullptr;
@@ -330,8 +334,7 @@ std::optional<Value> JSCHelper::callAsConstructor(JSGlobalContextRef ctx,
       ArgsConverter<JSValueRef>(nArgs, args, [&ctx, &rt](const auto& value) {
         return JSCHelper::valueRef(ctx, rt, value);
       });
-  auto res =
-      JSObjectCallAsConstructor(ctx, objectRef(f), nArgs, converter, &exc);
+  auto res = JSObjectCallAsConstructor(ctx, js_func, nArgs, converter, &exc);
   if (!JSCException::ReportExceptionIfNeeded(ctx, rt, exc)) {
     return std::optional<Value>();
   }
