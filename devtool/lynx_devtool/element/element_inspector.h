@@ -265,6 +265,7 @@ class ElementInspector {
 
   static void Flush(Element* element);
   static void InitStyleRoot(const lynx::base::any& data);
+  static void InitStyleRootWithElement(Element* element);
   static void SetStyleRoot(const lynx::base::any& data);
 
   static std::unordered_map<std::string, std::string> GetCssByStyleMap(

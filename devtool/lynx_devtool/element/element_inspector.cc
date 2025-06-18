@@ -490,6 +490,10 @@ void ElementInspector::Flush(Element* element) {
 void ElementInspector::InitStyleRoot(const any& data) {
   auto tuple = lynx::base::any_cast<std::tuple<Element*>>(data);
   Element* element = std::get<0>(tuple);
+  InitStyleRootWithElement(element);
+}
+
+void ElementInspector::InitStyleRootWithElement(Element* element) {
   CHECK_NULL_AND_LOG_RETURN(element, "element is null");
   if (element->GetTag() == "page") {
     return;

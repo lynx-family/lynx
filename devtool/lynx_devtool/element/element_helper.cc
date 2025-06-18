@@ -220,6 +220,13 @@ void ElementHelper::SetJsonValueOfNode(Element* ptr, Json::Value& value) {
 Json::Value ElementHelper::GetMatchedStylesForNode(Element* ptr) {
   Json::Value content;
   if (ptr != nullptr && ElementInspector::HasDataModel(ptr)) {
+    // When element is fiber element, the style_root_ maybe nullptr when
+    // execture GetMatchedStylesForNode(). To fix this issue, call
+    // InitStyleRootWithElement to init style_root_.
+    if (ptr->inspector_attribute() != nullptr &&
+        ptr->inspector_attribute()->style_root_ == nullptr) {
+      ElementInspector::InitStyleRootWithElement(ptr);
+    }
     content["cssKeyframesRules"] = GetKeyframesRulesForNode(ptr);
     content["pseudoElements"] = Json::Value(Json::ValueType::arrayValue);
     content["inlineStyle"] = GetInlineStyleOfNode(ptr);
