@@ -316,8 +316,8 @@ lynx_api_status lynx_value_to_string_utf8(lynx_api_env env, lynx_value value,
   size_t len;
   const char* chr = LEPUS_ToCStringLen(ctx, &len, val);
   if (chr) {
-    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, chr);
     (*reinterpret_cast<std::string*>(result)) = std::string(chr, len);
+    if (!LEPUS_IsGCMode(ctx)) LEPUS_FreeCString(ctx, chr);
   } else {
     (*reinterpret_cast<std::string*>(result)) = "";
   }
