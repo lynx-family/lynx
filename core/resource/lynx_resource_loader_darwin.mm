@@ -129,8 +129,6 @@ bool LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
       [_providerRegistry getResourceProviderByKey:LYNX_PROVIDER_TYPE_EXTERNAL_JS];
   if (provider == nil) {
     LOGE("lynx resource provider is null, url: " << url);
-    pub::LynxResourceResponse res{.err_code = -1, .err_msg = "lynx resource provider is null."};
-    callback(res);
     return false;
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_SCRIPT_BY_PROVIDER, "url", url);
@@ -171,12 +169,12 @@ bool LynxResourceLoaderDarwin::FetchTemplateByGenericFetcher(const std::string& 
 }
 
 bool LynxResourceLoaderDarwin::FetchResourceByGenericFetcher(const std::string& url,
+                                                             LynxResourceRequestType type,
                                                              CopyableClosure callback) {
   if (_genericResourceFetcher != nil) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_RESOURCE_BY_GENERIC_FETCHER, "url", url);
     NSString* nsUrl = [NSString stringWithUTF8String:url.c_str()];
-    LynxResourceRequest* request =
-        [[LynxResourceRequest alloc] initWithUrl:nsUrl type:LynxResourceTypeDynamicComponent];
+    LynxResourceRequest* request = [[LynxResourceRequest alloc] initWithUrl:nsUrl type:type];
     __block __weak id<LynxErrorReceiverProtocol> weakErrorReceiver = _errorReceiver;
     [_genericResourceFetcher fetchResource:request
                                 onComplete:^(NSData* _Nullable data, NSError* _Nullable error) {
@@ -268,11 +266,24 @@ void LynxResourceLoaderDarwin::LoadResource(
     return;
   }
 
+  if (request.type == pub::LynxResourceType::kExternalByteCode) {
+    auto copyable_callback = fml::MakeCopyable(std::move(callback));
+    // 1. try to use LynxGenericResourceFetcher
+    if (FetchResourceByGenericFetcher(request.url, LynxResourceTypeExternalByteCode,
+                                      copyable_callback)) {
+      return;
+    }
+
+    // invoke callback directly if no provider or fetcher set;
+    pub::LynxResourceResponse resp{.err_code = -1, .err_msg = "No available provider or fetcher."};
+    copyable_callback(resp);
+  }
+
   // fetch ExternalJS
   if (request.type == pub::LynxResourceType::kExternalJs) {
     auto copyable_callback = fml::MakeCopyable(std::move(callback));
     // 1. try to use LynxGenericResourceFetcher
-    if (FetchResourceByGenericFetcher(request.url, copyable_callback)) {
+    if (FetchResourceByGenericFetcher(request.url, LynxResourceTypeExternalJS, copyable_callback)) {
       return;
     }
     // 2. try to use external js provider
