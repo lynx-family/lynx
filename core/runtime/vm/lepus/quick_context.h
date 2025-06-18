@@ -46,6 +46,7 @@ class QuickContext : private LEPUSRuntimeData, public Context {
   virtual ~QuickContext();
   virtual void Initialize() override;
   virtual bool Execute(Value* ret = nullptr) override;
+  virtual size_t getHeapSize() override;
 
   virtual void UpdateGCTiming(bool is_start) override;
 

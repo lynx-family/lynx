@@ -69,6 +69,10 @@ class LynxRuntime final {
   ~LynxRuntime();
   LynxRuntime(const LynxRuntime&) = delete;
   LynxRuntime& operator=(const LynxRuntime&) = delete;
+  
+  size_t getVmMemBts() {
+    return app_->getHeapSize();
+  }
 
   // now can ensure Init the first task for LynxRuntime
   void Init(

@@ -213,7 +213,8 @@ bool LynxEnv::IsQuickjsCacheEnabled() {
 }
 
 bool LynxEnv::IsDisableTracingGC() {
-  return GetBoolEnv(Key::DISABLE_TRACING_GC, false);
+  return false;
+//  return GetBoolEnv(Key::DISABLE_TRACING_GC, false);
 }
 
 bool LynxEnv::IsLayoutPerformanceEnabled() {

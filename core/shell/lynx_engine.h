@@ -314,6 +314,10 @@ class LynxEngine {
 
   void UnsubscribeClientSessionStorage(const std::string& key,
                                        double callback_id);
+  
+  uint64_t getVmMemMts() {
+    return tasm_->getVmMemMts();
+  }
 
  private:
   std::shared_ptr<tasm::TemplateAssembler> tasm_;

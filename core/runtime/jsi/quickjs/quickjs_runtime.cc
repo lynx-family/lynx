@@ -58,6 +58,11 @@ void reportLepusToCStringError(Runtime &rt, const std::string &func_name,
 }
 }  // namespace
 
+size_t QuickjsRuntime::getHeapSize() {
+//  LEPUS_TrigGC(getJSRuntime());
+  return LEPUS_GetHeapSize(getJSRuntime());
+}
+
 QuickjsRuntime::QuickjsRuntime() : quickjs_runtime_wrapper_(nullptr) {
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)

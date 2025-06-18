@@ -230,6 +230,10 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
   InsertEntry(DEFAULT_ENTRY_NAME, std::move(card));
 }
 
+uint64_t TemplateAssembler::getVmMemMts() {
+  return GetLepusContext(tasm::DEFAULT_ENTRY_NAME)->getHeapSize();
+}
+
 TemplateAssembler::~TemplateAssembler() {
   LOGI("TemplateAssembler::Release url:" << url_ << " this:" << this);
 };

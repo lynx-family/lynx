@@ -220,6 +220,10 @@ enum class JSRuntimeType { v8 = 0, jsc, quickjs, jsvm };
 /// you will probably need to do use your own locks.
 class BASE_EXPORT Runtime {
  public:
+  virtual size_t getHeapSize() {
+      return 0;
+    }
+  
   virtual void InitRuntime(std::shared_ptr<JSIContext> sharedContext,
                            std::shared_ptr<JSIExceptionHandler> handler) = 0;
   virtual JSRuntimeType type() = 0;

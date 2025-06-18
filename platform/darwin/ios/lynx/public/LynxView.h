@@ -69,6 +69,9 @@
 
 @property(nonatomic, readwrite) BOOL catchAllException;
 
+- (long)getVmMemMts;
+- (long)getVmMemBts;
+
 - (nullable id<LynxResourceFetcher>)resourceFetcher;
 - (void)setResourceFetcher:(nullable id<LynxResourceFetcher>)resourceFetcher;
 

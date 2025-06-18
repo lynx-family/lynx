@@ -20,6 +20,8 @@
 
 @interface LynxTemplateRender : NSObject <LynxTemplateRenderProtocol>
 
+- (long)getVmMemMts;
+- (long)getVmMemBts;
 // Layout, must call invalidateIntrinsicContentSize after change layout props
 // If you use view.frame to set view frame, the layout mode will all be
 // specified

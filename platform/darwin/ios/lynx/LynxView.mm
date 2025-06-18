@@ -47,6 +47,14 @@
 
 @implementation LynxView
 
+- (long)getVmMemMts {
+  return [_templateRender getVmMemMts];
+}
+
+- (long)getVmMemBts {
+  return [_templateRender getVmMemBts];
+}
+
 #pragma mark - Init
 
 - (instancetype)initWithCoder:(NSCoder*)aDecoder {

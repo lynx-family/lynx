@@ -241,6 +241,7 @@ class TemplateAssembler final
     bool scoped_ = false;
   };
 
+        uint64_t getVmMemMts();
   TemplateAssembler(Delegate& delegate, std::unique_ptr<ElementManager> client,
                     int32_t instance_id);
   ~TemplateAssembler() override;

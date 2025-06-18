@@ -97,6 +97,18 @@ class LynxShell {
       std::shared_ptr<base::VSyncMonitor> vsync_monitor);
 
   void StartJsRuntime();
+  
+  uint64_t getVmMemMts() {
+    return engine_actor_->ActSync([](auto& engine) {
+      return engine->getVmMemMts();
+    });
+  }
+  
+  uint64_t getVmMemBts() {
+    return runtime_actor_->ActSync([](auto& runtime) {
+      return runtime->getVmMemBts();
+    });
+  }
 
   static void TriggerDestroyRuntime(
       const std::shared_ptr<LynxActor<runtime::LynxRuntime>>& runtime_actor,

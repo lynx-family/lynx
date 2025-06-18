@@ -80,6 +80,14 @@
 
 @implementation LynxTemplateRender
 
+- (long)getVmMemMts {
+  return shell_->getVmMemMts();
+}
+
+- (long)getVmMemBts {
+  return shell_->getVmMemBts();
+}
+
 #pragma mark - Initialization process
 
 LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)

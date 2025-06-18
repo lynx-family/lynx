@@ -26,6 +26,7 @@ namespace lynx {
 namespace piper {
 class QuickjsRuntime : public Runtime {
  public:
+  virtual size_t getHeapSize() override;
   QuickjsRuntime();
   ~QuickjsRuntime() override;
   JSRuntimeType type() override { return JSRuntimeType::quickjs; }

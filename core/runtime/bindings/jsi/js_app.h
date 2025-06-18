@@ -85,6 +85,10 @@ class App : public std::enable_shared_from_this<App> {
   std::string getAppGUID() { return app_guid_; }
 
   const std::string& GetPageUrl() const { return url_; }
+  
+  size_t getHeapSize() {
+    return GetRuntime()->getHeapSize();
+  }
 
   // load the app
   void loadApp(tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,

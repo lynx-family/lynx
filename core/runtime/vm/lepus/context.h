@@ -73,6 +73,7 @@ class Context {
 
   virtual ~Context() {}
   Context(ContextType type);
+  virtual size_t getHeapSize() {return 0;}
 
   Delegate* GetDelegate();
 

@@ -321,6 +321,11 @@ void QuickContext::Initialize() {
   RegisterLepusVerion();
 }
 
+size_t QuickContext::getHeapSize() {
+//  LEPUS_TrigGC(runtime_);
+  return LEPUS_GetHeapSize(runtime_);
+}
+
 void QuickContext::RegisterMethodToLynx() {
 #ifndef LEPUS_PC
   tasm::Utils::RegisterNGMethodToLynx(this, lynx_, GetSdkVersion());
