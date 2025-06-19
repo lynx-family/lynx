@@ -1163,7 +1163,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI {
         // sqrt(5) produces an exact replica with iOS.
         perspective = perspective * scale * CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER;
       }
-    } else {
+    } else if (mResetPerspectiveFlag) {
       int maxLength = getWidth() > getHeight() ? getWidth() : getHeight();
       perspective =
           maxLength * scale * CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER * DEFAULT_PERSPECTIVE_FACTOR;
