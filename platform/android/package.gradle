@@ -16,6 +16,9 @@ import org.json.simple.JSONArray
 task assembleAllModulesRelease {
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
+            if (!subproject.state.executed) {
+                subproject.evaluate()
+            }
             if(subproject.plugins.hasPlugin("maven-publish") && subproject.plugins.hasPlugin('com.android.library')) {
                 def hasNoAsanFlavor = subproject.android.productFlavors.names.contains('noasan')
                 if (hasNoAsanFlavor) {

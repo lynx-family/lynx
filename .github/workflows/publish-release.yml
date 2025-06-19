@@ -101,17 +101,17 @@ jobs:
           source tools/envsetup.sh
           pushd platform/android
           ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon
+          ./gradlew publishAllModules \
+          -Pversion=${{ inputs.version || '0.0.1-alpha.1' }} \
+          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
+          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
+          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
           popd
       - name: Package maven artifacts
         if: ${{ inputs.dry-run == false }}
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           pushd platform/android
-          ./gradlew publishAllModules \
-          -Pversion=${{ inputs.version }} \
-          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
-          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
-          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
           ./gradlew zipArtifacts -Pversion=${{ inputs.version }} getArtifactList
           popd
           pushd platform/android/build

@@ -85,8 +85,10 @@ afterEvaluate {
                                 def signingKeyId = findProperty("signing.keyId")
                                 def signingPassword = findProperty("signing.password")
                                 def signingSecretKey = findProperty("signing.secretKey")
-                                useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-                                sign publishing.publications.jar
+                                if (signingKeyId != null && signingKeyId != "") {
+                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+                                    sign publishing.publications.jar
+                                }
                             }
                         }
                     }
@@ -168,8 +170,10 @@ afterEvaluate {
                                 def signingKeyId = findProperty("signing.keyId")
                                 def signingPassword = findProperty("signing.password")
                                 def signingSecretKey = findProperty("signing.secretKey")
-                                useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
-                                sign publishing.publications.release
+                                if (signingKeyId != null && signingKeyId != "") {
+                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+                                    sign publishing.publications.release
+                                }
                             }
                             withXml {
                                 def dependenciesNode = asNode().appendNode('dependencies')
@@ -185,7 +189,7 @@ afterEvaluate {
                                         if (configurations.api.dependencies.contains(dependency)) {
                                             scope = "compile"
                                         }
-                                        def project = project(":${dependency.name}")
+                                        def project = project(":${dependency.dependencyProject.path}")
                                         def artifactId = project.findProperty('ARTIFACT_NAME')
                                         def groupId = project.findProperty('ARTIFACT_GROUP')
                                         def version = findProperty("version")
