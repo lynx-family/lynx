@@ -42,6 +42,24 @@ afterEvaluate {
                         artifactId ARTIFACT_NAME
                         version findProperty("version")
                         from components.java
+                        task sourceJar(type: Jar) {
+                            if (project.gradle.gradleVersion >= '8.0') {
+                                it.setArchiveClassifier('sources')
+                            } else {
+                                classifier = 'sources'
+                            }
+                            from sourceSets.main.allSource
+                        }
+                        task javadocJar(type: Jar) {
+                            if (project.gradle.gradleVersion >= '8.0') {
+                                it.setArchiveClassifier('javadoc')
+                            } else {
+                                classifier = 'javadoc'
+                            }
+                            from sourceSets.main.java
+                        }
+                        artifact(sourceJar)
+                        artifact(javadocJar)
                         pom {
                             name = artifactId
                             url = REPOSITORY_URL
