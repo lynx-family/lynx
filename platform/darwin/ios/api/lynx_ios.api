@@ -3970,8 +3970,8 @@ public class LynxUIKitAPIAdapter : NSObject {
 }
 
 public class LynxUILayoutTick : LynxLayoutTick {
-  public instancetype LynxUILayoutTick::initWithRoot:block:(LynxView *root,[block] nonnull LynxOnLayoutBlock block);
-  public void LynxUILayoutTick::attach:(LynxView *_Nonnull root);
+  public instancetype LynxUILayoutTick::initWithRoot:block:(UIView< LUIBodyView > *root,[block] nonnull LynxOnLayoutBlock block);
+  public void LynxUILayoutTick::attach:(UIView< LUIBodyView > *_Nonnull root);
 }
 
 public class LynxUIListCellContentProducer : NSObject {

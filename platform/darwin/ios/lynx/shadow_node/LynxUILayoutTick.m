@@ -7,13 +7,13 @@
 
 @interface LynxUILayoutTick ()
 
-@property(nonatomic, weak) LynxView* root;
+@property(nonatomic, weak) UIView<LUIBodyView>* root;
 
 @end
 
 @implementation LynxUILayoutTick
 
-- (instancetype)initWithRoot:(LynxView*)root block:(LynxOnLayoutBlock)block {
+- (instancetype)initWithRoot:(UIView<LUIBodyView>*)root block:(LynxOnLayoutBlock)block {
   self = [super initWithBlock:block];
   if (self) {
     _root = root;
@@ -36,7 +36,7 @@
   }
 }
 
-- (void)attach:(LynxView* _Nonnull)root {
+- (void)attach:(UIView<LUIBodyView>* _Nonnull)root {
   _root = root;
 }
 
