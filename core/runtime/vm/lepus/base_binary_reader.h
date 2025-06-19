@@ -12,9 +12,9 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/binary_reader.h"
 #include "core/runtime/vm/lepus/function.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/regexp.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 

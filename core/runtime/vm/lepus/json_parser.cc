@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
-#include "core/runtime/vm/lepus/table.h"
 namespace lynx {
 namespace lepus {
 

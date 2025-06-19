@@ -2,23 +2,27 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 
 #include <math.h>
 
 #include <memory>
 #include <utility>
 
+#include "base/include/base_defines.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/value/array.h"
+#include "base/include/value/byte_array.h"
+#include "base/include/value/lynx_value_extended.h"
+#include "base/include/value/path_parser.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/table.h"
+#include "base/trace/native/trace_defines.h"
 #include "base/trace/native/trace_event.h"
-#include "core/runtime/trace/runtime_trace_event_def.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/byte_array.h"
-#include "core/runtime/vm/lepus/lynx_value_extended.h"
-#include "core/runtime/vm/lepus/path_parser.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/table.h"
+
+inline constexpr const char* const VALUE_TO_LEPUS_VALUE = "Value::ToLepusValue";
+inline constexpr const char* const VALUE_SHADOW_COPY = "Value::ShallowCopy";
 
 namespace lynx {
 namespace lepus {
@@ -680,10 +684,10 @@ void Value::MergeValue(lepus::Value& target, const lepus::Value& update) {
       target.IsTable()
           ? reinterpret_cast<lepus::Dictionary*>(target.value_.val_ptr)
           : nullptr;
-  for (auto it = update_table->begin(); it != update_table->end(); ++it) {
-    auto result = lepus::ParseValuePath(it->first.str());
+  for (auto& it : *update_table) {
+    auto result = lepus::ParseValuePath(it.first.str());
     if (result.size() == 1) {
-      target.SetProperty(it->first, it->second);
+      target.SetProperty(it.first, it.second);
     } else if (result.size() > 1) {
       if (target_table != nullptr) {
         auto front_value = result.begin();
@@ -693,7 +697,7 @@ void Value::MergeValue(lepus::Value& target, const lepus::Value& update) {
           old_value = lepus_value::Clone(old_value);
         }
         result.erase(front_value);
-        UpdateValueByPath(old_value, it->second, result);
+        UpdateValueByPath(old_value, it.second, result);
         target_table->SetValue(*front_value, old_value);
       }
     }
@@ -1240,7 +1244,7 @@ int Value::GetJSLength() const {
   if (!IsJSValue()) return 0;
   uint32_t len;
   lynx_value_get_length(env_, value_, &len);
-  return (int)len;
+  return static_cast<int>(len);
 }
 
 bool Value::IsJSFalse() const {

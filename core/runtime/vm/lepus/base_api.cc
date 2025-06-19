@@ -9,8 +9,8 @@
 #include <string>
 #include <utility>
 
+#include "base/include/value/table.h"
 #include "core/runtime/vm/lepus/exception.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {

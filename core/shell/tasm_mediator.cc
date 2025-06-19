@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
@@ -14,8 +16,6 @@
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/runtime_constant.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_actor_specialization.h"

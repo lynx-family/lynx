@@ -8,9 +8,9 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "core/renderer/css/ng/css_ng_utils.h"
 #include "core/renderer/css/ng/selector/lynx_css_selector_list.h"
-#include "core/runtime/vm/lepus/array.h"
 
 namespace lynx {
 namespace css {

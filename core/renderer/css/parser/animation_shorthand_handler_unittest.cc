@@ -4,10 +4,10 @@
 
 #include "core/renderer/css/parser/animation_shorthand_handler.h"
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

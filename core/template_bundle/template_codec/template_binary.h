@@ -10,8 +10,8 @@
 #include <vector>
 
 #include "base/include/linked_hash_map.h"
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/magic_number.h"
 
 namespace lynx {

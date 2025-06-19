@@ -9,8 +9,8 @@
 #include <mutex>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/shell/lynx_card_cache_data_op.h"
 
 namespace lynx {

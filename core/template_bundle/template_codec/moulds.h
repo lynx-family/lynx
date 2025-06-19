@@ -9,11 +9,11 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/renderer/dom/component_config.h"
 #include "core/renderer/template_themed.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

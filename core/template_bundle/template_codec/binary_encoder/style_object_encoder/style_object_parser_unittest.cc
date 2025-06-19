@@ -4,9 +4,9 @@
 
 #include "core/template_bundle/template_codec/binary_encoder/style_object_encoder/style_object_parser.h"
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_property_id.h"
 #include "core/renderer/simple_styling/style_object.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/rapidjson/document.h"

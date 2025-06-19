@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/public/pub_value.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
 
 namespace lynx {

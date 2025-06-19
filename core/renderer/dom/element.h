@@ -16,6 +16,8 @@
 #include "base/include/auto_create_optional.h"
 #include "base/include/base_export.h"
 #include "base/include/no_destructor.h"
+#include "base/include/value/ref_type.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
@@ -33,8 +35,6 @@
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
-#include "core/runtime/vm/lepus/ref_type.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
-#include "core/runtime/vm/lepus/array.h"
+#include "base/include/value/array.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {

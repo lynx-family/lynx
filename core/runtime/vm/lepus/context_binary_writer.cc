@@ -7,13 +7,13 @@
 #include <utility>
 
 #include "base/include/sorted_for_each.h"
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "core/template_bundle/template_codec/version.h"
 #include "quickjs/include/quickjs.h"

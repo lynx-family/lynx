@@ -6,7 +6,7 @@
 
 #include <vector>
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/op_code.h"
 
 namespace lynx {

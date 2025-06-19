@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/table.h"
 
 namespace lynx {
 namespace lepus {

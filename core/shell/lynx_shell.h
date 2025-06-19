@@ -15,6 +15,7 @@
 
 #include "base/include/base_export.h"
 #include "base/include/lynx_actor.h"
+#include "base/include/value/lepus_value.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -25,7 +26,6 @@
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/runtime/piper/js/template_delegate.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/performance/performance_controller.h"
 #include "core/services/performance/performance_mediator.h"
 #include "core/services/timing_handler/timing_handler.h"

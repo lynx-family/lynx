@@ -1,8 +1,9 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_VM_LEPUS_TABLE_H_
-#define CORE_RUNTIME_VM_LEPUS_TABLE_H_
+
+#ifndef BASE_INCLUDE_VALUE_TABLE_H_
+#define BASE_INCLUDE_VALUE_TABLE_H_
 
 #include <algorithm>
 #include <string>
@@ -12,11 +13,11 @@
 #include <utility>
 
 #include "base/include/base_export.h"
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 
 namespace lynx {
 namespace lepus {
@@ -269,7 +270,7 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
  private:
   HashMap hash_map_;
 
-  LEPUS_INLINE bool IsConstLog() const {
+  inline __attribute__((always_inline)) bool IsConstLog() const {
     if (IsConst()) {
 #ifdef DEBUG
       // TODO(yuyang), Currently LOGD still produce assembly in release mode.
@@ -286,4 +287,4 @@ using DictionaryPtr = fml::RefPtr<Dictionary>;
 }  // namespace lepus
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_TABLE_H_
+#endif  // BASE_INCLUDE_VALUE_TABLE_H_

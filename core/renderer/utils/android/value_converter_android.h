@@ -6,9 +6,9 @@
 
 #include <jni.h>
 
+#include "base/include/value/lepus_value.h"
 #include "core/base/android/java_only_array.h"
 #include "core/base/android/java_only_map.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

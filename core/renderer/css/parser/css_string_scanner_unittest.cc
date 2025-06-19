@@ -10,11 +10,11 @@
 #include <tuple>
 #include <vector>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_string_parser.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

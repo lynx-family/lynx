@@ -6,10 +6,10 @@
 
 #include <utility>
 
+#include "base/include/value/lepus_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

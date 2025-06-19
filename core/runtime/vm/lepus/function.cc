@@ -4,7 +4,7 @@
 #include "core/runtime/vm/lepus/function.h"
 
 #include "base/include/value/base_string.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {

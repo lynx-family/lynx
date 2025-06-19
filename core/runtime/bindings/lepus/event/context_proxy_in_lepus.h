@@ -5,10 +5,10 @@
 #ifndef CORE_RUNTIME_BINDINGS_LEPUS_EVENT_CONTEXT_PROXY_IN_LEPUS_H_
 #define CORE_RUNTIME_BINDINGS_LEPUS_EVENT_CONTEXT_PROXY_IN_LEPUS_H_
 
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

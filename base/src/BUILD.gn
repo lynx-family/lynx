@@ -36,6 +36,11 @@ config("base_public") {
       "_CRT_SECURE_NO_WARNINGS=1",
     ]
   }
+
+  # TODO(chenyouhui): Remove it later
+  if (enable_inspector) {
+    defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
+  }
 }
 
 config("base_log_public") {
@@ -369,6 +374,21 @@ if (enable_unittests) {
       "//third_party/googletest:gtest",
     ]
   }
+
+  unittest_exec("base_value_unittests_exec") {
+    sources = [
+      "value/base_value_unittest.cc",
+      "value/lynx_value_extended_empty.cc",
+      "value/path_parser_unittest.cc",
+    ]
+
+    deps = [
+      ":base",
+      ":base_log",
+      ":values",
+      "//third_party/googletest:gtest",
+    ]
+  }
 }
 
 source_set("string_utils") {
@@ -382,13 +402,35 @@ source_set("string_utils") {
   ]
 }
 
+# TODO(chenyouhui): Merge 'values' into 'base_values' target.
+source_set("base_values") {
+  public_configs = [ ":base_public" ]
+
+  sources = [
+    "../include/value/array.h",
+    "../include/value/byte_array.h",
+    "../include/value/lepus_value.h",
+    "../include/value/lynx_api_types.h",
+    "../include/value/lynx_value_extended.h",
+    "../include/value/lynx_value_types.h",
+    "../include/value/path_parser.h",
+    "../include/value/ref_counted_class.h",
+    "../include/value/ref_type.h",
+    "../include/value/table.h",
+    "value/byte_array.cc",
+    "value/lepus_value.cc",
+    "value/path_parser.cc",
+    "value/table.cc",
+  ]
+
+  deps = [ ":values" ]
+}
+
 source_set("values") {
   public_configs = [ ":base_public" ]
 
   sources = [
     "../include/value/base_string.h",
-    "../include/value/lynx_api_types.h",
-    "../include/value/lynx_value_types.h",
     "value/base_string.cc",
   ]
 }

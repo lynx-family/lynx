@@ -7,12 +7,12 @@
 #include <algorithm>
 
 #include "base/include/no_destructor.h"
+#include "base/include/value/table.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/selector/matching/attribute_selector_matching.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

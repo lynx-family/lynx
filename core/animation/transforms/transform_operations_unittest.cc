@@ -10,6 +10,8 @@
 
 #include <cmath>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/animation/transforms/decomposed_transform.h"
 #include "core/animation/transforms/matrix44.h"
 #include "core/animation/transforms/transform_operation.h"
@@ -22,8 +24,6 @@
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/types/nlength.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/shell/tasm_operation_queue.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

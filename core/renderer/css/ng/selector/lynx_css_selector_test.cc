@@ -7,10 +7,10 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "core/renderer/css/ng/parser/css_tokenizer.h"
 #include "core/renderer/css/ng/selector/css_parser_context.h"
 #include "core/renderer/css/ng/selector/css_selector_parser.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

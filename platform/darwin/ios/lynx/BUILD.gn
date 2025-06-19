@@ -674,6 +674,7 @@ subspec_target("lynx_basic_animator") {
 subspec_target("fml") {
   deps = [
     "../../../../base/src:base",
+    "../../../../base/src:base_values",
     "../../../../base/src:string_utils",
     "../../../../base/src:time_utils",
     "../../../../base/src:values",

@@ -5,10 +5,10 @@
 #ifndef CORE_RUNTIME_BINDINGS_LEPUS_EVENT_LEPUS_EVENT_LISTENER_H_
 #define CORE_RUNTIME_BINDINGS_LEPUS_EVENT_LEPUS_EVENT_LISTENER_H_
 
+#include "base/include/value/lepus_value.h"
 #include "core/event/event.h"
 #include "core/event/event_listener.h"
 #include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

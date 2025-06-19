@@ -9,9 +9,9 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/value/lepus_value.h"
 #include "core/event/event_listener.h"
 #include "core/event/event_target.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace runtime {

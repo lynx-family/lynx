@@ -10,9 +10,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/css_property.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 

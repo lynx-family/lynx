@@ -16,12 +16,12 @@
 
 #include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/parser/css_string_scanner.h"
 #include "core/renderer/css/unit_handler.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_VM_LEPUS_PATH_PARSER_H_
-#define CORE_RUNTIME_VM_LEPUS_PATH_PARSER_H_
+#ifndef BASE_INCLUDE_VALUE_PATH_PARSER_H_
+#define BASE_INCLUDE_VALUE_PATH_PARSER_H_
 
 #include <string>
 
@@ -23,4 +23,4 @@ PathVector ParseValuePath(const std::string &path);
 }  // namespace lepus
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_PATH_PARSER_H_
+#endif  // BASE_INCLUDE_VALUE_PATH_PARSER_H_

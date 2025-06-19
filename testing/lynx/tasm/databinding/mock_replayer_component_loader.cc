@@ -7,8 +7,8 @@
 #include <optional>
 #include <utility>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/template_assembler.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "testing/lynx/tasm/databinding/data_update_replayer.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/modp_b64/modp_b64.h"

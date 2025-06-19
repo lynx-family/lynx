@@ -11,12 +11,12 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/op_code.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 #include "core/runtime/vm/lepus/regexp.h"
 #include "core/runtime/vm/lepus/switch.h"
 #include "core/runtime/vm/lepus/upvalue.h"

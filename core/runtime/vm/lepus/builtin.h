@@ -4,12 +4,12 @@
 #ifndef CORE_RUNTIME_VM_LEPUS_BUILTIN_H_
 #define CORE_RUNTIME_VM_LEPUS_BUILTIN_H_
 
+#include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/vm/lepus/builtin_function_table.h"
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {

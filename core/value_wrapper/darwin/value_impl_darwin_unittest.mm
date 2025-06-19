@@ -6,9 +6,9 @@
 
 #include <limits.h>
 
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "core/value_wrapper/value_wrapper_utils.h"

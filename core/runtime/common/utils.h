@@ -14,10 +14,10 @@
 #endif
 #include "base/include/debug/lynx_error.h"
 #include "base/include/log/logging.h"
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
 #include "core/base/json/json_util.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
 #include "third_party/rapidjson/reader.h"

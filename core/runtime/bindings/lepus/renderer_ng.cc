@@ -7,6 +7,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/value/lepus_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -15,7 +16,6 @@
 #include "core/runtime/bindings/lepus/renderer_functions.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/builtin.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

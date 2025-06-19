@@ -1,16 +1,18 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_VM_LEPUS_ARRAY_H_
-#define CORE_RUNTIME_VM_LEPUS_ARRAY_H_
+
+#ifndef BASE_INCLUDE_VALUE_ARRAY_H_
+#define BASE_INCLUDE_VALUE_ARRAY_H_
+
 #include <utility>
 
 #include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 
 namespace lynx {
 namespace lepus {
@@ -204,7 +206,7 @@ class BASE_EXPORT_FOR_DEVTOOL CArray : public RefCountedBase {
 
   friend class LEPUSValueHelper;
 
-  LEPUS_INLINE bool IsConstLog() const {
+  inline __attribute__((always_inline)) bool IsConstLog() const {
     if (IsConst()) {
 #ifdef DEBUG
       // TODO(yuyang), Currently LOGD still produce assembly in release mode.
@@ -219,4 +221,4 @@ class BASE_EXPORT_FOR_DEVTOOL CArray : public RefCountedBase {
 }  // namespace lepus
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_ARRAY_H_
+#endif  // BASE_INCLUDE_VALUE_ARRAY_H_

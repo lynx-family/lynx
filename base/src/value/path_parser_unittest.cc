@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/vm/lepus/path_parser.h"
+#include "base/include/value/path_parser.h"
 
 #include <string>
 

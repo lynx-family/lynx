@@ -9,12 +9,12 @@
 #include <string>
 #include <utility>
 
+#include "base/include/value/array.h"
+#include "base/include/value/byte_array.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/byte_array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

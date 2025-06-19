@@ -7,9 +7,9 @@
 
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/starlight/types/layout_attribute.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

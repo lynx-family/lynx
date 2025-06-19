@@ -1,7 +1,7 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#include "core/runtime/vm/lepus/byte_array.h"
+#include "base/include/value/byte_array.h"
 
 namespace lynx {
 namespace lepus {

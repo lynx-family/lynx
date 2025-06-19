@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/public/pub_value.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
 
 namespace lynx {

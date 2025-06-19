@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_VM_LEPUS_REF_TYPE_H_
-#define CORE_RUNTIME_VM_LEPUS_REF_TYPE_H_
+#ifndef BASE_INCLUDE_VALUE_REF_TYPE_H_
+#define BASE_INCLUDE_VALUE_REF_TYPE_H_
 
 #include <cstdint>
 
@@ -38,4 +38,4 @@ enum class RefType : int32_t {
 }  // namespace lepus
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_REF_TYPE_H_
+#endif  // BASE_INCLUDE_VALUE_REF_TYPE_H_

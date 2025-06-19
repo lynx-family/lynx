@@ -7,9 +7,9 @@
 
 #include "core/renderer/events/touch_event_handler.h"
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/vdom/radon/radon_dispatch_option.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

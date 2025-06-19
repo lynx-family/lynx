@@ -12,7 +12,7 @@
 #include <thread>
 
 #include "base/include/debug/lynx_error.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/testing/mock_native_facade.h"
 #include "core/shell/testing/mock_runner_manufactor.h"

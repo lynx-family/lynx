@@ -9,11 +9,11 @@
 
 #include <tuple>
 
+#include "base/include/value/table.h"
 #include "core/base/json/json_util.h"
 #include "core/base/thread/once_task.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/rapidjson/document.h"
 

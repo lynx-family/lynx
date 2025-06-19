@@ -5,8 +5,6 @@
 lynx_lepus_common_sources = [
   "//${lynx_dir}/core/runtime/vm/lepus/base_binary_reader.cc",
   "//${lynx_dir}/core/runtime/vm/lepus/binary_input_stream.cc",
-  "array.cc",
-  "array.h",
   "base_api.h",
   "base_binary_reader.h",
   "binary_input_stream.h",
@@ -15,8 +13,6 @@ lynx_lepus_common_sources = [
   "builtin.cc",
   "builtin.h",
   "builtin_function_table.h",
-  "byte_array.cc",
-  "byte_array.h",
   "context.cc",
   "context.h",
   "js_object.cc",
@@ -27,18 +23,10 @@ lynx_lepus_common_sources = [
   "lepus_context_cell.h",
   "lepus_error_helper.cc",
   "lepus_error_helper.h",
-  "lepus_value.cc",
-  "lepus_value.h",
   "lynx_api_context_lepusng.h",
   "lynx_value_extended.cc",
-  "lynx_value_extended.h",
-  "path_parser.cc",
-  "path_parser.h",
   "qjs_callback.cc",
   "qjs_callback.h",
-  "ref_type.h",
-  "table.cc",
-  "table.h",
 ]
 
 lynx_lepus_common_sources_path =
@@ -136,7 +124,6 @@ lynx_lepus_ng_sources = [
   "jsvalue_helper.h",
   "quick_context.cc",
   "quick_context.h",
-  "ref_counted_class.h",
 ]
 
 lynx_lepus_ng_sources_path = get_path_info(lynx_lepus_ng_sources, "abspath")

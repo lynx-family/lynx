@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "base/include/value/table.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

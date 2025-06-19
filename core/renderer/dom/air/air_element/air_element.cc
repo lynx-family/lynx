@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/dom/element_manager.h"
@@ -16,8 +18,6 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {

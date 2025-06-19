@@ -9,6 +9,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/path_parser.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/template_assembler.h"
@@ -18,7 +19,6 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/vm/lepus/context.h"
-#include "core/runtime/vm/lepus/path_parser.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"

@@ -12,14 +12,14 @@
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/css_debug_msg.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/starlight/layout/box_info.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/style/color.h"
 
 namespace lynx {

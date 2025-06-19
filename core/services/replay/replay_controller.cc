@@ -9,9 +9,9 @@
 #include <vector>
 
 #if ENABLE_TESTBENCH_REPLAY
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/services/replay/layout_tree_testbench.h"
 #include "core/services/replay/testbench_test_replay.h"
 #include "third_party/rapidjson/document.h"

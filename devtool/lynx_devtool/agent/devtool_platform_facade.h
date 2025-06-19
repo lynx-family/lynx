@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/element.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "devtool/lynx_devtool/base/mouse_event.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
 

@@ -9,6 +9,7 @@
 #include <utility>
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/value/lepus_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/computed_css_style.h"
@@ -29,7 +30,6 @@
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/lepus_error_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if OS_IOS
 #include "gc/trace-gc.h"

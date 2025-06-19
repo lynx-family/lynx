@@ -4,8 +4,8 @@
 
 #import <XCTest/XCTest.h>
 #import "LynxTemplateData+Converter.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 @interface LynxTemplateDataTest : XCTestCase
 

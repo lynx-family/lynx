@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 #include "base/include/base_export.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"

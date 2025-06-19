@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_node_info.h"
@@ -26,7 +27,6 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/piper/js/runtime_constant.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/ssr/client/ssr_client_utils.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 

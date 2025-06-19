@@ -4,8 +4,8 @@
 
 #include "core/shell/lynx_card_cache_data_manager.h"
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

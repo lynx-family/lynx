@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/template_bundle/template_codec/binary_encoder/encoder.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
 #include "core/template_bundle/template_codec/template_binary.h"

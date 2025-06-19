@@ -4,9 +4,9 @@
 
 #import <Foundation/Foundation.h>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

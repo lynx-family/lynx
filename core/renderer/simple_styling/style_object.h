@@ -11,10 +11,10 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "base/include/value/ref_counted_class.h"
 #include "base/include/vector.h"
 #include "core/renderer/simple_styling/style_object_decoder.h"
 #include "core/renderer/simple_styling/style_property_map.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx::style {

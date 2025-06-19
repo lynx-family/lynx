@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "core/template_bundle/template_codec/generator/ttml_holder.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"

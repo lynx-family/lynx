@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 #import "core/runtime/bindings/jsi/modules/ios/lynx_module_darwin.h"

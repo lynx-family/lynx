@@ -428,8 +428,6 @@ inline constexpr const char* const LEPUS_VALUE_TO_JSON_STRING =
 inline constexpr const char* const LEPUS_VALUE_MAP_TO_JSON_STRING =
     "lepusValueMapToJSONString";
 inline constexpr const char* const LEPUS_VALUE_TO_STRING = "lepusValueToString";
-inline constexpr const char* const VALUE_TO_LEPUS_VALUE = "Value::ToLepusValue";
-inline constexpr const char* const VALUE_SHADOW_COPY = "Value::ShallowCopy";
 
 inline constexpr const char* const QUICK_CONTEXT_SET_FUNC_FILE_NAME =
     "SetFunctionFileName";

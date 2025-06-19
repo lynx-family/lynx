@@ -11,10 +11,10 @@
 
 #include "base/include/base_export.h"
 #include "base/include/compiler_specific.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/public/pipeline_option.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

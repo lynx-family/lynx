@@ -5,10 +5,10 @@
 #import <OCMock/OCMock.h>
 #import <XCTest/XCTest.h>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/utils/darwin/event_converter_darwin.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 using namespace lynx;
 

@@ -1,8 +1,9 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_VM_LEPUS_LEPUS_VALUE_H_
-#define CORE_RUNTIME_VM_LEPUS_LEPUS_VALUE_H_
+
+#ifndef BASE_INCLUDE_VALUE_LEPUS_VALUE_H_
+#define BASE_INCLUDE_VALUE_LEPUS_VALUE_H_
 
 #include <cstring>
 #include <functional>
@@ -16,10 +17,9 @@
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/log/logging.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lynx_value_extended.h"
+#include "base/include/value/ref_type.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lynx_value_extended.h"
-#include "core/runtime/vm/lepus/marco.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -699,4 +699,4 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 }  // namespace lepus
 }  // namespace lynx
 typedef lynx::lepus::Value lepus_value;
-#endif  // CORE_RUNTIME_VM_LEPUS_LEPUS_VALUE_H_
+#endif  // BASE_INCLUDE_VALUE_LEPUS_VALUE_H_

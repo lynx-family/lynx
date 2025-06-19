@@ -6,9 +6,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

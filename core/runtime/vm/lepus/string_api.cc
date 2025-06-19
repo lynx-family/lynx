@@ -8,9 +8,9 @@
 
 #include "base/include/string/string_utils.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 #define CAPTURE_COUNT_MAX 255

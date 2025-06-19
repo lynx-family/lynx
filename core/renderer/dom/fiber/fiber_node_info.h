@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

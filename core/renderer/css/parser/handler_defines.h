@@ -7,9 +7,9 @@
 
 #include <array>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 #define HANDLER_REGISTER_DECLARE() \
   void Register(std::array<pHandlerFunc, kCSSPropertyCount> &array)

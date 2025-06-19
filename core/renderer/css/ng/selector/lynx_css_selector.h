@@ -11,8 +11,8 @@
 #include <vector>
 
 #include "base/include/base_export.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/ng/selector/lynx_css_selector_extra_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace css {

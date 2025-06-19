@@ -7,9 +7,9 @@
 
 #include "core/template_bundle/template_codec/binary_encoder/css_encoder/css_font_face_token.h"
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/base/json/json_util.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 #include "third_party/rapidjson/document.h"
 

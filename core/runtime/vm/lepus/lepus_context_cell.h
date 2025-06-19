@@ -5,8 +5,8 @@
 #ifndef CORE_RUNTIME_VM_LEPUS_LEPUS_CONTEXT_CELL_H_
 #define CORE_RUNTIME_VM_LEPUS_LEPUS_CONTEXT_CELL_H_
 
+#include "base/include/value/lynx_value_extended.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lynx_value_extended.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -27,9 +27,9 @@
 
 #include <stdio.h>
 #include <memory>
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/ui_wrapper/common/ios/prop_bundle_darwin.h"
 #include "core/renderer/ui_wrapper/painting/ios/painting_context_darwin.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/shell/lynx_shell.h"
 
 @interface LynxUI (LynxUT)

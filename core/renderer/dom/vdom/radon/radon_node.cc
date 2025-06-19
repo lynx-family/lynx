@@ -12,7 +12,10 @@
 #include <vector>
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_property.h"
@@ -24,9 +27,6 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/services/feature_count/feature_counter.h"
 
 namespace lynx {
