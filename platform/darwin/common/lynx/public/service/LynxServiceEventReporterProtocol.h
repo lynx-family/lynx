@@ -7,12 +7,15 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxPerformanceObserverProtocol.h>
 #import <Lynx/LynxServiceProtocol.h>
 
 @class LynxView;
 
 NS_ASSUME_NONNULL_BEGIN
-@protocol LynxServiceEventReporterProtocol <LynxServiceProtocol, LynxEventReportObserverProtocol>
+@protocol LynxServiceEventReporterProtocol <LynxServiceProtocol,
+                                            LynxEventReportObserverProtocol,
+                                            LynxPerformanceObserverProtocol>
 
 @end
 

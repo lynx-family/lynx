@@ -2877,7 +2877,7 @@ public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
   public NSSet * LynxServiceDevToolProtocol-p::devtoolEnvGetGroup:(NSString *groupKey);
 }
 
-public protocol LynxServiceEventReporterProtocol-p : <LynxServiceProtocol>, <LynxEventReportObserverProtocol> {
+public protocol LynxServiceEventReporterProtocol-p : <LynxServiceProtocol>, <LynxEventReportObserverProtocol>, <LynxPerformanceObserverProtocol> {
 }
 
 public protocol LynxServiceExtensionProtocol-p : <LynxServiceProtocol> {
