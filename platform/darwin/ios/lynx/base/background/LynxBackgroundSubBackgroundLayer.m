@@ -16,7 +16,7 @@
 }
 @property(atomic, assign) BOOL isPreRendering;
 @property(nonatomic, strong) CADisplayLink* displayLink;
-@property(nonatomic, strong) NSMutableArray<UIImage*>* frameQueue;
+@property(atomic, strong) NSMutableArray<UIImage*>* frameQueue;
 @property(nonatomic, assign) CGSize viewSize;
 @property(nonatomic, assign) LynxBorderRadii cornerRadii;
 @property(nonatomic, assign) UIEdgeInsets borderInsets;
@@ -60,8 +60,14 @@ dispatch_block_t mDispatchTask = NULL;
   }
   if (_frameQueue) {
     // remove all cached frames and ensure thread safty.
+    __weak LynxBackgroundSubBackgroundLayer* weakSelf = self;
     dispatch_barrier_async([[self class] concurrentDispatchQueue], ^{
-      [self->_frameQueue removeAllObjects];
+      __strong LynxBackgroundSubBackgroundLayer* strongSelf = weakSelf;
+      if (strongSelf) {
+        @synchronized(strongSelf.frameQueue) {
+          [strongSelf->_frameQueue removeAllObjects];
+        }
+      };
     });
   }
 }
@@ -251,25 +257,37 @@ dispatch_block_t mDispatchTask = NULL;
   }
 
   if ([self canCacheAllFrames]) {
-    if ([_frameQueue count] == 0 && !_isPreRendering) {
-      [self enqueueFrames:[self frameCount]];
-    }
-    if (!_isPreRendering) {
-      _currentFrameIndex = _currentFrameIndex % _frameCount;
-      if (_currentFrameIndex < [_frameQueue count]) {
-        // If rendering error occurs, enqueue task will not add images in to _frameQueue, prevent
-        // index out of bounds exception here.
-        [self autoAdjustInsetsForContents:[_frameQueue objectAtIndex:_currentFrameIndex]];
+    UIImage* frameToDisplay = nil;
+    @synchronized(self.frameQueue) {
+      if ([_frameQueue count] == 0 && !_isPreRendering) {
+        // will mark isPrerendering to YES.
+        [self enqueueFrames:[self frameCount]];
       }
-      ++_currentFrameIndex;
+      if (!_isPreRendering) {
+        _currentFrameIndex = _currentFrameIndex % _frameCount;
+        if (_currentFrameIndex < [_frameQueue count]) {
+          // If rendering error occurs, enqueue task will not add images in to _frameQueue, prevent
+          // index out of bounds exception here.
+          frameToDisplay = [_frameQueue objectAtIndex:_currentFrameIndex];
+        }
+        ++_currentFrameIndex;
+      }
+    }
+    if (frameToDisplay) {
+      [self autoAdjustInsetsForContents:frameToDisplay];
     }
   } else {
     // Pop the next frame
-    UIImage* currentFrame;
-    @synchronized(_frameQueue) {
+    UIImage* currentFrame = nil;
+    BOOL shouldEnqueue = NO;
+    @synchronized(self.frameQueue) {
       if ([_frameQueue count] > 0) {
         currentFrame = [_frameQueue objectAtIndex:0];
         [_frameQueue removeObjectAtIndex:0];
+      }
+      // Check if we need to enqueue more frames after popping.
+      if (!_isPreRendering && [_frameQueue count] < kFrameQueueCapacity / 2) {
+        shouldEnqueue = YES;
       }
     }
     if (currentFrame) {
@@ -277,7 +295,7 @@ dispatch_block_t mDispatchTask = NULL;
     }
 
     // Cache the next kFrameQueueCapacity frames.
-    if (!_isPreRendering && [_frameQueue count] < kFrameQueueCapacity / 2) {
+    if (shouldEnqueue) {
       [self enqueueFrames:kFrameQueueCapacity];
     }
   }
@@ -304,7 +322,7 @@ dispatch_block_t mDispatchTask = NULL;
               strongSelf -> _paddingWidth, strongSelf -> _isPixelated);
           if (frame) {
             // prevent add nil exception
-            @synchronized(strongSelf->_frameQueue) {
+            @synchronized(strongSelf.frameQueue) {
               [strongSelf->_frameQueue addObject:frame];
             }
           }
