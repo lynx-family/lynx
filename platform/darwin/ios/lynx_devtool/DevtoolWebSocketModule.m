@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import "DevToolWebSocketModule.h"
+#import "DevtoolWebSocketModule.h"
 #import <Lynx/LynxBaseInspectorOwnerNG.h>
 #import <Lynx/LynxView.h>
 
