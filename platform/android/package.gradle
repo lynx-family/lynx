@@ -16,12 +16,14 @@ import org.json.simple.JSONArray
 task assembleAllModulesRelease {
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
-            if(subproject.plugins.hasPlugin("maven-publish") && subproject.plugins.hasPlugin('com.android.library')) {
-                def hasNoAsanFlavor = subproject.android.productFlavors.names.contains('noasan')
-                if (hasNoAsanFlavor) {
-                    dependsOn subproject.tasks.named('assembleNoasanRelease')
-                } else {
-                    dependsOn subproject.tasks.named('assembleRelease')
+            subproject.afterEvaluate {
+                if(subproject.plugins.hasPlugin("maven-publish") && subproject.plugins.hasPlugin('com.android.library')) {
+                    def hasNoAsanFlavor = subproject.android.productFlavors.names.contains('noasan')
+                    if (hasNoAsanFlavor) {
+                        dependsOn "${subproject.path}:assembleNoasanRelease"
+                    } else {
+                        dependsOn "${subproject.path}:assembleRelease"
+                    }
                 }
             }
         }
