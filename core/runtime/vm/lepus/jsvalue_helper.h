@@ -277,6 +277,8 @@ class LEPUSValueHelper {
     if (val.type != lynx_value_extended) return LEPUS_UNDEFINED;
 #if defined(__aarch64__) && !defined(OS_WIN) && !DISABLE_NANBOX
     return (LEPUSValue){.as_int64 = val.val_int64};
+#elif defined(LEPUS_NAN_BOXING)
+    return val.val_uint64;
 #else
     return LEPUS_MKPTR(static_cast<int8_t>((val.tag & 0xff)), val.val_ptr);
 #endif
