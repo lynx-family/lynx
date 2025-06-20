@@ -292,10 +292,8 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   std::shared_ptr<lynx::devtool::DevToolPlatformFacade> devtool_platform_facade_;
 }
 
-- (nonnull instancetype)initWithLynxView:(nullable LynxView*)view
-                             withUIOwner:(nullable LynxUIOwner*)owner {
+- (nonnull instancetype)initWithLynxView:(nullable LynxView*)view {
   _uiTreeHelper = [[LynxUITreeHelper alloc] init];
-  [_uiTreeHelper attachLynxUIOwner:owner];
 
   _lynxView = view;
   _touchHelper = [[LynxEmulateTouchHelper alloc] initWithLynxView:view];
@@ -309,6 +307,10 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _lepusDebugInfoHelper = [[LepusDebugInfoHelper alloc] init];
 
   return self;
+}
+
+- (void)attachLynxUIOwner:(nullable LynxUIOwner*)owner {
+  [_uiTreeHelper attachLynxUIOwner:owner];
 }
 
 - (std::shared_ptr<lynx::devtool::DevToolPlatformFacade>)getNativePtr {

@@ -40,8 +40,8 @@ public class ConsoleDelegateManagerTest {
       }
     };
 
-    mPlatformDelegate =
-        new DevToolPlatformAndroidDelegate(mock(LynxView.class), mock(LynxUIOwner.class));
+    mPlatformDelegate = new DevToolPlatformAndroidDelegate(mock(LynxView.class));
+    mPlatformDelegate.attachLynxUIOwner(mock(LynxUIOwner.class));
     mPlatformDelegate.setLynxInspectorConsoleDelegate(delegate);
   }
 

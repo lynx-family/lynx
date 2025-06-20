@@ -73,9 +73,6 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
   // PageReload
   private PageReloadHelper mReloadHelper;
 
-  // UI Tree
-  private UITreeHelper mUITreeHelper;
-
   //  DevToolPlatformAndroidDelegate for new architecture
   private DevToolPlatformAndroidDelegate mPlatform;
 
@@ -105,11 +102,11 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     // DevMenu
     mDevMenu = new LynxDevMenu(this, lynxView);
 
+    // DevToolPlatformAndroidDelegate
+    mPlatform = new DevToolPlatformAndroidDelegate(lynxView);
+
     // PageReload
     mReloadHelper = null;
-
-    // UI Tree
-    mUITreeHelper = new UITreeHelper();
 
     if (TraceEvent.enableTrace()) {
       FrameViewTrace.getInstance().attachView(lynxView);
@@ -138,14 +135,9 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
   }
 
   public void attachLynxUIOwnerToAgent(LynxUIOwner uiOwner) {
-    if (mUITreeHelper != null) {
-      mUITreeHelper.attachLynxUIOwner(uiOwner);
+    if (mPlatform != null) {
+      mPlatform.attachLynxUIOwner(uiOwner);
     }
-    LynxView lynxView = mLynxView.get();
-    // Do not add a null check for lynxView here.
-    // DevToolPlatformAndroidDelegate must be constructed even if lynxView is initially null.
-    // LynxView will be reattached to DevToolPlatformAndroidDelegate later.
-    mPlatform = new DevToolPlatformAndroidDelegate(lynxView, uiOwner);
   }
 
   @Override

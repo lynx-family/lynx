@@ -43,8 +43,8 @@
   _consoleDelegate = [[LynxInspectorConsoleDelegateMock alloc] init];
 
   _platform =
-      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:OCMClassMock([LynxView class])
-                                                  withUIOwner:OCMClassMock([LynxUIOwner class])];
+      [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:OCMClassMock([LynxView class])];
+  [_platform attachLynxUIOwner:OCMClassMock([LynxUIOwner class])];
   [_platform setLynxInspectorConsoleDelegate:_consoleDelegate];
 
   debugger_ = std::make_shared<lynx::devtool::InspectorJavaScriptDebuggerImpl>(nullptr);

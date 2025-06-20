@@ -13,8 +13,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface DevToolPlatformDarwinDelegate : NSObject
 
-- (nonnull instancetype)initWithLynxView:(nullable LynxView *)view
-                             withUIOwner:(nullable LynxUIOwner *)owner;
+- (nonnull instancetype)initWithLynxView:(nullable LynxView *)view;
+
+- (void)attachLynxUIOwner:(nullable LynxUIOwner *)owner;
 
 - (std::shared_ptr<lynx::devtool::DevToolPlatformFacade>)getNativePtr;
 

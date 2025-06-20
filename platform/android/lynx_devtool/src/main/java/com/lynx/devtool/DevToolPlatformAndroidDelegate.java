@@ -51,9 +51,8 @@ public class DevToolPlatformAndroidDelegate {
   private boolean mNavigatePending;
 
   @Keep
-  public DevToolPlatformAndroidDelegate(LynxView lynxView, LynxUIOwner uiOwner) {
+  public DevToolPlatformAndroidDelegate(LynxView lynxView) {
     mUITreeHelper = new UITreeHelper();
-    mUITreeHelper.attachLynxUIOwner(uiOwner);
     mConsoleDelegateManager = new ConsoleDelegateManager();
     mLynxView = new WeakReference<>(lynxView);
     mLepusDebugInfoHelper = new LepusDebugInfoHelper();
@@ -67,6 +66,12 @@ public class DevToolPlatformAndroidDelegate {
     mReloadHelper = null;
 
     mNavigatePending = false;
+  }
+
+  public void attachLynxUIOwner(LynxUIOwner uiOwner) {
+    if (mUITreeHelper != null) {
+      mUITreeHelper.attachLynxUIOwner(uiOwner);
+    }
   }
 
   public void setReloadHelper(PageReloadHelper reloadHelper) {

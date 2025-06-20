@@ -88,7 +88,7 @@
   _reloadHelper = nil;
 
   // DevToolPlatformDarwinDelegate
-  _platform = nil;
+  _platform = [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:_lynxView];
 
   // LynxDevToolNGDarwinDelegate
   _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] init];
@@ -482,8 +482,9 @@
 }
 
 - (void)attachLynxUIOwnerToAgent:(nullable LynxUIOwner*)uiOwner {
-  _platform = [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:_lynxView
-                                                          withUIOwner:uiOwner];
+  if (_platform) {
+    [_platform attachLynxUIOwner:uiOwner];
+  }
 }
 
 @end
