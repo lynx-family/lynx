@@ -108,12 +108,7 @@ TEST_F(TimedTaskTest, StopSetInterval) {
   int32_t id = 0;
 
   thread_.GetTaskRunner()->PostTask([this, &id]() mutable {
-    id = manager_->SetInterval(
-        [this]() {
-          ++result_;
-          arwe_.Signal();
-        },
-        DELAY);
+    id = manager_->SetInterval([this]() { ++result_; }, DELAY);
   });
 
   usleep(DELAY * LOOP * 100);
