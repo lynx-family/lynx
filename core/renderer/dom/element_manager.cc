@@ -877,6 +877,10 @@ void ElementManager::TickAllElement(fml::TimePoint &frame_time) {
     if (!temp_element_set.empty()) {
       bool has_layout_animated_style = false;
       for (auto iter : temp_element_set) {
+        if (iter->is_fiber_element() &&
+            static_cast<FiberElement *>(iter)->IsDetached()) {
+          continue;
+        }
         // tick element, for List.
         iter->TickElement(frame_time);
 
