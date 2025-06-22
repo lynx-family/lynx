@@ -37,11 +37,9 @@ class BackgroundImageLayer : public BackgroundLayer {
   void DestroyDrawStruct();
 
  private:
-  std::string url_{};
-  std::unique_ptr<OH_PixelmapNative, LynxImageHelper::PixelmapDeleter>
-      pixel_map_{nullptr, nullptr};
-  OH_Drawing_PixelMap* draw_pixel_map_{nullptr};
-  std::weak_ptr<UIBase> ui_base_{};
+  std::string url_;
+  std::unique_ptr<LynxBaseImage> pixel_map_{nullptr};
+  std::weak_ptr<UIBase> ui_base_;
   OH_Drawing_Rect* src_rect_{nullptr};
   OH_Drawing_Rect* dest_rect_{nullptr};
   OH_Drawing_SamplingOptions* sample_{nullptr};

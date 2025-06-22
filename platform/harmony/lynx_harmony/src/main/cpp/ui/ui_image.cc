@@ -18,7 +18,6 @@
 
 #include <utility>
 
-#include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -28,6 +27,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/shadow_node.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
@@ -35,30 +35,6 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
-static constexpr const char* const kModeAspectFit = "aspectFit";
-static constexpr const char* const kModeAspectFill = "aspectFill";
-static constexpr const char* const kModeScaleToFill = "scaleToFill";
-static constexpr const char* const kBase64Scheme = "data:image";
-static constexpr const char* const kLocalScheme = "file://";
-static constexpr const char* const kLoadEventName = "load";
-static constexpr const char* const kLoadEventImageWidth = "width";
-static constexpr const char* const kLoadEventImageHeight = "height";
-static constexpr const char* const kErrorEventName = "error";
-static constexpr const char* const kErrorEventCode = "error_code";
-static constexpr const char* const kErrorEventMsg = "errMsg";
-static constexpr const char* const kPathErrorMsg =
-    "The image could not be obtained because the image path is invalid.";
-static constexpr const char* const kFormatErrorMsg =
-    "The image format is not supported.";
-static constexpr const int32_t kPathErrorCode = 401;
-
-constexpr uint64_t kFlagSrcChanged = 1;
-constexpr uint64_t kFlagPlaceholderChanged = 1 << 1;
-constexpr uint64_t kFlagCapInsetsChanged = 1 << 2;
-constexpr uint64_t kFlagImageRenderingChanged = 1 << 3;
-constexpr uint64_t kFlagTintColorChanged = 1 << 4;
-constexpr uint64_t kFlagDropShadowChanged = 1 << 5;
-constexpr uint64_t kFlagPaddingChanged = 1 << 6;
 
 using ImagePropSetter = void (UIImage::*)(const lepus::Value& value);
 std::unordered_map<std::string, ImagePropSetter> UIImage::prop_setters_ = {
@@ -83,7 +59,8 @@ void UIImage::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 }
 
 UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)
-    : UIBase(context, ARKUI_NODE_IMAGE, sign, tag), mode_(kModeScaleToFill) {
+    : UIBase(context, ARKUI_NODE_IMAGE, sign, tag),
+      mode_(image::kModeScaleToFill) {
   NodeManager::Instance().RegisterNodeEvent(Node(), NODE_IMAGE_ON_COMPLETE,
                                             NODE_IMAGE_ON_COMPLETE, this);
   NodeManager::Instance().RegisterNodeEvent(Node(), NODE_IMAGE_ON_ERROR,
@@ -100,20 +77,20 @@ UIImage::UIImage(LynxContext* context, int sign, const std::string& tag)
 }
 
 ArkUI_ObjectFit UIImage::ConvertMode(const std::string& mode) {
-  if (mode == kModeAspectFit) {
+  if (mode == image::kModeAspectFit) {
     return ARKUI_OBJECT_FIT_CONTAIN;
-  } else if (mode == kModeAspectFill) {
-    return ARKUI_OBJECT_FIT_COVER;
-  } else {
-    return ARKUI_OBJECT_FIT_FILL;
   }
+  if (mode == image::kModeAspectFill) {
+    return ARKUI_OBJECT_FIT_COVER;
+  }
+  return ARKUI_OBJECT_FIT_FILL;
 }
 
 void UIImage::UpdateImageSource(const lepus::Value& value) {
   const auto& value_str = value.StdString();
   if (src_ != value_str) {
     src_ = value_str;
-    dirty_flags_ |= kFlagSrcChanged;
+    dirty_flags_ |= image::kFlagSrcChanged;
   }
 }
 
@@ -142,19 +119,19 @@ void UIImage::UpdateLayout(float left, float top, float width, float height,
   }
   if (image_padding_top_ != padding_top_) {
     image_padding_top_ = padding_top_;
-    dirty_flags_ |= kFlagPaddingChanged;
+    dirty_flags_ |= image::kFlagPaddingChanged;
   }
   if (image_padding_left_ != padding_left_) {
     image_padding_left_ = padding_left_;
-    dirty_flags_ |= kFlagPaddingChanged;
+    dirty_flags_ |= image::kFlagPaddingChanged;
   }
   if (image_padding_right_ != padding_right_) {
     image_padding_right_ = padding_right_;
-    dirty_flags_ |= kFlagPaddingChanged;
+    dirty_flags_ |= image::kFlagPaddingChanged;
   }
   if (image_padding_bottom_ != padding_bottom_) {
     image_padding_bottom_ = padding_bottom_;
-    dirty_flags_ |= kFlagPaddingChanged;
+    dirty_flags_ |= image::kFlagPaddingChanged;
   }
 }
 
@@ -183,9 +160,9 @@ void UIImage::OnNodeEvent(ArkUI_NodeEvent* event) {
                                event_data->data[2].f32);
   } else if (has_src_ && type == NODE_IMAGE_ON_ERROR) {
     auto error_code = event_data->data[0].i32;
-    HandleImageFailCallback(error_code, error_code == kPathErrorCode
-                                            ? kPathErrorMsg
-                                            : kFormatErrorMsg);
+    HandleImageFailCallback(error_code, error_code == image::kPathErrorCode
+                                            ? image::kPathErrorMsg
+                                            : image::kFormatErrorMsg);
   }
 }
 
@@ -195,11 +172,12 @@ void UIImage::HandleImageSuccessCallback(float image_width,
   image_height_ = image_height;
   if (context_) {
     AutoSizeIfNeeded();
-    if (has_load_event_) {
+    if ((event_flags_ & image::kFlagImageLoadEvent) != 0) {
       auto dict = lepus::Dictionary::Create();
-      dict->SetValue(kLoadEventImageHeight, image_height_);
-      dict->SetValue(kLoadEventImageWidth, image_width_);
-      CustomEvent event{Sign(), kLoadEventName, "detail", lepus_value(dict)};
+      dict->SetValue(image::kLoadEventImageHeight, image_height_);
+      dict->SetValue(image::kLoadEventImageWidth, image_width_);
+      CustomEvent event{Sign(), image::kLoadEventName, "detail",
+                        lepus_value(dict)};
       context_->SendEvent(event);
     }
   }
@@ -209,11 +187,12 @@ void UIImage::HandleImageFailCallback(float error_code,
                                       const std::string& error_msg) {
   LOGE("UIImage load image failed error_code = " << error_code
                                                  << " url = " << src_)
-  if (has_error_event_ && context_) {
+  if ((event_flags_ & image::kFlagImageErrorEvent) != 0 && context_) {
     auto dict = lepus::Dictionary::Create();
-    dict->SetValue(kErrorEventCode, error_code);
-    dict->SetValue(kErrorEventMsg, error_msg);
-    CustomEvent event{Sign(), kErrorEventName, "detail", lepus_value(dict)};
+    dict->SetValue(image::kErrorEventCode, error_code);
+    dict->SetValue(image::kErrorEventMsg, error_msg);
+    CustomEvent event{Sign(), image::kErrorEventName, "detail",
+                      lepus_value(dict)};
     context_->SendEvent(event);
   }
 }
@@ -256,7 +235,7 @@ void UIImage::SetImageSrcFromPath(const std::string& url, bool placeholder) {
 
 void UIImage::LoadImageFromURL(bool placeholder) {
   const std::string& url = placeholder ? place_holder_ : src_;
-  bool is_base64 = base::BeginsWith(url, kBase64Scheme);
+  bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
   if (is_base64) {
     if (placeholder) {
       ArkUI_AttributeItem item{.string = url.c_str()};
@@ -266,7 +245,7 @@ void UIImage::LoadImageFromURL(bool placeholder) {
     }
     return;
   }
-  bool is_local = base::BeginsWith(url, kLocalScheme);
+  bool is_local = base::BeginsWith(url, image::kLocalScheme);
   if (is_local) {
     ArkUI_NodeAttributeType type =
         placeholder ? NODE_IMAGE_ALT : NODE_IMAGE_SRC;
@@ -299,17 +278,17 @@ void UIImage::LoadImageFromURL(bool placeholder) {
 
 void UIImage::OnNodeReady() {
   UIBase::OnNodeReady();
-  if ((dirty_flags_ & kFlagPlaceholderChanged) != 0) {
+  if ((dirty_flags_ & image::kFlagPlaceholderChanged) != 0) {
     LoadImageFromURL(true);
   }
-  if ((dirty_flags_ & (kFlagSrcChanged | kFlagDropShadowChanged |
-                       kFlagCapInsetsChanged)) != 0) {
+  if ((dirty_flags_ & (image::kFlagSrcChanged | image::kFlagDropShadowChanged |
+                       image::kFlagCapInsetsChanged)) != 0) {
     if (!defer_src_invalidation_) {
       NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_SRC);
     }
     LoadImageFromURL();
   }
-  if ((dirty_flags_ & kFlagImageRenderingChanged) != 0) {
+  if ((dirty_flags_ & image::kFlagImageRenderingChanged) != 0) {
     if (rendering_type_ == starlight::ImageRenderingType::kPixelated) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_IMAGE_INTERPOLATION,
@@ -320,7 +299,7 @@ void UIImage::OnNodeReady() {
           static_cast<int32_t>(ARKUI_IMAGE_INTERPOLATION_LOW));
     }
   }
-  if ((dirty_flags_ & kFlagTintColorChanged) != 0) {
+  if ((dirty_flags_ & image::kFlagTintColorChanged) != 0) {
     if (color_filter_) {
       OH_Drawing_ColorFilterDestroy(color_filter_);
     }
@@ -330,7 +309,7 @@ void UIImage::OnNodeReady() {
     NodeManager::Instance().SetAttribute(Node(), NODE_IMAGE_COLOR_FILTER,
                                          &item);
   }
-  if ((dirty_flags_ & kFlagPaddingChanged) != 0) {
+  if ((dirty_flags_ & image::kFlagPaddingChanged) != 0) {
     if (effect_type_ == LynxImageEffectProcessor::ImageEffect::kNone) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           Node(), NODE_PADDING, padding_top_, padding_right_, padding_bottom_,
@@ -347,7 +326,7 @@ void UIImage::UpdatePlaceholder(const lepus::Value& value) {
   if (place_holder_ != value_str) {
     place_holder_ = value_str;
     NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_ALT);
-    dirty_flags_ |= kFlagPlaceholderChanged;
+    dirty_flags_ |= image::kFlagPlaceholderChanged;
   }
 }
 
@@ -384,10 +363,10 @@ void UIImage::SetEvents(const std::vector<lepus::Value>& events) {
     return;
   }
   for (auto& event_ : events_) {
-    if (event_ == kLoadEventName) {
-      has_load_event_ = true;
-    } else if (event_ == kErrorEventName) {
-      has_error_event_ = true;
+    if (event_ == image::kLoadEventName) {
+      event_flags_ |= image::kFlagImageLoadEvent;
+    } else if (event_ == image::kErrorEventName) {
+      event_flags_ |= image::kFlagImageErrorEvent;
     }
   }
 }
@@ -415,10 +394,8 @@ void UIImage::LoadImageResource(const std::string& url,
 
 void UIImage::HandleImageSrcResponse(pub::LynxPathResponse& response) {
   if (response.Success()) {
-    //    std::string str(response.data.begin(), response.data.end());
     SetImageSrcAttribute(response.path, false);
   } else if (response.err_code == error::E_RESOURCE_IMAGE_PIC_SOURCE) {
-    // TODO(chengjunnan)
     //  During a cold start, the image library may occasionally experience
     //  successful requests that return empty data. As a temporary
     //  workaround,and will address it later.
@@ -440,7 +417,7 @@ void UIImage::UpdateCapInsets(const lepus::Value& value) {
   std::vector<std::string> cap_insets_str;
   base::SplitString(value_str, ' ', cap_insets_str);
   cap_insets_.clear();
-  dirty_flags_ |= kFlagCapInsetsChanged;
+  dirty_flags_ |= image::kFlagCapInsetsChanged;
   for (const std::string& cap_inset : cap_insets_str) {
     if (cap_inset.length() >= 3 && base::EndsWith(cap_inset, "px")) {
       float cap_inset_value;
@@ -472,7 +449,7 @@ void UIImage::UpdateDeferSrcInvalidation(const lepus::Value& value) {
 
 void UIImage::SetImageRendering(const lepus::Value& value) {
   UIBase::SetImageRendering(value);
-  dirty_flags_ |= kFlagImageRenderingChanged;
+  dirty_flags_ |= image::kFlagImageRenderingChanged;
 }
 
 void UIImage::UpdateTintColor(const lepus::Value& value) {
@@ -484,12 +461,12 @@ void UIImage::UpdateTintColor(const lepus::Value& value) {
     NodeManager::Instance().ResetAttribute(Node(), NODE_IMAGE_COLOR_FILTER);
   } else {
     tint_color_ = color.GetValue().UInt32();
-    dirty_flags_ |= kFlagTintColorChanged;
+    dirty_flags_ |= image::kFlagTintColorChanged;
   }
 }
 
 void UIImage::UpdateDropShadow(const lepus::Value& value) {
-  dirty_flags_ |= kFlagDropShadowChanged;
+  dirty_flags_ |= image::kFlagDropShadowChanged;
   if (value.IsString()) {
     const auto& value_str = value.StdString();
     std::vector<std::string> drop_shadow_str;
@@ -541,17 +518,19 @@ void UIImage::HandleImageWithProcessor(
           return;
         }
         auto ui_image = std::static_pointer_cast<UIImage>(self);
-        ui_image->pixel_map_ = std::move(response.data);
+        std::unique_ptr<LynxBaseImage> pixel_maps = std::move(response.data);
         if (ui_image->drawable_descriptor_) {
           OH_ArkUI_DrawableDescriptor_Dispose(ui_image->drawable_descriptor_);
           ui_image->drawable_descriptor_ = nullptr;
         }
-        ui_image->drawable_descriptor_ =
-            OH_ArkUI_DrawableDescriptor_CreateFromPixelMap(
-                ui_image->pixel_map_.get());
-        ArkUI_AttributeItem item{.object = ui_image->drawable_descriptor_};
-        NodeManager::Instance().SetAttribute(ui_image->Node(), NODE_IMAGE_SRC,
-                                             &item);
+        if (pixel_maps && pixel_maps->FirstFrame()) {
+          ui_image->drawable_descriptor_ =
+              OH_ArkUI_DrawableDescriptor_CreateFromPixelMap(
+                  pixel_maps->FirstFrame()->Bitmap());
+          ArkUI_AttributeItem item{.object = ui_image->drawable_descriptor_};
+          NodeManager::Instance().SetAttribute(ui_image->Node(), NODE_IMAGE_SRC,
+                                               &item);
+        }
       },
       LynxImageEffectProcessor(effect_type, params));
 }

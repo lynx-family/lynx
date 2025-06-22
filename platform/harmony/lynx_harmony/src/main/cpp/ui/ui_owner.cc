@@ -22,6 +22,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_flatten_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_list.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
@@ -91,9 +92,11 @@ void UIOwner::CreateUI(int sign, const std::string& tag,
                        PropBundleHarmony* painting_data, uint32_t node_index) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OWNER_CREATE_UI + tag);
   UIBase* ui = nullptr;
-
-  if (auto* node_info = context_->GetNodeInfo(tag);
-      node_info && node_info->ui_creator) {
+  if ((tag == "image") && (painting_data->Contains("autoplay") ||
+                           painting_data->Contains("loop-count"))) {
+    ui = UIFlattenImage::Make(context_.get(), sign, tag);
+  } else if (auto* node_info = context_->GetNodeInfo(tag);
+             node_info && node_info->ui_creator) {
     ui = node_info->ui_creator(context_.get(), sign, tag);
   } else if (tag == "page") {
     ui = Root();

@@ -43,12 +43,10 @@ class UIImage : public UIBase {
   void OnNodeReady() override;
 
  private:
-  std::string src_{};
-  std::string place_holder_{};
-  std::string mode_{};
+  std::string src_;
+  std::string place_holder_;
+  std::string mode_;
   bool auto_size_{false};
-  bool has_load_event_;
-  bool has_error_event_;
   bool skip_redirection_{false};
   float image_width_{0.f};
   float image_height_{0.f};
@@ -61,7 +59,6 @@ class UIImage : public UIBase {
   float image_padding_right_{0.f};
   float image_padding_bottom_{0.f};
   uint32_t shadow_color_{0};
-  std::unique_ptr<OH_PixelmapNative, LynxImageHelper::PixelmapDeleter> pixel_map_{nullptr, nullptr};
   ArkUI_DrawableDescriptor* drawable_descriptor_{nullptr};
   uint32_t tint_color_{0};
   OH_Drawing_ColorFilter* color_filter_{nullptr};
@@ -69,6 +66,7 @@ class UIImage : public UIBase {
   bool has_src_{false};
   bool defer_src_invalidation_{false};
   uint64_t dirty_flags_{0};
+  uint64_t event_flags_{0};
   static std::unordered_map<std::string, void (UIImage::*)(const lepus::Value& value)>
       prop_setters_;
   LynxImageEffectProcessor::ImageEffect effect_type_{LynxImageEffectProcessor::ImageEffect::kNone};

@@ -84,12 +84,15 @@ void BackgroundDrawable::DrawBorder(OH_Drawing_Canvas* canvas) {
 void BackgroundDrawable::UpdateContentBox() {
   if (padding_box_draw_rect_) {
     OH_Drawing_RectDestroy(padding_box_draw_rect_);
+    padding_box_draw_rect_ = nullptr;
   }
   if (border_box_draw_rect_) {
     OH_Drawing_RectDestroy(border_box_draw_rect_);
+    border_box_draw_rect_ = nullptr;
   }
   if (content_box_draw_rect_) {
     OH_Drawing_RectDestroy(content_box_draw_rect_);
+    content_box_draw_rect_ = nullptr;
   }
   if (!border_box_rect_) {
     border_box_rect_ = std::make_unique<LayerManager::Rect>();

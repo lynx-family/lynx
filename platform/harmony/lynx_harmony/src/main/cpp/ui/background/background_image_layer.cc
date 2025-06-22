@@ -26,11 +26,14 @@ void BackgroundImageLayer::OnSizeChange(float width, float height,
 
 void BackgroundImageLayer::Draw(OH_Drawing_Canvas* canvas,
                                 OH_Drawing_Path* path) {
-  if (!draw_pixel_map_ || !src_rect_ || !dest_rect_) {
+  if (!pixel_map_ || !src_rect_ || !dest_rect_ || !pixel_map_->FirstFrame() ||
+      !sample_) {
+    LOGE("Draw with invalid args.");
     return;
   }
-  OH_Drawing_CanvasDrawPixelMapRect(canvas, draw_pixel_map_, src_rect_,
-                                    dest_rect_, sample_);
+  OH_Drawing_CanvasDrawPixelMapRect(canvas,
+                                    pixel_map_->FirstFrame()->DrawBitmap(),
+                                    src_rect_, dest_rect_, sample_);
 }
 
 bool BackgroundImageLayer::IsReady() { return pixel_map_ != nullptr; }
@@ -107,10 +110,6 @@ void BackgroundImageLayer::DestroyDrawStruct() {
     OH_Drawing_SamplingOptionsDestroy(sample_);
     sample_ = nullptr;
   }
-  if (draw_pixel_map_) {
-    OH_Drawing_PixelMapDissolve(draw_pixel_map_);
-    draw_pixel_map_ = nullptr;
-  }
 }
 
 void BackgroundImageLayer::HandleImageData(
@@ -130,11 +129,9 @@ void BackgroundImageLayer::HandleImageData(
       pixelated ? FILTER_MODE_NEAREST : FILTER_MODE_LINEAR,
       pixelated ? MIPMAP_MODE_NEAREST : MIPMAP_MODE_LINEAR);
   pixel_map_ = std::move(response.data);
-  image_width_ = response.image_width;
-  image_height_ = response.image_height;
+  image_width_ = pixel_map_->Width();
+  image_height_ = pixel_map_->Height();
   src_rect_ = OH_Drawing_RectCreate(0, 0, image_width_, image_height_);
-  draw_pixel_map_ =
-      OH_Drawing_PixelMapGetFromOhPixelMapNative(pixel_map_.get());
   ui_base_self->Invalidate();
 }
 

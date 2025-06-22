@@ -10,25 +10,22 @@
 
 #include <memory>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "base/include/closure.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_base_image.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_effect_processor.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
+
 class LynxImageHelper {
  public:
   using PixelmapDeleter = void (*)(OH_PixelmapNative*);
   struct ImageResponse {
-    std::unique_ptr<OH_PixelmapNative, PixelmapDeleter> data{nullptr,
-                                                             &ReleasePixelmap};
+    std::unique_ptr<LynxBaseImage> data{nullptr};
+    uint32_t frame_count{0};
     Image_ErrorCode err_code{IMAGE_SUCCESS};
-    uint32_t image_width{0};
-    uint32_t image_height{0};
-
     bool Success() { return err_code == IMAGE_SUCCESS; };
   };
 
