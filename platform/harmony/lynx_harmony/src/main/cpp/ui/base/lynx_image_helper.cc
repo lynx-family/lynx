@@ -4,10 +4,11 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 
-#include <uv.h>
+#include <cstdint>
 
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_pixel_map.h"
 
 namespace lynx {
 namespace tasm {
@@ -43,7 +44,6 @@ void LynxImageHelper::DecodeImageAsync(
   context->work = async_work;
   napi_queue_async_work(env, async_work);
 }
-
 LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
     const std::string& url, bool is_base64,
     const LynxImageEffectProcessor& params) {
@@ -59,7 +59,6 @@ LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
     code = OH_ImageSourceNative_CreateFromUri(const_cast<char*>(url.data()),
                                               url.size(), &image_source_native);
   }
-
   ImageResponse response;
   if (code != IMAGE_SUCCESS) {
     response.err_code = code;
@@ -69,39 +68,58 @@ LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
   OH_ImageSourceNative_Release(image_source_native);
   return response;
 }
-
 void LynxImageHelper::DecodeImageFromImageSource(
     OH_ImageSourceNative* image_source, ImageResponse& response,
     const LynxImageEffectProcessor& params) {
   OH_DecodingOptions* options;
   OH_DecodingOptions_Create(&options);
   OH_DecodingOptions_SetPixelFormat(options, PIXEL_FORMAT_RGBA_8888);
-  OH_DecodingOptions_SetIndex(options, 0);
   OH_PixelmapNative* pixel_map;
-  auto code =
-      OH_ImageSourceNative_CreatePixelmap(image_source, options, &pixel_map);
+  uint32_t frameCount = 0;
+  std::unique_ptr<OH_PixelmapNative*[]> pixelmap_list{};
 
+  auto code = OH_ImageSourceNative_GetFrameCount(image_source, &frameCount);
+  if (code != IMAGE_SUCCESS) {
+    response.err_code = code;
+    return;
+  }
+  if (frameCount > 1) {
+    pixelmap_list = std::make_unique<OH_PixelmapNative*[]>(frameCount);
+    code = OH_ImageSourceNative_CreatePixelmapList(
+        image_source, options, pixelmap_list.get(), frameCount);
+  } else {
+    OH_DecodingOptions_SetIndex(options, 0);
+    code =
+        OH_ImageSourceNative_CreatePixelmap(image_source, options, &pixel_map);
+  }
   OH_DecodingOptions_Release(options);
   if (code != IMAGE_SUCCESS) {
     response.err_code = code;
     return;
   }
-  OH_Pixelmap_ImageInfo* pixel_map_info;
-  OH_PixelmapImageInfo_Create(&pixel_map_info);
-  OH_PixelmapNative_GetImageInfo(pixel_map, pixel_map_info);
-  OH_PixelmapImageInfo_GetWidth(pixel_map_info, &response.image_width);
-  OH_PixelmapImageInfo_GetHeight(pixel_map_info, &response.image_height);
-  OH_PixelmapImageInfo_Release(pixel_map_info);
-
-  if (params.GetEffectType() != LynxImageEffectProcessor::ImageEffect::kNone) {
+  response.frame_count = frameCount;
+  if (params.GetEffectType() != LynxImageEffectProcessor::ImageEffect::kNone &&
+      frameCount == 1) {
     OH_PixelmapNative* new_pixel_map = params.Process(pixel_map);
     if (new_pixel_map) {
       OH_PixelmapNative_Release(pixel_map);
       pixel_map = new_pixel_map;
     }
   }
-  std::unique_ptr<OH_PixelmapNative, PixelmapDeleter> ptr(pixel_map,
-                                                          &ReleasePixelmap);
+  std::vector<std::unique_ptr<LynxPixelMap>> data{};
+  if (frameCount > 1) {
+    int32_t* delayTimeList = new int32_t[frameCount];
+    OH_ImageSourceNative_GetDelayTimeList(image_source, delayTimeList,
+                                          frameCount);
+    for (int i = 0; i < frameCount; i++) {
+      data.emplace_back(std::make_unique<LynxPixelMap>(pixelmap_list.get()[i],
+                                                       delayTimeList[i]));
+    }
+    delete[] delayTimeList;
+  } else {
+    data.emplace_back(std::make_unique<LynxPixelMap>(pixel_map, 0));
+  }
+  auto ptr = std::make_unique<LynxBaseImage>(std::move(data), frameCount);
   response.data = std::move(ptr);
 }
 }  // namespace harmony
