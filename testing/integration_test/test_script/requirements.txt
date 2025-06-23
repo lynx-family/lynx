@@ -6,3 +6,4 @@ retrying
 appium-python-client==3.1.1
 selenium==4.17.2
 ujson
+six>=1.16.0
