@@ -23,7 +23,7 @@ class JSCContextGroupWrapper : public VMInstance {
   inline JSContextGroupRef GetContextGroup() { return group_; }
 
  private:
-  JSContextGroupRef group_;
+  JSContextGroupRef group_{nullptr};
 };
 
 }  // namespace piper

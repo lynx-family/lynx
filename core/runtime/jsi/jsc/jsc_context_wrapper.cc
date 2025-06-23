@@ -18,14 +18,24 @@ namespace lynx {
 namespace piper {
 
 JSCContextWrapper::JSCContextWrapper(std::shared_ptr<VMInstance> vm)
-    : JSIContext(vm), ctx_invalid_(false), objectCounter_(0) {}
+    : JSIContext(vm), ctx_(nullptr), ctx_invalid_(false), objectCounter_(0) {}
 
 void JSCContextWrapper::init() {
   std::shared_ptr<JSCContextGroupWrapper> context_group_wrapper =
       std::static_pointer_cast<JSCContextGroupWrapper>(vm_);
   JSContextGroupRef jsc_context_group =
       context_group_wrapper->GetContextGroup();
+  if (!jsc_context_group) {
+    LOGE("JSCContextWrapper::init, jsc_context_group is null");
+    ctx_invalid_ = true;
+    return;
+  }
   ctx_ = JSGlobalContextCreateInGroup(jsc_context_group, nullptr);
+  if (!ctx_) {
+    LOGE("JSCContextWrapper::init, JSGlobalContextCreateInGroup failed");
+    ctx_invalid_ = true;
+    return;
+  }
 
   // register webassembly here, on ctx.global
   RegisterWasmFunc()(ctx_, &ctx_invalid_);
@@ -35,6 +45,10 @@ void JSCContextWrapper::init() {
 }
 
 JSCContextWrapper::~JSCContextWrapper() {
+  if (!ctx_) {
+    LOGE("JSCContextWrapper::~JSCContextWrapper, ctx is invalid");
+    return;
+  }
   ctx_invalid_ = true;
   JSGlobalContextRelease(ctx_);
 
