@@ -7,6 +7,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// TODO(@nihao.royal): remove LynxServiceModuleProtocol;
 @protocol LynxServiceModuleProtocol <LynxServiceProtocol>
 
 /**
@@ -18,6 +19,11 @@ NS_ASSUME_NONNULL_BEGIN
  *  @depreacted:  No need to clear module by LynxService.
  */
 - (void)clearModuleForDestroy:(LynxView *)lynxView;
+
+/**
+ * clone globalProps when Page reload
+ */
+- (void)cloneGlobalPropsForReload:(LynxView *)lynxView;
 
 @end
 
