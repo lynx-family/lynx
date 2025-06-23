@@ -66,6 +66,10 @@ export class AbortSignal extends EventEmitter {
     super.addListener(type, listener);
   }
 
+  removeEventListener(type: string, listener: (...args: unknown[]) => void) {
+    super.removeListener(type, listener);
+  }
+
   static __create() {
     return new AbortSignal();
   }
