@@ -4689,7 +4689,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setDisableDefaultResize(boolean disable);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setLynxBaseUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setViewInfo(ViewInfo viewInfo);
-  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updatePropertiesInterval(StylesDiffMap props);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.updatePropertiesInterval(ReadableMap props);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.pauseAnimation(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.resumeAnimation(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.stopAnimation(ReadableMap params, Callback callback);
@@ -9014,6 +9014,7 @@ public class com::lynx::tasm::behavior::ui::image::UIImage : com.lynx.tasm.behav
   public void com.lynx.tasm.behavior.ui.image.UIImage.onNodeReady();
   public void com.lynx.tasm.behavior.ui.image.UIImage.destroy();
   public void com.lynx.tasm.behavior.ui.image.UIImage.beforeDraw(Canvas canvas);
+  public void com.lynx.tasm.behavior.ui.image.UIImage.beforeProcessViewInfo(ViewInfo info);
   public void com.lynx.tasm.behavior.ui.image.UIImage.onAttach();
   public void com.lynx.tasm.behavior.ui.image.UIImage.onDetach();
   public void com.lynx.tasm.behavior.ui.image.UIImage.setEvents(Map< String, EventsListener > events);
@@ -9533,6 +9534,7 @@ public class com::lynx::tasm::behavior::ui::ViewInfo : com.lynx.tasm.behavior.ui
   public void com.lynx.tasm.behavior.ui.ViewInfo.setBoundsWidth(int width);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setBoundsHeight(int height);
   public void com.lynx.tasm.behavior.ui.ViewInfo.setMaskDrawable(MaskDrawable drawable);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.setImageManagerUsedInBeforeDraw(LynxImageManager manager);
   public void com.lynx.tasm.behavior.ui.ViewInfo.beforeDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.ViewInfo.beforeDispatchDraw(Canvas canvas);
   public Rect com.lynx.tasm.behavior.ui.ViewInfo.beforeDrawChild(Canvas canvas, View child, long drawingTime);

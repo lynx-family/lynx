@@ -491,11 +491,11 @@ public class LynxImageManager implements Drawable.Callback {
   // endregion
 
   // region UIMethod
-  public void updatePropertiesInterval(StylesDiffMap props) {
+  public void updatePropertiesInterval(ReadableMap props) {
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.beginSection(TraceEventDef.IMAGE_MANAGER_UPDATE_PROPS_INTERVAL);
     }
-    ReadableMapKeySetIterator iterator = props.mBackingMap.keySetIterator();
+    ReadableMapKeySetIterator iterator = props.keySetIterator();
     while (iterator.hasNextKey()) {
       String name = iterator.nextKey();
       switch (name) {
