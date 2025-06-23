@@ -2838,6 +2838,7 @@ public protocol LynxServiceLogProtocol-p : <LynxServiceProtocol> {
 public protocol LynxServiceModuleProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceModuleProtocol-p::initGlobalProps:(LynxView *lynxView);
   public void LynxServiceModuleProtocol-p::clearModuleForDestroy:(LynxView *lynxView);
+  public void LynxServiceModuleProtocol-p::cloneGlobalPropsForReload:(LynxView *lynxView);
 }
 
 public protocol LynxServiceMonitorProtocol-p : <LynxServiceProtocol> {

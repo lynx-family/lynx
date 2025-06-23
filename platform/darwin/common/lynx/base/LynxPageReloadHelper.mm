@@ -6,6 +6,7 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxPageReloadHelper+Internal.h>
 #import <Lynx/LynxPageReloadHelper.h>
+#import <Lynx/LynxService.h>
 #if OS_IOS
 #import <Lynx/LynxTextRendererCache.h>
 #endif
@@ -132,6 +133,9 @@
   }
 
   if (_lynxView) {
+    // TODO(nihao.royal): update with value passed from onGlobalPropsUpdated
+    [LynxService(LynxServiceModuleProtocol) cloneGlobalPropsForReload:_lynxView];
+
     // if binary is nil, reload with template or url stored before
     if (!binary && _initWithBinary && ![_url hasPrefix:@"http"]) {
       LLogInfo(@"PageReloadHelper: reload with stored template");
