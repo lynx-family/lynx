@@ -27,46 +27,68 @@ public class FlattenUIImage extends LynxFlattenUI {
     mLynxImageManager.setLynxBaseUI(this);
   }
 
+  private void ensureLynxImageManager() {
+    if (mLynxImageManager != null) {
+      return;
+    }
+    mLynxImageManager = new LynxImageManager(getLynxContext());
+    mLynxImageManager.setLynxBaseUI(this);
+    mLynxImageManager.setEvents(mEvents);
+    mLynxImageManager.updatePropertiesInterval(mProps);
+    mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
+        getPaddingTop(), getPaddingBottom());
+    mLynxImageManager.onNodeReady();
+  }
+
   @LynxUIMethod
   public void pauseAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback) {
+    ensureLynxImageManager();
     mLynxImageManager.pauseAnimation(params, callback);
   }
 
   @LynxUIMethod
   public void resumeAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback) {
+    ensureLynxImageManager();
     mLynxImageManager.resumeAnimation(params, callback);
   }
 
   @LynxUIMethod
   public void stopAnimation(ReadableMap params, com.lynx.react.bridge.Callback callback) {
+    ensureLynxImageManager();
     mLynxImageManager.stopAnimation(params, callback);
   }
 
   @LynxUIMethod
   public void startAnimate(ReadableMap params, com.lynx.react.bridge.Callback callback) {
+    ensureLynxImageManager();
     mLynxImageManager.startAnimate(params, callback);
   }
 
   @Override
   public void updatePropertiesInterval(StylesDiffMap props) {
+    ensureLynxImageManager();
     super.updatePropertiesInterval(props);
-    mLynxImageManager.updatePropertiesInterval(props);
+    mLynxImageManager.updatePropertiesInterval(props.mBackingMap);
   }
 
   @Override
   public void onPropsUpdated() {
+    ensureLynxImageManager();
     super.onPropsUpdated();
     mLynxImageManager.onPropsUpdated();
   }
 
   @Override
   public void setImageRendering(int imageRendering) {
+    ensureLynxImageManager();
     super.setImageRendering(imageRendering);
     mLynxImageManager.setIsPixelated(imageRendering == IMAGERENDERING_PIXELATED);
   }
 
   @Override
   public void onNodeReady() {
+    ensureLynxImageManager();
+
     super.onNodeReady();
     if (mLynxBackground.getDrawable() != null) {
       mLynxImageManager.setBorderWidth(
@@ -82,16 +104,23 @@ public class FlattenUIImage extends LynxFlattenUI {
   @Override
   public void destroy() {
     super.destroy();
+
+    if (mLynxImageManager == null) {
+      return;
+    }
     mLynxImageManager.destroy();
   }
 
   @Override
   public void onDraw(Canvas canvas) {
+    ensureLynxImageManager();
     super.onDraw(canvas);
     mLynxImageManager.onDraw(canvas);
   }
 
   public LynxImageManager getLynxImageManagerForViewInfo() {
+    ensureLynxImageManager();
+
     // we should call getLynxImageManagerForViewInfo after onDraw in the same call stack, to make
     // sure the getHasContent is correct!
     if (mLynxImageManager != null && !mLynxImageManager.getHasContent()) {
@@ -114,12 +143,14 @@ public class FlattenUIImage extends LynxFlattenUI {
 
   @Override
   public void setEvents(Map<String, EventsListener> events) {
+    ensureLynxImageManager();
     super.setEvents(events);
     mLynxImageManager.setEvents(events);
   }
 
   @Override
   public void onLayoutUpdated() {
+    ensureLynxImageManager();
     super.onLayoutUpdated();
     mLynxImageManager.onLayoutUpdated(getWidth(), getHeight(), getPaddingLeft(), getPaddingRight(),
         getPaddingTop(), getPaddingBottom());

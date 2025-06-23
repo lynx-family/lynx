@@ -156,6 +156,8 @@ public class ViewInfo implements IDrawChildHook {
   int mBoundsHeight;
   MaskDrawable mMaskDrawable;
 
+  private LynxImageManager mImageManagerUsedInBeforeDraw;
+
   public void setBoundsWidth(int width) {
     mBoundsWidth = width;
   }
@@ -168,11 +170,20 @@ public class ViewInfo implements IDrawChildHook {
     mMaskDrawable = drawable;
   }
 
+  public void setImageManagerUsedInBeforeDraw(LynxImageManager manager) {
+    mImageManagerUsedInBeforeDraw = manager;
+  }
+
   @Override
   public void beforeDraw(Canvas canvas) {
     if (mProcessHook != null) {
       mProcessHook.beforeProcessViewInfo(this);
     }
+
+    if (mImageManagerUsedInBeforeDraw != null) {
+      mImageManagerUsedInBeforeDraw.onDraw(canvas);
+    }
+
     if (mSkewX != 0 || mSkewY != 0) {
       canvas.skew(mSkewX, mSkewY);
       // Put the anchor point back.
@@ -238,10 +249,11 @@ public class ViewInfo implements IDrawChildHook {
       info.mRenderNode.drawRenderNode(canvas);
     }
 
+    if (info.mLeft != 0 || info.mTop != 0) {
+      canvas.translate(info.mLeft, info.mTop);
+    }
+
     if (info.mTextLayout != null) {
-      if (info.mLeft != 0 || info.mTop != 0) {
-        canvas.translate(info.mLeft, info.mTop);
-      }
       info.mTextLayout.draw(canvas);
     }
 

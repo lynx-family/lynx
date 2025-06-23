@@ -159,7 +159,7 @@ public abstract class LynxBaseUI
   protected LynxBackground mLynxBackground;
 
   @Nullable protected LynxMask mLynxMask;
-  private final JavaOnlyMap mProps = new JavaOnlyMap();
+  protected final JavaOnlyMap mProps = new JavaOnlyMap();
 
   // for new gesture
   protected Map<String, EventsListener> mEvents;
