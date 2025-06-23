@@ -804,7 +804,7 @@ class FiberElement : public Element,
 
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
-  void ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
+  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
                          bool force_update) override;
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                         bool reset) override;
@@ -921,6 +921,9 @@ class FiberElement : public Element,
   inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
   inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
 
+  virtual void BuildAttributedStringProps(int start, int end,
+                                          PropArray* props) {}
+
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
@@ -978,7 +981,7 @@ class FiberElement : public Element,
 
   void SetMeasureFunc(void* context, starlight::SLMeasureFunc measure_func);
 
-  virtual void OnElementContainerCreated() {}
+  virtual void OnLayoutNodeCreated() {}
 
  private:
   friend class WrapperElement;

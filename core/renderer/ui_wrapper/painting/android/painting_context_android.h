@@ -158,6 +158,10 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
     return ui_operation_batch_builder_.has_value();
   }
 
+  LayoutResult MeasureText(int sign, PropArray* array, int width,
+                           int width_mode, int height,
+                           int height_mode) override;
+
  private:
   enum class IntValueIndex {
     LEFT,

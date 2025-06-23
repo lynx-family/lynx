@@ -746,4 +746,10 @@ public final class PaintingContext {
 
   private native long nativeCreatePaintingContext(
       Object paintingContext, int threadStrategy, boolean isContextFree);
+
+  @CalledByNative
+  public float[] measureText(int sign, ReadableCompactArrayBuffer buffer, float width,
+      int widthMode, float height, int heightMode) {
+    return mUIOwner.measureText(sign, buffer, width, widthMode, height, heightMode);
+  }
 }

@@ -6,12 +6,16 @@
 #define CORE_RENDERER_DOM_FIBER_TEXT_ELEMENT_H_
 
 #include <memory>
+#include <string>
 
+#include "core/public/prop_bundle.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
+// #include "core/renderer/dom/fiber/text_props.h"
 
 namespace lynx {
 namespace tasm {
 
+struct TextProps {};
 class TextElement : public FiberElement {
  public:
   TextElement(ElementManager* manager, const base::String& tag);
@@ -32,16 +36,42 @@ class TextElement : public FiberElement {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
+  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
+                         bool force_update) override;
+
+  LayoutResult Measure(float width, int32_t width_mode, float height,
+                       int32_t height_mode, bool final_measure);
+
+  void OnLayoutNodeCreated() override;
+
+  void UpdateLayoutNodeFontSize(double cur_node_font_size,
+                                double root_node_font_size) override;
+
+  static void ResolveAttributes(const char* str, TextProps* attributes,
+                                int image_id, PropArray* props);
+
+  void BuildAttributedStringProps(int start, int end,
+                                  PropArray* props) override;
+
  protected:
   void OnNodeAdded(FiberElement* child) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
+  void BuildTextPropsBuffer(std::string& output, PropArray* prop);
 
   TextElement(const TextElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
 
  private:
   void ResolveAndFlushFontFaces(const base::String& font_family);
+  bool ProcessTextStyles(CSSPropertyID id, const tasm::CSSValue& value);
+  void EnsureTextProps() {
+    if (!text_props_) {
+      text_props_ = std::make_unique<TextProps>();
+    }
+  }
+  base::String content_;
+  std::unique_ptr<TextProps> text_props_;
 };
 
 }  // namespace tasm

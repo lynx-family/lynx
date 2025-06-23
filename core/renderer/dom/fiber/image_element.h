@@ -26,11 +26,20 @@ class ImageElement : public FiberElement {
 
   void ConvertToInlineElement() override;
 
+  void BuildAttributedStringProps(int start, int end,
+                                  PropArray* props) override;
+
  protected:
   ImageElement(const ImageElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
 
   void OnNodeAdded(FiberElement* child) override;
+
+  void SetAttributeInternal(const base::String& key,
+                            const lepus::Value& value) override;
+
+ private:
+  base::String src_;
 };
 
 }  // namespace tasm

@@ -32,6 +32,8 @@ class ViewElement : public FiberElement {
       ElementManager* manager,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
+  void BuildAttributedStringProps(int start, int end,
+                                  PropArray* props) override;
 
  protected:
   void OnNodeAdded(FiberElement* child) override;

@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "base/include/lynx_actor.h"
+#include "core/public/layout_node_value.h"
 #include "core/public/pipeline_option.h"
 #include "core/public/platform_extra_bundle.h"
 #include "core/public/prop_bundle.h"
@@ -170,6 +171,12 @@ class PaintingCtxPlatformImpl {
 
   // TODO(liting.src): remove this method after ui operation queue refactor.
   virtual base::closure ExecuteOperationSafely(base::closure op) { return op; }
+
+  virtual LayoutResult MeasureText(int id, PropArray* array, int width,
+                                   int width_mode, int height,
+                                   int height_mode) {
+    return LayoutResult{0, 0, 0};
+  }
 
  protected:
   std::shared_ptr<PaintingCtxPlatformRef> platform_ref_;

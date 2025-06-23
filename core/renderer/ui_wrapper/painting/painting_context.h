@@ -234,6 +234,12 @@ class PaintingContext {
     perf_controller_actor_ = perf_controller_actor;
   };
 
+  LayoutResult MeasureText(int id, PropArray* array, int width, int width_mode,
+                           int height, int height_mode) {
+    return platform_impl_->MeasureText(id, array, width, width_mode, height,
+                                       height_mode);
+  }
+
  private:
   void Enqueue(shell::UIOperation op, bool high_priority = false);
   void EnqueueHighPriorityUIOperation(shell::UIOperation op) {

@@ -496,11 +496,17 @@ class Element : public lepus::RefCounted {
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) = 0;
 
-  virtual void ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                                 bool force_update) {}
+  virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
+                                 bool force_update) {
+    return false;
+  }
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                                 bool reset) {
     // currently, radon element do no need to such kind of check
+  }
+
+  bool EnableLayoutInElementMode() const {
+    return enable_layout_in_element_mode_;
   }
 
   virtual void WillResetCSSValue(CSSPropertyID& id) {}
@@ -684,8 +690,6 @@ class Element : public lepus::RefCounted {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
-  bool EnableLayoutInElementMode() const;
-
   base::String tag_;
 
   int32_t id_;
@@ -771,6 +775,8 @@ class Element : public lepus::RefCounted {
   // But in Radon Arch, this switch should be get from page_config.
   bool enable_extended_layout_only_opt_{true};
   bool enable_component_layout_only_{true};
+
+  bool enable_layout_in_element_mode_{false};
 
   starlight::DirectionType direction_ =
       starlight::DefaultLayoutStyle::SL_DEFAULT_DIRECTION;

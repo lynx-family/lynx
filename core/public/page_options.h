@@ -87,7 +87,7 @@ struct PageOptions {
   EmbeddedMode GetEmbeddedMode() const { return embedded_mode_; }
 
   bool IsEmbeddedModeOn() const {
-    return embedded_mode_ != EmbeddedMode::UNSET;
+    return embedded_mode_ & EmbeddedMode::EMBEDDED_MODE_BASE;
   }
 
  private:

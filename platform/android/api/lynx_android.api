@@ -6945,6 +6945,7 @@ public class com::lynx::tasm::behavior::PaintingContext :  {
   public void com.lynx.tasm.behavior.PaintingContext.insertListItemNode(int listSign, int childSign);
   public void com.lynx.tasm.behavior.PaintingContext.updateContentSizeAndOffset(int listSign, float contentSize, float deltaX, float deltaY);
   public void com.lynx.tasm.behavior.PaintingContext.updateScrollInfo(int containerID, boolean smooth, float estimatedOffset, boolean scrolling);
+  public float[] com.lynx.tasm.behavior.PaintingContext.measureText(int sign, ReadableCompactArrayBuffer buffer, float width, int widthMode, float height, int heightMode);
 }
 
 public class com::lynx::tasm::gesture::handler::PanGestureHandler : com.lynx.tasm.gesture.handler.BaseGestureHandler {

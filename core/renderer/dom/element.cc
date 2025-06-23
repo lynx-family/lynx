@@ -96,6 +96,8 @@ Element::Element(const base::String& tag, ElementManager* manager,
   }
 
   record_parent_font_size_ = manager->GetLynxEnvConfig().DefaultFontSize();
+
+  enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
 }
 
 // The copy constructor of the element is now only used for copying fiber
@@ -134,6 +136,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       enable_extended_layout_only_opt_(
           element.enable_extended_layout_only_opt_),
       enable_component_layout_only_(element.enable_component_layout_only_),
+      enable_layout_in_element_mode_(element.enable_layout_in_element_mode_),
       direction_(element.direction_),
       width_(element.width_),
       height_(element.height_),
@@ -426,6 +429,10 @@ void Element::ResetCSSValue(CSSPropertyID css_id) {
       if (layout_styles_.has_value()) {
         layout_styles_->erase(css_id);
       }
+    }
+    if (EnableLayoutInElementMode()) {
+      computed_css_style()->ResetValue(css_id);
+      MarkLayoutDirty();
     }
   }
   if (css_id == kPropertyIDPosition) {

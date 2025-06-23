@@ -517,16 +517,17 @@ void ListElement::ResetEventHandlers() {
   }
 }
 
-void ListElement::ResolveStyleValue(CSSPropertyID id,
+bool ListElement::ResolveStyleValue(CSSPropertyID id,
                                     const tasm::CSSValue& value,
                                     bool force_update) {
-  FiberElement::ResolveStyleValue(id, value, force_update);
+  bool ret = FiberElement::ResolveStyleValue(id, value, force_update);
   if (DisableListPlatformImplementation() && list_container_delegate() &&
       (CSSPropertyID::kPropertyIDListMainAxisGap == id ||
        CSSPropertyID::kPropertyIDListCrossAxisGap == id)) {
     lepus::Value axis_gap_value = computed_css_style()->GetValue(id);
     list_container_delegate()->ResolveListAxisGap(id, axis_gap_value);
   }
+  return ret;
 }
 
 void ListElement::Hydrate() {

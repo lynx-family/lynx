@@ -140,6 +140,10 @@ class PaintingContextDarwin : public PaintingCtxPlatformImpl {
 
   shell::UIOperation ExecuteOperationSafely(shell::UIOperation op) override;
 
+  LayoutResult MeasureText(int sign, PropArray* array, int width,
+                           int width_mode, int height,
+                           int height_mode) override;
+
  private:
   __weak LynxUIOwner* uiOwner_;
   bool enable_create_ui_async_{false};

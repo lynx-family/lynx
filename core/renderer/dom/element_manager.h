@@ -391,6 +391,9 @@ class ElementManager : public ElementContextDelegate {
   int32_t GetNodeInfoByTag(const base::String &tag_name);
   bool IsShadowNodeVirtual(const base::String &tag_name);
 
+  LayoutResult MeasureText(int id, PropArray *prop_array, int width,
+                           int width_mode, int height, int height_mode);
+
   void MarkLayoutDirty(int32_t id);
   void AttachLayoutNodeType(int32_t id, const base::String &tag,
                             bool allow_inline,

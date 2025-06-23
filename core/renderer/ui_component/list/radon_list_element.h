@@ -21,7 +21,7 @@ class RadonListElement : public RadonElement, public ListContainer {
                    ElementManager* element_manager, uint32_t node_index = 0);
   void TickElement(fml::TimePoint& time) override;
 
-  void ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
+  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
                          bool force_update) override;
   bool OnAttributeSet(const base::String& key,
                       const lepus::Value& value) override;

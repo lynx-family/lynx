@@ -41,7 +41,7 @@ class PageElement : public ComponentElement {
 
   void SetCSSID(int32_t id) override;
 
-  void Layout();
+  void Layout(const std::shared_ptr<PipelineOptions>& options);
 
  protected:
   PageElement(const PageElement& element, bool clone_resolved_props);

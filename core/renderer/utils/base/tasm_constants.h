@@ -148,6 +148,7 @@ static constexpr const char kHorizontal[] = "horizontal";
 static constexpr const char kVertical[] = "vertical";
 static constexpr const char kColumnCount[] = "column-count";
 static constexpr const char kSpanCount[] = "span-count";
+static constexpr const char kSrc[] = "src";
 
 // storage API
 static constexpr const char* kSetSessionStorageItem = "setSessionStorageItem";

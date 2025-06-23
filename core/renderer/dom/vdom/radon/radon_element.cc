@@ -825,16 +825,20 @@ void RadonElement::ResetTransitionStylesInAdvanceInternal(
   StylesManager().AdoptStyle(css_id, CSSValue::Empty());
 }
 
-void RadonElement::ResolveStyleValue(CSSPropertyID id,
+bool RadonElement::ResolveStyleValue(CSSPropertyID id,
                                      const tasm::CSSValue& value,
                                      bool force_update) {
+  bool resolve_success = false;
   if (computed_css_style()->SetValue(id, value) || force_update) {
     // The props of transition and keyframe no need to be pushed to bundle here.
     // Those props will be pushed to bundle separately later.
     if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
       PushToBundle(id);
     }
+    resolve_success = true;
   }
+
+  return resolve_success;
 }
 
 void RadonElement::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {

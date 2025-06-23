@@ -702,5 +702,14 @@ shell::UIOperation PaintingContextDarwin::ExecuteOperationSafely(shell::UIOperat
   };
 }
 
+LayoutResult PaintingContextDarwin::MeasureText(int sign, PropArray* array, int width,
+                                                int width_mode, int height, int height_mode) {
+  float measured_width = 0;   // esult[0];
+  float measured_height = 0;  // result[1];
+  float base_line = 0;        // result[2];
+
+  return LayoutResult{measured_width, measured_height, base_line};
+}
+
 }  // namespace tasm
 }  // namespace lynx

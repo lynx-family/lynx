@@ -2608,7 +2608,6 @@ void FiberElement::FlushProps() {
     is_layout_only_ = is_layout_only;
     // native layer don't flatten.
     CreateElementContainer(platform_is_flatten);
-    OnElementContainerCreated();
     has_painting_node_ = true;
   }
   has_transition_props_changed_ = false;
@@ -2634,13 +2633,14 @@ void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
 }
 
 void FiberElement::EnsureSLNode() {
-  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
+  if (sl_node_ == nullptr) {
     sl_node_ = std::make_unique<SLNode>(
         element_manager()->GetLayoutConfigs(),
         computed_css_style()->GetLayoutComputedStyle());
     if (is_page()) {
       MarkAsLayoutRoot();
     }
+    OnLayoutNodeCreated();
   }
 }
 
@@ -2862,9 +2862,10 @@ void FiberElement::UpdateCSSVariable(const lepus::Value &css_variable_updated) {
   element_manager()->OnPatchFinish(option, this);
 }
 
-void FiberElement::ResolveStyleValue(CSSPropertyID id,
+bool FiberElement::ResolveStyleValue(CSSPropertyID id,
                                      const tasm::CSSValue &value,
                                      bool force_update) {
+  bool resolve_success = false;
   if (computed_css_style()->SetValue(id, value)) {
     // The properties of transition and keyframe no need to be pushed to bundle
     // separately here. Those properties will be pushed to bundle together
@@ -2872,6 +2873,8 @@ void FiberElement::ResolveStyleValue(CSSPropertyID id,
     if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
       PushToBundle(id);
     }
+
+    resolve_success = true;
   }
 
   if (EnableLayoutInElementMode()) {
@@ -2879,6 +2882,8 @@ void FiberElement::ResolveStyleValue(CSSPropertyID id,
       MarkLayoutDirtyLite();
     }
   }
+
+  return resolve_success;
 }
 
 void FiberElement::SetFontSize() {
@@ -2917,7 +2922,7 @@ void FiberElement::SetFontSize() {
       UpdateLayoutNodeFontSize(*result, GetRecordedRootFontSize());
     }
 
-    if (element_manager() && !element_manager()->IsLayoutInElementModeOn()) {
+    if (EnableLayoutInElementMode()) {
       PreparePropBundleIfNeed();
 
       prop_bundle_->SetProps(

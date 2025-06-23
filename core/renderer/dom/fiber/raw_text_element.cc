@@ -4,6 +4,8 @@
 
 #include "core/renderer/dom/fiber/raw_text_element.h"
 
+#include "core/renderer/dom/element_manager.h"
+
 namespace lynx {
 namespace tasm {
 
@@ -11,7 +13,17 @@ RawTextElement::RawTextElement(ElementManager* manager)
     : FiberElement(manager, BASE_STATIC_STRING(kRawTextTag)) {}
 
 void RawTextElement::SetText(const lepus::Value& text) {
-  SetAttribute(BASE_STATIC_STRING(kTextAttr), text);
+  if (!EnableLayoutInElementMode()) {
+    SetAttribute(BASE_STATIC_STRING(kTextAttr), text);
+  } else {
+    if (text.IsString()) {
+      content_ = text.String();
+    } else if (text.IsNumber()) {
+      std::stringstream stream;
+      stream << text.Number();
+      content_ = stream.str();
+    }
+  }
 }
 
 ParallelFlushReturn RawTextElement::PrepareForCreateOrUpdate() {

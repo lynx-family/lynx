@@ -25,12 +25,17 @@ class RawTextElement : public FiberElement {
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
+  const base::String& content() const { return content_; }
+
   constexpr const static char kRawTextTag[] = "raw-text";
   constexpr const static char kTextAttr[] = "text";
 
  protected:
   RawTextElement(const RawTextElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
+
+ private:
+  base::String content_;
 };
 
 }  // namespace tasm

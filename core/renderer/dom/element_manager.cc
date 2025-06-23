@@ -427,7 +427,21 @@ void ElementManager::RequestLayout(
 
   if (has_viewport_ready_ && root()->is_page() &&
       static_cast<PageElement *>(root())->slnode()->IsDirty()) {
-    static_cast<PageElement *>(root())->Layout();
+    if (options->need_timestamps) {
+      painting_context()->MarkUIOperationQueueFlushTiming(
+          tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
+    }
+
+    if (options->need_timestamps) {
+      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
+    }
+
+    static_cast<PageElement *>(root())->Layout(options);
+
+    if (options->need_timestamps) {
+      tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutEnd);
+    }
+
     painting_context()->FinishLayoutOperation(options);
   }
 }
@@ -896,6 +910,13 @@ int32_t ElementManager::GetNodeInfoByTag(const base::String &tag_name) {
 
 bool ElementManager::IsShadowNodeVirtual(const base::String &tag_name) {
   return GetNodeInfoByTag(tag_name) & LayoutNodeType::VIRTUAL;
+}
+
+LayoutResult ElementManager::MeasureText(int id, PropArray *prop_array,
+                                         int width, int width_mode, int height,
+                                         int height_mode) {
+  return painting_context()->MeasureText(id, prop_array, width, width_mode,
+                                         height, height_mode);
 }
 
 void ElementManager::MarkLayoutDirty(int32_t id) {
@@ -1526,8 +1547,7 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
   page_options_ = options;
 
   enable_layout_in_element_mode_ =
-      page_options_.GetEmbeddedMode() == EmbeddedMode::LAYOUT_IN_ELEMENT ||
-      page_options_.GetEmbeddedMode() == EmbeddedMode::EMBEDDED_MODE_ALL;
+      ((page_options_.GetEmbeddedMode() & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0);
 }
 
 }  // namespace tasm

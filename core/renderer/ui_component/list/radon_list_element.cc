@@ -131,16 +131,17 @@ void RadonListElement::ResetEventHandlers() {
   }
 }
 
-void RadonListElement::ResolveStyleValue(CSSPropertyID id,
+bool RadonListElement::ResolveStyleValue(CSSPropertyID id,
                                          const tasm::CSSValue& value,
                                          bool force_update) {
-  RadonElement::ResolveStyleValue(id, value, force_update);
+  bool ret = RadonElement::ResolveStyleValue(id, value, force_update);
   if (list_container_delegate() &&
       (CSSPropertyID::kPropertyIDListMainAxisGap == id ||
        CSSPropertyID::kPropertyIDListCrossAxisGap == id)) {
     lepus::Value axis_gap_value = computed_css_style()->GetValue(id);
     list_container_delegate()->ResolveListAxisGap(id, axis_gap_value);
   }
+  return ret;
 }
 
 void RadonListElement::PropsUpdateFinish() {

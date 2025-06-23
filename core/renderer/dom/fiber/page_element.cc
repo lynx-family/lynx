@@ -140,7 +140,7 @@ void PageElement::SetCSSID(int32_t id) {
 /**
  * Reference {@link LayoutContext#Layout }
  */
-void PageElement::Layout() {
+void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
   element_manager()->OnUpdateViewport(
       element_manager_->viewport_.width, element_manager_->viewport_.width_mode,
       element_manager_->viewport_.height,
@@ -150,6 +150,10 @@ void PageElement::Layout() {
   if (!(sl_node_->IsDirty())) {
     return;
   }
+
+  painting_context()->AppendOptionsForTiming(options);
+
+  painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();
 
   UpdateLayoutInfoRecursively();
 

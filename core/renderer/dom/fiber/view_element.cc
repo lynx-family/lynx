@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/dom/fiber/text_props.h"
 
 namespace lynx {
 namespace tasm {
@@ -32,6 +33,20 @@ void ViewElement::AttachToElementManager(
     bool keep_element_id) {
   FiberElement::AttachToElementManager(manager, style_manager, keep_element_id);
   SetDefaultOverflow(element_manager_->GetDefaultOverflowVisible());
+}
+
+void ViewElement::BuildAttributedStringProps(int start, int end,
+                                             PropArray* props) {
+  // range start
+  props->AddProp(kPropInlineStart);
+  props->AddProp(start);
+
+  props->AddProp(kPropInlineView);
+
+  // TODO(linxs): width, height...
+  // range end
+  props->AddProp(kPropInlineEnd);
+  props->AddProp(end);
 }
 
 }  // namespace tasm

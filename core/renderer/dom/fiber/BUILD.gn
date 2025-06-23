@@ -38,6 +38,7 @@ fiber_shared_sources = [
   "scroll_element.h",
   "text_element.cc",
   "text_element.h",
+  "text_props.h",
   "tree_resolver.cc",
   "tree_resolver.h",
   "view_element.cc",
