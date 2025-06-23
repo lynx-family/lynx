@@ -71,6 +71,15 @@ if (!enable_unittests) {
           "bindings/lepus/ios/lynx_lepus_module_darwin.h",
           "bindings/lepus/ios/lynx_lepus_module_darwin.mm",
         ] + jsbridge_extend_shared_sources
+  } else if (is_harmony) {
+    jsbridge_shared_sources += [
+      "bindings/jsi/modules/harmony/module_factory_harmony.cc",
+      "bindings/jsi/modules/harmony/module_factory_harmony.h",
+      "bindings/jsi/modules/harmony/native_module_harmony.cc",
+      "bindings/jsi/modules/harmony/native_module_harmony.h",
+      "bindings/jsi/modules/harmony/platform_module_manager.cc",
+      "bindings/jsi/modules/harmony/platform_module_manager.h",
+    ]
   }
 }
 

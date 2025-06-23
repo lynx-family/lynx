@@ -27,6 +27,11 @@ if (!enable_unittests) {
       "android/layout_node_manager_android.cc",
       "android/layout_node_manager_android.h",
     ]
+  } else if (is_harmony) {
+    ui_wrapper_layout_shared_sources += [
+      "harmony/layout_context_harmony.cc",
+      "harmony/layout_context_harmony.h",
+    ]
   } else if (is_ios) {
     ui_wrapper_layout_shared_sources += [
       "ios/layout_context_darwin.h",

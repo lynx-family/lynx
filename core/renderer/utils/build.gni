@@ -41,8 +41,13 @@ if (is_android) {
     "android/value_converter_android.cc",
     "android/value_converter_android.h",
   ]
-}
-if (is_ios) {
+} else if (is_harmony) {
+  lynx_renderer_utils_platform_sources += [
+    "harmony/lynx_trail_hub_impl_harmony.cc",
+    "harmony/lynx_trail_hub_impl_harmony.h",
+    "harmony/sys_env_harmony.cc",
+  ]
+} else if (is_ios) {
   lynx_renderer_utils_platform_sources += [
     "darwin/event_converter_darwin.h",
     "darwin/event_converter_darwin.mm",

@@ -18,6 +18,9 @@ if (enable_trace == "perfetto") {
   if (is_android) {
     hook_systrace_shared_sources +=
         [ "hook_systrace/hook_system_trace_android.cc" ]
+  } else if (is_harmony) {
+    hook_systrace_shared_sources +=
+        [ "hook_systrace/hook_system_trace_harmony.cc" ]
   } else if (is_apple || is_win || is_linux) {
     hook_systrace_shared_sources +=
         [ "hook_systrace/hook_system_trace_default.cc" ]

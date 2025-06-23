@@ -44,3 +44,14 @@ if (enable_trace == "perfetto") {
     }
   }
 }
+
+if (is_harmony) {
+  if (enable_trace == "systrace") {
+    platform_shared_sources +=
+        [ "platform/harmony/trace_event_utils_systrace_harmony.cc" ]
+  }
+  platform_shared_sources += [
+    "platform/harmony/trace_controller_delegate_harmony.cc",
+    "platform/harmony/trace_controller_delegate_harmony.h",
+  ]
+}

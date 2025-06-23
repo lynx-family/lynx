@@ -18,9 +18,12 @@ if (is_android) {
     "android/value_impl_android.cc",
     "android/value_impl_android.h",
   ]
-}
-
-if (is_apple) {
+} else if (is_harmony) {
+  value_wrapper_shared_sources += [
+    "harmony/value_impl_napi.cc",
+    "harmony/value_impl_napi.h",
+  ]
+} else if (is_apple) {
   value_wrapper_shared_sources += [
     "darwin/value_impl_darwin.h",
     "darwin/value_impl_darwin.mm",

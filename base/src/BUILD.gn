@@ -236,6 +236,20 @@ source_set("base") {
     } else {
       sources += [ "fml/platform/android/message_loop_android.cc" ]
     }
+  } else if (is_harmony) {
+    sources += [
+      "../include/fml/platform/harmony/message_loop_harmony.h",
+      "../include/fml/platform/linux/timerfd.h",
+      "../include/fml/synchronization/shared_mutex_std.h",
+      "../include/platform/harmony/harmony_vsync_manager.h",
+      "../include/platform/harmony/napi_util.h",
+      "fml/platform/harmony/message_loop_harmony.cc",
+      "fml/platform/linux/timerfd.cc",
+      "fml/platform/posix/thread_name_setter_posix.cc",
+      "fml/synchronization/shared_mutex_std.cc",
+      "platform/harmony/harmony_vsync_manager.cc",
+      "platform/harmony/napi_util.cc",
+    ]
   } else if (is_linux) {
     sources += [
       "../include/fml/synchronization/shared_mutex_std.h",

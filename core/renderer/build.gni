@@ -36,6 +36,8 @@ lynx_tasm_shared_sources = [
 
 if (is_ios) {
   lynx_tasm_shared_sources += [ "tasm/sysinfo/sysinfo_ios.cc" ]
+} else if (is_harmony) {
+  lynx_tasm_shared_sources += [ "tasm/sysinfo/sysinfo_harmony.cc" ]
 } else if (is_android) {
   lynx_tasm_shared_sources += [
     "tasm/i18n/i18n_binder_android.cc",

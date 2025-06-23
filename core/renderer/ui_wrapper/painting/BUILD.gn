@@ -21,6 +21,13 @@ if (!enable_unittests) {
       "android/ui_delegate_android.cc",
       "android/ui_delegate_android.h",
     ]
+  } else if (is_harmony) {
+    ui_wrapper_painting_shared_sources += [
+      "harmony/painting_context_harmony.cc",
+      "harmony/painting_context_harmony.h",
+      "harmony/ui_delegate_harmony.cc",
+      "harmony/ui_delegate_harmony.h",
+    ]
   } else if (is_ios) {
     ui_wrapper_painting_shared_sources += [
       "ios/painting_context_darwin.h",

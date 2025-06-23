@@ -94,6 +94,15 @@ if (is_android) {
     "android/tasm_platform_invoker_android.cc",
     "android/tasm_platform_invoker_android.h",
   ]
+} else if (is_harmony) {
+  shell_shared_sources += [
+    "harmony/embedder_platform_harmony.cc",
+    "harmony/embedder_platform_harmony.h",
+    "harmony/native_facade_harmony.cc",
+    "harmony/native_facade_harmony.h",
+    "harmony/tasm_platform_invoker_harmony.cc",
+    "harmony/tasm_platform_invoker_harmony.h",
+  ]
 } else if (is_ios) {
   shell_shared_sources += [
     "ios/data_utils.h",

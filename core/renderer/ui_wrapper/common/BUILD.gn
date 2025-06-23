@@ -17,6 +17,13 @@ if (!enable_unittests) {
       "android/prop_bundle_android.cc",
       "android/prop_bundle_android.h",
     ]
+  } else if (is_harmony) {
+    ui_wrapper_common_shared_sources += [
+      "harmony/platform_extra_bundle_harmony.cc",
+      "harmony/platform_extra_bundle_harmony.h",
+      "harmony/prop_bundle_harmony.cc",
+      "harmony/prop_bundle_harmony.h",
+    ]
   } else if (is_ios) {
     ui_wrapper_common_shared_sources += [
       "ios/platform_extra_bundle_darwin.h",

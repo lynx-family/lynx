@@ -11,6 +11,8 @@ fluency_shared_sources = [
 
 if (is_android) {
   fluency_shared_sources += [ "android/fluency_sample_android.cc" ]
+} else if (is_harmony) {
+  fluency_shared_sources += [ "harmony/fluency_trace_helper_harmony.cc" ]
 }
 
 lynx_core_source_set("fluency") {

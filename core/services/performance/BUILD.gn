@@ -23,6 +23,11 @@ if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests) {
       "darwin/performance_controller_darwin.h",
       "darwin/performance_controller_darwin.mm",
     ]
+  } else if (is_harmony) {
+    performance_shared_sources += [
+      "harmony/performance_controller_harmony.cc",
+      "harmony/performance_controller_harmony.h",
+    ]
   } else if (is_android) {
     performance_shared_sources += [
       "android/performance_controller_android.cc",

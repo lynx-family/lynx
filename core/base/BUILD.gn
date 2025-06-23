@@ -60,6 +60,24 @@ if (is_android) {
     "threading/task_runner_vsync.cc",
     "threading/task_runner_vsync.h",
   ]
+} else if (is_harmony) {
+  base_shared_sources += [
+    "harmony/harmony_function_loader.cc",
+    "harmony/harmony_function_loader.h",
+    "harmony/harmony_napi_env_holder.cc",
+    "harmony/harmony_napi_env_holder.h",
+    "harmony/harmony_trace_event_def.h",
+    "harmony/logging_harmony.cc",
+    "harmony/logging_harmony.h",
+    "harmony/napi_convert_helper.cc",
+    "harmony/napi_convert_helper.h",
+    "harmony/props_constant.h",
+    "harmony/threading/js_thread_config_getter_harmony.cc",
+    "harmony/trace_controller_harmony.cc",
+    "harmony/trace_controller_harmony.h",
+    "harmony/vsync_monitor_harmony.cc",
+    "harmony/vsync_monitor_harmony.h",
+  ]
 } else if (is_apple) {
   if (!enable_unittests && !is_oliver_node_lynx && !is_oliver_tasm) {
     base_shared_sources += [

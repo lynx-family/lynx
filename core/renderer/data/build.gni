@@ -21,6 +21,13 @@ if (is_android) {
     "android/platform_data_android.cc",
     "android/platform_data_android.h",
   ]
+} else if (is_harmony) {
+  lynx_data_platform_sources += [
+    "harmony/platform_data_harmony.cc",
+    "harmony/platform_data_harmony.h",
+    "harmony/template_data_harmony.cc",
+    "harmony/template_data_harmony.h",
+  ]
 } else if (is_ios) {
   lynx_data_platform_sources += [
     "ios/platform_data_darwin.h",

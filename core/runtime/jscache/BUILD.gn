@@ -34,6 +34,11 @@ lynx_core_source_set("jscache") {
       "android/bytecode_callback.h",
       "android/js_cache_manager_android.cc",
     ]
+  } else if (is_harmony) {
+    sources += [
+      "harmony/js_cache_manager_harmony.cc",
+      "harmony/js_cache_manager_harmony.h",
+    ]
   } else if (is_apple) {
     sources += [ "ios/js_cache_manager_darwin.mm" ]
   }

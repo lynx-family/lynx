@@ -24,6 +24,11 @@ if (!enable_unittests) {
       "android/lynx_view_data_manager_android.cc",
       "android/lynx_view_data_manager_android.h",
     ]
+  } else if (is_harmony) {
+    lynx_dom_core_sources += [
+      "harmony/lynx_template_bundle_harmony.cc",
+      "harmony/lynx_template_bundle_harmony.h",
+    ]
   } else if (is_apple) {
     lynx_dom_core_sources += [
       "ios/lepus_value_converter.h",
