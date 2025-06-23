@@ -5,8 +5,10 @@ package com.lynx.tasm.service;
 
 import androidx.annotation.NonNull;
 import com.lynx.tasm.eventreport.ILynxEventReportObserver;
+import com.lynx.tasm.performance.IPerformanceObserver;
 
-public interface ILynxEventReporterService extends IServiceProvider, ILynxEventReportObserver {
+public interface ILynxEventReporterService
+    extends IServiceProvider, ILynxEventReportObserver, IPerformanceObserver {
   /**
    * Get service class, DO NOT OVERRIDE THIS METHOD
    */
