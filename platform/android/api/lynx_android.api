@@ -4481,6 +4481,7 @@ public class com::lynx::tasm::eventreport::LynxEventReporter :  {
   public static void com.lynx.tasm.eventreport.LynxEventReporter.clearCache(final int instanceId);
   public static void com.lynx.tasm.eventreport.LynxEventReporter.addObserver(ILynxEventReportObserver observer);
   public static void com.lynx.tasm.eventreport.LynxEventReporter.removeObserver(ILynxEventReportObserver observer);
+  public static HashMap< String, Object > com.lynx.tasm.eventreport.LynxEventReporter.getGenericInfo(Integer instanceId);
   public static void com.lynx.tasm.eventreport.LynxEventReporter.runOnReportThread(Runnable runnable);
 }
 

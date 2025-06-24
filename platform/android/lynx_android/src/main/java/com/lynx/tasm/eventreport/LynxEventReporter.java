@@ -161,7 +161,7 @@ public class LynxEventReporter {
     }
     runOnReportThread(() -> {
       TraceEvent.beginSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO);
-      getGenericInfo(instanceId).put(key, value);
+      getGenericInfoInternal(instanceId).put(key, value);
       TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO);
     });
     TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO);
@@ -189,7 +189,7 @@ public class LynxEventReporter {
     }
     runOnReportThread(() -> {
       TraceEvent.beginSection(sectionName);
-      getGenericInfo(instanceId).putAll(props);
+      getGenericInfoInternal(instanceId).putAll(props);
       TraceEvent.endSection(sectionName);
     });
     TraceEvent.endSection(sectionName);
@@ -334,7 +334,7 @@ public class LynxEventReporter {
     TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_HANDLE_EVENT);
   }
 
-  private static HashMap<String, Object> getGenericInfo(Integer instanceId) {
+  private static HashMap<String, Object> getGenericInfoInternal(Integer instanceId) {
     HashMap<String, Object> genericInfo =
         LynxEventReporter.getInstance().mAllGenericInfos.get(instanceId);
     if (genericInfo == null) {
@@ -343,6 +343,12 @@ public class LynxEventReporter {
       LynxEventReporter.getInstance().mAllGenericInfos.put(instanceId, genericInfo);
     }
     return genericInfo;
+  }
+
+  public static HashMap<String, Object> getGenericInfo(Integer instanceId) {
+    HashMap<String, Object> original = getGenericInfoInternal(instanceId);
+    // return a copy of genericInfo
+    return new HashMap<>(original);
   }
 
   /**
@@ -409,7 +415,7 @@ public class LynxEventReporter {
       args.put(TraceEventDef.INSTANCE_ID, String.valueOf(instanceId));
       TraceEvent.beginSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO, args);
     }
-    getGenericInfo(instanceId).putAll(props.asHashMap());
+    getGenericInfoInternal(instanceId).putAll(props.asHashMap());
     TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_UPDATE_GENERIC_INFO);
   }
 

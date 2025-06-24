@@ -6,11 +6,11 @@ package com.lynx.tasm.performance;
 
 import androidx.annotation.AnyThread;
 import androidx.annotation.RestrictTo;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.eventreport.LynxEventReporter;
-import com.lynx.tasm.performance.IPerformanceObserver;
 import com.lynx.tasm.performance.memory.IMemoryMonitor;
 import com.lynx.tasm.performance.memory.IMemoryRecordBuilder;
 import com.lynx.tasm.performance.memory.MemoryRecord;
@@ -18,7 +18,10 @@ import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter;
 import com.lynx.tasm.performance.timing.ITimingCollector;
 import com.lynx.tasm.performance.timing.TimingUtil;
+import com.lynx.tasm.service.ILynxEventReporterService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 
 /**
  * @brief Manages performance data collection and observation. This class acts as a central point
@@ -29,6 +32,7 @@ import java.lang.ref.WeakReference;
 public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private volatile long mNativePerformanceActorPtr = 0;
   private WeakReference<IPerformanceObserver> mObserver;
+  private WeakReference<ILynxEventReporterService> mEventReporterService;
 
   public void setPerformanceObserver(IPerformanceObserver observer) {
     mObserver = new WeakReference<>(observer);
@@ -150,6 +154,25 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     PerformanceEntry entry = PerformanceEntryConverter.makePerformanceEntry(entryMap);
     if (observer != null) {
       observer.onPerformanceEvent(entry);
+    }
+
+    if (mEventReporterService == null) {
+      ILynxEventReporterService reporter =
+          LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
+      if (reporter != null) {
+        mEventReporterService = new WeakReference<>(reporter);
+      }
+    }
+    ILynxEventReporterService reporter = mEventReporterService.get();
+    if (reporter != null) {
+      int instanceId = entryMap.getInt("instanceId");
+      if (instanceId > 0) {
+        HashMap<String, Object> newEntryMap = LynxEventReporter.getGenericInfo(instanceId);
+        newEntryMap.putAll(entryMap.asHashMap());
+        PerformanceEntry newEntry =
+            PerformanceEntryConverter.makePerformanceEntry(JavaOnlyMap.from(newEntryMap));
+        reporter.onPerformanceEvent(newEntry);
+      }
     }
   }
 

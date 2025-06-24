@@ -7,6 +7,7 @@ package com.lynx.tasm.featurecount;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
+import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.service.ILynxEventReporterService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.Map;
@@ -29,6 +30,11 @@ public class LynxFeatureCounterTest extends TestCase {
     mRet = false;
     LynxServiceCenter.inst().registerService(
         ILynxEventReporterService.class, new ILynxEventReporterService() {
+          @Override
+          public void onPerformanceEvent(@NonNull PerformanceEntry entry) {
+            // do nothing in this test
+          }
+
           @Override
           public void onReportEvent(@NonNull String eventName, int instanceId,
               @NonNull Map<String, ? extends Object> data,
