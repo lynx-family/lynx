@@ -190,6 +190,7 @@ public class LynxEnv {
   private boolean mForceDisableQuickJsCache = false;
 
   private boolean mEnableTextLayoutCache = true;
+  private boolean mEnableRecycleRenderDataListWhileReload = false;
 
   protected LynxEnv() {}
 
@@ -317,6 +318,7 @@ public class LynxEnv {
     initEnableRefreshRateOpt();
     initEnableCheckAccessFromNonUiThread();
     initEnableTextLayoutCache();
+    initEnableRecycleRenderDataListWhileReload();
 
     ICURegister.loadLibrary(mLibraryLoader);
     // notify LynxEnv prepared
@@ -1324,6 +1326,19 @@ public class LynxEnv {
 
   protected void initEnableTextLayoutCache() {
     mEnableTextLayoutCache = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_TEXT_LAYOUT_CACHE, true);
+  }
+
+  /**
+   * @brief Get whether to enable recycle render data list while reload
+   * @return enable
+   */
+  protected boolean enableEnableRecycleRenderDataListWhileReload() {
+    return mEnableRecycleRenderDataListWhileReload;
+  }
+
+  private void initEnableRecycleRenderDataListWhileReload() {
+    mEnableRecycleRenderDataListWhileReload =
+        getBooleanFromExternalEnv(LynxEnvKey.ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD, false);
   }
 
   protected void initLynxTrailService(Context context) {
