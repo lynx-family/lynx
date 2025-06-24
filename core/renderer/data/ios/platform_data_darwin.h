@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/platform_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

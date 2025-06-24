@@ -10,9 +10,9 @@
 #include <utility>
 
 #include "base/include/base_export.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

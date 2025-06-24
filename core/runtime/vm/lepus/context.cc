@@ -8,6 +8,10 @@
 #include <unordered_set>
 #include <utility>
 
+#include "base/include/value/array.h"
+#include "base/include/value/path_parser.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/renderer/utils/base/tasm_constants.h"
@@ -15,14 +19,10 @@
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/common/utils.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/js_object.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/path_parser.h"
 #include "core/runtime/vm/lepus/qjs_callback.h"
 #include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/vm/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/vm/lepus/vm_context.h"

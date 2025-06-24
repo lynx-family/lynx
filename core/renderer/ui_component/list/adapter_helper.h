@@ -12,8 +12,8 @@
 #include <vector>
 
 #include "base/include/debug/lynx_error.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/ui_component/list/list_types.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

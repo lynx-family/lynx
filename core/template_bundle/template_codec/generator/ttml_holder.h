@@ -13,9 +13,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/template_themed.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "third_party/rapidjson/document.h"
 

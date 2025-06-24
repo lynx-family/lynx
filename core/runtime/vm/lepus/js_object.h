@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 
 namespace lynx {
 namespace lepus {

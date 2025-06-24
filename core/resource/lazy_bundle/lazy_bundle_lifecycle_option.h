@@ -8,10 +8,10 @@
 #include <memory>
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/dom/vdom/radon/radon_lazy_component.h"
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

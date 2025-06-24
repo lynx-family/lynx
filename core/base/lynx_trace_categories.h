@@ -5,7 +5,8 @@
 #ifndef CORE_BASE_LYNX_TRACE_CATEGORIES_H_
 #define CORE_BASE_LYNX_TRACE_CATEGORIES_H_
 
-static constexpr const char* const LYNX_TRACE_CATEGORY = "lynx";
+#include "base/trace/native/trace_defines.h"
+
 static constexpr const char* const LYNX_TRACE_CATEGORY_VITALS = "vitals";
 static constexpr const char* const LYNX_TRACE_CATEGORY_JAVASCRIPT =
     "javascript";

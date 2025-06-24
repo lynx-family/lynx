@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/template_assembler.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/recorder/recorder_constants.h"
 #include "core/services/recorder/testbench_base_recorder.h"
 namespace lynx {

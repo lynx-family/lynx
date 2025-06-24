@@ -7,11 +7,11 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/vdom/radon/radon_list_base.h"
 #include "core/renderer/utils/base/base_def.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "testing/lynx/tasm/databinding/databinding_test.h"
 #include "testing/lynx/tasm/databinding/mock_replayer_component_loader.h"
 #include "third_party/modp_b64/modp_b64.h"

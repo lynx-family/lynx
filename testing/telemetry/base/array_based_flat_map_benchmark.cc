@@ -11,9 +11,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/benchmark/include/benchmark/benchmark.h"
 
 #pragma clang diagnostic push

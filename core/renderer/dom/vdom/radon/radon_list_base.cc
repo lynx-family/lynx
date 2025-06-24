@@ -9,6 +9,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/component_attributes.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -19,7 +20,6 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 
 namespace lynx {

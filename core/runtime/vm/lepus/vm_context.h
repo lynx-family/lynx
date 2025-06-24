@@ -13,13 +13,14 @@
 
 #include "base/include/base_export.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/function.h"
 #include "core/runtime/vm/lepus/heap.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "core/runtime/vm/lepus/marco.h"
 
 namespace lynx {
 namespace tasm {

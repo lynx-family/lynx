@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/include/fml/message_loop_impl.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
@@ -21,7 +22,6 @@
 #include "core/renderer/template_assembler.h"
 #include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/testing/mock_runner_manufactor.h"

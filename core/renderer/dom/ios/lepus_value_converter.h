@@ -5,7 +5,7 @@
 #ifndef CORE_RENDERER_DOM_IOS_LEPUS_VALUE_CONVERTER_H_
 #define CORE_RENDERER_DOM_IOS_LEPUS_VALUE_CONVERTER_H_
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

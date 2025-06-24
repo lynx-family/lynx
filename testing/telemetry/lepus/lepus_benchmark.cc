@@ -4,13 +4,13 @@
 
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/bindings/lepus/renderer_functions.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "third_party/benchmark/include/benchmark/benchmark.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

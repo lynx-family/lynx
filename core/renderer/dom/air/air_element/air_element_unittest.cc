@@ -8,6 +8,7 @@
 #include "core/renderer/dom/air/air_element/air_page_element.h"
 #undef private
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/dom/air/air_element/air_component_element.h"
@@ -15,7 +16,6 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/tasm/react/testing/mock_painting_context.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/shell/testing/mock_tasm_delegate.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"

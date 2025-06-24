@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_VM_LEPUS_LYNX_VALUE_EXTENDED_H_
-#define CORE_RUNTIME_VM_LEPUS_LYNX_VALUE_EXTENDED_H_
+#ifndef BASE_INCLUDE_VALUE_LYNX_VALUE_EXTENDED_H_
+#define BASE_INCLUDE_VALUE_LYNX_VALUE_EXTENDED_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -89,4 +89,4 @@ lynx_api_status lynx_value_is_uninitialized(lynx_api_env env, lynx_value val,
 }
 #endif
 
-#endif  // CORE_RUNTIME_VM_LEPUS_LYNX_VALUE_EXTENDED_H_
+#endif  // BASE_INCLUDE_VALUE_LYNX_VALUE_EXTENDED_H_

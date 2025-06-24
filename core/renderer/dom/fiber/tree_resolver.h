@@ -9,8 +9,8 @@
 #include <utility>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/value/table.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

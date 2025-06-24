@@ -15,13 +15,13 @@
 #include <vector>
 
 #include "base/include/base_export.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_sheet.h"
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/rapidjson/document.h"
 

@@ -6,8 +6,9 @@
 #include <iostream>
 #include <string>
 
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
 #include "core/build/gen/lynx_sub_error_code.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/binary_input_stream.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
@@ -17,7 +18,6 @@
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"

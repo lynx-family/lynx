@@ -5,8 +5,8 @@
 #include "core/renderer/utils/base/tasm_utils.h"
 
 #include "base/include/value/base_string.h"
+#include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

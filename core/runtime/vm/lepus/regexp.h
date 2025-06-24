@@ -6,8 +6,8 @@
 #define CORE_RUNTIME_VM_LEPUS_REGEXP_H_
 
 #include "base/include/value/base_string.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 
 namespace lynx {
 namespace lepus {

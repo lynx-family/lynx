@@ -8,9 +8,9 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/ui_component/list/list_types.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

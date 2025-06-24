@@ -27,6 +27,7 @@ lynx_core_source_set("lepus") {
     deps += [ "../../../../third_party/quickjs:quickjs_regexp" ]
   }
   public_deps = [
+    "../../../../base/src:base_values",
     "../../../../third_party/rapidjson",
     "../../../base",
     "../../../parser",
@@ -83,7 +84,6 @@ unittest_set("lepus_testset") {
     "lepus_error_helper_unittest.cc",
     "lepus_value_unittest.cc",
     "lynx_value_extended_unittest.cc",
-    "path_parser_unittest.cc",
     "quickjs_promise_unittest.cc",
     "quickjs_stack_size_unittest.cc",
     "string_api_unittest.cc",

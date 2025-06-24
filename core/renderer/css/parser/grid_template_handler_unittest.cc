@@ -2,10 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "base/include/value/array.h"
 #include "core/renderer/css/parser/four_sides_shorthand_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

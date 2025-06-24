@@ -9,9 +9,9 @@
 #include <vector>
 
 #include "base/include/fml/memory/ref_ptr.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/ui_component/list/list_types.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

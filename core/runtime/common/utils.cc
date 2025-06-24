@@ -14,14 +14,14 @@
 #include "platform/android/lynx_android/src/main/jni/gen/JavaOnlyArray_jni.h"
 #endif  // OS_ANDROID
 
+#include "base/include/value/array.h"
+#include "base/include/value/byte_array.h"
+#include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/jsi/console.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/byte_array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace piper {

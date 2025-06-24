@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/array.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/element_manager.h"
@@ -18,7 +19,6 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/piper/js/runtime_constant.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/services/feature_count/feature_counter.h"

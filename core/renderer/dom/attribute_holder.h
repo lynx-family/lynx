@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/auto_create_optional.h"
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_property.h"
@@ -17,7 +18,6 @@
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/utils/base/base_def.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

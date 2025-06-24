@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 #include "base/include/thread/timed_task.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

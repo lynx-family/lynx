@@ -6,10 +6,10 @@
 #include <string>
 #include <utility>
 
-#include "core/runtime/vm/lepus/array.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/runtime/vm/lepus/lepus_date.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {

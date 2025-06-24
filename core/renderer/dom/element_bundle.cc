@@ -7,9 +7,9 @@
 #include <stack>
 #include <utility>
 
+#include "base/include/value/table.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/fiber/tree_resolver.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

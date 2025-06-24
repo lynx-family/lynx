@@ -5,8 +5,8 @@
 
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/dom/air/testing/air_lepus_context_mock.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/googletest/googlemock/include/gmock/gmock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

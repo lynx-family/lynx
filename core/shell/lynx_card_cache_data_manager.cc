@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/table.h"
 
 namespace lynx {
 namespace shell {

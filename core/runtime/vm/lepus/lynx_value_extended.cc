@@ -4,7 +4,7 @@
 
 #define LYNX_VALUE_COMPILE_UNIT lepusng
 
-#include "core/runtime/vm/lepus/lynx_value_extended.h"
+#include "base/include/value/lynx_value_extended.h"
 
 #include <string>
 

@@ -6,8 +6,8 @@
 
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
-#include "core/runtime/vm/lepus/array.h"
 
 namespace lynx {
 namespace tasm {

@@ -6,8 +6,8 @@
 #include <memory>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/template_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/rapidjson/document.h"
 #define private public
 #include "core/services/recorder/template_assembler_recorder.h"

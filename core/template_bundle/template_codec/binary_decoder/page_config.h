@@ -13,13 +13,13 @@
 #include <unordered_set>
 #include <utility>
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/renderer/css/dynamic_css_configs.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/starlight/types/layout_configs.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "core/template_bundle/template_codec/version.h"

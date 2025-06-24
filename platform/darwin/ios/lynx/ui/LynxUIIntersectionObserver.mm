@@ -12,7 +12,7 @@
 #import <Lynx/LynxWeakProxy.h>
 #import <objc/runtime.h>
 #import "LynxContext+Internal.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
 
 using namespace lynx;

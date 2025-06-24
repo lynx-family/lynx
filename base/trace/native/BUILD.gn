@@ -70,11 +70,13 @@ trace_public_headers = [
   "track_event_wrapper.h",
   "trace_event_utils_perfetto.h",
   "trace_export.h",
+  "trace_defines.h",
 ]
 
 trace_shared_sources = [
   "internal_trace_category.h",
   "trace_controller.h",
+  "trace_defines.h",
   "trace_event.h",
   "trace_event_utils_perfetto.h",
   "trace_export.h",

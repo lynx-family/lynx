@@ -32,10 +32,10 @@ SOFTWARE.
 
 #include <list>
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 
 namespace lynx {
 

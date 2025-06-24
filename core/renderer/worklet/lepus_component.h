@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/worklet/lepus_element.h"
 #include "core/renderer/worklet/lepus_raf_handler.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "third_party/binding/napi/napi_bridge.h"
 
 namespace lynx {

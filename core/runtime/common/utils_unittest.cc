@@ -4,13 +4,13 @@
 
 #include "core/runtime/common/utils.h"
 
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/common/jsi_object_wrapper.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/jsi/jsi_unittest.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

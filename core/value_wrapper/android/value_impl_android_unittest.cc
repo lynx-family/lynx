@@ -6,10 +6,10 @@
 #include <utility>
 
 #include "base/include/platform/android/jni_convert_helper.h"
+#include "base/include/value/array.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/java_only_map.h"
 #include "core/base/android/java_value.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

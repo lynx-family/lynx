@@ -5,7 +5,7 @@
 #ifndef CORE_RENDERER_UTILS_BASE_TASM_UTILS_H_
 #define CORE_RENDERER_UTILS_BASE_TASM_UTILS_H_
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

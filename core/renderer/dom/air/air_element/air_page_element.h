@@ -10,11 +10,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_font_face_token.h"
 #include "core/renderer/dom/air/air_element/air_element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/page_proxy.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 
 namespace lynx {

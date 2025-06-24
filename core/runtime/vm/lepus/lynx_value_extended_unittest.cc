@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/runtime/vm/lepus/lynx_value_extended.h"
+#include "base/include/value/lynx_value_extended.h"
 
 #include <cstdint>
 
+#include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
-#include "core/runtime/vm/lepus/array.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

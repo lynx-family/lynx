@@ -1,15 +1,16 @@
 // Copyright 2021 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-#ifndef CORE_RUNTIME_VM_LEPUS_BYTE_ARRAY_H_
-#define CORE_RUNTIME_VM_LEPUS_BYTE_ARRAY_H_
+
+#ifndef BASE_INCLUDE_VALUE_BYTE_ARRAY_H_
+#define BASE_INCLUDE_VALUE_BYTE_ARRAY_H_
 
 #include <memory>
 #include <utility>
 
 #include "base/include/base_export.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 
 namespace lynx {
 namespace lepus {
@@ -53,4 +54,4 @@ class BASE_EXPORT_FOR_DEVTOOL ByteArray : public lepus::RefCounted {
 }  // namespace lepus
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_BYTE_ARRAY_H_
+#endif  // BASE_INCLUDE_VALUE_BYTE_ARRAY_H_

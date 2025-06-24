@@ -11,9 +11,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/vm/lepus/function.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/op_code.h"
 #include "core/runtime/vm/lepus/semantic_analysis.h"
 #include "core/runtime/vm/lepus/visitor.h"

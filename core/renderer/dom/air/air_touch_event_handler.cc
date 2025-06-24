@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "base/include/value/array.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/dom/air/air_element/air_page_element.h"
 #include "core/renderer/dom/element_manager.h"
@@ -13,7 +14,6 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/services/replay/replay_controller.h"
 #include "third_party/rapidjson/document.h"

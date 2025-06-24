@@ -8,8 +8,8 @@
 #include <cstdint>
 #include <string>
 
+#include "base/include/value/lepus_value.h"
 #include "core/public/layout_ctx_platform_impl.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 static constexpr uint8_t CSS_BINARY_FONT_FACE_TYPE = 0x01;
 

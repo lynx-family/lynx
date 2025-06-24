@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/include/base_defines.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #ifdef OS_IOS

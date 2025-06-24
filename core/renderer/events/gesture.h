@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {

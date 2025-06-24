@@ -8,10 +8,10 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/base/android/jni_helper.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

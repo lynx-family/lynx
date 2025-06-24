@@ -7,7 +7,12 @@
 
 #include <utility>
 
+#include "base/include/base_defines.h"
 #include "base/include/string/string_number_convert.h"
+#include "base/include/value/array.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/path_parser.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -15,13 +20,9 @@
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/profile/runtime_profiler_manager.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/exception.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/lepus_error_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/path_parser.h"
-#include "core/runtime/vm/lepus/table.h"
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else

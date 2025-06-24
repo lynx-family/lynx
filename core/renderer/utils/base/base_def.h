@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

@@ -10,10 +10,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/jsi/jsi.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace piper {

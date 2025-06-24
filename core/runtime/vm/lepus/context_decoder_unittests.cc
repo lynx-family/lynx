@@ -10,10 +10,10 @@
 #include <vector>
 #define private public
 
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/context_binary_writer.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_reader.h"

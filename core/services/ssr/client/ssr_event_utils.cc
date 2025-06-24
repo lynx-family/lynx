@@ -5,10 +5,10 @@
 #include "core/services/ssr/client/ssr_event_utils.h"
 
 #include "base/include/string/string_utils.h"
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/json_parser.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/services/ssr/ssr_type_info.h"
 
 namespace lynx {

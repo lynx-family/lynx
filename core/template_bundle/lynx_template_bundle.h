@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/dom/element_bundle.h"
 #include "core/renderer/template_themed.h"
@@ -21,7 +22,6 @@
 #include "core/runtime/piper/js/js_bundle.h"
 #include "core/runtime/vm/lepus/context_pool.h"
 #include "core/runtime/vm/lepus/function.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/parallel_parse_task_scheduler.h"
 #include "core/template_bundle/template_codec/compile_options.h"

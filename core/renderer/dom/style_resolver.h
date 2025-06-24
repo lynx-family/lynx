@@ -10,13 +10,13 @@
 #include <unordered_map>
 
 #include "base/include/base_export.h"
+#include "base/include/value/lepus_value.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_selector_constants.h"
 #include "core/renderer/css/css_variable_handler.h"
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/dom/attribute_holder.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace style {

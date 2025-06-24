@@ -9,10 +9,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/element_property.h"
 #include "core/renderer/utils/base/tasm_constants.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {

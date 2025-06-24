@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/worklet/base/worklet_utils.h"
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/bindings/napi/worklet/napi_loader_ui.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/table.h"
 
 #ifdef USE_PRIMJS_NAPI
 #include "third_party/napi/include/primjs_napi_defines.h"

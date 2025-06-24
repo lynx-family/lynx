@@ -4,9 +4,9 @@
 
 #include <utility>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/renderer/events/events.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

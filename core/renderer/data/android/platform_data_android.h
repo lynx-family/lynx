@@ -8,8 +8,8 @@
 #include <string>
 
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/data/platform_data.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

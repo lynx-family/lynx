@@ -7,9 +7,9 @@
 #include <string>
 #include <utility>
 
+#include "base/include/value/lepus_value.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/value_wrapper/value_impl_lepus.h"

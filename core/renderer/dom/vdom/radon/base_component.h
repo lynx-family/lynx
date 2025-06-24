@@ -8,8 +8,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/utils/base/base_def.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 
 namespace lynx {
 namespace tasm {

@@ -8,11 +8,11 @@
 #import "LynxTemplateData+Converter.h"
 
 #import <Lynx/LynxLog.h>
+#include "base/include/value/array.h"
+#include "base/include/value/byte_array.h"
 #include "core/renderer/data/lynx_view_data_manager.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/byte_array.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 
 static BOOL const DEFAULT_USE_BOOL_LITERALS = NO;

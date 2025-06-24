@@ -5,8 +5,8 @@
 #ifndef CORE_STYLE_ANIMATION_DATA_H_
 #define CORE_STYLE_ANIMATION_DATA_H_
 
+#include "base/include/value/lepus_value.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/style/timing_function_data.h"
 
 namespace lynx {

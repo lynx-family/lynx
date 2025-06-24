@@ -11,13 +11,13 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/lepus_value.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/data/template_data.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/jsi/api_call_back.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_timing.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/services/timing_handler/timing.h"
 #include "core/shell/common/platform_call_back_manager.h"
 #include "core/template_bundle/lynx_template_bundle.h"

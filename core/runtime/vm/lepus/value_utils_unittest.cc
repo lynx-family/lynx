@@ -4,17 +4,17 @@
 
 #include "core/renderer/utils/value_utils.h"
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/path_parser.h"
+#include "base/include/value/ref_type.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/bytecode_generator.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/lepus_error_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/path_parser.h"
 #include "core/runtime/vm/lepus/qjs_callback.h"
 #include "core/runtime/vm/lepus/quick_context.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 

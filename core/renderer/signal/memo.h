@@ -30,10 +30,10 @@ SOFTWARE.
 #ifndef CORE_RENDERER_SIGNAL_MEMO_H_
 #define CORE_RENDERER_SIGNAL_MEMO_H_
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_counted_class.h"
+#include "base/include/value/ref_type.h"
 #include "core/renderer/signal/lynx_signal.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
-#include "core/runtime/vm/lepus/ref_type.h"
 
 namespace lynx {
 

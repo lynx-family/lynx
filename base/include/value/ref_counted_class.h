@@ -2,14 +2,14 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_RUNTIME_VM_LEPUS_REF_COUNTED_CLASS_H_
-#define CORE_RUNTIME_VM_LEPUS_REF_COUNTED_CLASS_H_
+#ifndef BASE_INCLUDE_VALUE_REF_COUNTED_CLASS_H_
+#define BASE_INCLUDE_VALUE_REF_COUNTED_CLASS_H_
 
 #include <memory>
 
 #include "base/include/fml/memory/ref_counted.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/ref_type.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/ref_type.h"
 
 namespace lynx {
 namespace lepus {
@@ -22,7 +22,7 @@ class RefCountedBase : public fml::RefCountedThreadSafeStorage {
 
   /*
    * Return RefType of this RefCountedBase.
-   * ByteArray in core/runtime/vm/lepus/byte_array.h,
+   * ByteArray in base/include/value/byte_array.h,
    * Value_JSOBject in core/runtime/vm/lepus/js_object.h,
    * Element in core/renderer/dom/element.h,
    * AirElement in core/renderer/dom/air/air_element/air_element.h
@@ -60,4 +60,4 @@ WeakRefPtr<D> static_ref_ptr_cast(const WeakRefPtr<lepus::RefCounted>& rhs) {
 
 }  // namespace lynx
 
-#endif  // CORE_RUNTIME_VM_LEPUS_REF_COUNTED_CLASS_H_
+#endif  // BASE_INCLUDE_VALUE_REF_COUNTED_CLASS_H_

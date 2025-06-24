@@ -6,7 +6,7 @@
 #include <chrono>
 
 #include "base/include/log/logging.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/vm/lepus/op_code.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 namespace lynx {

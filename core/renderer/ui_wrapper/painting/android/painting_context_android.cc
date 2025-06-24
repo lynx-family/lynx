@@ -8,6 +8,8 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/android_jni.h"
 #include "core/base/android/jni_helper.h"
@@ -23,8 +25,6 @@
 #include "core/renderer/utils/android/text_utils_android.h"
 #include "core/renderer/utils/android/value_converter_android.h"
 #include "core/runtime/bindings/jsi/modules/android/method_invoker.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/shell/lynx_ui_operation_async_queue.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #include "platform/android/lynx_android/src/main/jni/gen/PaintingContext_jni.h"

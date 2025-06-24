@@ -7,7 +7,7 @@
 #include <algorithm>
 
 #include "base/include/string/string_utils.h"
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/table.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 

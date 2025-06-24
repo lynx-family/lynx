@@ -5,7 +5,7 @@
 #include "core/renderer/simple_styling/style_object.h"
 
 #include "base/include/fml/memory/ref_counted.h"
-#include "core/runtime/vm/lepus/ref_counted_class.h"
+#include "base/include/value/ref_counted_class.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 namespace lynx::style {
 

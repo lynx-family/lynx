@@ -6,11 +6,11 @@
 #include <string>
 #include <utility>
 
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/runtime/vm/lepus/regexp.h"
 #include "core/runtime/vm/lepus/string_api.h"
-#include "core/runtime/vm/lepus/table.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 #define CAPTURE_COUNT_MAX 255

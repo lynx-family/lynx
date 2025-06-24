@@ -8,10 +8,10 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/value/array.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/starlight/style/css_type.h"
-#include "core/runtime/vm/lepus/array.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {

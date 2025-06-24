@@ -7,8 +7,8 @@
 
 #include <utility>
 
-#include "core/runtime/vm/lepus/lepus_value.h"
-#include "core/runtime/vm/lepus/table.h"
+#include "base/include/value/lepus_value.h"
+#include "base/include/value/table.h"
 
 namespace lynx {
 namespace tasm {

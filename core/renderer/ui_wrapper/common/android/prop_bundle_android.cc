@@ -6,13 +6,13 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/array.h"
+#include "base/include/value/table.h"
 #include "core/base/js_constants.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/runtime/vm/lepus/array.h"
-#include "core/runtime/vm/lepus/table.h"
 
 namespace lynx {
 namespace tasm {

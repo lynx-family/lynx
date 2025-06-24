@@ -6,11 +6,11 @@
 
 #include <memory>
 
+#include "base/include/value/lepus_value.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
-#include "core/runtime/vm/lepus/lepus_value.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
