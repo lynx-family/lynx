@@ -83,14 +83,14 @@ void Log(LogMessage* msg) {
                      msg->source() == logging::LOG_SOURCE_JS)
                         ? kConsoleTag
                         : kTag;
-  // 0. all logs are consumed at the platform layer.
-  if (IsLogOutputByPlatform()) {
+  // 0. all logs are logged to the delegate and ALog for debug.
+  if (kIsPrintAllLogToAllChannels) {
+    PrintLogMessageByAlog(msg->severity(), tag, msg->stream().str().c_str());
     PrintLogMessageByPlatformLog(msg, tag);
     return;
   }
-  // 1. all logs are logged to the delegate and ALog for debug.
-  if (kIsPrintAllLogToAllChannels) {
-    PrintLogMessageByAlog(msg->severity(), tag, msg->stream().str().c_str());
+  // 1. all logs are consumed at the platform layer.
+  if (IsLogOutputByPlatform()) {
     PrintLogMessageByPlatformLog(msg, tag);
     return;
   }
@@ -151,6 +151,10 @@ void PrintLogToLynxLogging(int level, const char* tag, const char* message) {
 
 [[maybe_unused]] void EnableLogOutputByPlatform() {
   isLogOutputByPlatform = true;
+}
+
+[[maybe_unused]] void DisableLogOutputByPlatform() {
+  isLogOutputByPlatform = false;
 }
 
 LogMessage::LogMessage(const char* file, int line, LogSeverity severity,

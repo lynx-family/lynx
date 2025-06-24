@@ -35,6 +35,7 @@ BASE_EXPORT void PrintLogToLynxLogging(int level, const char* tag,
 
 BASE_EXPORT bool HasInitedLynxLogWriteFunction();
 BASE_EXPORT void EnableLogOutputByPlatform();
+BASE_EXPORT void DisableLogOutputByPlatform();
 
 #define LYNX_LOG_LEVEL_VERBOSE 0
 #define LYNX_LOG_LEVEL_DEBUG 1
