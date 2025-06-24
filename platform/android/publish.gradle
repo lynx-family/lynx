@@ -212,7 +212,8 @@ afterEvaluate {
                         }
                     }
                 }
-                if (hasDevFlavor()) {
+                def publishDevRelease = project.hasProperty('publishDevRelease')
+                if (hasDevFlavor() && publishDevRelease) {
                     devRelease(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME

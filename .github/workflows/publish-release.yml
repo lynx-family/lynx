@@ -77,41 +77,27 @@ jobs:
           allowUpdates: true
 
   android-sdk-release:
-    runs-on: 'lynx-ubuntu-22.04-large'
+    runs-on: lynx-ubuntu-22.04-large
+    if: ${{ inputs.dry-run == false }}
     timeout-minutes: 60
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
           cache-backend: 'lynx-infra'
-      - name: Build artifact
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd platform/android
-          if [ "${{ inputs.dry-run }}" = "true" ]; then
-            ABI_LIST="armeabi-v7a"
-          else
-            ABI_LIST="armeabi-v7a,x86,x86_64,arm64-v8a"
-          fi
-          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=$ABI_LIST -no-daemon
-          ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=$ABI_LIST -no-daemon
-          ./gradlew publishAllModules \
-          -Pversion=${{ inputs.version || '0.0.1-alpha.1' }} \
-          -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
-          -Psigning.password=${{ secrets.SIGNING_PASSWORD }} \
-          -Psigning.secretKey=${{ secrets.SIGNING_SECRET_KEY }}
-          popd
+      - name: Android SDK Release
+        uses: ./lynx/.github/actions/android-sdk-release
+        with:
+          version: ${{ inputs.version }}
+          signingKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+          signingSecretKey: ${{ secrets.SIGNING_SECRET_KEY }}
+          abiList: 'armeabi-v7a,x86,x86_64,arm64-v8a'
       - name: Package maven artifacts
-        if: ${{ inputs.dry-run == false }}
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           pushd platform/android
@@ -123,7 +109,6 @@ jobs:
           popd
         id: build_artifact
       - name: Publish artifact to maven
-        if: ${{ inputs.dry-run == false }}
         uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
         with:
           portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}

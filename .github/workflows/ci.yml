@@ -277,6 +277,29 @@ jobs:
           build-type: dry-run
           build-params: -PIntegrationTest
 
+  android-sdk-release:
+    timeout-minutes: 60
+    runs-on: lynx-ubuntu-22.04-large
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Android SDK
+        uses: ./lynx/.github/actions/android-sdk-release
+        with:
+          version: 0.0.1-alpha.1
+      - name: Collect and zip artifacts
+        run: |
+          cd $GITHUB_WORKSPACE/lynx/platform/android
+          ./gradlew zipAllArtifacts
+      - name: upload zip artifact
+        uses: lynx-infra/upload-artifact@dev
+        continue-on-error: true
+        with:
+          name: android-sdk-release
+          path: '${{ github.workspace }}/lynx/platform/android/build/artifacts-collection.zip'
+
   android-e2e-test:
     timeout-minutes: 60
     needs: [android-explorer-build]
@@ -427,6 +450,48 @@ jobs:
             cat appium.log
             popd
           fi
+
+  android-integeration-test:
+    needs: [android-sdk-release]
+    timeout-minutes: 15
+    runs-on: lynx-ubuntu-22.04-large
+    steps:
+      - name: Download Integeration Demo Source Code
+        uses: actions/checkout@v4.2.2
+        with:
+          repository: lynx-family/integrating-lynx-demo-projects
+          ref: 8ef458f811d163cd2b2da6937daaa35d832e3484
+          path: lynx
+      - name: Cherry Pick Commit To Build With Local AAR
+        run: |
+          echo "GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git fetch origin 4c977faf04eb295fa2818a183e9dc66c5a7f5455
+          git cherry-pick 4c977faf04eb295fa2818a183e9dc66c5a7f5455
+      - name: Download Lynx SDK Artifacts
+        uses: lynx-infra/download-artifact@dev
+        with:
+          name: android-sdk-release
+          path: lynx
+      - name: Python Setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Setup Java SDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'zulu'
+      - name: Build With Local AAR
+        id: build_apk
+        run: |
+          set -e
+          pushd android/JavaEmptyProject/
+          python3 shell/prepare_package_with_local_aar.py $GITHUB_WORKSPACE/lynx/artifacts-collection.zip 0.0.1-alpha.1
+          ./gradlew publishAllZips
+          ./gradlew :app:assembleDebug
+          popd
 
   release-workflow:
     uses: ./.github/workflows/publish-release.yml

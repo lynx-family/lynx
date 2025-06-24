@@ -40,10 +40,17 @@ task assembleAllModulesDevRelease {
 }
 
 task publishAllModules {
+    description = "Publish all modules, publish dev version with option : -PpublishDevRelease"
+
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
             if(subproject.plugins.hasPlugin("maven-publish")) {
                 dependsOn subproject.tasks.named('publish')
+
+                if (hasProperty('publishDevRelease') && subproject.hasProperty('hasDevFlavor') &&
+                    subproject.hasDevFlavor()) {
+                    dependsOn subproject.tasks.named('publishDevReleasePublication')
+                }
             }
         }
     }
@@ -79,5 +86,36 @@ task getArtifactList {
         File file = new File("${project.buildDir}/artifact-list")
         FileOutputStream outputStream = new FileOutputStream(file)
         outputStream.write(json.getBytes())
+    }
+}
+
+task zipAllArtifacts {
+    group = "distribution"
+    description = "Zip all artifact files from subprojects."
+
+    doLast {
+        def artifactsDir = file("$rootProject.buildDir/artifacts")
+        def zipFile = file("$rootProject.buildDir/artifacts-collection.zip")
+
+        artifactsDir.mkdirs()
+
+        rootProject.subprojects.each { subproject ->
+            if(subproject.plugins.hasPlugin("maven-publish")) {
+                def artifactPath = "${subproject.buildDir}/release"
+                def version = findProperty("version")
+                def zipPath = file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
+                ant.zip(destfile: zipPath, basedir: artifactPath)
+                copy {
+                    from zipPath
+                    into artifactsDir
+
+                    rename { it.replace("-${version}", "") }
+                }
+            }
+        }
+        ant.zip(
+            destfile: zipFile,
+            basedir: artifactsDir
+        )
     }
 }

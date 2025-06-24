@@ -1,0 +1,49 @@
+name: build android sdk
+
+description: build android sdk and publish aar to maven if build-type is 'release'
+
+inputs:
+  version:
+    description: The version of the sdk to publish
+    required: true
+  signingKeyId:
+    description: The key id of the sdk to publish
+    required: false
+    default: ''
+  signingPassword:
+    description: The password of the sdk to publish
+    required: false
+  signingSecretKey:
+    description: The secret key of the sdk to publish
+    required: false
+  abiList:
+    description: The abi list of the sdk to publish
+    required: false
+    default: 'armeabi-v7a'
+
+runs:
+  using: composite
+  steps:
+    - name: Python Setup
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/common-deps
+      with:
+        cache-backend: 'lynx-infra'
+    - name: Build artifact
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd platform/android
+          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=${{ inputs.abiList }} -no-daemon
+          ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=${{ inputs.abiList }} -no-daemon
+          ./gradlew publishAllModules \
+          -Pversion=${{ inputs.version || '0.0.1-alpha.1' }} \
+          -Psigning.keyId=${{ inputs.signingKeyId }} \
+          -Psigning.password=${{ inputs.signingPassword }} \
+          -Psigning.secretKey=${{ inputs.signingSecretKey }} \
+          -PpublishDevRelease
+          popd
