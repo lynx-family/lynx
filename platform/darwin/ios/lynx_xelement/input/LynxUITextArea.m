@@ -191,6 +191,11 @@ LYNX_UI_METHOD(setValue) {
     }
   }
   
+  if (line > self.maxlines) {
+    // For iOS 15, lastRect may be incorrect
+    line = kLynxTextAreaOutOfMaxlines;
+  }
+  
   return line;
   
 }
@@ -211,6 +216,18 @@ LYNX_UI_METHOD(setValue) {
   CGRect firstRect = [textView firstRectForRange:[textView textRangeFromPosition:textView.beginningOfDocument toPosition:textView.beginningOfDocument]];
   CGRect lastRect = [textView firstRectForRange:[textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument]];
 
+  NSInteger systemVersion = [[UIDevice currentDevice] systemVersion].integerValue;
+  
+  if (systemVersion < 16) {
+    // For iOS 15, the the calculation of endOfDocument is not correct, use contentSize instead
+    UITextPosition *lastPosition = [textView positionFromPosition:textView.endOfDocument offset:-1];
+    if (lastPosition) {
+      lastRect.origin.y = textView.contentSize.height - firstRect.size.height;
+    } else {
+      lastRect = firstRect;
+    }
+  }
+  
   if (lastRect.origin.y != _preHeight) {
     
     NSInteger line = [self calcLines:textView firstRect:firstRect lastRect:lastRect];
@@ -221,19 +238,26 @@ LYNX_UI_METHOD(setValue) {
     }];
         
     if (line == kLynxTextAreaOutOfMaxlines) {
-      // Try to trim to maxlines
-      UITextPosition *pos = [self trimToMaxlines:textView];
-      if ([textView comparePosition:pos toPosition:textView.endOfDocument] != NSOrderedSame) {
-        UITextRange *filteredRange = [textView textRangeFromPosition:textView.beginningOfDocument toPosition:pos];
-        NSString *filteredText = [textView textInRange:filteredRange];
-        textView.text = filteredText;
-        // Adjust UI
-        [textView scrollRangeToVisible:NSMakeRange(filteredText.length, 0)];
-        dispatch_async(dispatch_get_main_queue(), ^{
-          // Have to update the cursor at next loop (can't be applied on current loop, being restricted by UIKit)
-          textView.selectedTextRange = [textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument];
-        });
-        lastRect = [textView firstRectForRange:[textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument]];
+      if (systemVersion < 16) {
+        // For iOS 15, forbid this input
+        textView.text = self.lastValue;
+        textView.selectedTextRange = [textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument];
+        lastRect.origin.y = _preHeight;
+      } else {
+        // Try to trim to maxlines
+        UITextPosition *pos = [self trimToMaxlines:textView];
+        if ([textView comparePosition:pos toPosition:textView.endOfDocument] != NSOrderedSame) {
+          UITextRange *filteredRange = [textView textRangeFromPosition:textView.beginningOfDocument toPosition:pos];
+          NSString *filteredText = [textView textInRange:filteredRange];
+          textView.text = filteredText;
+          // Adjust UI
+          [textView scrollRangeToVisible:NSMakeRange(filteredText.length, 0)];
+          dispatch_async(dispatch_get_main_queue(), ^{
+            // Have to update the cursor at next loop (can't be applied on current loop, being restricted by UIKit)
+            textView.selectedTextRange = [textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument];
+          });
+          lastRect = [textView firstRectForRange:[textView textRangeFromPosition:textView.endOfDocument toPosition:textView.endOfDocument]];
+        }
       }
     }
     [self updateUISize];
