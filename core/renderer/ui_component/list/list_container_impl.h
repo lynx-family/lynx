@@ -44,6 +44,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   void ScrollStopped() override;
   void OnNextFrame() override;
   void PropsUpdateFinish() override;
+  void OnAttachToElementManager(ElementManager* manager) override;
   void OnListItemLayoutUpdated(Element* component) override;
   void UpdateListContainerDataSource(
       fml::RefPtr<lepus::Dictionary>& list_container_info) override;
@@ -61,6 +62,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   void UpdateScrollInfo(float estimated_offset, bool smooth, bool scrolling);
   void StartInterceptListElementUpdated();
   void StopInterceptListElementUpdated();
+  float RoundValueToPixelGrid(const float value);
   ListAdapter* list_adapter() const { return list_adapter_.get(); }
   ListLayoutManager* list_layout_manager() const {
     return list_layout_manager_.get();
@@ -144,6 +146,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   bool should_flush_finish_layout_{false};
   list::LayoutType layout_type_{list::LayoutType::kSingle};
   Element* element_{nullptr};
+  float physical_pixels_per_layout_unit_{1.f};
   std::unique_ptr<ListLayoutManager> list_layout_manager_;
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;

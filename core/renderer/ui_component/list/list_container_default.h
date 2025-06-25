@@ -42,6 +42,7 @@ class ListContainerDefault : public ListContainer::Delegate {
   void ResolveListAxisGap(CSSPropertyID id,
                           const lepus::Value& value) override {}
   void PropsUpdateFinish() override {}
+  void OnAttachToElementManager(ElementManager* manager) override {}
   void OnListItemLayoutUpdated(Element* component) override {}
   void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override {}
   list::BatchRenderStrategy GetBatchRenderStrategy() override {

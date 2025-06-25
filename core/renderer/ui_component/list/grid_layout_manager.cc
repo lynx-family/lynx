@@ -447,9 +447,10 @@ float GridLayoutManager::GetTargetContentSize() {
     return 0.f;
   }
   int last_element_index = list_container_->list_adapter()->GetDataCount() - 1;
-  return LargestMainSizeInRowWithItemHolder(
-             list_container_->GetItemHolderForIndex(last_element_index)) +
-         list_orientation_helper_->GetEndPadding();
+  return list_container_->RoundValueToPixelGrid(
+      LargestMainSizeInRowWithItemHolder(
+          list_container_->GetItemHolderForIndex(last_element_index)) +
+      list_orientation_helper_->GetEndPadding());
 }
 
 float GridLayoutManager::LargestMainSizeInRowWithItemHolder(

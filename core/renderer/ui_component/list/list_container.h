@@ -44,6 +44,7 @@ class ListContainer {
     virtual void ResolveListAxisGap(CSSPropertyID id,
                                     const lepus::Value& value) = 0;
     virtual void PropsUpdateFinish() = 0;
+    virtual void OnAttachToElementManager(ElementManager* manager) = 0;
     virtual void OnListItemLayoutUpdated(Element* component) = 0;
     virtual void UpdateBatchRenderStrategy(
         list::BatchRenderStrategy strategy) = 0;

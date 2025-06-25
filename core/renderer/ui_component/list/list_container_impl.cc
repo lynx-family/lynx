@@ -33,6 +33,23 @@ ListContainerImpl::ListContainerImpl(Element* element)
   list_event_manager_->SetChildrenHelper(list_children_helper_.get());
   NLIST_LOGI("ListContainerImpl::ListContainerImpl() this="
              << this << ", list_element=" << element_);
+  ElementManager* element_manager = element->element_manager();
+  if (!element_manager) {
+    return;
+  }
+  physical_pixels_per_layout_unit_ =
+      element_manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  if (base::FloatsEqual(physical_pixels_per_layout_unit_, 0.f)) {
+    physical_pixels_per_layout_unit_ = 1.f;
+  }
+}
+
+void ListContainerImpl::OnAttachToElementManager(ElementManager* manager) {
+  physical_pixels_per_layout_unit_ =
+      manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
+  if (base::FloatsEqual(physical_pixels_per_layout_unit_, 0.f)) {
+    physical_pixels_per_layout_unit_ = 1.f;
+  }
 }
 
 void ListContainerImpl::FinishBindItemHolder(
@@ -85,6 +102,11 @@ void ListContainerImpl::CheckZIndex(Element* child) const {
   if (child->has_z_props() && !element_->IsStackingContextNode()) {
     NLIST_LOGE("list is not stacking context node when child has z-index.");
   }
+}
+
+float ListContainerImpl::RoundValueToPixelGrid(const float value) {
+  return std::roundf(value * physical_pixels_per_layout_unit_) /
+         physical_pixels_per_layout_unit_;
 }
 
 void ListContainerImpl::OnNextFrame() {

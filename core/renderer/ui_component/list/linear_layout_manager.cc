@@ -642,15 +642,17 @@ float LinearLayoutManager::GetTargetContentSize() {
     return 0.f;
   }
   if (list_container_->list_adapter()->GetDataCount() == 0) {
-    return list_orientation_helper_->GetStartAfterPadding() +
-           list_orientation_helper_->GetEndPadding();
+    return list_container_->RoundValueToPixelGrid(
+        list_orientation_helper_->GetStartAfterPadding() +
+        list_orientation_helper_->GetEndPadding());
   } else {
     int last_element_index =
         list_container_->list_adapter()->GetDataCount() - 1;
     // Last ItemHolder's end + list's padding-bottom or padding-right
-    return list_orientation_helper_->GetDecoratedEnd(
-               list_container_->GetItemHolderForIndex(last_element_index)) +
-           list_orientation_helper_->GetEndPadding();
+    return list_container_->RoundValueToPixelGrid(
+        list_orientation_helper_->GetDecoratedEnd(
+            list_container_->GetItemHolderForIndex(last_element_index)) +
+        list_orientation_helper_->GetEndPadding());
   }
 }
 

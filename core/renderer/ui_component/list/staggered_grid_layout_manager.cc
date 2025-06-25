@@ -654,7 +654,8 @@ float StaggeredGridLayoutManager::GetTargetContentSize() {
     }
   }
   // Note: end padding in main axis should be considered.
-  return content_size + list_orientation_helper_->GetEndPadding();
+  return list_container_->RoundValueToPixelGrid(
+      content_size + list_orientation_helper_->GetEndPadding());
 }
 
 bool StaggeredGridLayoutManager::IntersectVisibleArea(

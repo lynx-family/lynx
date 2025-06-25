@@ -71,11 +71,10 @@ void ListEventManager::DetectScrollToThresholdAndSend(
     }
   }
 
-  float content_offset =
-      list_container_->list_layout_manager()->content_offset();
-  float content_size = list_container_->list_layout_manager()->content_size();
-  float list_size = list_container_->list_layout_manager()
-                        ->list_orientation_helper_->GetMeasurement();
+  float content_offset = list_layout_manager->content_offset();
+  float content_size = list_layout_manager->content_size();
+  float list_size =
+      list_layout_manager->list_orientation_helper_->GetMeasurement();
   // sendUpperScrollEvent
   if (first_index < upper_threshold_item_count_) {
     is_upper = true;
@@ -105,18 +104,13 @@ void ListEventManager::DetectScrollToThresholdAndSend(
   }
 
   if (lower_threshold_item_count_ == 0 &&
-      base::FloatsLargerOrEqual(
-          content_offset +
-              list_layout_manager->list_orientation_helper_->GetMeasurement(),
-          list_layout_manager->content_size())) {
+      base::FloatsLargerOrEqual(content_offset + list_size, content_size)) {
     // come to the bottom edge
     is_lower = true;
   }
 
   // Special case. The content can not fill the list
-  if (base::FloatsLargerOrEqual(
-          list_layout_manager->list_orientation_helper_->GetMeasurement(),
-          list_layout_manager->content_size())) {
+  if (base::FloatsLargerOrEqual(list_size, content_size)) {
     is_lower = true;
     is_upper = true;
   }
