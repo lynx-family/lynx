@@ -7,7 +7,7 @@ PipelineEntry:
   x-name:
     - updateTriggeredByBts
     - updateTriggeredByNative
-    - reactHydrate
+    - reactLynxHydrate
     - setNativeProps
     - updateGlobalProps
   allOf:
