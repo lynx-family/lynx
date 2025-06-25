@@ -12,6 +12,7 @@
 #import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
 #import <Lynx/UIScrollView+Lynx.h>
+
 #import "LynxUIContext+Internal.h"
 
 static const CGFloat kLynxListContainerInvalidScrollEstimatedOffset = -1.0;
@@ -212,11 +213,11 @@ LYNX_REGISTER_UI("list-container")
     _previousContentOffset = CGPointMake(contentOffsetBeforeSizeChange.x + _targetDelta.x,
                                          contentOffsetBeforeSizeChange.y + _targetDelta.y);
 
-    // The filtering logic here has a relatively big risk because the contentOffset might be
-    // modified externally through KVO. However, if there is no filtering, incorrect behavior will
-    // occur in the refresh scenario.
-    // TODO(xiamengfei.moonface): Use a way similar to Android to replace MJRefresh to implement the
-    // pull-down refreshing.
+    // The filtering logic here has a relatively big risk because the
+    // contentOffset might be modified externally through KVO. However, if there
+    // is no filtering, incorrect behavior will occur in the refresh scenario.
+    // TODO(xiamengfei.moonface): Use a way similar to Android to replace
+    // MJRefresh to implement the pull-down refreshing.
     if (self.disableFilterScroll || (contentSizeChanged || deltaChanged)) {
       [self.view setLynxListAdjustingContentOffset:YES];
       self.view.contentOffset = CGPointMake(
@@ -238,7 +239,8 @@ LYNX_REGISTER_UI("list-container")
 }
 
 - (void)updateContentSize {
-  // Override the old updateContentSize and do nothing. Use contentSize from c++.
+  // Override the old updateContentSize and do nothing. Use contentSize from
+  // c++.
 }
 
 - (void)insertChild:(LynxUI *)child atIndex:(NSInteger)index {
@@ -309,8 +311,9 @@ LYNX_REGISTER_UI("list-container")
     wrapper.layer.zPosition = component.zIndex;
   }
   if (self.enableListSticky && self.updateStickyForDiff) {
-    // This callback is invoked by component's onNodeReady(), which means component has valid
-    // item-key info, so handle component's item-key changed for sticky.
+    // This callback is invoked by component's onNodeReady(), which means
+    // component has valid item-key info, so handle component's item-key changed
+    // for sticky.
     NSString *itemKey = component.itemKey;
     if (itemKey != nil) {
       if ([self.stickyTopItemKeySet containsObject:itemKey]) {
@@ -341,7 +344,8 @@ LYNX_REGISTER_UI("list-container")
         enumerateKeysAndObjectsUsingBlock:^(NSString *_Nonnull key, LynxUIComponent *_Nonnull obj,
                                             BOOL *_Nonnull stop) {
           if (![newUpdatedItemKey isEqualToString:key] && obj == component) {
-            // Delete old and insert new <item-key, list-item> pair to finish updating item-key.
+            // Delete old and insert new <item-key, list-item> pair to finish
+            // updating item-key.
             [stickyItemDict removeObjectForKey:key];
             [stickyItemDict setObject:component forKey:newUpdatedItemKey];
             *stop = YES;
@@ -352,7 +356,8 @@ LYNX_REGISTER_UI("list-container")
 
 - (void)onAsyncComponentLayoutUpdated:(LynxUIComponent *)component
                           operationID:(int64_t)operationID {
-  // If enable batch render, no need to insert platform view in finishLayoutOperation()
+  // If enable batch render, no need to insert platform view in
+  // finishLayoutOperation()
   if (!self.enableBatchRender) {
     [self insertListComponent:component];
   }
@@ -383,11 +388,12 @@ LYNX_REGISTER_UI("list-container")
   }
   if (self.enableListSticky) {
     if (self.updateStickyForDiff) {
-      // This method is invoked in FinishLayoutOperation or by c++ list element which means
-      // component has valid item-key info.
+      // This method is invoked in FinishLayoutOperation or by c++ list element
+      // which means component has valid item-key info.
       NSString *itemKey = component.itemKey;
       if (itemKey != nil) {
-        // Add <item-key, list-item> to dict if current component is sticky item.
+        // Add <item-key, list-item> to dict if current component is sticky
+        // item.
         if ([self.stickyTopItemKeySet containsObject:itemKey]) {
           [self.stickyTopListItemDict setObject:component forKey:itemKey];
         } else if ([self.stickyBottomItemKeySet containsObject:itemKey]) {
@@ -414,7 +420,8 @@ LYNX_REGISTER_UI("list-container")
     if (self.updateStickyForDiff) {
       NSString *itemKey = component.itemKey;
       if (itemKey != nil) {
-        // Remove <item-key, list-item> from dict if current component is sticky item.
+        // Remove <item-key, list-item> from dict if current component is sticky
+        // item.
         if ([self.stickyTopListItemDict objectForKey:itemKey]) {
           [self.stickyTopListItemDict removeObjectForKey:itemKey];
           if (self.enableRecycleStickyItem) {
@@ -459,12 +466,11 @@ LYNX_PROP_SETTER("item-snap", setPagingAlignment, NSDictionary *) {
       [NSException raise:@"item-snap arguments invalid!"
                   format:@"The factor should be constrained to the range of [0,1]."];
       [self.context
-          reportLynxError:
-              [LynxError
-                  lynxErrorWithCode:ECLynxComponentListInvalidPropsArg
-                            message:@"item-snap invalid!"
-                      fixSuggestion:@"The factor should be constrained to the range of [0,1]."
-                              level:LynxErrorLevelWarn]];
+          reportLynxError:[LynxError lynxErrorWithCode:ECLynxComponentListInvalidPropsArg
+                                               message:@"item-snap invalid!"
+                                         fixSuggestion:@"The factor should be constrained "
+                                                       @"to the range of [0,1]."
+                                                 level:LynxErrorLevelWarn]];
       factor = 0;
     }
     CGFloat offset = [value[@"offset"] doubleValue];
@@ -851,8 +857,8 @@ LYNX_UI_METHOD(autoScroll) {
     CGFloat rate = [self toPtWithUnitValue:[params objectForKey:@"rate"] fontSize:0];
     NSInteger preferredFramesPerSecond = 1000 / 16;
 
-    // We can not move less than 1/scale pt in every frame, cause contentOffset will align to
-    // 1/scale.
+    // We can not move less than 1/scale pt in every frame, cause contentOffset
+    // will align to 1/scale.
     while (ABS(rate / preferredFramesPerSecond) < 1.0 / UIScreen.mainScreen.scale) {
       preferredFramesPerSecond -= 1;
       if (preferredFramesPerSecond == 0) {
@@ -1003,7 +1009,8 @@ LYNX_UI_METHOD(scrollToPosition) {
                                    smooth:smooth];
 
     if (!smooth) {
-      // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll on Most_On_Tasm
+      // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll
+      // on Most_On_Tasm
       callback(kUIMethodSuccess, nil);
     }
   } else {
@@ -1026,8 +1033,8 @@ LYNX_UI_METHOD(scrollToPosition) {
     __weak __typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (600 * NSEC_PER_MSEC)),
                    dispatch_get_main_queue(), ^{
-                     // Ensure that our scroll will be finished. It should be finished in 300ms,
-                     // accroding to UIKit.
+                     // Ensure that our scroll will be finished. It should be
+                     // finished in 300ms, accroding to UIKit.
 
                      if (scrollRequestId == weakSelf.scrollRequestId &&
                          ((LynxListContainerView *)(weakSelf.view)).scrollEstimatedOffset !=
@@ -1106,10 +1113,9 @@ LYNX_UI_METHOD(getVisibleCells) {
                                              y:[self clampToValidScrollEdge:YES]
                                      originalX:self.view.contentOffset.x
                                      originalY:self.view.contentOffset.y];
+    [self updateStickyTops];
+    [self updateStickyBottoms];
   }
-  [self updatePreviousContentOffset];
-  [self updateStickyTops];
-  [self updateStickyBottoms];
 }
 
 - (void)updatePreviousContentOffset {
@@ -1119,8 +1125,8 @@ LYNX_UI_METHOD(getVisibleCells) {
 }
 
 - (CGFloat)clampToValidScrollEdge:(BOOL)isVertical {
-  // The `contentInset` should not be took into account, cause that ListElement will not recognize
-  // this iOS only feat
+  // The `contentInset` should not be took into account, cause that ListElement
+  // will not recognize this iOS only feat
   if (isVertical) {
     CGFloat validOffsetY = MAX(0, self.view.contentOffset.y);
     validOffsetY = MIN(validOffsetY, [self orientationMaxScrollableDistance]);
@@ -1345,7 +1351,8 @@ LYNX_UI_METHOD(getVisibleCells) {
     return;
   }
 
-  // Mark finish scroll and notify ListElement to stop updating offset to platform
+  // Mark finish scroll and notify ListElement to stop updating offset to
+  // platform
 
   ((LynxListContainerView *)(self.view)).scrollEstimatedOffset =
       kLynxListContainerInvalidScrollEstimatedOffset;
@@ -1459,7 +1466,8 @@ LYNX_UI_METHOD(getVisibleCells) {
     return hitTarget;
   }
   // if the zIndex of cells are assigned according to their index
-  // we then use containsPoints to test each cell form the max zIndex to the min zIndex.
+  // we then use containsPoints to test each cell form the max zIndex to the min
+  // zIndex.
   NSArray<LynxListContainerComponentWrapper *> *visibleCells = self.view.subviews;
   NSArray<LynxListContainerComponentWrapper *> *visibleCellsSortedByZIndexReversely =
       [visibleCells sortedArrayUsingComparator:^NSComparisonResult(
