@@ -475,8 +475,8 @@
 
 - (void)resumeExposure {
   LLogInfo(@"LynxUIExposure resumeExposure");
+  _isStopExposure = NO;
   if ([_exposedLynxUIMap count] != 0) {
-    _isStopExposure = NO;
     [self addExposureToRunLoop];
   }
 }
