@@ -22,6 +22,8 @@ class RawTextElement : public FiberElement {
 
   bool is_raw_text() const override { return true; }
   void SetText(const lepus::Value& text);
+  void SetAttributeInternal(const base::String& key,
+                            const lepus::Value& value) override;
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 

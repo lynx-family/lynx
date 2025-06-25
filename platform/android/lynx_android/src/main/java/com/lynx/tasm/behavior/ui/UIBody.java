@@ -96,6 +96,12 @@ public class UIBody extends UIGroup<UIBodyView> {
     detachWithViewInfo(mViewInfo);
   }
 
+  @Override
+  protected void detachWithViewInfo(ViewInfo parentViewInfo) {
+    mBodyView = null;
+    super.detachWithViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
+  }
+
   public void appendUIWithCreateViewAsync(LynxUI ui) {
     mCreateViewUI.add(ui);
   }

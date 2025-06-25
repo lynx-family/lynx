@@ -26,6 +26,17 @@ void RawTextElement::SetText(const lepus::Value& text) {
   }
 }
 
+void RawTextElement::SetAttributeInternal(const base::String& key,
+                                          const lepus::Value& value) {
+  if (EnableLayoutInElementMode()) {
+    if (key.IsEqual(kTextAttr)) {
+      content_ = value.String();
+      return;
+    }
+  }
+  FiberElement::SetAttributeInternal(key, value);
+}
+
 ParallelFlushReturn RawTextElement::PrepareForCreateOrUpdate() {
   bool need_update = ConsumeAllAttributes();
 

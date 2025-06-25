@@ -181,11 +181,11 @@ public abstract class UIGroup<T extends ViewGroup>
       subDrawInfo.setImageManager(image.getLynxImageManagerForViewInfo());
       subDrawInfo.setDrawPosition(ui.getLeft(), ui.getTop());
     }
-    if (ui instanceof FlattenUIText) {
-      FlattenUIText text = (FlattenUIText) ui;
-      subDrawInfo.setTextLayout(text.getTextLayout());
-      subDrawInfo.setDrawPosition(text.getDrawPositionLeft(), text.getDrawPositionTop());
-    }
+    //    if (ui instanceof FlattenUIText) {
+    //      FlattenUIText text = (FlattenUIText) ui;
+    //      subDrawInfo.setTextLayout(text.getTextLayout());
+    //      subDrawInfo.setDrawPosition(text.getDrawPositionLeft(), text.getDrawPositionTop());
+    //    }
   }
 
   protected View getRealParentView() {

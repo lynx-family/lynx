@@ -147,10 +147,6 @@ void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
       element_manager_->viewport_.height_mode, false);
   sl_node_->ReLayout();
 
-  if (!(sl_node_->IsDirty())) {
-    return;
-  }
-
   painting_context()->AppendOptionsForTiming(options);
 
   painting_context()->MarkLayoutUIOperationQueueFlushStartIfNeed();

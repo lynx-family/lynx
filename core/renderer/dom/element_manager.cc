@@ -425,8 +425,7 @@ void ElementManager::RequestLayout(
     return;
   }
 
-  if (has_viewport_ready_ && root()->is_page() &&
-      static_cast<PageElement *>(root())->slnode()->IsDirty()) {
+  if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
       painting_context()->MarkUIOperationQueueFlushTiming(
           tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
