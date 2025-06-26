@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/value/base_string.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
@@ -54,29 +55,58 @@ void TextElement::OnNodeAdded(FiberElement* child) {
   UpdateRenderRootElementIfNecessary(child);
 }
 
+base::String TextElement::ConvertContent(const lepus::Value value) {
+  auto result = value.String();
+  if (result.empty()) {
+    if (value.IsInt32()) {
+      result = base::String(std::to_string(value.Int32()));
+    } else if (value.IsInt64()) {
+      result = base::String(std::to_string(value.Int64()));
+    } else if (value.IsNumber()) {
+      std::stringstream stream;
+      stream << value.Number();
+      result = stream.str();
+    } else if (value.IsNaN()) {
+      BASE_STATIC_STRING_DECL(kNaN, "NaN");
+      result = kNaN;
+    } else if (value.IsNil()) {
+      BASE_STATIC_STRING_DECL(kNull, "null");
+      result = kNull;
+    } else if (value.IsUndefined()) {
+      BASE_STATIC_STRING_DECL(kUndefined, "undefined");
+      result = kUndefined;
+    }
+  }
+  return result;
+}
+
 void TextElement::SetAttributeInternal(const base::String& key,
                                        const lepus::Value& value) {
   // sometimes, text-overflow is used as attribute, so we need to parse the
   // value as CSS style here. it's better to mark such kind of attribute as
   // internal attributes, which may be processed as const IDs
+
+  BASE_STATIC_STRING_DECL(kTextAttr, "text");
+  BASE_STATIC_STRING_DECL(kTextMaxlineAttr, "text-maxline");
+  BASE_STATIC_STRING_DECL(kTextOverflowAttr, "text-overflow");
+
   if (EnableLayoutInElementMode()) {
-    if (key.IsEqual("text")) {
-      content_ = value.String();
-    } else if (key.IsEqual("text-maxline")) {
+    if (key.IsEqual(kTextAttr)) {
+      content_ = ConvertContent(value);
+    } else if (key.IsEqual(kTextMaxlineAttr)) {
       EnsureTextProps();
       text_props_->text_max_line =
           value.IsNumber() ? value.Number() : std::stoi(value.StdString());
     } else {
       FiberElement::SetAttributeInternal(key, value);
     }
-
     return;
   }
 
-  if (key.IsEqual("text-overflow")) {
+  if (key.IsEqual(kTextOverflowAttr)) {
     CacheStyleFromAttributes(kPropertyIDTextOverflow, value);
     has_layout_only_props_ = false;
-  } else if (key.IsEqual("text") && !children().empty()) {
+  } else if (key.IsEqual(kTextAttr) && !children().empty()) {
     // if setNativeProps with key "text" on TextElement, we need to update it's
     // children.
     if (children().begin()->get()->is_raw_text()) {

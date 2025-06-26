@@ -135,7 +135,7 @@ class ComputedCSSStyle {
   const tasm::CssMeasureContext& GetMeasureContext() { return length_context_; }
 
   void Reset();
-  void ResetValue(tasm::CSSPropertyID id);
+  bool ResetValue(tasm::CSSPropertyID id);
   void SetOverflowDefaultVisible(bool default_overflow_visible);
   OverflowType GetDefaultOverflowType() const {
     return default_overflow_visible_ ? OverflowType::kVisible

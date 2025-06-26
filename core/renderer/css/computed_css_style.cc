@@ -618,18 +618,18 @@ bool ComputedCSSStyle::AppendAnimatedAnimationValue(tasm::StyleMap animate_data,
 
   return true;
 }
-void ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
+bool ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
   const auto* funcMap = FuncMap();
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
       tasm::CSSValue value;
-      (this->*func)(value, true);
-      return;
+      return (this->*func)(value, true);
     }
   }
   LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
               "ResetValue can't find style func id:%d", id);
+  return false;
 }
 
 void ComputedCSSStyle::SetOverflowDefaultVisible(
