@@ -345,10 +345,9 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
   }
 
   if (is_layout_only) {
-    if (EnableLayoutInElementMode()) {
-      if (computed_css_style()->SetValue(css_id, value)) {
-        MarkLayoutDirty();
-      }
+    if (EnableLayoutInElementMode() &&
+        computed_css_style()->SetValue(css_id, value)) {
+      RequestLayout();
     }
     return;
   }
@@ -430,9 +429,9 @@ void Element::ResetCSSValue(CSSPropertyID css_id) {
         layout_styles_->erase(css_id);
       }
     }
-    if (EnableLayoutInElementMode()) {
-      computed_css_style()->ResetValue(css_id);
-      MarkLayoutDirty();
+    if (is_layout_only && EnableLayoutInElementMode() &&
+        computed_css_style()->ResetValue(css_id)) {
+      RequestLayout();
     }
   }
   if (css_id == kPropertyIDPosition) {

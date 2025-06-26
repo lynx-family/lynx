@@ -58,6 +58,8 @@ class TextElement : public FiberElement {
                             const lepus::Value& value) override;
   void BuildTextPropsBuffer(std::string& output, PropArray* prop);
 
+  static base::String ConvertContent(const lepus::Value);
+
   TextElement(const TextElement& element, bool clone_resolved_props)
       : FiberElement(element, clone_resolved_props) {}
 

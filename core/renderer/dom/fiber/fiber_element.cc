@@ -2662,7 +2662,7 @@ void FiberElement::RecursivelyMarkChildrenCSSVariableDirty(
 }
 
 void FiberElement::EnsureSLNode() {
-  if (sl_node_ == nullptr) {
+  if (EnableLayoutInElementMode() && sl_node_ == nullptr) {
     sl_node_ = std::make_unique<SLNode>(
         element_manager()->GetLayoutConfigs(),
         computed_css_style()->GetLayoutComputedStyle());
@@ -2818,6 +2818,14 @@ void FiberElement::EnqueueLayoutTask(base::MoveOnlyClosure<void> operation) {
 }
 
 void FiberElement::RequestLayout() {
+  if (EnableLayoutInElementMode()) {
+    HandleBeforeFlushActionsTask([manager = element_manager(), this]() {
+      MarkLayoutDirty();
+      manager->SetNeedsLayout();
+    });
+    return;
+  }
+
   HandleDelayTask(
       [manager = element_manager()]() { manager->SetNeedsLayout(); });
 }
