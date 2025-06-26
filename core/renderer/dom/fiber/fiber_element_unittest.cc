@@ -3747,6 +3747,91 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
               starlight::NLength::MakeUnitNLength(5));
 }
 
+// fiber direction case 2: font-size and direction are both updated by
+// inheritance
+TEST_P(FiberElementTest, FiberElementDirectionCase02) {
+  float kScreeWidth = 750;
+  float kRpxRatio = 750.0f;
+
+  manager->UpdateScreenMetrics(kScreeWidth, 1000);
+
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDDirection,
+                                            kPropertyIDFontSize};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+
+  // class .left
+  {
+    auto tokens = std::make_shared<CSSParseToken>(configs);
+    auto id_border_top_left_radius =
+        CSSPropertyID::kPropertyIDBorderTopLeftRadius;
+    auto impl_border_top_left_radius = lepus::Value("12rpx");
+    tokens.get()->raw_attributes_[id_border_top_left_radius] =
+        CSSValue(impl_border_top_left_radius);
+    auto id_border_top_right_radius =
+        CSSPropertyID::kPropertyIDBorderTopRightRadius;
+    auto impl_border_top_right_radius = lepus::Value("0rpx");
+    tokens.get()->raw_attributes_[id_border_top_right_radius] =
+        CSSValue(impl_border_top_right_radius);
+
+    std::string key = ".left";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 10);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto parent = manager->CreateFiberNode("view");
+  parent->parent_component_element_ = page.get();
+  parent->SetStyle(kPropertyIDDirection, lepus::Value("lynx-rtl"));
+  parent->SetStyle(kPropertyIDFontSize, lepus::Value("28rpx"));
+  page->InsertNode(parent);
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->parent_component_element_ = page.get();
+  base::String leftClass("left");
+  element0->SetClass(leftClass);
+  parent->InsertNode(element0);
+
+  page->FlushActionsAsRoot();
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      page->painting_context()->platform_impl_.get());
+  painting_context->Flush();
+  auto* element_painting_node_ =
+      painting_context->node_map_.at(element0->impl_id()).get();
+  auto top_left_radius_it =
+      element_painting_node_->props_.find("border-top-left-radius");
+  EXPECT_TRUE(top_left_radius_it != element_painting_node_->props_.end());
+  auto tl_value = top_left_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(tl_value == 0);
+
+  auto top_right_radius_it =
+      element_painting_node_->props_.find("border-top-right-radius");
+  EXPECT_TRUE(top_right_radius_it != element_painting_node_->props_.end());
+  auto tr_value = top_right_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(tr_value == 12 * kScreeWidth / kRpxRatio);
+}
+
 TEST_P(FiberElementTest, RequireFlush) {
   auto page = manager->CreateFiberPage("10", 11);
   page->SetIdSelector("page");

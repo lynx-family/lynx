@@ -180,6 +180,8 @@ ElementManager::ElementManager(
   fix_parallel_z_index_crash_ = LynxEnv::GetInstance().FixParallelZIndexCrash();
   fix_insert_before_fixed_bug_ =
       LynxEnv::GetInstance().FixInsertBeforeFixedBug();
+  fix_font_size_override_direction_change_bug_ =
+      LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
 }

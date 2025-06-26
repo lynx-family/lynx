@@ -449,5 +449,9 @@ bool LynxEnv::EnableReportMTSContextEvent() {
 bool LynxEnv::EnableFiberElementMemoryReport() {
   return GetBoolEnv(Key::ENABLE_FIBER_ELEMENT_MEMORY_REPORT, true);
 }
+
+bool LynxEnv::FixFontSizeOverrideDirectionChangeBug() {
+  return GetBoolEnv(Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG, true);
+}
 }  // namespace tasm
 }  // namespace lynx
