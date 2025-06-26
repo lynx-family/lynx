@@ -546,8 +546,7 @@ void FiberElement::InsertedInto(FiberElement *insertion_point) {
   if (resolve_status_ == AsyncResolveStatus::kPrepareRequested) {
     AsyncPostResolveTaskToThreadPool();
   }
-  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr &&
-                              element_manager()->IsDomTreeEnabled()) {
+  EXEC_EXPR_FOR_INSPECTOR(if (element_manager() != nullptr) {
     element_manager()->RunDevToolFunction(
         lynx::devtool::DevToolFunction::InitStyleRoot, std::make_tuple(this));
   });
