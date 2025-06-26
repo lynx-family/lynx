@@ -327,6 +327,9 @@ void ElementManager::OnSetNativeProps(tasm::Element *ptr,
 void ElementManager::RunDevToolFunction(
     lynx::devtool::DevToolFunction func_enum, const base::any &data) {
   EXEC_EXPR_FOR_INSPECTOR({
+    if (!devtool_flag_ || !IsDomTreeEnabled()) {
+      return;
+    }
     auto iter = devtool_func_map_.find(func_enum);
     if (iter != devtool_func_map_.end()) {
       (iter->second)(data);
