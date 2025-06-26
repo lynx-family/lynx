@@ -560,7 +560,7 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   // any special action
 
   if (LynxEnv::GetInstance().GetBoolEnv(
-          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, true)) {
+          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, false)) {
     if (IsDetached()) {
       return;
     }

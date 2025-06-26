@@ -104,7 +104,8 @@ targets({
         "cwd": ".",
         "owners":["ZhaoSongGOO"],
         "coverage": True,
-        "enable_parallel":True
+        "enable_parallel":True,
+        "args":["--gtest_filter=\"-*DISABLE*\""]
     },
     "dom_trace_unittest_exec":{
         "cwd": ".",

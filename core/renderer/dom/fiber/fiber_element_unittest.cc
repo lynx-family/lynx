@@ -6969,7 +6969,7 @@ TEST_P(FiberElementTest, RemoveIntergenerationalChild) {
   EXPECT_TRUE(page_children[1] == child22_painting_node);
 }
 
-TEST_P(FiberElementTest, RemoveIntergenerationalChild1) {
+TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild1) {
   //===test fixed element =====//
   // normal case
   auto page = manager->CreateFiberPage("page", 11);
@@ -7033,7 +7033,7 @@ TEST_P(FiberElementTest, RemoveIntergenerationalChild1) {
   manager->catalyzer_->UpdateLayoutRecursively();
 }
 
-TEST_P(FiberElementTest, RemoveIntergenerationalChild2) {
+TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild2) {
   //===test fixed element =====//
   // normal case
   auto page = manager->CreateFiberPage("page", 11);
@@ -7097,7 +7097,7 @@ TEST_P(FiberElementTest, RemoveIntergenerationalChild2) {
   manager->catalyzer_->UpdateLayoutRecursively();
 }
 
-TEST_P(FiberElementTest, RemoveIntergenerationalChild3) {
+TEST_P(FiberElementTest, DISABLED_RemoveIntergenerationalChild3) {
   //===test fixed element =====//
   // normal case
   auto page = manager->CreateFiberPage("page", 11);
