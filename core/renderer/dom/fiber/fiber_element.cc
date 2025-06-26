@@ -1094,7 +1094,6 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   }
 
   // process direction: rtl/lynx-rtl firstly
-  // FIXME(linxs): maybe can put setFontSize here ?
   if (IsDirectionChangedEnabled()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_DIRECTION_CHANGED,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -1153,7 +1152,7 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
       }
       direction_ = new_direction.second;
       SetStyleInternal(kPropertyIDDirection, new_direction.first);
-    } while (0);
+    } while (false);
   }
 
   bool root_font_size_changed =
@@ -1163,6 +1162,8 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
     UpdateLayoutNodeFontSize(GetFontSize(), GetCurrentRootFontSize());
   }
 
+  // TODO: A refactor of the animation-related style handling is needed later,
+  // once the correct dependencies between animation and other special CSS
   // set updated Styles to element in the end
   if (!update_map.empty() || !updated_inherited_styles_.empty() ||
       !styles_from_attributes_.empty()) {
@@ -1184,10 +1185,15 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
       TryDoDirectionRelatedCSSChange(style_pair.first, style_pair.second.first,
                                      style_pair.second.second);
     }
-    pending_updated_direction_related_styles_.clear();
+    if (!element_manager_->FixFontSizeOverrideDirectionChangeBug()) {
+      pending_updated_direction_related_styles_.clear();
+    }
   }
 
   // Handle font size change
+  // TODO: A refactor of the font-size-related style handling is needed later,
+  // once the correct dependencies between font-size and other special CSS
+  // property(text-align, direction) changes are identified.
   if (dirty_ & kDirtyFontSize) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_FONT_SIZE_CHANGE,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -1244,15 +1250,34 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
       }
 
       for (const auto &style : parsed_styles_map_) {
+        bool need_handle_pending_updated_direction_related_style =
+            element_manager_->FixFontSizeOverrideDirectionChangeBug() &&
+            !pending_updated_direction_related_styles_.empty() &&
+            pending_updated_direction_related_styles_.find(style.first) !=
+                pending_updated_direction_related_styles_.end();
         if (style.first != CSSPropertyID::kPropertyIDFontSize &&
             should_update_em_rem_style(style, root_font_size_changed) &&
             update_map.find(style.first) == update_map.end()) {
-          SetStyleInternal(style.first, style.second);
+          if (need_handle_pending_updated_direction_related_style) {
+            auto style_pair =
+                pending_updated_direction_related_styles_.find(style.first);
+            TryDoDirectionRelatedCSSChange(style.first,
+                                           (*style_pair).second.first,
+                                           (*style_pair).second.second);
+          } else {
+            SetStyleInternal(style.first, style.second);
+          }
           need_update = true;
         }
       }
-    } while (0);
+    } while (false);
     dirty_ &= ~kDirtyFontSize;
+  }
+
+  if (element_manager_->FixFontSizeOverrideDirectionChangeBug() &&
+      !pending_updated_direction_related_styles_.empty()) {
+    // reset cached style map impacted by direction
+    pending_updated_direction_related_styles_.clear();
   }
 
   // Report when enableNewAnimator is the default value.

@@ -426,5 +426,9 @@ bool LynxEnv::EnableUnifiedPixelPipeline() {
   return GetBoolEnv(Key::ENABLE_UNIFIED_PIXEL_PIPELINE, false);
 }
 
+bool LynxEnv::FixFontSizeOverrideDirectionChangeBug() {
+  return GetBoolEnv(Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG, true);
+}
+
 }  // namespace tasm
 }  // namespace lynx

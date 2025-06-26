@@ -1093,6 +1093,10 @@ class ElementManager : public ElementContextDelegate {
 
   bool FixInsertBeforeFixedBug() { return fix_insert_before_fixed_bug_; }
 
+  bool FixFontSizeOverrideDirectionChangeBug() {
+    return fix_font_size_override_direction_change_bug_;
+  }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1197,6 +1201,7 @@ class ElementManager : public ElementContextDelegate {
   bool enable_batch_layout_task_with_sync_layout_{false};
   bool fix_parallel_z_index_crash_{true};
   bool fix_insert_before_fixed_bug_{true};
+  bool fix_font_size_override_direction_change_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
 
   LynxEnvConfig lynx_env_config_;
