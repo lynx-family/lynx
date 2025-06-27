@@ -1,3 +1,6 @@
+# 0.0.12
+* fix a bug that `decode_napi` failed with `FeatureCount`;
+
 # 0.0.11
 * add renderer functions for simple styling mode `__CreateStyleObject`, `__SetStyleObject` and `__UpdateStyleObject`.
 
