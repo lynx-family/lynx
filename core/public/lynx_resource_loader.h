@@ -95,11 +95,17 @@ class LynxResourceLoader
 
   virtual void LoadResourcePath(
       const LynxResourceRequest& request,
-      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback){};
+      base::MoveOnlyClosure<void, LynxPathResponse&> path_callback) {}
 
   virtual void LoadStream(
       const LynxResourceRequest& request,
-      const std::shared_ptr<LynxStreamDelegate>& stream_delegate){};
+      const std::shared_ptr<LynxStreamDelegate>& stream_delegate) {}
+
+  virtual bool IsLocalResource(const std::string& url) { return false; }
+
+  virtual std::string ShouldRedirectUrl(const LynxResourceRequest& request) {
+    return request.url;
+  }
 };
 
 }  // namespace pub
