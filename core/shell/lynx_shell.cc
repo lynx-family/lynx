@@ -614,11 +614,12 @@ void LynxShell::ReloadTemplate(
   ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   EnsureTemplateDataThreadSafe(data);
+  auto global_props_thread_safe = EnsureGlobalPropsThreadSafe(global_props);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
   engine_actor_->Act(
-      [data, global_props, order,
+      [data, global_props_thread_safe, order,
        pipeline_options = std::move(pipeline_options)](auto& engine) {
-        engine->ReloadTemplate(data, global_props, order,
+        engine->ReloadTemplate(data, global_props_thread_safe, order,
                                std::move(pipeline_options));
       });
 }
