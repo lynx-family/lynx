@@ -42,7 +42,8 @@ class ElementContainer {
   void Destroy();
   void RemoveSelf(bool destroy);
   void InsertSelf();
-  void UpdateLayout(float left, float top, bool transition_view = false);
+  void UpdateLayout(float left, float top, bool transition_view = false,
+                    bool handle_element_container_immediately = true);
   void UpdateLayoutWithoutChange();
   /**
    * Add element container to correct parent(if layout_only contained)
@@ -52,11 +53,16 @@ class ElementContainer {
    */
   void AttachChildToTargetContainer(Element* child, Element* ref = nullptr);
   void ReInsertChildForLayoutOnlyTransition(Element* child, int& index);
-  void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle);
+  void TransitionToNativeView(fml::RefPtr<PropBundle> prop_bundle,
+                              bool need_update_element_container = true);
   void StyleChanged();
   void UpdateZIndexList();
   ElementContainer* EnclosingStackingContextNode();
   bool IsStackingContextNode();
+  inline bool IsPendingUpdateForNativeViewTransition() const {
+    return pending_update_native_view_transition_;
+  }
+  void UpdateForNativeViewTransition();
 
  private:
   void ZIndexChanged();
@@ -80,6 +86,7 @@ class ElementContainer {
   void SetNeedUpdate(bool update) { need_update_ = update; }
   void MarkDirty();
   bool IsSticky();
+  void HandleReinsertChildForLayoutOnlyTransition();
 
   // children with zIndex<0, negative zIndex child will be re-inserted to the
   // beginning after onPatchFinish
@@ -102,6 +109,10 @@ class ElementContainer {
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch
   bool props_changed_{true};
+  bool pending_update_native_view_transition_{false};
+  base::closure list_update_layout_element_container_closure_{nullptr};
+  base::closure handle_element_container_native_view_transition_closure_{
+      nullptr};
 };
 
 }  // namespace tasm

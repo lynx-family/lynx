@@ -13481,6 +13481,76 @@ TEST_P(FiberElementTest, FontSizeResetTest) {
               manager->GetLynxEnvConfig().PageDefaultFontSize());
 }
 
+TEST_P(FiberElementTest, TransitionToNativeViewTest) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDFontFamily};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+  // class .root
+  {
+    auto tokens = std::make_shared<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDFontFamily;
+    auto impl = lepus::Value("icon-font");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".root";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto container = manager->CreateFiberNode("view");
+  container->parent_component_element_ = page.get();
+  container->SetClass("root");
+  page->InsertNode(container);
+
+  auto parent = manager->CreateFiberNode("view");
+  container->parent_component_element_ = page.get();
+  container->InsertNode(parent);
+
+  auto image_element = manager->CreateFiberImage("image");
+  image_element->parent_component_element_ = page.get();
+  image_element->SetAttribute("src", lepus::Value("https://fakeimage"));
+  parent->InsertNode(image_element);
+
+  auto view_element0 = manager->CreateFiberNode("view");
+  view_element0->parent_component_element_ = page.get();
+  parent->InsertNode(view_element0);
+
+  auto text_element0 = manager->CreateFiberText("text");
+  text_element0->parent_component_element_ = page.get();
+  text_element0->SetAttribute("text", lepus::Value("dummy text"));
+  view_element0->InsertNode(text_element0);
+
+  page->FlushActionsAsRoot();
+
+  auto parent_element_container = parent->element_container();
+  EXPECT_TRUE(parent_element_container->children().size() == 2);
+  EXPECT_TRUE(parent_element_container->children()[0] ==
+              image_element->element_container());
+  EXPECT_TRUE(parent_element_container->children()[1] ==
+              view_element0->element_container());
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

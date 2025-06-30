@@ -182,6 +182,9 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().FixInsertBeforeFixedBug();
   fix_font_size_override_direction_change_bug_ =
       LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
+  fix_transition_to_native_view_element_container_insertion_order_bug_ =
+      LynxEnv::GetInstance()
+          .FixTransitionToNativeViewElementContainerInsertionOrderBug();
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
 }

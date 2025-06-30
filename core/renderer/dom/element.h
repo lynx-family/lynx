@@ -635,7 +635,7 @@ class Element : public lepus::RefCounted {
   }
 
   // If element not CanBeLayoutOnly, call this function to create LynxUI.
-  void TransitionToNativeView();
+  virtual void TransitionToNativeView();
 
   // When list component finishes all props update
   virtual void PropsUpdateFinish() {}

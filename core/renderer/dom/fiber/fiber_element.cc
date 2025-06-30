@@ -1575,6 +1575,12 @@ void FiberElement::FlushSelf() {
     PrepareForCreateOrUpdate();
   }
 
+  if (element_manager()
+          ->FixTransitionToNativeViewElementContainerInsertionOrderBug() &&
+      element_container()->IsPendingUpdateForNativeViewTransition()) {
+    element_container()->UpdateForNativeViewTransition();
+  }
+
   // handle fixed style changed if needed
   if (fixed_changed_) {
     HandleSelfFixedChange();
@@ -1808,6 +1814,11 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
     if (!has_to_store_insert_remove_actions_) {
       for (const auto &child : scoped_children_) {
         if (!child->render_parent_) {
+          if (element_manager()
+                  ->FixTransitionToNativeViewElementContainerInsertionOrderBug() &&
+              element_container()->IsPendingUpdateForNativeViewTransition()) {
+            element_container()->UpdateForNativeViewTransition();
+          }
           // if no pending tree actions, we just do insertion here
           if (!child->is_fixed_ || GetEnableFixedNew()) {
             this->HandleInsertChildAction(child.get(), -1, nullptr);
@@ -1826,6 +1837,15 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
       switch (param.type_) {
         case Action::kInsertChildAct: {
           PrepareChildForInsertion(param.child_.get());
+          if (element_manager()
+                  ->FixTransitionToNativeViewElementContainerInsertionOrderBug() &&
+              param.child_.get()
+                  ->element_container()
+                  ->IsPendingUpdateForNativeViewTransition()) {
+            param.child_.get()
+                ->element_container()
+                ->UpdateForNativeViewTransition();
+          }
           if (!param.is_fixed_ || GetEnableFixedNew()) {
             HandleInsertChildAction(param.child_.get(),
                                     static_cast<int>(param.index_),
@@ -3999,6 +4019,29 @@ void FiberElement::SetMeasureFunc(void *context,
                                   starlight::SLMeasureFunc measure_func) {
   sl_node_->SetContext(context);
   sl_node_->SetSLMeasureFunc(std::move(measure_func));
+}
+
+void FiberElement::TransitionToNativeView() {
+  // If already layout only or is virtual, do not need create ui for this
+  // element.
+  if (!IsLayoutOnly() || is_virtual()) {
+    return;
+  }
+  HandleDelayTask([prop_bundle = prop_bundle_
+                                     ? prop_bundle_
+                                     : element_manager_->GetPropBundleCreator()
+                                           ->CreatePropBundle(),
+                   element_container = element_container(),
+                   element_manager = element_manager()]() {
+    if (element_manager
+            ->FixTransitionToNativeViewElementContainerInsertionOrderBug()) {
+      // No need to handle element container
+      element_container->TransitionToNativeView(std::move(prop_bundle), false);
+    } else {
+      // Need to handle element container
+      element_container->TransitionToNativeView(std::move(prop_bundle), true);
+    }
+  });
 }
 
 #if ENABLE_TRACE_PERFETTO

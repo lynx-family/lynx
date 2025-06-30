@@ -926,6 +926,8 @@ class FiberElement : public Element,
   virtual void BuildAttributedStringProps(size_t start, size_t end,
                                           PropArray* props) {}
 
+  virtual void TransitionToNativeView() override;
+
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 

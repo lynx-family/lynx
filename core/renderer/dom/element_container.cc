@@ -294,8 +294,8 @@ void ElementContainer::AttachChildToTargetContainer(Element* child,
 }
 
 // Calculate position for element and update it to impl layer.
-void ElementContainer::UpdateLayout(float left, float top,
-                                    bool transition_view) {
+void ElementContainer::UpdateLayout(float left, float top, bool transition_view,
+                                    bool handle_element_container_immediately) {
   // Self is updated or self position is changed because of parent's frame
   // changing.
 
@@ -347,31 +347,42 @@ void ElementContainer::UpdateLayout(float left, float top,
     }
   }
 
-  // If the element is list, and use c++ implementation, we will block it's
-  // children invoking UpdateLayout() to flush layout info to platform, because
-  // the left and top's value of child element is incorrect.
-  if (!element_->DisableListPlatformImplementation()) {
-    // Layout children
-    if (element_->is_radon_element()) {
-      for (size_t i = 0; i < element_->GetChildCount(); ++i) {
-        Element* child = element_->GetChildAt(i);
-        if (child->element_container()) {
-          child->element_container()->UpdateLayout(
-              child->left() + dx, child->top() + dy, transition_view);
+  auto handle_list_update_layout = [this, dx, dy, transition_view]() {
+    // If the element is list, and use c++ implementation, we will block it's
+    // children invoking UpdateLayout() to flush layout info to platform,
+    // because the left and top's value of child element is incorrect.
+    if (!element_->DisableListPlatformImplementation()) {
+      // Layout children
+      if (element_->is_radon_element()) {
+        for (size_t i = 0; i < element_->GetChildCount(); ++i) {
+          Element* child = element_->GetChildAt(i);
+          if (child->element_container()) {
+            child->element_container()->UpdateLayout(
+                child->left() + dx, child->top() + dy, transition_view);
+          }
         }
-      }
-    } else {
-      // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
-      auto* child = static_cast<FiberElement*>(element_)->first_render_child();
-      while (child) {
-        if (child->element_container()) {
-          child->element_container()->UpdateLayout(
-              child->left() + dx, child->top() + dy, transition_view);
+      } else {
+        // TDOO(linxs): need to uniform the usage for radonElement&FiberElement
+        auto* child =
+            static_cast<FiberElement*>(element_)->first_render_child();
+        while (child) {
+          if (child->element_container()) {
+            child->element_container()->UpdateLayout(
+                child->left() + dx, child->top() + dy, transition_view);
+          }
+          child = child->next_render_sibling();
         }
-        child = child->next_render_sibling();
       }
     }
+  };
+
+  if (handle_element_container_immediately) {
+    handle_list_update_layout();
+  } else {
+    list_update_layout_element_container_closure_ =
+        std::move(handle_list_update_layout);
   }
+
   element_->MarkUpdated();
 
   is_layouted_ = true;
@@ -399,8 +410,24 @@ void ElementContainer::UpdateLayoutWithoutChange() {
   }
 }
 
+void ElementContainer::HandleReinsertChildForLayoutOnlyTransition() {
+  int ui_index = 0;
+  if (element_->is_radon_element()) {
+    for (size_t i = 0; i < element_->GetChildCount(); ++i) {
+      Element* child = element_->GetChildAt(i);
+      ReInsertChildForLayoutOnlyTransition(child, ui_index);
+    }
+  } else {
+    auto* child = static_cast<FiberElement*>(element_)->first_render_child();
+    while (child) {
+      ReInsertChildForLayoutOnlyTransition(child, ui_index);
+      child = child->next_render_sibling();
+    }
+  }
+}
+
 void ElementContainer::TransitionToNativeView(
-    fml::RefPtr<PropBundle> prop_bundle) {
+    fml::RefPtr<PropBundle> prop_bundle, bool need_update_element_container) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_TRANSITION);
   if (prop_bundle == nullptr) {
     return;
@@ -412,8 +439,10 @@ void ElementContainer::TransitionToNativeView(
   LOGI("[ElementContainer] TransitionToNativeView tag:"
        << element_->GetTag().str() << ",id:" << element_->impl_id());
 
-  // Remove from current parent.
-  RemoveFromParent(true);
+  if (need_update_element_container) {
+    // Remove from current parent.
+    RemoveFromParent(true);
+  }
 
   // Create LynxUI in impl layer.
   element_->set_is_layout_only(false);
@@ -429,32 +458,55 @@ void ElementContainer::TransitionToNativeView(
       element_->TendToFlatten(), element_->NeedCreateNodeAsync(),
       element_->NodeIndex());
 
-  // Insert children to this.
-  InsertSelf();
+  if (need_update_element_container) {
+    // Insert children to this.
+    InsertSelf();
+  }
 
   // Mark need update layout value to impl layer.
   element_->MarkFrameChanged();
 
-  UpdateLayout(last_left_, last_top_, true);
+  UpdateLayout(last_left_, last_top_, true, need_update_element_container);
 
-  int ui_index = 0;
-  if (element_->is_radon_element()) {
-    for (size_t i = 0; i < element_->GetChildCount(); ++i) {
-      Element* child = element_->GetChildAt(i);
-      ReInsertChildForLayoutOnlyTransition(child, ui_index);
-    }
-  } else {
-    auto* child = static_cast<FiberElement*>(element_)->first_render_child();
-    while (child) {
-      ReInsertChildForLayoutOnlyTransition(child, ui_index);
-      child = child->next_render_sibling();
-    }
+  if (need_update_element_container) {
+    HandleReinsertChildForLayoutOnlyTransition();
   }
 
   // the updateLayout is not in LayoutContext flow, just flush patching
   // immediately. otherwise, the updateLayout may execute after followed
   // operation,such as Destroy.
   painting_context()->UpdateLayoutPatching();
+
+  if (!need_update_element_container) {
+    pending_update_native_view_transition_ = true;
+    handle_element_container_native_view_transition_closure_ = [this]() {
+      // Remove from current parent.
+      RemoveFromParent(true);
+
+      // Insert children to this.
+      InsertSelf();
+
+      if (list_update_layout_element_container_closure_ != nullptr) {
+        list_update_layout_element_container_closure_();
+        list_update_layout_element_container_closure_ = nullptr;
+      }
+
+      HandleReinsertChildForLayoutOnlyTransition();
+    };
+  }
+}
+
+void ElementContainer::UpdateForNativeViewTransition() {
+  if (!pending_update_native_view_transition_) {
+    return;
+  }
+
+  if (handle_element_container_native_view_transition_closure_ != nullptr) {
+    handle_element_container_native_view_transition_closure_();
+    handle_element_container_native_view_transition_closure_ = nullptr;
+  }
+
+  pending_update_native_view_transition_ = false;
 }
 
 void ElementContainer::MoveContainers(ElementContainer* old_parent,

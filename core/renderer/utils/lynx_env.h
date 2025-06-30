@@ -103,6 +103,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_REPORT_BTS_CONTEXT_EVENT,
     ENABLE_FIBER_ELEMENT_MEMORY_REPORT,
     FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
+    FIX_TRANSITION_TO_NATIVE_VIEW_ELEMENT_CONTAINER_INSERTION_ORDER_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -219,6 +220,10 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
              "enable_fiber_element_memory_report"},
             {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
              "fix_font_size_override_direction_change_bug"},
+            {Key::
+                 FIX_TRANSITION_TO_NATIVE_VIEW_ELEMENT_CONTAINER_INSERTION_ORDER_BUG,
+             "fix_transition_to_native_view_element_container_insertion_order_"
+             "bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -345,6 +350,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableReportMTSContextEvent();
   bool EnableFiberElementMemoryReport();
   bool FixFontSizeOverrideDirectionChangeBug();
+  bool FixTransitionToNativeViewElementContainerInsertionOrderBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
