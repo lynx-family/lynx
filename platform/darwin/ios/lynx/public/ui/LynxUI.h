@@ -56,9 +56,6 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 @property(nonatomic, readwrite) CGPathRef offsetPathRef;
 @property(nonatomic, readwrite) CGFloat offsetDistance;
 @property(nonatomic, readwrite) CGFloat offsetRotate;
-@property(nonatomic, readwrite) CATransform3D offsetEffectTransform;
-@property(nonatomic, readwrite) CGFloat lastOffsetX;
-@property(nonatomic, readwrite) CGFloat lastOffsetY;
 @property(nonatomic) BOOL isAutoOffsetRotate;
 @property(nonatomic) BOOL offsetHasChanged;
 

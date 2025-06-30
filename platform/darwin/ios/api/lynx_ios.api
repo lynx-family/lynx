@@ -3629,9 +3629,6 @@ public class LynxUI : <__covariant V UIView> {
   public CGPathRef LynxUI::offsetPathRef offsetPathRef;
   public CGFloat LynxUI::offsetDistance offsetDistance;
   public CGFloat LynxUI::offsetRotate offsetRotate;
-  public CATransform3D LynxUI::offsetEffectTransform offsetEffectTransform;
-  public CGFloat LynxUI::lastOffsetX lastOffsetX;
-  public CGFloat LynxUI::lastOffsetY lastOffsetY;
   public BOOL LynxUI::isAutoOffsetRotate isAutoOffsetRotate;
   public BOOL LynxUI::offsetHasChanged offsetHasChanged;
   public LynxUIContext* LynxUI::context context;
