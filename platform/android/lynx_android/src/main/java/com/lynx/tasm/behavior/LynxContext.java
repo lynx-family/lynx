@@ -1331,6 +1331,26 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     mExposure.updateWindowSize(this);
   }
 
+  /**
+   * @brief init TouchEventDispatcher when it's null.
+   * @detail create TouchEventDispatcher instance and init some config. Call when it is uncertain
+   * whether the TouchEventDispatcher has been created.
+   */
+  public void EnsureEventDispatcher() {
+    if (mTouchEventDispatcher != null) {
+      return;
+    }
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null) {
+      return;
+    }
+    ILynxUIRenderer lynxUIRenderer = lynxView.lynxUIRenderer();
+    if (lynxUIRenderer != null && lynxUIRenderer instanceof LynxUIRenderer) {
+      ((LynxUIRenderer) lynxUIRenderer).EnsureEventDispatcher();
+      ;
+    }
+  }
+
   // This is a experimental API, it is unstable and may break at any time.
   @RestrictTo({RestrictTo.Scope.LIBRARY_GROUP})
   public void setExtensionModuleForKey(LynxExtensionModule module, String key) {

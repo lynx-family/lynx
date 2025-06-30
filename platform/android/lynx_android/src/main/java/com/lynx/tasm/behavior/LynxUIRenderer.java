@@ -344,14 +344,17 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
-    if (mEventDispatcher == null) {
-      initEventDispatcher();
-    }
+    EnsureEventDispatcher();
     return (mEventDispatcher != null) ? mEventDispatcher.onTouchEvent(ev, rootUi) : false;
   }
 
-  private void initEventDispatcher() {
-    if (mLynxUIOwner != null) {
+  /**
+   * @brief init TouchEventDispatcher when it's null.
+   * @detail create TouchEventDispatcher instance and init some config. Call when it is uncertain
+   * whether the TouchEventDispatcher has been created.
+   */
+  public void EnsureEventDispatcher() {
+    if (mLynxUIOwner != null && mEventDispatcher == null) {
       mEventDispatcher = new TouchEventDispatcher(mLynxUIOwner);
       mEventDispatcher.setHasTouchPseudo(mLynxUIOwner.getHasTouchPseudo());
       if (mIsUpdatedConfig) {

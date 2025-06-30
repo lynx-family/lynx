@@ -3865,6 +3865,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public void com.lynx.tasm.behavior.LynxContext.setEnableAutoConcurrency(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableAutoConcurrency();
   public void com.lynx.tasm.behavior.LynxContext.initUIExposure();
+  public void com.lynx.tasm.behavior.LynxContext.EnsureEventDispatcher();
   public void com.lynx.tasm.behavior.LynxContext.setExtensionModuleForKey(LynxExtensionModule module, String key);
   public LynxExtensionModule com.lynx.tasm.behavior.LynxContext.getExtensionModuleByKey(String key);
   public Map< String, LynxExtensionModule > com.lynx.tasm.behavior.LynxContext.getExtensionModules();
@@ -5909,6 +5910,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIdSelector(@NonNull String id);
   public LynxBaseUI com.lynx.tasm.behavior.LynxUIRenderer.findLynxUIByIndex(@NonNull int index);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.onTouchEvent(MotionEvent ev, UIGroup rootUi);
+  public void com.lynx.tasm.behavior.LynxUIRenderer.EnsureEventDispatcher();
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.consumeSlideEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.LynxUIRenderer.blockNativeEvent(MotionEvent ev);
   public ThreadStrategyForRendering com.lynx.tasm.behavior.LynxUIRenderer.getSupportedThreadStrategy(ThreadStrategyForRendering threadStrategy);
