@@ -296,6 +296,16 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @Override
+  public void onLayoutUpdated() {
+    super.onLayoutUpdated();
+    if (mIsVertical && mView.mMeasuredWidth != getWidth()) {
+      mView.setMeasuredSize(getWidth(), mView.mMeasuredHeight);
+    } else if (!mIsVertical && mView.mMeasuredHeight != getHeight()) {
+      mView.setMeasuredSize(mView.mMeasuredWidth, getHeight());
+    }
+  }
+
+  @Override
   public void removeKeyFromNativeStorage(String key) {
     if (nativeListStateCache != null) {
       nativeListStateCache.remove(key);

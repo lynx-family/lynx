@@ -35,8 +35,8 @@ public class ListContainerView
   private boolean mIsDownEventHandled = true;
   private IDrawChildHook mDrawChildHook;
   private boolean mIsVertical = true;
-  private int mMeasuredWidth = 0;
-  private int mMeasuredHeight = 0;
+  int mMeasuredWidth = 0;
+  int mMeasuredHeight = 0;
   private boolean mShouldBlockScrollByListContainer = false;
   private int mPreviousOffsetX;
   private int mPreviousOffsetY;
@@ -178,7 +178,7 @@ public class ListContainerView
     }
   }
 
-  protected void setMeasuredSize(int measuredWidth, int measuredHeight) {
+  void setMeasuredSize(int measuredWidth, int measuredHeight) {
     if (mMeasuredWidth != measuredWidth || mMeasuredHeight != measuredHeight) {
       mMeasuredHeight = measuredHeight;
       mMeasuredWidth = measuredWidth;
@@ -194,9 +194,9 @@ public class ListContainerView
 
   void updateContentSizeAndOffset(int contentSize, int deltaX, int deltaY) {
     if (mIsVertical && contentSize != mMeasuredHeight) {
-      setMeasuredSize(mMeasuredWidth, contentSize);
+      setMeasuredSize(mMeasuredWidth, Math.max(contentSize, mUiListContainer.getHeight()));
     } else if (!mIsVertical && contentSize != mMeasuredWidth) {
-      setMeasuredSize(contentSize, mMeasuredHeight);
+      setMeasuredSize(Math.max(contentSize, mUiListContainer.getWidth()), mMeasuredHeight);
     }
     mShouldBlockScrollByListContainer = true;
     if (mIsVertical) {

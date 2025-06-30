@@ -8997,6 +8997,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.removeView(LynxBaseUI child);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isAsyncThreadStrategy();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onNodeReady();
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onLayoutUpdated();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.removeKeyFromNativeStorage(String key);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.storeKeyToNativeStorage(String key, Object value);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.initialPropsFlushed(String initialPropKey, String cacheKey);
