@@ -15,6 +15,7 @@
 		2B382D7E2D17BD1500C67770 /* ExplorerModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D7D2D17BD1500C67770 /* ExplorerModule.m */; };
 		2B382D812D17BDC500C67770 /* UIHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D802D17BDC500C67770 /* UIHelper.m */; };
 		2B382D862D17C06D00C67770 /* ScanViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D852D17C06D00C67770 /* ScanViewController.m */; };
+		2B45A78F2E12870D00EA5D14 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2B45A78E2E12870D00EA5D14 /* AVFoundation.framework */; };
 		2B590A452D633F3A0041DE80 /* DemoGenericResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A442D633F3A0041DE80 /* DemoGenericResourceFetcher.m */; };
 		2B590A492D635BEB0041DE80 /* DemoMeidaResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A482D635BEB0041DE80 /* DemoMeidaResourceFetcher.m */; };
 		2B590A4C2D635CF00041DE80 /* DemoTemplateResourceFetcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B590A4B2D635CF00041DE80 /* DemoTemplateResourceFetcher.m */; };
@@ -58,6 +59,7 @@
 		2B382D802D17BDC500C67770 /* UIHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIHelper.m; sourceTree = "<group>"; };
 		2B382D842D17C06D00C67770 /* ScanViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ScanViewController.h; sourceTree = "<group>"; };
 		2B382D852D17C06D00C67770 /* ScanViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ScanViewController.m; sourceTree = "<group>"; };
+		2B45A78E2E12870D00EA5D14 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		2B590A442D633F3A0041DE80 /* DemoGenericResourceFetcher.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DemoGenericResourceFetcher.m; sourceTree = "<group>"; };
 		2B590A462D633F560041DE80 /* DemoGenericResourceFetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DemoGenericResourceFetcher.h; sourceTree = "<group>"; };
 		2B590A472D635BD40041DE80 /* DemoMediaResourceFetcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DemoMediaResourceFetcher.h; sourceTree = "<group>"; };
@@ -100,6 +102,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2B45A78F2E12870D00EA5D14 /* AVFoundation.framework in Frameworks */,
 				18A582DD5FD441F6CBB475FB /* Pods_LynxExplorer.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -246,6 +249,7 @@
 		6D328CEA3170579FA13A1A64 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				2B45A78E2E12870D00EA5D14 /* AVFoundation.framework */,
 				EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */,
 				011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */,
 			);
@@ -382,9 +386,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
