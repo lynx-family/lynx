@@ -87,6 +87,18 @@ android {
             // Long story short: "isDefault true" won't work.
             getIsDefault().set(true)
         }
+        dev {
+            dimension "lynx"
+            matchingFallbacks = ["noasan"]
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                            '-DFLAVOR_NAME=dev'
+                }
+            }
+        }
     }
 
     buildTypes {
@@ -136,7 +148,7 @@ android {
 
         // Only NoAsanRelease use custom lld
         def runTasks = gradle.startParameter.taskNames.toString().toLowerCase()
-        if (!runTasks.contains("noasan")) {
+        if (!runTasks.contains("noasan") && !runTasks.contains("dev")) {
             release {
                 externalNativeBuild {
                     cmake {

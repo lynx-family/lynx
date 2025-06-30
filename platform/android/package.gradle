@@ -6,12 +6,7 @@ buildscript {
     repositories {
         mavenCentral()
     }
-    dependencies {
-        classpath group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1'
-
-    }
 }
-import org.json.simple.JSONArray
 
 task assembleAllModulesRelease {
     rootProject.afterEvaluate {
@@ -31,6 +26,19 @@ task assembleAllModulesRelease {
     }
 }
 
+task assembleAllModulesDevRelease {
+    rootProject.afterEvaluate {
+        rootProject.subprojects.each { subproject ->
+            if (!subproject.state.executed) {
+                subproject.evaluate()
+            }
+            if(subproject.plugins.hasPlugin("maven-publish") && subproject.plugins.hasPlugin('com.android.library') && subproject.android.productFlavors.names.contains('dev')) {
+                dependsOn subproject.tasks.named('assembleDevRelease')
+            }
+        }
+    }
+}
+
 task publishAllModules {
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
@@ -41,17 +49,23 @@ task publishAllModules {
     }
 }
 
-def artifactList = new JSONArray()
+def artifactList = []
 
 task zipArtifacts {
     doLast {
+        def version = findProperty("version")
+        def artifactPath
         rootProject.subprojects.each { subproject ->
             if(subproject.plugins.hasPlugin("maven-publish")) {
-                def artifactPath = "${subproject.buildDir}/release"
-                def version = findProperty("version")
-                def zipPath = file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
-                ant.zip(destfile: zipPath, basedir: artifactPath)
-                artifactList.add(zipPath.toString())
+                ant.zip(destfile: file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip"),
+                        basedir: "${subproject.buildDir}/release/${version}")
+                artifactList.add("${project.buildDir}/${subproject.ARTIFACT_NAME}-${version}.zip")
+                if(subproject.plugins.hasPlugin('com.android.library') && subproject.android.productFlavors.any { it.name == "dev" }) {
+                    def devVersion = "${version}-dev"
+                    ant.zip(destfile: file("${project.buildDir}/${subproject.ARTIFACT_NAME}-${devVersion}.zip"),
+                            basedir: "${subproject.buildDir}/release/${devVersion}")
+                    artifactList.add("${project.buildDir}/${subproject.ARTIFACT_NAME}-${devVersion}.zip")
+                }
             }
         }
     }
@@ -61,7 +75,7 @@ task getArtifactList {
     dependsOn(zipArtifacts)
     doLast {
         println "artifactInfo: ${artifactList}"
-        String json = artifactList.toJSONString()
+        def json = new groovy.json.JsonBuilder(artifactList).toPrettyString()
         File file = new File("${project.buildDir}/artifact-list")
         FileOutputStream outputStream = new FileOutputStream(file)
         outputStream.write(json.getBytes())

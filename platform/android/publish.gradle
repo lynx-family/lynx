@@ -9,13 +9,22 @@ import org.gradle.api.internal.artifacts.dependencies.DefaultProjectDependency
 
 def aarPathList=""
 
-def getAARPath(buildPath) {
-    FileTree fileTree = project.fileTree(dir: buildPath, includes: ['**/*.aar'])
-    if (fileTree.files) {
-        return fileTree.files[0]
+def baseVersion = findProperty("version")
+def devVersion = "${baseVersion}-dev"
+
+def getAARPath(buildPath, boolean isDev = false) {
+    def filePattern
+    if (isDev) {
+        filePattern = "**/*dev-release.aar"
     } else {
-        throw new GradleException("No aar found in the path $buildPath.")
+        def hasNoasanFlavor = project.android.productFlavors.any { it.name == "noasan" }
+        filePattern = hasNoasanFlavor ? "**/*noasan-release.aar" : "**/*release.aar"
     }
+    FileTree fileTree = project.fileTree(dir: buildPath, includes: [filePattern])
+    if (fileTree.isEmpty()) {
+        throw new GradleException("No AAR found in path '${buildPath}' with pattern '${filePattern}'")
+    }
+    return fileTree.files[0]
 }
 
 boolean isJavaModule() {
@@ -30,6 +39,95 @@ boolean isAndroidModule() {
     return result
 }
 
+boolean hasDevFlavor() {
+    if (!isAndroidModule()) {
+        return false
+    }
+    return project.android.productFlavors.any { it.name == "dev" }
+}
+
+Task createSourceJar(String baseName) {
+    return project.tasks.create("${baseName}Jar", Jar) {
+        if (project.gradle.gradleVersion >= '8.0') {
+            archiveBaseName = baseName
+            it.setArchiveClassifier('sources')
+        } else {
+            baseName = baseName
+            classifier = 'sources'
+        }
+
+        project.android.libraryVariants.all { variant ->
+            try {
+                from variant.variantData.javaSources.collect { it.getDir() }
+            } catch (Exception e) {
+                from variant.sourceSets.collect { it.java.getSrcDirs() }
+            }
+        }
+
+        exclude '**/BuildConfig.java'
+        exclude '**/R.java'
+    }
+}
+
+def collectSoSymbols(String flavor) {
+    def soSymbolsPathMap = [:]
+    project.android.libraryVariants.all { variant ->
+        def flavorFolder = "${flavor}Release"
+        println "variant.name $variant.name flavorFolder=$flavorFolder"
+        if (variant.name != flavorFolder) {
+            return
+        }
+        def nativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
+        if (nativeBuildTask != null) {
+            def folder = nativeBuildTask.getObjFolder()
+            println "project $project.path variant $variant.name folder=$folder"
+            FileTree fileTree = project.fileTree(folder)
+            fileTree.include "**/*.so"
+            fileTree.files.each { item ->
+                soSymbolsPathMap[item.name[0..(item.name.lastIndexOf('.')-1)]] = item.path
+            }
+        }
+    }
+    println "project $project.path soSymbolsPathMap=${soSymbolsPathMap}"
+    return soSymbolsPathMap
+}
+
+def configureSigning(pom) {
+    def signingKeyId = findProperty("signing.keyId")
+    def signingPassword = findProperty("signing.password")
+    def signingSecretKey = findProperty("signing.secretKey")
+    if (signingKeyId != null && signingKeyId != "") {
+        useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+        sign pom
+    }
+}
+
+def addDependenciesToPom(Node pomNode) {
+    def dependenciesNode = pomNode.appendNode('dependencies')
+    configurations.implementation.allDependencies.each { dependency ->
+        if (dependency instanceof DefaultExternalModuleDependency) {
+            def dependencyNode = dependenciesNode.appendNode('dependency')
+            dependencyNode.appendNode('groupId', dependency.group)
+            dependencyNode.appendNode('artifactId', dependency.name)
+            dependencyNode.appendNode('version', dependency.version)
+            dependencyNode.appendNode('scope', 'runtime')
+        } else if (dependency instanceof DefaultProjectDependency) {
+            String scope = "runtime"
+            if (configurations.api.dependencies.contains(dependency)) {
+                scope = "compile"
+            }
+            def project = project(":${dependency.dependencyProject.path}")
+            def artifactId = project.findProperty('ARTIFACT_NAME')
+            def groupId = project.findProperty('ARTIFACT_GROUP')
+            def dependencyNode = dependenciesNode.appendNode('dependency')
+            dependencyNode.appendNode('groupId', groupId)
+            dependencyNode.appendNode('artifactId', artifactId)
+            dependencyNode.appendNode('version', dependency.version)
+            dependencyNode.appendNode('scope', scope)
+        }
+    }
+}
+
 afterEvaluate {
     def runTasks = gradle.startParameter.taskNames.toString().toLowerCase()
     // Only tasks whose names contain "publish" can be triggered to avoid other Gradle tasks from executing this section of logic.
@@ -40,7 +138,7 @@ afterEvaluate {
                     "jar"(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version findProperty("version")
+                        version baseVersion
                         from components.java
                         task sourceJar(type: Jar) {
                             if (project.gradle.gradleVersion >= '8.0') {
@@ -66,7 +164,7 @@ afterEvaluate {
                             description = DESCRIPTION
                             licenses {
                                 license {
-                                    name = 'The Apache License, Version 2.0'
+                                    name = 'The Apache License, version 2.0'
                                     url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                                 }
                             }
@@ -96,21 +194,10 @@ afterEvaluate {
                     release(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version findProperty("version")
+                        version baseVersion
                         artifact(getAARPath("$project.buildDir/outputs/aar"))
                         // Obtain all the so symbol tables of the component.
-                        def soSymbolsPathMap = [:]
-                        project.android.libraryVariants.all { variant ->
-                            def nativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
-                            if (nativeBuildTask != null) {
-                                def folder = nativeBuildTask.getObjFolder()
-                                FileTree fileTree = project.fileTree(nativeBuildTask.getObjFolder())
-                                fileTree.include "**/*.so"
-                                fileTree.files.each { item ->
-                                    soSymbolsPathMap[item.name[0..(item.name.lastIndexOf('.')-1)]] = item.path
-                                }
-                            }
-                        }
+                        def soSymbolsPathMap = collectSoSymbols("noasan")
                         // Add so symbol tables into the component artifact.
                         if (!soSymbolsPathMap.isEmpty()) {
                             soSymbolsPathMap.each { name, path ->
@@ -120,30 +207,7 @@ afterEvaluate {
                             }
                         }
                         // collect source jar and add it into the component artifact.
-                        Task sourceJar = project.tasks.create("sourcesJar", Jar) {
-                            if (project.gradle.gradleVersion >= '8.0') {
-                                archiveBaseName = "release-sources"
-                                it.setArchiveClassifier('sources')
-                            } else {
-                                baseName = "release-sources"
-                                classifier = 'sources'
-                            }
-
-                            project.android.libraryVariants.all { variant ->
-                                try {
-                                    from variant.variantData.javaSources.collect {
-                                        it.getDir()
-                                    }
-                                } catch (Exception e) {
-                                    from variant.sourceSets.collect {
-                                        it.java.getSrcDirs()
-                                    }
-                                }
-                            }
-
-                            exclude '**/BuildConfig.java'
-                            exclude '**/R.java'
-                        }
+                        Task sourceJar = createSourceJar("release-source")
                         artifact sourceJar
                         pom {
                             name = artifactId
@@ -151,7 +215,7 @@ afterEvaluate {
                             description = DESCRIPTION
                             licenses {
                                 license {
-                                    name = 'The Apache License, Version 2.0'
+                                    name = 'The Apache License, version 2.0'
                                     url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                                 }
                             }
@@ -176,30 +240,62 @@ afterEvaluate {
                                 }
                             }
                             withXml {
-                                def dependenciesNode = asNode().appendNode('dependencies')
-                                configurations.implementation.allDependencies.each { dependency ->
-                                    if (dependency instanceof DefaultExternalModuleDependency) {
-                                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                                        dependencyNode.appendNode('groupId', dependency.group)
-                                        dependencyNode.appendNode('artifactId', dependency.name)
-                                        dependencyNode.appendNode('version', dependency.version)
-                                        dependencyNode.appendNode('scope', 'runtime')
-                                    } else if (dependency instanceof DefaultProjectDependency) {
-                                        String scope = "runtime"
-                                        if (configurations.api.dependencies.contains(dependency)) {
-                                            scope = "compile"
-                                        }
-                                        def project = project(":${dependency.dependencyProject.path}")
-                                        def artifactId = project.findProperty('ARTIFACT_NAME')
-                                        def groupId = project.findProperty('ARTIFACT_GROUP')
-                                        def version = findProperty("version")
-                                        def dependencyNode = dependenciesNode.appendNode('dependency')
-                                        dependencyNode.appendNode('groupId', groupId)
-                                        dependencyNode.appendNode('artifactId', artifactId)
-                                        dependencyNode.appendNode('version', version)
-                                        dependencyNode.appendNode('scope', scope)
-                                    }
+                                addDependenciesToPom(asNode())
+                            }
+                        }
+                    }
+                }
+                if (hasDevFlavor()) {
+                    devRelease(MavenPublication) {
+                        groupId ARTIFACT_GROUP
+                        artifactId ARTIFACT_NAME
+                        version devVersion
+                        artifact(getAARPath("$project.buildDir/outputs/aar", true))
+                        // Obtain all the so symbol tables of the component.
+                        def soSymbolsPathMap = collectSoSymbols("dev")
+                        // Add so symbol tables into the component artifact.
+                        if (!soSymbolsPathMap.isEmpty()) {
+                            soSymbolsPathMap.each { name, path ->
+                                artifact(path) {
+                                    classifier name
                                 }
+                            }
+                        }
+                        // collect source jar and add it into the component artifact.
+                        Task sourceJarDev = createSourceJar("dev-sources")
+                        artifact sourceJarDev
+                        pom {
+                            name = artifactId
+                            url = REPOSITORY_URL
+                            description = DESCRIPTION
+                            licenses {
+                                license {
+                                    name = 'The Apache License, version 2.0'
+                                    url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                                }
+                            }
+                            developers {
+                                developer {
+                                    name = DEVELOPER_NAME
+                                    email = DEVELOPER_EMAIL
+                                }
+                            }
+                            scm {
+                                url = REPOSITORY_URL
+                                connection = "scm:git:git://$REPOSITORY_SSH_URL"
+                                developerConnection = "scm:git:ssh://$REPOSITORY_SSH_URL"
+                            }
+                            signing {
+                                def signingKeyId = findProperty("signing.keyId")
+                                def signingPassword = findProperty("signing.password")
+                                def signingSecretKey = findProperty("signing.secretKey")
+                                if (signingKeyId != null && signingKeyId != "") {
+                                    useInMemoryPgpKeys(signingKeyId, signingSecretKey, signingPassword)
+                                    sign publishing.publications.devRelease
+                                }
+                            }
+                            withXml {
+                                addDependenciesToPom(asNode())
                             }
                         }
                     }
@@ -210,6 +306,11 @@ afterEvaluate {
                     url = "$project.buildDir/release"
                 }
             }
+        }
+    }
+    tasks.withType(PublishToMavenRepository) { task ->
+        task.doFirst {
+            repository.url = "$project.buildDir/release/${publication.version}"
         }
     }
 }

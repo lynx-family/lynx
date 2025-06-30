@@ -68,6 +68,15 @@ android {
                 }
             }
         }
+        dev {
+            dimension "lynx"
+            matchingFallbacks = ["noasan"]
+            externalNativeBuild {
+                cmake {
+                    arguments '-DFLAVOR_NAME=dev'
+                }
+            }
+        }
     }
 
     buildTypes {
