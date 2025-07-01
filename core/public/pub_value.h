@@ -22,6 +22,7 @@ enum class ValueBackendType {
   ValueBackendTypeDarwin,
   ValueBackendTypeJava,
   ValueBackendTypeNapi,
+  ValueBackendTypeNapiPrimJS,
 };
 
 class PubValueFactory;
@@ -181,7 +182,15 @@ class Value {
  */
 class PubValueFactory {
  public:
-  enum class FactoryType { kDefault, kPiper, kLepus, kJava, kDarwin, kCustom };
+  enum class FactoryType {
+    kDefault,
+    kPiper,
+    kLepus,
+    kJava,
+    kDarwin,
+    kNapiPrimJS,
+    kCustom
+  };
   virtual std::unique_ptr<Value> CreateArray() = 0;
   virtual std::unique_ptr<Value> CreateMap() = 0;
   virtual std::unique_ptr<Value> CreateBool(bool value) = 0;

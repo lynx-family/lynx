@@ -13,6 +13,14 @@ value_wrapper_shared_sources = [
   "value_wrapper_utils.cc",
   "value_wrapper_utils.h",
 ]
+if (enable_napi_binding) {
+  value_wrapper_shared_sources += [
+    "napi/napi_util_primjs.cc",
+    "napi/napi_util_primjs.h",
+    "napi/value_impl_napi_primjs.cc",
+    "napi/value_impl_napi_primjs.h",
+  ]
+}
 if (is_android) {
   value_wrapper_shared_sources += [
     "android/value_impl_android.cc",
@@ -47,9 +55,22 @@ unittest_exec("value_wrapper_unittest_exec") {
 
 unittest_set("value_wrapper_testset") {
   public_configs = [ "../:lynx_public_config" ]
-  sources = [ "value_impl_unittest.cc" ]
+  sources = [
+    "napi/value_impl_napi_primjs_unittest.cc",
+    "value_impl_unittest.cc",
+  ]
   deps = [
     "../public",
     "../renderer/dom:dom",
+  ]
+  deps += [
+    "//lynx/core/base",
+    "//lynx/core/runtime/bindings/napi:napi_binding_quickjs",
+    "//lynx/core/value_wrapper:value_wrapper",
+    "//lynx/third_party/quickjs",
+  ]
+  deps += [
+    "//lynx/third_party/napi:env",
+    "//lynx/third_party/napi:quickjs",
   ]
 }
