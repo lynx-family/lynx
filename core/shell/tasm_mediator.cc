@@ -277,6 +277,8 @@ void TasmMediator::OnRuntimeGC(
   }
   perf_actor_->ActAsync(
       [memory_info = std::move(mem_info)](auto& performance) mutable {
+        memory_info.emplace(tasm::performance::kCategory,
+                            tasm::performance::kCategoryMTSEngine);
         performance->GetMemoryMonitor().UpdateScriptingEngineMemoryUsage(
             std::move(memory_info));
       });
@@ -483,7 +485,7 @@ void TasmMediator::InsertLayoutNode(int32_t parent_id, int32_t child_id,
   });
 }
 
-void TasmMediator::SendAnimationEvent(const std::string& type, int tag,
+void TasmMediator::SendAnimationEvent(const char* type, int tag,
                                       const lepus::Value& dict) {
   engine_actor_->ActLite([arguments = dict, tag, type](auto& engine) {
     engine->SendCustomEvent(type, tag, arguments, "params");

@@ -30,8 +30,6 @@
 
 namespace lynx {
 namespace lepus {
-inline constexpr char kRawRuntimeMemoryInfo[] = "raw_memory_info_json_str";
-
 #define RENDERER_FUNCTION(name)                                       \
   static LEPUSValue name(LEPUSContext* ctx, LEPUSValueConst this_val, \
                          int argc, LEPUSValueConst* argv)
@@ -218,8 +216,8 @@ void RegisterConsole(QuickContext* ctx) {
   ctx->RegisterGlobalProperty("console", obj);
 }
 
-QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
-    : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
+QuickContext::QuickContext(bool disable_tracing_gc)
+    : LEPUSRuntimeData(disable_tracing_gc),
       Context(ContextType::LepusNGContextType),
       top_level_function_(LEPUS_UNDEFINED),
       use_lepus_strict_mode_(false),
@@ -233,13 +231,9 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
   RegisterLepusType(runtime_, Value_Array, Value_Table);
   // data associated with debugger need to be initialized
   gc_flag_ = LEPUS_IsGCModeRT(runtime_);
-  LEPUS_SetGCObserver(runtime_, static_cast<GCObserver*>(this));
 }
 
 QuickContext::~QuickContext() {
-  if (runtime_) {
-    LEPUS_SetGCObserver(runtime_, nullptr);
-  }
   if (!LEPUS_IsUndefined(top_level_function_)) {
     if (gc_flag_) {
       p_val_.Reset(context());
@@ -251,6 +245,9 @@ QuickContext::~QuickContext() {
 }
 
 void QuickContext::OnGC(std::string mem_info) {
+  if (!delegate_) {
+    return;
+  }
   delegate_->OnRuntimeGC({{kRawRuntimeMemoryInfo, std::move(mem_info)}});
 }
 
