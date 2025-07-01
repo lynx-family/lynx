@@ -169,13 +169,16 @@ bool LazyBundleLoader::DispatchOnComponentLoaded(TemplateAssembler* tasm,
     return false;
   }
 
+  // TODO(nihao.royal): add test case for nested query component cases.
+  auto option_handle = url_to_lifecycle_option_map_.extract(url);
+  if (option_handle.empty()) {
+    return false;
+  }
+
   bool need_dispatch = false;
-  for (const auto& option : iter->second) {
+  for (const auto& option : option_handle.mapped()) {
     need_dispatch = option->OnLazyBundleLifecycleEnd(tasm) || need_dispatch;
   }
-  // FIXME(zhoupeng.z): erase url rather than iter, because map maybe change in
-  // `OnLazyBundleLifecycleEnd`. Fix this double check later.
-  url_to_lifecycle_option_map_.erase(url);
 
   return need_dispatch;
 }
