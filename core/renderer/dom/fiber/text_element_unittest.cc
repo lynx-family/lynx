@@ -255,6 +255,49 @@ TEST_F(TextElementTest, TestConvertContent) {
   EXPECT_EQ(TextElement::ConvertContent(lepus::Value()), base::String("null"));
 }
 
+TEST_F(TextElementTest, TestResolveStyleValue) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->enable_layout_in_element_mode_ = true;
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto text = manager->CreateFiberText("text");
+
+  auto raw_text = manager->CreateFiberRawText();
+  auto content = lepus::Value("text-content");
+  raw_text->SetText(content);
+
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  text->SetAttribute("text-maxline", lepus::Value(1));
+  text->SetRawInlineStyles(base::String("color:red;"));
+
+  page->FlushActionsAsRoot();
+  auto* mock_text_painting_node_ =
+      static_cast<MockPaintingContext*>(
+          page->painting_context()->platform_impl_.get())
+          ->node_map_.at(text->impl_id())
+          .get();
+
+  EXPECT_EQ(mock_text_painting_node_->props_.size(), 0);
+  std::string key("text-overflow");
+  EXPECT_EQ(text->text_props_->text_max_line, 1);
+  EXPECT_EQ(*(text->text_props_->color), 4294901760);
+
+  text->SetAttribute("text-maxline", lepus::Value(2));
+  text->SetAttribute("layout-only", lepus::Value("false"));
+  text->RemoveAllInlineStyles();
+  text->SetRawInlineStyles(base::String(""));
+
+  text->FlushActionsAsRoot();
+
+  EXPECT_EQ(text->text_props_->text_max_line, 2);
+  EXPECT_FALSE(text->text_props_->color.has_value());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

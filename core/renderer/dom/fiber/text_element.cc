@@ -151,10 +151,22 @@ bool TextElement::ResolveStyleValue(CSSPropertyID id,
 
   if (!has_processed) {
     has_processed = FiberElement::ResolveStyleValue(id, value, force_update);
-    ;
   }
 
   return has_processed;
+}
+
+void TextElement::ResetCSSValue(CSSPropertyID id) {
+  bool has_processed = false;
+  if (EnableLayoutInElementMode()) {
+    has_processed = ResetTextStyles(id);
+  }
+
+  if (!has_processed) {
+    FiberElement::ResetCSSValue(id);
+  }
+
+  return;
 }
 
 bool TextElement::ProcessTextStyles(CSSPropertyID id,
@@ -202,6 +214,41 @@ bool TextElement::ProcessTextStyles(CSSPropertyID id,
       } else {
         text_props_->vertical_align_length = 0.0f;
       }
+    } break;
+      //...
+    default:
+      processed = false;
+      break;
+  }
+  return processed;
+}
+
+bool TextElement::ResetTextStyles(CSSPropertyID id) {
+  bool processed = true;
+  EnsureTextProps();
+  switch (id) {
+    case kPropertyIDFontSize:
+      text_props_->font_size.reset();
+      break;
+    case kPropertyIDColor:
+      text_props_->color.reset();
+      break;
+    case kPropertyIDLineHeight:
+      text_props_->line_height.reset();
+      break;
+    case kPropertyIDFontWeight:
+      text_props_->font_weight.reset();
+      break;
+    case kPropertyIDFontStyle:
+      text_props_->font_style.reset();
+      break;
+    case kPropertyIDTextOverflow:
+      text_props_->text_overflow.reset();
+      break;
+
+    case kPropertyIDVerticalAlign: {
+      text_props_->vertical_align_type.reset();
+      break;
     } break;
       //...
     default:
