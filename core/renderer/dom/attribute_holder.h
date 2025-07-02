@@ -236,6 +236,31 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   const CSSVariableMap& css_variables_map() const { return css_variables_; }
 
+  void set_css_variables_from_js_map(const CSSVariableMap& css_variables) {
+    css_variables_from_js_ = css_variables;
+  }
+
+  void set_css_variables_from_js_map(CSSVariableMap&& css_variables) {
+    css_variables_from_js_ = std::move(css_variables);
+  }
+
+  const CSSVariableMap& css_variables_from_js() const {
+    return css_variables_from_js_;
+  }
+
+  void set_css_variable_related_map(
+      const CSSVariableMap& css_variable_related) {
+    css_variable_related_ = css_variable_related;
+  }
+
+  void set_css_variable_related_map(CSSVariableMap&& css_variable_related) {
+    css_variable_related_ = std::move(css_variable_related);
+  }
+
+  const CSSVariableMap& css_variable_related() const {
+    return css_variable_related_;
+  }
+
   void AddCSSVariableRelated(const base::String& key,
                              const base::String& value) {
     css_variable_related_.insert_or_assign(key, value);
@@ -353,6 +378,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   bool ContainsTagSelector(const std::string& selector) const override;
   bool ContainsAttributeSelector(const std::string& selector) const;
   void SetElement(Element* element) { element_ = element; }
+  void SetCSSVariableBundle(const AttributeHolder& holder);
 
  protected:
   ClassList classes_;

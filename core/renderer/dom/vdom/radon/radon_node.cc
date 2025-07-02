@@ -802,8 +802,8 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
               });
   bool style_updated = false;
   if (page_proxy_->element_manager()->GetEnableFiberElementForRadonDiff()) {
-    attribute_holder_->set_css_variables_map(
-        old_radon_node->css_variables_map());
+    attribute_holder_->SetCSSVariableBundle(
+        *old_radon_node->attribute_holder());
     auto* fiber_element = static_cast<FiberElement*>(element_.get());
     if (id_dirty_) {
       style_updated = true;

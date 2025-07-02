@@ -286,5 +286,11 @@ size_t AttributeHolder::ChildCount() const {
   return element_->GetChildCount();
 }
 
+void AttributeHolder::SetCSSVariableBundle(const AttributeHolder& holder) {
+  set_css_variables_map(holder.css_variables_map());
+  set_css_variables_from_js_map(holder.css_variables_from_js());
+  set_css_variable_related_map(holder.css_variable_related());
+}
+
 }  // namespace tasm
 }  // namespace lynx
