@@ -595,13 +595,11 @@ void RadonElement::FlushProps() {
         report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
         element_manager()->GetInstanceId());
   }
-  bool need_animation_props = painting_context()->NeedAnimationProps();
+
   if (has_transition_props_changed_) {
     if (!enable_new_animator()) {
       PushToBundle(kPropertyIDTransition);
       has_transition_props_changed_ = false;
-    } else if (need_animation_props) {
-      PushToBundle(kPropertyIDTransition);
     }
   }
 
@@ -611,10 +609,6 @@ void RadonElement::FlushProps() {
       PushToBundle(kPropertyIDAnimation);
     } else {
       SetDataToNativeKeyframeAnimator();
-      if (need_animation_props) {
-        ResolveAndFlushKeyframes();
-        PushToBundle(kPropertyIDAnimation);
-      }
     }
     has_keyframe_props_changed_ = false;
   }
