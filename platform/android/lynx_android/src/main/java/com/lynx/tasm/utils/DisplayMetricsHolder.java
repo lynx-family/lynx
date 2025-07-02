@@ -189,29 +189,31 @@ public class DisplayMetricsHolder {
     Assertions.assertNotNull(wm, "WindowManager is null!");
     Display display = wm.getDefaultDisplay();
 
-    // Get the real display metrics if we are using API level 17 or higher.
-    // The real metrics include system decor elements (e.g. soft menu bar).
-    //
-    // See:
-    // http://developer.android.com/reference/android/view/Display.html#getRealMetrics(android.util.DisplayMetrics)
-    if (Build.VERSION.SDK_INT >= 17) {
-      display.getRealMetrics(screenDisplayMetrics);
-    } else {
-      // For 14 <= API level <= 16, we need to invoke getRawHeight and getRawWidth to get the real
-      // dimensions. Since react-native only supports API level 16+ we don't have to worry about
-      // other cases.
-      //
-      // Reflection exceptions are rethrown at runtime.
+    if (display != null) {
+      // Get the real display metrics if we are using API level 17 or higher.
+      // The real metrics include system decor elements (e.g. soft menu bar).
       //
       // See:
-      // http://stackoverflow.com/questions/14341041/how-to-get-real-screen-height-and-width/23861333#23861333
-      try {
-        Method mGetRawH = Display.class.getMethod("getRawHeight");
-        Method mGetRawW = Display.class.getMethod("getRawWidth");
-        screenDisplayMetrics.widthPixels = (Integer) mGetRawW.invoke(display);
-        screenDisplayMetrics.heightPixels = (Integer) mGetRawH.invoke(display);
-      } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
-        throw new RuntimeException("Error getting real dimensions for API level < 17", e);
+      // http://developer.android.com/reference/android/view/Display.html#getRealMetrics(android.util.DisplayMetrics)
+      if (Build.VERSION.SDK_INT >= 17) {
+        display.getRealMetrics(screenDisplayMetrics);
+      } else {
+        // For 14 <= API level <= 16, we need to invoke getRawHeight and getRawWidth to get the real
+        // dimensions. Since react-native only supports API level 16+ we don't have to worry about
+        // other cases.
+        //
+        // Reflection exceptions are rethrown at runtime.
+        //
+        // See:
+        // http://stackoverflow.com/questions/14341041/how-to-get-real-screen-height-and-width/23861333#23861333
+        try {
+          Method mGetRawH = Display.class.getMethod("getRawHeight");
+          Method mGetRawW = Display.class.getMethod("getRawWidth");
+          screenDisplayMetrics.widthPixels = (Integer) mGetRawW.invoke(display);
+          screenDisplayMetrics.heightPixels = (Integer) mGetRawH.invoke(display);
+        } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
+          throw new RuntimeException("Error getting real dimensions for API level < 17", e);
+        }
       }
     }
 
