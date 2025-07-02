@@ -11,13 +11,13 @@
 #include "base/include/no_destructor.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/measure_context.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_element.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
-#include "core/style/layout_property.h"
 namespace lynx {
 namespace tasm {
 using starlight::DirectionType;

@@ -5,7 +5,7 @@
   "default_value": "default",
   "version": "1.0",
   "author": "zhangmin",
-  "consumption_status": "skip",
+  "consumption_status": "layout-wanted",
   "keywords": [
     "baseline",
     "sub",

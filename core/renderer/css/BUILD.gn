@@ -8,11 +8,20 @@ import("build.gni")
 
 lynx_core_source_set("css") {
   check_includes = false
+
   sources = lynx_css_core_sources_path + lynx_css_runtime_sources_path
 
-  # FIXME(renzhongyue): Check file contents to prevent duplicated
-  # compilation for the generated file
   exec_script("../../../tools/css_generator/css_parser_generator.py")
+
+  exec_script("../../../tools/css_generator/generate_layout_property.py",
+              [
+                rebase_path("../../../tools/css_generator/css_defines"),
+                rebase_path("./layout_property.h"),
+                rebase_path(
+                    "../../../tools/css_generator/css_defines_sha256.txt"),
+              ],
+              "list lines")
+
   public_deps = [
     "../../../third_party/rapidjson",
     "../../base",

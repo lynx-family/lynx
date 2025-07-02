@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/node_select_options.h"
 #include "core/renderer/dom/vdom/radon/node_selector.h"
@@ -18,7 +19,6 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
-#include "core/style/layout_property.h"
 
 namespace lynx {
 namespace tasm {

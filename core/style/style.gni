@@ -26,6 +26,4 @@ style_shared_sources = rebase_path([
                                      "transform_raw_data.h",
                                      "transition_data.cc",
                                      "transition_data.h",
-                                     "layout_property.cc",
-                                     "layout_property.h",
                                    ])

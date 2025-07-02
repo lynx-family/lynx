@@ -38,6 +38,8 @@ lynx_css_core_sources = [
   "css_value.h",
   "css_variable_handler.cc",
   "css_variable_handler.h",
+  "layout_property.cc",
+  "layout_property.h",
   "ng/css_ng_utils.cc",
   "ng/css_ng_utils.h",
   "ng/invalidation/invalidation_set.cc",

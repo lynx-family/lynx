@@ -19,6 +19,7 @@
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -37,7 +38,6 @@
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
-#include "core/style/layout_property.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {

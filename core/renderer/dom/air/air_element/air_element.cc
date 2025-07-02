@@ -11,6 +11,7 @@
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/css_keyframes_token.h"
+#include "core/renderer/css/layout_property.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/starlight/layout/layout_object.h"
@@ -18,7 +19,6 @@
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
-#include "core/style/layout_property.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
