@@ -106,7 +106,12 @@ static SnapshotElement* constructSnapshotElementTree(
   root->name = node->GetTag().str();
   root->id_selector = node->data_model()->idSelector();
   root->classes = node->data_model()->classes();
-  root->attributes = node->data_model()->attributes();
+  const auto& srcAttributes = node->data_model()->attributes();
+  for (const auto& [key, value] : srcAttributes) {
+    // Deep clone `lepus::Value` objects when transferring data between threads
+    // to prevent JavaScript garbage collection issues
+    root->attributes.emplace(key, lepus::Value::Clone(value));
+  }
   root->id = node->impl_id();
   root->flatten = node->TendToFlatten();
   root->overflow = node->overflow();

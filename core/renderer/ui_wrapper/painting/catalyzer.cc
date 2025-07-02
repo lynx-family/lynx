@@ -123,7 +123,7 @@ void Catalyzer::DumpElementTree() {
     dom::SnapshotElement* new_root = dom::constructSnapshotElementTree(root_);
 
     lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner()
-        ->PostTask([this, new_root, flow_id]() {
+        ->PostTask([instance_id = this->GetInstanceId(), new_root, flow_id]() {
           rapidjson::Document dumped_document;
           rapidjson::Value dumped_tree =
               dom::DumpSnapshotElementTreeRecursively(new_root,
@@ -132,15 +132,15 @@ void Catalyzer::DumpElementTree() {
           rapidjson::StringBuffer buffer;
           rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
           dumped_document.Accept(writer);
-          TRACE_EVENT(
-              "dom", DOM_DUMP_ELEMENT_TREE,
-              [this, &buffer, flow_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("content",
-                                                   buffer.GetString());
-                ctx.event()->add_debug_annotations(
-                    "instance_id", std::to_string(this->GetInstanceId()));
-                ctx.event()->add_terminating_flow_ids(flow_id);
-              });
+          TRACE_EVENT("dom", DOM_DUMP_ELEMENT_TREE,
+                      [instance_id, &buffer,
+                       flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_debug_annotations("content",
+                                                           buffer.GetString());
+                        ctx.event()->add_debug_annotations(
+                            "instance_id", std::to_string(instance_id));
+                        ctx.event()->add_terminating_flow_ids(flow_id);
+                      });
         });
   }
 }
