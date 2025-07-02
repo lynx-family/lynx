@@ -68,7 +68,7 @@ declare_args() {
   enable_primjs_prebuilt_lib = false
 
   # Which directory the Node header will be copied into
-  node_headers_dst_dir = "//oliver/lynx-ssr-runtime"
+  node_headers_dst_dir = "//oliver/lynx-tasm"
 
   # enable lynx clang static checker plugin
   enable_lynx_clang_plugin = false

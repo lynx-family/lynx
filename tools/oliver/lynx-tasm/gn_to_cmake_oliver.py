@@ -37,6 +37,7 @@ def gen_cmake_file(main_target, platform, debug, output_path):
 
   args = 'disallow_undefined_symbol=false enable_security_protection=false use_flutter_cxx=false \
           is_debug=%s oliver_type=\\\"%s\\\" build_lepus_compile=true enable_air=false enable_inspector=true \
+          node_headers_dst_dir=\\\"//lynx/oliver/lynx-tasm\\\"  \
           enable_inspector_test=true compile_lepus_cmd=true build_lynx_lepus_node=true' % (is_debug, 'tasm')
   if platform == 'linux':
     args += ' emsdk_dir=\\\"/root/emsdk\\\"'

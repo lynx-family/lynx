@@ -170,6 +170,7 @@ jobs:
         run: |
           source tools/envsetup.sh
           tools/hab sync . -f
+
           pushd oliver/lynx-tasm
           npm install
           npm run build:release:linux
@@ -188,9 +189,14 @@ jobs:
       - name: Build Darwin Tasm
         run: |
           source tools/envsetup.sh
-          tools/hab sync . -f
+          tools/hab sync . -f --target tasm
+          python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
           pushd oliver/lynx-tasm
           npm install
+          ../../../buildtools/cmake/bin/cmake .
+          ../../../buildtools/cmake/bin/cmake --build .
+          ./lepus_cmd
+
           npm run build:release:darwin
           popd
 
