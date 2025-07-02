@@ -47,7 +47,10 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
 
   base::expected<std::unique_ptr<pub::Value>, ErrorPair> Invoke(
       jobject module, const pub::Value* args, size_t args_count,
-      base::MoveOnlyClosure<base::expected<jvalue, std::string>, int>
+      base::MoveOnlyClosure<
+          base::expected<base::android::ScopedGlobalJavaRef<jobject>,
+                         std::string>,
+          int>
           function_creator,
       jobject nativePromise = nullptr);
 

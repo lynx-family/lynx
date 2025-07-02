@@ -352,7 +352,10 @@ base::expected<jvalue, std::string> MethodInvoker::ExtractPubValue(
 }
 base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
     jobject module, const pub::Value* args, size_t args_count,
-    base::MoveOnlyClosure<base::expected<jvalue, std::string>, int>
+    base::MoveOnlyClosure<
+        base::expected<base::android::ScopedGlobalJavaRef<jobject>,
+                       std::string>,
+        int>
         function_creator,
     jobject nativePromise) {
   // parser first arg
@@ -388,6 +391,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
   base::android::JniLocalScope scope(env);
   base::android::JavaValue transfer_method_params[args_count_];
   jvalue java_arguments[required_arg_count];
+  std::list<base::android::ScopedGlobalJavaRef<jobject>> callback_container;
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_JNI_VALUE);
   for (size_t i = 0; i < args_count_; i++) {
     char type = signature_[i + 2];
@@ -395,7 +399,14 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
     transfer_method_params[i] = pub::ValueUtilsAndroid::ConvertValueToJavaValue(
         *(args->GetValueAtIndex(i)));
     if (type == 'X') {
-      ret = function_creator(i);
+      base::expected<base::android::ScopedGlobalJavaRef<jobject>, std::string>
+          expected_callback = function_creator(i);
+      if (expected_callback.has_value()) {
+        callback_container.push_back(std::move(expected_callback.value()));
+        ret = {.l = callback_container.back().Get()};
+      } else {
+        ret = base::unexpected(std::move(expected_callback.error()));
+      }
     } else {
       ret = ExtractPubValue(transfer_method_params[i], i, type);
     }

@@ -25,7 +25,7 @@ namespace lynx {
 namespace piper {
 
 using CallbackHolders =
-    std::unordered_map<uint64_t, ModuleCallbackAndroid::CallbackPair>;
+    std::unordered_map<uint64_t, std::shared_ptr<ModuleCallbackAndroid>>;
 
 class LynxModuleAndroid
     : public LynxNativeModule,
@@ -43,7 +43,7 @@ class LynxModuleAndroid
                 NativeModuleMethods &methods,
                 std::unordered_map<std::string, std::shared_ptr<MethodInvoker>>
                     &method_invoker_maps);
-  const base::android::ScopedGlobalJavaRef<jobject> &CreateLynxModuleCallback(
+  const base::android::ScopedGlobalJavaRef<jobject> CreateLynxModuleCallback(
       const std::shared_ptr<LynxModuleCallback> &base_callback);
   // use delegate invoke Callback
   void InvokeCallback(const std::shared_ptr<ModuleCallback> &callback,

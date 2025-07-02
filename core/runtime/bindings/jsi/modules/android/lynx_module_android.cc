@@ -114,15 +114,13 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
     return base::unexpected(native_promise.error());
   }
   // Common Invoke
-  auto function_creator =
-      [callbacks, ref = shared_from_this()](
-          int arg_index) -> base::expected<jvalue, std::string> {
+  auto function_creator = [callbacks, ref = shared_from_this()](int arg_index)
+      -> base::expected<base::android::ScopedGlobalJavaRef<jobject>,
+                        std::string> {
     if (callbacks.find(arg_index) != callbacks.end()) {
-      const base::android::ScopedGlobalJavaRef<jobject>& callback_global_ptr =
+      const base::android::ScopedGlobalJavaRef<jobject> callback_global_ptr =
           ref->CreateLynxModuleCallback(callbacks.at(arg_index));
-      jvalue convert_result;
-      convert_result.l = callback_global_ptr.Get();
-      return convert_result;
+      return std::move(callback_global_ptr);
     }
     return base::unexpected(
         "LynxModuleAndroid::invokeMethod. Callback not Found.");
@@ -294,15 +292,13 @@ LynxModuleAndroid::CreateLynxNativePromise(
     reject_callback_pair.first->promise = promise;
     promises_.insert(promise);
 
-    auto function_creator =
-        [callbacks,
-         this](int arg_index) -> base::expected<jvalue, std::string> {
+    auto function_creator = [callbacks, this](int arg_index)
+        -> base::expected<base::android::ScopedGlobalJavaRef<jobject>,
+                          std::string> {
       if (callbacks.find(arg_index) != callbacks.end()) {
         auto callback_global_ptr =
             CreateLynxModuleCallback(callbacks.at(arg_index));
-        jvalue convert_result;
-        convert_result.l = callback_global_ptr.Get();
-        return convert_result;
+        return std::move(callback_global_ptr);
       }
       return base::unexpected(
           "LynxModuleAndroid::invokeMethod. Callback not Found.");
@@ -388,7 +384,7 @@ void LynxModuleAndroid::InvokeCallbackInternal(
   }
 }
 
-const base::android::ScopedGlobalJavaRef<jobject>&
+const base::android::ScopedGlobalJavaRef<jobject>
 LynxModuleAndroid::CreateLynxModuleCallback(
     const std::shared_ptr<LynxModuleCallback>& base_callback) {
   uint64_t callback_id = base_callback->CallbackId();
@@ -397,9 +393,8 @@ LynxModuleAndroid::CreateLynxModuleCallback(
           std::static_pointer_cast<ModuleCallback>(base_callback),
           shared_from_this());
   // cache callback
-  callbackHolders_[callback_id] = std::make_pair(
-      std::move(callback_pair.first), std::move(callback_pair.second));
-  return callbackHolders_[callback_id].second;
+  callbackHolders_[callback_id] = std::move(callback_pair.first);
+  return std::move(callback_pair.second);
 }
 
 ModuleCallbackAndroid* LynxModuleAndroid::GetModuleCallbackById(
@@ -408,7 +403,7 @@ ModuleCallbackAndroid* LynxModuleAndroid::GetModuleCallbackById(
   if (it == callbackHolders_.end()) {
     return nullptr;
   }
-  return it->second.first.get();
+  return it->second.get();
 }
 
 }  // namespace piper
