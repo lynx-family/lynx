@@ -6,6 +6,10 @@ on:
         description: 'release tag'
         required: false
         type: string
+      base-tag:
+        description: 'base tag'
+        required: false
+        type: string
   release:
     types: [published]
 
@@ -15,6 +19,7 @@ jobs:
     timeout-minutes: 60
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
+      base-version: ${{ steps.get_base_version.outputs.BASE_VERSION }}
     steps:
       - name: Get Version
         id: get_version
@@ -33,12 +38,32 @@ jobs:
             echo "Version is invalid"
             exit 1
           fi
+      - name: Get Base Version
+        id: get_base_version
+        if: ${{ inputs.base-tag != '' }}
+        run: |-
+          if [ ${{ github.event_name }} == 'workflow_dispatch' ]; then
+            base_version=${{ inputs.base-tag }}
+          else
+            base_version=$(echo ${{ github.ref }} | awk -F "/" '{print $3}')
+          fi
+          if [[ $base_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ || \
+                $base_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-rc\.[0-9]+$ || \
+                $base_version =~ ^[0-9]+\.[0-9]+\.[0-9]+-alpha\.[0-9]+$ ]]; then
+            echo "Base Version is valid"
+            echo "BASE_VERSION=$base_version" >> $GITHUB_OUTPUT;
+          else
+            echo "Base Version is invalid"
+            exit 1
+          fi
+
   release:
     uses: ./.github/workflows/publish-release.yml
     needs: get-version
     with:
       dry-run: false
       version: ${{ needs.get-version.outputs.version }}
+      base-version: ${{ needs.get-base-version.outputs.BASE_VERSION }}
     permissions:
       contents: write
     secrets: inherit

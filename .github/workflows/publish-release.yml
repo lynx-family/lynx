@@ -8,6 +8,9 @@ on:
       version:
         required: false
         type: string
+      base-version:
+        required: false
+        type: string
 
 jobs:
   android-explorer-build:
@@ -168,3 +171,27 @@ jobs:
           git config --global user.email "lynx.authors@users.noreply.github.com"
           python3 lynx/tools/ios_tools/skip_pod_lint.py --source public
           python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --publish --component all  --tag ${{ inputs.version }}
+
+  generate-changelog-and-release:
+    needs: [android-explorer-build, ios-explorer-build, android-sdk-release, ios-sdk-publish]
+    timeout-minutes: 60
+    if: ${{ inputs.dry-run == false }}
+    runs-on: lynx-ubuntu-22.04-medium
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          path: lynx
+      - name: Generate Changelog
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          cargo install git-cliff
+          git-cliff v${{ inputs.base-version }}..HEAD > CHANGELOG.md
+      - name: Push to Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ inputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: '$GITHUB_WORKSPACE/lynx/CHANGELOG.md'
+          allowUpdates: true
