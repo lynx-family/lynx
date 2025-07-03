@@ -558,8 +558,10 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   // parent If the removed node's parent is the insertion_point, no need to do
   // any special action
 
+  // Todo(kechenglong): Remove IsRadonArch.
   if (LynxEnv::GetInstance().GetBoolEnv(
-          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, false)) {
+          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, false) &&
+      IsRadonArch()) {
     if (IsDetached()) {
       return;
     }
