@@ -169,17 +169,22 @@
   if (_needFlush) {
     NSLog(@"logbox: destroy, flushLogMessages: %p", self);
     UIWindow* window = [[[UIApplication sharedApplication] delegate] window];
-    UIViewController* rootViewController = window.rootViewController;
+    UIViewController* current = window.rootViewController;
 
-    if ([rootViewController isKindOfClass:[UITabBarController class]]) {
-      UITabBarController* tabBarController = (UITabBarController*)rootViewController;
-      _pageViewController = tabBarController.selectedViewController;
-    } else if ([rootViewController isKindOfClass:[UINavigationController class]]) {
-      UINavigationController* navigationController = (UINavigationController*)rootViewController;
-      _pageViewController = navigationController.topViewController;
-    } else {
-      _pageViewController = rootViewController;
+    while (current) {
+      if ([current isKindOfClass:[UITabBarController class]]) {
+        UITabBarController* tabBarController = (UITabBarController*)current;
+        current = tabBarController.selectedViewController;
+      } else if ([current isKindOfClass:[UINavigationController class]]) {
+        UINavigationController* navigationController = (UINavigationController*)current;
+        current = navigationController.topViewController;
+      } else if ([current presentedViewController]) {
+        current = [current presentedViewController];
+      } else {
+        break;
+      }
     }
+    _pageViewController = current;
 
     [self flushLogMessages];
   }
