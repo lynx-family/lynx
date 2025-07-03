@@ -9622,7 +9622,7 @@ TEST_P(FiberElementTest, CloneAPITest) {
   }
 }
 
-TEST_P(FiberElementTest, ElementBundleTest) {
+TEST_P(FiberElementTest, ElementBundleTest00) {
   LynxTemplateBundle template_bundle;
 
   // prepare environment for copied element
@@ -9693,6 +9693,69 @@ TEST_P(FiberElementTest, ElementBundleTest) {
       element_bundle_invalid.DeepClone();
   EXPECT_FALSE(element_bundle_invalid.IsValid());
   EXPECT_FALSE(cloned_element_bundle_invalid.IsValid());
+}
+
+// Verify AttachToElementManager will guarantee that the new ElementManager
+// retains all the cloned elements.
+TEST_P(FiberElementTest, ElementBundleTest01) {
+  // prepare environment for copied element
+  LynxEnvConfig lynx_env_config_1(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
+                                  kDefaultPhysicalPixelsPerLayoutUnit);
+  auto tasm_mediator_1 = std::make_shared<
+      ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+  auto unique_manager_1 = std::make_unique<lynx::tasm::ElementManager>(
+      std::make_unique<FiberMockPaintingContext>(), tasm_mediator_1.get(),
+      lynx_env_config_1);
+  auto manager_1 = unique_manager_1.get();
+  auto tasm_1 = std::make_shared<lynx::tasm::TemplateAssembler>(
+      *tasm_mediator_1.get(), std::move(unique_manager_1), 0);
+  auto test_entry_1 = std::make_shared<TemplateEntry>();
+  tasm_1->template_entries_.insert({"test_entry", test_entry_1});
+  auto config_1 = std::make_shared<PageConfig>();
+  config_1->SetEnableZIndex(true);
+  manager_1->SetConfig(config_1);
+  tasm_1->page_config_ = config_1;
+  if (thread_strategy == 0) {
+    manager_1->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  } else {
+    manager_1->SetThreadStrategy(
+        base::ThreadStrategyForRendering::MULTI_THREADS);
+  }
+  if (enable_parallel_element_flush) {
+    manager_1->SetEnableParallelElement(true);
+  }
+
+  auto config = lepus::Value(lepus::Dictionary::Create());
+  config.SetProperty(base::String("hydrateID"), lepus::Value("hydrateID"));
+  config.SetProperty(base::String("dirtyID"), lepus::Value("dirtyID"));
+
+  auto current_page = manager->CreateFiberPage("page", 11);
+
+  auto current_container = manager->CreateFiberView();
+  current_page->InsertNode(current_container);
+
+  auto current_child1 = manager->CreateFiberView();
+  current_container->InsertNode(current_child1);
+
+  auto current_child2 = manager->CreateFiberView();
+  current_container->InsertNode(current_child2);
+
+  auto cloned_page_node = lepus::Value(
+      TreeResolver::CloneElementRecursively(current_page.get(), true));
+  fml::RefPtr<FiberElement> cloned_page_node_ref =
+      fml::static_ref_ptr_cast<FiberElement>(cloned_page_node.RefCounted());
+  TreeResolver::AttachRootToElementManager(
+      cloned_page_node_ref, manager_1,
+      tasm_1->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), true);
+
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_page->impl_id()) !=
+              nullptr);
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_container->impl_id()) !=
+              nullptr);
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_child1->impl_id()) !=
+              nullptr);
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_child2->impl_id()) !=
+              nullptr);
 }
 
 TEST_P(FiberElementTest, TestGetParentComponentElement) {

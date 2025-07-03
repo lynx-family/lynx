@@ -54,6 +54,7 @@ void LayoutMediator::OnLayoutUpdate(
         [node_manager = node_manager_, tag, x, y, width, height, paddings,
          margins, borders, sticky_positions_clone, has_sticky, max_height]() {
           auto *node = node_manager->Get(tag);
+          DCHECK(node != nullptr);
           if (node != nullptr) {
             if (has_sticky) {
               node->UpdateLayout(x, y, width, height, paddings, margins,
@@ -62,6 +63,11 @@ void LayoutMediator::OnLayoutUpdate(
               node->UpdateLayout(x, y, width, height, paddings, margins,
                                  borders, nullptr, max_height);
             }
+          } else {
+            LOGE(
+                "layout_mediator::OnLayoutUpdate: layout result not propagated "
+                "to element due to sign "
+                << tag << " is not recorded in node manager");
           }
         });
   }

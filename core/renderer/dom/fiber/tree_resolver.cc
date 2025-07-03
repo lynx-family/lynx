@@ -327,8 +327,6 @@ void TreeResolver::AttachRootToElementManager(
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TREE_RESOLVER_ATTACH_TO_ELEMENT_MANAGER);
-  element_manager->SetFiberPageElement(
-      fml::static_ref_ptr_cast<PageElement>(root));
 
   TreeResolver::AttachToElementManagerRecursively(
       *root, element_manager, style_manager, keep_element_id);

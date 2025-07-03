@@ -54,6 +54,16 @@ void PageElement::AttachToElementManager(
     ElementManager* manager,
     const std::shared_ptr<CSSStyleSheetManager>& style_manager,
     bool keep_element_id) {
+  /** CAUTION: SetFiberPageElement must be called before the
+   * base class's AttachToElementManager because AttachToElementManager calls
+   * element_manager_->node_manager()->Record(id_, this), while
+   * SetFiberPageElement triggers the removal of the page element from
+   * the node manager. If SetFiberPageElement is called after
+   * AttachToElementManager, the PageElement will not be recorded in
+   * the node manager, which can ultimately lead to
+   * incorrect layout results when using UNSPECIFIED or AT_MOST measure spec.
+   */
+  manager->SetFiberPageElement(fml::RefPtr<PageElement>(this));
   ComponentElement::AttachToElementManager(manager, style_manager,
                                            keep_element_id);
   // make sure page's default overflow is hidden
@@ -61,7 +71,6 @@ void PageElement::AttachToElementManager(
   MarkAsLayoutRoot();
   manager->catalyzer()->set_root(this);
   manager->SetRoot(this);
-  manager->SetFiberPageElement(fml::RefPtr<PageElement>(this));
   set_style_sheet_manager(style_manager);
 
   MarkAttached();
