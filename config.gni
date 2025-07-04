@@ -76,6 +76,9 @@ declare_args() {
 
   # compiler optimization level
   compiler_optimization_level = "Oz"
+
+  # enable jsvm runtime
+  enable_jsvm = false
 }
 
 declare_args() {
