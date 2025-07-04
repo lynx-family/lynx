@@ -12,7 +12,7 @@ source_set("base_devtool_common_sources") {
     "devtool_slot_common.h",
   ]
 
-  include_dirs = [ "//lynx/third_party/debug_router/src/" ]
+  include_dirs = [ "../../../third_party/debug_router/src/" ]
 
   deps = [ "../native:base_devtool_common_lib" ]
 }

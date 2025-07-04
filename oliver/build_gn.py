@@ -41,7 +41,7 @@ def gen_build_file(platform, arch, debug, root_path, type, sysroot):
       enable_inspector=true \
       enable_inspector_test=true \
       build_lynx_lepus_node=true \
-      node_headers_dst_dir=\\\"//lynx/oliver/lynx-tasm\\\" '
+      node_headers_dst_dir=\\\"//oliver/lynx-tasm\\\" '
     if platform == 'linux':
       args += ' emsdk_dir=\\\"/root/emsdk\\\"'
   elif type == 'testing':
@@ -100,7 +100,7 @@ def copy_target(folder_name, arch, debug, root_path, type):
     dst_name = 'Debug'
   type_path = get_type_path(type)
   output_name = get_output_name(type)
-  dst_path = os.path.join(root_path, 'lynx/oliver', type_path, 'build', folder_name, dst_name)
+  dst_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
   if len(arch) > 0:
     dst_path = os.path.join(dst_path, arch)
   if os.path.exists(os.path.join(dst_path, output_name)):
@@ -114,7 +114,7 @@ def copy_target(folder_name, arch, debug, root_path, type):
 
 def copy_wasm_target(root_path, type):
   type_path = get_type_path(type)
-  dst_root_path = os.path.join(root_path, 'lynx/oliver', type_path)
+  dst_root_path = os.path.join(root_path, 'oliver', type_path)
   lib_dst_path = os.path.join(dst_root_path, 'build', 'wasm')
   if not os.path.exists(lib_dst_path):
     os.makedirs(lib_dst_path)
@@ -149,7 +149,7 @@ def merge_file(folder_name, debug, root_path, type):
     dst_name = 'Debug'
   type_path = get_type_path(type)
   output_name = get_output_name(type)
-  dst_root_path = os.path.join(root_path, 'lynx/oliver', type_path, 'build', folder_name, dst_name)
+  dst_root_path = os.path.join(root_path, 'oliver', type_path, 'build', folder_name, dst_name)
   arm64_path = os.path.join(dst_root_path, 'arm64', output_name)
   x86_64_path = os.path.join(dst_root_path, 'x64', output_name)
   dst_path = os.path.join(dst_root_path, output_name)
@@ -225,7 +225,7 @@ def main():
   sysroot = args.sysroot
 
   file_path = os.path.dirname(os.path.abspath(__file__))
-  root_path = os.path.join(file_path, '../..')
+  root_path = os.path.join(file_path, '..')
   result = build(platform, is_debug, root_path, is_show_log, type, is_wasm, need_clean, is_local, sysroot)
   if result != 0:
     return result

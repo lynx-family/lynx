@@ -19,7 +19,7 @@ import subprocess
 import sys
 
 CUR_FILE_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_PATH = os.path.join(CUR_FILE_DIR, '..', '..', '..', '..')
+ROOT_PATH = os.path.join(CUR_FILE_DIR, '..', '..', '..')
 
 machine = platform.machine().lower()
 machine = "x64" if machine == "x86_64" else machine
@@ -32,7 +32,7 @@ def copy_cmake_files(main_target):
   shutil.copy(file_full_path, dest_full_path)
 
 def gen_cmake_file(main_target, platform, debug, output_path):
-  gn_path = os.path.join(ROOT_PATH, 'lynx', 'tools','gn_tools', 'gn_wrapper.py')
+  gn_path = os.path.join(ROOT_PATH, 'tools','gn_tools', 'gn_wrapper.py')
   is_debug = 'true' if debug else 'false'
 
   args = 'disallow_undefined_symbol=false enable_security_protection=false use_flutter_cxx=false \
@@ -63,7 +63,7 @@ def generate(main_target, cmake_version, project_name, platform, debug):
   return r
 
 def main():
-  main_target = '//lynx/oliver/lynx-tasm:lepus_cmd_exec'
+  main_target = '//oliver/lynx-tasm:lepus_cmd_exec'
   cmake_version = '3.0'
   project_name = 'lepus'
   platform = 'darwin'

@@ -57,7 +57,7 @@ lynx_core_source_set("napi_binding_jsvm") {
     "napi_runtime_proxy_jsvm_factory.h",
   ]
 
-  public_deps = [ "//lynx/core/runtime/bindings/napi:napi_binding_core" ]
+  public_deps = [ ":napi_binding_core" ]
 }
 
 config("napi_config") {

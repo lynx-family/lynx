@@ -54,7 +54,7 @@ if (build_lynx_lepus_node) {
   if (is_wasm) {
     wasm_static_lib("oliver_tasm_wasm") {
       output_name = "lepus"
-      binary_path = "$root_out_dir/obj/lynx/oliver/lynx-tasm"
+      binary_path = "$root_out_dir/obj/oliver/lynx-tasm"
 
       script = "../gen_wasm_js.py"
       args = [

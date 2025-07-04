@@ -21,9 +21,9 @@ def run_command(command, check=True):
 
 def replace_lynx_version(version):
     lines = []
-    with open('lynx/build_overrides/darwin.gni', 'r') as f:
+    with open('build_overrides/darwin.gni', 'r') as f:
         lines = f.readlines()
-    with open('lynx/build_overrides/darwin.gni', 'w') as f:
+    with open('build_overrides/darwin.gni', 'w') as f:
         for line in lines:
             if 'lynx_version =' in line:
                 print(f'new version: {version}')
@@ -62,8 +62,7 @@ def get_enable_trace_param(tag: str) -> str:
     return ''
 
 def prepare_cocoapods_publish_source(tag, component):
-    repo_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     # change to root path
     os.chdir(root_path)
@@ -73,17 +72,12 @@ def prepare_cocoapods_publish_source(tag, component):
     replace_lynx_version(tag)
 
     print('2. Generate podspec files')
-    run_command(f'python3 lynx/tools/ios_tools/generate_podspec_scripts_by_gn.py --root {root_path} {get_enable_trace_param(tag)}')
-    copy_podspec(repo_path, root_path)
+    run_command(f'python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root {root_path} {get_enable_trace_param(tag)}')
 
     print('3. Generate lynx_core.js')
-    os.chdir(repo_path)
     run_command(f'python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js --version {tag}')
-    os.chdir(root_path)
 
     print('4. Generate zip files')
-    run_command('cp lynx/Gemfile ./')
-    run_command('cp lynx/Gemfile.lock ./')
     generate_zip_file(root_path, tag, component)
 
 def use_local_pod_source(component):

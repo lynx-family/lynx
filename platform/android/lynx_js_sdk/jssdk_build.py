@@ -14,7 +14,7 @@ def build(version, jssdk_main_dest_path, jssdk_debug_dest_path, lynx_core_build_
     current_dir = os.path.dirname(os.path.realpath(__file__))
     # Calculate the root path
     root_path = os.path.abspath(os.path.join(current_dir, '../../../../'))
-    os.environ['PATH'] = f"{root_path}/../buildtools/node/bin:{os.environ['PATH']}"
+    os.environ['PATH'] = f"{root_path}/buildtools/node/bin:{os.environ['PATH']}"
     # Change to the build tools directory
     os.chdir(lynx_core_build_tools_path)
     # Execute the build script

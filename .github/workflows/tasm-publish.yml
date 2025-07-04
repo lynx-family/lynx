@@ -8,8 +8,6 @@ jobs:
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
@@ -30,7 +28,6 @@ jobs:
             python3 -m pip install PyYAML -i https://pypi.org/simple
       - name: Build Linux Tasm
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
@@ -41,15 +38,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tasm_linux
-          path: lynx/oliver/lynx-tasm/build/linux/Release/lepus.node
+          path: oliver/lynx-tasm/build/linux/Release/lepus.node
 
   tasm-darwin-build:
     runs-on: macOS-latest
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
@@ -70,7 +65,6 @@ jobs:
             python3 -m pip install PyYAML -i https://pypi.org/simple
       - name: Build Darwin Tasm
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
@@ -81,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: tasm_darwin
-          path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
+          path: oliver/lynx-tasm/build/darwin/Release/lepus.node
 
   tasm-publish:
     runs-on: macOS-latest
@@ -89,8 +83,6 @@ jobs:
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
       - name: Python Setup
         uses: actions/setup-python@v5
         with:
@@ -112,7 +104,6 @@ jobs:
             python3 -m pip install PyYAML -i https://pypi.org/simple
       - name: Build Wasm Binary
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
@@ -123,17 +114,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: tasm_linux
-          path: lynx/oliver/lynx-tasm/build/linux/Release
+          path: oliver/lynx-tasm/build/linux/Release
       - name: Download Darwin Tasm Artifacts
         uses: actions/download-artifact@v4
         with:
           name: tasm_darwin
-          path: lynx/oliver/lynx-tasm/build/darwin/Release
+          path: oliver/lynx-tasm/build/darwin/Release
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.REPO_TASM_NPM_TOKEN }}
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
+          cd $GITHUB_WORKSPACE
           source tools/envsetup.sh
           pushd oliver/lynx-tasm
           npm install

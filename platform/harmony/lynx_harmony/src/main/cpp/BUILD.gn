@@ -187,8 +187,8 @@ lynx_core_source_set("cpp") {
   ]
 
   deps = [
-    "//lynx/base/src:base",
-    "//lynx/base/src:datauri_utils",
+    "../../../../../../base/src:base",
+    "../../../../../../base/src:datauri_utils",
   ]
 
   configs = [ ":harmony_public_config" ]

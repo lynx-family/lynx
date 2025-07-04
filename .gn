@@ -7,8 +7,8 @@ buildconfig = "//build/config/BUILDCONFIG.gn"
 
 secondary_source = "//build/secondary/"
 
-root = "//lynx:root"
+root = ":root"
 
 default_args = {
-  lynx_dir = "lynx"
+  lynx_dir = ""
 }

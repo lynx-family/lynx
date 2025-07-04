@@ -5,16 +5,18 @@
 import os
 import platform
 import subprocess
+import sys
 
-# Get the directory where the current script is located
 current_dir = os.path.dirname(os.path.realpath(__file__))
-# Get the root directory
-root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
+tools_dir = os.path.abspath(os.path.join(current_dir, '../'))
+sys.path.append(tools_dir)
+from buildtools_helper import get_buildtools_path
+
 # Get development system
 system = platform.system().lower()
 is_win = system == "windows"
 node_bin_path = os.path.join(
-    root_dir, "../buildtools/node" if is_win else "../buildtools/node/bin")
+    get_buildtools_path(), "node" if is_win else "node/bin")
 
 
 def get_pnpm_env():

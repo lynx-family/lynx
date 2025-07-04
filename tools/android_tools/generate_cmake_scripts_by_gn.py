@@ -96,7 +96,8 @@ def run_gn_script(args, root_dir, target_exclude_patterns:list=None):
   os.remove(gn_args_file_path)
   
   r = 0
-  gn_path = os.path.join(root_dir, 'lynx', 'tools', 'gn_tools', 'gn_wrapper.py')
+  current_dir = os.path.dirname(os.path.realpath(__file__))
+  gn_path = os.path.join(current_dir, '..', 'gn_tools', 'gn_wrapper.py')
   gn_out_dir = os.path.join(root_dir, GN_OUT_DIR_PATH)
   for gn_args_key in gn_args_map.keys():
     gn_args = ""

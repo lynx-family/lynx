@@ -139,19 +139,16 @@ jobs:
         with:
           fetch-depth: 2
           ref: ${{ github.event.pull_request.head.sha }}
-          path: lynx
       - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
+        uses: ./.github/actions/common-deps
         with:
           cache-backend: github
       - name: Setup Ruby Cache
-        uses: ./lynx/.github/actions/ios-common-deps
+        uses: ./.github/actions/ios-common-deps
       - name: Prepare cocoapods publish source
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          cd $GITHUB_WORKSPACE
-          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.version }} --component all
+          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.version }} --component all
       - name: Push iOS SDK to release
         uses: ncipollo/release-action@v1
         with:
@@ -164,10 +161,8 @@ jobs:
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
         run: |-
-          cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          cd $GITHUB_WORKSPACE
           git config --global user.name "lynx.authors"
           git config --global user.email "lynx.authors@users.noreply.github.com"
-          python3 lynx/tools/ios_tools/skip_pod_lint.py --source public
-          python3 lynx/tools/ios_tools/cocoapods_publish_helper.py --publish --component all  --tag ${{ inputs.version }}
+          python3 tools/ios_tools/skip_pod_lint.py --source public
+          python3 tools/ios_tools/cocoapods_publish_helper.py --publish --component all  --tag ${{ inputs.version }}

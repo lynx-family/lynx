@@ -20,8 +20,7 @@ lynx_envsetup() {
   local SCRIPT_ABSOLUTE_PATH="$(posix_absolute_path $1)"
   local TOOLS_ABSOLUTE_PATH="$(dirname $SCRIPT_ABSOLUTE_PATH)"
   export LYNX_DIR="$(dirname $TOOLS_ABSOLUTE_PATH)"
-  export LYNX_ROOT_DIR="$(dirname $LYNX_DIR)"
-  export BUILDTOOLS_DIR="${LYNX_ROOT_DIR}/buildtools"
+  export BUILDTOOLS_DIR="${LYNX_DIR}/buildtools"
   export PATH="${BUILDTOOLS_DIR}/llvm/bin:${BUILDTOOLS_DIR}/gn:${BUILDTOOLS_DIR}/ninja:${TOOLS_ABSOLUTE_PATH}/gn_tools:$PATH"
   # setup node version
   export PATH=${BUILDTOOLS_DIR}/node/bin:$PATH
@@ -45,8 +44,8 @@ function android_env_setup() {
 }
 
 function python_env_setup() {
-  VENV_PATH=$LYNX_ROOT_DIR/.venv
-  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py
+  VENV_PATH=$LYNX_DIR/.venv
+  python3 $LYNX_DIR/tools/vpython_tools/vpython_env_setup.py --root_dir $LYNX_DIR
   source $VENV_PATH/bin/activate
 }
 

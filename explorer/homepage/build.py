@@ -7,7 +7,10 @@ import os
 import subprocess
 import sys
 
-root_dir = subprocess.check_output(['git', 'rev-parse', '--show-toplevel']).decode().strip()
+# Get the directory where the current script is located
+current_dir = os.path.dirname(os.path.realpath(__file__))
+# Get the root directory
+root_dir = os.path.abspath(os.path.join(current_dir, '../../'))
 sys.path.append(root_dir)
 from tools.js_tools.pnpm_helper import run_pnpm_command
 
