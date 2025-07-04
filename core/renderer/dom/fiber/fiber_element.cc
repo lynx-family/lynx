@@ -2972,7 +2972,10 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
   // styles left in old_map need to be removed
   pre_parsed_styles_map.foreach (
       [&](const CSSPropertyID &k, const CSSValue &v) {
-        reset_ids.emplace_back(k);
+        // Filter shorthand property that need to be expanded
+        if (!CSSProperty::IsShorthandProperty(k)) {
+          reset_ids.emplace_back(k);
+        }
       });
   return ret;
 }

@@ -5802,6 +5802,114 @@ TEST_P(FiberElementTest, UpdateCSSVariables) {
               0xffff0000);
 }
 
+/*
+                     [Page]
+                      /
+                     /
+                [Container]
+                /
+               /
+          [Child1]
+*/
+TEST_P(FiberElementTest, CSSVariableShorthandProcess) {
+  float kScreeWidth = 750;
+  float kRpxRatio = 750.0f;
+
+  manager->UpdateScreenMetrics(kScreeWidth, 1000);
+
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  manager->SetConfig(config);
+
+  // construct css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs parser_configs;
+
+  CSSParserTokenMap indexTokenMap;
+  // class :root
+  {
+    auto tokens = std::make_shared<CSSParseToken>(parser_configs);
+    tokens->style_variables_.insert_or_assign("--radius-max", "12rpx");
+
+    std::string key = ".root";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokenMap.insert(std::make_pair(key, tokens));
+  }
+
+  // class .child
+  {
+    auto tokens = std::make_shared<CSSParseToken>(parser_configs);
+    tokens->raw_attributes_[CSSPropertyID::kPropertyIDBorderRadius] =
+        CSSValue(lepus::Value("{{--radius-max}}"), CSSValuePattern::STRING,
+                 CSSValueType::VARIABLE);
+    std::string key = ".child";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokenMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokenMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 10);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  // container
+  auto container = manager->CreateFiberNode("view");
+  container->parent_component_element_ = page.get();
+  page->InsertNode(container);
+  container->SetClass("root");
+
+  // child1
+  auto child1 = manager->CreateFiberNode("view");
+  child1->parent_component_element_ = page.get();
+  container->InsertNode(child1);
+  child1->SetClass("child");
+
+  page->FlushActionsAsRoot();
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      page->painting_context()->platform_impl_.get());
+  painting_context->Flush();
+  auto* child1_painting_node_ =
+      painting_context->node_map_.at(child1->impl_id()).get();
+  auto top_left_radius_it =
+      child1_painting_node_->props_.find("border-top-left-radius");
+  EXPECT_TRUE(top_left_radius_it != child1_painting_node_->props_.end());
+  auto tl_value = top_left_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(tl_value == 12 * kScreeWidth / kRpxRatio);
+
+  auto top_right_radius_it =
+      child1_painting_node_->props_.find("border-top-right-radius");
+  EXPECT_TRUE(top_right_radius_it != child1_painting_node_->props_.end());
+  auto tr_value = top_right_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(tr_value == 12 * kScreeWidth / kRpxRatio);
+
+  auto bottom_right_radius_it =
+      child1_painting_node_->props_.find("border-bottom-right-radius");
+  EXPECT_TRUE(bottom_right_radius_it != child1_painting_node_->props_.end());
+  auto br_value = bottom_right_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(br_value == 12 * kScreeWidth / kRpxRatio);
+
+  auto bottom_left_radius_it =
+      child1_painting_node_->props_.find("border-bottom-left-radius");
+  EXPECT_TRUE(bottom_left_radius_it != child1_painting_node_->props_.end());
+  auto bl_value = bottom_left_radius_it->second.Array()->get(0).Number();
+  EXPECT_TRUE(bl_value == 12 * kScreeWidth / kRpxRatio);
+
+  auto border_radius_it = child1_painting_node_->props_.find("border-radius");
+  EXPECT_TRUE(border_radius_it == child1_painting_node_->props_.end());
+}
+
 TEST_P(FiberElementTest, SetKeyframes) {
   //  constructor css fragment
   StyleMap indexAttributes;

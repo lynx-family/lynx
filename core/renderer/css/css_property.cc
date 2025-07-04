@@ -7,6 +7,7 @@
 #include <array>
 #include <mutex>
 #include <set>
+#include <unordered_set>
 
 #include "base/include/no_destructor.h"
 #include "core/public/prop_bundle.h"
@@ -18,7 +19,7 @@ const char* GetPropertyNameCStr(CSSPropertyID id) {
   return CSSProperty::GetPropertyNameCStr(id);
 }
 
-const std::set<CSSPropertyID> shorthandCSSProperties{
+const std::set<CSSPropertyID> inspectorFilteredProperties{
     kPropertyIDBorder,
     kPropertyIDBorderTop,
     kPropertyIDBorderRight,
@@ -89,6 +90,7 @@ const base::static_string::GenericCache& CSSProperty::GetPropertyName(
   return (*kPropertyIdMapping)[kPropertyStart];  // Empty string
 }
 
+// TODO: Need to auto generate from css define
 size_t CSSProperty::GetShorthandExpand(CSSPropertyID id) {
   using PropertyIDShorthandArray =
       std::array<uint8_t, CSSPropertyID::kPropertyEnd + 1>;
@@ -123,6 +125,19 @@ size_t CSSProperty::GetShorthandExpand(CSSPropertyID id) {
   return 0;
 }
 
+// TODO: Need to auto generate from css define
+const std::unordered_set<CSSPropertyID> shorthandCSSProperties{
+    kPropertyIDPadding,      kPropertyIDMargin,      kPropertyIDFlex,
+    kPropertyIDBackground,   kPropertyIDBorder,      kPropertyIDBorderWidth,
+    kPropertyIDBorderRadius, kPropertyIDBorderColor, kPropertyIDBorderStyle,
+    kPropertyIDBorderRight,  kPropertyIDBorderLeft,  kPropertyIDBorderTop,
+    kPropertyIDBorderBottom, kPropertyIDOutline,     kPropertyIDFlexFlow,
+    kPropertyIDTransition,   kPropertyIDMask,        kPropertyIDAnimation};
+
+bool CSSProperty::IsShorthandProperty(CSSPropertyID id) {
+  return shorthandCSSProperties.find(id) != shorthandCSSProperties.end();
+}
+
 CSSPropertyID CSSProperty::GetTimingOptionsPropertyID(
     const base::static_string::GenericCacheKey& key) {
 #define DECLARE_ANIMATIONAPI_PROPERTY_NAME(name, alias) \
@@ -152,8 +167,9 @@ CSSProperty::GetComputeStyleMap() {
   return *kComputeStyleMap;
 }
 
-bool CSSProperty::IsShorthand(CSSPropertyID id) {
-  return shorthandCSSProperties.find(id) != shorthandCSSProperties.end();
+bool CSSProperty::IsInspectorFilteredProperty(CSSPropertyID id) {
+  return inspectorFilteredProperties.find(id) !=
+         inspectorFilteredProperties.end();
 }
 
 }  // namespace tasm

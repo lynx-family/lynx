@@ -52,39 +52,55 @@ TEST(CSSProperty, GetPropertyName) {
       "");
 }
 
-TEST(CSSProperty, IsShorthand) {
-  const CSSPropertyID shorthands[] = {kPropertyIDBorder,
-                                      kPropertyIDBorderTop,
-                                      kPropertyIDBorderRight,
-                                      kPropertyIDBorderBottom,
-                                      kPropertyIDBorderLeft,
-                                      kPropertyIDMarginInlineStart,
-                                      kPropertyIDMarginInlineEnd,
-                                      kPropertyIDPaddingInlineStart,
-                                      kPropertyIDPaddingInlineEnd,
-                                      kPropertyIDBorderInlineStartWidth,
-                                      kPropertyIDBorderInlineEndWidth,
-                                      kPropertyIDBorderInlineStartColor,
-                                      kPropertyIDBorderInlineEndColor,
-                                      kPropertyIDBorderInlineStartStyle,
-                                      kPropertyIDBorderInlineEndStyle,
-                                      kPropertyIDBorderStartStartRadius,
-                                      kPropertyIDBorderEndStartRadius,
-                                      kPropertyIDBorderStartEndRadius,
-                                      kPropertyIDBorderEndEndRadius,
-                                      kPropertyIDFlex,
-                                      kPropertyIDFlexFlow,
-                                      kPropertyIDPadding,
-                                      kPropertyIDMargin,
-                                      kPropertyIDInsetInlineStart,
-                                      kPropertyIDInsetInlineEnd,
-                                      kPropertyIDBorderWidth,
-                                      kPropertyIDBackground,
-                                      kPropertyIDBorderColor,
-                                      kPropertyIDBorderStyle,
-                                      kPropertyIDOutline};
+TEST(CSSProperty, IsInspectorFilteredProperty) {
+  const CSSPropertyID inspectorFilteredProperties[] = {
+      kPropertyIDBorder,
+      kPropertyIDBorderTop,
+      kPropertyIDBorderRight,
+      kPropertyIDBorderBottom,
+      kPropertyIDBorderLeft,
+      kPropertyIDMarginInlineStart,
+      kPropertyIDMarginInlineEnd,
+      kPropertyIDPaddingInlineStart,
+      kPropertyIDPaddingInlineEnd,
+      kPropertyIDBorderInlineStartWidth,
+      kPropertyIDBorderInlineEndWidth,
+      kPropertyIDBorderInlineStartColor,
+      kPropertyIDBorderInlineEndColor,
+      kPropertyIDBorderInlineStartStyle,
+      kPropertyIDBorderInlineEndStyle,
+      kPropertyIDBorderStartStartRadius,
+      kPropertyIDBorderEndStartRadius,
+      kPropertyIDBorderStartEndRadius,
+      kPropertyIDBorderEndEndRadius,
+      kPropertyIDFlex,
+      kPropertyIDFlexFlow,
+      kPropertyIDPadding,
+      kPropertyIDMargin,
+      kPropertyIDInsetInlineStart,
+      kPropertyIDInsetInlineEnd,
+      kPropertyIDBorderWidth,
+      kPropertyIDBackground,
+      kPropertyIDBorderColor,
+      kPropertyIDBorderStyle,
+      kPropertyIDOutline};
+  for (size_t i = 0;
+       i < sizeof(inspectorFilteredProperties) / sizeof(CSSPropertyID); i++) {
+    EXPECT_TRUE(CSSProperty::IsInspectorFilteredProperty(
+        inspectorFilteredProperties[i]));
+  }
+}
+
+TEST(CSSProperty, IsShorthandProperty) {
+  const CSSPropertyID shorthands[] = {
+      kPropertyIDPadding,      kPropertyIDMargin,      kPropertyIDFlex,
+      kPropertyIDBackground,   kPropertyIDBorder,      kPropertyIDBorderWidth,
+      kPropertyIDBorderRadius, kPropertyIDBorderColor, kPropertyIDBorderStyle,
+      kPropertyIDBorderRight,  kPropertyIDBorderLeft,  kPropertyIDBorderTop,
+      kPropertyIDBorderBottom, kPropertyIDOutline,     kPropertyIDFlexFlow,
+      kPropertyIDTransition,   kPropertyIDMask,        kPropertyIDAnimation};
   for (size_t i = 0; i < sizeof(shorthands) / sizeof(CSSPropertyID); i++) {
-    EXPECT_TRUE(CSSProperty::IsShorthand(shorthands[i]));
+    EXPECT_TRUE(CSSProperty::IsShorthandProperty(shorthands[i]));
   }
 }
 

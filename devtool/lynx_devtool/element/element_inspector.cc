@@ -439,7 +439,7 @@ void ElementInspector::Flush(Element* element) {
     for (const auto& pair : compute_style_map) {
       if (!pair.first.empty()) {
         auto id = CSSProperty::GetPropertyID(pair.first);
-        if (!CSSProperty::IsShorthand(id)) {
+        if (!CSSProperty::IsInspectorFilteredProperty(id)) {
           reset_names.push_back(id);
         }
       }

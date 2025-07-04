@@ -215,6 +215,9 @@ class BASE_EXPORT_FOR_DEVTOOL CSSProperty {
   // one. If [id] is not a shorthand property this function returns 0.
   static size_t GetShorthandExpand(CSSPropertyID id);
 
+  // Determine whether [id] is a shorthand property.
+  static bool IsShorthandProperty(CSSPropertyID id);
+
   // Input map may contain shorthand properties. This function calculates total
   // count of properties after parsing the whole map.
   template <class Map>
@@ -287,7 +290,7 @@ class BASE_EXPORT_FOR_DEVTOOL CSSProperty {
  public:
   static const std::unordered_map<std::string, std::string>&
   GetComputeStyleMap();
-  static bool IsShorthand(CSSPropertyID id);
+  static bool IsInspectorFilteredProperty(CSSPropertyID id);
 };
 
 }  // namespace tasm
