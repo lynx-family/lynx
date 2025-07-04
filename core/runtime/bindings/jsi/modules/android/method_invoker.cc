@@ -405,7 +405,9 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
         callback_container.push_back(std::move(expected_callback.value()));
         ret = {.l = callback_container.back().Get()};
       } else {
-        ret = base::unexpected(std::move(expected_callback.error()));
+        LOGE("MethodInvoker: Create Callback"
+             << expected_callback.error().c_str());
+        ret = {.l = nullptr};
       }
     } else {
       ret = ExtractPubValue(transfer_method_params[i], i, type);
