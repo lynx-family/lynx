@@ -1222,6 +1222,13 @@ void TemplateAssembler::AddFont(const lepus::Value& font) {
   page_proxy()->element_manager()->AddFontFace(font);
 }
 
+void TemplateAssembler::PushRuntimeValidTid() {
+  auto default_entry = FindEntry(tasm::DEFAULT_ENTRY_NAME);
+  if (default_entry) {
+    default_entry->GetVm()->PushContextValidTid();
+  }
+}
+
 void TemplateAssembler::SetLazyBundleLoader(
     const std::shared_ptr<LazyBundleLoader>& loader) {
   element_manager_delegate_.SetBundleLoader(loader);

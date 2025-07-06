@@ -244,6 +244,8 @@ class Context {
 
   virtual void EnableRuntimeLeakCheck(bool enable){};
 
+  virtual void PushContextValidTid(){};
+
   virtual void UpdateVMOuterObjSize(int size){};
 
   virtual bool IsTracingGCEnabled() { return false; }

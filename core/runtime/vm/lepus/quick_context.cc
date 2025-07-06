@@ -225,6 +225,11 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
       use_lepus_strict_mode_(false),
       debuginfo_outside_(false),
       current_this_(LEPUS_UNDEFINED) {
+  // TODO(nihao.royal): maybe add a platform interface to enable the runtime
+  // leak checker later;
+  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+    EnableRuntimeLeakCheck(true);
+  }
   LEPUSLepusRefCallbacks callbacks = Context::GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);
   LEPUS_SetMaxStackSize(context(), static_cast<size_t>(ULLONG_MAX));
@@ -1028,6 +1033,10 @@ lepus::Value QuickContext::GetCurrentThis(lepus::Value* argv, int32_t offset) {
 
 void QuickContext::EnableRuntimeLeakCheck(bool enable) {
   SetObjectCtxCheckStatus(context(), enable);
+}
+
+void QuickContext::PushContextValidTid() {
+  LEPUS_PushObjectCheckTid(context());
 }
 
 void QuickContext::UpdateVMOuterObjSize(int size) {

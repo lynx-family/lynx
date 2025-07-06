@@ -8,7 +8,7 @@
   "main": "",
   "version": "0.0.1",
   "dependencies": {
-    "@lynx/primjs": "0.0.1-alpha.3"
+    "@lynx/primjs": "0.0.1-alpha.5"
   },
   "dynamicDependencies": {},
   "overrides": {

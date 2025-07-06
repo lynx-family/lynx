@@ -1128,6 +1128,8 @@ void LynxShell::OnThreadStrategyUpdated() {
   engine_actor_->Act([current_strategy = current_strategy_](auto& engine) {
     engine->GetTasm()->page_proxy()->element_manager()->SetThreadStrategy(
         current_strategy);
+    // To enable MTS runtime tid check;
+    engine->GetTasm()->PushRuntimeValidTid();
   });
 }
 

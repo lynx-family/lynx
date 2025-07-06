@@ -197,6 +197,8 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual void EnableRuntimeLeakCheck(bool enable) override;
 
+  virtual void PushContextValidTid() override;
+
   virtual void UpdateVMOuterObjSize(int size) override;
 
   virtual bool IsTracingGCEnabled() override;

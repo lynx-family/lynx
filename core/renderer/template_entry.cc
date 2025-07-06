@@ -53,10 +53,7 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
   auto source_type = LepusContextSourceType::kFromRuntime;
   bool enable_use_context_pool =
       use_context_pool || template_bundle().EnableUseContextPool();
-  // TODO(nihao.royal): maybe add a platform interface to enable the runtime
-  // leak checker later;
-  bool enable_runtime_leak_check = LynxEnv::GetInstance().IsDevToolEnabled();
-  if (enable_use_context_pool && !enable_runtime_leak_check) {
+  if (enable_use_context_pool) {
     // 1. try to take context for local pool
     if (template_bundle().context_pool_) {
       vm_context_ = template_bundle().context_pool_->TakeContextSafely();
@@ -93,10 +90,6 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
     uint32_t mode = tasm::performance::MemoryMonitor::ScriptingEngineMode();
     vm_context_ = lepus::Context::CreateContext(is_lepusng_binary,
                                                 disable_tracing_gc, mode);
-  }
-
-  if (enable_runtime_leak_check) {
-    vm_context_->EnableRuntimeLeakCheck(true);
   }
 
   if (!vm_context_) {
