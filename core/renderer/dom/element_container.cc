@@ -608,10 +608,18 @@ ElementContainer::FindParentAndIndexForChildForFiber(Element* parent,
   // We can skip index calculation if the target parent doesn't have any child
   // need adjust z order. And dirty_ context will sort its children. We don't
   // need to calculate the index here.
-  bool should_skip_index_calculation =
-      ((!real_parent->element_container()->HasZChild()) ||
-       real_parent->element_container()->dirty_) &&
-      !ref;
+
+  bool should_skip_index_calculation = false;
+  if (parent->element_manager()->FixNegativeZIndexBug()) {
+    should_skip_index_calculation =
+        (!real_parent->element_container()->HasZChild()) && !ref;
+  } else {
+    // FIXME (linxs): Remove this code in the next version！！！
+    should_skip_index_calculation =
+        ((!real_parent->element_container()->HasZChild()) ||
+         real_parent->element_container()->dirty_) &&
+        !ref;
+  }
 
   int index = 0;
   if (should_skip_index_calculation) {

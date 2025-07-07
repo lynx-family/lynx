@@ -714,6 +714,98 @@ TEST_F(ElementContainerTest, InsertFixedNew) {
   }
 }
 
+TEST_F(ElementContainerTest, ReplaceNegativeZIndexChildren) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+  auto page_container = page->element_container();
+  ASSERT_TRUE(page->IsStackingContextNode());
+
+  // parent0
+  auto parent0_element = manager->CreateFiberView();
+  parent0_element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+  page->InsertNode(parent0_element);
+
+  // parent1
+  auto parent1_element = manager->CreateFiberView();
+  parent1_element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+  page->InsertNode(parent1_element);
+
+  page->FlushActionsAsRoot();
+  auto pipeline_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(pipeline_options);
+
+  auto parent0_container = parent0_element->element_container();
+  EXPECT_EQ(parent0_container->parent(), page_container);
+  EXPECT_EQ(parent0_container->children().size(), static_cast<size_t>(0));
+
+  EXPECT_EQ(page_container->children().size(), static_cast<size_t>(2));
+
+  auto painting_context =
+      static_cast<MockPaintingContext*>(page->painting_context()->impl());
+
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto page_painting_children = page_painting_node->children_;
+  EXPECT_TRUE(page_painting_children.size() == 2);
+
+  EXPECT_TRUE(page_painting_children[0]->id_ == parent0_element->impl_id());
+  EXPECT_TRUE(page_painting_children[1]->id_ == parent1_element->impl_id());
+
+  // parent2
+  auto parent2_element = manager->CreateFiberView();
+  parent2_element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+  page->InsertNode(parent2_element);
+
+  page->FlushActionsAsRoot();
+  manager->OnPatchFinish(pipeline_options);
+
+  page_painting_children = page_painting_node->children_;
+  EXPECT_TRUE(page_painting_children.size() == 3);
+
+  EXPECT_TRUE(page_painting_children[0]->id_ == parent0_element->impl_id());
+  EXPECT_TRUE(page_painting_children[1]->id_ == parent1_element->impl_id());
+  EXPECT_TRUE(page_painting_children[2]->id_ == parent2_element->impl_id());
+
+  // update: page:[{z-index:-1},{z-index:-1},{z-index:-1}] -> insert z-index:-1
+  // element & z-index:0 element parent3: z-index:-1 node
+  auto parent3_element = manager->CreateFiberView();
+  parent3_element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(lepus::Value(-1), CSSValuePattern::NUMBER));
+  page->InsertNode(parent3_element);
+
+  // parent4: z-index:0 node
+  auto parent4_element = manager->CreateFiberView();
+  parent4_element->SetStyleInternal(
+      CSSPropertyID::kPropertyIDZIndex,
+      tasm::CSSValue(lepus::Value(0), CSSValuePattern::NUMBER));
+  page->InsertNode(parent4_element);
+
+  page->FlushActionsAsRoot();
+  manager->OnPatchFinish(pipeline_options);
+
+  page_painting_children = page_painting_node->children_;
+  EXPECT_TRUE(page_painting_children.size() == 5);
+  EXPECT_TRUE(page_painting_children[0]->id_ == parent0_element->impl_id());
+  EXPECT_TRUE(page_painting_children[1]->id_ == parent1_element->impl_id());
+  EXPECT_TRUE(page_painting_children[2]->id_ == parent2_element->impl_id());
+
+  EXPECT_TRUE(page_painting_children[3]->id_ == parent3_element->impl_id());
+  EXPECT_TRUE(page_painting_children[4]->id_ == parent4_element->impl_id());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

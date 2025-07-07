@@ -99,6 +99,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_PARALLEL_Z_INDEX_CRASH,
     FIX_INSERT_BEFORE_FIXED_BUG,
     FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
+    // FIXME(linxs): remove this config in the next version
+    FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -208,6 +210,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_INSERT_BEFORE_FIXED_BUG, "fix_insert_before_fixed_bug"},
             {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
              "fix_font_size_override_direction_change_bug"},
+            {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
