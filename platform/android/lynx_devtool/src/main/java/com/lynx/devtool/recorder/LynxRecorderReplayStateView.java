@@ -5,8 +5,10 @@ package com.lynx.devtool.recorder;
 
 import android.content.Context;
 import android.graphics.Point;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -41,18 +43,30 @@ public class LynxRecorderReplayStateView extends LinearLayout {
 
   public LynxRecorderReplayStateView(Context context) {
     super(context);
+    setId(R.id.recorder_state_view);
     init(context);
   }
 
   private void init(Context context) {
     View view = LayoutInflater.from(context).inflate(R.layout.recorder_replay_state, this);
-    WindowManager wm = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
-    Point size = new Point();
-    wm.getDefaultDisplay().getSize(size);
-    LayoutParams layout_params = new LayoutParams(size.x, size.y);
-    view.setLayoutParams(layout_params);
+    updateScreenMetrics();
+    this.setGravity(Gravity.CENTER);
     mText = findViewById(R.id.textView2);
     mProgress = findViewById(R.id.progressBar2);
+  }
+
+  public void updateScreenMetrics() {
+    WindowManager wm = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
+    Point size = new Point();
+    wm.getDefaultDisplay().getSize(size);
+    ViewGroup.LayoutParams layout_params = this.getLayoutParams();
+    if (layout_params == null) {
+      layout_params = new LayoutParams(size.x, size.y);
+    } else {
+      layout_params.width = size.x;
+      layout_params.height = size.y;
+    }
+    this.setLayoutParams(layout_params);
   }
 
   private int getProgress(int stateCode) {

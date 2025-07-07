@@ -181,6 +181,12 @@ public class LynxRecorderActivity
     if (mLynxView != null) {
       mLynxView.updateScreenMetrics(dm.widthPixels, dm.heightPixels);
     }
+
+    LynxRecorderReplayStateView state =
+        (LynxRecorderReplayStateView) findViewById(R.id.recorder_state_view);
+    if (state != null) {
+      state.updateScreenMetrics();
+    }
   }
 
   @Override

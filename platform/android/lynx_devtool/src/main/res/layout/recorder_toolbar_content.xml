@@ -7,14 +7,14 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:src="@drawable/ic_recorder"
-            android:padding="8dp"
-            android:layout_gravity="left"/>
+            android:padding="8dp"/>
     <TextView
             android:layout_width="wrap_content"
             android:layout_height="50dp"
             android:text="@string/recorder"
-            android:textSize="22dp"
+            android:textSize="22sp"
             android:textColor="#000000"
             android:gravity="center"
-            android:layout_gravity="left"/>
+            android:textStyle="bold|italic"
+            android:layout_marginBottom="5dp"/>
 </LinearLayout>
