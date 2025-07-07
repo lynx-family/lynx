@@ -46,7 +46,6 @@ subspec_target("devtool") {
     "LynxWebSocket.mm",
   ]
   sources += devtool_public_headers
-  sources += devtool_extend_sources
   public_header_files = devtool_public_headers
 }
 
@@ -116,6 +115,7 @@ podspec_target("devtool_podspec") {
       ":ThirdParty",
       ":UnitTests",
     ]
+    deps += devtool_extend_subspec
   }
 }
 

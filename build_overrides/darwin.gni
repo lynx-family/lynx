@@ -82,7 +82,7 @@ PrimJS_Qjs_Dep = [
 ]
 Lepus_deps = [ PrimJS_Qjs_Dep ]
 
-devtool_extend_sources = []
+devtool_extend_subspec = []
 
 JSDebug_deps = rebase_path(
         [
