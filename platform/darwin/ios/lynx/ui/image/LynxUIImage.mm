@@ -573,13 +573,14 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     }
     if (requestUrl.lastRequestUrl &&
         ![requestUrl.lastRequestUrl.absoluteString isEqualToString:url.absoluteString]) {
-      _LogD(@"the image block ignored, due to the new src is loading!");
+      _LogI(@"the image block ignored, due to the new src is loading!");
       return;
     }
 
+    strongSelf.finishRequestTime = [NSDate date];
     [strongSelf reportImageEvent:requestUrl
                        startTime:[strongSelf.startRequestTime timeIntervalSince1970] * 1000
-                      finishTime:[[NSDate date] timeIntervalSince1970] * 1000
+                      finishTime:[strongSelf.finishRequestTime timeIntervalSince1970] * 1000
                       isNewImage:[strongSelf shouldUseNewImage]
                            error:error
                            width:image.size.width
