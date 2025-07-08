@@ -721,8 +721,26 @@ void UIBase::ApplyOverflowClip() {
     need_clip_ = false;
     // overflow changed to visible.
     NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
+  } else if ((overflow_.overflow_x || overflow_.overflow_y) &&
+             (dirty_flags_ & kFlagOverflowChanged) != 0) {
+    need_clip_ = true;
+    float screen_size[2] = {0};
+    context_->ScreenSize(screen_size);
+    float clip_width = overflow_.overflow_x ? screen_size[0] : width_;
+    float clip_height = overflow_.overflow_y ? screen_size[1] : height_;
+
+    ArkUI_NumberValue value[] = {
+        {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_RECTANGLE)},
+        {.f32 = clip_width},
+        {.f32 = clip_height},
+        {.f32 = 0},
+        {.f32 = 0}};
+    ArkUI_AttributeItem item = {
+        .value = value,
+        .size = sizeof(value) / sizeof(ArkUI_NumberValue),
+    };
+    NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
   }
-  // TODO(renzhongyue): implement overflow on single direction.
 }
 
 void UIBase::CreateOrUpdateBackground() {
