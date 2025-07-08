@@ -193,7 +193,6 @@ jobs:
       - name: Build Darwin Tasm
         run: |
           source tools/envsetup.sh
-          tools/hab sync . -f --target tasm
           python3 tools/oliver/lynx-tasm/gn_to_cmake_oliver.py
           pushd oliver/lynx-tasm
           npm install

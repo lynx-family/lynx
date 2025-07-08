@@ -11,6 +11,10 @@ inputs:
     description: cache backend for habitat
     default: 'lynx-infra'
     required: false
+  target:
+    description: habitat target
+    default: ''
+    required: false
 
 runs:
   using: composite
@@ -47,6 +51,11 @@ runs:
     - name: run habitat sync
       shell: bash
       working-directory: lynx
-      run: tools/hab sync .
+      run: |
+        if [[ "${{ inputs.target }}" == "" ]]; then
+          tools/hab sync .
+        else
+          tools/hab sync . --target ${{ inputs.target }}
+        fi
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
