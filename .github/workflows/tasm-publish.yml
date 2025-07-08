@@ -20,19 +20,15 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
         with:
           version: 7.33.6
-      - name: Install Python Dependencies
-        uses: nick-fields/retry@v2
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+          cache-backend: github
+          target: tasm
       - name: Build Linux Tasm
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
           npm install
           npm run build:release:linux
@@ -60,19 +56,14 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
         with:
           version: 7.33.6
-      - name: Install Python Dependencies
-        uses: nick-fields/retry@v2
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+          cache-backend: github
       - name: Build Darwin Tasm
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
           npm install
           npm run build:release:darwin
@@ -102,19 +93,15 @@ jobs:
       - uses: pnpm/action-setup@v4.0.0
         with:
           version: 7.33.6
-      - name: Install Python Dependencies
-        uses: nick-fields/retry@v2
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
         with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |-
-            set -e
-            python3 -m pip install PyYAML -i https://pypi.org/simple
+          cache-backend: github
+          target: tasm
       - name: Build Wasm Binary
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          tools/hab sync . -f --target tasm
           pushd oliver/lynx-tasm
           npm install
           npm run build:wasm
