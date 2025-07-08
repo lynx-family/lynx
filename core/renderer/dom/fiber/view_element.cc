@@ -18,6 +18,7 @@ ViewElement::ViewElement(ElementManager* manager)
     return;
   }
   SetDefaultOverflow(element_manager_->GetDefaultOverflowVisible());
+  element_manager_->IncreaseViewElementCount();
 }
 
 void ViewElement::ConvertToInlineElement() { MarkAsInline(); }

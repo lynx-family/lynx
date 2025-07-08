@@ -19,7 +19,12 @@ ComponentElement::ComponentElement(ElementManager* manager,
                                    const base::String& name,
                                    const base::String& path)
     : ComponentElement(manager, component_id, component_css_id, entry_name,
-                       name, path, BASE_STATIC_STRING(kElementComponentTag)) {}
+                       name, path, BASE_STATIC_STRING(kElementComponentTag)) {
+  if (element_manager_ == nullptr) {
+    return;
+  }
+  element_manager_->IncreaseComponentElementCount();
+}
 
 ComponentElement::ComponentElement(ElementManager* manager,
                                    const base::String& component_id,
@@ -41,6 +46,7 @@ ComponentElement::ComponentElement(ElementManager* manager,
     return;
   }
   SetDefaultOverflow(element_manager_->GetDefaultOverflowVisible());
+  element_manager_->IncreaseComponentElementCount();
 }
 
 ComponentElement::ComponentElement(const ComponentElement& element,

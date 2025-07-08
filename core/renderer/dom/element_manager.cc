@@ -50,7 +50,6 @@
 #endif
 
 constexpr const static char *kEventDomSizeKey = "dom_size";
-
 namespace lynx {
 namespace tasm {
 #pragma mark ElementManager
@@ -188,30 +187,70 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, true);
 }
 
-static bool EnableLayoutOnlyStatistic() {
+static bool EnableElementStatistic() {
   // cache the setting.
   static bool enable = tasm::LynxEnv::GetInstance().GetBoolEnv(
-      tasm::LynxEnv::Key::ENABLE_LAYOUT_ONLY_STATISTIC, false);
+      tasm::LynxEnv::Key::ENABLE_ELEMENT_STATISTIC, true);
   return enable;
 }
 
 ElementManager::~ElementManager() {
-  if (EnableLayoutOnlyStatistic() && EnableEventReporter()) {
-    report::EventTracker::OnEvent([element_count = element_count_.load(),
-                                   layout_only_element_count =
-                                       layout_only_element_count_.load(),
-                                   layout_only_transition_count =
-                                       layout_only_transition_count_.load()](
-                                      report::MoveOnlyEvent &event) {
-      event.SetName("lynxsdk_layout_only_element_statistic");
-      event.SetProps("element_count", static_cast<unsigned int>(element_count));
-      event.SetProps("layout_only_element_count",
-                     static_cast<unsigned int>(layout_only_element_count));
-      event.SetProps("layout_only_transition_count",
-                     static_cast<unsigned int>(layout_only_transition_count));
-    });
-  }
+  ReportElementStatistic();
   WillDestroy();
+}
+
+void ElementManager::ReportElementStatistic() {
+  if (EnableElementStatistic() && EnableEventReporter()) {
+    report::EventTracker::OnEvent(
+        [element_count = element_count_.load(),
+         layout_only_element_count = layout_only_element_count_.load(),
+         layout_only_transition_count = layout_only_transition_count_.load(),
+         wrapper_element_count = wrapper_element_count_.load(),
+         component_element_count = component_element_count_.load(),
+         image_element_count = image_element_count_.load(),
+         text_element_count = text_element_count_.load(),
+         view_element_count =
+             view_element_count_.load()](report::MoveOnlyEvent &event) {
+          event.SetName("lynxsdk_element_statistic");
+          event.SetProps("element_count",
+                         static_cast<unsigned int>(element_count));
+          event.SetProps("layout_only_element_count",
+                         static_cast<unsigned int>(layout_only_element_count));
+          event.SetProps(
+              "layout_only_transition_count",
+              static_cast<unsigned int>(layout_only_transition_count));
+          event.SetProps("wrapper_element_count",
+                         static_cast<unsigned int>(wrapper_element_count));
+          event.SetProps("component_element_count",
+                         static_cast<unsigned int>(component_element_count));
+          event.SetProps("image_element_count",
+                         static_cast<unsigned int>(image_element_count));
+          event.SetProps("text_element_count",
+                         static_cast<unsigned int>(text_element_count));
+          event.SetProps("view_element_count",
+                         static_cast<unsigned int>(view_element_count));
+          if (element_count > 0) {
+            event.SetProps(
+                "wrapper_element_ratio",
+                static_cast<float>(wrapper_element_count) / element_count);
+            event.SetProps(
+                "layout_only_element_ratio",
+                static_cast<float>(layout_only_element_count) / element_count);
+            event.SetProps(
+                "component_element_ratio",
+                static_cast<float>(component_element_count) / element_count);
+            event.SetProps(
+                "image_element_ratio",
+                static_cast<float>(image_element_count) / element_count);
+            event.SetProps(
+                "text_element_ratio",
+                static_cast<float>(text_element_count) / element_count);
+            event.SetProps(
+                "view_element_ratio",
+                static_cast<float>(view_element_count) / element_count);
+          }
+        });
+  }
 }
 
 void ElementManager::WillDestroy() {
