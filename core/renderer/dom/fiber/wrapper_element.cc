@@ -14,6 +14,10 @@ constexpr const static char kWrapperElementTag[] = "wrapper";
 WrapperElement::WrapperElement(ElementManager* manager, const base::String& tag)
     : FiberElement(manager, tag) {
   is_layout_only_ = true;
+  if (element_manager_ == nullptr) {
+    return;
+  }
+  element_manager_->IncreaseWrapperElementCount();
 }
 
 WrapperElement::WrapperElement(ElementManager* manager)

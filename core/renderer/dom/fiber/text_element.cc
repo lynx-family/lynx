@@ -20,6 +20,7 @@ TextElement::TextElement(ElementManager* manager, const base::String& tag)
     return;
   }
   SetDefaultOverflow(element_manager_->GetDefaultTextOverflow());
+  element_manager_->IncreaseTextElementCount();
 }
 
 void TextElement::AttachToElementManager(
