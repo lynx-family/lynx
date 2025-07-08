@@ -272,6 +272,12 @@ JavaOnlyMap::JavaOnlyMapGetByteArrayAtIndex(JNIEnv* env, jobject map,
   return Java_JavaOnlyMap_getByteArray(env, map, key);
 }
 
+lynx::base::android::ScopedLocalJavaRef<jobject>
+JavaOnlyMap::JavaOnlyMapGetPiperDataAtIndex(JNIEnv* env, jobject map,
+                                            jstring key) {
+  return Java_JavaOnlyMap_getPiperData(env, map, key);
+}
+
 void JavaOnlyMap::ForEach(JNIEnv* env, jobject map, ForEachClosure closure) {
   auto keys = base::android::JavaOnlyMap::JavaOnlyMapGetKeys(env, map);
 
@@ -339,13 +345,13 @@ JavaValue JavaOnlyMap::JavaOnlyMapGetJavaValueAtIndex(JNIEnv* env, jobject map,
       env->ReleaseByteArrayElements(j_byte_array.Get(), array_ptr, JNI_FALSE);
       return ret;
     }
-    case LynxObject: {
-      return JavaValue(JavaOnlyMapGetMapAtIndex(env, map, key),
-                       JavaValue::JavaValueType::LynxObject);
-    }
     case PiperData: {
-      return JavaValue(JavaOnlyMapGetMapAtIndex(env, map, key),
+      return JavaValue(JavaOnlyMapGetPiperDataAtIndex(env, map, key),
                        JavaValue::JavaValueType::Transfer);
+    }
+    case LynxObject: {
+      // LynxObject should not be operated in JavaOnlyMap
+      return JavaValue();
     }
   }
 }

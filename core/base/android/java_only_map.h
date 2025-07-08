@@ -78,6 +78,8 @@ class JavaOnlyMap {
   JavaOnlyMapGetArrayAtIndex(JNIEnv* env, jobject map, jstring key);
   static lynx::base::android::ScopedLocalJavaRef<jbyteArray>
   JavaOnlyMapGetByteArrayAtIndex(JNIEnv* env, jobject map, jstring key);
+  static lynx::base::android::ScopedLocalJavaRef<jobject>
+  JavaOnlyMapGetPiperDataAtIndex(JNIEnv* env, jobject map, jstring key);
 
   static JavaValue JavaOnlyMapGetJavaValueAtIndex(JNIEnv* env, jobject map,
                                                   jstring key);
