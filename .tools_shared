@@ -4,6 +4,7 @@ checker-config:
       - 'core/renderer/css/testing/*'
       - 'devtool/lynx_devtool/resources/devtool-switch/src/assets/*'
       - 'explorer/darwin/ios/Lynx_explorer/LynxExplorer/Assets.xcassets/AppIcon.appiconset/*'
+      - 'explorer/harmony/AppScope/resources/base/media/*'
       - 'third_party/binding/idl-codegen/third_party/doc/_static/*'
       - '^explorer/darwin/ios/lynx_explorer/*'
       - '^explorer/homepage/assets/images/*'

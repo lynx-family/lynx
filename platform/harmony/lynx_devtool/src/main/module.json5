@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "lynx_devtool",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

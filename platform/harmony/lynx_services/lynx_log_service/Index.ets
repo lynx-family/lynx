@@ -1,0 +1,1 @@
+export { LynxLogService } from './src/main/ets/LynxLogService'

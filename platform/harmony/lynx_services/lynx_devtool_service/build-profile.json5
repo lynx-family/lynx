@@ -1,0 +1,39 @@
+{
+  "apiType": "stageMode",
+  "buildOption": {
+    "arkOptions": {
+      "buildProfileFields": {
+        "COMMIT_HASH": "COMMIT_HASH_PLACE_HOLDER_TO_DISALLOW_PUBLISH_BY_ACCIDENT",
+        "VERSION": "VERSION_PLACE_HOLDER_TO_DISALLOW_PUBLISH_BY_ACCIDENT",
+      },
+      "runtimeOnly": {
+        "sources": [
+        ]
+      }
+    }
+  },
+  "buildOptionSet": [
+    {
+      "name": "debug",
+    },
+    {
+      "name": "release",
+      "copyFrom": "debug",
+      "arkOptions": {
+        "obfuscation": {
+          "ruleOptions": {
+            "enable": true,
+            "files": [
+              "./obfuscation-rules.txt"
+            ]
+          }
+        }
+      }
+    },
+  ],
+  "targets": [
+    {
+      "name": "default"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "name": "lynx",
+  "license": "Apache-2.0",
+  "devDependencies": {},
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "description": "A Powerful Cross-Platform Framework that builds native Apps with Web technologies",
+  "main": "",
+  "scripts": {
+    "prepare": "../../../.venv/bin/python3 ./script/build.py --build_lynx_core --build_bundle --is_debug --verbose",
+    "dev": "../../../.venv/bin/python3 ./script/build.py --is_debug --verbose",
+    "build": "../../../.venv/bin/python3 ./script/build.py --is_debug --build_lynx_core --build_hap --verbose",
+    "build:release": "../../../.venv/bin/python3 ./script/build.py --build_lynx_core --build_hap --verbose",
+  },
+  "version": "0.0.1",
+  "dependencies": {
+    "@lynx/primjs": "0.0.1-alpha.5",
+  },
+  "dynamicDependencies": {},
+  "parameterFile": "./parameter.json",
+  "overrides": {
+    "@ohos/imageknife": "3.2.6",
+    "@lynx/lynx": "file:../../platform/harmony/lynx_harmony",
+    "@lynx/lynx_devtool": "file:../../platform/harmony/lynx_devtool",
+    "@lynx/lynx_devtool_service": "file:../../platform/harmony/lynx_services/lynx_devtool_service",
+    "@lynx/lynx_log_service": "file:../../platform/harmony/lynx_services/lynx_log_service",
+  },
+  "modelVersion": "5.0.0"
+}

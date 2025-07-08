@@ -1,0 +1,5 @@
+resolve_conflict=true
+enforce_dependency_key=true
+install_all=true
+enable_cross_process_lock=true
+ensure_dependency_include=true

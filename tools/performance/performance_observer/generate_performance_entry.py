@@ -6,6 +6,7 @@ import os
 from sub_generator.ts_generator import generate_ts
 from sub_generator.java_generator import generate_java, generate_java_converter
 from sub_generator.oc_generator import generate_objc_interface, generate_objc_implementation, generate_objc_converter, generate_objc_converter_header
+from sub_generator.ets_generator import generate_ets_class, generate_ets_converter
 from utils import *
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +16,7 @@ ts_output_file_path = os.path.abspath(os.path.join(base_dir, '../../../js_librar
 java_output_file_path = os.path.abspath(os.path.join(base_dir, '../../../platform/android/lynx_android/src/main/java/com/lynx/tasm/performance/performanceobserver'))
 objc_header_output_file_path = os.path.abspath(os.path.join(base_dir, '../../../platform/darwin/common/lynx/public/performance/performance_observer'))
 objc_impl_output_file_path = os.path.abspath(os.path.join(base_dir, '../../../platform/darwin/common/lynx/performance/performance_observer'))
+ets_output_file_path = os.path.abspath(os.path.join(base_dir, '../../../platform/harmony/lynx_harmony/src/main/ets/tasm/gen/performance/performanceobserver'))
 converter_name = 'PerformanceEntryConverter'
 entry_mapping = {}
 
@@ -135,6 +137,40 @@ def generate_ts_code(yaml_files):
     ts_file_name = 'lynx-performance-entry.d.ts'
     write_file(os.path.join(ts_output_file_path, ts_file_name), ts_output)
 
+def generate_ets_code(yaml_files):
+    remove_exist_dirs(ets_output_file_path)
+    for yaml_file in yaml_files:
+        items = read_yaml_file(os.path.join(base_dir, yaml_file))
+
+        ets_codes = []
+        ets_imports = []
+        for class_name, definition in list(items.items()):
+            # Handle special characters to generate ignore rules.
+            tsOnly = False
+            if 'x-ts-only' in definition:
+                tsOnly = definition['x-ts-only']
+
+            if not tsOnly:
+                # write impl file
+                ets_code = generate_ets_class(class_name, definition, ets_imports)
+                if ets_code:
+                    ets_codes.append(ets_code)
+                # write file
+                ets_output = get_license(2025)
+                if(not ets_imports) and (ets_codes != []):
+                    ets_output += '\n'.join(ets_codes)
+                    write_file(os.path.join(ets_output_file_path, f'{class_name}.ets'), ets_output)
+                elif (ets_codes != []):
+                    ets_output += '\n'.join(ets_imports) + '\n\n' + '\n'.join(ets_codes)
+                    write_file(os.path.join(ets_output_file_path, f'{class_name}.ets'), ets_output)
+
+    # Generate PerformanceEntryConverter
+    ets_converter_imports = []
+    ets_converter_code = generate_ets_converter(entry_mapping, ets_converter_imports)
+    ets_output = get_license(2025)
+    ets_output += '\n'.join(ets_converter_imports) + '\n\n' + ets_converter_code
+    write_file(os.path.join(ets_output_file_path, f'{converter_name}.ets'), ets_output)
+
 def main(yaml_files_list_file):
     with open(yaml_files_list_file, "r") as file:
         yaml_files = [line.strip() for line in file if line.strip()]
@@ -143,6 +179,7 @@ def main(yaml_files_list_file):
     generate_ts_code(yaml_files)
     generate_java_code(yaml_files)
     generate_objc_code(yaml_files)
+    generate_ets_code(yaml_files)
 
 if __name__ == "__main__":
     main(os.path.join(base_dir, "performance_entry_definition_files"))

@@ -25,6 +25,9 @@ android_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'androi
 # Define the iOS target path
 ios_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets', 'logbox')
 
+# Define the harmony target path
+harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox')
+
 def build():
     # Change to the root directory
     os.chdir(root_path)
@@ -41,22 +44,28 @@ def build():
         shutil.rmtree(android_target_path)
     if os.path.exists(ios_target_path):
         shutil.rmtree(ios_target_path)
+    if os.path.exists(harmony_target_path):
+        shutil.rmtree(harmony_target_path)
 
     # Create the Android and iOS target directories
     os.makedirs(android_target_path, exist_ok=True)
     os.makedirs(ios_target_path, exist_ok=True)
+    os.makedirs(harmony_target_path, exist_ok=True)
 
     # Copy the contents of the distribution directory to the Android and iOS target directories
     for item in os.listdir(dist_path):
         s = os.path.join(dist_path, item)
         d_android = os.path.join(android_target_path, item)
         d_ios = os.path.join(ios_target_path, item)
+        d_harmony = os.path.join(harmony_target_path, item)
         if os.path.isdir(s):
             shutil.copytree(s, d_android)
             shutil.copytree(s, d_ios)
+            shutil.copytree(s, d_harmony)
         else:
             shutil.copy2(s, d_android)
             shutil.copy2(s, d_ios)
+            shutil.copy2(s, d_harmony)
 
 
 if __name__ == "__main__":

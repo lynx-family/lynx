@@ -1,0 +1,9 @@
+/node_modules
+/oh_modules
+/.preview
+/build
+/.cxx
+/.test
+/libs/**/*.so
+BuildProfile.ets
+oh-package-lock.json5

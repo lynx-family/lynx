@@ -8,13 +8,14 @@ from generator.android.android_generator import *
 from generator.darwin.darwin_generator import *
 from generator.native.native_generator import *
 from generator.typescript.ts_generator import *
+from generator.harmony.harmony_generator import *
 
 __all__ = ['ErrorCodeGenerator']
 
 class ErrorCodeGenerator:
     def __init__(self, spec, lang):
         if lang == None:
-            lang = [LANG_TS, LANG_OC, LANG_CPP, LANG_JAVA]
+            lang = [LANG_TS, LANG_OC, LANG_CPP, LANG_JAVA, LANG_ETS]
         self._spec = spec
         self._child_generators = []
         meta_data_list = spec[KEY_METADATA]
@@ -27,6 +28,8 @@ class ErrorCodeGenerator:
             self._child_generators.append(NativeGenerator())
         if LANG_TS in lang:
             self._child_generators.append(TypescriptGenerator())
+        if LANG_ETS in lang:
+            self._child_generators.append(HarmonyGenerator(meta_data_list))
 
     def generate(self):
         for c in self._child_generators:

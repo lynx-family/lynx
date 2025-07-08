@@ -1,0 +1,14 @@
+{
+  "name": "@lynx/lynx",
+  "license": "Apache-2.0",
+  "devDependencies": {
+  },
+  "main": "Index.ets",
+  "version": "@param:dependencies.lynx_version",
+  "dependencies": {
+    "liblynx.so": "file:./src/main/ets/tasm/types/liblynx",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "description": "A Powerful Cross-Platform Framework that builds native Apps with Web technologies"
+}

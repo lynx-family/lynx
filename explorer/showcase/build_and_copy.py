@@ -26,22 +26,29 @@ android_assets_dir = os.path.join(explorer_dir, "android", "lynx_explorer",
                                   "src", "main", "assets")
 ios_resource_dir = os.path.join(explorer_dir, "darwin", "ios", "lynx_explorer",
                                 "LynxExplorer", "Resource")
+harmony_dir = os.path.join(explorer_dir, "harmony", "lynx_explorer", "src", "main", "resources", "rawfile")
 
 # Create Android and iOS asset directories if they don't exist
 if not os.path.exists(android_assets_dir):
     os.makedirs(android_assets_dir)
 if not os.path.exists(ios_resource_dir):
     os.makedirs(ios_resource_dir)
+if not os.path.exists(harmony_dir):
+    os.makedirs(harmony_dir)
 
 # Remove existing showcase directories and create new ones
 showcase_android = os.path.join(android_assets_dir, "showcase")
 showcase_ios = os.path.join(ios_resource_dir, "showcase")
+showcase_harmony = os.path.join(harmony_dir, "showcase")
 if os.path.exists(showcase_android):
     shutil.rmtree(showcase_android)
 if os.path.exists(showcase_ios):
     shutil.rmtree(showcase_ios)
+if os.path.exists(showcase_harmony):
+    shutil.rmtree(showcase_harmony)
 os.makedirs(showcase_android)
 os.makedirs(showcase_ios)
+os.makedirs(showcase_harmony)
 
 print("========== build showcase page ==========")
 os.chdir(showcase_root_dir)
@@ -56,21 +63,27 @@ node_modules_example_dir = os.path.join(showcase_root_dir, "node_modules",
 for path in os.listdir(node_modules_example_dir):
     path_android = os.path.join(showcase_android, path)
     path_ios = os.path.join(showcase_ios, path)
+    path_harmony = os.path.join(showcase_harmony, path)
     os.makedirs(path_android)
     os.makedirs(path_ios)
+    os.makedirs(path_harmony)
     dist_dir = os.path.join(node_modules_example_dir, path, "dist")
     for filename in os.listdir(dist_dir):
         if filename.endswith(".lynx.bundle"):
             shutil.copy(os.path.join(dist_dir, filename), path_android)
             shutil.copy(os.path.join(dist_dir, filename), path_ios)
+            shutil.copy(os.path.join(dist_dir, filename), path_harmony)
 
 # Copy menu resources
 menu_dist_dir = os.path.join(showcase_root_dir, "menu", "dist")
 menu_android = os.path.join(showcase_android, "menu")
 menu_ios = os.path.join(showcase_ios, "menu")
+menu_harmony = os.path.join(showcase_harmony, "menu")
 os.makedirs(menu_android)
 os.makedirs(menu_ios)
+os.makedirs(menu_harmony)
 for filename in os.listdir(menu_dist_dir):
     if filename.endswith(".lynx.bundle"):
         shutil.copy(os.path.join(menu_dist_dir, filename), menu_android)
         shutil.copy(os.path.join(menu_dist_dir, filename), menu_ios)
+        shutil.copy(os.path.join(menu_dist_dir, filename), menu_harmony)

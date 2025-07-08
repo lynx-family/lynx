@@ -20,16 +20,24 @@ android_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'androi
 # Define the iOS target path
 ios_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', 'ios', 'assets')
 
+# Define the harmony target path
+harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'base', 'media')
+
 def copy_images():
     # Create the target directories if they don't exist
     os.makedirs(android_target_path, exist_ok=True)
     os.makedirs(ios_target_path, exist_ok=True)
+    os.makedirs(harmony_target_path, exist_ok=True)
 
     # Copy the image to the Android target path
     shutil.copy2(src_path, android_target_path)
 
     # Copy the image to the iOS target path
     shutil.copy2(src_path, ios_target_path)
+    
+    # Copy the image to the iOS target path
+    shutil.copy2(src_path, harmony_target_path)
+
 
 if __name__ == "__main__":
     copy_images()

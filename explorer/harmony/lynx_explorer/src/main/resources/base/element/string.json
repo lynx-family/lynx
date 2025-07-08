@@ -1,0 +1,24 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "module description"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "description"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "LynxExplorer"
+    },
+    {
+      "name": "network",
+      "value": "Request network"
+    },
+    {
+      "name": "camera",
+      "value": "Need camera to scan QR code"
+    }
+  ]
+}

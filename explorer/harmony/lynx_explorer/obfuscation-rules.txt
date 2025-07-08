@@ -1,0 +1,4 @@
+# Keep options:
+
+-keep
+../oh_modules/.ohpm/**

@@ -1,0 +1,241 @@
+// Copyright 2023 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+import { LynxTemplateRenderer } from './LynxTemplateRenderer';
+import { MetaData } from './MetaData';
+import { LynxScreenMetrics } from './behavior/LynxScreenMetrics';
+import { ShadowNodeOwner } from './behavior/ShadowNodeOwner';
+import { UIOwner } from './behavior/UIOwner';
+import { TraceCategory, TraceEvent } from '../base/TraceEvent';
+import { TraceEventDef } from '../base/TraceEventDef';
+import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
+import { LynxView } from './LynxView';
+import { LynxReportEventPropValue } from './eventreport/ILynxEventReportObserver';
+import { LynxEventReporter } from './eventreport/LynxEventReporter';
+import { LLog, LynxEnv, LynxGenericResourceFetcher, LynxMediaResourceFetcher } from '../Index';
+import { componentUtils } from '@kit.ArkUI';
+import { IContext } from './IContext';
+import { LynxExtensionModule } from '../extension/LynxExtensionModule';
+
+const TAG = 'LynxContext'
+
+export class LynxContext implements IContext {
+  private renderer?: LynxTemplateRenderer;
+  private _screenMetrics: LynxScreenMetrics;
+  private shadowNodeOwner?: ShadowNodeOwner;
+  private genericResourceFetcher?: LynxGenericResourceFetcher;
+  private mediaResourceFetcher?: LynxMediaResourceFetcher;
+  private uiOwner?: UIOwner;
+  private lynxView: LynxView;
+  private contextData?: Record<string, Object>;
+  private extensionModule?: LynxExtensionModule;
+
+  constructor(view: LynxView) {
+    this._screenMetrics = new LynxScreenMetrics();
+    this.lynxView = view;
+  }
+
+  findJSShadowNodeBySign(sign: number): Object | undefined {
+    return this.shadowNodeOwner?.findJSShadowNodeBySign(sign);
+  }
+
+  public setShadowNodeOwner(nodeOwner: ShadowNodeOwner) {
+    this.shadowNodeOwner = nodeOwner;
+  }
+
+  public setUIOwner(uiOwner: UIOwner) {
+    this.uiOwner = uiOwner;
+  }
+
+  public measureNativeNode(sign: number, width: number, widthMode: number, height: number, heightMode: number,
+    finalMeasure: boolean) {
+    TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_MEASURE_NATIVE);
+    const measureResult =
+      this.shadowNodeOwner?.measureNativeNode(sign, width, widthMode, height, heightMode, finalMeasure);
+    TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_MEASURE_NATIVE);
+    return measureResult;
+  }
+
+  public alignNativeNode(sign: number, left: number, top: number) {
+    TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_ALIGN_NATIVE);
+    this.shadowNodeOwner?.alignNativeNode(sign, left, top);
+    TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_ALIGN_NATIVE);
+  }
+
+  setRenderer(renderer: LynxTemplateRenderer) {
+    this.renderer = renderer;
+  }
+
+  sendGlobalEvent(name: string, params: Object[]) {
+    if (this.lynxView.enableAirStrictMode) {
+      this.renderer?.triggerEventBus(name, params);
+    } else {
+      this.renderer?.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
+    }
+  }
+
+  public callJSFunction(moduleName: string, method: string, params: Object[]) {
+    this.renderer?.callJSFunction(moduleName, method, params);
+  }
+
+
+  sendCustomEvent(name: string, id: number, params: Object, paramName?: string) {
+    this.renderer?.sendCustomEvent(name, id, params, paramName ? paramName : 'params');
+  }
+
+  updateMetaData(data: MetaData) {
+    if (this.lynxView.templateLoaded) {
+      this.renderer?.updateMetaData(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
+        data.globalProps?.data);
+    } else {
+      this.lynxView.metaData.merge(data);
+    }
+  }
+
+  scrollByListContainer(containerSign: number, x: number, y: number) {
+    this.renderer?.scrollByListContainer(containerSign, x, y);
+  }
+
+  scrollToPosition(containerSign: number, position: number, offset: number, align: number, smooth: boolean) {
+    this.renderer?.scrollToPosition(containerSign, position, offset, align, smooth);
+  }
+
+  scrollStopped(containerSign: number) {
+    this.renderer?.scrollStopped(containerSign);
+  }
+
+  public get screenMetrics(): LynxScreenMetrics {
+    return this._screenMetrics;
+  }
+
+  public updateViewport(width: number, widthMode: number, height: number, heightMode: number) {
+    this.renderer?.updateViewport(width, widthMode, height, heightMode);
+  }
+
+  public onEnterForeground() {
+    this.renderer?.onEnterForeground();
+  }
+
+  public onEnterBackground() {
+    this.renderer?.onEnterBackground();
+  }
+
+  public updateScreenMetrics(width: number, height: number) {
+    this.renderer?.updateScreenMetrics(width, height);
+  }
+
+  updateCustomData(data: Record<string, Object>): void {
+    Object.entries(data).forEach((value) => {
+      let behavior = this.uiOwner?.behaviors.get(value[0]);
+      if (behavior) {
+        behavior.customData = value[1];
+      }
+    });
+  }
+
+  public loadTemplate() {
+    TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
+    LLog.i(TAG, 'loadTemplate, it needs to initTemplateRenderer again');
+    this.lynxView.reInitTemplateRenderer();
+    TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
+  }
+
+  public reload(data: MetaData) {
+    TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
+    this.renderer?.reloadTemplate(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
+      data.globalProps?.data);
+    TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
+  }
+
+  /**
+   * Warning: Please use the `getAllTimingInfo` API with caution.
+   *
+   * This API is very performance-unfriendly as it blocks while fetching all Timing information from the asynchronous Timing thread.
+   *
+   * Generally, business logic does not require using this API to obtain Timing information.
+   * LynxSDK will support providing Timing information to the business through Client callbacks in future updates.
+   */
+  public getAllTimingInfo() {
+    TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_GET_ALL_TIMING_INFO);
+    const timingInfo = this.renderer?.getAllTimingInfo();
+    TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_GET_ALL_TIMING_INFO);
+    return timingInfo;
+  }
+
+  public setExtraTiming(extraTiming: LynxExtraTiming) {
+    this.renderer?.setExtraTiming(extraTiming);
+  }
+
+  /**
+   * Put parameters for reporting events, overriding old values if the parameters already exist.
+   * @param params  common parameters for report events, these values will be merged with params of LynxEventReporter.onEvent.
+   */
+  public putParamsForReportingEvents(params: ReadonlyMap<string, LynxReportEventPropValue>) {
+    if (this.renderer) {
+      LynxEventReporter.putExtraParams(params, this.renderer.getInstanceId());
+    }
+  }
+
+  updateFontScale(scale: number) {
+    this.renderer?.updateFontScale(scale);
+  }
+
+  public setContextData(data?: Record<string, Object>): void {
+    this.contextData = data;
+  }
+
+  public getContextData(): Record<string, Object> | undefined {
+    return this.contextData;
+  }
+
+  public setMediaResourceFetcher(mediaResourceFetcher?: LynxMediaResourceFetcher) {
+    this.mediaResourceFetcher = mediaResourceFetcher;
+  }
+
+  public setGenericResourceFetcher(genericResourceFetcher?: LynxGenericResourceFetcher) {
+    this.genericResourceFetcher = genericResourceFetcher;
+  }
+
+
+  public getGenericResourceFetcher(): LynxGenericResourceFetcher | undefined {
+    return this.genericResourceFetcher;
+  }
+
+  public getMediaResourceFetcher(): LynxMediaResourceFetcher | undefined {
+    return this.mediaResourceFetcher;
+  }
+
+  public getDensity(): number {
+    return LynxEnv.getDefaultDensityEnabled() ? vp2px(1) : LynxEnv.getDisplayInfo().densityPixels;
+  }
+
+  public getRectangleById(id: string) {
+    return componentUtils.getRectangleById(this.uiOwner?.getId() + id);
+  }
+
+  public canConsumeTouchEvent(x: number, y: number): boolean {
+    if (this.uiOwner) {
+      return this.uiOwner.canConsumeTouchEvent(x, y);
+    }
+    return false;
+  }
+
+  /**
+   * Get page data by an array of keys.
+   *
+   * Caution: This method is time-consuming.
+   *
+   */
+  public getPageDataByKey(keys: string[]) {
+    return this.renderer?.getPageDataByKey(keys);
+  }
+
+  public setExtensionModule(module: LynxExtensionModule) {
+    this.extensionModule = module;
+  }
+
+  public getExtensionModule(): LynxExtensionModule | undefined {
+    return this.extensionModule;
+  }
+}

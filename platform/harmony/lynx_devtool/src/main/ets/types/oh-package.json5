@@ -1,0 +1,6 @@
+{
+  "name": "liblynxdevtool.so",
+  "types": "./index.d.ts",
+  "version": "",
+  "description": "lynx_devtool"
+}

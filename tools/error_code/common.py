@@ -36,6 +36,7 @@ LANG_JAVA = "java"
 LANG_CPP = "cpp"
 LANG_TS = "ts"
 LANG_OC = "oc"
+LANG_ETS = "ets"
 
 
 ALERT_COMMENT = '''\

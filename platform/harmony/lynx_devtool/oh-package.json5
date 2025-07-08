@@ -1,0 +1,12 @@
+{
+  "name": "@lynx/lynx_devtool",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx DevTool",
+  "main": "src/main/ets/Index.ets",
+  "author": "lynx",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+    "liblynxdevtool.so": "file:./src/main/ets/types/",
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "license": "Apache-2.0",
+  "devDependencies": {
+  },
+  "author": "lynx",
+  "name": "entry",
+  "description": "Please describe the basic information.",
+  "main": "",
+  "version": "1.0.0",
+  "dependencies": {
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+    "@lynx/lynx_devtool": "@param:dependencies.lynx_version",
+    "@lynx/lynx_devtool_service": "@param:dependencies.lynx_version",
+    "@lynx/lynx_log_service": "@param:dependencies.lynx_version",
+    "@ohos/imageknife": "3.2.6",
+  },
+  "scripts": {
+  }
+}

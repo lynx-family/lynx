@@ -29,6 +29,9 @@ android_target_path = os.path.join(root_path, 'platform', 'android',
 ios_target_path = os.path.join(root_path, 'platform', 'darwin', 'ios',
                                'lynx_devtool', 'assets', 'logbox')
 
+# Define the harmony target path
+harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox')
+
 
 def build():
     # Change to the root directory
@@ -44,11 +47,12 @@ def build():
     # Create the Android and iOS target directories
     os.makedirs(android_target_path, exist_ok=True)
     os.makedirs(ios_target_path, exist_ok=True)
+    os.makedirs(harmony_target_path, exist_ok=True)
 
     # Copy the file to the target directory
     shutil.copy(os.path.join(dist_path, "lynx-error-parser.js"), android_target_path)
     shutil.copy(os.path.join(dist_path, "lynx-error-parser.js"), ios_target_path)
-    
+    shutil.copy(os.path.join(dist_path, "lynx-error-parser.js"), harmony_target_path)
 
 if __name__ == "__main__":
     build()
