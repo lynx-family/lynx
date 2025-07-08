@@ -429,6 +429,40 @@ jobs:
             popd
           fi
 
+  debug-dind-runner:
+    runs-on: lynx-custom-dind
+    container:
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:e97166ad126b4e2b74ac90b8f1ebfd5c2720b50d17d3a58fd874207693c83f39
+      options: --cap-add=NET_ADMIN
+      credentials:
+        username: lynx-family
+        password: ${{ secrets.GITHUB_TOKEN }}
+    # defaults:
+    #   run:
+    #     working-directory: ${{ github.workspace }}
+    steps:
+      - name: Set MTU
+        working-directory: ${{ github.workspace }}
+        run: |
+          sudo apt install --no-install-recommends -y iproute2 
+          sudo ip link set dev eth0 mtu 1450
+          echo "MTU set successfully"
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+      - name: echo
+        run: |
+          echo 'env:'
+          env
+          echo 'pwd:'
+          pwd
+          echo 'GITHUB_WORKSPACE:'
+          echo $GITHUB_WORKSPACE
+          echo 'ls:'
+          ls -la
+      - name: build
+        run: |
+          source tools/envsetup.sh
+
   release-workflow:
     uses: ./.github/workflows/publish-release.yml
     with:
