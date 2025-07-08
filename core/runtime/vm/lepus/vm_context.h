@@ -44,7 +44,7 @@ class VMContext : public Context {
   }
   ~VMContext() override;
   virtual void Initialize() override;
-  virtual bool Execute(Value* ret = nullptr) override;
+  virtual bool Execute() override;
 
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const Value& value) override;
@@ -226,6 +226,8 @@ class VMContext : public Context {
   std::string debug_info_url_;
 
  protected:
+  bool ExecuteBinaryInternal(lepus::Value* result);
+
   friend class CodeGenerator;
   friend class ContextBinaryWriter;
   friend class LexicalFunction;

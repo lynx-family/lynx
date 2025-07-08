@@ -76,7 +76,12 @@ void VMContext::Initialize() {
   RegisterLepusVerion();
 }
 
-bool VMContext::Execute(Value* ret_val) {
+bool VMContext::Execute() {
+  ScriptingScope scope(this);
+  return ExecuteBinaryInternal(nullptr);
+}
+
+bool VMContext::ExecuteBinaryInternal(Value* ret_val) {
   if (root_function_.get() == nullptr) {
     LOGE(
         "lepus-Execute: root_function_ is nullptr, template.lepus may be "
@@ -147,6 +152,8 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
               [&](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name.str());
               });
+  ScriptingScope scope(this);
+
   if (auto function = CallPrologue(name); function != nullptr) {
     for (size_t i = 0; i < args_count; ++i) {
       *(heap_.top_++) = *args[i];
@@ -158,6 +165,9 @@ Value VMContext::CallArgs(const base::String& name, const Value* args[],
 
 Value VMContext::CallClosureArgs(const Value& closure, const Value* args[],
                                  size_t args_count) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, VM_CONTEXT_CALL_CLOSURE);
+  ScriptingScope scope(this);
+
   Value ret;
   Value* function = heap_.top_;
   *(heap_.top_++) = closure;

@@ -445,6 +445,8 @@ inline constexpr const char* const QUICK_CONTEXT_UPDATE_TOP_LEVEL_VARIABLE =
 inline constexpr const char* const VM_CONTEXT_INIT = "VMContext::Initialize";
 inline constexpr const char* const VM_CONTEXT_EXECUTE = "Lepus.Execute";
 inline constexpr const char* const VM_CONTEXT_CALL = "VMContext::Call";
+inline constexpr const char* const VM_CONTEXT_CALL_CLOSURE =
+    "VMContext::CallClosure";
 inline constexpr const char* const VM_CONTEXT_CHECK_TABLE_SHADOW_UPDATED =
     "VMContext::CheckTableShadowUpdatedWithTopLevelVariable";
 inline constexpr const char* const VM_CONTEXT_CALL_C_FUNCTION =

@@ -17,6 +17,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/path_parser.h"
+#include "base/include/vector.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/lepus_inspector_manager.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
@@ -71,6 +72,21 @@ class Context {
         std::unordered_map<std::string, std::string> mem_info) = 0;
 
     virtual fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() = 0;
+
+    virtual void OnScriptingStart() = 0;
+    virtual void OnScriptingEnd() = 0;
+  };
+
+  class ScriptingScope {
+   public:
+    ScriptingScope(Context* context);
+    ~ScriptingScope();
+
+   private:
+    void CheckOnScriptingStart();
+    void CheckOnScriptingEnd();
+
+    Context* ctx_;
   };
 
   virtual ~Context() {}
@@ -81,7 +97,14 @@ class Context {
   // virtual interface
   virtual void Initialize() = 0;
 
-  virtual bool Execute(Value* ret = nullptr) = 0;
+  // TODO(songshourui.null): For the Context class, only the following
+  // interfaces need to be exposed: EvalBuf, EvalBinary CallArgs, CallClosure.
+  // The Execute API should not be exposed and will be deprecated in future
+  // updates. Currently, EvalBinary and Execute share overlapping logic. We have
+  // temporarily refactored this into a shared ExecuteBinaryInternal function.
+  // Once the Execute API is removed, only EvalBinary will remain as the unified
+  // entry point.
+  virtual bool Execute() = 0;
 
   virtual void UpdateGCTiming(bool is_start){};
 
@@ -262,6 +285,9 @@ class Context {
   }
 
  protected:
+  void PushScriptingScope(ScriptingScope* scope);
+  void PopScriptingScope();
+
   virtual Value CallArgs(const base::String& name, const Value* args[],
                          size_t args_count, bool pause_suppression_mode) = 0;
   virtual Value CallClosureArgs(const Value& closure, const Value* args[],
@@ -285,6 +311,8 @@ class Context {
   std::string debug_source_;
 
   std::unique_ptr<LepusInspectorManager> inspector_manager_;
+
+  base::InlineStack<ScriptingScope*, 16> scripting_scope_stack_;
 };
 
 class ContextBundle {

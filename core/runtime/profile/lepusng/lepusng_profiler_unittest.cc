@@ -28,6 +28,8 @@ class ContextDelegateTest : public lepus::Context::Delegate {
   virtual fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() {
     return nullptr;
   };
+  virtual void OnScriptingStart() override{};
+  virtual void OnScriptingEnd() override{};
 };
 
 TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
@@ -43,7 +45,7 @@ TEST(LepusNGProfilerTest, LepusNGProfilerTotalTest) {
   lepus::BytecodeGenerator::GenerateBytecode(context.get(), codeStr, "3.1");
   lepusng_profiler->SetupProfiling(100);
   lepusng_profiler->StartProfiling(true);
-  quick_ctx->Execute(nullptr);
+  quick_ctx->Execute();
   auto runtime_profile = lepusng_profiler->StopProfiling(true);
   ASSERT_NE(runtime_profile, nullptr);
   ASSERT_NE(runtime_profile->runtime_profile_, "");

@@ -317,6 +317,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void ReportError(int32_t error_code, const std::string& msg,
                    base::LynxErrorLevel level = base::LynxErrorLevel::Error);
   void ReportError(base::LynxError error) override;
+  void OnScriptingStart() override;
+  void OnScriptingEnd() override;
 
   void ReportGCTimingEvent(const char* start, const char* end) override;
 

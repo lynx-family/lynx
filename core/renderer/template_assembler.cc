@@ -1491,6 +1491,14 @@ void TemplateAssembler::ReportError(base::LynxError error) {
   }
 }
 
+void TemplateAssembler::OnScriptingStart() {
+  // TODO(songshourui.null): impl this later
+}
+
+void TemplateAssembler::OnScriptingEnd() {
+  // TODO(songshourui.null): impl this later
+}
+
 void TemplateAssembler::ReportGCTimingEvent(const char* start,
                                             const char* end) {
   if (!EnableEventReporter()) {

@@ -339,6 +339,42 @@ void Context::EnsureDelegate() {
   }
 }
 
+void Context::PushScriptingScope(ScriptingScope* scope) {
+  scripting_scope_stack_.push(scope);
+}
+void Context::PopScriptingScope() { scripting_scope_stack_.pop(); }
+
+Context::ScriptingScope::ScriptingScope(Context* context) : ctx_(context) {
+  CheckOnScriptingStart();
+  ctx_->PushScriptingScope(this);
+}
+
+Context::ScriptingScope::~ScriptingScope() {
+  ctx_->PopScriptingScope();
+  CheckOnScriptingEnd();
+}
+
+void Context::ScriptingScope::CheckOnScriptingStart() {
+  if (!ctx_->scripting_scope_stack_.empty()) {
+    return;
+  }
+  ctx_->EnsureDelegate();
+  if (ctx_->delegate_ == nullptr) {
+    return;
+  }
+  ctx_->delegate_->OnScriptingStart();
+}
+
+void Context::ScriptingScope::CheckOnScriptingEnd() {
+  if (!ctx_->scripting_scope_stack_.empty()) {
+    return;
+  }
+  if (ctx_->delegate_ == nullptr) {
+    return;
+  }
+  ctx_->delegate_->OnScriptingEnd();
+}
+
 Context::Delegate* Context::GetDelegate() {
   EnsureDelegate();
   return delegate_;

@@ -399,7 +399,13 @@ void QuickContext::SetStackSize(uint32_t stack_size) {
   }
 }
 
-bool QuickContext::Execute(Value* ret_val) {
+bool QuickContext::Execute() {
+  ScriptingScope scope(this);
+
+  return ExecuteBinaryInternal(nullptr);
+}
+
+bool QuickContext::ExecuteBinaryInternal(Value* ret_val) {
   if (LEPUS_IsUndefined(top_level_function_)) {
     LOGE("no compiled function object");
     return false;
@@ -465,6 +471,8 @@ class GCPauseSuppressionMode {
 
 Value QuickContext::CallArgs(const base::String& name, const Value* args[],
                              size_t args_count, bool pause_suppression_mode) {
+  ScriptingScope scope(this);
+
   if (pause_suppression_mode) {
     GCPauseSuppressionMode mode(LEPUS_GetRuntime(lepus_context_));
     return CallArgs(name, args, args_count, false);
@@ -493,6 +501,8 @@ Value QuickContext::CallArgs(const base::String& name, const Value* args[],
 
 Value QuickContext::CallClosureArgs(const Value& closure, const Value* args[],
                                     size_t args_count) {
+  ScriptingScope scope(this);
+
   LEPUSValue lepus_closure =
       LEPUSValueHelper::ToJsValue(lepus_context_, closure);
   HandleScope func_scope(lepus_context_, &lepus_closure,
@@ -877,6 +887,8 @@ bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
 bool QuickContext::EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
                               const char* file_name) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_EVAL_BINARY);
+  ScriptingScope scope(this);
+
   LEPUSValue val = LEPUS_EvalBinary(context(), buf, static_cast<size_t>(size),
                                     LEPUS_EVAL_BINARY_LOAD_ONLY);
   HandleScope func_scope(context(), &val, HANDLE_TYPE_LEPUS_VALUE);
@@ -890,7 +902,7 @@ bool QuickContext::EvalBinary(const uint8_t* buf, uint64_t size, Value& ret,
       LEPUS_DupValue(context(), top_level_function_);
   func_scope.PushHandle(&top_level_function, HANDLE_TYPE_LEPUS_VALUE);
   SetTopLevelFunction(val);
-  Execute(&ret);
+  ExecuteBinaryInternal(&ret);
   SetTopLevelFunction(top_level_function);
   return true;
 }
@@ -903,6 +915,8 @@ bool QuickContext::EvalBuf(const char* buf, uint64_t size, Value& ret,
                 ctx.event()->add_debug_annotations("file_size",
                                                    std::to_string(size));
               });
+  ScriptingScope scope(this);
+
   EnsureLynx();
   if (!use_lepus_strict_mode_) {
     LEPUS_SetNoStrictMode(context());

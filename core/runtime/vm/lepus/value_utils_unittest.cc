@@ -2,6 +2,9 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#define private public
+#define protected public
+
 #include "core/renderer/utils/value_utils.h"
 
 #include "base/include/value/base_value.h"
@@ -3262,7 +3265,7 @@ TEST(ReportFatalError, QuickContextTest) {
 
   lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "");
   lepus::Value ret;
-  ASSERT_TRUE(qctx.Execute(&ret));
+  ASSERT_TRUE(qctx.ExecuteBinaryInternal(&ret));
   ASSERT_FALSE(LEPUS_IsException(WRAP_AS_JS_VALUE(ret.value())));
   auto* ctx = qctx.context();
   auto error = MK_JS_LEPUS_VALUE(ctx, qctx.SearchGlobalData("error"));
@@ -3273,7 +3276,7 @@ TEST(ReportFatalError, QuickContextTest) {
 
   ASSERT_EQ(result, lepus::Value("end"));
   qctx.SetGlobalData("enable_catch", lepus::Value(false));
-  qctx.Execute(&ret);
+  qctx.ExecuteBinaryInternal(&ret);
   ASSERT_TRUE(LEPUS_IsException(WRAP_AS_JS_VALUE(ret.value())));
   error = MK_JS_LEPUS_VALUE(ctx, qctx.SearchGlobalData("erro"));
   result = MK_JS_LEPUS_VALUE(ctx, qctx.SearchGlobalData("result"));

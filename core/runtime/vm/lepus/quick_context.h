@@ -53,7 +53,7 @@ class QuickContext : private LEPUSRuntimeData,
   QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0);
   virtual ~QuickContext() override;
   virtual void Initialize() override;
-  virtual bool Execute(Value* ret = nullptr) override;
+  virtual bool Execute() override;
 
   virtual void UpdateGCTiming(bool is_start) override;
 
@@ -213,6 +213,8 @@ class QuickContext : private LEPUSRuntimeData,
                          bool pause_suppression_mode) override;
   virtual Value CallClosureArgs(const Value& closure, const Value* args[],
                                 size_t args_count) override;
+
+  bool ExecuteBinaryInternal(Value* ret);
 
   std::string FormatExceptionMessage(const std::string& message,
                                      const std::string& stack,
