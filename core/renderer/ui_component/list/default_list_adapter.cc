@@ -26,10 +26,14 @@ void DefaultListAdapter::OnItemHolderUpdateFrom(ItemHolder* item_holder) {
   }
 }
 
-void DefaultListAdapter::OnItemHolderUpdateTo(ItemHolder* item_holder) {
+void DefaultListAdapter::OnItemHolderUpdateTo(ItemHolder* item_holder,
+                                              bool fiber_flush) {
   if (item_holder) {
     item_holder->MarkDirty(true);
     item_holder->MarkDiffStatus(list::DiffStatus::kUpdateTo);
+    if (fiber_flush && GetListItemElement(item_holder)) {
+      fiber_flush_item_holder_set_.insert(item_holder);
+    }
   }
 }
 
@@ -178,7 +182,8 @@ void DefaultListAdapter::OnFinishBindItemHolder(
 
 // Recycle ItemHolder. It will invoked list's EnqueueComponent() to recycle
 // component bound with ItemHolder and remove platform view from parent.
-void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
+void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder,
+                                           bool should_flush /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_RECYCLE_ITEM_HOLDER,
               [this, item_holder](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event(), item_holder);
@@ -206,7 +211,9 @@ void DefaultListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
         item_holder, item_holder->element());
   }
   item_holder->SetElement(nullptr);
-  list_element_->painting_context()->FlushImmediately();
+  if (should_flush) {
+    list_element_->painting_context()->FlushImmediately();
+  }
 }
 
 #if ENABLE_TRACE_PERFETTO

@@ -68,7 +68,8 @@ class ListAdapter : public AdapterHelper::Delegate {
   virtual void OnItemHolderUpdateFrom(ItemHolder* item_holder) = 0;
 
   // Handle diff update to
-  virtual void OnItemHolderUpdateTo(ItemHolder* item_holder) = 0;
+  virtual void OnItemHolderUpdateTo(ItemHolder* item_holder,
+                                    bool fiber_flush) = 0;
 
   // Handle diff moved from
   virtual void OnItemHolderMovedFrom(ItemHolder* item_holder) = 0;
@@ -107,7 +108,8 @@ class ListAdapter : public AdapterHelper::Delegate {
       const std::shared_ptr<PipelineOptions>& options) = 0;
 
   // Recycle ItemHolder.
-  virtual void RecycleItemHolder(ItemHolder* item_holder) = 0;
+  virtual void RecycleItemHolder(ItemHolder* item_holder,
+                                 bool should_flush = true) = 0;
 
   // Return whether the ItemHolder has already been bound, if return true, it
   // means the ItemHolder is a no dirty node, but with no valid list item
@@ -184,6 +186,8 @@ class ListAdapter : public AdapterHelper::Delegate {
     return item_holder_map_;
   }
 
+  void RecycleItemHolderIfNeeded();
+
  protected:
   int64_t GenerateOperationId() const;
 
@@ -197,6 +201,7 @@ class ListAdapter : public AdapterHelper::Delegate {
  protected:
   Element* list_element_{nullptr};
   ListContainerImpl* list_container_{nullptr};
+  ItemHolderSet fiber_flush_item_holder_set_;
   std::unique_ptr<list::ItemHolderMap> item_holder_map_;
 
  private:

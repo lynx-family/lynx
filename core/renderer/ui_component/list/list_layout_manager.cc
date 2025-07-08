@@ -329,6 +329,7 @@ void ListLayoutManager::OnPrepareForLayoutChildren() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_LAYOUT_MANAGER_PREPARE_FOR_LAYOUT_CHILDREN);
   list_container_->RecordVisibleItemIfNeeded(true);
+  list_container_->list_adapter()->RecycleItemHolderIfNeeded();
 }
 
 void ListLayoutManager::SendLayoutCompleteEvent() {

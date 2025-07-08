@@ -117,7 +117,7 @@ bool ListAdapter::UpdateDataSource(const lepus::Value& data_source) {
     for (const auto& cur : adapter_helper_->update_to()) {
       ItemHolder* child_holder = GetItemHolderForIndex(cur);
       if (child_holder) {
-        OnItemHolderUpdateTo(child_holder);
+        OnItemHolderUpdateTo(child_holder, false);
       }
     }
 
@@ -290,7 +290,7 @@ void ListAdapter::MarkChildHolderDirty() {
   for (const auto& cur : adapter_helper_->update_to()) {
     child_holder = GetItemHolderForIndex(cur);
     if (child_holder) {
-      OnItemHolderUpdateTo(child_holder);
+      OnItemHolderUpdateTo(child_holder, true);
     }
   }
   for (const auto& cur : adapter_helper_->update_from()) {
@@ -350,6 +350,27 @@ float ListAdapter::GetEstimatedSizeForIndex(int index) {
     }
   }
   return list::kInvalidDimensionSize;
+}
+
+void ListAdapter::RecycleItemHolderIfNeeded() {
+  if (!fiber_flush_item_holder_set_.empty()) {
+    list_container_->list_children_helper()->ForEachChild(
+        fiber_flush_item_holder_set_, [this](ItemHolder* item_holder) {
+          RecycleItemHolder(item_holder, false);
+          return false;
+        });
+    fiber_flush_item_holder_set_.clear();
+  }
+  for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
+    const auto& item_holder = it->second;
+    if (item_holder && IsRemoved(item_holder.get())) {
+      RecycleItemHolder(item_holder.get(), false);
+      item_holder_map_->erase(it++);
+    } else {
+      ++it;
+    }
+  }
+  list_element_->painting_context()->FlushImmediately();
 }
 
 // Check whether the ItemHolder is sticky item with the specified index.

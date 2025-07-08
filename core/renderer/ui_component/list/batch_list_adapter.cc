@@ -34,11 +34,15 @@ void BatchListAdapter::OnItemHolderRemoved(ItemHolder* item_holder) {
   MarkItemStatus(item_holder->item_key(), list::ItemStatus::kRemoved);
 }
 
-void BatchListAdapter::OnItemHolderUpdateTo(ItemHolder* item_holder) {
+void BatchListAdapter::OnItemHolderUpdateTo(ItemHolder* item_holder,
+                                            bool fiber_flush) {
   const std::string& item_key = item_holder->item_key();
   auto it = item_status_map_->find(item_key);
   if (it != item_status_map_->end() && !IsNeverBind(it->second)) {
     MarkItemStatus(item_key, list::ItemStatus::kUpdated);
+    if (fiber_flush && GetListItemElement(item_holder)) {
+      fiber_flush_item_holder_set_.insert(item_holder);
+    }
   }
 }
 
@@ -276,7 +280,8 @@ int BatchListAdapter::OnFinishValidBind(const std::string& item_key,
   return list::kInvalidIndex;
 }
 
-void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder) {
+void BatchListAdapter::RecycleItemHolder(ItemHolder* item_holder,
+                                         bool should_flush /* = true */) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_BIND_ITEM_HOLDER,
               [this, item_holder](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event(), item_holder);

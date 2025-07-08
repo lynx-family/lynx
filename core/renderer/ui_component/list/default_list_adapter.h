@@ -53,7 +53,7 @@ class DefaultListAdapter : public ListAdapter {
   void OnItemHolderUpdateFrom(ItemHolder* item_holder) override;
 
   // Handle diff update to
-  void OnItemHolderUpdateTo(ItemHolder* item_holder) override;
+  void OnItemHolderUpdateTo(ItemHolder* item_holder, bool fiber_flush) override;
 
   // Handle diff moved from
   void OnItemHolderMovedFrom(ItemHolder* item_holder) override;
@@ -91,7 +91,8 @@ class DefaultListAdapter : public ListAdapter {
       const std::shared_ptr<PipelineOptions>& option) override {}
 
   // Recycle ItemHolder.
-  void RecycleItemHolder(ItemHolder* item_holder) override;
+  void RecycleItemHolder(ItemHolder* item_holder,
+                         bool should_flush = true) override;
 
   // Return whether the ItemHolder has already been bound, if return true, it
   // means the ItemHolder is a no dirty node, but with no valid list item
