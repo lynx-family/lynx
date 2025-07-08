@@ -195,6 +195,7 @@ lynx_core_source_set("cpp") {
   libs = [
     "ace_napi.z",
     "hilog_ndk.z",
+    "deviceinfo_ndk.z",
     "rawfile.z",
     "ace_ndk.z",
     "uv",
