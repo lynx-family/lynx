@@ -148,10 +148,14 @@ void TimingHandler::SetTimingWithTimingFlag(
 bool TimingHandler::IsInitTiming(const TimestampKey& timing_key) const {
   // These are the only init timing keys we are looking for
   static const base::NoDestructor<std::unordered_set<TimestampKey>>
-      initTimingKeys{{kCreateLynxStartPolyfill, kCreateLynxEndPolyfill,
-                      kLoadCoreStartPolyfill, kLoadCoreEndPolyfill,
-                      kTemplateBundleParseStartPolyfill,
-                      kTemplateBundleParseEndPolyfill}};
+      initTimingKeys{{
+          kCreateLynxStartPolyfill,
+          kCreateLynxEndPolyfill,
+          kLoadCoreStartPolyfill,
+          kLoadCoreEndPolyfill,
+          kTemplateBundleParseStartPolyfill,
+          kTemplateBundleParseEndPolyfill,
+      }};
   return initTimingKeys->find(timing_key) != initTimingKeys->end();
 }
 

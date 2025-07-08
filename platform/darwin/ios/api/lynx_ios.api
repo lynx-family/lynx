@@ -2605,6 +2605,13 @@ public class LynxMetricFcpEntry : LynxPerformanceEntry {
   public instancetype LynxMetricFcpEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
+public class LynxMetricFspEntry : LynxPerformanceEntry {
+  public LynxPerformanceMetric* LynxMetricFspEntry::fsp fsp;
+  public LynxPerformanceMetric* LynxMetricFspEntry::lynxFsp lynxFsp;
+  public LynxPerformanceMetric* LynxMetricFspEntry::totalFsp totalFsp;
+  public instancetype LynxMetricFspEntry::initWithDictionary:(NSDictionary *dictionary);
+}
+
 public protocol LynxModule-p : <NSObject> {
   public NSDictionary<NSString *, NSString *>* LynxModule-p::methodLookup methodLookup;
   public NSDictionary* LynxModule-p::attributeLookup attributeLookup;

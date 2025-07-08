@@ -89,6 +89,15 @@ bool TimingInfoNg::SetInitTiming(
   return init_timing_info_.SetTimestamp(timing_key, us_timestamp);
 }
 
+bool TimingInfoNg::SetFSPTiming(const TimestampUs us_timestamp) {
+  if (fsp_end_timing_ == 0) {
+    fsp_end_timing_ = us_timestamp;
+    return true;
+  } else {
+    return false;
+  }
+}
+
 std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetInitContainerEntry(
     const TimestampKey& current_key) {
   static const std::initializer_list<std::string> pick_keys = {
@@ -373,7 +382,93 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFcpEntry(
     }
     entry->PushStringToMap(kEntryType, kEntryTypeMetric);
     entry->PushStringToMap(kEntryName, kEntryNameFCP);
+    return entry;
+  }
+  return nullptr;
+}
 
+std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFspEntry(
+    const TimestampKey& current_key) {
+  if (!value_factory_) {
+    LOGE(
+        "PerformanceObserver. GetMetricFspEntry failed. The ValueFactory is "
+        "empty.")
+    return nullptr;
+  }
+
+  bool has_update_metrics = false;
+
+  static const std::initializer_list<std::string> check_keys = {
+      kPrepareTemplateStart, kOpenTime, kFSPEnd};
+  if (std::find(check_keys.begin(), check_keys.end(), current_key) ==
+      check_keys.end()) {
+    return nullptr;
+  }
+
+  uint64_t fsp_end = fsp_end_timing_;
+  if (fsp_end == 0) {
+    return nullptr;
+  }
+
+  /* Calculation formula:
+   * lynxFsp = fspEnd - (Re)loadBundleEntry.loadBundleStart
+   * Fsp = fspEnd - InitContainerEntry.prepareTemplateStart
+   * totalFsp = fspEnd - InitContainerEntry.openTime
+   */
+  if (metrics_.find(kLynxFSP) == metrics_.end()) {
+    std::string lynx_fsp_start_name;
+    auto pipeline_origin =
+        pipeline_id_to_origin_map_.find(load_bundle_pipeline_id_);
+    if (pipeline_origin != pipeline_id_to_origin_map_.end()) {
+      if (pipeline_origin->second == kLoadBundle) {
+        lynx_fsp_start_name = kLoadBundleStart;
+      } else if (pipeline_origin->second == kReloadBundleFromBts ||
+                 pipeline_origin->second == kReloadBundleFromNative) {
+        lynx_fsp_start_name = kReloadBundleStart;
+      } else {
+        LOGE("TimingInfoNg: only loadBundle/reloadBundle could calc fsp.")
+      }
+    } else {
+      LOGE(
+          "TimingInfoNg: fsp must be calculated after loadBundle/reloadBundle.")
+    }
+
+    auto it = pipeline_timing_info_.find(load_bundle_pipeline_id_);
+    if (it != pipeline_timing_info_.end() && lynx_fsp_start_name != "") {
+      auto& load_bundle_timing_map = it->second;
+      uint64_t lynx_fsp_start_time =
+          load_bundle_timing_map.GetTimestamp(lynx_fsp_start_name).value_or(0);
+      has_update_metrics |= UpdateMetrics(
+          kLynxFSP, lynx_fsp_start_name, kFSPEnd, lynx_fsp_start_time, fsp_end);
+    }
+  }
+  if (metrics_.find(kFSP) == metrics_.end()) {
+    auto prepare_template_start =
+        init_timing_info_.GetTimestamp(kPrepareTemplateStart);
+    if (prepare_template_start.has_value()) {
+      has_update_metrics |= UpdateMetrics(kFSP, kPrepareTemplateStart, kFSPEnd,
+                                          *prepare_template_start, fsp_end);
+    }
+  }
+  if (metrics_.find(kTotalFSP) == metrics_.end()) {
+    auto open_time = init_timing_info_.GetTimestamp(kOpenTime);
+    if (open_time.has_value()) {
+      has_update_metrics |=
+          UpdateMetrics(kTotalFSP, kOpenTime, kFSPEnd, *open_time, fsp_end);
+    }
+  }
+
+  if (has_update_metrics) {
+    const char* keys[] = {kLynxFSP, kFSP, kTotalFSP};
+    auto entry = value_factory_->CreateMap();
+    for (const auto& key : keys) {
+      auto it = metrics_.find(key);
+      if (it != metrics_.end() && it->second != nullptr) {
+        entry->PushValueToMap(key, *it->second);
+      }
+    }
+    entry->PushStringToMap(kEntryType, kEntryTypeMetric);
+    entry->PushStringToMap(kEntryName, kEntryNameFSP);
     return entry;
   }
   return nullptr;
@@ -438,11 +533,12 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetMetricFmpEntry(
                  pipeline_origin->second == kReloadBundleFromNative) {
         lynx_actual_fmp_start_name = kReloadBundleStart;
       } else {
-        LOGE("TimingInfoNg: only loadBundle/reloadBundle could calc fcp.")
+        LOGE("TimingInfoNg: only loadBundle/reloadBundle could calc actualFmp.")
       }
     } else {
       LOGE(
-          "TimingInfoNg: fcp must be calculated after loadBundle/reloadBundle.")
+          "TimingInfoNg: actualFmp must be calculated after "
+          "loadBundle/reloadBundle.")
     }
 
     auto it = pipeline_timing_info_.find(load_bundle_pipeline_id_);

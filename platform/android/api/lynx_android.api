@@ -6891,6 +6891,13 @@ public class com::lynx::tasm::performance::performanceobserver::MetricFcpEntry :
   public com.lynx.tasm.performance.performanceobserver.MetricFcpEntry.MetricFcpEntry(HashMap< String, Object > props);
 }
 
+public class com::lynx::tasm::performance::performanceobserver::MetricFspEntry : com.lynx.tasm.performance.performanceobserver.PerformanceEntry {
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.fsp fsp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.lynxFsp lynxFsp;
+  public PerformanceMetric com.lynx.tasm.performance.performanceobserver.MetricFspEntry.totalFsp totalFsp;
+  public com.lynx.tasm.performance.performanceobserver.MetricFspEntry.MetricFspEntry(HashMap< String, Object > props);
+}
+
 public interface com::lynx::tasm::EmbeddedMode::Mode {
 }
 

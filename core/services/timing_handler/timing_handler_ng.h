@@ -90,6 +90,7 @@ class TimingHandlerNg {
                              const PipelineID &pipeline_id);
   void ProcessInitTiming(const TimestampKey &timing_key,
                          const TimestampUs us_timestamp);
+  void ProcessInitFSPTiming(const TimestampUs us_timestamp);
 
   // Each time the timingKey is updated, DispatchPerformanceEventIfNeeded needs
   // to be used to determine whether a PerformanceEntry element is complete and
@@ -103,6 +104,7 @@ class TimingHandlerNg {
       const TimestampKey &current_key);
   void DispatchMetricFcpEntryIfNeeded(const TimestampKey &current_key,
                                       const PipelineID &pipeline_id);
+  void DispatchMetricFspEntryIfNeeded(const TimestampKey &current_key);
   void DispatchMetricFmpEntryIfNeeded(const TimestampKey &current_key,
                                       const PipelineID &pipeline_id);
   void DispatchPipelineEntryIfNeeded(const TimestampKey &current_key,

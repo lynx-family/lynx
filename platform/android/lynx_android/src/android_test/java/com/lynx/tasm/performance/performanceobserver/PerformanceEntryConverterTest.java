@@ -31,6 +31,7 @@ public class PerformanceEntryConverterTest {
   @Test
   public void testMetricEntries() {
     verifyEntryCreation("metric", "fcp", MetricFcpEntry.class);
+    verifyEntryCreation("metric", "fsp", MetricFspEntry.class);
     verifyEntryCreation("metric", "actualFmp", MetricActualFmpEntry.class);
   }
 

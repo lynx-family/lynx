@@ -86,7 +86,9 @@ void TimingHandlerNg::SetTiming(const TimestampKey& timing_key,
     LOGE("Invalid timing key or timestamp");
     return;
   }
-  if (pipeline_id.empty()) {
+  if (timing_key == kFSPEnd) {
+    ProcessInitFSPTiming(us_timestamp);
+  } else if (pipeline_id.empty()) {
     ProcessInitTiming(timing_key, us_timestamp);
   } else {
     ProcessPipelineTiming(timing_key, us_timestamp, pipeline_id);
@@ -98,6 +100,12 @@ void TimingHandlerNg::ProcessInitTiming(
     const lynx::tasm::timing::TimestampUs us_timestamp) {
   if (timing_info_.SetInitTiming(timing_key, us_timestamp)) {
     DispatchPerformanceEventIfNeeded(timing_key);
+  }
+}
+
+void TimingHandlerNg::ProcessInitFSPTiming(const TimestampUs us_timestamp) {
+  if (timing_info_.SetFSPTiming(us_timestamp)) {
+    DispatchPerformanceEventIfNeeded(kFSPEnd);
   }
 }
 
@@ -157,6 +165,7 @@ void TimingHandlerNg::DispatchPerformanceEventIfNeeded(
   }
   DispatchMetricFcpEntryIfNeeded(timing_key, pipeline_id);
   DispatchMetricFmpEntryIfNeeded(timing_key, pipeline_id);
+  DispatchMetricFspEntryIfNeeded(timing_key);
 }
 
 void TimingHandlerNg::DispatchInitContainerEntryIfNeeded(
@@ -197,6 +206,15 @@ void TimingHandlerNg::DispatchMetricFcpEntryIfNeeded(
     return;
   }
   SendOrPendingPerformanceEntry(std::move(entry));
+}
+
+void TimingHandlerNg::DispatchMetricFspEntryIfNeeded(
+    const TimestampKey& current_key) {
+  auto entry = timing_info_.GetMetricFspEntry(current_key);
+  if (entry == nullptr) {
+    return;
+  }
+  SendPerformanceEntry(std::move(entry));
 }
 
 void TimingHandlerNg::DispatchMetricFmpEntryIfNeeded(

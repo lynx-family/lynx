@@ -87,6 +87,10 @@ class TimingInfoNg {
   // update this tracking point.
   bool SetInitTiming(const TimestampKey& timing_key,
                      const TimestampUs us_timestamp);
+
+  // Mark the time point of first stable paint.
+  bool SetFSPTiming(const TimestampUs us_timestamp);
+
   // If your data comes from a front-end framework, you should use
   // SetFrameworkTiming to update this tracking point.
   bool SetFrameworkTiming(const TimestampKey& timing_key,
@@ -111,14 +115,17 @@ class TimingInfoNg {
       const TimestampKey& current_key);
   std::unique_ptr<lynx::pub::Value> GetInitBackgroundRuntimeEntry(
       const TimestampKey& current_key);
-  // Send metrics. They will all be sent when kPaintEnd. However, actualFmp
-  // will only be sent if the timing_flag: __lynx_timing_flag_actual_fmp exists.
+  // Send metrics. All metrics except fsp will be sent when kPaintEnd, fsp will
+  // be sent at the end of fsp, while actualFmp will only be sent if the
+  // timing_flag: __lynx_timing_flag_actual_fmp exists.
   // TODO(zhangkaijie.9): Currently, these GetMetricsXXXEntry functions have two
   // actions: "determine whether the metric can be calculated" and "calculate
   // the metric and then return a performence entry". Should it be changed to
   // GetMetricsXXXEntryIfNeeded?
   std::unique_ptr<lynx::pub::Value> GetMetricFcpEntry(
       const TimestampKey& current_key, const PipelineID& pipeline_id);
+  std::unique_ptr<lynx::pub::Value> GetMetricFspEntry(
+      const TimestampKey& current_key);
   std::unique_ptr<lynx::pub::Value> GetMetricFmpEntry(
       const TimestampKey& current_key, const PipelineID& pipeline_id);
   // Send the time consumption of the Pipeline phase. They will be sent after
@@ -174,6 +181,11 @@ class TimingInfoNg {
   // any specific pipelineId. If there are other data unrelated to pipeline,
   // they should also be stored here.
   TimingMap init_timing_info_;
+
+  // fsp_end_timing_ stores the end time of fsp, which is used to calculate
+  // MetricFspEntry.
+  TimestampUs fsp_end_timing_{0};
+
   // Save all metric calculation results, because metrics depend on container
   // processing time, so some time calculations will be delayed. At this point,
   // the calculations must ensure that previous results are not affected. This
