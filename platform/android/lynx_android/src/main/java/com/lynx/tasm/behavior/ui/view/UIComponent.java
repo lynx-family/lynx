@@ -9,14 +9,10 @@ import com.lynx.tasm.behavior.LynxProp;
 import com.lynx.tasm.behavior.PropsConstants;
 
 public class UIComponent extends UIView {
-  public interface NodeReadyListener {
-    void onComponentNodeReady(UIComponent ui);
-  }
   private OnUpdateListener mOnUpdateListener;
   private String mType;
   private String mItemKey;
   private int mZIndex = 0;
-  private NodeReadyListener mNodeReadyListener;
 
   public UIComponent(LynxContext context) {
     super(context);
@@ -58,7 +54,6 @@ public class UIComponent extends UIView {
   public void destroy() {
     super.destroy();
     mOnUpdateListener = null;
-    mNodeReadyListener = null;
   }
 
   public interface OnUpdateListener {
@@ -68,18 +63,6 @@ public class UIComponent extends UIView {
   @Override
   public boolean isAccessibilityHostUI() {
     return true;
-  }
-
-  @Override
-  public void onNodeReady() {
-    super.onNodeReady();
-    if (mNodeReadyListener != null) {
-      mNodeReadyListener.onComponentNodeReady(this);
-    }
-  }
-
-  public void setNodeReadyListener(NodeReadyListener listener) {
-    mNodeReadyListener = listener;
   }
 
   @LynxProp(name = PropsConstants.ITEM_KEY)

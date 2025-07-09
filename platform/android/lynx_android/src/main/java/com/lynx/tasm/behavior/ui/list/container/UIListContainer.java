@@ -66,8 +66,7 @@ import java.util.ListIterator;
 import java.util.Map;
 
 public class UIListContainer extends UISimpleView<ListContainerView>
-    implements NestedScrollContainerView.OnScrollStateChangeListener, GestureArenaMember,
-               UIComponent.NodeReadyListener {
+    implements NestedScrollContainerView.OnScrollStateChangeListener, GestureArenaMember {
   private static final String TAG = "UIListContainer";
   public static final int INVALID_SCROLL_ESTIMATED_OFFSET = -1;
   private static final boolean DEBUG = false;
@@ -95,11 +94,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private boolean mEnableNeedVisibleItemInfo = false;
   // for new gesture
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
-  private boolean mUpdateStickyForDiff = false;
-  private final HashSet<String> mStickyTopItemKeySet = new HashSet<>();
-  private final HashSet<String> mStickyBottomItemKeySet = new HashSet<>();
-  private final HashMap<String, UIComponent> mStickyTopItemMap = new HashMap<>();
-  private final HashMap<String, UIComponent> mStickyBottomItemMap = new HashMap<>();
+
   private Callback mScrollToCallback = null;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
 
@@ -168,52 +163,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     // The list container should manager the view of component on the interface of
     // "onLayoutFinish()"
     super.onInsertChild(child, index);
-    if (mEnableListSticky && !mUpdateStickyForDiff) {
+
+    if (mEnableListSticky) {
       int indexFromItemKey = getIndexFromItemKey(((UIComponent) child).getItemKey());
       updateStickyInfoForInsertedChild(child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
       updateStickyInfoForInsertedChild(
           child, mStickyBottomItems, mStickyBottomIndexes, indexFromItemKey);
-    }
-  }
-
-  public void onComponentNodeReady(UIComponent component) {
-    // This callback is invoked by component's onNodeReady(), which means component has
-    // valid item-key info, so handle component's item-key changed for sticky.
-    if (mEnableListSticky && mUpdateStickyForDiff && component != null
-        && component.getItemKey() != null) {
-      String itemKey = component.getItemKey();
-      if (mStickyTopItemKeySet.contains(itemKey)) {
-        // Update sticky top list item map.
-        updateStickyItemMap(component, mStickyTopItemMap);
-      } else if (mStickyBottomItemKeySet.contains(itemKey)) {
-        // Update sticky bottom list item map.
-        updateStickyItemMap(component, mStickyBottomItemMap);
-      } else {
-        // Not sticky top or bottom list item, remove it from map.
-        mStickyTopItemMap.remove(itemKey);
-        mStickyBottomItemMap.remove(itemKey);
-      }
-    }
-  }
-
-  private void updateStickyItemMap(
-      UIComponent component, HashMap<String, UIComponent> stickyItemMap) {
-    if (component != null && component.getItemKey() != null) {
-      String newUpdatedItemKey = component.getItemKey();
-      if (stickyItemMap.get(newUpdatedItemKey) == component) {
-        // No need to update sticky item map.
-        return;
-      }
-      Iterator<Map.Entry<String, UIComponent>> iterator = stickyItemMap.entrySet().iterator();
-      while (iterator.hasNext()) {
-        Map.Entry<String, UIComponent> entry = iterator.next();
-        if (entry.getValue() == component && !TextUtils.equals(entry.getKey(), newUpdatedItemKey)) {
-          // Delete old and insert new <item-key, list-item> pair to finish updating item-key .
-          iterator.remove();
-          stickyItemMap.put(newUpdatedItemKey, component);
-          break;
-        }
-      }
     }
   }
 
@@ -229,12 +184,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
       }
       component.setOnUpdateListener(null);
-      component.setNodeReadyListener(null);
     }
-    if (mEnableListSticky && !mUpdateStickyForDiff) {
-      updateStickyInfoForDeletedChild(child, mStickyTopItems);
-      updateStickyInfoForDeletedChild(child, mStickyBottomItems);
-    }
+    updateStickyInfoForDeletedChild(child, mStickyTopItems);
+    updateStickyInfoForDeletedChild(child, mStickyBottomItems);
   }
 
   @Override
@@ -270,28 +222,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         }
       }
       if (mEnableListSticky) {
-        if (mUpdateStickyForDiff) {
-          // This method is invoked in FinishLayoutOperation or by c++ list element which means
-          // component has valid item-key info.
-          String itemKey = child.getItemKey();
-          if (itemKey != null) {
-            // Add <item-key, list-item> to map if current component is sticky item and add list as
-            // component node ready listener.
-            if (mStickyTopItemKeySet.contains(itemKey)) {
-              mStickyTopItemMap.put(itemKey, child);
-              child.setNodeReadyListener(this);
-            } else if (mStickyBottomItemKeySet.contains(itemKey)) {
-              mStickyBottomItemMap.put(itemKey, child);
-              child.setNodeReadyListener(this);
-            }
-          }
-        } else {
-          int indexFromItemKey = getIndexFromItemKey(child.getItemKey());
-          updateStickyInfoForUpdatedChild(
-              child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
-          updateStickyInfoForUpdatedChild(
-              child, mStickyBottomItems, mStickyBottomIndexes, indexFromItemKey);
-        }
+        int indexFromItemKey = getIndexFromItemKey(child.getItemKey());
+        updateStickyInfoForUpdatedChild(
+            child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
+        updateStickyInfoForUpdatedChild(
+            child, mStickyBottomItems, mStickyBottomIndexes, indexFromItemKey);
       }
     }
   }
@@ -302,30 +237,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (child instanceof UIComponent) {
       UIComponent component = (UIComponent) child;
       if (mEnableListSticky) {
-        if (mUpdateStickyForDiff) {
-          // Remove <item-key, list-item> from map if current component is sticky item. Note: need
-          // set node ready listener to null because this component may be reused by any no sticky
-          // item.
-          String itemKey = component.getItemKey();
-          if (itemKey != null) {
-            if (mStickyTopItemMap.get(itemKey) == component) {
-              mStickyTopItemMap.remove(itemKey);
-              component.setNodeReadyListener(null);
-              if (mEnableRecycleStickyItem) {
-                resetStickyItem(component);
-              }
-            } else if (mStickyBottomItemMap.get(itemKey) == component) {
-              mStickyBottomItemMap.remove(itemKey);
-              component.setNodeReadyListener(null);
-              if (mEnableRecycleStickyItem) {
-                resetStickyItem(component);
-              }
-            }
-          }
-        } else {
-          updateStickyInfoForDeletedChild(component, mStickyTopItems);
-          updateStickyInfoForDeletedChild(component, mStickyBottomItems);
-        }
+        updateStickyInfoForDeletedChild(component, mStickyTopItems);
+        updateStickyInfoForDeletedChild(component, mStickyBottomItems);
       }
     }
   }
@@ -674,11 +587,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @LynxProp(name = "need-visible-item-info", defaultBoolean = false)
   public void setNeedVisibleItemInfo(boolean value) {
     mEnableNeedVisibleItemInfo = value;
-  }
-
-  @LynxProp(name = "experimental-update-sticky-for-diff", defaultBoolean = true)
-  public void setUpdateStickyForDiff(boolean value) {
-    mUpdateStickyForDiff = value;
   }
 
   @LynxUIMethod
@@ -1079,26 +987,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
-  private UIComponent getStickyItemWithIndex(Integer indexValue, boolean isStickyTop) {
-    UIComponent component = null;
-    if (mUpdateStickyForDiff) {
-      HashMap<String, UIComponent> stickyItemMap =
-          isStickyTop ? mStickyTopItemMap : mStickyBottomItemMap;
-      int index = indexValue.intValue();
-      if (index >= 0 && index < mItemKeys.size()) {
-        String itemKey = mItemKeys.getString(index);
-        if (itemKey != null) {
-          component = stickyItemMap.get(itemKey);
-        }
-      }
-    } else {
-      HashMap<Integer, UIComponent> stickyItemMap =
-          isStickyTop ? mStickyTopItems : mStickyBottomItems;
-      component = stickyItemMap.get(indexValue);
-    }
-    return component;
-  }
-
   public void updateStickyTops(int offsetTop) {
     if (!mEnableListSticky) {
       return;
@@ -1110,7 +998,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     ListIterator<Object> listIterator = mStickyTopIndexes.listIterator(mStickyTopIndexes.size());
     while (listIterator.hasPrevious()) {
       Integer topIndex = (Integer) listIterator.previous();
-      UIComponent top = getStickyItemWithIndex(topIndex, true);
+      UIComponent top = mStickyTopItems.get(topIndex);
       if (top == null) {
         continue;
       }
@@ -1160,7 +1048,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     UIComponent nextStickyBottomItem = null;
     // enumerate from top to bottom to find sticky top item
     for (Object bottomIndex : mStickyBottomIndexes) {
-      UIComponent bottom = getStickyItemWithIndex((Integer) bottomIndex, false);
+      UIComponent bottom = mStickyBottomItems.get((Integer) bottomIndex);
       if (bottom == null) {
         continue;
       }
@@ -1202,18 +1090,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
   }
 
-  private void generateStickyItemKeySet(
-      HashSet<String> stickyItemKeySet, JavaOnlyArray stickyItemIndexes) {
-    stickyItemKeySet.clear();
-    final int stickyItemCount = stickyItemIndexes.size();
-    for (int i = 0; i < stickyItemCount; ++i) {
-      int index = stickyItemIndexes.getInt(i);
-      if (index >= 0 && index < mItemKeys.size()) {
-        stickyItemKeySet.add(mItemKeys.getString(index));
-      }
-    }
-  }
-
   @Override
   public int getScrollX() {
     return mView.getScrollX();
@@ -1233,11 +1109,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
         // If not a member, add the UIList instance as a new member to the gesture arena
         mGestureArenaMemberId = manager.addMember(UIListContainer.this);
-      }
-      if (mEnableListSticky && mUpdateStickyForDiff) {
-        // Generate sticky top/bottom item key set.
-        generateStickyItemKeySet(mStickyTopItemKeySet, mStickyTopIndexes);
-        generateStickyItemKeySet(mStickyBottomItemKeySet, mStickyBottomIndexes);
       }
     }
   }
