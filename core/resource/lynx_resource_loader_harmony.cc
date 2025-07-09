@@ -113,7 +113,7 @@ LynxResourceLoaderHarmony::LynxResourceLoaderHarmony(napi_env env,
 LynxResourceLoaderHarmony::~LynxResourceLoaderHarmony() {}
 
 void LynxResourceLoaderHarmony::LoadResource(
-    const pub::LynxResourceRequest& request, bool request_in_current_thread,
+    const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   pub::ResourceLoadTiming timing;
 

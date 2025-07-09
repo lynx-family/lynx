@@ -47,7 +47,7 @@ namespace lynx {
 namespace shell {
 
 void LynxResourceLoaderAndroid::LoadResource(
-    const pub::LynxResourceRequest& request, bool request_in_current_thread,
+    const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_RESOURCE,
               [&request](lynx::perfetto::EventContext ctx) {
@@ -67,7 +67,8 @@ void LynxResourceLoaderAndroid::LoadResource(
   auto j_url = JNIConvertHelper::ConvertToJNIStringUTF(env, request.url);
   Java_LynxResourceLoader_loadResource(
       env, local_ref.Get(), reinterpret_cast<jlong>(response_handler),
-      j_url.Get(), static_cast<int>(request.type), request_in_current_thread);
+      j_url.Get(), static_cast<int>(request.type),
+      request.request_in_current_thread);
 }
 
 void LynxResourceLoaderAndroid::ResponseHandler::HandleResponse(

@@ -111,7 +111,7 @@ void LazyBundleLoader::LoadFrameBundle(const std::string& src) {
   // TODO(zhoupeng.z): support to load frame bundle on platform layer
   auto request = pub::LynxResourceRequest{src, pub::LynxResourceType::kFrame};
   resource_loader_->LoadResource(
-      request, true,
+      request,
       [src, weak_self = weak_from_this()](pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
@@ -195,9 +195,8 @@ void LazyBundleLoader::RequireTemplate(RadonLazyComponent* lazy_bundle,
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
   resource_loader_->LoadResource(
-      request, true,
-      [url, weak_self = weak_from_this(), lazy_bundle,
-       instance_id](pub::LynxResourceResponse& response) {
+      request, [url, weak_self = weak_from_this(), lazy_bundle,
+                instance_id](pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
           return;
@@ -228,12 +227,11 @@ void LazyBundleLoader::PreloadTemplates(const std::vector<std::string>& urls) {
     return;
   }
   std::for_each(urls.begin(), urls.end(), [this](const auto& url) {
-    auto request =
-        pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
+    auto request = pub::LynxResourceRequest{
+        url, pub::LynxResourceType::kLazyBundle, false};
     resource_loader_->LoadResource(
-        request, false,
-        [url,
-         weak_self = weak_from_this()](pub::LynxResourceResponse& response) {
+        request, [url, weak_self = weak_from_this()](
+                     pub::LynxResourceResponse& response) {
           auto self = weak_self.lock();
           if (!self) {
             return;

@@ -30,9 +30,8 @@ ExternalResourceInfo ExternalResourceLoader::LoadScript(const std::string& url,
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
   resource_loader_->LoadResource(
-      request, true,
-      [promise =
-           std::move(promise)](pub::LynxResourceResponse& response) mutable {
+      request, [promise = std::move(promise)](
+                   pub::LynxResourceResponse& response) mutable {
         promise.set_value(ExternalResourceInfo(std::move(response.data),
                                                response.err_code,
                                                std::move(response.err_msg)));
@@ -55,9 +54,8 @@ void ExternalResourceLoader::LoadScriptAsync(const std::string& url,
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalJs};
   resource_loader_->LoadResource(
-      request, true,
-      [url, callback_id,
-       weak_self = weak_from_this()](pub::LynxResourceResponse& response) {
+      request, [url, callback_id, weak_self = weak_from_this()](
+                   pub::LynxResourceResponse& response) {
         auto self = weak_self.lock();
         if (!self) {
           LOGI("LoadScriptAsync::self is null");
@@ -93,9 +91,8 @@ ExternalResourceInfo ExternalResourceLoader::LoadByteCode(
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kExternalByteCode};
   resource_loader_->LoadResource(
-      request, true,
-      [promise =
-           std::move(promise)](pub::LynxResourceResponse& response) mutable {
+      request, [promise = std::move(promise)](
+                   pub::LynxResourceResponse& response) mutable {
         promise.set_value(ExternalResourceInfo(std::move(response.data),
                                                response.err_code,
                                                std::move(response.err_msg)));
@@ -126,7 +123,7 @@ void ExternalResourceLoader::LoadLazyBundle(
   auto request =
       pub::LynxResourceRequest{url, pub::LynxResourceType::kLazyBundle};
   resource_loader_->LoadResource(
-      request, true,
+      request,
       [url, callback_id, component_ids = ids, weak_self = weak_from_this()](
           pub::LynxResourceResponse& response) mutable {
         auto self = weak_self.lock();
@@ -198,9 +195,8 @@ std::vector<uint8_t> ExternalResourceLoader::LoadJSSource(
   auto request = pub::LynxResourceRequest{
       .url = url, .type = pub::LynxResourceType::kAssets};
   resource_loader_->LoadResource(
-      request, true,
-      [promise =
-           std::move(promise)](pub::LynxResourceResponse& response) mutable {
+      request, [promise = std::move(promise)](
+                   pub::LynxResourceResponse& response) mutable {
         promise.set_value(std::move(response.data));
       });
   return future.get();

@@ -34,7 +34,7 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
                            id<LynxGenericResourceFetcher> genericResourceFetcher);
   ~LynxResourceLoaderDarwin() override = default;
 
-  void LoadResource(const pub::LynxResourceRequest& request, bool request_in_current_thread,
+  void LoadResource(const pub::LynxResourceRequest& request,
                     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) override;
 
  private:

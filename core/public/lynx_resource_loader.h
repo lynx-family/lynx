@@ -52,6 +52,10 @@ struct ResourceLoadTiming {
 struct LynxResourceRequest {
   std::string url;
   LynxResourceType type;
+
+  // TODO(nihao.royal): used by lazy bundle now, need to be removed in long
+  // term.
+  bool request_in_current_thread{true};
 };
 
 struct LynxResourceResponse {
@@ -91,7 +95,7 @@ class LynxResourceLoader
   virtual ~LynxResourceLoader() = default;
 
   virtual void LoadResource(
-      const LynxResourceRequest& request, bool request_in_current_thread,
+      const LynxResourceRequest& request,
       base::MoveOnlyClosure<void, LynxResourceResponse&> callback) = 0;
 
   virtual void LoadResourcePath(

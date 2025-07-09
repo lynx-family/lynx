@@ -217,8 +217,7 @@ bool LynxResourceLoaderDarwin::FetchTemplateByProvider(const std::string& url,
 }
 
 bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& url,
-                                                             CopyableClosure callback,
-                                                             bool request_in_current_thread) {
+                                                             CopyableClosure callback, bool sync) {
   // use fetcher_wrapper to fetch template.
   __block volatile BOOL invoked = NO;
   __block NSObject* object = [[NSObject alloc] init];
@@ -247,13 +246,11 @@ bool LynxResourceLoaderDarwin::FetchTemplateByFetcherWrapper(const std::string& 
                                    .err_msg = [errMsg UTF8String]};
     callback(resp);
   };
-  return [_fetcher_wrapper fetchResource:nsUrl
-                         withLoadedBlock:fetcherBlock
-                                    sync:request_in_current_thread];
+  return [_fetcher_wrapper fetchResource:nsUrl withLoadedBlock:fetcherBlock sync:sync];
 }
 
 void LynxResourceLoaderDarwin::LoadResource(
-    const pub::LynxResourceRequest& request, bool request_in_current_thread,
+    const pub::LynxResourceRequest& request,
     base::MoveOnlyClosure<void, pub::LynxResourceResponse&> callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LOAD_RESOURCE, [&request](lynx::perfetto::EventContext ctx) {
     ctx.event()->add_debug_annotations("url", request.url);
@@ -313,7 +310,7 @@ void LynxResourceLoaderDarwin::LoadResource(
 
     // 2. try to use LynxExternalResourceFetcherWrapper
     if (FetchTemplateByFetcherWrapper(request.url, copyable_wrapper_callback,
-                                      request_in_current_thread)) {
+                                      request.request_in_current_thread)) {
       return;
     }
     // 3. try to use LynxResourceProvider
