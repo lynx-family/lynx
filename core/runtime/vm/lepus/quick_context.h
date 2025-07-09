@@ -107,7 +107,7 @@ class QuickContext : private LEPUSRuntimeData,
   LEPUSValue SearchGlobalData(const std::string& name);
 
   // deserialize
-  bool DeSerialize(const ContextBundle&, bool, Value* ret,
+  bool DeSerialize(const ContextBundle&, bool, Value& ret,
                    const char* file_name = nullptr) override;
 
   // DeSerialize & Execute

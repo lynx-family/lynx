@@ -845,7 +845,7 @@ LEPUSValue QuickContext::SearchGlobalData(const std::string& name) {
 }
 
 bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
-                               Value* ret, const char* file_name) {
+                               Value& ret, const char* file_name) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE);
   const auto& quick_bundle = static_cast<const QuickContextBundle&>(bundle);
 
@@ -853,7 +853,7 @@ bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
     // file_name is only used for dynamic-components,
     // file_name of page is `lepus.js` by default.
     return EvalBinary(quick_bundle.lepusng_code_.data(),
-                      quick_bundle.lepusng_code_.size(), *ret, file_name);
+                      quick_bundle.lepusng_code_.size(), ret, file_name);
   }
 
   LEPUSValue val = LEPUS_EvalBinary(

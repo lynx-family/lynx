@@ -132,7 +132,7 @@ class VMContext : public Context {
 
   virtual void RegisterLepusVerion() override;
 
-  bool DeSerialize(const ContextBundle& bundle, bool, Value* ret,
+  bool DeSerialize(const ContextBundle& bundle, bool, Value& ret,
                    const char* file_name = nullptr) override;
   bool MoveContextBundle(VMContextBundle& bundle);
   void RegisterCtxBuiltin(const tasm::ArchOption&) override;

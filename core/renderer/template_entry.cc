@@ -126,8 +126,9 @@ bool TemplateEntry::ConstructContext(TemplateAssembler* assembler,
                                file_name);
 
   // the context from local pool has no need to DeSerialize
+  auto ret = lepus::Value();
   return source_type == LepusContextSourceType::kFromLocalPool ||
-         vm_context_->DeSerialize(context_bundle, false, nullptr,
+         vm_context_->DeSerialize(context_bundle, false, ret,
                                   file_name.c_str());
 }
 
@@ -255,7 +256,7 @@ bool TemplateEntry::InitLepusContext(
     vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
                                  file_name);
     if (!vm_context_->DeSerialize(*template_bundle().context_bundle_, true,
-                                  &binary_eval_result_, file_name.c_str())) {
+                                  binary_eval_result_, file_name.c_str())) {
       constexpr char kContextDeSerializeFailed[] = "Context DeSerialize failed";
       error_msg_ = kContextDeSerializeFailed;
       return false;
@@ -575,8 +576,8 @@ bool TemplateEntry::LoadLepusChunk(const std::string& entry_path,
     std::string file_name = GenerateLepusJSFileName(ss.str());
     vm_context_->SetDebugInfoURL(compile_options().template_debug_url_,
                                  file_name);
-    GetVm()->DeSerialize(*lepus_chunk_opt->get(), true,
-                         &lepus_chunk_eval_result, file_name.c_str());
+    GetVm()->DeSerialize(*lepus_chunk_opt->get(), true, lepus_chunk_eval_result,
+                         file_name.c_str());
     return true;
   }
   return false;

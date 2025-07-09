@@ -1517,7 +1517,7 @@ void VMContext::CleanClosuresInCycleReference() {
   closures_.CleanUpClosuresCreatedAfterExecuted();
 }
 
-bool VMContext::DeSerialize(const ContextBundle& bundle, bool, Value* ret,
+bool VMContext::DeSerialize(const ContextBundle& bundle, bool, Value& ret,
                             const char* file_name) {
   auto bundle_copy = static_cast<const VMContextBundle&>(bundle);
   return MoveContextBundle(bundle_copy);

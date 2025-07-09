@@ -219,7 +219,7 @@ class Context {
 
   void RegisterLynx(bool enable_signal_api);
 
-  virtual bool DeSerialize(const ContextBundle&, bool, Value* ret,
+  virtual bool DeSerialize(const ContextBundle&, bool, Value& ret,
                            const char* file_name = nullptr) = 0;
 
   virtual void RegisterCtxBuiltin(const tasm::ArchOption&) = 0;
