@@ -318,23 +318,25 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
         return false;
       }
       if (!parse_result.first.IsUnit() && !parse_result.first.IsPercent() &&
-          !parse_result.first.IsCalc()) {
+          !parse_result.first.IsCalc() && !value.IsVariable()) {
         return false;
       }
       return true;
     }
     case starlight::AnimationPropertyType::kOpacity: {
-      if (!value.IsNumber()) {
+      if (!value.IsNumber() && !value.IsVariable()) {
         return false;
       }
-      auto parse_result = value.GetValue().Number();
-      if (parse_result < 0 || parse_result > 1) {
-        return false;
+      if (value.IsNumber()) {
+        auto parse_result = value.GetValue().Number();
+        if (parse_result < 0 || parse_result > 1) {
+          return false;
+        }
       }
       return true;
     }
     case starlight::AnimationPropertyType::kFlexGrow: {
-      if (!value.IsNumber()) {
+      if (!value.IsNumber() && !value.IsVariable()) {
         return false;
       }
       return true;
@@ -345,19 +347,19 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
     case starlight::AnimationPropertyType::kBorderRightColor:
     case starlight::AnimationPropertyType::kBorderTopColor:
     case starlight::AnimationPropertyType::kBorderBottomColor: {
-      if (!value.IsNumber()) {
+      if (!value.IsNumber() && !value.IsVariable()) {
         return false;
       }
       return true;
     }
     case starlight::AnimationPropertyType::kTransform: {
-      if (!value.IsArray()) {
+      if (!value.IsArray() && !value.IsVariable()) {
         return false;
       }
       return true;
     }
     case starlight::AnimationPropertyType::kFilter: {
-      if (!value.IsArray()) {
+      if (!value.IsArray() && !value.IsVariable()) {
         return false;
       }
       return true;
