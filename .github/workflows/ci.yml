@@ -56,7 +56,7 @@ jobs:
       - name: Run api check
         run: |
           source tools/envsetup.sh
-          python3 tools_shared/git_lynx.py check --checkers api-check
+          python3 tools_shared/git_lynx.py check --checkers api-check --all
       - name: Run gn relative path check
         run: |
           source tools/envsetup.sh
