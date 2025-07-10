@@ -16,6 +16,7 @@ namespace lepus {
 class RefCountedBase : public fml::RefCountedThreadSafeStorage {
  public:
   void ReleaseSelf() const override { delete this; }
+  virtual void visitor(void* rt, void* mark_func, uint64_t trace_tool) {}
   ~RefCountedBase() override = default;
 
   virtual bool IsConst() const { return false; }

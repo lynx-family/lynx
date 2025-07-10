@@ -15,6 +15,7 @@
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/ui_component/list/list_container.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
+#include "core/runtime/vm/lepus/jsvalue_helper.h"
 
 namespace lynx {
 namespace tasm {
@@ -71,6 +72,17 @@ class ListElement : public FiberElement,
       bool clone_resolved_props) const override {
     return fml::AdoptRef<FiberElement>(
         new ListElement(*this, clone_resolved_props));
+  }
+  void visitor(void* rt, void* func, uint64_t trace_tool) override {
+    LEPUSRuntime* runtime = reinterpret_cast<LEPUSRuntime*>(rt);
+    LEPUS_MarkFunc* mark_func = reinterpret_cast<LEPUS_MarkFunc*>(func);
+    LEPUSValue v = WRAP_AS_JS_VALUE(component_at_index_.value());
+    mark_func(runtime, v, trace_tool);
+    v = WRAP_AS_JS_VALUE(component_at_indexes_.value());
+    mark_func(runtime, v, trace_tool);
+    v = WRAP_AS_JS_VALUE(enqueue_component_.value());
+    mark_func(runtime, v, trace_tool);
+    FiberElement::visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
   }
 
   ~ListElement() override = default;

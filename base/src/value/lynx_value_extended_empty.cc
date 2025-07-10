@@ -137,6 +137,12 @@ lynx_api_status lynx_value_add_reference(lynx_api_env env, lynx_value value,
   return lynx_api_not_support;
 }
 
+lynx_api_status lynx_value_add_reference_weak(lynx_api_env env,
+                                              lynx_value value,
+                                              lynx_value_ref* result) {
+  return lynx_api_not_support;
+}
+
 lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
                                           lynx_value_ref src_ref,
                                           lynx_value_ref* result) {

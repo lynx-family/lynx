@@ -133,6 +133,7 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   Value(lynx_api_env env, int64_t val, int32_t tag);
   Value(lynx_api_env env, const lynx_value& value);
   Value(lynx_api_env env, lynx_value&& value);
+  void CopyWeakValue(const Value& value);
 
   inline bool IsCDate() const {
     return value_.type == lynx_value_object &&
@@ -145,6 +146,7 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   inline void DupValue() const;
   void FreeValue();
+  void ResetValueRef();
 
   inline bool IsClosure() const {
     return value_.type == lynx_value_object &&

@@ -35,6 +35,23 @@ Value::Value(const Value& value) {
   Copy(value);
 }
 
+void Value::CopyWeakValue(const Value& value) {
+  // avoid self-assignment
+  if (this == &value) {
+    return;
+  }
+  value.DupValue();
+  FreeValue();
+  if (value.IsJSValue()) {
+    env_ = value.env_;
+    if (value_.type != lynx_value_extended) {
+      value_ref_ = nullptr;
+    }
+    lynx_value_add_reference_weak(env_, value.value_, &value_ref_);
+  }
+  value_ = value.value_;
+}
+
 Value::Value(Value&& value) noexcept {
   if (value.IsJSValue()) {
     env_ = value.env_;
@@ -1207,7 +1224,12 @@ void Value::FreeValue() {
   reinterpret_cast<fml::RefCountedThreadSafeStorage*>(value_.val_ptr)
       ->Release();
 }
-
+void Value::ResetValueRef() {
+  if (IsJSValue()) {
+    lynx_value_remove_reference(env_, value_, value_ref_);
+    value_ref_ = nullptr;
+  }
+}
 double Value::Double() const {
   if (value_.type != lynx_value_double) {
     return 0;

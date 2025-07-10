@@ -16,7 +16,6 @@ extern "C" {
     .val_int64 = static_cast<int64_t>(LEPUS_VALUE_GET_INT64(val)), \
     .type = lynx_value_extended, .tag = tag                        \
   }
-
 lynx_api_status lynx_value_get_bool(lynx_api_env env, lynx_value value,
                                     bool* result);
 lynx_api_status lynx_value_get_double(lynx_api_env env, lynx_value value,
@@ -75,6 +74,9 @@ lynx_api_status lynx_value_print(lynx_api_env env, lynx_value value,
                                  lynx_value_print_callback callback);
 lynx_api_status lynx_value_add_reference(lynx_api_env env, lynx_value value,
                                          lynx_value_ref* result);
+lynx_api_status lynx_value_add_reference_weak(lynx_api_env env,
+                                              lynx_value value,
+                                              lynx_value_ref* result);
 lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
                                           lynx_value_ref src_ref,
                                           lynx_value_ref* result);

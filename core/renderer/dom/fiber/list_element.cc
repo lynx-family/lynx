@@ -238,9 +238,9 @@ void ListElement::UpdateCallbacks(const lepus::Value& component_at_index,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  component_at_index_ = component_at_index;
-  enqueue_component_ = enqueue_component;
-  component_at_indexes_ = component_at_indexes;
+  component_at_index_.CopyWeakValue(component_at_index);
+  enqueue_component_.CopyWeakValue(enqueue_component);
+  component_at_indexes_.CopyWeakValue(component_at_indexes);
 }
 
 void ListElement::NotifyListReuseNode(const fml::RefPtr<FiberElement>& child,

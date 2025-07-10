@@ -48,6 +48,13 @@ static LEPUSValue LepusRefFreeCallBack(LEPUSRuntime* rt, LEPUSValue val) {
   return LEPUS_UNDEFINED;
 }
 
+static void RefCountedObjVisitor(LEPUSRuntime* rt, void* p, uint64_t trace_tool,
+                                 int tag, LEPUS_MarkFunc* mark_func) {
+  if (tag != ValueType::Value_RefCounted) return;
+  auto* ref_counted = static_cast<lepus::RefCounted*>(p);
+  ref_counted->visitor(rt, reinterpret_cast<void*>(mark_func), trace_tool);
+}
+
 static LEPUSValue LepusReportSetConstValueError(LEPUSContext* ctx,
                                                 const LEPUSValue& obj,
                                                 LEPUSValue prop) {
@@ -273,15 +280,11 @@ static LEPUSValue LepusrefToString(LEPUSContext* ctx, LEPUSValue val) {
 static void PrintByALog(char* msg) { LOGE(msg); }
 
 LEPUSLepusRefCallbacks Context::GetLepusRefCall() {
-  return {&LepusRefFreeCallBack,
-          &LepusRefGetPropertyCallBack,
-          &LepusRefGetLengthCallBack,
-          &LepusConvertToObjectCallBack,
-          &LepusRefSetPropertyCallBack,
-          &LepusRefFreeStringCache,
-          &LepusRefDeepEqualCallBack,
-          &LepusrefToString,
-          nullptr};
+  return {&LepusRefFreeCallBack,        &LepusRefGetPropertyCallBack,
+          &LepusRefGetLengthCallBack,   &LepusConvertToObjectCallBack,
+          &LepusRefSetPropertyCallBack, &LepusRefFreeStringCache,
+          &LepusRefDeepEqualCallBack,   &LepusrefToString,
+          &RefCountedObjVisitor};
 }
 
 static void SetFuncsAndRegisterPrimJSCallbacks(LEPUSRuntime* rt) {
