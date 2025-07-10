@@ -30,7 +30,7 @@
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, DYNAMIC_COMPONENT_FETCHER_LOAD_COMPONENT, "url",
               [url UTF8String]);
-  if (sync) {
+  if (!sync) {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^() {
       [self->_component_fetcher loadDynamicComponent:url withLoadedBlock:callback];
     });
