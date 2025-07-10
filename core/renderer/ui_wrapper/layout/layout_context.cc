@@ -907,9 +907,14 @@ void LayoutContext::UpdateLayoutInfo(LayoutNode* node) {
     sticky_positions = &sticky_pos_array;
   }
 
+  const bool is_display_none =
+      sl_node->GetShouldDisplayNone() &&
+      !sl_node->GetLayoutConfigs().IsDisplayNoneQuirksMode();
+
   delegate_->OnLayoutUpdate(
       node->id(), left, top, width, height, paddings, margins, borders,
-      sticky_positions, sl_node->GetCSSStyle()->GetMaxHeight().GetRawValue());
+      sticky_positions, sl_node->GetCSSStyle()->GetMaxHeight().GetRawValue(),
+      is_display_none);
 
   if (node->slnode()->GetSLMeasureFunc()) {
     // Dispatch OnLayoutAfter to those nodes that have custom measure

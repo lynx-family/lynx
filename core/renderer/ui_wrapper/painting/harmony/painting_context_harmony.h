@@ -67,8 +67,8 @@ class PaintingContextHarmony : public PaintingCtxPlatformImpl {
   void UpdateLayout(int tag, float x, float y, float width, float height,
                     const float* paddings, const float* margins,
                     const float* borders, const float* bounds,
-                    const float* sticky, float max_height,
-                    uint32_t node_index) override;
+                    const float* sticky, float max_height, uint32_t node_index,
+                    bool is_display_none = false) override;
   void SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) override;
   void Flush() override;
   void HandleValidate(int tag) override;

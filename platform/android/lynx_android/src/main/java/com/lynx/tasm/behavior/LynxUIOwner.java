@@ -360,6 +360,16 @@ public class LynxUIOwner {
       int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
       int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky,
       float maxHeight, int nodeIndex) {
+    updateLayout(tag, x, y, width, height, paddingLeft, paddingTop, paddingRight, paddingBottom,
+        marginLeft, marginTop, marginRight, marginBottom, borderLeftWidth, borderTopWidth,
+        borderRightWidth, borderBottomWidth, bound, sticky, maxHeight, nodeIndex, false);
+  }
+
+  public void updateLayout(int tag, int x, int y, int width, int height, int paddingLeft,
+      int paddingTop, int paddingRight, int paddingBottom, int marginLeft, int marginTop,
+      int marginRight, int marginBottom, int borderLeftWidth, int borderTopWidth,
+      int borderRightWidth, int borderBottomWidth, final Rect bound, float[] sticky,
+      float maxHeight, int nodeIndex, boolean isDisplayNone) {
     LynxBaseUI ui = mUIHolder.get(tag);
     if (ui == null) {
       LynxError error =
@@ -412,6 +422,7 @@ public class LynxUIOwner {
 
     ui.updateSticky(sticky);
     ui.updateMaxHeight(maxHeight);
+    ui.updateDisplayNoneState(isDisplayNone);
     insertA11yMutationEvent(MUTATION_ACTION_UPDATE, ui);
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);

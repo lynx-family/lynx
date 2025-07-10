@@ -184,6 +184,12 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
   }
 
+  @Override
+  public void updateDisplayNoneState(boolean isDisplayNone) {
+    super.updateDisplayNoneState(isDisplayNone);
+    mView.setVisibility(getVisibility() ? View.VISIBLE : View.INVISIBLE);
+  }
+
   // Currently, only enable zIndex prior to API 21 for supporting translateZ
   protected static final boolean ENABLE_ZINDEX =
       Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP;
@@ -543,12 +549,14 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       // when style of element is change, it doesn't trigger "onLayoutUpdated", so we need to
       // setVisibility in force
       viewVisibility = View.VISIBLE;
-      mView.setVisibility(View.VISIBLE);
     } else if (visibility == StyleConstants.VISIBILITY_HIDDEN) {
       mSetVisibleByCSS = false;
       viewVisibility = View.INVISIBLE;
-      mView.setVisibility(View.INVISIBLE);
     }
+
+    mView.setVisibility(mIsDisplayNone ? View.INVISIBLE
+            : mSetVisibleByCSS         ? View.VISIBLE
+                                       : View.INVISIBLE);
 
     if (getParent() instanceof UIShadowProxy) {
       ((UIShadowProxy) getParent()).setVisibilityForView(viewVisibility);
@@ -1071,7 +1079,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @Override
   public boolean getVisibility() {
-    return mSetVisibleByCSS;
+    return mIsDisplayNone ? false : mSetVisibleByCSS;
   }
 
   @Override

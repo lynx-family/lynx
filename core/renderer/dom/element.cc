@@ -324,6 +324,16 @@ void Element::UpdateLayout(float left, float top, float width, float height,
                            const std::array<float, 4>& borders,
                            const std::array<float, 4>* sticky_positions,
                            float max_height) {
+  UpdateLayout(left, top, width, height, paddings, margins, borders,
+               sticky_positions, max_height, false);
+}
+
+void Element::UpdateLayout(float left, float top, float width, float height,
+                           const std::array<float, 4>& paddings,
+                           const std::array<float, 4>& margins,
+                           const std::array<float, 4>& borders,
+                           const std::array<float, 4>* sticky_positions,
+                           float max_height, bool is_display_none) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_UPDATE_LAYOUT);
   // TODO: only leaf node need to update border padding
   frame_changed_ = true;
@@ -334,6 +344,7 @@ void Element::UpdateLayout(float left, float top, float width, float height,
   paddings_ = paddings;
   margins_ = margins;
   borders_ = borders;
+  is_display_none_ = is_display_none;
   if (sticky_positions != nullptr) {
     *sticky_positions_ = *sticky_positions;
   }
