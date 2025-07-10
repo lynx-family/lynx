@@ -9,6 +9,7 @@ import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
 import com.lynx.devtoolwrapper.ScreenshotMode;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.behavior.ILynxUIRenderer;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 
@@ -38,27 +39,26 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
     });
   }
 
+  private ILynxUIRenderer getLynxUIRenderer() {
+    LynxTemplateRender render = mRender.get();
+    return render != null ? render.lynxUIRenderer() : null;
+  }
+
   // for devtool real-time screencast
   @Override
   public void takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode) {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        lynxView.lynxUIRenderer().takeScreenshot(handler, screenShotMode);
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      render.takeScreenshot(handler, screenShotMode);
     }
   }
 
   // for devtool scrollIntoViewFromUI
   @Override
   public void scrollIntoViewFromUI(int nodeId) {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        lynxView.lynxUIRenderer().scrollIntoViewFromUI(nodeId);
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      render.scrollIntoViewFromUI(nodeId);
     }
   }
 
@@ -72,12 +72,9 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
    */
   @Override
   public String getActualScreenshotMode() {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        return lynxView.lynxUIRenderer().getActualScreenshotMode();
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      return render.getActualScreenshotMode();
     }
     // The default screenshot mode is full screen.
     return ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN;
@@ -86,12 +83,9 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
   // for devtool getNodeForLocation
   @Override
   public int getNodeForLocation(float x, float y, String mode) {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        return lynxView.lynxUIRenderer().getNodeForLocation(x, y, mode);
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      return render.getNodeForLocation(x, y, mode);
     }
     return 0;
   }
@@ -100,24 +94,18 @@ public class LynxDevToolDelegateImpl implements IDevToolDelegate {
   // of a transformed or non-transformed view in Android
   @Override
   public float[] getTransformValue(int id, float[] padBorderMarginLayout) {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        return lynxView.lynxUIRenderer().getTransformValue(id, padBorderMarginLayout);
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      return render.getTransformValue(id, padBorderMarginLayout);
     }
     return new float[0];
   }
 
   @Override
   public Bitmap getBitmapOfView() {
-    LynxTemplateRender render = mRender.get();
-    LynxView lynxView = render.mLynxView;
-    if (lynxView != null) {
-      if (lynxView.lynxUIRenderer() != null) {
-        return lynxView.lynxUIRenderer().getBitmapOfView();
-      }
+    ILynxUIRenderer render = getLynxUIRenderer();
+    if (render != null) {
+      return render.getBitmapOfView();
     }
     return null;
   }
