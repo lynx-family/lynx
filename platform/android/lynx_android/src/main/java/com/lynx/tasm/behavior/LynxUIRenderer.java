@@ -656,7 +656,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     ArrayList<Dialog> array = DevToolOverlayDelegate.getInstance().getGlobalOverlayNGView();
     ArrayList<View> overlayDecoderView = new ArrayList<View>();
     if (array != null) {
-      for (int i = 0, size = array.size(); i < size; i++) {
+      for (int i = array.size() - 1; i >= 0; i--) {
         overlayDecoderView.add(array.get(i).getWindow().getDecorView());
       }
     }
@@ -755,7 +755,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (mode.equals(ScreenshotMode.SCREEN_SHOT_MODE_FULL_SCREEN)) {
       ArrayList<Integer> overlays = DevToolOverlayDelegate.getInstance().getAllVisibleOverlaySign();
       if (overlays != null) {
-        for (int i = overlays.size() - 1; i >= 0; i--) {
+        for (int i = 0, size = overlays.size(); i < size; i++) {
           node_id = findNodeIdForLocationFromUI(x, y, overlays.get(i), mode);
           // overlay node's size is window size and it has one and only
           // one child if id == overlays[i], it means point is not in child so
