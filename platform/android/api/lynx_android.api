@@ -1989,6 +1989,14 @@ public class com::lynx::jsbridge::network::HttpResponse :  {
   public void com.lynx.jsbridge.network.HttpResponse.setStatusCode(int statusCode);
 }
 
+public class com::lynx::jsbridge::network::HttpStreamingDelegate :  {
+  public com.lynx.jsbridge.network.HttpStreamingDelegate.HttpStreamingDelegate(String streamingId, LynxFetchModuleEventSender sender);
+  public void com.lynx.jsbridge.network.HttpStreamingDelegate.onData(byte[] bytes);
+  public void com.lynx.jsbridge.network.HttpStreamingDelegate.onEnd();
+  public void com.lynx.jsbridge.network.HttpStreamingDelegate.onError(String error);
+  public void com.lynx.jsbridge.network.HttpStreamingDelegate.streamingBody(InputStream in);
+}
+
 public class com::lynx::tasm::utils::I18nUtil :  {
   public static I18nUtil com.lynx.tasm.utils.I18nUtil.getInstance();
   public boolean com.lynx.tasm.utils.I18nUtil.isRTL(Context context);
@@ -2128,6 +2136,7 @@ public interface com::lynx::tasm::service::ILynxExtensionService {
 
 public interface com::lynx::tasm::service::ILynxHttpService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxHttpService.getServiceClass();
+  public void com.lynx.tasm.service.ILynxHttpService.requestStreaming(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback, @NonNull HttpStreamingDelegate delegate);
   public void com.lynx.tasm.service.ILynxHttpService.request(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback);
 }
 
@@ -4720,8 +4729,15 @@ public class com::lynx::tasm::featurecount::LynxFeatureCounter :  {
 
 public class com::lynx::jsbridge::LynxFetchModule : com.lynx.jsbridge.LynxModule {
   public final String com.lynx.jsbridge.LynxFetchModule.NAME NAME;
-  public com.lynx.jsbridge.LynxFetchModule.LynxFetchModule(Context context);
+  public com.lynx.jsbridge.LynxFetchModule.LynxFetchModule(Context context, Object sender);
   public void com.lynx.jsbridge.LynxFetchModule.fetch(final ReadableMap request, final Callback resolve, final Callback reject);
+}
+
+public class com::lynx::jsbridge::network::LynxFetchModuleEventSender :  {
+  public com.lynx.jsbridge.network.LynxFetchModuleEventSender.LynxFetchModuleEventSender();
+  public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.setWeakContext(LynxContext context);
+  public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.setWeakRuntime(LynxBackgroundRuntime runtime);
+  public void com.lynx.jsbridge.network.LynxFetchModuleEventSender.sendGlobalEvent(String name, JavaOnlyArray params);
 }
 
 public class com::lynx::tasm::behavior::ui::LynxFlattenUI : com.lynx.tasm.behavior.ui.LynxBaseUI {

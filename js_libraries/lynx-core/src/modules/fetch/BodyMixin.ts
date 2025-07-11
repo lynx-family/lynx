@@ -6,10 +6,12 @@ import { TextDecoder } from './TextDecoder';
 import { TextEncoder } from './TextEncoder';
 export class BodyMixin {
   _arrayBuffer: ArrayBuffer;
+  _bodyStream: ReadableStream;
   _bodyUsed: boolean;
 
   constructor() {
     this._arrayBuffer = new ArrayBuffer(0);
+    this._bodyStream = null;
     this._bodyUsed = false;
   }
 
@@ -29,11 +31,10 @@ export class BodyMixin {
     return src.slice(0);
   }
 
-  protected setBody(body?: BodyInit | BodyMixin) {
+  protected setBody(body?: BodyInit | BodyMixin | ReadableStream) {
     if (body instanceof BodyMixin) {
-      if (body._bodyUsed) {
-        // TODO(huzhanbo.luc): throw a error if the break change is ok.
-        return;
+      if (body._bodyUsed || body._bodyStream) {
+        throw new Error('body used, or try to copy body stream');
       }
       this._arrayBuffer = this.cloneArrayBuffer(body._arrayBuffer);
     } else {
@@ -48,11 +49,23 @@ export class BodyMixin {
       } else if (body) {
         this._arrayBuffer = new TextEncoder().encode(body.toString()).buffer;
       }
+
+      if (globalThis.ReadableStream && body instanceof ReadableStream) {
+        this._bodyStream = body;
+      }
     }
   }
 
   public arrayBuffer(): Promise<ArrayBuffer> {
     return Promise.resolve(this.safeUseBody((body) => body));
+  }
+
+  public get body() {
+    if (this._bodyUsed) {
+      throw new Error('body used');
+    }
+    this._bodyUsed = true;
+    return this._bodyStream;
   }
 
   public text(): Promise<string> {

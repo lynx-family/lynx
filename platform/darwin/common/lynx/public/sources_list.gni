@@ -103,6 +103,7 @@ common_lynx_public_headers =
                     "event/LynxTouchEvent.h",
                     "LynxLoadMeta.h",
                     "LynxHttpRequest.h",
+                    "LynxHttpStreamingDelegate.h",
                     "LynxConfig.h",
                     "LynxConfigInfo.h",
                     "base/LynxComponentRegistry.h",

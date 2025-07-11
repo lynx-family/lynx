@@ -36,6 +36,7 @@ import com.lynx.jsbridge.LynxSetModule;
 import com.lynx.jsbridge.LynxTextInfoModule;
 import com.lynx.jsbridge.LynxUIMethodModule;
 import com.lynx.jsbridge.RuntimeLifecycleListener;
+import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
@@ -857,7 +858,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mModuleFactory.registerModule(LynxSetModule.NAME, LynxSetModule.class, null);
       mModuleFactory.registerModule(LynxResourceModule.NAME, LynxResourceModule.class, null);
       mModuleFactory.registerModule(LynxExposureModule.NAME, LynxExposureModule.class, null);
-      mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, null);
+      LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
+      eventSender.setWeakContext(mLynxContext);
+      mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
 
       mResourceLoader = new LynxResourceLoader(mLynxRuntimeOptions, mLynxViewBuilder.fetcher, this,
           mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());

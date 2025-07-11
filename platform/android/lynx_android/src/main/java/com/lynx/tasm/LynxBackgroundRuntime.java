@@ -13,6 +13,7 @@ import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxFetchModule;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.jsbridge.RuntimeLifecycleListener;
+import com.lynx.jsbridge.network.LynxFetchModuleEventSender;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.CleanupReference;
@@ -86,7 +87,9 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     mState = STATE_START;
     mOptions = options;
     mModuleFactory = new LynxModuleFactory(context);
-    mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, null);
+    LynxFetchModuleEventSender eventSender = new LynxFetchModuleEventSender();
+    eventSender.setWeakRuntime(this);
+    mModuleFactory.registerModule(LynxFetchModule.NAME, LynxFetchModule.class, eventSender);
     mModuleFactory.addModuleParamWrapper(options.getWrappers());
 
     if (LynxEnv.inst().isLynxDebugEnabled()) {

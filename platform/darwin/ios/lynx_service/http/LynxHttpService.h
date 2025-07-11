@@ -7,7 +7,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxHttpService : NSObject <LynxServiceHttpProtocol>
+@interface LynxHttpService : NSObject <LynxServiceHttpProtocol, NSURLSessionDelegate>
 
 @end
 

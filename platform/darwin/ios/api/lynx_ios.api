@@ -1552,6 +1552,11 @@ public class LynxFeatureCounter : NSObject {
 public class LynxFetchModule : NSObject, <LynxModule> {
 }
 
+public class LynxFetchModuleEventSender : NSObject {
+  public id LynxFetchModuleEventSender::eventSender eventSender;
+  public void LynxFetchModuleEventSender::sendGlobalEvent:withParams:(NSString *name,[withParams] nullable NSArray *params);
+}
+
 public class LynxFilterUtil : NSObject {
   public id LynxFilterUtil::getFilterWithType:filterAmount:(LynxFilterType type,[filterAmount] CGFloat filter_amount);
 }
@@ -1923,6 +1928,14 @@ public class LynxHttpResponse : NSObject {
   public NSString* LynxHttpResponse::url url;
   public NSData* LynxHttpResponse::httpBody httpBody;
   public NSDictionary<NSString *, NSObject *>* LynxHttpResponse::customInfo customInfo;
+}
+
+public class LynxHttpStreamingDelegate : NSObject {
+  public instancetype LynxHttpStreamingDelegate::initWithParam:withStreamingId:(LynxFetchModuleEventSender *sender,[withStreamingId] NSString *streamingId);
+  public void LynxHttpStreamingDelegate::processChunkedData:withData:(NSMutableData *buffer,[withData] NSData *data);
+  public void LynxHttpStreamingDelegate::onData:(NSData *bytes);
+  public void LynxHttpStreamingDelegate::onEnd();
+  public void LynxHttpStreamingDelegate::onError:(NSString *error);
 }
 
 public class LynxImageBlurUtils : NSObject {
@@ -2974,6 +2987,7 @@ public protocol LynxServiceExtensionProtocol-p : <LynxServiceProtocol> {
 
 public protocol LynxServiceHttpProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceHttpProtocol-p::invokeWithRequest:callback:(LynxHttpRequest *request,[callback] LynxHttpCallback callback);
+  public void LynxServiceHttpProtocol-p::invokeStreamingWithRequest:callback:withDelegate:(LynxHttpRequest *request,[callback] LynxHttpCallback callback,[withDelegate] LynxHttpStreamingDelegate *delegate);
   public BOOL LynxServiceHttpProtocol-p::setHttpInterceptor:(id< LynxHttpInterceptor > interceptor);
 }
 

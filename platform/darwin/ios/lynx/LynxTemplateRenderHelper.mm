@@ -18,6 +18,7 @@
 #import <Lynx/LynxExposureModule.h>
 #import <Lynx/LynxFetchModule.h>
 #import <Lynx/LynxGroup+Internal.h>
+#import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxIntersectionObserverModule.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
@@ -337,7 +338,9 @@
   module_factory->registerModule(LynxResourceModule.class);
   module_factory->registerModule(LynxAccessibilityModule.class);
   module_factory->registerModule(LynxExposureModule.class);
-  module_factory->registerModule(LynxFetchModule.class);
+  LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
+  eventSender.eventSender = _context;
+  module_factory->registerModule(LynxFetchModule.class, eventSender);
   module_factory->registerModule(LynxSetModule.class);
   [_devTool registerModule:self];
 }

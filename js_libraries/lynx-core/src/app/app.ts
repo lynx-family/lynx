@@ -44,7 +44,11 @@ import LynxJSBI from '../common/jsbi';
 import { BaseAppSingletonData } from '../standalone/StandaloneApp';
 import { CachedFunctionProxy } from '../util/cachedFunctionProxy';
 import { getPromiseMaybePolyfill } from '../util/setup-promise';
-import { createResponseClass, createRequestClass } from '../modules/fetch';
+import {
+  createResponseClass,
+  createRequestClass,
+  createReadableStreamClass,
+} from '../modules/fetch';
 import { MessageEventType } from '../lynx';
 import { TraceEventDef } from '../util/TraceEventDef';
 
@@ -92,8 +96,12 @@ export abstract class BaseApp<
   _createRequestClass: (
     Promise: PromiseConstructor
   ) => ReturnType<typeof createRequestClass>;
+  _createReadableStreamClass: (
+    Promise: PromiseConstructor
+  ) => ReturnType<typeof createReadableStreamClass>;
   _ResponseClass: ReturnType<typeof createResponseClass>;
   _RequestClass: ReturnType<typeof createRequestClass>;
+  _ReadableStreamClass: ReturnType<typeof createReadableStreamClass>;
 
   dataTypeSet = new Set([
     'string',
@@ -269,14 +277,20 @@ export abstract class BaseApp<
   setupFetchAPI(Promise: PromiseConstructor) {
     this._createResponseClass = createResponseClass;
     this._createRequestClass = createRequestClass;
+    this._createReadableStreamClass = createReadableStreamClass;
     this._RequestClass = nativeGlobal.Request ?? createRequestClass(Promise);
     this._ResponseClass = nativeGlobal.Response ?? createResponseClass(Promise);
+    this._ReadableStreamClass =
+      nativeGlobal.ReadableStream ?? createReadableStreamClass(Promise);
 
     if (!nativeGlobal.Request) {
       nativeGlobal.Request = this._RequestClass;
     }
     if (!nativeGlobal.Response) {
       nativeGlobal.Response = this._ResponseClass;
+    }
+    if (!nativeGlobal.ReadableStream) {
+      nativeGlobal.ReadableStream = this._ReadableStreamClass;
     }
   }
 

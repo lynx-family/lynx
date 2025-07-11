@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <LynxService/LynxHttpService.h>
+#import <LynxService/LynxNSUrlSessionDelegate.h>
 
 @LynxServiceRegister(LynxHttpService) @implementation LynxHttpService
 
@@ -21,7 +22,7 @@ static const NSInteger SDK_ERROR_STATUS_CODE = 499;
   return DEFAULT_LYNX_SERVICE;
 }
 
-- (void)invokeWithRequest:(LynxHttpRequest *)request callback:(LynxHttpCallback)callback {
++ (NSMutableURLRequest *)convertToNSRequest:(LynxHttpRequest *)request {
   NSURL *url = [NSURL URLWithString:request.url];
 
   NSMutableURLRequest *nsRequest = [NSMutableURLRequest requestWithURL:url];
@@ -30,10 +31,33 @@ static const NSInteger SDK_ERROR_STATUS_CODE = 499;
     [nsRequest setValue:request.httpHeaders[headerKey] forHTTPHeaderField:headerKey];
   }
   nsRequest.HTTPBody = request.httpBody;
+  return nsRequest;
+}
 
+- (void)invokeStreamingWithRequest:(LynxHttpRequest *)request
+                          callback:(LynxHttpCallback)callback
+                      withDelegate:(LynxHttpStreamingDelegate *)delegate {
+  static NSOperationQueue *delegateQueue;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    delegateQueue = [[NSOperationQueue alloc] init];
+  });
+
+  LynxNSUrlSessionDelegate *receiver = [[LynxNSUrlSessionDelegate alloc] initWithDelegate:delegate
+                                                                             withCallback:callback];
+  NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
+  NSURLSession *session = [NSURLSession sessionWithConfiguration:config
+                                                        delegate:receiver
+                                                   delegateQueue:delegateQueue];
+  NSURLSessionDataTask *dataTask =
+      [session dataTaskWithRequest:[LynxHttpService convertToNSRequest:request]];
+  [dataTask resume];
+}
+
+- (void)invokeWithRequest:(LynxHttpRequest *)request callback:(LynxHttpCallback)callback {
   NSURLSession *session = [NSURLSession sharedSession];
   NSURLSessionDataTask *dataTask =
-      [session dataTaskWithRequest:nsRequest
+      [session dataTaskWithRequest:[LynxHttpService convertToNSRequest:request]
                  completionHandler:^(NSData *_Nullable data, NSURLResponse *_Nullable response,
                                      NSError *_Nullable error) {
                    LynxHttpResponse *resp = [[LynxHttpResponse alloc] init];
