@@ -8,6 +8,7 @@
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxEventReporter.h>
 #import <Lynx/LynxFontFaceManager.h>
+#import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxLoadMeta.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxPerformanceEntryConverter.h>
@@ -554,7 +555,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   module_factory->registerModule(LynxResourceModule.class);
   module_factory->registerModule(LynxAccessibilityModule.class);
   module_factory->registerModule(LynxExposureModule.class);
-  module_factory->registerModule(LynxFetchModule.class);
+  LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
+  eventSender.eventSender = _context;
+  module_factory->registerModule(LynxFetchModule.class, eventSender);
   module_factory->registerModule(LynxSetModule.class);
   [_devTool registerModule:self];
 }

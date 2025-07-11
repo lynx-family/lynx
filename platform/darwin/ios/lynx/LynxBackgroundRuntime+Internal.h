@@ -7,6 +7,7 @@
 
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/runtime/bindings/jsi/modules/ios/module_factory_darwin.h"
+#include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/runtime_standalone_helper.h"
 
 @interface LynxBackgroundRuntimeOptions ()

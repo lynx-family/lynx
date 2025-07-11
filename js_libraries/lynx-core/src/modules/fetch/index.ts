@@ -6,6 +6,7 @@ export * from './BodyMixin';
 export * from './Headers';
 export * from './Request';
 export * from './Response';
+export * from './ReadableStream';
 export * from './URL';
 export * from './UrlSearchParamsPolyfill';
 export * from './AbortController';

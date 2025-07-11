@@ -3,14 +3,18 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxHttpRequest.h>
+#import <Lynx/LynxHttpStreamingDelegate.h>
 #import <Lynx/LynxServiceProtocol.h>
 
 @protocol LynxHttpInterceptor
+// TODO(huzhanbo.luc): let interceptRequest support streaming response by chunk
+
 - (LynxHttpResponse*)interceptRequest:(LynxHttpRequest*)request;
 
 - (void)onRequest:(LynxHttpRequest*)request;
 
 - (void)onResponse:(LynxHttpResponse*)response withRequest:(LynxHttpRequest*)request;
+
 @end
 
 typedef void (^LynxHttpCallback)(LynxHttpResponse* result);
@@ -18,6 +22,10 @@ typedef void (^LynxHttpCallback)(LynxHttpResponse* result);
 @protocol LynxServiceHttpProtocol <LynxServiceProtocol>
 
 - (void)invokeWithRequest:(LynxHttpRequest*)request callback:(LynxHttpCallback)callback;
+
+- (void)invokeStreamingWithRequest:(LynxHttpRequest*)request
+                          callback:(LynxHttpCallback)callback
+                      withDelegate:(LynxHttpStreamingDelegate*)delegate;
 
 - (BOOL)setHttpInterceptor:(id<LynxHttpInterceptor>)interceptor;
 

@@ -398,8 +398,9 @@ export class Lynx {
         origin: this.getNativeApp().__pageUrl,
         headers: Object.fromEntries(request.headers.entries()),
         body: request._arrayBuffer,
-        lynx: request.lynxExtension,
+        lynxExtension: request.lynxExtension,
       };
+      const useStreaming = request.lynxExtension['useStreaming'];
       this.getApp().NativeModules.LynxFetchModule.fetch(
         fetchArg,
         (response: any) => {
@@ -407,10 +408,29 @@ export class Lynx {
             return;
           }
           try {
+            const streamingBodyReceiver = new (this.getApp()._ReadableStreamClass)();
+
             const resp = new (this.getApp()._ResponseClass)(
-              response.body,
+              useStreaming ? streamingBodyReceiver : response.body,
               response
             );
+
+            if (useStreaming) {
+              const id = resp.lynxExtension['streamingId'];
+              this.getApp().GlobalEventEmitter.addListener(
+                id,
+                (result: any) => {
+                  const event = result.event;
+                  if (event === 'onData') {
+                    streamingBodyReceiver.onData(result.data);
+                  } else if (event === 'onEnd') {
+                    streamingBodyReceiver.onEnd();
+                  } else if (event === 'onError') {
+                    streamingBodyReceiver.onError(result.error);
+                  }
+                }
+              );
+            }
             resolve(resp);
           } catch (_) {
             // Catches any exception that might lead to a failure in

@@ -7,6 +7,7 @@ package com.lynx.service.http
 import androidx.annotation.Keep
 import com.lynx.jsbridge.network.HttpRequest
 import com.lynx.jsbridge.network.HttpResponse
+import com.lynx.jsbridge.network.HttpStreamingDelegate
 import com.lynx.react.bridge.JavaOnlyMap
 import com.lynx.tasm.service.ILynxHttpService
 import com.lynx.tasm.service.LynxHttpRequestCallback
@@ -25,7 +26,7 @@ object LynxHttpService : ILynxHttpService {
     private const val CODE_FAILED_INTERNALLY = 499
     private val client = OkHttpClient()
 
-    override fun request(request: HttpRequest, callback: LynxHttpRequestCallback) {
+    private fun requestInner(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate?) {
         val okBody = if ("GET".equals(request.httpMethod, true)) null else request.httpBody.toRequestBody()
 
         val okRequest = Request.Builder()
@@ -54,10 +55,32 @@ object LynxHttpService : ILynxHttpService {
                         it.statusCode = response.code
                         it.statusText = response.message
                         it.httpHeaders = httpHeaders
-                        it.httpBody = response.body?.bytes() ?: byteArrayOf()
+                        if (delegate == null) {
+                            it.httpBody = response.body?.bytes() ?: byteArrayOf()
+                        } 
                     })
+
+                    if (delegate != null) {
+                        response.body?.let { body ->
+                            body.byteStream().use { inputStream ->
+                                delegate.streamingBody(inputStream);
+                                delegate.onEnd()
+                            }
+                        } ?: run {
+                            delegate.onEnd()
+                        }
+                    }
                 }
             }
         })
+    }
+
+
+    override fun request(request: HttpRequest, callback: LynxHttpRequestCallback) {
+        requestInner(request, callback, null);
+    }
+
+    override fun requestStreaming(request: HttpRequest, callback: LynxHttpRequestCallback, delegate: HttpStreamingDelegate) {
+        requestInner(request, callback, delegate);
     }
 }

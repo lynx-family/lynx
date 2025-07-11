@@ -6,6 +6,7 @@ package com.lynx.tasm.service;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import com.lynx.jsbridge.network.HttpRequest;
+import com.lynx.jsbridge.network.HttpStreamingDelegate;
 
 @Keep
 public interface ILynxHttpService extends IServiceProvider {
@@ -16,6 +17,9 @@ public interface ILynxHttpService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxHttpService.class;
   }
+
+  void requestStreaming(@NonNull HttpRequest request,
+      @NonNull final LynxHttpRequestCallback callback, @NonNull HttpStreamingDelegate delegate);
 
   void request(@NonNull HttpRequest request, @NonNull final LynxHttpRequestCallback callback);
 }
