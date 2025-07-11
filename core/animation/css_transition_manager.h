@@ -38,6 +38,8 @@ class CSSTransitionManager : public CSSKeyframeManager {
 
   bool NeedsTransition(tasm::CSSPropertyID css_id);
 
+  void ClearPreviousEndValue(tasm::CSSPropertyID css_id);
+
  private:
   void TryToStopTransitionAnimator(
       starlight::AnimationPropertyType property_type);
@@ -58,6 +60,7 @@ class CSSTransitionManager : public CSSKeyframeManager {
   std::unordered_map<unsigned int, starlight::AnimationData> transition_data_;
   std::unordered_map<std::string, tasm::CSSKeyframesContent> keyframe_tokens_;
   std::unordered_set<unsigned int> property_types_;
+  tasm::StyleMap previous_end_values_;
 };
 
 }  // namespace animation

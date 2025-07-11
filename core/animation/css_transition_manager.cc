@@ -213,10 +213,12 @@ bool CSSTransitionManager::ConsumeCSSProperty(tasm::CSSPropertyID css_id,
     const auto& configs = element()->element_manager()->GetCSSParserConfigs();
     if (!IsValueValid(property_type, start_value_internal, configs) ||
         !IsValueValid(property_type, end_value_internal, configs) ||
-        start_value_internal == end_value_internal) {
+        start_value_internal == end_value_internal ||
+        end_value_internal == previous_end_values_[css_id]) {
       TryToStopTransitionAnimator(property_type);
       return false;
     }
+    previous_end_values_[css_id] = end_value_internal;
 
     // 2. construct keyframes Map
     auto start_shared_style_map = std::make_shared<tasm::StyleMap>();
@@ -390,6 +392,10 @@ bool CSSTransitionManager::IsShouldTransitionType(
     starlight::AnimationPropertyType type) {
   return property_types_.find(static_cast<unsigned int>(type)) !=
          property_types_.end();
+}
+
+void CSSTransitionManager::ClearPreviousEndValue(tasm::CSSPropertyID css_id) {
+  previous_end_values_.erase(css_id);
 }
 
 }  // namespace animation
