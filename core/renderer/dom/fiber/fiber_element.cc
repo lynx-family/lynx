@@ -1673,7 +1673,10 @@ void FiberElement::ParallelFlushAsRoot() {
 }
 
 void FiberElement::DidParallelFlushAsRoot(PerfStatistic &stats) {
-  if (stats.enable_report_stats_) {
+  // FIXME(wangyifei.20010605) There is a problem with the current reporting
+  // logic and it needs to be temporarily avoided.
+  bool temporary_avoid_report = false;
+  if (temporary_avoid_report && stats.enable_report_stats_) {
     uint64_t total_processing_end = base::CurrentTimeMicroseconds();
     report::EventTracker::OnEvent(
         [perf_stats = std::move(stats),
