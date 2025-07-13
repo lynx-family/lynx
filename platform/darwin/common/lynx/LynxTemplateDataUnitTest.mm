@@ -381,4 +381,22 @@
   XCTAssertTrue(*value == [data getDataForJSThread]);
 }
 
+- (void)testRemoveData {
+  LynxTemplateData* data = [[LynxTemplateData alloc] initWithDictionary:@{}];
+  [data updateDouble:1 forKey:@"key1"];
+  [data updateDouble:2 forKey:@"key2"];
+  [data updateDouble:3.0 forKey:@"key3"];
+  [data updateDouble:4.0 forKey:@"key4"];
+  [data remove:@"key4"];
+
+  auto* value = LynxGetLepusValueFromTemplateData(data);
+  XCTAssertEqual(*value, [data getDataForJSThread]);
+
+  NSDictionary* dict = [data dictionary];
+  XCTAssertFalse([[dict allKeys] containsObject:@"key4"]);
+  XCTAssertTrue([[dict allKeys] containsObject:@"key1"]);
+  XCTAssertTrue([[dict allKeys] containsObject:@"key2"]);
+  XCTAssertTrue([[dict allKeys] containsObject:@"key3"]);
+}
+
 @end

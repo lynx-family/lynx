@@ -26,6 +26,7 @@ import org.json.JSONObject;
 
 /**
  * @apidoc
+ *
  * @brief TemplateData is a data structure provided by Lynx.
  * It is used to store the data types accepted by Lynx at runtime
  * and can be constructed using either a string or a map type.
@@ -37,26 +38,41 @@ public final class TemplateData {
    * Record Template Data Update Actions;
    */
   static class UpdateAction {
-    final private ActionType mType;
-
+    private ActionType mType;
     private ByteBuffer mBuffer = null;
     private String mJsonString = null;
+    private String mKey = null;
 
     private long mNativeData = 0;
 
-    UpdateAction(ByteBuffer buffer) {
-      mType = ActionType.BYTE_BUFFER;
-      mBuffer = buffer;
+    private UpdateAction() {}
+
+    static UpdateAction buildBufferAction(ByteBuffer buffer) {
+      UpdateAction action = new UpdateAction();
+      action.mType = ActionType.BYTE_BUFFER;
+      action.mBuffer = buffer;
+      return action;
     }
 
-    UpdateAction(String json) {
-      mType = ActionType.STRING_DATA;
-      mJsonString = json;
+    static UpdateAction buildStringAction(String json) {
+      UpdateAction action = new UpdateAction();
+      action.mType = ActionType.STRING_DATA;
+      action.mJsonString = json;
+      return action;
     }
 
-    UpdateAction(long nativeData) {
-      mType = ActionType.NATIVE_DATA;
-      mNativeData = nativeData;
+    static UpdateAction buildNativeAction(long nativeData) {
+      UpdateAction action = new UpdateAction();
+      action.mType = ActionType.NATIVE_DATA;
+      action.mNativeData = nativeData;
+      return action;
+    }
+
+    static UpdateAction buildRemoveAction(String key) {
+      UpdateAction action = new UpdateAction();
+      action.mType = ActionType.REMOVE_DATA;
+      action.mKey = key;
+      return action;
     }
 
     ActionType getType() {
@@ -100,6 +116,7 @@ public final class TemplateData {
     STRING_DATA,
     BYTE_BUFFER,
     NATIVE_DATA,
+    REMOVE_DATA,
   }
   List<UpdateAction> mUpdateActions = new ArrayList<>();
 
@@ -171,7 +188,7 @@ public final class TemplateData {
     }
     List<UpdateAction> actions = new ArrayList<>();
     if (mJsNativeData != 0) {
-      actions.add(new UpdateAction(nativeShallowCopy(mJsNativeData)));
+      actions.add(UpdateAction.buildNativeAction(nativeShallowCopy(mJsNativeData)));
     }
     actions.addAll(mUpdateActions);
     // When `getUpdateActionsWithNativeData` is called, it indicates that the current `TemplateData`
@@ -196,6 +213,10 @@ public final class TemplateData {
     return mNativeData;
   }
 
+  /**
+   * Use {@link com.lynx.tasm.TemplateData#remove(String)} instead
+   */
+  @Deprecated
   public void removeKey(String key) {
     put(key, null);
   }
@@ -269,6 +290,24 @@ public final class TemplateData {
     putSafely(key, value);
   }
 
+  public void remove(String key) {
+    if (!checkIfEnvPrepared()) {
+      LLog.e(TAG, "remove failed since env not ready!");
+      return;
+    }
+    if (readOnly) {
+      LLog.w(TAG, "can not remove readOnly TemplateData");
+      return;
+    }
+    if (mConsumed.get()) {
+      LLog.w(TAG, "put data to consumed TemplateData,key:" + key);
+    }
+    addUpdateAction(UpdateAction.buildRemoveAction(key));
+    if (mNativeData != 0) {
+      nativeRemoveData(mNativeData, key);
+    }
+  }
+
   public void updateData(Map<String, Object> diff) {
     if (readOnly) {
       LLog.e("Lynx", "can not update readOnly TemplateData");
@@ -307,7 +346,7 @@ public final class TemplateData {
 
     if (buffer != null && buffer.position() > 0) {
       LLog.i(TAG, "flush data." + this);
-      addUpdateAction(new UpdateAction(buffer));
+      addUpdateAction(UpdateAction.buildBufferAction(buffer));
       if (mNativeData == 0) {
         mNativeData = nativeParseData(buffer, buffer.position());
       } else {
@@ -386,7 +425,7 @@ public final class TemplateData {
 
     mNativeData = nativeParseData(buffer, buffer.position());
     mProcessorName = null;
-    addUpdateAction(new UpdateAction(buffer));
+    addUpdateAction(UpdateAction.buildBufferAction(buffer));
   }
 
   static List<Object> jsonArrayToList(JSONArray jsonArray) {
@@ -450,7 +489,7 @@ public final class TemplateData {
 
     mNativeData = nativeParseStringData(str);
     mProcessorName = null;
-    addUpdateAction(new UpdateAction(str));
+    addUpdateAction(UpdateAction.buildStringAction(str));
   }
 
   /**
@@ -604,22 +643,33 @@ public final class TemplateData {
     }
 
     for (UpdateAction action : actions) {
-      if (action.getType() == ActionType.STRING_DATA) {
-        String jsonString = action.getJsonString();
-        if (TextUtils.isEmpty(jsonString)) {
-          continue;
-        }
-        long mergePtr = nativeParseStringData(jsonString);
-        nativeMergeTemplateData(mJsNativeData, mergePtr);
-        nativeReleaseData(mergePtr);
-      } else if (action.getType() == ActionType.NATIVE_DATA) {
-        nativeMergeTemplateData(mJsNativeData, action.getNativeData());
-      } else {
-        ByteBuffer buffer = action.getByteBuffer();
-        if (buffer == null || buffer.position() == 0) {
-          continue;
-        }
-        nativeUpdateData(mJsNativeData, action.getByteBuffer(), action.getByteBuffer().position());
+      switch (action.getType()) {
+        case STRING_DATA: {
+          String jsonString = action.getJsonString();
+          if (TextUtils.isEmpty(jsonString)) {
+            continue;
+          }
+          long mergePtr = nativeParseStringData(jsonString);
+          nativeMergeTemplateData(mJsNativeData, mergePtr);
+          nativeReleaseData(mergePtr);
+        } break;
+        case NATIVE_DATA: {
+          nativeMergeTemplateData(mJsNativeData, action.getNativeData());
+        } break;
+        case BYTE_BUFFER: {
+          ByteBuffer buffer = action.getByteBuffer();
+          if (buffer == null || buffer.position() == 0) {
+            continue;
+          }
+          nativeUpdateData(
+              mJsNativeData, action.getByteBuffer(), action.getByteBuffer().position());
+        } break;
+        case REMOVE_DATA: {
+          nativeRemoveData(mJsNativeData, action.mKey);
+        } break;
+        default: {
+          LLog.e(TAG, "undefined action type: " + action.getType());
+        } break;
       }
     }
     return mJsNativeData;
@@ -647,6 +697,7 @@ public final class TemplateData {
   private static native void nativeReleaseData(long data);
   private static native long nativeParseData(ByteBuffer data, int length);
   private static native void nativeUpdateData(long nativePtr, ByteBuffer data, int length);
+  private static native void nativeRemoveData(long nativePtr, String key);
   static native Object nativeGetData(long nativePtr);
   private static native long nativeClone(long nativePtr);
   private static native long nativeShallowCopy(long nativePtr);

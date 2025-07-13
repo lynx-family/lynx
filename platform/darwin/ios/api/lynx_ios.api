@@ -3399,6 +3399,7 @@ public class LynxTemplateData : NSObject {
   public void LynxTemplateData::updateBool:forKey:(BOOL value,[forKey] NSString *key);
   public void LynxTemplateData::updateInteger:forKey:(NSInteger value,[forKey] NSString *key);
   public void LynxTemplateData::updateDouble:forKey:(CGFloat value,[forKey] NSString *key);
+  public void LynxTemplateData::remove:(NSString *key);
   public void LynxTemplateData::updateWithTemplateData:(LynxTemplateData *value);
   public BOOL LynxTemplateData::checkIsLegalData();
   public NSDictionary * LynxTemplateData::dictionary();

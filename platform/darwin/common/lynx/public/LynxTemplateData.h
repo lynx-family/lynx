@@ -53,6 +53,8 @@
 - (void)updateInteger:(NSInteger)value forKey:(NSString *)key;
 - (void)updateDouble:(CGFloat)value forKey:(NSString *)key;
 
+- (void)remove:(NSString *)key;
+
 // will convert TemplateData to lepus value
 - (void)updateWithTemplateData:(LynxTemplateData *)value;
 
