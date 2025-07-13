@@ -625,4 +625,21 @@ public class TemplateDataTest {
       fail(e.getMessage());
     }
   }
+
+  public void testRemoveData() {
+    TemplateData templateData = TemplateData.fromMap(new HashMap<>());
+    templateData.put("key1", 1);
+    templateData.put("key2", 2);
+    templateData.put("key3", 3);
+    templateData.put("key4", 4);
+    templateData.flush();
+    templateData.remove("key4");
+
+    Map<Object, Object> map = templateData.toMap();
+    assertEquals(map.size(), 3);
+    assertEquals(map.get("key1"), 1);
+    assertEquals(map.get("key2"), 2);
+    assertEquals(map.get("key3"), 3);
+    assertFalse(map.containsKey("key4"));
+  }
 }

@@ -214,6 +214,7 @@ public enum com::lynx::tasm::TemplateData::ActionType {
   public com.lynx.tasm.TemplateData.ActionType.STRING_DATA STRING_DATA;
   public com.lynx.tasm.TemplateData.ActionType.BYTE_BUFFER BYTE_BUFFER;
   public com.lynx.tasm.TemplateData.ActionType.NATIVE_DATA NATIVE_DATA;
+  public com.lynx.tasm.TemplateData.ActionType.REMOVE_DATA REMOVE_DATA;
 }
 
 public interface com::lynx::tasm::behavior::ui::swiper::ViewPager::Adapter {
@@ -9173,6 +9174,7 @@ public class com::lynx::tasm::TemplateData :  {
   public Map< Object, Object > com.lynx.tasm.TemplateData.toMap();
   public void com.lynx.tasm.TemplateData.updateWithTemplateData(TemplateData diff);
   public void com.lynx.tasm.TemplateData.put(String key, Object value);
+  public void com.lynx.tasm.TemplateData.remove(String key);
   public void com.lynx.tasm.TemplateData.updateData(Map< String, Object > diff);
   public void com.lynx.tasm.TemplateData.updateData(String key, Object value);
   public synchronized void com.lynx.tasm.TemplateData.flush();

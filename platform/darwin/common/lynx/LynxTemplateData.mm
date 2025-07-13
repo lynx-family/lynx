@@ -20,12 +20,25 @@ static BOOL const DEFAULT_USE_BOOL_LITERALS = NO;
 using namespace lynx::tasm;
 using namespace lynx::lepus;
 
+typedef NS_ENUM(NSInteger, LynxTemplateDataActionType) {
+  LynxTemplateDataActionTypeAppend = 0,
+  LynxTemplateDataActionTypeRemove,
+};
+
+@interface LynxTemplateDataUpdateAction : NSObject
+@property(nonatomic) LynxTemplateDataActionType type;
+@property(nonatomic, strong) id value;
+@end
+
+@implementation LynxTemplateDataUpdateAction
+@end
+
 @implementation LynxTemplateData {
   lynx::lepus::Value value_;
   lynx::lepus::Value value_for_js_;
   NSString* _processerName;
   BOOL _readOnly;
-  NSMutableArray* _updateActions;
+  NSMutableArray<LynxTemplateDataUpdateAction*>* _updateActions;
   BOOL _useBoolLiterals;
 }
 
@@ -223,7 +236,10 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
 }
 
 - (void)updateWithDictionary:(NSDictionary*)dict {
-  [self addObjectToUpdateActions:dict];
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeAppend;
+  action.value = dict;
+  [self addObjectToUpdateActions:action];
 
   lepus_value value = LynxConvertToLepusValue(dict, _useBoolLiterals);
   [self updateWithLepusValue:value];
@@ -239,10 +255,10 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     return;
   }
 
-  [self
-      addObjectToUpdateActions:@{key != nil            ? key
-                                 : @"" : object != nil ? object
-                                                       : [NSNull null]}];
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeAppend;
+  action.value = @{key != nil ? key : @"" : object != nil ? object : [NSNull null]};
+  [self addObjectToUpdateActions:action];
 
   lepus_value value = LynxConvertToLepusValue(object, _useBoolLiterals);
   value_.Table()->SetValue(lynx::base::String([key UTF8String]), value);
@@ -254,7 +270,10 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     return;
   }
 
-  [self addObjectToUpdateActions:@{key != nil ? key : @"" : @(value)}];
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeAppend;
+  action.value = @{key != nil ? key : @"" : @(value)};
+  [self addObjectToUpdateActions:action];
 
   value_.Table()->SetValue(lynx::base::String([key UTF8String]), (bool)value);
 }
@@ -265,7 +284,10 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     return;
   }
 
-  [self addObjectToUpdateActions:@{key != nil ? key : @"" : @(value)}];
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeAppend;
+  action.value = @{key != nil ? key : @"" : @(value)};
+  [self addObjectToUpdateActions:action];
 
   value_.Table()->SetValue(lynx::base::String([key UTF8String]), (int64_t)value);
 }
@@ -276,9 +298,26 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
     return;
   }
 
-  [self addObjectToUpdateActions:@{key != nil ? key : @"" : @(value)}];
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeAppend;
+  action.value = @{key != nil ? key : @"" : @(value)};
+  [self addObjectToUpdateActions:action];
 
   value_.Table()->SetValue(lynx::base::String([key UTF8String]), (double)value);
+}
+
+- (void)remove:(NSString*)key {
+  if (_readOnly) {
+    NSLog(@"can not update readOnly TemplateData");
+    return;
+  }
+
+  LynxTemplateDataUpdateAction* action = [LynxTemplateDataUpdateAction alloc];
+  action.type = LynxTemplateDataActionTypeRemove;
+  action.value = key;
+  [self addObjectToUpdateActions:action];
+
+  value_.Table()->Erase(lynx::base::String([key UTF8String]));
 }
 
 - (LynxTemplateData*)deepClone {
@@ -304,20 +343,34 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   NSArray* array = [self obtainUpdateActions];
 
   // Init value_for_js_ or update _updateActions to value_for_js_.
-  [array enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
-    if ([obj isKindOfClass:[NSDictionary class]]) {
-      lynx::lepus::Value dict = LynxConvertToLepusValue(obj, _useBoolLiterals);
-      if (!dict.IsTable()) {
-        return;
-      }
-      if (value_for_js_.IsTable()) {
-        auto table = dict.Table();
-        auto target = value_for_js_.Table();
-        for (auto iter = table->begin(); iter != table->end(); iter++) {
-          target->SetValue(iter->first, std::move(iter->second));
+  [array enumerateObjectsUsingBlock:^(LynxTemplateDataUpdateAction* _Nonnull action, NSUInteger idx,
+                                      BOOL* _Nonnull stop) {
+    switch ([action type]) {
+      case LynxTemplateDataActionTypeAppend: {
+        id value = [action value];
+        if ([value isKindOfClass:[NSDictionary class]]) {
+          lynx::lepus::Value dict = LynxConvertToLepusValue(value, _useBoolLiterals);
+          if (!dict.IsTable()) {
+            return;
+          }
+          if (value_for_js_.IsTable()) {
+            auto table = dict.Table();
+            auto target = value_for_js_.Table();
+            for (auto iter = table->begin(); iter != table->end(); iter++) {
+              target->SetValue(iter->first, std::move(iter->second));
+            }
+          } else {
+            value_for_js_ = std::move(dict);
+          }
         }
-      } else {
-        value_for_js_ = std::move(dict);
+        break;
+      }
+      case LynxTemplateDataActionTypeRemove: {
+        NSString* key = [action value];
+        if (value_for_js_.IsTable()) {
+          value_for_js_.Table()->Erase(lynx::base::String([key UTF8String]));
+        }
+        break;
       }
     }
   }];

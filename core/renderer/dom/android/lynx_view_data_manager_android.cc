@@ -61,6 +61,19 @@ void UpdateData(JNIEnv* env, jclass jcaller, jlong nativePtr, jobject data,
   }
 }
 
+void RemoveData(JNIEnv* env, jclass jcaller, jlong nativePtr, jstring key) {
+  if (nativePtr == 0) {
+    return;
+  }
+  auto baseValue = reinterpret_cast<lynx::lepus::Value*>(nativePtr);
+  if (baseValue->IsTable()) {
+    auto dict = baseValue->Table();
+    auto key_to_remove =
+        lynx::base::android::JNIConvertHelper::ConvertToString(env, key);
+    dict->Erase(key_to_remove.c_str());
+  }
+}
+
 jobject GetData(JNIEnv* env, jclass jcaller, jlong nativePtr) {
   if (nativePtr == 0) {
     return nullptr;
