@@ -104,6 +104,8 @@ void PageElement::PostResolveTaskToThreadPool(
   EnsureTagInfo();
   // Decode first
   GetRelatedCSSFragment();
+  GetCSSFragment();
+
   UpdateResolveStatus(AsyncResolveStatus::kSyncResolving);
   ParallelFlushReturn remaining_task = PrepareForCreateOrUpdate();
 

@@ -1613,6 +1613,9 @@ void FiberElement::PostResolveTaskToThreadPool(
   EnsureTagInfo();
   // Decode first
   GetRelatedCSSFragment();
+  if (is_component()) {
+    static_cast<ComponentElement *>(this)->GetCSSFragment();
+  }
 
   std::promise<ParallelFlushReturn> promise;
   std::future<ParallelFlushReturn> future = promise.get_future();
