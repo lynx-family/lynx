@@ -9,15 +9,17 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/image_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/image_drawable.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 
-class UIImage : public UIBase {
+class UIImage : public UIBase, public ImageDrawable::ImageAnimationListener {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag) {
     return new UIImage(context, sign, tag);
@@ -31,24 +33,41 @@ class UIImage : public UIBase {
 
  protected:
   UIImage(LynxContext* context, int sign, const std::string& tag);
-  ~UIImage() override;
+  ~UIImage() = default;
   void UpdateLayout(float left, float top, float width, float height, const float* paddings,
                     const float* margins, const float* sticky, float max_height,
                     uint32_t node_index) override;
   void OnNodeEvent(ArkUI_NodeEvent* event) override;
   void SetEvents(const std::vector<lepus::Value>& events) override;
   void UpdateImageSource(const lepus::Value& value);
-  virtual void SetImageSrcAttribute(const std::string& value, bool is_base64);
+  void SetImageAttribute(const std::string& value, bool is_base64, bool is_src);
   void SetImageRendering(const lepus::Value& value) override;
   void OnNodeReady() override;
+  void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) override;
+  void InvokeMethod(const std::string& method, const lepus::Value& args,
+                    base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback) override;
+
+  void onAnimationStart() override;
+  void onAnimationRepeat() override;
+  void onAnimationStop() override;
 
  private:
   std::string src_{};
   std::string place_holder_{};
   std::string mode_{};
+  std::unique_ptr<ImageDrawable> src_image_drawable_;
+  std::unique_ptr<ImageDrawable> placeholder_image_drawable_;
+  using UIMethod = void (UIImage::*)(
+      const lepus::Value& args, base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  static std::unordered_map<std::string, UIMethod> image_ui_method_map_;
   bool auto_size_{false};
-  bool has_load_event_;
-  bool has_error_event_;
+  bool auto_play_{true};
+  int loop_count_{0};
+  bool has_load_event_{false};
+  bool has_error_event_{false};
+  bool has_start_play_event_{false};
+  bool has_current_loop_event_{false};
+  bool has_final_loop_event_{false};
   bool skip_redirection_{false};
   float image_width_{0.f};
   float image_height_{0.f};
@@ -62,17 +81,14 @@ class UIImage : public UIBase {
   float image_padding_bottom_{0.f};
   uint32_t shadow_color_{0};
   std::unique_ptr<OH_PixelmapNative, LynxImageHelper::PixelmapDeleter> pixel_map_{nullptr, nullptr};
-  ArkUI_DrawableDescriptor* drawable_descriptor_{nullptr};
   uint32_t tint_color_{0};
-  OH_Drawing_ColorFilter* color_filter_{nullptr};
   std::vector<float> cap_insets_;
-  bool has_src_{false};
   bool defer_src_invalidation_{false};
   uint64_t dirty_flags_{0};
   static std::unordered_map<std::string, void (UIImage::*)(const lepus::Value& value)>
       prop_setters_;
   LynxImageEffectProcessor::ImageEffect effect_type_{LynxImageEffectProcessor::ImageEffect::kNone};
-  ArkUI_ObjectFit ConvertMode(const std::string& mode);
+  ImageDrawable::ImageMode ConvertMode(const std::string& mode);
   void UpdateImageMode(const lepus::Value& value);
   void UpdatePlaceholder(const lepus::Value& value);
   void UpdateAutoSize(const lepus::Value& value);
@@ -84,6 +100,16 @@ class UIImage : public UIBase {
   void UpdateDropShadow(const lepus::Value& value);
   void UpdateSkipRedirection(const lepus::Value& value);
   void SetImageModeAttribute(const std::string& value);
+  void UpdateAutoPlay(const lepus::Value& value);
+  void UpdateLoopCount(const lepus::Value& value);
+  void StartAnimation(const lepus::Value& args,
+                      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void StopAnimation(const lepus::Value& args,
+                     base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void PauseAnimation(const lepus::Value& args,
+                      base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void ResumeAnimation(const lepus::Value& args,
+                       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void HandleImageSuccessCallback(float image_width, float image_height);
   void HandleImageFailCallback(float error_code, const std::string& error_msg);
   void AutoSizeIfNeeded();
@@ -94,9 +120,8 @@ class UIImage : public UIBase {
   LynxImageEffectProcessor::CommonViewParams GenerateCommonViewParams();
   void HandleImageWithProcessor(const std::string& url, bool is_base64,
                                 LynxImageEffectProcessor::ImageEffect effect_type,
-                                const LynxImageEffectProcessor::EffectParams& params);
-  void LoadImageFromURL(bool placeholder = false);
-  void SetImageSrcFromPath(const std::string& url, bool placeholder = false);
+                                const LynxImageEffectProcessor::EffectParams& params, bool is_src);
+  void LoadImageFromURL(bool is_src);
 };
 
 }  // namespace harmony

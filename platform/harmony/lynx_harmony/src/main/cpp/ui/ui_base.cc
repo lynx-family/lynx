@@ -756,7 +756,14 @@ void UIBase::RequestLayout() {
   NodeManager::Instance().RequestLayout(DrawNode());
 }
 
-void UIBase::Invalidate() { NodeManager::Instance().Invalidate(DrawNode()); }
+void UIBase::Invalidate() {
+  if (draw_node_) {
+    NodeManager::Instance().Invalidate(draw_node_);
+  }
+  if (node_type_ == ARKUI_NODE_CUSTOM) {
+    NodeManager::Instance().Invalidate(node_);
+  }
+}
 
 void UIBase::OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, UIBASE_CREATE_ON_DRAW);
