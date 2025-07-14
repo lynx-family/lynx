@@ -11,37 +11,37 @@
 /// lifecycle is smaller than LynxView's Lifecycle.
 @interface LynxScrollInfo : NSObject <NSCopying>
 
-@property(nonatomic, weak) UIView<LUIBodyView> *lynxView;
+@property(nonatomic, weak) UIView<LUIBodyView> *_Nullable lynxView;
 
 /// Tag name of LynxUI.
-@property(nonatomic, copy) NSString *tagName;
+@property(nonatomic, copy) NSString *_Nullable tagName;
 /// Tag name  specified by web.
-@property(nonatomic, copy) NSString *scrollMonitorTagName;
+@property(nonatomic, copy) NSString *_Nullable scrollMonitorTagName;
 
 // lynxView is weak, so we need presistent URL to judge whether two ScrollInfo generate from same
 // LynxView.
-@property(nonatomic, readonly) NSString *lynxViewUrl;
+@property(nonatomic, readonly) NSString *_Nullable lynxViewUrl;
 
-@property(nonatomic, weak) UIScrollView *scrollView;
+@property(nonatomic, weak) UIScrollView *_Nullable scrollView;
 
-@property(nonatomic, assign) SEL selector;
+@property(nonatomic, assign) SEL _Nullable selector;
 
 // used only for selector `scrollerDidEndDragging:willDecelerate:`
 @property(nonatomic, assign) BOOL decelerate;
 
-+ (instancetype)infoWithScrollView:(UIScrollView *)scrollView
-                           tagName:(NSString *)tagName
-              scrollMonitorTagName:(NSString *)scrollMonitorTagName;
++ (instancetype _Nullable)infoWithScrollView:(UIScrollView *_Nullable)scrollView
+                                     tagName:(NSString *_Nullable)tagName
+                        scrollMonitorTagName:(NSString *_Nullable)scrollMonitorTagName;
 
 @end
 
 @protocol LynxScrollListener <NSObject>
 
 @optional
-- (void)scrollerDidScroll:(LynxScrollInfo *)info;
-- (void)scrollerWillBeginDragging:(LynxScrollInfo *)info;
-- (void)scrollerDidEndDragging:(LynxScrollInfo *)info willDecelerate:(BOOL)decelerate;
-- (void)scrollerDidEndDecelerating:(LynxScrollInfo *)info;
-- (void)scrollerDidEndScrollingAnimation:(LynxScrollInfo *)info;
+- (void)scrollerDidScroll:(nullable LynxScrollInfo *)info;
+- (void)scrollerWillBeginDragging:(nullable LynxScrollInfo *)info;
+- (void)scrollerDidEndDragging:(nullable LynxScrollInfo *)info willDecelerate:(BOOL)decelerate;
+- (void)scrollerDidEndDecelerating:(nullable LynxScrollInfo *)info;
+- (void)scrollerDidEndScrollingAnimation:(nullable LynxScrollInfo *)info;
 
 @end

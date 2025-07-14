@@ -292,12 +292,21 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
     return isInterceptGestureNotNull() && mInterceptGesture;
   }
 
+  private boolean isNotIncludeNativeGesture() {
+    return mUIScrollView.isEnableNewGesture() && !mUIScrollView.getIncludeNativeGesture();
+  }
+
   @Override
   public boolean onTouchEvent(MotionEvent ev) {
     if (!isHorizontal) {
+      if (isNotIncludeNativeGesture()) {
+        return false;
+      }
+
       if (handleConsumeGesture(ev)) {
         return false;
       }
+
       if (isInterceptGestureNotNull()) {
         if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
           getParent().requestDisallowInterceptTouchEvent(true);
@@ -601,6 +610,10 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
       if (mUIScrollView.mPreferenceConsumeGesture) {
         requestDisallowInterceptTouchEvent(true);
       }
+      if (isNotIncludeNativeGesture()) {
+        return false;
+      }
+
       if (isConsumeGesture(ev)) {
         // If new gestures are enabled, return false to indicate that the event is not intercept, So
         // this event can be passed to child node, do not intercept the down event, otherwise will
@@ -1052,6 +1065,11 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
           // So this event can be passed to child node
           return false;
         }
+
+        if (isNotIncludeNativeGesture()) {
+          return false;
+        }
+
         if (isNeedInterceptGesture()) {
           return mInterceptGesture;
         }
@@ -1064,6 +1082,10 @@ public class AndroidScrollView extends NestedScrollView implements IDrawChildHoo
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
       if (isHorizontal) {
+        if (isNotIncludeNativeGesture()) {
+          return false;
+        }
+
         if (handleConsumeGesture(ev)) {
           return false;
         }

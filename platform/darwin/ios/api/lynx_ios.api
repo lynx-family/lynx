@@ -2700,22 +2700,22 @@ public class LynxScrollFluency : NSObject, <LynxScrollListener> {
 }
 
 public class LynxScrollInfo : NSObject, <NSCopying> {
-  public UIView<LUIBodyView>* LynxScrollInfo::lynxView lynxView;
-  public NSString* LynxScrollInfo::tagName tagName;
-  public NSString* LynxScrollInfo::scrollMonitorTagName scrollMonitorTagName;
-  public NSString* LynxScrollInfo::lynxViewUrl lynxViewUrl;
-  public UIScrollView* LynxScrollInfo::scrollView scrollView;
-  public SEL LynxScrollInfo::selector selector;
+  public UIView<LUIBodyView>* _Nullable LynxScrollInfo::lynxView lynxView;
+  public NSString* _Nullable LynxScrollInfo::tagName tagName;
+  public NSString* _Nullable LynxScrollInfo::scrollMonitorTagName scrollMonitorTagName;
+  public NSString* _Nullable LynxScrollInfo::lynxViewUrl lynxViewUrl;
+  public UIScrollView* _Nullable LynxScrollInfo::scrollView scrollView;
+  public SEL _Nullable LynxScrollInfo::selector selector;
   public BOOL LynxScrollInfo::decelerate decelerate;
-  public instancetype LynxScrollInfo::infoWithScrollView:tagName:scrollMonitorTagName:(UIScrollView *scrollView,[tagName] NSString *tagName,[scrollMonitorTagName] NSString *scrollMonitorTagName);
+  public instancetype _Nullable LynxScrollInfo::infoWithScrollView:tagName:scrollMonitorTagName:(UIScrollView *_Nullable scrollView,[tagName] NSString *_Nullable tagName,[scrollMonitorTagName] NSString *_Nullable scrollMonitorTagName);
 }
 
 public protocol LynxScrollListener-p : <NSObject> {
-  public void LynxScrollListener-p::scrollerDidScroll:(LynxScrollInfo *info);
-  public void LynxScrollListener-p::scrollerWillBeginDragging:(LynxScrollInfo *info);
-  public void LynxScrollListener-p::scrollerDidEndDragging:willDecelerate:(LynxScrollInfo *info,[willDecelerate] BOOL decelerate);
-  public void LynxScrollListener-p::scrollerDidEndDecelerating:(LynxScrollInfo *info);
-  public void LynxScrollListener-p::scrollerDidEndScrollingAnimation:(LynxScrollInfo *info);
+  public void LynxScrollListener-p::scrollerDidScroll:(nullable LynxScrollInfo *info);
+  public void LynxScrollListener-p::scrollerWillBeginDragging:(nullable LynxScrollInfo *info);
+  public void LynxScrollListener-p::scrollerDidEndDragging:willDecelerate:(nullable LynxScrollInfo *info,[willDecelerate] BOOL decelerate);
+  public void LynxScrollListener-p::scrollerDidEndDecelerating:(nullable LynxScrollInfo *info);
+  public void LynxScrollListener-p::scrollerDidEndScrollingAnimation:(nullable LynxScrollInfo *info);
 }
 
 public class LynxScrollView : UIScrollView, <UIGestureRecognizerDelegate> {

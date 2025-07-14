@@ -3527,6 +3527,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getNodeIndex();
   public String com.lynx.tasm.behavior.ui.LynxBaseUI.getTagName();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setEvents(Map< String, EventsListener > events);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.getIncludeNativeGesture();
+  public Map< Integer, BaseGestureHandler > com.lynx.tasm.behavior.ui.LynxBaseUI.getGestureHandlers();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setGestureDetectors(Map< Integer, GestureDetector > gestureDetectors);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setParent(UIParent parent);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setDrawParent(UIParent drawParent);
@@ -9022,6 +9024,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableFadeInAnimation(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setUpdateAnimationFadeInDuration(int value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setNeedVisibleItemInfo(boolean value);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.getScrollInfo(Callback callback);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.scrollToPosition(ReadableMap params, Callback callback);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.scrollBy(ReadableMap params, Callback callback);
   public float[] com.lynx.tasm.behavior.ui.list.container.UIListContainer.scrollBy(float deltaX, float deltaY);

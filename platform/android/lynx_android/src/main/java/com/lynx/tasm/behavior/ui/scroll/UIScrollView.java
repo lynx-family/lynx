@@ -75,9 +75,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
   private boolean mEnableContentSizeChangedEvent;
   private boolean mEnableSticky = false;
 
-  // for new gesture
-  private Map<Integer, BaseGestureHandler> mGestureHandlers;
-
   protected boolean mPreferenceConsumeGesture = false;
   // scroll-top/scroll-left is props set by FE before scroll-view layout do not take effect, should
   // pending and consume when layout
@@ -390,15 +387,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
     super.destroy();
     mScrollToCallback = null;
     mView.clearOnScrollListener();
-    // remove arena member if destroy
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager != null) {
-      manager.removeMember(this);
-    }
-    // clear gesture map if destroy
-    if (mGestureHandlers != null) {
-      mGestureHandlers.clear();
-    }
   }
 
   @Override
@@ -1103,14 +1091,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
     } else {
       mView.getHScrollView().setEnableNewBounce(mEnableNewBounce);
     }
-    if (mGestureHandlers != null) {
-      GestureArenaManager manager = getGestureArenaManager();
-      // Check if the current UIList instance is already a member of the gesture arena
-      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
-        // If not a member, add the UIList instance as a new member to the gesture arena
-        mGestureArenaMemberId = manager.addMember(UIScrollView.this);
-      }
-    }
     updateAccessibilityDelegate();
   }
 
@@ -1222,14 +1202,7 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
   @Nullable
   @Override
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
-    if (!isEnableNewGesture()) {
-      return null; // Return null if new gestures are not enabled
-    }
-    if (mGestureHandlers == null) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIScrollView.this, getGestureDetectorMap());
-    }
-    return mGestureHandlers;
+    return super.getGestureHandlers();
   }
 
   /**
@@ -1278,24 +1251,6 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
   @Override
   public void setGestureDetectors(Map<Integer, GestureDetector> gestureDetectors) {
     super.setGestureDetectors(gestureDetectors);
-    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
-      return; // Return if new gestures are disabled or gestureDetectors is empty
-    }
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
-      return; // Return if GestureArenaManager is null
-    }
-    if (manager.isMemberExist(getGestureArenaMemberId())) {
-      // when update gesture handlers, need to reset it
-      if (mGestureHandlers != null) {
-        mGestureHandlers.clear();
-        mGestureHandlers = null;
-      }
-    }
-    if (mGestureHandlers == null && getSign() > 0) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIScrollView.this, getGestureDetectorMap());
-    }
   }
 
   @Override

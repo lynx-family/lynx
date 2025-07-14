@@ -25,7 +25,6 @@ import java.util.Map;
 public class UIView
     extends UISimpleView<AndroidView> implements GestureArenaMember, LynxNewGestureDelegate {
   // key is gesture id, value is gesture handler
-  private Map<Integer, BaseGestureHandler> mGestureHandlers;
 
   @Deprecated
   public UIView(Context context) {
@@ -96,14 +95,6 @@ public class UIView
     if (mView != null) {
       mView.setNativeInteractionEnabled(this.nativeInteractionEnabled);
       mView.setConsumeHoverEvent(mConsumeHoverEvent);
-    }
-    if (mGestureHandlers != null) {
-      GestureArenaManager manager = getGestureArenaManager();
-      // Check if the current UIList instance is already a member of the gesture arena
-      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
-        // If not a member, add the UIList instance as a new member to the gesture arena
-        mGestureArenaMemberId = manager.addMember(UIView.this);
-      }
     }
     super.onPropsUpdated();
   }
@@ -189,49 +180,18 @@ public class UIView
     if (gestureDetectors == null || gestureDetectors.isEmpty()) {
       return;
     }
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
-      return;
-    }
-    if (manager.isMemberExist(getGestureArenaMemberId())) {
-      // when update gesture handlers, need to reset it
-      if (mGestureHandlers != null) {
-        mGestureHandlers.clear();
-        mGestureHandlers = null;
-      }
-    }
-    if (mGestureHandlers == null) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIView.this, getGestureDetectorMap());
-    }
-    mView.setGestureManager(manager);
+    mView.setGestureManager(getGestureArenaManager());
   }
 
   @Nullable
   @Override
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
-    if (!isEnableNewGesture()) {
-      return null;
-    }
-
-    if (mGestureHandlers == null) {
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIView.this, getGestureDetectorMap());
-    }
-    return mGestureHandlers;
+    return super.getGestureHandlers();
   }
+
   @Override
   public void destroy() {
     super.destroy();
-    // remove arena member if destroy
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager != null) {
-      manager.removeMember(this);
-    }
-    // clear gesture map if destroy
-    if (mGestureHandlers != null) {
-      mGestureHandlers.clear();
-    }
   }
 
   @Override

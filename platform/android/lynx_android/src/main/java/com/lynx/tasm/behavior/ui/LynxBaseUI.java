@@ -64,9 +64,11 @@ import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.event.LynxEventDetail;
 import com.lynx.tasm.event.LynxTouchEvent;
+import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.gesture.handler.BaseGestureHandler;
 import com.lynx.tasm.utils.ContextUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.SizeValue;
@@ -159,8 +161,12 @@ public abstract class LynxBaseUI
   @Nullable protected LynxMask mLynxMask;
   private final JavaOnlyMap mProps = new JavaOnlyMap();
 
+  // for new gesture
   protected Map<String, EventsListener> mEvents;
   protected Map<Integer, GestureDetector> mGestureDetectors;
+  protected Map<Integer, BaseGestureHandler> mGestureHandlers;
+  protected boolean mIncludeNativeGesture = false;
+
   private String mName;
   private String mIdSelector; // id selector used in ttml
   private String mRefId; // ref id selector used in reactLynx
@@ -437,6 +443,16 @@ public abstract class LynxBaseUI
     if (wrapper != null) {
       wrapper.addOrRemoveUIFromExclusiveMap(this, false);
     }
+
+    // remove arena member if destroy
+    GestureArenaManager manager = getGestureArenaManager();
+    if (manager != null && this instanceof GestureArenaMember) {
+      manager.removeMember((GestureArenaMember) this);
+    }
+    // clear gesture map if destroy
+    if (mGestureHandlers != null) {
+      mGestureHandlers.clear();
+    }
   }
 
   protected void setLynxBackground(LynxBackground lynxBackground) {
@@ -477,9 +493,65 @@ public abstract class LynxBaseUI
     this.mEvents = events;
   }
 
+  public boolean getIncludeNativeGesture() {
+    return mIncludeNativeGesture;
+  }
+
+  @Nullable
+  public Map<Integer, BaseGestureHandler> getGestureHandlers() {
+    // Check if the new gesture feature is enabled
+    if (!isEnableNewGesture()) {
+      return null;
+    }
+
+    // Lazy initialization of gesture handlers
+    if (mGestureHandlers == null && this instanceof GestureArenaMember) {
+      // Convert gesture data to gesture handlers if not already initialized
+      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
+          getSign(), getLynxContext(), (GestureArenaMember) this, getGestureDetectorMap());
+    }
+    // Return the initialized gesture handlers
+    return mGestureHandlers;
+  }
+
   // set gesture detectors to lynx ui if set by developer
   public void setGestureDetectors(Map<Integer, GestureDetector> gestureDetectors) {
     this.mGestureDetectors = gestureDetectors;
+
+    // Check if gesture detectors are not available
+    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
+      return;
+    }
+
+    GestureArenaManager manager = getGestureArenaManager();
+    if (manager == null) {
+      return;
+    }
+
+    // Check if the current UIList instance is already a member of the gesture arena
+    if (manager.isMemberExist(getGestureArenaMemberId())) {
+      // when update gesture handlers, need to reset it
+      if (mGestureHandlers != null) {
+        mGestureHandlers.clear();
+        mGestureHandlers = null;
+      }
+    }
+
+    // Lazy initialization of gesture handlers
+    if (mGestureHandlers == null && getSign() > 0 && this instanceof GestureArenaMember) {
+      // Convert gesture data to gesture handlers if not already initialized
+      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
+          getSign(), getLynxContext(), (GestureArenaMember) this, getGestureDetectorMap());
+      if (mGestureHandlers != null) {
+        mIncludeNativeGesture = false;
+        for (int type : mGestureHandlers.keySet()) {
+          if (type == GestureDetector.GESTURE_TYPE_NATIVE) {
+            mIncludeNativeGesture = true;
+            break;
+          }
+        }
+      }
+    }
   }
 
   public void setParent(UIParent parent) {
@@ -2371,6 +2443,14 @@ public abstract class LynxBaseUI
   public void onPropsUpdated() {
     if (mContext != null) {
       mContext.addUIToExposedMap(this);
+    }
+    if (mGestureHandlers != null && this instanceof GestureArenaMember) {
+      GestureArenaManager manager = getGestureArenaManager();
+      // Check if the current UIList instance is already a member of the gesture arena
+      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
+        // If not a member, add the UIList instance as a new member to the gesture arena
+        mGestureArenaMemberId = manager.addMember((GestureArenaMember) this);
+      }
     }
   }
 

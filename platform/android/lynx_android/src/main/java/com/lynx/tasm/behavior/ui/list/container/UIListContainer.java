@@ -42,6 +42,7 @@ import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.list.ListEventManager;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
+import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.behavior.ui.view.ComponentView;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.ui.view.UISimpleView;
@@ -91,8 +92,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private boolean mEnableScrollStateChangeEvent = false;
   private boolean mEnableBatchRender = false;
   private boolean mEnableNeedVisibleItemInfo = false;
-  // for new gesture
-  private Map<Integer, BaseGestureHandler> mGestureHandlers;
 
   private Callback mScrollToCallback = null;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
@@ -376,15 +375,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     if (mAutoScroller != null) {
       mAutoScroller.removeFrameCallback();
     }
-    // remove arena member if destroy
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager != null) {
-      manager.removeMember(this);
-    }
-    // clear gesture map if destroy
-    if (mGestureHandlers != null) {
-      mGestureHandlers.clear();
-    }
   }
 
   public void updateContentSizeAndOffset(float contentSize, float deltaX, float deltaY) {
@@ -603,6 +593,21 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @LynxProp(name = "need-visible-item-info", defaultBoolean = false)
   public void setNeedVisibleItemInfo(boolean value) {
     mEnableNeedVisibleItemInfo = value;
+  }
+
+  /**
+   * get list's scroll info
+   * @param callback
+   * @return scrollX / scrollY - content offset
+   */
+  @LynxUIMethod
+  public void getScrollInfo(Callback callback) {
+    int scrollX = getMemberScrollX();
+    int scrollY = getMemberScrollY();
+    JavaOnlyMap result = new JavaOnlyMap();
+    result.putInt("scrollX", LynxUIHelper.px2dip(mContext, scrollX));
+    result.putInt("scrollY", LynxUIHelper.px2dip(mContext, scrollY));
+    callback.invoke(LynxUIMethodConstants.SUCCESS, result);
   }
 
   @LynxUIMethod
@@ -1118,14 +1123,6 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void onPropsUpdated() {
     super.onPropsUpdated();
-    if (mGestureHandlers != null) {
-      GestureArenaManager manager = getGestureArenaManager();
-      // Check if the current UIList instance is already a member of the gesture arena
-      if (manager != null && !manager.isMemberExist(getGestureArenaMemberId())) {
-        // If not a member, add the UIList instance as a new member to the gesture arena
-        mGestureArenaMemberId = manager.addMember(UIListContainer.this);
-      }
-    }
   }
 
   @Override
@@ -1205,49 +1202,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void setGestureDetectors(Map<Integer, GestureDetector> gestureDetectors) {
     super.setGestureDetectors(gestureDetectors);
-
-    // Check if gesture detectors are not available
-    if (gestureDetectors == null || gestureDetectors.isEmpty()) {
-      return;
-    }
-
-    GestureArenaManager manager = getGestureArenaManager();
-    if (manager == null) {
-      return;
-    }
-
-    // Check if the current UIList instance is already a member of the gesture arena
-    if (manager.isMemberExist(getGestureArenaMemberId())) {
-      // when update gesture handlers, need to reset it
-      if (mGestureHandlers != null) {
-        mGestureHandlers.clear();
-        mGestureHandlers = null;
-      }
-    }
-
-    // Lazy initialization of gesture handlers
-    if (mGestureHandlers == null && getSign() > 0) {
-      // Convert gesture data to gesture handlers if not already initialized
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIListContainer.this, getGestureDetectorMap());
-    }
   }
 
   @Nullable
   @Override
   public Map<Integer, BaseGestureHandler> getGestureHandlers() {
-    // Check if the new gesture feature is enabled
-    if (!isEnableNewGesture()) {
-      return null;
-    }
-
-    // Lazy initialization of gesture handlers
-    if (mGestureHandlers == null) {
-      // Convert gesture data to gesture handlers if not already initialized
-      mGestureHandlers = BaseGestureHandler.convertToGestureHandler(
-          getSign(), getLynxContext(), UIListContainer.this, getGestureDetectorMap());
-    }
-    // Return the initialized gesture handlers
-    return mGestureHandlers;
+    return super.getGestureHandlers();
   }
 }
