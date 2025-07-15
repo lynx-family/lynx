@@ -75,6 +75,7 @@
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/vm/lepus/tasks/lepus_raf_manager.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_delegate.h"
@@ -4409,6 +4410,36 @@ RENDERER_FUNCTION_CC(MarkTiming) {
   } else {
     tasm::TimingCollector::Instance()->MarkFrameworkTiming(timing_key);
   }
+  RETURN_UNDEFINED();
+}
+
+RENDERER_FUNCTION_CC(PutParamsForReportingEvents) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PUT_PARAMS_FOR_REPORTING_EVENTS);
+  // parameter size = 1
+  // [0] Object -> params
+  CHECK_ARGC_EQ(PutParamsForReportingEvents, 1);
+
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsObject()) {
+    LOGW("PutParamsForReportingEvents failed since the param is not object");
+    RETURN_UNDEFINED();
+  }
+  auto self = GET_TASM_POINTER();
+  tasm::ForEachLepusValue(*arg0, [&self](const lepus::Value& key,
+                                         const lepus::Value& value) {
+    if (!key.IsString()) {
+      LOGW("PutParamsForReportingEvents failed since the key is not string");
+    }
+    auto instanceId = self->GetInstanceId();
+    if (value.IsString()) {
+      tasm::report::EventTracker::UpdateGenericInfo(
+          static_cast<int32_t>(instanceId), key.StdString(), value.StdString());
+    } else if (value.IsNumber()) {
+      tasm::report::EventTracker::UpdateGenericInfo(
+          static_cast<int32_t>(instanceId), key.StdString(),
+          static_cast<float>(value.Number()));
+    }
+  });
   RETURN_UNDEFINED();
 }
 

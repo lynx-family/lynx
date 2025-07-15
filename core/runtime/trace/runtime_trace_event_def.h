@@ -408,6 +408,8 @@ inline constexpr const char* const ON_PIPELINE_START = "OnPipelineStart";
 inline constexpr const char* const BIND_PIPELINE_ID_WITH_TIMING_FLAG =
     "BindPipelineIDWithTimingFlag";
 inline constexpr const char* const MARK_TIMING = "MarkTiming";
+inline constexpr const char* const PUT_PARAMS_FOR_REPORTING_EVENTS =
+    "PutParamsForReportingEvents";
 inline constexpr const char* const CLEAR_TIMEOUT = "ClearTimeout";
 inline constexpr const char* const CLEAR_TIME_INTERVAL = "ClearTimeInterval";
 inline constexpr const char* const REQUEST_ANIMATION_FRAME =

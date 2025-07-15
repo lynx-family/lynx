@@ -38,6 +38,7 @@
 #include "core/runtime/piper/js/lynx_api_handler.h"
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/event_report/event_tracker_platform_impl.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"
@@ -1303,6 +1304,49 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
           ptr->BindPipelineIDWithTimingFlag(pipeline_id, timing_flag);
           return piper::Value::undefined();
         });
+  } else if (methodName == "putParamsForReportingEvents") {
+    return Function::createFromHostFunction(
+        *rt, PropNameID::forAscii(*rt, "putParamsForReportingEvents"), 1,
+        [this](Runtime& rt, const piper::Value& thisVal,
+               const piper::Value* args,
+               size_t count) -> base::expected<Value, JSINativeException> {
+          // parameter size == 1
+          // [0] value -> Object
+          LOGI("LYNX PageProxy get -> putParamsForReportingEvents" << this);
+          if (count != 1) {
+            return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
+                "putParamsForReportingEvents arg count must == 1"));
+          }
+          auto ptr = native_app_.lock();
+          if (!ptr || ptr->IsDestroying()) {
+            return piper::Value::undefined();
+          }
+          if (args[0].isObject()) {
+            auto obj = args[0].asObject(rt);
+            auto ary = obj->getPropertyNames(rt);
+            auto length = (*ary).length(rt);
+            if (length) {
+              for (size_t i = 0; i < *length; i++) {
+                auto property_name = (*ary).getValueAtIndex(rt, i);
+                auto property_name_str = property_name->getString(rt).utf8(rt);
+                auto property_value =
+                    obj->getProperty(rt, property_name_str.c_str());
+                if (property_value->isString()) {
+                  auto value = property_value->getString(rt).utf8(rt);
+                  tasm::report::EventTracker::UpdateGenericInfo(
+                      static_cast<int32_t>(rt.getRuntimeId()),
+                      std::move(property_name_str), std::move(value));
+                } else if (property_value->isNumber()) {
+                  auto value = static_cast<float>(property_value->getNumber());
+                  tasm::report::EventTracker::UpdateGenericInfo(
+                      static_cast<int32_t>(rt.getRuntimeId()),
+                      std::move(property_name_str), value);
+                }
+              }
+            }
+          }
+          return piper::Value::undefined();
+        });
   } else if (methodName == "markTiming") {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "MarkTiming"), 2,
@@ -1751,6 +1795,7 @@ std::vector<PropNameID> AppProxy::getPropertyNames(Runtime& rt) {
       "__GetSourceMapRelease",
       "requestAnimationFrame",
       "cancelAnimationFrame",
+      "putParamsForReportingEvents",
       runtime::kAddReporterCustomInfo,
       runtime::kProfileStart,
       runtime::kProfileEnd,
