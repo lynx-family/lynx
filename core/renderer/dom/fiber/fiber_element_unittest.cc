@@ -9866,6 +9866,168 @@ TEST_P(FiberElementTest, ElementBundleTest01) {
               nullptr);
 }
 
+// Verify animation is re-applied after cloning elements
+TEST_P(FiberElementTest, ElementBundleTest02) {
+  // construct css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs configs;
+  auto tokens = std::make_shared<CSSParseToken>(configs);
+
+  CSSParserTokenMap indexTokensMap;
+  const std::vector<int32_t> dependent_ids;
+
+  // mock keyframes
+  // raw keyframes
+  constexpr const char* keyframe_name = "ani-img-in";
+
+  CSSRawKeyframesContent raw_keyframes;
+
+  {
+    RawStyleMap* raw_attrs_0 = new RawStyleMap();
+    raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
+                                  CSSValue(lepus::Value("scale(0, 0))")));
+    raw_attrs_0->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                  CSSValue(lepus::Value(0.0)));
+    std::shared_ptr<RawStyleMap> raw_attrs_ptr0(raw_attrs_0);
+    raw_keyframes.insert(
+        std::pair<float, std::shared_ptr<RawStyleMap>>(0.0f, raw_attrs_ptr0));
+
+    RawStyleMap* raw_attrs_1 = new RawStyleMap();
+    raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDTransform,
+                                  CSSValue(lepus::Value("scale(1, 1))")));
+    raw_attrs_1->insert_or_assign(CSSPropertyID::kPropertyIDOpacity,
+                                  CSSValue(lepus::Value(1.0)));
+    std::shared_ptr<RawStyleMap> raw_attrs_ptr1(raw_attrs_1);
+    raw_keyframes.insert(
+        std::pair<float, std::shared_ptr<RawStyleMap>>(1.0f, raw_attrs_ptr1));
+  }
+
+  CSSKeyframesToken* token = new CSSKeyframesToken(configs);
+  token->SetRawKeyframesContent(std::move(raw_keyframes));
+
+  // parsed keyframes
+  CSSKeyframesContent map;
+  StyleMap* attrs0 = new StyleMap();
+  map.insert(std::pair<float, std::shared_ptr<StyleMap>>(0.0f, attrs0));
+  StyleMap* attrs1 = new StyleMap();
+  map.insert(std::pair<float, std::shared_ptr<StyleMap>>(1.0f, attrs1));
+  token->SetKeyframesContent(std::move(map));
+
+  std::shared_ptr<CSSKeyframesToken> token_ptr(token);
+  CSSKeyframesTokenMap keyframes;
+  keyframes.insert({keyframe_name, std::move(token_ptr)});
+
+  // class .recommend-ani-image-in
+  {
+    auto id = CSSPropertyID::kPropertyIDAnimation;
+    auto impl = lepus::Value("ani-img-in 100ms linear 0.08ms normal both");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".recommend-ani-image-in";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  // mock fontfaces
+  CSSFontFaceRuleMap fontfaces;
+  std::vector<std::shared_ptr<CSSFontFaceRule>> face_token_list;
+  CSSFontFaceRule* face_token = new CSSFontFaceRule();
+  CSSFontTokenAddAttribute(face_token, "font-family", "font-base64");
+  CSSFontTokenAddAttribute(
+      face_token, "src",
+      "url(data:application/x-font-woff;charset=utf-8;base64,test...)");
+  std::shared_ptr<CSSFontFaceRule> face_token_ptr(face_token);
+  face_token_list.emplace_back(face_token_ptr);
+  fontfaces.insert(
+      std::pair<std::string, std::vector<std::shared_ptr<CSSFontFaceRule>>>(
+          "font-base64", face_token_list));
+
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto config = lepus::Value(lepus::Dictionary::Create());
+  config.SetProperty(base::String("hydrateID"), lepus::Value("hydrateID"));
+  config.SetProperty(base::String("dirtyID"), lepus::Value("dirtyID"));
+
+  auto current_page = manager->CreateFiberPage("page", 11);
+  current_page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto current_container = manager->CreateFiberView();
+  current_page->InsertNode(current_container);
+
+  auto current_child1 = manager->CreateFiberView();
+  current_container->InsertNode(current_child1);
+  current_child1->enable_new_animator_ = true;
+  current_child1->SetParentComponentUniqueIdForFiber(
+      static_cast<int64_t>(current_page->impl_id()));
+  base::String clazz_name("recommend-ani-image-in");
+  current_child1->SetClass(clazz_name);
+
+  current_page->FlushActionsAsRoot();
+  EXPECT_TRUE(!current_child1->computed_css_style()->animation_data().empty());
+
+  // Prepare environment for cloned element
+  LynxEnvConfig lynx_env_config_1(kWidth, kHeight, kDefaultLayoutsUnitPerPx,
+                                  kDefaultPhysicalPixelsPerLayoutUnit);
+  auto tasm_mediator_1 = std::make_shared<
+      ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
+  auto unique_manager_1 = std::make_unique<lynx::tasm::ElementManager>(
+      std::make_unique<FiberMockPaintingContext>(), tasm_mediator_1.get(),
+      lynx_env_config_1);
+  auto manager_1 = unique_manager_1.get();
+  auto tasm_1 = std::make_shared<lynx::tasm::TemplateAssembler>(
+      *tasm_mediator_1.get(), std::move(unique_manager_1), 0);
+  auto test_entry_1 = std::make_shared<TemplateEntry>();
+  tasm_1->template_entries_.insert({"test_entry", test_entry_1});
+  auto config_1 = std::make_shared<PageConfig>();
+  config_1->SetEnableZIndex(true);
+  manager_1->SetConfig(config_1);
+  tasm_1->page_config_ = config_1;
+  if (thread_strategy == 0) {
+    manager_1->SetThreadStrategy(base::ThreadStrategyForRendering::ALL_ON_UI);
+  } else {
+    manager_1->SetThreadStrategy(
+        base::ThreadStrategyForRendering::MULTI_THREADS);
+  }
+  if (enable_parallel_element_flush) {
+    manager_1->SetEnableParallelElement(true);
+  }
+
+  auto cloned_page_node = lepus::Value(
+      TreeResolver::CloneElementRecursively(current_page.get(), true));
+  fml::RefPtr<FiberElement> cloned_page_node_ref =
+      fml::static_ref_ptr_cast<FiberElement>(cloned_page_node.RefCounted());
+  TreeResolver::AttachRootToElementManager(
+      cloned_page_node_ref, manager_1,
+      tasm_1->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME), true);
+
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_page->impl_id()) !=
+              nullptr);
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_container->impl_id()) !=
+              nullptr);
+  EXPECT_TRUE(manager_1->node_manager_->Get(current_child1->impl_id()) !=
+              nullptr);
+
+  auto cloned_page = static_cast<FiberElement*>(
+      manager_1->node_manager_->Get(current_page->impl_id()));
+  cloned_page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+  EXPECT_TRUE((cloned_page->dirty_ & FiberElement::kDirtyCloned) > 0);
+
+  auto cloned_child1 = static_cast<FiberElement*>(
+      manager_1->node_manager_->Get(current_child1->impl_id()));
+  EXPECT_TRUE((cloned_child1->dirty_ & FiberElement::kDirtyCloned) > 0);
+  EXPECT_TRUE(cloned_child1->computed_css_style()->animation_data().empty());
+
+  cloned_page->FlushActionsAsRoot();
+  EXPECT_TRUE(!cloned_child1->computed_css_style()->animation_data().empty());
+  EXPECT_TRUE((cloned_child1->dirty_ & FiberElement::kDirtyCloned) == 0);
+  EXPECT_TRUE((cloned_page->dirty_ & FiberElement::kDirtyCloned) == 0);
+}
+
 TEST_P(FiberElementTest, TestGetParentComponentElement) {
   // parent
   auto page = manager->CreateFiberPage("page", 11);

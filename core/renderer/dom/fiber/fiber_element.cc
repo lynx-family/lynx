@@ -95,7 +95,7 @@ FiberElement::FiberElement(const FiberElement &element,
       invalidation_lists_(element.invalidation_lists_),
       parent_component_unique_id_(element.parent_component_unique_id_),
       path_(element.path_),
-      dirty_(element.dirty_ | kDirtyCreated),
+      dirty_(element.dirty_ | kDirtyCreated | kDirtyCloned),
       css_id_(element.css_id_),
       dynamic_style_flags_(element.dynamic_style_flags_),
       has_extreme_parsed_styles_(element.has_extreme_parsed_styles_),
@@ -1015,6 +1015,20 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
     // only in such scenario, kDirtyPropagateInherited flag need to preserved to
     // force refresh in next pass
     dirty_ &= ~kDirtyPropagateInherited;
+  }
+
+  // Process update_map for cloned elements.
+  if (dirty_ & kDirtyCloned) {
+    // Because cloned elements typically do not undergo style changes,
+    // animation-related styles must be reapplied to initiate keyframe or
+    // transition animations.
+    for (const auto &pair : parsed_styles_map_) {
+      if (CSSProperty::IsTransitionProps(pair.first) ||
+          CSSProperty::IsKeyframeProps(pair.first)) {
+        parsed_styles.insert_or_assign(pair.first, pair.second);
+      }
+    }
+    dirty_ &= ~kDirtyCloned;
   }
 
   // Process reset before update styles.
