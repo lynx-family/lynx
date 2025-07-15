@@ -215,6 +215,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   }
 
   /**
+   * @brief check whether enables use the native `Fragment` based UI renderer
+   */
+  public boolean isFragmentLayerRenderOn() {
+    return (embeddedMode & EmbeddedMode.FRAGMENT_LAYER_RENDER) > 0;
+  }
+
+  /**
    * @brief check whether engine pool is enabled
    */
   public boolean isEnginePoolEnabled() {

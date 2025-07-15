@@ -305,6 +305,7 @@ public class UIBody extends UIGroup<UIBodyView> {
   public static class UIBodyView
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
     private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
+    public int mSign;
 
     private IDrawChildHook mDrawChildHook;
     private long mMeaningfulPaintTiming;

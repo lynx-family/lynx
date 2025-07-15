@@ -1331,6 +1331,12 @@ public interface com::lynx::tasm::image::model::DiskCacheChoice {
   public int com.lynx.tasm.image.model.DiskCacheChoice.CUSTOM_DISK CUSTOM_DISK;
 }
 
+public class com::lynx::tasm::behavior::render::DisplayList :  {
+  public int [] com.lynx.tasm.behavior.render.DisplayList.ops ops;
+  public int [] com.lynx.tasm.behavior.render.DisplayList.iArgv iArgv;
+  public float [] com.lynx.tasm.behavior.render.DisplayList.fArgv fArgv;
+}
+
 public class com::lynx::tasm::utils::DisplayMetricsHolder :  {
   public final int com.lynx.tasm.utils.DisplayMetricsHolder.UNDEFINE_SCREEN_SIZE_VALUE UNDEFINE_SCREEN_SIZE_VALUE;
   public final float com.lynx.tasm.utils.DisplayMetricsHolder.DEFAULT_SCREEN_SCALE DEFAULT_SCREEN_SCALE;
@@ -1412,6 +1418,7 @@ public class com::lynx::tasm::EmbeddedMode :  {
   public final int com.lynx.tasm.EmbeddedMode.EMBEDDED_MODE_BASE EMBEDDED_MODE_BASE;
   public final int com.lynx.tasm.EmbeddedMode.ENGINE_POOL ENGINE_POOL;
   public final int com.lynx.tasm.EmbeddedMode.LAYOUT_IN_ELEMENT LAYOUT_IN_ELEMENT;
+  public final int com.lynx.tasm.EmbeddedMode.FRAGMENT_LAYER_RENDER FRAGMENT_LAYER_RENDER;
   public final int com.lynx.tasm.EmbeddedMode.EMBEDDED_MODE_ALL EMBEDDED_MODE_ALL;
   public static boolean com.lynx.tasm.EmbeddedMode.isEnginePoolEnable(@EmbeddedMode.Mode int mode);
   public static boolean com.lynx.tasm.EmbeddedMode.isBaseModeEnable(@EmbeddedMode.Mode int mode);
@@ -2608,6 +2615,11 @@ public class com::lynx::tasm::behavior::ui::UIShadowProxy::InsetDrawer :  {
 
 public class com::lynx::tasm::animation::InterpolatorFactory :  {
   public static Interpolator com.lynx.tasm.animation.InterpolatorFactory.getInterpolator(AnimationInfo ai);
+}
+
+public interface com::lynx::tasm::behavior::IPaintingContext {
+  public void com.lynx.tasm.behavior.IPaintingContext.destroy();
+  public long com.lynx.tasm.behavior.IPaintingContext.getNativePaintingContextPtr();
 }
 
 public interface com::lynx::tasm::performance::IPerformanceObserver {
@@ -3898,6 +3910,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isFallbackProcess();
   public void com.lynx.tasm.behavior.LynxContext.markFallbackProcess(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.isLayoutInElementModeOn();
+  public boolean com.lynx.tasm.behavior.LynxContext.isFragmentLayerRenderOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
   public void com.lynx.tasm.behavior.LynxContext.setEnableAsyncLoadImage(boolean b);
@@ -6777,6 +6790,13 @@ public class com::lynx::tasm::behavior::shadow::text::NativeLayoutNodeSpan : com
   public int com.lynx.tasm.behavior.shadow.text.NativeLayoutNodeSpan.getYOffset(int top, int bottom, int ascent, int descent);
 }
 
+public class com::lynx::tasm::behavior::render::NativePaintingContext : com.lynx.tasm.behavior.IPaintingContext {
+  public com.lynx.tasm.behavior.render.NativePaintingContext.NativePaintingContext(UIBody.UIBodyView rootView, LynxContext context);
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.destroy();
+  public long com.lynx.tasm.behavior.render.NativePaintingContext.getNativePaintingContextPtr();
+  public void com.lynx.tasm.behavior.render.NativePaintingContext.attachUIBodyView(UIBody.UIBodyView view);
+}
+
 public class com::lynx::tasm::navigator::NavigationModule : com.lynx.jsbridge.LynxModule {
   public String com.lynx.tasm.navigator.NavigationModule.NAME NAME;
   public com.lynx.tasm.navigator.NavigationModule.NavigationModule(Context context);
@@ -7092,7 +7112,7 @@ public interface com::lynx::tasm::behavior::ui::swiper::ViewPager::PageTransform
   public void com.lynx.tasm.behavior.ui.swiper.ViewPager.PageTransformer.reset(View page);
 }
 
-public class com::lynx::tasm::behavior::PaintingContext :  {
+public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior.IPaintingContext {
   public com.lynx.tasm.behavior.PaintingContext.PaintingContext(LynxUIOwner uiOwner, int threadStrategy);
   public void com.lynx.tasm.behavior.PaintingContext.destroy();
   public long com.lynx.tasm.behavior.PaintingContext.getNativePaintingContextPtr();
@@ -7257,6 +7277,25 @@ public class com::lynx::tasm::behavior::ui::utils::PlatformLength :  {
   public float com.lynx.tasm.behavior.ui.utils.PlatformLength.getValue(float parentValue);
   public boolean com.lynx.tasm.behavior.ui.utils.PlatformLength.equals(@Nullable Object obj);
   public boolean com.lynx.tasm.behavior.ui.utils.PlatformLength.isZero();
+}
+
+public class com::lynx::tasm::behavior::render::PlatformRendererContext :  {
+  public com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererContext(@Nullable UIBody.UIBodyView rootView, LynxContext context);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.setRootView(@NonNull UIBody.UIBodyView rootView);
+  public long com.lynx.tasm.behavior.render.PlatformRendererContext.getNativePtr();
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.createPlatformRenderer(int sign, int type);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.destroyPlatformRenderer(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.insertPlatformRenderer(int parent, int child, int index);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.invalidatePlatformRenderer(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.removePlatformRendererFromParent(int sign);
+  public void com.lynx.tasm.behavior.render.PlatformRendererContext.getDrawingList(int id, DisplayList drawingList);
+}
+
+public class com::lynx::tasm::behavior::render::PlatformRendererContext::PlatformRendererType :  {
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kUnknown kUnknown;
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kView kView;
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kPage kPage;
+  public final int com.lynx.tasm.behavior.render.PlatformRendererContext.PlatformRendererType.kScroll kScroll;
 }
 
 public class com::lynx::tasm::event::LynxTouchEvent::Point :  {
@@ -9132,6 +9171,7 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
 }
 
 public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
+  public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.mSign mSign;
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public View com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainViewAccordingToNodeIndex(int nodeIndex);

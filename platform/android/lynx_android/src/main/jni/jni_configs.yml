@@ -83,6 +83,8 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/mapbuffer/ReadableMapBuffer.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/react/bridge/mapbuffer/ReadableCompactArrayBuffer.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/PaintingContext.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/render/PlatformRendererContext.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/render/NativePaintingContext.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/featurecount/LynxFeatureCounter.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxBackgroundRuntime.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/RuntimeLifecycleListenerDelegate.java

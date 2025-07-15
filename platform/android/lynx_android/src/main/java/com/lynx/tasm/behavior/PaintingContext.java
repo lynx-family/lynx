@@ -80,7 +80,7 @@ class CreateViewAsyncStatus {
   public static final int FUTURE_DONE_EXCEPTION = 3;
 }
 
-public final class PaintingContext {
+public final class PaintingContext implements IPaintingContext {
   private static final String TAG = "lynx_PaintingContext";
   private final LynxUIOwner mUIOwner;
   private TextLayout mTextLayout;
@@ -88,7 +88,6 @@ public final class PaintingContext {
   private ConcurrentHashMap<String, Boolean> mNeedCreateNodeAsyncCache;
 
   private long mNativePaintingContextPtr = 0;
-
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
     mDestroyed = false;
@@ -101,10 +100,12 @@ public final class PaintingContext {
   }
 
   // this func will be execed on main thread.
+  @Override
   public void destroy() {
     mDestroyed = true;
   }
 
+  @Override
   public long getNativePaintingContextPtr() {
     return mNativePaintingContextPtr;
   }

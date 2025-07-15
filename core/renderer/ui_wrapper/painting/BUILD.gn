@@ -16,8 +16,12 @@ ui_wrapper_painting_shared_sources = [
 if (!enable_unittests) {
   if (is_android) {
     ui_wrapper_painting_shared_sources += [
+      "android/native_painting_context_android.cc",
+      "android/native_painting_context_android.h",
       "android/painting_context_android.cc",
       "android/painting_context_android.h",
+      "android/platform_renderer_context.cc",
+      "android/platform_renderer_context.h",
       "android/ui_delegate_android.cc",
       "android/ui_delegate_android.h",
     ]
