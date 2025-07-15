@@ -160,17 +160,20 @@ open class LynxUIBaseInput(context: LynxContext) : LynxUI<LynxEditTextView>(cont
 
                 override fun afterTextChanged(s: Editable?) {
                     afterTextDidChanged(s)
-                    s?.let {
-                        lynxContext.eventEmitter.sendCustomEvent(LynxDetailEvent(
-                            sign,
-                            "input"
-                        ).apply {
-                            addDetail("value", it.toString())
-                            addDetail("cursorBegin", selectionStart)
-                            addDetail("cursorEnd", selectionEnd)
-                            addDetail("composing", mView?.inputConnection()?.hasComposingText(it))
-                        })
+                    if (mView != null) {
+                      s?.let {
+                          lynxContext.eventEmitter.sendCustomEvent(LynxDetailEvent(
+                              sign,
+                              "input"
+                          ).apply {
+                              addDetail("value", it.toString())
+                              addDetail("cursorBegin", selectionStart)
+                              addDetail("cursorEnd", selectionEnd)
+                              addDetail("composing", mView?.inputConnection()?.hasComposingText(it))
+                          })
+                        }
                     }
+                    
                 }
 
                     override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -191,6 +194,7 @@ open class LynxUIBaseInput(context: LynxContext) : LynxUI<LynxEditTextView>(cont
             }
 
         }
+        editText.hint = ""
         return  editText
     }
 

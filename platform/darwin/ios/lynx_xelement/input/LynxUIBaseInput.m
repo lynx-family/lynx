@@ -56,6 +56,7 @@
     _placeholderAttrs[NSForegroundColorAttributeName] = [UIColor colorWithRed:0.235 green:0.263 blue:0.235 alpha:0.3];
 
     _preValue = @"";
+    _placeholder = @"";
     _keyListener = [[LynxTextKeyListener alloc] init];
   }
   return self;
