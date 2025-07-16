@@ -921,7 +921,8 @@ int UIOwner::GetJSNodeType(int sign, const std::string& tag) const {
   return result;
 }
 
-void UIOwner::PostDrawEndTimingFrameCallback() const {
+void UIOwner::PostDrawEndTimingFrameCallback(
+    const tasm::PipelineID& pipeline_id) const {
   base::NapiHandleScope scope(env_);
   napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
   napi_value post_draw_end_timing_frame_callback =
@@ -930,8 +931,10 @@ void UIOwner::PostDrawEndTimingFrameCallback() const {
   if (!js_recv || !post_draw_end_timing_frame_callback) {
     return;
   }
-  size_t argc = 0;
+  size_t argc = 1;
   napi_value argv[argc];
+  napi_create_string_latin1(env_, pipeline_id.data(), NAPI_AUTO_LENGTH,
+                            &argv[0]);
 
   napi_value result;
   napi_call_function(env_, js_recv, post_draw_end_timing_frame_callback, argc,

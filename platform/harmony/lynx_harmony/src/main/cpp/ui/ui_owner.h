@@ -14,6 +14,7 @@
 
 #include "base/include/fml/memory/ref_counted.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/public/pipeline_option.h"
 #include "core/renderer/ui_wrapper/common/harmony/prop_bundle_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_dispatcher.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/event_emitter.h"
@@ -151,7 +152,8 @@ class UIOwner {
   void StartFluencyTrace(int sign, const std::string& scene,
                          const std::string& tag) const;
   void StopFluencyTrace(int sign) const;
-  void PostDrawEndTimingFrameCallback() const;
+  void PostDrawEndTimingFrameCallback(
+      const tasm::PipelineID& pipeline_id) const;
 
   bool Destroyed() const { return destroyed_; }
 

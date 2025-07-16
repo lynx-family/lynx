@@ -145,8 +145,8 @@ static void SetTiming(JNIEnv* env, jobject jcaller, jlong nativePtr,
   });
 }
 
-static void SetPaintEndTimingIfNeeded(JNIEnv* env, jobject jcaller,
-                                      jlong nativePtr, jlong usTimestamp) {
+static void SetPaintEndTiming(JNIEnv* env, jobject jcaller, jlong nativePtr,
+                              jlong j_us_timestamp, jobject j_pipeline_ids) {
   if (nativePtr == 0) {
     return;
   }
@@ -157,9 +157,31 @@ static void SetPaintEndTimingIfNeeded(JNIEnv* env, jobject jcaller,
   if (!nativeActorPtr) {
     return;
   }
-  nativeActorPtr->Act([usTimestamp](auto& controller) mutable {
-    controller->GetTimingHandler().SetPaintEndTimingIfNeeded(
-        static_cast<lynx::tasm::timing::TimestampUs>(usTimestamp));
+
+  lynx::lepus::Value pipeline_id_array_value;
+  if (j_pipeline_ids) {
+    pipeline_id_array_value =
+        lynx::tasm::android::ValueConverterAndroid::ConvertJavaOnlyArrayToLepus(
+            env, j_pipeline_ids);
+  }
+
+  nativeActorPtr->Act([j_us_timestamp, pipeline_id_array_value =
+                                           std::move(pipeline_id_array_value)](
+                          auto& controller) mutable {
+    lynx::tasm::ForEachLepusValue(
+        pipeline_id_array_value,
+        [&controller, j_us_timestamp](
+            const lynx::lepus::Value& key,
+            const lynx::lepus::Value& pipeline_id_value) {
+          auto pipeline_id = pipeline_id_value.StdString();
+          // set paint end
+          lynx::tasm::timing::TimestampKey paint_end_key(
+              lynx::tasm::timing::kPaintEnd);
+          controller->GetTimingHandler().SetTiming(
+              paint_end_key,
+              static_cast<lynx::tasm::timing::TimestampUs>(j_us_timestamp),
+              pipeline_id);
+        });
   });
 }
 

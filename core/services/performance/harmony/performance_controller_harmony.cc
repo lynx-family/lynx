@@ -14,6 +14,7 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/services/timing_handler/timing_handler.h"
+#include "core/services/trace/service_trace_event_def.h"
 #include "core/value_wrapper/harmony/value_impl_napi.h"
 
 namespace lynx {
@@ -26,8 +27,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::Init(napi_env env,
   {(name), nullptr, (func), nullptr, nullptr, nullptr, napi_default, nullptr}
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("setTiming", SetTiming),
-      DECLARE_NAPI_FUNCTION("markPaintEndTimingIfNeeded",
-                            MarkPaintEndTimingIfNeeded),
+      DECLARE_NAPI_FUNCTION("markTiming", MarkTiming),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -112,12 +112,14 @@ napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
   return nullptr;
 }
 
-napi_value PerformanceControllerHarmonyJSWrapper::MarkPaintEndTimingIfNeeded(
+napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
     napi_env env, napi_callback_info info) {
   /**
-   * markPaintEndTimingIfNeeded(): void;
+   * markTiming(timingKey: string, pipelineID: string): void;
+   * 0 - timingKey: string
+   * 1 - pipelineID: string
    */
-  size_t argc = 0;
+  size_t argc = 2;
   napi_value argv[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
@@ -126,14 +128,35 @@ napi_value PerformanceControllerHarmonyJSWrapper::MarkPaintEndTimingIfNeeded(
   if (!js_wrapper) {
     return nullptr;
   }
+  // 0 - timingKey: string
+  std::string timing_key = base::NapiUtil::ConvertToShortString(env, argv[0]);
+  // 1 - pipelineID: string
+  std::string pipeline_id = base::NapiUtil::ConvertToString(env, argv[1]);
+
   auto nativeActorPtr = js_wrapper->actor_.lock();
   if (!nativeActorPtr) {
     return nullptr;
   }
   lynx::tasm::timing::TimestampUs timestamp_us =
       lynx::base::CurrentSystemTimeMicroseconds();
-  nativeActorPtr->ActAsync([timestamp_us](auto& controller) {
-    controller->GetTimingHandler().SetPaintEndTimingIfNeeded(timestamp_us);
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY, TIMING_MARK + timing_key,
+      [&pipeline_id, &timing_key, timestamp_us,
+       instance_id =
+           nativeActorPtr->GetInstanceId()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("timing_key", timing_key);
+        ctx.event()->add_debug_annotations("pipeline_id", pipeline_id);
+        ctx.event()->add_debug_annotations("timestamp",
+                                           std::to_string(timestamp_us));
+        ctx.event()->add_debug_annotations("instance_id",
+                                           std::to_string(instance_id));
+      });
+  nativeActorPtr->ActAsync([timing_key = std::move(timing_key), timestamp_us,
+                            pipeline_id = std::move(pipeline_id)](
+                               auto& controller) mutable {
+    controller->GetTimingHandler().SetTiming(
+        timing_key, static_cast<lynx::tasm::timing::TimestampUs>(timestamp_us),
+        pipeline_id);
   });
   return nullptr;
 }

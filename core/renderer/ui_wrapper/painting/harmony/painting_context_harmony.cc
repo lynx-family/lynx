@@ -80,7 +80,7 @@ void PaintingContextHarmonyRef::SetNeedMarkPaintEndTiming(
   // now.
   // TODO(kechenglong): move this logic to platform if Harmony supports
   // draw_end monitoring.
-  ui_owner_->PostDrawEndTimingFrameCallback();
+  ui_owner_->PostDrawEndTimingFrameCallback(pipeline_id);
 }
 
 PaintingContextHarmony::~PaintingContextHarmony() = default;

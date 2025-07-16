@@ -50,8 +50,7 @@ class PerformanceControllerHarmonyJSWrapper
  private:
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value SetTiming(napi_env env, napi_callback_info info);
-  static napi_value MarkPaintEndTimingIfNeeded(napi_env env,
-                                               napi_callback_info info);
+  static napi_value MarkTiming(napi_env env, napi_callback_info info);
   napi_ref js_impl_strong_ref_{nullptr};
   napi_ref js_on_performance_event_func_ref_{nullptr};
   napi_env env_{nullptr};

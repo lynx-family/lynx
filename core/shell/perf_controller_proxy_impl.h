@@ -21,7 +21,9 @@ class PerfControllerProxyImpl : public PerfControllerProxy {
           actor)
       : perf_actor_(actor) {}
   ~PerfControllerProxyImpl() = default;
-  void MarkPaintEndTimingIfNeeded() override;
+
+  void MarkTiming(tasm::TimingKey timing_key,
+                  const tasm::PipelineID& pipeline_id) override;
 
  protected:
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>

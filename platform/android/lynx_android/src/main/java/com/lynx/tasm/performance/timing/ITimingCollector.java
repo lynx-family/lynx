@@ -4,6 +4,8 @@
 
 package com.lynx.tasm.performance.timing;
 
+import androidx.annotation.UiThread;
+
 /**
  * @brief The ITimingCollector defines the interface for timing collection.
  * This protocol is adopted by classes that need to collect and manage timing data.
@@ -29,5 +31,12 @@ public interface ITimingCollector {
    * This method is used to mark the end of the paint timing, typically when the rendering process
    * is complete.
    */
-  public void markPaintEndTimingIfNeeded();
+  @UiThread public void markPaintEndTimingIfNeeded();
+
+  /**
+   * @brief Mark pipeline as need paint end timing. called it when all ui
+   * operations executed.
+   * @param pipelineId identifier of pipeline.
+   */
+  @UiThread public void setNeedMarkPaintEndTiming(String pipelineId);
 }

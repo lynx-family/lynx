@@ -44,6 +44,7 @@ import com.lynx.tasm.fluency.FluencyTraceHelper;
 import com.lynx.tasm.fontface.FontFace;
 import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceFetcher;
 import com.lynx.tasm.provider.LynxResourceServiceProvider;
@@ -72,6 +73,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private TouchEventDispatcher mTouchEventDispatcher = null;
   private IListNodeInfoFetcher mListNodeInfoFetcher;
   private WeakReference<JSProxy> mJSProxy;
+  private WeakReference<PerformanceController> mPerfController = null;
 
   private WeakReference<LynxLayoutProxy> mLayoutProxy;
   private UIBody mUIBody;
@@ -241,6 +243,19 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public void setLongTaskMonitorEnabled(LynxBooleanOption enabled) {
     mLongTaskMonitorEnabled = enabled;
+  }
+
+  public void setPerfController(PerformanceController perfController) {
+    if (perfController != null) {
+      mPerfController = new WeakReference<>(perfController);
+    }
+  }
+
+  public PerformanceController getPerfController() {
+    if (mPerfController == null) {
+      return null;
+    }
+    return mPerfController.get();
   }
 
   public void onPageConfigDecoded(PageConfig config) {

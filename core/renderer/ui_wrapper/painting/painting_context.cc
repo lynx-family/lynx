@@ -211,14 +211,10 @@ void PaintingContext::SetNeedMarkPaintEndTiming(
   if (pipeline_id.empty()) {
     return;
   }
-  Enqueue([perf_actor = perf_controller_actor_,
-           platform_ref = platform_impl_->GetPlatformRef(), pipeline_id]() {
-    if (perf_actor) {
-      perf_actor->ActAsync([pipeline_id](auto& controller) {
-        controller->GetTimingHandler().SetNeedMarkPaintEndTiming(pipeline_id);
-      });
-    }
-
+  Enqueue([platform_ref = platform_impl_->GetPlatformRef(), pipeline_id]() {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                UI_OPERATION_QUEUE_SET_NEED_MARK_PAINT_END_TIMING,
+                "pipeline_id", pipeline_id);
     platform_ref->SetNeedMarkPaintEndTiming(pipeline_id);
   });
 }
