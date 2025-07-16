@@ -30,4 +30,5 @@
 - (BOOL)attachToLynxView;
 - (void)setRuntimeObserver:
     (const std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> &)observer;
+- (void)onEvaluateJavaScriptEnd:(NSString *)url;
 @end

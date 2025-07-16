@@ -30,5 +30,10 @@ void NativeRuntimeFacadeDarwin::ReportError(const base::LynxError& error) {
   [runtime onErrorOccurred:lynxError];
 }
 
+void NativeRuntimeFacadeDarwin::OnEvaluateJavaScriptEnd(const std::string& url) {
+  __strong LynxBackgroundRuntime* runtime = _runtime;
+  [runtime onEvaluateJavaScriptEnd:[NSString stringWithUTF8String:url.c_str()]];
+}
+
 }  // namespace shell
 }  // namespace lynx

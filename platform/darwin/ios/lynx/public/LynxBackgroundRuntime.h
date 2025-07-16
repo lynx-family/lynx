@@ -27,6 +27,14 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (void)runtime:(LynxBackgroundRuntime *)runtime didRecieveError:(NSError *)error;
 
+/**
+ * Notify that runtime evaluates javascript end. May be called on UI Thread
+ * @param runtime which runtime meets the error.
+ * @param url the url of the script
+ */
+@optional
+- (void)runtime:(LynxBackgroundRuntime *)runtime didEvaluateJavaScriptEnd:(NSString *)url;
+
 @end
 
 // Lynx background js runtime engine type.

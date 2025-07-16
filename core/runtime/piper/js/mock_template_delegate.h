@@ -54,6 +54,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
                              const std::string& method, int32_t code) override {
   }
   void OnCoreJSUpdated(std::string core_js) override {}
+  void OnEvaluateJavaScriptEnd(const std::string& url) override {}
+
   // for component
   void UpdateComponentData(lynx::runtime::UpdateDataTask task) override {}
   void SelectComponent(const std::string& component_id,

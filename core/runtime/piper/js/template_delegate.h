@@ -99,6 +99,8 @@ class TemplateDelegate : public ContextProxy::Delegate {
   virtual void OnModuleMethodInvoked(const std::string& module,
                                      const std::string& method,
                                      int32_t code) = 0;
+  virtual void OnEvaluateJavaScriptEnd(const std::string& url) = 0;
+
   virtual void OnCoreJSUpdated(std::string core_js) = 0;
 
   // for component

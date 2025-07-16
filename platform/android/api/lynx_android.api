@@ -3216,6 +3216,7 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public void com.lynx.tasm.LynxBackgroundRuntime.unsubscribeSessionStorage(String key, double id);
   public void com.lynx.tasm.LynxBackgroundRuntime.onErrorOccurred(LynxError error);
   public void com.lynx.tasm.LynxBackgroundRuntime.onModuleMethodInvoked(String module, String method, int error_code);
+  public void com.lynx.tasm.LynxBackgroundRuntime.onEvaluateJavaScriptEnd(String url);
   public boolean com.lynx.tasm.LynxBackgroundRuntime.attachToLynxView();
   public LynxModuleFactory com.lynx.tasm.LynxBackgroundRuntime.getModuleFactory();
   public LynxBackgroundRuntimeOptions com.lynx.tasm.LynxBackgroundRuntime.getLynxRuntimeOptions();
@@ -3228,6 +3229,7 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
 public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
   public void com.lynx.tasm.LynxBackgroundRuntimeClient.onReceivedError(LynxError error);
   public void com.lynx.tasm.LynxBackgroundRuntimeClient.onModuleMethodInvoked(String module, String method, int error_code);
+  public void com.lynx.tasm.LynxBackgroundRuntimeClient.onEvaluateJavaScriptEnd(String url);
 }
 
 public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {

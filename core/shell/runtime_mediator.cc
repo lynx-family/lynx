@@ -167,6 +167,11 @@ void RuntimeMediator::OnModuleMethodInvoked(const std::string& module,
   });
 }
 
+void RuntimeMediator::OnEvaluateJavaScriptEnd(const std::string& url) {
+  facade_actor_->ActAsync(
+      [url](auto& facade) { facade->OnEvaluateJavaScriptEnd(url); });
+}
+
 void RuntimeMediator::UpdateComponentData(runtime::UpdateDataTask task) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(

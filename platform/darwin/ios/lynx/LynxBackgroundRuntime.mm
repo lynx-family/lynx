@@ -454,9 +454,24 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   }
   for (id<LynxBackgroundRuntimeLifecycle> client in currTable) {
     dispatch_async(dispatch_get_main_queue(), ^{
-      [client runtime:self didRecieveError:error];
+      if ([client respondsToSelector:@selector(runtime:didRecieveError:)]) {
+        [client runtime:self didRecieveError:error];
+      }
     });
   }
 }
 
+- (void)onEvaluateJavaScriptEnd:(NSString*)url {
+  NSHashTable<id<LynxBackgroundRuntimeLifecycle>>* currTable;
+  @synchronized(_innerLifecycleClients) {
+    currTable = [_innerLifecycleClients copy];
+  }
+  for (id<LynxBackgroundRuntimeLifecycle> client in currTable) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if ([client respondsToSelector:@selector(runtime:didEvaluateJavaScriptEnd:)]) {
+        [client runtime:self didEvaluateJavaScriptEnd:url];
+      }
+    });
+  }
+}
 @end

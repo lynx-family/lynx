@@ -25,6 +25,7 @@ class NativeRuntimeFacadeAndroid : public NativeFacadeEmptyImpl {
   void ReportError(const base::LynxError& error) override;
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;
+  void OnEvaluateJavaScriptEnd(const std::string& url) override;
 
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;

@@ -7,4 +7,5 @@ package com.lynx.tasm;
 public abstract class LynxBackgroundRuntimeClient {
   public void onReceivedError(LynxError error) {}
   public void onModuleMethodInvoked(String module, String method, int error_code) {}
+  public void onEvaluateJavaScriptEnd(String url) {}
 }

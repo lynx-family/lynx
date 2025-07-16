@@ -5,7 +5,7 @@
 #ifndef CORE_SHELL_IOS_LYNX_RUNTIME_FACADE_DARWIN_H_
 #define CORE_SHELL_IOS_LYNX_RUNTIME_FACADE_DARWIN_H_
 
-#import <Lynx/LynxBackgroundRuntime.h>
+#import <Lynx/LynxBackgroundRuntime+Internal.h>
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxProviderRegistry.h>
 
@@ -31,6 +31,7 @@ class NativeRuntimeFacadeDarwin : public NativeFacadeEmptyImpl {
   NativeRuntimeFacadeDarwin(LynxBackgroundRuntime* runtime) : _runtime(runtime) {}
   ~NativeRuntimeFacadeDarwin() override = default;
   void ReportError(const base::LynxError& error) override;
+  void OnEvaluateJavaScriptEnd(const std::string& url) override;
 
  private:
   __weak LynxBackgroundRuntime* _runtime;

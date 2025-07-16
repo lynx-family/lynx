@@ -302,6 +302,13 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     }
   }
 
+  @CalledByNative
+  public void onEvaluateJavaScriptEnd(String url) {
+    for (LynxBackgroundRuntimeClient client : mRuntimeClients) {
+      client.onEvaluateJavaScriptEnd(url);
+    }
+  }
+
   public boolean attachToLynxView() {
     synchronized (mStateLock) {
       if (mState != STATE_START) {

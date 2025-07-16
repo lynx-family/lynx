@@ -309,5 +309,17 @@ void NativeRuntimeFacadeAndroid::OnModuleMethodInvoked(
       env, local_ref.Get(), j_module.Get(), j_method.Get(), code);
 }
 
+void NativeRuntimeFacadeAndroid::OnEvaluateJavaScriptEnd(
+    const std::string &url) {
+  JNIEnv *env = AttachCurrentThread();
+  lynx::base::android::ScopedLocalJavaRef<jobject> local_ref(jni_object_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  auto j_url = JNIConvertHelper::ConvertToJNIStringUTF(env, url);
+  Java_LynxBackgroundRuntime_onEvaluateJavaScriptEnd(env, local_ref.Get(),
+                                                     j_url.Get());
+}
+
 }  // namespace shell
 }  // namespace lynx

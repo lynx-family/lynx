@@ -806,7 +806,8 @@ void LynxRuntime::EvaluateScriptStandalone(std::string url,
   app_->loadApp(tasm::TasmRuntimeBundle(), lepus::Value(),
                 tasm::PackageInstanceDSL::STANDALONE,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
-                std::move(url));
+                url);
+  delegate_->OnEvaluateJavaScriptEnd(url);
 }
 
 void LynxRuntime::I18nResourceChanged(const std::string& msg) {

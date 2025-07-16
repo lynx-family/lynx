@@ -82,6 +82,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 
   void OnModuleMethodInvoked(const std::string& module,
                              const std::string& method, int32_t code) override;
+  void OnEvaluateJavaScriptEnd(const std::string& url) override;
+
   void UpdateComponentData(runtime::UpdateDataTask task) override;
   void SelectComponent(const std::string& component_id,
                        const std::string& id_selector, const bool single,

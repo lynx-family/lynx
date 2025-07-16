@@ -419,10 +419,12 @@ public class LynxBackgroundRuntime : NSObject {
   public LynxDevtool * LynxBackgroundRuntime()::devtool();
   public BOOL LynxBackgroundRuntime()::attachToLynxView();
   public void LynxBackgroundRuntime()::setRuntimeObserver:(const std::shared_ptr< lynx::piper::InspectorRuntimeObserverNG > &observer);
+  public void LynxBackgroundRuntime()::onEvaluateJavaScriptEnd:(NSString *url);
 }
 
 public protocol LynxBackgroundRuntimeLifecycle-p : <NSObject> {
   public void LynxBackgroundRuntimeLifecycle-p::runtime:didRecieveError:(LynxBackgroundRuntime *runtime,[didRecieveError] NSError *error);
+  public void LynxBackgroundRuntimeLifecycle-p::runtime:didEvaluateJavaScriptEnd:(LynxBackgroundRuntime *runtime,[didEvaluateJavaScriptEnd] NSString *url);
 }
 
 public class LynxBackgroundRuntimeOptions : NSObject {

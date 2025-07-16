@@ -55,6 +55,8 @@ class NativeFacade {
                                      const std::string& method,
                                      int32_t code) = 0;
 
+  virtual void OnEvaluateJavaScriptEnd(const std::string& url) {}
+
   // TODO(huzhanbo.luc): remove this later
   virtual void OnFirstLoadPerfReady(
       const std::unordered_map<int32_t, double>& perf,
