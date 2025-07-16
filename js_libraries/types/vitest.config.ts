@@ -4,8 +4,6 @@ export default defineConfig({
   test: {
     name: 'lynx-types',
     include: [],
-    typecheck: {
-      include: ['test/**/*.test-d.ts'],
-    },
+    typecheck: {},
   },
 });

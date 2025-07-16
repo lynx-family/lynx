@@ -1,8 +1,11 @@
 # CHANGELOG
 
-## 3.4.5
+## 3.4.6
 - fix `TextCodecHelper` defines.
 - Update `fetch` defines for chunk streaming.
+
+## 3.4.5
+- Complete the documentation for image related APIs.
 
 ## 3.4.4
 - Complete the documentation for text related APIs.

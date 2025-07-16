@@ -173,33 +173,25 @@ export interface BaseTransitionEvent<T> extends BaseEventOrig<{}, T> {
 export interface TransitionEvent extends BaseTransitionEvent<Target> {}
 
 export interface BaseImageLoadEvent<T> extends BaseEventOrig<{}, T> {
-  detail: {
     width: number;
     height: number;
-  };
 }
 
 export interface ImageLoadEvent extends BaseImageLoadEvent<Target> {
-  detail: {
     width: number;
     height: number;
-  };
 }
 
 export interface BaseImageErrorEvent<T> extends BaseEventOrig<{}, T> {
-  detail: {
     errMsg: string;
     error_code: number;
     lynx_categorized_code: number;
-  };
 }
 
 export interface ImageErrorEvent extends BaseImageErrorEvent<Target> {
-  detail: {
     errMsg: string;
     error_code: number;
     lynx_categorized_code: number;
-  };
 }
 
 export interface TextLineInfo {

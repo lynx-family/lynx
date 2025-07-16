@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import { assertType } from 'vitest';
 import { LayoutEvent, TextLineInfo, UIMethods } from '../../types';
 import type { SelectionChangeEvent } from '../../types/common/element/text';
 
@@ -32,24 +33,16 @@ function noop() {}
   <text bindtap={noop}></text>;
   <text
     bindlayout={(e: LayoutEvent) => {
-      e.detail.lineCount = 1;
-      e.detail.lines = [
-        {
-          start: 1,
-          end: 1,
-          ellipsisCount: 1,
-        } as TextLineInfo,
-      ];
-      e.detail.size.width = 1;
-      e.detail.size.height = 1;
+      assertType<number>(e.detail.lineCount);
+      assertType<TextLineInfo[]>(e.detail.lines);
+      assertType<{ width: number; height: number }>(e.detail.size);
     }}
   />;
   <text
     bindselectionchange={(e: SelectionChangeEvent) => {
-      e.detail.start = 1;
-      e.detail.end = 1;
-      e.detail.direction = 'forward';
-      e.detail.direction = 'backward';
+      assertType<number>(e.detail.start);
+      assertType<number>(e.detail.end);
+      assertType<'forward' | 'backward'>(e.detail.direction);
     }}
   />;
 }
@@ -69,23 +62,29 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
       showEndHandle: true,
     },
     success: (res) => {
-      res.boundingRect.left = 1;
-      res.boundingRect.right = 1;
-      res.boundingRect.top = 1;
-      res.boundingRect.bottom = 1;
-      res.boundingRect.width = 1;
-      res.boundingRect.height = 1;
-
-      res.boxes[1].left = 1;
-      res.boxes[1].right = 1;
-      res.boxes[1].top = 1;
-      res.boxes[1].bottom = 1;
-      res.boxes[1].width = 1;
-      res.boxes[1].height = 1;
-
-      res.handles[1].x = 1;
-      res.handles[1].y = 1;
-      res.handles[1].radius = 1;
+      assertType<{
+        boundingRect: {
+          left: number;
+          right: number;
+          top: number;
+          bottom: number;
+          width: number;
+          height: number;
+        };
+        boxes: {
+          left: number;
+          right: number;
+          top: number;
+          bottom: number;
+          width: number;
+          height: number;
+        }[];
+        handles: {
+          x: number;
+          y: number;
+          radius: number;
+        }[];
+      }>(res);
     },
   });
 
@@ -96,26 +95,33 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
       end: 1,
     },
     success: (res) => {
-      res.boundingRect.left = 1;
-      res.boundingRect.right = 1;
-      res.boundingRect.top = 1;
-      res.boundingRect.bottom = 1;
-      res.boundingRect.width = 1;
-      res.boundingRect.height = 1;
-
-      res.boxes[1].left = 1;
-      res.boxes[1].right = 1;
-      res.boxes[1].top = 1;
-      res.boxes[1].bottom = 1;
-      res.boxes[1].width = 1;
-      res.boxes[1].height = 1;
+      assertType<{
+        boundingRect: {
+          left: number;
+          right: number;
+          top: number;
+          bottom: number;
+          width: number;
+          height: number;
+        };
+        boxes: {
+          left: number;
+          right: number;
+          top: number;
+          bottom: number;
+          width: number;
+          height: number;
+        }[];
+      }>(res);
     },
   });
 
   invoke<'text'>({
     method: 'getSelectedText',
     success: (res) => {
-      res.selectedText = '';
+      assertType<{
+        selectedText: string;
+      }>(res);
     },
   });
 }

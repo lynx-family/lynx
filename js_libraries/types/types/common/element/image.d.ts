@@ -11,7 +11,11 @@ import { StandardProps } from '../props';
 export interface ImageProps extends StandardProps {
   /**
    * Supports http/https/base64
-   * @defaultValue ""
+   * @defaultValue undefined
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 0.2
    */
   src?: string;
@@ -22,8 +26,12 @@ export interface ImageProps extends StandardProps {
    * aspectFit: Scales the image while preserving aspect ratio so that the long side is fully visible
    * aspectFill: Scales the image while preserving aspect ratio, ensuring the short side fills the element
    * center: Does not scale the image; image is centered
-   * @defaultValue "scaleToFill"
+   * @defaultValue 'scaleToFill'
    * @since 0.2
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    */
   mode?: 'scaleToFill' | 'aspectFit' | 'aspectFill' | 'center';
 
@@ -31,65 +39,82 @@ export interface ImageProps extends StandardProps {
    * ARGB_8888: 32-bit memory per pixel, supports semi-transparent images
    * RGB_565: 16-bit memory per pixel, reduces memory usage but loses transparency
    * @defaultValue "ARGB_8888"
+   * @Android
    * @since 1.4
    */
   'image-config'?: 'ARGB_8888' | 'RGB_565';
 
   /**
    * Placeholder image, used same as src
-   * @defaultValue ""
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 1.4
    */
   placeholder?: string;
 
   /**
    * Image blur radius
-   * @defaultValue "3px"
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 0.2
    */
   'blur-radius'?: string;
 
   /**
    * Stretchable area for 9patch images, in percentage or decimal, four values for top, right, bottom, left
-   * @defaultValue "0.2 10% 0.3 20%"
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 1.4
    */
   'cap-insets'?: string;
 
   /**
-   * Number of times an animated image plays
+   * Adjust the scale of stretchable area for 9patch images
    * @defaultValue 1
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
+   * @since 1.4
+   */
+  'cap-insets-scale'?: number;
+
+  /**
+   * Number of times an animated image plays, 0 stands for infinite 
+   * @defaultValue 0
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 1.4
    */
   'loop-count'?: number;
 
   /**
    * Image won't load if its size is 0, but will load if prefetch-width is set
-   * @defaultValue "100px"
+   * @defaultValue "0px"
+   * @deprecated
+   * @iOS
+   * @Android
    * @since 1.4
    */
   'prefetch-width'?: string;
 
   /**
    * Image won't load if its size is 0, but will load if prefetch-height is set
-   * @defaultValue "100px"
+   * @defaultValue "0px"
+   * @deprecated
+   * @iOS
+   * @Android
    * @since 1.4
    */
   'prefetch-height'?: string;
-
-  /**
-   * If true, URL mapping is skipped. LynxView's custom ImageInterceptor won't work
-   * @defaultValue false
-   * @since 1.5
-   */
-  'skip-redirection'?: boolean;
-
-  /**
-   * Reduces the chance of OOM by downsampling large images, requires container support
-   * @defaultValue false
-   * @since iOS 2.0
-   */
-  downsampling?: boolean;
 
   /**
    * When set to true and the <image> element has no width or height,
@@ -97,6 +122,10 @@ export interface ImageProps extends StandardProps {
    * to match the image's original dimensions after the image is successfully loaded,
    * ensuring that the aspect ratio is maintained.
    * @defaultValue false
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 2.6
    */
   'auto-size'?: boolean;
@@ -106,6 +135,10 @@ export interface ImageProps extends StandardProps {
    * The default behavior is to clear the image resource before starting a new load.
    * This can resolve flickering issues when the image src is switched and reloaded. It is not recommended to enable this in scenarios where there is node reuse in views like lists.
    * @defaultValue false
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 2.7
    */
   'defer-src-invalidation'?: boolean;
@@ -113,75 +146,42 @@ export interface ImageProps extends StandardProps {
   /**
    * Specifies whether the animated image should start playing automatically once it is loaded.
    * @defaultValue true
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 2.11
    */
   'autoplay'?: boolean;
 
   /**
-   * Image animation property. If set to false, images will not be cached. Each image will be discarded by default after use,
-   * which is suitable for scenarios where the animation needs to play only once.
-   * @defaultValue true
-   * @iOS
-   * @since 3.4
-   */
-  'ios-frame-cache-automatically'?: boolean;
-
-  /**
    * Changes the color of all non-transparent pixels to the tint-color specified. The value is a <color>.
-   * @defaultValue ""
+   * @iOS
+   * @Android
+   * @Harmony
    * @since 2.12
    */
   'tint-color'?: string;
 
   /**
-   * Support outputting image monitoring information in bindload
-   * @defaultValue false
-   * @since 2.12
-   */
-  'extra-load-info'?: boolean;
-
-  /**
-   * Disables unexpected iOS built-in animations
-   * @defaultValue true
-   * @since iOS 2.0
-   */
-  'implicit-animation'?: boolean;
-
-  /**
-   * Add custom parameters to image
-   * @since 2.17
-   */
-  'additional-custom-info'?: { [key: string]: string };
-
-  /**
    * Image load success event
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 0.2
    */
   bindload?: (e: LoadEvent) => void;
 
   /**
    * Image load error event
+   * @iOS
+   * @Android
+   * @Harmony
+   * @PC
    * @since 0.2
    */
   binderror?: (e: ErrorEvent) => void;
-
-  /**
-   * The animation will call back when it starts playing.
-   * @since 2.11
-   */
-  bindstartplay?: (e: BaseEvent) => void;
-
-  /**
-   * Call back after one loop time of the animation is played.
-   * @since 2.11
-   */
-  bindcurrentloopcomplete?: (e: BaseEvent) => void;
-
-  /**
-   * It will be called after the animation has been played for all loop-count times. If the loop-count is not set, it will not be called back.
-   * @since 2.11
-   */
-  bindfinalloopcomplete?: (e: BaseEvent) => void;
 }
 
 export type LoadEvent = BaseEvent<'load', ImageLoadEvent>;
@@ -189,8 +189,10 @@ export type ErrorEvent = BaseEvent<'error', ImageErrorEvent>;
 
 /**
  * Restart the animation playback method controlled by the front end, and the animation playback progress and loop count will be reset.
- * @Android
  * @iOS
+ * @Android
+ * @Harmony
+ * @PC
  * @deprecated Deprecated. Some scenarios may not call back the call result. It is recommended to use resumeAnimation instead.
  */
 export interface ImageStartAnimMethod extends BaseMethod {
@@ -199,8 +201,10 @@ export interface ImageStartAnimMethod extends BaseMethod {
 
 /**
  * Resumes the animation, without resetting the loop-count.
- * @Android
  * @iOS
+ * @Android
+ * @Harmony
+ * @PC
  * @since 2.11
  */
 export interface ImageResumeAnimMethod extends BaseMethod {
@@ -209,8 +213,10 @@ export interface ImageResumeAnimMethod extends BaseMethod {
 
 /**
  * Pauses the animation, without resetting the loop-count.
- * @Android
  * @iOS
+ * @Android
+ * @Harmony
+ * @PC
  * @since 2.11
  */
 export interface ImagePauseAnimMethod extends BaseMethod {
@@ -219,8 +225,10 @@ export interface ImagePauseAnimMethod extends BaseMethod {
 
 /**
  * Stops the animation, and it will reset the loop-count.
- * @Android
  * @iOS
+ * @Android
+ * @Harmony
+ * @PC
  * @since 2.11
  */
 export interface ImageStopAnimMethod extends BaseMethod {
