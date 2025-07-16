@@ -134,7 +134,7 @@ void FontFaceManager::LoadFontWithUrl(int sign, const std::string& font_family,
       auto request =
           pub::LynxResourceRequest{item.second, pub::LynxResourceType::kFont};
       resource_loader->LoadResource(
-          request, true,
+          request,
           [sign, font_family, font_callback,
            weak_self = std::weak_ptr<FontFaceManager>(shared_from_this())](
               pub::LynxResourceResponse& response) {

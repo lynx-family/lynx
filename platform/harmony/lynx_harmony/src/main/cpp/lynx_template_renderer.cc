@@ -1434,9 +1434,8 @@ std::vector<uint8_t> LynxTemplateRenderer::LoadJSSource(
   auto request = pub::LynxResourceRequest{
       .url = url, .type = pub::LynxResourceType::kAssets};
   resource_loader_->LoadResource(
-      request, true,
-      [promise =
-           std::move(promise)](pub::LynxResourceResponse& response) mutable {
+      request, [promise = std::move(promise)](
+                   pub::LynxResourceResponse& response) mutable {
         promise.set_value(std::move(response.data));
       });
   return future.get();
@@ -1462,9 +1461,8 @@ void LynxTemplateRenderer::LoadTemplateFromURL(
   pub::LynxResourceRequest req{.url = url,
                                .type = pub::LynxResourceType::kTemplate};
   resource_loader_->LoadResource(
-      req, true,
-      [weak_flag = weak_flag_->weak_from_this(), url, init_data,
-       &pipeline_options](pub::LynxResourceResponse& response) {
+      req, [weak_flag = weak_flag_->weak_from_this(), url, init_data,
+            &pipeline_options](pub::LynxResourceResponse& response) {
         auto flag = weak_flag.lock();
         if (!flag) {
           return;
