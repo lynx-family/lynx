@@ -4,14 +4,25 @@
 
 package com.lynx.tasm.performance;
 
+import static com.lynx.tasm.base.trace.TraceEventDef.INSTANCE_ID;
+import static com.lynx.tasm.base.trace.TraceEventDef.MARK_HOST_PLATFORM_TIMING;
+import static com.lynx.tasm.base.trace.TraceEventDef.MARK_TIMING;
+import static com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID;
+import static com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY;
+import static com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY_PAINT_END;
+import static com.lynx.tasm.base.trace.TraceEventDef.TIMING_TIMESTAMP;
+
 import androidx.annotation.AnyThread;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.UiThread;
+import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.memory.IMemoryMonitor;
 import com.lynx.tasm.performance.memory.IMemoryRecordBuilder;
@@ -22,6 +33,7 @@ import com.lynx.tasm.performance.timing.ITimingCollector;
 import com.lynx.tasm.performance.timing.TimingUtil;
 import com.lynx.tasm.service.ILynxEventReporterService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,9 +49,13 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private static volatile LynxBooleanOption sIsMemoryMonitorEnabled = LynxBooleanOption.UNSET;
   private static volatile long sMemoryAcquisitionDelayMs = -1;
   private volatile long mNativePerformanceActorPtr = 0;
+  private volatile boolean mNeedMarkPaintEndTiming = false;
   private WeakReference<IPerformanceObserver> mObserver;
   private WeakReference<ILynxEventReporterService> mEventReporterService;
   private boolean mEnableController = true;
+  private JavaOnlyMap mHostPlatformTiming;
+  private JavaOnlyArray mPendingPaintEndPipelineIds = new JavaOnlyArray();
+  private int mInstanceId = LynxEventReporter.INSTANCE_ID_UNKNOWN;
 
   /**
    * Checks if memory monitoring is enabled.
@@ -90,6 +106,10 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
    */
   public void setEnableController(boolean enableController) {
     mEnableController = enableController;
+  }
+
+  public void setInstanceId(int instanceId) {
+    mInstanceId = instanceId;
   }
 
   @Override
@@ -185,6 +205,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       return;
     }
     long usTimestamp = TimingUtil.currentTimeUs();
+    makeTraceEventInstant(MARK_TIMING, key, usTimestamp, pipelineID);
     runOnReportThread(() -> {
       if (mNativePerformanceActorPtr == 0) {
         return;
@@ -194,17 +215,49 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   }
 
   @Override
-  public void markPaintEndTimingIfNeeded() {
-    if (!mEnableController) {
+  public void markHostPlatformTiming(final String key) {
+    if (!mEnableController || !UIThreadUtils.isOnUiThread() || mPendingPaintEndPipelineIds.isEmpty()
+        || key == null) {
       return;
     }
     long usTimestamp = TimingUtil.currentTimeUs();
+    makeTraceEventInstants(MARK_HOST_PLATFORM_TIMING, key, usTimestamp);
+    if (mHostPlatformTiming == null) {
+      mHostPlatformTiming = new JavaOnlyMap();
+    }
+    mHostPlatformTiming.put(key, usTimestamp);
+  }
+
+  @Override
+  @UiThread
+  public void markPaintEndTimingIfNeeded() {
+    if (!mEnableController || !UIThreadUtils.isOnUiThread()
+        || mPendingPaintEndPipelineIds.isEmpty()) {
+      return;
+    }
+    long usTimestamp = TimingUtil.currentTimeUs();
+    makeTraceEventInstants(MARK_TIMING, TIMING_KEY_PAINT_END, usTimestamp);
+    JavaOnlyMap hostPlatformTiming = mHostPlatformTiming;
+    mHostPlatformTiming = null;
+    JavaOnlyArray pendingPaintEndPipelineIds = mPendingPaintEndPipelineIds;
+    mPendingPaintEndPipelineIds = new JavaOnlyArray();
     runOnReportThread(() -> {
       if (mNativePerformanceActorPtr == 0) {
         return;
       }
-      nativeSetPaintEndTimingIfNeeded(mNativePerformanceActorPtr, usTimestamp);
+      nativeSetPaintEndTimingAndHostPlatformTiming(
+          mNativePerformanceActorPtr, usTimestamp, hostPlatformTiming, pendingPaintEndPipelineIds);
+      mNeedMarkPaintEndTiming = false;
     });
+  }
+
+  @Override
+  @UiThread
+  public void setNeedMarkPaintEndTiming(String pipelineId) {
+    if (!mEnableController || !UIThreadUtils.isOnUiThread()) {
+      return;
+    }
+    mPendingPaintEndPipelineIds.add(pipelineId);
   }
 
   public void setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming) {
@@ -292,6 +345,26 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     return sIsNativeLibraryLoaded;
   }
 
+  private void makeTraceEventInstants(String prefix, String timingKey, long timestamp) {
+    if (TraceEvent.enableTrace()) {
+      for (Object id : mPendingPaintEndPipelineIds) {
+        makeTraceEventInstant(prefix, timingKey, timestamp, (String) id);
+      }
+    }
+  }
+
+  private void makeTraceEventInstant(
+      String prefix, String timingKey, long timestamp, String pipelineId) {
+    if (TraceEvent.enableTrace()) {
+      Map<String, String> props = new HashMap<>();
+      props.put(TIMING_KEY, timingKey);
+      props.put(TIMING_TIMESTAMP, String.valueOf(timestamp));
+      props.put(PIPELINE_ID, pipelineId);
+      props.put(INSTANCE_ID, String.valueOf(mInstanceId));
+      TraceEvent.instant(TraceEvent.CATEGORY_DEFAULT, prefix + "." + timingKey, props);
+    }
+  }
+
   // Native API
   private native void nativeAllocateMemory(
       long nativePtr, String category, float sizeKb, String detailKey, String detailValue);
@@ -301,6 +374,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       long nativePtr, String category, float sizeKb, int instanceCount, Map<String, String> detail);
   private native void nativeSetTiming(
       long nativePtr, String key, long usTimestamp, String pipelineID);
-  private native void nativeSetPaintEndTimingIfNeeded(long nativePtr, long usTimestamp);
+  private native void nativeSetPaintEndTimingAndHostPlatformTiming(
+      long nativePtr, long usTimestamp, JavaOnlyMap hostPlatformTiming, JavaOnlyArray pipelineIds);
   private static native boolean nativeIsMemoryMonitorEnabled();
 }

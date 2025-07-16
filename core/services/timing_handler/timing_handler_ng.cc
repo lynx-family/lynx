@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "base/include/log/logging.h"
+#include "core/renderer/tasm/config.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 
@@ -26,6 +27,10 @@ void TimingHandlerNg::OnPipelineStart(
     const PipelineID& pipeline_id, const PipelineOrigin& pipeline_origin,
     const TimestampUs pipeline_start_timestamp) {
   timing_info_.BindPipelineOriginWithPipelineId(pipeline_id, pipeline_origin);
+  if (sender_) {
+    timing_info_.SetHostPlatformTimingExtraInfo(pipeline_id, kHostPlatformType,
+                                                Config::Platform());
+  }
   if (pipeline_origin == kLoadBundle ||
       pipeline_origin == kReloadBundleFromNative ||
       pipeline_origin == kReloadBundleFromBts) {
@@ -56,6 +61,22 @@ void TimingHandlerNg::SetFrameworkExtraTimingInfo(const PipelineID& pipeline_id,
                                                   const std::string& key,
                                                   const std::string& value) {
   timing_info_.SetFrameworkExtraTimingInfo(pipeline_id, key, value);
+}
+
+void TimingHandlerNg::SetHostPlatformTiming(TimestampKey& timing_key,
+                                            TimestampUs us_timestamp,
+                                            const PipelineID& pipeline_id) {
+  if (timing_key.empty() || us_timestamp == 0) {
+    LOGE("Invalid timing key or timestamp");
+    return;
+  }
+  timing_info_.SetHostPlatformTiming(timing_key, us_timestamp, pipeline_id);
+}
+
+void TimingHandlerNg::SetHostPlatformTimingExtraInfo(
+    const PipelineID& pipeline_id, const std::string& key,
+    const std::string& value) {
+  timing_info_.SetHostPlatformTimingExtraInfo(pipeline_id, key, value);
 }
 
 void TimingHandlerNg::SetTiming(const TimestampKey& timing_key,

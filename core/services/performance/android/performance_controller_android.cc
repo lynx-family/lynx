@@ -145,8 +145,9 @@ static void SetTiming(JNIEnv* env, jobject jcaller, jlong nativePtr,
   });
 }
 
-static void SetPaintEndTimingIfNeeded(JNIEnv* env, jobject jcaller,
-                                      jlong nativePtr, jlong usTimestamp) {
+static void SetPaintEndTimingAndHostPlatformTiming(
+    JNIEnv* env, jobject jcaller, jlong nativePtr, jlong j_us_timestamp,
+    jobject j_host_platform_timing_map, jobject j_pipeline_ids) {
   if (nativePtr == 0) {
     return;
   }
@@ -157,9 +158,51 @@ static void SetPaintEndTimingIfNeeded(JNIEnv* env, jobject jcaller,
   if (!nativeActorPtr) {
     return;
   }
-  nativeActorPtr->Act([usTimestamp](auto& controller) mutable {
-    controller->GetTimingHandler().SetPaintEndTimingIfNeeded(
-        static_cast<lynx::tasm::timing::TimestampUs>(usTimestamp));
+  lynx::lepus::Value host_platform_timing_map_value;
+  if (j_host_platform_timing_map) {
+    host_platform_timing_map_value =
+        lynx::tasm::android::ValueConverterAndroid::ConvertJavaOnlyMapToLepus(
+            env, j_host_platform_timing_map);
+  }
+
+  lynx::lepus::Value pipeline_id_array_value;
+  if (j_pipeline_ids) {
+    pipeline_id_array_value =
+        lynx::tasm::android::ValueConverterAndroid::ConvertJavaOnlyArrayToLepus(
+            env, j_pipeline_ids);
+  }
+
+  nativeActorPtr->Act([j_us_timestamp,
+                       host_platform_timing_map_value =
+                           std::move(host_platform_timing_map_value),
+                       pipeline_id_array_value = std::move(
+                           pipeline_id_array_value)](auto& controller) mutable {
+    lynx::tasm::ForEachLepusValue(
+        pipeline_id_array_value,
+        [&host_platform_timing_map_value, &controller, j_us_timestamp](
+            const lynx::lepus::Value& key,
+            const lynx::lepus::Value& pipeline_id_value) {
+          auto pipeline_id = const_cast<lynx::tasm::PipelineID&>(
+              pipeline_id_value.StdString());
+          // set host platform timing
+          lynx::tasm::ForEachLepusValue(
+              host_platform_timing_map_value,
+              [&pipeline_id, &controller](
+                  const lynx::lepus::Value& timingKey,
+                  const lynx::lepus::Value& timingStamp) {
+                controller->GetTimingHandler().SetHostPlatformTiming(
+                    const_cast<lynx::tasm::timing::TimestampKey&>(
+                        timingKey.StdString()),
+                    static_cast<uint64_t>(timingStamp.Int64()), pipeline_id);
+              });
+          // set paint end
+          lynx::tasm::timing::TimestampKey paint_end_key(
+              lynx::tasm::timing::kPaintEnd);
+          controller->GetTimingHandler().SetTiming(
+              paint_end_key,
+              static_cast<lynx::tasm::timing::TimestampUs>(j_us_timestamp),
+              pipeline_id);
+        });
   });
 }
 

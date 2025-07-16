@@ -96,6 +96,13 @@ class TimingInfoNg {
                                    const std::string& info_key,
                                    const std::string& info_value);
 
+  bool SetHostPlatformTiming(TimestampKey& timing_key, TimestampUs us_timestamp,
+                             const PipelineID& pipeline_id);
+
+  bool SetHostPlatformTimingExtraInfo(const PipelineID& pipeline_id,
+                                      const std::string& key,
+                                      const std::string& value);
+
   // Send the time consumption of the Init phase. They will be sent when entry
   // is ready.
   std::unique_ptr<lynx::pub::Value> GetInitContainerEntry(
@@ -152,6 +159,16 @@ class TimingInfoNg {
   // directly merged when dispatching the pipelineEntry.
   std::unordered_map<PipelineID, std::unordered_map<std::string, std::string>>
       framework_extra_info_;
+  // host_platform_timing_info_ stores the tracking data from the host
+  // platform. Note that TimingHandler does not concern itself with the
+  // specific [key, value] pairs within the host_platform_timing_info_
+  // structure. They will be directly merged when dispatching the pipelineEntry.
+  std::unordered_map<PipelineID, TimingMap> host_platform_timing_info_;
+  // host_platform_extra_info_ stores the extra information from the front-end
+  // like dsl, stage etc. Same with host_platform_extra_info_, they will be
+  // directly merged when dispatching the pipelineEntry.
+  std::unordered_map<PipelineID, std::unordered_map<std::string, std::string>>
+      host_platform_extra_info_;
   // init_timing_info_ stores the initialization durations for lynxview,
   // container, and backgroundRuntime. These duration data are not related to
   // any specific pipelineId. If there are other data unrelated to pipeline,

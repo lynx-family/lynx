@@ -306,6 +306,20 @@ void PaintingContextAndroidRef::UpdateContentOffsetForListContainer(
       target_content_offset_y);
 }
 
+void PaintingContextAndroidRef::SetNeedMarkPaintEndTiming(
+    const tasm::PipelineID& pipeline_id) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jstring> pipeline_id_ref =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, pipeline_id);
+  Java_PaintingContext_setNeedMarkPaintEndTiming(env, local_ref.Get(),
+                                                 pipeline_id_ref.Get());
+}
+
 void PaintingContextAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {
   PropBundleAndroid* pda =

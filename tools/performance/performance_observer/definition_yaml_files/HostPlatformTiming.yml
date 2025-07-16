@@ -1,0 +1,50 @@
+AndroidHostPlatformTiming:
+  type: object
+  x-lang:
+    - java
+    - ts
+  properties:
+    hostPlatformType:
+      type: string
+      ts-literal-type: 'Android'
+    measureStart:
+      type: number
+    measureEnd:
+      type: number
+    layoutStart:
+      type: number
+    layoutEnd:
+      type: number
+    drawStart:
+      type: number
+    drawEnd:
+      type: number
+
+IOSHostPlatformTiming:
+  type: object
+  x-lang:
+    - objc
+    - ts
+  properties:
+    hostPlatformType:
+      type: string
+      ts-literal-type: 'iOS'
+
+HarmonyHostPlatformTiming:
+  type: object
+  x-lang:
+    - ets
+    - ts
+  properties:
+    hostPlatformType:
+      type: string
+      ts-literal-type: 'Harmony'
+
+HostPlatformTiming:
+  type: object
+  x-lang:
+    - ts
+  ts-discriminated-union:
+    - $ref: '#/AndroidHostPlatformTiming'
+    - $ref: '#/IOSHostPlatformTiming'
+    - $ref: '#/HarmonyHostPlatformTiming'

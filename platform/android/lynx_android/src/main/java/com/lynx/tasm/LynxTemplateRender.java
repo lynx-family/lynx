@@ -395,6 +395,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     mTemplateAssembler.setLynxContext(mLynxContext);
 
     mLynxContext.setEmbeddedMode(mEmbeddedMode);
+    mLynxContext.setPerfController(mPerformanceController);
 
     mLynxContext.setUIBodyView(mBodyView);
     mLynxContext.setForceDarkAllowed(mLynxViewConfigProvider.getForceDarkAllowed());
@@ -791,6 +792,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     int instanceId = nativeGetInstanceId(mNativePtr, mNativeLifecycle);
     if (instanceId >= 0) {
       mLynxContext.setInstanceId(instanceId);
+      mPerformanceController.setInstanceId(instanceId);
     }
 
     if (mBodyView != null) {
@@ -1862,6 +1864,12 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       lynxUIRenderer.performInnerMeasure(widthMeasureSpec, heightMeasureSpec);
     }
     onTraceEventEnd(TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE);
+  }
+
+  public void markHostPlatformTiming(final String key) {
+    if (mPerformanceController != null) {
+      mPerformanceController.markHostPlatformTiming(key);
+    }
   }
 
   private void maybeSyncLayoutResultDuringLayoutOnBackgroundThread(

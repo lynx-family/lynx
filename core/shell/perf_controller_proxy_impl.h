@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/include/concurrent_queue.h"
 #include "core/public/perf_controller_proxy.h"
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/services/performance/performance_controller.h"
@@ -22,10 +23,12 @@ class PerfControllerProxyImpl : public PerfControllerProxy {
       : perf_actor_(actor) {}
   ~PerfControllerProxyImpl() = default;
   void MarkPaintEndTimingIfNeeded() override;
+  void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
 
  protected:
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>
       perf_actor_;
+  base::ConcurrentQueue<tasm::PipelineID> paint_end_pipeline_id_list_;
 };
 
 }  // namespace shell

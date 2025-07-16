@@ -43,6 +43,13 @@ class TimingHandlerNg {
                                    const std::string &key,
                                    const std::string &value);
 
+  void SetHostPlatformTiming(TimestampKey &timing_key, TimestampUs us_timestamp,
+                             const PipelineID &pipeline_id);
+
+  void SetHostPlatformTimingExtraInfo(const PipelineID &pipeline_id,
+                                      const std::string &key,
+                                      const std::string &value);
+
   void OnPipelineStart(const PipelineID &pipeline_id,
                        const PipelineOrigin &pipeline_origin,
                        const TimestampUs pipeline_start_timestamp);

@@ -20,6 +20,7 @@ namespace timing {
 void TimingInfoNg::ClearPipelineTimingInfo() {
   pipeline_timing_info_.clear();
   framework_timing_info_.clear();
+  host_platform_timing_info_.clear();
   metrics_.clear();
   load_bundle_pipeline_id_ = "";
   pipeline_id_to_origin_map_.clear();
@@ -37,6 +38,7 @@ void TimingInfoNg::ClearContainerTimingInfo() {
 void TimingInfoNg::ReleasePipelineTiming(const PipelineID& pipeline_id) {
   pipeline_timing_info_.erase(pipeline_id);
   framework_timing_info_.erase(pipeline_id);
+  host_platform_timing_info_.erase(pipeline_id);
   framework_extra_info_.erase(pipeline_id);
   pipeline_id_to_origin_map_.erase(pipeline_id);
 }
@@ -53,6 +55,21 @@ bool TimingInfoNg::SetFrameworkExtraTimingInfo(
     const lynx::tasm::PipelineID& pipeline_id, const std::string& info_key,
     const std::string& info_value) {
   return framework_extra_info_[pipeline_id]
+      .emplace(info_key, info_value)
+      .second;
+}
+
+bool TimingInfoNg::SetHostPlatformTiming(TimestampKey& timing_key,
+                                         TimestampUs us_timestamp,
+                                         const PipelineID& pipeline_id) {
+  return host_platform_timing_info_[pipeline_id].SetTimestamp(timing_key,
+                                                              us_timestamp);
+}
+
+bool TimingInfoNg::SetHostPlatformTimingExtraInfo(
+    const lynx::tasm::PipelineID& pipeline_id, const std::string& info_key,
+    const std::string& info_value) {
+  return host_platform_extra_info_[pipeline_id]
       .emplace(info_key, info_value)
       .second;
 }
@@ -197,15 +214,15 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
       return nullptr;
     }
   }
-  // make entry
+  // 1.0 make entry
   auto entry = timing_map.ToPubMap(false, value_factory_);
-  // merge framework, framework-pipeline may don't have item.
+  // 2.0 merge framework, framework-pipeline may don't have item.
   TimingMap framework_info_map;
   auto framework_info_it = framework_timing_info_.find(pipeline_id);
   if (framework_info_it != framework_timing_info_.end()) {
     framework_info_map.Merge(framework_info_it->second);
   }
-  // merge framework extra info, like dsl, stage, etc.
+  // 2.1 merge framework extra info, like dsl, stage, etc.
   std::unique_ptr<lynx::pub::Value> framework_info_value =
       framework_info_map.ToPubMap(false, value_factory_);
   auto extra_info_iter = framework_extra_info_.find(pipeline_id);
@@ -215,8 +232,25 @@ std::unique_ptr<lynx::pub::Value> TimingInfoNg::GetPipelineEntry(
       framework_info_value->PushStringToMap(info_key, info_value);
     }
   }
+  // 3.0 merge host platform timing, if it exists.
+  TimingMap host_platform_info_map;
+  auto host_platform_info_it = host_platform_timing_info_.find(pipeline_id);
+  if (host_platform_info_it != host_platform_timing_info_.end()) {
+    host_platform_info_map.Merge(host_platform_info_it->second);
+  }
+  // 3.1 merge framework extra info, like dsl, stage, etc.
+  std::unique_ptr<lynx::pub::Value> host_platform_info_value =
+      host_platform_info_map.ToPubMap(false, value_factory_);
+  auto host_platform_info_iter = host_platform_extra_info_.find(pipeline_id);
+  if (host_platform_info_iter != host_platform_extra_info_.end()) {
+    for (const auto& [info_key, info_value] : host_platform_info_iter->second) {
+      host_platform_info_value->PushStringToMap(info_key, info_value);
+    }
+  }
   entry->PushValueToMap(kFrameworkRenderingTiming,
                         std::move(framework_info_value));
+  entry->PushValueToMap(kHostPlatformTiming,
+                        std::move(host_platform_info_value));
   entry->PushStringToMap(kEntryType, kEntryTypePipeline);
   entry->PushStringToMap(kEntryName, pipeline_origin);
 

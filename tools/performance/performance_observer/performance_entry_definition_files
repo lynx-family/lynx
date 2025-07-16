@@ -11,3 +11,4 @@ definition_yaml_files/ReloadBundleEntry.yml
 definition_yaml_files/MemoryUsageEntry.yml
 definition_yaml_files/MemoryUsageItem.yml
 definition_yaml_files/LazyBundleEntry.yml
+definition_yaml_files/HostPlatformTiming.yml

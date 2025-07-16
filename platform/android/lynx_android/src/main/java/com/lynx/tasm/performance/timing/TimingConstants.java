@@ -11,6 +11,13 @@ public class TimingConstants {
   public static final String VERIFY_TASM_START = "verifyTasmStart";
   public static final String VERIFY_TASM_END = "verifyTasmEnd";
   public static final String FFI_START = "ffiStart";
+  // Host Platform Timing Keys
+  public static final String HOST_PLATFORM_MEASURE_START = "measureStart";
+  public static final String HOST_PLATFORM_MEASURE_END = "measureEnd";
+  public static final String HOST_PLATFORM_LAYOUT_START = "layoutStart";
+  public static final String HOST_PLATFORM_LAYOUT_END = "layoutEnd";
+  public static final String HOST_PLATFORM_DRAW_START = "drawStart";
+  public static final String HOST_PLATFORM_DRAW_END = "drawEnd";
   // PipelineOrigin
   public static final String LOAD_BUNDLE = "loadBundle";
   public static final String RELOAD_BUNDLE_FROM_NATIVE = "reloadBundleFromNative";

@@ -4,6 +4,8 @@
 package com.lynx.tasm.behavior.ui;
 
 import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.ACCESSIBILITY_ELEMENT_TRUE;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_DRAW_END;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_DRAW_START;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -383,6 +385,10 @@ public class UIBody extends UIGroup<UIBodyView> {
         map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
         TraceEvent.beginSection(TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW, map);
       }
+      ITimingCollector timingCollector = mTimingCollector.get();
+      if (timingCollector != null) {
+        timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_START);
+      }
 
       boolean needLongTaskMonitor = LynxLongTaskMonitor.willProcessTask(
           "LynxTemplateRender.Draw", mInstanceId, getLongTaskMonitorEnabled());
@@ -401,8 +407,8 @@ public class UIBody extends UIGroup<UIBodyView> {
         mHasMeaningfulPaint = true;
       }
 
-      ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
+        timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_END);
         timingCollector.markPaintEndTimingIfNeeded();
       }
       if (needLongTaskMonitor) {

@@ -47,11 +47,14 @@ def generate_java_code(yaml_files):
         java_imports = []
         for class_name, definition in list(items.items()):
             # Handle special characters to generate ignore rules.
-            tsOnly = False
-            if 'x-ts-only' in definition:
-                tsOnly = definition['x-ts-only']
+            enableJava = True
+            if ('x-lang' in definition):
+                enableJava = 'java' in definition['x-lang']
+            
+            if enableJava:
+                if class_name.startswith("Android"):
+                    class_name = class_name[7:]
 
-            if not tsOnly:
                 # Generate java code
                 java_code = generate_java(class_name, definition, java_imports)
                 if java_code:
@@ -84,11 +87,14 @@ def generate_objc_code(yaml_files):
         objc_implementations_imports = []
         for class_name, definition in list(items.items()):
             # Handle special characters to generate ignore rules.
-            tsOnly = False
-            if 'x-ts-only' in definition:
-                tsOnly = definition['x-ts-only']
+            enableObjc= True
+            if ('x-lang' in definition):
+                enableObjc = 'objc' in definition['x-lang']
 
-            if not tsOnly:
+            if enableObjc:
+                if class_name.startswith("IOS"):
+                    class_name = class_name[3:]
+    
                 # Generate objc header code
                 objc_header = generate_objc_interface(class_name, definition, objc_imports)
                 if objc_header:
@@ -127,8 +133,14 @@ def generate_ts_code(yaml_files):
         items = read_yaml_file(os.path.join(base_dir, yaml_file))
 
         for class_name, definition in list(items.items()):
-            ts_interface = generate_ts(class_name, definition, items)
-            ts_interfaces.append(ts_interface)
+            enableTs= True
+            if ('x-lang' in definition):
+                enableTs = 'ts' in definition['x-lang']
+            
+            if enableTs:
+                ts_interface = generate_ts(class_name, definition, items)
+                ts_interfaces.append(ts_interface)
+
     # Generate ts Interface
     ts_output = get_license(2024)
     ts_output += '\n'.join(ts_interfaces)

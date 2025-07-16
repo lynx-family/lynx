@@ -5,6 +5,10 @@
 package com.lynx.tasm;
 
 import static com.lynx.tasm.eventreport.LynxEventReporter.INSTANCE_ID_UNKNOWN;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_LAYOUT_END;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_LAYOUT_START;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_END;
+import static com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_START;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -960,13 +964,14 @@ public class LynxView extends UIBodyView {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       return;
     }
-
+    mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_START);
     mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     if ((lynxUIRenderer != null) && lynxUIRenderer.shouldInvokeNativeViewMethod()) {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
+    mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_END);
   }
 
   @Keep
@@ -975,7 +980,7 @@ public class LynxView extends UIBodyView {
     if (mLynxTemplateRender == null) {
       return;
     }
-
+    mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_START);
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
     if ((lynxUIRenderer != null) && lynxUIRenderer.shouldInvokeNativeViewMethod()) {
       super.onLayout(changed, left, top, right, bottom);
@@ -988,6 +993,7 @@ public class LynxView extends UIBodyView {
         mKeyboardEvent.detectKeyboardChangeAndSendEvent();
       }
     }
+    mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_END);
   }
 
   @Keep

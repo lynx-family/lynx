@@ -79,6 +79,16 @@ void TimingHandler::SetFrameworkTiming(TimestampKey& timing_key,
   }
 }
 
+void TimingHandler::SetHostPlatformTiming(TimestampKey& timing_key,
+                                          TimestampUs us_timestamp,
+                                          const PipelineID& pipeline_id) {
+  if (timing_key.empty() || us_timestamp == 0) {
+    LOGE("Invalid timing key or timestamp");
+    return;
+  }
+  handler_ng_.SetHostPlatformTiming(timing_key, us_timestamp, pipeline_id);
+}
+
 void TimingHandler::SetTiming(TimestampKey& timing_key,
                               TimestampUs us_timestamp,
                               const PipelineID& pipeline_id) {

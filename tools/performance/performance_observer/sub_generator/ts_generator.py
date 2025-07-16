@@ -7,23 +7,41 @@ from utils import *
 
 definition_dir = os.path.join(base_dir, 'definition_yaml_files')
 
+
+def generate_ts_union_type(class_name, definition, definitions):
+    union_type = definition['ts-discriminated-union']
+    ts_code = f'export type {class_name} = '
+    for item in union_type:
+        if '$ref' in item:
+            ref_class_name = item['$ref'].split('#/')[-1].split('/')[-1]
+            ts_code += f'{ref_class_name} | '
+        else:
+            ts_code += f'{item} | '
+    ts_code = ts_code[:-3]
+    return ts_code
+
 # TypeScript Typing Generator
 # prop generator
 def generate_ts_prop(properties, ts_code):
     for prop, value in properties.items():
+        print(prop, value)
+        if 'ts-literal-type' in value:
+            ts_code += f'    {prop}: \'{value.get("ts-literal-type")}\';\n'  
+            continue
         prop_type = value.get('type')
         if prop_type == 'map':
             # process type of key and value, default is any
             # only support <number/string, number/string/ref>
             keyType = value.get('keyType')
             keyType = process_primary_type(keyType)
-            
             valueType = value.get('valueType')
+            print("begin",keyType, valueType)
             if '$ref' in valueType:
                 valueType = valueType['$ref'].split('#/')[-1].split('/')[-1]
             else:
                 valueType = process_primary_type(valueType)
             prop_type = f'Record<{keyType}, {valueType}>'
+            print("after", prop_type)
         elif prop_type is None:
             prop_type = value.get('$ref')
             if (prop_type is not None):
@@ -42,6 +60,11 @@ def generate_ts_prop(properties, ts_code):
 
 # main generator
 def generate_ts(class_name, definition, definitions):
+    if 'ts-discriminated-union' in definition:
+        ts_code = generate_ts_union_type(class_name, definition, definitions)
+        print(ts_code)
+        return ts_code
+
     # Define the interface name
     ts_code = f'export interface {class_name} '
 

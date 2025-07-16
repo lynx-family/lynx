@@ -99,6 +99,9 @@ static constexpr const char kTotalActualFMP[] = "totalActualFmp";
  *   kFrameworkRenderingTiming: {
  *      timestamp marked by frontend frameworks.
  *   },
+ *   kHostPlatformTiming: {
+ *      timestamp marked by Host Platform (such as iOS, Android, etc.).
+ *   },
  *   attributes,
  *   ...
  * }
@@ -136,6 +139,8 @@ static constexpr const char kLayoutUiOperationExecuteEnd[] =
 static constexpr const char kPaintEnd[] = "paintEnd";  // paint
 static constexpr const char kFrameworkRenderingTiming[] =
     "frameworkRenderingTiming";
+static constexpr const char kHostPlatformTiming[] = "hostPlatformTiming";
+static constexpr const char kHostPlatformType[] = "hostPlatformType";
 static constexpr const char kVerifyTasmStart[] = "verifyTasmStart";
 static constexpr const char kVerifyTasmEnd[] = "verifyTasmEnd";
 static constexpr const char kFfiStart[] = "ffiStart";

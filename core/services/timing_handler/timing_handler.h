@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "base/include/fml/thread.h"
+#include "base/include/value/base_value.h"
 #include "base/include/vector.h"
 #include "core/public/pipeline_option.h"
 #include "core/services/performance/performance_event_sender.h"
@@ -76,8 +77,24 @@ class TimingHandler {
   void SetTiming(tasm::Timing timing);
   void SetTiming(TimestampKey& timing_key, TimestampUs us_timestamp,
                  const PipelineID& pipeline_id);
+
+  // for framework
   void SetFrameworkTiming(TimestampKey& timing_key, TimestampUs us_timestamp,
                           const PipelineID& pipeline_id);
+
+  inline void SetFrameworkExtraTimingInfo(const PipelineID& pipeline_id,
+                                          const std::string& key,
+                                          const std::string& value) {
+    handler_ng_.SetFrameworkExtraTimingInfo(pipeline_id, key, value);
+  }
+
+  void SetHostPlatformTiming(TimestampKey& timing_key, TimestampUs us_timestamp,
+                             const PipelineID& pipeline_id);
+  inline void SetHostPlatformTimingExtraInfo(const PipelineID& pipeline_id,
+                                             const std::string& key,
+                                             const std::string& value) {
+    handler_ng_.SetHostPlatformTimingExtraInfo(pipeline_id, key, value);
+  }
   // This logic is to ensure compatibility with the old js_app markTiming
   // API. The old js_app markTiming API takes TimingFlag as a parameter and
   // uses it as the dimension for marking.
@@ -90,13 +107,6 @@ class TimingHandler {
   void SetTimingWithTimingFlag(const tasm::timing::TimingFlag& timing_flag,
                                const std::string& timestamp_key,
                                tasm::timing::TimestampUs timestamp);
-
-  // for framework
-  inline void SetFrameworkExtraTimingInfo(const PipelineID& pipeline_id,
-                                          const std::string& key,
-                                          const std::string& value) {
-    handler_ng_.SetFrameworkExtraTimingInfo(pipeline_id, key, value);
-  }
 
   // TODO(kechenglong): remove this API.
   void ResetTimingBeforeReload();

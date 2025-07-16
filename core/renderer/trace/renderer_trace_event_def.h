@@ -1155,6 +1155,9 @@ inline constexpr const char* const SIGNAL_CONTEXT_COMPLETE_UPDATES_EFFECTS =
 
 inline constexpr const char* const UI_OPERATION_QUEUE_MARK_TIMING =
     "UIOperationQueue::MarkUIOperationQueueFlushTimingTask";
+inline constexpr const char* const
+    UI_OPERATION_QUEUE_SET_NEED_MARK_PAINT_END_TIMING =
+        "UIOperationQueue::SetNeedMarkPaintEndTiming";
 
 inline constexpr const char* const UI_OPERATION_QUEUE_CONSUME_GESTURE =
     "UIOperationQueue::ConsumeGesture";

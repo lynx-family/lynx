@@ -30,6 +30,7 @@ import com.lynx.tasm.behavior.ui.view.UIComponent;
 import com.lynx.tasm.behavior.utils.LynxUIMethodsExecutor;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.Iterator;
 import java.util.Map;
@@ -225,6 +226,22 @@ public final class PaintingContext {
       int nodeIndex, ReadableArray gestureDetectors) {
     return mUIOwner.createViewAsyncRunnable(sign, tagName, initialProps, initialStyles,
         eventListeners, isFlatten, nodeIndex, gestureDetectors);
+  }
+
+  @CalledByNative
+  public void setNeedMarkPaintEndTiming(String pipelineId) {
+    if (mUIOwner == null) {
+      return;
+    }
+    LynxContext context = mUIOwner.getContext();
+    if (context == null) {
+      return;
+    }
+    PerformanceController perfController = context.getPerfController();
+    if (perfController == null) {
+      return;
+    }
+    perfController.setNeedMarkPaintEndTiming(pipelineId);
   }
 
   /**

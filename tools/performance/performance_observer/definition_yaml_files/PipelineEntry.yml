@@ -1,7 +1,8 @@
 FrameworkRenderingTiming:
   type: object
   description: describe the framework performance timing provided by lynxsdk
-  x-ts-only: true
+  x-lang:
+    - ts
   properties:
     vmExecuteStart:
       type: number
@@ -25,7 +26,8 @@ FrameworkRenderingTiming:
 FrameworkRenderingTimings:
   type: object
   description: framework override this to provide timing typing
-  x-ts-only: true
+  x-lang:
+    - ts
 
 PipelineEntry:
   x-type: pipeline
@@ -69,3 +71,5 @@ PipelineEntry:
           type: number
         frameworkRenderingTiming:
           $ref: '#/FrameworkRenderingTiming'
+        hostPlatformTiming:
+          $ref: 'PerformanceEntry.yml#/HostPlatformTiming'

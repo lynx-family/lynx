@@ -1861,6 +1861,11 @@ public protocol LynxHolder-p : <NSObject> {
   public void LynxHolder-p::hideLynxView:(nonnull LynxView *lynxView);
 }
 
+public class LynxHostPlatformTiming : NSObject {
+  public NSString* LynxHostPlatformTiming::hostPlatformType hostPlatformType;
+  public instancetype LynxHostPlatformTiming::initWithDictionary:(NSDictionary *dictionary);
+}
+
 public protocol LynxHttpInterceptor-p :  {
   public LynxHttpResponse * LynxHttpInterceptor-p::interceptRequest:(LynxHttpRequest *request);
   public void LynxHttpInterceptor-p::onRequest:(LynxHttpRequest *request);
@@ -2670,6 +2675,7 @@ public class LynxPipelineEntry : LynxPerformanceEntry {
   public NSNumber* LynxPipelineEntry::layoutUiOperationExecuteEnd layoutUiOperationExecuteEnd;
   public NSNumber* LynxPipelineEntry::paintEnd paintEnd;
   public NSDictionary* LynxPipelineEntry::frameworkRenderingTiming frameworkRenderingTiming;
+  public LynxHostPlatformTiming* LynxPipelineEntry::hostPlatformTiming hostPlatformTiming;
   public instancetype LynxPipelineEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
@@ -3559,7 +3565,6 @@ public class LynxThreadSafeDictionary : <KeyType>, <ObjectType> {
 public protocol LynxTimingCollectorProtocol-p : <NSObject> {
   public void LynxTimingCollectorProtocol-p::markTiming:pipelineID:(NSString *key,[pipelineID] nullable NSString *pipelineID);
   public void LynxTimingCollectorProtocol-p::setTiming:key:pipelineID:(uint64_t timestamp,[key] NSString *key,[pipelineID] nullable NSString *pipelineID);
-  public void LynxTimingCollectorProtocol-p::MarkPaintEndTimingIfNeeded();
   public void LynxTimingCollectorProtocol-p::resetTimingBeforeReload();
   public void LynxTimingCollectorProtocol-p::onPipelineStart:pipelineOrigin:timestamp:(NSString *pipelineID,[pipelineOrigin] NSString *pipelineOrigin,[timestamp] uint64_t timestamp);
 }
@@ -5107,6 +5112,7 @@ public enum LynxFeature {
   public FOUNDATION_EXTERN NSString* const kTimingContainerInitStart kTimingContainerInitStart;
   public FOUNDATION_EXTERN NSString* const kTimingContainerInitEnd kTimingContainerInitEnd;
   public FOUNDATION_EXTERN NSString* const kTimingOpenTime kTimingOpenTime;
+  public FOUNDATION_EXTERN NSString* const kTimingPaintEnd kTimingPaintEnd;
 
 public enum LynxWhiteSpaceType {
   LynxWhiteSpaceNormal
