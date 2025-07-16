@@ -2644,6 +2644,7 @@ public interface com::lynx::tasm::performance::timing::ITimingCollector {
   public void com.lynx.tasm.performance.timing.ITimingCollector.markTiming(final String key, final String pipelineID);
   public void com.lynx.tasm.performance.timing.ITimingCollector.setMsTiming(final String key, final long msTimestamp, final String pipelineID);
   public void com.lynx.tasm.performance.timing.ITimingCollector.markPaintEndTimingIfNeeded();
+  public void com.lynx.tasm.performance.timing.ITimingCollector.setNeedMarkPaintEndTiming(String pipelineId);
 }
 
 public interface com::lynx::tasm::IUIRendererCreator {
@@ -3903,6 +3904,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.isEnableAsyncLoadImage();
   public LynxBooleanOption com.lynx.tasm.behavior.LynxContext.getLongTaskMonitorEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
+  public void com.lynx.tasm.behavior.LynxContext.setPerfController(PerformanceController perfController);
+  public PerformanceController com.lynx.tasm.behavior.LynxContext.getPerfController();
   public void com.lynx.tasm.behavior.LynxContext.onPageConfigDecoded(PageConfig config);
   public void com.lynx.tasm.behavior.LynxContext.setEnableAutoExpose(boolean enableAutoExpose);
   public boolean com.lynx.tasm.behavior.LynxContext.getAutoExpose();
@@ -7101,6 +7104,7 @@ public class com::lynx::tasm::behavior::PaintingContext :  {
   public void com.lynx.tasm.behavior.PaintingContext.createPaintingNodeSync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
   public Future< Runnable > com.lynx.tasm.behavior.PaintingContext.createNodeAsync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
   public Object com.lynx.tasm.behavior.PaintingContext.createPaintingNodeAsync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
+  public void com.lynx.tasm.behavior.PaintingContext.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.behavior.PaintingContext.insertNode(int parentSign, int childSign, int index);
   public void com.lynx.tasm.behavior.PaintingContext.removeNode(int parentSign, int childSign);
   public void com.lynx.tasm.behavior.PaintingContext.destroyNode(int parentSign, int childSign);
@@ -7160,6 +7164,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
   public boolean com.lynx.tasm.performance.PerformanceController.isEnableController();
   public void com.lynx.tasm.performance.PerformanceController.setEnableController(boolean enableController);
+  public void com.lynx.tasm.performance.PerformanceController.setInstanceId(int instanceId);
   public void com.lynx.tasm.performance.PerformanceController.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.deallocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.PerformanceController.updateMemoryUsage(IMemoryRecordBuilder builder);
@@ -7167,6 +7172,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.setMsTiming(String key, long msTimestamp, String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markTiming(final String key, final String pipelineID);
   public void com.lynx.tasm.performance.PerformanceController.markPaintEndTimingIfNeeded();
+  public void com.lynx.tasm.performance.PerformanceController.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
 }
 
@@ -8787,6 +8793,12 @@ public class com::lynx::tasm::performance::timing::TimingConstants :  {
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_START VERIFY_TASM_START;
   public final String com.lynx.tasm.performance.timing.TimingConstants.VERIFY_TASM_END VERIFY_TASM_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.FFI_START FFI_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_START HOST_PLATFORM_MEASURE_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_MEASURE_END HOST_PLATFORM_MEASURE_END;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_LAYOUT_START HOST_PLATFORM_LAYOUT_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_LAYOUT_END HOST_PLATFORM_LAYOUT_END;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_DRAW_START HOST_PLATFORM_DRAW_START;
+  public final String com.lynx.tasm.performance.timing.TimingConstants.HOST_PLATFORM_DRAW_END HOST_PLATFORM_DRAW_END;
   public final String com.lynx.tasm.performance.timing.TimingConstants.LOAD_BUNDLE LOAD_BUNDLE;
   public final String com.lynx.tasm.performance.timing.TimingConstants.RELOAD_BUNDLE_FROM_NATIVE RELOAD_BUNDLE_FROM_NATIVE;
   public final String com.lynx.tasm.performance.timing.TimingConstants.PIPELINE_ORIGIN PIPELINE_ORIGIN;
@@ -8954,6 +8966,11 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_START FLUENCY_TRACER_START;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_STOP FLUENCY_TRACER_STOP;
   public final String com.lynx.tasm.base.trace.TraceEventDef.INSTANCE_ID INSTANCE_ID;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID PIPELINE_ID;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY TIMING_KEY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_TIMESTAMP TIMING_TIMESTAMP;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY_PAINT_END TIMING_KEY_PAINT_END;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_TIMING MARK_TIMING;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
