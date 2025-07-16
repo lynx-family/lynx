@@ -3847,6 +3847,91 @@ TEST_P(FiberElementTest, FiberElementDirectionCase02) {
   EXPECT_TRUE(tr_value == 12 * kScreeWidth / kRpxRatio);
 }
 
+// Verify reset CSS Property need to consider current direction
+TEST_P(FiberElementTest, FiberElementDirectionCase03) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDDirection};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+
+  // class .title
+  {
+    auto tokens = std::make_shared<CSSParseToken>(configs);
+    tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDMarginRight] =
+        CSSValue(lepus::Value("12px"));
+
+    std::string key = ".title";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheets = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheets);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  // class.root-rtl
+  {
+    auto tokens = std::make_shared<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDDirection;
+    auto impl = lepus::Value("lynx-rtl");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".root-rtl";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto root = manager->CreateFiberView();
+  root->parent_component_element_ = page.get();
+  root->SetClass("root-rtl");
+  page->InsertNode(root);
+
+  auto view_element0 = manager->CreateFiberView();
+  view_element0->parent_component_element_ = page.get();
+  view_element0->SetClass("title");
+  root->InsertNode(view_element0);
+
+  auto text_element0 = manager->CreateFiberText("text");
+  text_element0->SetAttribute("text", lepus::Value("title"));
+  text_element0->SetStyle(kPropertyIDFontSize, lepus::Value("50px"));
+  view_element0->InsertNode(text_element0);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValueAtLeastNTimes(
+      view_element0->impl_id(), CSSPropertyID::kPropertyIDMarginLeft,
+      tasm::CSSValue(lepus::Value(12), CSSValuePattern::PX), 1));
+
+  tasm_mediator.captured_ids_.clear();
+  tasm_mediator.captured_bundles_.clear();
+
+  view_element0->RemoveAllClass();
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(HasCaptureSignWithResetStyleKeyAtLeastNTimes(
+      view_element0->impl_id(), CSSPropertyID::kPropertyIDMarginLeft, 1));
+  EXPECT_FALSE(HasCaptureSignWithResetStyleKeyAtLeastNTimes(
+      view_element0->impl_id(), CSSPropertyID::kPropertyIDMarginRight, 1));
+}
+
 TEST_P(FiberElementTest, RequireFlush) {
   auto page = manager->CreateFiberPage("10", 11);
   page->SetIdSelector("page");

@@ -141,6 +141,49 @@ bool FiberElementTest::HasCaptureSignWithStyleKeyAndValue(
   return count == 0;
 }
 
+bool FiberElementTest::HasCaptureSignWithStyleKeyAndValueAtLeastNTimes(
+    int32_t target_id, CSSPropertyID target_key,
+    const tasm::CSSValue& target_value, int32_t count) {
+  int32_t index = 0;
+  std::vector<int32_t> index_ary = {};
+
+  std::for_each(tasm_mediator.captured_ids_.begin(),
+                tasm_mediator.captured_ids_.end(), [&](int32_t id) {
+                  if (target_id == id) {
+                    auto& bundle = *(tasm_mediator.captured_bundles_)[index];
+                    for (auto [key, value] : bundle.styles) {
+                      if (target_key == key && target_value == value) {
+                        --count;
+                      }
+                    }
+                  }
+                  ++index;
+                });
+
+  return count <= 0;
+}
+
+bool FiberElementTest::HasCaptureSignWithResetStyleKeyAtLeastNTimes(
+    int32_t target_id, CSSPropertyID target_key, int32_t count) {
+  int32_t index = 0;
+  std::vector<int32_t> index_ary = {};
+
+  std::for_each(tasm_mediator.captured_ids_.begin(),
+                tasm_mediator.captured_ids_.end(), [&](int32_t id) {
+                  if (target_id == id) {
+                    auto& bundle = *(tasm_mediator.captured_bundles_)[index];
+                    for (auto key : bundle.reset_styles) {
+                      if (target_key == key) {
+                        --count;
+                      }
+                    }
+                  }
+                  ++index;
+                });
+
+  return count <= 0;
+}
+
 bool FiberElementTest::HasCaptureSignWithResetStyle(int32_t target_id,
                                                     CSSPropertyID target_key,
                                                     int32_t count) {

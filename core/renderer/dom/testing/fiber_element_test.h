@@ -110,6 +110,14 @@ class FiberElementTest
                                           const tasm::CSSValue& target_value,
                                           int32_t count = 1);
 
+  bool HasCaptureSignWithStyleKeyAndValueAtLeastNTimes(
+      int32_t target_id, CSSPropertyID target_key,
+      const tasm::CSSValue& target_value, int32_t count = 1);
+
+  bool HasCaptureSignWithResetStyleKeyAtLeastNTimes(int32_t target_id,
+                                                    CSSPropertyID target_key,
+                                                    int32_t count = 1);
+
   bool HasCaptureSignWithResetStyle(int32_t target_id, CSSPropertyID target_key,
                                     int32_t count = 1);
 

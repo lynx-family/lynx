@@ -1087,7 +1087,8 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
     // need to record some necessary styles which New Animator transition needs,
     // and it needs to be saved before rtl converted logic.
     ResetElementPreviousStyle(id);
-    ResetStyleInternal(id);
+    auto direction_aware_pair = ConvertRtlCSSPropertyID(id);
+    ResetStyleInternal(direction_aware_pair.second);
     need_update = true;
   }
 
