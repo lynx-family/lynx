@@ -41,15 +41,15 @@ def copy_podspec(src_dir, dest_dir):
             print(f'Copied: {src_file} to {dest_file}')
 
 
-def generate_zip_file(src_dir, tag, component):
+def generate_zip_file(src_dir, tag, component, dev):
     for filename in os.listdir(src_dir):
         if filename.endswith('.podspec'):
             podspec_name = filename.split('.')[0]
             if component == podspec_name or component == 'all':
                 print(f'Generating zip file for {podspec_name}')
-                run_command(f'export PACKAGE_ENV=prod && geniospkg --output_type zip --repo {podspec_name} --tag {tag} --cache_path lynx --no_json')
+                run_command(f'export PACKAGE_ENV=prod && geniospkg --output_type zip --repo {podspec_name} --tag {tag} --cache_path lynx --no_json ' + '-dev' if dev else '')
 
-def get_enable_trace_param(tag: str) -> str:
+def get_enable_trace_param(dev: bool) -> str:
     """
     Returns '--enable-trace' if the tag ends with '-dev', otherwise returns an empty string.
     Args:
@@ -57,11 +57,11 @@ def get_enable_trace_param(tag: str) -> str:
     Returns:
         str: '--enable-trace' if tag ends with '-dev', else ''.
     """
-    if tag.endswith('-dev'):
+    if dev:
         return '--enable-trace'
     return ''
 
-def prepare_cocoapods_publish_source(tag, component):
+def prepare_cocoapods_publish_source(tag, component, dev):
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     # change to root path
@@ -69,7 +69,10 @@ def prepare_cocoapods_publish_source(tag, component):
 
     print('Start prepare cocoapods publish source')
     print('1. Replace lynx version')
-    replace_lynx_version(tag)
+    if dev:
+        replace_lynx_version(f"{tag}-dev")
+    else:
+        replace_lynx_version(tag)
 
     print('2. Generate podspec files')
     run_command(f'python3 tools/ios_tools/generate_podspec_scripts_by_gn.py --root {root_path} {get_enable_trace_param(tag)}')
@@ -78,7 +81,7 @@ def prepare_cocoapods_publish_source(tag, component):
     run_command(f'python3 tools/js_tools/build.py --platform ios --release_output platform/darwin/ios/JSAssets/release/lynx_core.js --dev_output platform/darwin/ios/lynx_devtool/assets/lynx_core_dev.js --version {tag}')
 
     print('4. Generate zip files')
-    generate_zip_file(root_path, tag, component)
+    generate_zip_file(root_path, tag, component, dev)
 
 def use_local_pod_source(component):
     pattern_source = "(\S+.source\s*=\s*{)\s*\S+\s*=>[\s\S]*?(})"
@@ -131,29 +134,29 @@ def pod_lint_component(component, local_pod_source_name):
     # podspec.json will write the current directory path into itself
     run_command(f'bundle exec pod spec lint {component}.podspec.json --sources=trunk,{local_pod_source_name} --verbose --skip-import-validation --allow-warnings --skip-tests')
 
-def publish_component(component, sources, tag):
+def publish_component(component, sources, tag, dev):
     if sources != None:
-        run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx')
+        run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx ' + '-dev' if dev else '')
         run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests --sources={sources}')
     else:
-        run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx')
+        run_command(f'export PACKAGE_ENV=prod && geniospkg --repo {component} --tag {tag} --public_repo --cache_path lynx ' + '-dev' if dev else '')
         run_command(f'COCOAPODS_TRUNK_TOKEN=$COCOAPODS_TRUNK_TOKEN bundle exec pod trunk push {component}.podspec.json --verbose --skip-import-validation --allow-warnings --skip-tests')
 
 
-def publish_to_cocoapods(component, sources, tag):
+def publish_to_cocoapods(component, sources, tag, dev):
     root_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     # change to root path
     os.chdir(root_path)
     print(f'Start publish {component} to cocoapods')
     if component == 'all':
         # publish in order: Lynx -> BaseDevtool -> LynxDevtool -> LynxService
-        publish_component('Lynx', sources, tag)
-        publish_component('BaseDevtool', sources, tag)
-        publish_component('LynxDevtool', sources, tag)
-        publish_component('LynxService', sources, tag)
-        publish_component('XElement', sources, tag)
+        publish_component('Lynx', sources, tag, dev)
+        publish_component('BaseDevtool', sources, tag, dev)
+        publish_component('LynxDevtool', sources, tag, dev)
+        publish_component('LynxService', sources, tag, dev)
+        publish_component('XElement', sources, tag, dev)
     else:
-        publish_component(component, sources, tag)
+        publish_component(component, sources, tag, dev)
 
 
 def main():
@@ -174,12 +177,14 @@ def main():
     )
     parser.add_argument('--sources', type=str, help='the cocoapods sources', required=False)
     parser.add_argument('--pod_lint', action="store_true", help='Run pod lint')
+    parser.add_argument('-dev', action="store_true", help='Build dev version')
 
     args = parser.parse_args()
+
     if args.prepare_source:
-        prepare_cocoapods_publish_source(args.tag, args.component)
+        prepare_cocoapods_publish_source(args.tag, args.component, args.dev)
     elif args.publish:
-        publish_to_cocoapods(args.component, args.sources, args.tag)
+        publish_to_cocoapods(args.component, args.sources, args.tag, args.dev)
     elif args.pod_lint:
         run_pod_lint(args.component)
     else:

@@ -56,6 +56,7 @@ jobs:
             cd $GITHUB_WORKSPACE/lynx
             source tools/envsetup.sh
             pushd explorer/darwin/ios/lynx_explorer
+            export LYNX_ENABLE_RECORDER=1
             git config --global url."https://github.com/".insteadOf "git@github.com:"
             bash bundle_install.sh
             popd
@@ -102,7 +103,7 @@ jobs:
           else
             ABI_LIST="armeabi-v7a,x86,x86_64,arm64-v8a"
           fi
-          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=$ABI_LIST -no-daemon
+          ./gradlew assembleAllModulesRelease -PbuildLynxDebugSo -Penable_trace=none -PabiList=$ABI_LIST -no-daemon
           ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=$ABI_LIST -no-daemon
           ./gradlew publishAllModules \
           -Pversion=${{ inputs.version || '0.0.1-alpha.1' }} \
@@ -150,6 +151,9 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
+          if [[ ${{ inputs.version }} == *"-dev" ]]; then
+            export LYNX_ENABLE_RECORDER=1
+          fi
           python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag ${{ inputs.version }} --component all
       - name: Push iOS SDK to release
         uses: ncipollo/release-action@v1
@@ -165,6 +169,9 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
+          if [[ ${{ inputs.version }} == *"-dev" ]]; then
+            export LYNX_ENABLE_RECORDER=1
+          fi
           git config --global user.name "lynx.authors"
           git config --global user.email "lynx.authors@users.noreply.github.com"
           python3 tools/ios_tools/skip_pod_lint.py --source public
