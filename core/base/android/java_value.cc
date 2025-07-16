@@ -160,10 +160,13 @@ const std::string& JavaValue::String() const {
     if (string_cache_) {
       return *string_cache_;
     }
-    JNIEnv* env = base::android::AttachCurrentThread();
     jstring java_str_ref = reinterpret_cast<jstring>(
         std::get<base::android::ScopedGlobalJavaRef<jobject>>(j_variant_value_)
             .Get());
+    if (java_str_ref == nullptr) {
+      return base::String().str();
+    }
+    JNIEnv* env = base::android::AttachCurrentThread();
     const char* str = env->GetStringUTFChars(java_str_ref, NULL);
     if (str) {
       string_cache_ = std::make_optional<std::string>(str);
