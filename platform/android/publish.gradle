@@ -69,29 +69,6 @@ Task createSourceJar(String baseName) {
     }
 }
 
-def collectSoSymbols(String flavor) {
-    def soSymbolsPathMap = [:]
-    project.android.libraryVariants.all { variant ->
-        def flavorFolder = "${flavor}Release"
-        println "variant.name $variant.name flavorFolder=$flavorFolder"
-        if (variant.name != flavorFolder) {
-            return
-        }
-        def nativeBuildTask = project.tasks.findByName("externalNativeBuild${variant.name.capitalize()}")
-        if (nativeBuildTask != null) {
-            def folder = nativeBuildTask.getObjFolder()
-            println "project $project.path variant $variant.name folder=$folder"
-            FileTree fileTree = project.fileTree(folder)
-            fileTree.include "**/*.so"
-            fileTree.files.each { item ->
-                soSymbolsPathMap[item.name[0..(item.name.lastIndexOf('.')-1)]] = item.path
-            }
-        }
-    }
-    println "project $project.path soSymbolsPathMap=${soSymbolsPathMap}"
-    return soSymbolsPathMap
-}
-
 def configureSigning(pom) {
     def signingKeyId = findProperty("signing.keyId")
     def signingPassword = findProperty("signing.password")
@@ -196,16 +173,6 @@ afterEvaluate {
                         artifactId ARTIFACT_NAME
                         version baseVersion
                         artifact(getAARPath("$project.buildDir/outputs/aar"))
-                        // Obtain all the so symbol tables of the component.
-                        def soSymbolsPathMap = collectSoSymbols("noasan")
-                        // Add so symbol tables into the component artifact.
-                        if (!soSymbolsPathMap.isEmpty()) {
-                            soSymbolsPathMap.each { name, path ->
-                                artifact(path) {
-                                    classifier name
-                                }
-                            }
-                        }
                         // collect source jar and add it into the component artifact.
                         Task sourceJar = createSourceJar("release-source")
                         artifact sourceJar
@@ -251,16 +218,6 @@ afterEvaluate {
                         artifactId ARTIFACT_NAME
                         version devVersion
                         artifact(getAARPath("$project.buildDir/outputs/aar", true))
-                        // Obtain all the so symbol tables of the component.
-                        def soSymbolsPathMap = collectSoSymbols("dev")
-                        // Add so symbol tables into the component artifact.
-                        if (!soSymbolsPathMap.isEmpty()) {
-                            soSymbolsPathMap.each { name, path ->
-                                artifact(path) {
-                                    classifier name
-                                }
-                            }
-                        }
                         // collect source jar and add it into the component artifact.
                         Task sourceJarDev = createSourceJar("dev-sources")
                         artifact sourceJarDev
