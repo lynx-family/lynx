@@ -224,8 +224,9 @@ void PaintingContextDarwinRef::RemoveListItemPaintingNode(int32_t list_id, int32
 void PaintingContextDarwinRef::SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) {
   // For Darwin, we mock the paint_end timing by dispatching a task to the main queue.
   LynxPerformanceController* performanceController = perf_controller_;
+  NSString* pipelineId = [NSString stringWithUTF8String:pipeline_id.c_str()];
   dispatch_async(dispatch_get_main_queue(), ^{
-    [performanceController MarkPaintEndTimingIfNeeded];
+    [performanceController markTiming:kTimingPaintEnd pipelineID:pipelineId];
   });
 }
 
