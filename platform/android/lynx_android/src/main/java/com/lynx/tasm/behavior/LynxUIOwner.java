@@ -41,6 +41,7 @@ import com.lynx.tasm.behavior.ui.LynxUI;
 import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
+import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.UIShadowProxy;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.list.UIList;
@@ -476,9 +477,10 @@ public class LynxUIOwner {
     }
     UIThreadUtils.assertOnUiThread();
     LynxBaseUI ui = null;
+    UIParams params = new UIParams(
+        sign, nodeIndex, flatten, tagName, initialProps, eventsListenerMap, gestureDetectors);
     try {
-      ui = createViewInterval(
-          sign, tagName, eventsListenerMap, flatten, nodeIndex, gestureDetectors);
+      ui = createViewInterval(params);
       ui = consumeInitialProps(ui, initialProps);
     } catch (Throwable e) {
       RuntimeException exception = new RuntimeException(
@@ -515,6 +517,9 @@ public class LynxUIOwner {
     Map<Integer, GestureDetector> detectors =
         GestureDetector.convertGestureDetectors(gestureDetectors);
 
+    UIParams params =
+        new UIParams(sign, nodeIndex, isFlatten, tagName, styles, listeners, detectors);
+
     createViewInternal(sign, tagName, styles, listeners, isFlatten, nodeIndex, detectors);
   }
 
@@ -531,6 +536,9 @@ public class LynxUIOwner {
     Map<String, EventsListener> listeners = EventsListener.convertEventListeners(eventListeners);
     Map<Integer, GestureDetector> detectors =
         GestureDetector.convertGestureDetectors(gestureDetectors);
+
+    UIParams params =
+        new UIParams(sign, nodeIndex, isFlatten, tagName, styles, listeners, detectors);
     try {
       String traceEvent = null;
       if (TraceEvent.isTracingStarted()) {
@@ -538,7 +546,7 @@ public class LynxUIOwner {
         TraceEvent.beginSection(traceEvent);
       }
       final LynxBaseUI[] ui = new LynxBaseUI[1];
-      ui[0] = createViewInterval(sign, tagName, listeners, isFlatten, nodeIndex, detectors);
+      ui[0] = createViewInterval(params);
       final UIShadowProxy proxy = consumeInitialPropsInterval(ui[0], styles);
       if (TraceEvent.isTracingStarted()) {
         TraceEvent.endSection(traceEvent);
@@ -602,9 +610,11 @@ public class LynxUIOwner {
           traceEvent = TraceEventDef.UI_OWNER_CREATE_VIEW_ASYNC + tagName;
           traceBeginWithInstanceId(traceEvent);
         }
+        UIParams params = new UIParams(
+            sign, nodeIndex, flatten, tagName, initialProps, eventsListenerMap, gestureDetectors);
+
         final LynxBaseUI[] ui = new LynxBaseUI[1];
-        ui[0] = createViewInterval(
-            sign, tagName, eventsListenerMap, flatten, nodeIndex, gestureDetectors);
+        ui[0] = createViewInterval(params);
         final UIShadowProxy proxy = consumeInitialPropsInterval(ui[0], initialProps);
         if (TraceEvent.isTracingStarted()) {
           TraceEvent.endSection(traceEvent);
@@ -703,26 +713,29 @@ public class LynxUIOwner {
     return ui;
   }
 
-  private LynxBaseUI createViewInterval(int sign, String tagName,
-      @Nullable Map<String, EventsListener> eventsListenerMap, boolean flatten, int nodeIndex,
-      @Nullable Map<Integer, GestureDetector> gestureDetectors) {
+  private LynxBaseUI createViewInterval(UIParams params) {
     LynxBaseUI ui = null;
 
     // Root ui do not need to create from behavior as ui has been created through
     // createRootUI()
-    if (mRootSign < 0 && tagName.equals(LynxConstants.ROOT_TAG_NAME)) {
+    if (mRootSign < 0 && params.mTagName.equals(LynxConstants.ROOT_TAG_NAME)) {
       ui = mUIBody;
-      mRootSign = sign;
+      mRootSign = params.mSign;
       if (ui != null && mAttachLynxPageUICallback != null) {
         mAttachLynxPageUICallback.attachLynxPageUI(new WeakReference<>(ui));
       }
     } else {
-      ui = createUI(tagName, flatten);
-      ui.setEvents(eventsListenerMap);
+      ui = createUI(params.mTagName, params.mIsFlatten, params);
     }
-    ui.setSign(sign, tagName);
-    ui.setNodeIndex(nodeIndex);
-    ui.setGestureDetectors(gestureDetectors);
+
+    if (ui == null) {
+      return ui;
+    }
+
+    ui.setEvents(params.mEventsListenerMap);
+    ui.setSign(params.mSign, params.mTagName);
+    ui.setNodeIndex(params.mNodeIndex);
+    ui.setGestureDetectors(params.mGestureDetectors);
     return ui;
   }
 
@@ -1596,10 +1609,15 @@ public class LynxUIOwner {
     }
   }
 
+  // TODO(songshourui.null): remove this later, avoid build break.
   public LynxBaseUI createUI(String tag, boolean flatten) {
+    return createUI(tag, flatten, null);
+  }
+
+  private LynxBaseUI createUI(String tag, boolean flatten, Object params) {
     LynxBaseUI ui = null;
     if (mContext.isUseNewSwiper()) {
-      ui = createSwiperIfNeeded(tag, ui, null);
+      ui = createSwiperIfNeeded(tag, ui, params);
     }
     if (ui == null) {
       Behavior behavior = mBehaviorRegistry.get(tag);
@@ -1609,10 +1627,10 @@ public class LynxUIOwner {
         flatten = false;
       }
       if (flatten && behavior.supportUIFlatten()) {
-        ui = behavior.createFlattenUIWithParams(mContext, null);
+        ui = behavior.createFlattenUIWithParams(mContext, params);
       }
       if (ui == null) {
-        ui = behavior.createUIWithParams(mContext, null);
+        ui = behavior.createUIWithParams(mContext, params);
       }
     }
     return ui;

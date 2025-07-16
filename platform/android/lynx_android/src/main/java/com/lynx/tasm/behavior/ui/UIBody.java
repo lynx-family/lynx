@@ -34,6 +34,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class UIBody extends UIGroup<UIBodyView> {
   private final static String TAG = "UIBody";
@@ -232,6 +233,11 @@ public class UIBody extends UIGroup<UIBodyView> {
   }
 
   @Override
+  protected UIBodyView createView(final Context context, Object params) {
+    return mBodyView;
+  }
+
+  @Override
   protected UIBodyView createView(final Context context) {
     return mBodyView;
   }
@@ -297,7 +303,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
   public static class UIBodyView
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
-    private HashMap<Integer, View> mViewMap = new HashMap<>();
+    private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
 
     private IDrawChildHook mDrawChildHook;
     private long mMeaningfulPaintTiming;

@@ -3886,6 +3886,8 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventReporter();
   public boolean com.lynx.tasm.behavior.LynxContext.enableTiming();
   public boolean com.lynx.tasm.behavior.LynxContext.isEmbeddedModeOn();
+  public boolean com.lynx.tasm.behavior.LynxContext.isFallbackProcess();
+  public void com.lynx.tasm.behavior.LynxContext.markFallbackProcess(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.isLayoutInElementModeOn();
   public boolean com.lynx.tasm.behavior.LynxContext.isEnginePoolEnabled();
   public void com.lynx.tasm.behavior.LynxContext.setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode);
@@ -9491,6 +9493,17 @@ public class com::lynx::tasm::behavior::ui::list::UIListItem : com.lynx.tasm.beh
 }
 
 public class com::lynx::tasm::behavior::CSSPropertySetter::UIPaintStyles :  {
+}
+
+public class com::lynx::tasm::behavior::ui::UIParams :  {
+  public int com.lynx.tasm.behavior.ui.UIParams.mSign mSign;
+  public int com.lynx.tasm.behavior.ui.UIParams.mNodeIndex mNodeIndex;
+  public boolean com.lynx.tasm.behavior.ui.UIParams.mIsFlatten mIsFlatten;
+  public String com.lynx.tasm.behavior.ui.UIParams.mTagName mTagName;
+  public StylesDiffMap com.lynx.tasm.behavior.ui.UIParams.mInitialProps mInitialProps;
+  public Map<String, EventsListener> com.lynx.tasm.behavior.ui.UIParams.mEventsListenerMap mEventsListenerMap;
+  public Map<Integer, GestureDetector> com.lynx.tasm.behavior.ui.UIParams.mGestureDetectors mGestureDetectors;
+  public com.lynx.tasm.behavior.ui.UIParams.UIParams(int sign, int nodeIndex, boolean flatten, String tagName, StylesDiffMap initialProps, Map< String, EventsListener > eventsListenerMap, Map< Integer, GestureDetector > gestureDetectors);
 }
 
 public interface com::lynx::tasm::behavior::ui::UIParent {

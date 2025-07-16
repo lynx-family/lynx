@@ -240,7 +240,10 @@ public abstract class UIGroup<T extends ViewGroup>
       ((ViewGroup) (child.mView.getParent())).removeView(child.mView);
       onRemoveChildUI(child);
     }
-    mView.addView(child.mView, i);
+
+    if (mContext != null && !mContext.isFallbackProcess()) {
+      mView.addView(child.mView, i);
+    }
     onAddChildUI(child, i);
   }
 

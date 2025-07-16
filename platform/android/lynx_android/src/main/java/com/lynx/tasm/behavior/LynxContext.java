@@ -154,6 +154,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private int embeddedMode = EmbeddedMode.UNSET;
 
+  private boolean isFallbackProcess = false;
+
   public LynxContext(Context base, DisplayMetrics screenMetrics) {
     super(base);
     mVirtualScreenMetrics = new DisplayMetrics();
@@ -196,6 +198,14 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
    */
   public boolean isEmbeddedModeOn() {
     return (embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0;
+  }
+
+  public boolean isFallbackProcess() {
+    return isFallbackProcess;
+  }
+
+  public void markFallbackProcess(boolean enable) {
+    isFallbackProcess = enable;
   }
 
   public boolean isLayoutInElementModeOn() {

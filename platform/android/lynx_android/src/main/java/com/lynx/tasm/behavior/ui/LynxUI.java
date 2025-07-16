@@ -186,16 +186,32 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     super(context, param);
   }
 
+  private T getOrCreateView(Context context, Object params) {
+    if (mContext != null && mContext.isFallbackProcess() && mContext.getUIBodyView() != null
+        && params instanceof UIParams) {
+      setNodeIndex(((UIParams) params).mNodeIndex);
+
+      View view = mContext.getUIBodyView().obtainViewAccordingToNodeIndex(mNodeIndex);
+      if (view != null) {
+        mView = (T) view;
+        mViewInfo = new ViewInfo(this, mView);
+        ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+        return mView;
+      }
+    }
+
+    return createView(context, params);
+  }
+
   @Override
   public void initialize() {
     super.initialize();
-    mView = createView(mContext, mParam);
-    if (mView == null) {
-      mView = createView(mContext);
-    }
+
+    mView = getOrCreateView(mContext, mParam);
     if (mView == null) {
       return;
     }
+
     mHeroAnimOwner = new HeroAnimOwner(this);
     setLynxBackground(mBackgroundManager = new BackgroundManager(this, getLynxContext()));
     mBackgroundManager.setDrawableCallback(mDrawableCallback);
@@ -230,7 +246,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   protected T createView(Context context, Object param) {
-    return null;
+    return createView(context);
   }
 
   public T getView() {
