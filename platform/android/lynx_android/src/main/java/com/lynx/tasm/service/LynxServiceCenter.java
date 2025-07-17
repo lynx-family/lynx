@@ -6,6 +6,7 @@ package com.lynx.tasm.service;
 import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.BuildConfig;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import java.util.ServiceLoader;
@@ -42,6 +43,9 @@ public class LynxServiceCenter extends LynxLazyInitializer {
 
   @Override
   protected boolean doInitialize() {
+    if (BuildConfig.enable_lite) {
+      return true;
+    }
     try {
       // TODO(zhoupeng.z): optimize the service registration by QuickServiceLoader
       TraceEvent.beginSection(TraceEventDef.LYNX_SERVICE_CENTER_INIT);
