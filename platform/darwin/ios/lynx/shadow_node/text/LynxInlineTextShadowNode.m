@@ -51,8 +51,6 @@ LYNX_PROP_SETTER("background-image", setBackgroundImage, NSArray*) {
       drawable.repeatX = 1;
       drawable.repeatY = 1;
       [drawableArr addObject:drawable];
-    } else {
-      NSAssert(false, @"the background-image content not support");
     }
   }
   [self.textStyle updateBackgroundDrawableSize];
