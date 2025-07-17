@@ -8,6 +8,7 @@
 
 #include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
+#include "base/threading/task_runner_manufactor.h"
 
 namespace lynx {
 namespace harmony {
@@ -30,10 +31,13 @@ PlatformModuleManager::PlatformModuleManager(napi_env env,
 
 PlatformModuleManager::~PlatformModuleManager() {
   LOGI("~PlatformModuleManager");
-  // The memory of PlatformModuleManager is managed by main thread now, so
-  // we can delete reference directly here.
-  napi_delete_reference(env_, js_module_manager_);
-  napi_delete_reference(env_, js_get_module_);
+  fml::TaskRunner::RunNowOrPostTask(
+      base::UIThread::GetRunner(),
+      [env = env_, js_module_manager = js_module_manager_,
+       js_get_module = js_get_module_]() {
+        napi_delete_reference(env, js_module_manager);
+        napi_delete_reference(env, js_get_module);
+      });
 }
 
 napi_value PlatformModuleManager::JSModuleManager(napi_env env, bool sendable) {

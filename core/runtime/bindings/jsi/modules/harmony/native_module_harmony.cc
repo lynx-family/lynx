@@ -8,7 +8,7 @@
 
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/include/value/array.h"
-#include "base/include/value/base_value.h"
+#include "base/threading/task_runner_manufactor.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_napi_env_holder.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -45,27 +45,23 @@ NativeModuleHarmony::NativeModuleHarmony(
   }
 }
 
-napi_value NativeModuleHarmony::InvokeMethod(
-    napi_env env, const lepus::Value& lepus_argv,
-    const std::string& method_name, const std::shared_ptr<Delegate>& delegate,
+napi_value NativeModuleHarmony::InvokePlatformMethod(
+    const std::shared_ptr<PlatformModuleManager>& platform_manager,
+    const std::string& module_name, bool sendable, napi_env env,
+    const lepus::Value& lepus_argv, const std::string& method_name,
+    const std::shared_ptr<Delegate>& delegate,
     const piper::CallbackMap& callbacks, uint64_t flow_id,
-    const std::string& first_arg) const {
-  auto manager = platform_manager_.lock();
-  if (!manager) {
-    return nullptr;
-  }
-
+    const std::string& first_arg) {
   base::NapiHandleScope scope(env);
   napi_value platform_get_module_func =
-      manager->JSGetModuleFunc(env, sendable_);
-  napi_value receiver = manager->JSModuleManager(env, sendable_);
+      platform_manager->JSGetModuleFunc(env, sendable);
+  napi_value receiver = platform_manager->JSModuleManager(env, sendable);
   if (platform_get_module_func == nullptr || receiver == nullptr) {
     return nullptr;
   }
-  napi_value module_name;
-  napi_create_string_latin1(env, module_name_.c_str(), NAPI_AUTO_LENGTH,
-                            &module_name);
-  napi_value get_module_args[1] = {module_name};
+  napi_value name;
+  napi_create_string_latin1(env, module_name.c_str(), NAPI_AUTO_LENGTH, &name);
+  napi_value get_module_args[1] = {name};
   napi_value platform_module = nullptr;
   napi_call_function(env, receiver, platform_get_module_func, 1,
                      get_module_args, &platform_module);
@@ -84,7 +80,7 @@ napi_value NativeModuleHarmony::InvokeMethod(
     if (value.IsInt64() && callbacks.find(i) != callbacks.end()) {
       auto callback_data = new CallbackData(callbacks.at(i), delegate);
 #if ENABLE_TRACE_PERFETTO
-      callback_data->module_name = module_name_;
+      callback_data->module_name = module_name;
       callback_data->method_name = method_name;
       callback_data->flow_id = flow_id;
       callback_data->first_arg = first_arg;
@@ -101,9 +97,9 @@ napi_value NativeModuleHarmony::InvokeMethod(
   napi_get_named_property(env, platform_module, method_name.c_str(),
                           &target_method);
   TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, CALL_JSB_ON_ARK_TS,
-              [this, &method_name, &flow_id,
+              [&module_name, &method_name, &flow_id,
                &first_arg](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("module_name", module_name_);
+                ctx.event()->add_debug_annotations("module_name", module_name);
                 ctx.event()->add_debug_annotations("method_name", method_name);
                 ctx.event()->add_debug_annotations("arg0", first_arg);
                 ctx.event()->add_flow_ids(flow_id);
@@ -149,21 +145,24 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
   }
   if (sendable_) {
     auto env = base::harmony::GetJSThreadNapiEnv();
-    napi_value result = InvokeMethod(env, lepus_value, method_name, delegate,
-                                     callbacks, flow_id, first_arg);
+    napi_value result = InvokePlatformMethod(
+        platform_manager_, module_name_, true, env, lepus_value, method_name,
+        delegate, callbacks, flow_id, first_arg);
     lepus::Value lepus_result =
         base::NapiConvertHelper::ConvertToLepusValue(env, result);
     return std::make_unique<PubLepusValue>(std::move(lepus_result));
   }
 
-  delegate->RunOnPlatformThread(
-      [this, lepus_argv = std::move(lepus_value), method_name, delegate,
+  base::UIThread::GetRunner()->PostTask(
+      [manager = platform_manager_, env = main_env_, module_name = module_name_,
+       lepus_argv = std::move(lepus_value), method_name, delegate,
        callbacks = std::move(callbacks), flow_id = flow_id,
-       first_arg = std::move(first_arg)]() mutable {
-        LOGD("LynxModuleHarmony module: " << module_name_ << ", invoke method: "
+       first_arg = std::move(first_arg)]() {
+        LOGD("LynxModuleHarmony module: " << module_name << ", invoke method: "
                                           << method_name);
-        InvokeMethod(main_env_, lepus_argv, method_name, delegate, callbacks,
-                     flow_id, first_arg);
+        InvokePlatformMethod(manager, module_name, false, env, lepus_argv,
+                             method_name, delegate, callbacks, flow_id,
+                             first_arg);
       });
   return std::unique_ptr<pub::Value>(nullptr);
 }
@@ -172,7 +171,6 @@ void NativeModuleHarmony::Destroy() {
   LOGI("LynxModuleHarmony Destroy: " << module_name_);
 }
 
-// static
 napi_value NativeModuleHarmony::Callback(napi_env env,
                                          napi_callback_info info) {
   static constexpr int STATIC_ARG_SIZE = 8;
