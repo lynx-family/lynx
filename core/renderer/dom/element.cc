@@ -1361,7 +1361,7 @@ void Element::SetDataToNativeTransitionAnimator() {
 }
 
 void Element::ClearTransitionPreviousEndValue(
-    const std::string& transition_name) {
+    const base::String& transition_name) {
   auto css_id = CSSProperty::GetPropertyID(transition_name);
   if (css_transition_manager_) {
     css_transition_manager_->ClearPreviousEndValue(css_id);

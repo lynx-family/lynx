@@ -70,6 +70,7 @@ void Animation::Stop() { state_ = State::kStop; }
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "Animation::Destroy");
+  ClearTransitionPreviousEndValue();
   if (need_clear_effect) {
     keyframe_effect_->ClearEffect();
   }
@@ -149,6 +150,7 @@ void Animation::DoFrame(fml::TimePoint& frame_time) {
     if (HasFinishedAll(frame_time)) {
       LOGI("[animation] all keyframe effect has finished!");
       Stop();
+      ClearTransitionPreviousEndValue();
     }
   }
 
@@ -181,6 +183,12 @@ void Animation::NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern type) {
 fml::TimePoint& Animation::GetAnimationDummyStartTime() {
   static fml::TimePoint kAnimationDummyStartTime = fml::TimePoint();
   return kAnimationDummyStartTime;
+}
+
+void Animation::ClearTransitionPreviousEndValue() {
+  if (is_transition_) {
+    element_->ClearTransitionPreviousEndValue(name());
+  }
 }
 
 void Animation::SendStartEvent() {

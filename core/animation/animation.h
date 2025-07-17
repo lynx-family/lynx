@@ -99,6 +99,8 @@ class Animation : public std::enable_shared_from_this<Animation> {
 
   void NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
 
+  void ClearTransitionPreviousEndValue();
+
  protected:
   fml::TimePoint start_time_{fml::TimePoint::Min()};
 
