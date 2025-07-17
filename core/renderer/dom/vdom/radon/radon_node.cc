@@ -781,14 +781,16 @@ bool RadonNode::OptimizedShouldFlushStyle(RadonNode* old_radon_node,
 }
 
 void RadonNode::MarkChildStyleDirtyRecursively(bool is_root) {
-  if (!is_root && IsRadonComponent()) {
-    return;
+  if (!is_root) {
+    if (IsRadonComponent()) {
+      return;
+    }
+    auto* fiber_ele = fiber_element();
+    if (!fiber_ele || fiber_ele->StyleDirty()) {
+      return;
+    }
+    fiber_ele->MarkStyleDirty(false);
   }
-  auto* fiber_ele = fiber_element();
-  if (!fiber_ele || fiber_ele->StyleDirty()) {
-    return;
-  }
-  fiber_ele->MarkStyleDirty(false);
   for (auto& child : radon_children_) {
     child->MarkChildStyleDirtyRecursively(false);
   }
@@ -812,7 +814,7 @@ bool RadonNode::ShouldFlushStyle(RadonNode* old_radon_node,
     if (class_dirty_) {
       style_updated = true;
       fiber_element->SetClasses(attribute_holder_->ReleaseClasses());
-      MarkChildStyleDirtyRecursively(true);
+      old_radon_node->MarkChildStyleDirtyRecursively(true);
     }
     if (has_dynamic_inline_style_) {
       style_updated |= DiffRawStyleForFiber(old_radon_node->raw_inline_styles(),

@@ -423,6 +423,24 @@ TEST_F(RadonNodeTest, DiffStylesForFiber) {
   EXPECT_TRUE(val->second == lepus::Value("black"));
 }
 
+TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
+  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
+      TernaryBool::TRUE_VALUE);
+
+  auto parent = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  parent->CreateElementIfNeeded();
+  auto child = new RadonNode(page_proxy.get(), "view", 0);
+  child->CreateElementIfNeeded();
+  auto* child_element = static_cast<FiberElement*>(child->element());
+  parent->AddChild(std::unique_ptr<RadonBase>(child));
+
+  child_element->dirty_ = 0;
+  EXPECT_FALSE(child_element->StyleDirty());
+
+  parent->MarkChildStyleDirtyRecursively(true);
+  EXPECT_TRUE(child_element->StyleDirty());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx
