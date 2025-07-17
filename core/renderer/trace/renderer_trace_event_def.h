@@ -202,6 +202,15 @@ inline constexpr const char* const PAGE_PROXY_SSR_DISPATCH = "SSR::Dispatch";
 inline constexpr const char* const PAGE_PROXY_SSR_PROCESS_SCRIPT =
     "SSR::ProcessScript";
 
+inline constexpr const char* const
+    TEMPLATE_ASSEMBLER_EXECUTE_ON_LAYOUT_READY_HOOKS =
+        "TemplateAssembler::ExecuteOnLayoutReadyHooks";
+inline constexpr const char* const
+    TEMPLATE_ASSEMBLER_ENSURE_ON_LAYOUT_READY_HOOKS_FINISH =
+        "TemplateAssembler::EnsureOnLayoutReadyHooksFinish";
+inline constexpr const char* const TEMPLATE_ASSEMBLER_ENSURE_ON_LAYOUT_AFTER =
+    "TemplateAssembler::OnLayoutAfter";
+
 inline constexpr const char* const TEMPLATE_ASSEMBLER_SCOPE_CONSTRUCTOR =
     "TemplateAssembler::Scope::Scope";
 inline constexpr const char* const TEMPLATE_ASSEMBLER_CONSTRUCTOR =

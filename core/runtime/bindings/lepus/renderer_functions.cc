@@ -4621,9 +4621,8 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
     if (auto on_layout_ready = arg1->GetProperty(kOnLayoutReady);
         on_layout_ready.IsCallable()) {
       GET_TASM_POINTER()->RegisterOnLayoutReadyHook(
-          [context = LEPUS_CONTEXT(), hook = on_layout_ready]() mutable {
-            context->CallClosure(hook);
-          });
+          [tasm = self, context = LEPUS_CONTEXT(),
+           hook = on_layout_ready]() mutable { context->CallClosure(hook); });
     }
   }
 

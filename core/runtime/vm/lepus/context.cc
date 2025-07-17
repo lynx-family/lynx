@@ -432,6 +432,7 @@ Context::GetAnimationFrameManager() const {
 void Context::RegisterLynx(bool enable_signal_api) {
   BASE_STATIC_STRING_DECL(kPostDataBeforeUpdate, "postDataBeforeUpdate");
   BASE_STATIC_STRING_DECL(kTriggerReadyWhenReload, "triggerReadyWhenReload");
+  BASE_STATIC_STRING_DECL(kEnableOnLayoutReadyHook, "enableOnLayoutReady");
 
   SetPropertyToLynx(BASE_STATIC_STRING(tasm::kSystemInfo),
                     tasm::GenerateSystemInfo(nullptr));
@@ -441,6 +442,7 @@ void Context::RegisterLynx(bool enable_signal_api) {
   }
   SetPropertyToLynx(BASE_STATIC_STRING(tasm::kEnableSignalAPI),
                     lepus::Value(enable_signal_api));
+  SetPropertyToLynx(kEnableOnLayoutReadyHook, lepus::Value(true));
 }
 
 void Context::ReportError(const std::string& exception_info, int32_t err_code,

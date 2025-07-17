@@ -636,6 +636,8 @@ void TemplateAssembler::RenderTemplateForFiber(
     std::shared_ptr<PipelineOptions>& pipeline_options) {
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomStart);
 
+  pipeline_options->is_first_screen = true;
+
   lepus::Value render_options(lepus::Dictionary::Create());
   if (EnableDataProcessorOnJs()) {
     auto kProcessorName_str = BASE_STATIC_STRING(kProcessorName);
@@ -696,8 +698,6 @@ void TemplateAssembler::RenderTemplateForFiber(
 
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomEnd);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
-
-  pipeline_options->is_first_screen = true;
 
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
@@ -1840,6 +1840,9 @@ void TemplateAssembler::TriggerWorkletFunction(std::string component_id,
 
 void TemplateAssembler::Destroy() {
   LOGI("TemplateAssembler::Destroy url:" << url_ << " this:" << this);
+
+  EnsureOnLayoutReadyHooksFinish();
+
   destroyed_ = true;
   page_proxy_.Destroy();
   signal_context_.WillDestroy();
@@ -3413,16 +3416,21 @@ void TemplateAssembler::RunPixelPipeline() {
 }
 
 void TemplateAssembler::ExecuteOnLayoutReadyHooks() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TEMPLATE_ASSEMBLER_EXECUTE_ON_LAYOUT_READY_HOOKS);
+
   if (on_layout_ready_hooks_.empty()) {
     return;
   }
+
+  auto options = std::make_shared<PipelineOptions>();
+  pipeline_context_manager_->CreateAndUpdateCurrentPipelineContext(options);
+
   auto tasks = std::move(on_layout_ready_hooks_);
   on_layout_ready_hooks_.clear();
 
   std::promise<void> promise;
   std::future<void> future = promise.get_future();
-
-  EnsureOnLayoutReadyHooksFinish();
 
   execute_on_layout_ready_hooks_ = fml::MakeRefCounted<base::OnceTask<void>>(
       [tasks = std::move(tasks), promise = std::move(promise)]() mutable {
@@ -3439,15 +3447,22 @@ void TemplateAssembler::ExecuteOnLayoutReadyHooks() {
 }
 
 void TemplateAssembler::EnsureOnLayoutReadyHooksFinish() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TEMPLATE_ASSEMBLER_ENSURE_ON_LAYOUT_READY_HOOKS_FINISH);
+
   if (execute_on_layout_ready_hooks_ == nullptr) {
     return;
   }
   execute_on_layout_ready_hooks_->Run();
   execute_on_layout_ready_hooks_->GetFuture().get();
   execute_on_layout_ready_hooks_ = nullptr;
+
+  RunPixelPipeline();
 }
 
 void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_ENSURE_ON_LAYOUT_AFTER);
+
   ExecuteOnLayoutReadyHooks();
 
   if (!layout_data.pipeline_version) {
