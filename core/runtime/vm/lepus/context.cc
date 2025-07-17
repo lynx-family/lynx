@@ -273,10 +273,15 @@ static LEPUSValue LepusrefToString(LEPUSContext* ctx, LEPUSValue val) {
 static void PrintByALog(char* msg) { LOGE(msg); }
 
 LEPUSLepusRefCallbacks Context::GetLepusRefCall() {
-  return {&LepusRefFreeCallBack,        &LepusRefGetPropertyCallBack,
-          &LepusRefGetLengthCallBack,   &LepusConvertToObjectCallBack,
-          &LepusRefSetPropertyCallBack, &LepusRefFreeStringCache,
-          &LepusRefDeepEqualCallBack,   &LepusrefToString};
+  return {&LepusRefFreeCallBack,
+          &LepusRefGetPropertyCallBack,
+          &LepusRefGetLengthCallBack,
+          &LepusConvertToObjectCallBack,
+          &LepusRefSetPropertyCallBack,
+          &LepusRefFreeStringCache,
+          &LepusRefDeepEqualCallBack,
+          &LepusrefToString,
+          nullptr};
 }
 
 static void SetFuncsAndRegisterPrimJSCallbacks(LEPUSRuntime* rt) {

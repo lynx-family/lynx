@@ -664,6 +664,9 @@ typedef struct LEPUSDebuggerCallbacks {
   uint8_t (*is_devtool_on)(LEPUSContext *ctx);
 } LEPUSDebuggerCallbacks;
 
+typedef void LEPUS_MarkFunc(LEPUSRuntime *rt, LEPUSValueConst val,
+                            uint64_t trace_tool);
+
 typedef struct LEPUSLepusRefCallbacks {
   LEPUSValue (*free_value)(LEPUSRuntime *rt, LEPUSValue val);
   LEPUSValue (*get_property)(LEPUSContext *ctx, LEPUSValue thisObj, JSAtom prop,
@@ -675,6 +678,9 @@ typedef struct LEPUSLepusRefCallbacks {
   void (*free_str_cache)(void *old_ptr, void *new_ptr);
   size_t (*lepus_ref_equal)(LEPUSValue val1, LEPUSValue val2);
   LEPUSValue (*lepus_ref_tostring)(LEPUSContext *ctx, LEPUSValue val);
+  void (*ref_counted_obj_visitor)(LEPUSRuntime *rt, void *ref_counted_obj,
+                                  uint64_t trace_tool, int tag,
+                                  LEPUS_MarkFunc *f);
   // void (*free_string_cache)();
 } LEPUSLepusRefCallbacks;
 
@@ -715,10 +721,8 @@ void LEPUS_SetGCThreshold(LEPUSRuntime *rt, size_t gc_threshold);
 LEPUSRuntime *LEPUS_NewRuntime2(const struct LEPUSMallocFunctions *mf,
                                 void *opaque, uint32_t mode);
 void LEPUS_FreeRuntime(LEPUSRuntime *rt);
-typedef void LEPUS_MarkFunc(LEPUSRuntime *rt, LEPUSValueConst val,
-                            int local_idx);
 void LEPUS_MarkValue(LEPUSRuntime *rt, LEPUSValueConst val,
-                     LEPUS_MarkFunc *mark_func, int local_idx);
+                     LEPUS_MarkFunc *mark_func, uint64_t trace_tool);
 void LEPUS_RunGC(LEPUSRuntime *rt);
 LEPUS_BOOL LEPUS_IsInGCSweep(LEPUSRuntime *rt);
 
@@ -855,7 +859,7 @@ typedef struct LEPUSClassExoticMethods {
 
 typedef void LEPUSClassFinalizer(LEPUSRuntime *rt, LEPUSValue val);
 typedef void LEPUSClassGCMark(LEPUSRuntime *rt, LEPUSValueConst val,
-                              LEPUS_MarkFunc *mark_func, int local_idx);
+                              LEPUS_MarkFunc *mark_func, uint64_t trace_tool);
 #define LEPUS_CALL_FLAG_CONSTRUCTOR (1 << 0)
 typedef LEPUSValue LEPUSClassCall(LEPUSContext *ctx, LEPUSValueConst func_obj,
                                   LEPUSValueConst this_val, int argc,

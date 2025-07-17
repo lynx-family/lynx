@@ -34,7 +34,6 @@ target(lynx_harmony_type, "lynx_harmony") {
   lib_dirs = [ primjs_native_lib_dir ]
   libs = [
     "napi",
-    "napi_v8",
     "napi_adapter",
     "quick",
   ]

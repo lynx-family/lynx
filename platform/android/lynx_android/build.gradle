@@ -331,8 +331,8 @@ dependencies {
     androidTestImplementation "com.google.auto.service:auto-service-annotations:1.0-rc5"
     androidTestAnnotationProcessor "com.google.auto.service:auto-service:1.0-rc5"
 
-    implementation 'org.lynxsdk.lynx:primjs:2.13.2-rc.0'
-    extractJNI 'org.lynxsdk.lynx:primjs:2.13.2-rc.0'
+    implementation 'org.lynxsdk.lynx:primjs:2.13.2-rc.1'
+    extractJNI 'org.lynxsdk.lynx:primjs:2.13.2-rc.1'
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.3'
 
     api project(':LynxJSSDK')
