@@ -7,6 +7,8 @@ import os
 from core.container.android_ut_container import AndroidUTContainer
 from core.env.context import RTFContext
 from core.env.env import RTFEnv
+from core.base.result import Ok
+from core.utils.log import Log
 from core.env.trait_template import TraitTemplate
 from core.options.options import Options
 from plugins.plugin import Plugin
@@ -61,12 +63,26 @@ class AndroidUTPlugin(Plugin):
                 template = TraitTemplate.trait_from_context(context)
             if args.command == "run":
                 return self.__handle_run_command(template, args)
+            elif args.command == "list":
+                return self.__handle_list_command(template_name, template)
 
     def __handle_run_command(self, local_env, args):
         container = AndroidUTContainer(local_env["builder"], local_env["coverage"])
         container.use_real_device = args.rmd
         container.clean = not args.no_clean
         return container.run(local_env["targets"], filter=args.target)
+    
+    def __handle_list_command(self, template_name, template):
+        Log.info(f"Targets list for {template_name}")
+        index = 1
+        targets = template["targets"]
+        for _, target in enumerate(targets.keys(), start=1):
+            enable = targets[target]["enable"] if "enable" in targets[target] else True
+            if enable:
+                owners = ",".join(targets[target]["owners"])
+                Log.info(f"[{index}]: {target}  owners:({owners})")
+                index += 1
+        return Ok()
 
     def help(self):
         return "run targets of android-ut"
