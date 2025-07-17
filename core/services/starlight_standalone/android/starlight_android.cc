@@ -18,6 +18,7 @@ static constexpr uint16_t kLayoutTopIndex = 3;
 static constexpr uint16_t kLayoutMarginStartIndex = 4;
 static constexpr uint16_t kLayoutPaddingStartIndex = 8;
 static constexpr uint16_t kLayoutBorderStartIndex = 12;
+static constexpr uint16_t kLayoutResultSize = 16;
 
 static jclass g_starlightNodeClass = nullptr;
 static jmethodID g_measureMethod = nullptr;
@@ -203,8 +204,10 @@ void CalculateLayout(JNIEnv* env, jobject jcaller, jlong nativePtr,
 void SLNodeUpdateLayoutInfo(JNIEnv* env, jobject jcaller, jlong nativePtr,
                             jfloatArray array) {
   SLNodeRef node = reinterpret_cast<SLNodeRef>(nativePtr);
+  auto array_len = env->GetArrayLength(array);
   jfloat* layout_results = env->GetFloatArrayElements(array, nullptr);
-  if (layout_results == nullptr) {
+  if (static_cast<uint16_t>(array_len) != kLayoutResultSize ||
+      layout_results == nullptr) {
     return;
   }
   float padding[] = {
