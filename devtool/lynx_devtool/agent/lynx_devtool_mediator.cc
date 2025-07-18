@@ -689,6 +689,15 @@ bool LynxDevToolMediator::RunOnDevToolThread(lynx::base::closure&& closure,
   return false;
 }
 
+bool LynxDevToolMediator::RunOnCDPEventListenerThread(
+    lynx::base::closure&& closure, bool run_now) {
+  if (cdp_event_listener_runner_) {
+    RunOnTaskRunner(cdp_event_listener_runner_, std::move(closure), run_now);
+    return true;
+  }
+  return false;
+}
+
 void LynxDevToolMediator::StartScreencast(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
@@ -956,15 +965,42 @@ void LynxDevToolMediator::WhiteBoardClear(
 }
 
 void LynxDevToolMediator::SendCDPEvent(const Json::Value& msg) {
-  auto devtool = devtool_wp_.lock();
-  CHECK_NULL_AND_LOG_RETURN(devtool, "devtool is null");
-  devtool->GetMessageSender()->SendMessage("CDP", msg);
+  SendCDPEventImpl(msg);
 }
 
 void LynxDevToolMediator::SendCDPEvent(const std::string& msg) {
+  SendCDPEventImpl(msg);
+}
+
+template <typename MsgType>
+void LynxDevToolMediator::SendCDPEventImpl(const MsgType& msg) {
   auto devtool = devtool_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(devtool, "devtool is null");
   devtool->GetMessageSender()->SendMessage("CDP", msg);
+
+  // send cdp event message to the SDK-side listener
+  std::lock_guard<std::mutex> lock(cdp_event_listener_mutex_);
+  for (auto& listener : cdp_event_listener_map_) {
+    std::shared_ptr<MessageSender> sender = listener.second;
+    RunOnCDPEventListenerThread(
+        [sender, msg] { sender->SendMessage("CDP", msg); });
+  }
+}
+
+void LynxDevToolMediator::AddCDPEventListener(
+    const std::string& name, const std::shared_ptr<MessageSender>& listener) {
+  std::lock_guard<std::mutex> lock(cdp_event_listener_mutex_);
+  auto it = cdp_event_listener_map_.find(name);
+  if (it != cdp_event_listener_map_.end()) {
+    LOGI("CDPEventListener has exists:" << it->first);
+  }
+  cdp_event_listener_map_[name] = listener;
+}
+
+void LynxDevToolMediator::RemoveCDPEventListener(const std::string& name) {
+  LOGI("RemoveCDPEventListener: " << name);
+  std::lock_guard<std::mutex> lock(cdp_event_listener_mutex_);
+  cdp_event_listener_map_.erase(name);
 }
 
 void LynxDevToolMediator::EmulateTouchFromMouseEvent(

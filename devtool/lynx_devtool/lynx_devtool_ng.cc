@@ -269,6 +269,15 @@ void LynxDevToolNG::SetDevToolPlatformFacade(
   platform_facade->InitWithDevToolMediator(devtool_mediator_);
 }
 
+void LynxDevToolNG::AddCDPEventListener(
+    const std::string& name, const std::shared_ptr<MessageSender>& listener) {
+  devtool_mediator_->AddCDPEventListener(name, listener);
+}
+
+void LynxDevToolNG::RemoveCDPEventListener(const std::string& name) {
+  devtool_mediator_->RemoveCDPEventListener(name);
+}
+
 std::shared_ptr<MessageSender> LynxDevToolNG::GetMessageSender() const {
   return GetCurrentSender();
 }

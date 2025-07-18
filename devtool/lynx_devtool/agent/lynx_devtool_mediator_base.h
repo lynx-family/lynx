@@ -24,6 +24,7 @@ class LynxDevToolMediatorBase {
  public:
   LynxDevToolMediatorBase() {
     default_task_runner_ = GetDevToolsThread().GetTaskRunner();
+    cdp_event_listener_runner_ = GetCDPEventListenerThread().GetTaskRunner();
   }
   virtual ~LynxDevToolMediatorBase() = default;
 
@@ -32,6 +33,13 @@ class LynxDevToolMediatorBase {
         fml::Thread::ThreadConfig("devtool",
                                   fml::Thread::ThreadPriority::NORMAL));
     return *devtools_thread;
+  }
+
+  static fml::Thread& GetCDPEventListenerThread() {
+    static base::NoDestructor<fml::Thread> cdp_event_listener_thread(
+        fml::Thread::ThreadConfig("cdp_event_listener",
+                                  fml::Thread::ThreadPriority::NORMAL));
+    return *cdp_event_listener_thread;
   }
 
   void RunOnTaskRunner(lynx::fml::RefPtr<lynx::fml::TaskRunner>& runner,
@@ -46,6 +54,7 @@ class LynxDevToolMediatorBase {
 
  protected:
   fml::RefPtr<fml::TaskRunner> default_task_runner_;
+  fml::RefPtr<fml::TaskRunner> cdp_event_listener_runner_;
 };
 
 }  // namespace devtool

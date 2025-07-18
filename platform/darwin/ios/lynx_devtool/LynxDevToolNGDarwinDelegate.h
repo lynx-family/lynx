@@ -33,6 +33,11 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)invokeCDPFromSDK:(NSString *)msg withCallback:(CDPResultCallback)callback;
 
+- (void)addCDPEventListener:(nonnull NSString *)name
+               withListener:(nonnull id<CDPEventListener>)listener;
+
+- (void)removeCDPEventListener:(nonnull NSString *)name;
+
 - (void)subscribeMessage:(NSString *)type withHandler:(id<MessageHandler>)handler;
 
 - (void)unsubscribeMessage:(NSString *)type;

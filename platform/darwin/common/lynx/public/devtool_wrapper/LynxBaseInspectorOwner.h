@@ -16,6 +16,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^CDPResultCallback)(NSString *result);
 
+@protocol CDPEventListener <NSObject>
+
+@required
+- (void)onEvent:(nonnull NSString *)event;
+
+@end
+
 @protocol LynxBaseInspectorOwner <NSObject>
 
 @required
@@ -95,6 +102,55 @@ typedef void (^CDPResultCallback)(NSString *result);
  * ```
  */
 - (void)invokeCDPFromSDK:(NSString *)msg withCallback:(CDPResultCallback)callback;
+
+/**
+ * Adds a listener identified by a given name for view-level CDP events.
+ *
+ * This method registers a view-level CDP event listener associated with the specified name. The
+ * name acts as an identifier for the listener, which can be used later to remove the listener via
+ * `removeCDPEventListener:` method.
+ *
+ * @param name The unique name identifying the event listener. This parameter must not be nil.
+ * @param listener An object conforming to the `CDPEventListener` protocol that will receive
+ * notifications for the view-level CDP events. This parameter must not be nil.
+ *
+ * @discussion Multiple listeners can be registered under different names. When a view-level CDP
+ * event occurs, all registered listener interfaces will receive callbacks. All event callbacks are
+ * dispatched and executed on the dedicated `cdp_event_listener` thread.
+ *
+ * The lifecycle of the listener object is managed by the caller. This API holds only a weak
+ * reference to the listener. This means the listener will only be called as long as it is still
+ * alive.
+ *
+ *
+ * @note Example usage:
+ *
+ * ```
+ * [inspectorOwner addCDPEventListener:@"test_cdp_listener" withListener:eventListener];
+ * ```
+ */
+- (void)addCDPEventListener:(nonnull NSString *)name
+               withListener:(nonnull id<CDPEventListener>)listener;
+
+/**
+ * Removes the CDP event listener identified by the given name.
+ *
+ * This method unregisters and removes the event listener associated with the specified name.
+ * After this call, the listener will no longer receive event notifications.
+ *
+ * @param name The unique name identifying the event listener to remove. This parameter must not be
+ * nil.
+ *
+ * @discussion If no listener is found with the given name, this method performs no operation.
+ *
+ *
+ * @note Example usage:
+ *
+ * ```
+ * [inspectorOwner removeCDPEventListener:@"test_cdp_listener"];
+ * ```
+ */
+- (void)removeCDPEventListener:(nonnull NSString *)name;
 
 - (void)onReceiveTemplateFragment:(nullable NSString *)data withEof:(BOOL)eof;
 

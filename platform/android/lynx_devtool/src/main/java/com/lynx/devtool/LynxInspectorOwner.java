@@ -25,6 +25,7 @@ import com.lynx.devtool.helper.UITreeHelper;
 import com.lynx.devtool.module.DevtoolWebSocketModule;
 import com.lynx.devtool.tracing.FrameViewTrace;
 import com.lynx.devtool.utils.ErrorUtils;
+import com.lynx.devtoolwrapper.CDPEventListener;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.CustomizedMessage;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
@@ -159,6 +160,16 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
   @Override
   public void invokeCDPFromSDK(String cdpMsg, CDPResultCallback callback) {
     mLynxDevToolNG.invokeCDPFromSDK(cdpMsg, callback);
+  }
+
+  @Override
+  public void addCDPEventListener(final String name, final CDPEventListener listener) {
+    mLynxDevToolNG.addCDPEventListener(name, listener);
+  }
+
+  @Override
+  public void removeCDPEventListener(final String name) {
+    mLynxDevToolNG.removeCDPEventListener(name);
   }
 
   @Override

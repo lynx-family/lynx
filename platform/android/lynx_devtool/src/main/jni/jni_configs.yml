@@ -22,6 +22,7 @@ jni_class_configs:
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/LynxDevToolNGDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/DevToolMessageHandlerDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/CDPResultCallbackWrapper.java
+    - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/CDPEventListenerWrapper.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/DevToolPlatformAndroidDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/GlobalDevToolPlatformAndroidDelegate.java
     - java: platform/android/lynx_devtool/src/main/java/com/lynx/devtool/RecorderController.java

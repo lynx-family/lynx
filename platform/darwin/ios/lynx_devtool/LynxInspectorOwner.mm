@@ -320,6 +320,20 @@
   }
 }
 
+- (void)addCDPEventListener:(nonnull NSString*)name
+               withListener:(nonnull id<CDPEventListener>)listener;
+{
+  if (_devtoolNG != nil) {
+    [_devtoolNG addCDPEventListener:name withListener:listener];
+  }
+}
+
+- (void)removeCDPEventListener:(nonnull NSString*)name {
+  if (_devtoolNG != nil) {
+    [_devtoolNG removeCDPEventListener:name];
+  }
+}
+
 - (void)endTestbench:(NSString*)filePath {
   if (filePath == nil) {
     return;

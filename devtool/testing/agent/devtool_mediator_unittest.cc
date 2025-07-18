@@ -22,6 +22,7 @@
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/testing/mock/cdp_event_listener_sender_mock.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
@@ -43,12 +44,17 @@ class DevToolMediatorTest : public ::testing::Test {
     devtools_ng_ = std::make_shared<lynx::testing::LynxDevToolNGMock>();
     message_sender_ = std::make_shared<devtool::MessageSenderMock>();
     devtools_ng_->message_sender_ = message_sender_;
+    devtools_ng_->devtool_mediator_ = devtool_mediator_;
     devtool_mediator_->devtool_wp_ = devtools_ng_;
     ui_thread_ = std::make_unique<fml::Thread>("ui");
     tasm_thread_ = std::make_unique<fml::Thread>("tasm");
     devtool_thread_ = std::make_unique<fml::Thread>("devtools");
+    cdp_event_listener_thread_ =
+        std::make_unique<fml::Thread>("cdp_event_listener");
     devtool_mediator_->tasm_task_runner_ = tasm_thread_->GetTaskRunner();
     devtool_mediator_->ui_task_runner_ = ui_thread_->GetTaskRunner();
+    devtool_mediator_->cdp_event_listener_runner_ =
+        cdp_event_listener_thread_->GetTaskRunner();
     devtool::LynxGlobalDevToolMediator::GetInstance().ui_task_runner_ =
         ui_thread_->GetTaskRunner();
     devtool_mediator_->devtool_executor_ =
@@ -71,6 +77,7 @@ class DevToolMediatorTest : public ::testing::Test {
   std::unique_ptr<fml::Thread> ui_thread_;
   std::unique_ptr<fml::Thread> tasm_thread_;
   std::unique_ptr<fml::Thread> devtool_thread_;
+  std::unique_ptr<fml::Thread> cdp_event_listener_thread_;
 };
 
 TEST_F(DevToolMediatorTest, InspectorEnableCase) {
@@ -386,6 +393,61 @@ TEST_F(DevToolMediatorTest, GetAllTimingInfoTest) {
   ui_thread_->Join();
   EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
             "{\n   \"id\" : 1\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, AddCDPEventListener) {
+  auto listener_sender =
+      std::make_shared<devtool::CDPEventListenerSenderMock>();
+  devtools_ng_->AddCDPEventListener("test", listener_sender);
+  EXPECT_TRUE(devtool_mediator_->cdp_event_listener_map_.find("test") !=
+              devtool_mediator_->cdp_event_listener_map_.end());
+  EXPECT_EQ(
+      listener_sender.get(),
+      devtool_mediator_->cdp_event_listener_map_.find("test")->second.get());
+}
+
+TEST_F(DevToolMediatorTest, RemoveCDPEventListener) {
+  auto listener_sender =
+      std::make_shared<devtool::CDPEventListenerSenderMock>();
+  devtools_ng_->AddCDPEventListener("test", listener_sender);
+  EXPECT_TRUE(devtool_mediator_->cdp_event_listener_map_.find("test") !=
+              devtool_mediator_->cdp_event_listener_map_.end());
+  devtools_ng_->RemoveCDPEventListener("test");
+  EXPECT_TRUE(devtool_mediator_->cdp_event_listener_map_.find("test") ==
+              devtool_mediator_->cdp_event_listener_map_.end());
+}
+
+TEST_F(DevToolMediatorTest, SendCDPEventJson) {
+  auto listener_sender =
+      std::make_shared<devtool::CDPEventListenerSenderMock>();
+  devtools_ng_->AddCDPEventListener("test", listener_sender);
+
+  Json::Value msg_json(Json::ValueType::objectValue);
+  msg_json["method"] = "DOM.documentUpdated";
+  devtool_mediator_->SendCDPEvent(msg_json);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+
+  cdp_event_listener_thread_->Join();
+  EXPECT_EQ(listener_sender->received_msg_.second,
+            "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, SendCDPEventString) {
+  auto listener_sender =
+      std::make_shared<devtool::CDPEventListenerSenderMock>();
+  devtools_ng_->AddCDPEventListener("test", listener_sender);
+
+  Json::Value msg_json(Json::ValueType::objectValue);
+  msg_json["method"] = "DOM.documentUpdated";
+  std::string msg_str = msg_json.toStyledString();
+  devtool_mediator_->SendCDPEvent(msg_str);
+  EXPECT_EQ(devtool::MockReceiver::GetInstance().received_message_.second,
+            "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+
+  cdp_event_listener_thread_->Join();
+  EXPECT_EQ(listener_sender->received_msg_.second,
+            "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
 }
 
 }  // namespace testing

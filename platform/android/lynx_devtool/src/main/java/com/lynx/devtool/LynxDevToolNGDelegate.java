@@ -4,6 +4,7 @@
 package com.lynx.devtool;
 
 import androidx.annotation.NonNull;
+import com.lynx.devtoolwrapper.CDPEventListener;
 import com.lynx.devtoolwrapper.CDPResultCallback;
 import com.lynx.devtoolwrapper.MessageHandler;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -120,8 +121,21 @@ public class LynxDevToolNGDelegate {
     nativeInvokeCDPFromSDK(mLynxDevToolNGPtr, cdpMsg, new CDPResultCallbackWrapper(callback));
   }
 
+  public void addCDPEventListener(final String name, final CDPEventListener listener) {
+    nativeAddCDPEventListener(mLynxDevToolNGPtr, name, new CDPEventListenerWrapper(listener));
+  }
+
+  public void removeCDPEventListener(final String name) {
+    nativeRemoveCDPEventListener(mLynxDevToolNGPtr, name);
+  }
+
   private native void nativeInvokeCDPFromSDK(
       long nativePtr, String cdpMsg, CDPResultCallbackWrapper callback);
+
+  private native void nativeAddCDPEventListener(
+      long nativePtr, String name, CDPEventListenerWrapper listener);
+
+  private native void nativeRemoveCDPEventListener(long nativePtr, String name);
 
   public void updateScreenMetrics(int width, int height, float density) {
     nativeUpdateDevice(width, height, density);

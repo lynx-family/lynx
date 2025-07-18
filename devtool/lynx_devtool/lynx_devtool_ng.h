@@ -34,6 +34,11 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
   std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
   OnBackgroundRuntimeCreated(const std::string& group_thread_name);
 
+  void AddCDPEventListener(const std::string& name,
+                           const std::shared_ptr<MessageSender>& listener);
+
+  void RemoveCDPEventListener(const std::string& name);
+
   virtual std::shared_ptr<MessageSender> GetMessageSender() const;
 
  protected:

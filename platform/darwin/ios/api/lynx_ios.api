@@ -57,6 +57,10 @@ public interface CALayer(LynxHeroTransition) {
   public CATransform3D CALayer(LynxHeroTransition)::flatTransformTo:(CALayer *layer);
 }
 
+public protocol CDPEventListener-p : <NSObject> {
+  public void CDPEventListener-p::onEvent:(nonnull NSString *event);
+}
+
 public class CustomizedMessage : NSObject {
   public NSString* CustomizedMessage::type type;
   public NSString* CustomizedMessage::data data;
@@ -611,6 +615,8 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public (deprecated("Deprecated after Lynx2.18")) LynxBaseInspectorOwner-p::__attribute__();
   public void LynxBaseInspectorOwner-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
   public void LynxBaseInspectorOwner-p::invokeCDPFromSDK:withCallback:(NSString *msg,[withCallback] CDPResultCallback callback);
+  public void LynxBaseInspectorOwner-p::addCDPEventListener:withListener:(nonnull NSString *name,[withListener] nonnull id< CDPEventListener > listener);
+  public void LynxBaseInspectorOwner-p::removeCDPEventListener:(nonnull NSString *name);
   public void LynxBaseInspectorOwner-p::onReceiveTemplateFragment:withEof:(nullable NSString *data,[withEof] BOOL eof);
   public void LynxBaseInspectorOwner-p::attachDebugBridge:(NSString *url);
   public void LynxBaseInspectorOwner-p::endTestbench:(NSString *_Nonnull filePath);

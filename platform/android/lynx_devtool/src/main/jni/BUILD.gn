@@ -8,6 +8,8 @@ import("../../../../../../devtool/lynx_devtool/devtool.gni")
 
 devtool_source_set("build") {
   sources = [
+    "gen/CDPEventListenerWrapper_jni.h",
+    "gen/CDPEventListenerWrapper_register_jni.h",
     "gen/CDPResultCallbackWrapper_jni.h",
     "gen/CDPResultCallbackWrapper_register_jni.h",
     "gen/DevToolMessageHandlerDelegate_jni.h",

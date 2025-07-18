@@ -7,6 +7,7 @@
 
 #include "core/base/android/jni_helper.h"
 #include "core/renderer/tasm/config.h"
+#include "devtool/lynx_devtool/android/cdp_event_listener_sender_android.h"
 #include "devtool/lynx_devtool/android/devtool_message_handler_android.h"
 #include "devtool/lynx_devtool/android/invoke_cdp_from_sdk_sender_android.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
@@ -112,6 +113,26 @@ void InvokeCDPFromSDK(JNIEnv* env, jobject jcaller, jlong nativePtr,
                                                                      callback),
       "CDP",
       lynx::base::android::JNIConvertHelper::ConvertToString(env, cdpMsg));
+}
+
+void AddCDPEventListener(JNIEnv* env, jobject jcaller, jlong nativePtr,
+                         jstring name, jobject listener) {
+  auto lynx_devtool =
+      *reinterpret_cast<std::shared_ptr<lynx::devtool::LynxDevToolNG>*>(
+          nativePtr);
+  lynx_devtool->AddCDPEventListener(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, name),
+      std::make_shared<lynx::devtool::CDPEventListenerSenderAndroid>(env,
+                                                                     listener));
+}
+
+void RemoveCDPEventListener(JNIEnv* env, jobject jcaller, jlong nativePtr,
+                            jstring name) {
+  auto lynx_devtool =
+      *reinterpret_cast<std::shared_ptr<lynx::devtool::LynxDevToolNG>*>(
+          nativePtr);
+  lynx_devtool->RemoveCDPEventListener(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, name));
 }
 
 void UpdateDevice(JNIEnv* env, jobject jcaller, jint width, jint height,

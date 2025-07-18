@@ -217,6 +217,8 @@ class LynxDevToolMediator
   void RunOnJSThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnTASMThread(lynx::base::closure&& closure, bool run_now = true);
   bool RunOnDevToolThread(lynx::base::closure&& closure, bool run_now = true);
+  bool RunOnCDPEventListenerThread(lynx::base::closure&& closure,
+                                   bool run_now = true);
 
  public:
   std::vector<double> GetBoxModel(tasm::Element* element);
@@ -224,6 +226,11 @@ class LynxDevToolMediator
   void SendLayoutTree();
   void SendCDPEvent(const Json::Value& msg);
   void SendCDPEvent(const std::string& msg);
+  template <typename MsgType>
+  void SendCDPEventImpl(const MsgType& msg);
+  void AddCDPEventListener(const std::string& name,
+                           const std::shared_ptr<MessageSender>& listener);
+  void RemoveCDPEventListener(const std::string& name);
   void DispatchJSMessage(const Json::Value& message);
   void UpdateTarget();
 
@@ -252,6 +259,10 @@ class LynxDevToolMediator
   std::weak_ptr<LynxDevToolNG> devtool_wp_;
   int view_id_{-1};
   bool fully_initialized_{false};
+
+  std::unordered_map<std::string, std::shared_ptr<MessageSender>>
+      cdp_event_listener_map_;
+  std::mutex cdp_event_listener_mutex_;
 };
 
 }  // namespace devtool

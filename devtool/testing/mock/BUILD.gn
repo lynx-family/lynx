@@ -6,6 +6,7 @@ import("../../../testing/test.gni")
 
 source_set("devtool_mock") {
   sources = [
+    "cdp_event_listener_sender_mock.h",
     "devtool_platform_facade_mock.cc",
     "devtool_platform_facade_mock.h",
     "element_manager_mock.cc",

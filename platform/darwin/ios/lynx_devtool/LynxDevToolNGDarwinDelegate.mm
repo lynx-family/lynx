@@ -32,6 +32,24 @@ class InvokeCDPFromSDKSenderIos : public MessageSender {
   __strong CDPResultCallback _callback;
 };
 
+class CDPEventListenerSender : public MessageSender {
+ public:
+  CDPEventListenerSender(id<CDPEventListener> listener) { _listener = listener; }
+  void SendMessage(const std::string& type, const Json::Value& msg) override {
+    std::string msg_str = msg.toStyledString();
+    __strong id<CDPEventListener> listener = _listener;
+    [listener onEvent:[NSString stringWithUTF8String:msg_str.c_str()]];
+  }
+
+  void SendMessage(const std::string& type, const std::string& msg) override {
+    __strong id<CDPEventListener> listener = _listener;
+    [listener onEvent:[NSString stringWithUTF8String:msg.c_str()]];
+  }
+
+ private:
+  __weak id<CDPEventListener> _listener;
+};
+
 class DevToolMessageHandlerIos : public DevToolMessageHandler {
  public:
   DevToolMessageHandlerIos(id<MessageHandler> handler) { _handler = handler; }
@@ -121,6 +139,20 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
   } else {
     LOGE("LynxDevToolNGDarwinDelegate "
          << "invokeCDPFromSDK failed with msg:" << msg);
+  }
+}
+
+- (void)addCDPEventListener:(nonnull NSString*)name
+               withListener:(nonnull id<CDPEventListener>)listener {
+  if (devtool_ng_ != nullptr) {
+    devtool_ng_->AddCDPEventListener(
+        [name UTF8String], std::make_shared<lynx::devtool::CDPEventListenerSender>(listener));
+  }
+}
+
+- (void)removeCDPEventListener:(nonnull NSString*)name {
+  if (devtool_ng_ != nullptr) {
+    devtool_ng_->RemoveCDPEventListener([name UTF8String]);
   }
 }
 

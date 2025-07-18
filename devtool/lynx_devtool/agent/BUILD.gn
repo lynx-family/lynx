@@ -88,6 +88,8 @@ devtool_agent_ng_sources = [
 
 if (is_android) {
   devtool_agent_shared_sources += [
+    "../android/cdp_event_listener_sender_android.cc",
+    "../android/cdp_event_listener_sender_android.h",
     "../android/devtool_message_handler_android.cc",
     "../android/devtool_message_handler_android.h",
     "../android/invoke_cdp_from_sdk_sender_android.cc",

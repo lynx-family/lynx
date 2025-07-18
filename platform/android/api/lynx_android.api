@@ -1155,6 +1155,10 @@ public class com::lynx::tasm::utils::CallStackUtil :  {
   public static String com.lynx.tasm.utils.CallStackUtil.getStackTraceStringWithLineTrimmed(Throwable t);
 }
 
+public interface com::lynx::devtoolwrapper::CDPEventListener {
+  public void com.lynx.devtoolwrapper.CDPEventListener.onEvent(String event);
+}
+
 public interface com::lynx::devtoolwrapper::CDPResultCallback {
   public void com.lynx.devtoolwrapper.CDPResultCallback.onResult(String result);
 }
@@ -3531,6 +3535,8 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showErrorMessageOnConsole(final LynxError error);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showMessageOnConsole(final String message, int level);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.invokeCDPFromSDK(final String cdpMsg, final CDPResultCallback callback);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.addCDPEventListener(final String name, final CDPEventListener listener);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.removeCDPEventListener(final String name);
 }
 
 public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwnerNG {
