@@ -924,7 +924,6 @@ void TemplateAssembler::LoadTemplateInternal(
 #endif
 
   Scope scope(this);
-  PipelineScope pipeline_scope(this, pipeline_options);
 
   // Before exec load template, do some preparation
   // 1. exec timing actions
@@ -973,6 +972,8 @@ void TemplateAssembler::LoadTemplateInternal(
                           ShouldPostDataToJs(),
                       pipeline_options);
   }
+
+  PipelineScope pipeline_scope(this, pipeline_options);
 
   {
     // Trace VM Execute
@@ -1479,6 +1480,10 @@ void TemplateAssembler::SetPageConfig(
     // pass page config to android/iOS side after VM->Execute()
     // see `SetPageConfig` called by `LoadTemplate/LoadComponent`
     // in template_assembler.cc
+
+    if (page_config_->GetEnableUnifiedPipeline() == TernaryBool::TRUE_VALUE) {
+      pipeline_context_manager_->SetEnableUnifiedPixelPipeline(true);
+    }
   }
 }
 

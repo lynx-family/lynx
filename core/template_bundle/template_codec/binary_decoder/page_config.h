@@ -658,6 +658,14 @@ class PageConfig final : public EntryConfig {
     return enable_text_layout_cache_;
   }
 
+  void SetEnableUnifiedPipeline(TernaryBool enable_unified_pipeline) {
+    enable_unified_pipeline_ = enable_unified_pipeline;
+  }
+
+  inline TernaryBool GetEnableUnifiedPipeline() {
+    return enable_unified_pipeline_;
+  }
+
   inline bool GetEnableReduceInitDataCopy() {
     return enable_reduce_init_data_copy_;
   }
@@ -1478,6 +1486,8 @@ class PageConfig final : public EntryConfig {
    * TODO(zhoupeng.z): Apply this optimization to all platforms.
    */
   bool need_post_to_platform_{true};
+
+  TernaryBool enable_unified_pipeline_{TernaryBool::UNDEFINE_VALUE};
 
   TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
 
