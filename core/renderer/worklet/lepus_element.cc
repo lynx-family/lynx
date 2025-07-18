@@ -438,8 +438,17 @@ void LepusElement::SetStyles(const Napi::Object& styles) {
   } else {
     auto* fiber_element = static_cast<tasm::FiberElement*>(element);
     for (const auto& pair : *(lepus_v.Table())) {
-      fiber_element->SetStyle(tasm::CSSProperty::GetPropertyID(pair.first),
-                              pair.second);
+      const auto& key = tasm::CSSProperty::GetPropertyID(pair.first);
+      const auto& val = pair.second;
+      if (fiber_element->IsRadonArch()) {
+        auto processed_values = tasm::UnitHandler::Process(
+            key, pair.second,
+            element->element_manager()->GetCSSParserConfigs());
+        if (processed_values.empty()) {
+          continue;
+        }
+      }
+      fiber_element->SetStyle(key, val);
     }
     auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
     fiber_element->element_manager()->OnPatchFinish(pipeline_options,
