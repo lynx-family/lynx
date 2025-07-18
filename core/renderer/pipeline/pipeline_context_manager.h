@@ -36,6 +36,10 @@ class PipelineContextManager {
     on_create_hook_ = std::move(hook);
   }
 
+  void SetEnableUnifiedPixelPipeline(bool enable) {
+    enable_unified_pixel_pipeline_ = enable;
+  }
+
  private:
   std::map<PipelineVersion, const std::unique_ptr<PipelineContext>>
       pipeline_contexts_{};
