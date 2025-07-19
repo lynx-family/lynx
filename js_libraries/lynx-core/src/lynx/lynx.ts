@@ -261,6 +261,9 @@ export class Lynx {
     });
   };
 
+  putParamsForReportingEvents = (params: Record<string, string | number>) => {
+    this.getNativeApp().putParamsForReportingEvents(params);
+  };
   getDevtool = this.getNativeLynx().getDevtool;
   getCoreContext = this.getNativeLynx().getCoreContext;
   getJSContext = this.getNativeLynx().getJSContext;

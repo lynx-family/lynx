@@ -658,6 +658,23 @@ function getEnv(nativeApp, key) {
   EXPECT_TRUE(result->isUndefined());
 }
 
+TEST_P(AppTest, PutParamsForReportingEventsTest) {
+  auto native_app = Object::createFromHostObject(
+      rt, std::make_shared<AppProxy>(runtime, app));
+  auto js_function = function(R"--(
+function putParamsForReportingEvents(nativeApp, arg) {
+  return nativeApp.putParamsForReportingEvents();
+}
+)--");
+
+  EXPECT_CALL(*exception_handler_,
+              onJSIException(HasMessage(
+                  "putParamsForReportingEvents arg count must == 1")))
+      .Times(1);
+  std::optional<Value> result = js_function.call(rt, {native_app, 1});
+  EXPECT_TRUE(result->isUndefined());
+}
+
 TEST_P(AppTest, JSObjectDestructionObserver) {
   rt.global().setProperty(rt, "JSObjectDestructionObserverTestResult", 1);
 

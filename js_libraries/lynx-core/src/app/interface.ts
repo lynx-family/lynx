@@ -261,6 +261,14 @@ export interface NativeApp {
   markTiming: (timing_flag: string, key: string) => void;
 
   /**
+   * Support from Lynx 3.4
+   * @param params
+   */
+  putParamsForReportingEvents: (
+    params: Record<string, string | number>
+  ) => void;
+
+  /**
    * Support from Lynx 3.0
    */
   profileStart: (traceName: string, option?: TraceOption) => void;

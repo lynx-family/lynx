@@ -243,6 +243,7 @@
   V(FiberAsyncResolveElement)         \
   V(BindPipelineIDWithTimingFlag)     \
   V(MarkTiming)                       \
+  V(PutParamsForReportingEvents)      \
   V(AddTimingListener)                \
   V(GeneratePipelineOptions)          \
   V(OnPipelineStart)                  \
