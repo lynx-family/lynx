@@ -4411,7 +4411,7 @@ public class LynxUIOwner : NSObject {
   public LynxComponentScopeRegistry * LynxUIOwner::getComponentRegistry();
   public void LynxUIOwner::didMoveToWindow:(BOOL windowIsNil);
   public void LynxUIOwner::updateAnimationKeyframes:(NSDictionary *keyframesDict);
-  public NSDictionary< NSString *, LynxMemoryRecord * > * LynxUIOwner::getMemoryUsage();
+  public NSDictionary< NSString *, LynxMemoryRecord * > * LynxUIOwner::memoryUsageDictionary();
   public Boolean LynxUIOwner::isLayoutInElementModeOn();
   public NSArray< LynxUI * > * LynxUIOwner::uiWithA11yID:(NSString *a11yID);
   public NSArray< UIView * > * LynxUIOwner::viewsWithA11yID:(NSString *a11yID);

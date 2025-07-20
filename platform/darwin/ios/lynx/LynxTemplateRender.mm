@@ -1935,7 +1935,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                      return;
                    }
                    NSDictionary<NSString*, LynxMemoryRecord*>* records =
-                       [[strongSelf uiOwner] getMemoryUsage];
+                       [[strongSelf uiOwner] memoryUsageDictionary];
                    [[strongSelf performanceController] updateMemoryUsageWithRecords:records];
                  });
 }

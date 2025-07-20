@@ -174,7 +174,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateAnimationKeyframes:(NSDictionary*)keyframesDict;
 
-- (NSDictionary<NSString*, LynxMemoryRecord*>*)getMemoryUsage;
+- (NSDictionary<NSString*, LynxMemoryRecord*>*)memoryUsageDictionary;
 
 - (Boolean)isLayoutInElementModeOn;
 

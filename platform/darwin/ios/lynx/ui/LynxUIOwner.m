@@ -1119,7 +1119,7 @@ extern NSString* const kDefaultComponentID;
   }
 }
 
-- (NSDictionary<NSString*, LynxMemoryRecord*>*)getMemoryUsage {
+- (NSDictionary<NSString*, LynxMemoryRecord*>*)memoryUsageDictionary {
   if ([_uiHolder count] == 0) {
     return nil;
   }
