@@ -4,6 +4,8 @@
 
 package com.lynx.tasm.gesture.arena;
 
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MotionEvent;
 import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
@@ -30,6 +32,7 @@ public class GestureArenaManager {
   private Map<Integer, WeakReference<GestureArenaMember>> mArenaMemberMap;
   private LinkedList<GestureArenaMember> mCompeteChainCandidates;
   private LinkedList<GestureArenaMember> mBubbleCandidate;
+  private final Handler mMainThreadHandler = new Handler(Looper.getMainLooper());
 
   private GestureDetectorManager mGestureDetectorManager;
 
@@ -137,10 +140,15 @@ public class GestureArenaManager {
    * Computes the scroll for the active gesture members.
    */
   public void computeScroll() {
-    if (!isEnableNewGesture() || mGestureHandlerTrigger == null) {
+    if (!isEnableNewGesture() || mGestureHandlerTrigger == null || mMainThreadHandler == null) {
       return;
     }
-    mGestureHandlerTrigger.computeScroll(mCompeteChainCandidates);
+
+    mMainThreadHandler.post(() -> {
+      if (mGestureHandlerTrigger != null) {
+        mGestureHandlerTrigger.computeScroll(mCompeteChainCandidates);
+      }
+    });
   }
 
   /**
