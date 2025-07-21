@@ -209,6 +209,9 @@ class Element : public lepus::RefCounted {
   void AnimateV2(const lepus::Value& args,
                  std::shared_ptr<PipelineOptions>& pipeline_option);
 
+  // For getAnimations API
+  std::vector<fml::RefPtr<animation::Animation>> GetAnimations();
+
   // For JS API setNativeProps
   virtual void SetNativeProps(
       const lepus::Value& args,

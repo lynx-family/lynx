@@ -29,6 +29,9 @@ class AnimationDelegate {
   virtual void NotifyClientAnimated(tasm::StyleMap& styles,
                                     tasm::CSSValue value,
                                     tasm::CSSPropertyID css_id){};
+  std::vector<std::weak_ptr<Animation>> GetActiveAnimations() {
+    return active_animations_;
+  }
   tasm::Element* element() { return element_; }
 
  protected:

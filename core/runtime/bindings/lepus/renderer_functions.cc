@@ -7086,6 +7086,26 @@ RENDERER_FUNCTION_CC(ElementAnimate) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(GetAnimations) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, GET_ANIMATIONS);
+  // parameter size = 1
+  // [0] RefCounted -> target element
+  CHECK_ARGC_GE(GetAnimations, 1);
+  CONVERT_ARG(arg0, 0);
+  if (!arg0->IsRefCounted()) {
+    RETURN_UNDEFINED();
+  }
+
+  auto parent = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+
+  auto ary = lepus::CArray::Create();
+  const auto& active_animations = parent->GetAnimations();
+  for (const auto& active_anim : active_animations) {
+    ary->emplace_back(active_anim);
+  }
+  RETURN(lepus::Value(std::move(ary)));
+}
+
 static void ParseSimpleStyleValueToMap(const lepus::Value& key,
                                        const lepus::Value& value, StyleMap& map,
                                        TemplateAssembler* tasm) {

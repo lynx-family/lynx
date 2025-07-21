@@ -317,6 +317,7 @@ static const char* kCFunctionReportError = "_ReportError";
 // Worklet
 static const char* kCFunctionLoadLepusChunk = "__LoadLepusChunk";
 static const char* kCFunctionElementAnimate = "__ElementAnimate";
+static const char* kCFunctionGetAnimations = "__GetAnimations";
 
 class Utils {
  public:

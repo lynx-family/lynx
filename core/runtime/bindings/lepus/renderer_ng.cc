@@ -399,7 +399,8 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
       {kCFunctionElementAnimate, &RendererFunctions::ElementAnimate},
       {kCFunctionCreateStyleObject, &RendererFunctions::CreateStyleObject},
       {kCFunctionSetStyleObject, &RendererFunctions::SetStyleObject},
-      {kCFunctionUpdateStyleObject, &RendererFunctions::UpdateStyleObject}
+      {kCFunctionUpdateStyleObject, &RendererFunctions::UpdateStyleObject},
+      {kCFunctionGetAnimations, &RendererFunctions::GetAnimations}
       /* Element API END */
   };
   lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));

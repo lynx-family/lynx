@@ -289,4 +289,6 @@ declare global {
   function __UpdateStyleObject(styleObjectRef: StyleObjectRef, styleObject: Object): void;
 
   function __ElementAnimate(node: ElementRef, animateArgs: Object): void;
+
+  function __GetAnimations(node: ElementRef): any;
 }
