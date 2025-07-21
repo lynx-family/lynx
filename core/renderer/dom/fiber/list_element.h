@@ -34,16 +34,28 @@ class ListElementSSRHelper {
   ListElementSSRHelper(ListElementSSRHelper&&) = default;
   ListElementSSRHelper& operator=(ListElementSSRHelper&&) = default;
 
+  void OnEnqueueComponent(int32_t sign);
   void HydrateListNode();
+  // on list element get callback function.
+  void OnListElementHydrateFinish();
   int32_t ComponentAtIndexInSSR(uint32_t index, int64_t operationId);
+
+  bool HasHydrate() { return has_hydrate_; }
   void AppendChild(fml::RefPtr<FiberElement> child) {
-    ssr_element_.emplace_back(child);
+    ssr_elements_.push_back({child, SSRItemStatus::kWaitingRender});
   }
-  ListElement* GetListElement() { return list_element_; }
 
  private:
+  enum class SSRItemStatus : uint32_t {
+    kWaitingRender = 0,
+    kRendered = 1,
+    kEnqueued = 2,
+  };
+
+  bool has_hydrate_ = false;
   ListElement* list_element_;
-  std::vector<fml::RefPtr<FiberElement>> ssr_element_;
+  std::vector<std::pair<fml::RefPtr<FiberElement>, SSRItemStatus>>
+      ssr_elements_;
 };
 
 class ListElement : public FiberElement,
@@ -137,6 +149,7 @@ class ListElement : public FiberElement,
 
   // ssr hydrate.
   void Hydrate();
+  void HydrateFinish();
 
   virtual const base::String& GetPlatformNodeTag() const override {
     return platform_node_tag_;

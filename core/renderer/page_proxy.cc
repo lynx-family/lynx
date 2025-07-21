@@ -1218,6 +1218,11 @@ void PageProxy::HydrateOnFirstScreenIfPossible(
                  lepus::Value(list_ids));
     }
 
+    // List element hydrate finish
+    for (const auto &element : hydrate_info_.list_node_ref_) {
+      static_cast<ListElement *>(element.get())->HydrateFinish();
+    }
+
     ResetHydrateInfo();
 
     // TODO(liting.src): Compatibility code! Removed later.

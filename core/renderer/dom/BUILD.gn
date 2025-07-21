@@ -107,6 +107,7 @@ unittest_set("dom_testset") {
     "fiber/block_element_unittest.cc",
     "fiber/fiber_element_unittest.cc",
     "fiber/fiber_node_info_unittest.cc",
+    "fiber/list_element_unittest.cc",
     "fiber/list_item_scheduler_adapter_unittest.cc",
     "fiber/pseudo_element_unittest.cc",
     "fiber/raw_text_element_unittest.cc",

@@ -157,7 +157,7 @@ int32_t ListElement::ComponentAtIndex(uint32_t index, int64_t operationId,
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       tasm_->GetPageOptions(), tasm::timing::kListNodeTask,
       tasm::timing::kTaskNameListElementComponentAtIndex);
-  if (ssr_helper_) {
+  if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
     // ComponentAtIndex is an interface for the list to create list items.
     // In SSR, list items have already been created on the server, so just need
     // to add item elements to the list element.
@@ -213,7 +213,8 @@ void ListElement::EnqueueComponent(int32_t sign) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  if (ssr_helper_) {
+  if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
+    ssr_helper_->OnEnqueueComponent(sign);
     return;
   }
 
@@ -237,10 +238,6 @@ void ListElement::UpdateCallbacks(const lepus::Value& component_at_index,
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  // remove ssr helper when js ready.
-  if (ssr_helper_) {
-    ssr_helper_ = std::nullopt;
-  }
   component_at_index_ = component_at_index;
   enqueue_component_ = enqueue_component;
   component_at_indexes_ = component_at_indexes;
@@ -534,8 +531,16 @@ bool ListElement::ResolveStyleValue(CSSPropertyID id,
 }
 
 void ListElement::Hydrate() {
-  if (ssr_helper_) {
+  if (ssr_helper_ && !ssr_helper_->HasHydrate()) {
     ssr_helper_->HydrateListNode();
+  }
+}
+
+void ListElement::HydrateFinish() {
+  if (ssr_helper_) {
+    ssr_helper_->OnListElementHydrateFinish();
+    // remove ssr helper when hydrate finish.
+    ssr_helper_ = std::nullopt;
   }
 }
 
@@ -556,46 +561,64 @@ void ListElement::AttachToElementManager(
 
 int32_t ListElementSSRHelper::ComponentAtIndexInSSR(uint32_t index,
                                                     int64_t operationId) {
-  if (index >= ssr_element_.size() ||
-      (!ssr_element_[index] && list_element_->children().size() <= index)) {
+  if (index >= ssr_elements_.size() || ssr_elements_[index].first == nullptr) {
     DCHECK(false) << "SSR loaded list nodes exceed the node size range.";
     return 0;
   }
 
-  // has rendered.
-  if (!ssr_element_[index]) {
-    return list_element_->children()[index]->impl_id();
+  auto& [item, item_status] = ssr_elements_[index];
+  if (item_status == SSRItemStatus::kWaitingRender) {
+    list_element_->InsertNode(item);
+
+    auto options = std::make_shared<PipelineOptions>();
+    options->trigger_layout_ = true;
+    options->operation_id = operationId;
+    options->list_comp_id_ = item->impl_id();
+    auto* element_manager = list_element_->element_manager();
+    element_manager->OnPatchFinish(options, item.get());
+    EXEC_EXPR_FOR_INSPECTOR(
+        element_manager->FiberAttachToInspectorRecursively(item.get()));
   }
 
-  auto* item_element = ssr_element_[index].get();
-  auto impl_id = ssr_element_[index]->impl_id();
-  auto* element_manager = list_element_->element_manager();
-
-  list_element_->InsertNode(std::move(ssr_element_[index]));
-  ssr_element_[index] = nullptr;
-
-  auto options = std::make_shared<PipelineOptions>();
-  options->trigger_layout_ = true;
-  options->operation_id = operationId;
-  options->list_comp_id_ = impl_id;
-  element_manager->OnPatchFinish(options, item_element);
-  EXEC_EXPR_FOR_INSPECTOR(
-      element_manager->FiberAttachToInspectorRecursively(item_element));
-
-  return impl_id;
+  item_status = SSRItemStatus::kRendered;
+  return item->impl_id();
 }
 
 void ListElementSSRHelper::HydrateListNode() {
-  for (auto& element : ssr_element_) {
-    if (element) {
-      list_element_->InsertNode(element);
+  for (auto& [item, item_status] : ssr_elements_) {
+    if (item && (item_status == SSRItemStatus::kWaitingRender)) {
+      list_element_->InsertNode(item);
       EXEC_EXPR_FOR_INSPECTOR(
           list_element_->element_manager()->FiberAttachToInspectorRecursively(
-              element.get()));
+              item.get()));
+      item_status = SSRItemStatus::kEnqueued;
     }
   }
 
-  ssr_element_.clear();
+  has_hydrate_ = true;
+}
+
+void ListElementSSRHelper::OnListElementHydrateFinish() {
+  for (uint32_t list_index = 0; list_index < ssr_elements_.size();
+       ++list_index) {
+    // If the status of the current list item is kRendered, the node is shown on
+    // the screen.
+    if (ssr_elements_[list_index].second == SSRItemStatus::kRendered) {
+      // Call ComponentAtIndex to release the enqueue status of the Lepus node,
+      // which was added during Lepus hydration.
+      list_element_->ComponentAtIndex(list_index, -1, false);
+    }
+  }
+}
+
+void ListElementSSRHelper::OnEnqueueComponent(int32_t sign) {
+  for (auto& itemInfo : ssr_elements_) {
+    // Make the SSR element node be enqueued.
+    if (itemInfo.first->impl_id() == sign) {
+      itemInfo.second = SSRItemStatus::kEnqueued;
+      break;
+    }
+  }
 }
 
 list::BatchRenderStrategy
