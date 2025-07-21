@@ -5,6 +5,7 @@
 
 #include <assert.h>
 
+#include <string>
 #include <utility>
 
 #include "base/include/string/string_number_convert.h"
@@ -856,8 +857,9 @@ LEPUSValue QuickContext::SearchGlobalData(const std::string& name) {
 
 bool QuickContext::DeSerialize(const ContextBundle& bundle, bool reuse_context,
                                Value* ret, const char* file_name) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE);
   const auto& quick_bundle = static_cast<const QuickContextBundle&>(bundle);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_DO_SERIALIZE,
+              "bytecodeSize", quick_bundle.lepusng_code_len_);
 
   if (reuse_context) {
     // file_name is only used for dynamic-components,
@@ -1037,6 +1039,11 @@ void QuickContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
 void QuickContext::ApplyConfig(
     const std::shared_ptr<tasm::PageConfig>& page_config,
     const tasm::CompileOptions& options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, QUICK_CONTEXT_APPLY_CONFIG,
+              "enableStrictCheck", page_config->GetEnableLepusStrictCheck(),
+              "stackSize", page_config->GetLepusQuickjsStackSize(),
+              "debuginfoOutside", options.lepusng_debuginfo_outside_);
+
   SetEnableStrictCheck(page_config->GetEnableLepusStrictCheck());
   SetStackSize(page_config->GetLepusQuickjsStackSize());
 

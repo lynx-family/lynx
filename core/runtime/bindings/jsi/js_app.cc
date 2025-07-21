@@ -2876,14 +2876,19 @@ base::expected<Value, JSINativeException> App::loadScript(
     }
     bool is_app_service_js = runtime::IsAppServiceJS(source_url);
 
-    // after this line, 'throwing_source' becomes a empty string
-    auto prep =
-        rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
-    auto ret = rt->evaluatePreparedJavaScript(prep);
-    if (is_app_service_js) {
-      state_ = ret.has_value() ? State::kAppLoaded : State::kAppLoadFailed;
+    {
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PREPARE_ANB_EVAL_SCRIPT,
+                  "isSourceCode", content.IsSourceCode(), "isByteCode",
+                  content.IsByteCode(), "size", content.GetBuffer()->size());
+      // after this line, 'throwing_source' becomes a empty string
+      auto prep =
+          rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
+      auto ret = rt->evaluatePreparedJavaScript(prep);
+      if (is_app_service_js) {
+        state_ = ret.has_value() ? State::kAppLoaded : State::kAppLoadFailed;
+      }
+      return ret;
     }
-    return ret;
   }
   return piper::Value::undefined();
 }

@@ -442,6 +442,8 @@ inline constexpr const char* const QUICK_CONTEXT_CHECK_TABLE_SHADOW_UPDATED =
     "QuickContext::CheckTableShadowUpdatedWithTopLevelVariable";
 inline constexpr const char* const QUICK_CONTEXT_UPDATE_TOP_LEVEL_VARIABLE =
     "QuickContext::UpdateTopLevelVariable";
+inline constexpr const char* const QUICK_CONTEXT_APPLY_CONFIG =
+    "QuickContext::ApplyConfig";
 inline constexpr const char* const VM_CONTEXT_INIT = "VMContext::Initialize";
 inline constexpr const char* const VM_CONTEXT_EXECUTE = "Lepus.Execute";
 inline constexpr const char* const VM_CONTEXT_CALL = "VMContext::Call";
@@ -483,6 +485,11 @@ inline constexpr const char* const BATCHED_UPDATE_DATA = "batchedUpdateData";
  * @trace_description: Load, parse, and execute @args{url}.
  */
 inline constexpr const char* const APP_LOAD_SCRIPT = "App::loadScript";
+/**
+ * @trace_description: Parse, and execute the script.
+ */
+inline constexpr const char* const APP_PREPARE_ANB_EVAL_SCRIPT =
+    "App::prepareAndEvalScript";
 /**
  * @trace_description: Load, parse and execute background scripts @args{url}.
  */
