@@ -906,6 +906,29 @@ void Element::AnimateV2(const lepus::Value& args,
   element_manager_->OnFinishUpdateProps(this, pipeline_option);
 }
 
+std::vector<fml::RefPtr<animation::Animation>> Element::GetAnimations() {
+  std::vector<fml::RefPtr<animation::Animation>> result;
+  // Including all animations triggered by CSS Keyframes and Animate.
+  auto active_keyframes =
+      css_keyframe_manager_
+          ? css_keyframe_manager_->GetActiveAnimations()
+          : std::vector<std::weak_ptr<animation::Animation>>();
+  // Including all animations triggered by CSS Transition.
+  auto active_transitions =
+      css_transition_manager_
+          ? css_transition_manager_->GetActiveAnimations()
+          : std::vector<std::weak_ptr<animation::Animation>>();
+  active_keyframes.insert(active_keyframes.end(), active_transitions.begin(),
+                          active_transitions.end());
+  for (const auto& weak_anim : active_keyframes) {
+    if (auto anim = weak_anim.lock()) {
+      fml::RefPtr<animation::Animation> ref_anim(anim.get());
+      result.push_back(ref_anim);
+    }
+  }
+  return result;
+}
+
 void Element::PreparePropBundleIfNeed() {
   if (!prop_bundle_) {
     bool use_map_buffer = element_manager_->GetEnableUseMapBuffer();

@@ -41,6 +41,8 @@ static constexpr const char* const
         "KeyframedTransformAnimationCurve::GetValue";
 static constexpr const char* const ELEMENT_ANIMATE =
     "RendererFunction::ElementAnimate";
+static constexpr const char* const GET_ANIMATIONS =
+    "RendererFunction::GetAnimations";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
