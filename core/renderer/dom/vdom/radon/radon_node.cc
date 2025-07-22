@@ -268,11 +268,6 @@ void RadonNode::DispatchFirstTime() {
           fiber_element->SetStyle(key, value);
         }
       }
-      // After setting the raw_inline_style in FiberElement,
-      // inline styles will be set in the AttributeHolder for use by DevTool.
-      // Therefore, it is necessary to call NotifyElementNodeSetted to notify
-      // the Inspector.
-      EXEC_EXPR_FOR_INSPECTOR(NotifyElementNodeSetted());
     }
     // tag selector is enabled by default in RadonDiff. Should Mark style dirty
     // by default.
