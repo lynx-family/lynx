@@ -3408,6 +3408,7 @@ public protocol LynxTemplateRenderProtocol-p : <NSObject> {
   public void LynxTemplateRenderProtocol-p::onErrorOccurred:sourceError:(NSInteger errCode,[sourceError] NSError *_Nonnull source);
   public void LynxTemplateRenderProtocol-p::setLongTaskMonitorEnabled:(LynxBooleanOption enabled);
   public void LynxTemplateRenderProtocol-p::setExtraTiming:(LynxExtraTiming *_Nonnull timing);
+  public void LynxTemplateRenderProtocol-p::clearExtraTiming();
   public void LynxTemplateRenderProtocol-p::setFluencyTracerEnabled:(LynxBooleanOption enabled);
   public void LynxTemplateRenderProtocol-p::putExtraParamsForReportingEvents:(NSDictionary< NSString *, id > *_Nonnull params);
   public nullable NSDictionary * LynxTemplateRenderProtocol-p::getAllTimingInfo();
@@ -3596,6 +3597,7 @@ public protocol LynxTimingCollectorProtocol-p : <NSObject> {
   public void LynxTimingCollectorProtocol-p::markTiming:pipelineID:(NSString *key,[pipelineID] nullable NSString *pipelineID);
   public void LynxTimingCollectorProtocol-p::setTiming:key:pipelineID:(uint64_t timestamp,[key] NSString *key,[pipelineID] nullable NSString *pipelineID);
   public void LynxTimingCollectorProtocol-p::resetTimingBeforeReload();
+  public void LynxTimingCollectorProtocol-p::clearExtraTiming();
   public void LynxTimingCollectorProtocol-p::onPipelineStart:pipelineOrigin:timestamp:(NSString *pipelineID,[pipelineOrigin] NSString *pipelineOrigin,[timestamp] uint64_t timestamp);
 }
 

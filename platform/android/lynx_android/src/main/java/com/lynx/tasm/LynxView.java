@@ -201,6 +201,13 @@ public class LynxView extends UIBodyView {
     mLynxTemplateRender.setExtraTiming(extraTiming);
   }
 
+  public void clearExtraTiming() {
+    if (mLynxTemplateRender == null) {
+      return;
+    }
+    mLynxTemplateRender.clearExtraTiming();
+  }
+
   /**
    * Set whether to enable long task monitor.
    *

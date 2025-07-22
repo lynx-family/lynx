@@ -834,6 +834,10 @@
   [_templateRender setExtraTiming:timing];
 }
 
+- (void)clearExtraTiming {
+  [_templateRender clearExtraTiming];
+}
+
 - (NSDictionary*)getAllTimingInfo {
   return [_templateRender getAllTimingInfo];
 }

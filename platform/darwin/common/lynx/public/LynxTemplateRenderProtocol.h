@@ -218,6 +218,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setExtraTiming:(LynxExtraTiming* _Nonnull)timing;
 
+- (void)clearExtraTiming;
+
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled;
 
 /// Add extra parameters for reporting events, overriding old values if the parameters already

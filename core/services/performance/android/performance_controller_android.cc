@@ -185,6 +185,23 @@ static void SetPaintEndTiming(JNIEnv* env, jobject jcaller, jlong nativePtr,
   });
 }
 
+static void ClearExtraTiming(JNIEnv* env, jobject jcaller, jlong nativePtr) {
+  if (nativePtr == 0) {
+    return;
+  }
+  auto* wrapper =
+      reinterpret_cast<lynx::tasm::performance::PerformanceControllerAndroid*>(
+          nativePtr);
+  auto& nativeActorPtr = wrapper->GetActor();
+  if (!nativeActorPtr) {
+    return;
+  }
+
+  nativeActorPtr->Act([](auto& controller) mutable {
+    controller->GetTimingHandler().ClearExtraTimingInfo();
+  });
+}
+
 static jboolean IsMemoryMonitorEnabled(JNIEnv* env, jclass jcaller) {
   return lynx::tasm::performance::MemoryMonitor::Enable();
 }
