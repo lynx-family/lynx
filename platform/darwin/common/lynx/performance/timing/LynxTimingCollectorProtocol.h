@@ -39,6 +39,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)resetTimingBeforeReload;
 
 /**
+ * @brief Clears any extra timing data。
+ *
+ * This method should be called prior to a reload to ensure proper reconfiguration
+ * of ExtraTiming after the reload process in the lynx application.
+ */
+- (void)clearExtraTiming;
+
+/**
  * @brief Notifies the timing collector about the start of a pipeline.
  *
  * This method should be called when a new pipeline is started to record the timing data.

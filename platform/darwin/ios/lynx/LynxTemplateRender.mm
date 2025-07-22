@@ -1868,6 +1868,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 }
 
+- (void)clearExtraTiming {
+  [_performanceController clearExtraTiming];
+}
+
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled {
   [_lynxUIRenderer setFluencyTracerEnabled:enabled];
 }

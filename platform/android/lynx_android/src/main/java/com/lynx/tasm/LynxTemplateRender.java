@@ -568,6 +568,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     onTraceEventEnd(eventName);
   }
 
+  public void clearExtraTiming() {
+    mPerformanceController.clearExtraTiming();
+  }
+
   public void setFluencyTracerEnabled(LynxBooleanOption enabled) {
     if (mLynxContext != null) {
       mLynxContext.getFluencyTraceHelper().setEnabledBySampling(enabled);

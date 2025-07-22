@@ -1237,6 +1237,12 @@ void LynxShell::SetTiming(uint64_t us_timestamp,
       });
 }
 
+void LynxShell::ClearExtraTiming() const {
+  perf_controller_actor_->ActAsync([](auto& performance) {
+    performance->GetTimingHandler().ClearExtraTimingInfo();
+  });
+}
+
 BASE_EXPORT_FOR_DEVTOOL const lepus::Value LynxShell::GetAllTimingInfo() const {
   return perf_controller_actor_->ActSync([](auto& performance) {
     auto all_timing_info = performance->GetTimingHandler().GetAllTimingInfo();

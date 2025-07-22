@@ -168,6 +168,12 @@ std::unique_ptr<std::unordered_map<std::string, std::string>> ConvertNSDictToUno
   }];
 }
 
+- (void)clearExtraTiming {
+  [self ActAsync:^(const std::unique_ptr<performance::PerformanceController>& controller) {
+    controller->GetTimingHandler().ClearExtraTimingInfo();
+  }];
+}
+
 #pragma mark - LynxPerformanceObserverProtocol
 - (void)onPerformanceEvent:(nonnull LynxPerformanceEntry*)entry {
   [_observer onPerformanceEvent:entry];

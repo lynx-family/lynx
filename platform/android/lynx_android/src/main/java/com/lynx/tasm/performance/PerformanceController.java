@@ -269,6 +269,13 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     });
   }
 
+  public void clearExtraTiming() {
+    if (!mEnableController) {
+      return;
+    }
+    nativeClearExtraTiming(mNativePerformanceActorPtr);
+  }
+
   @CalledByNative
   protected void setNativePtr(long nativePtr) {
     if (!mEnableController) {
@@ -354,5 +361,6 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       long nativePtr, String key, long usTimestamp, String pipelineID);
   private native void nativeSetPaintEndTiming(
       long nativePtr, long usTimestamp, JavaOnlyArray pipelineIds);
+  private static native void nativeClearExtraTiming(long nativePtr);
   private static native boolean nativeIsMemoryMonitorEnabled();
 }

@@ -5728,6 +5728,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.removeLynxViewClient(LynxViewClient client);
   public void com.lynx.tasm.LynxTemplateRender.removeLynxViewClientV2(LynxViewClientV2 client);
   public void com.lynx.tasm.LynxTemplateRender.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
+  public void com.lynx.tasm.LynxTemplateRender.clearExtraTiming();
   public void com.lynx.tasm.LynxTemplateRender.setFluencyTracerEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxTemplateRender.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxTemplateRender.putExtraParamsForReportingEvents(final Map< String, Object > params);
@@ -6245,6 +6246,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public boolean com.lynx.tasm.LynxView.isAccessibilityDisabled();
   public LynxBaseInspectorOwner com.lynx.tasm.LynxView.getBaseInspectorOwner();
   public void com.lynx.tasm.LynxView.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
+  public void com.lynx.tasm.LynxView.clearExtraTiming();
   public void com.lynx.tasm.LynxView.setLongTaskMonitorEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxView.setFluencyTracerEnabled(LynxBooleanOption enabled);
   public void com.lynx.tasm.LynxView.putParamsForReportingEvents(final Map< String, Object > params);
@@ -7186,6 +7188,7 @@ public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm
   public void com.lynx.tasm.performance.PerformanceController.markPaintEndTimingIfNeeded();
   public void com.lynx.tasm.performance.PerformanceController.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.performance.PerformanceController.setExtraTiming(TimingHandler.ExtraTimingInfo extraTiming);
+  public void com.lynx.tasm.performance.PerformanceController.clearExtraTiming();
 }
 
 public class com::lynx::tasm::performance::performanceobserver::PerformanceEntry :  {

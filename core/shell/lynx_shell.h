@@ -328,6 +328,8 @@ class LynxShell {
   void SetTiming(uint64_t us_timestamp, tasm::timing::TimestampKey timing_key,
                  tasm::PipelineID pipeline_id) const;
 
+  void ClearExtraTiming() const;
+
   const lepus::Value GetAllTimingInfo() const;
 
   // TODO(kechenglong): should find a better way to set SSR timing data?

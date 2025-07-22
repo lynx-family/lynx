@@ -161,6 +161,31 @@ napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
   return nullptr;
 }
 
+napi_value PerformanceControllerHarmonyJSWrapper::ClearExtraTiming(
+    napi_env env, napi_callback_info info) {
+  /**
+   * ClearExtraTiming(): void;
+   */
+  size_t argc = 0;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  PerformanceControllerHarmonyJSWrapper* js_wrapper;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
+  if (!js_wrapper) {
+    return nullptr;
+  }
+
+  auto nativeActorPtr = js_wrapper->actor_.lock();
+  if (!nativeActorPtr) {
+    return nullptr;
+  }
+  nativeActorPtr->ActAsync([](auto& controller) mutable {
+    controller->GetTimingHandler().ClearExtraTimingInfo();
+  });
+  return nullptr;
+}
+
 void PerformanceControllerHarmonyJSWrapper::OnPerformanceEvent(
     const std::unique_ptr<pub::Value>& entry_map) {
   auto shared_this = shared_from_this();
