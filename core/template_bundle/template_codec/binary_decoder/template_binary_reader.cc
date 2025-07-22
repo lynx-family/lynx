@@ -118,6 +118,12 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
     // simple styling is not enabled, skip this section
     return true;
   }
+  DECODE_COMPACT_U32(section_count);
+  // Decode style_object section
+  if (section_count <
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT)) {
+    return true;
+  }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "DecodeStyleObjectSection");
   StyleObjectRoute route;
   ERROR_UNLESS(DecodeStyleObjectRoute(route));
@@ -127,7 +133,6 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
       style_objects_section_range_.end - style_objects_section_range_.start;
   auto cursor = stream_->cursor();
   size_t index = 0;
-
   auto* raw_style_obj_array = style_obj_array.get();
   for (auto i = route.style_object_ranges.begin();
        i != route.style_object_ranges.end() && index < size; ++i, index++) {
@@ -138,6 +143,30 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   }
   EnsureParallelParseTaskScheduler();
   task_schedular_->AsyncDecodeStyleObjects(style_obj_array);
+  stream_->Seek(style_objects_section_range_.start +
+                route.style_object_ranges[size - 1].end);
+  // Decode keyframes section
+  if (section_count <
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES)) {
+    return true;
+  }
+  StyleObjectRoute keyframes_route;
+  ERROR_UNLESS(DecodeStyleObjectRoute(keyframes_route));
+  auto parser_config =
+      CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
+  auto keyframes = template_bundle().InitKeyframesMap(
+      keyframes_route.style_object_ranges.size());
+  for (const auto& range : keyframes_route.style_object_ranges) {
+    stream_->Seek(style_objects_section_range_.start + range.start);
+    DECODE_STDSTR(name);
+    CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
+    ERROR_UNLESS(DecodeCSSKeyframesToken(token));
+    keyframes.emplace(std::move(name), token);
+    stream_->Seek(style_objects_section_range_.start + range.end);
+  }
+  stream_->Seek(style_objects_section_range_.start +
+                keyframes_route.style_object_ranges[size - 1].end);
+  // Decode other sub_section below
   stream_->Seek(style_objects_section_range_.end);
   return true;
 }

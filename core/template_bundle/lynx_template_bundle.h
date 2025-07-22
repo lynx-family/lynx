@@ -106,6 +106,9 @@ class LynxTemplateBundle final {
    */
   std::shared_ptr<style::StyleObject *> &InitStyleObjectList(size_t size);
 
+  base::LinearFlatMap<base::String, fml::RefPtr<CSSKeyframesToken>> &
+  InitKeyframesMap(size_t size);
+
   void SetLepusChunkManager(std::shared_ptr<LepusChunkManager> manager) {
     lepus_chunk_manager_ = std::move(manager);
   }
@@ -186,6 +189,8 @@ class LynxTemplateBundle final {
   // body - StyleObjects
 
   std::shared_ptr<style::StyleObject *> style_object_list_{nullptr};
+
+  CSSKeyframesTokenMap keyframes_;
 
   // body - APP
   std::string app_name_;

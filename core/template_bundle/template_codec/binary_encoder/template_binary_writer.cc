@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <list>
 #include <memory>
 #include <set>
@@ -429,6 +430,12 @@ void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
   if (!style_object_parser_) {
     return;
   }
+  uint32_t style_object_section_count =
+      static_cast<uint32_t>(StyleObjectSectionType::SECTION_COUNT);
+  WriteCompactU32(style_object_section_count);
+  // Encode style_object section
+  static_assert(static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT) ==
+                0);
   auto& style_objects = style_object_parser_->StyleObjects();
   StyleObjectRoute route;
   uint32_t descriptor_offset = stream()->size();
@@ -443,11 +450,35 @@ void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
                     route.style_object_ranges.emplace_back(start, end);
                     start = end;
                   });
-    start = stream()->size();
-    EncodeSimpleStyleObjectsRoute(route);
-    end = stream()->size();
-    stream_->Move(descriptor_offset, start, end - start);
   }
+  start = stream()->size();
+  EncodeSimpleStyleObjectsRoute(route);
+  end = stream()->size();
+  stream_->Move(descriptor_offset, start, end - start);
+  // Encode keyframes section
+  static_assert(static_cast<uint32_t>(
+                    StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES) == 1);
+  auto& style_objects_keyframes = style_object_parser_->StyleObjectsKeyframes();
+  descriptor_offset = stream()->size();
+  start = 0;
+  end = 0;
+  StyleObjectRoute keyframes_route;
+  if (!style_objects_keyframes.empty()) {
+    base::sorted_for_each(
+        style_objects_keyframes.begin(), style_objects_keyframes.end(),
+        [descriptor_offset, &keyframes_route, &start, &end,
+         this](const auto& it) {
+          EncodeUtf8Str(it.first.c_str(), it.first.length());
+          EncodeCSSKeyframesToken(it.second.get());
+          end = stream()->size() - descriptor_offset;
+          keyframes_route.style_object_ranges.emplace_back(start, end);
+          start = end;
+        });
+  }
+  start = stream()->size();
+  EncodeSimpleStyleObjectsRoute(keyframes_route);
+  end = stream()->size();
+  stream_->Move(descriptor_offset, start, end - start);
 }
 
 void TemplateBinaryWriter::EncodeSimpleStyleObjectsRoute(

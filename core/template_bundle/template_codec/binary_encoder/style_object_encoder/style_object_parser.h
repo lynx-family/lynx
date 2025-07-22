@@ -8,6 +8,7 @@
 #include <list>
 
 #include "core/renderer/simple_styling/style_object.h"
+#include "core/template_bundle/template_codec/binary_encoder/css_encoder/shared_css_fragment.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "third_party/rapidjson/document.h"
 
@@ -18,11 +19,16 @@ class StyleObjectParser {
   explicit StyleObjectParser(const CompileOptions &compile_options)
       : compile_options_(compile_options) {}
   bool Parse(const rapidjson::Value &value);
+  bool ParseKeyframes(const rapidjson::Value &value);
   const std::list<style::StyleObject> &StyleObjects() { return style_objects_; }
+  const encoder::CSSKeyframesTokenMapForEncode &StyleObjectsKeyframes() {
+    return style_objects_keyframes_;
+  }
 
  private:
   const CompileOptions &compile_options_;
   std::list<style::StyleObject> style_objects_;
+  encoder::CSSKeyframesTokenMapForEncode style_objects_keyframes_;
 };
 
 }  // namespace lynx::tasm

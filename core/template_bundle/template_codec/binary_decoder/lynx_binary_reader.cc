@@ -12,6 +12,7 @@
 #include "core/runtime/vm/lepus/context.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/template_binary.h"
+#include "lynx_binary_base_css_reader.h"
 
 namespace lynx {
 namespace tasm {
@@ -101,6 +102,12 @@ bool LynxBinaryReader::DecodeCSSDescriptor() {
 
 bool LynxBinaryReader::DecodeStyleObjects() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "DecodeStyleObjectSection");
+  DECODE_COMPACT_U32(section_count);
+  // Decode style_object section
+  if (section_count <
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT)) {
+    return true;
+  }
   StyleObjectRoute route;
   ERROR_UNLESS(DecodeStyleObjectRoute(route));
   const auto& style_object_list =
@@ -112,6 +119,25 @@ bool LynxBinaryReader::DecodeStyleObjects() {
     StyleMap attr;
     ERROR_UNLESS(DecodeCSSAttributes(attr, size));
     (style_object_list.get())[index++] = new style::StyleObject(attr);
+    stream_->Seek(style_objects_section_range_.start + range.end);
+  }
+  // Decode keyframes section
+  if (section_count <
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES)) {
+    return true;
+  }
+  StyleObjectRoute keyframes_route;
+  ERROR_UNLESS(DecodeStyleObjectRoute(keyframes_route));
+  auto parser_config =
+      CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
+  auto keyframes = template_bundle().InitKeyframesMap(
+      keyframes_route.style_object_ranges.size());
+  for (const auto& range : keyframes_route.style_object_ranges) {
+    stream_->Seek(style_objects_section_range_.start + range.start);
+    DECODE_STDSTR(name);
+    CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
+    ERROR_UNLESS(DecodeCSSKeyframesToken(token));
+    keyframes.emplace(std::move(name), token);
     stream_->Seek(style_objects_section_range_.start + range.end);
   }
   return true;

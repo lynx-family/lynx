@@ -79,6 +79,12 @@ enum DynamicComponentSection { DYNAMIC_MOULD, DYNAMIC_CONTEXT, DYNAMIC_CONFIG };
 
 enum class CustomSectionEncodingType { STRING, JS_BYTECODE };
 
+enum class StyleObjectSectionType {
+  STYLE_OBJECT,
+  STYLE_OBJECT_KEYFRAMES,
+  SECTION_COUNT
+};
+
 struct Range {
   uint32_t start;
   uint32_t end;
