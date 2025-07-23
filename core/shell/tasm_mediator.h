@@ -88,6 +88,8 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) override;
 
+  void InvokeResponsePromiseCallback(base::closure closure) override;
+
   void RecycleTemplateBundle(
       std::unique_ptr<tasm::LynxBinaryRecyclerDelegate> recycler) override;
 

@@ -69,8 +69,10 @@
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
+#include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
 #include "core/runtime/bindings/lepus/renderer.h"
+#include "core/runtime/bindings/lepus/resource/response_handler_in_lepus.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/builtin.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
@@ -1029,6 +1031,54 @@ RENDERER_FUNCTION_CC(LoadScript) {
 }
 
 /* Lepus Lynx API END */
+/* ResponseHandler Lynx API BEGIN */
+RENDERER_FUNCTION_CC(FetchBundle) {
+  CHECK_ARGC_GE(FetchBundle, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, FetchBundle);
+  auto bundle_url = arg0->StdString();
+  lepus::Value options;
+  if (argc > 1) {
+    CONVERT_ARG_AND_CHECK(arg1, 1, Object, FetchBundle);
+    options.SetTable(arg1->Table());
+  }
+
+  auto* self = GET_TASM_POINTER();
+  auto response_promise =
+      std::make_shared<runtime::ResponsePromise<BundleResourceInfo>>();
+  self->FetchBundle(bundle_url, response_promise);
+  auto response_handler = fml::MakeRefCounted<tasm::ResponseHandlerInLepus>(
+      self->GetDelegate(), bundle_url, std::move(response_promise));
+  return ResponseHandlerInLepus::GetBindingObject(LEPUS_CONTEXT(),
+                                                  response_handler);
+}
+
+RENDERER_FUNCTION_CC(WaitingForResponse) {
+  CHECK_ARGC_GE(WaitingForResponse, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, Number, WaitingForResponse);
+  auto binding_proxy = LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1);
+  ResponseHandlerInLepus* response_handler =
+      ResponseHandlerInLepus::GetResponseHandlerFromLepusValue(binding_proxy);
+  auto bundle_info = response_handler->WaitAndGetResource(arg0->Number());
+  return bundle_info.ConvertToLepusValue();
+}
+
+RENDERER_FUNCTION_CC(AddListenerForResponse) {
+  CHECK_ARGC_GE(AddListenerForResponse, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, Closure, AddListenerForResponse);
+  auto binding_proxy = LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1);
+  ResponseHandlerInLepus* response_handler =
+      ResponseHandlerInLepus::GetResponseHandlerFromLepusValue(binding_proxy);
+  response_handler->AddResourceListener(
+      [ctx = LEPUS_CONTEXT(), &arg0](tasm::BundleResourceInfo bundle_info) {
+        auto value = bundle_info.ConvertToLepusValue();
+        std::vector<lepus::Value> param;
+        param.push_back(value);
+        ctx->CallClosureArgs(*arg0, param);
+      });
+  RETURN_UNDEFINED()
+}
+
+/* ResponseHandler Lynx API END */
 
 /* ContextProxy API BEGIN */
 RENDERER_FUNCTION_CC(RuntimeAddEventListener) {

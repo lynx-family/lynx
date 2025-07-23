@@ -331,6 +331,10 @@ class Utils {
                                               lepus::Value& lynx);
   static void RegisterNGMethodToLynxPerformance(lepus::Context* context,
                                                 lepus::Value& lynx);
+  static void RegisterMethodToResponseHandler(lepus::Context* context,
+                                              lepus::Value& response_handler);
+  static void RegisterNGMethodToResponseHandler(lepus::Context* context,
+                                                lepus::Value& response_handler);
 
   static void RegisterMethodToContextProxy(lepus::Context* context,
                                            lepus::Value& target,

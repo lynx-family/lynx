@@ -43,6 +43,10 @@ namespace runtime {
  * Thread safety:
  * - setValue and setCallback are protected by a mutex to ensure thread safety.
  * - Make sure setValue is called only once to avoid undefined behavior.
+ *
+ * Attention:
+ *  - if `then` & `wait` are called in sequence, `wait` will get result first
+ * and then callback registered by `then` are triggered.
  */
 template <typename T>
 class ResponsePromise {

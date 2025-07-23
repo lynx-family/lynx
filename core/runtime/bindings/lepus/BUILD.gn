@@ -27,6 +27,7 @@ lynx_core_source_set("lepus") {
       "../common/event:runtime_common",
       "../jsi/event:js_runtime",
       "event:lepus_runtime",
+      "resource:lepus_runtime",
     ]
   }
 }

@@ -68,6 +68,7 @@ group("lynx_android_lib") {
     "../../../core/runtime/bindings/jsi/resource:js_runtime",
     "../../../core/runtime/bindings/lepus",
     "../../../core/runtime/bindings/lepus/event:lepus_runtime",
+    "../../../core/runtime/bindings/lepus/resource:lepus_runtime",
     "../../../core/runtime/vm/lepus:lepus",
     "../../../core/runtime/vm/lepus:lepus_ng",
     "../../../core/services/event_report:event_report",

@@ -620,6 +620,11 @@ void TasmMediator::OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) {
   });
 }
 
+void TasmMediator::InvokeResponsePromiseCallback(base::closure closure) {
+  engine_actor_->Act(
+      [closure = std::move(closure)](auto& engine) mutable { closure(); });
+}
+
 void TasmMediator::RecycleTemplateBundle(
     std::unique_ptr<tasm::LynxBinaryRecyclerDelegate> recycler) {
   // post a task to async thread, which will greedy decode the incomplete bundle

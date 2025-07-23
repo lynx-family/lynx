@@ -92,6 +92,8 @@ void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
     lepus::RegisterTableFunction(context, lynx_table, kLoadScript, &LoadScript);
     // Timing
     RegisterMethodToLynxPerformance(context, lynx);
+    lepus::RegisterTableFunction(context, lynx_table, kFetchBundle,
+                                 &FetchBundle);
   }
 }
 
@@ -127,6 +129,17 @@ void Utils::RegisterMethodToLynxPerformance(lepus::Context* context,
         context, perf_table, runtime::kIsProfileRecording, &IsProfileRecording);
   }
 };
+
+void Utils::RegisterMethodToResponseHandler(lepus::Context* context,
+                                            lepus::Value& response_handler) {
+  if (response_handler.IsTable()) {
+    auto target_table = response_handler.Table();
+    lepus::RegisterTableFunction(context, target_table, runtime::kWait,
+                                 WaitingForResponse);
+    lepus::RegisterTableFunction(context, target_table, runtime::kThen,
+                                 AddListenerForResponse);
+  }
+}
 
 void Utils::RegisterMethodToContextProxy(lepus::Context* context,
                                          lepus::Value& target,

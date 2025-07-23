@@ -126,7 +126,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
                                 public PageProxy::TasmDelegate,
                                 public lepus::Context::Delegate {
  public:
-  class Delegate : public runtime::ContextProxy::Delegate {
+  class Delegate : public runtime::ContextProxy::Delegate,
+                   public runtime::ResponseHandlerProxy::Delegate {
    public:
     Delegate() = default;
     ~Delegate() override = default;

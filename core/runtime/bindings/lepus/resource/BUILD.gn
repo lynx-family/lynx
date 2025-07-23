@@ -1,0 +1,19 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../../../testing/test.gni")
+import("../../../../Lynx.gni")
+
+js_runtime_shared_sources = [
+  "response_handler_in_lepus.cc",
+  "response_handler_in_lepus.h",
+]
+
+lynx_core_source_set("lepus_runtime") {
+  sources = js_runtime_shared_sources
+
+  deps = []
+
+  public_deps = [ "../../common/resource:promise" ]
+}

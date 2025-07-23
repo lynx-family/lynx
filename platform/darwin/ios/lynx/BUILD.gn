@@ -744,6 +744,7 @@ subspec_target("tasm") {
         "../../../../core/runtime/bindings/jsi/resource:js_runtime",
         "../../../../core/runtime/bindings/lepus",
         "../../../../core/runtime/bindings/lepus/event:lepus_runtime",
+        "../../../../core/runtime/bindings/lepus/resource:lepus_runtime",
         "../../../../core/runtime/vm/lepus/tasks:tasks",
         "../../../../core/services/event_report:event_report",
         "../../../../core/services/feature_count:feature_count",

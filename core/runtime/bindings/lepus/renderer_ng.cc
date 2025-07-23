@@ -89,6 +89,7 @@ void Utils::RegisterNGMethodToLynx(lepus::Context* context, lepus::Value& lynx,
          &RendererFunctions::LynxAddReporterCustomInfo},
         {kReportError, &RendererFunctions::ReportError},
         {kLoadScript, &RendererFunctions::LoadScript},
+        {kFetchBundle, &RendererFunctions::FetchBundle},
     };
     lepus::RegisterObjectNGCFunction(context, lynx, funcs,
                                      sizeof(funcs) / sizeof(funcs[0]));
@@ -124,6 +125,18 @@ void Utils::RegisterNGMethodToLynxPerformance(lepus::Context* context,
         {runtime::kIsProfileRecording, &RendererFunctions::IsProfileRecording},
     };
     lepus::RegisterObjectNGCFunction(context, perf_obj, funcs,
+                                     sizeof(funcs) / sizeof(funcs[0]));
+  }
+}
+
+void Utils::RegisterNGMethodToResponseHandler(lepus::Context* context,
+                                              lepus::Value& response_handler) {
+  if (response_handler.IsJSValue()) {
+    const static lepus::RenderBindingFunction funcs[] = {
+        {runtime::kWait, &RendererFunctions::WaitingForResponse},
+        {runtime::kThen, &RendererFunctions::AddListenerForResponse},
+    };
+    lepus::RegisterObjectNGCFunction(context, response_handler, funcs,
                                      sizeof(funcs) / sizeof(funcs[0]));
   }
 }

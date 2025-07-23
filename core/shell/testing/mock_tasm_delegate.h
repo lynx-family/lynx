@@ -234,6 +234,8 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
       const lepus::Value& params, lepus::Context* context,
       std::unique_ptr<lepus::Value> callback_closure) override{};
 
+  void InvokeResponsePromiseCallback(base::closure closure) override{};
+
   void RequestLayout(
       const std::shared_ptr<tasm::PipelineOptions>& options) override{};
 
