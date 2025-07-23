@@ -40,16 +40,26 @@ task assembleAllModulesDevRelease {
 }
 
 task publishAllModules {
-    description = "Publish all modules, publish dev version with option : -PpublishDevRelease"
+    description = "Publish all modules"
 
     rootProject.afterEvaluate {
         rootProject.subprojects.each { subproject ->
             if(subproject.plugins.hasPlugin("maven-publish")) {
                 dependsOn subproject.tasks.named('publish')
+            }
+        }
+    }
+}
 
-                if (hasProperty('publishDevRelease') && subproject.hasProperty('hasDevFlavor') &&
-                    subproject.hasDevFlavor()) {
-                    dependsOn subproject.tasks.named('publishDevReleasePublication')
+task publishAllModulesDevRelease {
+    description = "Publish all modules with dev artfacts"
+
+    rootProject.afterEvaluate {
+        rootProject.subprojects.each { subproject ->
+            if(subproject.plugins.hasPlugin("maven-publish") && subproject.plugins.hasPlugin('com.android.library') && subproject.android.productFlavors.names.contains('dev')) {
+                def publishTask = subproject.tasks.findByName('publishDevReleasePublicationToMavenRepository')
+                if (publishTask != null) {
+                    dependsOn publishTask
                 }
             }
         }

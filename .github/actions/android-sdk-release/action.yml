@@ -36,14 +36,18 @@ runs:
       shell: bash
       run: |-
         cd $GITHUB_WORKSPACE/lynx
-          source tools/envsetup.sh
-          pushd platform/android
-          ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=${{ inputs.abiList }} -no-daemon
-          ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=${{ inputs.abiList }} -no-daemon
-          ./gradlew publishAllModules \
+        source tools/envsetup.sh
+        pushd platform/android
+        ./gradlew assembleAllModulesRelease -Penable_trace=none -PabiList=${{ inputs.abiList }} -no-daemon
+        ./gradlew assembleAllModulesDevRelease -Penable_trace=perfetto -PabiList=${{ inputs.abiList }} -no-daemon
+        ./gradlew publishAllModules \
           -Pversion=${{ inputs.version || '0.0.1-alpha.1' }} \
           -Psigning.keyId=${{ inputs.signingKeyId }} \
           -Psigning.password=${{ inputs.signingPassword }} \
-          -Psigning.secretKey=${{ inputs.signingSecretKey }} \
-          -PpublishDevRelease
-          popd
+          -Psigning.secretKey=${{ inputs.signingSecretKey }}
+        ./gradlew publishAllModulesDevRelease \
+          -Pversion="${{ inputs.version || '0.0.1-alpha.1' }}-dev" \
+          -Psigning.keyId=${{ inputs.signingKeyId }} \
+          -Psigning.password=${{ inputs.signingPassword }} \
+          -Psigning.secretKey=${{ inputs.signingSecretKey }}
+        popd

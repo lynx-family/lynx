@@ -115,7 +115,7 @@ afterEvaluate {
                     "jar"(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version baseVersion
+                        version findProperty("version")
                         from components.java
                         task sourceJar(type: Jar) {
                             if (project.gradle.gradleVersion >= '8.0') {
@@ -171,7 +171,7 @@ afterEvaluate {
                     release(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version baseVersion
+                        version findProperty("version")
                         artifact(getAARPath("$project.buildDir/outputs/aar"))
                         // collect source jar and add it into the component artifact.
                         Task sourceJar = createSourceJar("release-source")
@@ -212,12 +212,11 @@ afterEvaluate {
                         }
                     }
                 }
-                def publishDevRelease = project.hasProperty('publishDevRelease')
-                if (hasDevFlavor() && publishDevRelease) {
+                if (hasDevFlavor()) {
                     devRelease(MavenPublication) {
                         groupId ARTIFACT_GROUP
                         artifactId ARTIFACT_NAME
-                        version devVersion
+                        version findProperty("version")
                         artifact(getAARPath("$project.buildDir/outputs/aar", true))
                         // collect source jar and add it into the component artifact.
                         Task sourceJarDev = createSourceJar("dev-sources")
