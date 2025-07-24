@@ -164,6 +164,8 @@ export class LynxTemplateRenderer {
   nativeSetPlatformConfig(config: string): void;
 
   nativeGetAllJsSource(): Record<string, string>;
+
+  invokeLepusCallback(id: number, entryName: string, args: Object): void;
 }
 
 type JSMeasureFunc = (width: number, widthMode: number, height: number, heightMode: number) => [number, number, number];

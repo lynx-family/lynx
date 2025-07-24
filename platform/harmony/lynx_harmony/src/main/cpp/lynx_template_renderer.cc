@@ -530,6 +530,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_METHOD("onEnterForeground", OnEnterForeground),
       DECLARE_NAPI_METHOD("onEnterBackground", OnEnterBackground),
       DECLARE_NAPI_METHOD("nativeGetAllJsSource", GetAllJsSource),
+      DECLARE_NAPI_METHOD("invokeLepusCallback", InvokeLepusCallback),
   };
 
   napi_value cons;
@@ -565,6 +566,28 @@ napi_value LynxTemplateRenderer::GetAllJsSource(napi_env env,
   }
   auto js_source = obj->shell_->GetAllJsSource();
   return base::NapiUtil::CreateMap(env, js_source);
+}
+
+napi_value LynxTemplateRenderer::InvokeLepusCallback(napi_env env,
+                                                     napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 3;
+  napi_value args[3];
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj, "InvokeLepusCallback failed")) {
+    return nullptr;
+  }
+
+  int id = base::NapiUtil::ConvertToDouble(env, args[0]);
+  auto entry = base::NapiUtil::ConvertToString(env, args[1]);
+  auto lepus_value = base::NapiConvertHelper::ConvertToLepusValue(env, args[2]);
+  obj->shell_->GetEngineActor()->Act([id, entry, lepus_value](auto& engine) {
+    return engine->InvokeLepusCallback(id, entry, lepus_value);
+  });
+  return nullptr;
 }
 
 napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
@@ -1428,6 +1451,30 @@ void LynxTemplateRenderer::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {
   // Main thread
   ui_delegate_->OnPageConfigDecoded(config);
+}
+
+lepus::Value LynxTemplateRenderer::TriggerLepusMethod(
+    const std::string& method_name, const lepus::Value& args) {
+  base::NapiHandleScope scope(env_);
+  napi_value param[2];
+  napi_create_string_utf8(env_, method_name.c_str(), method_name.length(),
+                          &param[0]);
+  napi_value result;
+  param[1] = base::NapiConvertHelper::CreateNapiValue(env_, args);
+  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_,
+                                 "triggerLepusMethod", 2, param, &result);
+  return base::NapiConvertHelper::ConvertToLepusValue(env_, result);
+}
+
+void LynxTemplateRenderer::TriggerLepusMethodAsync(
+    const std::string& method_name, const lepus::Value& args) {
+  base::NapiHandleScope scope(env_);
+  napi_value param[2];
+  napi_create_string_utf8(env_, method_name.c_str(), method_name.length(),
+                          &param[0]);
+  param[1] = base::NapiConvertHelper::CreateNapiValue(env_, args);
+  base::NapiUtil::AsyncInvokeJsMethod(env_, template_renderer_ref_,
+                                      "triggerLepusMethodAsync", 2, param);
 }
 
 void LynxTemplateRenderer::ReloadTemplate(

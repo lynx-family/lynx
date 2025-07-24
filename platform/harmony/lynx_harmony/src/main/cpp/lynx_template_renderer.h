@@ -107,6 +107,10 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
                         const std::shared_ptr<tasm::TemplateData>& data);
   void OnTemplateBundleReady(const tasm::LynxTemplateBundle& bundle);
   void OnPageConfigDecoded(const std::shared_ptr<tasm::PageConfig>& config);
+  lepus::Value TriggerLepusMethod(const std::string& method_name,
+                                  const lepus::Value& args);
+  void TriggerLepusMethodAsync(const std::string& method_name,
+                               const lepus::Value& args);
 
   // LynxEmbedderProxy
   void ReloadTemplate(const std::string& url,
@@ -172,6 +176,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   static napi_value OnEnterBackground(napi_env env, napi_callback_info info);
 
   static napi_value GetAllJsSource(napi_env env, napi_callback_info info);
+  static napi_value InvokeLepusCallback(napi_env env, napi_callback_info info);
 
   struct WeakFlag : public std::enable_shared_from_this<WeakFlag> {
     explicit WeakFlag(LynxTemplateRenderer* template_renderer)

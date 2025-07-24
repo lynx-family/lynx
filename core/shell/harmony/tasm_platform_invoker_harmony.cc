@@ -27,12 +27,30 @@ std::string TasmPlatformInvokerHarmony::TranslateResourceForTheme(
 }
 
 lepus::Value TasmPlatformInvokerHarmony::TriggerLepusMethod(
-    const std::string& js_method_name, const lepus::Value& args) {
-  return lepus::Value();
+    const std::string& method_name, const lepus::Value& args) {
+  lepus::Value ret;
+  ui_task_runner_->PostSyncTask(
+      [weak_flag = weak_flag_, method_name, args, &ret]() {
+        auto flag = weak_flag.lock();
+        if (!flag) {
+          return;
+        }
+        ret = flag->renderer->TriggerLepusMethod(method_name, args);
+      });
+  return ret;
 }
 
 void TasmPlatformInvokerHarmony::TriggerLepusMethodAsync(
-    const std::string& method_name, const lepus::Value& args) {}
+    const std::string& method_name, const lepus::Value& args) {
+  fml::TaskRunner::RunNowOrPostTask(
+      ui_task_runner_, [weak_flag = weak_flag_, method_name, args]() {
+        auto flag = weak_flag.lock();
+        if (!flag) {
+          return;
+        }
+        flag->renderer->TriggerLepusMethodAsync(method_name, args);
+      });
+}
 
 void TasmPlatformInvokerHarmony::GetI18nResource(
     const std::string& channel, const std::string& fallback_url) {}

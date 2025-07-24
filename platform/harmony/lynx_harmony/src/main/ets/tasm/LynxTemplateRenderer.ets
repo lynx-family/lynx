@@ -15,6 +15,7 @@ import { TemplateBundle } from './TemplateBundle';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
+import { LynxLepusModule } from '../lepus/LynxLepusModule';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -28,6 +29,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
   private lynxView: LynxView;
   private lynxDevTool?: LynxDevTool;
+  private moduleManager: LynxModuleManager;
+  private destroyed = false;
 
   constructor(clients: LynxViewClient[], uiDelegate: number[], providers: (LynxResourceProvider | undefined)[],
     isHostRenderer: boolean, threadMode: ThreadStrategyForRendering,
@@ -52,11 +55,13 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl, enableJSRuntime,
       convertModuleArgs(moduleManager),
       convertModuleArgs(sendableModuleManager));
-    this.lynxView = lynxView
+    this.lynxView = lynxView;
+    this.moduleManager = moduleManager;
   }
 
   aboutToDisappear() {
     this.nativeDetach();
+    this.destroyed = true;
     this.clients.forEach(client => client.onDestroy());
     this.lynxDevTool?.destroy(this.lynxView);
   }
@@ -173,5 +178,20 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
 
   setPlatformConfig(config: string) {
     this.nativeSetPlatformConfig(config);
+  }
+
+  triggerLepusMethod(name: string, args: Record<string, Object>): Object | undefined {
+    return LynxLepusModule.triggerLepusBridge(name, args, this, this.moduleManager);
+  }
+
+  triggerLepusMethodAsync(name: string, args: Record<string, Object>) {
+    LynxLepusModule.triggerLepusBridgeAsync(name, args, this, this.moduleManager);
+  }
+
+  override invokeLepusCallback(id: number, entryName: string, args: Object) {
+    if (this.destroyed) {
+      return;
+    }
+    super.invokeLepusCallback(id, entryName, args);
   }
 }
