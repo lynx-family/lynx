@@ -1229,7 +1229,10 @@ void TemplateAssembler::AddFont(const lepus::Value& font) {
 void TemplateAssembler::PushRuntimeValidTid() {
   auto default_entry = FindEntry(tasm::DEFAULT_ENTRY_NAME);
   if (default_entry) {
-    default_entry->GetVm()->PushContextValidTid();
+    auto vm = default_entry->GetVm();
+    if (vm) {
+      vm->PushContextValidTid();
+    }
   }
 }
 
