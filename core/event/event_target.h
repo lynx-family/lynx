@@ -36,6 +36,7 @@
 #include <memory>
 #include <string>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/event/event.h"
 #include "core/event/event_listener.h"
 #include "core/event/event_listener_map.h"
@@ -59,6 +60,9 @@ class EventTarget {
 
   // Returns the parent EventTarget in the event-target tree.
   virtual EventTarget* GetParentTarget() = 0;
+  virtual fml::WeakPtr<EventTarget> GetWeakTarget() {
+    return fml::WeakPtr<EventTarget>();
+  }
 
   virtual DispatchEventResult DispatchEvent(Event&);
   virtual bool AddEventListener(const std::string& type,

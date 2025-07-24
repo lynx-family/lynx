@@ -29,6 +29,7 @@
 #include <chrono>
 #include <utility>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "core/event/event_dispatcher.h"
 #include "core/event/event_target.h"
 
@@ -71,12 +72,12 @@ Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
 void Event::InitEventPath(EventTarget& target) {
   EventTarget* event_target = &target;
   while (event_target && !event_target->IsEventPathCatch()) {
-    event_path_.push_back(event_target);
+    event_path_.push_back(event_target->GetWeakTarget());
     event_target = event_target->GetParentTarget();
   };
 }
 
-const std::vector<EventTarget*>& Event::event_path() const {
+const std::vector<fml::WeakPtr<EventTarget>>& Event::event_path() const {
   return event_path_;
 }
 
@@ -85,7 +86,7 @@ DispatchEventResult Event::DispatchEvent(EventDispatcher& dispatcher) {
 }
 
 void Event::HandleEventBaseDetail(bool is_core_event) {
-  if (target_ == nullptr || current_target_ == nullptr) {
+  if (!target_ || !current_target_) {
     return;
   }
   BASE_STATIC_STRING_DECL(kTarget, "target");

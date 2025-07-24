@@ -1707,9 +1707,9 @@ void Element::HandleGlobalEvent(event::Event& event) {
   auto delegate = element_manager_->element_manager_delegate();
   event.set_event_phase(event::Event::PhaseType::kAtTarget);
   for (const auto& item : path) {
-    auto current_target = static_cast<Element*>(item);
+    auto current_target = static_cast<Element*>(item.get());
     if (current_target->EnableTriggerGlobalEvent()) {
-      event.set_current_target(current_target);
+      event.set_current_target(current_target->GetWeakTarget());
       event.HandleEventBaseDetail();
       delegate->SendGlobalEvent(event.type(), event.detail());
     }
@@ -1720,13 +1720,13 @@ void Element::HandleGlobalEvent(event::Event& event) {
   if (node_manager == nullptr) {
     return;
   }
-  auto target = static_cast<Element*>(event.target());
+  auto target = static_cast<Element*>(event.target().get());
   const auto& global_bind_ids =
       element_manager_->GetGlobalBindElementIds(event.type());
   if (global_bind_ids.size() > 0) {
     for (const auto& id : global_bind_ids) {
       auto current_target = node_manager->Get(id);
-      event.set_current_target(current_target);
+      event.set_current_target(current_target->GetWeakTarget());
       const auto& global_bind_target_set = current_target->GlobalBindTarget();
       // If set is empty, means the target is all other elements.
       if (!global_bind_target_set.has_value() ||
@@ -1737,13 +1737,15 @@ void Element::HandleGlobalEvent(event::Event& event) {
         // event can bubble
         if (event.bubbles()) {
           for (const auto& item : path) {
-            Element* bubble_target = static_cast<Element*>(item);
+            Element* bubble_target = static_cast<Element*>(item.get());
             if (bubble_target->data_model() == nullptr ||
                 bubble_target->data_model()->idSelector().empty()) {
               continue;
             }
-            auto id_selector =
-                static_cast<Element*>(item)->data_model()->idSelector().str();
+            auto id_selector = static_cast<Element*>(item.get())
+                                   ->data_model()
+                                   ->idSelector()
+                                   .str();
             if (global_bind_target_set->contains(id_selector)) {
               event.set_target(item);
               event.HandleEventBaseDetail();
@@ -1751,7 +1753,7 @@ void Element::HandleGlobalEvent(event::Event& event) {
             }
           }
           // reset target for event
-          event.set_target(target);
+          event.set_target(target->GetWeakTarget());
         }
         // event can't bubble
         else {

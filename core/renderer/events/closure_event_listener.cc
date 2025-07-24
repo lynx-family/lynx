@@ -32,7 +32,7 @@ void ClosureEventListener::Invoke(event::Event* event) {
   }
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
       event->event_type() == event::Event::EventType::kCustomEvent) {
-    if (event->current_target() == nullptr) {
+    if (!event->current_target()) {
       return;
     }
     event->HandleEventBaseDetail(closure_type_ == ClosureType::kCore);

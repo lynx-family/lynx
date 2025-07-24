@@ -34,6 +34,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/table.h"
 #include "core/event/event_dispatch_result.h"
 
@@ -125,17 +126,17 @@ class Event {
     is_stop_immediate_propagation_ = is_stop_immediate_propagation;
   }
 
-  EventTarget* target() const { return target_; }
-  void set_target(EventTarget* target) { target_ = target; }
+  fml::WeakPtr<EventTarget> target() const { return target_; }
+  void set_target(fml::WeakPtr<EventTarget> target) { target_ = target; }
 
-  EventTarget* current_target() const { return current_target_; }
-  void set_current_target(EventTarget* current_target) {
+  fml::WeakPtr<EventTarget> current_target() const { return current_target_; }
+  void set_current_target(fml::WeakPtr<EventTarget> current_target) {
     current_target_ = current_target;
   }
 
   lepus::Value& detail() { return detail_; }
 
-  const std::vector<EventTarget*>& event_path() const;
+  const std::vector<fml::WeakPtr<EventTarget>>& event_path() const;
 
   void InitEventPath(EventTarget& target);
   virtual DispatchEventResult DispatchEvent(EventDispatcher&);
@@ -162,13 +163,13 @@ class Event {
   bool is_stop_propagation_{false};
   bool is_stop_immediate_propagation_{false};
 
-  EventTarget* current_target_{nullptr};
-  EventTarget* target_{nullptr};
+  fml::WeakPtr<EventTarget> current_target_;
+  fml::WeakPtr<EventTarget> target_;
 
   // Save the event parameters passed to the listener's closure.
   lepus::Value detail_{lepus::Dictionary::Create()};
 
-  std::vector<EventTarget*> event_path_;
+  std::vector<fml::WeakPtr<EventTarget>> event_path_;
 };
 
 }  // namespace event
