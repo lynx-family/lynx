@@ -14,6 +14,8 @@ namespace lynx {
 namespace tasm {
 namespace timing {
 
+struct FSPAreaSnapshot;
+
 // Class responsible for tracking and calculating First Stable Paint
 class FSPAreaTracer : public FSPTracerImpl<FSPAreaTracer, FSPAreaConfig> {
  public:
@@ -30,8 +32,25 @@ class FSPAreaTracer : public FSPTracerImpl<FSPAreaTracer, FSPAreaConfig> {
                         const FSPContentInfo& info) override;
   std::string InspectSnapshotImpl(FSPSnapshot& current,
                                   FSPSnapshot* previous) override;
+
+  static bool DiffAreaSnapshots(FSPAreaSnapshot& current,
+                                FSPAreaSnapshot* previous,
+                                const FSPAreaConfig& config,
+                                std::ostringstream* inspection_out);
 };
 
+struct FSPAreaSnapshot : public FSPSnapshot {
+ private:
+  friend class FSPAreaTracer;
+
+  static constexpr size_t X_PROJECTIONS_LEN = 256;
+  static constexpr size_t Y_PROJECTIONS_LEN = 512;
+  static constexpr size_t PROJECTIONS_LEN =
+      X_PROJECTIONS_LEN * Y_PROJECTIONS_LEN;
+
+  std::bitset<PROJECTIONS_LEN> projections;
+  size_t projection_area = 0;
+};
 }  // namespace timing
 }  // namespace tasm
 }  // namespace lynx
