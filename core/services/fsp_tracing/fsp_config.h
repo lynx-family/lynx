@@ -87,7 +87,7 @@ struct FSPAreaConfig {
 class FSPTracer;
 
 struct FSPConfig {
-  FSPConfig(std::nullopt_t null = std::nullopt) : cfg_(std::nullopt) {}
+  explicit FSPConfig() : cfg_(std::nullopt) {}
   FSPConfig(FSPAxialConfig axialConfig) : cfg_(axialConfig) {}
   FSPConfig(FSPAreaConfig areaConfig) : cfg_(areaConfig) {}
 

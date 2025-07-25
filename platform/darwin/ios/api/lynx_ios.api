@@ -1680,6 +1680,7 @@ public struct LynxFSPConfig {
   public NSTimeInterval LynxFSPConfig::hardTimeout hardTimeout;
   public NSTimeInterval LynxFSPConfig::gracefulTimeout gracefulTimeout;
   public NSTimeInterval LynxFSPConfig::extendedGracefulTimeout extendedGracefulTimeout;
+  public uintptr_t LynxFSPConfig::tracerConfig tracerConfig;
 }
 
 public struct LynxFSPResult {
@@ -1697,7 +1698,16 @@ public class LynxFSPTracer : NSObject {
   public BOOL LynxFSPTracer::isTracing();
   public void LynxFSPTracer::beginTracing:(void(^ completion)(LynxFSPResult result));
   public void LynxFSPTracer::stopTracing:(LynxFSPTracerStopReason reason);
+  public void LynxFSPTracer()::setObserver:(id< LynxFSPTracerObserver > observer);
   public void LynxFSPTracer()::setTimingCallback:(void(^ timingCallback)(uint64_t timestamp, NSString *key));
+  public uintptr_t LynxFSPTracer()::opaqueTracer();
+}
+
+public protocol LynxFSPTracerObserver-p : <NSObject> {
+  public void LynxFSPTracerObserver-p::fspTracerDidStart:(LynxFSPTracer *tracer);
+  public void LynxFSPTracerObserver-p::fspTracer:didBecomeStable:withResult:(LynxFSPTracer *tracer,[didBecomeStable] BOOL stable,[withResult] LynxFSPResult result);
+  public void LynxFSPTracerObserver-p::fspTracer:willStopForReason:withResult:(LynxFSPTracer *tracer,[willStopForReason] LynxFSPTracerStopReason reason,[withResult] LynxFSPResult result);
+  public void LynxFSPTracerObserver-p::fspTracer:willStartGracefulTimeout:(LynxFSPTracer *tracer,[willStartGracefulTimeout] double timeout);
 }
 
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
