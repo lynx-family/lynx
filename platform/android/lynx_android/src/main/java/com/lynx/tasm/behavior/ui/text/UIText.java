@@ -7,6 +7,7 @@ import static com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper.A
 import static com.lynx.tasm.behavior.ui.text.AndroidText.SELECTION_CHANGE_EVENT;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.RectF;
 import android.text.Layout;
 import android.text.TextUtils;
@@ -23,6 +24,7 @@ import com.lynx.tasm.behavior.*;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulContentStatus;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.accessibility.CustomAccessibilityDelegateCompat;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
@@ -84,6 +86,14 @@ public class UIText
       if (mEvents != null) {
         mView.setBindSelectionChange(mEvents.containsKey(SELECTION_CHANGE_EVENT), getSign());
       }
+    }
+  }
+
+  @Override
+  public void afterDraw(Canvas canvas) {
+    super.afterDraw(canvas);
+    if (mView.mTextUpdateBundle != null) {
+      setMeaningfulContentStatus(MeaningfulContentStatus.LOADED);
     }
   }
 
