@@ -11,8 +11,11 @@
 #import <Lynx/LynxUIText.h>
 #import <Lynx/LynxWeakProxy.h>
 
+#import "LynxUIContext+Internal.h"
+
 #pragma mark - LynxTextLayerRender
 @interface LynxTextLayerRender : NSObject <CALayerDelegate>
+@property(nonatomic, weak) LynxUIText *ui;
 @property(nonatomic, weak) LynxTextRenderer *textRenderer;
 @property(nonatomic, assign) UIEdgeInsets border;
 @property(nonatomic, assign) UIEdgeInsets padding;
@@ -31,6 +34,10 @@
   UIGraphicsPushContext(ctx);
   [strongRender drawRect:frame padding:self.padding border:self.border];
   UIGraphicsPopContext();
+
+  if (strongRender) {
+    _ui.meaningfulContentStatus = kLynxUIMeaningfulContentLoaded;
+  }
 }
 
 @end
@@ -109,6 +116,11 @@ static const float kResponseTouchRadius = 20.f;
     self.userInteractionEnabled = YES;
   }
   return self;
+}
+
+- (void)setUi:(LynxUIText *)ui {
+  _ui = ui;
+  _layerRender.ui = ui;
 }
 
 - (void)initSelectionLayers {
