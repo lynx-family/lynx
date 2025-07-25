@@ -9,6 +9,7 @@
 #include <string>
 
 #include "base/trace/native/trace_controller.h"
+#include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {
 namespace devtool {
@@ -43,6 +44,9 @@ class GlobalDevToolPlatformFacade
   // The following functions are used for memory agent.
   virtual void StartMemoryTracing() = 0;
   virtual void StopMemoryTracing() = 0;
+
+  // The following functions are used for performance agent.
+  virtual void SetTimingOverlay(bool enabled, const Json::Value& params){};
 
   // The following functions are used for tracing agent.
   virtual lynx::trace::TraceController* GetTraceController() = 0;
