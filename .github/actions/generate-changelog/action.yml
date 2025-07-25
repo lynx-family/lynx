@@ -1,0 +1,89 @@
+name: generate changelog
+
+description: Using git-cliff to generate changelog according to the given reference range
+
+inputs:
+  ref-from:
+    description: The starting git reference (tag name or commit hash) (excluded) from which the changelog will be generated
+    required: true
+  ref-to:
+    description: The ending git reference (tag name or commit hash) (included) up to which the changelog will be generated
+    required: true
+  running-path:
+    description: Path to the running of git-cliff command
+    required: false
+    default: 'lynx'
+  config-path:
+    description: Path to the configuration file for git-cliff, relative to lynx/
+    required: false
+    default: 'tools/cliff.toml'
+  changelog-path:
+    description: Path to the generated changelog file, relative to lynx/
+    required: false
+    default: 'CHANGELOG.md'
+
+runs:
+  using: composite
+  steps:
+    - name: Download git-cliff
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+      run: |-
+        ARCHIVE_EXT='tar.gz'
+        ARCHIVE_CMD='tar -xf'
+        GIT_CLIFF_BIN='git-cliff'
+        ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+        case "$ARCH" in
+            arm64) ARCH=aarch64 ;;
+            arm)   ARCH=pc-windows-msvc ;;
+            x86)   ARCH=i686 ;;
+            *)     ARCH=x86_64 ;;
+        esac
+        OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        case "$OS" in
+            darwin) OS=apple-darwin ;;
+            *)      OS=unknown-linux-gnu ;;
+        esac
+        INSTALL_DIR="$RUNNER_TEMP/git-cliff"
+        mkdir -p "$INSTALL_DIR"
+        cd "$INSTALL_DIR"
+        echo "git-cliff-${ARCH}-${OS}.${ARCHIVE_EXT}"
+        RELEASE_URL='https://api.github.com/repos/orhun/git-cliff/releases/latest'
+        RELEASE_INFO="$(curl --silent --show-error --fail \
+          --header "authorization: Bearer ${GITHUB_TOKEN}" \
+          --header 'Cache-Control: no-cache, must-revalidate' \
+          "${RELEASE_URL}")"
+        TAG_NAME="$(echo "${RELEASE_INFO}" | jq --raw-output ".tag_name")"
+        TARGET="git-cliff-${TAG_NAME:1}-${ARCH}-${OS}.${ARCHIVE_EXT}"
+        LOCATION="$(echo "${RELEASE_INFO}" |
+          jq --raw-output ".assets[].browser_download_url" |
+          grep "${TARGET}$")"
+        echo "Found release: ${LOCATION}"
+        mkdir -p ./bin
+        if [[ ! -e "$TARGET" ]]; then
+          echo "Downloading ${TARGET}..."
+          curl --silent --show-error --fail --location --output "$TARGET" "$LOCATION"
+          echo "Unpacking ${TARGET}..."
+          ${ARCHIVE_CMD} "$TARGET"
+          mv git-cliff-${TAG_NAME:1}/${GIT_CLIFF_BIN} "./bin/$GIT_CLIFF_BIN"
+        else
+          echo "Using cached git-cliff binary."
+        fi
+        chmod +x "./bin/$GIT_CLIFF_BIN"
+        echo "git-cliff is ready to use!"
+    - name: Generate Changelog
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ env.GITHUB_TOKEN }}
+      run: |-
+        cd "$GITHUB_WORKSPACE/${{ inputs.running-path }}"
+        DIR_PATH=$(dirname "${{ inputs.changelog-path }}")
+        mkdir -p "$DIR_PATH"
+        "$RUNNER_TEMP/git-cliff/bin/git-cliff" ${{ inputs.ref-from }}..${{ inputs.ref-to }} -c ${{ inputs.config-path }} -o ${{ inputs.changelog-path }}
+        if [[ "$(uname)" == "Darwin" ]]; then
+          sed -i '' '/^\t*$/d' "${{ inputs.changelog-path }}"
+        else
+          sed -i '/^\t*$/d' "${{ inputs.changelog-path }}"
+        fi
+        echo "changelog-path: $GITHUB_WORKSPACE/${{ inputs.running-path }}/${{ inputs.changelog-path }}"

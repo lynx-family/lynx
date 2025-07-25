@@ -1,0 +1,46 @@
+name: release changelog
+
+description: Truncating changelog to max 124000 chars and pushing changelog to release note
+
+inputs:
+  version:
+    description: Version (tag) of the release
+    required: true
+  changelog-path:
+    description: Path to the changelog file, relative to lynx/
+    required: false
+    default: 'CHANGELOG.md'
+  token:
+    description: secrets.GITHUB_TOKEN
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Truncate Changelog If Necessary
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+        MAX_CHARS=124000
+        CHANGELOG="${{ inputs.changelog-path }}"
+        TRUNCATED="$CHANGELOG-truncated.md"
+        if [[ ! -f "$CHANGELOG" ]]; then
+          echo "Error: file '$CHANGELOG' not found.">&2
+          exit 1
+        fi
+        content=$(cat "$CHANGELOG")
+        if [[ ${#content} -le $MAX_CHARS ]]; then
+          cp "$CHANGELOG" "$TRUNCATED"
+          exit 0
+        fi
+        truncated=$(head -c "$MAX_CHARS" <<< "$content")
+        full_body="$truncated\n\n---\n📄 View the full changelog [here]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/blob/$GITHUB_SHA/$CHANGELOG)"
+        echo -e "$full_body" > "$TRUNCATED"
+    - name: Push to Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ inputs.version }}
+        token: ${{ inputs.token }}
+        artifacts: ${{ github.workspace }}/lynx/${{ inputs.changelog-path }}
+        bodyFile: ${{ github.workspace }}/lynx/${{ inputs.changelog-path }}-truncated.md
+        allowUpdates: true
