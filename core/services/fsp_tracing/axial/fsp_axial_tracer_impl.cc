@@ -17,20 +17,6 @@ namespace lynx {
 namespace tasm {
 namespace timing {
 
-struct FSPAxialSnapshot : public FSPSnapshot {
-  static constexpr size_t X_PROJECTIONS_LEN = 256;
-  static constexpr size_t Y_PROJECTIONS_LEN = 512;
-
-  std::bitset<X_PROJECTIONS_LEN> x_projections;
-  std::bitset<Y_PROJECTIONS_LEN> y_projections;
-
-  lynx::base::geometry::IntSize projection_size;
-};
-
-bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config,
-                        std::ostringstream* inspection_out);
-
 std::unique_ptr<FSPSnapshot> FSPAxialTracer::CreateSnapshot() {
   return std::make_unique<FSPAxialSnapshot>();
 }
@@ -102,9 +88,10 @@ void FSPAxialTracer::FillSnapshotImpl(FSPSnapshot& snapshot,
   }
 }
 
-bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config,
-                        std::ostringstream* inspection_out) {
+bool FSPAxialTracer::DiffAxialSnapshots(FSPAxialSnapshot& current,
+                                        FSPAxialSnapshot* previous,
+                                        const FSPAxialConfig& config,
+                                        std::ostringstream* inspection_out) {
   auto container_w = current.container_size.Width();
   auto container_h = current.container_size.Height();
   auto projection_w =
@@ -133,7 +120,7 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
   if ((comp_rate_w < config.minimum_completion_rate_x) ||
       (comp_rate_h < config.minimum_completion_rate_y)) {
     if (inspection_out != nullptr) {
-      *inspection_out << "<Not_Stable>";
+      *inspection_out << "<Not_Stable_Completion_Rate>";
     }
     return false;
   }
@@ -160,7 +147,7 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
   if ((diff_w >= config.acceptable_pixel_difference_per_snapshot) ||
       (diff_h >= config.acceptable_pixel_difference_per_snapshot)) {
     if (inspection_out != nullptr) {
-      *inspection_out << "<Not_Stable>";
+      *inspection_out << "<Not_Stable_Dimension_Change>";
     }
     return false;
   }
@@ -177,7 +164,7 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
   if ((config.minimum_diff_interval_ms > 0.0) &&
       (diff_t < config.minimum_diff_interval_ms)) {
     if (inspection_out != nullptr) {
-      *inspection_out << "<Not_Stable>";
+      *inspection_out << "<Not_Stable_Time_Interval>";
     }
     return false;
   }
@@ -196,7 +183,7 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
   if ((rate_w >= config.acceptable_pixel_difference_per_ms) ||
       (rate_h >= config.acceptable_pixel_difference_per_ms)) {
     if (inspection_out != nullptr) {
-      *inspection_out << "<Not_Stable>";
+      *inspection_out << "<Not_Stable_Pixel_Difference_Per_Ms>";
     }
     return false;
   }
@@ -228,7 +215,7 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
     if (is_stable) {
       *inspection_out << "<Stable>";
     } else {
-      *inspection_out << "<Not_Stable>";
+      *inspection_out << "<Not_Stable_Content_Change>";
     }
   }
   return is_stable;

@@ -17,24 +17,6 @@ namespace lynx {
 namespace tasm {
 namespace timing {
 
-struct FSPAreaSnapshot : FSPSnapshot {
-  static constexpr size_t X_PROJECTIONS_LEN = 256;
-  static constexpr size_t Y_PROJECTIONS_LEN = 512;
-  static constexpr size_t PROJECTIONS_LEN =
-      X_PROJECTIONS_LEN * Y_PROJECTIONS_LEN;
-
-  std::bitset<PROJECTIONS_LEN> projections;
-
-  long last_ui_sign = -1;
-  double last_change_timestamp;
-  lynx::base::geometry::IntSize container_size;
-  size_t projection_area;
-};
-
-bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
-                       const FSPAreaConfig& config,
-                       std::ostringstream* inspection_out);
-
 std::unique_ptr<FSPSnapshot> FSPAreaTracer::CreateSnapshot() {
   return std::make_unique<FSPAreaSnapshot>();
 }
@@ -42,8 +24,9 @@ std::unique_ptr<FSPSnapshot> FSPAreaTracer::CreateSnapshot() {
 std::string FSPAreaTracer::InspectSnapshotImpl(FSPSnapshot& current,
                                                FSPSnapshot* previous) {
   std::ostringstream oss;
-  DiffAreaSnapshots(static_cast<FSPAreaSnapshot&>(current),
-                    static_cast<FSPAreaSnapshot*>(previous), config_, &oss);
+  FSPAreaTracer::DiffAreaSnapshots(static_cast<FSPAreaSnapshot&>(current),
+                                   static_cast<FSPAreaSnapshot*>(previous),
+                                   config_, &oss);
   return oss.str();
 }
 
@@ -59,7 +42,7 @@ FSPResult FSPAreaTracer::CaptureSnapshotImpl(
   }
 
   callback_(ss);
-  bool is_stable = DiffAreaSnapshots(
+  bool is_stable = FSPAreaTracer::DiffAreaSnapshots(
       ss, static_cast<FSPAreaSnapshot*>(previous_snapshot_.get()), config_,
       nullptr);
   return ss.GetResult(is_stable);
@@ -104,9 +87,10 @@ void FSPAreaTracer::FillSnapshotImpl(FSPSnapshot& snapshot,
   }
 }
 
-bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
-                       const FSPAreaConfig& config,
-                       std::ostringstream* inspection_out) {
+bool FSPAreaTracer::DiffAreaSnapshots(FSPAreaSnapshot& current,
+                                      FSPAreaSnapshot* previous,
+                                      const FSPAreaConfig& config,
+                                      std::ostringstream* inspection_out) {
   auto container_a = static_cast<size_t>(current.container_size.Width()) *
                      static_cast<size_t>(current.container_size.Height());
   auto projection_a = current.projections.count() * container_a /
