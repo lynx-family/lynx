@@ -17,6 +17,8 @@ public class TimingHandler {
   public static final String PREPARE_TEMPLATE_START = "prepareTemplateStart";
   public static final String PREPARE_TEMPLATE_END = "prepareTemplateEnd";
 
+  public static final String FSP_END = "fspEnd";
+
   public static class ExtraTimingInfo {
     public long mOpenTime = 0;
     public long mContainerInitStart = 0;
