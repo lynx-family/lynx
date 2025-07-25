@@ -16,6 +16,7 @@ if (!is_android) {
     "base/fsp_snapshot.h",
     "base/fsp_tracer_impl.h",
     "fsp_config.h",
+    "fsp_trace_event_def.h",
     "fsp_tracer.cc",
     "fsp_tracer.h",
   ]
