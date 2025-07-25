@@ -35,11 +35,11 @@ import java.util.ArrayList;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class FSPTracer {
   @FunctionalInterface
-  public interface CompletionCallback {
+  public interface ICompletionCallback {
     void onComplete(@NonNull FSPResult result);
   }
 
-  public interface ObserverCallback {
+  public interface IObserverCallback {
     void onStart();
     void onBecomeStable(boolean stable, @NonNull FSPResult result);
     void onStop(@NonNull StopReason reason, @NonNull FSPResult result);
@@ -58,8 +58,8 @@ public class FSPTracer {
   private boolean mIsTracing = false;
   private boolean mHasLoadingUI = false;
 
-  private CompletionCallback mCompletionCallback;
-  private ObserverCallback mObserverCallback;
+  private ICompletionCallback mCompletionCallback;
+  private IObserverCallback mObserverCallback;
 
   private FSPResult mLastResult = null;
   private Runnable mHardTimeoutRunnable;
@@ -117,7 +117,7 @@ public class FSPTracer {
     this.mTracerImpl = tracerImpl;
   }
 
-  public void beginTracing(CompletionCallback callback) {
+  public void beginTracing(ICompletionCallback callback) {
     TraceEvent.beginSection(TraceEventDef.CATEGORY, TraceEventDef.FSP_TRACER_BEGIN_TRACING);
 
     mCompletionCallback = callback;
@@ -198,7 +198,7 @@ public class FSPTracer {
     TraceEvent.endSection(TraceEventDef.CATEGORY, TraceEventDef.FSP_TRACER_STOP_TRACING);
   }
 
-  public void setObserverCallback(ObserverCallback callback) {
+  public void setObserverCallback(IObserverCallback callback) {
     mObserverCallback = callback;
   }
 
