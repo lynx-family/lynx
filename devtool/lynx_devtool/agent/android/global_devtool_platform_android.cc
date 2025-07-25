@@ -10,6 +10,7 @@
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
+#include "third_party/jsoncpp/include/json/json.h"
 
 namespace lynx {
 namespace jni {
@@ -79,6 +80,17 @@ std::string GlobalDevToolPlatformAndroid::GetLynxVersion() {
       env, lynx_version.Get());
 }
 #endif
+
+void GlobalDevToolPlatformAndroid::SetTimingOverlay(bool enabled,
+                                                    const Json::Value& params) {
+  JNIEnv* env = lynx::base::android::AttachCurrentThread();
+
+  std::string params_json = params.toStyledString();
+  auto jni_str = lynx::base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+      env, params_json);
+  Java_GlobalDevToolPlatformAndroidDelegate_setTimingOverlay(env, enabled,
+                                                             jni_str.Get());
+}
 
 std::string GlobalDevToolPlatformAndroid::GetSystemModelName() {
   char value[PROP_VALUE_MAX] = {0};
