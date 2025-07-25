@@ -6,6 +6,7 @@
 #define CORE_SERVICES_FSP_TRACING_AREA_FSP_AREA_TRACER_IMPL_H_
 
 #include <memory>
+#include <string>
 
 #include "core/services/fsp_tracing/base/fsp_tracer_impl.h"
 
@@ -29,7 +30,8 @@ class FSPAreaTracer : public FSPTracerImpl<FSPAreaTracer, FSPAreaConfig> {
       lynx::base::geometry::IntSize container_size) override;
   void FillSnapshotImpl(FSPSnapshot& snapshot,
                         const FSPContentInfo& info) override;
-
+  std::string InspectSnapshotImpl(FSPSnapshot& current,
+                                  FSPSnapshot* previous) override;
   static bool DiffAreaSnapshots(FSPAreaSnapshot& current,
                                 FSPAreaSnapshot* previous,
                                 const FSPAreaConfig& config);

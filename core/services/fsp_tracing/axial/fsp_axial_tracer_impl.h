@@ -6,6 +6,7 @@
 #define CORE_SERVICES_FSP_TRACING_AXIAL_FSP_AXIAL_TRACER_IMPL_H_
 
 #include <memory>
+#include <string>
 
 #include "core/services/fsp_tracing/base/fsp_tracer_impl.h"
 
@@ -27,7 +28,8 @@ class FSPAxialTracer : public FSPTracerImpl<FSPAxialTracer, FSPAxialConfig> {
       lynx::base::geometry::IntSize container_size) override;
   void FillSnapshotImpl(FSPSnapshot& snapshot,
                         const FSPContentInfo& info) override;
-
+  std::string InspectSnapshotImpl(FSPSnapshot& current,
+                                  FSPSnapshot* previous) override;
   static bool DiffAxialSnapshots(FSPAxialSnapshot& current,
                                  FSPAxialSnapshot* previous,
                                  const FSPAxialConfig& config);
