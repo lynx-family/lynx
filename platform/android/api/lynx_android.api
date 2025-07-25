@@ -6398,6 +6398,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
 }
 
 public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBuilder >, com.lynx.tasm.group.ILynxViewConfigProvider {
+  public final String com.lynx.tasm.LynxViewBuilder.TAG TAG;
   public com.lynx.tasm.LynxViewBuilder.LynxViewBuilder();
   public com.lynx.tasm.LynxViewBuilder.LynxViewBuilder(Context context);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setTemplateProvider(@Nullable AbsTemplateProvider provider);
