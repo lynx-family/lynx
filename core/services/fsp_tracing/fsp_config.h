@@ -87,16 +87,21 @@ struct FSPAreaConfig {
 class FSPTracer;
 
 struct FSPConfig {
-  FSPConfig(std::nullopt_t null = std::nullopt) : v(std::nullopt) {}
-  FSPConfig(FSPAxialConfig axialConfig) : v(axialConfig) {}
-  FSPConfig(FSPAreaConfig areaConfig) : v(areaConfig) {}
+  FSPConfig(std::nullopt_t null = std::nullopt) : cfg_(std::nullopt) {}
+  FSPConfig(FSPAxialConfig axialConfig) : cfg_(axialConfig) {}
+  FSPConfig(FSPAreaConfig areaConfig) : cfg_(areaConfig) {}
 
-  operator bool() { return !std::holds_alternative<std::nullopt_t>(v); }
+  void SetFlowID(uint64_t flow_id) { flow_id_ = flow_id; }
+
+  uint64_t GetFlowID() const { return flow_id_; }
+
+  operator bool() { return !std::holds_alternative<std::nullopt_t>(cfg_); }
 
  private:
   friend class FSPTracer;
 
-  std::variant<std::nullopt_t, FSPAxialConfig, FSPAreaConfig> v;
+  uint64_t flow_id_ = 0;
+  std::variant<std::nullopt_t, FSPAxialConfig, FSPAreaConfig> cfg_;
 };
 }  // namespace timing
 }  // namespace tasm
