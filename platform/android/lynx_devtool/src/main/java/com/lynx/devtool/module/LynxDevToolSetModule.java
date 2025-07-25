@@ -142,6 +142,16 @@ public class LynxDevToolSetModule extends LynxContextModule {
   }
 
   @LynxMethod
+  public void switchTimingOverlay(Boolean arg) {
+    LynxDevtoolEnv.inst().enableTimingOverlay(arg);
+  }
+
+  @LynxMethod
+  public boolean isTimingOverlayEnabled() {
+    return LynxDevtoolEnv.inst().isTimingOverlayEnabled();
+  }
+
+  @LynxMethod
   public void switchQuickjsDebug(Boolean arg) {
     LynxDevtoolEnv.inst().enableQuickjsDebug(arg);
   }
