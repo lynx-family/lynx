@@ -13,6 +13,7 @@ namespace lynx {
 namespace tasm {
 namespace timing {
 
+struct FSPAxialSnapshot;
 class FSPAxialTracer : public FSPTracerImpl<FSPAxialTracer, FSPAxialConfig> {
  public:
   using FSPTracerImpl<FSPAxialTracer, FSPAxialConfig>::FSPTracerImpl;
@@ -26,6 +27,22 @@ class FSPAxialTracer : public FSPTracerImpl<FSPAxialTracer, FSPAxialConfig> {
       lynx::base::geometry::IntSize container_size) override;
   void FillSnapshotImpl(FSPSnapshot& snapshot,
                         const FSPContentInfo& info) override;
+
+  static bool DiffAxialSnapshots(FSPAxialSnapshot& current,
+                                 FSPAxialSnapshot* previous,
+                                 const FSPAxialConfig& config);
+};
+
+struct FSPAxialSnapshot : public FSPSnapshot {
+ private:
+  friend class FSPAxialTracer;
+  static constexpr size_t X_PROJECTIONS_LEN = 256;
+  static constexpr size_t Y_PROJECTIONS_LEN = 512;
+
+  std::bitset<X_PROJECTIONS_LEN> x_projections;
+  std::bitset<Y_PROJECTIONS_LEN> y_projections;
+
+  lynx::base::geometry::IntSize projection_size;
 };
 
 }  // namespace timing
