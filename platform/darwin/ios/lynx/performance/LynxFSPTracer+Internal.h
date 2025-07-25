@@ -43,6 +43,9 @@ typedef struct LynxFSPConfig {
   /// This timeout is used to extend the graceful timeout when there is at least
   /// one ui elemnt that is still loading in the tree.
   NSTimeInterval extendedGracefulTimeout;
+
+  /// DevTool Only.
+  uintptr_t tracerConfig;
 } LynxFSPConfig;
 
 static const LynxFSPConfig kLynxFSPConfigDefault = {
@@ -53,12 +56,33 @@ static const LynxFSPConfig kLynxFSPConfigDefault = {
     .extendedGracefulTimeout = 1.0,
 };
 
+// DevTool Only.
+@protocol LynxFSPTracerObserver <NSObject>
+
+@required
+- (void)fspTracerDidStart:(LynxFSPTracer*)tracer;
+- (void)fspTracer:(LynxFSPTracer*)tracer
+    didBecomeStable:(BOOL)stable
+         withResult:(LynxFSPResult)result;
+- (void)fspTracer:(LynxFSPTracer*)tracer
+    willStopForReason:(LynxFSPTracerStopReason)reason
+           withResult:(LynxFSPResult)result;
+- (void)fspTracer:(LynxFSPTracer*)tracer willStartGracefulTimeout:(double)timeout;
+
+@end
+
 @interface LynxFSPTracer () {
+  id<LynxFSPTracerObserver> _observer;
 }
 
 + (void)setEnabled:(BOOL)enabled config:(LynxFSPConfig const*)config;
 
+- (void)setObserver:(id<LynxFSPTracerObserver>)observer;
+
 - (void)setTimingCallback:(void (^)(uint64_t timestamp, NSString* key))timingCallback;
+
+// DevTool Only.
+- (uintptr_t)opaqueTracer;
 
 @end
 
