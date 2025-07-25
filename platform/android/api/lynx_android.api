@@ -1178,8 +1178,8 @@ public interface com::lynx::react::bridge::mapbuffer::CompactArrayBuffer {
   public String com.lynx.react.bridge.mapbuffer.CompactArrayBuffer.getString(int index);
 }
 
-public interface com::lynx::tasm::performance::fsptracing::FSPTracer::CompletionCallback {
-  public void com.lynx.tasm.performance.fsptracing.FSPTracer.CompletionCallback.onComplete(@NonNull FSPResult result);
+public interface com::lynx::tasm::performance::fsptracing::FSPTracer::ICompletionCallback {
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ICompletionCallback.onComplete(@NonNull FSPResult result);
 }
 
 public interface com::lynx::tasm::behavior::ImageInterceptor::CompletionHandler {
@@ -7143,11 +7143,11 @@ public class com::lynx::tasm::common::NullableConcurrentHashMap : ConcurrentHash
   public Set< Entry< K, V > > com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.entrySet();
 }
 
-public interface com::lynx::tasm::performance::fsptracing::FSPTracer::ObserverCallback {
-  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onStart();
-  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onBecomeStable(boolean stable, @NonNull FSPResult result);
-  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onStop(@NonNull StopReason reason, @NonNull FSPResult result);
-  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.willStartGracefulTimeout(double timeout);
+public interface com::lynx::tasm::performance::fsptracing::FSPTracer::IObserverCallback {
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.IObserverCallback.onStart();
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.IObserverCallback.onBecomeStable(boolean stable, @NonNull FSPResult result);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.IObserverCallback.onStop(@NonNull StopReason reason, @NonNull FSPResult result);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.IObserverCallback.willStartGracefulTimeout(double timeout);
 }
 
 public class com::lynx::tasm::base::OnceTask : Runnable {

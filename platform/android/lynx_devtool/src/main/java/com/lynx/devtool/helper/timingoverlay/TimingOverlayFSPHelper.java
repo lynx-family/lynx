@@ -17,7 +17,7 @@ import java.lang.ref.WeakReference;
  * Helper class for FSP (First Screen Paint) tracking.
  * Android equivalent of iOS LynxTimingOverlayHelper+FSP category.
  */
-public class TimingOverlayFSPHelper implements FSPTracer.ObserverCallback {
+public class TimingOverlayFSPHelper implements FSPTracer.IObserverCallback {
   private static final String TAG = "TimingOverlayFSPHelper";
 
   private final WeakReference<TimingOverlayHelper> mHelper;
