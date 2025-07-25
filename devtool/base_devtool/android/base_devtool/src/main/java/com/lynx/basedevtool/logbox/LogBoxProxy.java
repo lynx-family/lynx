@@ -149,7 +149,12 @@ public class LogBoxProxy {
   }
 
   public void reset() {
-    LogBoxOwner.getInstance().onProxyReset(mActivity.get(), this);
+    UIThreadUtils.runOnUiThreadImmediately(new Runnable() {
+      @Override
+      public void run() {
+        LogBoxOwner.getInstance().onProxyReset(mActivity.get(), LogBoxProxy.this);
+      }
+    });
   }
 
   public String getErrorNamespace() {
