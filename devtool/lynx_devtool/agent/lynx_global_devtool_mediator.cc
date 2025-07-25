@@ -242,6 +242,26 @@ void LynxGlobalDevToolMediator::MemoryStopTracing(
   }
 }
 
+void LynxGlobalDevToolMediator::SetTimingOverlay(
+    const std::shared_ptr<lynx::devtool::MessageSender>& sender,
+    const Json::Value& message) {
+  if (ui_task_runner_) {
+    RunOnTaskRunner(ui_task_runner_, [sender, message]() {
+      Json::Value response(Json::ValueType::objectValue);
+      Json::Value content(Json::ValueType::objectValue);
+      Json::Value params = message["params"];
+
+      bool enabled = params["enabled"].asBool();
+      GlobalDevToolPlatformFacade::GetInstance().SetTimingOverlay(enabled,
+                                                                  params);
+
+      response["result"] = content;
+      response["id"] = message["id"].asInt64();
+      sender->SendMessage("CDP", response);
+    });
+  }
+}
+
 void LynxGlobalDevToolMediator::SystemInfoGetInfo(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
     const Json::Value& message) {
