@@ -6,8 +6,10 @@
 
 #include <algorithm>
 #include <bitset>
+#include <iomanip>
 #include <memory>
-#include <utility>
+#include <sstream>
+#include <string>
 
 #include "core/services/fsp_tracing/base/fsp_snapshot.h"
 
@@ -26,10 +28,19 @@ struct FSPAxialSnapshot : public FSPSnapshot {
 };
 
 bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config);
+                        const FSPAxialConfig& config,
+                        std::ostringstream* inspection_out);
 
 std::unique_ptr<FSPSnapshot> FSPAxialTracer::CreateSnapshot() {
   return std::make_unique<FSPAxialSnapshot>();
+}
+
+std::string FSPAxialTracer::InspectSnapshotImpl(FSPSnapshot& current,
+                                                FSPSnapshot* previous) {
+  std::ostringstream oss;
+  DiffAxialSnapshots(static_cast<FSPAxialSnapshot&>(current),
+                     static_cast<FSPAxialSnapshot*>(previous), config_, &oss);
+  return oss.str();
 }
 
 FSPResult FSPAxialTracer::CaptureSnapshotImpl(
@@ -45,7 +56,8 @@ FSPResult FSPAxialTracer::CaptureSnapshotImpl(
 
   callback_(ss);
   bool is_stable = DiffAxialSnapshots(
-      ss, static_cast<FSPAxialSnapshot*>(previous_snapshot_.get()), config_);
+      ss, static_cast<FSPAxialSnapshot*>(previous_snapshot_.get()), config_,
+      nullptr);
   return ss.GetResult(is_stable);
 }
 
@@ -91,7 +103,8 @@ void FSPAxialTracer::FillSnapshotImpl(FSPSnapshot& snapshot,
 }
 
 bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config) {
+                        const FSPAxialConfig& config,
+                        std::ostringstream* inspection_out) {
   auto container_w = current.container_size.Width();
   auto container_h = current.container_size.Height();
   auto projection_w =
@@ -104,27 +117,51 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
       lynx::base::geometry::IntSize(projection_w, projection_h);
 
   // check against completion rates.
-  auto min_w =
-      static_cast<int>(static_cast<double>(current.container_size.Width()) *
-                       config.minimum_completion_rate_x);
-  auto min_h =
-      static_cast<int>(static_cast<double>(current.container_size.Height()) *
-                       config.minimum_completion_rate_y);
-  if (((min_w > 0) && (projection_w < min_w)) ||
-      ((min_h > 0) && (projection_h < min_h))) {
+  auto comp_rate_w =
+      projection_w / static_cast<double>(current.container_size.Width());
+  auto comp_rate_h =
+      projection_h / static_cast<double>(current.container_size.Height());
+
+  if (inspection_out != nullptr) {
+    *inspection_out << std::setprecision(5) << "Projection: "
+                    << "{ w=" << projection_w << "(" << comp_rate_w * 100.0
+                    << "%) "
+                    << ", h=" << projection_h << "(" << comp_rate_h * 100.0
+                    << "%) }" << std::endl;
+  }
+
+  if ((comp_rate_w < config.minimum_completion_rate_x) ||
+      (comp_rate_h < config.minimum_completion_rate_y)) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
   if (!previous) {
     // Initial snapshot always considered stable.
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Initially_Stable>";
+    }
     return true;
   }
 
   // diff dimension changes.(fast)
   auto diff_w = projection_w - previous->projection_size.Width();
   auto diff_h = projection_h - previous->projection_size.Height();
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff: "
+                    << "{ w=" << diff_w << "("
+                    << config.acceptable_pixel_difference_per_snapshot
+                    << "), h=" << diff_h << "("
+                    << config.acceptable_pixel_difference_per_snapshot << ") }"
+                    << std::endl;
+  }
   if ((diff_w >= config.acceptable_pixel_difference_per_snapshot) ||
       (diff_h >= config.acceptable_pixel_difference_per_snapshot)) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
@@ -134,16 +171,33 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
       1000.0;
 
   // Check if the interval is less than the minimum interval.
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_T: " << diff_t << "ms" << std::endl;
+  }
   if ((config.minimum_diff_interval_ms > 0.0) &&
       (diff_t < config.minimum_diff_interval_ms)) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
   // diff dimension change rates.(fast)
   auto rate_w = static_cast<double>(diff_w) / diff_t;
   auto rate_h = static_cast<double>(diff_h) / diff_t;
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_Per_Ms: "
+                    << "{ w=" << rate_w << "("
+                    << config.acceptable_pixel_difference_per_ms
+                    << "), h=" << rate_h << "("
+                    << config.acceptable_pixel_difference_per_ms << ") }"
+                    << std::endl;
+  }
   if ((rate_w >= config.acceptable_pixel_difference_per_ms) ||
       (rate_h >= config.acceptable_pixel_difference_per_ms)) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
@@ -156,8 +210,27 @@ bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
                 FSPAxialSnapshot::Y_PROJECTIONS_LEN;
   auto rate_x = static_cast<double>(diff_x) / diff_t;
   auto rate_y = static_cast<double>(diff_y) / diff_t;
-  bool is_stable = !(rate_x >= config.acceptable_pixel_difference_per_ms ||
-                     rate_y >= config.acceptable_pixel_difference_per_ms);
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_Content: "
+                    << "{ x=" << diff_x << ", y=" << diff_y << ") }"
+                    << std::endl;
+    *inspection_out << "Diff_Content_Per_Ms: "
+                    << "{ x=" << rate_x << "("
+                    << config.acceptable_pixel_difference_per_ms
+                    << "), y=" << rate_y << "("
+                    << config.acceptable_pixel_difference_per_ms << ") }"
+                    << std::endl;
+  }
+
+  bool is_stable = !((rate_x >= config.acceptable_pixel_difference_per_ms) ||
+                     (rate_y >= config.acceptable_pixel_difference_per_ms));
+  if (inspection_out != nullptr) {
+    if (is_stable) {
+      *inspection_out << "<Stable>";
+    } else {
+      *inspection_out << "<Not_Stable>";
+    }
+  }
   return is_stable;
 }
 

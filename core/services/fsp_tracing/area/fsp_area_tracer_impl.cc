@@ -6,6 +6,9 @@
 
 #include <algorithm>
 #include <bitset>
+#include <iomanip>
+#include <memory>
+#include <sstream>
 #include <utility>
 
 #include "core/services/fsp_tracing/base/fsp_snapshot.h"
@@ -29,10 +32,19 @@ struct FSPAreaSnapshot : FSPSnapshot {
 };
 
 bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
-                       const FSPAreaConfig& config);
+                       const FSPAreaConfig& config,
+                       std::ostringstream* inspection_out);
 
 std::unique_ptr<FSPSnapshot> FSPAreaTracer::CreateSnapshot() {
   return std::make_unique<FSPAreaSnapshot>();
+}
+
+std::string FSPAreaTracer::InspectSnapshotImpl(FSPSnapshot& current,
+                                               FSPSnapshot* previous) {
+  std::ostringstream oss;
+  DiffAreaSnapshots(static_cast<FSPAreaSnapshot&>(current),
+                    static_cast<FSPAreaSnapshot*>(previous), config_, &oss);
+  return oss.str();
 }
 
 FSPResult FSPAreaTracer::CaptureSnapshotImpl(
@@ -48,7 +60,8 @@ FSPResult FSPAreaTracer::CaptureSnapshotImpl(
 
   callback_(ss);
   bool is_stable = DiffAreaSnapshots(
-      ss, static_cast<FSPAreaSnapshot*>(previous_snapshot_.get()), config_);
+      ss, static_cast<FSPAreaSnapshot*>(previous_snapshot_.get()), config_,
+      nullptr);
   return ss.GetResult(is_stable);
 }
 
@@ -92,28 +105,55 @@ void FSPAreaTracer::FillSnapshotImpl(FSPSnapshot& snapshot,
 }
 
 bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
-                       const FSPAreaConfig& config) {
+                       const FSPAreaConfig& config,
+                       std::ostringstream* inspection_out) {
   auto container_a = static_cast<size_t>(current.container_size.Width()) *
                      static_cast<size_t>(current.container_size.Height());
   auto projection_a = current.projections.count() * container_a /
                       FSPAreaSnapshot::PROJECTIONS_LEN;
   current.projection_area = projection_a;
 
+  if (inspection_out != nullptr) {
+    *inspection_out << std::setprecision(5)
+                    << "Projection_Area: " << projection_a << " ("
+                    << container_a << ")" << std::endl;
+  }
+
   // check against completion rates.
-  auto min_a = static_cast<long>(static_cast<double>(container_a) *
-                                 config.minimum_completion_rate);
-  if ((min_a > 0) && (projection_a < static_cast<size_t>(min_a))) {
+  auto comp_rate_a = static_cast<double>(projection_a) / container_a;
+  if (inspection_out != nullptr) {
+    *inspection_out << std::setprecision(5)
+                    << "Completion_Rate: " << comp_rate_a * 100.0 << "% ("
+                    << config.minimum_completion_rate * 100.0 << "%)"
+                    << std::endl;
+  }
+
+  if (comp_rate_a < config.minimum_completion_rate) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
   if (!previous) {
     // Initial snapshot always considered stable.
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Initially_Stable>";
+    }
     return true;
   }
 
   // diff area changes.(fast)
   auto diff_a = projection_a - previous->projection_area;
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_Area: " << diff_a << " ("
+                    << config.acceptable_difference_per_snapshot << ")"
+                    << std::endl;
+  }
   if (diff_a >= config.acceptable_difference_per_snapshot) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
@@ -122,15 +162,29 @@ bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
       (current.last_change_timestamp - previous->last_change_timestamp) *
       1000.0;
 
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_T: " << diff_t << "ms" << std::endl;
+  }
+
   // Check if the interval is less than the minimum interval.
   if ((config.minimum_diff_interval_ms > 0.0) &&
       (diff_t < config.minimum_diff_interval_ms)) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
   // diff area change rates.(fast)
   auto rate_a = static_cast<double>(diff_a) / diff_t;
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_Per_Ms: " << rate_a << " ("
+                    << config.acceptable_difference_per_ms << ")" << std::endl;
+  }
   if (rate_a >= config.acceptable_difference_per_ms) {
+    if (inspection_out != nullptr) {
+      *inspection_out << "<Not_Stable>";
+    }
     return false;
   }
 
@@ -138,7 +192,19 @@ bool DiffAreaSnapshots(FSPAreaSnapshot& current, FSPAreaSnapshot* previous,
   auto diff_p = (current.projections ^ previous->projections).count() *
                 container_a / FSPAreaSnapshot::PROJECTIONS_LEN;
   auto rate_p = static_cast<double>(diff_p) / diff_t;
+  if (inspection_out != nullptr) {
+    *inspection_out << "Diff_Content: " << diff_p << std::endl;
+    *inspection_out << "Diff_Content_Per_Ms: " << rate_p << " ("
+                    << config.acceptable_difference_per_ms << ")" << std::endl;
+  }
   bool is_stable = !(rate_p >= config.acceptable_difference_per_ms);
+  if (inspection_out != nullptr) {
+    if (is_stable) {
+      *inspection_out << "<Stable>";
+    } else {
+      *inspection_out << "<Not_Stable>";
+    }
+  }
   return is_stable;
 }
 
