@@ -91,6 +91,23 @@ class FSPTracerImpl : public FSPTracer {
     }
   }
 
+  std::string InspectCurrentSnapshot() override {
+    if (!current_snapshot_) {
+      return "";
+    }
+
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_FSP, FSP_TRACER_INSPECT_SNAPSHOT,
+                [&](lynx::perfetto::EventContext ctx) {
+                  auto instance_flow_id = this->flow_id_;
+                  if (instance_flow_id != 0) {
+                    ctx.event()->add_flow_ids(instance_flow_id);
+                  }
+                });
+
+    return static_cast<Derived*>(this)->InspectSnapshotImpl(
+        *current_snapshot_, previous_snapshot_.get());
+  }
+
   ~FSPTracerImpl() = default;
 
  protected:
@@ -105,11 +122,8 @@ class FSPTracerImpl : public FSPTracer {
       FSPSnapshot& snapshot, lynx::base::geometry::IntSize container_size) = 0;
   virtual void FillSnapshotImpl(FSPSnapshot& snapshot,
                                 const FSPContentInfo& content_info) = 0;
-
-  void ResetSnapshots() {
-    current_snapshot_ = nullptr;
-    previous_snapshot_ = nullptr;
-  }
+  virtual std::string InspectSnapshotImpl(FSPSnapshot& current,
+                                          FSPSnapshot* previous) = 0;
 
   FSPSnapshot& SwapCurrentSnapshot() {
     if (!current_snapshot_) {
