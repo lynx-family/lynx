@@ -4,16 +4,25 @@
 
 #include "devtool/lynx_devtool/agent/domain_agent/inspector_performance_agent.h"
 
+#include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+
 namespace lynx {
 namespace devtool {
+
+InspectorPerformanceAgent::InspectorPerformanceAgent()
+    : InspectorPerformanceAgent(nullptr) {}
 
 InspectorPerformanceAgent::InspectorPerformanceAgent(
     const std::shared_ptr<LynxDevToolMediator>& devtool_mediator)
     : devtool_mediator_(devtool_mediator) {
-  functions_map_["Performance.enable"] = &InspectorPerformanceAgent::Enable;
-  functions_map_["Performance.disable"] = &InspectorPerformanceAgent::Disable;
-  functions_map_["Performance.getAllTimingInfo"] =
-      &InspectorPerformanceAgent::getAllTimingInfo;
+  if (devtool_mediator) {
+    functions_map_["Performance.enable"] = &InspectorPerformanceAgent::Enable;
+    functions_map_["Performance.disable"] = &InspectorPerformanceAgent::Disable;
+    functions_map_["Performance.getAllTimingInfo"] =
+        &InspectorPerformanceAgent::getAllTimingInfo;
+  }
+  functions_map_["Performance.setTimingOverlay"] =
+      &InspectorPerformanceAgent::SetTimingOverlay;
 }
 
 InspectorPerformanceAgent::~InspectorPerformanceAgent() = default;
@@ -31,6 +40,11 @@ void InspectorPerformanceAgent::Disable(
 void InspectorPerformanceAgent::getAllTimingInfo(
     const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
   devtool_mediator_->getAllTimingInfo(sender, message);
+}
+
+void InspectorPerformanceAgent::SetTimingOverlay(
+    const std::shared_ptr<MessageSender>& sender, const Json::Value& message) {
+  LynxGlobalDevToolMediator::GetInstance().SetTimingOverlay(sender, message);
 }
 
 void InspectorPerformanceAgent::CallMethod(
