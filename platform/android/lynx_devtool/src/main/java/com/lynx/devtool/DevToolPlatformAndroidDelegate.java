@@ -11,6 +11,7 @@ import com.lynx.devtool.helper.LepusDebugInfoHelper;
 import com.lynx.devtool.helper.ScreenCapturer;
 import com.lynx.devtool.helper.ScreenCastHelper;
 import com.lynx.devtool.helper.UITreeHelper;
+import com.lynx.devtool.helper.timingoverlay.TimingOverlayHelper;
 import com.lynx.devtoolwrapper.IDevToolDelegate;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.JavaOnlyMap;
@@ -33,6 +34,9 @@ public class DevToolPlatformAndroidDelegate {
 
   // EmulateTouch
   private EmulateTouchHelper mTouchHelper;
+
+  // TimingOverlay
+  private TimingOverlayHelper mTimingHelper;
 
   // PageReload
   private PageReloadHelper mReloadHelper;
@@ -68,6 +72,8 @@ public class DevToolPlatformAndroidDelegate {
 
     mTouchHelper = new EmulateTouchHelper(mLynxView);
 
+    mTimingHelper = new TimingOverlayHelper(this);
+
     mReloadHelper = null;
 
     mNavigatePending = false;
@@ -78,6 +84,9 @@ public class DevToolPlatformAndroidDelegate {
   public void attachLynxUIOwner(LynxUIOwner uiOwner) {
     if (mUITreeHelper != null) {
       mUITreeHelper.attachLynxUIOwner(uiOwner);
+    }
+    if (mTimingHelper != null) {
+      mTimingHelper.attachLynxView(mLynxView.get(), uiOwner);
     }
   }
 
