@@ -283,6 +283,41 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   return NO;
 }
 
+- (void)setMeaningfulContentStatus:(LynxUIMeaningfulContentStatus)status rect:(CGRect)rect {
+  BOOL statusChanged = (_meaningfulContentStatus != status);
+  if (statusChanged) {
+    _meaningfulContentStatus = status;
+  }
+
+  BOOL rectChanged = !CGRectEqualToRect(_meaningfulContentRect, rect);
+  if (rectChanged) {
+    _meaningfulContentRect = rect;
+  }
+
+  if (![_context isFSPTracing]) {
+    // If not tracing, we don't need to update timestamp.
+    return;
+  }
+
+  BOOL hasContentChange =
+      status == kLynxUIMeaningfulContentLoaded && (rectChanged || statusChanged);
+  if (hasContentChange) {
+    _meaningfulContentChangeTimestamp = CACurrentMediaTime();
+    [_context markMeaningfulContentChange];
+  }
+}
+
+- (void)setMeaningfulContentStatus:(LynxUIMeaningfulContentStatus)status {
+  if (_meaningfulContentStatus != status) {
+    _meaningfulContentStatus = status;
+
+    if (status == kLynxUIMeaningfulContentLoaded && [_context isFSPTracing]) {
+      _meaningfulContentChangeTimestamp = CACurrentMediaTime();
+      [_context markMeaningfulContentChange];
+    }
+  }
+}
+
 - (void)setContentOffset:(CGPoint)contentOffset {
 }
 
