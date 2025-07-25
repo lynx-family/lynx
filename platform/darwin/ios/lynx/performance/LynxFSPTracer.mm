@@ -18,7 +18,10 @@
 #include <vector>
 
 #include "base/include/no_destructor.h"
+#include "base/include/string/string_utils.h"
 #include "base/include/timer/time_utils.h"
+#include "base/trace/native/trace_event.h"
+#include "core/services/fsp_tracing/fsp_trace_event_def.h"
 #include "core/services/fsp_tracing/fsp_tracer.h"
 
 @implementation LynxFSPTracer {
@@ -37,20 +40,26 @@
   BOOL _hasLoadingUI;
   dispatch_block_t _gracefulTimeoutBlock;
   std::optional<lynx::tasm::timing::FSPResult> _lastResult;
+
+  uint64_t _flow_id;
+  uint64_t _snapshot_flow_id;
 }
 
 static BOOL g_enabled = false;
 static LynxFSPConfig g_config;
-static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
+static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& config, uint64_t flow_id) {
+  lynx::tasm::timing::FSPConfig cfg;
   if (config.tracerConfig != 0) {
-    return *reinterpret_cast<lynx::tasm::timing::FSPConfig*>(config.tracerConfig);
+    cfg = *reinterpret_cast<lynx::tasm::timing::FSPConfig*>(config.tracerConfig);
   } else if (config.mode == LynxFSPModeArea) {
-    return lynx::tasm::timing::FSPAreaConfig();
+    cfg = lynx::tasm::timing::FSPAreaConfig();
   } else if (config.mode == LynxFSPModeAxial) {
-    return lynx::tasm::timing::FSPAxialConfig();
+    cfg = lynx::tasm::timing::FSPAxialConfig();
   } else {
-    return std::nullopt;
+    cfg = lynx::tasm::timing::FSPConfig();
   }
+  cfg.SetFlowID(flow_id);
+  return cfg;
 };
 
 + (void)initialize {
@@ -74,12 +83,17 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
 }
 
 - (instancetype)initWithUIContext:(LynxUIContext*)context {
+  // Generate a unique flow ID
+  auto flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_CREATE,
+              [&](lynx::perfetto::EventContext ctx) { ctx.event()->add_flow_ids(flow_id); });
+
   self = [super init];
   if (self) {
     _flow_id = flow_id;
 
     auto config = g_config;
-    auto cxx_config = GetCXXConfig(config);
+    auto cxx_config = GetCXXConfig(config, flow_id);
 
     __weak typeof(self) weakSelf = self;
     _tracer = lynx::tasm::timing::FSPTracer::Create(
@@ -130,6 +144,10 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
   _completion = completion;
 
   if (NO == [_context setFSPTracing:YES]) {  // FSP tracing was not active.
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_BEGIN_TRACING,
+        [&](lynx::perfetto::EventContext ctx) { ctx.event()->add_flow_ids(self->_flow_id); });
+
     dispatch_resume(_timer);
 
     [self beginHardTimeout];
@@ -151,6 +169,19 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
 
   // Convert C++ result to ObjC result.
   LynxFSPResult ocResult = [self convertResult:result];
+
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_STOP_TRACING, [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_terminating_flow_ids(self->_flow_id);
+        ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, (ocResult.success ? "yes" : "no"));
+        if (reason == kLynxFSPTracerStopReasonTimeout) {
+          ctx.event()->add_debug_annotations(FSP_DEBUG_REASON, "timeout");
+        } else if (reason == kLynxFSPTracerStopReasonUserInteraction) {
+          ctx.event()->add_debug_annotations(FSP_DEBUG_REASON, "user_interaction");
+        }
+        ctx.event()->add_debug_annotations(FSP_DEBUG_TIMESTAMP,
+                                           std::to_string(ocResult.lastChangeTimestamp));
+      });
 
   if (_hardTimeoutBlock) {
     dispatch_block_cancel(_hardTimeoutBlock);
@@ -212,6 +243,14 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
       // without the need of another round of capturing and diffing.
       result = (*_lastResult);
       result.is_stable = YES;
+
+      _snapshot_flow_id = TRACE_FLOW_ID();
+      TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_CAPTURE_SNAPSHOT,
+                        [&](lynx::perfetto::EventContext ctx) {
+                          ctx.event()->add_flow_ids(self->_flow_id);
+                          ctx.event()->add_flow_ids(self->_snapshot_flow_id);
+                          ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, "unchanged");
+                        });
     } else {
       // Skip this snapshot, stablility detection requires at least one
       // meaningful change.
@@ -224,7 +263,22 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
     auto int_height = static_cast<int>(size.height);
     auto int_size = lynx::base::geometry::IntSize(int_width, int_height);
 
-    result = _tracer->CaptureSnapshot(int_size);
+    _snapshot_flow_id = TRACE_FLOW_ID();
+    TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_CAPTURE_SNAPSHOT,
+                      [&](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(self->_flow_id);
+                        ctx.event()->add_flow_ids(self->_snapshot_flow_id);
+                        ctx.event()->add_debug_annotations(
+                            FSP_DEBUG_SIZE,
+                            lynx::base::FormatString("%dx%d", int_width, int_height));
+                        ctx.event()->add_debug_annotations(
+                            FSP_DEBUG_UI_SIGN, std::to_string(self->_context.rootUI.sign));
+                        if (self->_lastResult.has_value() && (*self->_lastResult).is_stable) {
+                          ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, "pending");
+                        }
+                      });
+
+    result = _tracer->CaptureSnapshot(int_size, _snapshot_flow_id);
   }
 
   BOOL wasStable = _lastResult.has_value() && (*_lastResult).is_stable;
@@ -242,6 +296,10 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
         [_observer fspTracer:self didBecomeStable:NO withResult:[self convertResult:result]];
       }
     }
+
+    TRACE_EVENT_END(LYNX_TRACE_CATEGORY_FSP, [&](lynx::perfetto::EventContext ctx) {
+      ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, (wasStable ? "reverted" : "no"));
+    });
     return;
   }
 
@@ -265,12 +323,23 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
       // Wait for graceful timeout to complete with the pending result.
       _lastResult = result;
       [self beginGracefulTimeout:timeout];
+
+      TRACE_EVENT_END(LYNX_TRACE_CATEGORY_FSP, [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, "pending");
+      });
     } else {
       // No graceful timeout, complete immediately.
       [self stopTracing:kLynxFSPTracerStopReasonSuccess result:result];
+
+      TRACE_EVENT_END(LYNX_TRACE_CATEGORY_FSP, [&](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(FSP_DEBUG_STABLE, "yes");
+      });
     }
     return;
   }
+
+  // Repeated stability, wait for previous timeout.
+  TRACE_EVENT_END(LYNX_TRACE_CATEGORY_FSP);
 }
 
 - (LynxFSPResult)convertResult:(lynx::tasm::timing::FSPResult)result {
@@ -349,9 +418,15 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
     return;
   }
 
-  __block int totalCount = 0;
-  __block int loadedCount = 0;
-  __block int loadingCount = 0;
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_FSP, FSP_LYNX_TRACER_UPDATE_SNAPSHOT,
+                    [&](lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_flow_ids(self->_flow_id);
+                      ctx.event()->add_flow_ids(self->_snapshot_flow_id);
+                    });
+
+  __unused __block int totalCount = 0;
+  __unused __block int loadedCount = 0;
+  __unused __block int loadingCount = 0;
   [_context.uiOwner enumerateUIsUsingBlock:^(LynxUI* _Nonnull ui, BOOL* _Nonnull stop) {
     totalCount++;
     if (ui.meaningfulContentStatus == kLynxUIMeaningfulContentLoaded) {
@@ -383,6 +458,14 @@ static lynx::tasm::timing::FSPConfig GetCXXConfig(const LynxFSPConfig& cfg) {
   }];
 
   _hasLoadingUI = loadingCount > 0;
+
+  TRACE_EVENT_END(
+      LYNX_TRACE_CATEGORY_FSP, [total_cnt = totalCount, loaded_cnt = loadedCount,
+                                loading_cnt = loadingCount](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(FSP_DEBUG_TOTAL_COUNT, std::to_string(total_cnt));
+        ctx.event()->add_debug_annotations(FSP_DEBUG_LOADED_COUNT, std::to_string(loaded_cnt));
+        ctx.event()->add_debug_annotations(FSP_DEBUG_LOADING_COUNT, std::to_string(loading_cnt));
+      });
 }
 
 - (void)setObserver:(id<LynxFSPTracerObserver>)observer {
