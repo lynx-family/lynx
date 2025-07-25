@@ -8,7 +8,10 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "core/public/box_model.h"
+#include "devtool/embedder/core/screenshot_thread_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_lynx_context.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/native_node_content.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h"
@@ -141,6 +144,83 @@ void PubUIOwner::InsertListItemPaintingNode(int list_sign, int child_sign) {
 
 void PubUIOwner::RemoveListItemPaintingNode(int list_sign, int child_sign) {
   ui_owner_->RemoveListItemPaintingNode(list_sign, child_sign);
+}
+
+void PubUIOwner::FetchTransformValue(
+    int id, const std::vector<float>& pad_border_margin_layout,
+    std::vector<float>& res) {
+  std::vector<float> point(8, 0);
+  auto ui = ui_owner_->FindUIBySign(id);
+  if (!ui) {
+    return;
+  }
+
+  for (int i = 0; i < 4; ++i) {
+    if (i == 0) {
+      ui->GetTransformValue(
+          pad_border_margin_layout[BoxModelOffset::PAD_LEFT] +
+              pad_border_margin_layout[BoxModelOffset::BORDER_LEFT] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
+          -pad_border_margin_layout[BoxModelOffset::PAD_RIGHT] -
+              pad_border_margin_layout[BoxModelOffset::BORDER_RIGHT] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_RIGHT],
+          pad_border_margin_layout[BoxModelOffset::PAD_TOP] +
+              pad_border_margin_layout[BoxModelOffset::BORDER_TOP] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_TOP],
+          -pad_border_margin_layout[BoxModelOffset::PAD_BOTTOM] -
+              pad_border_margin_layout[BoxModelOffset::BORDER_BOTTOM] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
+          point);
+    } else if (i == 1) {
+      ui->GetTransformValue(
+          pad_border_margin_layout[BoxModelOffset::BORDER_LEFT] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
+          -pad_border_margin_layout[BoxModelOffset::BORDER_RIGHT] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_RIGHT],
+          pad_border_margin_layout[BoxModelOffset::BORDER_TOP] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_TOP],
+          -pad_border_margin_layout[BoxModelOffset::BORDER_BOTTOM] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
+          point);
+    } else if (i == 2) {
+      ui->GetTransformValue(
+          pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
+          -pad_border_margin_layout[BoxModelOffset::LAYOUT_RIGHT],
+          pad_border_margin_layout[BoxModelOffset::LAYOUT_TOP],
+          -pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM], point);
+    } else {
+      ui->GetTransformValue(
+          -pad_border_margin_layout[BoxModelOffset::MARGIN_LEFT] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_LEFT],
+          pad_border_margin_layout[BoxModelOffset::MARGIN_RIGHT] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_RIGHT],
+          -pad_border_margin_layout[BoxModelOffset::MARGIN_TOP] +
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_TOP],
+          pad_border_margin_layout[BoxModelOffset::MARGIN_BOTTOM] -
+              pad_border_margin_layout[BoxModelOffset::LAYOUT_BOTTOM],
+          point);
+    }
+    res[i * 8] = point[0];
+    res[i * 8 + 1] = point[1];
+    res[i * 8 + 2] = point[2];
+    res[i * 8 + 3] = point[3];
+    res[i * 8 + 4] = point[4];
+    res[i * 8 + 5] = point[5];
+    res[i * 8 + 6] = point[6];
+    res[i * 8 + 7] = point[7];
+  }
+}
+
+void PubUIOwner::TakeSnapshot(size_t max_width, size_t max_height, int quality,
+                              const TakeSnapshotCompletedCallback& callback) {
+  auto context = ui_owner_->Context();
+  if (!context) {
+    return;
+  }
+  static lynx::base::NoDestructor<lynx::fml::Thread> screenshot_thread(
+      "Lynx_SnapshotThread");
+  context->TakeScreenShot(max_width, max_height, quality,
+                          screenshot_thread->GetTaskRunner(), callback);
 }
 
 }  // namespace harmony

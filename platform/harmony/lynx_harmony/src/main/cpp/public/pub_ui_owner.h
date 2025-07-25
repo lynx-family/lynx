@@ -9,8 +9,10 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/public/ui_delegate.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_prop_bundle_harmony.h"
 
 namespace lynx {
@@ -57,6 +59,12 @@ class LYNX_EXPORT PubUIOwner {
                         float estimated_offset, bool scrolling);
   void InsertListItemPaintingNode(int list_sign, int child_sign);
   void RemoveListItemPaintingNode(int list_sign, int child_sign);
+
+  void FetchTransformValue(int id,
+                           const std::vector<float>& pad_border_margin_layout,
+                           std::vector<float>& res);
+  void TakeSnapshot(size_t max_width, size_t max_height, int quality,
+                    const TakeSnapshotCompletedCallback& callback);
 
  private:
   std::shared_ptr<UIOwner> ui_owner_;

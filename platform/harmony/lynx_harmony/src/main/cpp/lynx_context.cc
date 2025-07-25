@@ -615,6 +615,16 @@ void LynxContext::RegisterNodeInfo(const std::string& node_name,
   }
 }
 
+void LynxContext::TakeScreenShot(
+    size_t max_width, size_t max_height, int quality,
+    const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
+    TakeSnapshotCompletedCallback callback) {
+  if (embedder_) {
+    embedder_->TakeSnapshot(max_width, max_height, quality, screenshot_runner,
+                            callback);
+  }
+}
+
 fluency::harmony::FluencyTraceHelperHarmony&
 LynxContext::GetFluencyTraceHelper() {
   return fluency_trace_helper_;
