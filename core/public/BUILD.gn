@@ -32,6 +32,7 @@ lynx_core_source_set("public") {
     "text_utils.h",
     "timing_key.h",
     "ui_delegate.h",
+    "ui_operation_queue_proxy.h",
     "vsync_observer_interface.h",
   ]
 
