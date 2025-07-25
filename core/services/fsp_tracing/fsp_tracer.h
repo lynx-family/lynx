@@ -7,9 +7,11 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 
 #include "core/services/fsp_tracing/fsp_config.h"
+#include "lynx/base/include/base_export.h"
 #include "lynx/base/include/closure.h"
 #include "lynx/base/include/geometry/rect.h"
 
@@ -34,7 +36,7 @@ struct FSPContentInfo {
 };
 
 // Class responsible for tracking and calculating First Stable Paint
-class FSPTracer {
+class BASE_EXPORT_FOR_DEVTOOL FSPTracer {
  public:
   using SnapshotCallback = lynx::base::MoveOnlyClosure<void, FSPSnapshot&>;
 
@@ -44,12 +46,17 @@ class FSPTracer {
 
   // Capture the content information of the UI tree, return the tracing result
   // if the stability point has been reached.
-  virtual std::optional<FSPResult> CaptureSnapshot(
-      lynx::base::geometry::IntSize container_size) = 0;
+  virtual FSPResult CaptureSnapshot(
+      lynx::base::geometry::IntSize container_size,
+      uint64_t snapshot_flow_id = 0) = 0;
 
   // Fill the snapshot with content information of an element in UI tree.
   virtual void FillSnapshot(FSPSnapshot& snapshot,
-                            const FSPContentInfo& content_info) = 0;
+                            const FSPContentInfo& content_info,
+                            uint64_t snapshot_flow_id = 0) = 0;
+
+  // For DevTool;
+  virtual std::string InspectCurrentSnapshot() = 0;
 
   virtual ~FSPTracer() = default;
 

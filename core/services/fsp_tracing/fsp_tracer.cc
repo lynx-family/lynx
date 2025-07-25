@@ -18,10 +18,13 @@ namespace timing {
 
 std::unique_ptr<FSPTracer> FSPTracer::Create(const FSPConfig& config,
                                              SnapshotCallback callback) {
-  if (const FSPAxialConfig* cfg = std::get_if<FSPAxialConfig>(&config.v)) {
-    return std::make_unique<FSPAxialTracer>(*cfg, std::move(callback));
-  } else if (const FSPAreaConfig* cfg = std::get_if<FSPAreaConfig>(&config.v)) {
-    return std::make_unique<FSPAreaTracer>(*cfg, std::move(callback));
+  if (const FSPAxialConfig* cfg = std::get_if<FSPAxialConfig>(&config.cfg_)) {
+    return std::make_unique<FSPAxialTracer>(*cfg, std::move(callback),
+                                            config.flow_id_);
+  } else if (const FSPAreaConfig* cfg =
+                 std::get_if<FSPAreaConfig>(&config.cfg_)) {
+    return std::make_unique<FSPAreaTracer>(*cfg, std::move(callback),
+                                           config.flow_id_);
   } else {
     return nullptr;
   }
