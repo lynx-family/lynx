@@ -1940,7 +1940,7 @@ public class LynxUIOwner {
 
   private void beginFSPTracing() {
     if (mFSPTracer != null) {
-      mFSPTracer.beginTracing(new FSPTracer.CompletionCallback() {
+      mFSPTracer.beginTracing(new FSPTracer.ICompletionCallback() {
         @Override
         public void onComplete(@NonNull FSPResult result) {
           LynxUIOwner.this.onFSPEnd(result);
