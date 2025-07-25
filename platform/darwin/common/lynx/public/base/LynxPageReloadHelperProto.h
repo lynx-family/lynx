@@ -80,7 +80,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onReceiveTemplateFragment:(NSString *)fragment withEof:(BOOL)eof;
 - (void)navigateLynxView:(nonnull NSString *)url;
 
-- (void)setTextLable:(NSInteger)label;
+- (void)setTextLabel:(NSInteger)label;
 - (void)removeTextLabel;
 - (void)popTextLabel;
 
