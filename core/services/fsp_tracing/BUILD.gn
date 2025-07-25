@@ -1,0 +1,27 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("../../Lynx.gni")
+
+fsp_tracing_shared_sources = []
+
+if (!is_android) {
+  fsp_tracing_shared_sources += [
+    "area/fsp_area_tracer_impl.cc",
+    "area/fsp_area_tracer_impl.h",
+    "axial/fsp_axial_tracer_impl.cc",
+    "axial/fsp_axial_tracer_impl.h",
+    "base/fsp_snapshot.h",
+    "base/fsp_tracer_impl.h",
+    "fsp_config.h",
+    "fsp_tracer.cc",
+    "fsp_tracer.h",
+  ]
+}
+
+lynx_core_source_set("fsp_tracing") {
+  sources = fsp_tracing_shared_sources
+  deps = [ "../../../base/src:base" ]
+}
