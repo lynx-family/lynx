@@ -6,6 +6,7 @@ import("../Lynx.gni")
 
 lynx_core_source_set("public") {
   sources = [
+    "box_model.h",
     "devtool/lynx_devtool_proxy.h",
     "devtool/lynx_inspector_owner.h",
     "jsb/lynx_module_callback.h",

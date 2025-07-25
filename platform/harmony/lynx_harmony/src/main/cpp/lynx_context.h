@@ -23,6 +23,7 @@
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/perf_controller_proxy.h"
+#include "core/public/ui_delegate.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/base/tasm_constants.h"
 #include "core/services/fluency/harmony/fluency_trace_helper_harmony.h"
@@ -75,6 +76,10 @@ class LynxContext {
     std::unique_lock<std::shared_mutex> guard(embedder_shared_mutex_);
     embedder_ = nullptr;
   }
+
+  void TakeScreenShot(size_t max_width, size_t max_height, int quality,
+                      const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
+                      TakeSnapshotCompletedCallback callback);
 
   void ResetUIOwner() { ui_owner_ = nullptr; }
 
