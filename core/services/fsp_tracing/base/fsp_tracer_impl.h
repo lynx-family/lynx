@@ -7,10 +7,14 @@
 
 #include <array>
 #include <memory>
+#include <string>
 #include <utility>
 
+#include "base/include/string/string_utils.h"
+#include "base/trace/native/trace_event.h"
 #include "core/services/fsp_tracing/base/fsp_snapshot.h"
 #include "core/services/fsp_tracing/fsp_config.h"
+#include "core/services/fsp_tracing/fsp_trace_event_def.h"
 #include "core/services/fsp_tracing/fsp_tracer.h"
 
 namespace lynx {
@@ -20,8 +24,9 @@ namespace timing {
 template <class Derived, class Config>
 class FSPTracerImpl : public FSPTracer {
  public:
-  FSPTracerImpl(const Config& config, FSPTracer::SnapshotCallback callback)
-      : FSPTracer(std::move(callback)), config_(config) {}
+  FSPTracerImpl(const Config& config, FSPTracer::SnapshotCallback callback,
+                uint64_t flow_id = 0)
+      : FSPTracer(std::move(callback)), config_(config), flow_id_(flow_id) {}
 
   FSPTracerImpl(const FSPTracerImpl&) = delete;
   FSPTracerImpl& operator=(const FSPTracerImpl&) = delete;
@@ -29,14 +34,56 @@ class FSPTracerImpl : public FSPTracer {
   FSPTracerImpl(FSPTracerImpl&&) = delete;
   FSPTracerImpl& operator=(FSPTracerImpl&&) = delete;
 
-  std::optional<FSPResult> CaptureSnapshot(
-      lynx::base::geometry::IntSize container_size) override {
-    return static_cast<Derived*>(this)->CaptureSnapshotImpl(
+  FSPResult CaptureSnapshot(lynx::base::geometry::IntSize container_size,
+                            uint64_t snapshot_flow_id = 0) override {
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY_FSP, FSP_TRACER_CAPTURE_SNAPSHOT,
+        [&](lynx::perfetto::EventContext ctx) {
+          auto instance_flow_id = this->flow_id_;
+          if (instance_flow_id != 0) {
+            ctx.event()->add_flow_ids(instance_flow_id);
+          }
+
+          if (snapshot_flow_id != 0) {
+            ctx.event()->add_flow_ids(snapshot_flow_id);
+          }
+
+          auto* debug = ctx.event()->add_debug_annotations();
+          debug->set_name(FSP_DEBUG_SIZE);
+          debug->set_string_value(base::FormatString(
+              "%dx%d", container_size.Width(), container_size.Height()));
+        });
+
+    auto result = static_cast<Derived*>(this)->CaptureSnapshotImpl(
         SwapCurrentSnapshot(), container_size);
+    return result;
   }
 
-  void FillSnapshot(FSPSnapshot& snapshot,
-                    const FSPContentInfo& content_info) override {
+  void FillSnapshot(FSPSnapshot& snapshot, const FSPContentInfo& content_info,
+                    uint64_t snapshot_flow_id = 0) override {
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY_FSP, FSP_TRACER_FILL_SNAPSHOT,
+        [&](lynx::perfetto::EventContext ctx) {
+          auto instance_flow_id = this->flow_id_;
+          if (instance_flow_id != 0) {
+            ctx.event()->add_flow_ids(instance_flow_id);
+          }
+
+          if (snapshot_flow_id != 0) {
+            ctx.event()->add_flow_ids(snapshot_flow_id);
+          }
+
+          auto* debug = ctx.event()->add_debug_annotations();
+          debug->set_name(FSP_DEBUG_RECT);
+          debug->set_string_value(base::FormatString(
+              "[%d,%d %dx%d]", content_info.rect.X(), content_info.rect.Y(),
+              content_info.rect.Width(), content_info.rect.Height()));
+
+          auto* debug2 = ctx.event()->add_debug_annotations();
+          debug2->set_name(FSP_DEBUG_UI_SIGN);
+          debug2->set_int_value(content_info.ui_sign);
+        });
+
     assert(std::addressof(snapshot) == current_snapshot_.get());
     if (current_snapshot_) {
       static_cast<Derived*>(this)->FillSnapshotImpl(*current_snapshot_,
@@ -48,6 +95,7 @@ class FSPTracerImpl : public FSPTracer {
 
  protected:
   Config config_;
+  uint64_t flow_id_;
 
   std::unique_ptr<FSPSnapshot> current_snapshot_{nullptr};
   std::unique_ptr<FSPSnapshot> previous_snapshot_{nullptr};
