@@ -14,6 +14,7 @@
 #import <Lynx/LynxShadowNode.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxSubErrorCode.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>
 #import <Lynx/LynxUIReportInfoDelegate.h>
@@ -29,6 +30,10 @@
 
 @implementation LynxUIContext {
   BOOL _isDev;
+  BOOL _isFSPTracing;
+  BOOL _hasPendingMeaningfulContentChanges;
+  BOOL _hasPendingMeaningfulContentLoading;
+  NSTimeInterval _lastMeaningfulContentChangeTimestamp;
 }
 
 - (instancetype)initWithScreenMetrics:(LynxScreenMetrics*)screenMetrics {
@@ -199,6 +204,38 @@
     return;
   }
   [[self intersectionManager] removeAttachedIntersectionObserver:ui];
+}
+
+#pragma mark - First Stable Paint
+
+- (BOOL)isFSPTracing {
+  return _isFSPTracing;
+}
+
+- (BOOL)setFSPTracing:(BOOL)isFSPTracing {
+  bool temp = _isFSPTracing;
+  _isFSPTracing = isFSPTracing;
+  return temp;
+}
+
+- (BOOL)checkPendingMeaningfulContentChanges {
+  BOOL temp = _hasPendingMeaningfulContentChanges;
+  _hasPendingMeaningfulContentChanges = NO;
+  return temp;
+}
+
+- (BOOL)checkPendingMeaningfulContentLoading {
+  BOOL temp = _hasPendingMeaningfulContentLoading;
+  _hasPendingMeaningfulContentLoading = NO;
+  return temp;
+}
+
+- (void)markMeaningfulContentChange {
+  _hasPendingMeaningfulContentChanges = true;
+}
+
+- (void)markMeaningfulContentLoading {
+  _hasPendingMeaningfulContentLoading = true;
 }
 
 #pragma mark - Page configs
