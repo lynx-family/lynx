@@ -44,6 +44,16 @@ NS_ASSUME_NONNULL_BEGIN
                            type:(NSString *)type;
 - (void)reportLynxError:(LynxError *)error;
 
+// The following FSP related methods are thread-safe.
+- (BOOL)isFSPTracing;
+- (BOOL)setFSPTracing:(BOOL)tracing;
+
+- (void)markMeaningfulContentChange;
+- (void)markMeaningfulContentLoading;
+
+- (BOOL)checkPendingMeaningfulContentChanges;
+- (BOOL)checkPendingMeaningfulContentLoading;
+
 - (int32_t)instanceId;
 
 @end
