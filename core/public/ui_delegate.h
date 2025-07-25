@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/fml/task_runner.h"
+#include "core/public/box_model.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/public/layout_ctx_platform_impl.h"
 #include "core/public/lynx_engine_proxy.h"
@@ -17,27 +18,9 @@
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/painting_ctx_platform_impl.h"
 #include "core/public/perf_controller_proxy.h"
+
 namespace lynx {
 namespace tasm {
-
-enum BoxModelOffset {
-  PAD_LEFT,
-  PAD_TOP,
-  PAD_RIGHT,
-  PAD_BOTTOM,
-  BORDER_LEFT,
-  BORDER_TOP,
-  BORDER_RIGHT,
-  BORDER_BOTTOM,
-  MARGIN_LEFT,
-  MARGIN_TOP,
-  MARGIN_RIGHT,
-  MARGIN_BOTTOM,
-  LAYOUT_LEFT,
-  LAYOUT_TOP,
-  LAYOUT_RIGHT,
-  LAYOUT_BOTTOM
-};
 using TakeSnapshotCompletedCallback =
     std::function<void(const std::string&, float timestamp, float device_width,
                        float device_height, float page_scale_factor)>;

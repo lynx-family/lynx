@@ -9,8 +9,10 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
+#include "core/public/ui_delegate.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_prop_bundle_harmony.h"
 
 namespace lynx {
@@ -48,6 +50,12 @@ class BASE_EXPORT PubUIOwner {
   int GetUINodeByPosition(float x, float y) const;
   std::string GetTag(int sign) const;
   int32_t GetTagInfo(const std::string& tag) const;
+
+  void FetchTransformValue(int id,
+                           const std::vector<float>& pad_border_margin_layout,
+                           std::vector<float>& res);
+  void TakeSnapshot(size_t max_width, size_t max_height, int quality,
+                    const TakeSnapshotCompletedCallback& callback);
 
  private:
   std::shared_ptr<UIOwner> ui_owner_;
