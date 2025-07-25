@@ -221,6 +221,10 @@ group("lynx_native") {
     "services/timing_handler:timing_handler",
   ]
 
+  if (is_ios) {
+    deps += [ "services/fsp_tracing:fsp_tracing" ]
+  }
+
   if (is_ios || is_android) {
     deps += [ "parser" ]
   }
