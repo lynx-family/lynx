@@ -1187,6 +1187,10 @@ public interface com::lynx::react::bridge::mapbuffer::CompactArrayBuffer {
   public String com.lynx.react.bridge.mapbuffer.CompactArrayBuffer.getString(int index);
 }
 
+public interface com::lynx::tasm::performance::fsptracing::FSPTracer::CompletionCallback {
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.CompletionCallback.onComplete(@NonNull FSPResult result);
+}
+
 public interface com::lynx::tasm::behavior::ImageInterceptor::CompletionHandler {
   public void com.lynx.tasm.behavior.ImageInterceptor.CompletionHandler.imageLoadCompletion(@Nullable Object image, @Nullable Throwable throwable);
 }
@@ -1791,6 +1795,122 @@ public interface com::lynx::tasm::behavior::ForegroundListener {
   public void com.lynx.tasm.behavior.ForegroundListener.onLynxViewEnterBackground();
 }
 
+public class com::lynx::tasm::performance::fsptracing::area::FSPAreaConfig : com.lynx.tasm.performance.fsptracing.FSPConfig {
+  public double com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.getMinimumDiffIntervalMs();
+  public FSPAreaConfig com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.setMinimumDiffIntervalMs(double value);
+  public double com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.getAcceptableDifferencePerMs();
+  public FSPAreaConfig com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.setAcceptableDifferencePerMs(double value);
+  public double com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.getAcceptableDifferencePerSnapshot();
+  public FSPAreaConfig com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.setAcceptableDifferencePerSnapshot(double value);
+  public double com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.getMinimumCompletionRate();
+  public FSPAreaConfig com.lynx.tasm.performance.fsptracing.area.FSPAreaConfig.setMinimumCompletionRate(double value);
+}
+
+public class com::lynx::tasm::performance::fsptracing::area::FSPAreaSnapshot : com.lynx.tasm.performance.fsptracing.FSPSnapshot {
+  public final int com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.X_PROJECTIONS_LEN X_PROJECTIONS_LEN;
+  public final int com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.Y_PROJECTIONS_LEN Y_PROJECTIONS_LEN;
+  public final int com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.PROJECTIONS_LEN PROJECTIONS_LEN;
+  public com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.FSPAreaSnapshot();
+  public BitSet com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.getProjections();
+  public int com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.getProjectionArea();
+  public void com.lynx.tasm.performance.fsptracing.area.FSPAreaSnapshot.setProjectionArea(int projectionArea);
+}
+
+public class com::lynx::tasm::performance::fsptracing::area::FSPAreaTracerImpl : com.lynx.tasm.performance.fsptracing.IFSPTracerImpl {
+  public com.lynx.tasm.performance.fsptracing.area.FSPAreaTracerImpl.FSPAreaTracerImpl(FSPAreaConfig config);
+  public FSPSnapshot com.lynx.tasm.performance.fsptracing.area.FSPAreaTracerImpl.createSnapshot();
+  public void com.lynx.tasm.performance.fsptracing.area.FSPAreaTracerImpl.fillSnapshot(@NonNull FSPSnapshot snapshot, @NonNull FSPContentInfo contentInfo);
+  public boolean com.lynx.tasm.performance.fsptracing.area.FSPAreaTracerImpl.diffSnapshots(@NonNull FSPSnapshot current, FSPSnapshot previous);
+  public ArrayList< String > com.lynx.tasm.performance.fsptracing.area.FSPAreaTracerImpl.inspectSnapshot(@NonNull FSPSnapshot current, FSPSnapshot previous);
+}
+
+public class com::lynx::tasm::performance::fsptracing::axial::FSPAxialConfig : com.lynx.tasm.performance.fsptracing.FSPConfig {
+  public double com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.getMinimumDiffIntervalMs();
+  public FSPAxialConfig com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.setMinimumDiffIntervalMs(double value);
+  public double com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.getAcceptablePixelDifferencePerMs();
+  public FSPAxialConfig com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.setAcceptablePixelDifferencePerMs(double value);
+  public double com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.getAcceptablePixelDifferencePerSnapshot();
+  public FSPAxialConfig com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.setAcceptablePixelDifferencePerSnapshot(double value);
+  public double com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.getMinimumCompletionRateX();
+  public FSPAxialConfig com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.setMinimumCompletionRateX(double value);
+  public double com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.getMinimumCompletionRateY();
+  public FSPAxialConfig com.lynx.tasm.performance.fsptracing.axial.FSPAxialConfig.setMinimumCompletionRateY(double value);
+}
+
+public class com::lynx::tasm::performance::fsptracing::axial::FSPAxialSnapshot : com.lynx.tasm.performance.fsptracing.FSPSnapshot {
+  public final int com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.X_PROJECTIONS_LEN X_PROJECTIONS_LEN;
+  public final int com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.Y_PROJECTIONS_LEN Y_PROJECTIONS_LEN;
+  public com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.FSPAxialSnapshot();
+  public BitSet com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.getXProjections();
+  public BitSet com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.getYProjections();
+  public int com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.getProjectionWidth();
+  public int com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.getProjectionHeight();
+  public void com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.setProjectionWidth(int projectionWidth);
+  public void com.lynx.tasm.performance.fsptracing.axial.FSPAxialSnapshot.setProjectionHeight(int projectionHeight);
+}
+
+public class com::lynx::tasm::performance::fsptracing::axial::FSPAxialTracerImpl : com.lynx.tasm.performance.fsptracing.IFSPTracerImpl {
+  public com.lynx.tasm.performance.fsptracing.axial.FSPAxialTracerImpl.FSPAxialTracerImpl(@NonNull FSPAxialConfig config);
+  public FSPSnapshot com.lynx.tasm.performance.fsptracing.axial.FSPAxialTracerImpl.createSnapshot();
+  public void com.lynx.tasm.performance.fsptracing.axial.FSPAxialTracerImpl.fillSnapshot(@NonNull FSPSnapshot snapshot, @NonNull FSPContentInfo contentInfo);
+  public boolean com.lynx.tasm.performance.fsptracing.axial.FSPAxialTracerImpl.diffSnapshots(@NonNull FSPSnapshot current, FSPSnapshot previous);
+  public ArrayList< String > com.lynx.tasm.performance.fsptracing.axial.FSPAxialTracerImpl.inspectSnapshot(@NonNull FSPSnapshot current, FSPSnapshot previous);
+}
+
+public class com::lynx::tasm::performance::fsptracing::FSPConfig : Cloneable {
+  public double com.lynx.tasm.performance.fsptracing.FSPConfig.getSnapshotInterval();
+  public FSPConfig com.lynx.tasm.performance.fsptracing.FSPConfig.setSnapshotInterval(double value);
+  public double com.lynx.tasm.performance.fsptracing.FSPConfig.getHardTimeout();
+  public FSPConfig com.lynx.tasm.performance.fsptracing.FSPConfig.setHardTimeout(double value);
+  public double com.lynx.tasm.performance.fsptracing.FSPConfig.getGracefulTimeout();
+  public FSPConfig com.lynx.tasm.performance.fsptracing.FSPConfig.setGracefulTimeout(double value);
+  public double com.lynx.tasm.performance.fsptracing.FSPConfig.getExtendedGracefulTimeout();
+  public FSPConfig com.lynx.tasm.performance.fsptracing.FSPConfig.setExtendedGracefulTimeout(double value);
+  public FSPConfig com.lynx.tasm.performance.fsptracing.FSPConfig.clone();
+}
+
+public class com::lynx::tasm::performance::fsptracing::FSPContentInfo :  {
+  public com.lynx.tasm.performance.fsptracing.FSPContentInfo.FSPContentInfo(int uiSign, long changeTimestampNs, Rect rect);
+  public int com.lynx.tasm.performance.fsptracing.FSPContentInfo.getUiSign();
+  public long com.lynx.tasm.performance.fsptracing.FSPContentInfo.getChangeTimestampNs();
+  public Rect com.lynx.tasm.performance.fsptracing.FSPContentInfo.getRect();
+}
+
+public class com::lynx::tasm::performance::fsptracing::FSPResult :  {
+  public final int com.lynx.tasm.performance.fsptracing.FSPResult.UNKNOWN_UI_SIGN UNKNOWN_UI_SIGN;
+  public com.lynx.tasm.performance.fsptracing.FSPResult.FSPResult();
+  public com.lynx.tasm.performance.fsptracing.FSPResult.FSPResult(boolean success, int lastUISign, long lastChangeTimestampNs, int contentWidth, int contentHeight);
+  public boolean com.lynx.tasm.performance.fsptracing.FSPResult.isSuccess();
+  public void com.lynx.tasm.performance.fsptracing.FSPResult.setSuccess(boolean success);
+  public int com.lynx.tasm.performance.fsptracing.FSPResult.getLastUISign();
+  public long com.lynx.tasm.performance.fsptracing.FSPResult.getLastChangeTimestampNs();
+  public long com.lynx.tasm.performance.fsptracing.FSPResult.getLastChangeTimestampMs();
+  public int com.lynx.tasm.performance.fsptracing.FSPResult.getContentWidth();
+  public int com.lynx.tasm.performance.fsptracing.FSPResult.getContentHeight();
+}
+
+public class abstract com::lynx::tasm::performance::fsptracing::FSPSnapshot :  {
+  public int com.lynx.tasm.performance.fsptracing.FSPSnapshot.getLastChangeUISign();
+  public long com.lynx.tasm.performance.fsptracing.FSPSnapshot.getLastChangeTimestampNs();
+  public int com.lynx.tasm.performance.fsptracing.FSPSnapshot.getContainerWidth();
+  public int com.lynx.tasm.performance.fsptracing.FSPSnapshot.getContainerHeight();
+  public FSPResult com.lynx.tasm.performance.fsptracing.FSPSnapshot.getResult();
+  public void com.lynx.tasm.performance.fsptracing.FSPSnapshot.reset();
+  public void com.lynx.tasm.performance.fsptracing.FSPSnapshot.setContainerSize(int containerWidth, int containerHeight);
+  public void com.lynx.tasm.performance.fsptracing.FSPSnapshot.updateTimestamp(long changeTimestampNs, int uiSign);
+}
+
+public class com::lynx::tasm::performance::fsptracing::FSPTracer :  {
+  public static boolean com.lynx.tasm.performance.fsptracing.FSPTracer.isEnabled();
+  public static void com.lynx.tasm.performance.fsptracing.FSPTracer.setEnabled(boolean enabled, @Nullable FSPConfig config);
+  public static FSPTracer com.lynx.tasm.performance.fsptracing.FSPTracer.create(@NonNull LynxContext context);
+  public com.lynx.tasm.performance.fsptracing.FSPTracer.FSPTracer(FSPConfig config, LynxContext context, IFSPTracerImpl tracerImpl);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.beginTracing(CompletionCallback callback);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.stopTracing(StopReason reason);
+  public ArrayList< String > com.lynx.tasm.performance.fsptracing.FSPTracer.inspectCurrentSnapshot();
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.setObserverCallback(ObserverCallback callback);
+}
+
 public class com::lynx::tasm::behavior::ui::list::GapItemDecoration : RecyclerView.ItemDecoration {
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state);
   public void com.lynx.tasm.behavior.ui.list.GapItemDecoration.setIsRTL(boolean isRTL);
@@ -2059,6 +2179,13 @@ public interface com::lynx::tasm::IDynamicHandler {
 
 public interface com::lynx::tasm::fluency::LynxFpsTracer::IFluencyCallback {
   public void com.lynx.tasm.fluency.LynxFpsTracer.IFluencyCallback.report(LynxFpsRawMetrics rawMetrics);
+}
+
+public interface com::lynx::tasm::performance::fsptracing::IFSPTracerImpl {
+  public FSPSnapshot com.lynx.tasm.performance.fsptracing.IFSPTracerImpl.createSnapshot();
+  public boolean com.lynx.tasm.performance.fsptracing.IFSPTracerImpl.diffSnapshots(@NonNull FSPSnapshot current, FSPSnapshot previous);
+  public void com.lynx.tasm.performance.fsptracing.IFSPTracerImpl.fillSnapshot(@NonNull FSPSnapshot snapshot, @NonNull FSPContentInfo contentInfo);
+  public ArrayList< String > com.lynx.tasm.performance.fsptracing.IFSPTracerImpl.inspectSnapshot(@NonNull FSPSnapshot current, FSPSnapshot previous);
 }
 
 public interface com::lynx::tasm::IListNodeInfoFetcher {
@@ -3733,6 +3860,11 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.initialPropsFlushed(String initialPropKey, String cacheKey);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setInitialPropsHasFlushed(String initialPropKey, String cacheKey);
   public LynxBaseUI com.lynx.tasm.behavior.ui.LynxBaseUI.clone();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setMeaningfulContentStatus(MeaningfulContentStatus status);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setMeaningfulContentStatus(MeaningfulContentStatus status, Rect rect);
+  public MeaningfulContentStatus com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentStatus();
+  public Rect com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentRect();
+  public long com.lynx.tasm.behavior.ui.LynxBaseUI.getMeaningfulContentChangeTimestampNs();
   public GestureArenaManager com.lynx.tasm.behavior.ui.LynxBaseUI.getGestureArenaManager();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setGestureDetectorState(int gestureId, int state);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.consumeGesture(int gestureId, ReadableMap params);
@@ -4149,6 +4281,12 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public Map< String, LynxExtensionModule > com.lynx.tasm.behavior.LynxContext.getExtensionModules();
   public void com.lynx.tasm.behavior.LynxContext.setEnableVSyncAligned(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableVSyncAligned();
+  public boolean com.lynx.tasm.behavior.LynxContext.isTracingFSP();
+  public boolean com.lynx.tasm.behavior.LynxContext.setTracingFSP(boolean isTracingFSP);
+  public void com.lynx.tasm.behavior.LynxContext.markMeaningfulContentChange();
+  public boolean com.lynx.tasm.behavior.LynxContext.checkPendingMeaningfulContentChanges();
+  public void com.lynx.tasm.behavior.LynxContext.markMeaningfulContentLoading();
+  public boolean com.lynx.tasm.behavior.LynxContext.checkPendingMeaningfulContentLoading();
 }
 
 public class com::lynx::jsbridge::LynxContextModule : com.lynx.jsbridge.LynxModule {
@@ -4450,6 +4588,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.FORCE_LAYOUT_ON_BACKGROUND_THREAD FORCE_LAYOUT_ON_BACKGROUND_THREAD;
   public com.lynx.tasm.LynxEnvKey.ENABLE_REPORT_CREATE_ASYNC_TAG ENABLE_REPORT_CREATE_ASYNC_TAG;
   public com.lynx.tasm.LynxEnvKey.ENABLE_SVG_ASYNC ENABLE_SVG_ASYNC;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_FIRST_STABLE_PAINT ENABLE_FIRST_STABLE_PAINT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_EVENT_REPORT ENABLE_IMAGE_EVENT_REPORT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_LAYOUT ENABLE_IMAGE_ASYNC_LAYOUT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_IMAGE_ASYNC_REDIRECT ENABLE_IMAGE_ASYNC_REDIRECT;
@@ -4490,6 +4629,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_CDP_DOMAIN_DOM SP_KEY_ENABLE_CDP_DOMAIN_DOM;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_CDP_DOMAIN_CSS SP_KEY_ENABLE_CDP_DOMAIN_CSS;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
+  public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_TIMING_OVERLAY SP_KEY_ENABLE_TIMING_OVERLAY;
   public com.lynx.tasm.LynxEnvKey.LynxEnvKey(String description);
   public String com.lynx.tasm.LynxEnvKey.getDescription();
 }
@@ -6248,6 +6388,9 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public int com.lynx.tasm.behavior.LynxUIOwner.getRootSign();
   public void com.lynx.tasm.behavior.LynxUIOwner.reportCreateAsyncSuccessEvent(int sign, String tagName, boolean isSuccess, int status);
   public void com.lynx.tasm.behavior.LynxUIOwner.reportCreateViewConfig(int sign, String tagName, boolean createAsync);
+  public FSPTracer com.lynx.tasm.behavior.LynxUIOwner.getFSPTracer();
+  public void com.lynx.tasm.behavior.LynxUIOwner.cancelFSPTracingOnTouch();
+  public Collection< LynxBaseUI > com.lynx.tasm.behavior.LynxUIOwner.getAllUIs();
   public void com.lynx.tasm.behavior.LynxUIOwner.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.behavior.LynxUIOwner.dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer valueArray);
   public float[] com.lynx.tasm.behavior.LynxUIOwner.measureText(int sign, float width, int widthMode, float height, int heightMode);
@@ -6713,6 +6856,14 @@ public class com::lynx::tasm::utils::MatrixMathUtils :  {
   public static double com.lynx.tasm.utils.MatrixMathUtils.degreesToRadians(double degrees);
 }
 
+public enum com::lynx::tasm::behavior::ui::MeaningfulContentStatus {
+  public com.lynx.tasm.behavior.ui.MeaningfulContentStatus.NONE NONE;
+  public com.lynx.tasm.behavior.ui.MeaningfulContentStatus.LOADING LOADING;
+  public com.lynx.tasm.behavior.ui.MeaningfulContentStatus.LOADED LOADED;
+  public com.lynx.tasm.behavior.ui.MeaningfulContentStatus.MeaningfulContentStatus(int value);
+  public int com.lynx.tasm.behavior.ui.MeaningfulContentStatus.getValue();
+}
+
 public class com::lynx::tasm::behavior::shadow::MeasureContext :  {
 }
 
@@ -7077,6 +7228,13 @@ public class com::lynx::tasm::common::NullableConcurrentHashMap : ConcurrentHash
   public void com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.putAll(@NonNull Map<? extends K, ? extends V > m);
   public V com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.get(@NonNull Object key);
   public Set< Entry< K, V > > com.lynx.tasm.common.NullableConcurrentHashMap< K, V >.entrySet();
+}
+
+public interface com::lynx::tasm::performance::fsptracing::FSPTracer::ObserverCallback {
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onStart();
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onBecomeStable(boolean stable, @NonNull FSPResult result);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.onStop(@NonNull StopReason reason, @NonNull FSPResult result);
+  public void com.lynx.tasm.performance.fsptracing.FSPTracer.ObserverCallback.willStartGracefulTimeout(double timeout);
 }
 
 public class com::lynx::tasm::base::OnceTask : Runnable {
@@ -8409,6 +8567,12 @@ public class com::lynx::tasm::behavior::shadow::text::StaticLayoutCompat :  {
 public class com::lynx::tasm::behavior::ui::LynxBaseUI::Sticky : RectF {
 }
 
+public enum com::lynx::tasm::performance::fsptracing::FSPTracer::StopReason {
+  public com.lynx.tasm.performance.fsptracing.FSPTracer.StopReason.SUCCESS SUCCESS;
+  public com.lynx.tasm.performance.fsptracing.FSPTracer.StopReason.USER_INTERACTION USER_INTERACTION;
+  public com.lynx.tasm.performance.fsptracing.FSPTracer.StopReason.TIMEDOUT TIMEDOUT;
+}
+
 public interface com::lynx::tasm::resourceprovider::generic::StreamDelegate {
   public void com.lynx.tasm.resourceprovider.generic.StreamDelegate.onStart(int contentOffset);
   public void com.lynx.tasm.resourceprovider.generic.StreamDelegate.onData(byte[] bytes, int offset, int length);
@@ -8999,6 +9163,7 @@ public class com::lynx::tasm::TimingHandler :  {
   public final String com.lynx.tasm.TimingHandler.CONTAINER_INIT_END CONTAINER_INIT_END;
   public final String com.lynx.tasm.TimingHandler.PREPARE_TEMPLATE_START PREPARE_TEMPLATE_START;
   public final String com.lynx.tasm.TimingHandler.PREPARE_TEMPLATE_END PREPARE_TEMPLATE_END;
+  public final String com.lynx.tasm.TimingHandler.FSP_END FSP_END;
 }
 
 public class com::lynx::tasm::performance::TimingOption :  {
@@ -9165,6 +9330,17 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY_PAINT_END TIMING_KEY_PAINT_END;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_TIMING MARK_TIMING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.MARK_HOST_PLATFORM_TIMING MARK_HOST_PLATFORM_TIMING;
+}
+
+public class com::lynx::tasm::performance::fsptracing::TraceEventDef :  {
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.CATEGORY CATEGORY;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_CREATE FSP_TRACER_CREATE;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_BEGIN_TRACING FSP_TRACER_BEGIN_TRACING;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_STOP_TRACING FSP_TRACER_STOP_TRACING;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_CAPTURE_SNAPSHOT FSP_TRACER_CAPTURE_SNAPSHOT;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_UPDATE_SNAPSHOT FSP_TRACER_UPDATE_SNAPSHOT;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_IMPL_DIFF_SNAPSHOTS FSP_TRACER_IMPL_DIFF_SNAPSHOTS;
+  public final String com.lynx.tasm.performance.fsptracing.TraceEventDef.FSP_TRACER_IMPL_INSPECT_SNAPSHOT FSP_TRACER_IMPL_INSPECT_SNAPSHOT;
 }
 
 public class com::lynx::tasm::behavior::ui::utils::TransformOrigin :  {
@@ -9337,6 +9513,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxAccessibilityWrapper(LynxAccessibilityWrapper wrapper);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.requestLayout();
   public long com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getMeaningfulPaintTiming();
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.notifyFSP(long timestampMs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setTimingCollector(ITimingCollector timingCollector);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setInstanceId(int instanceId);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setChildrenDrawingOrderEnabled(boolean enabled);
@@ -9862,6 +10039,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y);
   public EventTarget com.lynx.tasm.behavior.ui.text.UIText.hitTest(float x, float y, boolean ignoreUserInteraction);
   public void com.lynx.tasm.behavior.ui.text.UIText.updateExtraData(Object data);
+  public void com.lynx.tasm.behavior.ui.text.UIText.afterDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.text.UIText.onNodeReady();
   public CharSequence com.lynx.tasm.behavior.ui.text.UIText.getOriginText();
   public void com.lynx.tasm.behavior.ui.text.UIText.onLayoutUpdated();

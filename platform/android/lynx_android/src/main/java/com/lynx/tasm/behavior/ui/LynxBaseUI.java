@@ -18,6 +18,7 @@ import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
 import android.view.MotionEvent;
@@ -242,6 +243,10 @@ public abstract class LynxBaseUI
   // detection.
   private EnableStatus mEnableExposureUIClip = EnableStatus.Undefined;
 
+  @NonNull private Rect mMeaningfulContentRect;
+  @NonNull private MeaningfulContentStatus mMeaningfulContentStatus;
+  private volatile long mMeaningfulContentChangeTimestampNs = 0;
+
   private boolean mEnableBitmapGradient;
 
   private int mBorderSpacingIndex;
@@ -427,6 +432,8 @@ public abstract class LynxBaseUI
     mLynxBackground.setFontSize(mFontSize);
     mLatestSize = new Point();
     mLastSize = new Point();
+    mMeaningfulContentRect = new Rect();
+    mMeaningfulContentStatus = MeaningfulContentStatus.NONE;
 
     initialize();
   }
@@ -3571,6 +3578,58 @@ public abstract class LynxBaseUI
     ui.onNodeReady();
 
     return ui;
+  }
+
+  public void setMeaningfulContentStatus(MeaningfulContentStatus status) {
+    setMeaningfulContentStatus(status, null);
+  }
+
+  public void setMeaningfulContentStatus(MeaningfulContentStatus status, Rect rect) {
+    boolean statusUpdated = false;
+    boolean contentUpdated = false;
+    MeaningfulContentStatus oldStatus = mMeaningfulContentStatus;
+    if (oldStatus != status) {
+      mMeaningfulContentStatus = status;
+      statusUpdated = true;
+      contentUpdated = true;
+    }
+
+    if (mMeaningfulContentRect != null && rect != null) {
+      if (!mMeaningfulContentRect.equals(rect)) {
+        mMeaningfulContentRect = rect;
+        contentUpdated = true;
+      }
+    } else if (mMeaningfulContentRect != rect) {
+      mMeaningfulContentRect = rect;
+      contentUpdated = true;
+    }
+
+    if (mContext != null && mContext.isTracingFSP()) {
+      if (statusUpdated && status == MeaningfulContentStatus.LOADING) {
+        mContext.markMeaningfulContentLoading();
+      }
+
+      if (contentUpdated && status == MeaningfulContentStatus.LOADED) {
+        mMeaningfulContentChangeTimestampNs = SystemClock.elapsedRealtimeNanos();
+        mContext.markMeaningfulContentChange();
+      }
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public MeaningfulContentStatus getMeaningfulContentStatus() {
+    return mMeaningfulContentStatus;
+  }
+
+  @Nullable
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public Rect getMeaningfulContentRect() {
+    return mMeaningfulContentRect;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public long getMeaningfulContentChangeTimestampNs() {
+    return mMeaningfulContentChangeTimestampNs;
   }
 
   @Nullable
