@@ -149,6 +149,8 @@ public class LynxDevtoolEnv {
             new ArrayList<Object>(Arrays.asList(true, false, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_V8,
             new ArrayList<Object>(Arrays.asList(true, true, V8_ALIGN_WITH_PROD)));
+        put(LynxEnvKey.SP_KEY_ENABLE_TIMING_OVERLAY,
+            new ArrayList<Object>(Arrays.asList(false, false, false)));
         put(ENABLE_PERF_METRICS, new ArrayList<Object>(Arrays.asList(false, false, false)));
       }
     };
@@ -600,6 +602,14 @@ public class LynxDevtoolEnv {
 
   public boolean isPreviewScreenShotEnabled() {
     return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT, true);
+  }
+
+  public void enableTimingOverlay(boolean enabled) {
+    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_TIMING_OVERLAY, enabled);
+  }
+
+  public boolean isTimingOverlayEnabled() {
+    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_TIMING_OVERLAY, false);
   }
 
   /**

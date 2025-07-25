@@ -105,6 +105,20 @@ export const highlightTouch = atomWithStorage('highlight', false, {
   removeItem() {},
 });
 
+export const timingOverlay = atomWithStorage('timing-overlay', false, {
+  getItem() {
+    'background-only';
+    return (
+      NativeModules.LynxDevToolSetModule.isTimingOverlayEnabled?.() ?? false
+    );
+  },
+  setItem(_, value) {
+    'background-only';
+    return NativeModules.LynxDevToolSetModule.switchTimingOverlay?.(value);
+  },
+  removeItem() {},
+});
+
 export const v8 = atomWithStorage<V8Enable>('v8', 0, {
   getItem() {
     'background-only';
