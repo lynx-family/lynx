@@ -7,7 +7,6 @@ import static com.lynx.tasm.behavior.StyleConstants.TEXTALIGN_START;
 import static com.lynx.tasm.behavior.StyleConstants.TEXTOVERFLOW_CLIP;
 import static java.util.Arrays.asList;
 
-import android.graphics.Color;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.Layout;
@@ -36,7 +35,6 @@ import com.lynx.tasm.behavior.shadow.MeasureResult;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.shadow.NativeLayoutNodeRef;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
-import com.lynx.tasm.behavior.shadow.text.TextHelper;
 import com.lynx.tasm.fontface.FontFaceManager;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;

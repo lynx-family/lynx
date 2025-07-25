@@ -32,10 +32,7 @@ import static com.lynx.tasm.behavior.StyleConstants.TEXTOVERFLOW_CLIP;
 import static com.lynx.tasm.behavior.StyleConstants.TEXT_DECORATION_LINETHROUGH;
 import static com.lynx.tasm.behavior.StyleConstants.TEXT_DECORATION_NONE;
 import static com.lynx.tasm.behavior.StyleConstants.TEXT_DECORATION_UNDERLINE;
-import static com.lynx.tasm.behavior.StyleConstants.WHITESPACE_NORMAL;
 import static com.lynx.tasm.behavior.StyleConstants.WHITESPACE_NOWRAP;
-import static com.lynx.tasm.behavior.shadow.text.TextAttributes.FIRST_CHAR_RTL_STATE_LTR;
-import static com.lynx.tasm.behavior.shadow.text.TextAttributes.FIRST_CHAR_RTL_STATE_RTL;
 import static com.lynx.tasm.behavior.shadow.text.TextAttributes.INLINE_BLOCK_PLACEHOLDER;
 import static com.lynx.tasm.behavior.shadow.text.TextAttributes.INLINE_IMAGE_PLACEHOLDER;
 import static com.lynx.tasm.behavior.shadow.text.TextAttributes.NOT_SET;
@@ -50,7 +47,6 @@ import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.TextUtils;
 import android.text.style.StyleSpan;
-import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
 import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.ReadableArray;
@@ -74,11 +70,8 @@ import com.lynx.tasm.behavior.ui.background.BackgroundRadialGradientLayer;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.utils.UnicodeFontUtils;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
-import com.lynx.tasm.fontface.FontFaceManager;
-import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import java.lang.reflect.Method;
-import java.text.Bidi;
 import java.util.List;
 import java.util.Set;
 
@@ -135,6 +128,9 @@ public class BaseTextShadowNode extends ShadowNode {
 
   public TextAttributes getTextAttributes() {
     return mTextAttributes;
+  }
+  public void setTextAttributes(TextAttributes attr) {
+    mTextAttributes = attr;
   }
 
   protected boolean isTextRefactorEnabled() {

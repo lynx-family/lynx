@@ -18,6 +18,7 @@
 #include "core/renderer/css/dynamic_css_styles_manager.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
+#include "core/renderer/dom/element_layout_node_manager.h"
 #include "core/renderer/dom/element_vsync_proxy.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -142,83 +143,6 @@ void AirNodeManager::RecordForLepusId(int id, uint64_t key,
 
 #endif
 
-class ElementManager::LayoutNodeManagerForEM : public LayoutNodeManager {
- public:
-  explicit LayoutNodeManagerForEM(const ElementManager &element_manager)
-      : element_manager_(element_manager) {}
-  ~LayoutNodeManagerForEM() override = default;
-
-  void SetMeasureFunc(int32_t id,
-                      std::unique_ptr<MeasureFunc> measure_func) override {
-    // TODO: implement this after adding customized layout wrapper
-  }
-
-  void MarkDirtyAndRequestLayout(int32_t id) override {
-    auto *element = GetFiberElement(id);
-    if (element) {
-      element->MarkLayoutDirty();
-    }
-  }
-
-  void MarkDirtyAndForceLayout(int32_t id) override {
-    auto *element = GetFiberElement(id);
-    if (element) {
-      element->MarkLayoutDirty();
-    }
-  }
-
-  bool IsDirty(int32_t id) override { return false; }
-
-  FlexDirection GetFlexDirection(int32_t id) override {
-    return FlexDirection::kRow;
-  }
-
-  float GetWidth(int32_t id) override { return 0; }
-
-  float GetHeight(int32_t id) override { return 0; }
-
-  float GetMinWidth(int32_t id) override { return 0; }
-
-  float GetMaxWidth(int32_t id) override { return 0; }
-
-  float GetMinHeight(int32_t id) override { return 0; }
-
-  float GetMaxHeight(int32_t id) override { return 0; }
-
-  float GetPaddingLeft(int32_t id) override { return 0; }
-
-  float GetPaddingTop(int32_t id) override { return 0; }
-
-  float GetPaddingRight(int32_t id) override { return 0; }
-
-  float GetPaddingBottom(int32_t id) override { return 0; }
-
-  float GetMarginLeft(int32_t id) override { return 0; }
-
-  float GetMarginTop(int32_t id) override { return 0; }
-
-  float GetMarginRight(int32_t id) override { return 0; }
-
-  float GetMarginBottom(int32_t id) override { return 0; }
-
-  LayoutResult UpdateMeasureByPlatform(int32_t id, float width,
-                                       int32_t width_mode, float height,
-                                       int32_t height_mode,
-                                       bool final_measure) override {
-    return LayoutResult();
-  }
-
-  void AlignmentByPlatform(int32_t id, float offset_top,
-                           float offset_left) override {}
-
- private:
-  FiberElement *GetFiberElement(int32_t id) const {
-    return reinterpret_cast<FiberElement *>(
-        element_manager_.node_manager_->Get(id));
-  }
-  const ElementManager &element_manager_;
-};
-
 ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
     Delegate *delegate, const LynxEnvConfig &lynx_env_config,
@@ -265,7 +189,7 @@ ElementManager::ElementManager(
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   if (platform_layout_context_) {
-    layout_node_manager_ = std::make_unique<LayoutNodeManagerForEM>(*this);
+    layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
   }
 }
@@ -280,6 +204,9 @@ static bool EnableElementStatistic() {
 ElementManager::~ElementManager() {
   ReportElementStatistic();
   WillDestroy();
+  if (platform_layout_context_) {
+    platform_layout_context_->Destroy();
+  }
 }
 
 void ElementManager::ReportElementStatistic() {
@@ -566,6 +493,9 @@ PipelineLayoutData ElementManager::RequestLayout(
 
   // TODO(songshourui.null): we can optimize the performance here within
   // checking layout dirty.
+  if (layout_node_manager_) {
+    layout_node_manager_->DestroyPlatformLayoutNodes();
+  }
   if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
@@ -984,6 +914,9 @@ void ElementManager::RemoveLayoutNode(int32_t parent_id, int32_t child_id) {
   delegate_->RemoveLayoutNode(parent_id, child_id);
 }
 void ElementManager::DestroyLayoutNode(int32_t id) {
+  if (layout_node_manager_) {
+    layout_node_manager_->DestroyLayoutNode(id);
+  }
   delegate_->DestroyLayoutNode(id);
 }
 

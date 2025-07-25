@@ -33,6 +33,7 @@
 namespace lynx {
 namespace tasm {
 class NodeManager;
+class PlatformLayoutFunctionWrapper;
 using ParallelFlushReturn = base::closure;
 using ParallelReduceTaskQueue =
     std::list<base::OnceTaskRefptr<ParallelFlushReturn>>;
@@ -947,6 +948,7 @@ class FiberElement : public Element,
 
   lepus::Value GetEventControlInfo(const std::string& event_type,
                                    bool is_global = false) override;
+  void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
@@ -1009,11 +1011,13 @@ class FiberElement : public Element,
   void SetAlignmentFunc(void* context,
                         starlight::SLAlignmentFunc alignment_func);
 
-  virtual void OnLayoutObjectCreated() {}
+  virtual void OnLayoutObjectCreated();
 
  private:
   friend class WrapperElement;
   friend class ComponentElement;
+
+  std::unique_ptr<PlatformLayoutFunctionWrapper> customized_layout_node_;
 
   inline void MarkPlatformNodeDestroyed();
 
@@ -1083,7 +1087,7 @@ class FiberElement : public Element,
 
   void EnsureSLNode();
 
-  virtual void DispatchLayoutBefore(){};
+  virtual void DispatchLayoutBefore();
 
   // relevant to hierarchy
   base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>

@@ -31,6 +31,7 @@
 #include "core/renderer/dom/fiber/image_element.h"
 #include "core/renderer/dom/fiber/list_element.h"
 #include "core/renderer/dom/fiber/none_element.h"
+#include "core/renderer/dom/fiber/platform_layout_function_wrapper.h"
 #include "core/renderer/dom/fiber/raw_text_element.h"
 #include "core/renderer/dom/fiber/scroll_element.h"
 #include "core/renderer/dom/fiber/text_element.h"
@@ -213,6 +214,9 @@ FiberElement::~FiberElement() {
     DestroyPlatformNode();
     element_manager()->DestroyLayoutNode(impl_id());
     element_manager()->node_manager()->Erase(id_);
+    if (customized_layout_node_) {
+      customized_layout_node_->Destroy();
+    }
     // If FiberElement to be destroyed is the root of its ElementContext, need
     // to remove corresponding ElementContext from tree
     if (element_context_delegate_ &&
@@ -2704,6 +2708,8 @@ void FiberElement::EnsureSLNode() {
   }
 }
 
+void FiberElement::OnLayoutObjectCreated() {}
+
 void FiberElement::EnsureLayoutBundle() {
   if (EnableLayoutInElementMode()) {
     return;
@@ -2711,6 +2717,12 @@ void FiberElement::EnsureLayoutBundle() {
 
   if (layout_bundle_ == nullptr) {
     layout_bundle_ = std::make_unique<LayoutBundle>();
+  }
+}
+
+void FiberElement::SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func) {
+  if (customized_layout_node_ != nullptr) {
+    customized_layout_node_->SetMeasureFunc(std::move(measure_func));
   }
 }
 
@@ -2761,6 +2773,12 @@ void FiberElement::MarkLayoutDirty() {
 
 void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
+    if (IsShadowNodeCustom()) {
+      customized_layout_node_ =
+          std::make_unique<PlatformLayoutFunctionWrapper>(*this, props);
+      element_manager()->layout_context()->CreateLayoutNode(id_, tag_.str(),
+                                                            props.get(), false);
+    }
     return;
   }
 
@@ -2771,6 +2789,9 @@ void FiberElement::AttachLayoutNode(const fml::RefPtr<PropBundle> &props) {
 
 void FiberElement::UpdateLayoutNodeProps(const fml::RefPtr<PropBundle> &props) {
   if (EnableLayoutInElementMode()) {
+    if (customized_layout_node_) {
+      customized_layout_node_->UpdateLayoutNodeProps(props);
+    }
     return;
   }
 
@@ -4032,6 +4053,9 @@ void FiberElement::UpdateLayoutInfo() {
   borders_[2] = layout_result.border_[starlight::kRight];
   borders_[3] = layout_result.border_[starlight::kBottom];
 
+  if (IsShadowNodeCustom()) {
+    customized_layout_node_->OnLayoutAfter();
+  }
   frame_changed_ = true;
 }
 
@@ -4062,6 +4086,12 @@ void FiberElement::DispatchLayoutBeforeRecursively() {
 
   for (auto &child : scoped_children_) {
     child->DispatchLayoutBeforeRecursively();
+  }
+}
+
+void FiberElement::DispatchLayoutBefore() {
+  if (customized_layout_node_) {
+    customized_layout_node_->OnLayoutBefore();
   }
 }
 

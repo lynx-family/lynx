@@ -776,6 +776,7 @@ public class com::lynx::tasm::behavior::shadow::text::BaseTextShadowNode : com.l
   public com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.BaseTextShadowNode();
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setContext(LynxContext context);
   public TextAttributes com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.getTextAttributes();
+  public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setTextAttributes(TextAttributes attr);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setWhiteSpace(int whiteSpace);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setIncludeFontPadding(boolean includeFontPadding);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setTextOverflow(int textOverflow);
@@ -8841,6 +8842,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextMeasurer :  {
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextRenderer :  {
+  public com.lynx.tasm.behavior.shadow.text.TextRenderer.TextRenderer(LynxContext context, TextRendererKey key);
   public Layout com.lynx.tasm.behavior.shadow.text.TextRenderer.getTextLayout();
   public int com.lynx.tasm.behavior.shadow.text.TextRenderer.getEllipsisCount();
   public PointF com.lynx.tasm.behavior.shadow.text.TextRenderer.getTextTranslateOffset();

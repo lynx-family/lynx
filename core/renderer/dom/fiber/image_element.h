@@ -33,7 +33,10 @@ class ImageElement : public FiberElement {
 
   void ResetAttribute(const base::String& key) override;
 
-  int32_t GetBuiltInNodeInfo() const override { return kCommonBuiltInNodeInfo; }
+  int32_t GetBuiltInNodeInfo() const override {
+    return is_inline_element() ? kVirtualBuiltInNodeInfo
+                               : kCommonBuiltInNodeInfo;
+  }
 
  protected:
   ImageElement(const ImageElement& element, bool clone_resolved_props)

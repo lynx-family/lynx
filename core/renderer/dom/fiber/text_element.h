@@ -69,7 +69,10 @@ class TextElement : public FiberElement {
 
   CSSIDBitset& property_bits() { return property_bits_; }
 
-  int32_t GetBuiltInNodeInfo() const override { return kCommonBuiltInNodeInfo; }
+  int32_t GetBuiltInNodeInfo() const override {
+    return is_inline_element() ? kVirtualBuiltInNodeInfo
+                               : kCommonBuiltInNodeInfo;
+  }
 
  protected:
   void OnNodeAdded(FiberElement* child) override;

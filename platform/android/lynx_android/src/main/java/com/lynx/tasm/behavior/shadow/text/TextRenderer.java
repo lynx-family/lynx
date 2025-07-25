@@ -73,7 +73,7 @@ public class TextRenderer {
   // Used to cache to calculate the maximum width of textLayout, reducing the text line measure
   private float mCacheMaxWidth = -1.f;
 
-  TextRenderer(LynxContext context, TextRendererKey key) {
+  public TextRenderer(LynxContext context, TextRendererKey key) {
     this.mKey = key;
     measure(context);
     if (key.enableTailColorConvert && !key.mEnabledTextRefactor) {

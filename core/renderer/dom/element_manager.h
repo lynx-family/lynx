@@ -75,6 +75,7 @@ class AirElement;
 class AirLepusRef;
 class AirPageElement;
 class TemplateAssembler;
+class ElementLayoutNodeManager;
 
 class HierarchyObserver {
  public:
@@ -1297,8 +1298,7 @@ class ElementManager : public ElementContextDelegate {
   ElementManagerDelegate *element_manager_delegate_{nullptr};
   std::shared_ptr<base::VSyncMonitor> vsync_monitor_{nullptr};
   std::unique_ptr<LayoutCtxPlatformImpl> platform_layout_context_{nullptr};
-  class LayoutNodeManagerForEM;
-  std::unique_ptr<LayoutNodeManagerForEM> layout_node_manager_;
+  std::unique_ptr<ElementLayoutNodeManager> layout_node_manager_;
 
   CSSFragment *preresolving_style_sheet_{nullptr};
   std::unique_ptr<starlight::ComputedCSSStyle> platform_computed_css_;

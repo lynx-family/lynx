@@ -30,6 +30,8 @@ fiber_shared_sources = [
   "none_element.h",
   "page_element.cc",
   "page_element.h",
+  "platform_layout_function_wrapper.cc",
+  "platform_layout_function_wrapper.h",
   "pseudo_element.cc",
   "pseudo_element.h",
   "raw_text_element.cc",
