@@ -15,19 +15,6 @@ namespace lynx {
 namespace tasm {
 namespace timing {
 
-struct FSPAxialSnapshot : public FSPSnapshot {
-  static constexpr size_t X_PROJECTIONS_LEN = 256;
-  static constexpr size_t Y_PROJECTIONS_LEN = 512;
-
-  std::bitset<X_PROJECTIONS_LEN> x_projections;
-  std::bitset<Y_PROJECTIONS_LEN> y_projections;
-
-  lynx::base::geometry::IntSize projection_size;
-};
-
-bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config);
-
 std::unique_ptr<FSPSnapshot> FSPAxialTracer::CreateSnapshot() {
   return std::make_unique<FSPAxialSnapshot>();
 }
@@ -90,8 +77,9 @@ void FSPAxialTracer::FillSnapshotImpl(FSPSnapshot& snapshot,
   }
 }
 
-bool DiffAxialSnapshots(FSPAxialSnapshot& current, FSPAxialSnapshot* previous,
-                        const FSPAxialConfig& config) {
+bool FSPAxialTracer::DiffAxialSnapshots(FSPAxialSnapshot& current,
+                                        FSPAxialSnapshot* previous,
+                                        const FSPAxialConfig& config) {
   auto container_w = current.container_size.Width();
   auto container_h = current.container_size.Height();
   auto projection_w =
