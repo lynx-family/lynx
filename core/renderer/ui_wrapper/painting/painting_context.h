@@ -246,6 +246,11 @@ class PaintingContext {
 
   void AlignText(Element* element) { platform_impl_->AlignText(element); };
 
+  // TODO(chenyouhui): Remove it later.
+  const std::shared_ptr<shell::DynamicUIOperationQueue>& UIOperationQueue() {
+    return ui_operation_queue_;
+  }
+
  private:
   void Enqueue(shell::UIOperation op, bool high_priority = false);
   void EnqueueHighPriorityUIOperation(shell::UIOperation op) {
