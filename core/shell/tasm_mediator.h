@@ -74,6 +74,8 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void OnTemplateLoaded(const std::string& url) override;
 
+  void OnPageUpdated(bool is_first_screen) override;
+
   void OnSSRHydrateFinished(const std::string& url) override;
 
   void OnErrorOccurred(base::LynxError error) override;

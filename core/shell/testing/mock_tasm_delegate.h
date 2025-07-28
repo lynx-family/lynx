@@ -44,6 +44,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   virtual void OnConfigUpdated(const lepus::Value& data) override;
   virtual void OnPageConfigDecoded(
       const std::shared_ptr<tasm::PageConfig>& config) override;
+  void OnPageUpdated(bool is_first_screen) override{};
 
   void RecycleTemplateBundle(
       std::unique_ptr<tasm::LynxBinaryRecyclerDelegate> recycler) override;

@@ -1128,8 +1128,7 @@ class ElementManager : public ElementContextDelegate {
    * call this function to request layout
    * @param options the pipeline options passed to layout context
    */
-  PipelineLayoutData RequestLayout(
-      const std::shared_ptr<PipelineOptions> &options);
+  void RequestLayout(const std::shared_ptr<PipelineOptions> &options);
 
   inline bool GetEnableBatchLayoutTaskWithSyncLayout() {
     return enable_batch_layout_task_with_sync_layout_;

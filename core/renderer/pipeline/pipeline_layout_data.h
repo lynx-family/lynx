@@ -11,8 +11,9 @@ namespace lynx {
 namespace tasm {
 
 struct PipelineLayoutData {
-  bool layout_triggered = false;
-  const PipelineVersion* pipeline_version = nullptr;
+  bool layout_triggered{false};
+  const PipelineVersion* pipeline_version{nullptr};
+  bool is_first_layout{false};
 };
 
 }  // namespace tasm

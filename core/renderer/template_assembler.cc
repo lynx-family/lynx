@@ -2221,6 +2221,10 @@ void TemplateAssembler::UpdateDataByPreParsedData(
 
     // invoke tasm finish only when needed.
     delegate_.OnTasmFinishByNative();
+
+    if (pipeline_options->is_reuse_engine) {
+      delegate_.OnTemplateLoaded(url_);
+    }
   } else if (enable_pre_update_data_) {
     if (!update_page_option.reset_page_data) {
       cache_data_.emplace_back(template_data);
@@ -3410,10 +3414,8 @@ void TemplateAssembler::RequestLayout(
     const std::shared_ptr<PipelineOptions>& pipeline_options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateAssembler::RequestLayout");
   if (page_proxy()->element_manager()->IsLayoutInElementModeOn()) {
-    auto data =
-        page_proxy()->element_manager()->RequestLayout(pipeline_options);
+    page_proxy()->element_manager()->RequestLayout(pipeline_options);
     GetCurrentPipelineContext()->RequestFlushUIOperation();
-    OnLayoutAfter(data);
     return;
   }
 
@@ -3543,6 +3545,12 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_ENSURE_ON_LAYOUT_AFTER);
 
   ExecuteOnLayoutReadyHooks();
+
+  if (IsEmbeddedModeOn()) {
+    if (layout_data.layout_triggered) {
+      delegate_.OnPageUpdated(layout_data.is_first_layout);
+    }
+  }
 
   if (!layout_data.pipeline_version) {
     return;

@@ -145,8 +145,9 @@ void LayoutMediator::OnLayoutAfter(
       HandlePendingLayoutTask(queue, catalyzer, options, page_options, nullptr,
                               pipeline_context);
 
-      tasm::PipelineLayoutData layout_data{
-          .layout_triggered = has_layout, .pipeline_version = options->version};
+      tasm::PipelineLayoutData layout_data{.layout_triggered = has_layout,
+                                           .pipeline_version = options->version,
+                                           .is_first_layout = is_first_layout};
       engine->GetTasm()->OnLayoutAfter(layout_data);
 
       // TODO(nihao.royal): pipeline ends here, Considering Timing Info for list

@@ -143,6 +143,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     virtual void OnConfigUpdated(const lepus::Value& data) = 0;
     virtual void OnPageConfigDecoded(
         const std::shared_ptr<tasm::PageConfig>& config) = 0;
+    virtual void OnPageUpdated(bool is_first_screen) = 0;
 
     // recycle a complete bundle
     virtual void OnTemplateBundleReady(LynxTemplateBundle bundle) {}

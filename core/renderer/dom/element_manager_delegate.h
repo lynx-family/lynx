@@ -15,6 +15,7 @@ namespace tasm {
 
 class FrameElement;
 class PipelineContext;
+struct PipelineLayoutData;
 
 /**
  * ElementManagerDelegate provides APIs which ElementManager needs to call but
@@ -48,6 +49,8 @@ class ElementManagerDelegate {
   // Call for sending global event.
   virtual void SendGlobalEvent(const std::string &event,
                                const lepus::Value &info) = 0;
+
+  virtual void OnLayoutAfter(PipelineLayoutData &data) = 0;
 };
 
 }  // namespace tasm
