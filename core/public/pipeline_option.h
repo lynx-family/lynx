@@ -91,6 +91,8 @@ struct PipelineOptions {
 
   bool need_timestamps{false};
 
+  bool is_reuse_engine{false};
+
   bool is_first_screen = false;
   // true if triggered by reloadTemplate, used to mark setup timing
   bool is_reload_template = false;

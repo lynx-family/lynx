@@ -835,7 +835,7 @@ public class LynxView extends UIBodyView {
     if (mLynxTemplateRender == null) {
       return;
     }
-    mLynxTemplateRender.updateData(data);
+    mLynxTemplateRender.updateData(data, false);
   }
 
   /**

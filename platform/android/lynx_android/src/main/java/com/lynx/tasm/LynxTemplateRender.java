@@ -1370,7 +1370,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (mEnableReuseEngine && isEngineReuseHasLoaded()) {
       if (mLynxEngineRef.isRunOnCurrentTemplateRender(this)) {
         mLynxContext.getUIBody().attachUIBodyView(mBodyView);
-        updateData(templateData);
+        updateData(templateData, true);
         tryRegisterLynxEngineReused();
         return;
       } else {
@@ -1617,7 +1617,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     TemplateData templateData = TemplateData.fromString(json);
     templateData.markState(processorName);
     templateData.markReadOnly();
-    this.updateData(templateData);
+    this.updateData(templateData, false);
   }
 
   public void updateMetaData(LynxUpdateMeta meta) {
@@ -1708,7 +1708,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
   }
 
-  public void updateData(TemplateData data) {
+  public void updateData(TemplateData data, boolean is_reuse_engine) {
     String eventName = "LynxTemplateRender.updateData";
     onTraceEventBegin(eventName);
     LynxContext context = mLynxContext;
@@ -1722,7 +1722,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (prepareUpdateData(data)) {
       data.markConsumed();
       nativeUpdateDataByPreParsedData(mNativePtr, mNativeLifecycle, data.getNativePtr(),
-          data.processorName(), data.isReadOnly(), data);
+          data.processorName(), data.isReadOnly(), data, is_reuse_engine);
     }
     postRenderOrUpdateData(data);
     onTraceEventEnd(eventName);
@@ -1814,7 +1814,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     TemplateData templateData = TemplateData.fromMap(data);
     templateData.markState(processorName);
     templateData.markReadOnly();
-    this.updateData(templateData);
+    this.updateData(templateData, false);
     LLog.i(TAG, formatLynxMessage("update"));
   }
 
@@ -3828,7 +3828,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   // update data
   // FIXME(songshourui.null): only use templateData later
   private static native void nativeUpdateDataByPreParsedData(long ptr, long lifecycle, long dataPtr,
-      String processorName, boolean readOnly, TemplateData templateData);
+      String processorName, boolean readOnly, TemplateData templateData, boolean is_reuse_engine);
 
   private static native void nativeUpdateMetaData(long ptr, long lifecycle, long dataPtr,
       String processorName, boolean readOnly, TemplateData templateData, long globalPropsPtr);

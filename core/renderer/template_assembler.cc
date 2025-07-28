@@ -2207,7 +2207,11 @@ void TemplateAssembler::UpdateDataByPreParsedData(
     }
 
     // invoke tasm finish only when needed.
-    delegate_.OnTasmFinishByNative();
+    if (pipeline_options->is_reuse_engine) {
+      delegate_.OnTemplateLoaded(url_);
+    } else {
+      delegate_.OnTasmFinishByNative();
+    }
   } else if (enable_pre_update_data_) {
     if (!update_page_option.reset_page_data) {
       cache_data_.emplace_back(template_data);
