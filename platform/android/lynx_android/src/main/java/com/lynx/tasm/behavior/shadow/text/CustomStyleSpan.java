@@ -15,12 +15,19 @@ import java.util.Objects;
 public class CustomStyleSpan extends MetricAffectingSpan {
   private final int mStyle;
   private final int mWeight;
-  private String mFontFamily;
+  private final String mFontFamily;
+  private final String mFontVariationSettings;
+  private final String mFontFeatureSettings;
+  private final boolean mHasValidTypeface;
 
-  public CustomStyleSpan(int style, int weight, String fontFamily) {
+  public CustomStyleSpan(int style, int weight, String fontFamily, String fontVariationSettings,
+      String fontFeatureSettings, boolean hasValidTypeface) {
     this.mStyle = style;
     this.mWeight = weight;
     this.mFontFamily = fontFamily;
+    this.mFontVariationSettings = fontVariationSettings;
+    this.mFontFeatureSettings = fontFeatureSettings;
+    this.mHasValidTypeface = hasValidTypeface;
   }
 
   @Override
@@ -34,7 +41,8 @@ public class CustomStyleSpan extends MetricAffectingSpan {
   }
 
   private void apply(TextPaint textPaint) {
-    TextHelper.updateTextPaintTypeFace(textPaint, mFontFamily, mStyle, mWeight);
+    TextHelper.updateTextPaintTypeFace(textPaint, mFontFamily, mStyle, mWeight,
+        mFontVariationSettings, mFontFeatureSettings, mHasValidTypeface);
   }
 
   @Override

@@ -118,6 +118,8 @@ public class InlineTextShadowNode extends BaseTextShadowNode {
             getContext(), fontFamily, style, new TextShadowNode.WeakTypefaceListener(this));
         // If typeface is null, avoid setting typeface, see TextHelper.newTextPaint
         typeface = DeviceUtils.getDefaultTypeface();
+      } else {
+        getTextAttributes().setHasValidTypeface(true);
       }
       ops.add(new SetSpanOperation(start, end, new FontFamilySpan(typeface)));
     }

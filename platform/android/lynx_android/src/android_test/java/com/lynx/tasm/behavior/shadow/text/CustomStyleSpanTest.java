@@ -13,16 +13,16 @@ public class CustomStyleSpanTest {
 
   @Test
   public void testConstructorInitialization() {
-    CustomStyleSpan span = new CustomStyleSpan(2, 7, "sans-serif");
+    CustomStyleSpan span = new CustomStyleSpan(2, 7, "sans-serif", null, null, false);
 
     assertEquals("Style should be initialized", 2, span.getStyle());
   }
 
   @Test
   public void testEquals() {
-    CustomStyleSpan span1 = new CustomStyleSpan(1, 0, "Arial");
-    CustomStyleSpan span2 = new CustomStyleSpan(1, 0, "Helvetica");
-    CustomStyleSpan span3 = new CustomStyleSpan(2, 7, "Arial");
+    CustomStyleSpan span1 = new CustomStyleSpan(1, 0, "Arial", null, null, false);
+    CustomStyleSpan span2 = new CustomStyleSpan(1, 0, "Helvetica", null, null, false);
+    CustomStyleSpan span3 = new CustomStyleSpan(2, 7, "Arial", null, null, false);
 
     assertTrue("Spans with same style/weight should be equal", span1.equals(span2));
     assertFalse("Different style should not be equal", span1.equals(span3));
@@ -32,8 +32,8 @@ public class CustomStyleSpanTest {
 
   @Test
   public void testHashCodeConsistency() {
-    CustomStyleSpan span1 = new CustomStyleSpan(1, 0, "Arial");
-    CustomStyleSpan span2 = new CustomStyleSpan(1, 0, "Helvetica");
+    CustomStyleSpan span1 = new CustomStyleSpan(1, 0, "Arial", null, null, false);
+    CustomStyleSpan span2 = new CustomStyleSpan(1, 0, "Helvetica", null, null, false);
 
     assertEquals(
         "Hash codes should match for same style/weight", span1.hashCode(), span2.hashCode());
@@ -41,7 +41,7 @@ public class CustomStyleSpanTest {
 
   @Test
   public void testUpdateMethodsCallApply() {
-    CustomStyleSpan span = new CustomStyleSpan(2, 0, "monospace");
+    CustomStyleSpan span = new CustomStyleSpan(2, 0, "monospace", "'wdth' 50", null, false);
 
     // Test measure state update
     span.updateMeasureState(mTextPaint);
@@ -59,7 +59,7 @@ public class CustomStyleSpanTest {
 
   @Test
   public void testNullFontFamilyHandling() {
-    CustomStyleSpan span = new CustomStyleSpan(0, 0, null);
+    CustomStyleSpan span = new CustomStyleSpan(0, 0, null, null, null, false);
     span.updateDrawState(mTextPaint);
 
     verifyTextPaintUpdate(0, 400);
@@ -67,7 +67,7 @@ public class CustomStyleSpanTest {
 
   @Test
   public void testGetStyleMethod() {
-    CustomStyleSpan span = new CustomStyleSpan(3, 500, "Roboto");
+    CustomStyleSpan span = new CustomStyleSpan(3, 500, "Roboto", null, null, false);
     assertEquals("getStyle() should return initialized value", 3, span.getStyle());
   }
 }

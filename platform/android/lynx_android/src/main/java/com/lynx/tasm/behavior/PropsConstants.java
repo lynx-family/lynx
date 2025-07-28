@@ -201,6 +201,9 @@ public class PropsConstants {
   public static final String OFFSET_DISTANCE = "offset-distance";
   public static final String OFFSET_PATH = "offset-path";
   public static final String OFFSET_ROTATE = "offset-rotate";
+  public static final String FONT_VARIATION_SETTINGS = "font-variation-settings";
+  public static final String FONT_FEATURE_SETTINGS = "font-feature-settings";
+  public static final String FONT_OPTICAL_SIZING = "font-optical-sizing";
 
   // When using the boundingClientRect and requestUIInfo methods on iOS, the transform property is
   // taken into account when computing the area, but on Android it is not.

@@ -37,8 +37,10 @@ import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.TypefaceUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -68,6 +70,24 @@ public class FontFaceManager {
    */
   private Map<String, StyledTypeface> mCacheTypeface = new HashMap<>();
   private List<FontFaceGroup> mLoadingFontFace = new ArrayList<>();
+
+  private static final int MAX_FONT_SETTINGS_CACHE_SIZE = 50;
+  private final Map<FontSettingsKey, Typeface> mFontSettingsCache =
+      Collections.synchronizedMap(new LinkedHashMap<FontSettingsKey, Typeface>(16, .75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Entry<FontSettingsKey, Typeface> eldest) {
+          return size() > MAX_FONT_SETTINGS_CACHE_SIZE;
+        }
+      });
+
+  public @Nullable Typeface getFontWithSettings(FontSettingsKey key) {
+    return mFontSettingsCache.get(key);
+  }
+  public void putFontWithSettings(FontSettingsKey key, Typeface tf) {
+    if (tf != null) {
+      mFontSettingsCache.put(key, tf);
+    }
+  }
 
   public Typeface getTypeface(final LynxContext context, final String fontFamily, final int style,
       final TypefaceCache.TypefaceListener listener) {

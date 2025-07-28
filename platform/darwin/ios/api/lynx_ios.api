@@ -1593,6 +1593,7 @@ public class LynxFontFaceContext : NSObject {
 
 public class LynxFontFaceManager : NSObject {
   public LynxFontFaceManager * LynxFontFaceManager::sharedManager();
+  public UIFont * LynxFontFaceManager::generateFontWithBaseFont:fontVariationSettings:fontFeatureSettings:fontOpticalSizing:(UIFont *baseFont,[fontVariationSettings] NSArray *fontVariationSettings,[fontFeatureSettings] NSArray *fontFeatureSettings,[fontOpticalSizing] BOOL fontOpticalSizing);
   public UIFont * LynxFontFaceManager::generateFontWithSize:weight:style:fontFamilyName:fontFaceContext:fontFaceObserver:(CGFloat fontSize,[weight] CGFloat fontWeight,[style] LynxFontStyleType fontStyle,[fontFamilyName] NSString *fontFamilyName,[fontFaceContext] LynxFontFaceContext *fontFaceContext,[fontFaceObserver] id< LynxFontFaceObserver > observer);
   public void LynxFontFaceManager::registerFont:forName:(UIFont *font,[forName] NSString *name);
   public void LynxFontFaceManager::registerFamilyName:withAliasName:(NSString *fontFamilyName,[withAliasName] NSString *aliasName);
@@ -3524,6 +3525,9 @@ public class LynxTextStyle : NSObject, <NSCopying> {
   public NSShadow* LynxTextStyle::textShadow textShadow;
   public LynxGradient* LynxTextStyle::textGradient textGradient;
   public LynxWordBreakType LynxTextStyle::wordBreak wordBreak;
+  public NSArray* LynxTextStyle::fontFeatureSettings fontFeatureSettings;
+  public NSArray* LynxTextStyle::fontVariationSettings fontVariationSettings;
+  public BOOL LynxTextStyle::fontOpticalSizing fontOpticalSizing;
   public NSMutableArray* LynxTextStyle::backgroundDrawable backgroundDrawable;
   public NSMutableArray* LynxTextStyle::backgroundPosition backgroundPosition;
   public NSMutableArray* LynxTextStyle::backgroundRepeat backgroundRepeat;

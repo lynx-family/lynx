@@ -43,6 +43,9 @@ NSAttributedStringKey const LynxWordBreakKey = @"LynxWordBreakKey";
     _autoFontSizeStepGranularity = 1.f;
     _autoFontSizePresetSizes = nil;
     _wordBreak = LynxWordBreakNormal;
+    _fontVariationSettings = nil;
+    _fontFeatureSettings = nil;
+    _fontOpticalSizing = NO;
   }
 
   return self;
@@ -81,6 +84,9 @@ NSAttributedStringKey const LynxWordBreakKey = @"LynxWordBreakKey";
   _autoFontSizeStepGranularity = textStyle.autoFontSizeStepGranularity;
   _autoFontSizePresetSizes = textStyle.autoFontSizePresetSizes;
   _wordBreak = !isnan(textStyle.wordBreak) ? textStyle.wordBreak : _wordBreak;
+  _fontVariationSettings = textStyle.fontVariationSettings;
+  _fontFeatureSettings = textStyle.fontFeatureSettings;
+  _fontOpticalSizing = textStyle.fontOpticalSizing;
 }
 
 - (LynxTextStyle *)copyWithZone:(NSZone *)zone {
@@ -220,6 +226,14 @@ NSAttributedStringKey const LynxWordBreakKey = @"LynxWordBreakKey";
   if (_enableFontScaling) {
     font = [self applyFontScaling:font];
   }
+  if (self.fontFeatureSettings.count > 0 || self.fontVariationSettings.count > 0 ||
+      self.fontOpticalSizing) {
+    font = [LynxFontFaceManager generateFontWithBaseFont:font
+                                   fontVariationSettings:self.fontVariationSettings
+                                     fontFeatureSettings:self.fontFeatureSettings
+                                       fontOpticalSizing:self.fontOpticalSizing];
+  }
+
   return font;
 }
 

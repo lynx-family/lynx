@@ -644,4 +644,34 @@ LYNX_PROP_SETTER("text", setText, id) {
   }
 }
 
+LYNX_PROP_SETTER("font-variation-settings", setFontVariationSettings, NSArray*) {
+  if (requestReset) {
+    value = nil;
+  }
+  self.textStyle.fontVariationSettings = value;
+
+  [self markStyleDirty];
+  [self setNeedsLayout];
+}
+
+LYNX_PROP_SETTER("font-feature-settings", setFontFeatureSettings, NSArray*) {
+  if (requestReset) {
+    value = nil;
+  }
+
+  self.textStyle.fontFeatureSettings = value;
+  [self markStyleDirty];
+  [self setNeedsLayout];
+}
+
+LYNX_PROP_SETTER("font-optical-sizing", setFontOpticalSizing, int) {
+  if (requestReset) {
+    value = LynxFontOpticalSizingNone;
+  }
+
+  self.textStyle.fontOpticalSizing = (value == LynxFontOpticalSizingAuto);
+  [self markStyleDirty];
+  [self setNeedsLayout];
+}
+
 @end

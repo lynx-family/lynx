@@ -708,9 +708,9 @@ public class TextShadowNode extends BaseTextShadowNode implements CustomMeasureF
       if (node == null || node.isDestroyed()) {
         return;
       }
-      if (node instanceof TextShadowNode) {
+      if (node instanceof BaseTextShadowNode) {
         // for TextShadowNode, ues this flag to invalidate TextRenderKey
-        ((TextShadowNode) node).getTextAttributes().setHasValidTypeface(true);
+        ((BaseTextShadowNode) node).getTextAttributes().setHasValidTypeface(true);
       }
       node.markDirty();
     }

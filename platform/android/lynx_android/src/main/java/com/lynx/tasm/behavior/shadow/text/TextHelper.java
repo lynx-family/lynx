@@ -33,6 +33,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.event.LynxDetailEvent;
+import com.lynx.tasm.fontface.FontFaceManager;
+import com.lynx.tasm.fontface.FontSettingsKey;
 import com.lynx.tasm.utils.DeviceUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -61,12 +63,18 @@ public class TextHelper {
     } else {
       textPaint.setTypeface(DeviceUtils.getDefaultTypeface());
     }
+
+    String fontVariationSettings = attributes.getFontVariationSettings();
+    String fontFeatureSettings = attributes.getFontFeatureSettings();
+    if (attributes.mFontStyle != Typeface.NORMAL || attributes.mFontWeight != FONTWEIGHT_NORMAL
+        || fontVariationSettings != null || fontFeatureSettings != null) {
+      updateTextPaintTypeFace(textPaint, attributes.mFontFamily, attributes.mFontStyle,
+          attributes.mFontWeight, fontVariationSettings, fontFeatureSettings,
+          attributes.mHasValidTypeface);
+    }
+
     if (attributes.mFontColor != null) {
       textPaint.setColor(attributes.mFontColor);
-    }
-    if (attributes.mFontStyle != Typeface.NORMAL || attributes.mFontWeight != FONTWEIGHT_NORMAL) {
-      updateTextPaintTypeFace(
-          textPaint, attributes.mFontFamily, attributes.mFontStyle, attributes.mFontWeight);
     }
 
     if (attributes.mLetterSpacing != MeasureUtils.UNDEFINED
@@ -852,8 +860,9 @@ public class TextHelper {
     }
   }
 
-  public static void updateTextPaintTypeFace(
-      TextPaint textPaint, String fontFamily, int style, int weight) {
+  public static void updateTextPaintTypeFace(TextPaint textPaint, String fontFamily, int style,
+      int weight, String fontVariationSettings, String fontFeatureSettings,
+      boolean hasValidTypeface) {
     Typeface originTypeface = textPaint.getTypeface();
     Typeface newTypeface;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -874,6 +883,27 @@ public class TextHelper {
       textPaint.setFakeBoldText(((need & Typeface.BOLD) != 0) && (weight == FONTWEIGHT_BOLD));
       if ((need & Typeface.ITALIC) != 0) {
         textPaint.setTextSkewX(-0.25f);
+      }
+    }
+    if (fontVariationSettings != null || fontFeatureSettings != null) {
+      FontSettingsKey key = new FontSettingsKey(
+          fontVariationSettings, fontFeatureSettings, textPaint.getTextSize(), fontFamily);
+
+      Typeface tf = FontFaceManager.getInstance().getFontWithSettings(key);
+      if (tf != null) {
+        textPaint.setTypeface(tf);
+      } else {
+        // Not cached → apply both settings, then cache the resulting typeface:
+        if (fontVariationSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          textPaint.setFontVariationSettings(fontVariationSettings);
+        }
+        if (fontFeatureSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+          textPaint.setFontFeatureSettings(fontFeatureSettings);
+        }
+        if (hasValidTypeface) {
+          tf = textPaint.getTypeface();
+          FontFaceManager.getInstance().putFontWithSettings(key, tf);
+        }
       }
     }
   }

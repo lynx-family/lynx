@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.behavior.shadow.text;
 
+import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTWEIGHT_500;
+import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTWEIGHT_900;
+import static com.lynx.tasm.behavior.AutoGenStyleConstants.TEXTOVERFLOW_CLIP;
 import static com.lynx.tasm.behavior.StyleConstants.DIRECTION_LTR;
 import static com.lynx.tasm.behavior.StyleConstants.DIRECTION_NORMAL;
 import static com.lynx.tasm.behavior.StyleConstants.FONTWEIGHT_500;
@@ -38,6 +41,7 @@ public class TextAttributes {
   public static final int TEXT_VERTICAL_ALIGN_CUSTOM = 3;
   public static final String INLINE_IMAGE_PLACEHOLDER = "I";
   public static final String INLINE_BLOCK_PLACEHOLDER = "B";
+  public static final String FONT_OPTICAL_SIZING_TAG = "opsz";
 
   public static final int FIRST_CHAR_RTL_STATE_NONE_CHECK = 0;
   public static final int FIRST_CHAR_RTL_STATE_RTL = 1;
@@ -74,6 +78,9 @@ public class TextAttributes {
   private float[] mAutoFontSizePresetSizes;
   public boolean mHasValidTypeface = false;
   private boolean mHyphen = false;
+  private String mFontVariationSettings = null;
+  private String mFontFeatureSettings = null;
+  private boolean mFontOpticalSizing = false;
 
   public int mTextSingleLineVerticalAlign = StyleConstants.VERTICAL_ALIGN_DEFAULT;
 
@@ -149,6 +156,9 @@ public class TextAttributes {
     attributes.mTextSingleLineVerticalAlign = mTextSingleLineVerticalAlign;
     attributes.mHasValidTypeface = mHasValidTypeface;
     attributes.mHyphen = mHyphen;
+    attributes.mFontVariationSettings = mFontVariationSettings;
+    attributes.mFontFeatureSettings = mFontFeatureSettings;
+    attributes.mFontOpticalSizing = mFontOpticalSizing;
     return attributes;
   }
 
@@ -179,7 +189,10 @@ public class TextAttributes {
         && mAutoFontSizeStepGranularity == attr.mAutoFontSizeStepGranularity
         && mAutoFontSizePresetSizes == attr.mAutoFontSizePresetSizes
         && mTextSingleLineVerticalAlign == attr.mTextSingleLineVerticalAlign
-        && mHasValidTypeface == attr.mHasValidTypeface && mHyphen == attr.mHyphen;
+        && mHasValidTypeface == attr.mHasValidTypeface && mHyphen == attr.mHyphen
+        && mFontOpticalSizing == attr.mFontOpticalSizing
+        && TextUtils.equals(mFontVariationSettings, attr.mFontVariationSettings)
+        && TextUtils.equals(mFontFeatureSettings, attr.mFontFeatureSettings);
   }
 
   @Override
@@ -222,6 +235,11 @@ public class TextAttributes {
     result = result * prime + mTextSingleLineVerticalAlign;
     result = result & prime + (mHasValidTypeface ? 1 : 0);
     result = result * prime + (mHyphen ? 1 : 0);
+    result =
+        result * prime + (mFontVariationSettings == null ? 0 : mFontVariationSettings.hashCode());
+    result = result * prime + (mFontFeatureSettings == null ? 0 : mFontFeatureSettings.hashCode());
+    result = result * prime + (mFontOpticalSizing ? 1 : 0);
+
     return result;
   }
 
@@ -494,5 +512,34 @@ public class TextAttributes {
 
   public void setHyphen(boolean enable) {
     mHyphen = enable;
+  }
+
+  public void setFontVariationSettings(String settings) {
+    mFontVariationSettings = settings;
+  }
+
+  public String getFontVariationSettings() {
+    if (!mFontOpticalSizing) {
+      return mFontVariationSettings;
+    }
+    StringBuilder fontVariationSettingsStr = new StringBuilder();
+    if (mFontVariationSettings != null) {
+      fontVariationSettingsStr.append(mFontVariationSettings);
+    }
+
+    String base = (mFontVariationSettings != null ? mFontVariationSettings : "");
+    return base + "'" + FONT_OPTICAL_SIZING_TAG + "' " + mFontSize;
+  }
+
+  public void setFontFeatureSettings(String settings) {
+    mFontFeatureSettings = settings;
+  }
+
+  public String getFontFeatureSettings() {
+    return mFontFeatureSettings;
+  }
+
+  public void setFontOpticalSizing(boolean value) {
+    mFontOpticalSizing = value;
   }
 }

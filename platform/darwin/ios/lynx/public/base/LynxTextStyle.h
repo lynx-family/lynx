@@ -48,6 +48,9 @@ extern NSAttributedStringKey const LynxWordBreakKey;
 @property(nonatomic, strong, nullable) NSShadow* textShadow;
 @property(nonatomic, strong, nullable) LynxGradient* textGradient;
 @property(nonatomic, assign) LynxWordBreakType wordBreak;
+@property(nonatomic, strong, nullable) NSArray* fontFeatureSettings;
+@property(nonatomic, strong, nullable) NSArray* fontVariationSettings;
+@property(nonatomic, assign) BOOL fontOpticalSizing;
 
 @property(nonatomic, strong) NSMutableArray* backgroundDrawable;
 @property(nonatomic, nullable) NSMutableArray* backgroundPosition;

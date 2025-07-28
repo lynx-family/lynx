@@ -807,6 +807,9 @@ public class com::lynx::tasm::behavior::shadow::text::BaseTextShadowNode : com.l
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setTextIndent(ReadableArray array);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setEnableEmojiCompat(boolean enable);
   public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setText(@Nullable Dynamic text);
+  public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setFontVariationSettings(ReadableArray fontVariationSettings);
+  public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setFontFeatureSettings(ReadableArray fontFeatureSettings);
+  public void com.lynx.tasm.behavior.shadow.text.BaseTextShadowNode.setFontFeatureSettings(int value);
 }
 
 public class com::lynx::tasm::behavior::ui::shapes::BasicShape :  {
@@ -1276,7 +1279,7 @@ public class abstract com::lynx::tasm::behavior::ui::list::container::NestedScro
 }
 
 public class com::lynx::tasm::behavior::shadow::text::CustomStyleSpan : MetricAffectingSpan {
-  public com.lynx.tasm.behavior.shadow.text.CustomStyleSpan.CustomStyleSpan(int style, int weight, String fontFamily);
+  public com.lynx.tasm.behavior.shadow.text.CustomStyleSpan.CustomStyleSpan(int style, int weight, String fontFamily, String fontVariationSettings, String fontFeatureSettings, boolean hasValidTypeface);
   public void com.lynx.tasm.behavior.shadow.text.CustomStyleSpan.updateMeasureState(@NonNull TextPaint textPaint);
   public void com.lynx.tasm.behavior.shadow.text.CustomStyleSpan.updateDrawState(TextPaint tp);
   public boolean com.lynx.tasm.behavior.shadow.text.CustomStyleSpan.equals(Object o);
@@ -1731,6 +1734,8 @@ public class com::lynx::tasm::fontface::FontFace :  {
 
 public class com::lynx::tasm::fontface::FontFaceManager :  {
   public static FontFaceManager com.lynx.tasm.fontface.FontFaceManager.getInstance();
+  public Typeface com.lynx.tasm.fontface.FontFaceManager.getFontWithSettings(FontSettingsKey key);
+  public void com.lynx.tasm.fontface.FontFaceManager.putFontWithSettings(FontSettingsKey key, Typeface tf);
   public Typeface com.lynx.tasm.fontface.FontFaceManager.getTypeface(final LynxContext context, final String fontFamily, final int style, final TypefaceCache.TypefaceListener listener);
 }
 
@@ -1745,6 +1750,12 @@ public class com::lynx::tasm::behavior::shadow::text::FontFamilySpan : MetricAff
   public void com.lynx.tasm.behavior.shadow.text.FontFamilySpan.updateDrawState(TextPaint tp);
   public boolean com.lynx.tasm.behavior.shadow.text.FontFamilySpan.equals(Object o);
   public int com.lynx.tasm.behavior.shadow.text.FontFamilySpan.hashCode();
+}
+
+public class com::lynx::tasm::fontface::FontSettingsKey :  {
+  public com.lynx.tasm.fontface.FontSettingsKey.FontSettingsKey(String variation, String feature, float textSize, String fontFamily);
+  public boolean com.lynx.tasm.fontface.FontSettingsKey.equals(Object o);
+  public int com.lynx.tasm.fontface.FontSettingsKey.hashCode();
 }
 
 public enum com::lynx::tasm::fluency::FluencyTraceHelper::ForceStatus {
@@ -7789,6 +7800,9 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.OFFSET_DISTANCE OFFSET_DISTANCE;
   public final String com.lynx.tasm.behavior.PropsConstants.OFFSET_PATH OFFSET_PATH;
   public final String com.lynx.tasm.behavior.PropsConstants.OFFSET_ROTATE OFFSET_ROTATE;
+  public final String com.lynx.tasm.behavior.PropsConstants.FONT_VARIATION_SETTINGS FONT_VARIATION_SETTINGS;
+  public final String com.lynx.tasm.behavior.PropsConstants.FONT_FEATURE_SETTINGS FONT_FEATURE_SETTINGS;
+  public final String com.lynx.tasm.behavior.PropsConstants.FONT_OPTICAL_SIZING FONT_OPTICAL_SIZING;
   public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_ENABLE_TRANSFORM_PROPS ANDROID_ENABLE_TRANSFORM_PROPS;
   public final String com.lynx.tasm.behavior.PropsConstants.IMAGE_TRANSITION_STYLE IMAGE_TRANSITION_STYLE;
   public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE X_AUTO_FONT_SIZE;
@@ -8618,6 +8632,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.TEXT_VERTICAL_ALIGN_CUSTOM TEXT_VERTICAL_ALIGN_CUSTOM;
   public final String com.lynx.tasm.behavior.shadow.text.TextAttributes.INLINE_IMAGE_PLACEHOLDER INLINE_IMAGE_PLACEHOLDER;
   public final String com.lynx.tasm.behavior.shadow.text.TextAttributes.INLINE_BLOCK_PLACEHOLDER INLINE_BLOCK_PLACEHOLDER;
+  public final String com.lynx.tasm.behavior.shadow.text.TextAttributes.FONT_OPTICAL_SIZING_TAG FONT_OPTICAL_SIZING_TAG;
   public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.FIRST_CHAR_RTL_STATE_NONE_CHECK FIRST_CHAR_RTL_STATE_NONE_CHECK;
   public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.FIRST_CHAR_RTL_STATE_RTL FIRST_CHAR_RTL_STATE_RTL;
   public final int com.lynx.tasm.behavior.shadow.text.TextAttributes.FIRST_CHAR_RTL_STATE_LTR FIRST_CHAR_RTL_STATE_LTR;
@@ -8710,6 +8725,11 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHasValidTypeface(boolean hasTypefaceUpdated);
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.getHyphen();
   public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setHyphen(boolean enable);
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setFontVariationSettings(String settings);
+  public String com.lynx.tasm.behavior.shadow.text.TextAttributes.getFontVariationSettings();
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setFontFeatureSettings(String settings);
+  public String com.lynx.tasm.behavior.shadow.text.TextAttributes.getFontFeatureSettings();
+  public void com.lynx.tasm.behavior.shadow.text.TextAttributes.setFontOpticalSizing(boolean value);
 }
 
 public interface com::lynx::tasm::behavior::StyleConstants::TextDecoration {
@@ -8749,7 +8769,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextHelper :  {
   public static String com.lynx.tasm.behavior.shadow.text.TextHelper.formatDoubleToString(double num);
   public static String com.lynx.tasm.behavior.shadow.text.TextHelper.formatDoubleToStringManually(double num);
   public static void com.lynx.tasm.behavior.shadow.text.TextHelper.updateTextPaintColor(TextPaint textPaint, boolean isDrawStroke, int color, int strokeColor, float strokeWidth);
-  public static void com.lynx.tasm.behavior.shadow.text.TextHelper.updateTextPaintTypeFace(TextPaint textPaint, String fontFamily, int style, int weight);
+  public static void com.lynx.tasm.behavior.shadow.text.TextHelper.updateTextPaintTypeFace(TextPaint textPaint, String fontFamily, int style, int weight, String fontVariationSettings, String fontFeatureSettings, boolean hasValidTypeface);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextIndent :  {

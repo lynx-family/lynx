@@ -760,7 +760,9 @@ public class BaseTextShadowNode extends ShadowNode {
       if (!isParagraph()) {
         ops.add(new SetSpanOperation(start, end,
             new CustomStyleSpan(getTextAttributes().mFontStyle, getTextAttributes().mFontWeight,
-                getTextAttributes().mFontFamily)));
+                getTextAttributes().mFontFamily, getTextAttributes().getFontVariationSettings(),
+                getTextAttributes().getFontFeatureSettings(),
+                getTextAttributes().mHasValidTypeface)));
       }
     } else {
       // FIXME(zhouzhuangzhuang):delete judge condition to avoid normal not take effect on inline
@@ -894,6 +896,46 @@ public class BaseTextShadowNode extends ShadowNode {
   public void setText(@Nullable Dynamic text) {
     mText = TextHelper.convertRawTextValue(text);
 
+    markDirty();
+  }
+
+  @LynxProp(name = PropsConstants.FONT_VARIATION_SETTINGS)
+  public void setFontVariationSettings(ReadableArray fontVariationSettings) {
+    if (fontVariationSettings == null || fontVariationSettings.size() == 0) {
+      mTextAttributes.setFontVariationSettings(null);
+    } else {
+      StringBuilder fontVariationSettingsStr = new StringBuilder();
+      for (int i = 0; i < fontVariationSettings.size() / 2; i++) {
+        String tag = fontVariationSettings.getString(i * 2);
+        double value = fontVariationSettings.getDouble(i * 2 + 1);
+        fontVariationSettingsStr.append("'").append(tag).append("' ").append(value).append(",");
+      }
+      mTextAttributes.setFontVariationSettings(fontVariationSettingsStr.toString());
+    }
+
+    markDirty();
+  }
+
+  @LynxProp(name = PropsConstants.FONT_FEATURE_SETTINGS)
+  public void setFontFeatureSettings(ReadableArray fontFeatureSettings) {
+    if (fontFeatureSettings == null || fontFeatureSettings.size() == 0) {
+      mTextAttributes.setFontFeatureSettings(null);
+    } else {
+      StringBuilder fontFeatureSettingsStr = new StringBuilder();
+      for (int i = 0; i < fontFeatureSettings.size() / 2; i++) {
+        String tag = fontFeatureSettings.getString(i * 2);
+        int value = fontFeatureSettings.getInt(i * 2 + 1);
+        fontFeatureSettingsStr.append("'").append(tag).append("' ").append(value).append(",");
+      }
+      mTextAttributes.setFontFeatureSettings(fontFeatureSettingsStr.toString());
+    }
+
+    markDirty();
+  }
+
+  @LynxProp(name = PropsConstants.FONT_OPTICAL_SIZING)
+  public void setFontFeatureSettings(int value) {
+    mTextAttributes.setFontOpticalSizing(value == StyleConstants.FONTOPTICALSIZING_AUTO);
     markDirty();
   }
 }

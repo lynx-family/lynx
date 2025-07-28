@@ -2,7 +2,10 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 #import <CommonCrypto/CommonDigest.h>
-#include <CoreText/CTFontManager.h>
+#import <CoreText/CTFont.h>
+#import <CoreText/CTFontDescriptor.h>
+#import <CoreText/CTFontManager.h>
+#import <CoreText/SFNTLayoutTypes.h>
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxEnv.h>
@@ -904,6 +907,202 @@ typedef struct _LynxInnerFontInfo {
   }
 
   return fontByAlias;
+}
+
++ (UIFont *)generateFontWithBaseFont:(UIFont *)baseFont
+               fontVariationSettings:(NSArray *)fontVariationSettings
+                 fontFeatureSettings:(NSArray *)fontFeatureSettings
+                   fontOpticalSizing:(BOOL)fontOpticalSizing {
+  if (!fontVariationSettings && !fontFeatureSettings && !fontOpticalSizing) {
+    return baseFont;
+  }
+
+  NSArray *fontFeatureAttributeArray = [self getFontFeatureAttribute:fontFeatureSettings];
+  NSDictionary *fontVariationDic = [self getFontVariationAttribute:fontVariationSettings
+                                                 fontOpticalSizing:fontOpticalSizing
+                                                          fontSize:baseFont.pointSize];
+
+  CTFontDescriptorRef ctBaseDesc = CTFontDescriptorCreateWithNameAndSize(
+      (__bridge CFStringRef)baseFont.fontName, baseFont.pointSize);
+  NSDictionary *ctAttrs = @{
+    (id)kCTFontFeatureSettingsAttribute : fontFeatureAttributeArray,
+    (id)kCTFontVariationAttribute : fontVariationDic
+  };
+  CTFontDescriptorRef ctNewDesc =
+      CTFontDescriptorCreateCopyWithAttributes(ctBaseDesc, (__bridge CFDictionaryRef)ctAttrs);
+
+  UIFontDescriptor *newDesc = (__bridge UIFontDescriptor *)ctNewDesc;
+  UIFont *newFont = [UIFont fontWithDescriptor:newDesc size:baseFont.pointSize];
+  CFRelease(ctBaseDesc);
+  CFRelease(ctNewDesc);
+
+  return newFont;
+}
+
++ (NSDictionary *)getFontVariationAttribute:(NSArray *)fontVariationSettings
+                          fontOpticalSizing:(BOOL)fontOpticalSizing
+                                   fontSize:(CGFloat)fontSize {
+  NSMutableDictionary *fontVariationDic = [NSMutableDictionary new];
+  if (fontVariationSettings) {
+    for (NSUInteger i = 0; i < fontVariationSettings.count / 2; i++) {
+      CGFloat value = [fontVariationSettings[2 * i + 1] floatValue];
+
+      NSString *tag = [fontVariationSettings[2 * i] stringValue];
+      uint32_t tagKey = [self ConvertOpenTypeTagToInt:tag];
+      fontVariationDic[@(tagKey)] = @(value);
+    }
+  }
+  if (fontOpticalSizing) {
+    static uint32_t opticalSizeKey = 1869640570;
+    fontVariationDic[@(opticalSizeKey)] = @(fontSize);
+  }
+
+  return fontVariationDic;
+}
+
++ (uint32_t)ConvertOpenTypeTagToInt:(NSString *)s {
+  const char *cStr = s.UTF8String;
+  return ((uint32_t)cStr[0] << 24) | ((uint32_t)cStr[1] << 16) | ((uint32_t)cStr[2] << 8) |
+         ((uint32_t)cStr[3] << 0);
+}
+
++ (NSArray *)getFontFeatureAttribute:(NSArray *)fontFeatureSettings {
+  static NSDictionary *fontFeatureDic;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    NSDictionary *baseDic = @{
+      // Substitution Features
+      @"hlig" : @{
+        // Historical Ligatures
+        UIFontFeatureTypeIdentifierKey : @(kLigaturesType),
+        UIFontFeatureSelectorIdentifierKey : @(kHistoricalLigaturesOnSelector),
+      },
+      @"clig" : @{
+        // Contextual Ligatures
+        UIFontFeatureTypeIdentifierKey : @(kLigaturesType),
+        UIFontFeatureSelectorIdentifierKey : @(kContextualLigaturesOnSelector),
+      },
+      // Glyph Shaping / Alternates
+      @"c2sc" : @{
+        // Small Capitals From Capitals
+        UIFontFeatureTypeIdentifierKey : @(kUpperCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kUpperCaseSmallCapsSelector),
+      },
+      @"smcp" : @{
+        // Small Capitals
+        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kLowerCaseSmallCapsSelector),
+      },
+      @"pcap" : @{
+        // Petite Capitals
+        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kLowerCasePetiteCapsSelector),
+      },
+      @"c2pc" : @{
+        // Petite Capitals From Capitals
+        UIFontFeatureTypeIdentifierKey : @(kLowerCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kLowerCasePetiteCapsSelector),
+      },
+      // Numeric Features
+      @"onum" : @{
+        // Oldstyle Figures
+        UIFontFeatureTypeIdentifierKey : @(kNumberCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kLowerCaseNumbersSelector),
+      },
+      @"lnum" : @{
+        // Lining Figures
+        UIFontFeatureTypeIdentifierKey : @(kNumberCaseType),
+        UIFontFeatureSelectorIdentifierKey : @(kUpperCaseNumbersSelector),
+      },
+      @"pnum" : @{
+        // Proportional Figures
+        UIFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
+        UIFontFeatureSelectorIdentifierKey : @(kProportionalNumbersSelector),
+      },
+      @"tnum" : @{
+        // Tabular Figures
+        UIFontFeatureTypeIdentifierKey : @(kNumberSpacingType),
+        UIFontFeatureSelectorIdentifierKey : @(kMonospacedNumbersSelector),
+      },
+      @"frac" : @{
+        // Fractions (Diagonal Fractions)
+        UIFontFeatureTypeIdentifierKey : @(kFractionsType),
+        UIFontFeatureSelectorIdentifierKey : @(kDiagonalFractionsSelector),
+      },
+      @"afrc" : @{
+        // Alternative Fractions (Vertical Fractions)
+        UIFontFeatureTypeIdentifierKey : @(kFractionsType),
+        UIFontFeatureSelectorIdentifierKey : @(kVerticalFractionsSelector),
+      },
+      @"zero" : @{
+        // Slashed Zero
+        UIFontFeatureTypeIdentifierKey : @(kTypographicExtrasType),
+        UIFontFeatureSelectorIdentifierKey : @(kSlashedZeroOnSelector),
+      },
+      // Other Typography Features
+      @"ordn" : @{
+        // Ordinals
+        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
+        UIFontFeatureSelectorIdentifierKey : @(kOrdinalsSelector),
+      },
+      @"sups" : @{
+        // Superscripts
+        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
+        UIFontFeatureSelectorIdentifierKey : @(kSuperiorsSelector),
+      },
+      @"subs" : @{
+        // Subscript
+        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
+        UIFontFeatureSelectorIdentifierKey : @(kInferiorsSelector),
+      },
+      @"case" : @{
+        // Case-sensitive Forms
+        UIFontFeatureTypeIdentifierKey : @(kCaseSensitiveLayoutType),
+        UIFontFeatureSelectorIdentifierKey : @(kCaseSensitiveLayoutOnSelector),
+      },
+      @"titl" : @{
+        // Titling Alternates
+        UIFontFeatureTypeIdentifierKey : @(kStyleOptionsType),
+        UIFontFeatureSelectorIdentifierKey : @(kTitlingCapsSelector),
+      },
+      @"sinf" : @{
+        // Scientific Inferiors
+        UIFontFeatureTypeIdentifierKey : @(kVerticalPositionType),
+        UIFontFeatureSelectorIdentifierKey : @(kScientificInferiorsSelector),
+      },
+    };
+    NSMutableDictionary *mutableDic = [baseDic mutableCopy];
+    // Stylistic Sets ss01–ss20
+    for (int i = 1; i <= 20; i++) {
+      // format tag "ss01", "ss02", … "ss20"
+      NSString *tag = [NSString stringWithFormat:@"ss%02d", i];
+
+      // selectors are consecutive enums, starting at kStylisticAltOneOnSelector
+      // so for ssNN we use (kStylisticAltOneOnSelector + NN - 1)
+      NSInteger selector = kStylisticAltOneOnSelector + (i - 1);
+
+      mutableDic[tag] = @{
+        UIFontFeatureTypeIdentifierKey : @(kStylisticAlternativesType),
+        UIFontFeatureSelectorIdentifierKey : @(selector)
+      };
+    }
+
+    fontFeatureDic = [mutableDic copy];
+    ;
+  });
+  NSMutableArray *ret = [NSMutableArray new];
+
+  for (NSUInteger i = 0; i < fontFeatureSettings.count / 2; i++) {
+    NSInteger value = [fontFeatureSettings[2 * i + 1] intValue];
+    if (value == 1) {
+      NSString *tag = [fontFeatureSettings[2 * i] stringValue];
+      NSDictionary *dic = [fontFeatureDic valueForKey:tag];
+      if (dic) {
+        [ret addObject:dic];
+      }
+    }
+  }
+  return ret;
 }
 
 @end
