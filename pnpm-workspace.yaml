@@ -11,6 +11,7 @@ packages:
   - explorer/showcase/menu
   # base devtool
   - 'lynx/devtool/base_devtool/js_libraries/logbox'
+  - tools/api/parser/ts_morph
 
 catalog:
   '@lynx-js/qrcode-rsbuild-plugin': '0.3.6'
