@@ -474,7 +474,7 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
   });
 }
 
-PipelineLayoutData ElementManager::RequestLayout(
+void ElementManager::RequestLayout(
     const std::shared_ptr<PipelineOptions> &options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REQUEST_LAYOUT);
 
@@ -489,7 +489,7 @@ PipelineLayoutData ElementManager::RequestLayout(
 
   if (!IsLayoutInElementModeOn()) {
     DispatchLayoutUpdates(options);
-    return PipelineLayoutData();
+    return;
   }
 
   // TODO(songshourui.null): we can optimize the performance here within
@@ -498,6 +498,7 @@ PipelineLayoutData ElementManager::RequestLayout(
     layout_node_manager_->DestroyPlatformLayoutNodes();
   }
 
+  PipelineLayoutData layout_data;
   if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
@@ -508,10 +509,16 @@ PipelineLayoutData ElementManager::RequestLayout(
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutEnd);
     }
-
-    return {.layout_triggered = true, .pipeline_version = options->version};
+    layout_data = {.layout_triggered = true,
+                   .pipeline_version = options->version,
+                   .is_first_layout =
+                       options->is_first_screen || options->is_reuse_engine};
+    element_manager_delegate_->OnLayoutAfter(layout_data);
+    return;
   }
-  return {.layout_triggered = false, .pipeline_version = options->version};
+  layout_data = {.layout_triggered = false,
+                 .pipeline_version = options->version};
+  element_manager_delegate_->OnLayoutAfter(layout_data);
 }
 
 void ElementManager::DispatchLayoutUpdates(

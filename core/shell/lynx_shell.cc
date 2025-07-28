@@ -530,9 +530,10 @@ void LynxShell::LoadSSRData(
 }
 
 void LynxShell::UpdateDataByParsedData(
-    const std::shared_ptr<tasm::TemplateData>& data) {
+    const std::shared_ptr<tasm::TemplateData>& data, bool is_reuse_engine) {
   auto pipeline_options = std::make_shared<tasm::PipelineOptions>();
   pipeline_options->pipeline_origin = tasm::timing::kUpdateTriggeredByNative;
+  pipeline_options->is_reuse_engine = is_reuse_engine;
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);

@@ -5893,7 +5893,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.updateData(String json, String processorName);
   public TemplateData com.lynx.tasm.LynxTemplateRender.getTemplateData();
   public void com.lynx.tasm.LynxTemplateRender.updateMetaData(LynxUpdateMeta meta);
-  public void com.lynx.tasm.LynxTemplateRender.updateData(TemplateData data);
+  public void com.lynx.tasm.LynxTemplateRender.updateData(TemplateData data, boolean is_reuse_engine);
   public void com.lynx.tasm.LynxTemplateRender.resetData(TemplateData data);
   public void com.lynx.tasm.LynxTemplateRender.reloadTemplate(TemplateData data, TemplateData newGlobalProps);
   public void com.lynx.tasm.LynxTemplateRender.preloadLazyBundles(String[] urls);

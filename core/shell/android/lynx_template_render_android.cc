@@ -623,7 +623,8 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
                                jlong lifecycle, jlong data,
                                jstring j_processor_name,
                                jboolean read_only_value,
-                               jobject android_template_data) {
+                               jobject android_template_data,
+                               jboolean is_reuse_engine) {
   // TODO(songshourui.null): add a method to get template_data with
   // android_template_data
   const auto& value = data ? *(reinterpret_cast<Value*>(data)) : Value();
@@ -644,7 +645,8 @@ void UpdateDataByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
     return;
   }
-  reinterpret_cast<LynxShell*>(ptr)->UpdateDataByParsedData(template_data);
+  reinterpret_cast<LynxShell*>(ptr)->UpdateDataByParsedData(template_data,
+                                                            is_reuse_engine);
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

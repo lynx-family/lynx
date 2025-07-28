@@ -134,7 +134,8 @@ class LynxShell {
 
   void UpdateData(const std::string& data);
 
-  void UpdateDataByParsedData(const std::shared_ptr<tasm::TemplateData>& data);
+  void UpdateDataByParsedData(const std::shared_ptr<tasm::TemplateData>& data,
+                              bool is_reuse_engine = false);
 
   void ResetDataByParsedData(const std::shared_ptr<tasm::TemplateData>& data);
 

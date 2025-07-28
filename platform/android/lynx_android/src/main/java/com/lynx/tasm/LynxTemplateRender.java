@@ -784,6 +784,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         mLynxContext.getTemplateResourceFetcher(), mLynxContext.getGenericResourceFetcher());
     mLynxContext.setEnableAutoExpose(mLynxViewConfigProvider.isEnableAutoExpose());
     mNativeFacade = new NativeFacade(mLynxViewBuilder.isEnableJSRuntime());
+    mNativeFacade.setCallback(new TASMCallback());
     DisplayMetrics screenMetrics = mLynxContext.getScreenMetrics();
     long runtimeWrapperPtr = (mRuntime == null) ? 0 : mRuntime.getNativePtr();
     long whiteBoardPtr = (mGroup == null) ? 0 : mGroup.getWhiteBoardPtr();
@@ -1543,14 +1544,12 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
         }
-        // TODO(nihao):updateData(data, true);
-        updateData(data);
+        updateData(data, true);
         onTraceEventEnd(eventName);
         return true;
       }
     } else if (mLynxEngineRef.hasLoaded()) {
-      // TODO(nihao):updateData(data, true);
-      updateData(data);
+      updateData(data, true);
       onTraceEventEnd(eventName);
       return true;
     }
@@ -1728,7 +1727,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     TemplateData templateData = TemplateData.fromString(json);
     templateData.markState(processorName);
     templateData.markReadOnly();
-    this.updateData(templateData);
+    this.updateData(templateData, false);
   }
 
   public TemplateData getTemplateData() {
@@ -1848,7 +1847,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
   }
 
-  public void updateData(TemplateData data) {
+  public void updateData(TemplateData data, boolean is_reuse_engine) {
     String eventName = "LynxTemplateRender.updateData";
     onTraceEventBegin(eventName);
 
@@ -1868,7 +1867,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (prepareUpdateData(data)) {
       data.markConsumed();
       nativeUpdateDataByPreParsedData(mNativePtr, mNativeLifecycle, data.getNativePtr(),
-          data.processorName(), data.isReadOnly(), data);
+          data.processorName(), data.isReadOnly(), data, is_reuse_engine);
     }
     postRenderOrUpdateData(data);
     onTraceEventEnd(eventName);
@@ -1960,7 +1959,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     TemplateData templateData = TemplateData.fromMap(data);
     templateData.markState(processorName);
     templateData.markReadOnly();
-    this.updateData(templateData);
+    this.updateData(templateData, false);
     LLog.i(TAG, formatLynxMessage("update"));
   }
 
@@ -4074,7 +4073,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   // update data
   // FIXME(songshourui.null): only use templateData later
   private static native void nativeUpdateDataByPreParsedData(long ptr, long lifecycle, long dataPtr,
-      String processorName, boolean readOnly, TemplateData templateData);
+      String processorName, boolean readOnly, TemplateData templateData, boolean is_reuse_engine);
 
   private static native void nativeUpdateMetaData(long ptr, long lifecycle, long dataPtr,
       String processorName, boolean readOnly, TemplateData templateData, long globalPropsPtr);

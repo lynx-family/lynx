@@ -72,5 +72,12 @@ void ElementManagerDelegateImpl::SendGlobalEvent(const std::string &event,
   tasm_->SendGlobalEvent(event, info);
 }
 
+void ElementManagerDelegateImpl::OnLayoutAfter(PipelineLayoutData &data) {
+  if (tasm_ == nullptr) {
+    return;
+  }
+  tasm_->OnLayoutAfter(data);
+}
+
 }  // namespace tasm
 }  // namespace lynx

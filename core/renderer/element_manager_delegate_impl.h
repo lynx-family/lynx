@@ -46,6 +46,8 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
   void SendGlobalEvent(const std::string &event,
                        const lepus::Value &info) override;
 
+  void OnLayoutAfter(PipelineLayoutData &data) override;
+
  private:
   std::unordered_set<FrameElement *> frame_element_set_;
   std::unordered_map<std::string, std::shared_ptr<LynxTemplateBundle>>

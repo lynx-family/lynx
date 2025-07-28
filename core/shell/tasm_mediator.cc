@@ -48,17 +48,17 @@ void TasmMediator::OnDataUpdated() {
   facade_actor_->Act([](auto& facade) { facade->OnDataUpdated(); });
 }
 
+void TasmMediator::OnPageUpdated(bool is_first_screen) {
+  facade_actor_->Act([is_first_screen](auto& facade) {
+    facade->OnPageChanged(is_first_screen);
+  });
+}
+
 void TasmMediator::OnTasmFinishByNative() {
   facade_actor_->Act([](auto& facade) { facade->OnTasmFinishByNative(); });
 }
 
 void TasmMediator::OnTemplateLoaded(const std::string& url) {
-  // In EmbeddedMode, we're still exploring new client callback approaches. For
-  // performance considerations, we'll temporarily disable triggering the
-  // OnPageChanged callback.
-  if (IsEmbeddedModeOn()) {
-    return;
-  }
   facade_actor_->Act([url](auto& facade) { facade->OnTemplateLoaded(url); });
 }
 

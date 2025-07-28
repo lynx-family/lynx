@@ -29,9 +29,7 @@ import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -82,6 +80,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private boolean hasPresetMeasureSpec = false;
   private ILynxLogicExecutor logicExecutor;
   private Context mContext;
+  private CountDownLatch countDownLatch = new CountDownLatch(1);
 
   /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
@@ -143,7 +142,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       this.lynxRuntimeOptions.setGlobalProps(this.globalProps);
     }
     if (templateBundle == null) {
-      this.templateResultFutureTask = this.fetchTemplate();
+      this.fetchTemplate();
     } else if (this.logicExecutor == null) {
       this.logicExecutor = new DefaultLogicExecutor(
           templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
@@ -323,7 +322,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   public TemplateBundle getTemplateBundle() {
     if (templateBundle == null) {
       try {
-        templateResultFutureTask.get();
+        if (countDownLatch.await(3, TimeUnit.SECONDS)) {
+          return this.templateBundle;
+        }
       } catch (Exception e) {
         LLog.i(TAG, "getTemplateBundle failed.");
       }
@@ -376,9 +377,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   /**
    * Fetching template result as soon as possible.
-   * @return A future object to get the result.
    */
-  private Future<Void> fetchTemplate() {
+  private void fetchTemplate() {
     Runnable runnable = new Runnable() {
       @Override
       public void run() {
@@ -401,21 +401,16 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
                           templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
                     }
                   }
+
+                  countDownLatch.countDown();
                 }
               }
             });
       }
     };
-    FutureTask<Void> resultFuture = new FutureTask<>(runnable, null);
     if (lynxRuntimeOptions != null) {
-      LynxThreadPool.getAsyncServiceExecutor().execute(new Runnable() {
-        @Override
-        public void run() {
-          resultFuture.run();
-        }
-      });
+      LynxThreadPool.getAsyncServiceExecutor().execute(runnable);
     }
-    return resultFuture;
   }
 
   public void release() {
