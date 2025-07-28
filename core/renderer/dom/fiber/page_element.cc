@@ -43,6 +43,10 @@ PageElement::PageElement(ElementManager* manager,
   MarkTemplateElement();
   // The parent component unique id of page element is always its own impl id.
   SetParentComponentUniqueIdForFiber(static_cast<int64_t>(impl_id()));
+
+  if (EnableLayoutInElementMode()) {
+    element_manager_->SetViewportSizeToRootNode();
+  }
 }
 
 PageElement::PageElement(const PageElement& element, bool clone_resolved_props)

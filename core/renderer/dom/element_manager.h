@@ -1174,6 +1174,8 @@ class ElementManager : public ElementContextDelegate {
   // used for unified pipeline;
   void RequestResolve(std::shared_ptr<PipelineOptions> &pipeline_options);
 
+  bool SetViewportSizeToRootNode();
+
  protected:
   /**
    * call this function after exec OnPatchFinishForFiber
@@ -1213,7 +1215,6 @@ class ElementManager : public ElementContextDelegate {
   ElementManager &operator=(const ElementManager &) = delete;
   void OnListComponentUpdated(const std::shared_ptr<PipelineOptions> &options);
   void DispatchLayoutUpdates(const std::shared_ptr<PipelineOptions> &options);
-  bool SetViewportSizeToRootNode();
 
   const int instance_id_;
   int32_t element_id_{kInitialImplId};
