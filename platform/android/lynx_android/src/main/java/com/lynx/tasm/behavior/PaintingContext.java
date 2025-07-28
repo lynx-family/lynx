@@ -765,6 +765,17 @@ public final class PaintingContext implements IPaintingContext {
     mUIOwner.setFrameAppBundle(sign, bundle);
   }
 
+  @CalledByNative
+  private void markUIOperationQueueFlushForRecreateEngine(boolean enable) {
+    if (mUIOwner == null) {
+      return;
+    }
+    if (mUIOwner.getContext() == null) {
+      return;
+    }
+    mUIOwner.getContext().markFallbackProcess(enable);
+  }
+
   private native void nativeInvokeCallback(long context, int callback, WritableArray array);
 
   private native long nativeCreatePaintingContext(

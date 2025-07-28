@@ -225,6 +225,8 @@ class PaintingContext {
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id);
   void MarkUIOperationQueueFlushTiming(tasm::TimingKey key,
                                        const tasm::PipelineID& pipeline_id);
+  void MarkUIOperationQueueFlushForRecreateEngine(
+      bool flush_for_recreate_engine);
   void MarkLayoutUIOperationQueueFlushStartIfNeed();
   void SetContextHasAttached();
   inline void SetPerfActor(

@@ -320,6 +320,9 @@ void PaintingContextAndroidRef::SetNeedMarkPaintEndTiming(
                                                  pipeline_id_ref.Get());
 }
 
+void PaintingContextAndroidRef::MarkUIOperationQueueFlushForRecreateEngine(
+    bool enable) {}
+
 void PaintingContextAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {
   PropBundleAndroid* pda =

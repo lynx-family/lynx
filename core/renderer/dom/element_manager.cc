@@ -549,6 +549,16 @@ void ElementManager::CheckAndProcessSlotForInspector(Element *element) {
 PipelineLayoutData ElementManager::RequestLayout(
     const std::shared_ptr<PipelineOptions> &options) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_REQUEST_LAYOUT);
+
+  if (options->render_for_recreate_engine) {
+    painting_context()->MarkUIOperationQueueFlushForRecreateEngine(false);
+  }
+
+  if (options->need_timestamps) {
+    painting_context()->MarkUIOperationQueueFlushTiming(
+        tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
+  }
+
   if (!IsLayoutInElementModeOn()) {
     DispatchLayoutUpdates(options);
     return PipelineLayoutData();
@@ -557,11 +567,6 @@ PipelineLayoutData ElementManager::RequestLayout(
   // TODO(songshourui.null): we can optimize the performance here within
   // checking layout dirty.
   if (has_viewport_ready_ && root()->is_page()) {
-    if (options->need_timestamps) {
-      painting_context()->MarkUIOperationQueueFlushTiming(
-          tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
-    }
-
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
     }
@@ -579,11 +584,6 @@ PipelineLayoutData ElementManager::RequestLayout(
 
 void ElementManager::DispatchLayoutUpdates(
     const std::shared_ptr<PipelineOptions> &options) {
-  // insert PAINTING_UI_OPERATION_FLUSH_END to UI Operation Queue before layout.
-  if (options->need_timestamps) {
-    painting_context()->MarkUIOperationQueueFlushTiming(
-        tasm::timing::kPaintingUiOperationExecuteEnd, options->pipeline_id);
-  }
   delegate_->DispatchLayoutUpdates(options);
 }
 
@@ -1498,6 +1498,11 @@ void ElementManager::OnPatchFinishForFiber(
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kResolveStart);
     }
   }
+
+  if (options->render_for_recreate_engine) {
+    painting_context()->MarkUIOperationQueueFlushForRecreateEngine(true);
+  }
+
   if (options->enable_report_list_item_life_statistic_ &&
       options->IsRenderListItem()) {
     options->list_item_life_option_.start_dispatch_time_ =
@@ -1539,7 +1544,8 @@ void ElementManager::OnPatchFinishForFiber(
 
   // if flush_option do not need layout or options do not need layout, skip
   // layout.
-  if (!need_layout_ || !options->trigger_layout_) {
+  if ((!need_layout_ || !options->trigger_layout_) &&
+      !options->render_for_recreate_engine) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY,
                 ELEMENT_MANAGER_ON_PATCH_FINISH_FIBER_NO_PATCH);
     LOGI("ElementManager::OnPatchFinishForFiber NoPatch!");

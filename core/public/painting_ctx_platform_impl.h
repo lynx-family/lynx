@@ -66,6 +66,8 @@ class PaintingCtxPlatformRef {
                                                    bool is_init_scroll_offset,
                                                    bool from_layout) {}
   virtual void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) {}
+
+  virtual void MarkUIOperationQueueFlushForRecreateEngine(bool enable) {}
 };
 
 struct PaintingCtxPlatformImplConfig {
@@ -187,6 +189,8 @@ class PaintingCtxPlatformImpl {
   virtual void AlignText(Element* element) {
     text_layout_impl_->Align(element);
   }
+
+  void MarkUIOperationQueueFlushForRecreateEngine(bool enable);
 
  protected:
   std::shared_ptr<PaintingCtxPlatformRef> platform_ref_;

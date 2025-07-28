@@ -3408,6 +3408,22 @@ void TemplateAssembler::RequestLayout(
     OnLayoutAfter(data);
     return;
   }
+
+  if (pipeline_options->render_for_recreate_engine) {
+    page_proxy()
+        ->element_manager()
+        ->painting_context()
+        ->MarkUIOperationQueueFlushForRecreateEngine(false);
+  }
+
+  if (pipeline_options->need_timestamps) {
+    page_proxy()
+        ->element_manager()
+        ->painting_context()
+        ->MarkUIOperationQueueFlushTiming(
+            tasm::timing::kPaintingUiOperationExecuteEnd,
+            pipeline_options->pipeline_id);
+  }
   layout_scheduler_.RequestLayout(pipeline_options);
 }
 
@@ -3441,14 +3457,6 @@ void TemplateAssembler::RunPixelPipeline() {
   // TODO(@yangguangzhao.solace): Advance Pipeline Lifecycle State;
   if (current_pipeline_context->IsLayoutRequested()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_TRIGGER_LAYOUT);
-    if (pipeline_option->need_timestamps) {
-      page_proxy()
-          ->element_manager()
-          ->painting_context()
-          ->MarkUIOperationQueueFlushTiming(
-              tasm::timing::kPaintingUiOperationExecuteEnd,
-              pipeline_option->pipeline_id);
-    }
     // Current context may be reset in layout job, so we need to reset
     // layout_requested flag here.
     current_pipeline_context->ResetLayoutRequested();

@@ -45,7 +45,7 @@ bool PipelineContext::IsLayoutRequested() const {
     LOGE("options is nullptr");
     return false;
   }
-  return options_->layout_requested;
+  return options_->layout_requested && !options_->render_for_recreate_engine;
 }
 
 bool PipelineContext::IsFlushUIOperationRequested() const {

@@ -215,6 +215,30 @@ void PaintingContext::MarkUIOperationQueueFlushTiming(
   });
 }
 
+void PaintingContext::MarkUIOperationQueueFlushForRecreateEngine(
+    bool flush_for_recreate_engine) {
+  if (flush_for_recreate_engine) {
+    EnqueueHighPriorityUIOperation(
+        [flush_for_recreate_engine,
+         platform_ref = platform_impl_->GetPlatformRef()]() {
+          TRACE_EVENT(
+              LYNX_TRACE_CATEGORY,
+              "PaintingContext::MarkUIOperationQueueFlushForRecreateEngine");
+          platform_ref->MarkUIOperationQueueFlushForRecreateEngine(
+              flush_for_recreate_engine);
+        });
+  } else {
+    Enqueue([flush_for_recreate_engine,
+             platform_ref = platform_impl_->GetPlatformRef()]() {
+      TRACE_EVENT(
+          LYNX_TRACE_CATEGORY,
+          "PaintingContext::MarkUIOperationQueueFlushForRecreateEngine");
+      platform_ref->MarkUIOperationQueueFlushForRecreateEngine(
+          flush_for_recreate_engine);
+    });
+  }
+}
+
 void PaintingContext::SetNeedMarkPaintEndTiming(
     const tasm::PipelineID& pipeline_id) {
   if (pipeline_id.empty()) {

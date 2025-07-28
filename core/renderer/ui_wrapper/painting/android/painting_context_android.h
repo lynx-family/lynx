@@ -62,6 +62,8 @@ class PaintingContextAndroidRef : public PaintingCtxPlatformRef {
                                            bool from_layout) override;
   void SetNeedMarkPaintEndTiming(const tasm::PipelineID& pipeline_id) override;
 
+  void MarkUIOperationQueueFlushForRecreateEngine(bool enable) override;
+
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> java_ref_;
 };
