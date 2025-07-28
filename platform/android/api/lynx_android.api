@@ -3550,6 +3550,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public ReadableMap com.lynx.tasm.behavior.ui.LynxBaseUI.getDataset();
   public Rect com.lynx.tasm.behavior.ui.LynxBaseUI.getBound();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBound(Rect bound);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.markIsRecording(boolean is);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isRecording();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getWidth();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getHeight();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getTop();
@@ -8535,6 +8537,7 @@ public class com::lynx::tasm::behavior::ui::ViewInfo::SubDrawInfo :  {
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setImageManager(LynxImageManager imageManager);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setTextLayout(Layout textLayout);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setDrawPosition(int left, int top);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setSize(int width, int height);
 }
 
 public class com::lynx::tasm::behavior::ui::swiper::SwiperShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {

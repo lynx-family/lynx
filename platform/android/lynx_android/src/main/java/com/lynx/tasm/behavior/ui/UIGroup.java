@@ -141,11 +141,13 @@ public abstract class UIGroup<T extends ViewGroup>
           break;
         }
       } else if (ui.isFlatten()) {
+        ui.markIsRecording(true);
         RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
         ViewInfo.SubDrawInfo subDrawInfo =
             new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode);
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
+        ui.markIsRecording(false);
       }
     }
   }
@@ -156,11 +158,13 @@ public abstract class UIGroup<T extends ViewGroup>
     LynxBaseUI ui;
     for (ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI, mCurrentDrawIndex++) {
       if (ui.isFlatten() && !(ui instanceof UIShadowProxy)) {
+        ui.markIsRecording(true);
         RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
         ViewInfo.SubDrawInfo subDrawInfo =
             new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode);
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
+        ui.markIsRecording(false);
       }
     }
   }
@@ -186,6 +190,7 @@ public abstract class UIGroup<T extends ViewGroup>
       FlattenUIText text = (FlattenUIText) ui;
       subDrawInfo.setTextLayout(text.getTextLayout());
       subDrawInfo.setDrawPosition(text.getDrawPositionLeft(), text.getDrawPositionTop());
+      subDrawInfo.setSize(text.getWidth(), text.getHeight());
     }
   }
 

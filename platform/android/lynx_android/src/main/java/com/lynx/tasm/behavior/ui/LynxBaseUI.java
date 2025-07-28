@@ -247,6 +247,8 @@ public abstract class LynxBaseUI
   private int mBorderSpacingIndex;
   private int mBorderWidth;
 
+  private boolean mIsRecording;
+
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
     for (LynxBaseUI ui : mChildren) {
       ui.detachWithViewInfo(parentViewInfo);
@@ -2132,6 +2134,14 @@ public abstract class LynxBaseUI
 
   public void setBound(Rect bound) {
     mBound = bound;
+  }
+
+  public void markIsRecording(boolean is) {
+    mIsRecording = is;
+  }
+
+  public boolean isRecording() {
+    return mIsRecording;
   }
 
   public int getWidth() {

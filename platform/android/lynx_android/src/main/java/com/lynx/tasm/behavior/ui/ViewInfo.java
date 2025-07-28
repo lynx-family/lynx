@@ -103,6 +103,8 @@ public class ViewInfo implements IDrawChildHook {
     Layout mTextLayout = null;
     int mLeft = 0;
     int mTop = 0;
+    int mWidth = 0;
+    int mHeight = 0;
 
     public SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode) {
       mIsView = isView;
@@ -121,6 +123,11 @@ public class ViewInfo implements IDrawChildHook {
     public void setDrawPosition(int left, int top) {
       mLeft = left;
       mTop = top;
+    }
+
+    public void setSize(int width, int height) {
+      mWidth = width;
+      mHeight = height;
     }
   }
 
@@ -254,6 +261,10 @@ public class ViewInfo implements IDrawChildHook {
     }
 
     if (info.mTextLayout != null) {
+      if (info.mWidth > 0 && info.mHeight > 0) {
+        // text is special, we need to clip it self
+        canvas.clipRect(0, 0, info.mWidth, info.mHeight);
+      }
       info.mTextLayout.draw(canvas);
     }
 
