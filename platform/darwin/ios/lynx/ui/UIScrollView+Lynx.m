@@ -413,6 +413,27 @@
   }
 }
 
+- (CGPoint)calculateOffset:(CGPoint)contentOffset
+               targetFrame:(CGRect)targetFrame
+                scrollRect:(CGRect)scrollviewRect
+                    factor:(CGFloat)factor
+                    offset:(CGFloat)offset
+                  vertical:(BOOL)vertical {
+  CGPoint targetOffset = CGPointZero;
+  if (vertical) {
+    targetOffset = CGPointMake(
+        contentOffset.x,
+        CGRectGetMinY(targetFrame) -
+            (CGRectGetHeight(scrollviewRect) - CGRectGetHeight(targetFrame)) * factor + offset);
+  } else {
+    targetOffset = CGPointMake(
+        CGRectGetMinX(targetFrame) -
+            (CGRectGetWidth(scrollviewRect) - CGRectGetWidth(targetFrame)) * factor + offset,
+        contentOffset.y);
+  }
+  return targetOffset;
+}
+
 - (CGPoint)targetContentOffset:(CGPoint)proposedContentOffset
          withScrollingVelocity:(CGPoint)velocity
               withVisibleItems:(NSArray<UIView *> *)visibleItems
@@ -499,18 +520,12 @@
   // list), or it is not yet attached (very rare case when children are larger then the viewport).
   // Extrapolate from the child that is visible to get the position of the view to snap to.
   if (!CGRectIsNull(targetFrame)) {
-    CGPoint targetOffset = CGPointZero;
-    if (vertical) {
-      targetOffset = CGPointMake(
-          contentOffset.x,
-          CGRectGetMinY(targetFrame) -
-              (CGRectGetHeight(scrollviewRect) - CGRectGetHeight(targetFrame)) * factor + offset);
-    } else {
-      targetOffset = CGPointMake(
-          CGRectGetMinX(targetFrame) -
-              (CGRectGetWidth(scrollviewRect) - CGRectGetWidth(targetFrame)) * factor + offset,
-          contentOffset.y);
-    }
+    CGPoint targetOffset = [self calculateOffset:contentOffset
+                                     targetFrame:targetFrame
+                                      scrollRect:scrollviewRect
+                                          factor:factor
+                                          offset:offset
+                                        vertical:vertical];
 
     callback(targetPosition, targetOffset);
 
@@ -540,18 +555,12 @@
     return proposedContentOffset;
   }
 
-  CGPoint targetOffset = CGPointZero;
-  if (vertical) {
-    targetOffset = CGPointMake(
-        contentOffset.x,
-        CGRectGetMinY(targetFrame) -
-            (CGRectGetHeight(scrollviewRect) - CGRectGetHeight(targetFrame)) * factor + offset);
-  } else {
-    targetOffset = CGPointMake(
-        CGRectGetMinX(targetFrame) -
-            (CGRectGetWidth(scrollviewRect) - CGRectGetWidth(targetFrame)) * factor + offset,
-        contentOffset.y);
-  }
+  CGPoint targetOffset = [self calculateOffset:contentOffset
+                                   targetFrame:targetFrame
+                                    scrollRect:scrollviewRect
+                                        factor:factor
+                                        offset:offset
+                                      vertical:vertical];
 
   callback(targetPosition, targetOffset);
   return targetOffset;
