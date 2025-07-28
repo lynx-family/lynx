@@ -437,6 +437,9 @@ void FiberElement::UpdateSimpleStyles(const tasm::StyleMap &style_map) {
         } else {
           if (pair.first == kPropertyIDFontSize) {
             SetFontSize(pair.second);
+            // FIXME(linxs): to be determined if we need to align with the
+            // process of kDirtyFontSize
+            dirty_ &= ~kDirtyFontSize;
           } else {
             this->SetStyleInternal(pair.first, pair.second);
           }
