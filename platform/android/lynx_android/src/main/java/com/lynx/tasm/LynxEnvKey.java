@@ -25,6 +25,7 @@ public enum LynxEnvKey {
   FORCE_LAYOUT_ON_BACKGROUND_THREAD("force_layout_on_background_thread"),
   ENABLE_REPORT_CREATE_ASYNC_TAG("enable_report_create_async_tag"),
   ENABLE_SVG_ASYNC("enable_svg_async"),
+  ENABLE_FIRST_STABLE_PAINT("enable_first_stable_paint"),
   ENABLE_IMAGE_EVENT_REPORT("enable_image_event_report"),
   ENABLE_IMAGE_ASYNC_LAYOUT("enable_image_async_layout"),
   ENABLE_IMAGE_ASYNC_REDIRECT("enable_image_async_redirect"),
@@ -82,4 +83,5 @@ public enum LynxEnvKey {
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_DOM = "enable_cdp_domain_dom";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_CSS = "enable_cdp_domain_css";
   public static final String SP_KEY_ENABLE_CDP_DOMAIN_PAGE = "enable_cdp_domain_page";
+  public static final String SP_KEY_ENABLE_TIMING_OVERLAY = "enable_timing_overlay";
 }

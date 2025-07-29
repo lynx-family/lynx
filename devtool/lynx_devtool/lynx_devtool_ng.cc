@@ -89,6 +89,8 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
                                   std::make_unique<SystemInfoAgent>());
   global_dispatcher.RegisterAgent("Component",
                                   std::make_unique<InspectorComponentAgent>());
+  global_dispatcher.RegisterAgent(
+      "Performance", std::make_unique<InspectorPerformanceAgent>());
 }
 
 void LynxDevToolNG::RegisterGlobalDomainAgents(
@@ -112,6 +114,9 @@ void LynxDevToolNG::RegisterGlobalDomainAgents(
   } else if (!domain_key.compare(domain_key_prefix + "component")) {
     global_dispatcher.RegisterAgent(
         "Component", std::make_unique<InspectorComponentAgent>());
+  } else if (!domain_key.compare(domain_key_prefix + "performance")) {
+    global_dispatcher.RegisterAgent(
+        "PerformanceGlobal", std::make_unique<InspectorPerformanceAgent>());
   }
 }
 

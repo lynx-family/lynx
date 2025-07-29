@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Info background -->
+    <View
+        android:id="@+id/info_background"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="12dp"
+        android:background="#1A000000" />
+
+    <!-- Info text -->
+    <TextView
+        android:id="@+id/overlay_info"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="24dp"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"
+        android:lineSpacingExtra="4dp"
+        android:gravity="start" />
+
+    <!-- Highlight border (initially invisible) -->
+    <View
+        android:id="@+id/highlight_border"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:visibility="gone" />
+
+</FrameLayout>

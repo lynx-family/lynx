@@ -201,6 +201,7 @@ LYNX_PROPS_GROUP_DECLARE(
     }
     layer.contents = (id)image.CGImage;
     layer.contentsScale = [LynxUIUnitUtils screenScale];
+    self.meaningfulContentStatus = kLynxUIMeaningfulContentLoaded;
   }];
 }
 

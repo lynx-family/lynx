@@ -27,6 +27,8 @@ class GlobalDevToolPlatformAndroid : public GlobalDevToolPlatformFacade {
   std::string GetLynxVersion() override;
 #endif
 
+  void SetTimingOverlay(bool enabled, const Json::Value& params) override;
+
   std::string GetSystemModelName() override;
 
   GlobalDevToolPlatformAndroid(const GlobalDevToolPlatformAndroid&) = delete;

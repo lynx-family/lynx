@@ -14,8 +14,13 @@ namespace devtool {
 
 class InspectorPerformanceAgent : public CDPDomainAgentBase {
  public:
+  // Global domain
+  explicit InspectorPerformanceAgent();
+
+  // Instance domain
   explicit InspectorPerformanceAgent(
       const std::shared_ptr<LynxDevToolMediator>& devtool_mediator);
+
   virtual ~InspectorPerformanceAgent();
   void CallMethod(const std::shared_ptr<MessageSender>& sender,
                   const Json::Value& message) override;
@@ -29,6 +34,8 @@ class InspectorPerformanceAgent : public CDPDomainAgentBase {
   void Disable(const std::shared_ptr<MessageSender>& sender,
                const Json::Value& message);
   void getAllTimingInfo(const std::shared_ptr<MessageSender>& sender,
+                        const Json::Value& message);
+  void SetTimingOverlay(const std::shared_ptr<MessageSender>& sender,
                         const Json::Value& message);
   std::map<std::string, PerformanceAgentMethod> functions_map_;
   const std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
