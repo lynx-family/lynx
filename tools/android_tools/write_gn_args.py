@@ -46,7 +46,7 @@ def main():
   parser.add_argument('--gn-args', type=str, required=True, help='JSON string data')
   parser.add_argument('-n', '--project-name', type=str, required=False, help='Inject the project name to isolate GN args among different projects.')
   args, unknown = parser.parse_known_args()
-  root_dir = os.path.dirname(os.path.dirname(os.path.dirname(CUR_FILE_DIR)))
+  root_dir = os.path.dirname(os.path.dirname(CUR_FILE_DIR))
   write_gn_args(args, root_dir)
 
 if __name__ == "__main__":

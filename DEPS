@@ -82,7 +82,7 @@ deps = {
     'python_venv_set': {
         "type": "action",
         "commands": [
-            python_path + " tools/vpython_tools/vpython_env_setup.py",
+            python_path + " tools/vpython_tools/vpython_env_setup.py --root_dir " + root_dir,
         ],
     },
     'change_executable_permission': {

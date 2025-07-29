@@ -284,6 +284,8 @@ task configGnCompileParas {
             gnBuildArgs_list.put("disable_nanbox", "\"$disable_nanbox\"")
             gnBuildArgs_list.put("disable_list_platform_implementation", "\"$disable_list_platform_implementation\"")
             gnBuildArgs_list.put("compiler_optimization_level", "\"$compiler_optimization_level\"")
+            // enable 16 kb by default
+            gnBuildArgs_list.put("enable_16kb_align", "true")
             if (buildType == "release") {
                 gnBuildArgs_list.put("is_debug", "false")
                 gnBuildArgs_list.put("enable_replay_release", "\"$enable_replay_release\"")

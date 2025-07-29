@@ -55,7 +55,10 @@ if (is_android) {
         "napi_v8",
       ]
     }
-    configs = [ ":private_config" ]
+    configs = [
+      ":private_config",
+      "../../../../platform/android:16kb_page",
+    ]
   }
 
   lynx_core_source_set("js_v8_bridge") {
