@@ -453,12 +453,6 @@ def includes_for_type(idl_type, extended_attributes=None):
     base_idl_type = idl_type.base_type
     if base_idl_type in INCLUDES_FOR_TYPE:
         return INCLUDES_FOR_TYPE[base_idl_type]
-    if base_idl_type in TYPED_ARRAY_TYPES:
-        return INCLUDES_FOR_TYPE['ArrayBufferView'].union(
-            set([
-                'jsbridge/bindings/%s/%s' % (component_dir[base_idl_type],
-                                             binding_header_filename(base_idl_type))
-            ]))
     if idl_type.is_basic_type:
         return set([
             # 'bindings/core/v8/idl_types.h',

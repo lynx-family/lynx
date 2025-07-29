@@ -59,6 +59,8 @@ class ExceptionState {
   }
   const std::string& Message() const { return message_; }
 
+  Env GetEnv() const { return env_; }
+
  private:
   Env env_;
   std::string message_;
