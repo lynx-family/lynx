@@ -127,7 +127,7 @@ public class FlattenUIImage extends LynxFlattenUI {
 
     // we should call getLynxImageManagerForViewInfo after onDraw in the same call stack, to make
     // sure the getHasContent is correct!
-    if (mLynxImageManager != null && !mLynxImageManager.getHasContent()) {
+    if (mLynxImageManager != null) {
       return mLynxImageManager;
     }
     return null;
