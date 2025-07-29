@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "lynx_http_service",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}

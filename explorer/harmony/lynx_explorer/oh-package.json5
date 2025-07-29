@@ -12,6 +12,7 @@
     "@lynx/lynx_devtool": "@param:dependencies.lynx_version",
     "@lynx/lynx_devtool_service": "@param:dependencies.lynx_version",
     "@lynx/lynx_log_service": "@param:dependencies.lynx_version",
+    "@lynx/lynx_http_service": "@param:dependencies.lynx_version",
     "@ohos/imageknife": "3.2.6",
   },
   "scripts": {

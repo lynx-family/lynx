@@ -1,0 +1,12 @@
+{
+  "name": "@lynx/lynx_http_service",
+  "version": "@param:dependencies.lynx_version",
+  "description": "Lynx Http Service",
+  "main": "Index.ets",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@lynx/lynx": "@param:dependencies.lynx_version",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx"
+}

@@ -88,6 +88,18 @@
           ]
         }
       ]
+    },
+    {
+      "name": "lynx_http_service",
+      "srcPath": "../../platform/harmony/lynx_services/lynx_http_service",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
     }
   ]
 }

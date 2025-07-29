@@ -23,6 +23,7 @@ DEFAULT_MODULES = [
     'lynx_devtool',
     'lynx_devtool_service',
     'lynx_log_service',
+    'lynx_http_service',
 ]
 
 
