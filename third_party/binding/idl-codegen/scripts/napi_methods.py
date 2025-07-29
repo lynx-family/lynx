@@ -416,6 +416,8 @@ def method_context(interface, method, component_info, interfaces_info, is_visibl
             if argument_context.get('is_inout_buffer', False)),
         'implicit_buffer_size':
         'ImplicitBufferSize' in extended_attributes,
+        'hardcoded_for_remote':
+        'HardcodedForRemote' in extended_attributes,
     }
 
 

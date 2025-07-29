@@ -134,3 +134,4 @@ DeferredSetters
 SkipForRemote
 NeedsNativeSetter
 ImplicitBufferSize
+HardcodedForRemote

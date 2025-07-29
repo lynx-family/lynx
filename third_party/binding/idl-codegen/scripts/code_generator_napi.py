@@ -175,9 +175,9 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             self.get_output_filename(definition_name, '.cc', prefix=prefix))
         return header_path, cpp_path
 
-    def js_output_path(self, definition_name):
+    def js_output_path(self, definition_name, js_outdir = ''):
         js_path = posixpath.join(
-            self.output_dir,
+            js_outdir or self.output_dir,
             NameStyleConverter(definition_name).to_lower_camel_case() +'.ts')
         return js_path
 
@@ -239,6 +239,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
         generates_remote = self.hardcoded_includes.get(template_context['component'], {}).get('has_remote', False)
         if generates_remote:
             try:
+                template_context['remote_class'] = 'Remote' + name
                 remote_cpp_template_filename = 'remote_command_buffer.cc.tmpl'
                 remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
                 _, remote_cpp_text = self.render_templates(
@@ -247,19 +248,24 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 out.append((remote_cpp_path, remote_cpp_text))
             except:
                 pass
+        remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
         for js_class in template_context.get('interfaces', []):
             if js_class['shared_impl']:
                 continue
             class_name = js_class['type_name']
             parent_name = js_class['parent']
+            ancestors = []
+            while parent_name:
+                ancestors.append(parent_name)
+                parent_name = self.info_provider.interfaces_info.get(parent_name, {}).get('parent', '')
             class_context = {
                 'interface_name': class_name,
-                'parent_name': parent_name,
+                'ancestors': ancestors,
                 # For methods we need to keep the shared base impl to have consistent index with native side.
                 'methods': list(filter(
-                lambda method: method['class_name'] == class_name or method['class_name'] == parent_name, template_context['methods'])),
+                lambda method: method['class_name'] == class_name or method['class_name'] in ancestors, template_context['methods'])),
                 'remote_methods': list(filter(
-                lambda method: method['class_name'] == class_name or method['class_name'] == parent_name, template_context['remote_methods'])),
+                lambda method: method['class_name'] == class_name or method['class_name'] in ancestors, template_context['remote_methods'])),
                 # For constants just use the inherited for simplicity.
                 'constants': list(filter(lambda constant: constant['class_name'] == class_name, template_context['constants'])),
                 'overloads_child_only': js_class['overloads_child_only'],
@@ -279,7 +285,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             if generates_remote:
                 try:
                     remote_js_template = self.jinja_env.get_template('remote.js.tmpl')
-                    remote_js_path = self.js_output_path('remote' + js_class['type_name'])
+                    remote_js_path = self.js_output_path('remote' + js_class['type_name'], remote_js_outdir)
                     remote_js_text = render_template(remote_js_template, class_context)
                     out.append((remote_js_path, remote_js_text))
                 except:
@@ -327,7 +333,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
         # Skip generating async interfaces.
         if interface.async_created:
             return ()
-        template_context['component'] = component
+        template_context['component'] = self.hardcoded_includes.get(component, {}).get('as', component)
         template_context['attach_native_info'] = component_info.get('has_command_buffer', False)
         includes.update(
             interface_info.get('cpp_includes', {}).get(component, set()))
@@ -616,7 +622,7 @@ class CodeGeneratorCallbackFunction(CodeGeneratorBase):
         template_context['this_include_header_path'] = this_include_header_path
         template_context['header_guard'] = to_header_guard(
             this_include_header_guard_path)
-        template_context['component'] = self.target_component
+        template_context['component'] = self.hardcoded_includes.get(self.target_component, {}).get('as', self.target_component)
         template_context['hardcoded_includes'] = self.hardcoded_includes.get(self.target_component, {}).get(callback_function.name, [])
 
         # add common headers to component

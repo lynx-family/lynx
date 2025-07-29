@@ -349,9 +349,8 @@ Value {{napi_class}}::{{attribute.camel_case_name}}AttributeGetter(const Callbac
     return info.Env().Null();
   }
   {% endif %}
-  // Impl needs to take care of object ownership.
-  DCHECK(wrapped->IsNapiWrapped());
-  return wrapped->NapiObject();
+  // Caution: Impl side needs to take care of object ownership, preferably by using an AutoReference<>.
+  return wrapped->IsNapiWrapped() ? wrapped->NapiObject() : Napi{{attribute.idl_type}}::Wrap(std::unique_ptr<{{attribute.idl_type}}>(wrapped), info.Env());
   {% elif attribute.union_types or attribute.is_typed_array or attribute.idl_type == 'ArrayBuffer' or attribute.idl_type == 'ArrayBufferView' %}
   {% if has_remote %}
   return ToNAPI({{ callee(attribute) | trim }}Get{{attribute.camel_case_name}}(), info.Env());

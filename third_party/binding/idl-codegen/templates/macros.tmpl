@@ -237,11 +237,13 @@
   return std::unique_ptr<{{method.idl_type}}>(result)->ToJsObject(info.Env());
   {% elif method.is_sequence_type %}
   return result;
-  {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' %}
+  {% elif method.idl_type == 'any' or method.idl_type == 'object' or method.is_sequence_type or method.idl_type == 'ArrayBuffer' or method.idl_type == 'ArrayBufferView' or method.idl_type == 'Float32Array' %}
   {% if method.remote_method_id or method.idl_type == 'ArrayBuffer' %}
   return ToNAPI(std::move(result), info.Env());
   {% else %}
   return result;
   {% endif %}
+  {% elif method.cpp_type != 'void' %}
+  static_assert(false, "IDL type {{method.idl_type}} not supported.");
   {% endif %}{# method.is_boolean_type #}
 {% endmacro %}

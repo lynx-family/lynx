@@ -78,7 +78,8 @@ DEPENDENCY_IDL_FILES = frozenset([
     'test_interface_2_partial_2.idl',
 ])
 
-COMPONENT_DIRECTORY = frozenset(list(MODULES.keys())) #frozenset(['core', 'modules'])
+# Order must be stable.
+COMPONENT_DIRECTORY = list(MODULES.keys()) #frozenset(['core', 'modules'])
 #TEST_INPUT_DIRECTORY = os.path.dirname(SOURCE_PATH)
 REFERENCE_DIRECTORY = os.path.join(SOURCE_PATH, 'tools', 'tests', 'results')
 

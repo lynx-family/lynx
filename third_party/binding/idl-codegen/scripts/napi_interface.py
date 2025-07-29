@@ -471,6 +471,11 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                             if 'overloads' in method else
                             method['number_of_required_arguments'])
 
+    if interface.name == 'Float32Array':
+        return {
+            'methods': methods,
+        }
+
     global command_buffer_context
     command_buffer_class_name = 'Napi' + NameStyleConverter(command_buffer_context['component']).to_upper_camel_case() + 'CommandBuffer'
     overloads_child_only = {}
@@ -632,6 +637,9 @@ def finish_command_buffer():
     global command_buffer_context
     if not command_buffer_context['methods'] and not command_buffer_context['remote_methods'] or not command_buffer_context['component']:
         return
+    k_command_buffer_init['remote_method_index'] = command_buffer_context['remote_method_index']
+    k_command_buffer_init['remote_type_id'] = command_buffer_context['remote_type_id']
+
     del command_buffer_context['method_index']
     del command_buffer_context['remote_method_index']
     return command_buffer_context
