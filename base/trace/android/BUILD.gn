@@ -34,7 +34,10 @@ cmake_target("LynxTrace") {
 
   libs = [ "log" ]
 
-  configs = [ ":trace_android_private_config" ]
+  configs = [
+    ":trace_android_private_config",
+    "../../../platform/android:16kb_page",
+  ]
 }
 
 group("trace_jni_files") {

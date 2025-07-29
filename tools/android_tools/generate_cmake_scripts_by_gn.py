@@ -128,7 +128,7 @@ def main():
   parser.add_argument('-n', '--project-name', type=str, required=False, help='Inject the project name to isolate GN args among different projects.')
   parser.add_argument('--clean', action='store_true', required=False, help='Delete all products.')
   args, unknown = parser.parse_known_args()
-  root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+  root_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
   return run_gn_script(args, root_dir)
 
 if __name__ == "__main__":

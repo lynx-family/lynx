@@ -30,6 +30,7 @@ cmake_target("lynx_android") {
   configs = [
     ":lynx_android_public_config",
     ":lynx_android_private_config",
+    "../:16kb_page",
   ]
   if (!enable_lite) {
     sub_cmake_target = [ "../../../core/runtime/jsi/v8:lynx_v8_bridge" ]
