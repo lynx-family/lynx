@@ -62,6 +62,10 @@ class BASE_DEVTOOL_EXPORT AbstractDevTool {
   void RegisterAgent(const std::string& agent_name,
                      std::unique_ptr<CDPDomainAgentBase>&& agent);
 
+  // perfer to use this method, because using shared_ptr can avoid some
+  // lyfecycle issues
+  void RegisterAgentNG(const std::string& agent_name,
+                       std::shared_ptr<CDPDomainAgentBase> agent);
   // for handling Non-CDP message
   void RegisterMessageHandler(const std::string& type,
                               std::unique_ptr<DevToolMessageHandler>&& handler);

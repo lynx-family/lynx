@@ -42,6 +42,9 @@ class BASE_DEVTOOL_EXPORT DevToolMessageDispatcher
   // for CDP domain agent
   void RegisterAgent(const std::string& agent_name,
                      std::unique_ptr<CDPDomainAgentBase>&& agent);
+  void RegisterAgentNG(const std::string& agent_name,
+                       std::shared_ptr<CDPDomainAgentBase> agent);
+
   // for handling Non-CDP message
   void RegisterMessageHandler(const std::string& type,
                               std::unique_ptr<DevToolMessageHandler>&& handler);
@@ -56,7 +59,7 @@ class BASE_DEVTOOL_EXPORT DevToolMessageDispatcher
   virtual void DispatchCDPMessage(const std::shared_ptr<MessageSender>& sender,
                                   const Json::Value& msg);
 
-  std::unordered_map<std::string, std::unique_ptr<CDPDomainAgentBase>>
+  std::unordered_map<std::string, std::shared_ptr<CDPDomainAgentBase>>
       agent_map_;
   std::unordered_map<std::string, std::unique_ptr<DevToolMessageHandler>>
       handler_map_;

@@ -80,6 +80,12 @@ void DevToolMessageDispatcher::RegisterAgent(
   agent_map_.emplace(agent_name, std::move(agent));
 }
 
+void DevToolMessageDispatcher::RegisterAgentNG(
+    const std::string& agent_name, std::shared_ptr<CDPDomainAgentBase> agent) {
+  std::unique_lock<std::shared_mutex> lock(agent_mutex_);
+  agent_map_.emplace(agent_name, std::move(agent));
+}
+
 CDPDomainAgentBase* DevToolMessageDispatcher::GetAgent(
     const std::string& agent_name) {
   std::shared_lock<std::shared_mutex> lock(agent_mutex_);
