@@ -68,7 +68,7 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
                 TEMPLATE_BINARY_READER_DECODE_CSS_DESCRIPTOR_WITH_THREAD);
     const int length = css_section_range_.end - css_section_range_.start;
     auto css_reader = TemplateBinaryReader::Create(stream_->cursor(), length);
-    css_reader->CopyForCSSAsyncDecode(*this);
+    css_reader->CopyForAsyncDecode(*this);
 
     base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
         [css_reader = std::move(css_reader),
@@ -94,11 +94,12 @@ bool TemplateBinaryReader::DecodeCSSDescriptor() {
  * @return A unique pointer to a `style::StyleObjectDecoder` instance.
  */
 static std::unique_ptr<style::StyleObjectDecoder> StyleObjectDecoderCreator(
-    uint8_t* data, size_t length) {
+    uint8_t* data, size_t length, const StringListVec& string_list) {
   auto binary_stream =
       std::make_unique<lepus::ByteArrayInputStream>(data, length);
-  return std::unique_ptr<style::StyleObjectDecoder>(
-      new LynxBinaryBaseCSSReader(std::move(binary_stream)));
+  auto* async_reader = new LynxBinaryBaseCSSReader(std::move(binary_stream));
+  async_reader->SetStringList(string_list);
+  return std::unique_ptr<style::StyleObjectDecoder>(async_reader);
 }
 
 /**
@@ -135,8 +136,9 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   auto* raw_style_obj_array = style_obj_array.get();
   for (auto i = route.style_object_ranges.begin();
        i != route.style_object_ranges.end() && index < size; ++i, index++) {
-    auto* style_object_ref = new style::StyleObject(
-        i->start, i->end, cursor, length, StyleObjectDecoderCreator);
+    auto* style_object_ref =
+        new style::StyleObject(i->start, i->end, cursor, length,
+                               GetStringList(), StyleObjectDecoderCreator);
     raw_style_obj_array[index] = style_object_ref;
   }
   EnsureParallelParseTaskScheduler();
@@ -178,8 +180,7 @@ std::unique_ptr<TemplateBinaryReader> TemplateBinaryReader::Create(
   return reader;
 }
 
-void TemplateBinaryReader::CopyForCSSAsyncDecode(
-    const TemplateBinaryReader& other) {
+void TemplateBinaryReader::CopyForAsyncDecode(TemplateBinaryReader& other) {
   compile_options_ = other.compile_options_;
   enable_css_parser_ = other.enable_css_parser_;
   enable_css_variable_ = other.enable_css_variable_;
@@ -187,6 +188,7 @@ void TemplateBinaryReader::CopyForCSSAsyncDecode(
       other.enable_css_variable_multi_default_value_;
   css_section_range_ = other.css_section_range_;
   lepus_chunk_route_ = other.lepus_chunk_route_;
+  template_bundle().SetStringList(other.GetStringList());
 }
 
 void TemplateBinaryReader::EnsureParallelParseTaskScheduler() {
@@ -347,7 +349,7 @@ bool TemplateBinaryReader::DecodeLepusChunk() {
     const int length = lepus_chunk_range_.end - lepus_chunk_range_.start;
     auto lepus_chunk_reader =
         TemplateBinaryReader::Create(stream_->cursor(), length);
-    lepus_chunk_reader->CopyForCSSAsyncDecode(*this);
+    lepus_chunk_reader->CopyForAsyncDecode(*this);
 
     auto& lepus_chunk_manager = template_bundle().GetLepusChunkManager();
     base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
@@ -402,10 +404,10 @@ TemplateBinaryReader::CreateRecycler() {
   recycler->template_bundle() = template_bundle();
 
   // 1. copy css settings
-  recycler->CopyForCSSAsyncDecode(*this);
+  recycler->CopyForAsyncDecode(*this);
   recycler->enable_pre_process_attributes_ = true;
 
-  // 2. copy parsed sytles rout
+  // 2. copy parsed styles route
   recycler->string_key_parsed_styles_router_ = string_key_parsed_styles_router_;
 
   // 3. copy element template route

@@ -27,7 +27,7 @@ class StyleObjectDecoder {
 // @param length: The length of the binary data.
 // @return: A unique pointer to a StyleObjectDecoder instance.
 typedef std::unique_ptr<StyleObjectDecoder> (*DecoderCreatorFunc)(
-    uint8_t* data, size_t length);
+    uint8_t* data, size_t length, const tasm::StringListVec&);
 
 }  // namespace lynx::style
 

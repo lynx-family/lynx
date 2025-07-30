@@ -68,6 +68,7 @@ class LynxTemplateBundle final {
  public:
   LynxTemplateBundle()
       : css_style_manager_(std::make_shared<CSSStyleSheetManager>(nullptr)),
+        string_list_(std::make_shared<std::vector<base::String>>()),
         lepus_chunk_manager_(std::make_shared<LepusChunkManager>()){};
 
   const piper::JsBundle &GetJsBundle() const { return js_bundle_; }
@@ -122,7 +123,14 @@ class LynxTemplateBundle final {
 
   const ElementBundle &GetElementBundle() const { return element_bundle_; }
 
-  std::vector<base::String> &string_list() { return string_list_; }
+  std::shared_ptr<std::vector<base::String>> &GetStringList() {
+    return string_list_;
+  }
+
+  void SetStringList(
+      const std::shared_ptr<std::vector<base::String>> &string_list) {
+    string_list_ = string_list;
+  }
 
   const std::vector<uint8_t> &GetBinary() const { return binary_; }
   void SetBinary(std::vector<uint8_t> binary) { binary_ = std::move(binary); }
@@ -191,7 +199,7 @@ class LynxTemplateBundle final {
   std::unordered_map<int32_t, std::shared_ptr<PageMould>> page_moulds_{};
 
   // body - String
-  std::vector<base::String> string_list_{};
+  std::shared_ptr<std::vector<base::String>> string_list_{};
 
   // body - COMPONENT
   std::unordered_map<std::string, int32_t> component_name_to_id_{};
