@@ -17,6 +17,7 @@
 #include "core/runtime/vm/lepus/function.h"
 #include "core/runtime/vm/lepus/regexp.h"
 #include "core/template_bundle/template_codec/compile_options.h"
+#include "core/template_bundle/template_codec/template_binary.h"
 
 namespace lynx {
 namespace lepus {
@@ -113,7 +114,8 @@ class ContextBundle;
 class BaseBinaryReader : public BinaryReader {
  public:
   BaseBinaryReader(std::unique_ptr<InputStream> stream)
-      : BinaryReader(std::move(stream)) {
+      : BinaryReader(std::move(stream)),
+        string_list_(std::make_shared<std::vector<base::String>>()) {
 #if !ENABLE_JUST_LEPUSNG
     // Reserve to avoid frequent reallocations from 0 capacity.
     func_vec.reserve(128);
@@ -150,9 +152,13 @@ class BaseBinaryReader : public BinaryReader {
 
   bool DecodeContextBundle(ContextBundle* bundle);
 
- protected:
-  virtual std::vector<base::String>& string_list();
+  virtual tasm::StringListVec& GetStringList() { return string_list_; }
 
+  virtual void SetStringList(const tasm::StringListVec& string_list) {
+    string_list_ = string_list;
+  }
+
+ protected:
 #if !ENABLE_JUST_LEPUSNG
   // for serialize/deserialize
   std::unordered_map<fml::RefPtr<Function>, int> func_map;
@@ -160,7 +166,8 @@ class BaseBinaryReader : public BinaryReader {
 #endif
   tasm::CompileOptions compile_options_;
 
-  std::vector<base::String> string_list_;
+ private:
+  tasm::StringListVec string_list_;
 };
 
 }  // namespace lepus

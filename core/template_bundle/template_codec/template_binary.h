@@ -4,6 +4,7 @@
 #ifndef CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_TEMPLATE_BINARY_H_
 #define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_TEMPLATE_BINARY_H_
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -97,6 +98,7 @@ struct Range {
   }
 };
 
+using StringListVec = std::shared_ptr<std::vector<base::String>>;
 typedef Range PageRange;
 struct PageRoute {
   // Use linear map for reader to read as array of best performance.

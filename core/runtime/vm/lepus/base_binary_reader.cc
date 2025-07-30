@@ -316,9 +316,5 @@ bool BaseBinaryReader::DecodeContextBundle(ContextBundle* bundle) {
   return false;
 }
 
-std::vector<base::String>& BaseBinaryReader::string_list() {
-  return string_list_;
-}
-
 }  // namespace lepus
 }  // namespace lynx

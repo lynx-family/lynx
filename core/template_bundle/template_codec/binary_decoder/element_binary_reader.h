@@ -25,7 +25,7 @@ class ElementBinaryReader : public LynxBinaryBaseCSSReader {
 
   explicit ElementBinaryReader(
       std::unique_ptr<lepus::InputStream> stream,
-      const std::vector<base::String>& string_list,
+      const std::shared_ptr<std::vector<base::String>>&,
       const tasm::CompileOptions& options,
       const OrderedStringKeyRouter& element_templates_router,
       const StringKeyRouter& string_key_parsed_styles_router);
