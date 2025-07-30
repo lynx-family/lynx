@@ -32,9 +32,10 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
   std::vector<ItemHolder*> end_item_holders(
       span_count_, list_container_->GetItemHolderForIndex(0));
   if (list_children_helper_->attached_children().size() > 0) {
+    std::vector<Span> attached_spans(span_count_, Span());
     list_children_helper_->ForEachChild(
         list_children_helper_->attached_children(),
-        [this, &start_item_holders, &end_item_holders,
+        [this, &start_item_holders, &end_item_holders, &attached_spans,
          list_adapter =
              list_container_->list_adapter()](ItemHolder* item_holder) {
           // Note: When updating layout status, we should exclude the item
@@ -82,8 +83,18 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
             // just need to set it to end_item_holders.
             end_item_holders[span_index] = item_holder;
           }
+          // 3. Generate attach item's span info.
+          if (item_holder->item_full_span()) {
+            for (int i = 0; i < span_count_; ++i) {
+              attached_spans[i].emplace_back(item_index);
+            }
+          } else {
+            attached_spans[span_index].emplace_back(item_index);
+          }
           return false;
         });
+    RetrieveStartAndEndItemOfAttachedSpans(attached_spans, start_item_holders,
+                                           end_item_holders);
     layout_state.is_start_full_span_ = true;
     layout_state.is_end_full_span_ = true;
     ItemHolder* item_holder = nullptr;
@@ -108,6 +119,68 @@ void StaggeredGridLayoutManager::UpdateStartAndEndLinesStatus(
       // is_end_full_span_ to true.
       layout_state.is_end_full_span_ =
           item_holder->item_full_span() && layout_state.is_end_full_span_;
+    }
+  }
+}
+
+void StaggeredGridLayoutManager::RetrieveStartAndEndItemOfAttachedSpans(
+    const std::vector<Span>& attached_spans,
+    std::vector<ItemHolder*>& start_item_holders,
+    std::vector<ItemHolder*>& end_item_holders) const {
+  Span on_screen_span;
+  for (int span_index = 0; span_index < span_count_; ++span_index) {
+    const Span& attached_span = attached_spans[span_index];
+    if (attached_span.empty()) {
+      continue;
+    }
+    // Generate on screen item's span info from column_indexes_.
+    on_screen_span.clear();
+    for (const auto& item_index : column_indexes_[span_index]) {
+      if (item_index >= *(attached_span.begin()) &&
+          item_index <= *(attached_span.rbegin())) {
+        on_screen_span.emplace_back(item_index);
+      }
+    }
+    if (on_screen_span.empty()) {
+      continue;
+    }
+    // Retrieve start and end item holder.
+    int attached_span_size = static_cast<int>(attached_span.size());
+    int on_screen_span_size = static_cast<int>(on_screen_span.size());
+    if (attached_span_size <= on_screen_span_size &&
+        *(attached_span.begin()) == *(on_screen_span.begin()) &&
+        *(attached_span.rbegin()) == *(on_screen_span.rbegin())) {
+      int i = 0, j = 0, length = 0, max_length = 0, start_index = 0,
+          end_index = 0;
+      // Search for the longest matching consecutive subsequence between
+      // attached_span and on_screen_span.
+      while (i < attached_span_size && j < on_screen_span_size) {
+        if (attached_span[i] == on_screen_span[j]) {
+          if (++length > max_length) {
+            // If length larger than max_length, we record start_index and
+            // end_index in the attached_span.
+            max_length = length;
+            start_index = i - max_length + 1;
+            end_index = i;
+          }
+          i += 1;
+          j += 1;
+        } else {
+          // If not equal, reset length and traverse the on_screen_span from j +
+          // 1 until they are equal again.
+          length = 0;
+          for (int k = j + 1; k < on_screen_span_size; ++k) {
+            if (attached_span[i] == on_screen_span[k]) {
+              j = k;
+              break;
+            }
+          }
+        }
+      }
+      start_item_holders[span_index] =
+          list_container_->GetItemHolderForIndex(attached_span[start_index]);
+      end_item_holders[span_index] =
+          list_container_->GetItemHolderForIndex(attached_span[end_index]);
     }
   }
 }

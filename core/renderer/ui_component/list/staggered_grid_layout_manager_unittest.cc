@@ -39,6 +39,7 @@ static constexpr float kDefaultLayoutsUnitPerPx = 1.f;
 static constexpr double kDefaultPhysicalPixelsPerLayoutUnit = 1.f;
 
 using LayoutState = StaggeredGridLayoutManager::LayoutState;
+using Span = StaggeredGridLayoutManager::Span;
 
 class StaggeredGridLayoutManagerTest : public ::testing::Test {
  public:
@@ -169,6 +170,33 @@ class StaggeredGridLayoutManagerTest : public ::testing::Test {
       insert_action.insert_ops_.push_back(
           {i, base::FormatString("list-item-%d", i), estimated_sizes[i],
            enable_full_span && (!(i % full_span_tag_)), false, false});
+    }
+    list::FiberDiffResult fiber_diff_result{
+        .insert_action_ = insert_action,
+    };
+    list_container_->ResolveAttribute(
+        list::kFiberListDiffInfo, lepus::Value(fiber_diff_result.Resolve()));
+    list_adapter_->UpdateItemHolderToLatest(list_children_helper_);
+  }
+
+  void InitFiberDataSource(int data_count, std::vector<int> estimated_sizes,
+                           std::vector<int> full_span_indexes,
+                           std::vector<int> sticky_top_indexes,
+                           std::vector<int> sticky_bottom_indexes) {
+    list::InsertAction insert_action;
+    for (int i = 0; i < data_count; ++i) {
+      insert_action.insert_ops_.push_back(
+          {i, base::FormatString("list-item-%d", i), estimated_sizes[i], false,
+           false, false});
+    }
+    for (int i : full_span_indexes) {
+      insert_action.insert_ops_[i].full_span_ = true;
+    }
+    for (int i : sticky_top_indexes) {
+      insert_action.insert_ops_[i].sticky_top_ = true;
+    }
+    for (int i : sticky_bottom_indexes) {
+      insert_action.insert_ops_[i].sticky_bottom_ = true;
     }
     list::FiberDiffResult fiber_diff_result{
         .insert_action_ = insert_action,
@@ -350,6 +378,30 @@ TEST_F(StaggeredGridLayoutManagerTest, LayoutInvalidItemHolderWithFullSpan) {
       EXPECT_EQ(test_span_index[j], basic_span_index[j]);
     }
   }
+}
+
+TEST_F(StaggeredGridLayoutManagerTest, RetrieveStartAndEndItemOfAttachedSpans) {
+  int data_count = 10;
+  int span_count = 2;
+  InitLayoutAttrs("waterfall", span_count, "vertical", 0.f, 0.f, 2000.f,
+                  1000.f);
+  InitFiberDataSource(data_count, {100, 100, 20, 50, 50, 50, 50, 50, 50, 50},
+                      {0, 1, 2}, {1}, {});
+  auto* layout_mananger = staggered_grid_layout_manager();
+  layout_mananger->LayoutInvalidItemHolder(0);
+  const std::vector<Span> attached_spans({{1, 3, 5, 7}, {1, 4, 6, 8}});
+  std::vector<ItemHolder*> start_item_holders(
+      {list_container_->GetItemHolderForIndex(1),
+       list_container_->GetItemHolderForIndex(1)});
+  std::vector<ItemHolder*> end_item_holders(
+      {list_container_->GetItemHolderForIndex(7),
+       list_container_->GetItemHolderForIndex(8)});
+  layout_mananger->RetrieveStartAndEndItemOfAttachedSpans(
+      attached_spans, start_item_holders, end_item_holders);
+  EXPECT_EQ(start_item_holders[0], list_container_->GetItemHolderForIndex(3));
+  EXPECT_EQ(start_item_holders[1], list_container_->GetItemHolderForIndex(4));
+  EXPECT_EQ(end_item_holders[0], list_container_->GetItemHolderForIndex(7));
+  EXPECT_EQ(end_item_holders[1], list_container_->GetItemHolderForIndex(8));
 }
 
 TEST_F(StaggeredGridLayoutManagerTest, HasRemainSpaceToFillEnd) {
