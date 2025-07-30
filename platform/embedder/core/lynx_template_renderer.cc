@@ -86,7 +86,7 @@ void LynxTemplateRenderer::Reset() {
       ui_delegate_->UsesLogicalPixels() ? settings_.device_pixel_ratio : 1;
   auto screen_size = settings_.screen_size;
   PrepareEnvWidthScreenSize(screen_size.cx, screen_size.cy, density, ratio,
-                            settings_.device_pixel_ratio);
+                            ui_delegate_->GetScreenScaleFactor());
 
   auto view_size = settings_.viewport_size;
   auto lynx_env_config =
@@ -532,7 +532,7 @@ void LynxTemplateRenderer::LoadTemplateFromURL(
 }
 
 double LynxTemplateRenderer::GetScreenScaleFactor() {
-  return settings_.device_pixel_ratio;
+  return ui_delegate_->GetScreenScaleFactor();
 }
 
 void LynxTemplateRenderer::TakeSnapshot(
