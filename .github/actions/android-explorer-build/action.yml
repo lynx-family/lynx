@@ -1,11 +1,12 @@
 name: build android explorer
 
-description: build android explorer apk and upload apk to release if build-type is 'release'
+description: build android explorer apk
 
 inputs:
-  build-type:
-    description: The type of explorer we are building. It could be release or dry-run
-    required: true
+  abi-list:
+    description: The abi list of the sdk to publish
+    required: false
+    default: 'armeabi-v7a'
   build-params:
     description: Set project properties for gradle when building explorer
     required: false
@@ -20,25 +21,13 @@ runs:
         python-version: '3.13'
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
-      if: ${{ inputs.build-type == 'release' }}
-      with:
-        cache-backend: github
-    - name: Install Common Dependencies
-      uses: ./lynx/.github/actions/common-deps
-      if: ${{ inputs.build-type == 'dry-run' }}
     - name: Build Explorer App
-      env:
-        BUILD_TYPE: ${{ inputs.build-type }}
       shell: bash
       run: |-
         cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
         pushd explorer/android
-        if [ "$BUILD_TYPE" = "release" ]; then
-          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=armeabi-v7a,x86,x86_64,arm64-v8a -no-daemon ${{ inputs.build-params }}
-        elif [ "$BUILD_TYPE" = "dry-run" ]; then
-          ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=none -PabiList=x86,arm64-v8a -no-daemon ${{ inputs.build-params }}
-        fi
+        ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} -no-daemon ${{ inputs.build-params }}
         popd
     - name: upload artifact
       uses: lynx-infra/upload-artifact@dev
