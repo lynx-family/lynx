@@ -901,12 +901,27 @@ void RadonElement::UpdatePlatformNodeTag() {
     const auto& iterator = attrs.find(BASE_STATIC_STRING(list::kCustomLisName));
     if (attrs.end() != iterator) {
       platform_node_tag_ = iterator->second.String();
+
+      // add feature count for custom-list or list-container
+      if (platform_node_tag_.IsEqual(
+              BASE_STATIC_STRING(list::kListContainer))) {
+        // list-container
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_LIST_CONTAINER);
+      } else if (!platform_node_tag_.IsEqual(list::kList)) {
+        // custom-list
+        tasm::report::FeatureCounter::Instance()->Count(
+            tasm::report::LynxFeature::CPP_CUSTOM_LIST);
+      }
+
       return;
     }
     if (element_manager_->GetEnableNativeListFromPageConfig()) {
       // If not set "custom-list-name" and enableNativeList from page config is
       // true, we modify platform_node_tag_ to "list-container"
       platform_node_tag_ = BASE_STATIC_STRING(list::kListContainer);
+      tasm::report::FeatureCounter::Instance()->Count(
+          tasm::report::LynxFeature::CPP_LIST_CONTAINER);
     }
   }
 }
