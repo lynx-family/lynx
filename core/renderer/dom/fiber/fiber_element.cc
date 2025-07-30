@@ -2999,7 +2999,7 @@ void FiberElement::SetFontSize(const tasm::CSSValue &value) {
       UpdateLayoutNodeFontSize(*result, GetRecordedRootFontSize());
     }
 
-    if (!EnableLayoutInElementMode()) {
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
       PreparePropBundleIfNeed();
 
       prop_bundle_->SetProps(
