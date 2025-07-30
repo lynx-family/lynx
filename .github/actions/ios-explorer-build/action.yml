@@ -1,0 +1,38 @@
+name: build ios explorer
+
+description: build ios explorer app
+
+inputs:
+  build-arch:
+    description: The architecture of explorer we are building. It could be x86_64,arm64
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install Common Dependencies
+      uses: ./lynx/.github/actions/common-deps
+    - name: Setup Ruby Cache
+      uses: ./lynx/.github/actions/ios-common-deps
+    - name: Install iOS Dependencies
+      uses: nick-fields/retry@v2
+      with:
+        timeout_minutes: 20
+        max_attempts: 3
+        command: |-
+          set -e
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd explorer/darwin/ios/lynx_explorer
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          bash bundle_install.sh
+          popd
+    - name: Build Explorer App
+      shell: bash
+      run: |-
+        cd $GITHUB_WORKSPACE/lynx
+        source tools/envsetup.sh
+        pushd explorer/darwin/ios/lynx_explorer
+        xcodebuild -workspace LynxExplorer.xcworkspace -scheme LynxExplorer -configuration Debug -arch ${{ inputs.build-arch }} -archivePath build/LynxExplorer.xcarchive -derivedDataPath iOSCoreBuild/DerivedData -resultBundlePath results_bundle -showBuildTimingSummary -sdk iphonesimulator LD_GENERATE_MAP_FILE=YES LD_MAP_FILE_PATH=Build/linkmap.txt -jobs 24 build
+        popd
+        tar --strip-components 10 -czvf LynxExplorer-${{ inputs.build-arch }}.app.tar.gz explorer/darwin/ios/lynx_explorer/iOSCoreBuild/DerivedData/Build/Products/Debug-iphonesimulator/LynxExplorer.app
