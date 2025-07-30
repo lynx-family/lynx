@@ -10,7 +10,6 @@ import android.graphics.ColorFilter;
 import android.graphics.Matrix;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 import androidx.annotation.Nullable;
@@ -170,5 +169,11 @@ public class LynxScaleTypeDrawable extends Drawable {
     imageContent.setBounds(0, 0, underlyingWidth, underlyingHeight);
     mScaleType.getTransform(mTempMatrix, bounds, underlyingWidth, underlyingHeight, 0.5f, 0.5f);
     mDrawMatrix = mTempMatrix;
+  }
+
+  public void releaseImageSource() {
+    if (mCurrentDelegate != null) {
+      mCurrentDelegate.releaseImageResource();
+    }
   }
 }

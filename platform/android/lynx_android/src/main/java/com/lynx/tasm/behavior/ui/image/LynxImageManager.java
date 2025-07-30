@@ -22,7 +22,6 @@ import com.lynx.react.bridge.Dynamic;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableMapKeySetIterator;
 import com.lynx.tasm.LynxError;
-import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -58,7 +57,6 @@ import com.lynx.tasm.utils.ColorUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -242,7 +240,11 @@ public class LynxImageManager implements Drawable.Callback {
         releaseImage(mPreImageRequestInfo);
         releaseDrawable(mImageDrawable);
         mPreImageRequestInfo = null;
-        mImageDrawable = null;
+
+        if (mImageDrawable != null) {
+          mImageDrawable.releaseImageSource();
+          mImageDrawable = null;
+        }
       }
       mImageDrawable = new LynxScaleTypeDrawable(imageContent, mMode);
       if (!TextUtils.isEmpty(mCapInsets)) {
@@ -750,6 +752,10 @@ public class LynxImageManager implements Drawable.Callback {
     if (isDirty(PLACEHOLDER_CHANGED)) {
       releaseImage(mCurPlaceholderRequest);
       releaseDrawable(mPlaceholderDrawable);
+      if (mPlaceholderDrawable != null) {
+        mPlaceholderDrawable.releaseImageSource();
+        mPlaceholderDrawable = null;
+      }
       mCurPlaceholderRequest = null;
       mPlaceholderDrawable = null;
       updatePlaceholderSource();
@@ -758,9 +764,14 @@ public class LynxImageManager implements Drawable.Callback {
     if (isDirty(SRC_CHANGED) || isDirty(BLUR_RADIUS_CHANGED)
         || isDirty(DOWN_SAMPLING_SCALE_CHANGED)) {
       if (!mDeferInvalidation) {
-        releaseImage(mCurImageRequest);
-        releaseDrawable(mImageDrawable);
-        mImageDrawable = null;
+        releaseImage(mCurImageRequest); // TODO(linxs:) to be removed!
+        releaseDrawable(mImageDrawable); // TODO(linxs:) it's better to move to ImageContent to do
+                                         // release drawable?
+        if (mImageDrawable != null) {
+          mImageDrawable.releaseImageSource();
+          mImageDrawable = null;
+        }
+
         mCurImageRequest = null;
         mImageWidth = 0;
         mImageHeight = 0;
@@ -875,8 +886,16 @@ public class LynxImageManager implements Drawable.Callback {
     releaseDrawable(mPlaceholderDrawable);
     mCurImageRequest = null;
     mCurPlaceholderRequest = null;
-    mImageDrawable = null;
-    mPlaceholderDrawable = null;
+
+    if (mImageDrawable != null) {
+      mImageDrawable.releaseImageSource();
+      mImageDrawable = null;
+    }
+
+    if (mPlaceholderDrawable != null) {
+      mPlaceholderDrawable.releaseImageSource();
+      mPlaceholderDrawable = null;
+    }
   }
 
   public void onDraw(Canvas canvas) {

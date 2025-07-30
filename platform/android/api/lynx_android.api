@@ -2292,8 +2292,10 @@ public class com::lynx::tasm::image::model::ImageBlurPostProcessor : com.lynx.ta
 }
 
 public class com::lynx::tasm::image::ImageContent :  {
+  public com.lynx.tasm.image.ImageContent.ImageContent(@NonNull ReleasableImage bitmapRef);
   public com.lynx.tasm.image.ImageContent.ImageContent(@NonNull Bitmap bitmap);
   public com.lynx.tasm.image.ImageContent.ImageContent(@NonNull Drawable drawable);
+  public void com.lynx.tasm.image.ImageContent.releaseImageResource();
   public int com.lynx.tasm.image.ImageContent.getIntrinsicWidth();
   public int com.lynx.tasm.image.ImageContent.getIntrinsicHeight();
   public void com.lynx.tasm.image.ImageContent.setBounds(@androidx.annotation.NonNull Rect bounds);
@@ -5283,6 +5285,7 @@ public class com::lynx::tasm::image::LynxScaleTypeDrawable : Drawable {
   public void com.lynx.tasm.image.LynxScaleTypeDrawable.setColorFilter(@Nullable ColorFilter colorFilter);
   public int com.lynx.tasm.image.LynxScaleTypeDrawable.getOpacity();
   public ImageContent com.lynx.tasm.image.LynxScaleTypeDrawable.getContent();
+  public void com.lynx.tasm.image.LynxScaleTypeDrawable.releaseImageSource();
 }
 
 public interface com::lynx::tasm::navigator::LynxSchemaInterceptor {
@@ -7608,6 +7611,12 @@ public enum com::lynx::react::bridge::ReadableType {
   public com.lynx.react.bridge.ReadableType.ByteArray ByteArray;
   public com.lynx.react.bridge.ReadableType.PiperData PiperData;
   public com.lynx.react.bridge.ReadableType.LynxObject LynxObject;
+}
+
+public interface com::lynx::tasm::image::ReleasableImage {
+  public Bitmap com.lynx.tasm.image.ReleasableImage.getBitmap();
+  public Drawable com.lynx.tasm.image.ReleasableImage.getDrawable();
+  public void com.lynx.tasm.image.ReleasableImage.release();
 }
 
 public class abstract com::lynx::tasm::rendernode::compat::RenderNodeCompat :  {
