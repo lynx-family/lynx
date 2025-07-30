@@ -116,6 +116,7 @@ public class LynxImageService implements ILynxImageService {
   private DefaultDrawableFactory mDefaultDrawableFactory;
   private MemoryCache<CacheKey, CloseableImage> mMemoryCache;
 
+  // TODO(linxs:) remove this map
   ConcurrentHashMap<ImageRequestInfo, CloseableReference<CloseableImage>> mImageReferenceMap =
       new ConcurrentHashMap<>();
 
@@ -142,10 +143,8 @@ public class LynxImageService implements ILynxImageService {
         mMemoryCache, ImageUtils.getCacheKey(imageRequest, imageRequestInfo.getCallerContext()));
     if (closeableReference != null) {
       CloseableImage image = closeableReference.get();
-      mImageReferenceMap.put(imageRequestInfo, closeableReference);
       if (image instanceof CloseableStaticBitmap) {
-        loadListener.onSuccess(
-            new ImageContent(((CloseableStaticBitmap) image).getUnderlyingBitmap()),
+        loadListener.onSuccess(new ImageContent(new FrescoReleasableImage(closeableReference)),
             imageRequestInfo, new ImageInfo(image.getWidth(), image.getHeight(), false));
         return;
       }
@@ -177,13 +176,13 @@ public class LynxImageService implements ILynxImageService {
       boolean isAnim = false;
       ImageContent content = null;
       if (image instanceof CloseableStaticBitmap) {
-        content = new ImageContent(((CloseableStaticBitmap) image).getUnderlyingBitmap());
+        // FIXME(linxs): i have no idea why need to do reference.clone() here
+        content = new ImageContent(new FrescoReleasableImage(reference.clone()));
       } else {
         Drawable drawable = mDefaultDrawableFactory.createDrawable(reference.get());
-        content = new ImageContent(drawable);
+        content = new ImageContent(new FrescoReleasableImage(drawable, reference.clone()));
         isAnim = handleImageAnimListener(imageRequestInfo, drawable, animationListener);
       }
-      mImageReferenceMap.put(imageRequestInfo, reference.clone());
       loadListener.onSuccess(
           content, imageRequestInfo, new ImageInfo(image.getWidth(), image.getHeight(), isAnim));
     } catch (Exception exception) {
@@ -323,36 +322,44 @@ public class LynxImageService implements ILynxImageService {
       DataSource<CloseableReference<CloseableImage>> dataSource =
           imagePipeline.fetchDecodedImage(imageRequest, null);
 
-      BaseBitmapDataSubscriber subscriber = new BaseBitmapDataSubscriber() {
-        @Override
-        protected void onNewResultImpl(Bitmap bitmap) {
-          if (bitmap != null) {
-            listener.onSuccess(new ImageContent(bitmap), imageRequestInfo,
-                new ImageInfo(bitmap.getWidth(), bitmap.getHeight(), false));
-          } else {
-            listener.onFailure(
-                ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION, new Throwable("empty bitmap!"));
-          }
-        }
+      final BaseDataSubscriber<CloseableReference<CloseableImage>> subscriber =
+          new BaseDataSubscriber<CloseableReference<CloseableImage>>() {
+            @Override
+            protected void onNewResultImpl(
+                DataSource<CloseableReference<CloseableImage>> dataSource) {
+              CloseableReference<CloseableImage> reference = dataSource.getResult();
+              FrescoReleasableImage closeableBitmap = new FrescoReleasableImage(reference);
+              Bitmap bitmap = closeableBitmap.getBitmap();
+              if (bitmap != null) {
+                listener.onSuccess(new ImageContent(new FrescoReleasableImage(reference)),
+                    imageRequestInfo, new ImageInfo(bitmap.getWidth(), bitmap.getHeight(), false));
+              } else {
+                listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
+                    new Throwable("empty bitmap!"));
+              }
+            }
 
-        @Override
-        protected void onFailureImpl(DataSource<CloseableReference<CloseableImage>> dataSource) {
-          if (dataSource.getFailureCause() != null) {
-            listener.onFailure(
-                ImageErrorCodeUtils.checkImageException(dataSource.getFailureCause()),
-                dataSource.getFailureCause());
-          } else {
-            listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
-                new Throwable("imageLoadFailed."));
-          }
-        }
-      };
+            @Override
+            protected void onFailureImpl(
+                DataSource<CloseableReference<CloseableImage>> dataSource) {
+              if (dataSource.getFailureCause() != null) {
+                listener.onFailure(
+                    ImageErrorCodeUtils.checkImageException(dataSource.getFailureCause()),
+                    dataSource.getFailureCause());
+              } else {
+                listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
+                    new Throwable("imageLoadFailed."));
+              }
+            }
+          };
+
       dataSource.subscribe(subscriber, CallerThreadExecutor.getInstance());
     }
   }
 
   @Override
   public void releaseImage(@NonNull ImageRequestInfo imageRequestInfo) {
+    // TODO(linxs:) to be removed soon
     if (imageRequestInfo != null) {
       CloseableReference<CloseableImage> closeableReference =
           mImageReferenceMap.remove(imageRequestInfo);

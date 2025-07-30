@@ -17,6 +17,8 @@ import androidx.annotation.NonNull;
 public class ImageContent {
   private Bitmap mBitmap;
 
+  private ReleasableImage mReleasableBitmap;
+
   private Drawable mDrawable;
 
   private boolean mIsBitmap;
@@ -37,6 +39,20 @@ public class ImageContent {
 
   private Rect dst;
 
+  public ImageContent(@NonNull ReleasableImage bitmapRef) {
+    mReleasableBitmap = bitmapRef;
+
+    if (bitmapRef.getBitmap() != null) {
+      mBitmap = mReleasableBitmap.getBitmap();
+      mIsBitmap = true;
+      mPaint = new Paint();
+      mPaint.setAntiAlias(true);
+      src = new Rect(0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+    } else if (bitmapRef.getDrawable() != null) {
+      this.mDrawable = bitmapRef.getDrawable();
+    }
+  }
+
   public ImageContent(@NonNull Bitmap bitmap) {
     this.mBitmap = bitmap;
     mIsBitmap = true;
@@ -47,6 +63,12 @@ public class ImageContent {
 
   public ImageContent(@NonNull Drawable drawable) {
     this.mDrawable = drawable;
+  }
+
+  public void releaseImageResource() {
+    if (mReleasableBitmap != null) {
+      mReleasableBitmap.release();
+    }
   }
 
   public int getIntrinsicWidth() {
