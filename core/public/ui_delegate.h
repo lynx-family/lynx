@@ -46,7 +46,9 @@ class UIDelegate {
   // If true, the layout unit is logical pixels, otherwise it is physical
   // pixels.
   virtual bool UsesLogicalPixels() const = 0;
-
+  // Get real device pixel ratio of the screen which LynxView current
+  // displaying
+  virtual double GetScreenScaleFactor() const { return 1.0; }
   virtual void OnLynxCreate(
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
