@@ -179,6 +179,7 @@ export const LynxEnv: LynxEnvironment {
   setAppInfo(appInfo: Map<string, string>): void;
   public enableLynxDebug(enabled: boolean): void;
   public isLynxDebugEnabled(): void;
+  public tryInitLynxDebug(): void;
   public isDevtoolComponentAttach(): void;
   public isDevtoolEnabled(): void;
   public enableDevtool(enabled: boolean): void;

@@ -20,9 +20,9 @@ import { ILynxDevToolService } from '../tasm/service/ILynxDevToolService';
 const TAG = 'LynxEnv';
 
 class LynxEnvironment {
-  private logBoxEnabled: boolean = false;
-  private hasInitDevToolEnv: boolean = false;
+  private hasInitLynxDebug: boolean = false;
   private performanceEnable: boolean = false;
+  private appInfo?: Map<string, string>;
   private tracingDirPath: string = '';
   private defaultDensityEnabled = false;
   private displayInfo = new DisplayInfo();
@@ -33,11 +33,10 @@ class LynxEnvironment {
       return;
     }
     LLog.initLynxLog();
-    this.initLynxDebug();
-    if (this.isLynxDebugEnabled() && !this.performanceEnable) {
-      this.initDevToolEnv();
-      this.setTracingDirPath(context.filesDir);
+    if (!this.performanceEnable) {
+      this.tracingDirPath = context.filesDir;
     }
+    this.tryInitLynxDebug();
     lynx.initGlobalEnv(context.resourceManager);
     LynxInfoReporterHelper.initialize();
     LynxEventReporter.initialize();
@@ -48,29 +47,9 @@ class LynxEnvironment {
   }
 
   setAppInfo(appInfo: Map<string, string>) {
-    if (!this.isLynxDebugEnabled() && !this.performanceEnable) {
-      return;
-    }
     this.updateAppInfo(appInfo);
-    LynxDebugger.setAppInfo(Array.from(appInfo.keys()), Array.from(appInfo.values()))
-  }
-
-  private initLynxDebug() {
-    let isDevToolModuleLoaded =
-      LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool)?.isDevToolModuleLoaded();
-    if (isDevToolModuleLoaded) {
-      LLog.i(TAG, "isDevToolModuleLoaded is true");
-      this.enableLynxDebug(true);
-      LynxDebugger.setSwitch(LynxEnvKey.KEY_DEVTOOL_COMPONENT_ATTACH, true);
-    }
-  }
-
-  private initDevToolEnv() {
-    if (this.hasInitDevToolEnv) {
-      return;
-    }
-    this.hasInitDevToolEnv = true;
-    this.setDefaultAppInfo();
+    this.appInfo = appInfo;
+    LynxDebugger.setAppInfo(Array.from(appInfo.keys()), Array.from(appInfo.values()));
   }
 
   private setDefaultAppInfo() {
@@ -86,13 +65,46 @@ class LynxEnvironment {
 
   public enableLynxDebug(enabled: boolean) {
     LynxDebugger.setSwitch(LynxEnvKey.KEY_LYNX_DEBUG_ENABLED, enabled);
-    if (enabled) {
-      this.initDevToolEnv();
-    }
   }
 
   public isLynxDebugEnabled() {
     return this.isDevtoolComponentAttach() && LynxDebugger.getSwitch(LynxEnvKey.KEY_LYNX_DEBUG_ENABLED);
+  }
+
+  /**
+   * Attempt to initialize Lynx debug functionality
+   *
+   * @description This method performs deferred initialization after DevTool module async loading completes.
+   * Checks if DevTool module import has finished, then executes initialization if ready.
+   * Uses hasInitLynxDebug flag to prevent duplicate initialization.
+   *
+   * @remarks Designed to be called multiple times safely, with internal state checking.
+   * Solves timing issues between DevTool module async loading and initialization.
+   *
+   * - LynxEnv.initialize(): Called during application initialization
+   * - LynxDevToolService: Called after DevTool module loading completes
+   *
+   */
+  public tryInitLynxDebug() {
+    if (this.hasInitLynxDebug) {
+      return;
+    }
+    let isDevToolModuleLoaded =
+      LynxServiceCenter.getService<ILynxDevToolService>(LynxServiceType.DevTool)?.isDevToolModuleLoaded();
+    if (isDevToolModuleLoaded) {
+      LLog.i(TAG, "isDevToolModuleLoaded is true");
+      this.hasInitLynxDebug = true;
+      this.enableLynxDebug(true);
+      LynxDebugger.setSwitch(LynxEnvKey.KEY_DEVTOOL_COMPONENT_ATTACH, true);
+      if (this.appInfo) {
+        LynxDebugger.setAppInfo(Array.from(this.appInfo.keys()), Array.from(this.appInfo.values()));
+      } else {
+        this.setDefaultAppInfo();
+      }
+      if (!this.performanceEnable) {
+        this.setTracingDirPath(this.getTracingDirPath());
+      }
+    }
   }
 
   public isDevtoolComponentAttach() {
@@ -130,7 +142,6 @@ class LynxEnvironment {
   }
 
   public setTracingDirPath(tracingDirPath: string) {
-    this.tracingDirPath = tracingDirPath;
     lynx.setTracingDirPath(tracingDirPath);
   }
 

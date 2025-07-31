@@ -9,6 +9,7 @@ import {
   LLog,
   LynxBaseInspectorOwner,
   LynxModuleManager,
+  LynxEnv,
   OnErrorCallback
 } from '@lynx/lynx';
 import { NodeController } from '@kit.ArkUI';
@@ -22,6 +23,7 @@ export class LynxDevToolService implements ILynxDevToolService {
     import(devtool)
       .then((ns: ESObject) => {
         LynxDevToolService.devtoolModule = ns;
+        LynxEnv.tryInitLynxDebug();
       }).catch((e: Error) => {
       LLog.e(LynxDevToolService.TAG, 'load devtool error: ' + e);
     });
@@ -113,7 +115,9 @@ export class LynxDevToolService implements ILynxDevToolService {
 
   public registerWebSocketModule(moduleManager: LynxModuleManager): void {
     let LynxWebSocketModule: ESObject = LynxDevToolService.devtoolModule?.LynxWebSocketModule;
-    moduleManager.registerModule('LynxWebSocketModule', { moduleClass: LynxWebSocketModule });
+    if (LynxWebSocketModule) {
+      moduleManager.registerModule('LynxWebSocketModule', { moduleClass: LynxWebSocketModule });
+    }
   }
 }
 
