@@ -41,7 +41,7 @@ target 'LynxExplorer' do
     'Behavior',
   ]
 
-  pod 'PrimJS', '2.13.2-rc.1', :subspecs => ['quickjs', 'napi']
+  pod 'PrimJS', :subspecs => ['quickjs', 'napi']
 
   pod 'SDWebImage','5.15.5'
   pod 'SDWebImageWebPCoder', '0.11.0'

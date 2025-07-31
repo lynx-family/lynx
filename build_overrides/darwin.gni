@@ -76,7 +76,12 @@ Devtool_Native_includes = rebase_path([
                                         "../devtool/lynx_devtool",
                                       ]) + PRIMJS_includes
 
-Lepus_deps = [ "PrimJS/quickjs" ]
+PrimJS_QJS_DEP = [
+  "PrimJS/quickjs",
+  "2.13.3-rc.1",
+]
+
+Lepus_deps = [ PrimJS_QJS_DEP ]
 
 devtool_extend_sources = []
 
@@ -109,13 +114,16 @@ build_devtool_resources_command = [
 
 devtool_prepare_command = build_devtool_resources_command
 
-LepusNG_deps = [ "PrimJS/quickjs" ]
+LepusNG_deps = [ PrimJS_QJS_DEP ]
 
-NapiBinding_Common_deps = [ "PrimJS/napi/env" ]
+NapiBinding_Common_deps = [ [
+      "PrimJS/napi/env",
+      "2.13.3-rc.1",
+    ] ]
 
 QuickJS_includes = PRIMJS_includes
 QuickJS_deps = [ "PrimJS/napi/quickjs" ]
 
 JSC_deps = [ "PrimJS/napi/jsc" ]
 
-Worklet_deps = [ "PrimJS/quickjs" ]
+Worklet_deps = [ PrimJS_QJS_DEP ]
