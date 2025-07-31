@@ -102,18 +102,21 @@
   // Build shell
   auto ui_delegate = [_lynxUIRenderer uiDelegate];
   std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context;
-  if (!_isEngineInitFromReusePool && [_lynxUIRenderer needPaintingContextProxy]) {
+  if (!_isEngineInitFromReusePool) {
     painting_context = ui_delegate->CreatePaintingContext();
-    _paintingContextProxy = [[PaintingContextProxy alloc]
-        initWithPaintingContext:reinterpret_cast<lynx::tasm::PaintingContextDarwin*>(
-                                    painting_context.get())];
-    [_shadowNodeOwner setDelegate:_paintingContextProxy];
-    auto* painting_context_ref = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
-        painting_context->GetPlatformRef().get());
-    if (_embeddedMode == LynxEmbeddedModeUnset) {
-      _performanceController =
-          [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
-      painting_context_ref->SetPerformanceController(_performanceController);
+    if ([_lynxUIRenderer needPaintingContextProxy]) {
+      painting_context = ui_delegate->CreatePaintingContext();
+      _paintingContextProxy = [[PaintingContextProxy alloc]
+          initWithPaintingContext:reinterpret_cast<lynx::tasm::PaintingContextDarwin*>(
+                                      painting_context.get())];
+      [_shadowNodeOwner setDelegate:_paintingContextProxy];
+      auto* painting_context_ref = reinterpret_cast<lynx::tasm::PaintingContextDarwinRef*>(
+          painting_context->GetPlatformRef().get());
+      if (_embeddedMode == LynxEmbeddedModeUnset) {
+        _performanceController =
+            [[LynxPerformanceController alloc] initWithObserver:[self getLifecycleDispatcher]];
+        painting_context_ref->SetPerformanceController(_performanceController);
+      }
     }
   }
 
