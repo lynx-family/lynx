@@ -67,7 +67,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   // TODO(songshourui.null): In the future, a utility class related to CSS will
   // be added, and the class is used to unify the CSS logic of RadonComponent
   // and ComponentElement. And this function will be moved to the utility.
-  int32_t GetCSSId() const { return mould_ ? mould_->css_id() : 0; }
+  virtual int32_t GetCSSId();
 
   void SetDSL(PackageInstanceDSL dsl) { dsl_ = dsl; }
   PackageInstanceDSL GetDSL() { return dsl_; }
