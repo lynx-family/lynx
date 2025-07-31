@@ -34,6 +34,7 @@
 #include "core/renderer/dom/vdom/radon/radon_node.h"
 #include "core/renderer/dom/vdom/radon/radon_page.h"
 #include "core/renderer/pipeline/pipeline_context.h"
+#include "core/renderer/pipeline/pipeline_lifecycle.h"
 #include "core/renderer/pipeline/pipeline_scope.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
@@ -3448,7 +3449,10 @@ void TemplateAssembler::RunPixelPipeline() {
                 ctx.event()->add_debug_annotations(
                     "pipeline_id", pipeline_option->pipeline_id);
               });
-  if (current_pipeline_context->IsResolveRequested()) {
+
+  if (current_pipeline_context->AdvanceLifecycleTo(
+          LifecycleState::kInStyleResolve) &&
+      current_pipeline_context->IsResolveRequested()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_TRIGGER_RESOLVE);
     // trigger resolve;
     // TODO(nihao.royal): remove page_proxy, and make LynxEngine owns
@@ -3457,9 +3461,12 @@ void TemplateAssembler::RunPixelPipeline() {
                                                   pipeline_option->target_node);
     current_pipeline_context->ResetResolveRequested();
   }
+  current_pipeline_context->AdvanceLifecycleTo(
+      LifecycleState::kAfterStyleResolve);
 
-  // TODO(@yangguangzhao.solace): Advance Pipeline Lifecycle State;
-  if (current_pipeline_context->IsLayoutRequested()) {
+  if (current_pipeline_context->AdvanceLifecycleTo(
+          LifecycleState::kInPerformLayout) &&
+      current_pipeline_context->IsLayoutRequested()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_TRIGGER_LAYOUT);
     // Current context may be reset in layout job, so we need to reset
     // layout_requested flag here.
@@ -3558,14 +3565,18 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
                     "pipeline_id", pipeline_option->pipeline_id);
               });
 
+  current_pipeline_context->AdvanceLifecycleTo(
+      LifecycleState::kAfterPerformLayout);
+
   // TODO(@nihao.royal): ResetCurrentPipelineContext here to make flush occurs
   // after pipeline ends, later we will support a micro task to do flush things.
   // current pipeline ends, reset current pipeline context to nullptr;
   pipeline_context_manager_->ResetCurrentPipelineContext();
   if (layout_data.layout_triggered) {
-    // TODO(@yangguangzhao.solace): Advance Pipeline Lifecycle State;
     // Execute Flush UI OP;
-    if (current_pipeline_context->IsFlushUIOperationRequested()) {
+    if (current_pipeline_context->AdvanceLifecycleTo(
+            LifecycleState::kUIOpFlush) &&
+        current_pipeline_context->IsFlushUIOperationRequested()) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_PIPELINE_FLUSH_UI_OPERATION);
       page_proxy()->element_manager()->painting_context()->Flush();
       current_pipeline_context->ResetFlushUIOperationRequested();
@@ -3586,10 +3597,9 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
     delegate_.ReportElementMemoryInfo(mem_size_bytes, count);
   }
 
+  current_pipeline_context->AdvanceLifecycleTo(LifecycleState::kStopped);
   pipeline_context_manager_->RemovePipelineContextByVersion(
       current_pipeline_context->GetVersion());
-
-  // TODO(@yangguangzhao.solace): Advance Pipeline Lifecycle State;
 }
 
 }  // namespace tasm

@@ -8,12 +8,17 @@
 
 #include "base/include/fml/hash_combine.h"
 #include "base/include/log/logging.h"
+#include "core/renderer/pipeline/pipeline_lifecycle.h"
+#include "core/renderer/pipeline/pipeline_lifecycle_observer.h"
 #include "core/renderer/pipeline/pipeline_version.h"
 
 namespace lynx {
 namespace tasm {
 PipelineContext::PipelineContext(const PipelineVersion& version)
-    : version_(version){};
+    : version_(version) {
+  lifecycle_.AdvanceTo(LifecycleState::kInactive);
+  observer_data_.pipeline_version = version_;
+};
 
 const std::unique_ptr<PipelineContext> PipelineContext::Create(
     const PipelineVersion& version, bool is_major_updated) {
@@ -128,6 +133,65 @@ void PipelineContext::ResetFlushUIOperationRequested() {
     return;
   }
   options_->flush_ui_requested = false;
+}
+
+bool PipelineContext::AdvanceLifecycleTo(LifecycleState state) {
+  LifecycleState cur_state = lifecycle_.GetState();
+  bool result = lifecycle_.AdvanceTo(state);
+  if (!result) {
+    LOGE("Failed to advance lifecycle to " << static_cast<uint32_t>(state));
+    return result;
+  }
+
+  switch (state) {
+    case LifecycleState::kInStyleResolve:
+    case LifecycleState::kAfterStyleResolve: {
+      observer_data_.is_state_executed = IsResolveRequested();
+      observer_data_.timestamp_us = base::CurrentSystemTimeMicroseconds();
+      break;
+    }
+    case LifecycleState::kInPerformLayout: {
+      observer_data_.is_state_executed = IsLayoutRequested();
+      observer_data_.timestamp_us = base::CurrentSystemTimeMicroseconds();
+      break;
+    }
+    case LifecycleState::kAfterPerformLayout: {
+      observer_data_.is_state_executed = IsLayoutRequested();
+      observer_data_.timestamp_us = options_->after_layout_timestamp;
+      break;
+    }
+    case LifecycleState::kUIOpFlush: {
+      observer_data_.is_state_executed = IsFlushUIOperationRequested();
+      break;
+    }
+    case LifecycleState::kStopped: {
+      observer_data_.is_state_executed = true;
+      observer_data_.timestamp_us = base::CurrentSystemTimeMicroseconds();
+      break;
+    }
+    default:
+      break;
+  }
+  NotifyLifecycleChanged(cur_state, state);
+  return result;
+}
+
+void PipelineContext::AddObserver(PipelineLifecycleObserver* observer) {
+  observers_.push_back(observer);
+}
+
+void PipelineContext::RemoveObserver(PipelineLifecycleObserver* observer) {
+  observers_.remove(observer);
+}
+
+void PipelineContext::NotifyLifecycleChanged(LifecycleState prev_state,
+                                             LifecycleState cur_state) {
+  observer_data_.prev_state = prev_state;
+  observer_data_.cur_state = cur_state;
+
+  for (auto* observer : observers_) {
+    observer->OnLifecycleChanged(observer_data_);
+  }
 }
 
 }  // namespace tasm
