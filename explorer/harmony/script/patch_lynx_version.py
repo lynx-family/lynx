@@ -4,9 +4,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-import sys
-import argparse
-from subprocess import check_call
 import json
 
 CUR_DIR = os.path.dirname(os.path.abspath(__file__))
