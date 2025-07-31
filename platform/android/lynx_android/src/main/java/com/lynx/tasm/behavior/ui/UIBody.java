@@ -128,13 +128,24 @@ public class UIBody extends UIGroup<UIBodyView> {
       return;
     }
 
+    boolean isLayoutRequested = mView.isLayoutRequested();
+
     mDetachTask = new OnceTask<>(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
         TraceEvent.beginSection(TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW);
 
+        if (isLayoutRequested) {
+          // measure
+          performMeasureChildrenUI();
+
+          // layout
+          performLayoutChildrenUI();
+        }
+
         // process view info
         processViewInfo();
+
         // detach
         detachWithViewInfo(mViewInfo);
 
