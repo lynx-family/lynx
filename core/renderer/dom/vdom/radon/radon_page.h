@@ -53,6 +53,7 @@ class RadonPage : public RadonComponent {
 
   virtual bool IsPageForBaseComponent() const override { return true; }
   virtual CSSFragment *GetStyleSheetBase(AttributeHolder *holder) override;
+  virtual int32_t GetCSSId() override { return mould_ ? mould_->css_id() : 0; };
 
   bool NeedsExtraData() const override;
 

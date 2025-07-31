@@ -107,6 +107,17 @@ RadonComponent::RadonComponent(const RadonComponent& node, PtrLookupMap& map)
 
 RadonComponent::~RadonComponent() { OnElementRemoved(0); }
 
+int32_t RadonComponent::GetCSSId() {
+  if (!page_proxy_->GetRemoveCSSScopeEnabled()) {
+    return mould_ ? mould_->css_id() : 0;
+  }
+  auto* page = GetRootEntryNode();
+  if (page) {
+    return page->GetCSSId();
+  }
+  return mould_ ? mould_->css_id() : 0;
+}
+
 fml::RefPtr<Element> RadonComponent::CreateFiberElement() {
   auto fiber_element = page_proxy_->element_manager()->CreateFiberComponent(
       ComponentStrId(), GetCSSId(), GetEntryName(), name(), path());
