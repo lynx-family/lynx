@@ -80,6 +80,7 @@ class TimingHandlerNg {
 
   std::unordered_set<TimingFlag> has_dispatched_timing_flags_;
   bool is_background_runtime_ready_ = false;
+  bool is_main_thread_runtime_ready_ = false;
   base::InlineVector<std::unique_ptr<lynx::pub::Value>, 3>
       pending_dispatched_performance_entries_;
 

@@ -110,6 +110,10 @@ void TimingHandlerNg::ProcessPipelineTiming(
         timing_key == kReloadBackgroundEnd) {
       is_background_runtime_ready_ = true;
       FlushPendingPerformanceEntries();
+    } else if (timing_key == kLoadBundleEnd ||
+               timing_key == kReloadBackgroundEnd) {
+      is_main_thread_runtime_ready_ = true;
+      FlushPendingPerformanceEntries();
     }
     DispatchPerformanceEventIfNeeded(timing_key, pipeline_id);
   }
@@ -132,6 +136,7 @@ void TimingHandlerNg::ClearPipelineTimingInfo() {
   has_dispatched_timing_flags_.clear();
   pending_dispatched_performance_entries_.clear();
   is_background_runtime_ready_ = false;
+  is_main_thread_runtime_ready_ = false;
 }
 
 void TimingHandlerNg::ClearContainerTimingInfo() {
@@ -307,7 +312,8 @@ void TimingHandlerNg::SendPerformanceEntry(
 
 bool TimingHandlerNg::ReadyToDispatch() const {
   return is_background_runtime_ready_ ||
-         !timing_info_.GetEnableBackgroundRuntime();
+         (!timing_info_.GetEnableBackgroundRuntime() &&
+          is_main_thread_runtime_ready_);
 }
 
 void TimingHandlerNg::ReleasePipelineTiming(const PipelineID& pipeline_id) {
