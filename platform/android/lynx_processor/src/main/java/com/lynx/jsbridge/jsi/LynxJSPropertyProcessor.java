@@ -216,30 +216,35 @@ public class LynxJSPropertyProcessor extends AbstractProcessor {
 
   private void collectFieldsFromJSIObject(Element jsiObject, JSIObjectDescriptor descriptor) {
     // collect current class field
-    // TODO(zhoupeng.z): collect parents class field
     System.out.println(TAG + ", collect fields for class: " + descriptor.simpleClassName);
     if (!isAssignable(jsiObject.asType(), I_LYNX_JSI_OBJECT.reflectionName())) {
       throwException("Enclosing class must be a ILynxJSIObject",
           jsiObject.asType().getKind().toString(), jsiObject.getSimpleName().toString(),
           descriptor.simpleClassName);
     }
-    for (Element enclosedElement : jsiObject.getEnclosedElements()) {
-      // collect all enclosed field with @LynxJSProperty
-      if (enclosedElement.getKind() != ElementKind.FIELD
-          || enclosedElement.getAnnotation(LynxJSProperty.class) == null) {
-        continue;
+    // Recursively get the element of the parent class
+    Element curElement = jsiObject;
+    while (isAssignable(curElement.asType(), I_LYNX_JSI_OBJECT.reflectionName())) {
+      for (Element enclosedElement : curElement.getEnclosedElements()) {
+        // collect all enclosed field with @LynxJSProperty
+        if (enclosedElement.getKind() != ElementKind.FIELD
+            || enclosedElement.getAnnotation(LynxJSProperty.class) == null) {
+          continue;
+        }
+
+        String fieldName = enclosedElement.getSimpleName().toString();
+        String jniFieldDescriptor =
+            getJNIFieldDescriptor(enclosedElement.asType(), fieldName, descriptor.simpleClassName);
+
+        String serializedName = getSerializedName(enclosedElement);
+        String fieldNameForScript = serializedName != null ? serializedName : fieldName;
+        descriptor.mFields.put(
+            fieldNameForScript, new JSPropertyDescriptor(fieldName, jniFieldDescriptor));
+        System.out.println(
+            TAG + ", collect a field, name: " + fieldName + ", serialized name: " + serializedName);
       }
-
-      String fieldName = enclosedElement.getSimpleName().toString();
-      String jniFieldDescriptor =
-          getJNIFieldDescriptor(enclosedElement.asType(), fieldName, descriptor.simpleClassName);
-
-      String serializedName = getSerializedName(enclosedElement);
-      String fieldNameForScript = serializedName != null ? serializedName : fieldName;
-      descriptor.mFields.put(
-          fieldNameForScript, new JSPropertyDescriptor(fieldName, jniFieldDescriptor));
-      System.out.println(
-          TAG + ", collect a field, name: " + fieldName + ", serialized name: " + serializedName);
+      // get parent class element
+      curElement = (((DeclaredType) (((TypeElement) curElement).getSuperclass())).asElement());
     }
   }
 
