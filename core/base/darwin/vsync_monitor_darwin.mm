@@ -5,6 +5,7 @@
 #include "core/base/darwin/vsync_monitor_darwin.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/trace/trace_event_def.h"
+#include "core/renderer/utils/lynx_env.h"
 
 #import <Foundation/Foundation.h>
 #import <QuartzCore/CADisplayLink.h>
@@ -95,8 +96,8 @@
 namespace lynx {
 namespace base {
 
-std::shared_ptr<VSyncMonitor> VSyncMonitor::Create() {
-  return std::make_shared<lynx::base::VSyncMonitorIOS>(false);
+std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
+  return std::make_shared<lynx::base::VSyncMonitorIOS>(false, is_on_ui_thread);
 }
 
 class LynxVSyncPulsePuppet {
@@ -116,8 +117,9 @@ class LynxVSyncPulsePuppet {
   LynxVSyncPulse *delegate = nullptr;
 };
 
-VSyncMonitorIOS::VSyncMonitorIOS(bool init_in_current_loop, bool is_vsync_post_task_by_emergency)
-    : VSyncMonitor(is_vsync_post_task_by_emergency) {
+VSyncMonitorIOS::VSyncMonitorIOS(bool init_in_current_loop, bool is_on_ui_thread,
+                                 bool is_vsync_post_task_by_emergency)
+    : VSyncMonitor(is_on_ui_thread, is_vsync_post_task_by_emergency) {
   if (init_in_current_loop) {
     Init();
   }
@@ -151,6 +153,16 @@ void VSyncMonitorIOS::RequestVSyncOnUIThread(Callback callback) {
     return;
   }
   callback_ = std::move(callback);
+  if ([NSThread isMainThread]) {
+    RequestVSync();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      RequestVSync();
+    });
+  }
+}
+
+void VSyncMonitorIOS::RequestVSyncOnUIThread() {
   if ([NSThread isMainThread]) {
     RequestVSync();
   } else {

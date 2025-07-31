@@ -14,8 +14,10 @@
 namespace lynx {
 namespace base {
 
-VSyncMonitor::VSyncMonitor(bool is_vsync_post_task_by_emergency)
-    : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency) {
+VSyncMonitor::VSyncMonitor(bool is_on_ui_thread,
+                           bool is_vsync_post_task_by_emergency)
+    : is_vsync_post_task_by_emergency_(is_vsync_post_task_by_emergency),
+      is_on_ui_thread_(is_on_ui_thread) {
   LOGI("VSyncMonitor created with is_vsync_post_task_by_emergency_ "
        << is_vsync_post_task_by_emergency_);
 }
@@ -32,12 +34,15 @@ void VSyncMonitor::AsyncRequestVSync(Callback callback) {
 
   callback_ = std::move(callback);
 
-  RequestVSync();
+  if (is_on_ui_thread_) {
+    RequestVSyncOnUIThread();
+  } else {
+    RequestVSync();
+  }
 }
 
 void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
-                                                  Callback callback,
-                                                  bool should_on_ui_thread) {
+                                                  Callback callback) {
   if (!callback) {
     return;
   }
@@ -53,8 +58,8 @@ void VSyncMonitor::ScheduleVSyncSecondaryCallback(uintptr_t id,
   }
 
   if (!requested_) {
-    if (should_on_ui_thread) {
-      RequestVSyncOnUIThread(std::move(callback));
+    if (is_on_ui_thread_) {
+      RequestVSyncOnUIThread();
     } else {
       RequestVSync();
     }
