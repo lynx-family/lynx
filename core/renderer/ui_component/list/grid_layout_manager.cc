@@ -416,7 +416,7 @@ void GridLayoutManager::LayoutInvalidItemHolder(int first_invalid_index) {
 }
 
 bool GridLayoutManager::ShouldRecycleItemHolder(ItemHolder* item_holder) {
-  if (!item_holder) {
+  if (!item_holder || !item_holder->recyclable()) {
     return false;
   }
   return LargestMainSizeInRowWithItemHolder(item_holder) < content_offset_ ||

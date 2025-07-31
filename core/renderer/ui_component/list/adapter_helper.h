@@ -120,6 +120,9 @@ class AdapterHelper {
   inline const std::vector<int32_t>& sticky_tops() const {
     return sticky_tops_;
   }
+  inline const std::unordered_set<int32_t>& unrecyclable() const {
+    return unrecyclable_;
+  }
   inline const std::vector<int32_t>& insertions() const {
     return diff_result_.insertions_;
   }
@@ -152,6 +155,7 @@ class AdapterHelper {
   // Deprecated: using estimated_sizes_px_
   std::vector<int32_t> estimated_heights_px_;
   std::vector<int32_t> estimated_sizes_px_;
+  std::unordered_set<int32_t> unrecyclable_;
   // Fiber
   // Deprecated: using fiber_estimated_sizes_px_
   std::unordered_map<std::string, int32_t> fiber_estimated_heights_px_;
@@ -159,6 +163,7 @@ class AdapterHelper {
   std::unordered_set<std::string> fiber_full_spans_;
   std::unordered_set<std::string> fiber_sticky_tops_;
   std::unordered_set<std::string> fiber_sticky_bottoms_;
+  std::unordered_set<std::string> fiber_unrecyclable_;
 };
 }  // namespace tasm
 }  // namespace lynx

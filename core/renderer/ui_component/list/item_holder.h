@@ -58,6 +58,7 @@ class ItemHolder {
     sticky_top_ = sticky_top;
     sticky_bottom_ = sticky_bottom;
   }
+  void SetRecyclable(bool recyclable) { recyclable_ = recyclable; }
 
   const std::string& item_key() const { return item_key_; }
   int index() const { return index_; }
@@ -72,6 +73,7 @@ class ItemHolder {
   bool sticky() const { return sticky_top_ || sticky_bottom_; }
   bool sticky_top() const { return sticky_top_; }
   bool sticky_bottom() const { return sticky_bottom_; }
+  bool recyclable() const { return recyclable_; }
 
   // Note: The comparator of ItemHolder should allow objects with the same
   // index but different addresses to exist and it should meet the
@@ -141,6 +143,8 @@ class ItemHolder {
   int index_{list::kInvalidIndex};
   // The ItemHold's key.
   std::string item_key_;
+  // Whether the ItemHolder can be recycled.
+  bool recyclable_{true};
   // Whether the ItemHolder is a sticky top item.
   bool sticky_top_{false};
   // Whether the ItemHolder is a sticky bottom item.
