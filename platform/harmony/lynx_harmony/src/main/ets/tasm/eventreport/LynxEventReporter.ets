@@ -22,6 +22,7 @@ export class LynxEventReporter {
   private mAllGenericInfos: Map<InstanceId, Map<string, LynxReportEventPropValue>> = new Map();
   private mAllExtraParams: Map<InstanceId, Map<string, LynxReportEventPropValue>> = new Map();
   private mObserverList: ILynxEventReportObserver[] = [];
+  private eventReporterService?: ILynxEventReportObserver;
   public static readonly INSTANCE_ID_UNKNOWN: InstanceId = -1;
   private static instance: LynxEventReporter = new LynxEventReporter();
 
@@ -36,13 +37,6 @@ export class LynxEventReporter {
   private constructor() {
     lynx.EventReporter.registerJSMethods(this, this.onEventCallByNative, this.updateGenericInfoCallByNative,
       this.clearCacheCallByNative);
-    const eventReporterService =
-      LynxServiceCenter.getService<ILynxEventReportObserver>(LynxServiceType.EventReporter);
-    if (eventReporterService) {
-      this.addObserver(eventReporterService);
-    } else {
-      console.error(`${LynxEventReporter.TAG}: eventReporter service not found or event name is null.`);
-    }
   }
 
   /**
@@ -277,6 +271,7 @@ export class LynxEventReporter {
     if (extraParams) {
       extraData = new Map<string, LynxReportEventPropValue>(extraParams);
     }
+    this.setupEventReporterServiceIfNeeded();
     for (const observer of this.mObserverList) {
       if (sync) {
         observer.onReportEventSync?.(eventName, instanceId, propsData, extraData);
@@ -320,6 +315,19 @@ export class LynxEventReporter {
       Object.keys(record).forEach((key) => {
         to.set(key, record[key]);
       });
+    }
+  }
+
+  private setupEventReporterServiceIfNeeded() {
+    if (this.eventReporterService) {
+      return
+    }
+    this.eventReporterService =
+      LynxServiceCenter.getService<ILynxEventReportObserver>(LynxServiceType.EventReporter);
+    if (this.eventReporterService) {
+      this.addObserver(this.eventReporterService);
+    } else {
+      LLog.e(LynxEventReporter.TAG, "eventReporter service not found or event name is null.");
     }
   }
 }
