@@ -965,6 +965,13 @@ public class LynxImageManager implements Drawable.Callback {
     mPlaceholderDrawable = null;
   }
 
+  public void tryHandleResult() {
+    if (mSrcLoadListener == null) {
+      return;
+    }
+    mSrcLoadListener.tryHandleResult();
+  }
+
   public void onDraw(Canvas canvas) {
     mSrcLoadListener.tryHandleResult();
 

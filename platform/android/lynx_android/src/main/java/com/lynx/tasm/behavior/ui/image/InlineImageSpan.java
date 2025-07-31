@@ -37,6 +37,15 @@ public final class InlineImageSpan extends AbsInlineImageSpan {
     }
   }
 
+  @Override
+  public void handleRequestResult() {
+    super.handleRequestResult();
+    if (mLynxImageManager == null) {
+      return;
+    }
+    mLynxImageManager.tryHandleResult();
+  }
+
   @Nullable
   @Override
   public Drawable getDrawable() {

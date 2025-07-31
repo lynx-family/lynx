@@ -7,11 +7,13 @@ import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.text.Layout;
+import android.text.Spanned;
 import android.view.View;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IProcessViewInfoHook;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
+import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.MaskDrawable;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import java.util.ArrayList;
@@ -265,6 +267,8 @@ public class ViewInfo implements IDrawChildHook {
         // text is special, we need to clip it self
         canvas.clipRect(0, 0, info.mWidth, info.mHeight);
       }
+      AbsInlineImageSpan.possiblyHandleInlineImageRequestResult(
+          (Spanned) info.mTextLayout.getText());
       info.mTextLayout.draw(canvas);
     }
 

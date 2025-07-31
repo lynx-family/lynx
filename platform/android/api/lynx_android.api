@@ -40,6 +40,7 @@ public class abstract com::lynx::tasm::behavior::ui::text::AbsInlineImageSpan : 
   public void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.setVerticalShift(float shift);
   public void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.draw(Canvas canvas, CharSequence text, int start, int end, float x, int top, int y, int bottom, Paint paint);
   public int com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.getSize(Paint paint, CharSequence text, int start, int end, Paint.FontMetricsInt fm);
+  public void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.handleRequestResult();
   public abstract Drawable com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.getDrawable();
   public abstract void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.onDetachedFromWindow();
   public abstract void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.onStartTemporaryDetach();
@@ -50,6 +51,7 @@ public class abstract com::lynx::tasm::behavior::ui::text::AbsInlineImageSpan : 
   public int com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.getWidth();
   public int com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.getHeight();
   public static void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.possiblyUpdateInlineImageSpans(Spanned spannable, Drawable.Callback callback);
+  public static void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.possiblyHandleInlineImageRequestResult(Spanned spanned);
 }
 
 public class abstract com::lynx::tasm::base::AbsLogDelegate : com.lynx.tasm.base.ILogDelegate {
@@ -2591,6 +2593,7 @@ public class com::lynx::tasm::behavior::ui::image::InlineImageSpan : com.lynx.ta
   public com.lynx.tasm.behavior.ui.image.InlineImageSpan.InlineImageSpan(int width, int height, int[] margins);
   public void com.lynx.tasm.behavior.ui.image.InlineImageSpan.setImageManager(LynxImageManager lynxImageManager);
   public void com.lynx.tasm.behavior.ui.image.InlineImageSpan.setCallback(Drawable.Callback callback);
+  public void com.lynx.tasm.behavior.ui.image.InlineImageSpan.handleRequestResult();
   public Drawable com.lynx.tasm.behavior.ui.image.InlineImageSpan.getDrawable();
   public void com.lynx.tasm.behavior.ui.image.InlineImageSpan.onDetachedFromWindow();
   public void com.lynx.tasm.behavior.ui.image.InlineImageSpan.onStartTemporaryDetach();
@@ -4912,6 +4915,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.tryFetchImageFromService(int width, int height);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.tryFetchPlaceholderFromService(int width, int height);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.destroy();
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.tryHandleResult();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.onDraw(Canvas canvas);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.invalidate();
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setEvents(Map< String, EventsListener > events);

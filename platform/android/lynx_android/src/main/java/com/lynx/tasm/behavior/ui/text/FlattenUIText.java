@@ -167,6 +167,8 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     }
     canvas.translate(paddingLeft + mTextTranslateOffset.x, paddingTop + mTextTranslateOffset.y);
 
+    AbsInlineImageSpan.possiblyHandleInlineImageRequestResult(
+        mTextLayout != null ? (Spanned) mTextLayout.getText() : null);
     if (mIsJustify && Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
       TextHelper.drawText(canvas, mTextLayout, getWidth() - paddingLeft - paddingRight);
     } else {

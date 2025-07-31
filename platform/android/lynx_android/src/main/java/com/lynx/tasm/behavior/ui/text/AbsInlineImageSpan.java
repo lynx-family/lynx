@@ -206,6 +206,28 @@ public abstract class AbsInlineImageSpan extends AbsBaselineShiftCalculatorSpan 
   }
 
   /**
+   * For TextInlineImageSpan we need trigger image related span handle image request results before
+   * draw, make sure the image can be displayed in the same frame.
+   *
+   * @param spanned The spanned that may contain TextInlineImageSpans
+   */
+  public static void possiblyHandleInlineImageRequestResult(Spanned spanned) {
+    if (spanned == null) {
+      return;
+    }
+
+    AbsInlineImageSpan[] spans = spanned.getSpans(0, spanned.length(), AbsInlineImageSpan.class);
+    for (AbsInlineImageSpan span : spans) {
+      span.handleRequestResult();
+    }
+  }
+
+  /**
+   * Trigger image fetcher handle image request results.
+   */
+  public void handleRequestResult() {}
+
+  /**
    * Get the drawable that is span represents.
    */
   public abstract @Nullable Drawable getDrawable();
