@@ -108,6 +108,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(linxs): remove this config in the next version
     FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
+    ENABLE_EVENT_HANDLE_REFACTOR,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -230,6 +231,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
             {Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
              "enable_new_animator_on_patch_finish_opt"},
+            {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -359,6 +361,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableFiberElementMemoryReport();
   bool FixFontSizeOverrideDirectionChangeBug();
   bool EnableNewAnimatorOnPatchFinishOpt();
+  bool EnableEventHandleRefactor();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

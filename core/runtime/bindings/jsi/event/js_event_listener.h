@@ -18,7 +18,9 @@ namespace piper {
 
 class JSClosureEventListener : public event::EventListener {
  public:
-  JSClosureEventListener(std::shared_ptr<App>, const piper::Value&);
+  JSClosureEventListener(
+      std::shared_ptr<App>, const piper::Value&,
+      const EventListener::Options& options = EventListener::Options());
   ~JSClosureEventListener() override = default;
 
   void Invoke(event::Event* event) override;

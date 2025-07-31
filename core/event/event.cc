@@ -27,6 +27,7 @@
 #include "core/event/event.h"
 
 #include <chrono>
+#include <utility>
 
 #include "core/event/event_dispatcher.h"
 #include "core/event/event_target.h"
@@ -37,13 +38,18 @@ namespace event {
 Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
              Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode,
              PhaseType phase_type)
-    : time_stamp_(time_stamp),
+    : event_type_(event_type),
+      time_stamp_(time_stamp),
       type_(type),
-      event_type_(event_type),
       bubbles_(bubbles == Bubbles::kYes),
       cancelable_(cancelable == Cancelable::kYes),
       composed_(composed_mode == ComposedMode::kScoped),
-      event_phase_(phase_type) {}
+      event_phase_(phase_type) {
+  BASE_STATIC_STRING_DECL(kType, "type");
+  BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
+  detail_.SetProperty(kType, lepus::Value(type_));
+  detail_.SetProperty(kTimestamp, lepus::Value(time_stamp_));
+}
 
 Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
              Cancelable cancelable, ComposedMode composed_mode,
@@ -64,10 +70,10 @@ Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
 
 void Event::InitEventPath(EventTarget& target) {
   EventTarget* event_target = &target;
-  while (event_target) {
+  while (event_target && !event_target->IsEventPathCatch()) {
     event_path_.push_back(event_target);
     event_target = event_target->GetParentTarget();
-  }
+  };
 }
 
 const std::vector<EventTarget*>& Event::event_path() const {
@@ -77,6 +83,19 @@ const std::vector<EventTarget*>& Event::event_path() const {
 DispatchEventResult Event::DispatchEvent(EventDispatcher& dispatcher) {
   return dispatcher.Dispatch();
 }
+
+void Event::HandleEventBaseDetail(bool is_core_event) {
+  if (target_ == nullptr || current_target_ == nullptr) {
+    return;
+  }
+  BASE_STATIC_STRING_DECL(kTarget, "target");
+  BASE_STATIC_STRING_DECL(kCurrentTarget, "currentTarget");
+  detail_.SetProperty(kTarget, target_->GetEventTargetInfo(is_core_event));
+  detail_.SetProperty(kCurrentTarget,
+                      current_target_->GetEventTargetInfo(is_core_event));
+}
+
+void Event::HandleEventCustomDetail() {}
 
 }  // namespace event
 }  // namespace lynx

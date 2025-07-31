@@ -12,10 +12,11 @@
 namespace lynx {
 namespace tasm {
 
-LepusClosureEventListener::LepusClosureEventListener(lepus::Context* context,
-                                                     lepus::Value closure)
+LepusClosureEventListener::LepusClosureEventListener(
+    lepus::Context* context, lepus::Value closure,
+    const EventListener::Options& options)
     : event::EventListener(
-          event::EventListener::Type::kLepusClosureEventListener),
+          event::EventListener::Type::kLepusClosureEventListener, options),
       context_(context),
       closure_(closure) {}
 
@@ -32,7 +33,10 @@ bool LepusClosureEventListener::Matches(event::EventListener* listener) {
   }
   LepusClosureEventListener* other =
       static_cast<LepusClosureEventListener*>(listener);
-  return context_ == other->context_ && closure_.IsEqual(other->closure_);
+  return context_ == other->context_ && closure_.IsEqual(other->closure_) &&
+         options_.capture == other->GetOptions().capture &&
+         options_.is_catch == other->GetOptions().is_catch &&
+         options_.is_global == other->GetOptions().is_global;
 };
 
 lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
@@ -48,6 +52,11 @@ lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(
         pub::ValueUtils::ConvertValueToLepusValue(*message_event->message()));
     value.SetProperty(BASE_STATIC_STRING(runtime::kOrigin),
                       lepus::Value(message_event->GetOriginString()));
+  }
+  if (event->event_type() == event::Event::EventType::kTouchEvent ||
+      event->event_type() == event::Event::EventType::kCustomEvent) {
+    event->HandleEventBaseDetail();
+    return event->detail();
   }
   return value;
 }

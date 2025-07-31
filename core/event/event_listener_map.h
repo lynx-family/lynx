@@ -54,17 +54,13 @@ using EventListenerVector =
 
 class EventListenerMap {
  public:
-  struct AddOptions {
-    // TODO(songshourui.null):
-  };
-
   void Clear();
   bool IsEmpty() const;
   bool Contains(const std::string& type) const;
 
-  bool Add(const std::string& type, std::shared_ptr<EventListener> listener,
-           const AddOptions& options = AddOptions());
+  bool Add(const std::string& type, std::shared_ptr<EventListener> listener);
   bool Remove(const std::string& type, std::shared_ptr<EventListener> listener);
+  bool Remove(const std::string& type);
 
   EventListenerVector* Find(const std::string& type);
 

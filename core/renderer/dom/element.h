@@ -21,6 +21,7 @@
 #include "base/include/vector.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
+#include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_content_data.h"
@@ -99,7 +100,12 @@ class InspectorAttribute {
   std::unique_ptr<Element> style_value_;
 };
 
-class Element : public lepus::RefCounted {
+struct BindEventCatch {
+  int capture_catch{0};
+  int bubble_catch{0};
+};
+
+class Element : public lepus::RefCounted, public event::EventTarget {
  public:
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index = 0);
@@ -683,6 +689,16 @@ class Element : public lepus::RefCounted {
 
   virtual bool is_page() const { return false; }
 
+  EventTarget* GetParentTarget() override { return parent_; }
+
+  std::unordered_map<std::string, BindEventCatch>& GetBindEventCatchMap() {
+    return bind_event_catch_map_;
+  }
+
+  bool IsEventCaptureCatch(const std::string& event) override;
+
+  bool IsEventBubbleCatch(const std::string& event) override;
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -849,6 +865,10 @@ class Element : public lepus::RefCounted {
 
   // for devtool
   std::unique_ptr<InspectorAttribute> inspector_attribute_;
+
+  // Save the bind event information on the target, compatible with bind event
+  // interception. eg. capture-bindtap, catchtap
+  std::unordered_map<std::string, BindEventCatch> bind_event_catch_map_;
 };
 
 }  // namespace tasm

@@ -42,7 +42,28 @@ class EventListener {
     kClosureEventListener
   };
 
-  explicit EventListener(Type type);
+  struct Options {
+    bool capture;
+    bool once;
+    bool passive;
+    bool signal;
+    // Indicates whether to intercept the event. Compatible with capture-catch
+    // and catch.
+    bool is_catch;
+    // Indicates whether to global bind the event. Compatible with global-bind.
+    bool is_global;
+
+    Options(bool capture = false, bool once = false, bool passive = false,
+            bool signal = false, bool is_catch = false, bool is_global = false)
+        : capture(capture),
+          once(once),
+          passive(passive),
+          signal(signal),
+          is_catch(is_catch),
+          is_global(is_global) {}
+  };
+
+  explicit EventListener(Type type, const Options& options = Options());
   virtual ~EventListener() = default;
 
   // make EventListener move only
@@ -56,14 +77,16 @@ class EventListener {
 
   Type type() const { return type_; }
 
+  const Options& GetOptions() const { return options_; }
+
   virtual void Invoke(Event* event) = 0;
 
   virtual bool Matches(EventListener* listener) = 0;
 
- private:
+ protected:
   bool removed_{false};
-
   Type type_;
+  Options options_;
 };
 
 }  // namespace event

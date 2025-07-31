@@ -17,15 +17,32 @@ using ClosureListener = base::MoveOnlyClosure<void, lepus::Value>;
 
 class ClosureEventListener : public event::EventListener {
  public:
-  explicit ClosureEventListener(ClosureListener&& closure);
+  enum class ClosureType {
+    kNone,
+    kJS,
+    kCore,
+    kClient,
+  };
+
+  explicit ClosureEventListener(
+      ClosureListener&& closure,
+      const EventListener::Options& options = EventListener::Options(),
+      ClosureType closure_type = ClosureType::kNone,
+      const lepus::Value& lepus_object = lepus::Value());
   ~ClosureEventListener() override = default;
 
   void Invoke(event::Event* event) override;
 
   bool Matches(EventListener* listener) override;
 
+  ClosureType closure_type() { return closure_type_; }
+
+  lepus::Value& lepus_object() { return lepus_object_; }
+
  private:
   ClosureListener closure_;
+  ClosureType closure_type_{ClosureType::kNone};
+  lepus::Value lepus_object_{};
 };
 
 }  // namespace event

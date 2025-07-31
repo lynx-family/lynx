@@ -178,7 +178,7 @@ function onEvent(e) {
   auto res_2 = listener_2->ConvertEventToPiperValue(message_event.get());
   EXPECT_TRUE(res_2.isUndefined());
 
-  message_event->event_type_ = event::Event::EventType::kTouchEvent;
+  message_event->set_event_type(event::Event::EventType::kTouchEvent);
   auto res_3 = listener_1->ConvertEventToPiperValue(message_event.get());
   EXPECT_TRUE(res_3.isObject());
 }

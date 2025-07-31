@@ -48,6 +48,12 @@ namespace event {
 
 class EventTarget {
  public:
+  enum class EventTargetType {
+    kNone,
+    kElement,
+    kContextProxy,
+  };
+
   EventTarget();
   virtual ~EventTarget() = default;
 
@@ -56,11 +62,10 @@ class EventTarget {
 
   virtual DispatchEventResult DispatchEvent(Event&);
   virtual bool AddEventListener(const std::string& type,
-                                std::shared_ptr<EventListener> listener,
-                                const EventListenerMap::AddOptions& options =
-                                    EventListenerMap::AddOptions());
+                                std::shared_ptr<EventListener> listener);
   virtual bool RemoveEventListener(const std::string& type,
                                    std::shared_ptr<EventListener> listener);
+  virtual bool RemoveEventListeners(const std::string& type);
 
   EventListenerMap* GetEventListenerMap() const {
     return event_listener_map_.get();
@@ -70,7 +75,30 @@ class EventTarget {
     return event_listener_map_->Contains(event_type);
   }
 
+  EventTargetType target_type() { return target_type_; }
+
+  // Check whether catch the event when capture.
+  virtual bool IsEventCaptureCatch(const std::string& event) { return false; }
+
+  // Check whether catch the event when bubble.
+  virtual bool IsEventBubbleCatch(const std::string& event) { return false; }
+
+  // Check whether catch the event path.
+  virtual bool IsEventPathCatch() { return false; }
+
+  virtual lepus::Value GetEventTargetInfo(bool is_core_event = false) {
+    return lepus::Value();
+  };
+
+  // Get information used to control event sending, compatible with events
+  // bound through __AddEvent.
+  virtual lepus::Value GetEventControlInfo(const std::string& event_type,
+                                           bool is_global = false) {
+    return lepus::Value();
+  }
+
  protected:
+  EventTargetType target_type_{EventTargetType::kNone};
   std::unique_ptr<EventListenerMap> event_listener_map_;
 };
 

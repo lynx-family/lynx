@@ -60,24 +60,43 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   EventListenerVector copy = *vector;
   bool consumed = false;
   for (auto& listener : copy) {
+    if (event.event_phase() == Event::PhaseType::kCapturingPhase &&
+        !listener->GetOptions().capture) {
+      continue;
+    }
+    if ((event.event_phase() == Event::PhaseType::kBubblingPhase) &&
+        listener->GetOptions().capture) {
+      continue;
+    }
     if (listener->removed()) {
       continue;
     }
     listener->Invoke(&event);
     consumed = true;
+    if (event.is_stop_immediate_propagation()) {
+      return {EventCancelType::kCanceledByEventHandler, consumed};
+    }
   }
-  return {EventCancelType::kNotCanceled, consumed};
+
+  if (event.is_stop_propagation() || event.is_stop_immediate_propagation()) {
+    return {EventCancelType::kCanceledByEventHandler, consumed};
+  } else {
+    return {EventCancelType::kNotCanceled, consumed};
+  }
 }
 
-bool EventTarget::AddEventListener(
-    const std::string& type, std::shared_ptr<EventListener> listener,
-    const EventListenerMap::AddOptions& options) {
-  return event_listener_map_->Add(type, std::move(listener), options);
+bool EventTarget::AddEventListener(const std::string& type,
+                                   std::shared_ptr<EventListener> listener) {
+  return event_listener_map_->Add(type, std::move(listener));
 }
 
 bool EventTarget::RemoveEventListener(const std::string& type,
                                       std::shared_ptr<EventListener> listener) {
   return event_listener_map_->Remove(type, std::move(listener));
+}
+
+bool EventTarget::RemoveEventListeners(const std::string& type) {
+  return event_listener_map_->Remove(type);
 }
 
 }  // namespace event

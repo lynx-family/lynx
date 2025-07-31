@@ -66,8 +66,7 @@ bool EventListenerMap::Contains(const std::string& type) const {
 }
 
 bool EventListenerMap::Add(const std::string& type,
-                           std::shared_ptr<EventListener> listener,
-                           const AddOptions& options) {
+                           std::shared_ptr<EventListener> listener) {
   EventListenerVector* vector = Find(type);
   if (vector == nullptr) {
     vector = &map_.emplace_back(std::piecewise_construct,
@@ -96,6 +95,15 @@ bool EventListenerMap::Remove(const std::string& type,
     return false;
   }
   vector->erase(iter, vector->end());
+  return true;
+}
+
+bool EventListenerMap::Remove(const std::string& type) {
+  EventListenerVector* vector = Find(type);
+  if (!vector || vector->empty()) {
+    return false;
+  }
+  vector->clear_and_shrink();
   return true;
 }
 

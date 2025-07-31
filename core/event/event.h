@@ -29,9 +29,12 @@
 #ifndef CORE_EVENT_EVENT_H_
 #define CORE_EVENT_EVENT_H_
 
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include "base/include/value/table.h"
 #include "core/event/event_dispatch_result.h"
 
 namespace lynx {
@@ -56,7 +59,18 @@ class Event {
     kNone = 0,
     kCapturingPhase = 1,
     kAtTarget = 2,
-    kBubblingPhase = 3
+    kBubblingPhase = 3,
+  };
+
+  // If need extend a new bind type for Event, a new enumeration should be added
+  // in BindType
+  enum class BindType {
+    kNone,
+    kBubble,
+    kCapture,
+    kCaptureCatch,
+    kBubbleCatch,
+    kGlobalBind,
   };
 
   enum class ComposedMode {
@@ -67,6 +81,7 @@ class Event {
   // If need extend a new Event subclass, a new enumeration should be added in
   // EventType.
   enum class EventType {
+    kNone,
     kTouchEvent,
     kKeyboardEvent,
     kWheelEvent,
@@ -87,44 +102,69 @@ class Event {
 
   virtual ~Event() = default;
 
-  const std::string& type() const { return type_; }
   EventType event_type() { return event_type_; }
-
-  PhaseType event_phase() const { return event_phase_; }
-  void set_event_phase(PhaseType event_phase) { event_phase_ = event_phase; }
-
+  void set_event_type(EventType event_type) { event_type_ = event_type; }
+  int64_t time_stamp() const { return time_stamp_; };
+  const std::string& type() const { return type_; }
   bool bubbles() const { return bubbles_; }
   bool cancelable() const { return cancelable_; }
   bool composed() const { return composed_; }
 
-  int64_t time_stamp() const { return time_stamp_; };
+  PhaseType event_phase() const { return event_phase_; }
+  void set_event_phase(PhaseType event_phase) { event_phase_ = event_phase; }
 
+  bool is_stop_propagation() const { return is_stop_propagation_; }
+  void set_is_stop_propagation(bool is_stop_propagation) {
+    is_stop_propagation_ = is_stop_propagation;
+  }
+
+  bool is_stop_immediate_propagation() const {
+    return is_stop_immediate_propagation_;
+  }
+  void set_is_stop_immediate_propagation(bool is_stop_immediate_propagation) {
+    is_stop_immediate_propagation_ = is_stop_immediate_propagation;
+  }
+
+  EventTarget* target() const { return target_; }
   void set_target(EventTarget* target) { target_ = target; }
+
+  EventTarget* current_target() const { return current_target_; }
   void set_current_target(EventTarget* current_target) {
     current_target_ = current_target;
   }
 
-  EventTarget* target() const { return target_; }
-  EventTarget* current_target() const { return current_target_; }
+  lepus::Value& detail() { return detail_; }
+
   const std::vector<EventTarget*>& event_path() const;
 
   void InitEventPath(EventTarget& target);
   virtual DispatchEventResult DispatchEvent(EventDispatcher&);
 
- private:
+  // Called before triggering (invoke the listener) an event to get the base
+  // part of detail_.
+  virtual void HandleEventBaseDetail(bool is_core_event = false);
+  // Called before dispatching an event to get the custom part of detail_.
+  virtual void HandleEventCustomDetail();
+
+ protected:
+  EventType event_type_{EventType::kNone};
   int64_t time_stamp_;
   std::string type_;
-
-  EventType event_type_;
 
   bool bubbles_ : 1;
   bool cancelable_ : 1;
   bool composed_ : 1;
 
-  PhaseType event_phase_;
+  PhaseType event_phase_{PhaseType::kNone};
 
-  EventTarget* current_target_;
-  EventTarget* target_;
+  bool is_stop_propagation_{false};
+  bool is_stop_immediate_propagation_{false};
+
+  EventTarget* current_target_{nullptr};
+  EventTarget* target_{nullptr};
+
+  // Save the event parameters passed to the listener's closure.
+  lepus::Value detail_{lepus::Dictionary::Create()};
 
   std::vector<EventTarget*> event_path_;
 };

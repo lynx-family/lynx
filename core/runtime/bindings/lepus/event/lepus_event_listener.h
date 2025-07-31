@@ -15,7 +15,9 @@ namespace tasm {
 
 class LepusClosureEventListener : public event::EventListener {
  public:
-  LepusClosureEventListener(lepus::Context* context, lepus::Value closure);
+  LepusClosureEventListener(
+      lepus::Context* context, lepus::Value closure,
+      const EventListener::Options& options = EventListener::Options());
   virtual ~LepusClosureEventListener() override = default;
 
   virtual void Invoke(event::Event* event) override;

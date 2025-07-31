@@ -429,6 +429,10 @@ source_set("base_values") {
   public_deps = [ ":values" ]
 }
 
+source_set("base_values_extended") {
+  sources = [ "value/lynx_value_extended_empty.cc" ]
+}
+
 source_set("values") {
   public_configs = [ ":base_public" ]
 

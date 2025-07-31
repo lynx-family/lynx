@@ -27,7 +27,8 @@
 namespace lynx {
 namespace event {
 
-EventListener::EventListener(Type type) : type_(type) {}
+EventListener::EventListener(Type type, const EventListener::Options& options)
+    : type_(type), options_(options) {}
 
 }  // namespace event
 }  // namespace lynx

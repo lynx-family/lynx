@@ -4090,5 +4090,74 @@ void FiberElement::UpdateTraceDebugInfo(TraceEvent *event) {
 }
 #endif
 
+bool FiberElement::IsEventPathCatch() {
+  if (IsDetached()) {
+    return true;
+  }
+  // Compatible with the previous logic that position:fixed will modify
+  // the structure of the element tree.
+  bool enable_fiber_element_for_radon_diff =
+      element_manager()->GetEnableFiberElementForRadonDiff();
+  if (enable_fiber_element_for_radon_diff && IsRadonArch() && is_fixed()) {
+    auto root = element_manager()->root();
+    if (this != root) {
+      return true;
+    }
+  }
+  return false;
+}
+
+lepus::Value FiberElement::GetEventTargetInfo(bool is_core_event) {
+  auto dict = lepus::Dictionary::Create();
+  if (data_model_ != nullptr) {
+    BASE_STATIC_STRING_DECL(kId, "id");
+    BASE_STATIC_STRING_DECL(kDataset, "dataset");
+    BASE_STATIC_STRING_DECL(kUid, "uid");
+
+    dict.get()->SetValue(kId, data_model_->idSelector());
+    auto dataset = lepus::Dictionary::Create();
+    for (const auto &[key, value] : data_model_->dataset()) {
+      dataset.get()->SetValue(key, value);
+    }
+    dict.get()->SetValue(kDataset, std::move(dataset));
+    dict.get()->SetValue(kUid, id_);
+  }
+
+  // element ref needed in fiber element worklet
+  if (is_core_event) {
+    BASE_STATIC_STRING_DECL(kElementRefptr, "elementRefptr");
+    dict.get()->SetValue(kElementRefptr, fml::RefPtr<tasm::FiberElement>(this));
+  }
+
+  return lepus::Value(std::move(dict));
+}
+
+lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
+                                               bool is_global) {
+  auto array = lepus::CArray::Create();
+  if (InComponent()) {
+    array->emplace_back(false);
+    array->emplace_back("");
+  } else {
+    array->emplace_back(true);
+    array->emplace_back(ParentComponentId());
+  }
+  if (is_global) {
+    const auto &bind_event_map = global_bind_event_map();
+    if (auto it = bind_event_map.find(event_type); it != bind_event_map.end()) {
+      auto event_handler = it->second.get();
+      array->emplace_back(event_handler->function().str());
+    }
+  } else {
+    const auto &bind_event_map = event_map();
+    if (auto it = bind_event_map.find(event_type); it != bind_event_map.end()) {
+      auto event_handler = it->second.get();
+      array->emplace_back(event_handler->function().str());
+    }
+  }
+
+  return lepus::Value(std::move(array));
+}
+
 }  // namespace tasm
 }  // namespace lynx

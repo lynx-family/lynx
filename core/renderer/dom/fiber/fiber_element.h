@@ -941,6 +941,13 @@ class FiberElement : public Element,
   inline bool IsAsyncFlushRoot() const { return is_async_flush_root_; }
   inline void MarkAsyncFlushRoot(bool value) { is_async_flush_root_ = value; }
 
+  bool IsEventPathCatch() override;
+
+  lepus::Value GetEventTargetInfo(bool is_core_event = false) override;
+
+  lepus::Value GetEventControlInfo(const std::string& event_type,
+                                   bool is_global = false) override;
+
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 

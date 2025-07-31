@@ -38,13 +38,19 @@ unittest_set("event_testset") {
     "event_target_test.cc",
     "event_target_test.h",
   ]
-  public_deps = [ "../event" ]
+  public_deps = [
+    "../../base/src:base_values",
+    "../event",
+  ]
   data_deps = []
 }
 
 unittest_exec("event_unittests_exec") {
   sources = []
-  deps = [ ":event_testset" ]
+  deps = [
+    ":event_testset",
+    "../../base/src:base_values_extended",
+  ]
 }
 
 group("event_tests") {

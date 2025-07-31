@@ -14,9 +14,11 @@
 namespace lynx {
 namespace piper {
 
-JSClosureEventListener::JSClosureEventListener(std::shared_ptr<App> app,
-                                               const piper::Value& closure)
-    : event::EventListener(event::EventListener::Type::kJSClosureEventListener),
+JSClosureEventListener::JSClosureEventListener(
+    std::shared_ptr<App> app, const piper::Value& closure,
+    const EventListener::Options& options)
+    : event::EventListener(event::EventListener::Type::kJSClosureEventListener,
+                           options),
       native_app_(app) {
   if (!app) {
     return;
@@ -84,7 +86,9 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
     return false;
   }
 
-  return piper::Value::strictEquals(*rt, closure_, other->closure_);
+  return piper::Value::strictEquals(*rt, closure_, other->closure_) &&
+         options_.capture == other->GetOptions().capture &&
+         options_.is_catch == other->GetOptions().is_catch;
 }
 
 piper::Value JSClosureEventListener::GetClosure() {

@@ -68,6 +68,7 @@ Element::Element(const base::String& tag, ElementManager* manager,
   if (manager == nullptr) {
     return;
   }
+  target_type_ = EventTarget::EventTargetType::kElement;
   arch_type_ = manager->GetEnableFiberArch() ? FiberArch : RadonArch;
   enable_new_animator_ = IsFiberArch()
                              ? manager->GetEnableNewAnimatorForFiber()
@@ -1679,6 +1680,24 @@ bool Element::IsNewFixed() const {
 
 bool Element::GetEnableFixedNew() const {
   return element_manager()->GetEnableFixedNew();
+}
+
+bool Element::IsEventCaptureCatch(const std::string& event) {
+  auto event_bind = bind_event_catch_map_.find(event);
+  if (event_bind != bind_event_catch_map_.end() &&
+      event_bind->second.capture_catch != 0) {
+    return true;
+  }
+  return false;
+}
+
+bool Element::IsEventBubbleCatch(const std::string& event) {
+  auto event_bind = bind_event_catch_map_.find(event);
+  if (event_bind != bind_event_catch_map_.end() &&
+      event_bind->second.bubble_catch != 0) {
+    return true;
+  }
+  return false;
 }
 
 }  // namespace tasm
