@@ -239,7 +239,7 @@ void ListLayoutManager::ScrollStopped() {
 
 // Determine whether the current ItemHolder needs to be recycled.
 bool ListLayoutManager::ShouldRecycleItemHolder(ItemHolder* item_holder) {
-  if (!item_holder || !list_orientation_helper_) {
+  if (!item_holder || !item_holder->recyclable() || !list_orientation_helper_) {
     return false;
   }
   return !ItemHolderVisibleInList(item_holder);

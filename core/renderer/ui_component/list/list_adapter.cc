@@ -247,6 +247,7 @@ void ListAdapter::UpdateItemHolderToLatest(
     item_holder->SetIndex(new_index);
     item_holder->SetItemFullSpan(IsFullSpanAtIndex(new_index));
     item_holder->SetEstimatedSize(GetEstimatedSizeForIndex(new_index));
+    item_holder->SetRecyclable(IsRecyclableAtIndex(new_index));
     list_children_helper->AddChild(children, item_holder);
     if (attached_children_set.find(item_holder) !=
         attached_children_set.end()) {
@@ -314,7 +315,7 @@ ItemHolder* ListAdapter::GetItemHolderForIndex(int index) {
 }
 
 // Get whether the ItemHolder is full span for the specified index.
-bool ListAdapter::IsFullSpanAtIndex(int index) {
+bool ListAdapter::IsFullSpanAtIndex(int index) const {
   return adapter_helper_ ? adapter_helper_->full_spans().end() !=
                                adapter_helper_->full_spans().find(index)
                          : false;
@@ -350,6 +351,15 @@ float ListAdapter::GetEstimatedSizeForIndex(int index) {
     }
   }
   return list::kInvalidDimensionSize;
+}
+
+// Get whether the ItemHolder is recyclable for the specified index.
+bool ListAdapter::IsRecyclableAtIndex(int index) const {
+  if (!adapter_helper_) {
+    return true;
+  }
+  const auto& unrecyclable_set = adapter_helper_->unrecyclable();
+  return unrecyclable_set.find(index) == unrecyclable_set.end();
 }
 
 // Check whether the ItemHolder is sticky item with the specified index.
@@ -566,6 +576,15 @@ void ListAdapter::UpdateTraceDebugInfo(TraceEvent* event) const {
     estimated_sizes_px_str += std::to_string(value) + "\n";
   }
   estimated_sizes_px->set_string_value(estimated_sizes_px_str);
+
+  // recyclable
+  auto* unrecyclable = event->add_debug_annotations();
+  unrecyclable->set_name("unrecyclable");
+  std::string unrecyclable_info_str = "";
+  for (const auto& index : adapter_helper_->unrecyclable()) {
+    unrecyclable_info_str += std::to_string(index) + "\n";
+  }
+  unrecyclable->set_string_value(unrecyclable_info_str);
 }
 
 void ListAdapter::UpdateTraceDebugInfo(TraceEvent* event,

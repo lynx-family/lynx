@@ -116,6 +116,7 @@ class InsertOp {
   bool full_span_{false};
   bool sticky_top_{false};
   bool sticky_bottom_{false};
+  bool recyclable_{true};
 
   fml::RefPtr<lepus::Dictionary> ToMap() const {
     auto insert_action = lepus::Dictionary::Create();
@@ -126,6 +127,7 @@ class InsertOp {
     insert_action->SetValue(list::kFullSpan, lepus::Value(full_span_));
     insert_action->SetValue(list::kStickyTop, lepus::Value(sticky_top_));
     insert_action->SetValue(list::kStickyBottom, lepus::Value(sticky_bottom_));
+    insert_action->SetValue(list::kRecyclable, lepus::Value(recyclable_));
     return insert_action;
   }
 };
@@ -140,6 +142,7 @@ class UpdateOp : public InsertOp {
   bool full_span_{false};
   bool sticky_top_{false};
   bool sticky_bottom_{false};
+  bool recyclable_{true};
 
   fml::RefPtr<lepus::Dictionary> ToMap() const {
     auto update_action = InsertOp::ToMap();
@@ -152,6 +155,7 @@ class UpdateOp : public InsertOp {
     update_action->SetValue(list::kFullSpan, lepus::Value(full_span_));
     update_action->SetValue(list::kStickyTop, lepus::Value(sticky_top_));
     update_action->SetValue(list::kStickyBottom, lepus::Value(sticky_bottom_));
+    update_action->SetValue(list::kRecyclable, lepus::Value(recyclable_));
     return update_action;
   }
 };

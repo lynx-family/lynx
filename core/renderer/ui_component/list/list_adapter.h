@@ -160,7 +160,7 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   ItemHolder* GetItemHolderForIndex(int index);
 
-  bool IsFullSpanAtIndex(int index);
+  bool IsFullSpanAtIndex(int index) const;
 
   void Release() {
     list_element_ = nullptr;
@@ -182,6 +182,8 @@ class ListAdapter : public AdapterHelper::Delegate {
   const std::vector<int32_t>& GetStickyBottoms() const {
     return adapter_helper_->sticky_bottoms();
   }
+
+  bool IsRecyclableAtIndex(int index) const;
 
   AdapterHelper* list_adapter_helper() const { return adapter_helper_.get(); }
 

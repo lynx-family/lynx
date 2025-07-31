@@ -217,16 +217,16 @@ TEST_F(DefaultListAdapterTest, DiffCase1) {
 TEST_F(DefaultListAdapterTest, FiberDiffCase0) {
   list::InsertAction insert_action{
       .insert_ops_ = {
-          {.position_ = 0, "A_0", 100, false, false, false},
-          {.position_ = 1, "B_1", 100, false, false, false},
-          {.position_ = 2, "C_2", 100, false, false, false},
-          {.position_ = 3, "D_3", 100, false, false, false},
-          {.position_ = 4, "E_4", 100, false, false, false},
-          {.position_ = 5, "F_5", 100, false, false, false},
-          {.position_ = 6, "G_6", 100, false, false, false},
-          {.position_ = 7, "H_7", 100, false, false, false},
-          {.position_ = 8, "I_8", 100, false, false, false},
-          {.position_ = 9, "J_9", 100, false, false, false},
+          {.position_ = 0, "A_0", 100, false, false, false, false},
+          {.position_ = 1, "B_1", 100, false, false, false, false},
+          {.position_ = 2, "C_2", 100, false, false, false, false},
+          {.position_ = 3, "D_3", 100, false, false, false, false},
+          {.position_ = 4, "E_4", 100, false, false, false, false},
+          {.position_ = 5, "F_5", 100, false, false, false, false},
+          {.position_ = 6, "G_6", 100, false, false, false, false},
+          {.position_ = 7, "H_7", 100, false, false, false, false},
+          {.position_ = 8, "I_8", 100, false, false, false, false},
+          {.position_ = 9, "J_9", 100, false, false, false, false},
       }};
   list::FiberDiffResult fiber_diff_result{
       .insert_action_ = insert_action,
@@ -240,10 +240,13 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase0) {
   EXPECT_EQ(
       default_list_adapter->list_adapter_helper()->estimated_sizes_px().size(),
       10);
+  EXPECT_EQ(default_list_adapter->list_adapter_helper()->unrecyclable().size(),
+            10);
   default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
   for (int i = 0; i < 10; ++i) {
     ItemHolder* item_holder = default_list_adapter->GetItemHolderForIndex(i);
     EXPECT_NE(item_holder, nullptr);
+    EXPECT_FALSE(item_holder->recyclable());
     EXPECT_FALSE(default_list_adapter->IsRecycled(item_holder));
     EXPECT_FALSE(default_list_adapter->IsBinding(item_holder));
     EXPECT_FALSE(default_list_adapter->IsFinishedBinding(item_holder));
@@ -258,16 +261,16 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase0) {
 TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
   list::InsertAction insert_action{
       .insert_ops_ = {
-          {.position_ = 0, "A_0", 100, false, false, false},
-          {.position_ = 1, "B_1", 100, false, false, false},
-          {.position_ = 2, "C_2", 100, false, false, false},
-          {.position_ = 3, "D_3", 100, false, false, false},
-          {.position_ = 4, "E_4", 100, false, false, false},
-          {.position_ = 5, "F_5", 100, false, false, false},
-          {.position_ = 6, "G_6", 100, false, false, false},
-          {.position_ = 7, "H_7", 100, false, false, false},
-          {.position_ = 8, "I_8", 100, false, false, false},
-          {.position_ = 9, "J_9", 100, false, false, false},
+          {.position_ = 0, "A_0", 100, false, false, false, false},
+          {.position_ = 1, "B_1", 100, false, false, false, false},
+          {.position_ = 2, "C_2", 100, false, false, false, false},
+          {.position_ = 3, "D_3", 100, false, false, false, false},
+          {.position_ = 4, "E_4", 100, false, false, false, false},
+          {.position_ = 5, "F_5", 100, false, false, false, false},
+          {.position_ = 6, "G_6", 100, false, false, false, false},
+          {.position_ = 7, "H_7", 100, false, false, false, false},
+          {.position_ = 8, "I_8", 100, false, false, false, false},
+          {.position_ = 9, "J_9", 100, false, false, false, false},
       }};
   list::FiberDiffResult fiber_diff_result_0{
       .insert_action_ = insert_action,
@@ -282,11 +285,11 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
   list::UpdateAction update_action{
       .update_ops_ =
           {
-              {.from_ = 0, .to_ = 0, false, "F_5", 50, true, true, true},
-              {.from_ = 1, .to_ = 1, false, "G_6", 50, true, true, true},
-              {.from_ = 2, .to_ = 2, false, "H_7", 50, true, true, true},
-              {.from_ = 3, .to_ = 3, false, "I_8", 50, true, true, true},
-              {.from_ = 4, .to_ = 4, false, "J_9", 50, true, true, true},
+              {.from_ = 0, .to_ = 0, false, "F_5", 50, true, true, true, true},
+              {.from_ = 1, .to_ = 1, false, "G_6", 50, true, true, true, true},
+              {.from_ = 2, .to_ = 2, false, "H_7", 50, true, true, true, true},
+              {.from_ = 3, .to_ = 3, false, "I_8", 50, true, true, true, true},
+              {.from_ = 4, .to_ = 4, false, "J_9", 50, true, true, true, true},
           },
   };
   list::FiberDiffResult fiber_diff_result_1{
@@ -301,6 +304,8 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
   EXPECT_EQ(
       default_list_adapter->list_adapter_helper()->estimated_sizes_px().size(),
       5);
+  EXPECT_EQ(default_list_adapter->list_adapter_helper()->unrecyclable().size(),
+            0);
   default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
   for (int i = 0; i < 5; ++i) {
     ItemHolder* item_holder = default_list_adapter->GetItemHolderForIndex(i);
@@ -308,6 +313,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
     EXPECT_TRUE(item_holder->sticky_top());
     EXPECT_TRUE(item_holder->sticky_bottom());
     EXPECT_TRUE(base::FloatsEqual(item_holder->height(), 50));
+    EXPECT_TRUE(item_holder->recyclable());
   }
 }
 

@@ -227,7 +227,7 @@ void ListChildrenHelper::HandleLayoutOrScrollResult(
                             in_sticky_bottom_children_.Contain(item_holder))
                          : (in_sticky_children_.find(item_holder) !=
                             in_sticky_children_.end());
-    if (in_sticky ||
+    if (!item_holder->recyclable() || in_sticky ||
         on_screen_children_.find(item_holder) != on_screen_children_.end() ||
         in_preload_children_.find(item_holder) != in_preload_children_.end()) {
       new_binding_children.insert(item_holder);

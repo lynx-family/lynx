@@ -357,6 +357,8 @@ void AdapterHelper::UpdateFiberInsertAction(const lepus::Value& insert_action,
               value.GetProperty(BASE_STATIC_STRING(list::kEstimatedHeightPx));
           const auto& estimated_size_px = value.GetProperty(
               BASE_STATIC_STRING(list::kEstimatedMainAxisSizePx));
+          const auto& recyclable =
+              value.GetProperty(BASE_STATIC_STRING(list::kRecyclable));
           item_keys.insert(item_keys.begin() + index, item_key_str);
           if (is_full_span.IsBool() && is_full_span.Bool()) {
             fiber_full_spans_.insert(item_key_str);
@@ -374,6 +376,9 @@ void AdapterHelper::UpdateFiberInsertAction(const lepus::Value& insert_action,
           if (estimated_size_px.IsNumber()) {
             fiber_estimated_sizes_px_[item_key_str] =
                 static_cast<int32_t>(estimated_size_px.Number());
+          }
+          if (recyclable.IsBool() && !recyclable.Bool()) {
+            fiber_unrecyclable_.insert(item_key_str);
           }
         }
       }
@@ -445,6 +450,9 @@ void AdapterHelper::UpdateFiberRemoveAction(const lepus::Value& remove_action,
       if (fiber_estimated_sizes_px_.end() !=
           fiber_estimated_sizes_px_.find(item_key_str)) {
         fiber_estimated_sizes_px_.erase(item_key_str);
+      }
+      if (fiber_unrecyclable_.end() != fiber_unrecyclable_.find(item_key_str)) {
+        fiber_unrecyclable_.erase(item_key_str);
       }
     }
   });
@@ -522,6 +530,8 @@ void AdapterHelper::UpdateFiberUpdateAction(const lepus::Value& update_action,
               value.GetProperty(BASE_STATIC_STRING(list::kEstimatedHeightPx));
           const auto& estimated_size_px = value.GetProperty(
               BASE_STATIC_STRING(list::kEstimatedMainAxisSizePx));
+          const auto& recyclable =
+              value.GetProperty(BASE_STATIC_STRING(list::kRecyclable));
           if (is_full_span.IsBool()) {
             if (is_full_span.Bool()) {
               fiber_full_spans_.insert(item_key_str);
@@ -554,6 +564,13 @@ void AdapterHelper::UpdateFiberUpdateAction(const lepus::Value& update_action,
                   fiber_estimated_sizes_px_.find(item_key_str)) {
             fiber_estimated_sizes_px_[item_key_str] =
                 static_cast<int32_t>(estimated_size_px.Number());
+          }
+          if (recyclable.IsBool()) {
+            if (!recyclable.Bool()) {
+              fiber_unrecyclable_.insert(item_key_str);
+            } else {
+              fiber_unrecyclable_.erase(item_key_str);
+            }
           }
         }
       }
@@ -650,6 +667,15 @@ void AdapterHelper::UpdateFiberExtraInfo() {
     }
   }
   std::sort(sticky_bottoms_.begin(), sticky_bottoms_.end());
+  // update recyclable from fiber
+  unrecyclable_.clear();
+  for (const auto& item_key_str : fiber_unrecyclable_) {
+    auto it = item_key_map_.find(item_key_str);
+    if (item_key_map_.end() != it && it->second >= 0 &&
+        it->second < static_cast<int>(item_keys.size())) {
+      unrecyclable_.insert(it->second);
+    }
+  }
   // save last diff result.
   last_diff_result_ = diff_result_;
 }
