@@ -75,8 +75,7 @@ void ElementVsyncProxy::RequestNextFrame() {
                 fml::TimeDelta::FromNanoseconds(frame_start));
             shared_ptr->TickAllElement(frame_time);
           }
-        },
-        LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
+        });
     has_requested_next_frame_ = true;
   }
 }

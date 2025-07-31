@@ -19,7 +19,7 @@ static std::atomic_uint g_refresh_rate_ = 16666700;
 
 }  // namespace
 
-std::shared_ptr<VSyncMonitor> VSyncMonitor::Create() {
+std::shared_ptr<VSyncMonitor> VSyncMonitor::Create(bool is_on_ui_thread) {
   return std::make_shared<lynx::base::VSyncMonitorHarmony>();
 }
 

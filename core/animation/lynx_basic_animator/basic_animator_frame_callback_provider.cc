@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "core/base/threading/vsync_monitor.h"
+#include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
 namespace animation {
@@ -16,7 +17,8 @@ std::shared_ptr<base::VSyncMonitor>
 BasicAnimatorFrameCallbackProvider::GetVSyncMonitor() {
   thread_local std::shared_ptr<base::VSyncMonitor> local_vsync_monitor_;
   if (!vsync_monitor_) {
-    local_vsync_monitor_ = base::VSyncMonitor::Create();
+    local_vsync_monitor_ = base::VSyncMonitor::Create(
+        tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
     local_vsync_monitor_->BindToCurrentThread();
     local_vsync_monitor_->Init();
     vsync_monitor_ = local_vsync_monitor_;
