@@ -1,0 +1,21 @@
+[git]
+conventional_commits = false
+filter_commits = true
+commit_parsers = [
+  { message = ".*changelog: no.*", skip = true },
+
+  { message = "(?i).*harmony.*", group = "Harmony" },
+
+  { message = ".*", skip = true }
+]
+
+[changelog]
+header = """
+## <!-- version -->
+"""
+
+body = """
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }} ([{{ commit.id | truncate(length=7, end="") }}](https://github.com/lynx-family/lynx/commit/{{ commit.id }}))
+{% endfor %}
+"""

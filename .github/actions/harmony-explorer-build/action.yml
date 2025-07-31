@@ -13,8 +13,8 @@ runs:
       uses: ./lynx/.github/actions/common-deps
     - name: Build Explorer App
       shell: bash
+      working-directory: lynx
       run: |-
-        cd $GITHUB_WORKSPACE/lynx
         source tools/envsetup.sh
         pushd platform/harmony && ohpm install && popd
         pushd explorer/harmony && ohpm install && popd

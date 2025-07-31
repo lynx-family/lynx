@@ -1,0 +1,44 @@
+name: Get Latest Ancestor Tag
+
+description: Get the latest ancestor tag of the current commit.
+
+outputs:
+  latest-tag:
+    description: 'The latest tag'
+    value: ${{ steps.get-tag.outputs.latest-tag }}
+
+runs:
+  using: composite
+  steps:
+    - name: get latest ancestor tag
+      id: get-ancestor-tag
+      working-directory: lynx
+      shell: bash
+      run: |
+        set -e
+        pwd
+        ANCESTOR_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+        echo "ANCESTOR_TAG=$ANCESTOR_TAG" >> $GITHUB_ENV
+
+    - name: get latest tag from api
+      id: get-latest-tag-from-api
+      shell: bash
+      run: |
+        REPO="${{ github.repository }}"
+        LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r '.tag_name')
+        if [ "$LATEST_TAG" = "null" ]; then
+          LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/tags" | jq -r '.[0].name')
+        fi
+        echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+    - id: get-tag
+      shell: bash
+      run: |
+        if [ -n "${{ env.ANCESTOR_TAG }}" ]; then
+          FINAL_TAG="${{ env.ANCESTOR_TAG }}"
+        else
+          FINAL_TAG="${{ env.LATEST_TAG }}"
+        fi
+
+        echo "Latest tag found: $FINAL_TAG"
+        echo "latest-tag=$FINAL_TAG" >> $GITHUB_OUTPUT
