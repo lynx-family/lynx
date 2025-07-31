@@ -74,9 +74,11 @@ LynxShellBuilder& LynxShellBuilder::SetWhiteBoard(
 
 LynxShellBuilder& LynxShellBuilder::SetEnableElementManagerVsyncMonitor(
     bool enable_element_manager_vsync_monitor) {
-  this->element_manager_vsync_monitor_ = enable_element_manager_vsync_monitor
-                                             ? base::VSyncMonitor::Create()
-                                             : nullptr;
+  this->element_manager_vsync_monitor_ =
+      enable_element_manager_vsync_monitor
+          ? base::VSyncMonitor::Create(lynx::tasm::LynxEnv::GetInstance()
+                                           .EnableAnimationVsyncOnUIThread())
+          : nullptr;
   return *this;
 }
 

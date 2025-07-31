@@ -16,6 +16,7 @@ class LynxVSyncPulsePuppet;
 class VSyncMonitorIOS : public VSyncMonitor {
  public:
   VSyncMonitorIOS(bool init_in_current_loop = true,
+                  bool is_on_ui_thread = false,
                   bool is_vsync_post_task_by_emergency = true);
   ~VSyncMonitorIOS() override;
 
@@ -26,6 +27,8 @@ class VSyncMonitorIOS : public VSyncMonitor {
   void RequestVSync() override;
 
   void RequestVSyncOnUIThread(Callback callback) override;
+
+  void RequestVSyncOnUIThread() override;
 
  private:
   std::unique_ptr<LynxVSyncPulsePuppet> delegate_;

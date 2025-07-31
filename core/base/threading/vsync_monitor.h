@@ -19,10 +19,11 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
  public:
   using Callback = base::MoveOnlyClosure<void, int64_t, int64_t>;
 
-  VSyncMonitor(bool is_vsync_post_task_by_emergency = true);
+  VSyncMonitor(bool is_on_ui_thread = false,
+               bool is_vsync_post_task_by_emergency = true);
   virtual ~VSyncMonitor() = default;
 
-  static std::shared_ptr<VSyncMonitor> Create();
+  static std::shared_ptr<VSyncMonitor> Create(bool is_on_ui_thread = false);
 
   virtual void Init() {}
 
@@ -37,8 +38,7 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   void AsyncRequestVSync(Callback callback);
 
   // the callback is unique per id
-  void ScheduleVSyncSecondaryCallback(uintptr_t id, Callback callback,
-                                      bool should_on_ui_thread = false);
+  void ScheduleVSyncSecondaryCallback(uintptr_t id, Callback callback);
 
   // frame_start_time/frame_target_time is in nanoseconds
   void OnVSync(int64_t frame_start_time, int64_t frame_target_time);
@@ -48,6 +48,8 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   void StopVSync();
 
   virtual void RequestVSyncOnUIThread(Callback callback){};
+
+  virtual void RequestVSyncOnUIThread(){};
 
  protected:
   virtual void RequestVSync() = 0;
@@ -60,6 +62,7 @@ class VSyncMonitor : public std::enable_shared_from_this<VSyncMonitor> {
   void OnVSyncInternal(int64_t frame_start_time, int64_t frame_target_time);
 
   bool is_vsync_post_task_by_emergency_{false};
+  bool is_on_ui_thread_{false};
   bool requested_{false};
   bool stop_vsync_{false};
   // additional callbacks required to invoke when VSync is requested

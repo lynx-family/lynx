@@ -256,7 +256,8 @@ void TasmMediator::OnCardConfigDataChanged(const lepus::Value& data) {
 
 void TasmMediator::InitVSyncMonitorIfNeeded() {
   if (!vsync_monitor_) {
-    vsync_monitor_ = base::VSyncMonitor::Create();
+    vsync_monitor_ = base::VSyncMonitor::Create(
+        lynx::tasm::LynxEnv::GetInstance().EnableAnimationVsyncOnUIThread());
     vsync_monitor_->BindTaskRunner(GetLepusTimedTaskRunner());
     vsync_monitor_->BindToCurrentThread();
     vsync_monitor_->Init();
