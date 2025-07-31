@@ -35,10 +35,6 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
 
   LynxTemplateBundle GetTemplateBundle();
 
-  tasm::StringListVec& GetStringList() override;
-
-  void SetStringList(const tasm::StringListVec& string_list) override;
-
  protected:
   LynxBinaryReader(std::unique_ptr<lepus::InputStream> stream)
       : LynxBinaryBaseTemplateReader(std::move(stream)) {
@@ -87,6 +83,8 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
   AirParsedStylesMap& GetAirParsedStylesMap() override {
     return template_bundle().air_parsed_styles_map_;
   }
+
+  std::vector<base::String>& string_list() override;
 
   virtual LynxTemplateBundle& template_bundle();
 

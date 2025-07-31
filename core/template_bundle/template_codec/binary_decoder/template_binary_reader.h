@@ -113,7 +113,7 @@ class TemplateBinaryReader : public LynxBinaryReader,
   static std::unique_ptr<TemplateBinaryReader> Create(const uint8_t* begin,
                                                       size_t size);
 
-  void CopyForAsyncDecode(TemplateBinaryReader& other);
+  void CopyForCSSAsyncDecode(const TemplateBinaryReader& other);
 
   void EnsureParallelParseTaskScheduler();
 

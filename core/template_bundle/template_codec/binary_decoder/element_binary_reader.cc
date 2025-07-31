@@ -62,12 +62,12 @@ const base::static_string::GenericCache& GetEventStringType(
 
 ElementBinaryReader::ElementBinaryReader(
     std::unique_ptr<lepus::InputStream> stream,
-    const std::shared_ptr<std::vector<base::String>>& string_list,
+    const std::vector<base::String>& string_list,
     const tasm::CompileOptions& options,
     const OrderedStringKeyRouter& element_templates_router,
     const StringKeyRouter& string_key_parsed_styles_router)
     : ElementBinaryReader(std::move(stream)) {
-  SetStringList(string_list);
+  string_list_ = string_list;
   compile_options_ = options;
   element_templates_router_ = element_templates_router;
   string_key_parsed_styles_router_ = string_key_parsed_styles_router;
@@ -414,7 +414,7 @@ bool ElementBinaryReader::ConstructElement(ElementSectionEnum section_type,
 std::unique_ptr<ElementBinaryReader>
 ElementBinaryReader::DeriveElementBinaryReader() {
   return std::make_unique<ElementBinaryReader>(
-      stream_->DeriveInputStream(), GetStringList(), compile_options_,
+      stream_->DeriveInputStream(), string_list(), compile_options_,
       element_templates_router_, string_key_parsed_styles_router_);
 }
 

@@ -35,7 +35,7 @@ void StyleObject::DecodeImmediately() {
     return;
   }
 
-  if (const auto decoder = creator_(data_, length_, string_list_); decoder) {
+  if (const auto decoder = creator_(data_, length_); decoder) {
     decoder->DecodeStyleObject(style_map_, range_);
   }
 }

@@ -318,13 +318,9 @@ LynxBinaryReader LynxBinaryReader::CreateLynxBinaryReader(
   return reader;
 }
 
-StringListVec& LynxBinaryReader::GetStringList() {
+std::vector<base::String>& LynxBinaryReader::string_list() {
   // use the string_list of template_bundle, so that there is no need to move it
-  return template_bundle().GetStringList();
-}
-
-void LynxBinaryReader::SetStringList(const StringListVec& string_list) {
-  template_bundle().string_list_ = string_list;
+  return template_bundle().string_list();
 }
 
 LynxTemplateBundle& LynxBinaryReader::template_bundle() {
