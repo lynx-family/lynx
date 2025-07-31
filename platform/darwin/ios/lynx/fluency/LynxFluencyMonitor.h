@@ -33,6 +33,15 @@ NS_ASSUME_NONNULL_BEGIN
        scrollMonitorTagName:(NSString *)scrollMonitorTagName
                  instanceId:(int32_t)instanceId;
 
+/// @brief Initialize the configuration object with the specified key, tag name, scroll monitor tag
+/// name and instance id.
+/// @param key The key used to identify the monitoring instance.
+/// @param tagName The tag name used to identify the monitoring instance.
+/// @param instanceId The instance id of the LynxView.
+- (instancetype)initWithKey:(id<NSCopying>)key
+                    tagName:(NSString *)tagName
+                 instanceId:(int32_t)instanceId;
+
 @end
 
 @interface LynxFluencyMonitor : NSObject

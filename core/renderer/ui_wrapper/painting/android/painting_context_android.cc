@@ -676,6 +676,10 @@ void PaintingContextAndroid::UpdateLayout(
           bounds != nullptr, sticky != nullptr, static_cast<int>(max_height)});
 }
 
+void PaintingContextAndroid::StartFluencyTrace() {}
+
+void PaintingContextAndroid::StopFluencyTrace() {}
+
 void PaintingContextAndroid::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {

@@ -36,6 +36,19 @@ typedef NS_ENUM(NSInteger, ForceStatus) {
   return self;
 }
 
+- (instancetype)initWithKey:(id<NSCopying>)key
+                    tagName:(NSString *)tagName
+                 instanceId:(int32_t)instanceId {
+  self = [super init];
+  if (self) {
+    _key = key;
+    _tagName = tagName;
+    _scrollMonitorTagName = @"";
+    _instanceId = instanceId;
+  }
+  return self;
+}
+
 @end
 
 @implementation LynxFluencyMonitor {

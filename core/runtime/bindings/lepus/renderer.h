@@ -318,6 +318,8 @@ static const char* kCFunctionReportError = "_ReportError";
 static const char* kCFunctionLoadLepusChunk = "__LoadLepusChunk";
 static const char* kCFunctionElementAnimate = "__ElementAnimate";
 
+static const char* kCFunctionManageFluencyTrace = "__ManageFluencyTrace";
+
 class Utils {
  public:
   static void RegisterBuiltin(lepus::Context* context);

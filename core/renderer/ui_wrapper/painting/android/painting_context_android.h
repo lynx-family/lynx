@@ -97,6 +97,10 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
                     const float* borders, const float* bounds,
                     const float* sticky, float max_height,
                     uint32_t node_index = 0) override;
+
+  void StartFluencyTrace() override;
+  void StopFluencyTrace() override;
+
   void UpdatePlatformExtraBundle(int32_t id,
                                  PlatformExtraBundle* bundle) override;
   void SetFrameAppBundle(

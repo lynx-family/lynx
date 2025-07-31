@@ -1565,6 +1565,7 @@ public class LynxFluencyConfig : NSObject {
   public NSString* LynxFluencyConfig::scrollMonitorTagName scrollMonitorTagName;
   public int32_t LynxFluencyConfig::instanceId instanceId;
   public instancetype LynxFluencyConfig::initWithKey:tagName:scrollMonitorTagName:instanceId:(id< NSCopying > key,[tagName] NSString *tagName,[scrollMonitorTagName] NSString *scrollMonitorTagName,[instanceId] int32_t instanceId);
+  public instancetype LynxFluencyConfig::initWithKey:tagName:instanceId:(id< NSCopying > key,[tagName] NSString *tagName,[instanceId] int32_t instanceId);
 }
 
 public class LynxFluencyMonitor : NSObject {
@@ -4034,6 +4035,7 @@ public class LynxUIContext : NSObject {
   public LynxUIIntersectionObserverManager* LynxUIContext::intersectionManager intersectionManager;
   public LynxUIExposure* LynxUIContext::uiExposure uiExposure;
   public NSDictionary* LynxUIContext::keyframesDict keyframesDict;
+  public LynxFluencyMonitor* LynxUIContext::commonFluencyMonitor commonFluencyMonitor;
   public NSDictionary* LynxUIContext::contextDict contextDict;
   public LynxGlobalObserver* LynxUIContext::observer observer;
   public id<LynxGenericResourceFetcher> LynxUIContext::genericResourceFetcher genericResourceFetcher;
@@ -4075,6 +4077,8 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext::onPropsChangedByUI:(LynxUI *ui);
   public BOOL LynxUIContext::isTouchMoving();
   public NSNumber * LynxUIContext::getLynxRuntimeId();
+  public void LynxUIContext::startFluencyTrace:(NSString *tag);
+  public void LynxUIContext::stopFluencyTrace:(NSString *tag);
   public void LynxUIContext::didReceiveResourceError:(NSError *error);
   public void LynxUIContext::reportError:(nonnull NSError *error);
   public void LynxUIContext::didReceiveException:withMessage:forUI:(NSException *exception,[withMessage] NSString *message,[forUI] LynxUI *ui);

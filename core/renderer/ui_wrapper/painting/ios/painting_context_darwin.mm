@@ -258,6 +258,16 @@ std::unique_ptr<pub::Value> PaintingContextDarwin::GetTextInfo(const std::string
   return TextUtilsDarwinHelper::GetTextInfo(content, info);
 }
 
+void PaintingContextDarwin::StartFluencyTrace(const std::string& tag) {
+  NSString* ns_tag = [NSString stringWithUTF8String:tag.c_str()];
+  [uiOwner_.uiContext startFluencyTrace:ns_tag];
+}
+
+void PaintingContextDarwin::StopFluencyTrace(const std::string& tag) {
+  NSString* ns_tag = [NSString stringWithUTF8String:tag.c_str()];
+  [uiOwner_.uiContext stopFluencyTrace:ns_tag];
+}
+
 PaintingContextDarwin::PaintingContextDarwin(LynxUIOwner* owner, bool enable_create_ui_async)
     : uiOwner_(owner), enable_create_ui_async_(enable_create_ui_async) {
   platform_ref_ = std::make_shared<PaintingContextDarwinRef>(owner);

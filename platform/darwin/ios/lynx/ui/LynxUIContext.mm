@@ -19,6 +19,7 @@
 #import <Lynx/LynxView+Internal.h>
 #import "LynxContext+Internal.h"
 #import "LynxScrollFluency.h"
+
 #import "LynxTemplateRender+Internal.h"
 #import "LynxTouchHandler+Internal.h"
 #import "LynxUIContext+Internal.h"
@@ -38,6 +39,7 @@
     _observer = [[LynxGlobalObserver alloc] init];
     _uiExposure = [[LynxUIExposure alloc] initWithObserver:_observer];
     _fluencyInnerListener = [[LynxScrollFluency alloc] init];
+    _commonFluencyMonitor = [[LynxFluencyMonitor alloc] init];
     _defaultAutoResumeAnimation = [LynxEnv.sharedInstance getAutoResumeAnimation];
     _defaultEnableNewTransformOrigin = [LynxEnv.sharedInstance getEnableNewTransformOrigin];
     if ([LynxResourceServiceFetcher ensureLynxService]) {
@@ -50,6 +52,18 @@
     _logBoxImageSizeWarningThreshold = -1;
   }
   return self;
+}
+
+- (void)startFluencyTrace:(NSString*)tag {
+  NSString* key = [NSString stringWithFormat:@"%p", self];
+  LynxFluencyConfig* config = [[LynxFluencyConfig alloc] initWithKey:key tagName:tag instanceId:-1];
+  [_commonFluencyMonitor startWithFluencyConfig:(config)];
+}
+
+- (void)stopFluencyTrace:(NSString*)tag {
+  NSString* key = [NSString stringWithFormat:@"%p", self];
+  LynxFluencyConfig* config = [[LynxFluencyConfig alloc] initWithKey:key tagName:tag instanceId:-1];
+  [_commonFluencyMonitor stopWithFluencyConfig:(config)];
 }
 
 - (void)updateScreenSize:(CGSize)screenSize {
