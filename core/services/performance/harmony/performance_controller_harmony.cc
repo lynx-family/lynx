@@ -29,6 +29,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::Init(napi_env env,
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_FUNCTION("setTiming", SetTiming),
       DECLARE_NAPI_FUNCTION("markTiming", MarkTiming),
+      DECLARE_NAPI_FUNCTION("destroy", Destroy),
   };
 #undef DECLARE_NAPI_FUNCTION
 
@@ -48,19 +49,18 @@ napi_value PerformanceControllerHarmonyJSWrapper::Init(napi_env env,
 napi_value PerformanceControllerHarmonyJSWrapper::Constructor(
     napi_env env, napi_callback_info info) {
   /**
-   * constructor(ref: Object, func:Function);
+   * constructor(ref: Object, onPerformanceEvent: Function);
    * 0 - ref: Object `PerformanceController`
-   * 1 - func:Function
+   * 1 - onPerformanceEvent: Function
    */
   size_t argc = 2;
   napi_value args[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
-
   // C++ take the ownership of the instance.
   PerformanceControllerHarmonyJSWrapper* perf_controller =
       new PerformanceControllerHarmonyJSWrapper(env);
-  // 0 - ref: PerformanceController
+  // 0 - ref: js PerformanceController
   napi_create_reference(env, args[0], 1, &perf_controller->js_impl_strong_ref_);
   // 1 - func: PerformanceController.onPerformanceEvent
   napi_valuetype js_func_type;
@@ -89,7 +89,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
   napi_value argv[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
-  PerformanceControllerHarmonyJSWrapper* js_wrapper;
+  PerformanceControllerHarmonyJSWrapper* js_wrapper = nullptr;
   napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
   if (!js_wrapper) {
     return nullptr;
@@ -115,6 +115,17 @@ napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
   return nullptr;
 }
 
+PerformanceControllerHarmonyJSWrapper::PerformanceControllerHarmonyJSWrapper(
+    napi_env env)
+    : env_(env) {
+  LOGI("new PerformanceControllerHarmonyJSWrapper, this:" << this);
+};
+
+PerformanceControllerHarmonyJSWrapper::
+    ~PerformanceControllerHarmonyJSWrapper() {
+  LOGI("PerformanceControllerHarmonyJSWrapper::~, this:" << this);
+}
+
 // Run on UI Thread
 napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
     napi_env env, napi_callback_info info) {
@@ -127,7 +138,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
   napi_value argv[argc];
   napi_value js_this;
   napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
-  PerformanceControllerHarmonyJSWrapper* js_wrapper;
+  PerformanceControllerHarmonyJSWrapper* js_wrapper = nullptr;
   napi_unwrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
   if (!js_wrapper) {
     return nullptr;
@@ -184,10 +195,33 @@ void PerformanceControllerHarmonyJSWrapper::OnPerformanceEvent(
 }
 
 // Run on UI Thread
+napi_value PerformanceControllerHarmonyJSWrapper::Destroy(
+    napi_env env, napi_callback_info info) {
+  LOGI("static PerformanceControllerHarmonyJSWrapper::Destroy");
+  size_t argc = 0;
+  napi_value argv[argc];
+  napi_value js_this;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, nullptr);
+  PerformanceControllerHarmonyJSWrapper* js_wrapper = nullptr;
+  // remove js_this
+  napi_status status =
+      napi_remove_wrap(env, js_this, reinterpret_cast<void**>(&js_wrapper));
+  if (js_wrapper) {
+    js_wrapper->Destroy();
+    js_wrapper = nullptr;
+  }
+  NAPI_THROW_IF_FAILED_NULL(
+      env, status,
+      "PerformanceControllerHarmonyJSWrapper napi_remove_wrap failed!");
+  return nullptr;
+}
+
+// Run on UI Thread
 void PerformanceControllerHarmonyJSWrapper::Destroy() {
   if (!env_) {
     return;
   }
+  LOGI("PerformanceControllerHarmonyJSWrapper::Destroy(), this:" << this);
   base::NapiHandleScope scope(env_);
   if (js_impl_strong_ref_) {
     // get js_this of PerformanceController
@@ -223,8 +257,15 @@ void PerformanceControllerHarmony::OnPerformanceEvent(
       });
 }
 
+PerformanceControllerHarmony::PerformanceControllerHarmony(
+    std::shared_ptr<PerformanceControllerHarmonyJSWrapper> wrapper)
+    : js_wrapper_(std::move(wrapper)) {
+  LOGI("new PerformanceControllerHarmony, this:" << this);
+};
+
 // Run on Report Thread
 PerformanceControllerHarmony::~PerformanceControllerHarmony() {
+  LOGI("PerformanceControllerHarmony::~, this:" << this);
   if (!js_wrapper_) {
     return;
   }
