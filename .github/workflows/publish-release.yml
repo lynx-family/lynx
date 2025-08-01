@@ -33,134 +33,134 @@ jobs:
             echo "Version is invalid"
             exit 1
           fi
-  android-explorer-build:
-    timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-large
-    needs: get-version
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/android-explorer-build
-        with:
-          abi-list: armeabi-v7a,x86,x86_64,arm64-v8a
-      - name: push to release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ needs.get-version.outputs.version  }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
-          allowUpdates: true
+  # android-explorer-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-ubuntu-22.04-large
+  #   needs: get-version
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/android-explorer-build
+  #       with:
+  #         abi-list: armeabi-v7a,x86,x86_64,arm64-v8a
+  #     - name: push to release
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         tag: ${{ needs.get-version.outputs.version  }}
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
+  #         allowUpdates: true
 
-  ios-explorer-build:
-    timeout-minutes: 60
-    runs-on: lynx-darwin-14-medium
-    needs: get-version
-    strategy:
-      matrix:
-        arch: [arm64, x86_64]
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/ios-explorer-build
-        with:
-          build-arch: ${{ matrix.arch }}
-      - name: push explorer to release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ needs.get-version.outputs.version  }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
-          allowUpdates: true
+  # ios-explorer-build:
+  #   timeout-minutes: 60
+  #   runs-on: lynx-darwin-14-medium
+  #   needs: get-version
+  #   strategy:
+  #     matrix:
+  #       arch: [arm64, x86_64]
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/ios-explorer-build
+  #       with:
+  #         build-arch: ${{ matrix.arch }}
+  #     - name: push explorer to release
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         tag: ${{ needs.get-version.outputs.version  }}
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
+  #         allowUpdates: true
 
-  harmony-explorer-build:
-    runs-on: lynx-custom-dind
-    container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:601a0169922d3929a2f77cb0ceda89a3c76b168e1a95e2d419465b295ed2a1d6
-      options: --cap-add=NET_ADMIN
-      env:
-        ACCESS_KEY: ${{ secrets.TOS_AP_ACCESS_KEY }}
-        SECRET_KEY: ${{ secrets.TOS_AP_SECRET_KEY }}
-        ENDPOINT: ${{ secrets.TOS_AP_ENDPOINT }}
-        BUCKET_NAME: actions
-        REGION: ${{ secrets.TOS_AP_REGION }}
-      credentials:
-        username: lynx-family
-        password: ${{ secrets.GITHUB_TOKEN }}
-    needs: get-version
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}
-        shell: bash
-    steps:
-      - name: Set MTU
-        run: |
-          sudo apt install --no-install-recommends -y iproute2 
-          sudo ip link set dev eth0 mtu 1450
-          echo "MTU set successfully"
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: change permission
-        run: |
-          sudo chmod 777 /
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/harmony-explorer-build
-      - name: push explorer to release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ needs.get-version.outputs.version  }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
-          allowUpdates: true
+  # harmony-explorer-build:
+  #   runs-on: lynx-custom-dind
+  #   container:
+  #     image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:601a0169922d3929a2f77cb0ceda89a3c76b168e1a95e2d419465b295ed2a1d6
+  #     options: --cap-add=NET_ADMIN
+  #     env:
+  #       ACCESS_KEY: ${{ secrets.TOS_AP_ACCESS_KEY }}
+  #       SECRET_KEY: ${{ secrets.TOS_AP_SECRET_KEY }}
+  #       ENDPOINT: ${{ secrets.TOS_AP_ENDPOINT }}
+  #       BUCKET_NAME: actions
+  #       REGION: ${{ secrets.TOS_AP_REGION }}
+  #     credentials:
+  #       username: lynx-family
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   needs: get-version
+  #   defaults:
+  #     run:
+  #       working-directory: ${{ github.workspace }}
+  #       shell: bash
+  #   steps:
+  #     - name: Set MTU
+  #       run: |
+  #         sudo apt install --no-install-recommends -y iproute2 
+  #         sudo ip link set dev eth0 mtu 1450
+  #         echo "MTU set successfully"
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: change permission
+  #       run: |
+  #         sudo chmod 777 /
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/harmony-explorer-build
+  #     - name: push explorer to release
+  #       uses: ncipollo/release-action@v1
+  #       with:
+  #         tag: ${{ needs.get-version.outputs.version  }}
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
+  #         allowUpdates: true
 
-  android-sdk-release:
-    runs-on: lynx-ubuntu-22.04-large
-    needs: get-version
-    timeout-minutes: 60
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - name: Install Common Dependencies
-        uses: ./lynx/.github/actions/common-deps
-        with:
-          cache-backend: 'lynx-infra'
-      - name: Android SDK Release
-        uses: ./lynx/.github/actions/android-sdk-release
-        with:
-          version: ${{ needs.get-version.outputs.version  }}
-          signingKeyId: ${{ secrets.SIGNING_KEY_ID }}
-          signingPassword: ${{ secrets.SIGNING_PASSWORD }}
-          signingSecretKey: ${{ secrets.SIGNING_SECRET_KEY }}
-          abiList: 'armeabi-v7a,x86,x86_64,arm64-v8a'
-      - name: Package maven artifacts
-        run: |-
-          cd $GITHUB_WORKSPACE/lynx
-          pushd platform/android
-          ./gradlew zipArtifacts -Pversion=${{ needs.get-version.outputs.version  }} getArtifactList
-          popd
-          pushd platform/android/build
-          artifact_list=$(<artifact-list)
-          echo "::set-output name=artifact_list::$artifact_list"
-          popd
-        id: build_artifact
-      - name: Publish artifact to maven
-        uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
-        with:
-          portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
-          artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
+  # android-sdk-release:
+  #   runs-on: lynx-ubuntu-22.04-large
+  #   needs: get-version
+  #   timeout-minutes: 60
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Python Setup
+  #       uses: actions/setup-python@v5
+  #       with:
+  #         python-version: '3.13'
+  #     - name: Install Common Dependencies
+  #       uses: ./lynx/.github/actions/common-deps
+  #       with:
+  #         cache-backend: 'lynx-infra'
+  #     - name: Android SDK Release
+  #       uses: ./lynx/.github/actions/android-sdk-release
+  #       with:
+  #         version: ${{ needs.get-version.outputs.version  }}
+  #         signingKeyId: ${{ secrets.SIGNING_KEY_ID }}
+  #         signingPassword: ${{ secrets.SIGNING_PASSWORD }}
+  #         signingSecretKey: ${{ secrets.SIGNING_SECRET_KEY }}
+  #         abiList: 'armeabi-v7a,x86,x86_64,arm64-v8a'
+  #     - name: Package maven artifacts
+  #       run: |-
+  #         cd $GITHUB_WORKSPACE/lynx
+  #         pushd platform/android
+  #         ./gradlew zipArtifacts -Pversion=${{ needs.get-version.outputs.version  }} getArtifactList
+  #         popd
+  #         pushd platform/android/build
+  #         artifact_list=$(<artifact-list)
+  #         echo "::set-output name=artifact_list::$artifact_list"
+  #         popd
+  #       id: build_artifact
+  #     - name: Publish artifact to maven
+  #       uses: lynx-infra/maven-publish-action@c48e3067642c7ceccf807cd52e6644a257cd8ded
+  #       with:
+  #         portal_api_token: ${{ secrets.PORTAL_API_TOKEN }}
+  #         artifact_path_list: ${{ steps.build_artifact.outputs.artifact_list }}
 
   ios-sdk-publish:
     timeout-minutes: 60
@@ -186,7 +186,15 @@ jobs:
           tag: ${{ needs.get-version.outputs.version  }}
           cocoapods_trunk_token: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          component: all
+          component: LynxService
+      - name: Publish iOS SDK
+        uses: ./lynx/.github/actions/ios-sdk-publish
+        with:
+          version: ${{ needs.get-version.outputs.version  }}
+          tag: ${{ needs.get-version.outputs.version  }}
+          cocoapods_trunk_token: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          component: XElement
       - name: Publish iOS dev SDK
         uses: ./lynx/.github/actions/ios-sdk-publish
         env:
