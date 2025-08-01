@@ -1207,6 +1207,70 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
                                          1));
 }
 
+// Test UpdateDynamicElementStyle with kUpdateViewport
+// Self-owned style wouldn't be overriden by inherited value
+TEST_P(FiberElementTest, TestUpdateDynamicElementStyle8) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+  // class .root
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDLineHeight;
+    auto impl = lepus::Value("18px");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".root";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto element0 = manager->CreateFiberNode("view");
+  element0->parent_component_element_ = page.get();
+  element0->SetClass("root");
+  page->InsertNode(element0);
+
+  auto text = manager->CreateFiberText("text");
+  CSSPropertyID id = CSSPropertyID::kPropertyIDLineHeight;
+  auto value = lepus::Value("28px");
+  text->SetStyle(id, value);
+  text->parent_component_element_ = page.get();
+  element0->InsertNode(text);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(
+      text->platform_css_style_->text_attributes_->computed_line_height == 28);
+
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.UpdateViewport(10, SLMeasureModeDefinite, 10,
+                            SLMeasureModeDefinite);
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
+                                  true);
+
+  EXPECT_TRUE(
+      text->platform_css_style_->text_attributes_->computed_line_height == 28);
+}
+
 TEST_P(FiberElementTest, TestComponentElement) {
   base::String component_id("21");
   int32_t css_id = 100;
