@@ -2215,6 +2215,10 @@ void FiberElement::ConsumeStyleInternal(
 
       if (const auto *parent_computed_css = GetParentComputedCSSStyle();
           is_platform_inheritable_property && parent_computed_css != nullptr) {
+        if (parsed_styles_map_.find(style.first) != parsed_styles_map_.end()) {
+          // Inline style or matched selectors has same style property
+          continue;
+        }
         const bool value_changed = computed_css_style()->InheritValue(
             style.first, *parent_computed_css);
         if (value_changed) {
