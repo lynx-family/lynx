@@ -134,7 +134,7 @@ export struct LynxView {
   // We have introduced an experimental switch as a temporary workaround for the abnormal layout problem in the waterfall flow scenario.
   // This switch will be removed once OpenHarmony is fixed. Please avoid using it unnecessarily.
   experimentalFixFitContent?: boolean = false;
-  private perfController: PerformanceController = new PerformanceController();
+  private perfController?: PerformanceController;
   private uiRenderer!: LynxUIRenderer;
   private templateRenderer!: LynxTemplateRenderer;
   private url: string = '';
@@ -165,7 +165,8 @@ export struct LynxView {
   reInitTemplateRenderer() {
     LynxInfoReporterHelper.reportLynxTemplateEvent(LynxTemplateType.PAGE, this.url);
     if (this.perfController) {
-      LLog.d(TAG, 'Destroy TimingConstants before re-init template renderer');
+      LLog.d(TAG, 'Destroy perfController before re-init template renderer');
+      this.perfController.destroy()
     }
     if (this.uiRenderer) {
       LLog.d(TAG, 'Destroy uiRenderer before re-init template renderer');
@@ -189,6 +190,7 @@ export struct LynxView {
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.context.setGenericResourceFetcher(this.genericResourceFetcher);
     this.context.setMediaResourceFetcher(this.mediaResourceFetcher);
+    this.perfController = new PerformanceController();
     if (this.uiRendererCreator) {
       this.uiRenderer =
         this.uiRendererCreator.createUIRenderer(this.context,
@@ -273,6 +275,7 @@ export struct LynxView {
 
   aboutToDisappear() {
     LLog.d(TAG, 'aboutToDisappear.')
+    this.perfController?.destroy();
     this.uiRenderer.aboutToDisappear();
     this.templateRenderer.aboutToDisappear();
     this.nodeController?.dispose();

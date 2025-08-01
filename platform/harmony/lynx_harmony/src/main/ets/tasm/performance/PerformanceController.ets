@@ -15,6 +15,7 @@ export class PerformanceController implements ITimingCollector {
   public readonly native: lynx.PerformanceController;
   private observers?: IPerformanceObserver[];
   private reporterService?: ILynxEventReporterService;
+  private isDestroyed: boolean = false;
 
   constructor() {
     this.native = new lynx.PerformanceController(this, this.onPerformanceEvent);
@@ -38,6 +39,11 @@ export class PerformanceController implements ITimingCollector {
       service.onPerformanceEvent(PerformanceEntryConverter.makePerformanceEntry(entry));
     }
   }
+  
+  public destroy(): void {
+    this.isDestroyed = true;
+    this.native.destroy();
+  }
 
   private getEventReporterService(): ILynxEventReporterService | undefined {
     if (this.reporterService == undefined) {
@@ -51,10 +57,16 @@ export class PerformanceController implements ITimingCollector {
   }
 
   public setTiming(timestamp: number, timingKey: string, pipelineID?: string | undefined): void {
+    if (this.isDestroyed) {
+      return;
+    }
     this.native.setTiming(timestamp, timingKey, pipelineID);
   }
 
   public markTiming(timingKey: string, pipelineID: string): void {
+    if (this.isDestroyed) {
+      return;
+    }
     this.native.markTiming(timingKey, pipelineID);
   }
 

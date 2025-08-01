@@ -253,8 +253,10 @@ export class EventReporter {
 }
 
 export class PerformanceController {
-  constructor(ref: Object, func: Function);
-
+  constructor(ref: Object, onPerformanceEventFunc: Function);
+  
+  destroy();
+  
   setTiming(timestamp: number, timingKey: string, pipelineID: string): void;
 
   markTiming(timingKey: string, pipelineID: string): void;
