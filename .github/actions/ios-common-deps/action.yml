@@ -21,7 +21,7 @@ runs:
         echo "VERSION=$ruby_version" >> $GITHUB_OUTPUT;
 
     - name: setup ruby cache action
-      uses: lynx-infra/cache@main
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: ${{ inputs.path }}/${{ steps.get_ruby_version.outputs.VERSION }}
         key: ${{ runner.os }}-ruby-${{ steps.get_ruby_version.outputs.VERSION }}-${{ hashFiles('lynx/Gemfile.lock') }}

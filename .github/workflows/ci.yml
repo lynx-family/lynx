@@ -301,7 +301,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx/platform/android
           ./gradlew zipAllArtifacts
       - name: upload zip artifact
-        uses: lynx-infra/upload-artifact@dev
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
         continue-on-error: true
         with:
           name: android-sdk-release
@@ -371,7 +371,7 @@ jobs:
           done
           $ANDROID_HOME/platform-tools/adb devices
       - name: Download Explorer APK
-        uses: lynx-infra/download-artifact@dev
+        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: android-lynx-explorer
           path: lynx/explorer/android/lynx_explorer/build_temp
@@ -482,7 +482,7 @@ jobs:
           git fetch origin 4c977faf04eb295fa2818a183e9dc66c5a7f5455
           git cherry-pick 4c977faf04eb295fa2818a183e9dc66c5a7f5455
       - name: Download Lynx SDK Artifacts
-        uses: lynx-infra/download-artifact@dev
+        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
         with:
           name: android-sdk-release
           path: lynx
