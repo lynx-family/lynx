@@ -27,6 +27,8 @@ class TasmPlatformInvokerAndroid : public TasmPlatformInvoker {
   void OnPageConfigDecoded(
       const std::shared_ptr<tasm::PageConfig>& config) override;
 
+  void OnRunPipelineFinished() override;
+
   std::string TranslateResourceForTheme(const std::string& res_id,
                                         const std::string& theme_key) override;
 

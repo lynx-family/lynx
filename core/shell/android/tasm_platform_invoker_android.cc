@@ -242,6 +242,11 @@ void TasmPlatformInvokerAndroid::OnPageConfigDecoded(
   }
 }
 
+void TasmPlatformInvokerAndroid::OnRunPipelineFinished() {
+  Java_TasmPlatformInvoker_onRunPipelineFinished(
+      base::android::AttachCurrentThread(), jni_object_.Get());
+}
+
 std::string TasmPlatformInvokerAndroid::TranslateResourceForTheme(
     const std::string& res_id, const std::string& theme_key) {
   if (res_id.empty()) {

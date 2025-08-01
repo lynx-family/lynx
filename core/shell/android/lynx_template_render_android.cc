@@ -24,6 +24,7 @@
 #include "core/shell/android/platform_call_back_android.h"
 #include "core/shell/android/tasm_platform_invoker_android.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -1404,6 +1405,20 @@ void SetContextHasAttached(JNIEnv* env, jobject jcaller, jlong ptr,
 
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
   shell->SetContextHasAttached();
+  AtomicLifecycle::TryFree(lifecycle_ptr);
+}
+
+void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
+                               jlong lifecycle, jlong engine_ptr) {
+  AtomicLifecycle* lifecycle_ptr =
+      reinterpret_cast<AtomicLifecycle*>(lifecycle);
+  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
+    return;
+  }
+  auto* shell = reinterpret_cast<LynxShell*>(ptr);
+  auto* engine_wrapper =
+      reinterpret_cast<lynx::shell::LynxEngineWrapper*>(engine_ptr);
+  engine_wrapper->BindShell(shell);
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

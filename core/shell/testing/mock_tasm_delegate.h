@@ -34,6 +34,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
   virtual ~MockTasmDelegate() {}
   virtual void OnDataUpdated() override;
   virtual void OnTasmFinishByNative() override;
+  virtual void OnRunPipelineFinished() override;
   virtual void OnTemplateLoaded(const std::string& url) override;
   virtual void OnSSRHydrateFinished(const std::string& url) override;
   virtual void OnErrorOccurred(base::LynxError error) override;

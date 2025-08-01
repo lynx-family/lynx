@@ -41,6 +41,8 @@ class TasmPlatformInvokerHarmony : public shell::TasmPlatformInvoker {
     ui_task_runner_ = task_runner;
   }
 
+  void OnRunPipelineFinished() override{};
+
  private:
   fml::RefPtr<fml::TaskRunner> ui_task_runner_;
   std::weak_ptr<LynxTemplateRenderer::WeakFlag> weak_flag_;

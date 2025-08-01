@@ -67,6 +67,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
 
     void onPageConfigDecoded(PageConfig config);
 
+    void onRunPipelineFinished();
+
     void onJSBInvoked(Map<String, Object> jsbInfo);
 
     void onCallJSBFinished(Map<String, Object> timing);
@@ -400,6 +402,12 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     }
   }
 
+  @CalledByNative
+  public void onRunPipelineFinished() {
+    if (mCallback != null) {
+      mCallback.onRunPipelineFinished();
+    }
+  }
   @CalledByNative
   public ByteBuffer triggerLepusBridge(String methodName, Object args) {
     ByteBuffer buffer = LepusBuffer.INSTANCE.encodeMessage(

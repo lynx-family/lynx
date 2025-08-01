@@ -107,6 +107,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   private Map<String, Object> mContextData;
 
+  private int mPlatformMeasureWidthCache;
+  private int mPlatformMeasureHeightCache;
+
   private boolean mInPreLoad;
 
   // This ID is generated within LynxShell and represents the template instance.
@@ -162,6 +165,22 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     super(base);
     mVirtualScreenMetrics = new DisplayMetrics();
     mVirtualScreenMetrics.setTo(screenMetrics);
+  }
+
+  public void setPlatformMeasureHeightCache(int platformMeasureHeightCache) {
+    this.mPlatformMeasureHeightCache = platformMeasureHeightCache;
+  }
+
+  public void setPlatformMeasureWidthCache(int platformMeasureWidthCache) {
+    this.mPlatformMeasureWidthCache = platformMeasureWidthCache;
+  }
+
+  public int getPlatformMeasureWidthCache() {
+    return mPlatformMeasureWidthCache;
+  }
+
+  public int getPlatformMeasureHeightCache() {
+    return mPlatformMeasureHeightCache;
   }
 
   /**
@@ -502,6 +521,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public void setUIBodyView(UIBodyView bodyView) {
     setHasLynxViewAttached(bodyView != null);
+    LLog.i("LynxUIRenderer", "lynxContext setUIBodyView" + bodyView + this);
     this.mBodyView = new WeakReference<>(bodyView);
     // Prevent generate lynxSessionID multiple times
     if (TextUtils.isEmpty(mLynxSessionId)) {

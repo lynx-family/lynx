@@ -1116,6 +1116,7 @@ public interface com::lynx::tasm::NativeFacade::Callback {
   public void com.lynx.tasm.NativeFacade.Callback.onThemeUpdatedByJs(LynxTheme theme);
   public void com.lynx.tasm.NativeFacade.Callback.onModuleFunctionInvoked(String module, String method, int error_code);
   public void com.lynx.tasm.NativeFacade.Callback.onPageConfigDecoded(PageConfig config);
+  public void com.lynx.tasm.NativeFacade.Callback.onRunPipelineFinished();
   public void com.lynx.tasm.NativeFacade.Callback.onJSBInvoked(Map< String, Object > jsbInfo);
   public void com.lynx.tasm.NativeFacade.Callback.onCallJSBFinished(Map< String, Object > timing);
   public void com.lynx.tasm.NativeFacade.Callback.onUpdateDataWithoutChange();
@@ -3940,6 +3941,10 @@ public interface com::lynx::tasm::base::LynxConsumer {
 public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.behavior.LynxBaseContext, com.lynx.tasm.behavior.ExceptionHandler {
   public final int com.lynx.tasm.behavior.LynxContext.INSTANCE_ID_DEFAULT INSTANCE_ID_DEFAULT;
   public com.lynx.tasm.behavior.LynxContext.LynxContext(Context base, DisplayMetrics screenMetrics);
+  public void com.lynx.tasm.behavior.LynxContext.setPlatformMeasureHeightCache(int platformMeasureHeightCache);
+  public void com.lynx.tasm.behavior.LynxContext.setPlatformMeasureWidthCache(int platformMeasureWidthCache);
+  public int com.lynx.tasm.behavior.LynxContext.getPlatformMeasureWidthCache();
+  public int com.lynx.tasm.behavior.LynxContext.getPlatformMeasureHeightCache();
   public float com.lynx.tasm.behavior.LynxContext.getFontScale();
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventReporter();
   public boolean com.lynx.tasm.behavior.LynxContext.enableTiming();
@@ -5884,6 +5889,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public LynxViewBuilder com.lynx.tasm.LynxTemplateRender.getLynxViewBuilder();
   public void com.lynx.tasm.LynxTemplateRender.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxTemplateRender.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
+  public native void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr);
   public native void com.lynx.tasm.LynxTemplateRender.nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
 }
 
@@ -6822,6 +6828,7 @@ public class com::lynx::tasm::NativeFacade : com.lynx.tasm.EventEmitter.LynxEven
   public void com.lynx.tasm.NativeFacade.destroyUiThreadPart();
   public void com.lynx.tasm.NativeFacade.reportError(LynxError error);
   public void com.lynx.tasm.NativeFacade.onPageConfigDecoded(ReadableMap map);
+  public void com.lynx.tasm.NativeFacade.onRunPipelineFinished();
   public ByteBuffer com.lynx.tasm.NativeFacade.triggerLepusBridge(String methodName, Object args);
   public void com.lynx.tasm.NativeFacade.triggerLepusBridgeAsync(String methodName, Object args);
   public void com.lynx.tasm.NativeFacade.getI18nResourceByNative(final String channelOrUrl, String fallbackUrl);
@@ -8577,6 +8584,7 @@ public class com::lynx::tasm::LynxTemplateRender::TASMCallback : com.lynx.tasm.N
   public String com.lynx.tasm.LynxTemplateRender.TASMCallback.translateResourceForTheme(String resId, String themedKey);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onModuleFunctionInvoked(String module, String method, int error_code);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onPageConfigDecoded(PageConfig config);
+  public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onRunPipelineFinished();
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onJSBInvoked(Map< String, Object > jsbInfo);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onCallJSBFinished(Map< String, Object > timing);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onUpdateDataWithoutChange();
@@ -8593,6 +8601,7 @@ public class com::lynx::tasm::LynxTemplateRender::TASMCallback : com.lynx.tasm.N
 
 public class com::lynx::tasm::TasmPlatformInvoker :  {
   public com.lynx.tasm.TasmPlatformInvoker.TasmPlatformInvoker(NativeFacade nativeFacade);
+  public void com.lynx.tasm.TasmPlatformInvoker.setNativeFacade(NativeFacade nativeFacade);
 }
 
 public class com::lynx::tasm::TemplateAssembler :  {
@@ -9003,9 +9012,13 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_CREATE_TASM TEMPLATE_RENDER_CREATE_TASM;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_DISPATCH_ERROR TEMPLATE_RENDER_DISPATCH_ERROR;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_SET_GLOBAL_PROPS TEMPLATE_RENDER_SET_GLOBAL_PROPS;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_ON_RUN_PIPELINE_FINISHED TEMPLATE_RENDER_ON_RUN_PIPELINE_FINISHED;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_DETACH_LYNX_ENGINE TEMPLATE_RENDER_DETACH_LYNX_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_PROCESS_RENDER TEMPLATE_RENDER_PROCESS_RENDER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_ATTACH_LYNX_VIEW TEMPLATE_RENDER_ATTACH_LYNX_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_RELOAD_AND_INIT TEMPLATE_RENDER_RELOAD_AND_INIT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_TRY_REUSE_ENGINE TEMPLATE_RENDER_TRY_REUSE_ENGINE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_FALLBACK_NEW_ENGINE TEMPLATE_RENDER_FALLBACK_NEW_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_REPORT_COMPONENT_INFO CLIENT_REPORT_COMPONENT_INFO;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_PAGE_START CLIENT_ON_PAGE_START;
@@ -9019,6 +9032,8 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_DYNAMIC_COMPONENT_PERF CLIENT_ON_DYNAMIC_COMPONENT_PERF;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_MODULE_FUNCTION CLIENT_ON_MODULE_FUNCTION;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_ON_TEMPLATE_BUNDLE_READY CLIENT_ON_TEMPLATE_BUNDLE_READY;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENGINE_POOL_REGISTER_ENGINE LYNX_ENGINE_POOL_REGISTER_ENGINE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE LYNX_ENGINE_POOL_POOL_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXVIEW DESTORY_LYNXVIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNXVIEW_BUILDER_BUILD LYNXVIEW_BUILDER_BUILD;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_LYNXVIEW_AND_JSRUNTIME_DESTORY CLIENT_LYNXVIEW_AND_JSRUNTIME_DESTORY;

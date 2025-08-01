@@ -23,7 +23,7 @@ class LynxEngine {
 
   private static final String TAG = "LynxEngineWrapper";
 
-  @Nullable private LynxTemplateRender mLynxTemplateRender;
+  private WeakReference<LynxTemplateRender> mLynxTemplateRender;
 
   private long mNativePtr;
   private TemplateBundle mTemplateBundle;
@@ -31,6 +31,7 @@ class LynxEngine {
   private WeakReference<Deque<LynxEngine>> mLynxEngineWrapperQueue;
 
   private ILynxUIRenderer mLynxUIRenderer;
+  private TasmPlatformInvoker mTasmPlatformInvoker;
   // LynxContext or PageConfig
   private PageConfig mPageConfig;
 
@@ -52,7 +53,7 @@ class LynxEngine {
     //       Therefore, the object information needs to be provided to the Wrapper for management
     //       after the Shell is created.
     mNativePtr = nativeCreate();
-    mLynxTemplateRender = templateRender;
+    mLynxTemplateRender = new WeakReference<>(templateRender);
     mTemplateBundle = templateBundle;
   }
 
@@ -63,11 +64,6 @@ class LynxEngine {
   public long getNativePtr() {
     return mNativePtr;
   }
-
-  public void attachCurrentTemplateRender(LynxTemplateRender templateRender) {
-    mLynxTemplateRender = templateRender;
-  }
-
   public void setQueueRefFromPool(Deque<LynxEngine> lynxEngineQueue) {
     this.mLynxEngineWrapperQueue = new WeakReference<>(lynxEngineQueue);
   }
@@ -80,6 +76,14 @@ class LynxEngine {
     this.mLynxUIRenderer = lynxUIRenderer;
   }
 
+  public TasmPlatformInvoker getTasmPlatformInvoker() {
+    return mTasmPlatformInvoker;
+  }
+
+  public void setTasmPlatformInvoker(TasmPlatformInvoker tasmPlatformInvoker) {
+    this.mTasmPlatformInvoker = tasmPlatformInvoker;
+  }
+
   public PageConfig getPageConfig() {
     return mPageConfig;
   }
@@ -88,16 +92,11 @@ class LynxEngine {
     this.mPageConfig = pageConfig;
   }
 
-  public void detachEngine() {
-    if (mNativePtr != 0 && mLynxTemplateRender != null) {
-      // FIXME(huangweiwu): remove templateRender? only setup the release callback here.
-      if (mLynxTemplateRender.getLynxContext() != null
-          && mLynxTemplateRender.getLynxContext().getUIBody() != null) {
-        // TODO(songshourui): async detach
-        mLynxTemplateRender.getLynxContext().getUIBody().detachUIBodyView();
-      }
-      mLynxTemplateRender.detachLynxEngineWrapper();
-      mLynxTemplateRender = null;
+  public void detachFromLynxView() {
+    LynxTemplateRender lynxTemplateRender = mLynxTemplateRender.get();
+    if (mNativePtr != 0 && lynxTemplateRender != null) {
+      lynxTemplateRender.detachLynxEngineWrapper();
+      mLynxTemplateRender.clear();
     }
   }
 
@@ -105,8 +104,8 @@ class LynxEngine {
     return mLynxEngineState;
   }
 
-  public void setLynxEngineState(LynxEngineState LynxEngineState) {
-    this.mLynxEngineState = LynxEngineState;
+  public void updateLynxEngineState(LynxEngineState lynxEngineState) {
+    this.mLynxEngineState = lynxEngineState;
   }
 
   public boolean hasLoaded() {
@@ -117,11 +116,15 @@ class LynxEngine {
     return mLynxEngineState == LynxEngineState.READY_BE_REUSED;
   }
 
-  public boolean isRunOnCurrentTemplateRender(LynxTemplateRender templateRender) {
-    if (mLynxTemplateRender == null) {
+  public synchronized void attachCurrentTemplateRender(LynxTemplateRender templateRender) {
+    mLynxTemplateRender = new WeakReference<>(templateRender);
+  }
+
+  public synchronized boolean isRunOnCurrentTemplateRender(LynxTemplateRender templateRender) {
+    if (mLynxTemplateRender == null || mLynxTemplateRender.get() == null) {
       return false;
     }
-    return mLynxTemplateRender == templateRender;
+    return mLynxTemplateRender.get() == templateRender;
   }
 
   public void registerLynxEngineReused() {

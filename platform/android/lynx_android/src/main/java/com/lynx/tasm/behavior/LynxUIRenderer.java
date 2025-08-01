@@ -148,6 +148,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   @Override
   public void attachBodyView(UIBodyView bodyView, LynxContext lynxContext, Context context) {
     if (lynxContext != null) {
+      mLynxContext = new WeakReference<>(lynxContext);
+      lynxContext.setLynxUIOwner(mLynxUIOwner);
+      lynxContext.setUIBody(mLynxUIOwner.getRootUI());
       lynxContext.setBaseContext(context);
       lynxContext.setUIBodyView(bodyView);
       if (mEventDispatcher != null) {
@@ -156,6 +159,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     }
     if (mLynxUIOwner != null) {
       mLynxUIOwner.attachUIBodyView(bodyView);
+      mLynxUIOwner.attachLynxContext(lynxContext);
     }
   }
 

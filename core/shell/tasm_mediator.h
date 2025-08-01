@@ -70,6 +70,8 @@ class TasmMediator : public LynxEngine::Delegate {
 
   void OnTasmFinishByNative() override;
 
+  void OnRunPipelineFinished() override;
+
   void OnTemplateLoaded(const std::string& url) override;
 
   void OnSSRHydrateFinished(const std::string& url) override;

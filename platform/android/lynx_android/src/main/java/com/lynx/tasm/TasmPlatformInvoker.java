@@ -16,10 +16,14 @@ public class TasmPlatformInvoker {
   private static final String TAG = "TasmPlatformInvoker";
 
   // TODO(heshan): invoke LynxTemplateRender instead.
-  private final WeakReference<NativeFacade> mNativeFacade;
+  private WeakReference<NativeFacade> mNativeFacade;
 
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public TasmPlatformInvoker(NativeFacade nativeFacade) {
+    mNativeFacade = new WeakReference<>(nativeFacade);
+  }
+
+  public void setNativeFacade(NativeFacade nativeFacade) {
     mNativeFacade = new WeakReference<>(nativeFacade);
   }
 
@@ -34,6 +38,16 @@ public class TasmPlatformInvoker {
     nativeFacade.onPageConfigDecoded(map);
   }
 
+  @CalledByNative
+  private void onRunPipelineFinished() {
+    NativeFacade nativeFacade = mNativeFacade.get();
+    if (nativeFacade == null) {
+      LLog.i(TAG, "OnRunPipelineFinished failed, NativeFacade has been released.");
+      return;
+    }
+
+    nativeFacade.onRunPipelineFinished();
+  }
   @CalledByNative
   private String translateResourceForTheme(final String resId, final String themeKey) {
     NativeFacade nativeFacade = mNativeFacade.get();

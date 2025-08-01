@@ -134,6 +134,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
     virtual void OnDataUpdated() = 0;
     virtual void OnTasmFinishByNative() = 0;
+    virtual void OnRunPipelineFinished() = 0;
     virtual void OnTemplateLoaded(const std::string& url) = 0;
     virtual void OnSSRHydrateFinished(const std::string& url) = 0;
     virtual void OnErrorOccurred(base::LynxError error) = 0;

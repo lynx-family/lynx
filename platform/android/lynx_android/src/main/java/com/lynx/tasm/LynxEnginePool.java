@@ -6,15 +6,16 @@ package com.lynx.tasm;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.base.LLog;
-import java.util.Deque;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
 class LynxEnginePool {
-  private static final String TAG = "LynxEngineWrapperPool";
+  private static final String TAG = "LynxEnginePool";
 
-  private Map<TemplateBundle, Deque<LynxEngine>> mCache = new HashMap<>();
+  private Map<TemplateBundle, LinkedList<LynxEngine>> mCache = new HashMap<>();
 
   private static class Holder {
     private static final LynxEnginePool INSTANCE = new LynxEnginePool();
@@ -25,38 +26,51 @@ class LynxEnginePool {
   }
 
   void registerReuseEngineWrapper(LynxEngine engineWrapper) {
-    Deque<LynxEngine> engineQueue = getEngineQueue(engineWrapper.getTemplateBundle());
+    if (engineWrapper == null) {
+      return;
+    }
+    LinkedList<LynxEngine> engineQueue = getEngineQueue(engineWrapper.getTemplateBundle());
+    if (TraceEvent.enableTrace()) {
+      Map<String, String> map = new HashMap<>();
+      map.put("engineQueue", engineQueue.toString());
+      TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_REGISTER_ENGINE, map);
+    }
     synchronized (this) {
       engineQueue.offer(engineWrapper);
     }
     engineWrapper.setQueueRefFromPool(engineQueue);
-    LLog.i(
-        TAG, "registerReuseEngineWrapper EngineQueue Cache: " + engineQueue + "," + engineWrapper);
+    LLog.i(TAG,
+        "registerReuseEngineWrapper EngineQueue Cache: " + engineQueue
+            + ", bundle:" + engineWrapper.getTemplateBundle());
+    TraceEvent.endSection(TraceEventDef.LYNX_ENGINE_POOL_REGISTER_ENGINE);
   }
 
   @Nullable
   LynxEngine pollEngineFromPool(TemplateBundle templateBundle) {
-    Deque<LynxEngine> engineQueue = getEngineQueue(templateBundle);
+    LinkedList<LynxEngine> engineQueue = getEngineQueue(templateBundle);
     LLog.i(TAG, "pollEngine EngineQueue Cache: " + engineQueue + ", bundle:" + templateBundle);
-    LynxEngine lynxEngine = null;
+    if (TraceEvent.enableTrace()) {
+      Map<String, String> map = new HashMap<>();
+      map.put("engineQueue", engineQueue.toString());
+      TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE, map);
+    }
     synchronized (this) {
-      while (!engineQueue.isEmpty()) {
-        lynxEngine = engineQueue.poll();
-        if (lynxEngine != null && lynxEngine.canReused()) {
-          break;
+      for (int i = 0; i < engineQueue.size(); i++) {
+        LynxEngine lynxEngine = engineQueue.get(i);
+        if (lynxEngine.canReused()) {
+          engineQueue.remove(i);
+          TraceEvent.endSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE);
+          return lynxEngine;
         }
       }
     }
-    if (lynxEngine != null && lynxEngine.canReused()) {
-      lynxEngine.detachEngine();
-      return lynxEngine;
-    }
+    TraceEvent.endSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE);
     return null;
   }
 
   @NonNull
-  private synchronized Deque<LynxEngine> getEngineQueue(TemplateBundle templateBundle) {
-    Deque<LynxEngine> engineQueue = mCache.get(templateBundle);
+  private synchronized LinkedList<LynxEngine> getEngineQueue(TemplateBundle templateBundle) {
+    LinkedList<LynxEngine> engineQueue = mCache.get(templateBundle);
     if (engineQueue == null) {
       engineQueue = new LinkedList<>();
       mCache.put(templateBundle, engineQueue);

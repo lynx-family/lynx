@@ -22,6 +22,9 @@ class TasmPlatformInvoker {
 
   virtual void OnPageConfigDecoded(
       const std::shared_ptr<tasm::PageConfig>& config) = 0;
+
+  virtual void OnRunPipelineFinished() = 0;
+
   virtual lepus::Value TriggerLepusMethod(const std::string& method_name,
                                           const lepus::Value& args) = 0;
   virtual void TriggerLepusMethodAsync(const std::string& method_name,

@@ -16,6 +16,7 @@ namespace test {
 
 void MockTasmDelegate::OnDataUpdated() { ss_ << "OnDataUpdated\n"; }
 void MockTasmDelegate::OnTasmFinishByNative() {}
+void MockTasmDelegate::OnRunPipelineFinished() {}
 void MockTasmDelegate::OnTemplateLoaded(const std::string& url) {
   // URL is ignored.
   ss_ << "OnTemplateLoaded:"

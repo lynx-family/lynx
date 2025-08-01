@@ -43,6 +43,8 @@ class TasmPlatformInvokerDarwin : public TasmPlatformInvoker {
   void GetI18nResource(const std::string& channel,
                        const std::string& fallback_url) override;
 
+  void OnRunPipelineFinished() override{};
+
  private:
   __weak id<TemplateRenderCallbackProtocol> _render;
 };

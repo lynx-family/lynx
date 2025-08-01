@@ -129,6 +129,10 @@ void TasmMediator::OnPageConfigDecoded(
   }
 }
 
+void TasmMediator::OnRunPipelineFinished() {
+  tasm_platform_invoker_->OnRunPipelineFinished();
+}
+
 void TasmMediator::SetTiming(tasm::Timing timing) {
   perf_actor_->ActAsync(
       [timing = std::move(timing)](auto& performance) mutable {

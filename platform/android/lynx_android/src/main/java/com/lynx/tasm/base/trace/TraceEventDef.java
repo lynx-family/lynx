@@ -56,9 +56,17 @@ public class TraceEventDef {
   public static final String TEMPLATE_RENDER_CREATE_TASM = "TemplateRender.createLynxEngine";
   public static final String TEMPLATE_RENDER_DISPATCH_ERROR = "TemplateRender.dispatchError";
   public static final String TEMPLATE_RENDER_SET_GLOBAL_PROPS = "TemplateRender.setGlobalProps";
+  public static final String TEMPLATE_RENDER_ON_RUN_PIPELINE_FINISHED =
+      "TemplateRender.onRunPipelineFinished";
+  public static final String TEMPLATE_RENDER_DETACH_LYNX_ENGINE =
+      "TemplateRender.detachLynxEngineWrapper";
   public static final String TEMPLATE_RENDER_PROCESS_RENDER = "TemplateRender.processRender";
   public static final String TEMPLATE_RENDER_ATTACH_LYNX_VIEW = "TemplateRender.attachLynxView";
   public static final String TEMPLATE_RENDER_RELOAD_AND_INIT = "TemplateRender.reloadAndInit";
+  public static final String TEMPLATE_RENDER_TRY_REUSE_ENGINE =
+      "TemplateRender.tryReuseLynxEngineFromPool";
+  public static final String TEMPLATE_RENDER_RENDER_TEMPLATE_BUNDLE =
+      "TemplateRender.renderTemplateBundle";
   public static final String TEMPLATE_RENDER_FALLBACK_NEW_ENGINE =
       "TemplateRender.fallbackNewEngine";
   public static final String CLIENT_REPORT_COMPONENT_INFO = "Client.onReportComponentInfo";
@@ -73,6 +81,10 @@ public class TraceEventDef {
   public static final String CLIENT_ON_DYNAMIC_COMPONENT_PERF = "Client.onDynamicComponentPerf";
   public static final String CLIENT_ON_MODULE_FUNCTION = "Client.onModuleMethodInvoked";
   public static final String CLIENT_ON_TEMPLATE_BUNDLE_READY = "Client.onTemplateBundleReady";
+
+  public static final String LYNX_ENGINE_POOL_REGISTER_ENGINE =
+      "LynxEnginePool.registerReuseEngineWrapper";
+  public static final String LYNX_ENGINE_POOL_POOL_ENGINE = "LynxEnginePool.pollEngineFromPool";
 
   public static final String DESTORY_LYNXVIEW = "DestroyLynxView";
   public static final String LYNXVIEW_BUILDER_BUILD = "CreateLynxView";
