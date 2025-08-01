@@ -8,6 +8,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include "base/include/log/logging.h"
 #include "base/include/platform/harmony/napi_util.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
@@ -43,6 +44,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::Init(napi_env env,
   return exports;
 }
 
+// Run on UI Thread
 napi_value PerformanceControllerHarmonyJSWrapper::Constructor(
     napi_env env, napi_callback_info info) {
   /**
@@ -58,9 +60,9 @@ napi_value PerformanceControllerHarmonyJSWrapper::Constructor(
   // C++ take the ownership of the instance.
   PerformanceControllerHarmonyJSWrapper* perf_controller =
       new PerformanceControllerHarmonyJSWrapper(env);
-  // 0 - ref: Object
+  // 0 - ref: PerformanceController
   napi_create_reference(env, args[0], 1, &perf_controller->js_impl_strong_ref_);
-  // 1 - func:Function
+  // 1 - func: PerformanceController.onPerformanceEvent
   napi_valuetype js_func_type;
   napi_typeof(env, args[1], &js_func_type);
   if (js_func_type != napi_null) {
@@ -74,6 +76,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::Constructor(
   return js_this;
 }
 
+// Run on UI Thread
 napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
     napi_env env, napi_callback_info info) {
   /**
@@ -112,6 +115,7 @@ napi_value PerformanceControllerHarmonyJSWrapper::SetTiming(
   return nullptr;
 }
 
+// Run on UI Thread
 napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
     napi_env env, napi_callback_info info) {
   /**
@@ -161,53 +165,73 @@ napi_value PerformanceControllerHarmonyJSWrapper::MarkTiming(
   return nullptr;
 }
 
+// Run on UI Thread
 void PerformanceControllerHarmonyJSWrapper::OnPerformanceEvent(
+    lepus::Value lepus_entry_map) {
+  if (!js_impl_strong_ref_ || !js_on_performance_event_func_ref_ || !env_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  size_t argc = 1;
+  napi_value argv[argc];
+  // arg[0] - PerformanceEvent
+  argv[0] = base::NapiConvertHelper::CreateNapiValue(env_, lepus_entry_map);
+  // Call JS Method :
+  // PerformanceController.onPerformanceEvent(entry: PerformanceEntry):
+  // void
+  base::NapiUtil::InvokeJsMethod(env_, js_impl_strong_ref_,
+                                 js_on_performance_event_func_ref_, argc, argv);
+}
+
+// Run on UI Thread
+void PerformanceControllerHarmonyJSWrapper::Destroy() {
+  if (!env_) {
+    return;
+  }
+  base::NapiHandleScope scope(env_);
+  if (js_impl_strong_ref_) {
+    // get js_this of PerformanceController
+    napi_value js_object =
+        base::NapiUtil::GetReferenceNapiValue(env_, js_impl_strong_ref_);
+    if (js_object) {
+      // as `js_this.native = null`
+      napi_remove_wrap(env_, js_object, nullptr);
+    }
+    // remove js_this of PerformanceController
+    napi_delete_reference(env_, js_impl_strong_ref_);
+    js_impl_strong_ref_ = nullptr;
+  }
+  if (js_on_performance_event_func_ref_) {
+    // remove ref of PerformanceController.onPerformanceEvent
+    napi_delete_reference(env_, js_on_performance_event_func_ref_);
+    js_on_performance_event_func_ref_ = nullptr;
+  }
+  env_ = nullptr;
+}
+
+// Run on Report Thread
+void PerformanceControllerHarmony::OnPerformanceEvent(
     const std::unique_ptr<pub::Value>& entry_map) {
-  auto shared_this = shared_from_this();
+  if (!js_wrapper_) {
+    return;
+  }
   base::UIThread::GetRunner()->PostTask(
-      [shared_this, lepus_entry_map = pub::ValueUtils::ConvertValueToLepusValue(
-                        *entry_map)]() mutable {
-        if (!shared_this->js_impl_strong_ref_ ||
-            !shared_this->js_on_performance_event_func_ref_) {
-          return;
-        }
-        base::NapiHandleScope scope(shared_this->env_);
-        size_t argc = 1;
-        napi_value argv[argc];
-        // arg[0] - PerformanceEvent
-        argv[0] = base::NapiConvertHelper::CreateNapiValue(shared_this->env_,
-                                                           lepus_entry_map);
-        // Call JS Method :
-        // PerformanceController.onPerformanceEvent(entry: PerformanceEntry):
-        // void
-        base::NapiUtil::InvokeJsMethod(
-            shared_this->env_, shared_this->js_impl_strong_ref_,
-            shared_this->js_on_performance_event_func_ref_, argc, argv);
+      [js_wrapper = js_wrapper_,
+       lepus_entry_map =
+           pub::ValueUtils::ConvertValueToLepusValue(*entry_map)]() mutable {
+        js_wrapper->OnPerformanceEvent(std::move(lepus_entry_map));
       });
 }
 
-// Run on report thread.
-PerformanceControllerHarmonyJSWrapper::
-    ~PerformanceControllerHarmonyJSWrapper() {
+// Run on Report Thread
+PerformanceControllerHarmony::~PerformanceControllerHarmony() {
+  if (!js_wrapper_) {
+    return;
+  }
   base::UIThread::GetRunner()->PostSyncTask(
-      [env = env_, js_impl_ref = js_impl_strong_ref_,
-       js_on_performance_event_func_ref =
-           js_on_performance_event_func_ref_]() mutable {
-        base::NapiHandleScope scope(env);
-        napi_value js_object =
-            base::NapiUtil::GetReferenceNapiValue(env, js_impl_ref);
-        if (js_object) {
-          napi_remove_wrap(env, js_object, nullptr);
-        }
-        napi_delete_reference(env, js_impl_ref);
-        if (js_on_performance_event_func_ref) {
-          napi_delete_reference(env, js_on_performance_event_func_ref);
-        }
-      });
-  env_ = nullptr;
-  js_on_performance_event_func_ref_ = nullptr;
-  js_impl_strong_ref_ = nullptr;
+      [js_wrapper = js_wrapper_]() { js_wrapper->Destroy(); });
 }
+
 }  // namespace performance
 }  // namespace tasm
 }  // namespace lynx

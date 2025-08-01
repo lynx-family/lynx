@@ -25,9 +25,9 @@ class PerformanceControllerHarmonyJSWrapper
  public:
   PerformanceControllerHarmonyJSWrapper(napi_env env) : env_(env){};
 
-  void OnPerformanceEvent(const std::unique_ptr<pub::Value>& entry);
+  void OnPerformanceEvent(lepus::Value lepus_entry_map);
 
-  ~PerformanceControllerHarmonyJSWrapper();
+  ~PerformanceControllerHarmonyJSWrapper() = default;
 
   void SetActor(
       const std::shared_ptr<shell::LynxActor<PerformanceController>>& actor) {
@@ -51,6 +51,9 @@ class PerformanceControllerHarmonyJSWrapper
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value SetTiming(napi_env env, napi_callback_info info);
   static napi_value MarkTiming(napi_env env, napi_callback_info info);
+  void Destroy();
+  friend class PerformanceControllerHarmony;
+
   napi_ref js_impl_strong_ref_{nullptr};
   napi_ref js_on_performance_event_func_ref_{nullptr};
   napi_env env_{nullptr};
@@ -63,14 +66,10 @@ class PerformanceControllerHarmony : public PerformanceControllerPlatformImpl {
       std::shared_ptr<PerformanceControllerHarmonyJSWrapper> wrapper)
       : js_wrapper_(std::move(wrapper)){};
 
-  ~PerformanceControllerHarmony() override = default;
+  ~PerformanceControllerHarmony() override;
 
   void OnPerformanceEvent(
-      const std::unique_ptr<pub::Value>& entry_map) override {
-    if (js_wrapper_) {
-      js_wrapper_->OnPerformanceEvent(entry_map);
-    }
-  }
+      const std::unique_ptr<pub::Value>& entry_map) override;
 
   void SetActor(const std::shared_ptr<shell::LynxActor<PerformanceController>>&
                     actor) override {
