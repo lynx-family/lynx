@@ -92,7 +92,7 @@ task getArtifactList {
     dependsOn(zipArtifacts)
     doLast {
         println "artifactInfo: ${artifactList}"
-        def json = new groovy.json.JsonBuilder(artifactList).toPrettyString()
+        def json = new groovy.json.JsonBuilder(artifactList).toString()
         File file = new File("${project.buildDir}/artifact-list")
         FileOutputStream outputStream = new FileOutputStream(file)
         outputStream.write(json.getBytes())
