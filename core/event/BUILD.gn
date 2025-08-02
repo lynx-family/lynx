@@ -6,6 +6,8 @@ import("../../testing/test.gni")
 import("../Lynx.gni")
 
 event_shared_sources = [
+  "custom_event.cc",
+  "custom_event.h",
   "event.cc",
   "event.h",
   "event_dispatch_result.h",

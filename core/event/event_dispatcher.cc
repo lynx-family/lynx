@@ -31,8 +31,8 @@
 
 #include "core/event/event_dispatcher.h"
 
-#include "core/event/event.h"
 #include "core/event/event_target.h"
+#include "core/event/touch_event.h"
 
 namespace lynx {
 namespace event {
@@ -49,16 +49,29 @@ EventDispatcher::EventDispatcher(EventTarget& target, Event& event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
+  // handle conflic and param
+  if (event_->HandleEventConflictAndParam()) {
+    return {EventCancelType::kCanceledByEventHandler, false};
+  }
   event_->set_target(target_);
+  event_->HandleEventCustomDetail();
+  bool consumed = false;
+  auto path = event_->event_path();
+
+  // TODO(hexionghui): trigger global event, eg: trigger-global-event attribute
+  // or GlobalEventEmitter
+
+  // TODO(hexionghui): global-bind event, eg: global-bindtap
+
+  // no capture and bubble, eg: bindscroll
   if (!event_->bubbles()) {
     event_->set_event_phase(Event::PhaseType::kAtTarget);
     event_->set_current_target(target_);
     auto result = target_->DispatchEvent(*event_);
     return {EventCancelType::kCanceledByDefaultEventHandler, result.consumed};
   }
-  bool consumed = false;
-  auto path = event_->event_path();
-  // capture
+
+  // capture, eg: capture-bindtap
   for (auto item = path.rbegin(); item != path.rend(); ++item) {
     event_->set_event_phase((event_->target() == *item)
                                 ? Event::PhaseType::kAtTarget
@@ -70,7 +83,8 @@ DispatchEventResult EventDispatcher::Dispatch() {
       return result;
     }
   }
-  // bubble
+
+  // bubble, eg: bindtap
   for (auto& item : path) {
     if (event_->target() == item) {
       // target is handled by capture phase.
@@ -84,6 +98,7 @@ DispatchEventResult EventDispatcher::Dispatch() {
       return result;
     }
   }
+
   return {EventCancelType::kNotCanceled, consumed};
 }
 

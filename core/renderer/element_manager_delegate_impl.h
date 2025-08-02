@@ -43,12 +43,15 @@ class ElementManagerDelegateImpl : public ElementManagerDelegate {
       const std::shared_ptr<PipelineOptions> &pipeline_options,
       bool is_major_updated = false) override;
 
+  void SendGlobalEvent(const std::string &event,
+                       const lepus::Value &info) override;
+
  private:
   std::unordered_set<FrameElement *> frame_element_set_;
   std::unordered_map<std::string, std::shared_ptr<LynxTemplateBundle>>
       frame_bundles_{};
   std::shared_ptr<LazyBundleLoader> bundle_loader_{nullptr};
-  TemplateAssembler *tasm_;
+  TemplateAssembler *tasm_{nullptr};
 };
 
 }  // namespace tasm

@@ -1700,5 +1700,83 @@ bool Element::IsEventBubbleCatch(const std::string& event) {
   return false;
 }
 
+// TODO(hexionghui): move this to EventDispatcher
+void Element::HandleGlobalEvent(event::Event& event) {
+  // handle the trigger-global-event attribute
+  auto path = event.event_path();
+  auto delegate = element_manager_->element_manager_delegate();
+  event.set_event_phase(event::Event::PhaseType::kAtTarget);
+  for (const auto& item : path) {
+    auto current_target = static_cast<Element*>(item);
+    if (current_target->EnableTriggerGlobalEvent()) {
+      event.set_current_target(current_target);
+      event.HandleEventBaseDetail();
+      delegate->SendGlobalEvent(event.type(), event.detail());
+    }
+  }
+
+  // handle the global-bind event
+  auto node_manager = element_manager_->node_manager();
+  if (node_manager == nullptr) {
+    return;
+  }
+  auto target = static_cast<Element*>(event.target());
+  const auto& global_bind_ids =
+      element_manager_->GetGlobalBindElementIds(event.type());
+  if (global_bind_ids.size() > 0) {
+    for (const auto& id : global_bind_ids) {
+      auto current_target = node_manager->Get(id);
+      event.set_current_target(current_target);
+      const auto& global_bind_target_set = current_target->GlobalBindTarget();
+      // If set is empty, means the target is all other elements.
+      if (!global_bind_target_set.has_value() ||
+          global_bind_target_set->empty()) {
+        event.HandleEventBaseDetail();
+        current_target->DispatchEvent(event);
+      } else {
+        // event can bubble
+        if (event.bubbles()) {
+          for (const auto& item : path) {
+            Element* bubble_target = static_cast<Element*>(item);
+            if (bubble_target->data_model() == nullptr ||
+                bubble_target->data_model()->idSelector().empty()) {
+              continue;
+            }
+            auto id_selector =
+                static_cast<Element*>(item)->data_model()->idSelector().str();
+            if (global_bind_target_set->contains(id_selector)) {
+              event.set_target(item);
+              event.HandleEventBaseDetail();
+              current_target->DispatchEvent(event);
+            }
+          }
+          // reset target for event
+          event.set_target(target);
+        }
+        // event can't bubble
+        else {
+          if (target->data_model() &&
+              !target->data_model()->idSelector().empty()) {
+            auto id_selector =
+                static_cast<Element*>(target)->data_model()->idSelector().str();
+            if (global_bind_target_set->contains(id_selector)) {
+              event.HandleEventBaseDetail();
+              current_target->DispatchEvent(event);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+bool Element::GetEnableMultiTouchParamsCompatible() {
+  return element_manager_->GetEnableMultiTouchParamsCompatible();
+}
+
+float Element::GetLayoutsUnitPerPx() {
+  return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
+}
+
 }  // namespace tasm
 }  // namespace lynx

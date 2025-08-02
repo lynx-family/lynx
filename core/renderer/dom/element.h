@@ -699,6 +699,12 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   bool IsEventBubbleCatch(const std::string& event) override;
 
+  virtual void HandleGlobalEvent(event::Event& event) override;
+
+  virtual bool GetEnableMultiTouchParamsCompatible() override;
+
+  virtual float GetLayoutsUnitPerPx() override;
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 

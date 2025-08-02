@@ -44,6 +44,10 @@ class ElementManagerDelegate {
   virtual PipelineContext *CreateAndUpdateCurrentPipelineContext(
       const std::shared_ptr<PipelineOptions> &pipeline_options,
       bool is_major_updated = false) = 0;
+
+  // Call for sending global event.
+  virtual void SendGlobalEvent(const std::string &event,
+                               const lepus::Value &info) = 0;
 };
 
 }  // namespace tasm

@@ -97,6 +97,13 @@ class EventTarget {
     return lepus::Value();
   }
 
+  // Handle the trigger-global-event attribute and the global-bind event.
+  virtual void HandleGlobalEvent(Event& event) {}
+  // Get the switch which controls whether compatible multi touch params.
+  virtual bool GetEnableMultiTouchParamsCompatible() { return false; }
+  // Get unit to calculate the position.
+  virtual float GetLayoutsUnitPerPx() { return 1.f; }
+
  protected:
   EventTargetType target_type_{EventTargetType::kNone};
   std::unique_ptr<EventListenerMap> event_listener_map_;

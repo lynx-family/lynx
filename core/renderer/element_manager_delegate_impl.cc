@@ -47,6 +47,9 @@ void ElementManagerDelegateImpl::OnFrameRemoved(FrameElement *element) {
 }
 
 PipelineContext *ElementManagerDelegateImpl::GetCurrentPipelineContext() {
+  if (tasm_ == nullptr) {
+    return nullptr;
+  }
   return tasm_->GetCurrentPipelineContext();
 }
 
@@ -54,8 +57,19 @@ PipelineContext *
 ElementManagerDelegateImpl::CreateAndUpdateCurrentPipelineContext(
     const std::shared_ptr<PipelineOptions> &pipeline_options,
     bool is_major_updated) {
+  if (tasm_ == nullptr) {
+    return nullptr;
+  }
   return tasm_->CreateAndUpdateCurrentPipelineContext(pipeline_options,
                                                       is_major_updated);
+}
+
+void ElementManagerDelegateImpl::SendGlobalEvent(const std::string &event,
+                                                 const lepus::Value &info) {
+  if (tasm_ == nullptr) {
+    return;
+  }
+  tasm_->SendGlobalEvent(event, info);
 }
 
 }  // namespace tasm

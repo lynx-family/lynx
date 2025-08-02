@@ -37,8 +37,7 @@
 
 #include <utility>
 
-#include "core/event/event.h"
-#include "core/event/event_listener.h"
+#include "core/event/touch_event.h"
 
 namespace lynx {
 namespace event {
@@ -74,11 +73,24 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
     listener->Invoke(&event);
     consumed = true;
     if (event.is_stop_immediate_propagation()) {
-      return {EventCancelType::kCanceledByEventHandler, consumed};
+      break;
     }
   }
 
-  if (event.is_stop_propagation() || event.is_stop_immediate_propagation()) {
+  if (consumed && event.event_type() == Event::EventType::kTouchEvent &&
+      event.type() == EVENT_LONG_PRESS) {
+    TouchEvent::long_press_consumed_ = consumed;
+  }
+
+  bool is_catch_in_capture =
+      (event.event_phase() == Event::PhaseType::kCapturingPhase ||
+       event.event_phase() == Event::PhaseType::kAtTarget) &&
+      IsEventCaptureCatch(event.type());
+  bool is_catch_in_bubble =
+      event.event_phase() == Event::PhaseType::kBubblingPhase &&
+      IsEventBubbleCatch(event.type());
+  if (event.is_stop_propagation() || event.is_stop_immediate_propagation() ||
+      is_catch_in_capture || is_catch_in_bubble) {
     return {EventCancelType::kCanceledByEventHandler, consumed};
   } else {
     return {EventCancelType::kNotCanceled, consumed};

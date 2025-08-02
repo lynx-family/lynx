@@ -38,10 +38,7 @@ namespace lynx {
 namespace event {
 
 class Event;
-class EventDispatchHandlingState;
 class EventTarget;
-
-enum EventDispatchContinuation { kContinueDispatching, kDoneDispatching };
 
 class EventDispatcher {
  public:

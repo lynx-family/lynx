@@ -145,6 +145,8 @@ class Event {
   virtual void HandleEventBaseDetail(bool is_core_event = false);
   // Called before dispatching an event to get the custom part of detail_.
   virtual void HandleEventCustomDetail();
+  // Called before dispatching an event to handle the conflic and param.
+  virtual bool HandleEventConflictAndParam() { return false; }
 
  protected:
   EventType event_type_{EventType::kNone};

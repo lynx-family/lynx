@@ -47,8 +47,8 @@ Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
       event_phase_(phase_type) {
   BASE_STATIC_STRING_DECL(kType, "type");
   BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
-  detail_.SetProperty(kType, lepus::Value(type_));
-  detail_.SetProperty(kTimestamp, lepus::Value(time_stamp_));
+  detail_.Table()->SetValue(kType, type_);
+  detail_.Table()->SetValue(kTimestamp, time_stamp_);
 }
 
 Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
