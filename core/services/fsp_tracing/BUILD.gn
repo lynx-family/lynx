@@ -1,0 +1,56 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+#
+
+import("../../../testing/test.gni")
+import("../../Lynx.gni")
+
+fsp_tracing_shared_sources = []
+
+if (!is_android) {
+  fsp_tracing_shared_sources += [
+    "area/fsp_area_tracer_impl.cc",
+    "area/fsp_area_tracer_impl.h",
+    "axial/fsp_axial_tracer_impl.cc",
+    "axial/fsp_axial_tracer_impl.h",
+    "base/fsp_snapshot.h",
+    "base/fsp_tracer_impl.h",
+    "fsp_config.h",
+    "fsp_trace_event_def.h",
+    "fsp_tracer.cc",
+    "fsp_tracer.h",
+  ]
+}
+
+lynx_core_source_set("fsp_tracing") {
+  sources = fsp_tracing_shared_sources
+  deps = [ "../../../base/src:base" ]
+}
+
+unittest_set("fsp_tracing_testset") {
+  public_configs = [ "../../:lynx_public_config" ]
+  sources = [
+    "area/fsp_area_tracer_impl_unittest.cc",
+    "axial/fsp_axial_tracer_impl_unittest.cc",
+    "base/fsp_tracer_impl_unittest.cc",
+  ]
+  deps = [
+    ":fsp_tracing",
+    "../../../base/src:base",
+    "../../../base/src:base_log_headers",
+  ]
+}
+
+unittest_exec("fsp_tracing_unittest_exec") {
+  sources = []
+  deps = [ ":fsp_tracing_testset" ]
+}
+
+group("fsp_tracing_unit_test") {
+  testonly = true
+  deps = [
+    ":fsp_tracing_testset",
+    ":fsp_tracing_unittest_exec",
+  ]
+}

@@ -149,6 +149,9 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private Float mFontScale;
 
   private boolean mEnableVSyncAligned;
+  private boolean mIsTracingFSP = false;
+  private boolean mHasPendingMeaningfulContentChanges;
+  private boolean mHasPendingMeaningfulContentLoading;
 
   private boolean mEnableAutoExpose;
 
@@ -1469,5 +1472,40 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
   public boolean getEnableVSyncAligned() {
     return mEnableVSyncAligned;
+  }
+
+  public boolean isTracingFSP() {
+    return mIsTracingFSP;
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public boolean setTracingFSP(boolean isTracingFSP) {
+    boolean oldValue = mIsTracingFSP;
+    mIsTracingFSP = isTracingFSP;
+    return oldValue;
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public void markMeaningfulContentChange() {
+    mHasPendingMeaningfulContentChanges = true;
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public boolean checkPendingMeaningfulContentChanges() {
+    boolean temp = mHasPendingMeaningfulContentChanges;
+    mHasPendingMeaningfulContentChanges = false;
+    return temp;
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public void markMeaningfulContentLoading() {
+    mHasPendingMeaningfulContentLoading = true;
+  }
+
+  @RestrictTo({RestrictTo.Scope.LIBRARY})
+  public boolean checkPendingMeaningfulContentLoading() {
+    boolean temp = mHasPendingMeaningfulContentLoading;
+    mHasPendingMeaningfulContentLoading = false;
+    return temp;
   }
 }

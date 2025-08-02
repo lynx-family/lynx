@@ -612,6 +612,7 @@
     @(LynxEnvEnableTextRenderCacheHitRate) : @"enable_text_render_cache_hit_rate",
     @(LynxEnvEnableImageMonitor) : @"enable_image_monitor",
     @(LynxEnvEnableTextLayerRender) : @"enable_text_layer_render",
+    @(LynxEnvEnableFirstStablePaint) : @"enable_first_stable_paint",
     @(LynxEnvEnableCreateUIAsync) : @"enable_create_ui_async",
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
@@ -625,9 +626,10 @@
     @(LynxEnvEnableJSGroupThreadByDefault) : @"enable_multi_js_thread_by_default",
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
+    @(LynxEnvMemoryAcquisitionDelayMs) : @"memory_acquisition_delay_second"
   };
   NSString *keyString = envKeyBinding[@(key)];
-  NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");
+  NSAssert(keyString.length > 0, @"LynxEnv key string should not be nil.");
   return keyString;
 }
 

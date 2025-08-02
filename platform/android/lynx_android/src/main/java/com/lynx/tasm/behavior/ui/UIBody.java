@@ -21,6 +21,7 @@ import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
+import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.OnceTask;
 import com.lynx.tasm.base.TraceEvent;
@@ -441,6 +442,13 @@ public class UIBody extends UIGroup<UIBodyView> {
       mHasMeaningfulLayout = false;
       mHasMeaningfulPaint = false;
       mMeaningfulPaintTiming = 0;
+    }
+
+    public void notifyFSP(long timestampMs) {
+      ITimingCollector timingCollector = mTimingCollector.get();
+      if (timingCollector != null) {
+        timingCollector.setMsTiming(TimingHandler.FSP_END, timestampMs, null);
+      }
     }
 
     public void setTimingCollector(ITimingCollector timingCollector) {

@@ -14,6 +14,8 @@
   "DOM inspector desc": "Enables DOM element inspection.",
   "PixelCopy": "PixelCopy Screenshot",
   "PixelCopy desc": "Uses PixelCopy for screenshots.",
+  "Timing Overlay": "Enable Timing Overlay",
+  "Timing Overlay desc": "Shown an overlay with performance timing metrics including FCP, ActualFMP, and FSP.",
   "LogBox": "LogBox",
   "LogBox desc": "Displays error prompts when errors occur.",
   "Highlight Touch": "Hightlight Touch",

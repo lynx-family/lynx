@@ -354,6 +354,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
 
   @Override
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
+    if (mLynxUIOwner != null) {
+      mLynxUIOwner.cancelFSPTracingOnTouch();
+    }
     EnsureEventDispatcher();
     return (mEventDispatcher != null) ? mEventDispatcher.onTouchEvent(ev, rootUi) : false;
   }
