@@ -314,6 +314,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     }
     list_layout_manager_->SetOrientation(orientation);
     list_layout_manager_->SetListAnchorManager(list_children_helper_.get());
+  } else if (key.IsEqual(list::kEnableDynamicSpanCount)) {
+    enable_dynamic_span_count_ = value.Bool();
+    should_set_props = false;
   } else if ((key.IsEqual(list::kSpanCount) ||
               key.IsEqual(list::kColumnCount)) &&
              value.IsNumber()) {
@@ -323,8 +326,7 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
       span_count = 1;
     }
     if (list_layout_manager_->span_count() != span_count) {
-      list_adapter_->OnDataSetChanged();
-      need_recycle_all_item_holders_before_layout_ = true;
+      span_count_changed_ = true;
     }
     list_layout_manager_->SetSpanCount(span_count);
     should_mark_layout_dirty = true;
@@ -516,6 +518,15 @@ bool ListContainerImpl::ShouldGenerateDebugInfo(
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
+  if (span_count_changed_) {
+    span_count_changed_ = false;
+    if (!enable_dynamic_span_count_) {
+      // Note: OnDataSetChanged() should be invoked before
+      // UpdateItemHolderToLatest() if needed.
+      list_adapter_->OnDataSetChanged();
+      need_recycle_all_item_holders_before_layout_ = true;
+    }
+  }
   if (need_layout_complete_info_) {
     if (!layout_complete_info_) {
       layout_complete_info_ = lepus::Dictionary::Create();

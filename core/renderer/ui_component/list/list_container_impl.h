@@ -137,6 +137,8 @@ class ListContainerImpl : public ListContainer::Delegate {
 
  private:
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
+  bool enable_dynamic_span_count_{true};
+  bool span_count_changed_{false};
   bool batch_adapter_initialized_{false};
   bool recycle_available_item_before_layout_{false};
   bool sticky_enabled_{false};

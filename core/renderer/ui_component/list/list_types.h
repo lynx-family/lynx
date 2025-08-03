@@ -53,6 +53,8 @@ static constexpr const char* const kListMainAxisGap = "list-main-axis-gap";
 static constexpr const char* const kListCrossAxisGap = "list-cross-axis-gap";
 static constexpr const char* const kColumnCount = "column-count";
 static constexpr const char* const kSpanCount = "span-count";
+static constexpr const char* const kEnableDynamicSpanCount =
+    "enable-dynamic-span-count";
 static constexpr const char* const kAnchorPriority = "anchor-priority";
 static constexpr const char* const kAnchorVisibility = "anchor-visibility";
 static constexpr const char* const kAnchorAlign = "anchor-align";

@@ -757,6 +757,15 @@ export interface ListProps extends StandardProps {
    */
     'need-visible-item-info'?: boolean;
 
+   /**
+    * Control whether the span count can be dynamically switched. The default value is true. If set to true, the list will try to maintain stability of layout, and if set to false, the list will layout from the first list-item.
+    * @defaultValue true
+    * @Android
+    * @iOS
+    * @Harmony
+    */
+    'enable-dynamic-span-count'?: boolean;
+
   /**
    * Specify the callback frequency of the scroll event by passing in a value, which specifies how many milliseconds (ms) <list> will call the scroll callback event during scrolling.
    * @defaultValue  200
