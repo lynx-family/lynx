@@ -3045,15 +3045,17 @@ void FiberElement::ResetFontSize() {
   CheckDynamicUnit(CSSPropertyID::kPropertyIDFontSize, CSSValue::Empty(), true);
   // root_font_size_&font_size_ here are used to computed rem&rem
   auto font_size = element_manager()->GetLynxEnvConfig().PageDefaultFontSize();
-  auto root_font_size = is_page() ? font_size : GetFontSize();
+  auto root_font_size = is_page() ? font_size : GetCurrentRootFontSize();
 
   if (font_size != GetFontSize()) {
     SetFontSizeForAllElement(font_size, root_font_size);
-    PreparePropBundleIfNeed();
-    prop_bundle_->SetProps(
-        CSSProperty::GetPropertyName(CSSPropertyID::kPropertyIDFontSize)
-            .c_str(),
-        font_size);
+    if (!EnableLayoutInElementMode() || IsShadowNodeCustom()) {
+      PreparePropBundleIfNeed();
+      prop_bundle_->SetProps(
+          CSSProperty::GetPropertyName(CSSPropertyID::kPropertyIDFontSize)
+              .c_str(),
+          font_size);
+    }
     UpdateLayoutNodeFontSize(font_size, root_font_size);
   }
 }

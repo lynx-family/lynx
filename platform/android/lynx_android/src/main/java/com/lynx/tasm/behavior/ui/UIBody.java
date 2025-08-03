@@ -130,6 +130,8 @@ public class UIBody extends UIGroup<UIBodyView> {
       public Void call() throws Exception {
         TraceEvent.beginSection(TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW);
 
+        markDetachWithViewRecursively(true);
+
         if (isLayoutRequested) {
           // measure
           performMeasureChildrenUI();
@@ -143,6 +145,8 @@ public class UIBody extends UIGroup<UIBodyView> {
 
         // detach
         detachWithViewInfo(mViewInfo);
+
+        markDetachWithViewRecursively(false);
 
         TraceEvent.endSection(TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW);
 

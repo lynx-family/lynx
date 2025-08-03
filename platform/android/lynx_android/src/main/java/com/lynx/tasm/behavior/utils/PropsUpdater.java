@@ -73,6 +73,24 @@ public class PropsUpdater {
     CSSPropertySetter.updateStyles(node, (MapBuffer) props.getStyleMap());
   }
 
+  public static LynxUISetter<LynxBaseUI> getLynxUISetter(LynxBaseUI lynxUI) {
+    return findLynxUISetter(lynxUI.getClass());
+  }
+
+  public static void setProperty(
+      LynxBaseUI lynxUI, LynxUISetter<LynxBaseUI> setter, String key, StylesDiffMap props) {
+    try {
+      setter.setProperty(lynxUI, key, props);
+    } catch (Throwable e) {
+      String errMsg =
+          "Error while setProperty '" + key + "' in ui '" + lynxUI.getTagName() + "': " + e;
+      LynxError error = new LynxError(LynxSubErrorCode.E_CSS, errMsg, "", LynxError.LEVEL_ERROR);
+      error.setCallStack(CallStackUtil.getStackTraceStringWithLineTrimmed(e));
+      error.setUserDefineInfo(lynxUI.getPlatformCustomInfo());
+      lynxUI.getLynxContext().handleLynxError(error);
+    }
+  }
+
   /* package */ static <T extends LynxBaseUI> LynxUISetter<T> findLynxUISetter(
       Class<? extends LynxBaseUI> lynxUIClass) {
     @SuppressWarnings("unchecked")

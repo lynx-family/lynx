@@ -97,9 +97,11 @@ public class FlattenUIImage extends LynxFlattenUI {
     if (mLynxBackground.getDrawable() != null) {
       mLynxImageManager.setBorderWidth(
           mLynxBackground.getDrawable().getDirectionAwareBorderInsets());
-      if (mLynxBackground.getBorderRadius() != null
-          && mLynxBackground.getBorderRadius().updateSize(getWidth(), getHeight())) {
-        mLynxImageManager.setBorderRadius(mLynxBackground.getBorderRadius().getArray());
+      if (mLynxBackground.getBorderRadius() != null) {
+        boolean radiusSizeChanged =
+            mLynxBackground.getBorderRadius().updateSize(getWidth(), getHeight());
+        mLynxImageManager.setBorderRadius(
+            mLynxBackground.getBorderRadius().getArray(), radiusSizeChanged);
       }
     }
     mLynxImageManager.onNodeReady();

@@ -145,7 +145,7 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
   public void onDraw(final Canvas canvas) {
     TraceEvent.beginSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
     super.onDraw(canvas);
-    if (mTextLayout == null || isRecording()) {
+    if (mTextLayout == null || isDetachedWithView()) {
       TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
       return;
     }
@@ -183,13 +183,13 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
   }
 
-  public int getDrawPositionLeft() {
-    return getLeft() + mPaddingLeft + mBorderLeftWidth
+  public int getDrawOffsetLeft() {
+    return mPaddingLeft + mBorderLeftWidth
         + (mTextTranslateOffset != null ? (int) mTextTranslateOffset.x : 0);
   }
 
-  public int getDrawPositionTop() {
-    return getTop() + mPaddingTop + mBorderTopWidth
+  public int getDrawOffsetTop() {
+    return mPaddingTop + mBorderTopWidth
         + (mTextTranslateOffset != null ? (int) mTextTranslateOffset.y : 0);
   }
 
