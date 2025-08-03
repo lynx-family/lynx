@@ -1234,9 +1234,11 @@ public class LynxImageManager implements Drawable.Callback {
     }
   }
 
-  public void setBorderRadius(float[] borderRadius) {
+  public void setBorderRadius(float[] borderRadius, boolean radiusSizeChanged) {
+    if (mBorderRadius == null || radiusSizeChanged) {
+      dirtyFlags |= BORDER_RADIUS_CHANGED;
+    }
     mBorderRadius = borderRadius;
-    dirtyFlags |= BORDER_RADIUS_CHANGED;
   }
 
   public Drawable getSrcImageDrawable() {

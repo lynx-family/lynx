@@ -6,14 +6,14 @@ package com.lynx.tasm.behavior.ui;
 import android.graphics.Canvas;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
-import com.lynx.tasm.behavior.ui.IDrawChildHook;
-import com.lynx.tasm.behavior.ui.IProcessViewInfoHook;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
+import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.utils.MaskDrawable;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import java.util.ArrayList;
@@ -107,11 +107,22 @@ public class ViewInfo implements IDrawChildHook {
     int mTop = 0;
     int mWidth = 0;
     int mHeight = 0;
+    int mPaddingLeft;
+    int mPaddingRight;
+    int mPaddingTop;
+    int mPaddingBottom;
+    float mAlpha = 1.0f;
 
-    public SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode) {
+    int mDrawOffsetX = 0;
+    int mDrawOffsetY = 0;
+    LynxBackground mBackground = null;
+
+    public SubDrawInfo(
+        boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background) {
       mIsView = isView;
       mBound = bound;
       mRenderNode = renderNode;
+      mBackground = background;
     }
 
     public void setImageManager(LynxImageManager imageManager) {
@@ -122,14 +133,23 @@ public class ViewInfo implements IDrawChildHook {
       mTextLayout = textLayout;
     }
 
-    public void setDrawPosition(int left, int top) {
-      mLeft = left;
-      mTop = top;
+    public void setDrawOffset(int left, int top) {
+      mDrawOffsetX = left;
+      mDrawOffsetY = top;
     }
 
-    public void setSize(int width, int height) {
+    public void setFlattenUIInfo(int left, int top, int width, int height, int paddingLeft,
+        int paddingTop, int paddingRight, int paddingBottom, float alpha) {
+      mLeft = left;
+      mTop = top;
       mWidth = width;
       mHeight = height;
+      mPaddingLeft = paddingLeft;
+      mPaddingRight = paddingRight;
+      mPaddingTop = paddingTop;
+      mPaddingBottom = paddingBottom;
+
+      mAlpha = alpha;
     }
   }
 
@@ -248,21 +268,32 @@ public class ViewInfo implements IDrawChildHook {
 
   private void drawWithSubDrawInfo(SubDrawInfo info, Canvas canvas) {
     Rect childBound = info.mBound;
-    canvas.save();
+    int count = canvas.save();
 
     if (childBound != null) {
       canvas.clipRect(childBound);
-    }
-
-    if (info.mRenderNode != null) {
-      info.mRenderNode.drawRenderNode(canvas);
     }
 
     if (info.mLeft != 0 || info.mTop != 0) {
       canvas.translate(info.mLeft, info.mTop);
     }
 
+    if (info.mAlpha < 1.0f) {
+      canvas.saveLayerAlpha(
+          0, 0, info.mWidth, info.mHeight, (int) (info.mAlpha * 255), Canvas.ALL_SAVE_FLAG);
+    }
+
+    if (info.mBackground != null && info.mBackground.getDrawable() != null) {
+      info.mBackground.updatePaddingWidths(
+          info.mPaddingTop, info.mPaddingRight, info.mPaddingBottom, info.mPaddingLeft);
+      Drawable backgroundDrawable = info.mBackground.getDrawable();
+      backgroundDrawable.setBounds(0, 0, info.mWidth, info.mHeight);
+      backgroundDrawable.draw(canvas);
+    }
+
     if (info.mTextLayout != null) {
+      canvas.translate(info.mDrawOffsetX, info.mDrawOffsetY);
+
       if (info.mWidth > 0 && info.mHeight > 0) {
         // text is special, we need to clip it self
         canvas.clipRect(0, 0, info.mWidth, info.mHeight);
@@ -276,7 +307,7 @@ public class ViewInfo implements IDrawChildHook {
       info.mLynxImageManager.onDraw(canvas);
     }
 
-    canvas.restore();
+    canvas.restoreToCount(count);
   }
 
   @Override

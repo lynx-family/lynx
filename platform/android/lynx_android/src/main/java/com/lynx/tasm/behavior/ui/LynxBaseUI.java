@@ -59,6 +59,7 @@ import com.lynx.tasm.behavior.ui.utils.Spacing;
 import com.lynx.tasm.behavior.ui.utils.TransformOrigin;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
 import com.lynx.tasm.behavior.ui.view.UIComponent;
+import com.lynx.tasm.behavior.utils.LynxUISetter;
 import com.lynx.tasm.behavior.utils.PropsUpdater;
 import com.lynx.tasm.event.EventsListener;
 import com.lynx.tasm.event.LynxCustomEvent;
@@ -104,6 +105,14 @@ public abstract class LynxBaseUI
   protected static final float CAMERA_DISTANCE_NORMALIZATION_MULTIPLIER = (float) Math.sqrt(5);
 
   private static final String TAG = "LynxBaseUI";
+
+  private static final Set<String> BACKGROUND_PROPS =
+      new HashSet<>(Arrays.asList(PropsConstants.BACKGROUND_COLOR, PropsConstants.BACKGROUND_IMAGE,
+          PropsConstants.BACKGROUND_ORIGIN, PropsConstants.BACKGROUND_POSITION,
+          PropsConstants.BACKGROUND_REPEAT, PropsConstants.BACKGROUND_SIZE,
+          PropsConstants.BORDER_BOTTOM_LEFT_RADIUS, PropsConstants.BORDER_BOTTOM_RIGHT_RADIUS,
+          PropsConstants.BORDER_TOP_LEFT_RADIUS, PropsConstants.BORDER_TOP_RIGHT_RADIUS,
+          PropsConstants.BORDER_RADIUS));
 
   // used for drawList
   protected LynxBaseUI mPreviousDrawUI = null;
@@ -247,7 +256,8 @@ public abstract class LynxBaseUI
   private int mBorderSpacingIndex;
   private int mBorderWidth;
 
-  private boolean mIsRecording;
+  private boolean mIsDetachedWithView = false;
+  private boolean mNeedsBackgroundRecreation = false;
 
   private float mAlpha = 1.0f;
 
@@ -493,7 +503,9 @@ public abstract class LynxBaseUI
     if (mContext.getIntersectionObserverManager() != null) {
       mContext.getIntersectionObserverManager().removeAttachedIntersectionObserver(this);
     }
-    mLynxBackground.onDetach();
+    if (mLynxBackground != null) {
+      mLynxBackground.onDetach();
+    }
     if (mLynxMask != null) {
       mLynxMask.onDetach();
     }
@@ -519,6 +531,36 @@ public abstract class LynxBaseUI
 
   public LynxBackground getLynxBackground() {
     return mLynxBackground;
+  }
+
+  private void ensureLynxBackground() {
+    if (mLynxBackground == null || mNeedsBackgroundRecreation) {
+      mLynxBackground = new LynxBackground(mContext);
+      mLynxBackground.setDrawableCallback(mDrawableCallback);
+      mLynxBackground.setFontSize(mFontSize);
+
+      mNeedsBackgroundRecreation = false;
+      restoreBackgroundProps();
+    }
+  }
+
+  private void restoreBackgroundProps() {
+    ReadableMapKeySetIterator iterator = mProps.keySetIterator();
+    StylesDiffMap props = null;
+    LynxUISetter<LynxBaseUI> uiSetter = null;
+    while (iterator.hasNextKey()) {
+      String prop = iterator.nextKey();
+      if (BACKGROUND_PROPS.contains(prop)) {
+        if (props == null) {
+          props = new StylesDiffMap(mProps);
+          uiSetter = PropsUpdater.getLynxUISetter(this);
+        }
+
+        if (uiSetter != null) {
+          uiSetter.setProperty(this, prop, props);
+        }
+      }
+    }
   }
 
   protected void setLynxMask(LynxMask lynxMask) {
@@ -1140,6 +1182,7 @@ public abstract class LynxBaseUI
       getTransitionAnimator().applyPropertyTransition(
           this, AnimationConstant.PROP_BACKGROUND_COLOR, backgroundColor);
     } else {
+      ensureLynxBackground();
       mLynxBackground.setBackgroundColor(backgroundColor);
       invalidate();
     }
@@ -1277,30 +1320,35 @@ public abstract class LynxBaseUI
 
   @LynxProp(name = PropsConstants.BACKGROUND_IMAGE)
   public void setBackgroundImage(@Nullable ReadableArray bgImage) {
+    ensureLynxBackground();
     mLynxBackground.setLayerImage(bgImage, this);
     invalidate();
   }
 
   @LynxProp(name = PropsConstants.BACKGROUND_ORIGIN)
   public void setBackgroundOrigin(@Nullable ReadableArray bgOrigin) {
+    ensureLynxBackground();
     mLynxBackground.setLayerOrigin(bgOrigin);
     invalidate();
   }
 
   @LynxProp(name = PropsConstants.BACKGROUND_POSITION)
   public void setBackgroundPosition(@Nullable ReadableArray bgPosition) {
+    ensureLynxBackground();
     mLynxBackground.setLayerPosition(bgPosition);
     invalidate();
   }
 
   @LynxProp(name = PropsConstants.BACKGROUND_REPEAT)
   public void setBackgroundRepeat(@Nullable ReadableArray bgRepeat) {
+    ensureLynxBackground();
     mLynxBackground.setLayerRepeat(bgRepeat);
     invalidate();
   }
 
   @LynxProp(name = PropsConstants.BACKGROUND_SIZE)
   public void setBackgroundSize(@Nullable ReadableArray bgSize) {
+    ensureLynxBackground();
     mLynxBackground.setLayerSize(bgSize);
     invalidate();
   }
@@ -1516,6 +1564,7 @@ public abstract class LynxBaseUI
                      })
   public void
   setBorderRadius(int index, @Nullable ReadableArray ra) {
+    ensureLynxBackground();
     mHasRadius = false;
     if (mLynxBackground.setBorderRadius(index, ra)) {
       mHasRadius = true;
@@ -1697,6 +1746,7 @@ public abstract class LynxBaseUI
       defaultInt = -1)
   public void
   setBorderStyle(int index, int borderStyle) {
+    ensureLynxBackground();
     mLynxBackground.setBorderStyle(SPACING_TYPES[index], borderStyle);
   }
 
@@ -1717,6 +1767,7 @@ public abstract class LynxBaseUI
                      })
   public void
   setBorderWidth(int index, int borderWidth) {
+    ensureLynxBackground();
     mBorderSpacingIndex = index;
     mBorderWidth = borderWidth;
     mLynxBackground.setBorderWidth(SPACING_TYPES[index], borderWidth);
@@ -1735,6 +1786,7 @@ public abstract class LynxBaseUI
       customType = "Color")
   public void
   setBorderColor(int index, Integer color) {
+    ensureLynxBackground();
     mLynxBackground.setBorderColorForSpacingIndex(SPACING_TYPES[index + 1], color);
   }
 
@@ -1765,6 +1817,7 @@ public abstract class LynxBaseUI
   @LynxProp(name = PropsConstants.FONT_SIZE, defaultFloat = MeasureUtils.UNDEFINED)
   public void setFontSize(float fontSize) {
     if (fontSize != MeasureUtils.UNDEFINED) {
+      ensureLynxBackground();
       mFontSize = fontSize;
       mLynxBackground.setFontSize(mFontSize);
       if (mLynxMask != null) {
@@ -1775,6 +1828,7 @@ public abstract class LynxBaseUI
 
   @LynxProp(name = PropsConstants.BACKGROUND_CLIP)
   public void setBackgroundClip(@Nullable ReadableArray bgClip) {
+    ensureLynxBackground();
     mLynxBackground.setLayerClip(bgClip);
   }
 
@@ -1799,6 +1853,7 @@ public abstract class LynxBaseUI
 
   @Deprecated
   private void setBorderColorForAllSpacingIndex(Integer color) {
+    ensureLynxBackground();
     float rgbComponent = color == null ? MeasureUtils.UNDEFINED : (float) (color & 0x00FFFFFF);
     float alphaComponent = color == null ? MeasureUtils.UNDEFINED : (float) (color >>> 24);
     // do not use Spacing.ALL (must ignore START and END)
@@ -2148,12 +2203,16 @@ public abstract class LynxBaseUI
     mBound = bound;
   }
 
-  public void markIsRecording(boolean is) {
-    mIsRecording = is;
+  public void markDetachWithViewRecursively(boolean detached) {
+    mIsDetachedWithView = detached;
+    mNeedsBackgroundRecreation = detached;
+    for (LynxBaseUI ui : mChildren) {
+      ui.markDetachWithViewRecursively(detached);
+    }
   }
 
-  public boolean isRecording() {
-    return mIsRecording;
+  public boolean isDetachedWithView() {
+    return mIsDetachedWithView;
   }
 
   public int getWidth() {
@@ -2502,7 +2561,9 @@ public abstract class LynxBaseUI
     if (mSkipLayoutUpdated) {
       return;
     }
-    mLynxBackground.updatePaddingWidths(mPaddingTop, mPaddingRight, mPaddingBottom, mPaddingLeft);
+    if (mLynxBackground != null) {
+      mLynxBackground.updatePaddingWidths(mPaddingTop, mPaddingRight, mPaddingBottom, mPaddingLeft);
+    }
     if (mLynxMask != null) {
       mLynxMask.updatePaddingWidths(mPaddingTop, mPaddingRight, mPaddingBottom, mPaddingLeft);
     }
@@ -2598,14 +2659,18 @@ public abstract class LynxBaseUI
   public void renderIfNeeded() {}
 
   public void onAttach() {
-    mLynxBackground.onAttach();
+    if (mLynxBackground != null) {
+      mLynxBackground.onAttach();
+    }
     if (mLynxMask != null) {
       mLynxMask.onAttach();
     }
   }
 
   public void onDetach() {
-    mLynxBackground.onDetach();
+    if (mLynxBackground != null) {
+      mLynxBackground.onDetach();
+    }
     if (mLynxMask != null) {
       mLynxMask.onDetach();
     }

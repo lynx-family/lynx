@@ -136,18 +136,18 @@ public abstract class UIGroup<T extends ViewGroup>
         if (((LynxUI) ui).getView() == child) {
           mCurrentDrawUI = ui.mNextDrawUI;
           info.addSubDrawInfo(
-              mCurrentDrawIndex, new ViewInfo.SubDrawInfo(false, ui.getBound(), null));
+              mCurrentDrawIndex, new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null));
           mCurrentDrawIndex++;
           break;
         }
       } else if (ui.isFlatten()) {
-        ui.markIsRecording(true);
-        RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
         ViewInfo.SubDrawInfo subDrawInfo =
-            new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode);
+            new ViewInfo.SubDrawInfo(false, ui.getBound(), null, ui.getLynxBackground());
+        subDrawInfo.setFlattenUIInfo(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight(),
+            ui.getPaddingLeft(), ui.getPaddingTop(), ui.getPaddingRight(), ui.getPaddingBottom(),
+            ((LynxFlattenUI) ui).getAlpha());
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
-        ui.markIsRecording(false);
       }
     }
   }
@@ -158,13 +158,13 @@ public abstract class UIGroup<T extends ViewGroup>
     LynxBaseUI ui;
     for (ui = mCurrentDrawUI; ui != null; ui = ui.mNextDrawUI, mCurrentDrawIndex++) {
       if (ui.isFlatten() && !(ui instanceof UIShadowProxy)) {
-        ui.markIsRecording(true);
-        RenderNodeCompat renderNode = ((LynxFlattenUI) ui).updateRenderNode();
         ViewInfo.SubDrawInfo subDrawInfo =
-            new ViewInfo.SubDrawInfo(false, ui.getBound(), renderNode);
+            new ViewInfo.SubDrawInfo(false, ui.getBound(), null, ui.getLynxBackground());
+        subDrawInfo.setFlattenUIInfo(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight(),
+            ui.getPaddingLeft(), ui.getPaddingTop(), ui.getPaddingRight(), ui.getPaddingBottom(),
+            ((LynxFlattenUI) ui).getAlpha());
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
-        ui.markIsRecording(false);
       }
     }
   }
@@ -183,14 +183,12 @@ public abstract class UIGroup<T extends ViewGroup>
     if (ui instanceof FlattenUIImage) {
       FlattenUIImage image = (FlattenUIImage) ui;
       subDrawInfo.setImageManager(image.getLynxImageManagerForViewInfo());
-      subDrawInfo.setDrawPosition(ui.getLeft(), ui.getTop());
     }
     // We need TextLayout, since we need to support font family, inline image when reuse LynxEngine.
     if (ui instanceof FlattenUIText) {
       FlattenUIText text = (FlattenUIText) ui;
       subDrawInfo.setTextLayout(text.getTextLayout());
-      subDrawInfo.setDrawPosition(text.getDrawPositionLeft(), text.getDrawPositionTop());
-      subDrawInfo.setSize(text.getWidth(), text.getHeight());
+      subDrawInfo.setDrawOffset(text.getDrawOffsetLeft(), text.getDrawOffsetTop());
     }
   }
 

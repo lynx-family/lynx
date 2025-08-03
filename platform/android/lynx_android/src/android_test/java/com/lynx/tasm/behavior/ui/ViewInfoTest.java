@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -17,9 +18,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Path;
 import android.graphics.Rect;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
+import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
+import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.utils.MaskDrawable;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
@@ -100,7 +104,7 @@ public class ViewInfoTest {
 
     ViewInfo viewInfo = new ViewInfo(mockHook, mockView);
 
-    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(true, new Rect(), null);
+    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(true, new Rect(), null, null);
     viewInfo.addSubDrawInfo(0, info);
     assertEquals(1, viewInfo.mSubDrawInfoArray.size());
 
@@ -159,19 +163,25 @@ public class ViewInfoTest {
   }
 
   @Test
-  public void testRenderNodeDrawing() {
+  public void testBackgroundDrawing() {
     IProcessViewInfoHook mockHook = mock(IProcessViewInfoHook.class);
     AndroidView mockView = mock(AndroidView.class);
     Canvas mockCanvas = mock(Canvas.class);
 
     ViewInfo viewInfo = new ViewInfo(mockHook, mockView);
 
-    RenderNodeCompat node = mock(RenderNodeCompat.class);
-    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(false, new Rect(), node);
+    LynxBackground background = mock(LynxBackground.class);
+    BackgroundDrawable drawable = mock(BackgroundDrawable.class);
+    when(background.getDrawable()).thenReturn(drawable);
+
+    background.setBackgroundColor(Color.RED);
+    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(false, new Rect(), null, background);
     viewInfo.addSubDrawInfo(0, info);
 
     viewInfo.beforeDrawChild(mockCanvas, mockView, 0L);
-    verify(node).drawRenderNode(any(Canvas.class));
+
+    verify(background, atLeast(1)).getDrawable();
+    verify(drawable).draw(any(Canvas.class));
   }
 
   @Test
@@ -182,7 +192,7 @@ public class ViewInfoTest {
 
     ViewInfo viewInfo = new ViewInfo(mockHook, mockView);
 
-    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(true, new Rect(), null);
+    ViewInfo.SubDrawInfo info = new ViewInfo.SubDrawInfo(true, new Rect(), null, null);
 
     viewInfo.addSubDrawInfo(3, info);
     assertEquals(4, viewInfo.mSubDrawInfoArray.size()); // [null, null, null, info]

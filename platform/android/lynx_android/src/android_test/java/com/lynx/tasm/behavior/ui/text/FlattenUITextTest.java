@@ -31,14 +31,14 @@ public class FlattenUITextTest {
   public void getDrawPositionLeft() {
     FlattenUIText text = spy(new FlattenUIText(mContext));
 
-    assertEquals(text.getDrawPositionLeft(), 0);
+    assertEquals(text.getDrawOffsetLeft(), 0);
   }
 
   @Test
   public void getDrawPositionTop() {
     FlattenUIText text = spy(new FlattenUIText(mContext));
 
-    assertEquals(text.getDrawPositionTop(), 0);
+    assertEquals(text.getDrawOffsetTop(), 0);
   }
 
   @Test

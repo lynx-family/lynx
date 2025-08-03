@@ -1674,8 +1674,8 @@ public class com::lynx::tasm::behavior::ui::text::FlattenUIText : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setColor(int color);
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.setColor(Dynamic color);
   public void com.lynx.tasm.behavior.ui.text.FlattenUIText.onDraw(final Canvas canvas);
-  public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawPositionLeft();
-  public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawPositionTop();
+  public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawOffsetLeft();
+  public int com.lynx.tasm.behavior.ui.text.FlattenUIText.getDrawOffsetTop();
   public CharSequence com.lynx.tasm.behavior.ui.text.FlattenUIText.getAccessibilityLabel();
   public Layout com.lynx.tasm.behavior.ui.text.FlattenUIText.getTextLayout();
   public EventTarget com.lynx.tasm.behavior.ui.text.FlattenUIText.hitTest(float x, float y);
@@ -3577,8 +3577,8 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public ReadableMap com.lynx.tasm.behavior.ui.LynxBaseUI.getDataset();
   public Rect com.lynx.tasm.behavior.ui.LynxBaseUI.getBound();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBound(Rect bound);
-  public void com.lynx.tasm.behavior.ui.LynxBaseUI.markIsRecording(boolean is);
-  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isRecording();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.markDetachWithViewRecursively(boolean detached);
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isDetachedWithView();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getWidth();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getHeight();
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getTop();
@@ -4965,7 +4965,7 @@ public class com::lynx::tasm::behavior::ui::image::LynxImageManager : Drawable.C
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.unscheduleDrawable(@NonNull Drawable who, @NonNull Runnable what);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setBorderWidth(RectF borderRect);
   public void com.lynx.tasm.behavior.ui.image.LynxImageManager.justSizeIfNeeded();
-  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setBorderRadius(float[] borderRadius);
+  public void com.lynx.tasm.behavior.ui.image.LynxImageManager.setBorderRadius(float[] borderRadius, boolean radiusSizeChanged);
   public Drawable com.lynx.tasm.behavior.ui.image.LynxImageManager.getSrcImageDrawable();
   public Boolean com.lynx.tasm.behavior.ui.image.LynxImageManager.getHasContent();
 }
@@ -7910,6 +7910,8 @@ public class com::lynx::tasm::behavior::utils::PropsUpdater :  {
   public static void com.lynx.tasm.behavior.utils.PropsUpdater.clear();
   public static void com.lynx.tasm.behavior.utils.PropsUpdater.updateProps(LynxBaseUI lynxUI, StylesDiffMap props);
   public static< T extends ShadowNode > void com.lynx.tasm.behavior.utils.PropsUpdater.updateProps(T node, StylesDiffMap props);
+  public static LynxUISetter< LynxBaseUI > com.lynx.tasm.behavior.utils.PropsUpdater.getLynxUISetter(LynxBaseUI lynxUI);
+  public static void com.lynx.tasm.behavior.utils.PropsUpdater.setProperty(LynxBaseUI lynxUI, LynxUISetter< LynxBaseUI > setter, String key, StylesDiffMap props);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::RawTextShadowNode : com.lynx.tasm.behavior.shadow.ShadowNode {
@@ -8589,11 +8591,11 @@ public class com::lynx::tasm::behavior::StylesDiffMap :  {
 }
 
 public class com::lynx::tasm::behavior::ui::ViewInfo::SubDrawInfo :  {
-  public com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode);
+  public com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setImageManager(LynxImageManager imageManager);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setTextLayout(Layout textLayout);
-  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setDrawPosition(int left, int top);
-  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setSize(int width, int height);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setDrawOffset(int left, int top);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setFlattenUIInfo(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, float alpha);
 }
 
 public class com::lynx::tasm::behavior::ui::swiper::SwiperShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
