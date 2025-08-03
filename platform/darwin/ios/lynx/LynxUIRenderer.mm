@@ -77,10 +77,25 @@
   _uiOwner.fontFaceContext.builderRegistedAliasFontMap = [builder getBuilderRegisteredAliasFontMap];
 
   if (_enableGenericResourceLoader) {
-    _uiOwner.uiContext.genericResourceFetcher = [builder genericResourceFetcher];
-    _uiOwner.uiContext.mediaResourceFetcher = [builder mediaResourceFetcher];
-    _uiOwner.uiContext.templateResourceFetcher = [builder templateResourceFetcher];
-    _uiOwner.fontFaceContext.genericResourceServiceFetcher = [builder genericResourceFetcher];
+    /**
+     * This is a temporary workaround to disable the new fetcher mechanism
+     * (GenericFetcher/MediaFetcher/TemplateFetcher) when a custom fetcher is present, because the
+     * container has not yet been adapted to support custom fetchers for these new types.
+     * TODO: This logic should be removed once the container is updated to handle custom fetchers
+     * correctly.
+     */
+    if (!_lynxContext.hasCustomGenericFetcher) {
+      _uiOwner.uiContext.genericResourceFetcher = [builder genericResourceFetcher];
+    }
+    if (!_lynxContext.hasCustomMediaFetcher) {
+      _uiOwner.uiContext.mediaResourceFetcher = [builder mediaResourceFetcher];
+    }
+    if (!_lynxContext.hasCustomTemplateFetcher) {
+      _uiOwner.uiContext.templateResourceFetcher = [builder templateResourceFetcher];
+    }
+    if (!_lynxContext.hasCustomGenericFetcher) {
+      _uiOwner.fontFaceContext.genericResourceServiceFetcher = [builder genericResourceFetcher];
+    }
   }
 }
 

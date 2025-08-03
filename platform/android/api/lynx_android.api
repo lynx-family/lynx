@@ -4118,6 +4118,9 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public LynxMediaResourceFetcher com.lynx.tasm.behavior.LynxContext.getMediaResourceFetcher();
   public void com.lynx.tasm.behavior.LynxContext.setTemplateResourceFetcher(LynxTemplateResourceFetcher templateResourceFetcher);
   public LynxTemplateResourceFetcher com.lynx.tasm.behavior.LynxContext.getTemplateResourceFetcher();
+  public void com.lynx.tasm.behavior.LynxContext.setHasCustomGenericFetcher(boolean hasCustomGenericFetcher);
+  public void com.lynx.tasm.behavior.LynxContext.setHasCustomMediaFetcher(boolean hasCustomMediaFetcher);
+  public void com.lynx.tasm.behavior.LynxContext.setHasCustomTemplateFetcher(boolean hasCustomTemplateFetcher);
   public void com.lynx.tasm.behavior.LynxContext.setFontLoader(LynxFontFaceLoader.Loader fontLoader);
   public LynxFontFaceLoader.Loader com.lynx.tasm.behavior.LynxContext.getFontLoader();
   public Object com.lynx.tasm.behavior.LynxContext.getFrescoCallerContext();

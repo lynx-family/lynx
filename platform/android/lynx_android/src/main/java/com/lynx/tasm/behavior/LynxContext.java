@@ -147,6 +147,11 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   private LynxMediaResourceFetcher mediaResourceFetcher;
   private LynxTemplateResourceFetcher templateResourceFetcher;
 
+  // Temporary flags for custom fetchers (experimental API)
+  private boolean hasCustomGenericFetcher;
+  private boolean hasCustomMediaFetcher;
+  private boolean hasCustomTemplateFetcher;
+
   private Map<String, LynxExtensionModule> mExtensionModules = new HashMap<>();
   private LynxImageFetcher mImageFetcher;
   private Float mFontScale;
@@ -979,7 +984,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public @Nullable LynxGenericResourceFetcher getGenericResourceFetcher() {
-    return this.genericResourceFetcher;
+    return !hasCustomGenericFetcher ? this.genericResourceFetcher : null;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -989,7 +994,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public @Nullable LynxMediaResourceFetcher getMediaResourceFetcher() {
-    return this.mediaResourceFetcher;
+    return !hasCustomMediaFetcher ? this.mediaResourceFetcher : null;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
@@ -999,7 +1004,26 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public @Nullable LynxTemplateResourceFetcher getTemplateResourceFetcher() {
-    return this.templateResourceFetcher;
+    return !hasCustomTemplateFetcher ? this.templateResourceFetcher : null;
+  }
+
+  /**
+   * This is a temporary workaround to disable the new fetcher mechanism
+   * (GenericFetcher/MediaFetcher/TemplateFetcher) when a custom fetcher is present, because the
+   * container has not yet been adapted to support custom fetchers for these new types.
+   * TODO: This logic should be removed once the container is updated to handle custom fetchers
+   * correctly.
+   */
+  public void setHasCustomGenericFetcher(boolean hasCustomGenericFetcher) {
+    this.hasCustomGenericFetcher = hasCustomGenericFetcher;
+  }
+
+  public void setHasCustomMediaFetcher(boolean hasCustomMediaFetcher) {
+    this.hasCustomMediaFetcher = hasCustomMediaFetcher;
+  }
+
+  public void setHasCustomTemplateFetcher(boolean hasCustomTemplateFetcher) {
+    this.hasCustomTemplateFetcher = hasCustomTemplateFetcher;
   }
 
   public void setFontLoader(LynxFontFaceLoader.Loader fontLoader) {
