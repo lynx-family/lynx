@@ -12,20 +12,31 @@ import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.BehaviorRegistry;
+import com.lynx.tasm.core.LynxThreadPool;
+import com.lynx.tasm.resourceprovider.LynxResourceCallback;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest;
+import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
+import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 
 /**
  * LynxViewGroup is used to build LynxView that shares the same Runtime Environment.
  */
 class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
+  static final String TAG = "LynxViewGroup";
+
   // App Bundle url shared by multiple lynxViews config by the same LynxViewGroup;
-  private String url;
-  // initial globalProps shared by multiple lynxViews config by the same LynxViewGroup;
+  private final String url;
+
+  // TemplateBundle object shared by multiple lynxViews config by the same LynxViewGroup;
   private TemplateBundle templateBundle;
 
   // initial globalProps shared by multiple lynxViews config by the same LynxViewGroup;
@@ -60,6 +71,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private int embeddedMode = EmbeddedMode.UNSET;
   private boolean hasPresetMeasureSpec = false;
   private ILynxLogicExecutor logicExecutor;
+
+  /** Runtime Cache Manager **/
+  private Future<Void> templateResultFutureTask;
 
   @Override
   public boolean hasPresetMeasureSpec() {
@@ -108,6 +122,14 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.embeddedMode = embeddedMode;
     this.hasPresetMeasureSpec = hasPresetMeasureSpec;
     this.logicExecutor = logicExecutor;
+
+    init();
+  }
+
+  private void init() {
+    if (templateBundle == null) {
+      this.templateResultFutureTask = this.fetchTemplate();
+    }
   }
 
   @Override
@@ -270,11 +292,6 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   }
 
   @Override
-  public TemplateBundle getTemplateBundle() {
-    return this.templateBundle;
-  }
-
-  @Override
   public TemplateData getGlobalProps() {
     return this.globalProps;
   }
@@ -283,6 +300,17 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   @Override
   public void setTemplateBundle(TemplateBundle templateBundle) {
     this.templateBundle = templateBundle;
+  }
+
+  public TemplateBundle getTemplateBundle() {
+    if (templateBundle == null) {
+      try {
+        templateResultFutureTask.get();
+      } catch (Exception e) {
+        LLog.i(TAG, "getTemplateBundle failed.");
+      }
+    }
+    return this.templateBundle;
   }
 
   @Override
@@ -298,6 +326,44 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   public ILynxLogicExecutor getLogicExecutor() {
     return logicExecutor;
+  }
+
+  /**
+   * Fetching template result as soon as possible.
+   * @return A future object to get the result.
+   */
+  private Future<Void> fetchTemplate() {
+    Runnable runnable = new Runnable() {
+      @Override
+      public void run() {
+        LynxResourceRequest request = new LynxResourceRequest(
+            url, LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate);
+        lynxRuntimeOptions.getTemplateResourceFetcher().fetchTemplate(
+            request, new LynxResourceCallback<TemplateProviderResult>() {
+              @Override
+              public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
+                TemplateProviderResult result = response.getData();
+                if (result != null) {
+                  if (result.getTemplateBundle() != null) {
+                    templateBundle = result.getTemplateBundle();
+                  } else if (result.getTemplateBinary() != null) {
+                    templateBundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
+                  }
+                }
+              }
+            });
+      }
+    };
+    FutureTask<Void> resultFuture = new FutureTask<>(runnable, null);
+    if (lynxRuntimeOptions != null) {
+      LynxThreadPool.getAsyncServiceExecutor().execute(new Runnable() {
+        @Override
+        public void run() {
+          resultFuture.run();
+        }
+      });
+    }
+    return resultFuture;
   }
 
   public void release() {

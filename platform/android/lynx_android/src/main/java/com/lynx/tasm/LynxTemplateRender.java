@@ -135,6 +135,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private final LynxViewClientGroup mClient = new LynxViewClientGroup();
   private final LynxViewClientGroupV2 mClientV2 = new LynxViewClientGroupV2();
   private LynxViewBuilder mLynxViewBuilder;
+
+  // TODO: absolutly, templateBundle should note be the indicator of EngineReuse.
+  private TemplateBundle mTemplateBundle;
   private ILynxViewConfigProvider mLynxViewConfigProvider;
   private ILynxViewRuntimeCacheManager mRuntimeCacheManager;
 
@@ -293,10 +296,18 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
 
     mLynxViewBuilder = builder;
+    if (mRuntimeCacheManager != null && mRuntimeCacheManager.getTemplateBundle() != null) {
+      mTemplateBundle = mRuntimeCacheManager.getTemplateBundle();
+    }
+
+    // fallback to use `builder.templateBundle`, delete it later;
+    if (mTemplateBundle == null) {
+      mTemplateBundle = mLynxViewBuilder.templateBundle;
+    }
+
     mEmbeddedMode = mLynxViewConfigProvider.getEmbeddedMode();
 
-    mEnableReuseEngine =
-        EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mLynxViewBuilder.templateBundle != null;
+    mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
     if (mEnableReuseEngine) {
       reuseLynxEngine();
     } else {
@@ -305,7 +316,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
     mLogicExecutor = builder.getLogicExecutor();
     if (mLogicExecutor == null) {
-      mLogicExecutor = new DefaultLogicExecutor(builder.templateBundle);
+      mLogicExecutor = new DefaultLogicExecutor(mTemplateBundle);
     }
     mRuntime = builder.lynxBackgroundRuntime;
     mTemplateProvider = builder.templateProvider;
@@ -476,7 +487,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (mLynxEngineRef == null) {
       // Failed to get from the pool, create a new one.
       // This wrapper won't be cached because it doesn't have the Element/UI Tree context yet.
-      mLynxEngineRef = new LynxEngine(mLynxViewBuilder.templateBundle, this);
+      mLynxEngineRef = new LynxEngine(mTemplateBundle, this);
       mLynxUIRender = lynxUIRenderer();
       // Cache the platform-level reuse object.
       mLynxEngineRef.setLynxUIRenderer(mLynxUIRender);
@@ -489,8 +500,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private void tryReuseLynxEngineFromPool() {
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_TRY_REUSE_ENGINE);
     // Try to get an engine from the cache pool.
-    mLynxEngineRef =
-        LynxEnginePool.getInstance().pollEngineFromPool(mLynxViewBuilder.templateBundle);
+    mLynxEngineRef = LynxEnginePool.getInstance().pollEngineFromPool(mTemplateBundle);
     if (mLynxEngineRef != null) {
       // Successfully retrieved an engine from the pool.
       // detach from previous lynxView.
@@ -1706,7 +1716,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       tryReuseLynxEngineFromPool();
       if (mLynxEngineRef == null) {
         fallbackNewEngine(false, true);
-        renderTemplateBundle(mLynxViewBuilder.templateBundle, meta.getUpdatedData(), mUrl);
+        renderTemplateBundle(mTemplateBundle, meta.getUpdatedData(), mUrl);
         return;
       } else {
         LLog.i(TAG, "call nativeReattachLynxEngineWrapper");
@@ -2639,7 +2649,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   public boolean dispatchTouchEvent(MotionEvent ev) {
     if (mEnableReuseEngine && mLynxEngineRef == null) {
       fallbackNewEngine(false, false);
-      renderTemplateBundle(mLynxViewBuilder.templateBundle, mTemplateData, mUrl);
+      renderTemplateBundle(mTemplateBundle, mTemplateData, mUrl);
     }
     return mLynxUIRender != null && mLynxUIRender.onTouchEvent(ev, null);
   }

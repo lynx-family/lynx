@@ -304,10 +304,6 @@ public class LynxViewBuilder
     return this;
   }
 
-  public TemplateBundle getTemplateBundle() {
-    return templateBundle;
-  }
-
   public LynxViewBuilder setTemplateBundle(TemplateBundle templateBundle) {
     this.templateBundle = templateBundle;
     return this;

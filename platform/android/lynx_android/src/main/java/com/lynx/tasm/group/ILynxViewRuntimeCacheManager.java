@@ -18,7 +18,7 @@ public interface ILynxViewRuntimeCacheManager {
 
   /**
    * Get A Already Generated TemplateBundle from CacheManager
-   * @return Already Generated TemplateBundle
+   * @return Already Generated TemplateResult
    */
   TemplateBundle getTemplateBundle();
 

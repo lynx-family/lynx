@@ -13,7 +13,6 @@ import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxViewBuilder;
-import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.ThreadStrategyForRendering;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
@@ -48,8 +47,6 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * enable async hydration of ssr.
    */
   protected boolean enableAsyncHydration = false;
-
-  protected TemplateBundle templateBundle;
 
   /**
    * enableJSRuntime、enableAirStrictMode both determine whether js thread will be enabled.

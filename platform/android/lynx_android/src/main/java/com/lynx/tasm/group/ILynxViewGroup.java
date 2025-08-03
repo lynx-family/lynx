@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
-import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 
 /**
@@ -11,8 +10,6 @@ import com.lynx.tasm.TemplateData;
  */
 public interface ILynxViewGroup extends ILynxViewConfigProvider {
   String getUrl();
-
-  TemplateBundle getTemplateBundle();
 
   TemplateData getGlobalProps();
 }
