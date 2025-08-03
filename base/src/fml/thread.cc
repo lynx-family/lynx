@@ -29,6 +29,63 @@
 namespace lynx {
 namespace fml {
 
+class ThreadHandle {
+ public:
+  explicit ThreadHandle(base::closure&& function);
+  ~ThreadHandle() = default;
+
+  void Join();
+
+ private:
+#if defined(OS_WIN)
+  HANDLE thread_;
+#else
+  pthread_t thread_;
+#endif
+};
+
+#if defined(OS_WIN)
+ThreadHandle::ThreadHandle(base::closure&& function) {
+  thread_ = (HANDLE*)_beginthreadex(
+      nullptr, Thread::GetDefaultStackSize(),
+      [](void* arg) -> unsigned {
+        std::unique_ptr<base::closure> function(
+            reinterpret_cast<base::closure*>(arg));
+        (*function)();
+        return 0;
+      },
+      new base::closure(std::move(function)), 0, nullptr);
+  FML_CHECK(thread_ != nullptr);
+}
+
+void ThreadHandle::Join() { WaitForSingleObjectEx(thread_, INFINITE, FALSE); }
+
+ThreadHandle::~ThreadHandle() { CloseHandle(thread_); }
+#else
+
+ThreadHandle::ThreadHandle(base::closure&& function) {
+  pthread_attr_t attr;
+  pthread_attr_init(&attr);
+  int result = pthread_attr_setstacksize(&attr, Thread::GetDefaultStackSize());
+  LYNX_BASE_CHECK(result == 0);
+  result = pthread_create(
+      &thread_, &attr,
+      [](void* arg) -> void* {
+        std::unique_ptr<base::closure> function(
+            reinterpret_cast<base::closure*>(arg));
+        (*function)();
+        return nullptr;
+      },
+      new base::closure(std::move(function)));
+  LYNX_BASE_CHECK(result == 0);
+  result = pthread_attr_destroy(&attr);
+  LYNX_BASE_CHECK(result == 0);
+}
+
+void ThreadHandle::Join() { pthread_join(thread_, nullptr); }
+
+#endif
+
 void Thread::SetCurrentThreadName(const Thread::ThreadConfig& config) {
   SetThreadName(config.name);
 }
@@ -69,7 +126,7 @@ Thread::Thread(const ThreadConfigSetter& setter, const ThreadConfig& config)
     lynx::base::android::DetachFromVM();
 #endif
   };
-  thread_ = std::make_unique<std::thread>(std::move(setup_thread));
+  thread_ = std::make_unique<ThreadHandle>(std::move(setup_thread));
   latch.Wait();
   task_runner_ = runner;
   loop_ = loop_impl;
@@ -91,8 +148,10 @@ void Thread::Join() {
   }
   joined_ = true;
   task_runner_->PostTask([]() { MessageLoop::GetCurrent().Terminate(); });
-  thread_->join();
+  thread_->Join();
 }
+
+size_t Thread::GetDefaultStackSize() { return 1024 * 1024 * 1; }
 
 }  // namespace fml
 }  // namespace lynx
