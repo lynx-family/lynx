@@ -27,11 +27,11 @@ LEPUSValue LEPUSValueHelper::TableToJsValue(LEPUSContext* ctx,
   LEPUSValue values[size];
   HandleScope func_scope(LEPUS_GetRuntime(ctx));
   func_scope.PushLEPUSValueArrayHandle(values, size);
-  for (const auto& [key, value] : table) {
+  table.for_each([&](const auto& key, const auto& value) {
     keys[idx] = key.c_str();
     values[idx] = ToJsValue(ctx, value, deep_convert);
     ++idx;
-  }
+  });
   return LEPUS_NewObjectWithArgs(ctx, size, keys, values);
 }
 

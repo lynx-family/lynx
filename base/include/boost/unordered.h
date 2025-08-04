@@ -58,6 +58,26 @@
 #include <utility>
 #include <variant>
 
+// Lynx Add Begin
+#include "base/include/type_traits_addon.h"
+
+// This template type is used to simplify the use of boost map for 
+// lynx::base::HybridMap.
+namespace boost {
+template <template <typename...> class T, template <typename> class Hash,
+          template <typename> class Equal>
+struct MapPolicy {
+  template <typename Key, typename Value>
+  using type = T<Key, Value, Hash<Key>, Equal<Key>>;
+
+  template <typename Key, typename Value>
+  using plain_bytes_type =
+      T<lynx::base::TypeOfPlainBytes<Key>, lynx::base::TypeOfPlainBytes<Value>,
+        Hash<lynx::base::TypeOfPlainBytes<Key>>,
+        Equal<lynx::base::TypeOfPlainBytes<Key>>>;
+};
+}  // namespace boost
+
 // Lynx polyfill for undefined and C++17
 namespace boost {
 using uint16_t = unsigned short;
@@ -184,6 +204,7 @@ constexpr int bit_width(T t) noexcept {
 #endif
 
 // clang-format off
+// Lynx Add End
 
 // This is a minimal header that contains only the small set
 // config entries needed to use boost::unordered, so that the
@@ -404,6 +425,10 @@ namespace boost {
   namespace unordered {
     namespace detail {
       namespace foa {
+// Lynx Add Begin
+        template <class Key, class T> struct flat_map_types; // forward decl
+// Lynx Add End
+      
         template <class Key> struct flat_set_types
         {
           using key_type = Key;
@@ -1355,7 +1380,9 @@ struct hash_is_avalanching: detail::hash_is_avalanching_impl<Hash>::type{};
  * architectures.
  */
 
-#if BOOST_ARCH_ARM
+// Lynx Add Begin
+// Always use __builtin_prefetch
+ #if 0 // BOOST_ARCH_ARM
 /* Cache line size can't be known at compile time, so we settle on
  * the very frequent value of 64B.
  */
@@ -1371,6 +1398,7 @@ struct hash_is_avalanching: detail::hash_is_avalanching_impl<Hash>::type{};
 #else
 #define BOOST_UNORDERED_PREFETCH_ELEMENTS(p,N) BOOST_UNORDERED_PREFETCH(p)
 #endif
+// Lynx Add End
 
 #ifdef __has_feature
 #define BOOST_UNORDERED_HAS_FEATURE(x) __has_feature(x)
@@ -3451,6 +3479,59 @@ private:
     element_type* p,std::size_t hash,const arrays_type& arrays_,
     std::size_t& num_destroyed,std::true_type /* ->move */)
   {
+// Lynx Add Begin
+    if constexpr (std::is_same_v<typename type_policy::value_type,
+                                 typename type_policy::key_type>) {
+      // is set, no opt
+    } else {
+      constexpr bool is_relocatable = lynx::base::IsTriviallyRelocatable<
+          value_type, lynx::base::is_instance<value_type, std::pair>{}>::value;
+      if constexpr (is_relocatable) {
+        if constexpr (std::is_same_v<type_policy,
+                                     detail::foa::flat_map_types<
+                                         typename type_policy::key_type,
+                                         typename type_policy::mapped_type>>) {
+          // Key and T are both relocatable in flat map, fast path to copy data
+          // trivially and ignores destructors.
+          using KeyTypePlainBytes =
+              lynx::base::TypeOfPlainBytes<typename type_policy::key_type>;
+          using MappedTypePlainBytes =
+              lynx::base::TypeOfPlainBytes<typename type_policy::mapped_type>;
+
+          using PlainBytesMapTypes =
+              detail::foa::flat_map_types<KeyTypePlainBytes,
+                                          MappedTypePlainBytes>;
+
+          using PlainBytesTableCore =
+              table_core<PlainBytesMapTypes, group_type, table_arrays,
+                         size_ctrl_type, hasher, key_equal, allocator_type>;
+          auto* PlainBytesTypeThis =
+              reinterpret_cast<PlainBytesTableCore*>(this);
+          using PlainBytesTableArraysType =
+              typename PlainBytesTableCore::arrays_type;
+
+          // No destroy, trivially moved.
+          ++num_destroyed;
+          auto locator =
+              PlainBytesTypeThis
+                  ->nosize_unchecked_emplace_at(
+                      reinterpret_cast<const PlainBytesTableArraysType&>(
+                          arrays_),
+                      PlainBytesTypeThis->position_for(
+                          hash,
+                          reinterpret_cast<const PlainBytesTableArraysType&>(
+                              arrays_)),
+                      hash,
+                      PlainBytesMapTypes::move(
+                          reinterpret_cast<
+                              typename PlainBytesMapTypes::element_type&>(*p)))
+                  .p;
+          (void)locator;
+          return;
+        }
+      }
+    }
+// Lynx Add End
     /* Destroy p even if an an exception is thrown in the middle of move
      * construction, which could leave the source half-moved.
      */
@@ -3617,6 +3698,15 @@ public:
   friend inline bool operator!=(
     const table_iterator& x,const table_iterator& y)
     {return !(x==y);}
+  
+// Lynx Add Begin
+  table_iterator(void* pc, const void* element): 
+    pc_(static_cast<char_pointer>(pc)), 
+    p_(static_cast<table_element_pointer>(const_cast<void*>(element))) {}
+  
+  char_pointer& inner_pc() noexcept{return pc_;}
+  table_element_pointer& inner_p() noexcept{return p_;}
+// Lynx Add End
 
 private:
   template<typename,typename,bool> friend class table_iterator;
