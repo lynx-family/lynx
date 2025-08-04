@@ -30,13 +30,15 @@ class LynxEnginePool {
       return;
     }
     LinkedList<LynxEngine> engineQueue = getEngineQueue(engineWrapper.getTemplateBundle());
-    if (TraceEvent.enableTrace()) {
+    if (TraceEvent.isTracingStarted()) {
       Map<String, String> map = new HashMap<>();
       map.put("engineQueue", engineQueue.toString());
       TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_REGISTER_ENGINE, map);
     }
     synchronized (this) {
-      engineQueue.offer(engineWrapper);
+      if (!engineQueue.contains(engineWrapper)) {
+        engineQueue.offer(engineWrapper);
+      }
     }
     engineWrapper.setQueueRefFromPool(engineQueue);
     LLog.i(TAG,
@@ -49,7 +51,7 @@ class LynxEnginePool {
   LynxEngine pollEngineFromPool(TemplateBundle templateBundle) {
     LinkedList<LynxEngine> engineQueue = getEngineQueue(templateBundle);
     LLog.i(TAG, "pollEngine EngineQueue Cache: " + engineQueue + ", bundle:" + templateBundle);
-    if (TraceEvent.enableTrace()) {
+    if (TraceEvent.isTracingStarted()) {
       Map<String, String> map = new HashMap<>();
       map.put("engineQueue", engineQueue.toString());
       TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE, map);
