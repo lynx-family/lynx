@@ -666,7 +666,7 @@ open class LynxUIBaseInput(context: LynxContext) : LynxUI<LynxEditTextView>(cont
         result["cursorBegin"] = mView.selectionStart
         result["cursorEnd"] = mView.selectionStart
         result["composing"] = composing
-        callback?.invoke(LynxUIMethodConstants.SUCCESS)
+        callback?.invoke(LynxUIMethodConstants.SUCCESS, result)
     }
 
     @LynxUIMethod
