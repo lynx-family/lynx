@@ -81,6 +81,8 @@ class NativeFacadeDarwin : public NativeFacade {
 
   void OnEventFire(long target_id, bool is_stop, int64_t event_id) override;
 
+  void OnLynxEvent(const lepus::Value& event_detail) override;
+
  private:
   __weak id<TemplateRenderCallbackProtocol> _render;
 };

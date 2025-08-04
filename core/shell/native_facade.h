@@ -122,6 +122,8 @@ class NativeFacade {
 
   virtual void OnEventFire(long target_id, bool is_stop, int64_t event_id) = 0;
 
+  virtual void OnLynxEvent(const lepus::Value& event_detail) = 0;
+
  protected:
   PlatformCallBackManager call_back_manager_;
 };

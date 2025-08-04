@@ -341,5 +341,13 @@ void NativeFacadeAndroid::OnEventFire(long target_id, bool is_stop,
                                 event_id);
 }
 
+void NativeFacadeAndroid::OnLynxEvent(const lepus::Value& event_detail) {
+  JNIEnv* env = AttachCurrentThread();
+  auto event =
+      lynx::tasm::android::ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
+          event_detail);
+  Java_NativeFacade_onLynxEvent(env, jni_object_.Get(), event.jni_object());
+}
+
 }  // namespace shell
 }  // namespace lynx

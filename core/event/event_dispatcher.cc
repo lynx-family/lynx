@@ -51,24 +51,28 @@ EventDispatcher::EventDispatcher(EventTarget& target, Event& event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
+  if (!target_) {
+    return {EventCancelType::kCanceledBeforeDispatch, false};
+  }
   // handle conflic and param
   if (event_->HandleEventConflictAndParam()) {
     return {EventCancelType::kCanceledByEventHandler, false};
   }
-  event_->set_target(target_);
+  event_->set_target(target_->GetWeakTarget());
   event_->HandleEventCustomDetail();
   bool consumed = false;
   auto path = event_->event_path();
 
   // TODO(hexionghui): trigger global event, eg: trigger-global-event attribute
   // or GlobalEventEmitter
+  target_->HandleGlobalEvent(*event_);
 
   // TODO(hexionghui): global-bind event, eg: global-bindtap
 
   // no capture and bubble, eg: bindscroll
   if (!event_->bubbles()) {
     event_->set_event_phase(Event::PhaseType::kAtTarget);
-    event_->set_current_target(target_);
+    event_->set_current_target(target_->GetWeakTarget());
     auto result = target_->DispatchEvent(*event_);
     return {EventCancelType::kCanceledByDefaultEventHandler, result.consumed};
   }

@@ -19,11 +19,16 @@ class EventObject : public lepus::RefCounted {
     return lepus::RefType::kEventObject;
   };
 
-  EventObject(const std::string&, int64_t, event::Event::EventType,
-              event::Event::Bubbles, event::Event::Cancelable,
-              event::Event::ComposedMode, event::Event::PhaseType)
-      : event_(Event(type, time_stamp, event_type, bubbles, cancelable,
-                     composed_mode, phase_type)) {}
+  EventObject(const std::string& type, int64_t time_stamp,
+              event::Event::EventType event_type, event::Event::Bubbles bubbles,
+              event::Event::Cancelable cancelable,
+              event::Event::ComposedMode composed_mode,
+              event::Event::PhaseType phase_type,
+              const lepus::Value& event_detail)
+      : event_(event::Event(type, time_stamp, event_type, bubbles, cancelable,
+                            composed_mode, phase_type)) {
+    event_.set_detail(event_detail);
+  }
 
   event::Event& GetEvent() { return event_; }
 

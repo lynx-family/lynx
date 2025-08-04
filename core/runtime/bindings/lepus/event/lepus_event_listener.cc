@@ -34,9 +34,7 @@ bool LepusClosureEventListener::Matches(event::EventListener* listener) {
   LepusClosureEventListener* other =
       static_cast<LepusClosureEventListener*>(listener);
   return context_ == other->context_ && closure_.IsEqual(other->closure_) &&
-         options_.capture == other->GetOptions().capture &&
-         options_.is_catch == other->GetOptions().is_catch &&
-         options_.is_global == other->GetOptions().is_global;
+         options_.flags == other->GetOptions().flags;
 };
 
 lepus::Value LepusClosureEventListener::ConvertEventToLepusValue(

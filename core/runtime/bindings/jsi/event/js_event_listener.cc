@@ -87,8 +87,7 @@ bool JSClosureEventListener::Matches(EventListener* listener) {
   }
 
   return piper::Value::strictEquals(*rt, closure_, other->closure_) &&
-         options_.capture == other->GetOptions().capture &&
-         options_.is_catch == other->GetOptions().is_catch;
+         options_.flags == other->GetOptions().flags;
 }
 
 piper::Value JSClosureEventListener::GetClosure() {

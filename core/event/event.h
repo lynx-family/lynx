@@ -38,6 +38,11 @@
 #include "base/include/value/table.h"
 #include "core/event/event_dispatch_result.h"
 
+#define EVENT_TYPE_CAPTURE "captureEvent"
+#define EVENT_TYPE_CAPTURE_CATCH "capture-catch"
+#define EVENT_TYPE_CATCH "catchEvent"
+#define EVENT_TYPE_GLOBAL "global-bindEvent"
+
 namespace lynx {
 namespace event {
 
@@ -61,6 +66,7 @@ class Event {
     kCapturingPhase = 1,
     kAtTarget = 2,
     kBubblingPhase = 3,
+    kGlobal = 4,
   };
 
   // If need extend a new bind type for Event, a new enumeration should be added
@@ -135,6 +141,7 @@ class Event {
   }
 
   lepus::Value& detail() { return detail_; }
+  void set_detail(const lepus::Value detail) { detail_ = detail; }
 
   const std::vector<fml::WeakPtr<EventTarget>>& event_path() const;
 

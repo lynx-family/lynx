@@ -43,24 +43,29 @@ class EventListener {
   };
 
   struct Options {
-    bool capture;
-    bool once;
-    bool passive;
-    bool signal;
+    static const int kCaptureBit = 1 << 0;
+    static const int kOnceBit = 1 << 1;
+    static const int kPassiveBit = 1 << 2;
+    static const int kSignalBit = 1 << 3;
     // Indicates whether to intercept the event. Compatible with capture-catch
     // and catch.
-    bool is_catch;
+    static const int kCatchBit = 1 << 4;
     // Indicates whether to global bind the event. Compatible with global-bind.
-    bool is_global;
+    static const int kGlobalBit = 1 << 5;
+
+    int64_t flags;
 
     Options(bool capture = false, bool once = false, bool passive = false,
             bool signal = false, bool is_catch = false, bool is_global = false)
-        : capture(capture),
-          once(once),
-          passive(passive),
-          signal(signal),
-          is_catch(is_catch),
-          is_global(is_global) {}
+        : flags((capture ? kCaptureBit : 0) | (once ? kOnceBit : 0) |
+                (passive ? kPassiveBit : 0) | (signal ? kSignalBit : 0) |
+                (is_catch ? kCatchBit : 0) | (is_global ? kGlobalBit : 0)) {}
+
+    bool IsCapture() const { return (flags & kCaptureBit) == kCaptureBit; }
+
+    bool IsCatch() const { return (flags & kCatchBit) == kCatchBit; }
+
+    bool IsGlobal() const { return (flags & kGlobalBit) == kGlobalBit; }
   };
 
   explicit EventListener(Type type, const Options& options = Options());

@@ -234,6 +234,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private TemplateData mTemplateData;
   @Nullable private LynxEngine mLynxEngineRef;
+  private ILynxLogicExecutor mLogicExecutor;
 
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
@@ -302,6 +303,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mLynxUIRender = lynxUIRenderer();
     }
 
+    mLogicExecutor = builder.getLogicExecutor();
+    if (mLogicExecutor == null) {
+      mLogicExecutor = new DefaultLogicExecutor(builder.templateBundle);
+    }
     mRuntime = builder.lynxBackgroundRuntime;
     mTemplateProvider = builder.templateProvider;
     mEnableSyncFlush = mLynxViewConfigProvider.isEnableSyncFlush();
@@ -2981,6 +2986,13 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         if (target != null) {
           target.onEventFire(isStop, eventID);
         }
+      }
+    }
+
+    @Override
+    public void onLynxEvent(ReadableMap event) {
+      if (mLogicExecutor != null) {
+        mLogicExecutor.onLynxEvent(getLynxView(), event);
       }
     }
   }

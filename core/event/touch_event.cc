@@ -48,7 +48,7 @@ TouchEvent::TouchEvent(const std::string& event_name,
 }
 
 void TouchEvent::HandleEventCustomDetail() {
-  if (target_) {
+  if (!target_) {
     return;
   }
   BASE_STATIC_STRING_DECL(kX, "x");
@@ -86,7 +86,8 @@ void TouchEvent::HandleEventCustomDetail() {
 
     float detail_x = 0.f, detail_y = 0.f;
     auto changed_touches = lepus::CArray::Create();
-    auto touches_with_deleted = lepus::CArray::Create();
+    auto touches_with_deleted =
+        lepus::Value::Clone(TouchEvent::current_touches_);
     for (const auto& target_touches : *(targets_touches_.Table())) {
       if (target_touches.second.IsArray()) {
         // touches: includes all touches on the same target.
@@ -133,7 +134,6 @@ void TouchEvent::HandleEventCustomDetail() {
               in_current_touches = true;
               // delete this touch when touchend
               if (type_ == EVENT_TOUCH_END) {
-                touches_with_deleted->emplace_back(touch_value);
                 current_touches->Erase(static_cast<uint32_t>(j));
                 break;
               }
@@ -159,14 +159,7 @@ void TouchEvent::HandleEventCustomDetail() {
     // When the event type is touchend, the touches parameter needs to be
     // compatible.
     if (enable_multi_touch_params_compatible && type_ == EVENT_TOUCH_END) {
-      if (touches_with_deleted->size() != 0) {
-        touches_with_deleted->push_back(
-            lepus::Value::Clone(TouchEvent::current_touches_));
-        dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
-      } else {
-        dict.get()->SetValue(kTouches,
-                             lepus::Value::Clone(TouchEvent::current_touches_));
-      }
+      dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
     } else {
       dict.get()->SetValue(kTouches,
                            lepus::Value::Clone(TouchEvent::current_touches_));

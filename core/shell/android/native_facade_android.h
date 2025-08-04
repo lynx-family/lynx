@@ -77,6 +77,8 @@ class NativeFacadeAndroid : public NativeFacade {
 
   void OnEventFire(long target_id, bool is_stop, int64_t event_id) override;
 
+  void OnLynxEvent(const lepus::Value& event_detail) override;
+
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> jni_object_;
 };

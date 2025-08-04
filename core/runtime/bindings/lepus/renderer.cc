@@ -544,6 +544,19 @@ void Renderer::RegisterBuiltinForFiber(lepus::Context* context) {
                                      &FiberAsyncResolveSubtreeProperty);
   /* 108 */ lepus::RegisterCFunction(context, kCFunctionMarkAsyncFlushRoot,
                                      &FiberMarkAsyncResolveRoot);
+  /* 109 */ lepus::RegisterCFunction(context, kCFunctionAddEventListener,
+                                     &FiberAddEventListener);
+  /* 110 */ lepus::RegisterCFunction(
+      context, kCFunctionFiberRemoveEventListener, &FiberRemoveEventListener);
+  /* 111 */ lepus::RegisterCFunction(context, kCFunctionCreateEvent,
+                                     &FiberCreateEvent);
+  /* 112 */ lepus::RegisterCFunction(context, kCFunctionDispatchEvent,
+                                     &FiberDispatchEvent);
+  /* 113 */ lepus::RegisterCFunction(context, kCFunctionStopPropagation,
+                                     &FiberStopPropagation);
+  /* 114 */ lepus::RegisterCFunction(context,
+                                     kCFunctionStopImmediatePropagation,
+                                     &FiberStopImmediatePropagation);
 }
 
 void Renderer::RegisterBuiltinForAir(lepus::Context* context) {

@@ -5,6 +5,7 @@ package com.lynx.tasm.group;
 
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.ILynxEngine;
+import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
@@ -58,6 +59,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private IUIRendererCreator uiRendererCreator;
   private int embeddedMode = EmbeddedMode.UNSET;
   private boolean hasPresetMeasureSpec = false;
+  private ILynxLogicExecutor logicExecutor;
 
   @Override
   public boolean hasPresetMeasureSpec() {
@@ -73,7 +75,8 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean enableAutoConcurrency, boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime,
       boolean enableAirStrictMode, boolean debuggable, int presetWidthMeasureSpec,
       int presetHeightMeasureSpec, float fontScale, boolean enablePreUpdateData,
-      IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec) {
+      IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec,
+      ILynxLogicExecutor logicExecutor) {
     this.url = url;
     this.templateBundle = bundle;
     this.globalProps = globalProps;
@@ -104,6 +107,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.uiRendererCreator = uiRendererCreator;
     this.embeddedMode = embeddedMode;
     this.hasPresetMeasureSpec = hasPresetMeasureSpec;
+    this.logicExecutor = logicExecutor;
   }
 
   @Override
@@ -290,6 +294,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   public ILynxEngine getLynxEngine() {
     // TODO(@huangweiwu): to impl this;
     return null;
+  }
+
+  public ILynxLogicExecutor getLogicExecutor() {
+    return logicExecutor;
   }
 
   public void release() {

@@ -624,6 +624,8 @@ void MockTasmDelegate::OnEventBubble(long target_id, bool is_catch,
 void MockTasmDelegate::OnEventFire(long target_id, bool is_stop,
                                    int64_t event_id) {}
 
+void MockTasmDelegate::OnLynxEvent(const lepus::Value& event_detail) {}
+
 }  // namespace test
 
 }  // namespace tasm

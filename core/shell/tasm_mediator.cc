@@ -706,5 +706,10 @@ void TasmMediator::RequestLayout(
       [options](auto& layout) { layout->DispatchLayoutUpdates(options); });
 }
 
+void TasmMediator::OnLynxEvent(const lepus::Value& event_detail) {
+  facade_actor_->Act([event_detail = lepus::Value::ShallowCopy(event_detail)](
+                         auto& facade) { facade->OnLynxEvent(event_detail); });
+}
+
 }  // namespace shell
 }  // namespace lynx

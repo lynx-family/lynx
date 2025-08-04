@@ -214,6 +214,13 @@ static const char* kCFunctionSetConfig = "__SetConfig";
 static const char* kCFunctionAddConfig = "__AddConfig";
 static const char* kCFunctionGetConfig = "__GetConfig";
 static const char* kCFunctionAsyncResolveElement = "__AsyncResolveElement";
+static const char* kCFunctionAddEventListener = "__AddEventListener";
+static const char* kCFunctionFiberRemoveEventListener = "__RemoveEventListener";
+static const char* kCFunctionCreateEvent = "__CreateEvent";
+static const char* kCFunctionDispatchEvent = "__DispatchEvent";
+static const char* kCFunctionStopPropagation = "__StopPropagation";
+static const char* kCFunctionStopImmediatePropagation =
+    "__StopImmediatePropagation";
 // Element Component Info
 static const char* kCFunctionGetComponentID = "__GetComponentID";
 static const char* kCFunctionUpdateComponentID = "__UpdateComponentID";

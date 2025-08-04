@@ -1130,6 +1130,7 @@ public interface com::lynx::tasm::NativeFacade::Callback {
   public void com.lynx.tasm.NativeFacade.Callback.onEventCapture(long targetID, boolean isCatch, long eventID);
   public void com.lynx.tasm.NativeFacade.Callback.onEventBubble(long targetID, boolean isCatch, long eventID);
   public void com.lynx.tasm.NativeFacade.Callback.onEventFire(long targetID, boolean isStop, long eventID);
+  public void com.lynx.tasm.NativeFacade.Callback.onLynxEvent(ReadableMap event);
 }
 
 public interface com::lynx::tasm::provider::AbsTemplateProvider::Callback {
@@ -1313,6 +1314,10 @@ public class com::lynx::tasm::gesture::handler::DefaultGestureHandler : com.lynx
   public void com.lynx.tasm.gesture.handler.DefaultGestureHandler.activate();
   public void com.lynx.tasm.gesture.handler.DefaultGestureHandler.end();
   public void com.lynx.tasm.gesture.handler.DefaultGestureHandler.reset();
+}
+
+public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExecutor {
+  public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
 }
 
 public class com::lynx::tasm::utils::DeviceUtils :  {
@@ -2183,6 +2188,10 @@ public interface com::lynx::devtoolwrapper::ILynxLogBox {
   public void com.lynx.devtoolwrapper.ILynxLogBox.attachContext(Context context);
 }
 
+public interface com::lynx::tasm::ILynxLogicExecutor {
+  public void com.lynx.tasm.ILynxLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
+}
+
 public interface com::lynx::tasm::service::ILynxLogService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxLogService.getServiceClass();
   public void com.lynx.tasm.service.ILynxLogService.logByPlatform(int level, String tag, String msg);
@@ -2376,6 +2385,7 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
   public LynxGenericResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxGenericResourceFetcher();
   public LynxMediaResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxMediaResourceFetcher();
   public LynxTemplateResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxTemplateResourceFetcher();
+  public ILynxLogicExecutor com.lynx.tasm.group.ILynxViewConfigProvider.getLogicExecutor();
 }
 
 public interface com::lynx::tasm::group::ILynxViewGroup {
@@ -6506,6 +6516,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public LynxGenericResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxGenericResourceFetcher();
   public LynxMediaResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxMediaResourceFetcher();
   public LynxTemplateResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxTemplateResourceFetcher();
+  public ILynxLogicExecutor com.lynx.tasm.LynxViewBuilder.getLogicExecutor();
   public LynxView com.lynx.tasm.LynxViewBuilder.build(@NonNull Context context);
 }
 
@@ -6625,6 +6636,7 @@ public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setUrl(@NonNull String url);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setTemplateBundle(@NonNull TemplateBundle templateBundle);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setGlobalProps(@NonNull TemplateData globalProps);
+  public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setLogicExecutor(ILynxLogicExecutor logicExecutor);
   public ILynxViewGroup com.lynx.tasm.group.LynxViewGroupBuilder.build();
 }
 
@@ -8625,6 +8637,7 @@ public class com::lynx::tasm::LynxTemplateRender::TASMCallback : com.lynx.tasm.N
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onEventCapture(long targetID, boolean isCatch, long eventID);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onEventBubble(long targetID, boolean isCatch, long eventID);
   public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onEventFire(long targetID, boolean isStop, long eventID);
+  public void com.lynx.tasm.LynxTemplateRender.TASMCallback.onLynxEvent(ReadableMap event);
 }
 
 public class com::lynx::tasm::TasmPlatformInvoker :  {

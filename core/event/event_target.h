@@ -90,6 +90,7 @@ class EventTarget {
   // Check whether catch the event path.
   virtual bool IsEventPathCatch() { return false; }
 
+  // Get the information about target.
   virtual lepus::Value GetEventTargetInfo(bool is_core_event = false) {
     return lepus::Value();
   };

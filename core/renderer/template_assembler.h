@@ -233,6 +233,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
     virtual void OnEventFire(long target_id, bool is_stop,
                              int64_t event_id) = 0;
+
+    virtual void OnLynxEvent(const lepus::Value& event_detail) = 0;
   };
 
   class Scope {
@@ -352,6 +354,12 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void OnEventBubble(long target_id, bool is_catch, int64_t event_id);
 
   void OnEventFire(long target_id, bool is_stop, int64_t event_id);
+
+  void OnLynxEvent(const lepus::Value& event_detail);
+
+  event::DispatchEventResult DispatchMessageEvent(runtime::MessageEvent event) {
+    return delegate_.DispatchMessageEvent(std::move(event));
+  }
 
   // Just send `onLazyBundleEvent` globalEvent.
   // for history version compatibility, not to break.

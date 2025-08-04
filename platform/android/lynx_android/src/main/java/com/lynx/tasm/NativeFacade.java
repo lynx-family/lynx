@@ -92,6 +92,8 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
     void onEventBubble(long targetID, boolean isCatch, long eventID);
 
     void onEventFire(long targetID, boolean isStop, long eventID);
+
+    void onLynxEvent(ReadableMap event);
   }
 
   private Callback mCallback;
@@ -563,6 +565,13 @@ public class NativeFacade implements EventEmitter.LynxEventReporter {
   void onEventFire(long targetID, boolean isStop, long eventID) {
     if (mCallback != null) {
       mCallback.onEventFire(targetID, isStop, eventID);
+    }
+  }
+
+  @CalledByNative
+  void onLynxEvent(ReadableMap event) {
+    if (mCallback != null) {
+      mCallback.onLynxEvent(event);
     }
   }
 

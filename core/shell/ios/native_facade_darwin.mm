@@ -234,5 +234,7 @@ void NativeFacadeDarwin::OnEventFire(long target_id, bool is_stop, int64_t event
   [render onEventFire:target_id withEventStop:is_stop andEventID:event_id];
 }
 
+void NativeFacadeDarwin::OnLynxEvent(const lepus::Value& event_detail) {}
+
 }  // namespace shell
 }  // namespace lynx

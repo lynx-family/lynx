@@ -571,6 +571,14 @@ public class LynxViewBuilder
     return lynxRuntimeOptions.getTemplateResourceFetcher();
   }
 
+  @Override
+  public ILynxLogicExecutor getLogicExecutor() {
+    if (lynxViewGroup != null) {
+      return lynxViewGroup.getLogicExecutor();
+    }
+    return null;
+  }
+
   public LynxView build(@NonNull Context context) {
     TraceEvent.beginSection(TraceEventDef.LYNXVIEW_BUILDER_BUILD);
     ILynxTrailService trailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);

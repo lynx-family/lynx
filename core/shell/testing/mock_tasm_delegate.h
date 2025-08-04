@@ -77,6 +77,7 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
                              int64_t event_id) override;
   virtual void OnEventFire(long target_id, bool is_stop,
                            int64_t event_id) override;
+  virtual void OnLynxEvent(const lepus::Value& event_detail) override;
   virtual void CallJSApiCallback(piper::ApiCallBack callback) override;
   virtual void CallJSApiCallbackWithValue(piper::ApiCallBack callback,
                                           const lepus::Value& value,

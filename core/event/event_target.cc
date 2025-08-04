@@ -60,11 +60,15 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   bool consumed = false;
   for (auto& listener : copy) {
     if (event.event_phase() == Event::PhaseType::kCapturingPhase &&
-        !listener->GetOptions().capture) {
+        !listener->GetOptions().IsCapture()) {
       continue;
     }
     if ((event.event_phase() == Event::PhaseType::kBubblingPhase) &&
-        listener->GetOptions().capture) {
+        listener->GetOptions().IsCapture()) {
+      continue;
+    }
+    if ((event.event_phase() != Event::PhaseType::kGlobal) &&
+        listener->GetOptions().IsGlobal()) {
       continue;
     }
     if (listener->removed()) {

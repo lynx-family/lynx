@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
+import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
@@ -165,4 +166,9 @@ public interface ILynxViewConfigProvider {
    * @return TemplateResourceFetcher set
    */
   LynxTemplateResourceFetcher getLynxTemplateResourceFetcher();
+
+  /**
+   * @return LogicExecutor which execute event callback and other logic.
+   */
+  ILynxLogicExecutor getLogicExecutor();
 }

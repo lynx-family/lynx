@@ -259,6 +259,8 @@ class TasmMediator : public LynxEngine::Delegate {
   virtual void OnEventFire(long target_id, bool is_stop,
                            int64_t event_id) override;
 
+  virtual void OnLynxEvent(const lepus::Value& event_detail) override;
+
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
   }

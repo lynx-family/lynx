@@ -146,6 +146,12 @@
   V(FiberGetScope)                    \
   V(FiberCleanUp)                     \
   V(FiberOnCleanUp)                   \
+  V(FiberAddEventListener)            \
+  V(FiberRemoveEventListener)         \
+  V(FiberCreateEvent)                 \
+  V(FiberDispatchEvent)               \
+  V(FiberStopPropagation)             \
+  V(FiberStopImmediatePropagation)    \
   V(SetSourceMapRelease)              \
   V(ReportError)                      \
   V(AirCreateElement)                 \

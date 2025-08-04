@@ -80,6 +80,8 @@ class NativeFacadeEmptyImpl : public NativeFacade {
 
   virtual void OnEventFire(long target_id, bool is_stop,
                            int64_t event_id) override {}
+
+  virtual void OnLynxEvent(const lepus::Value& event_detail) override {}
 };
 
 }  // namespace shell

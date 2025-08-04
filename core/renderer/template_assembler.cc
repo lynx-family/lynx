@@ -2111,6 +2111,10 @@ void TemplateAssembler::OnEventFire(long target_id, bool is_stop,
   delegate_.OnEventFire(target_id, is_stop, event_id);
 }
 
+void TemplateAssembler::OnLynxEvent(const lepus::Value& event_detail) {
+  delegate_.OnLynxEvent(event_detail);
+}
+
 TemplateData TemplateAssembler::GenerateTemplateDataPostedToJs(
     const TemplateData& value) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, CONVERT_VALUE_WITH_READ_ONLY);

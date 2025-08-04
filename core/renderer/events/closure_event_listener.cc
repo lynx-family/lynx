@@ -38,7 +38,7 @@ void ClosureEventListener::Invoke(event::Event* event) {
     event->HandleEventBaseDetail(closure_type_ == ClosureType::kCore);
     auto args = lepus::CArray::Create();
     args->emplace_back(event->current_target()->GetEventControlInfo(
-        event->type(), options_.is_global));
+        event->type(), options_.IsGlobal()));
     args->emplace_back(event->detail());
     closure_(lepus::Value(std::move(args)));
   }
@@ -55,11 +55,8 @@ bool ClosureEventListener::Matches(EventListener* listener) {
   bool listener_match = closure_type_ != ClosureType::kNone
                             ? lepus_object_ == other->lepus_object()
                             : &closure_ == &(other->closure_);
-  bool listener_config_match =
-      options_.capture == other->GetOptions().capture &&
-      options_.is_catch == other->GetOptions().is_catch &&
-      options_.is_global == other->GetOptions().is_global &&
-      closure_type_ == other->closure_type();
+  bool listener_config_match = options_.flags == other->GetOptions().flags &&
+                               closure_type_ == other->closure_type();
   return listener_match && listener_config_match;
 }
 

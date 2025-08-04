@@ -705,6 +705,10 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   virtual float GetLayoutsUnitPerPx() override;
 
+  fml::WeakPtr<EventTarget> GetWeakTarget() override {
+    return weak_factory_.GetWeakPtr();
+  }
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 
@@ -875,6 +879,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   // Save the bind event information on the target, compatible with bind event
   // interception. eg. capture-bindtap, catchtap
   std::unordered_map<std::string, BindEventCatch> bind_event_catch_map_;
+  fml::WeakPtrFactory<Element> weak_factory_{this};
 };
 
 }  // namespace tasm

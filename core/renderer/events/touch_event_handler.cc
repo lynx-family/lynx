@@ -9,6 +9,9 @@
 #include "base/include/value/array.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
+#include "core/event/custom_event.h"
+#include "core/event/event_dispatcher.h"
+#include "core/event/touch_event.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
 #include "core/renderer/dom/vdom/radon/radon_node.h"
@@ -153,6 +156,23 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
                                 << " ;multiFinger:" << info.is_multi_finger);
   if (tasm == nullptr || tasm->page_proxy() == nullptr) {
     LOGE("HandleTouchEvent error: tasm or page is null.");
+    return;
+  }
+
+  if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+    if (info.is_multi_finger) {
+      for (auto events : *info.params.Table()) {
+        int tag = std::stoi(events.first.str());
+        auto target = node_manager_->Get(tag);
+        event::TouchEvent event(name, info.params, info.timestamp);
+        event::EventDispatcher::DispatchEvent(*target, event);
+      }
+    } else {
+      auto target = node_manager_->Get(info.tag);
+      event::TouchEvent event(name, info.x, info.y, info.page_x, info.page_y,
+                              info.client_x, info.client_y, info.timestamp);
+      event::EventDispatcher::DispatchEvent(*target, event);
+    }
     return;
   }
 
@@ -322,6 +342,13 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
 
   if (tasm == nullptr || tasm->page_proxy() == nullptr) {
     LOGE("HandleCustomEvent error: tasm or page is null.");
+    return;
+  }
+
+  if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+    auto target = node_manager_->Get(tag);
+    event::CustomEvent event(name, params, pname);
+    event::EventDispatcher::DispatchEvent(*target, event);
     return;
   }
 

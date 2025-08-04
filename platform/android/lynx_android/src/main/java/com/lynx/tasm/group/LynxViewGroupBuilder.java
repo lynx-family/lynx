@@ -4,6 +4,7 @@
 package com.lynx.tasm.group;
 
 import androidx.annotation.NonNull;
+import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 
@@ -16,6 +17,8 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
 
   // initial globalProps shared by multiple lynxViews config by the same LynxViewGroup;
   private TemplateData globalProps;
+
+  private ILynxLogicExecutor logicExecutor;
 
   public LynxViewGroupBuilder setUrl(@NonNull String url) {
     this.url = url;
@@ -32,6 +35,11 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
     return this;
   }
 
+  public LynxViewGroupBuilder setLogicExecutor(ILynxLogicExecutor logicExecutor) {
+    this.logicExecutor = logicExecutor;
+    return this;
+  }
+
   public ILynxViewGroup build() {
     LynxViewGroup group = new LynxViewGroup(url, templateBundle, globalProps, behaviorRegistry,
         lynxRuntimeOptions, mContextData, threadStrategy, enableAutoExpose, enableLayoutSafepoint,
@@ -39,7 +47,7 @@ public class LynxViewGroupBuilder extends LynxBaseConfigurator<LynxViewGroupBuil
         enableMultiAsyncThread, enableSyncFlush, enablePendingJsTask, enableAsyncHydration,
         enableAutoConcurrency, enableVSyncAlignedMessageLoop, enableJSRuntime, enableAirStrictMode,
         debuggable, presetWidthMeasureSpec, presetHeightMeasureSpec, fontScale, enablePreUpdateData,
-        uiRendererCreator, embeddedMode, hasPresetMeasureSpec);
+        uiRendererCreator, embeddedMode, hasPresetMeasureSpec, logicExecutor);
     return group;
   }
 }
