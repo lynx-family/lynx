@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxEventReporter.h>
+#import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceEventReporterProtocol.h>
 #import <Lynx/LynxTraceEventDef.h>
@@ -38,6 +39,8 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
 
 /// All external observers of event report.
 @property(nonatomic, strong) NSHashTable<id<LynxEventReportObserverProtocol>> *observerList;
+
+@property(nonatomic, strong) id<LynxServiceEventReporterProtocol> eventReporterService;
 
 @end
 
@@ -337,8 +340,21 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
   props = [propsM copy];
   NSMutableDictionary *extraParams = [[self allExtraParams] objectForKey:instanceIdNum];
   NSDictionary *extraData = [extraParams copy];
+  [self setupEventReporterServiceIfNeeded];
   for (id<LynxEventReportObserverProtocol> observer in self.observerList.copy) {
     [observer onReportEvent:eventName instanceId:instanceId props:props extraData:extraData];
+  }
+}
+
+- (void)setupEventReporterServiceIfNeeded {
+  if (self.eventReporterService) {
+    return;
+  }
+  self.eventReporterService = LynxService(LynxServiceEventReporterProtocol);
+  if (self.eventReporterService) {
+    [self.observerList addObject:self.eventReporterService];
+  } else {
+    LLog(@"eventReporter service not found or event name is null.");
   }
 }
 
@@ -357,10 +373,6 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
     _allGenericInfo = [NSMutableDictionary dictionary];
     _allExtraParams = [NSMutableDictionary dictionary];
     _observerList = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory];
-    id<LynxServiceEventReporterProtocol> service = LynxService(LynxServiceEventReporterProtocol);
-    if (service) {
-      [_observerList addObject:service];
-    }
   }
   return self;
 }

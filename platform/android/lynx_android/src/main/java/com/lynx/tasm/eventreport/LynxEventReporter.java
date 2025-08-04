@@ -58,6 +58,7 @@ public class LynxEventReporter {
   private final CopyOnWriteArrayList<ILynxEventReportObserver> mObserverList =
       new CopyOnWriteArrayList<>();
 
+  private ILynxEventReportObserver mEventReporterService;
   // Generated in the LynxShell, id of template instance.
   // mInstanceId is a value greater than or equal to 0, the initial value is -1.
   public static final int INSTANCE_ID_UNKNOWN = -1;
@@ -307,8 +308,6 @@ public class LynxEventReporter {
       args.put("event_name", eventName);
       TraceEvent.beginSection(TraceEventDef.EVENT_REPORTER_HANDLE_EVENT, args);
     }
-    ILynxEventReporterService eventReporterService =
-        LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
     if (eventName == null) {
       LLog.e(TAG, "event name is null.");
       TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_HANDLE_EVENT);
@@ -328,10 +327,23 @@ public class LynxEventReporter {
     if (extraParams != null) {
       unmodifiableExtraData = Collections.unmodifiableMap(extraParams);
     }
+    setupEventReporterServiceIfNeeded();
     for (ILynxEventReportObserver observer : mObserverList) {
       observer.onReportEvent(eventName, instanceId, unmodifiableProps, unmodifiableExtraData);
     }
     TraceEvent.endSection(TraceEventDef.EVENT_REPORTER_HANDLE_EVENT);
+  }
+
+  private void setupEventReporterServiceIfNeeded() {
+    if (mEventReporterService != null) {
+      return;
+    }
+    mEventReporterService = LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
+    if (mEventReporterService == null) {
+      LLog.e(TAG, "eventReporter service not found or event name is null.");
+    } else {
+      addObserverInternal(mEventReporterService);
+    }
   }
 
   private static HashMap<String, Object> getGenericInfoInternal(Integer instanceId) {
@@ -374,13 +386,6 @@ public class LynxEventReporter {
   private LynxEventReporter() {
     mAllGenericInfos = new HashMap<>();
     mAllExtraParams = new HashMap<>();
-    ILynxEventReporterService eventReporterService =
-        LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
-    if (eventReporterService == null) {
-      LLog.e(TAG, "eventReporter service not found or event name is null.");
-    } else {
-      addObserverInternal(eventReporterService);
-    }
   }
 
   /**
