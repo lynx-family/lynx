@@ -227,7 +227,7 @@ deps = {
     'third_party/perfetto': {
         'type': 'git',
         'url': 'https://github.com/lynx-family/lynx-trace.git',
-        'commit': '6842e266c2625fa8301220bb0267143e09c155af',
+        'commit': '5da192345b72fd51fe06adc88d810a91f54df212',
         "patches": [
               os.path.join(root_dir, 'patches', 'perfetto', '*.patch')
          ],
