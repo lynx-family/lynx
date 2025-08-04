@@ -513,9 +513,6 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: change permission
-        run: |
-          sudo chmod 777 /
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
 

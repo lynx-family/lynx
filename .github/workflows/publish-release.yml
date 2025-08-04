@@ -81,7 +81,7 @@ jobs:
   harmony-explorer-build:
     runs-on: lynx-custom-container
     container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:601a0169922d3929a2f77cb0ceda89a3c76b168e1a95e2d419465b295ed2a1d6
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
       credentials:
         username: lynx-family
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -95,9 +95,6 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           path: lynx
-      - name: change permission
-        run: |
-          sudo chmod 777 /
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
       - name: push explorer to release
@@ -216,15 +213,10 @@ jobs:
       - name: Get latest tag
         id: get-latest-tag
         uses: ./lynx/.github/actions/get-latest-tag
-      - name: Set Access Permission
-        run: |
-          sudo chmod 777 /
-      - name: Python Setup
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-key-prefix: 'hab-container'
       - name: Generate Change Log
         run: |
           cd $GITHUB_WORKSPACE/lynx

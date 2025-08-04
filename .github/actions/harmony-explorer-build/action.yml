@@ -5,12 +5,10 @@ description: build harmony explorer hap
 runs:
   using: composite
   steps:
-    - name: Python Setup
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.13'
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
+      with:
+        cache-key-prefix: 'hab-container'
     - name: Build Explorer App
       shell: bash
       working-directory: lynx

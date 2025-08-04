@@ -15,6 +15,13 @@ inputs:
     description: habitat target
     default: ''
     required: false
+  # actions/cache stores files with relative directory, which causes inconsistency between self-hosted runner and
+  # container runner. Therefore, add this temporary option to modify cache key prefix as a workaround. Delete this when
+  # we are able to adjust the container runner's directory structure to the same as self-hosted runner.
+  cache-key-prefix:
+    description: cache key prefix for cache action
+    default: 'hab'
+    required: false
 
 runs:
   using: composite
@@ -24,9 +31,9 @@ runs:
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: ~/.habitat_cache
-        key: hab-${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
+        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
         restore-keys: |
-          hab-${{ runner.os }}-
+          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
 
     - name: setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
