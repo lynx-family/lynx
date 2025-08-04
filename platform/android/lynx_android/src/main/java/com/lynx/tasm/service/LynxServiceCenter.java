@@ -46,6 +46,11 @@ public class LynxServiceCenter extends LynxLazyInitializer {
     if (BuildConfig.enable_lite) {
       return true;
     }
+    if (mManualRegister.get()) {
+      // if manual register called, we do not need to use ServiceLoader to load lynxService.
+      // TODO(nihao.royal): replace with AutoLink if ready.
+      return true;
+    }
     try {
       // TODO(zhoupeng.z): optimize the service registration by QuickServiceLoader
       TraceEvent.beginSection(TraceEventDef.LYNX_SERVICE_CENTER_INIT);
