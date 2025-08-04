@@ -722,7 +722,8 @@ void UIBase::ApplyOverflowClip() {
     // overflow changed to visible.
     NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
   } else if ((overflow_.overflow_x || overflow_.overflow_y) &&
-             (dirty_flags_ & kFlagOverflowChanged) != 0) {
+             ((dirty_flags_ & kFlagOverflowChanged) != 0 ||
+              (dirty_flags_ & kFlagFrameSizeChanged) != 0)) {
     need_clip_ = true;
     float screen_size[2] = {0};
     context_->ScreenSize(screen_size);
