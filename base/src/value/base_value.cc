@@ -809,11 +809,10 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         lepus_map->reserve(src_tbl->size());
-        auto it = src_tbl->begin();
-        for (; it != src_tbl->end(); it++) {
-          Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                Value::Clone(it->second));
-        }
+        src_tbl->for_each([&](const auto& key, const auto& value) {
+          Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key,
+                                                Value::Clone(value));
+        });
       }
       return Value(std::move(lepus_map));
     }
@@ -870,16 +869,14 @@ Value Value::ShallowCopy(const Value& src, bool clone_as_jsvalue) {
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         lepus_map->reserve(src_tbl->size());
-        auto it = src_tbl->begin();
-        for (; it != src_tbl->end(); it++) {
-          if (it->second.MarkConst()) {
-            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                  it->second);
+        src_tbl->for_each([&](const auto& key, auto& value) {
+          if (value.MarkConst()) {
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key, value);
           } else {
-            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                  Value::Clone(it->second));
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key,
+                                                  Value::Clone(value));
           }
-        }
+        });
       }
       return Value(std::move(lepus_map));
     }

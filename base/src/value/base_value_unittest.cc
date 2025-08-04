@@ -5,6 +5,7 @@
 #include "base/include/value/base_value.h"
 
 #include <functional>
+#include <unordered_set>
 
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
@@ -325,6 +326,162 @@ TEST_F(BaseValueTest, BaseValueCloneValue) {
   ASSERT_TRUE(ret3.IsEqual(v1));
   auto ret4 = lepus::Value::ShallowCopy(v1, false);
   ASSERT_TRUE(ret4.IsEqual(v1));
+}
+
+TEST_F(BaseValueTest, Dictionary) {
+  auto dict = lepus::Dictionary::Create();
+  ASSERT_TRUE(dict->using_small_map());
+  ASSERT_TRUE(dict->empty());
+  ASSERT_TRUE(dict->size() == 0);
+
+  std::unordered_set<std::string> keys;
+  for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+    dict->SetValue(String(std::to_string(i)), std::to_string(i));
+    keys.insert(std::to_string(i));
+  }
+  ASSERT_TRUE(dict->size() == lepus::Dictionary::kSmallMapMaximumSize);
+  ASSERT_TRUE(dict->using_small_map());
+
+  for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+    auto key = String(std::to_string(i));
+    ASSERT_TRUE(dict->Contains(key));
+    auto it = dict->find(key);
+    ASSERT_TRUE(it != dict->end());
+    ASSERT_TRUE(it->first.str() == std::to_string(i));
+    ASSERT_TRUE(it->second.String().str() == std::to_string(i));
+  }
+  for (int i = 1000; i < 1020; i++) {
+    auto key = String(std::to_string(i));
+    ASSERT_FALSE(dict->Contains(key));
+    auto it = dict->find(key);
+    ASSERT_TRUE(it == dict->end());
+  }
+
+  {
+    int count = 0;
+    auto keys_checker = keys;
+    ASSERT_TRUE(keys_checker.size() == lepus::Dictionary::kSmallMapMaximumSize);
+    for (const auto& p : *dict) {
+      count++;
+      ASSERT_TRUE(p.first.str() == p.second.String().str());
+      keys_checker.erase(p.first.str());
+    }
+    ASSERT_TRUE(count == lepus::Dictionary::kSmallMapMaximumSize);
+    ASSERT_TRUE(keys_checker.empty());
+  }
+
+  constexpr size_t ExtraCount = 50;
+
+  for (int i = (int)lepus::Dictionary::kSmallMapMaximumSize;
+       i < (int)(lepus::Dictionary::kSmallMapMaximumSize + ExtraCount); i++) {
+    dict->SetValue(String(std::to_string(i)), std::to_string(i));
+    keys.insert(std::to_string(i));
+  }
+  ASSERT_TRUE(dict->size() ==
+              lepus::Dictionary::kSmallMapMaximumSize + ExtraCount);
+  ASSERT_FALSE(dict->using_small_map());
+
+  for (int i = 0;
+       i < (int)(lepus::Dictionary::kSmallMapMaximumSize + ExtraCount); i++) {
+    auto key = String(std::to_string(i));
+    ASSERT_TRUE(dict->Contains(key));
+    auto it = dict->find(key);
+    ASSERT_TRUE(it != dict->end());
+    ASSERT_TRUE(it->first.str() == std::to_string(i));
+    ASSERT_TRUE(it->second.String().str() == std::to_string(i));
+  }
+  for (int i = 1000; i < 1020; i++) {
+    auto key = String(std::to_string(i));
+    ASSERT_FALSE(dict->Contains(key));
+    auto it = dict->find(key);
+    ASSERT_TRUE(it == dict->end());
+  }
+
+  {
+    int count = 0;
+    auto keys_checker = keys;
+    ASSERT_TRUE(keys_checker.size() ==
+                lepus::Dictionary::kSmallMapMaximumSize + ExtraCount);
+    for (const auto& p : *dict) {
+      count++;
+      ASSERT_TRUE(p.first.str() == p.second.String().str());
+      keys_checker.erase(p.first.str());
+    }
+    ASSERT_TRUE(count == lepus::Dictionary::kSmallMapMaximumSize + ExtraCount);
+    ASSERT_TRUE(keys_checker.empty());
+  }
+
+  auto dict2 = lepus::Dictionary::Create();
+  for (int i = 0;
+       i < (int)(lepus::Dictionary::kSmallMapMaximumSize + ExtraCount); i++) {
+    if (i % 2 == 0) {
+      ASSERT_TRUE(dict->EraseKey(String(std::to_string(i))) == 1);
+    } else {
+      dict2->SetValue(String(std::to_string(i)), std::to_string(i));
+    }
+  }
+  ASSERT_TRUE(*dict == *dict2);
+
+  auto dict3 = lepus::Dictionary::Create();
+  auto dict4 = lepus::Dictionary::Create();
+  auto dict5 = lepus::Dictionary::Create();
+  for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+    dict3->SetValue(String(std::to_string(i)), std::to_string(i));
+  }
+  for (int i = (int)(lepus::Dictionary::kSmallMapMaximumSize - 1); i >= 0;
+       i--) {
+    dict4->SetValue(String(std::to_string(i)), std::to_string(i));
+    dict5->SetValue(String(std::to_string(i)), std::to_string(i));
+  }
+  ASSERT_TRUE(dict3->using_small_map());
+  ASSERT_TRUE(dict4->using_small_map());
+  ASSERT_TRUE(dict5->using_small_map());
+  dict5->SetValue(
+      String(std::to_string(lepus::Dictionary::kSmallMapMaximumSize)),
+      std::to_string(lepus::Dictionary::kSmallMapMaximumSize));
+  ASSERT_FALSE(dict5->using_small_map());  // dict5 transferred
+  ASSERT_TRUE(*dict3 == *dict4);
+  ASSERT_FALSE(*dict3 == *dict5);
+  dict5->EraseKey(
+      String(std::to_string(lepus::Dictionary::kSmallMapMaximumSize)));
+  ASSERT_TRUE(*dict3 == *dict5);
+
+  // Overwrite values
+  auto dict6 = lepus::Dictionary::Create();
+  auto dict7 = lepus::Dictionary::Create();
+  for (int i = 0; i < (int)(lepus::Dictionary::kSmallMapMaximumSize - 1); i++) {
+    // Use `lepus::Dictionary::kSmallMapMaximumSize - 1` so that later emplace
+    // on existing keys will not trigger transfer.
+    dict6->SetValue(String(std::to_string(i)), std::to_string(i));
+    dict7->SetValue(String(std::to_string(i)), (i % 2 == 0)
+                                                   ? std::to_string(i) + "_even"
+                                                   : std::to_string(i));
+  }
+  ASSERT_TRUE(dict6->using_small_map());
+  for (int i = 0; i < (int)(lepus::Dictionary::kSmallMapMaximumSize - 1); i++) {
+    if (i % 2 == 0) {
+      dict6->SetValue(String(std::to_string(i)), std::to_string(i) + "_even");
+    }
+  }
+  ASSERT_TRUE(dict6->using_small_map());
+  ASSERT_TRUE(*dict6 == *dict7);
+
+  // SetValue using Value instance of self, no change made to dictionary.
+  for (int i = 0; i < (int)(lepus::Dictionary::kSmallMapMaximumSize - 1); i++) {
+    auto key = String(std::to_string(i));
+    const auto& value = *(dict6->GetValue(key));
+    dict6->SetValue(key, value);
+  }
+  ASSERT_TRUE(dict6->using_small_map());
+  ASSERT_TRUE(*dict6 == *dict7);
+
+  auto dict8 = lepus::Dictionary::Create(
+      {{"a", lepus::Value("1")}, {"b", lepus::Value("2")}});
+  ASSERT_TRUE(dict8->using_small_map());
+  ASSERT_TRUE(dict8->size() == 2);
+  ASSERT_TRUE(dict8->Contains("a"));
+  ASSERT_TRUE(dict8->Contains("b"));
+  ASSERT_FALSE(dict8->Contains("c"));
 }
 
 }  // namespace base

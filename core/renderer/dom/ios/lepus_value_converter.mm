@@ -88,13 +88,13 @@ static NSArray *convertLepusArrayToNSArray(const lepus_value &value) {
 static NSDictionary *convertLepusTableToNSDictionary(const lepus_value &value) {
   auto table = value.Table();
   NSMutableDictionary *nsDict = [[NSMutableDictionary alloc] initWithCapacity:table->size()];
-  for (auto iter = table->begin(); iter != table->end(); iter++) {
-    NSString *key = convertCStringToNSString(iter->first.c_str());
-    id nsValue = convertLepusValueToNSObject(iter->second);
+  table->for_each([&](const auto &k, auto &v) {
+    NSString *key = convertCStringToNSString(k.c_str());
+    id nsValue = convertLepusValueToNSObject(v);
     if (nsValue) {
       [nsDict setValue:nsValue forKey:key];
     }
-  }
+  });
   return nsDict;
 }
 
