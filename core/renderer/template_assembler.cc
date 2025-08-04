@@ -2742,13 +2742,17 @@ void TemplateAssembler::ExecuteDataProcessor(TemplateData& input) {
 void TemplateAssembler::OnJSPrepared(
     const std::string& url,
     const std::shared_ptr<PipelineOptions>& pipeline_options) {
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_ON_JS_PREPARED,
-              "url", url);
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
-  delegate_.OnJSSourcePrepared(card->CreateTasmRuntimeBundle(),
-                               lepus::Value::Clone(global_props_),
-                               card->GetName(), GetPageDSL(),
-                               GetBundleModuleMode(), url, pipeline_options);
+  delegate_.OnJSSourcePrepared(
+      card->CreateTasmRuntimeBundle(), lepus::Value::Clone(global_props_),
+      card->GetName(), GetPageDSL(), GetBundleModuleMode(), url,
+      pipeline_options, trace_flow_id);
 }
 
 bool TemplateAssembler::InnerTranslateResourceForTheme(

@@ -217,7 +217,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
         const std::string& page_name, tasm::PackageInstanceDSL dsl,
         tasm::PackageInstanceBundleModuleMode bundle_module_mode,
         const std::string& url,
-        const std::shared_ptr<PipelineOptions>& pipeline_options) = 0;
+        const std::shared_ptr<PipelineOptions>& pipeline_options,
+        uint64_t trace_flow_id) = 0;
     virtual void OnComponentDecoded(tasm::TasmRuntimeBundle bundle) = 0;
     virtual void OnCardConfigDataChanged(const lepus::Value& data) = 0;
     virtual void OnRuntimeGC(

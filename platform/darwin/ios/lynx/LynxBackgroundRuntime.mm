@@ -9,6 +9,8 @@
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxService.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxViewClient.h>
 #import "JSModule+Internal.h"
 #import "LynxConfig+Internal.h"
@@ -310,11 +312,18 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   [_devTool attachDebugBridge:url];
 
   _lastScriptUrl = url;
-  _runtime_standalone_bundle.runtime_actor_->Act(
-      [url = std::string([url UTF8String]),
-       sources = std::string([sources UTF8String])](auto& runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(sources));
-      });
+
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", std::string([url UTF8String]));
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  _runtime_standalone_bundle.runtime_actor_->Act([url = std::string([url UTF8String]),
+                                                  sources = std::string([sources UTF8String]),
+                                                  trace_flow_id](auto& runtime) mutable {
+    runtime->EvaluateScriptStandalone(std::move(url), std::move(sources), trace_flow_id);
+  });
 }
 
 - (void)sendGlobalEvent:(nonnull NSString*)name withParams:(nullable NSArray*)params {

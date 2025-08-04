@@ -92,7 +92,7 @@ class App : public std::enable_shared_from_this<App> {
   void loadApp(tasm::TasmRuntimeBundle bundle, const lepus::Value& global_props,
                tasm::PackageInstanceDSL dsl,
                tasm::PackageInstanceBundleModuleMode bundle_module_mode,
-               const std::string& url);
+               const std::string& url, uint64_t trace_flow_id);
 
   void QueryComponent(const std::string& url, ApiCallBack callback,
                       const std::vector<std::string>& ids);

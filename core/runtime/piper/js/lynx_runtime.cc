@@ -641,14 +641,15 @@ void LynxRuntime::OnJSSourcePrepared(
     const std::string& page_name, tasm::PackageInstanceDSL dsl,
     tasm::PackageInstanceBundleModuleMode bundle_module_mode,
     const std::string& url,
-    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
+    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+    uint64_t trace_flow_id) {
   init_global_props_ = global_props;
   if (state_ != State::kJsCoreLoaded && state_ != State::kNotStarted &&
       state_ != State::kSsrRuntimeReady) {
     return;
   }
   auto task = [this, bundle = std::move(bundle), dsl, bundle_module_mode, url,
-               pipeline_options]() mutable {
+               pipeline_options, trace_flow_id]() mutable {
     tasm::timing::LongTaskMonitor::Scope long_task_scope(
         page_options_, tasm::timing::kLoadJSTask, url);
     tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get(),
@@ -689,7 +690,7 @@ void LynxRuntime::OnJSSourcePrepared(
 #endif
     }
     app_->loadApp(std::move(bundle), init_global_props_, dsl,
-                  bundle_module_mode, url);
+                  bundle_module_mode, url, trace_flow_id);
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundEnd);
 
     UpdateState(State::kRuntimeReady);
@@ -840,8 +841,8 @@ void LynxRuntime::OnScriptLoaded(const std::string& url, std::string script,
   });
 }
 
-void LynxRuntime::EvaluateScriptStandalone(std::string url,
-                                           std::string script) {
+void LynxRuntime::EvaluateScriptStandalone(std::string url, std::string script,
+                                           uint64_t trace_flow_id) {
   LOGI("EvaluateScriptStandalone, url: " << url);
   if (state_ != State::kJsCoreLoaded) {
     delegate_->OnErrorOccurred(base::LynxError(
@@ -863,7 +864,7 @@ void LynxRuntime::EvaluateScriptStandalone(std::string url,
   app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_,
                 tasm::PackageInstanceDSL::STANDALONE,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
-                url);
+                url, trace_flow_id);
   delegate_->OnEvaluateJavaScriptEnd(url);
 }
 

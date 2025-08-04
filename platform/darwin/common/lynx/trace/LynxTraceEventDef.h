@@ -188,6 +188,8 @@ static const char* const LYNX_ENGINE_POOL_REGISTER_ENGINE = "LynxEnginePool::reg
 static const char* const LYNX_ENGINE_POOL_POLL_ENGINE = "LynxEnginePool::pollEngineWithRender";
 
 static const char* const UI_IMAGE_REQUEST_IMAGE = "LynxUIImage::requestImage";
+static const char* const EVALUATE_SCRIPT_STANDALONE = "EvaluateScriptStandalone";
+
 #endif
 
 NS_ASSUME_NONNULL_END

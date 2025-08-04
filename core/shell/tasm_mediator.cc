@@ -310,15 +310,17 @@ void TasmMediator::OnJSSourcePrepared(
     const std::string& page_name, tasm::PackageInstanceDSL dsl,
     tasm::PackageInstanceBundleModuleMode bundle_module_mode,
     const std::string& url,
-    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
+    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+    uint64_t trace_flow_id) {
   if (!runtime_actor_) {
     return;
   }
   runtime_actor_->ActAsync([bundle = std::move(bundle), global_props, page_name,
-                            dsl, bundle_module_mode, url,
-                            pipeline_options](auto& runtime) mutable {
+                            dsl, bundle_module_mode, url, pipeline_options,
+                            trace_flow_id](auto& runtime) mutable {
     runtime->OnJSSourcePrepared(std::move(bundle), global_props, page_name, dsl,
-                                bundle_module_mode, url, pipeline_options);
+                                bundle_module_mode, url, pipeline_options,
+                                trace_flow_id);
   });
 }
 

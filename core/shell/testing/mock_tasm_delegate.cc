@@ -272,7 +272,8 @@ void MockTasmDelegate::OnJSSourcePrepared(
     const std::string& page_name, tasm::PackageInstanceDSL dsl,
     tasm::PackageInstanceBundleModuleMode bundle_module_mode,
     const std::string& url,
-    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
+    const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+    uint64_t trace_flow_id) {
   ss_ << "OnCardDecoded " << bundle.name << std::endl;
   ss_ << "OnJSSourcePrepared " << page_name << static_cast<int>(dsl) << " "
       << static_cast<int>(bundle_module_mode) << "\n";

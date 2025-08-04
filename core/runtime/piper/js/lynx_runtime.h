@@ -104,7 +104,8 @@ class LynxRuntime final {
       const std::string& page_name, tasm::PackageInstanceDSL dsl,
       tasm::PackageInstanceBundleModuleMode bundle_module_mode,
       const std::string& url,
-      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
+      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+      uint64_t trace_flow_id);
   void OnGlobalPropsUpdated(const lepus::Value& props);
 
   void call(base::closure func);
@@ -113,7 +114,8 @@ class LynxRuntime final {
       const std::shared_ptr<tasm::PipelineOptions>& pipeline_options);
   void EvaluateScript(const std::string& url, std::string script,
                       piper::ApiCallBack callback);
-  void EvaluateScriptStandalone(std::string url, std::string script);
+  void EvaluateScriptStandalone(std::string url, std::string script,
+                                uint64_t trace_flow_id);
 
   void OnScriptLoaded(const std::string& url, std::string script,
                       std::string err_msg, piper::ApiCallBack callback);

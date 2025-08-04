@@ -69,7 +69,8 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
       const std::string& page_name, tasm::PackageInstanceDSL dsl,
       tasm::PackageInstanceBundleModuleMode bundle_module_mode,
       const std::string& url,
-      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) override;
+      const std::shared_ptr<tasm::PipelineOptions>& pipeline_options,
+      uint64_t trace_flow_id) override;
   void OnGlobalPropsUpdated(const lepus::Value& props) override;
   virtual void OnEventCapture(long target_id, bool is_catch,
                               int64_t event_id) override;

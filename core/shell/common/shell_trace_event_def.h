@@ -161,6 +161,8 @@ inline constexpr const char* const
         "NativeFacadeDarwin::OnSSRHydrateFinished";
 inline constexpr const char* const NATIVE_FACADE_DARWIN_ON_RUNTIME_READY =
     "NativeFacadeDarwin::OnRuntimeReady";
+inline constexpr const char* const EVALUATE_SCRIPT_STANDALONE =
+    "EvaluateScriptStandalone";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_SHELL_COMMON_SHELL_TRACE_EVENT_DEF_H_

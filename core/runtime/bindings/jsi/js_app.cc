@@ -1960,8 +1960,12 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
                   const lepus::Value& global_props,
                   tasm::PackageInstanceDSL dsl,
                   tasm::PackageInstanceBundleModuleMode bundle_module_mode,
-                  const std::string& url) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, LOAD_JS_APP, "url", url);
+                  const std::string& url, uint64_t trace_flow_id) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, LOAD_JS_APP,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_terminating_flow_ids(trace_flow_id);
+              });
   card_bundle_ = std::move(bundle);
   init_global_props_ = global_props;
   app_dsl_ = dsl;

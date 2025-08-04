@@ -477,7 +477,7 @@ TEST_P(AppTest, LoadAppTest) {
           lepus::Value(),
       },
       lepus::Value(), tasm::PackageInstanceDSL::TT,
-      tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url");
+      tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
   JSValueCircularArray pre_obj_{};
   // check equal
@@ -890,9 +890,9 @@ TEST_P(AppTest, GetCustomSectionSyncTest) {
       {base::String("s"), lepus::Value{kExceptRes1}},
   })};
 
-  app->loadApp(std::move(card_bundle), lepus::Value(),
-               tasm::PackageInstanceDSL::TT,
-               tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url");
+  app->loadApp(
+      std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
+      tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
   constexpr char kExceptRes2[] = "Hello s1";
   {
@@ -1325,9 +1325,9 @@ TEST_P(AppTest, LoadCustomSectionScriptTest) {
       {base::String("empty"), lepus::Value{""}},
   })};
 
-  app->loadApp(std::move(card_bundle), lepus::Value(),
-               tasm::PackageInstanceDSL::TT,
-               tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url");
+  app->loadApp(
+      std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
+      tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
   {
     tasm::TasmRuntimeBundle bundle;
@@ -1464,9 +1464,9 @@ TEST_P(AppTest, FetchBundleTest) {
   EXPECT_TRUE(app);
   // call loadApp
   tasm::TasmRuntimeBundle card_bundle;
-  app->loadApp(std::move(card_bundle), lepus::Value(),
-               tasm::PackageInstanceDSL::TT,
-               tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url");
+  app->loadApp(
+      std::move(card_bundle), lepus::Value(), tasm::PackageInstanceDSL::TT,
+      tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE, "url", 0);
 
   auto lynx_proxy = std::make_shared<piper::LynxProxy>(app);
   auto fetch_bundle = [this, &rt = this->rt, &lynx_proxy]() {

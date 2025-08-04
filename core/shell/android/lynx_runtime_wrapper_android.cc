@@ -10,12 +10,14 @@
 #include "base/include/platform/android/jni_convert_helper.h"
 #include "base/include/platform/android/jni_utils.h"
 #include "base/include/value/base_value.h"
+#include "base/trace/native/trace_event.h"
 #include "core/base/android/lynx_error_android.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/renderer/ui_wrapper/common/android/prop_bundle_android.h"
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
 #include "core/shell/android/platform_call_back_android.h"
+#include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/module_delegate_impl.h"
 #include "platform/android/lynx_android/src/main/jni/gen/LynxBackgroundRuntime_jni.h"
@@ -200,10 +202,17 @@ namespace shell {
 
 void LynxRuntimeWrapperAndroid::EvaluateScript(std::string url,
                                                std::string script) {
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url),
-       script = std::move(script)](auto &runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script));
+      [url = std::move(url), script = std::move(script),
+       trace_flow_id](auto &runtime) mutable {
+        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
+                                          trace_flow_id);
       });
 }
 
@@ -227,10 +236,17 @@ void LynxRuntimeWrapperAndroid::EvaluateScript(
   const auto length = buffer->size();
   const auto *data = reinterpret_cast<const char *>(buffer->data());
 
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, EVALUATE_SCRIPT_STANDALONE,
+              [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   runtime_standalone_bundle_.runtime_actor_->Act(
-      [url = std::move(url),
-       script = std::string(data, length)](auto &runtime) mutable {
-        runtime->EvaluateScriptStandalone(std::move(url), std::move(script));
+      [url = std::move(url), script = std::string(data, length),
+       trace_flow_id](auto &runtime) mutable {
+        runtime->EvaluateScriptStandalone(std::move(url), std::move(script),
+                                          trace_flow_id);
       });
 }
 
