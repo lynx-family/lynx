@@ -500,7 +500,7 @@ jobs:
           ./gradlew :app:assembleDebug
           popd
 
-  harmony-explorer-build:
+  harmony-explorer-build-1:
     runs-on: lynx-custom-container
     container:
       image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:601a0169922d3929a2f77cb0ceda89a3c76b168e1a95e2d419465b295ed2a1d6
@@ -518,6 +518,32 @@ jobs:
           path: lynx
       - name: change permission
         run: |
+          pwd
+          sleep infinity
+          sudo chmod 777 /
+      - name: Build Explorer App
+        uses: ./lynx/.github/actions/harmony-explorer-build
+
+  harmony-explorer-build-2:
+    runs-on: lynx-custom-container
+    container:
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:601a0169922d3929a2f77cb0ceda89a3c76b168e1a95e2d419465b295ed2a1d6
+      credentials:
+        username: lynx-family
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        # working-directory: ${{ github.workspace }}
+        shell: bash
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: change permission
+        run: |
+          pwd
+          sleep infinity
           sudo chmod 777 /
       - name: Build Explorer App
         uses: ./lynx/.github/actions/harmony-explorer-build
