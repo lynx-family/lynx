@@ -583,12 +583,7 @@ LynxContext::GetFluencyTraceHelper() {
   return fluency_trace_helper_;
 }
 
-napi_env LynxContext::GetNapiEnv() const {
-  if (embedder_) {
-    return embedder_->GetNapiEnv();
-  }
-  return nullptr;
-}
+napi_env LynxContext::GetNapiEnv() const { return env_; }
 
 }  // namespace harmony
 }  // namespace tasm

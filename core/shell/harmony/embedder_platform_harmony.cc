@@ -72,8 +72,8 @@ napi_value EmbedderPlatformHarmony::New(napi_env env, napi_callback_info info) {
   tasm::harmony::ShadowNodeOwner* shadow_node_owner;
   napi_unwrap(env, args[2], reinterpret_cast<void**>(&shadow_node_owner));
 
-  auto context =
-      std::make_shared<tasm::harmony::LynxContext>(shadow_node_owner, ui_owner);
+  auto context = std::make_shared<tasm::harmony::LynxContext>(shadow_node_owner,
+                                                              ui_owner, env);
   auto module_factory = std::make_unique<harmony::ModuleFactoryCAPI>(context);
 
   auto ui_delegate = std::make_unique<tasm::harmony::UIDelegateHarmony>(
@@ -158,8 +158,6 @@ float EmbedderPlatformHarmony::DevicePixelRatio() const {
 int32_t EmbedderPlatformHarmony::GetInstanceId() const {
   return ui_delegate_->GetInstanceId();
 }
-
-napi_env EmbedderPlatformHarmony::GetNapiEnv() const { return env_; }
 
 void EmbedderPlatformHarmony::TakeSnapshot(
     size_t max_width, size_t max_height, int quality,

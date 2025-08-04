@@ -55,8 +55,8 @@ class GestureArenaManager;
 
 class LynxContext {
  public:
-  LynxContext(ShadowNodeOwner* node_owner, UIOwner* ui_owner)
-      : node_owner_{node_owner}, ui_owner_{ui_owner} {}
+  LynxContext(ShadowNodeOwner* node_owner, UIOwner* ui_owner, napi_env env)
+      : node_owner_{node_owner}, ui_owner_{ui_owner}, env_(env) {}
 
   void SetContextDelegate(
       const std::shared_ptr<PubLynxContextDelegate>& delegate) {
@@ -293,6 +293,7 @@ class LynxContext {
 
   std::shared_ptr<PubLynxContextDelegate> delegate_{nullptr};
   pub::LynxExtensionDelegate* extension_delegate_{nullptr};
+  napi_env env_;
 };
 
 }  // namespace harmony

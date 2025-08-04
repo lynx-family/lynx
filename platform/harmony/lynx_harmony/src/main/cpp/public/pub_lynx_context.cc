@@ -18,8 +18,8 @@ PubLynxContext::PubLynxContext(
     PubUIOwner* ui_owner, PubShadowNodeOwner* node_owner,
     const std::shared_ptr<PubLynxContextDelegate>& delegate,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader) {
-  context_ =
-      std::make_shared<LynxContext>(node_owner->NodeOwner(), ui_owner->Owner());
+  context_ = std::make_shared<LynxContext>(node_owner->NodeOwner(),
+                                           ui_owner->Owner(), ui_owner->Env());
   context_->SetContextDelegate(delegate);
   ui_owner->SetContext(this);
   node_owner->SetContext(this);

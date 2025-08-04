@@ -39,6 +39,7 @@ class BASE_EXPORT PubUIOwner {
   void OnLayoutFinish(int32_t component_id, int64_t operation_id) const;
   void AttachPageRoot(napi_env env, napi_value root_content) const;
   UIOwner* Owner() const { return ui_owner_.get(); }
+  napi_env Env() const { return env_; }
   void SetContext(PubLynxContext* context) const;
   void InvokeUIMethod(
       int32_t id, const std::string& method, const pub::Value& args,
@@ -50,6 +51,7 @@ class BASE_EXPORT PubUIOwner {
 
  private:
   std::shared_ptr<UIOwner> ui_owner_;
+  napi_env env_;
 };
 }  // namespace harmony
 }  // namespace tasm

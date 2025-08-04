@@ -22,6 +22,7 @@ PubUIOwner::PubUIOwner(napi_env env, napi_value ui_owner) {
   UIOwner* ptr = nullptr;
   napi_unwrap(env, ui_owner, reinterpret_cast<void**>(&ptr));
   ui_owner_ = std::shared_ptr<UIOwner>(ptr);
+  env_ = env;
 }
 
 void PubUIOwner::CreateUI(int sign, const std::string& tag,

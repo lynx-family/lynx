@@ -48,7 +48,6 @@ class EmbedderPlatformHarmony {
   void ScreenSize(float size[2]) const;
   float DevicePixelRatio() const;
   int32_t GetInstanceId() const;
-  napi_env GetNapiEnv() const;
 
   void TakeSnapshot(size_t max_width, size_t max_height, int quality,
                     const fml::RefPtr<fml::TaskRunner>& screenshot_runner,
