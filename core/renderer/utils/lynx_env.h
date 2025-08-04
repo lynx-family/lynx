@@ -99,6 +99,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_PARALLEL_Z_INDEX_CRASH,
     FIX_INSERT_BEFORE_FIXED_BUG,
     FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
+    // A special env to correct override behavior for 3.3, preventing break
+    FIX_UPDATE_DYNAMIC_STYLE_INCORRECT_OVERRIDE_3_3,
     // FIXME(linxs): remove this config in the next version
     FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
     // Please add new enum values above
@@ -211,6 +213,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
              "fix_font_size_override_direction_change_bug"},
             {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
+            {Key::FIX_UPDATE_DYNAMIC_STYLE_INCORRECT_OVERRIDE_3_3,
+             "fix_update_dynamic_style_incorrect_override_3_3"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -327,6 +331,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixParallelZIndexCrash();
   bool FixInsertBeforeFixedBug();
   bool FixFontSizeOverrideDirectionChangeBug();
+  bool FixUpdateDynamicStyleIncorrectOverride();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

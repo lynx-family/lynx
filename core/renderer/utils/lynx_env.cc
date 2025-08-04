@@ -430,5 +430,10 @@ bool LynxEnv::FixFontSizeOverrideDirectionChangeBug() {
   return GetBoolEnv(Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG, true);
 }
 
+bool LynxEnv::FixUpdateDynamicStyleIncorrectOverride() {
+  return GetBoolEnv(Key::FIX_UPDATE_DYNAMIC_STYLE_INCORRECT_OVERRIDE_3_3,
+                    false);
+}
+
 }  // namespace tasm
 }  // namespace lynx

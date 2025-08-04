@@ -1111,6 +1111,10 @@ class ElementManager : public ElementContextDelegate {
 
   bool FixNegativeZIndexBug() { return fix_negative_z_index_bug_; }
 
+  bool FixUpdateDynamicStyleIncorrectOverride() {
+    return fix_update_dynamic_style_incorrect_behavior_;
+  }
+
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
   inline void SetCSSFragmentParsingOnTASMWorkerMTSRender(bool enable) {
@@ -1223,6 +1227,7 @@ class ElementManager : public ElementContextDelegate {
   bool fix_insert_before_fixed_bug_{true};
   bool fix_font_size_override_direction_change_bug_{true};
   bool fix_negative_z_index_bug_{true};
+  bool fix_update_dynamic_style_incorrect_behavior_{false};
   bool css_fragment_parsing_tasm_worker_thread_{false};
 
   LynxEnvConfig lynx_env_config_;

@@ -185,6 +185,8 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
   fix_negative_z_index_bug_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, true);
+  fix_update_dynamic_style_incorrect_behavior_ =
+      LynxEnv::GetInstance().FixUpdateDynamicStyleIncorrectOverride();
 }
 
 static bool EnableElementStatistic() {
