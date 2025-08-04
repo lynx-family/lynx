@@ -63,6 +63,12 @@ void LynxBasicAnimator::InitializeAnimator() {
   animation_->AddEventListener(basic_animator_event_listener_);
 };
 
+bool LynxBasicAnimator::IsRunning() const {
+  return animation_ &&
+         animation_->play_state() == basic::Animation::PlayState::RUNNING;
+  ;
+}
+
 void LynxBasicAnimator::RegisterEventCallback(
     const BasicAnimatorEventListener::EventCallback &cb,
     Animation::EventType event_type) {

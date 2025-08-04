@@ -18,14 +18,21 @@ class ListOrientationHelper;
 
 class ItemHolder {
  public:
+  class AnimationDelegate {
+   public:
+    virtual ~AnimationDelegate() = default;
+    virtual bool InAnimationProcess() const = 0;
+  };
+
   ItemHolder(int index, const std::string& item_key);
+  virtual ~ItemHolder() = default;
 
   void UpdateLayoutFromElement();
   void UpdateLayoutFromElement(Element* element);
   void UpdateLayoutToPlatform(float content_size, float container_size);
-  void UpdateLayoutToPlatform(float content_size, float container_size,
-                              Element* element);
-  void UpdateLayoutFromManager(float left, float top);
+  virtual void UpdateLayoutToPlatform(float content_size, float container_size,
+                                      Element* element);
+  virtual void UpdateLayoutFromManager(float left, float top);
   bool IsAtStickyPosition(float content_offset, float list_height,
                           float content_size, float sticky_offset, float start,
                           float end) const;
@@ -97,6 +104,10 @@ class ItemHolder {
       }
     }
   };
+
+  virtual void SetAnimationDelegate(ItemHolder::AnimationDelegate* delegate) {}
+  virtual void DoAnimationFrame(float progress) {}
+  virtual void EndAnimation() {}
 
  private:
   float GetRTLLeft(float content_size, float container_size) const;
@@ -173,6 +184,8 @@ class ItemHolder {
   std::array<float, 4> paddings_{};
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
+
+  friend class AnimationItemHolder;
 };
 
 }  // namespace tasm

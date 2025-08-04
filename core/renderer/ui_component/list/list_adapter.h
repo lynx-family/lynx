@@ -26,6 +26,14 @@ class ListContainerImpl;
 
 class ListAdapter : public AdapterHelper::Delegate {
  public:
+  enum class DiffResult : unsigned int {
+    kNone = 0,
+    kMove = 1,
+    kInsert = 1 << 1,
+    kRemove = 1 << 2,
+    kUpdate = 1 << 3,
+  };
+
   ListAdapter(ListContainerImpl* list_container_impl, Element* element);
 
   virtual ~ListAdapter() = default;
@@ -135,9 +143,9 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   virtual Element* GetListItemElement(const ItemHolder* item_holder) = 0;
 
-  bool UpdateDataSource(const lepus::Value& data_source);
+  DiffResult UpdateDataSource(const lepus::Value& data_source);
 
-  bool UpdateFiberDataSource(const lepus::Value& data_source);
+  DiffResult UpdateFiberDataSource(const lepus::Value& data_source);
 
   void UpdateListContainerDataSource(
       fml::RefPtr<lepus::Dictionary>& data_source);
@@ -214,6 +222,30 @@ class ListAdapter : public AdapterHelper::Delegate {
  private:
   std::unique_ptr<AdapterHelper> adapter_helper_;
 };
+
+constexpr inline ListAdapter::DiffResult operator|(ListAdapter::DiffResult a,
+                                                   ListAdapter::DiffResult b) {
+  return static_cast<ListAdapter::DiffResult>(static_cast<unsigned int>(a) |
+                                              static_cast<unsigned int>(b));
+}
+
+constexpr inline ListAdapter::DiffResult operator&(ListAdapter::DiffResult a,
+                                                   ListAdapter::DiffResult b) {
+  return static_cast<ListAdapter::DiffResult>(static_cast<unsigned int>(a) &
+                                              static_cast<unsigned int>(b));
+}
+
+constexpr inline ListAdapter::DiffResult& operator|=(
+    ListAdapter::DiffResult& a, ListAdapter::DiffResult b) {
+  a = a | b;
+  return a;
+}
+
+constexpr inline ListAdapter::DiffResult& operator&=(
+    ListAdapter::DiffResult& a, ListAdapter::DiffResult b) {
+  a = a & b;
+  return a;
+}
 
 }  // namespace tasm
 }  // namespace lynx

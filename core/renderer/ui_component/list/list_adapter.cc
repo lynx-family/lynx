@@ -9,6 +9,7 @@
 #include "base/include/log/logging.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/ui_component/list/animation_item_holder.h"
 #include "core/renderer/ui_component/list/list_container_impl.h"
 #include "core/renderer/utils/value_utils.h"
 
@@ -36,7 +37,8 @@ void ListAdapter::OnErrorOccurred(lynx::base::LynxError error) {
 }
 
 // Update data source for radon diff arch.
-bool ListAdapter::UpdateDataSource(const lepus::Value& data_source) {
+ListAdapter::DiffResult ListAdapter::UpdateDataSource(
+    const lepus::Value& data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_DATA_SOURCE);
   bool has_updated = false;
   if (data_source.IsObject() && adapter_helper_) {
@@ -139,14 +141,32 @@ bool ListAdapter::UpdateDataSource(const lepus::Value& data_source) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  return has_updated;
+  auto result = ListAdapter::DiffResult::kNone;
+  if (has_updated) {
+    if (!adapter_helper_->removals().empty()) {
+      result |= ListAdapter::DiffResult::kRemove;
+    }
+    if (!adapter_helper_->insertions().empty()) {
+      result |= ListAdapter::DiffResult::kInsert;
+    }
+    if (!adapter_helper_->update_from().empty() &&
+        !adapter_helper_->update_to().empty()) {
+      result |= ListAdapter::DiffResult::kUpdate;
+    }
+    if (!adapter_helper_->move_from().empty() &&
+        !adapter_helper_->move_to().empty()) {
+      result |= ListAdapter::DiffResult::kMove;
+    }
+  }
+  return result;
 }
 
 // Update data source for fiber arch.
-bool ListAdapter::UpdateFiberDataSource(const lepus::Value& data) {
+ListAdapter::ListAdapter::DiffResult ListAdapter::UpdateFiberDataSource(
+    const lepus::Value& data) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_FIVER_DATA_SOURCE);
   if (!data.IsTable()) {
-    return false;
+    return ListAdapter::DiffResult::kNone;
   }
   const auto& insert_action =
       data.GetProperty(BASE_STATIC_STRING(list::kFiberInsertAction));
@@ -172,7 +192,26 @@ bool ListAdapter::UpdateFiberDataSource(const lepus::Value& data) {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  return adapter_helper_->HasValidDiff();
+  if (adapter_helper_->HasValidDiff()) {
+    auto result = ListAdapter::DiffResult::kNone;
+    if (!adapter_helper_->removals().empty()) {
+      result |= ListAdapter::DiffResult::kRemove;
+    }
+    if (!adapter_helper_->insertions().empty()) {
+      result |= ListAdapter::DiffResult::kInsert;
+    }
+    if (!adapter_helper_->update_from().empty() &&
+        !adapter_helper_->update_to().empty()) {
+      result |= ListAdapter::DiffResult::kUpdate;
+    }
+    if (!adapter_helper_->move_from().empty() &&
+        !adapter_helper_->move_to().empty()) {
+      result |= ListAdapter::DiffResult::kMove;
+    }
+    return result;
+  } else {
+    return ListAdapter::DiffResult::kNone;
+  }
 }
 
 void ListAdapter::UpdateListContainerDataSource(
@@ -238,8 +277,15 @@ void ListAdapter::UpdateItemHolderToLatest(
         OnItemHolderReInsert(item_holder);
       }
     } else {
-      (*item_holder_map_)[item_key] =
-          std::make_unique<ItemHolder>(new_index, item_key);
+      if (list_container_->UpdateAnimation()) {
+        auto holder =
+            std::make_unique<AnimationItemHolder>(new_index, item_key);
+        holder->SetAnimationDelegate(list_container_);
+        (*item_holder_map_)[item_key] = std::move(holder);
+      } else {
+        (*item_holder_map_)[item_key] =
+            std::make_unique<ItemHolder>(new_index, item_key);
+      }
       item_holder = (*item_holder_map_)[item_key].get();
       OnItemHolderInserted(item_holder);
     }
@@ -271,8 +317,7 @@ void ListAdapter::MarkChildHolderDirty() {
   }
   ItemHolder* child_holder = nullptr;
   for (const auto& cur : adapter_helper_->removals()) {
-    child_holder = GetItemHolderForIndex(cur);
-    if (child_holder) {
+    if ((child_holder = GetItemHolderForIndex(cur))) {
       OnItemHolderRemoved(child_holder);
     }
   }

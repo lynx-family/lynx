@@ -10,8 +10,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/fml/memory/weak_ptr.h"
+#include "core/animation/lynx_basic_animator/basic_animator.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/ui_component/list/item_holder.h"
 #include "core/renderer/ui_component/list/list_adapter.h"
 #include "core/renderer/ui_component/list/list_children_helper.h"
 #include "core/renderer/ui_component/list/list_container.h"
@@ -22,10 +25,14 @@
 namespace lynx {
 namespace tasm {
 
-class ListContainerImpl : public ListContainer::Delegate {
+class ListContainerImpl : public ListContainer::Delegate,
+                          public ItemHolder::AnimationDelegate {
  public:
   ListContainerImpl(Element* element);
-  ~ListContainerImpl() = default;
+  ~ListContainerImpl();
+
+  // ItemHolder::AnimationDelegate
+  bool InAnimationProcess() const override;
 
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override;
@@ -127,15 +134,23 @@ class ListContainerImpl : public ListContainer::Delegate {
 
   list::BatchRenderStrategy GetBatchRenderStrategy() override;
 
+  bool UpdateAnimation() const { return update_animation_; }
+
  protected:
   // Currently, the list container does not copy any member variables and is an
   // empty implementation.
-  ListContainerImpl(const ListContainerImpl& list_container_impl) {}
+  ListContainerImpl(const ListContainerImpl& list_container_impl) = delete;
   void UpdateListLayoutManager(list::LayoutType layout_type);
   void RecycleAllChildren();
   fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
+  // update animation.
+  void InitializeAnimator();
+  void StartAnimation();
+  void DoAnimationFrame(float progress);
+  void EndAnimation();
+
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
   bool enable_dynamic_span_count_{true};
   bool span_count_changed_{false};
@@ -165,6 +180,14 @@ class ListContainerImpl : public ListContainer::Delegate {
   int layout_id_{-1};
   bool should_request_state_restore_{false};
   bool has_valid_diff_{false};
+
+  // list animation.
+  bool update_animation_{false};
+  ListContainer::AnimationType animation_type_{
+      ListContainer::AnimationType::kNone};
+  std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;
+
+  fml::WeakPtrFactory<ListContainerImpl> weak_factory_;
 
   struct ListOption {
     list::BatchRenderStrategy batch_render_strategy{

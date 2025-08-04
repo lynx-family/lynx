@@ -58,6 +58,8 @@ class LynxBasicAnimator : public basic::AnimatorTarget {
     animation_->Play();
   }
 
+  bool IsRunning() const;
+
   void Stop() {
     if (animation_) {
       animation_->Stop();

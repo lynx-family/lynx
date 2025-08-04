@@ -16,6 +16,8 @@ if (disable_list_platform_implementation) {
   component_list_shared_sources += [
     "adapter_helper.cc",
     "adapter_helper.h",
+    "animation_item_holder.cc",
+    "animation_item_holder.h",
     "batch_list_adapter.cc",
     "batch_list_adapter.h",
     "default_list_adapter.cc",

@@ -27,7 +27,8 @@ ListContainerImpl::ListContainerImpl(Element* element)
       list_layout_manager_(std::make_unique<LinearLayoutManager>(this)),
       list_adapter_(std::make_unique<DefaultListAdapter>(this, element)),
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
-      list_event_manager_(std::make_unique<ListEventManager>(this)) {
+      list_event_manager_(std::make_unique<ListEventManager>(this)),
+      weak_factory_(this) {
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           list::Orientation::kVertical);
   list_event_manager_->SetChildrenHelper(list_children_helper_.get());
@@ -41,6 +42,12 @@ ListContainerImpl::ListContainerImpl(Element* element)
       element_manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
   if (base::FloatsEqual(physical_pixels_per_layout_unit_, 0.f)) {
     physical_pixels_per_layout_unit_ = 1.f;
+  }
+}
+
+ListContainerImpl::~ListContainerImpl() {
+  if (animator_ && animator_->IsRunning()) {
+    animator_->Stop();
   }
 }
 
@@ -353,7 +360,14 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
   } else if (key.IsEqual(list::kListPlatformInfo)) {
     // list-platform-info
-    should_mark_layout_dirty = list_adapter_->UpdateDataSource(value);
+    auto status = list_adapter_->UpdateDataSource(value);
+    if (status != ListAdapter::DiffResult::kNone) {
+      should_mark_layout_dirty = true;
+    }
+    if (status ==
+        (ListAdapter::DiffResult::kRemove | ListAdapter::DiffResult::kUpdate)) {
+      animation_type_ = ListContainer::AnimationType::kRemove;
+    }
     has_valid_diff_ = should_mark_layout_dirty;
     need_preload_section_on_next_frame_ = should_mark_layout_dirty;
     if (should_mark_layout_dirty) {
@@ -361,9 +375,17 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     }
     should_set_props = false;
     need_update_item_holders_ = true;
+  } else if (key.IsEqual(list::kUpdateAnimation)) {
+    update_animation_ = value.Bool();
   } else if (key.IsEqual(list::kFiberListDiffInfo)) {
-    // fiber-list-info
-    should_mark_layout_dirty = list_adapter_->UpdateFiberDataSource(value);
+    auto status = list_adapter_->UpdateFiberDataSource(value);
+    if (status != ListAdapter::DiffResult::kNone) {
+      should_mark_layout_dirty = true;
+    }
+    if (status ==
+        (ListAdapter::DiffResult::kRemove | ListAdapter::DiffResult::kUpdate)) {
+      animation_type_ = ListContainer::AnimationType::kRemove;
+    }
     has_valid_diff_ = should_mark_layout_dirty;
     need_preload_section_on_next_frame_ = should_mark_layout_dirty;
     if (should_mark_layout_dirty) {
@@ -466,6 +488,50 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   return should_set_props;
 };
 
+bool ListContainerImpl::InAnimationProcess() const {
+  return animation_type_ != ListContainer::AnimationType::kNone;
+}
+
+void ListContainerImpl::InitializeAnimator() {
+  starlight::AnimationData data;
+  data.duration = 500;
+  data.fill_mode = starlight::AnimationFillModeType::kForwards;
+  starlight::TimingFunctionData timing_function_data;
+  timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
+  data.timing_func = timing_function_data;
+  // basic animator requires a shared_ptr.
+  animator_ =
+      std::make_shared<animation::basic::LynxBasicAnimator>(std::move(data));
+}
+
+void ListContainerImpl::StartAnimation() {
+  InitializeAnimator();
+  animator_->RegisterCustomCallback(
+      [weak_ptr = weak_factory_.GetWeakPtr()](float progress) {
+        if (auto ptr = weak_ptr.get()) {
+          ptr->DoAnimationFrame(progress);
+        }
+      });
+  animator_->RegisterEventCallback(
+      [weak_ptr = weak_factory_.GetWeakPtr()]() {
+        if (auto ptr = weak_ptr.get()) {
+          ptr->EndAnimation();
+        }
+      },
+      animation::basic::Animation::EventType::End);
+  animator_->Start();
+}
+
+void ListContainerImpl::DoAnimationFrame(float progress) {
+  for (auto& it : list_children_helper_->on_screen_children()) {
+    it->DoAnimationFrame(progress);
+  }
+}
+
+void ListContainerImpl::EndAnimation() {
+  animation_type_ = ListContainer::AnimationType::kNone;
+}
+
 void ListContainerImpl::OnLayoutChildren(
     const std::shared_ptr<PipelineOptions>& options) {
   if (list_layout_manager_) {
@@ -481,7 +547,7 @@ void ListContainerImpl::OnLayoutChildren(
     if (intercept_depth_ == 0) {
       // Note: we should reset should_flush_finish_layout_ to
       // options->has_layout to make sure invoke FinishLayoutOperation() to
-      // trigger layoutDidfinished lifecycle of all list's children.
+      // trigger layoutDidFinished lifecycle of all list's children.
       should_flush_finish_layout_ = options->has_layout;
       // Try to enqueue all available items before layout.
       if (recycle_available_item_before_layout_) {
@@ -489,6 +555,9 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
+        if (update_animation_ && InAnimationProcess()) {
+          StartAnimation();
+        }
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
       }
