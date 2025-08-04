@@ -12,7 +12,7 @@
 #import <Lynx/LynxScrollListener.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
 #import <Lynx/LynxUIListProtocol.h>
-#import "LynxImageFetcher.h"
+// #import "LynxFluencyMonitor.h"
 
 NS_ASSUME_NONNULL_BEGIN
 @class LynxRootUI;
@@ -27,6 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxGlobalObserver;
 @class LynxContext;
 @class LynxShadowNode;
+@class LynxFluencyMonitor;
 @protocol LUIErrorHandling;
 
 @interface LynxUIContext : NSObject
@@ -51,6 +52,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) LynxUIIntersectionObserverManager* intersectionManager;
 @property(nonatomic) LynxUIExposure* uiExposure;
 @property(nonatomic, strong, nullable, readonly) NSDictionary* keyframesDict;
+@property(nonatomic, readwrite, nullable) LynxFluencyMonitor* commonFluencyMonitor;
 @property(nonatomic, nullable) NSDictionary* contextDict;
 @property(nonatomic) LynxGlobalObserver* observer;
 
@@ -93,6 +95,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)onPropsChangedByUI:(LynxUI*)ui;
 - (BOOL)isTouchMoving;
 - (NSNumber*)getLynxRuntimeId;
+
+- (void)startFluencyTrace:(NSString*)tag;
+- (void)stopFluencyTrace:(NSString*)tag;
+
 /// Deprecated: use didReceiveResourceError:withSource:type: instead
 - (void)didReceiveResourceError:(NSError*)error;
 

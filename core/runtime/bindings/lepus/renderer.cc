@@ -325,6 +325,7 @@ void Renderer::RegisterBuiltinForRadon(lepus::Context* context) {
                            &AddFallbackToDynamicComponent);
   /* 102 */ lepus::RegisterCFunction(context, kCFuncCreateGestureDetector, &CreateGestureDetector);
   /* 103 */ lepus::RegisterCFunction(context, kCFunctionElementAnimate, &ElementAnimate);
+  /* 104 */ lepus::RegisterCFunction(context, kCFunctionManageFluencyTrace, &ManageFluencyTrace);
   // clang-format on
 }
 

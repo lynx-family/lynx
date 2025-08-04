@@ -878,6 +878,24 @@ RENDERER_FUNCTION_CC(GetTextInfo) {
   return pub::ValueUtils::ConvertValueToLepusValue(*text_info);
 }
 
+RENDERER_FUNCTION_CC(ManageFluencyTrace) {
+  CHECK_ARGC_EQ(ManageFluencyTrace, 3);
+  CONVERT_ARG_AND_CHECK(operation_type, 0, Number, ManageFluencyTrace);
+  CONVERT_ARG_AND_CHECK(tag, 1, String, ManageFluencyTrace);
+  CONVERT_ARG_AND_CHECK(options, 2, Object, ManageFluencyTrace);
+  auto painting_context_impl = GET_TASM_POINTER()
+                                   ->page_proxy()
+                                   ->element_manager()
+                                   ->painting_context()
+                                   ->impl();
+  if (operation_type->Number() == 0) {
+    painting_context_impl->StartFluencyTrace(tag->StdString());
+  } else if (operation_type->Number() == 1) {
+    painting_context_impl->StopFluencyTrace(tag->StdString());
+  }
+  RETURN_UNDEFINED();
+}
+
 RENDERER_FUNCTION_CC(SetSessionStorageItem) {
   CHECK_ARGC_EQ(SetSessionStorageItem, 2);
   CONVERT_ARG_AND_CHECK(arg0, 0, String, SetSessionStorageItem);

@@ -261,5 +261,6 @@
   V(LoadScript)                       \
   V(WaitingForResponse)               \
   V(AddListenerForResponse)           \
-  V(FetchBundle)
+  V(FetchBundle)                      \
+  V(ManageFluencyTrace)
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_RENDERER_FUNCTIONS_DEF_H_

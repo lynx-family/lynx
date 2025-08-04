@@ -100,6 +100,9 @@ class PaintingCtxPlatformImpl {
   virtual std::unique_ptr<pub::Value> GetTextInfo(const std::string& content,
                                                   const pub::Value& info) = 0;
 
+  virtual void StartFluencyTrace(const std::string&) = 0;
+  virtual void StopFluencyTrace(const std::string&) = 0;
+
   virtual void SetFrameAppBundle(
       int tag, const std::shared_ptr<LynxTemplateBundle>& bundle){};
 
