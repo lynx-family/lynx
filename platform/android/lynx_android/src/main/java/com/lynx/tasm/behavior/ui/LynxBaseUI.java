@@ -249,6 +249,16 @@ public abstract class LynxBaseUI
 
   private boolean mIsRecording;
 
+  private float mAlpha = 1.0f;
+
+  public float getAlpha() {
+    return mAlpha;
+  }
+
+  public void setAlpha(float mAlpha) {
+    this.mAlpha = mAlpha;
+  }
+
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
     for (LynxBaseUI ui : mChildren) {
       ui.detachWithViewInfo(parentViewInfo);

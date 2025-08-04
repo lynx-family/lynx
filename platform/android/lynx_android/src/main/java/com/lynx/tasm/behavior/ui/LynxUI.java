@@ -113,6 +113,9 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   private boolean mEnableReuseAnimationState = true;
   private AnimationInfo[] mAnimationInfos = null;
   protected boolean mFirstRender = true;
+
+  protected float mAlpha = 1.0f;
+
   private boolean shouldDoTransformTransition() {
     return !mIsFirstAnimatedReady && hasTransformChanged && null != mTransitionAnimator
         && mTransitionAnimator.containTransition(AnimationConstant.PROP_TRANSFORM);
@@ -124,6 +127,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   public void setDrawHead(LynxBaseUI ui) {
     mDrawHead = ui;
   }
+
   public LynxBaseUI getDrawHead() {
     return mDrawHead;
   }
@@ -150,6 +154,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       pre.mNextDrawUI = child;
     }
   }
+
   protected BasicShape mClipPath;
   protected ReadableArray mRawOffsetShape;
   protected BasicShape mOffsetPath;
@@ -267,14 +272,21 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     super.detachWithViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
   }
 
+  /**
+   * Attach UI to its View. The view will be found by {@link LynxBaseUI#mNodeIndex}, if this is a
+   * a newly created UI, it will launch a async create view task to create the view.
+   * <p>
+   * This will let the UI do {@link #ensureCreateView()} on main thread once attach UI task
+   * finished.
+   */
   @Override
   protected void attachToView() {
     if (mView == null) {
       View view = mContext.getLynxView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
         mView = (T) view;
-        mViewInfo = new ViewInfo(this, mView);
-        ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+
+        mContext.getUIBody().appendUIWithCreateViewAsync(this);
       } else {
         createViewAsync();
       }
@@ -331,8 +343,20 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     mViewInfo = new ViewInfo(this, mView);
     ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
 
-    if (mDrawParent instanceof UIGroup) {
+    if (mDrawParent instanceof UIGroup && mView.getParent() == null) {
       ((UIGroup) mDrawParent).insertChildWhenRebuildView(this);
+    }
+
+    didEnsureCreateView();
+  }
+
+  protected void didEnsureCreateView() {
+    // Reset the properties on View to current properties on UI while creating a new View.
+    if (mBackgroundManager != null && mBackgroundManager.getDrawable() != null) {
+      mView.setBackground(mBackgroundManager.getDrawable());
+    }
+    if (mAlpha != mView.getAlpha()) {
+      mView.setAlpha(mAlpha);
     }
   }
 
@@ -399,6 +423,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @LynxProp(name = PropsConstants.OPACITY, defaultFloat = 1.0f)
   public void setAlpha(float alpha) {
+    super.setAlpha(alpha);
     if (getKeyframeManager() != null) {
       getKeyframeManager().notifyPropertyUpdated(LynxKeyframeAnimator.sAlphaStr, alpha);
     }
@@ -465,6 +490,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       }
     }
   }
+
   @LynxProp(name = PropsConstants.VISIBILITY, defaultInt = VISIBILITY_VISIBLE)
   public void setVisibility(int visibility) {
     if (mTransitionAnimator != null
@@ -492,7 +518,6 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   /**
-   *
    * @param visibility View.VISIBLE, View.INVISIBLE
    */
   public void setVisibilityForView(int visibility) {
@@ -512,6 +537,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       mKeyframeManager = new KeyframeManager(this);
     }
   }
+
   @Override
   public void setAnimation(@Nullable ReadableArray animationInfos) {
     if (animationInfos == null) {
@@ -546,6 +572,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       getKeyframeManager().notifyPropertyUpdated(LynxKeyframeAnimator.sTransformStr, mTransformRaw);
     }
   }
+
   @Override
   public Matrix getTransformMatrix() {
     if (mView == null || mView.getMatrix() == null) {
@@ -1119,6 +1146,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
     mLayoutAnimator.getLayoutCreateAnimation().setInterpolator(timingFunc);
   }
+
   @LynxProp(name = AnimationConstant.C_DELAY)
   public void setLayoutAnimationCreateDelay(@Nullable double delay) {
     prepareLayoutAnimator();
@@ -1128,6 +1156,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
     mLayoutAnimator.getLayoutCreateAnimation().setDelay((long) delay);
   }
+
   @LynxProp(name = AnimationConstant.U_DURATION)
   public void setLayoutAnimationUpdateDuration(@Nullable double duration) {
     prepareLayoutAnimator();
