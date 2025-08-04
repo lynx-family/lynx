@@ -1722,8 +1722,9 @@ bool UIBase::IsVisible() {
     return false;
   }
 
-  if ((base::FloatsEqual(width_, 0.0f) && !overflow_.overflow_x) ||
-      (base::FloatsEqual(height_, 0.0f) && !overflow_.overflow_y)) {
+  if (!IsOverlay() &&
+      ((base::FloatsEqual(width_, 0.0f) && !overflow_.overflow_x) ||
+       (base::FloatsEqual(height_, 0.0f) && !overflow_.overflow_y))) {
     return false;
   }
 
