@@ -74,7 +74,7 @@ void TimingCollectorPlatformImpl::OnPipelineStart(
 }
 void TimingCollectorPlatformImpl::ResetTimingBeforeReload() {
   if (timing_actor_) {
-    timing_actor_->ActSync([](auto& timing_handler) {
+    timing_actor_->Act([](auto& timing_handler) {
       timing_handler->ResetTimingBeforeReload();
     });
   }
