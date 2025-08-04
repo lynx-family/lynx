@@ -128,23 +128,25 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   StyleObjectRoute route;
   ERROR_UNLESS(DecodeStyleObjectRoute(route));
   size_t size = route.style_object_ranges.size();
-  const auto& style_obj_array = template_bundle().InitStyleObjectList(size);
-  const int length =
-      style_objects_section_range_.end - style_objects_section_range_.start;
-  auto cursor = stream_->cursor();
-  size_t index = 0;
-  auto* raw_style_obj_array = style_obj_array.get();
-  for (auto i = route.style_object_ranges.begin();
-       i != route.style_object_ranges.end() && index < size; ++i, index++) {
-    auto* style_object_ref =
-        new style::StyleObject(i->start, i->end, cursor, length,
-                               GetStringList(), StyleObjectDecoderCreator);
-    raw_style_obj_array[index] = style_object_ref;
+  if (size > 0) {
+    const auto& style_obj_array = template_bundle().InitStyleObjectList(size);
+    const int length =
+        style_objects_section_range_.end - style_objects_section_range_.start;
+    auto cursor = stream_->cursor();
+    size_t index = 0;
+    auto* raw_style_obj_array = style_obj_array.get();
+    for (auto i = route.style_object_ranges.begin();
+         i != route.style_object_ranges.end() && index < size; ++i, index++) {
+      auto* style_object_ref =
+          new style::StyleObject(i->start, i->end, cursor, length,
+                                 GetStringList(), StyleObjectDecoderCreator);
+      raw_style_obj_array[index] = style_object_ref;
+    }
+    EnsureParallelParseTaskScheduler();
+    task_schedular_->AsyncDecodeStyleObjects(style_obj_array);
+    stream_->Seek(style_objects_section_range_.start +
+                  route.style_object_ranges[size - 1].end);
   }
-  EnsureParallelParseTaskScheduler();
-  task_schedular_->AsyncDecodeStyleObjects(style_obj_array);
-  stream_->Seek(style_objects_section_range_.start +
-                route.style_object_ranges[size - 1].end);
   // Decode keyframes section
   if (section_count <
       static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES)) {
@@ -152,20 +154,22 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   }
   StyleObjectRoute keyframes_route;
   ERROR_UNLESS(DecodeStyleObjectRoute(keyframes_route));
+  size_t keyframe_size = keyframes_route.style_object_ranges.size();
   auto parser_config =
       CSSParserConfigs::GetCSSParserConfigsByComplierOptions(compile_options_);
-  auto keyframes = template_bundle().InitKeyframesMap(
-      keyframes_route.style_object_ranges.size());
-  for (const auto& range : keyframes_route.style_object_ranges) {
-    stream_->Seek(style_objects_section_range_.start + range.start);
-    DECODE_STDSTR(name);
-    CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
-    ERROR_UNLESS(DecodeCSSKeyframesToken(token));
-    keyframes.emplace(std::move(name), token);
-    stream_->Seek(style_objects_section_range_.start + range.end);
+  if (keyframe_size > 0) {
+    auto keyframes = template_bundle().InitKeyframesMap(keyframe_size);
+    for (const auto& range : keyframes_route.style_object_ranges) {
+      stream_->Seek(style_objects_section_range_.start + range.start);
+      DECODE_STDSTR(name);
+      CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
+      ERROR_UNLESS(DecodeCSSKeyframesToken(token));
+      keyframes.emplace(std::move(name), token);
+      stream_->Seek(style_objects_section_range_.start + range.end);
+    }
+    stream_->Seek(style_objects_section_range_.start +
+                  keyframes_route.style_object_ranges[keyframe_size - 1].end);
   }
-  stream_->Seek(style_objects_section_range_.start +
-                keyframes_route.style_object_ranges[size - 1].end);
   // Decode other sub_section below
   stream_->Seek(style_objects_section_range_.end);
   return true;
