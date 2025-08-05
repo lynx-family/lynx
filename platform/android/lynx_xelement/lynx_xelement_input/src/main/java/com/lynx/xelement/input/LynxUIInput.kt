@@ -52,7 +52,7 @@ open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(cont
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             mView.lineHeight = mFontSize.toInt()
         }
-        mView.filters = arrayOf(maxLengthInputFilter, inputValueRegexFilter)
+        mView.filters = arrayOf(readonlyInputFilter, maxLengthInputFilter, inputValueRegexFilter)
     }
 
     override fun triggerUpdateLayout(updatedHeight: Int) {

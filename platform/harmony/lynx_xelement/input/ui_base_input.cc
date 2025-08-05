@@ -128,16 +128,25 @@ void UIBaseInput::UpdateLayout(float left, float top, float width, float height,
 void UIBaseInput::OnPropUpdate(const std::string& name,
                                const lepus::Value& value) {
   UIView::OnPropUpdate(name, value);
-  if (name == "readonly") {
-    readonly_ = value.Bool();
+  if (name == "disabled") {
+    bool disabled = value.Bool();
     NodeManager::Instance().SetAttributeWithNumberValue(
         input_node_, NODE_HIT_TEST_BEHAVIOR,
-        static_cast<int32_t>(readonly_ ? ARKUI_HIT_TEST_MODE_NONE
-                                       : ARKUI_HIT_TEST_MODE_DEFAULT));
+        static_cast<int32_t>(disabled ? ARKUI_HIT_TEST_MODE_NONE
+                                      : ARKUI_HIT_TEST_MODE_DEFAULT));
     NodeManager::Instance().SetAttributeWithNumberValue(
         node_, NODE_HIT_TEST_BEHAVIOR,
-        static_cast<int32_t>(readonly_ ? ARKUI_HIT_TEST_MODE_NONE
-                                       : ARKUI_HIT_TEST_MODE_DEFAULT));
+        static_cast<int32_t>(disabled ? ARKUI_HIT_TEST_MODE_NONE
+                                      : ARKUI_HIT_TEST_MODE_DEFAULT));
+    readonly_ = disabled;
+    if (disabled) {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          input_node_, GetEditingAttributeType(), 0);
+      NodeManager::Instance().SetAttributeWithNumberValue(input_node_,
+                                                          NODE_FOCUS_STATUS, 0);
+    }
+  } else if (name == "readonly") {
+    readonly_ = value.Bool();
   } else if (name == "text-align") {
     int32_t align = static_cast<int32_t>(value.Number());
     if (align == 0 || align == 3) {  // left && start
@@ -367,6 +376,12 @@ void UIBaseInput::OnNodeEvent(ArkUI_NodeEvent* event) {
   } else if (type == NODE_ON_BLUR) {
     SendBlurEvent();
     context_->UnsetFocusedTarget(weak_from_this());
+  } else if (type == GetOnWillInsertEventType() ||
+             type == GetOnWillDeleteEventType()) {
+    ArkUI_NumberValue value[] = {
+        {.i32 = readonly_ ? 0 : 1},
+    };
+    OH_ArkUI_NodeEvent_SetReturnNumberValue(event, value, 1);
   }
 }
 

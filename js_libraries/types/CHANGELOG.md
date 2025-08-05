@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.4.8
+- Introduce `disabled` for input and textarea.
+
 ## 3.4.6
 - fix `TextCodecHelper` defines.
 - Update `fetch` defines for chunk streaming.

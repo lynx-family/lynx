@@ -128,7 +128,7 @@ export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'
    */
   maxlength?: number;
   /**
-   * Interaction enabled
+   * Readonly
    * @defaultValue false
    * @Android
    * @iOS
@@ -137,7 +137,15 @@ export interface InputProps extends Omit<StandardProps, 'bindfocus' | 'bindblur'
    * @since 3.4
    */
   readonly?: boolean;
-
+  /**
+   * Interaction enabled
+   * @defaultValue false
+   * @Android
+   * @iOS
+   * @Harmony
+   * @since 3.5
+   */
+  disabled?: boolean;
   /**
    * Show soft input keyboard while focused
    * @defaultValue true

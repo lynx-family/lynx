@@ -249,16 +249,16 @@ LYNX_PROP_SETTER("maxlength", setMaxLen, int) {
   self.maxLength = value;
 }
 
-LYNX_PROP_SETTER("disable", setDisabled, BOOL) {
-  [self.view setUserInteractionEnabled:!value];
-}
-
-LYNX_PROP_SETTER("readonly", setReadOnly, BOOL) {
+LYNX_PROP_SETTER("disabled", setDisabled, BOOL) {
   self.readonly = value;
   if (value) {
     [self.view resignFirstResponder];
   }
   [self.view setUserInteractionEnabled:!value];
+}
+
+LYNX_PROP_SETTER("readonly", setReadOnly, BOOL) {
+  self.readonly = value;
 }
 
 LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {

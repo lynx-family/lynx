@@ -62,9 +62,9 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
         maxHeightInputFilter?.let {
-            mView.filters = arrayOf(confirmEnterFilter, maxLengthInputFilter, maxHeightInputFilter, inputValueRegexFilter)
+            mView.filters = arrayOf(readonlyInputFilter, confirmEnterFilter, maxLengthInputFilter, maxHeightInputFilter, inputValueRegexFilter)
         } ?:run{
-            mView.filters = arrayOf(confirmEnterFilter, maxLengthInputFilter, inputValueRegexFilter)
+            mView.filters = arrayOf(readonlyInputFilter, confirmEnterFilter, maxLengthInputFilter, inputValueRegexFilter)
         }
     }
 

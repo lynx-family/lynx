@@ -64,7 +64,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         const val TYPE_TEL:String = "tel"
         const val TYPE_EMAIL:String = "email"
     }
-
+    private var mReadonly:Boolean = false;
     private var mFontWeight: Int = 400
     private var mPlaceholderFontWeight: Int = UNDEFINED_INT
     // TODO(xiamengfei.moonface): Impl line height with custom Span. private var mLineHeight: Float = -1f
@@ -77,7 +77,22 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     private var mPlaceholderFontSize: Float = UNDEFINED_FLOAT
     private var mPlaceholderFontColor: Int = ColorUtils.parse("#3c433c4c")
     private var mInputFilterRegex: String? = null
-
+    var readonlyInputFilter = object: InputFilter {
+      override fun filter(
+        source: CharSequence,
+        start: Int,
+        end: Int,
+        dest: Spanned?,
+        dstart: Int,
+        dend: Int
+      ): CharSequence? {
+        if (mReadonly) {
+          return ""
+        } else {
+          return null
+        }
+      }
+    }
     var maxLengthInputFilter = InputFilter.LengthFilter(Int.MAX_VALUE)
     var inputValueRegexFilter = object: InputFilter {
         override fun filter(
@@ -446,9 +461,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
     @LynxProp(name = "readonly", defaultBoolean = false)
     fun setIsReadOnly(isReadOnly: Boolean) {
-        mView.isFocusable = !isReadOnly
-        mView.isFocusableInTouchMode = !isReadOnly
-        userInteractionEnabled = !isReadOnly
+      mReadonly = isReadOnly;
     }
 
     @LynxProp(name = "show-soft-input-on-focus", defaultBoolean = true)
@@ -617,7 +630,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         super.onNodeReady()
         val textLayout = LynxInputUtils().getLayoutInEditText(mView.text.toString(),
             mView,
-            width,
+            Int.MAX_VALUE,
             Int.MAX_VALUE)
 
         triggerUpdateLayout(textLayout.height)
@@ -626,7 +639,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     open fun triggerUpdateLayout(updatedHeight: Int) {
         val placeholderTextLayout = LynxInputUtils().getLayoutInEditText(mView.hint,
                 mView,
-                width,
+                Int.MAX_VALUE,
                 Int.MAX_VALUE)
 
         lynxContext.findShadowNodeBySign(sign)?.let {

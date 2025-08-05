@@ -63,6 +63,12 @@ class UIBaseInput : public UIView {
   virtual ArkUI_NodeAttributeType GetPlaceholderTextType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
   }
+  virtual ArkUI_NodeEventType GetOnWillInsertEventType() const {
+    return static_cast<ArkUI_NodeEventType>(-1);
+  }
+  virtual ArkUI_NodeEventType GetOnWillDeleteEventType() const {
+    return static_cast<ArkUI_NodeEventType>(-1);
+  }
 
   UIBaseInput(LynxContext* context, ArkUI_NodeType type, int sign, const std::string& tag,
               ArkUI_NodeType input_node_type);

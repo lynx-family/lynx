@@ -33,6 +33,8 @@ class UITextArea : public UIBaseInput {
   ArkUI_NodeAttributeType GetSelectionAttributeType() const override;
   ArkUI_NodeAttributeType GetEditingAttributeType() const override;
   ArkUI_NodeAttributeType GetPlaceholderTextType() const override;
+  ArkUI_NodeEventType GetOnWillInsertEventType() const override;
+  ArkUI_NodeEventType GetOnWillDeleteEventType() const override;
 
  private:
   int32_t current_lines_{0};

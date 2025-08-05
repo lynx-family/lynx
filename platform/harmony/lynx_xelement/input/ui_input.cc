@@ -125,6 +125,13 @@ UIInput::UIInput(LynxContext* context, ArkUI_NodeType type, int sign,
       input_node_, NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE,
       NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE, this);
 
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            GetOnWillInsertEventType(),
+                                            GetOnWillInsertEventType(), this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            GetOnWillDeleteEventType(),
+                                            GetOnWillDeleteEventType(), this);
+
   NodeManager::Instance().RegisterNodeEvent(
       input_node_, NODE_TEXT_INPUT_ON_SUBMIT, NODE_TEXT_INPUT_ON_SUBMIT, this);
 
@@ -142,6 +149,11 @@ UIInput::~UIInput() {
       input_node_, NODE_TEXT_INPUT_ON_TEXT_SELECTION_CHANGE);
   NodeManager::Instance().UnregisterNodeEvent(input_node_,
                                               NODE_TEXT_INPUT_ON_SUBMIT);
+
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnWillInsertEventType());
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnWillDeleteEventType());
 }
 
 void UIInput::OnNodeEvent(ArkUI_NodeEvent* event) {
@@ -184,6 +196,13 @@ ArkUI_NodeAttributeType UIInput::GetEditingAttributeType() const {
 
 ArkUI_NodeAttributeType UIInput::GetPlaceholderTextType() const {
   return NODE_TEXT_INPUT_PLACEHOLDER;
+}
+
+ArkUI_NodeEventType UIInput::GetOnWillInsertEventType() const {
+  return NODE_TEXT_INPUT_ON_WILL_INSERT;
+}
+ArkUI_NodeEventType UIInput::GetOnWillDeleteEventType() const {
+  return NODE_TEXT_INPUT_ON_WILL_DELETE;
 }
 
 }  // namespace harmony

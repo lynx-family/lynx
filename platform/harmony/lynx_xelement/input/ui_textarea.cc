@@ -65,6 +65,13 @@ UITextArea::UITextArea(LynxContext* context, ArkUI_NodeType type, int sign,
   NodeManager::Instance().RegisterNodeEvent(
       input_node_, NODE_TEXT_AREA_ON_SUBMIT, NODE_TEXT_AREA_ON_SUBMIT, this);
 
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            GetOnWillInsertEventType(),
+                                            GetOnWillInsertEventType(), this);
+  NodeManager::Instance().RegisterNodeEvent(input_node_,
+                                            GetOnWillDeleteEventType(),
+                                            GetOnWillDeleteEventType(), this);
+
   NodeManager::Instance().SetAttributeWithNumberValue(
       input_node_, NODE_TEXT_AREA_PLACEHOLDER_COLOR, INPUT_DEFAULT_COLOR);
 }
@@ -77,6 +84,11 @@ UITextArea::~UITextArea() {
       input_node_, NODE_TEXT_AREA_ON_TEXT_SELECTION_CHANGE);
   NodeManager::Instance().UnregisterNodeEvent(input_node_,
                                               NODE_TEXT_AREA_ON_SUBMIT);
+
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnWillInsertEventType());
+  NodeManager::Instance().UnregisterNodeEvent(input_node_,
+                                              GetOnWillDeleteEventType());
 }
 
 void UITextArea::FrameDidChanged() {
@@ -217,6 +229,13 @@ ArkUI_NodeAttributeType UITextArea::GetEditingAttributeType() const {
 
 ArkUI_NodeAttributeType UITextArea::GetPlaceholderTextType() const {
   return NODE_TEXT_AREA_PLACEHOLDER;
+}
+
+ArkUI_NodeEventType UITextArea::GetOnWillInsertEventType() const {
+  return NODE_TEXT_AREA_ON_WILL_INSERT;
+}
+ArkUI_NodeEventType UITextArea::GetOnWillDeleteEventType() const {
+  return NODE_TEXT_AREA_ON_WILL_DELETE;
 }
 
 }  // namespace harmony
