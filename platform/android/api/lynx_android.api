@@ -3552,6 +3552,8 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public String com.lynx.devtoolwrapper.LynxBaseInspectorOwner.getDebugInfoUrl(String fileName);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onReceiveMessageEvent(ReadableMap event);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onGlobalPropsUpdated(TemplateData props);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateDataUpdated(TemplateData templateData);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateDataReset(TemplateData templateData);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setDevToolDelegate(IDevToolDelegate devToolDelegate);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showErrorMessageOnConsole(final LynxError error);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.showMessageOnConsole(final String message, int level);
@@ -4217,6 +4219,8 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.destroy();
   public void com.lynx.devtoolwrapper.LynxDevtool.onLoadFromLocalFile(byte[] template, TemplateData templateData, String baseUrl);
   public void com.lynx.devtoolwrapper.LynxDevtool.onGlobalPropsChanged(TemplateData globalProps);
+  public void com.lynx.devtoolwrapper.LynxDevtool.onTemplateDataChanged(TemplateData templateData);
+  public void com.lynx.devtoolwrapper.LynxDevtool.onTemplateDataReset(TemplateData templateData);
   public void com.lynx.devtoolwrapper.LynxDevtool.onLoadFromURL(@NonNull final String templateUrl, @NonNull final String postUrl, @Nullable final TemplateData templateData, @Nullable final Map< String, Object > map, @Nullable final String jsonData);
   public void com.lynx.devtoolwrapper.LynxDevtool.onLoadFromBundle(TemplateBundle templateBundle, TemplateData templateData, String baseUrl);
   public void com.lynx.devtoolwrapper.LynxDevtool.onRootViewInputEvent(InputEvent ev);
@@ -4229,7 +4233,6 @@ public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public void com.lynx.devtoolwrapper.LynxDevtool.onRegisterModule(LynxModuleFactory moduleFactory);
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(LynxView lynxView);
   public void com.lynx.devtoolwrapper.LynxDevtool.attach(@NonNull LynxView lynxView, @NonNull LynxTemplateRender render);
-  public void com.lynx.devtoolwrapper.LynxDevtool.onUpdate(TemplateData data);
   public LynxBaseInspectorOwner com.lynx.devtoolwrapper.LynxDevtool.getBaseInspectorOwner();
   public void com.lynx.devtoolwrapper.LynxDevtool.updateScreenMetrics(int width, int height, float density);
   public void com.lynx.devtoolwrapper.LynxDevtool.attachToDebugBridge(String url);
@@ -7257,11 +7260,13 @@ public class com::lynx::tasm::PageConfig :  {
 }
 
 public class com::lynx::tasm::base::PageReloadHelper :  {
-  public com.lynx.tasm.base.PageReloadHelper.PageReloadHelper(@Nullable LynxTemplateRender templateRender);
-  public void com.lynx.tasm.base.PageReloadHelper.attach(LynxTemplateRender templateRender);
+  public com.lynx.tasm.base.PageReloadHelper.PageReloadHelper(@Nullable LynxView lynxView);
+  public void com.lynx.tasm.base.PageReloadHelper.attach(LynxView lynxView);
   public void com.lynx.tasm.base.PageReloadHelper.saveURL(@NonNull final String templateUrl, @Nullable final TemplateData templateData, @Nullable final Map< String, Object > map, @Nullable final String jsonData);
   public void com.lynx.tasm.base.PageReloadHelper.loadFromURL( @NonNull final String templateUrl, @Nullable final TemplateData templateData);
-  public void com.lynx.tasm.base.PageReloadHelper.update(TemplateData data);
+  public void com.lynx.tasm.base.PageReloadHelper.onTemplateDataUpdated(TemplateData data);
+  public void com.lynx.tasm.base.PageReloadHelper.onTemplateDataReset(TemplateData templateData);
+  public void com.lynx.tasm.base.PageReloadHelper.onGlobalPropsUpdated(TemplateData globalProps);
   public void com.lynx.tasm.base.PageReloadHelper.loadFromLocalFile(byte[] template, TemplateData templateData, String baseUrl);
   public void com.lynx.tasm.base.PageReloadHelper.loadFromBundle(TemplateBundle bundle, TemplateData templateData, String baseUrl);
   public void com.lynx.tasm.base.PageReloadHelper.reload(boolean ignoreCache);

@@ -68,6 +68,7 @@
   void (^_dispatch_message_block)(NSDictionary*);
 
   LynxTemplateData* _globalProps;
+  LynxTemplateData* _templateData;
 }
 
 - (instancetype)init {
@@ -92,6 +93,9 @@
 
   // LynxDevToolNGDarwinDelegate
   _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] init];
+
+  // init template data
+  _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
   [[LynxFrameViewTrace shareInstance] attachView:view];
@@ -459,6 +463,16 @@
     return pointInScreen;
   }
   return CGPointMake(-1, -1);
+}
+
+- (void)onTemplateDataUpdated:(LynxTemplateData*)data {
+  // merge with origin templatedata
+  [_templateData updateWithTemplateData:data];
+}
+
+- (void)onResetDataWithTemplateData:(LynxTemplateData*)data {
+  // replace origin templatedata
+  _templateData = data;
 }
 
 - (void)setGlobalPropsUpdatedObserver:(id<GlobalPropsUpdatedObserver>)observer {

@@ -48,6 +48,11 @@ NS_ASSUME_NONNULL_BEGIN
  * @param data init data to reset with
  */
 - (void)resetDataWithTemplateData:(LynxTemplateData *)data;
+/**
+ * Update init global props of page
+ * @param data init global props to update with
+ */
+- (void)onGlobalPropsUpdated:(LynxTemplateData *)data;
 
 /**
  * Get template data url of page

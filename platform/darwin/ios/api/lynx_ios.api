@@ -628,6 +628,8 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public void LynxBaseInspectorOwner-p::onReceiveMessageEvent:(NSDictionary *event);
   public void LynxBaseInspectorOwner-p::setDispatchMessageEventBlock:(void(^ block)(NSDictionary *));
   public NSString * LynxBaseInspectorOwner-p::debugInfoUrl:(NSString *_Nonnull filename);
+  public void LynxBaseInspectorOwner-p::onTemplateDataUpdated:(LynxTemplateData *data);
+  public void LynxBaseInspectorOwner-p::onResetDataWithTemplateData:(LynxTemplateData *data);
   public void LynxBaseInspectorOwner-p::onGlobalPropsUpdated:(LynxTemplateData *props);
   public void LynxBaseInspectorOwner-p::showErrorMessageOnConsole:(LynxError *error);
   public void LynxBaseInspectorOwner-p::showMessageOnConsole:withLevel:(NSString *message,[withLevel] int32_t level);
@@ -2656,6 +2658,7 @@ public protocol LynxPageReloadHelperProto-p : <NSObject> {
   public void LynxPageReloadHelperProto-p::loadFromBundle:withURL:initData:(LynxTemplateBundle *bundle,[withURL] NSString *url,[initData] LynxTemplateData *data);
   public void LynxPageReloadHelperProto-p::updateDataWithTemplateData:(LynxTemplateData *data);
   public void LynxPageReloadHelperProto-p::resetDataWithTemplateData:(LynxTemplateData *data);
+  public void LynxPageReloadHelperProto-p::onGlobalPropsUpdated:(LynxTemplateData *data);
   public nonnull NSString * LynxPageReloadHelperProto-p::getURL();
   public LynxTemplateData * LynxPageReloadHelperProto-p::getTemplateData();
   public void LynxPageReloadHelperProto-p::reloadLynxView:(BOOL ignoreCache);

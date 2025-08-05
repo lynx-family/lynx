@@ -23,6 +23,7 @@
   LynxTemplateBundle* _bundle;
 
   LynxTemplateData* _initData;
+  LynxTemplateData* _initGlobalProps;
 
   NSString* _fileUrl;
   TEXTVIEW_CLASS* _textView;
@@ -86,6 +87,10 @@
 
   _initData = data;
   _fileUrl = url;
+}
+
+- (void)onGlobalPropsUpdated:(LynxTemplateData*)props {
+  _initGlobalProps = props;
 }
 
 - (void)updateDataWithTemplateData:(LynxTemplateData*)data {

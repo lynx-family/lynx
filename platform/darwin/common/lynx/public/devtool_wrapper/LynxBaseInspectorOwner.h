@@ -181,6 +181,15 @@ typedef void (^CDPResultCallback)(NSString *result);
 
 - (NSString *)debugInfoUrl:(NSString *_Nonnull)filename;
 
+/**
+ * Called when LynxTemplateRender triggers an update using UpdateData or UpdateMetaData
+ */
+- (void)onTemplateDataUpdated:(LynxTemplateData *)data;
+/**
+ * Called when data is reset through LynxTemplateRender resetData method
+ */
+- (void)onResetDataWithTemplateData:(LynxTemplateData *)data;
+
 - (void)onGlobalPropsUpdated:(LynxTemplateData *)props;
 
 - (void)showErrorMessageOnConsole:(LynxError *)error;

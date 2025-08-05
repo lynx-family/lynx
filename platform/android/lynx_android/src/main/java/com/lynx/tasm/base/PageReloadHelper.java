@@ -8,7 +8,7 @@ import android.util.Base64;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
-import com.lynx.tasm.LynxTemplateRender;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.behavior.shadow.text.TextRendererCache;
@@ -34,7 +34,7 @@ public class PageReloadHelper {
   }
 
   private static final String TAG = "PageReloadHelper";
-  private WeakReference<LynxTemplateRender> mTemplateRender;
+  private WeakReference<LynxView> mLynxView;
   private String mUrl;
   private boolean mInitWithBinary;
   private boolean mInitWithUrl;
@@ -46,9 +46,10 @@ public class PageReloadHelper {
   private ByteBuffer mFragmentsBuffer;
   private boolean mIgnoreCache;
   private TemplateData mInitTemplateData = TemplateData.fromMap(new HashMap<>());
+  private TemplateData mInitGlobalProps = null;
 
-  public PageReloadHelper(@Nullable LynxTemplateRender templateRender) {
-    mTemplateRender = new WeakReference<>(templateRender);
+  public PageReloadHelper(@Nullable LynxView lynxView) {
+    mLynxView = new WeakReference<>(lynxView);
     mUrl = null;
     mInitWithBinary = false;
     mInitWithUrl = false;
@@ -60,8 +61,8 @@ public class PageReloadHelper {
     mIgnoreCache = false;
   }
 
-  public void attach(LynxTemplateRender templateRender) {
-    mTemplateRender = new WeakReference<>(templateRender);
+  public void attach(LynxView lynxView) {
+    mLynxView = new WeakReference<>(lynxView);
   }
 
   public void saveURL(@NonNull final String templateUrl, @Nullable final TemplateData templateData,
@@ -89,7 +90,7 @@ public class PageReloadHelper {
     mUrl = templateUrl;
   }
 
-  public void update(TemplateData data) {
+  public void onTemplateDataUpdated(TemplateData data) {
     updateInitTemplateData(data);
   }
 
@@ -99,6 +100,18 @@ public class PageReloadHelper {
     }
     // Copy data and save it in mInitTemplateData. Don't be impacted by original templateData.
     mInitTemplateData.updateWithTemplateData(data.deepClone());
+  }
+
+  public void onTemplateDataReset(TemplateData templateData) {
+    resetInitTemplateData(templateData);
+  }
+
+  private void resetInitTemplateData(TemplateData templateData) {
+    mInitTemplateData = templateData;
+  }
+
+  public void onGlobalPropsUpdated(TemplateData globalProps) {
+    mInitGlobalProps = globalProps;
   }
 
   public void loadFromLocalFile(byte[] template, TemplateData templateData, String baseUrl) {
@@ -158,8 +171,8 @@ public class PageReloadHelper {
     if (ignoreCache) {
       clearCache();
     }
-    LynxTemplateRender templateRender = mTemplateRender.get();
-    if (templateRender == null) {
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null) {
       return;
     }
 
@@ -193,11 +206,11 @@ public class PageReloadHelper {
     }
 
     if (templateBin != null) {
-      templateRender.renderTemplateWithBaseUrl(templateBin, mInitTemplateData, url);
+      lynxView.renderTemplateWithBaseUrl(templateBin, mInitTemplateData, url);
     } else if (templateBundle != null) {
-      templateRender.renderTemplateBundle(templateBundle, mInitTemplateData, url);
+      lynxView.renderTemplateBundle(templateBundle, mInitTemplateData, url);
     } else if (url != null) {
-      templateRender.renderTemplateUrl(url, mInitTemplateData);
+      lynxView.renderTemplateUrl(url, mInitTemplateData);
     } else {
       LLog.w(TAG, "Failed to reload, the lynx view may not have been loaded before.");
     }
@@ -235,10 +248,11 @@ public class PageReloadHelper {
     mInitUrlData.mInitUrl = url;
     mInitTemplateData = TemplateData.fromString("");
 
-    LynxTemplateRender templateRender = mTemplateRender.get();
-    if (templateRender != null) {
-      templateRender.renderTemplateUrl(mInitUrlData.mInitUrl, mInitTemplateData);
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null) {
+      return;
     }
+    lynxView.renderTemplateUrl(mInitUrlData.mInitUrl, mInitTemplateData);
   }
 
   public String getURL() {

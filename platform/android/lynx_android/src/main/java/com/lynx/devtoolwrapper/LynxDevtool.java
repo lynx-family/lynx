@@ -96,7 +96,7 @@ public class LynxDevtool {
       }
 
       if (mOwner != null || mLogBox != null) {
-        mReloader = new PageReloadHelper(render);
+        mReloader = new PageReloadHelper(view);
       }
 
       if (mOwner != null) {
@@ -142,6 +142,27 @@ public class LynxDevtool {
   public void onGlobalPropsChanged(TemplateData globalProps) {
     if (mOwner != null) {
       mOwner.onGlobalPropsUpdated(globalProps);
+    }
+    if (mReloader != null) {
+      mReloader.onGlobalPropsUpdated(globalProps);
+    }
+  }
+
+  public void onTemplateDataChanged(TemplateData templateData) {
+    if (mOwner != null) {
+      mOwner.onTemplateDataUpdated(templateData);
+    }
+    if (mReloader != null) {
+      mReloader.onTemplateDataUpdated(templateData);
+    }
+  }
+
+  public void onTemplateDataReset(TemplateData templateData) {
+    if (mOwner != null) {
+      mOwner.onTemplateDataReset(templateData);
+    }
+    if (mReloader != null) {
+      mReloader.onTemplateDataReset(templateData);
     }
   }
 
@@ -270,7 +291,7 @@ public class LynxDevtool {
     }
 
     if (mReloader != null) {
-      mReloader.attach(render);
+      mReloader.attach(lynxView);
     }
 
     if (mOwner != null) {
@@ -279,12 +300,6 @@ public class LynxDevtool {
 
     DisplayMetrics dm = render.getLynxContext().getScreenMetrics();
     updateScreenMetrics(dm.widthPixels, dm.heightPixels, dm.density);
-  }
-
-  public void onUpdate(TemplateData data) {
-    if (mReloader != null) {
-      mReloader.update(data);
-    }
   }
 
   public LynxBaseInspectorOwner getBaseInspectorOwner() {

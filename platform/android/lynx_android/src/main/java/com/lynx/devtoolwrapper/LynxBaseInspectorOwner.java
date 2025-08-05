@@ -60,6 +60,15 @@ public interface LynxBaseInspectorOwner {
 
   void onGlobalPropsUpdated(TemplateData props);
 
+  /**
+   * Called when LynxTemplateRender triggers an update using UpdateData or UpdateMetaData
+   */
+  void onTemplateDataUpdated(TemplateData templateData);
+  /**
+   * Called when data is reset through LynxTemplateRender resetData method
+   */
+  void onTemplateDataReset(TemplateData templateData);
+
   void setDevToolDelegate(IDevToolDelegate devToolDelegate);
   @RestrictTo(RestrictTo.Scope.LIBRARY) void showErrorMessageOnConsole(final LynxError error);
   @RestrictTo(RestrictTo.Scope.LIBRARY) void showMessageOnConsole(final String message, int level);
