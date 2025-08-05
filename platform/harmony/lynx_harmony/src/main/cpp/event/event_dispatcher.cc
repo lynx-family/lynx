@@ -842,8 +842,18 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
                                                       &page_offset);
   float node_point_x = point[0], node_point_y = point[1];
   float scaled_density = root->GetContext()->ScaledDensity();
-  point[0] = node_point_x - page_offset.x / scaled_density;
-  point[1] = node_point_y - page_offset.y / scaled_density;
+  float page_x = page_offset.x / scaled_density;
+  float page_y = page_offset.y / scaled_density;
+
+  if (base::FloatsLarger(page_x, node_point_x) ||
+      base::FloatsLarger(page_y, node_point_y) ||
+      base::FloatsLarger(node_point_x, page_x + root->width_) ||
+      base::FloatsLarger(node_point_y, page_y + root->height_)) {
+    return false;
+  }
+
+  point[0] = node_point_x - page_x;
+  point[1] = node_point_y - page_y;
 
   EventTarget* active_target = FindTarget(point);
   if (active_target == nullptr) {
