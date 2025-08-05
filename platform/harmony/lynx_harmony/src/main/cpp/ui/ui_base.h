@@ -360,6 +360,8 @@ class BASE_EXPORT
   void Base64EncodeTask(
       OH_PixelmapNative* pixel_map, const std::string& format,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void ApplyOverflowClipPath(float clip_width, float clip_height);
+  void ApplyOverflowClipRectangle(float clip_width, float clip_height);
 
   int sign_;
   using PropSetter = void (UIBase::*)(const lepus::Value& value);

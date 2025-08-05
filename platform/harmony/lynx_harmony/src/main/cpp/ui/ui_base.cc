@@ -462,6 +462,13 @@ void UIBase::OnNodeReady() {
     Invalidate();
   }
 
+  if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
+    if (background_drawable_) {
+      background_drawable_->SetBackgroundColor(background_color_);
+      Invalidate();
+    }
+  }
+
   if (NeedDrawNode()) {
     InitDrawNode();
   }
@@ -501,18 +508,17 @@ void UIBase::OnNodeReady() {
     ArkUI_AttributeItem item{.string = id.c_str()};
     NodeManager::Instance().SetAttribute(DrawNode(), NODE_ID, &item);
   }
+
   if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
     if (background_drawable_) {
       if (has_background_color_) {
-        NodeManager::Instance().ResetAttribute(DrawNode(),
-                                               NODE_BACKGROUND_COLOR);
+        NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
         has_background_color_ = false;
       }
-      background_drawable_->SetBackgroundColor(background_color_);
     } else {
       has_background_color_ = true;
       NodeManager::Instance().SetAttributeWithNumberValue(
-          DrawNode(), NODE_BACKGROUND_COLOR, background_color_);
+          Node(), NODE_BACKGROUND_COLOR, background_color_);
     }
   }
 
@@ -695,52 +701,73 @@ void UIBase::SetOverflowY(const lepus::Value& value) {
   dirty_flags_ |= kFlagOverflowChanged;
 }
 
+void UIBase::ApplyOverflowClipPath(float clip_width, float clip_height) {
+  if (background_drawable_ && !background_drawable_->GetClipPath().empty()) {
+    ArkUI_NumberValue value[] = {
+        {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
+        {.f32 = clip_width},
+        {.f32 = clip_height}};
+    ArkUI_AttributeItem item = {
+        .value = value,
+        .size = sizeof(value) / sizeof(ArkUI_NumberValue),
+        .string = background_drawable_->GetClipPath().c_str(),
+    };
+    NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+  }
+}
+
+void UIBase::ApplyOverflowClipRectangle(float clip_width, float clip_height) {
+  ArkUI_NumberValue value[] = {
+      {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_RECTANGLE)},
+      {.f32 = clip_width},
+      {.f32 = clip_height},
+      {.f32 = 0},
+      {.f32 = 0}};
+  ArkUI_AttributeItem item = {
+      .value = value,
+      .size = sizeof(value) / sizeof(ArkUI_NumberValue),
+  };
+  NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+}
+
+// hidden is false and visible is true
 void UIBase::ApplyOverflowClip() {
   if (!overflow_.overflow_x && !overflow_.overflow_y) {
     need_clip_ = true;
     if (background_drawable_ && background_drawable_->GetBorderRadius() &&
         !background_drawable_->GetBorderRadius()->IsZero()) {
-      if (background_drawable_ &&
-          !background_drawable_->GetClipPath().empty()) {
-        ArkUI_NumberValue value[] = {
-            {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
-            {.f32 = width_},
-            {.f32 = height_}};
-        ArkUI_AttributeItem item = {
-            .value = value,
-            .size = sizeof(value) / sizeof(ArkUI_NumberValue),
-            .string = background_drawable_->GetClipPath().c_str(),
-        };
-        NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
-      }
+      ApplyOverflowClipPath(width_, height_);
     } else {
       NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     }
   } else if (overflow_.overflow_x && overflow_.overflow_y &&
              (dirty_flags_ & kFlagOverflowChanged) != 0) {
-    need_clip_ = false;
-    // overflow changed to visible.
-    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
+    if (background_drawable_ && background_drawable_->GetBorderRadius() &&
+        !background_drawable_->GetBorderRadius()->IsZero()) {
+      need_clip_ = true;
+      ApplyOverflowClipPath(width_, height_);
+    } else {
+      need_clip_ = false;
+      // overflow changed to visible.
+      NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
+    }
   } else if ((overflow_.overflow_x || overflow_.overflow_y) &&
              ((dirty_flags_ & kFlagOverflowChanged) != 0 ||
               (dirty_flags_ & kFlagFrameSizeChanged) != 0)) {
     need_clip_ = true;
-    float screen_size[2] = {0};
-    context_->ScreenSize(screen_size);
-    float clip_width = overflow_.overflow_x ? screen_size[0] : width_;
-    float clip_height = overflow_.overflow_y ? screen_size[1] : height_;
-
-    ArkUI_NumberValue value[] = {
-        {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_RECTANGLE)},
-        {.f32 = clip_width},
-        {.f32 = clip_height},
-        {.f32 = 0},
-        {.f32 = 0}};
-    ArkUI_AttributeItem item = {
-        .value = value,
-        .size = sizeof(value) / sizeof(ArkUI_NumberValue),
-    };
-    NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+    if (background_drawable_ && background_drawable_->GetBorderRadius() &&
+        !background_drawable_->GetBorderRadius()->IsZero()) {
+      float screen_size[2] = {0};
+      context_->ScreenSize(screen_size);
+      float clip_width = overflow_.overflow_x ? screen_size[0] : width_;
+      float clip_height = overflow_.overflow_y ? screen_size[1] : height_;
+      if (background_drawable_ && background_drawable_->GetBorderRadius() &&
+          !background_drawable_->GetBorderRadius()->IsZero()) {
+        ApplyOverflowClipPath(clip_width, clip_height);
+      } else {
+        ApplyOverflowClipRectangle(clip_width, clip_height);
+      }
+    }
   }
 }
 
