@@ -127,8 +127,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     if (!mHasInited) {
       mLynxUIOwner = new LynxUIOwner(lynxContext, behaviorRegistry, body);
     } else {
-      mLynxUIOwner.attachUIBodyView(body);
       mLynxUIOwner.attachLynxContext(lynxContext);
+      mLynxUIOwner.attachUIBodyView(body);
     }
     if (body == null) {
       // TODO(huangweiwu): Centralize the config within LynxContext
@@ -158,8 +158,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       }
     }
     if (mLynxUIOwner != null) {
-      mLynxUIOwner.attachUIBodyView(bodyView);
       mLynxUIOwner.attachLynxContext(lynxContext);
+      mLynxUIOwner.attachUIBodyView(bodyView);
     }
   }
 

@@ -259,6 +259,8 @@ public abstract class LynxBaseUI
     this.mAlpha = mAlpha;
   }
 
+  protected void registerViewAccordingToNodeIndex() {}
+
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
     for (LynxBaseUI ui : mChildren) {
       ui.detachWithViewInfo(parentViewInfo);

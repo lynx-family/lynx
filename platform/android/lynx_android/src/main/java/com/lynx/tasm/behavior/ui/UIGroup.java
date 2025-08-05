@@ -216,7 +216,7 @@ public abstract class UIGroup<T extends ViewGroup>
       if (ui instanceof LynxUI) {
         nonFlattenIndex++;
       }
-      ui = mDrawHead.mNextDrawUI;
+      ui = ui.mNextDrawUI;
     }
 
     mView.addView(((LynxUI<?>) child).getView(), nonFlattenIndex);
