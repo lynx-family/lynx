@@ -128,7 +128,8 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
       enable_js_group_thread_(shell_option.enable_js_group_thread_),
       page_options_(shell_option.page_options_) {
   LOGI("LynxShell create, this:" << this);
-  ui_operation_queue_->SetPageOptions(shell_option.page_options_);
+  page_options_.SetInstanceID(instance_id_);
+  ui_operation_queue_->SetPageOptions(page_options_);
   engine_thread_switch_ = std::make_shared<EngineThreadSwitch>(
       runners_.GetUITaskRunner(), runners_.GetTASMTaskRunner(),
       ui_operation_queue_);

@@ -182,6 +182,10 @@ LynxShell* LynxShellBuilder::build() {
   }
 
   LynxShell* shell = new LynxShell(this->strategy_, this->shell_option_);
+  if (this->shell_option_.instance_id_ == kUnknownInstanceId) {
+    this->shell_option_.instance_id_ = shell->instance_id_;
+    this->shell_option_.page_options_.SetInstanceID(shell->instance_id_);
+  }
 
   shell->facade_actor_ = std::make_shared<LynxActor<NativeFacade>>(
       std::move(this->native_facade_), shell->runners_.GetUITaskRunner(),
