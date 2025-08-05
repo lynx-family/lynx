@@ -13,6 +13,7 @@ static NSString *const KEY_LYNX_ENABLE_BYTECODE = @"enable_bytecode";
 static NSString *const KEY_LYNX_BYTECODE_URL = @"bytecode_url";
 static NSString *const KEY_LYNX_ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP =
     @"enable_vsync_aligned_message_loop";
+static NSString *const KEY_LYNX_FORCE_JS_GROUP_THREAD = @"force_single_js_thread";
 @interface LynxViewConfigProcessor : NSObject
 
 + (void)processorMap:(NSMutableDictionary *)dictionary

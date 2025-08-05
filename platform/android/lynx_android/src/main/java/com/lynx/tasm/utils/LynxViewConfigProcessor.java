@@ -5,6 +5,7 @@ package com.lynx.tasm.utils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.utils.LynxViewBuilderProperty;
@@ -24,6 +25,16 @@ public class LynxViewConfigProcessor {
           lynxViewConfig.get(LynxViewBuilderProperty.AUTO_CONCURRENCY.getKey());
       if (autoConcurrency != null) {
         lynxViewBuilder.setEnableAutoConcurrency(Integer.parseInt(autoConcurrency) == 1);
+      }
+
+      String forceSingleJSThread =
+          lynxViewConfig.get(LynxViewBuilderProperty.FORCE_SINGLE_JS_THREAD.getKey());
+      if (forceSingleJSThread != null) {
+        LynxGroup group = lynxViewBuilder.getLynxGroup();
+        if (group == null) {
+          group = new LynxGroup.LynxGroupBuilder().build();
+        }
+        group.setEnableJSGroupThread(Integer.parseInt(forceSingleJSThread) == 1);
       }
     } catch (NumberFormatException e) {
       LLog.e(TAG, e.toString());

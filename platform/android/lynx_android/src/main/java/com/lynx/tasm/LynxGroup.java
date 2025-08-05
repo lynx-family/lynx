@@ -92,6 +92,10 @@ public class LynxGroup {
     return mEnableJSGroupThread;
   }
 
+  public void setEnableJSGroupThread(boolean enable) {
+    this.mEnableJSGroupThread = enable;
+  }
+
   public boolean enableV8() {
     return mEnableV8;
   }

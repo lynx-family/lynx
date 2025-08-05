@@ -5473,6 +5473,7 @@ public interface UIViewController(LynxHeroTransition) {
   public NSString* const KEY_LYNX_ENABLE_BYTECODE KEY_LYNX_ENABLE_BYTECODE;
   public NSString* const KEY_LYNX_BYTECODE_URL KEY_LYNX_BYTECODE_URL;
   public NSString* const KEY_LYNX_ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP KEY_LYNX_ENABLE_VSYNC_ALIGNED_MESSAGE_LOOP;
+  public NSString* const KEY_LYNX_FORCE_JS_GROUP_THREAD KEY_LYNX_FORCE_JS_GROUP_THREAD;
 
   typedef struct LBSPathConsumer LBSPathConsumer
   public CGPathRef LBSCreatePathFromData(const char *data);

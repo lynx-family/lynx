@@ -4557,6 +4557,7 @@ public class com::lynx::tasm::LynxGroup :  {
   public String com.lynx.tasm.LynxGroup.getID();
   public String[] com.lynx.tasm.LynxGroup.getPreloadJSPaths();
   public boolean com.lynx.tasm.LynxGroup.enableJSGroupThread();
+  public void com.lynx.tasm.LynxGroup.setEnableJSGroupThread(boolean enable);
   public boolean com.lynx.tasm.LynxGroup.enableV8();
   public String com.lynx.tasm.LynxGroup.getStringConfig(String key);
   public boolean com.lynx.tasm.LynxGroup.getBoolConfig(String key);
@@ -6111,6 +6112,7 @@ public class com::lynx::tasm::LynxViewBuilder :  {
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setThreadStrategyForRendering(ThreadStrategyForRendering strategy);
   public ThreadStrategyForRendering com.lynx.tasm.LynxViewBuilder.getThreadStrategy();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxGroup(@Nullable LynxGroup group);
+  public LynxGroup com.lynx.tasm.LynxViewBuilder.getLynxGroup();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxModuleExtraData(Object data);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module);
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module, Object param);
@@ -6154,6 +6156,7 @@ public class com::lynx::tasm::LynxViewBuilder :  {
 public enum com::lynx::tasm::utils::LynxViewBuilderProperty {
   public com.lynx.tasm.utils.LynxViewBuilderProperty.AUTO_CONCURRENCY AUTO_CONCURRENCY;
   public com.lynx.tasm.utils.LynxViewBuilderProperty.PLATFORM_CONFIG PLATFORM_CONFIG;
+  public com.lynx.tasm.utils.LynxViewBuilderProperty.FORCE_SINGLE_JS_THREAD FORCE_SINGLE_JS_THREAD;
   public com.lynx.tasm.utils.LynxViewBuilderProperty.LynxViewBuilderProperty(String key);
   public String com.lynx.tasm.utils.LynxViewBuilderProperty.getKey();
 }

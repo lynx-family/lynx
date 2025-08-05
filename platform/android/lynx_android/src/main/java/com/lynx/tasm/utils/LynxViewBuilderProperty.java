@@ -6,7 +6,8 @@ package com.lynx.tasm.utils;
 public enum LynxViewBuilderProperty {
   // value with 1 or 0
   AUTO_CONCURRENCY("auto_concurrency"),
-  PLATFORM_CONFIG("platform_config");
+  PLATFORM_CONFIG("platform_config"),
+  FORCE_SINGLE_JS_THREAD("force_single_js_thread");
   private final String key;
   LynxViewBuilderProperty(String key) {
     this.key = key;

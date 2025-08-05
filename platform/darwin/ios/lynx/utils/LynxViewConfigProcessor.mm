@@ -46,6 +46,11 @@
     lynxViewBuilder.enableVSyncAlignedMessageLoop =
         [(NSNumber *)enableVSyncAlignedMessageLoop intValue] == 1;
   }
+
+  id forceSingleJSThread = [dictionary objectForKey:KEY_LYNX_FORCE_JS_GROUP_THREAD];
+  if ([forceSingleJSThread isKindOfClass:NSNumber.class]) {
+    lynxViewBuilder.group.enableJSGroupThread = [(NSNumber *)forceSingleJSThread intValue] == 1;
+  }
 }
 
 @end
