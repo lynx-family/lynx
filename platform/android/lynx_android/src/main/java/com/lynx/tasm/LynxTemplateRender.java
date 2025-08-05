@@ -82,15 +82,12 @@ import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import com.lynx.tasm.service.ILynxExtensionService;
+import com.lynx.tasm.service.ILynxTrailService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.service.security.ILynxSecurityService;
 import com.lynx.tasm.service.security.SecurityResult;
 import com.lynx.tasm.theme.LynxTheme;
-import com.lynx.tasm.utils.CallStackUtil;
-import com.lynx.tasm.utils.ContextUtils;
-import com.lynx.tasm.utils.DisplayMetricsHolder;
-import com.lynx.tasm.utils.LynxViewBuilderProperty;
-import com.lynx.tasm.utils.UIThreadUtils;
+import com.lynx.tasm.utils.*;
 import java.lang.Runnable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -289,6 +286,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private void init(@Nullable Context context, UIBodyView bodyView, LynxViewBuilder builder) {
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_INIT);
+    ILynxTrailService trailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);
+    if (trailService != null) {
+      trailService.parseLynxViewBuilder(builder);
+    }
+
     mInitStart = System.currentTimeMillis();
     mContext = context;
     mBodyView = bodyView;

@@ -113,6 +113,10 @@ public class LynxViewBuilder
     return this;
   }
 
+  public LynxGroup getLynxGroup() {
+    return this.lynxRuntimeOptions.getLynxGroup();
+  }
+
   /**
    * Pass extra data to LynxModule, the usage of data depends on module's implementation
    *
