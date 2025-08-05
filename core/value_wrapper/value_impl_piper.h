@@ -27,7 +27,7 @@ class PiperValueFactory : public PubValueFactory {
  public:
   PiperValueFactory(piper::Runtime& rt) : rt_(rt){};
   std::unique_ptr<Value> CreateArray() override { return nullptr; };
-  std::unique_ptr<Value> CreateMap() override { return nullptr; };
+  std::unique_ptr<Value> CreateMap(bool is_local) override { return nullptr; };
   std::unique_ptr<Value> CreateBool(bool value) override { return nullptr; };
   std::unique_ptr<Value> CreateNumber(double value) override {
     return nullptr;

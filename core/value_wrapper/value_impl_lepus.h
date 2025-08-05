@@ -282,7 +282,7 @@ class ValueImplLepus : public Value {
 class PubValueFactoryDefault : public PubValueFactory {
  public:
   std::unique_ptr<Value> CreateArray() override;
-  std::unique_ptr<Value> CreateMap() override;
+  std::unique_ptr<Value> CreateMap(bool is_local) override;
   std::unique_ptr<Value> CreateBool(bool value) override;
   std::unique_ptr<Value> CreateNumber(double value) override;
   std::unique_ptr<Value> CreateString(const std::string& value) override;

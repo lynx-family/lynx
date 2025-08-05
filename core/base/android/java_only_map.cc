@@ -29,14 +29,18 @@ namespace lynx {
 namespace base {
 namespace android {
 
-JavaOnlyMap::JavaOnlyMap() {
+JavaOnlyMap::JavaOnlyMap(bool is_local) : is_local_(is_local) {
   JNIEnv* env = base::android::AttachCurrentThread();
-  jni_object_.Reset(env, Java_JavaOnlyMap_create(env).Get());
+  if (is_local_) {
+    jni_object_ = ScopedLocalJavaRef<jobject>(Java_JavaOnlyMap_create(env));
+  } else {
+    jni_object_ = ScopedGlobalJavaRef<jobject>(Java_JavaOnlyMap_create(env));
+  }
 }
 
 std::unique_ptr<base::android::JavaOnlyMap> JavaOnlyMap::ShallowCopy() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  auto map = Java_JavaOnlyMap_shallowCopy(env, jni_object_.Get());
+  auto map = Java_JavaOnlyMap_shallowCopy(env, jni_object());
   return std::make_unique<base::android::JavaOnlyMap>(env, map);
 }
 
@@ -54,14 +58,14 @@ void JavaOnlyMap::PushString(const char* key, const char* value) {
         JNIConvertHelper::ConvertToJNIByteArray(env, key);
     base::android::ScopedLocalJavaRef<jbyteArray> jni_value =
         JNIConvertHelper::ConvertToJNIByteArray(env, value);
-    Java_JavaOnlyMap_putByteArrayAsString(env, jni_object_.Get(), jni_key.Get(),
+    Java_JavaOnlyMap_putByteArrayAsString(env, jni_object(), jni_key.Get(),
                                           jni_value.Get());
   } else {
     base::android::ScopedLocalJavaRef<jstring> jni_key =
         JNIConvertHelper::ConvertToJNIStringUTF(env, key);
     base::android::ScopedLocalJavaRef<jstring> jni_value =
         JNIConvertHelper::ConvertToJNIStringUTF(env, value);
-    Java_JavaOnlyMap_putString(env, jni_object_.Get(), jni_key.Get(),
+    Java_JavaOnlyMap_putString(env, jni_object(), jni_key.Get(),
                                jni_value.Get());
   }
 }
@@ -70,14 +74,14 @@ void JavaOnlyMap::PushNull(const char* key) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putNull(env, jni_object_.Get(), jni_key.Get());
+  Java_JavaOnlyMap_putNull(env, jni_object(), jni_key.Get());
 }
 
 void JavaOnlyMap::PushBoolean(const std::string& key, bool value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putBoolean(env, jni_object_.Get(), jni_key.Get(), value);
+  Java_JavaOnlyMap_putBoolean(env, jni_object(), jni_key.Get(), value);
 }
 
 void JavaOnlyMap::PushInt(const std::string& key, int value) {
@@ -88,14 +92,14 @@ void JavaOnlyMap::PushInt(const char* key, int value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putInt(env, jni_object_.Get(), jni_key.Get(), value);
+  Java_JavaOnlyMap_putInt(env, jni_object(), jni_key.Get(), value);
 }
 
 void JavaOnlyMap::PushInt64(const char* key, int64_t value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putLong(env, jni_object_.Get(), jni_key.Get(), value);
+  Java_JavaOnlyMap_putLong(env, jni_object(), jni_key.Get(), value);
 }
 
 void JavaOnlyMap::PushDouble(const std::string& key, double value) {
@@ -106,14 +110,14 @@ void JavaOnlyMap::PushDouble(const char* key, double value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putDouble(env, jni_object_.Get(), jni_key.Get(), value);
+  Java_JavaOnlyMap_putDouble(env, jni_object(), jni_key.Get(), value);
 }
 
 void JavaOnlyMap::PushMap(const std::string& key, JavaOnlyMap* value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putMap(env, jni_object_.Get(), jni_key.Get(),
+  Java_JavaOnlyMap_putMap(env, jni_object(), jni_key.Get(),
                           value->jni_object());
 }
 
@@ -125,7 +129,7 @@ void JavaOnlyMap::PushArray(const char* key, JavaOnlyArray* value) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putArray(env, jni_object_.Get(), jni_key.Get(),
+  Java_JavaOnlyMap_putArray(env, jni_object(), jni_key.Get(),
                             value->jni_object());
 }
 
@@ -139,7 +143,7 @@ void JavaOnlyMap::PushByteArray(const std::string& key, uint8_t* buffer,
     jni_byte_array_ref = base::android::JNIConvertHelper::ConvertToJNIByteArray(
         env, std::string(reinterpret_cast<const char*>(buffer), length));
   }
-  Java_JavaOnlyMap_putByteArray(env, jni_object_.Get(), jni_key.Get(),
+  Java_JavaOnlyMap_putByteArray(env, jni_object(), jni_key.Get(),
                                 jni_byte_array_ref.Get());
 }
 
@@ -149,7 +153,7 @@ void JavaOnlyMap::PushByteBuffer(const std::string& key, jobject byte_buffer) {
                                                                  byte_buffer);
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  Java_JavaOnlyMap_putByteBuffer(env, jni_object_.Get(), jni_key.Get(),
+  Java_JavaOnlyMap_putByteBuffer(env, jni_object(), jni_key.Get(),
                                  jni_byte_buffer_ref.Get());
 }
 
@@ -176,7 +180,7 @@ void JavaOnlyMap::PushJavaValue(const std::string& key,
       JNIEnv* env = base::android::AttachCurrentThread();
       base::android::ScopedLocalJavaRef<jstring> jni_key =
           JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-      Java_JavaOnlyMap_putString(env, jni_object_.Get(), jni_key.Get(),
+      Java_JavaOnlyMap_putString(env, jni_object(), jni_key.Get(),
                                  value.JString());
       break;
     }
@@ -184,7 +188,7 @@ void JavaOnlyMap::PushJavaValue(const std::string& key,
       JNIEnv* env = base::android::AttachCurrentThread();
       base::android::ScopedLocalJavaRef<jstring> jni_key =
           JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-      Java_JavaOnlyMap_putByteArray(env, jni_object_.Get(), jni_key.Get(),
+      Java_JavaOnlyMap_putByteArray(env, jni_object(), jni_key.Get(),
                                     value.JByteArray());
       break;
     }
@@ -202,21 +206,27 @@ void JavaOnlyMap::PushJavaValue(const std::string& key,
 int JavaOnlyMap::Size() {
   JNIEnv* env = base::android::AttachCurrentThread();
 
-  return static_cast<int>(Java_JavaOnlyMap_size(env, jni_object_.Get()));
+  return static_cast<int>(Java_JavaOnlyMap_size(env, jni_object()));
 }
 
 bool JavaOnlyMap::Contains(const char* key) const {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jstring> jni_key =
       JNIConvertHelper::ConvertToJNIStringUTF(env, key);
-  return static_cast<ReadableType>(Java_JavaOnlyMap_getTypeIndex(
-             env, jni_object_.Get(), jni_key.Get())) !=
+  return static_cast<ReadableType>(
+             Java_JavaOnlyMap_getTypeIndex(env, jni_object(), jni_key.Get())) !=
          lynx::base::android::ReadableType::Null;
 }
 
 void JavaOnlyMap::Reset() {
   JNIEnv* env = base::android::AttachCurrentThread();
-  jni_object_.Reset(env, Java_JavaOnlyMap_create(env).Get());
+  if (is_local_) {
+    std::get<base::android::ScopedLocalJavaRef<jobject>>(jni_object_)
+        .Reset(env, Java_JavaOnlyMap_create(env).Get());
+  } else {
+    std::get<base::android::ScopedGlobalJavaRef<jobject>>(jni_object_)
+        .Reset(env, Java_JavaOnlyMap_create(env).Get());
+  }
 }
 
 lynx::base::android::ScopedLocalJavaRef<jobject>
@@ -353,6 +363,18 @@ JavaValue JavaOnlyMap::JavaOnlyMapGetJavaValueAtIndex(JNIEnv* env, jobject map,
       // LynxObject should not be operated in JavaOnlyMap
       return JavaValue();
     }
+  }
+}
+JavaOnlyMap::~JavaOnlyMap() {
+  if (is_local_) {
+    LOGE("----> Local Java Ref is deleted");
+    auto keys = Java_JavaOnlyMap_getKeys(base::android::AttachCurrentThread(),
+                                         jni_object());
+    ForEach(base::android::AttachCurrentThread(), jni_object(),
+            [](JNIEnv* env, jobject map, jstring key, std::string key_str) {
+              LOGE("----> key: " << key_str.c_str());
+            });
+    std::get<base::android::ScopedLocalJavaRef<jobject>>(jni_object_).Reset();
   }
 }
 

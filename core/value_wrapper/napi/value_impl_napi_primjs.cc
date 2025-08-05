@@ -662,7 +662,7 @@ std::unique_ptr<Value> PubValueFactoryNapiPrimJS::CreateArray() {
   return std::make_unique<ValueImplNapiPrimJS>(env_, result);
 }
 
-std::unique_ptr<Value> PubValueFactoryNapiPrimJS::CreateMap() {
+std::unique_ptr<Value> PubValueFactoryNapiPrimJS::CreateMap(bool is_local) {
   napi_value result;
   env_->napi_create_object(env_, &result);
   return std::make_unique<ValueImplNapiPrimJS>(env_, result);

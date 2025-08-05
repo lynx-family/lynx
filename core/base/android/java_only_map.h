@@ -6,6 +6,8 @@
 #define CORE_BASE_ANDROID_JAVA_ONLY_MAP_H_
 #include <memory>
 #include <string>
+#include <utility>
+#include <variant>
 
 #include "base/include/closure.h"
 #include "base/include/platform/android/scoped_java_ref.h"
@@ -24,15 +26,21 @@ class JavaOnlyMap {
   using ForEachClosure = base::MoveOnlyClosure<void, JNIEnv*, jobject, jstring,
                                                const std::string&>;
 
-  JavaOnlyMap();
+  JavaOnlyMap(bool is_local = false);
 
   JavaOnlyMap(JNIEnv* env,
-              const lynx::base::android::ScopedLocalJavaRef<jobject>& ref)
-      : jni_object_(env, ref.Get()) {}
+              const lynx::base::android::ScopedLocalJavaRef<jobject>& ref,
+              bool is_local = false) {
+    if (is_local) {
+      jni_object_ = std::move(ref);
+    } else {
+      jni_object_ = base::android::ScopedGlobalJavaRef<jobject>(env, ref.Get());
+    }
+  }
 
   std::unique_ptr<base::android::JavaOnlyMap> ShallowCopy();
 
-  ~JavaOnlyMap() = default;
+  ~JavaOnlyMap();
 
   void PushString(const std::string& key, const std::string& value);
   void PushString(const char* key, const char* value);
@@ -56,7 +64,17 @@ class JavaOnlyMap {
 
   void Reset();
 
-  inline jobject jni_object() { return jni_object_.Get(); }
+  bool IsLocal() { return is_local_; }
+
+  inline jobject jni_object() const {
+    if (is_local_) {
+      return std::get<base::android::ScopedLocalJavaRef<jobject>>(jni_object_)
+          .Get();
+    } else {
+      return std::get<base::android::ScopedGlobalJavaRef<jobject>>(jni_object_)
+          .Get();
+    }
+  }
 
   static lynx::base::android::ScopedLocalJavaRef<jobject> JavaOnlyMapGetKeys(
       JNIEnv* env, jobject map);
@@ -87,7 +105,10 @@ class JavaOnlyMap {
   static void ForEach(JNIEnv* env, jobject map, ForEachClosure closure);
 
  private:
-  base::android::ScopedGlobalJavaRef<jobject> jni_object_;
+  std::variant<base::android::ScopedGlobalJavaRef<jobject>,
+               base::android::ScopedLocalJavaRef<jobject>>
+      jni_object_;
+  bool is_local_ = false;
 };
 
 }  // namespace android

@@ -309,9 +309,9 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperArrayToPubValue(
 // static
 std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
     piper::Runtime& rt, const piper::Object& obj,
-    const std::shared_ptr<PubValueFactory>& factory) {
+    const std::shared_ptr<PubValueFactory>& factory, int32_t depth) {
   lynx::piper::Scope scope(rt);
-  auto result = factory->CreateMap();
+  auto result = factory->CreateMap(depth != 0);
   auto array = obj.getPropertyNames(rt);
   if (!array) {
     return result;
@@ -361,7 +361,7 @@ std::unique_ptr<Value> ValueUtils::ConvertPiperObjectToPubValue(
           result->PushBigIntToMap(key, r);
           continue;
         }
-        auto dict = ConvertPiperObjectToPubValue(rt, o, factory);
+        auto dict = ConvertPiperObjectToPubValue(rt, o, factory, depth + 1);
         result->PushValueToMap(key, std::move(dict));
       }
     }

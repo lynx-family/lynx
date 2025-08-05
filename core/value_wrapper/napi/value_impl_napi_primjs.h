@@ -122,7 +122,7 @@ class PubValueFactoryNapiPrimJS : public PubValueFactory {
   explicit PubValueFactoryNapiPrimJS(napi_env env) : env_(env) {}
   ~PubValueFactoryNapiPrimJS() override = default;
   std::unique_ptr<Value> CreateArray() override;
-  std::unique_ptr<Value> CreateMap() override;
+  std::unique_ptr<Value> CreateMap(bool is_local) override;
   std::unique_ptr<Value> CreateBool(bool value) override;
   std::unique_ptr<Value> CreateNumber(double value) override;
   std::unique_ptr<Value> CreateString(const std::string& value) override;

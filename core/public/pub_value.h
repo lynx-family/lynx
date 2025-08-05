@@ -192,7 +192,7 @@ class PubValueFactory {
     kCustom
   };
   virtual std::unique_ptr<Value> CreateArray() = 0;
-  virtual std::unique_ptr<Value> CreateMap() = 0;
+  virtual std::unique_ptr<Value> CreateMap(bool is_local = false) = 0;
   virtual std::unique_ptr<Value> CreateBool(bool value) = 0;
   virtual std::unique_ptr<Value> CreateNumber(double value) = 0;
   virtual std::unique_ptr<Value> CreateString(const std::string& value) = 0;

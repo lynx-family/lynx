@@ -16,7 +16,7 @@ std::unique_ptr<Value> PubValueFactoryDefault::CreateArray() {
   return std::make_unique<PubLepusValue>(lepus::Value(lepus::CArray::Create()));
 }
 
-std::unique_ptr<Value> PubValueFactoryDefault::CreateMap() {
+std::unique_ptr<Value> PubValueFactoryDefault::CreateMap(bool is_local) {
   return std::make_unique<PubLepusValue>(
       lepus::Value(lepus::Dictionary::Create()));
 }

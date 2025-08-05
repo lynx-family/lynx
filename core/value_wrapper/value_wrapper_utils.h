@@ -57,7 +57,7 @@ class ValueUtils {
       const std::shared_ptr<PubValueFactory>& factory);
   static std::unique_ptr<Value> ConvertPiperObjectToPubValue(
       piper::Runtime& rt, const piper::Object& obj,
-      const std::shared_ptr<PubValueFactory>& factory);
+      const std::shared_ptr<PubValueFactory>& factory, int32_t depth = 0);
 
   // Some tricky logic for BigInt, such as { "id" : 8913891381287328398 }
   // will exist on js { "id" : { "__lynx_val__" : "8913891381287328398" }},

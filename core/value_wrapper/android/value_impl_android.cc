@@ -41,9 +41,9 @@ std::unique_ptr<pub::Value> ValueImplAndroidFactory::CreateArray() {
       std::make_shared<base::android::JavaOnlyArray>()));
 }
 
-std::unique_ptr<pub::Value> ValueImplAndroidFactory::CreateMap() {
-  return std::make_unique<ValueImplAndroid>(
-      base::android::JavaValue(std::make_shared<base::android::JavaOnlyMap>()));
+std::unique_ptr<pub::Value> ValueImplAndroidFactory::CreateMap(bool is_local) {
+  return std::make_unique<ValueImplAndroid>(base::android::JavaValue(
+      std::make_shared<base::android::JavaOnlyMap>(is_local)));
 }
 
 // Iterator

@@ -33,7 +33,7 @@ class ValueImplAndroidFactory : public pub::PubValueFactory {
   std::unique_ptr<pub::Value> CreateArrayBuffer(
       std::unique_ptr<uint8_t[]> value, size_t length) override;
   std::unique_ptr<pub::Value> CreateArray() override;
-  std::unique_ptr<pub::Value> CreateMap() override;
+  std::unique_ptr<pub::Value> CreateMap(bool is_local) override;
   ~ValueImplAndroidFactory() override = default;
 };
 
