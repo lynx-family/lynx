@@ -4893,6 +4893,7 @@ public class com::lynx::tasm::LynxGroup :  {
   public String com.lynx.tasm.LynxGroup.getID();
   public String[] com.lynx.tasm.LynxGroup.getPreloadJSPaths();
   public boolean com.lynx.tasm.LynxGroup.enableJSGroupThread();
+  public void com.lynx.tasm.LynxGroup.setEnableJSGroupThread(boolean enable);
   public boolean com.lynx.tasm.LynxGroup.enableV8();
   public String com.lynx.tasm.LynxGroup.getStringConfig(String key);
   public boolean com.lynx.tasm.LynxGroup.getBoolConfig(String key);
@@ -6493,6 +6494,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public Uri com.lynx.tasm.LynxViewBuilder.getUri();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.insertLynxViewConfig(String key, String value);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxViewGroup(ILynxViewGroup group);
+  public LynxGroup com.lynx.tasm.LynxViewBuilder.getLynxGroup();
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setLynxModuleExtraData(Object data);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setResourceFetcher(LynxResourceFetcher resourceFetcher);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setFontLoader(LynxFontFaceLoader.Loader fontLoader);

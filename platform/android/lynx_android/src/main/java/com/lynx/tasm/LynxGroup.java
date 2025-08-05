@@ -4,6 +4,7 @@
 package com.lynx.tasm;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxEnvKey;
 import com.lynx.tasm.base.LLog;
@@ -90,6 +91,11 @@ public class LynxGroup {
 
   public boolean enableJSGroupThread() {
     return mEnableJSGroupThread;
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void setEnableJSGroupThread(boolean enable) {
+    this.mEnableJSGroupThread = enable;
   }
 
   public boolean enableV8() {
