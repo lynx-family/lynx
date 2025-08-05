@@ -97,7 +97,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
         mCreateViewUI = new ArrayList<>();
         attachToView();
-        mBodyView.removeExistingViews();
+        mBodyView.markNeedRemoveExistingViews();
 
         TraceEvent.endSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);
         return null;
@@ -107,14 +107,6 @@ public class UIBody extends UIGroup<UIBodyView> {
     if (mDetachTask == null) {
       mAttachTask.run();
     }
-  }
-
-  @Override
-  protected void attachToView() {
-    if (mBodyView != null) {
-      mBodyView.obtainViewAccordingToNodeIndex(mNodeIndex);
-    }
-    super.attachToView();
   }
 
   synchronized public void detachUIBodyView() {
@@ -164,9 +156,12 @@ public class UIBody extends UIGroup<UIBodyView> {
   }
 
   @Override
+  protected void registerViewAccordingToNodeIndex() {}
+
+  @Override
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
-    mBodyView = null;
     super.detachWithViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
+    mBodyView = null;
   }
 
   public void appendUIWithCreateViewAsync(LynxUI ui) {
@@ -196,6 +191,10 @@ public class UIBody extends UIGroup<UIBodyView> {
         mAttachTask.get();
         mAttachTask = null;
       }
+    }
+
+    if (mBodyView != null) {
+      mBodyView.removeExistingViews();
     }
 
     if (mCreateViewUI == null) {
@@ -336,6 +335,8 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private boolean mIsChildLynxPageUI;
 
+    private boolean mNeedRemoveExistingViews = false;
+
     // assign with the uiRenderer instance on TemplateRender
     @RestrictTo(RestrictTo.Scope.LIBRARY) protected ILynxUIRenderer mLynxUIRender;
 
@@ -361,7 +362,15 @@ public class UIBody extends UIGroup<UIBodyView> {
       mViewMap.put(nodeIndex, view);
     }
 
+    public void markNeedRemoveExistingViews() {
+      mNeedRemoveExistingViews = true;
+    }
+
     public void removeExistingViews() {
+      if (!mNeedRemoveExistingViews) {
+        return;
+      }
+
       for (HashMap.Entry<Integer, View> entry : mViewMap.entrySet()) {
         View view = entry.getValue();
         if (view.getParent() instanceof ViewGroup) {
@@ -369,6 +378,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         }
       }
       mViewMap.clear();
+      mNeedRemoveExistingViews = false;
     }
 
     @Override
