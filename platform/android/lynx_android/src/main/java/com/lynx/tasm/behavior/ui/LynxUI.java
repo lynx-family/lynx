@@ -199,8 +199,10 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       View view = mContext.getUIBodyView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
         mView = (T) view;
-        mViewInfo = new ViewInfo(this, mView);
-        ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+        if (mView instanceof IDrawChildHook.IDrawChildHookBinding) {
+          mViewInfo = new ViewInfo(this, mView);
+          ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+        }
       }
       return mView;
     }
@@ -264,12 +266,17 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @Override
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
-    mContext.getLynxView().registerViewAccordingToNodeIndex(mNodeIndex, mView);
+    if (!(mView instanceof UIBody.UIBodyView)) {
+      mContext.getLynxView().registerViewAccordingToNodeIndex(mNodeIndex, mView);
+    }
 
-    mViewInfo.detachFromUI();
-    mViewInfo = null;
-    mView = null;
     super.detachWithViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
+
+    if (mViewInfo != null) {
+      mViewInfo.detachFromUI();
+      mViewInfo = null;
+    }
+    mView = null;
   }
 
   /**
@@ -340,8 +347,10 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       }
     }
 
-    mViewInfo = new ViewInfo(this, mView);
-    ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+    if (mView instanceof IDrawChildHook.IDrawChildHookBinding) {
+      mViewInfo = new ViewInfo(this, mView);
+      ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+    }
 
     if (mDrawParent instanceof UIGroup && mView.getParent() == null) {
       ((UIGroup) mDrawParent).insertChildWhenRebuildView(this);
@@ -784,6 +793,9 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @Override
   public void invalidate() {
+    if (mView == null) {
+      return;
+    }
     mView.invalidate();
   }
 
