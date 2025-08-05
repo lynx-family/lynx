@@ -935,7 +935,7 @@ public class LynxEnv {
   }
 
   public long getMemoryReportIntervalSec() {
-    String value = getStringFromExternalEnv(LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC);
+    String value = getStringFromExternalEnv(LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC);
     // default is 20 min.
     long delay = 20 * 60;
     if (value != null && !value.isEmpty()) {

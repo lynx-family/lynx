@@ -39,7 +39,7 @@ public enum LynxEnvKey {
   ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD("enable_recycle_render_data_list_while_reload"),
   ENABLE_TEXT_LAYOUT_CACHE("enable_text_layout_cache"),
   MEMORY_ACQUISITION_DELAY_SEC("memory_acquisition_delay_second"),
-  MEMORY_REPORT_INTERVAL_SEC("memory_acquisition_delay_second");
+  MEMORY_REPORT_INTERVAL_SEC("memory_report_interval_sec");
 
   private final String description;
 
