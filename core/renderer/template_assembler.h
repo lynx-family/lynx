@@ -786,6 +786,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
     on_layout_ready_hooks_.emplace_back(std::move(closure));
   }
 
+  bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
+
  private:
   void ExecuteOnLayoutReadyHooks();
   void EnsureOnLayoutReadyHooksFinish();
@@ -793,8 +795,6 @@ class TemplateAssembler final : public TemplateEntryHolder,
   friend class TemplateBinaryReader;
   friend class TemplateBinaryReaderSSR;
   friend class TemplateEntry;
-
-  bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
   void ExecuteDataProcessor(TemplateData& data);
 

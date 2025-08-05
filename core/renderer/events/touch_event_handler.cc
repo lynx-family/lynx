@@ -149,8 +149,14 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
                                          const std::string &page_name,
                                          const std::string &name,
                                          const EventInfo &info) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_TOUCH_EVENT, "page_name",
-              page_name, "name", name);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_TOUCH_EVENT,
+              [&page_name, &name, instance_id = tasm->GetInstanceId()](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("page_name", page_name);
+                ctx.event()->add_debug_annotations("name", name);
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
   LOGI("HandleTouchEvent page:" << page_name << " ;event: " << name
                                 << " tag:" << info.tag
                                 << " ;multiFinger:" << info.is_multi_finger);
@@ -159,16 +165,25 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
     return;
   }
 
-  if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+  if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
+      tasm->IsEmbeddedModeOn()) {
     if (info.is_multi_finger) {
       for (auto events : *info.params.Table()) {
         int tag = std::stoi(events.first.str());
         auto target = node_manager_->Get(tag);
+        if (!target) {
+          LOGE("HandleTouchEvent multi touch error: the target is null.");
+          continue;
+        }
         event::TouchEvent event(name, info.params, info.timestamp);
         event::EventDispatcher::DispatchEvent(*target, event);
       }
     } else {
       auto target = node_manager_->Get(info.tag);
+      if (!target) {
+        LOGE("HandleTouchEvent error: the target is null.");
+        return;
+      }
       event::TouchEvent event(name, info.x, info.y, info.page_x, info.page_y,
                               info.client_x, info.client_y, info.timestamp);
       event::EventDispatcher::DispatchEvent(*target, event);
@@ -336,8 +351,13 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                                           const std::string &name, int tag,
                                           const lepus::Value &params,
                                           const std::string &pname) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_CUSTOM_EVENT, "name",
-              name);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_TOUCH_EVENT,
+              [&name, instance_id = tasm->GetInstanceId()](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("name", name);
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
   LOGI("SendCustomEvent event name:" << name << " tag:" << tag);
 
   if (tasm == nullptr || tasm->page_proxy() == nullptr) {
@@ -345,8 +365,13 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
     return;
   }
 
-  if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+  if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
+      tasm->IsEmbeddedModeOn()) {
     auto target = node_manager_->Get(tag);
+    if (!target) {
+      LOGE("HandleCustomEvent error: the target is null.");
+      return;
+    }
     event::CustomEvent event(name, params, pname);
     event::EventDispatcher::DispatchEvent(*target, event);
     return;

@@ -1,3 +1,9 @@
+# 0.0.14
+* add renderer functions for event handle `__AddEventListener`, `__RemoveEventListener`, `__CreateEvent`, `__DispatchEvent`, `__StopPropagation` and `__StopImmediatePropagation`.
+
+# 0.0.13
+* Support encode keyframe information in style objects into template for simple styling.
+
 # 0.0.12
 * Fix the issue that `StyleObjects` are not encoded as parsed `CSSValues` when `enableParallelElement` is false.
 

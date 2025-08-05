@@ -32,9 +32,11 @@
 #include "core/event/event_dispatcher.h"
 
 #include "base/include/fml/memory/weak_ptr.h"
+#include "base/trace/native/trace_event.h"
 #include "core/event/event.h"
 #include "core/event/event_target.h"
 #include "core/event/touch_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace event {
@@ -51,7 +53,11 @@ EventDispatcher::EventDispatcher(EventTarget& target, Event& event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH, "name",
+              event_->type());
+  LOGI("EventDispatcher::Dispatch name: " << event_->type());
   if (!target_) {
+    LOGE("EventDispatcher::Dispatch error: the target is null.");
     return {EventCancelType::kCanceledBeforeDispatch, false};
   }
   // handle conflic and param
@@ -81,6 +87,9 @@ DispatchEventResult EventDispatcher::Dispatch() {
   for (auto item = path.rbegin(); item != path.rend(); ++item) {
     fml::WeakPtr<EventTarget> target = *item;
     if (!target) {
+      LOGE(
+          "EventDispatcher::Dispatch capture error: the target of event path "
+          "is null.");
       continue;
     }
     event_->set_event_phase((event_->target() == target)
@@ -97,6 +106,9 @@ DispatchEventResult EventDispatcher::Dispatch() {
   // bubble, eg: bindtap
   for (auto& item : path) {
     if (!item) {
+      LOGE(
+          "EventDispatcher::Dispatch capture error: the target of event path "
+          "is null.");
       continue;
     }
     if (event_->target() == item) {

@@ -4061,13 +4061,15 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   if (callback->IsEmpty()) {
     // If callback is undefined, remove event.
     element->RemoveEvent(name->String(), type->String());
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
+        tasm->IsEmbeddedModeOn()) {
       element->RemoveEventListeners(name->StdString());
     }
   } else if (callback->IsString()) {
     element->SetJSEventHandler(name->String(), type->String(),
                                callback->String());
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
+        tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
       event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
       event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;
@@ -4133,7 +4135,8 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       element->SetWorkletEventHandler(name->String(), type->String(), value,
                                       context);
     }
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor()) {
+    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
+        tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
       event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
       event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;

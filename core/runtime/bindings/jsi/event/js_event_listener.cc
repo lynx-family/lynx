@@ -4,6 +4,8 @@
 
 #include "core/runtime/bindings/jsi/event/js_event_listener.h"
 
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/common/utils.h"
@@ -31,21 +33,23 @@ JSClosureEventListener::JSClosureEventListener(
 }
 
 void JSClosureEventListener::Invoke(event::Event* event) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, CALL_JS_CLOSURE_EVENT,
-              [event](lynx::perfetto::EventContext ctx) {
-                auto type = event ? event->type() : "null";
-                ctx.event()->add_debug_annotations("type", type);
-              });
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, JS_CLOSURE_EVENT_LISTENER_INVOKE, "name",
+              event ? event->type() : "");
+  LOGI("JSClosureEventListener::Invoke name: " << (event ? event->type() : ""));
   if (!closure_.isObject()) {
+    LOGE("JSClosureEventListener::Invoke error: the closure isn't an object.");
     return;
   }
 
   auto app = native_app_.lock();
   if (!app || app->IsDestroying()) {
+    LOGE(
+        "JSClosureEventListener::Invoke error: the app is null or destroying.");
     return;
   }
   auto rt = app->GetRuntime();
   if (!rt) {
+    LOGE("JSClosureEventListener::Invoke error: the runtime is null.");
     return;
   }
   auto page_options = app ? app->GetPageOptions() : tasm::PageOptions();
@@ -57,6 +61,7 @@ void JSClosureEventListener::Invoke(event::Event* event) {
 
   auto func = closure_.getObject(*rt).asFunction(*rt);
   if (!func) {
+    LOGE("JSClosureEventListener::Invoke error: it isn't a function.");
     return;
   }
 

@@ -6,7 +6,9 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "core/event/event_target.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace event {
@@ -48,6 +50,7 @@ TouchEvent::TouchEvent(const std::string& event_name,
 }
 
 void TouchEvent::HandleEventCustomDetail() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_CUSTOM_DETAIL, "name", type_);
   if (!target_) {
     return;
   }

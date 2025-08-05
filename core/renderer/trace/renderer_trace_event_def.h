@@ -784,6 +784,21 @@ inline constexpr const char* const TOUCH_EVENT_TRIGGER_FIBER_ELEMENT_WORKLET =
 inline constexpr const char* const TOUCH_EVENT_HANDLE_EVENT_INTERNAL =
     "HandleEventInternal";
 
+inline constexpr const char* const EVENT_DISPATCHER_DISPATCH =
+    "EventDispatcher::Dispatch";
+inline constexpr const char* const TOUCH_EVENT_CUSTOM_DETAIL =
+    "TouchEvent::HandleEventCustomDetail";
+inline constexpr const char* const CUSTOM_EVENT_CUSTOM_DETAIL =
+    "CustomEvent::HandleEventCustomDetail";
+inline constexpr const char* const EVENT_TARGET_DISPATCHEVENT =
+    "EventTarget::DispatchEvent";
+inline constexpr const char* const CLOSURE_EVENT_LISTENER_INVOKE =
+    "ClosureEventListener::Invoke";
+inline constexpr const char* const LEPUS_CLOSURE_EVENT_LISTENER_INVOKE =
+    "LepusClosureEventListener::Invoke";
+inline constexpr const char* const JS_CLOSURE_EVENT_LISTENER_INVOKE =
+    "JSClosureEventListener::Invoke";
+
 inline constexpr const char* const I18N_BIND = "i18n::Bind";
 
 inline constexpr const char* const ADAPTER_HELPER_UPDATE_DIFF_RESULT =
