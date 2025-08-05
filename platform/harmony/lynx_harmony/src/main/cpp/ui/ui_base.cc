@@ -982,6 +982,14 @@ void UIBase::SetEventThrough(const lepus::Value& value) {
     event_through_ = value.Bool() ? LynxEventPropStatus::kEnable
                                   : LynxEventPropStatus::kDisable;
   }
+  if (value.IsString()) {
+    auto bool_str = value.StdString();
+    if (bool_str == "true") {
+      event_through_ = LynxEventPropStatus::kEnable;
+    } else if (bool_str == "false") {
+      event_through_ = LynxEventPropStatus::kDisable;
+    }
+  }
 }
 
 void UIBase::SetBlockNativeEvent(const lepus::Value& value) {
