@@ -709,6 +709,10 @@ class Element : public lepus::RefCounted, public event::EventTarget {
     return weak_factory_.GetWeakPtr();
   }
 
+  virtual std::string GetUniqueID() override {
+    return std::to_string(impl_id());
+  }
+
  protected:
   Element(const Element&, bool clone_resolved_props);
 

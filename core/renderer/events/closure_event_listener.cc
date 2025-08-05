@@ -7,6 +7,8 @@
 #include <utility>
 
 #include "base/include/value/array.h"
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/value_wrapper/value_wrapper_utils.h"
@@ -24,6 +26,16 @@ ClosureEventListener::ClosureEventListener(
       lepus_object_(lepus_object) {}
 
 void ClosureEventListener::Invoke(event::Event* event) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, CLOSURE_EVENT_LISTENER_INVOKE,
+      [&event, listener = this](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event ? event->type() : "");
+        ctx.event()->add_debug_annotations(
+            "type", std::to_string(static_cast<int>(listener->closure_type_)));
+      });
+  LOGI("ClosureEventListener::Invoke name: "
+       << (event ? event->type() : "")
+       << ", type: " << static_cast<int>(closure_type_));
   if (event->event_type() == event::Event::EventType::kMessageEvent) {
     runtime::MessageEvent* message_event =
         static_cast<runtime::MessageEvent*>(event);
@@ -32,7 +44,10 @@ void ClosureEventListener::Invoke(event::Event* event) {
   }
   if (event->event_type() == event::Event::EventType::kTouchEvent ||
       event->event_type() == event::Event::EventType::kCustomEvent) {
-    if (!event->current_target()) {
+    if (!event->target() || !event->current_target()) {
+      LOGE(
+          "ClosureEventListener::Invoke error: the target or current_target is "
+          "null.");
       return;
     }
     event->HandleEventBaseDetail(closure_type_ == ClosureType::kCore);

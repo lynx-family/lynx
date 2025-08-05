@@ -108,6 +108,8 @@ class EventTarget {
   virtual bool GetEnableMultiTouchParamsCompatible() { return false; }
   // Get unit to calculate the position.
   virtual float GetLayoutsUnitPerPx() { return 1.f; }
+  // Get the unique id for target.
+  virtual std::string GetUniqueID() { return std::to_string(0); }
 
  protected:
   EventTargetType target_type_{EventTargetType::kNone};

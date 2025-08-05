@@ -37,7 +37,9 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
 #include "core/event/touch_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace event {
@@ -50,6 +52,18 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   if (vector == nullptr) {
     return {EventCancelType::kNotCanceled, false};
   }
+
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, EVENT_TARGET_DISPATCHEVENT,
+      [&event, target = this](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("name", event.type());
+        ctx.event()->add_debug_annotations(
+            "phase", std::to_string(static_cast<int>(event.event_phase())));
+        ctx.event()->add_debug_annotations("target", target->GetUniqueID());
+      });
+  LOGI("EventTarget::DispatchEvent name: "
+       << event.type() << ", phase: " << static_cast<int>(event.event_phase())
+       << ", target: " << GetUniqueID());
 
   // Fire all listeners registered for this event. Don't fire listeners removed
   // during event dispatch. Also, don't fire event listeners added during event

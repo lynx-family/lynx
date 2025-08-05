@@ -6,6 +6,9 @@
 
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
+
 namespace lynx {
 namespace event {
 
@@ -21,6 +24,7 @@ CustomEvent::CustomEvent(const std::string& event_name,
 }
 
 void CustomEvent::HandleEventCustomDetail() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, CUSTOM_EVENT_CUSTOM_DETAIL, "name", type_);
   BASE_STATIC_STRING_DECL(kTimestamp, "timestamp");
 
   auto dict = detail_.Table();
