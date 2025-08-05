@@ -132,6 +132,8 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   // SetLayoutContextPlatformImpl() test
   auto out_layout_context = shell_->layout_actor_->Impl();
+  EXPECT_EQ(out_layout_context->page_options_.GetInstanceID(),
+            shell_->instance_id_);
   EXPECT_EQ(out_layout_context->platform_impl_.get(), nullptr);
 
   // SetStrategy() test
