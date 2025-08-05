@@ -131,8 +131,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       [_runtimeOptions merge:_runtime.options];
     }
 
-    [builder.lynxUIRenderer attachContainerView:containerView];
-
     /// Member Variable
     CGSize screenSize;
     if (!CGSizeEqualToSize(builder.screenSize, CGSizeZero)) {
@@ -140,6 +138,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     } else {
       screenSize = [UIScreen mainScreen].bounds.size;
     }
+    builder.screenSize = screenSize;
     [self setUpVariableWithBuilder:builder containerView:containerView screenSize:screenSize];
 
     /// DevTool
@@ -197,7 +196,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                       screenSize:(CGSize)screenSize {
   _enableGenericResourceFetcher =
       [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
-  [builder.lynxUIRenderer setEnableGenericResourceFetcher:_enableGenericResourceFetcher];
   _originLynxViewConfig = builder.lynxViewConfig;
   _enableAirStrictMode = builder.enableAirStrictMode;
   // enable js default yes
@@ -232,7 +230,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableAutoExpose = builder.enableAutoExpose;
   _enablePreUpdateData = builder.enablePreUpdateData;
   _lynxModuleExtraData = builder.lynxModuleExtraData;
-  _lynxUIRenderer = builder.lynxUIRenderer;
 
   [self setUpContainerView:containerView builder:builder];
 
@@ -2144,7 +2141,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
 - (void)setPageConfig:(const std::shared_ptr<lynx::tasm::PageConfig>&)pageConfig {
   pageConfig_ = pageConfig;
-  [_lynxUIRenderer setPageConfig:pageConfig context:_context];
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    [(LynxUIRenderer*)_lynxUIRenderer onPageConfigUpdate:pageConfig];
+  }
 }
 
 - (NSString*)translatedResourceWithId:(NSString*)resId themeKey:(NSString*)key {

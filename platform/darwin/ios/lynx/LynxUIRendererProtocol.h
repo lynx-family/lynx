@@ -1,33 +1,27 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #ifndef PLATFORM_DARWIN_IOS_LYNX_LYNXUIRENDERERPROTOCOL_H_
 #define PLATFORM_DARWIN_IOS_LYNX_LYNXUIRENDERERPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
 
 #import <Lynx/LynxBooleanOption.h>
-#import "LynxTemplateRender+Protected.h"
-
-#include <objc/objc.h>
-
-namespace lynx {
-namespace tasm {
-class UIDelegate;
-}  // namespace tasm
-namespace shell {
-class LynxShell;
-}  // namespace shell
-namespace piper {
-class LynxModuleManager;
-}  // namespace piper
-}  // namespace lynx
+#import <Lynx/LynxContext.h>
+#import <Lynx/LynxEventEmitter.h>
+#import <Lynx/LynxUIMethodProcessor.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxUIOwner;
 @class LynxTemplateResourceFetcher;
 @class LynxViewBuilder;
+@class LynxUIIntersectionObserverManager;
+@class LynxRootUI;
+@class LynxScreenMetrics;
+@class LynxGestureArenaManager;
+@class LynxShadowNodeOwner;
 
 @protocol LynxResourceProvider;
 
@@ -35,24 +29,20 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readonly) BOOL useInvokeUIMethodFunction;
 
+- (instancetype)initWithLynxContext:(LynxContext *)context
+                      containerView:(UIView<LUIBodyView> *)containerView
+                            builder:(LynxViewBuilder *)builder
+                   providerRegistry:(LynxProviderRegistry *)providerRegistry;
+
 - (void)attachContainerView:(UIView<LUIBodyView> *)containerView;
 
-- (void)onSetupUIDelegate:(lynx::tasm::UIDelegate *)uiDelegate;
+- (void)setupUIDelegate:(LynxShadowNodeOwner *)owner;
 
-- (void)onSetupUIDelegate:(lynx::shell::LynxShell *)shell
-        withModuleManager:(lynx::piper::LynxModuleManager *)moduleManager
-              withJSProxy:(std::shared_ptr<lynx::shell::LynxRuntimeProxy>)jsProxy;
+- (void *)uiDelegate;
 
-- (lynx::tasm::UIDelegate *)uiDelegate;
-
-- (void)setupEventHandler:(id<TemplateRenderCallbackProtocol>)templateRenderer
-              engineProxy:(LynxEngineProxy *)engineProxy
-            containerView:(UIView<LUIBodyView> *)containerView
-                  context:(LynxContext *)context
-                 shellPtr:(int64_t)shellPtr;
-
-- (void)setPageConfig:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig
-              context:(LynxContext *)context;
+- (void)setupEventHandler:(LynxEngineProxy *)engineProxy
+                 shellPtr:(int64_t)shellPtr
+                    block:(onLynxEvent)block;
 
 - (void)setFluencyTracerEnabled:(LynxBooleanOption)enabled;
 
@@ -81,22 +71,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (LynxRootUI *)rootUI;
 
 - (void)setupWithContainerView:(UIView<LUIBodyView> *)containerView
-
                        builder:(LynxViewBuilder *)builder
                     screenSize:(CGSize)screenSize;
-
-- (void)setLynxContext:(LynxContext *)context;
-
-- (void)setEnableGenericResourceFetcher:(BOOL)enable;
 
 - (id<LynxTemplateResourceFetcher>)templateResourceFetcher;
 
 - (id<LynxGenericResourceFetcher>)genericResourceFetcher;
 
 - (id<LynxMediaResourceFetcher>)mediaResourceFetcher;
-
-- (void)setupResourceProvider:(id<LynxResourceProvider>)resourceProvider
-                  withBuilder:(LynxViewBuilder *)builder;
 
 - (void)reset;
 

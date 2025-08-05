@@ -29,6 +29,10 @@
   native_engine_proxy_ = proxy;
 }
 
+- (const std::shared_ptr<lynx::shell::LynxEngineProxyDarwin> &)nativeProxy {
+  return native_engine_proxy_;
+}
+
 - (void)dispatchTaskToLynxEngine:(dispatch_block_t)task {
   if (native_engine_proxy_ && task) {
     native_engine_proxy_->DispatchTaskToLynxEngine([task]() { task(); });

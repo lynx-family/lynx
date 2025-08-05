@@ -49,6 +49,7 @@
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
+#include "core/shell/perf_controller_proxy_impl.h"
 
 @implementation LynxTemplateRender (Helper)
 
@@ -75,10 +76,7 @@
 
 - (void)setUpUIDelegate {
   if (!_isEngineInitFromReusePool) {
-    lynx::tasm::UIDelegateDarwin* ui_delegate = new lynx::tasm::UIDelegateDarwin(
-        [_lynxUIRenderer uiOwner], [[LynxEnv sharedInstance] enableCreateUIAsync],
-        _shadowNodeOwner);
-    [_lynxUIRenderer onSetupUIDelegate:ui_delegate];
+    [_lynxUIRenderer setupUIDelegate:_shadowNodeOwner];
   }
 }
 
@@ -100,7 +98,7 @@
           nil, _fetcher, self, templateResourceFetcher, genericResourceFetcher));
 
   // Build shell
-  auto ui_delegate = [_lynxUIRenderer uiDelegate];
+  auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([_lynxUIRenderer uiDelegate]);
   std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context;
   if (!_isEngineInitFromReusePool) {
     painting_context = ui_delegate->CreatePaintingContext();
@@ -177,11 +175,12 @@
 
 - (void)setUpEventHandler {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_SETUP_EVENT_HANDLER);
-  [_lynxUIRenderer setupEventHandler:self
-                         engineProxy:_lynxEngineProxy
-                       containerView:_containerView
-                             context:_context
-                            shellPtr:reinterpret_cast<int64_t>(shell_.get())];
+  __weak typeof(self) weakSelf = self;
+  [_lynxUIRenderer setupEventHandler:_lynxEngineProxy
+                            shellPtr:reinterpret_cast<int64_t>(shell_.get())
+                               block:^BOOL(LynxEvent* event) {
+                                 return [weakSelf onLynxEvent:event];
+                               }];
 }
 
 - (void)setUpRuntimeWithLastInstanceId:(int32_t)lastInstanceId {
@@ -222,9 +221,12 @@
         [context setJSProxy:js_proxy];
 
         __strong LynxTemplateRender* strongSelf = weakSelf;
-        [lynx_ui_renderer onSetupUIDelegate:strongSelf->shell_.get()
-                          withModuleManager:module_manager.get()
-                                withJSProxy:std::move(js_proxy)];
+        auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([lynx_ui_renderer uiDelegate]);
+        module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
+        auto perf_proxy = std::make_shared<lynx::shell::PerfControllerProxyImpl>(
+            strongSelf->shell_->GetPerfControllerActor());
+        ui_delegate->OnLynxCreate([strongSelf->_lynxEngineProxy nativeProxy], std::move(js_proxy),
+                                  std::move(perf_proxy), nullptr, nullptr, nullptr);
       };
 
   // Init Runtime
@@ -253,12 +255,10 @@
 }
 
 - (void)setUpLynxContextWithLastInstanceId:(int32_t)lastInstanceId {
-  _context = [[LynxContext alloc] initWithContainerView:_containerView];
   _context.instanceId = shell_->GetInstanceId();
   auto layout_proxy =
       std::make_shared<lynx::shell::LynxLayoutProxyDarwin>(shell_->GetLayoutActor());
   [_context setLayoutProxy:layout_proxy];
-  [_lynxUIRenderer setLynxContext:_context];
   [LynxEventReporter moveExtraParams:lastInstanceId toInstanceId:_context.instanceId];
   [LynxEventReporter updateGenericInfo:@(_threadStrategyForRendering)
                                    key:kPropThreadMode
@@ -385,12 +385,14 @@
 }
 
 - (void)setUpUIRendererWithBuilder:(LynxViewBuilder*)builder screenSize:(CGSize)screenSize {
-  [builder.lynxUIRenderer setupWithContainerView:_containerView
-                                         builder:builder
-                                      screenSize:screenSize];
-  [_devTool attachLynxUIOwner:[builder.lynxUIRenderer uiOwner]];
-
+  _context = [[LynxContext alloc] initWithContainerView:_containerView];
   [self setUpResourceProviderWithBuilder:builder];
+  _lynxUIRenderer = [builder.uiRendererCreator createUIRendererWithContext:_context
+                                                             containerView:_containerView
+                                                                   builder:builder
+                                                          providerRegistry:_providerRegistry];
+  [_devTool attachLynxUIOwner:[_lynxUIRenderer uiOwner]];
+
   [self setUpShadowNodeOwner];
   [self setUpUIDelegate];
 }
@@ -406,9 +408,6 @@
     [registry addLynxResourceProvider:key provider:providers[key]];
   }
   _providerRegistry = registry;
-
-  [_lynxUIRenderer setupResourceProvider:[registry getResourceProviderByKey:LYNX_PROVIDER_TYPE_FONT]
-                             withBuilder:builder];
 }
 
 #pragma mark-- Reset

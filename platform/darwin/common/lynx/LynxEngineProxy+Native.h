@@ -6,7 +6,7 @@
 #define DARWIN_COMMON_LYNX_ENGINE_PROXY_NATIVE_H_
 
 #import <Foundation/Foundation.h>
-#import "LynxEngineProxy.h"
+#import <Lynx/LynxEngineProxy.h>
 
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 
@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
  * Set the shared pointer of lynx::shell::LynxEngineProxyDarwin
  */
 - (void)setNativeEngineProxy:(std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>)proxy;
+- (const std::shared_ptr<lynx::shell::LynxEngineProxyDarwin>&)nativeProxy;
 
 @end
 

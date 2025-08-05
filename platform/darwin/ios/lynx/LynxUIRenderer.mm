@@ -25,6 +25,9 @@
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 
 @implementation LynxUIRenderer {
+  __weak UIView<LUIBodyView> *_containerView;
+  __weak LynxContext *_lynxContext;
+  LynxProviderRegistry *_providerRegistry;
   std::unique_ptr<lynx::tasm::UIDelegate> ui_delegate_;
   LynxUIOwner *_uiOwner;
 
@@ -36,9 +39,56 @@
   BOOL _enableGenericResourceLoader;
 }
 
-- (instancetype)init {
+- (instancetype)initWithLynxContext:(LynxContext *)context
+                      containerView:(UIView<LUIBodyView> *)containerView
+                            builder:(LynxViewBuilder *)builder
+                   providerRegistry:(LynxProviderRegistry *)providerRegistry {
   self = [super init];
+  if (self) {
+    _lynxContext = context;
+    _containerView = containerView;
+    _providerRegistry = providerRegistry;
+    _enableGenericResourceLoader =
+        [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
+    [self setupUIOwnerWithBuilder:builder];
+    [self setupResourceProviderWithBuilder:builder];
+  }
   return self;
+}
+
+- (void)setupUIOwnerWithBuilder:(LynxViewBuilder *)builder {
+  LynxScreenMetrics *screenMetrics =
+      [[LynxScreenMetrics alloc] initWithScreenSize:builder.screenSize
+                                              scale:[UIScreen mainScreen].scale];
+  _uiOwner = [[LynxUIOwner alloc] initWithContainerView:_containerView
+                                      componentRegistry:builder.config.componentRegistry
+                                          screenMetrics:screenMetrics
+                                           errorHandler:_containerView
+                                               uiConfig:nil
+                                           embeddedMode:[builder getEmbeddedMode]];
+  _uiOwner.uiContext.lynxContext = _lynxContext;
+  _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
+  _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
+}
+
+- (void)setupResourceProviderWithBuilder:(LynxViewBuilder *)builder {
+  _uiOwner.fontFaceContext.resourceProvider =
+      [_providerRegistry getResourceProviderByKey:LYNX_PROVIDER_TYPE_FONT];
+  _uiOwner.fontFaceContext.builderRegistedAliasFontMap = [builder getBuilderRegisteredAliasFontMap];
+
+  if (_enableGenericResourceLoader) {
+    _uiOwner.uiContext.genericResourceFetcher = [builder genericResourceFetcher];
+    _uiOwner.uiContext.mediaResourceFetcher = [builder mediaResourceFetcher];
+    _uiOwner.uiContext.templateResourceFetcher = [builder templateResourceFetcher];
+    _uiOwner.fontFaceContext.genericResourceServiceFetcher = [builder genericResourceFetcher];
+  }
+}
+
+- (BOOL)checkEnableGenericResourceFetcher:(LynxBooleanOption)enable {
+  if (enable == LynxBooleanOptionUnset) {
+    return [[LynxEnv sharedInstance] enableGenericResourceFetcher];
+  }
+  return enable == LynxBooleanOptionTrue;
 }
 
 - (BOOL)useInvokeUIMethodFunction {
@@ -55,58 +105,52 @@
   }
 }
 
-- (void)onSetupUIDelegate:(lynx::tasm::UIDelegate *)uiDelegate {
-  ui_delegate_.reset(uiDelegate);
+- (void)setupUIDelegate:(LynxShadowNodeOwner *)owner {
+  ui_delegate_ = std::make_unique<lynx::tasm::UIDelegateDarwin>(
+      _uiOwner, [[LynxEnv sharedInstance] enableCreateUIAsync], owner);
 }
 
-- (void)onSetupUIDelegate:(nonnull lynx::shell::LynxShell *)shell
-        withModuleManager:(nonnull lynx::piper::LynxModuleManager *)moduleManager
-              withJSProxy:(std::shared_ptr<lynx::shell::LynxRuntimeProxy>)jsProxy {
-}
-
-- (lynx::tasm::UIDelegate *)uiDelegate {
+- (void *)uiDelegate {
   return ui_delegate_.get();
 }
 
-- (void)setupEventHandler:(id<TemplateRenderCallbackProtocol>)templateRenderer
-              engineProxy:(LynxEngineProxy *)engineProxy
-            containerView:(UIView<LUIBodyView> *)containerView
-                  context:(LynxContext *)context
-                 shellPtr:(int64_t)shellPtr {
+- (void)setupEventHandler:(LynxEngineProxy *)engineProxy
+                 shellPtr:(int64_t)shellPtr
+                    block:(onLynxEvent)block {
   _uiOwner.uiContext.shellPtr = shellPtr;
   _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithShell:shellPtr];
   _eventEmitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
-  __weak typeof(templateRenderer) weakRender = templateRenderer;
-  onLynxEvent eventReporter = ^BOOL(LynxEvent *event) {
-    __strong typeof(weakRender) strongRender = weakRender;
-    return [strongRender onLynxEvent:event];
-  };
-  [_eventEmitter setEventReporterBlock:eventReporter];
+  __weak typeof(self) weakSelf = self;
+  [_eventEmitter setEventReporterBlock:block];
   dispatch_block_t intersectionObserver = ^() {
-    __strong typeof(weakRender) strongRender = weakRender;
-    [strongRender notifyIntersectionObservers];
+    __strong __typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf) {
+      return;
+    }
+    if (strongSelf->_lynxContext.intersectionManager) {
+      [strongSelf->_lynxContext.intersectionManager notifyObservers];
+    }
   };
   [_eventEmitter setIntersectionObserverBlock:intersectionObserver];
   _uiOwner.uiContext.eventEmitter = _eventEmitter;
   if (_eventHandler == nil) {
-    _eventHandler = [[LynxEventHandler alloc] initWithRootView:containerView];
+    _eventHandler = [[LynxEventHandler alloc] initWithRootView:_containerView];
   }
   _uiOwner.uiContext.eventHandler = _eventHandler;
 
   [_eventHandler updateUiOwner:_uiOwner eventEmitter:_eventEmitter];
   _intersectionObserverManager =
-      [[LynxUIIntersectionObserverManager alloc] initWithLynxContext:context];
+      [[LynxUIIntersectionObserverManager alloc] initWithLynxContext:_lynxContext];
   _intersectionObserverManager.uiOwner = _uiOwner;
   [_eventEmitter addObserver:_intersectionObserverManager];
 
-  context.intersectionManager = _intersectionObserverManager;
-  context.uiOwner = _uiOwner;
+  _lynxContext.intersectionManager = _intersectionObserverManager;
+  _lynxContext.uiOwner = _uiOwner;
 
-  _keyboardEventDispatcher = [[LynxKeyboardEventDispatcher alloc] initWithContext:context];
+  _keyboardEventDispatcher = [[LynxKeyboardEventDispatcher alloc] initWithContext:_lynxContext];
 }
 
-- (void)setPageConfig:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig
-              context:(LynxContext *)context {
+- (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {
   // Since page config is a C++ class and Event Handler is a pure OC class, the set methods must be
   // called here.
   [_eventHandler setEnableSimultaneousTap:pageConfig->GetEnableSimultaneousTap()];
@@ -118,7 +162,7 @@
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
-  [context.uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
+  [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
 
   // If enable fiber arch, enable touch pseudo as default.
   [_eventHandler.touchRecognizer setEnableTouchPseudo:pageConfig->GetEnableFiberArch()];
@@ -130,12 +174,12 @@
       setEnableNewIntersectionObserver:pageConfig->GetEnableNewIntersectionObserver()];
 
   // Set config to LynxUIExposure
-  [context.uiOwner.uiContext.uiExposure setObserverFrameRate:pageConfig->GetObserverFrameRate()];
-  [context.uiOwner.uiContext.uiExposure
+  [_uiOwner.uiContext.uiExposure setObserverFrameRate:pageConfig->GetObserverFrameRate()];
+  [_uiOwner.uiContext.uiExposure
       setEnableCheckExposureOptimize:pageConfig->GetEnableCheckExposureOptimize()];
 
   // Set config to LynxUIContext;
-  LynxUIContext *uiContext = context.uiOwner.uiContext;
+  LynxUIContext *uiContext = _uiOwner.uiContext;
   LUIConfigAdapter *configAdapter = [[LUIConfigAdapter alloc] initWithConfig:pageConfig.get()];
   [uiContext setUIConfig:configAdapter];
 }
@@ -187,24 +231,6 @@
 - (void)setupWithContainerView:(UIView<LUIBodyView> *)containerView
                        builder:(LynxViewBuilder *)builder
                     screenSize:(CGSize)screenSize {
-  LynxScreenMetrics *screenMetrics =
-      [[LynxScreenMetrics alloc] initWithScreenSize:screenSize scale:[UIScreen mainScreen].scale];
-  if (_uiOwner) {
-    [_uiOwner attachContainerView:containerView];
-  } else {
-    _uiOwner = [[LynxUIOwner alloc] initWithContainerView:containerView
-                                        componentRegistry:builder.config.componentRegistry
-                                            screenMetrics:screenMetrics
-                                             errorHandler:containerView
-                                                 uiConfig:nil
-                                             embeddedMode:[builder getEmbeddedMode]];
-    _uiOwner.uiContext.contextDict = [builder.config.contextDict copy];
-    _uiOwner.uiContext.lynxModuleExtraData = builder.lynxModuleExtraData;
-  }
-}
-
-- (void)setLynxContext:(LynxContext *)context {
-  _uiOwner.uiContext.lynxContext = context;
 }
 
 - (LynxUIOwner *)uiOwner {
@@ -213,10 +239,6 @@
 
 - (LynxRootUI *)rootUI {
   return _uiOwner.rootUI;
-}
-
-- (void)setEnableGenericResourceFetcher:(BOOL)enable {
-  _enableGenericResourceLoader = enable;
 }
 
 - (id<LynxTemplateResourceFetcher>)templateResourceFetcher {
@@ -238,21 +260,6 @@
     return _uiOwner.uiContext.mediaResourceFetcher;
   }
   return nil;
-}
-
-- (void)setupResourceProvider:(id<LynxResourceProvider>)resourceProvider
-                  withBuilder:(LynxViewBuilder *)builder {
-  _uiOwner.fontFaceContext.resourceProvider = resourceProvider;
-
-  _uiOwner.fontFaceContext.builderRegistedAliasFontMap = [builder getBuilderRegisteredAliasFontMap];
-
-  if (_enableGenericResourceLoader) {
-    _uiOwner.uiContext.genericResourceFetcher = [builder genericResourceFetcher];
-    _uiOwner.uiContext.mediaResourceFetcher = [builder mediaResourceFetcher];
-    _uiOwner.uiContext.templateResourceFetcher = [builder templateResourceFetcher];
-
-    _uiOwner.fontFaceContext.genericResourceServiceFetcher = [builder genericResourceFetcher];
-  }
 }
 
 - (void)reset {

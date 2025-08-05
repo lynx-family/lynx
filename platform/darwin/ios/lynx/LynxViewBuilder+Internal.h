@@ -5,13 +5,10 @@
 #import <Lynx/LynxViewBuilder.h>
 
 #import "LynxBackgroundRuntime+Internal.h"
-#import "LynxUIRendererProtocol.h"
 
 @interface LynxViewBuilder ()
 
 @property(nonatomic, nonnull) LynxBackgroundRuntimeOptions* lynxBackgroundRuntimeOptions;
-
-@property(nonatomic, nonnull) id<LynxUIRendererProtocol> lynxUIRenderer;
 
 - (NSDictionary* _Nonnull)getLynxResourceProviders;
 

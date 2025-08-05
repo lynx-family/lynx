@@ -9,6 +9,7 @@
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
 #import "LynxUIRenderer.h"
+#import "LynxUIRendererCreator.h"
 #import "LynxViewBuilder+Internal.h"
 
 @implementation LynxViewBuilder {
@@ -30,7 +31,7 @@
     self.enableGenericResourceFetcher = LynxBooleanOptionUnset;
     _builderRegisteredAliasFontMap = [NSMutableDictionary dictionary];
     _lynxBackgroundRuntimeOptions = [[LynxBackgroundRuntimeOptions alloc] init];
-    _lynxUIRenderer = [[LynxUIRenderer alloc] init];
+    _uiRendererCreator = [[LynxUIRendererCreator alloc] init];
   }
   return self;
 }
@@ -180,10 +181,6 @@
 
 - (void)setTemplateResourceFetcher:(id<LynxTemplateResourceFetcher>)templateResourceFetcher {
   _lynxBackgroundRuntimeOptions.templateResourceFetcher = templateResourceFetcher;
-}
-
-- (id<LynxUIRendererProtocol>)lynxUIRenderer {
-  return _lynxUIRenderer;
 }
 
 - (void)insertLynxViewConfig:(id)config forKey:(NSString*)key {

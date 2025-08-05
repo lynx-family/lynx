@@ -12,6 +12,7 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxShadowNode.h>
+#import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUIOwner.h>

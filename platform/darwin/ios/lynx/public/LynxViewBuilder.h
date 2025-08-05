@@ -14,6 +14,7 @@
 #import <Lynx/LynxGroup.h>
 #import <Lynx/LynxMediaResourceFetcher.h>
 #import <Lynx/LynxTemplateResourceFetcher.h>
+#import <Lynx/LynxUIRendererCreatorProtocol.h>
 #import <Lynx/LynxViewEnum.h>
 
 /**
@@ -116,6 +117,8 @@ static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
  * URL for LynxView, which will be parsed by LynxServiceTrailProtocol in building LynxView.
  */
 @property(nonatomic, strong, nullable) NSURL* uri;
+
+@property(nonatomic, nullable) id<LynxUIRendererCreatorProtocol> uiRendererCreator;
 
 - (void)setThreadStrategyForRender:(LynxThreadStrategyForRender)threadStrategy;
 - (LynxThreadStrategyForRender)getThreadStrategyForRender;

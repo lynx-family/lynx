@@ -1216,6 +1216,7 @@ public class LynxEngineProxy : NSObject {
   public void LynxEngineProxy::startEventBubble:(int64_t eventID);
   public void LynxEngineProxy::startEventFire:withEventID:(BOOL isStop,[withEventID] int64_t eventID);
   public void LynxEngineProxy()::setNativeEngineProxy:(std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > proxy);
+  public const std::shared_ptr< lynx::shell::LynxEngineProxyDarwin > & LynxEngineProxy()::nativeProxy();
 }
 
 public class LynxEnv : NSObject {
@@ -4522,16 +4523,23 @@ public interface LynxUIOwner(Private) {
 }
 
 public class LynxUIRenderer : NSObject, <LynxUIRendererProtocol> {
+  public void LynxUIRenderer::onPageConfigUpdate:(const std::shared_ptr< lynx::tasm::PageConfig > &pageConfig);
+}
+
+public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
+}
+
+public protocol LynxUIRendererCreatorProtocol-p : <NSObject> {
+  public id LynxUIRendererCreatorProtocol-p::createUIRendererWithContext:containerView:builder:providerRegistry:(LynxContext *context,[containerView] UIView< LUIBodyView > *containerView,[builder] LynxViewBuilder *builder,[providerRegistry] LynxProviderRegistry *providerRegistry);
 }
 
 public protocol LynxUIRendererProtocol-p : <NSObject> {
   public BOOL LynxUIRendererProtocol-p::useInvokeUIMethodFunction useInvokeUIMethodFunction;
+  public instancetype LynxUIRendererProtocol-p::initWithLynxContext:containerView:builder:providerRegistry:(LynxContext *context,[containerView] UIView< LUIBodyView > *containerView,[builder] LynxViewBuilder *builder,[providerRegistry] LynxProviderRegistry *providerRegistry);
   public void LynxUIRendererProtocol-p::attachContainerView:(UIView< LUIBodyView > *containerView);
-  public void LynxUIRendererProtocol-p::onSetupUIDelegate:(lynx::tasm::UIDelegate *uiDelegate);
-  public void LynxUIRendererProtocol-p::onSetupUIDelegate:withModuleManager:withJSProxy:(lynx::shell::LynxShell *shell,[withModuleManager] lynx::piper::LynxModuleManager *moduleManager,[withJSProxy] std::shared_ptr< lynx::shell::LynxRuntimeProxy > jsProxy);
-  public lynx::tasm::UIDelegate * LynxUIRendererProtocol-p::uiDelegate();
-  public void LynxUIRendererProtocol-p::setupEventHandler:engineProxy:containerView:context:shellPtr:(id< TemplateRenderCallbackProtocol > templateRenderer,[engineProxy] LynxEngineProxy *engineProxy,[containerView] UIView< LUIBodyView > *containerView,[context] LynxContext *context,[shellPtr] int64_t shellPtr);
-  public void LynxUIRendererProtocol-p::setPageConfig:context:(const std::shared_ptr< lynx::tasm::PageConfig > &pageConfig,[context] LynxContext *context);
+  public void LynxUIRendererProtocol-p::setupUIDelegate:(LynxShadowNodeOwner *owner);
+  public void * LynxUIRendererProtocol-p::uiDelegate();
+  public void LynxUIRendererProtocol-p::setupEventHandler:shellPtr:block:(LynxEngineProxy *engineProxy,[shellPtr] int64_t shellPtr,[block] onLynxEvent block);
   public void LynxUIRendererProtocol-p::setFluencyTracerEnabled:(LynxBooleanOption enabled);
   public BOOL LynxUIRendererProtocol-p::needPaintingContextProxy();
   public void LynxUIRendererProtocol-p::onSetFrame:(CGRect frame);
@@ -4544,12 +4552,9 @@ public protocol LynxUIRendererProtocol-p : <NSObject> {
   public LynxUIOwner * LynxUIRendererProtocol-p::uiOwner();
   public LynxRootUI * LynxUIRendererProtocol-p::rootUI();
   public void LynxUIRendererProtocol-p::setupWithContainerView:builder:screenSize:(UIView< LUIBodyView > *containerView,[builder] LynxViewBuilder *builder,[screenSize] CGSize screenSize);
-  public void LynxUIRendererProtocol-p::setLynxContext:(LynxContext *context);
-  public void LynxUIRendererProtocol-p::setEnableGenericResourceFetcher:(BOOL enable);
   public id< LynxTemplateResourceFetcher > LynxUIRendererProtocol-p::templateResourceFetcher();
   public id< LynxGenericResourceFetcher > LynxUIRendererProtocol-p::genericResourceFetcher();
   public id< LynxMediaResourceFetcher > LynxUIRendererProtocol-p::mediaResourceFetcher();
-  public void LynxUIRendererProtocol-p::setupResourceProvider:withBuilder:(id< LynxResourceProvider > resourceProvider,[withBuilder] LynxViewBuilder *builder);
   public void LynxUIRendererProtocol-p::reset();
   public LynxScreenMetrics * LynxUIRendererProtocol-p::getScreenMetrics();
   public LynxGestureArenaManager * LynxUIRendererProtocol-p::getGestureArenaManager();
@@ -4869,8 +4874,8 @@ public class LynxViewBuilder : NSObject {
   public BOOL LynxViewBuilder::enableUnifiedPipeline enableUnifiedPipeline;
   public NSString* LynxViewBuilder::bytecodeUrl bytecodeUrl;
   public NSURL* LynxViewBuilder::uri uri;
+  public id<LynxUIRendererCreatorProtocol> LynxViewBuilder::uiRendererCreator uiRendererCreator;
   public LynxBackgroundRuntimeOptions* LynxViewBuilder()::lynxBackgroundRuntimeOptions lynxBackgroundRuntimeOptions;
-  public id<LynxUIRendererProtocol> LynxViewBuilder()::lynxUIRenderer lynxUIRenderer;
   public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
   public void LynxViewBuilder::setThreadStrategyForRender:(LynxThreadStrategyForRender threadStrategy);
   public LynxThreadStrategyForRender LynxViewBuilder::getThreadStrategyForRender();
