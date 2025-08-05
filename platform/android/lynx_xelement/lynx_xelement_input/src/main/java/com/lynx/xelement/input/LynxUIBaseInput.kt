@@ -295,7 +295,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     @LynxProp(name = PropsConstants.COLOR, defaultInt = Color.BLACK)
     fun setFontColor(color: Dynamic) {
         when (color.type) {
-            ReadableType.Int -> mView.setTextColor(color.asInt())
+            ReadableType.Int, ReadableType.Long -> mView.setTextColor(color.asInt())
             ReadableType.String -> mView.setTextColor(ColorUtils.parse(color.asString()))
             else -> {}
         }
@@ -304,8 +304,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     @LynxProp(name = "placeholder-color")
     fun setPlaceholderColor(color: Dynamic) {
         mPlaceholderFontColor = when (color.type) {
-            ReadableType.Int -> color.asInt()
-            ReadableType.Long -> color.asInt()
+            ReadableType.Int, ReadableType.Long -> color.asInt()
             ReadableType.String -> ColorUtils.parse(color.asString())
             else -> {
                 ColorUtils.parse("#3c433c")
