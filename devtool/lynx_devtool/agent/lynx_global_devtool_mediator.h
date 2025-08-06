@@ -49,6 +49,9 @@ class LynxGlobalDevToolMediator : public LynxDevToolMediatorBase {
   DECLARE_DEVTOOL_METHOD(GetStartupTracingConfig)
   DECLARE_DEVTOOL_METHOD(GetStartupTracingFile)
 
+  // Performance domain -> ui executor
+  DECLARE_DEVTOOL_METHOD(SetTimingOverlay)
+
   // System Info domain
   DECLARE_DEVTOOL_METHOD(SystemInfoGetInfo)
 

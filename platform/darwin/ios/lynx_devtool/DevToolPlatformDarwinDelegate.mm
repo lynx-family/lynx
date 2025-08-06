@@ -13,6 +13,7 @@
 #import <LynxDevtool/LynxDevtoolEnv.h>
 #import <LynxDevtool/LynxEmulateTouchHelper.h>
 #import <LynxDevtool/LynxScreenCastHelper.h>
+#import <LynxDevtool/LynxTimingOverlayHelper.h>
 #import <LynxDevtool/LynxUITreeHelper.h>
 #import <sys/utsname.h>
 
@@ -290,6 +291,9 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   // EmulateTouch
   LynxEmulateTouchHelper* _touchHelper;
 
+  // TimingOverlay
+  LynxTimingOverlayHelper* _timingHelper;
+
   // DebugInfoRecorder
   id<LynxDebugInfoRecorderProtocol> _debugInfoRecorder;
 
@@ -313,6 +317,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
   _debugInfoRecorder = nil;
   _touchHelper = [[LynxEmulateTouchHelper alloc] initWithLynxView:view];
 
+  _timingHelper = [[LynxTimingOverlayHelper alloc] initWithDelegate:self];
   _castHelper = [[LynxScreenCastHelper alloc] initWithLynxView:view withPlatformDelegate:self];
 
   devtool_platform_facade_ = std::make_shared<lynx::devtool::DevToolPlatformDarwin>(self);
@@ -326,6 +331,7 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 
 - (void)attachLynxUIOwner:(nullable LynxUIOwner*)owner {
   [_uiTreeHelper attachLynxUIOwner:owner];
+  [_timingHelper attachLynxView:_lynxView uiOwner:owner];
 }
 
 - (std::shared_ptr<lynx::devtool::DevToolPlatformFacade>)getNativePtr {

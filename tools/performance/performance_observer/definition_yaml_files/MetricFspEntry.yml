@@ -1,0 +1,13 @@
+MetricFspEntry:
+  x-type: metric
+  x-name: fsp
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        fsp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        lynxFsp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalFsp:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'

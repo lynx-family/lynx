@@ -55,11 +55,14 @@ import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.performance.fsptracing.FSPResult;
+import com.lynx.tasm.performance.fsptracing.FSPTracer;
 import com.lynx.tasm.performance.memory.MemoryRecord;
 import com.lynx.tasm.utils.LynxConstants;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -118,6 +121,7 @@ public class LynxUIOwner {
 
   private HashMap<String, Boolean> mCreateNodeConfigHasReportedMark;
 
+  @Nullable private FSPTracer mFSPTracer;
   private UIBodyView.attachLynxPageUICallback mAttachLynxPageUICallback;
 
   private boolean mHasTouchPseudo;
@@ -156,6 +160,7 @@ public class LynxUIOwner {
       mTextMeasurer = new TextMeasurer(context);
     }
 
+    mFSPTracer = FSPTracer.create(context);
     attachUIBodyView(body);
     TraceEvent.endSection(TraceEventDef.UI_OWNER_INIT);
   }
@@ -180,6 +185,7 @@ public class LynxUIOwner {
         }
       }
     }
+    beginFSPTracing();
   }
 
   public void attachLynxContext(LynxContext context) {
@@ -1925,6 +1931,44 @@ public class LynxUIOwner {
         return props;
       });
     }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public FSPTracer getFSPTracer() {
+    return mFSPTracer;
+  }
+
+  private void beginFSPTracing() {
+    if (mFSPTracer != null) {
+      mFSPTracer.beginTracing(new FSPTracer.ICompletionCallback() {
+        @Override
+        public void onComplete(@NonNull FSPResult result) {
+          LynxUIOwner.this.onFSPEnd(result);
+        }
+      });
+    }
+    mContext.markMeaningfulContentChange();
+  }
+
+  private void onFSPEnd(FSPResult result) {
+    mFSPTracer = null;
+    if (result.isSuccess()) {
+      long fspMs = result.getLastChangeTimestampMs();
+      mContext.getLynxView().notifyFSP(fspMs);
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void cancelFSPTracingOnTouch() {
+    if (mFSPTracer != null) {
+      mFSPTracer.stopTracing(FSPTracer.StopReason.USER_INTERACTION);
+      mFSPTracer = null;
+    }
+  }
+
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public Collection<LynxBaseUI> getAllUIs() {
+    return mUIHolder.values();
   }
 
   public void setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback) {

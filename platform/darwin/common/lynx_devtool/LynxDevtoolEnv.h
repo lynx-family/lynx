@@ -29,6 +29,7 @@
     __attribute__((deprecated("Deprecated after Lynx3.1")));
 @property(nonatomic, readwrite) BOOL domTreeEnabled;
 @property(nonatomic, readwrite) BOOL quickjsDebugEnabled;
+@property(nonatomic, readwrite) BOOL timingOverlayEnabled;
 
 // swithches below only support iOS platform now
 @property(nonatomic, readwrite) BOOL longPressMenuEnabled;

@@ -364,6 +364,10 @@ LYNX_REGISTER_UI("image")
       [[LynxImageLoader imageService] handleAnimatedImage:image
                                                      view:strongSelf.view
                                                 loopCount:strongSelf.loopCount];
+
+      if (requestURL.type != LynxImageRequestPlaceholder) {
+        strongSelf.meaningfulContentStatus = kLynxUIMeaningfulContentLoaded;
+      }
     }
   };
   if ([NSThread isMainThread]) {
@@ -609,6 +613,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   } else {
     size = self.view.bounds.size;
   }
+
   LynxImageLoadCompletionBlock requestBlock = ^(UIImage* _Nullable image, NSError* _Nullable error,
                                                 NSURL* _Nullable imageURL) {
     typeof(weakSelf) strongSelf = weakSelf;
