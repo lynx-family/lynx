@@ -135,8 +135,9 @@ public abstract class UIGroup<T extends ViewGroup>
       if (!ui.isFlatten()) {
         if (((LynxUI) ui).getView() == child) {
           mCurrentDrawUI = ui.mNextDrawUI;
-          info.addSubDrawInfo(
-              mCurrentDrawIndex, new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null));
+          info.addSubDrawInfo(mCurrentDrawIndex,
+              new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null, ((LynxUI<?>) ui).mViewInfo,
+                  ((LynxUI<?>) ui).getView()));
           mCurrentDrawIndex++;
           break;
         }

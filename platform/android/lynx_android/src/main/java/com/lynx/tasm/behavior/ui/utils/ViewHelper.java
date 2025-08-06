@@ -319,4 +319,17 @@ public class ViewHelper {
       return convertRectFromAncestorToDescendant(anotherRootView, another, rootViewRect);
     }
   }
+
+  /**
+   * Measures the specified view with the given width and height.
+   *
+   * @param view The view to be measured.
+   * @param width The exact width to measure the view with.
+   * @param height The exact height to measure the view with.
+   */
+  public static void measureView(View view, int width, int height) {
+    int widthSpec = View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY);
+    int heightSpec = View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY);
+    view.measure(widthSpec, heightSpec);
+  }
 }

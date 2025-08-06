@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.utils.MaskDrawable;
+import com.lynx.tasm.behavior.ui.utils.ViewHelper;
 import com.lynx.tasm.rendernode.compat.RenderNodeCompat;
 import java.util.ArrayList;
 
@@ -98,6 +99,9 @@ public class ViewInfo implements IDrawChildHook {
 
   // beforeDrawChild
   public static class SubDrawInfo {
+    ViewInfo mSubViewInfo;
+    View mSubView;
+
     boolean mIsView;
     Rect mBound;
     RenderNodeCompat mRenderNode;
@@ -123,6 +127,13 @@ public class ViewInfo implements IDrawChildHook {
       mBound = bound;
       mRenderNode = renderNode;
       mBackground = background;
+    }
+
+    public SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode,
+        LynxBackground background, ViewInfo subViewInfo, View subView) {
+      this(isView, bound, renderNode, background);
+      this.mSubViewInfo = subViewInfo;
+      this.mSubView = subView;
     }
 
     public void setImageManager(LynxImageManager imageManager) {
@@ -371,5 +382,23 @@ public class ViewInfo implements IDrawChildHook {
       return;
     }
     mView.invalidate();
+  }
+
+  void measure() {
+    for (SubDrawInfo info : mSubDrawInfoArray) {
+      if (info.mIsView && info.mSubViewInfo != null && info.mSubView != null) {
+        ViewHelper.measureView(info.mSubView, info.mWidth, info.mHeight);
+        info.mSubViewInfo.measure();
+      }
+    }
+  }
+  void layout() {
+    for (SubDrawInfo info : mSubDrawInfoArray) {
+      if (info.mIsView && info.mSubViewInfo != null && info.mSubView != null) {
+        info.mSubView.layout(
+            info.mLeft, info.mTop, info.mLeft + info.mWidth, info.mTop + info.mHeight);
+        info.mSubViewInfo.layout();
+      }
+    }
   }
 }
