@@ -18,6 +18,8 @@ import androidx.annotation.Nullable;
 import com.lynx.jsbridge.jsi.ILynxJSIObject;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
+import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.PiperData;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
@@ -25,6 +27,9 @@ import com.lynx.react.bridge.WritableArray;
 import com.lynx.react.bridge.WritableMap;
 import com.lynx.tasm.base.Assertions;
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 // issue: #1510
 // Note: Modify lynx/jsbridge/MethodInvoker.cc if the following config changed!
@@ -35,10 +40,29 @@ public class LynxMethodWrapper {
   private boolean mArgumentsProcessed = false;
   private @Nullable String mSignature;
 
+  private static final Set<Class<?>> mJavaOnlyMapClassSets =
+      getSelfFirstLevelSuperAndInterfaces(JavaOnlyMap.class);
+  private static final Set<Class<?>> mJavaOnlyArrayClassSets =
+      getSelfFirstLevelSuperAndInterfaces(JavaOnlyArray.class);
+
   LynxMethodWrapper(Method method) {
     mMethod = method;
     mMethod.setAccessible(true);
     mParameterTypes = mMethod.getParameterTypes();
+  }
+
+  private static Set<Class<?>> getSelfFirstLevelSuperAndInterfaces(Class<?> clazz) {
+    Set<Class<?>> result = new HashSet<>();
+    result.add(clazz);
+    Class<?> superClass = clazz.getSuperclass();
+    if (superClass != null) {
+      result.add(superClass);
+    }
+    Class<?>[] interfaces = clazz.getInterfaces();
+    if (interfaces.length > 0) {
+      result.addAll(Arrays.asList(interfaces));
+    }
+    return result;
   }
 
   private static char paramTypeToChar(Class paramClass) {
@@ -50,9 +74,9 @@ public class LynxMethodWrapper {
       return 'X';
     } else if (paramClass == Promise.class) {
       return 'P';
-    } else if (paramClass == ReadableMap.class) {
+    } else if (mJavaOnlyMapClassSets.contains(paramClass)) {
       return 'M';
-    } else if (paramClass == ReadableArray.class) {
+    } else if (mJavaOnlyArrayClassSets.contains(paramClass)) {
       return 'A';
     } else if (paramClass == Dynamic.class) {
       return 'Y';
@@ -71,9 +95,11 @@ public class LynxMethodWrapper {
     }
     if (returnClass == void.class) {
       return 'v';
-    } else if (returnClass == WritableMap.class) {
+    } else if (returnClass == WritableMap.class || returnClass == ReadableMap.class
+        || returnClass == JavaOnlyMap.class) {
       return 'M';
-    } else if (returnClass == WritableArray.class) {
+    } else if (returnClass == WritableArray.class || returnClass == ReadableArray.class
+        || returnClass == JavaOnlyArray.class) {
       return 'A';
     } else if (returnClass == byte[].class) {
       return 'a';
