@@ -40,6 +40,15 @@ enum LynxPropStatus {
   kLynxPropUndefined,
 };
 
+typedef enum {
+  /// The default value, which means the LynxUI provides no meanful content.
+  kLynxUIMeaningfulContentNone = 0,
+  /// The LynxUI is loading meanful content.
+  kLynxUIMeaningfulContentLoading = 1,
+  /// The LynxUI has loaded meanful content.
+  kLynxUIMeaningfulContentLoaded = 2,
+} LynxUIMeaningfulContentStatus;
+
 typedef void (^LynxNodeReadyBlock)(LynxUI*);
 
 @interface LynxUI<__covariant V : UIView*> : LynxComponent <LynxUI*>
@@ -74,6 +83,12 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 
 @property(nonatomic, readonly) CGFloat fontSize;
 @property(nonatomic, readwrite) CGPoint contentOffset;
+
+/// Subclass can adjust it's content status to update meaningful content loading
+/// monitoring status.
+///
+/// This property must be accessed on the main thread.
+@property(nonatomic, assign, readwrite) LynxUIMeaningfulContentStatus meaningfulContentStatus;
 
 // Border info
 @property(nonatomic, readonly, nullable) LynxBackgroundManager* backgroundManager;
@@ -233,6 +248,17 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 
 - (void)setAnimation:(NSArray*)value;
 - (void)setTransition:(NSArray*)value;
+
+/// Set the content status and the rect for the meaningful content displayed
+/// within the LynxUI element(in local coordinate space).
+///
+/// Defaults to CGRectZero, where the entire bounds will be treated as
+/// meaningful content.
+///
+/// See `meanfingfulContentStatus` for more details.
+///
+/// This method must be called on the main thread.
+- (void)setMeaningfulContentStatus:(LynxUIMeaningfulContentStatus)status rect:(CGRect)rect;
 
 - (void)sendLayoutChangeEvent;
 

@@ -43,6 +43,8 @@ declare module '@lynx-js/types' {
       isHighlightTouchEnabled?: () => boolean
 
       isDebugModeEnabled?: () => boolean
+
+      isTimingOverlayEnabled?: () => boolean
       
       switchLynxDebug?: (enable: boolean) => void
 
@@ -65,6 +67,8 @@ declare module '@lynx-js/types' {
       switchQuickjsDebug?: (enable: boolean) => void
 
       switchDebugModeEnable?: (enable: boolean) => void
+
+      switchTimingOverlay?: (enable: boolean) => void
     }
   }
 }

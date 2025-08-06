@@ -17,6 +17,14 @@ typedef enum : NSInteger {
   LynxUnsupportedTag
 } TagSupportedState;
 
+@class LynxFSPTracer;
+
+@interface LynxUIOwner ()
+
+@property(nullable, nonatomic) LynxFSPTracer* fspTracer;
+
+@end
+
 @interface LynxUIOwner (Private)
 
 // Given a specific tagName and props, return the corresponding Class and whether the tag is
@@ -63,6 +71,10 @@ typedef enum : NSInteger {
                      withSign:(NSInteger)sign
                       tagName:(NSString*)tagName
                         props:(NSDictionary*)props;
+
+- (void)stopFSPTracingWithUserInteraction;
+
+- (void)enumerateUIsUsingBlock:(void (^)(LynxUI*, BOOL* stop))block;
 
 - (LynxThreadStrategyForRender)getThreadStrategyForRender;
 

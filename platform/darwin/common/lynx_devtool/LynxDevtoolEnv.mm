@@ -89,6 +89,7 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
     SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT : @[ @NO, @NO, @YES ],
 #endif
     SP_KEY_ENABLE_QUICKJS_DEBUG : @[ @YES, @YES, @YES ],
+    SP_KEY_ENABLE_TIMING_OVERLAY : @[ @YES, @NO, @NO ],
     SP_KEY_ENABLE_DOM_TREE : @[ @YES, @YES, @YES ],
     SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW : @[ @NO, @YES, @NO ],
     SP_KEY_DEVTOOL_CONNECTED : @[ @NO, @YES, @NO ],
@@ -445,6 +446,14 @@ enum KeyType { NORMAL_KEY, ERROR_KEY, CDP_DOMAIN_KEY };
 
 - (BOOL)quickjsDebugEnabled {
   return [self get:SP_KEY_ENABLE_QUICKJS_DEBUG withDefaultValue:YES];
+}
+
+- (void)setTimingOverlayEnabled:(BOOL)timingOverlayEnabled {
+  [self set:timingOverlayEnabled forKey:SP_KEY_ENABLE_TIMING_OVERLAY];
+}
+
+- (BOOL)timingOverlayEnabled {
+  return [self get:SP_KEY_ENABLE_TIMING_OVERLAY withDefaultValue:NO];
 }
 
 - (void)setPerfMetricsEnabled:(BOOL)enable {

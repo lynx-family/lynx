@@ -6,6 +6,7 @@ definition_yaml_files/InitLynxviewEntry.yml
 definition_yaml_files/InitBackgroundRuntimeEntry.yml
 definition_yaml_files/PerformanceMetric.yml
 definition_yaml_files/MetricFcpEntry.yml
+definition_yaml_files/MetricFspEntry.yml
 definition_yaml_files/MetricActualFmpEntry.yml
 definition_yaml_files/ReloadBundleEntry.yml
 definition_yaml_files/MemoryUsageEntry.yml
