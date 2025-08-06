@@ -155,6 +155,8 @@ void CodeGenerator::LeaveFunction() {
     }
     upvalue_array_ = GetParentUpArray();
   }
+  current_function_->function_->AddInstruction(
+      Instruction::Code(OP_PLACEHOLDER));
 
   current_function_ = std::move(current_function_->parent_);
   current_function_name_ = "";

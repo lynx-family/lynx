@@ -32,10 +32,11 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
   for (size_t i = 0; i < size; ++i) {
     DECODE_VALUE_INTO(function->const_values_.emplace_back());
   }
+  function->const_size_ = size;
 
   // instruction
   ERROR_UNLESS(ReadCompactU32(&size));
-  function->op_codes_.reserve(size);
+  function->op_codes_.reserve(size + 1);
   function->debug_line_col_.reserve(size);
   for (size_t i = 0; i < size; ++i) {
     Instruction instruction;
@@ -43,6 +44,9 @@ bool BaseBinaryReader::DeserializeFunction(fml::RefPtr<Function>& parent,
     instruction.op_code_ = static_cast<long>(op_code);
     function->AddInstruction(instruction);
   }
+  // this sentinel inst is used to ensure direct dispatch does not go out of
+  // range
+  function->op_codes_.push_back(Instruction::Code(OP_PLACEHOLDER));
 
   // up value info
   DECODE_COMPACT_U32(update_value_size);

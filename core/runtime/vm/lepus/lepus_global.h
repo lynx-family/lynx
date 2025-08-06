@@ -24,7 +24,7 @@ class Global {
   ~Global() = default;
 
   inline Value* Get(std::size_t index) {
-    if (index < global_content_.size()) {
+    if (index < global_cnt_) {
       return &global_content_[index];
     }
     return nullptr;
@@ -53,7 +53,8 @@ class Global {
     }
     global_content_.push_back(std::move(value));
     global_.insert(std::make_pair(name, global_content_.size() - 1));
-    return global_content_.size() - 1;
+    global_cnt_ = global_content_.size();
+    return global_cnt_ - 1;
   }
 
   void Set(const base::String& name, Value value) {
@@ -63,7 +64,8 @@ class Global {
       return;
     }
     global_content_.push_back(std::move(value));
-    global_.insert(std::make_pair(name, global_content_.size() - 1));
+    global_cnt_ = global_content_.size();
+    global_.insert(std::make_pair(name, global_cnt_ - 1));
   }
 
   void Replace(const base::String& name, Value value) {
@@ -102,6 +104,7 @@ class Global {
   friend class ContextBinaryWriter;
   std::unordered_map<base::String, int> global_;
   std::vector<Value> global_content_;
+  size_t global_cnt_ = 0;
 };
 
 class JsonData {

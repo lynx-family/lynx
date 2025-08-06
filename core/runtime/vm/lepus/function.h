@@ -127,7 +127,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   const auto& GetChildFunction() { return child_functions_; }
 
   inline Value* GetConstValue(std::size_t index) {
-    return index < const_values_.size() ? &const_values_[index] : nullptr;
+    return index < const_size_ ? &const_values_[index] : nullptr;
   }
 
   BASE_EXPORT_FOR_DEVTOOL const auto& GetConstValue() { return const_values_; }
@@ -237,6 +237,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
   std::vector<Instruction> op_codes_;
 
   base::InlineVector<Value, 8> const_values_;
+  size_t const_size_ = 0;
 
   base::InlineVector<UpvalueInfo, 4> upvalues_;
 

@@ -44,9 +44,9 @@ namespace lepus {
 #define GET_CONST_VALUE(i) (function->GetConstValue(Instruction::GetParamBx(i)))
 #define GET_Global_VALUE(i) (global()->Get(Instruction::GetParamBx(i)))
 #define GET_Builtin_VALUE(i) (builtin()->Get(Instruction::GetParamBx(i)))
-#define GET_REGISTER_A(i) (regs + Instruction::GetParamA(i))
-#define GET_REGISTER_B(i) (regs + Instruction::GetParamB(i))
-#define GET_REGISTER_C(i) (regs + Instruction::GetParamC(i))
+#define GET_REGISTER_A(i) Value* a = (regs + Instruction::GetParamA(i));
+#define GET_REGISTER_B(i) Value* b = (regs + Instruction::GetParamB(i));
+#define GET_REGISTER_C(i) Value* c = (regs + Instruction::GetParamC(i));
 
 #define GET_REGISTER_A_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamA(ctx.i))
 #define GET_REGISTER_B_FROM_CTX(ctx) (ctx.regs + Instruction::GetParamB(ctx.i))
@@ -54,14 +54,14 @@ namespace lepus {
 
 #define GET_UPVALUE_B(i) (closure->GetUpvalue(Instruction::GetParamB(i)))
 #define GET_REGISTER_ABC(i) \
-  a = GET_REGISTER_A(i);    \
-  b = GET_REGISTER_B(i);    \
-  c = GET_REGISTER_C(i);
+  GET_REGISTER_A(i);        \
+  GET_REGISTER_B(i);        \
+  GET_REGISTER_C(i);
 
-#define GET_REGISTER_ABC_FROM_CTX(ctx) \
-  a = GET_REGISTER_A_FROM_CTX(ctx);    \
-  b = GET_REGISTER_B_FROM_CTX(ctx);    \
-  c = GET_REGISTER_C_FROM_CTX(ctx);
+#define GET_REGISTER_ABC_FROM_CTX(ctx)     \
+  Value* a = GET_REGISTER_A_FROM_CTX(ctx); \
+  Value* b = GET_REGISTER_B_FROM_CTX(ctx); \
+  Value* c = GET_REGISTER_C_FROM_CTX(ctx);
 
 #define DECL_ABC_FROM_CTX(ctx) \
   auto& a = ctx.a;             \
@@ -630,7 +630,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Add_UnlikelyPath_C_Number(
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Mod(RunFrameContext& ctx) {
-  DECL_ABC_FROM_CTX(ctx);
   GET_REGISTER_ABC_FROM_CTX(ctx);
 
   if (c->Number() == 0) {
@@ -650,7 +649,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Mod(RunFrameContext& ctx) {
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Pow(RunFrameContext& ctx) {
-  DECL_ABC_FROM_CTX(ctx);
   GET_REGISTER_ABC_FROM_CTX(ctx);
 
   if (b->IsInt64() && c->IsInt64()) {
@@ -661,7 +659,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_Pow(RunFrameContext& ctx) {
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_BitOr(RunFrameContext& ctx) {
-  DECL_ABC_FROM_CTX(ctx);
   GET_REGISTER_ABC_FROM_CTX(ctx);
 
   if (b->IsNumber() && c->IsNumber()) {
@@ -676,7 +673,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_BitOr(RunFrameContext& ctx) {
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_BitAnd(RunFrameContext& ctx) {
-  DECL_ABC_FROM_CTX(ctx);
   GET_REGISTER_ABC_FROM_CTX(ctx);
 
   if (b->IsNumber() && c->IsNumber()) {
@@ -691,7 +687,6 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_BitAnd(RunFrameContext& ctx) {
 }
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_BitXor(RunFrameContext& ctx) {
-  DECL_ABC_FROM_CTX(ctx);
   GET_REGISTER_ABC_FROM_CTX(ctx);
 
   if (b->IsNumber() && c->IsNumber()) {
@@ -732,8 +727,7 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Op_GetTable_UnlikelyPath_String(
 
 LEPUS_NOT_INLINE void VMContext::RunFrame_Op_CreateBlockContext(
     RunFrameContext& ctx) {
-  auto& a = ctx.a;
-  a = GET_REGISTER_A_FROM_CTX(ctx);
+  Value* a = GET_REGISTER_A_FROM_CTX(ctx);
   long array_size = Instruction::GetParamB(ctx.i) + 1;
 
   *a = Value(CArray::Create());
@@ -769,15 +763,29 @@ LEPUS_NOT_INLINE void VMContext::RunFrame_Label_LeaveBlock() {
 }
 
 void VMContext::RunFrame() {
+  static const void* const dispatch_table[TypeOpCount] = {&&case_default,
+#define DECLARE(x) &&case_##x,
+                                                          OPCODE_LIST(DECLARE)};
+  static const void* const debugger_dispatch_table[TypeOpCount] = {
+      &&case_default, [1 ...(TypeOpCount - 1)] = &&case_debug};
   if (current_frame_ == nullptr) return;
+  const void** current_dispatch_table;
+  if (unlikely(is_debug_enabled_)) {
+    current_dispatch_table = const_cast<const void**>(debugger_dispatch_table);
+  } else {
+    current_dispatch_table = const_cast<const void**>(dispatch_table);
+  }
   // function is retained by closure, so we only retain the closure by RefPtr.
   fml::RefPtr<Closure> closure = fml::static_ref_ptr_cast<Closure>(
       current_frame_->function_->RefCounted());
   Function* function = closure->function().get();
-  Value* a = nullptr;
-  Value* b = nullptr;
-  Value* c = nullptr;
   const Instruction* base = current_frame_->instruction_;
+  if (base == nullptr) {
+    if (current_frame_->return_ != nullptr) {
+      current_frame_->return_->SetNil();
+    }
+    return;
+  }
   Value* regs = current_frame_->register_;
   __builtin_prefetch(base);
   __builtin_prefetch(regs);
@@ -785,19 +793,18 @@ void VMContext::RunFrame() {
       static_cast<int>(current_frame_->end_ - current_frame_->instruction_);
   int pc = 0;
   VMContext::ContextScope vcs(this, closure);
-  RunFrameContext run_frame_ctx{.a = a, .b = b, .c = c, .regs = regs};
-  while (pc < length) {
-    if (is_debug_enabled_) {
-      auto debug_delegate = debug_delegate_.lock();
-      if (debug_delegate != nullptr) {
-        debug_delegate->UpdateCurrentPC(pc);
-      }
-    }
-    const Instruction i = *(base + pc);
-    run_frame_ctx.i = i;
-    pc++;
-    switch (Instruction::GetOpCode(i)) {
-      case TypeOp_LoadNil: {
+  RunFrameContext run_frame_ctx{.regs = regs};
+  Instruction i;
+
+  while (true) {
+#define SWITCH(opcode) \
+  i = *(base + pc);    \
+  pc++;                \
+  goto* current_dispatch_table[opcode];
+#define CASE(op) case_##op
+#define BREAK SWITCH(Instruction::GetOpCode(i))
+    SWITCH(Instruction::GetOpCode(i)) {
+      CASE(TypeOp_LoadNil) : {
         // LoadNil is not extracted as RunFrame_Op_LoadNil() because it is
         // definitely executed frequently.
         // LoadNil use reg_b to decide actions:
@@ -805,16 +812,16 @@ void VMContext::RunFrame() {
         // 1: load undefined when enable_null_prop_ad_undef_ is true
         // 2: load top level variables in globalThis
         // 3: load "lynx" in global_ as lynx
-        a = GET_REGISTER_A(i);
+        GET_REGISTER_A(i);
         long reg_b = Instruction::GetParamB(i);
         if (enable_null_prop_as_undef_ && reg_b == 1) {
           a->SetUndefined();
         } else if (reg_b == 2) {
           *a = *GetTopLevelVariable();
         } else if (reg_b == 3) {
-          // Now, only generate reg_b==3 when targetSdkVersion >= 2.8. Detail
-          // can be seen in code_generator.cc. So the possible scenarios are as
-          // follows
+          // Now, only generate reg_b==3 when targetSdkVersion >= 2.8.
+          // Detail can be seen in code_generator.c. So the possible
+          // scenarios are as follows
           // clang-format off
           // sdkVersion    targetSdkVersion    expectations
           //  < 2.8         < 2.8             will not generate reg_b==3, no bugs
@@ -832,25 +839,27 @@ void VMContext::RunFrame() {
         } else {
           a->SetNil();
         }
-        break;
       }
-      case TypeOp_SetCatchId:
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_SetCatchId) : {
+        GET_REGISTER_A(i);
         a->SetString(std::move(exception_info_));
-        break;
-      case TypeOp_LoadConst:
-        a = GET_REGISTER_A(i);
-        b = GET_CONST_VALUE(i);
+      }
+      BREAK;
+      CASE(TypeOp_LoadConst) : {
+        GET_REGISTER_A(i);
+        Value* b = GET_CONST_VALUE(i);
         *a = *b;
-        break;
-      case TypeOp_Move:
-        a = GET_REGISTER_A(i);
-        b = GET_REGISTER_B(i);
+      }
+      BREAK;
+      CASE(TypeOp_Move) : {
+        GET_REGISTER_A(i);
+        GET_REGISTER_B(i);
         *a = *b;
-        break;
-      case TypeOp_GetContextSlot:
-      case TypeOp_SetContextSlot: {
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_GetContextSlot) : CASE(TypeOp_SetContextSlot) : {
+        GET_REGISTER_A(i);
         long index = Instruction::GetParamB(i);
         long offset = Instruction::GetParamC(i);
         auto op_code = Instruction::GetOpCode(i);
@@ -864,41 +873,37 @@ void VMContext::RunFrame() {
         } else {
           array.Array()->set(static_cast<int>(index), *a);
         }
-        break;
       }
-      case TypeOp_GetUpvalue: {
-        a = GET_REGISTER_A(i);
-        b = GET_UPVALUE_B(i);
+      BREAK;
+      CASE(TypeOp_GetUpvalue) : {
+        GET_REGISTER_A(i);
+        Value* b = GET_UPVALUE_B(i);
         *a = *b;
-        break;
       }
-      case TypeOp_SetUpvalue: {
-        a = GET_REGISTER_A(i);
-        b = GET_UPVALUE_B(i);
+      BREAK;
+      CASE(TypeOp_SetUpvalue) : {
+        GET_REGISTER_A(i);
+        Value* b = GET_UPVALUE_B(i);
         *b = *a;
-        break;
       }
-      case TypeOp_GetGlobal:
-        a = GET_REGISTER_A(i);
-        b = GET_Global_VALUE(i);
+      BREAK;
+      CASE(TypeOp_GetGlobal) : {
+        GET_REGISTER_A(i);
+        Value* b = GET_Global_VALUE(i);
         *a = *b;
-        break;
-      case TypeOp_SetGlobal:
-        break;
-      case TypeOp_GetBuiltin:
-        a = GET_REGISTER_A(i);
-        b = GET_Builtin_VALUE(i);
+      }
+      BREAK;
+      CASE(TypeOp_SetGlobal) : BREAK;
+      CASE(TypeOp_GetBuiltin) : {
+        GET_REGISTER_A(i);
+        Value* b = GET_Builtin_VALUE(i);
         *a = *b;
-        break;
-      case TypeOp_Closure: {
-        a = GET_REGISTER_A(i);
-        long index = Instruction::GetParamBx(i);
-        GenerateClosure(a, index);
-      } break;
-      case TypeOp_Call: {
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Call) : {
+        GET_REGISTER_A(i);
         long argc = Instruction::GetParamB(i);
-        c = GET_REGISTER_C(i);
+        GET_REGISTER_C(i);
         current_frame_->current_pc_ = pc;
         if (likely(a->IsClosure())) {
           auto lepus_function =
@@ -916,57 +921,70 @@ void VMContext::RunFrame() {
           ReportException(*std::exchange(current_exception_, std::nullopt), pc,
                           length, closure, function, base, regs, true,
                           std::exchange(err_code_, error::E_MTS_RUNTIME_ERROR));
+          return;
         } else if (result == 0) {
           // failed: not a function
           ReportException(std::string(TYPEERROR) + ", not a function.", pc,
                           length, closure, function, base, regs, true);
+          return;
         } else if (pc < current_frame_->current_pc_) {
-          pc = length;
+          return;
         }
-        break;
       }
-      case TypeOp_Ret:
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_Ret) : {
+        GET_REGISTER_A(i);
         if (current_frame_->return_ != nullptr) {
           *current_frame_->return_ = *a;
         }
-        return;
-      case TypeOp_JmpFalse:
-        a = GET_REGISTER_A(i);
+      }
+      return;
+      CASE(TypeOp_JmpFalse) : {
+        GET_REGISTER_A(i);
         if (a->IsFalse()) pc += -1 + Instruction::GetParamsBx(i);
-        break;
-      case TypeOp_JmpTrue:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_JmpTrue) : {
+        GET_REGISTER_A(i);
         if (a->IsTrue()) pc += -1 + Instruction::GetParamsBx(i);
-        break;
-      case TypeOp_Jmp:
-        pc += -1 + Instruction::GetParamsBx(i);
-        break;
-      case TypeLabel_Catch:
-        break;
-      case TypeLabel_Throw: {
-        a = GET_REGISTER_A(i);
-        std::ostringstream msg;
-        msg << a;
-        ReportException(msg.str(), pc, length, closure, function, base, regs,
-                        false);
-        break;
       }
-      case TypeOp_SetContextSlotMove: {
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_Jmp) : pc += -1 + Instruction::GetParamsBx(i);
+      BREAK;
+      CASE(TypeLabel_Catch) : BREAK;
+      CASE(TypeLabel_Throw) : {
+        {
+          GET_REGISTER_A(i);
+          {
+            std::ostringstream msg;
+            msg << a;
+            ReportException(msg.str(), pc, length, closure, function, base,
+                            regs, false);
+          }
+        }
+        BREAK;
+      }
+      CASE(TypeOp_Closure) : {
+        GET_REGISTER_A(i);
+        long index = Instruction::GetParamBx(i);
+        GenerateClosure(a, index);
+      }
+      BREAK;
+      CASE(TypeOp_SetContextSlotMove) : {
+        GET_REGISTER_A(i);
         long array_index = Instruction::GetParamB(i);
-        c = GET_REGISTER_C(i);
+        GET_REGISTER_C(i);
         a->Array()->set(static_cast<int>(array_index), *c);
-        break;
       }
-      case TypeOp_GetContextSlotMove: {
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_GetContextSlotMove) : {
+        GET_REGISTER_A(i);
         long array_index = Instruction::GetParamB(i);
-        c = GET_REGISTER_C(i);
+        GET_REGISTER_C(i);
         *a = c->Array()->get(array_index);
-        break;
       }
-      case TypeOp_Typeof: {
+      BREAK;
+      CASE(TypeOp_Typeof) : {
         static constexpr const char kUndefined[] = "undefined";
         static constexpr const char kObject[] = "object";
         static constexpr const char kBoolean[] = "boolean";
@@ -974,7 +992,7 @@ void VMContext::RunFrame() {
         static constexpr const char kString[] = "string";
         static constexpr const char kFunction[] = "function";
         static constexpr const char kLepusObject[] = "lepusobject";
-        a = GET_REGISTER_A(i);
+        GET_REGISTER_A(i);
         switch (a->Type()) {
           case lepus::ValueType::Value_Undefined:
             a->SetString(BASE_STATIC_STRING(kUndefined));
@@ -1008,10 +1026,10 @@ void VMContext::RunFrame() {
             a->SetString(BASE_STATIC_STRING(kObject));
             break;
         }
-        break;
       }
-      case TypeOp_Neg:
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_Neg) : {
+        GET_REGISTER_A(i);
         if (a->IsInt64()) {
           a->SetNumber(-a->Int64());
         } else if (a->IsNumber()) {
@@ -1019,17 +1037,20 @@ void VMContext::RunFrame() {
         } else if (a->IsString()) {
           RunFrame_Op_Neg_UnlikelyPath(a);
         }
-        break;
-      case TypeOp_Pos:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Pos) : {
+        GET_REGISTER_A(i);
         RunFrame_Op_Pos(a);
-        break;
-      case TypeOp_Not:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Not) : {
+        GET_REGISTER_A(i);
         a->SetBool(!a->Bool());
-        break;
-      case TypeOp_BitNot:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_BitNot) : {
+        GET_REGISTER_A(i);
         if (a->IsNumber()) {
           if (a->IsInt64())
             a->SetNumber(~(a->Int64()));
@@ -1038,8 +1059,9 @@ void VMContext::RunFrame() {
             a->SetNumber(~x);
           }
         }
-        break;
-      case TypeOp_And:
+      }
+      BREAK;
+      CASE(TypeOp_And) : {
         //&&
         GET_REGISTER_ABC(i);
         if (b->IsTrue()) {
@@ -1047,8 +1069,9 @@ void VMContext::RunFrame() {
         } else {
           *a = *b;
         }
-        break;
-      case TypeOp_Or:
+      }
+      BREAK;
+      CASE(TypeOp_Or) : {
         //||
         GET_REGISTER_ABC(i);
         if (!b->IsFalse()) {
@@ -1056,29 +1079,23 @@ void VMContext::RunFrame() {
         } else {
           *a = *c;
         }
-        break;
-      case TypeOp_Len:
-        break;
-      case TypeOp_Add:
+      }
+      BREAK;
+      CASE(TypeOp_Len) : BREAK;
+      CASE(TypeOp_Add) : {
         GET_REGISTER_ABC(i);
         // most cases are string + string
         // some cases are int + string
         // we just optimized those two case
         if (b->IsString() && c->IsString()) {
           a->SetString(b->StdString() + c->StdString());
-          break;
-        }
-
-        if (b->IsNumber() && c->IsNumber()) {
+        } else if (b->IsNumber() && c->IsNumber()) {
           if (b->IsInt64() && c->IsInt64()) {
             a->SetNumber(b->Int64() + c->Int64());
           } else {
             a->SetNumber(b->Number() + c->Number());
           }
-          break;
-        }
-
-        if (b->IsNumber()) {
+        } else if (b->IsNumber()) {
           RunFrame_Op_Add_UnlikelyPath_B_Number(a, b, c);
         } else if (c->IsNumber()) {
           RunFrame_Op_Add_UnlikelyPath_C_Number(a, b, c);
@@ -1086,54 +1103,57 @@ void VMContext::RunFrame() {
           // may string + null or null + string
           a->SetString(b->StdString() + c->StdString());
         }
-        break;
-      case TypeOp_Sub:
+      }
+      BREAK;
+      CASE(TypeOp_Sub) : {
         GET_REGISTER_ABC(i);
         if (b->IsInt64() && c->IsInt64()) {
           a->SetNumber(b->Int64() - c->Int64());
         } else {
           a->SetNumber(b->Number() - c->Number());
         }
-        break;
-      case TypeOp_Mul:
+      }
+      BREAK;
+      CASE(TypeOp_Mul) : {
         GET_REGISTER_ABC(i);
         if (b->IsInt64() && c->IsInt64()) {
           a->SetNumber(b->Int64() * c->Int64());
         } else {
           a->SetNumber(b->Number() * c->Number());
         }
-        break;
-      case TypeOp_Div: {
-        GET_REGISTER_ABC(i);
-        if (c->Number() == 0) {
-          *a = Value();
+      }
+      BREAK;
+      CASE(TypeOp_Div) : {
+        if ((regs + Instruction::GetParamC(i))->Number() == 0) {
+          *(regs + Instruction::GetParamA(i)) = Value();
           LOGE("lepus-div: div 0");
-          break;
+          BREAK;
         }
+        GET_REGISTER_ABC(i);
         double ans = b->Number() / c->Number();
         if (lynx::base::StringConvertHelper::IsInt64Double(ans)) {
           a->SetNumber(static_cast<int64_t>(ans));
         } else {
           a->SetNumber(ans);
         }
-        break;
       }
-      case TypeOp_Pow:
-        RunFrame_Op_Pow(run_frame_ctx);
-        break;
-      case TypeOp_Mod:
-        RunFrame_Op_Mod(run_frame_ctx);
-        break;
-      case TypeOp_BitOr:
-        RunFrame_Op_BitOr(run_frame_ctx);
-        break;
-      case TypeOp_BitAnd:
-        RunFrame_Op_BitAnd(run_frame_ctx);
-        break;
-      case TypeOp_BitXor:
-        RunFrame_Op_BitXor(run_frame_ctx);
-        break;
-      case TypeOp_Less:
+      BREAK;
+      CASE(TypeOp_Pow) : run_frame_ctx.i = i;
+      RunFrame_Op_Pow(run_frame_ctx);
+      BREAK;
+      CASE(TypeOp_Mod) : run_frame_ctx.i = i;
+      RunFrame_Op_Mod(run_frame_ctx);
+      BREAK;
+      CASE(TypeOp_BitOr) : run_frame_ctx.i = i;
+      RunFrame_Op_BitOr(run_frame_ctx);
+      BREAK;
+      CASE(TypeOp_BitAnd) : run_frame_ctx.i = i;
+      RunFrame_Op_BitAnd(run_frame_ctx);
+      BREAK;
+      CASE(TypeOp_BitXor) : run_frame_ctx.i = i;
+      RunFrame_Op_BitXor(run_frame_ctx);
+      BREAK;
+      CASE(TypeOp_Less) : {
         GET_REGISTER_ABC(i);
         if (b->IsNumber() && c->IsNumber()) {
           a->SetBool(b->Number() < c->Number());
@@ -1142,8 +1162,9 @@ void VMContext::RunFrame() {
         } else {
           a->SetBool(false);
         }
-        break;
-      case TypeOp_Greater:
+      }
+      BREAK;
+      CASE(TypeOp_Greater) : {
         GET_REGISTER_ABC(i);
         if (b->IsNumber() && c->IsNumber()) {
           a->SetBool(b->Number() > c->Number());
@@ -1152,32 +1173,37 @@ void VMContext::RunFrame() {
         } else {
           a->SetBool(false);
         }
-        break;
-      case TypeOp_Equal:
+      }
+      BREAK;
+      CASE(TypeOp_Equal) : {
         GET_REGISTER_ABC(i);
         if (b->IsString() && c->IsString()) {
           a->SetBool(b->StdString() == c->StdString());
         } else {
           a->SetBool(*b == *c);
         }
-        break;
-      case TypeOp_AbsEqual:
+      }
+      BREAK;
+      CASE(TypeOp_AbsEqual) : {
         GET_REGISTER_ABC(i);
         if (b->IsString() && c->IsString()) {
           a->SetBool(b->StdString() == c->StdString());
         } else {
           a->SetBool(*b == *c);
         }
-        break;
-      case TypeOp_UnEqual:
+      }
+      BREAK;
+      CASE(TypeOp_UnEqual) : {
         GET_REGISTER_ABC(i);
         a->SetBool(*b != *c);
-        break;
-      case TypeOp_AbsUnEqual:
+      }
+      BREAK;
+      CASE(TypeOp_AbsUnEqual) : {
         GET_REGISTER_ABC(i);
         a->SetBool(*b != *c);
-        break;
-      case TypeOp_LessEqual:
+      }
+      BREAK;
+      CASE(TypeOp_LessEqual) : {
         GET_REGISTER_ABC(i);
         if (b->IsNumber() && c->IsNumber()) {
           a->SetBool((b->Number() <= c->Number()));
@@ -1186,8 +1212,9 @@ void VMContext::RunFrame() {
         } else {
           a->SetBool(false);
         }
-        break;
-      case TypeOp_GreaterEqual:
+      }
+      BREAK;
+      CASE(TypeOp_GreaterEqual) : {
         GET_REGISTER_ABC(i);
         if (b->IsNumber() && c->IsNumber()) {
           a->SetBool((b->Number() >= c->Number()));
@@ -1196,9 +1223,10 @@ void VMContext::RunFrame() {
         } else {
           a->SetBool(false);
         }
-        break;
-      case TypeOp_NewArray: {
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_NewArray) : {
+        GET_REGISTER_A(i);
         long argc = Instruction::GetParamB(i);
         auto arr = CArray::Create();
         arr->reserve(argc);
@@ -1206,35 +1234,39 @@ void VMContext::RunFrame() {
           arr->push_back(*(a + i + 1));
         }
         *a = Value(std::move(arr));
-      } break;
-      case TypeOp_CreateContext: {
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_CreateContext) : {
+        GET_REGISTER_A(i);
         // context + data
-        long array_size = Instruction::GetParamB(i) + 1;
-        auto arr = CArray::Create();
-        arr->resize(array_size);
-        Frame* frame = current_frame_;
-        auto current_closure =
-            fml::static_ref_ptr_cast<Closure>(frame->function_->RefCounted());
-        arr->set(0, current_closure->GetContext());
-        *a = Value(std::move(arr));
+        {
+          long array_size = Instruction::GetParamB(i) + 1;
+          auto arr = CArray::Create();
+          arr->resize(array_size);
+          Frame* frame = current_frame_;
+          auto current_closure =
+              fml::static_ref_ptr_cast<Closure>(frame->function_->RefCounted());
+          arr->set(0, current_closure->GetContext());
+          *a = Value(std::move(arr));
+        }
         closure_context_ = *a;
-        break;
       }
-      case TypeOp_PushContext: {
-        a = GET_REGISTER_A(i);
+      BREAK;
+      CASE(TypeOp_PushContext) : {
+        GET_REGISTER_A(i);
         context_.push(*a);
-        break;
       }
-      case TypeOp_PopContext: {
+      BREAK;
+      CASE(TypeOp_PopContext) : {
         context_.pop();
-        break;
+        BREAK;
       }
-      case TypeOp_NewTable:
-        a = GET_REGISTER_A(i);
+      CASE(TypeOp_NewTable) : {
+        GET_REGISTER_A(i);
         a->SetTable(Dictionary::Create());
-        break;
-      case TypeOp_SetTable:
+      }
+      BREAK;
+      CASE(TypeOp_SetTable) : {
         GET_REGISTER_ABC(i);
         if (a->IsTable() && b->IsString()) {
           a->Table()->SetValue(b->String(), *c);
@@ -1245,21 +1277,23 @@ void VMContext::RunFrame() {
           s << b->Number();
           a->Table()->SetValue(s.str(), *c);
         }
-        break;
-      case TypeOp_GetTable:
+      }
+      BREAK;
+      CASE(TypeOp_GetTable) : {
         GET_REGISTER_ABC(i);
 
         if (b->IsNil() || b->IsUndefined()) {
           a->SetNil();
           if (enable_strict_check_) {
-            std::string key = "";
-            if (c->IsString()) {
-              key = c->StdString();
+            {
+              std::string key = "";
+              if (c->IsString()) {
+                key = c->StdString();
+              }
+              ReportException("Cannot read " + key + " of null ", pc, length,
+                              closure, function, base, regs,
+                              enable_strict_check_);
             }
-            ReportException("Cannot read " + key + " of null ", pc, length,
-                            closure, function, base, regs,
-                            enable_strict_check_);
-            break;
           } else {
 #ifdef LEPUS_LOG
             if (c->IsString()) {
@@ -1274,105 +1308,108 @@ void VMContext::RunFrame() {
 #endif
           }
           enable_null_prop_as_undef_ ? a->SetUndefined() : a->SetNil();
-          break;
-        }
-        switch (b->Type()) {
-          case Value_Table:
-            if (c->IsString()) {
-              *a = enable_null_prop_as_undef_
-                       ? b->Table()->GetValueOrUndefined(c->String())
-                       : b->Table()->GetValue(c->String());
-            } else if (c->IsNumber()) {
-              std::ostringstream s;
-              s << c->Number();
-              *a = enable_null_prop_as_undef_
-                       ? b->Table()->GetValueOrUndefined(s.str())
-                       : b->Table()->GetValue(s.str());
-            } else {
-              a->SetNil();
-            }
-            break;
-          case Value_Array:
-            if (c->IsNumber()) {
-              *a = b->Array()->get(c->Number());
-            } else if (c->IsString()) {
-              auto c_str = c->String();
-              const auto& c_str_value = c_str.str();
-              if (c_str_value == "length") {
-                *a = Value(static_cast<int64_t>((b->Array()->size())));
-              } else if (unlikely(b->Array()->GetIsMatchResult())) {
-                if (c_str_value == "input") {
-                  *a = b->Array()->GetMatchInput();
-                } else if (c_str_value == "index") {
-                  *a = b->Array()->GetMatchIndex();
-                } else if (c_str_value == "groups") {
-                  *a = b->Array()->GetMatchGroups();
+        } else {
+          switch (b->Type()) {
+            case Value_Table:
+              if (c->IsString()) {
+                *a = enable_null_prop_as_undef_
+                         ? b->Table()->GetValueOrUndefined(c->String())
+                         : b->Table()->GetValue(c->String());
+              } else if (c->IsNumber()) {
+                std::ostringstream s;
+                s << c->Number();
+                *a = enable_null_prop_as_undef_
+                         ? b->Table()->GetValueOrUndefined(s.str())
+                         : b->Table()->GetValue(s.str());
+              } else {
+                a->SetNil();
+              }
+              break;
+            case Value_Array:
+              if (c->IsNumber()) {
+                *a = b->Array()->get(c->Number());
+              } else if (c->IsString()) {
+                auto c_str = c->String();
+                const auto& c_str_value = c_str.str();
+                if (c_str_value == "length") {
+                  *a = Value(static_cast<int64_t>((b->Array()->size())));
+                } else if (unlikely(b->Array()->GetIsMatchResult())) {
+                  if (c_str_value == "input") {
+                    *a = b->Array()->GetMatchInput();
+                  } else if (c_str_value == "index") {
+                    *a = b->Array()->GetMatchIndex();
+                  } else if (c_str_value == "groups") {
+                    *a = b->Array()->GetMatchGroups();
+                  }
+                } else {
+                  *a = GetArrayPrototypeAPI(c_str);
                 }
               } else {
-                *a = GetArrayPrototypeAPI(c_str);
-              }
-            } else {
 #ifdef LEPUS_LOG
-              LOGE("lepus: GetTable for Array, key error is " << c->Type());
+                LOGE("lepus: GetTable for Array, key error is " << c->Type());
 #endif
-              *a = Value();
-            }
-            break;
-          case Value_String:
-            if (c->IsString()) {
-              auto c_str = c->String();
-              const auto& c_str_value = c_str.str();
-              if (c_str_value == "length") {
-                *a = Value(static_cast<int64_t>((b->String().length_utf16())));
+                *a = Value();
+              }
+              break;
+            case Value_String:
+              if (c->IsString()) {
+                auto c_str = c->String();
+                const auto& c_str_value = c_str.str();
+                if (c_str_value == "length") {
+                  *a =
+                      Value(static_cast<int64_t>((b->String().length_utf16())));
+                } else {
+                  *a = GetStringPrototypeAPI(c_str);
+                }
               } else {
-                *a = GetStringPrototypeAPI(c_str);
+                RunFrame_Op_GetTable_UnlikelyPath_String(a, b, c);
               }
-            } else {
-              RunFrame_Op_GetTable_UnlikelyPath_String(a, b, c);
-            }
-            break;
-          case Value_CDate:
-            if (c->IsString()) {
-              *a = GetDatePrototypeAPI(c->String());
-            } else {
-              *a = Value();
-            }
-            break;
-          case Value_RegExp:
-            if (c->IsString()) {
-              *a = GetRegexPrototypeAPI(c->String());
-            } else {
-              *a = Value();
-            }
-            break;
-          case Value_FunctionTable:
-            if (c->IsString()) {
-              *a = b->FunctionTable()->GetFunction(c->String());
-            } else {
-              a->SetNil();
-            }
-            break;
-          default:
-            if (b->IsNumber() && c->IsString()) {
-              *a = GetNumberPrototypeAPI(c->String());
-            } else {
+              break;
+            case Value_CDate:
+              if (c->IsString()) {
+                *a = GetDatePrototypeAPI(c->String());
+              } else {
+                *a = Value();
+              }
+              break;
+            case Value_RegExp:
+              if (c->IsString()) {
+                *a = GetRegexPrototypeAPI(c->String());
+              } else {
+                *a = Value();
+              }
+              break;
+            case Value_FunctionTable:
+              if (c->IsString()) {
+                *a = b->FunctionTable()->GetFunction(c->String());
+              } else {
+                a->SetNil();
+              }
+              break;
+            default:
+              if (b->IsNumber() && c->IsString()) {
+                *a = GetNumberPrototypeAPI(c->String());
+              } else {
 #ifdef LEPUS_LOG
-              LOGE("lepus: GetTable unknown, receiver type  "
-                   << b->Type() << ", key type " << c->Type());
+                LOGE("lepus: GetTable unknown, receiver type  "
+                     << b->Type() << ", key type " << c->Type());
 #endif
-              *a = Value();
-            }
-            break;
+                *a = Value();
+              }
+              break;
+          }
         }
-        break;
-      case TypeOp_Switch: {
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Switch) : {
+        GET_REGISTER_A(i);
         long index = Instruction::GetParamBx(i);
         long jmp = function->GetSwitch(index)->Switch(a);
         pc += -1 + jmp;
-      } break;
-      case TypeOp_Inc:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Inc) : {
+        GET_REGISTER_A(i);
         if (a->IsNumber()) {
           if (a->IsInt64()) {
             a->SetNumber(a->Int64() + 1);
@@ -1380,9 +1417,10 @@ void VMContext::RunFrame() {
             a->SetNumber(a->Number() + 1);
           }
         }
-        break;
-      case TypeOp_Dec:
-        a = GET_REGISTER_A(i);
+      }
+      BREAK;
+      CASE(TypeOp_Dec) : {
+        GET_REGISTER_A(i);
         if (a->IsNumber()) {
           if (a->IsInt64()) {
             a->SetNumber(a->Int64() - 1);
@@ -1390,25 +1428,31 @@ void VMContext::RunFrame() {
             a->SetNumber(a->Number() - 1);
           }
         }
-        break;
-      case TypeOp_Noop:
-        break;
-      case TypeLabel_EnterBlock:
-        RunFrame_Label_EnterBlock(closure);
-        break;
-      case TypeLabel_LeaveBlock:
-        RunFrame_Label_LeaveBlock();
-        break;
-      case TypeOp_CreateBlockContext:
-        RunFrame_Op_CreateBlockContext(run_frame_ctx);
-        break;
-      default:
-        break;
+      }
+      BREAK;
+      CASE(TypeOp_Noop) : BREAK;
+      CASE(TypeLabel_EnterBlock) : RunFrame_Label_EnterBlock(closure);
+      BREAK;
+      CASE(TypeLabel_LeaveBlock) : RunFrame_Label_LeaveBlock();
+      BREAK;
+      CASE(TypeOp_CreateBlockContext) : run_frame_ctx.i = i;
+      RunFrame_Op_CreateBlockContext(run_frame_ctx);
+      BREAK;
+      // default:
+      // BREAK;
     }
   }
-  if (current_frame_->return_ != nullptr) {
+  CASE(default) : if (current_frame_->return_ != nullptr) {
     current_frame_->return_->SetNil();
   }
+  return;
+  CASE(debug) : if (is_debug_enabled_) {
+    auto debug_delegate = debug_delegate_.lock();
+    if (debug_delegate != nullptr) {
+      debug_delegate->UpdateCurrentPC(pc - 1);
+    }
+  }
+  goto* dispatch_table[Instruction::GetOpCode(i)];
 }
 
 void VMContext::GenerateClosure(Value* value, long index) {
