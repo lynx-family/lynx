@@ -33,17 +33,16 @@ target(lynx_harmony_type, "lynx_harmony") {
   cflags = []
   lib_dirs = [ primjs_native_lib_dir ]
   libs = [
+    "deviceinfo_ndk.z",
     "napi",
     "napi_adapter",
     "quick",
   ]
 
-  if (enable_jsvm) {
-    public_deps += [
-      "../../../core/runtime/bindings/napi:napi_binding_jsvm",
-      "../../../core/runtime/jsi/jsvm",
-    ]
-  }
+  public_deps += [
+    "../../../core/runtime/bindings/napi:napi_binding_jsvm",
+    "../../../core/runtime/jsi/jsvm",
+  ]
 
   public_configs = [ ":harmony_public_config" ]
   if (enable_testbench_replay) {

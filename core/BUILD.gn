@@ -99,9 +99,6 @@ config("lynx_public_config") {
       defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
     }
 
-    if (enable_jsvm) {
-      defines += [ "ENABLE_JSVM=1" ]
-    }
     if (jsengine_type == "jsvm") {
       defines += [ "JS_ENGINE_TYPE=3" ]
     }

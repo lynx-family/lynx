@@ -34,7 +34,7 @@
 #if JS_ENGINE_TYPE == 1
 #include "core/runtime/jsi/jsc/jsc_api.h"
 #endif  // JS_ENGINE_TYPE == 1
-#if ENABLE_JSVM
+#if OS_HARMONY
 #include "core/renderer/utils/lynx_env.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy_jsvm_factory.h"
@@ -42,7 +42,7 @@
 
 extern void RegisterJSVMRuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyJSVMFactory* factory);
-#endif  // ENABLE_JSVM
+#endif  // OS_HARMONY
 
 #ifdef OS_ANDROID
 #include "core/runtime/bindings/jsi/modules/android/lynx_proxy_runtime_helper.h"
@@ -487,9 +487,10 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 
 #endif  // OS_WIN
 
-#if ENABLE_JSVM
+#if OS_HARMONY
 #if JS_ENGINE_TYPE != 3
-  if (tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) {
+  if (tasm::LynxEnv::GetInstance().EnableJSVMRuntime() &&
+      piper::IsJSVMRuntimeAvailable()) {
 #endif  // JS_ENGINE_TYPE != 3
 #if ENABLE_NAPI_BINDING
     static piper::NapiRuntimeProxyJSVMFactoryImpl factory;
@@ -500,7 +501,7 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 #if JS_ENGINE_TYPE != 3
   }
 #endif  // JS_ENGINE_TYPE != 3
-#endif  // ENABLE_JSVM
+#endif  // OS_HARMONY
 
 // Fit compile on other unknown platforms such as Linux.
 #if JS_ENGINE_TYPE == 2
