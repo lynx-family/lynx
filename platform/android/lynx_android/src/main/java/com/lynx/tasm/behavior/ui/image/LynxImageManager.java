@@ -30,6 +30,7 @@ import com.lynx.tasm.behavior.LynxUIMethodConstants;
 import com.lynx.tasm.behavior.PropsConstants;
 import com.lynx.tasm.behavior.shadow.ShadowNode;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulContentStatus;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.core.LynxThreadPool;
@@ -1186,6 +1187,7 @@ public class LynxImageManager implements Drawable.Callback {
     if (mEnableOnLoad) {
       sendLoadEvent(width, height);
     }
+    mUI.setMeaningfulContentStatus(MeaningfulContentStatus.LOADED);
   }
 
   protected void onImageLoadError(LynxError error, int categorizedCode, int imageErrorCode) {
