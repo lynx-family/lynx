@@ -36,6 +36,8 @@
     @"switchIgnorePropErrors" : NSStringFromSelector(@selector(switchIgnorePropErrors:)),
     @"isQuickjsDebugEnabled" : NSStringFromSelector(@selector(isQuickjsDebugEnabled)),
     @"switchQuickjsDebug" : NSStringFromSelector(@selector(switchQuickjsDebug:)),
+    @"isTimingOverlayEnabled" : NSStringFromSelector(@selector(isTimingOverlayEnabled)),
+    @"switchTimingOverlay" : NSStringFromSelector(@selector(switchTimingOverlay:)),
 #if OS_IOS
     @"isLongPressMenuEnabled" : NSStringFromSelector(@selector(isLongPressMenuEnabled)),
     @"switchLongPressMenu" : NSStringFromSelector(@selector(switchLongPressMenu:)),
@@ -123,6 +125,14 @@
 
 - (void)switchHighlightTouch:(BOOL)arg {
   LynxEnv.sharedInstance.highlightTouchEnabled = arg;
+}
+
+- (BOOL)isTimingOverlayEnabled {
+  return [LynxDevtoolEnv.sharedInstance timingOverlayEnabled];
+}
+
+- (void)switchTimingOverlay:(BOOL)arg {
+  [LynxDevtoolEnv.sharedInstance setTimingOverlayEnabled:arg];
 }
 #endif
 

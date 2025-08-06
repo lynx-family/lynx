@@ -197,7 +197,7 @@
   }
 }
 
-- (void)setTextLable:(NSInteger)label {
+- (void)setTextLabel:(NSInteger)label {
 #if OS_IOS
   _textView = [[UITextView alloc] init];
   _textView.text = @(label).stringValue;
