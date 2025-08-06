@@ -349,7 +349,9 @@ LYNX_REGISTER_UI("image")
       [strongSelf setImageToView:image];
       if (image.images != nil && [image.images count] > 1) {
         strongSelf.view.animationDuration = image.duration;
-        [strongSelf.view startAnimating];
+        if (strongSelf.autoPlay) {
+          [strongSelf startAnimating];
+        }
       }
       if (requestURL) {
         [requestURL updatePreviousUrl];
@@ -1427,7 +1429,7 @@ LYNX_PROP_SETTER("placeholder-hash-config", setPlaceHolderHash, NSDictionary*) {
 LYNX_UI_METHOD(startAnimate) {
   if (![[LynxImageLoader imageService] restartImageIfPossible:self.view callback:callback]) {
     [self.view stopAnimating];
-    [self restartAnimation];
+    [self startAnimation];
   }
 }
 
@@ -1536,6 +1538,12 @@ LYNX_UI_METHOD(stopAnimation) {
 
 - (void)restartAnimation {
   [super restartAnimation];
+  if ([self isAnimated] && _autoPlay) {
+    [self startAnimating];
+  }
+}
+
+- (void)startAnimation {
   if ([self isAnimated]) {
     [self startAnimating];
   }
