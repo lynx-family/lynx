@@ -9294,7 +9294,7 @@ public class com::lynx::tasm::utils::TypefaceUtils :  {
 public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.UIGroup< UIBodyView > {
   public com.lynx.tasm.behavior.ui.UIBody.UIBody(LynxContext context, final UIBodyView view);
   public UIBodyView com.lynx.tasm.behavior.ui.UIBody.getBodyView();
-  public synchronized void com.lynx.tasm.behavior.ui.UIBody.attachUIBodyView(UIBodyView view);
+  public synchronized void com.lynx.tasm.behavior.ui.UIBody.attachUIBodyView(UIBodyView view, LynxContext context);
   public synchronized void com.lynx.tasm.behavior.ui.UIBody.detachUIBodyView();
   public void com.lynx.tasm.behavior.ui.UIBody.appendUIWithCreateViewAsync(LynxUI ui);
   public void com.lynx.tasm.behavior.ui.UIBody.rebuildViewTree();

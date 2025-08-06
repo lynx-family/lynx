@@ -67,7 +67,7 @@ public class UIBody extends UIGroup<UIBodyView> {
    * when async render, we should attach LynxView
    * @param view
    */
-  synchronized public void attachUIBodyView(UIBodyView view) {
+  synchronized public void attachUIBodyView(UIBodyView view, LynxContext context) {
     mAttachTask = new OnceTask<>(new Callable<Void>() {
       @Override
       public Void call() throws Exception {
@@ -93,10 +93,13 @@ public class UIBody extends UIGroup<UIBodyView> {
           return null;
         }
 
+        mContext = context;
+        mContext.setUIBodyView(mBodyView);
+
         TraceEvent.beginSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);
 
         mCreateViewUI = new ArrayList<>();
-        attachToView();
+        attachToView(context);
         mBodyView.markNeedRemoveExistingViews();
 
         TraceEvent.endSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);

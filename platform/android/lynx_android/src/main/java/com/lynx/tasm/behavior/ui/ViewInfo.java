@@ -239,6 +239,7 @@ public class ViewInfo implements IDrawChildHook {
       if (info.mIsView) {
         bound = info.mBound;
         mCurrentDrawIndex++;
+        break;
       } else {
         drawWithSubDrawInfo(info, canvas);
       }

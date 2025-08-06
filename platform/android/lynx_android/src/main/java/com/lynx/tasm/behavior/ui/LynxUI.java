@@ -198,13 +198,8 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
       View view = mContext.getUIBodyView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
-        mView = (T) view;
-        if (mView instanceof IDrawChildHook.IDrawChildHookBinding) {
-          mViewInfo = new ViewInfo(this, mView);
-          ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
-        }
+        return (T) view;
       }
-      return mView;
     }
 
     return createView(context, params);
@@ -293,18 +288,18 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
    * finished.
    */
   @Override
-  protected void attachToView() {
+  protected void attachToView(LynxContext context) {
+    mContext = context;
     if (mView == null) {
       View view = mContext.getLynxView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
         mView = (T) view;
-
         mContext.getUIBody().appendUIWithCreateViewAsync(this);
       } else {
         createViewAsync();
       }
     }
-    super.attachToView();
+    super.attachToView(context);
   }
 
   @Override
