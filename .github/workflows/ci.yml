@@ -422,14 +422,19 @@ jobs:
             exit 1
           fi
       - name: Run Android E2E Test
-        run: |
-          set -e
-          pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
-          export server_port=$APPIUM_TEST_SERVER_PORT
-          export platform=android
-          pip3 install -r requirements.txt
-          python3 manage.py runtest android_test.core
-          echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 2
+          retry_wait_seconds: 5
+          timeout_minutes: 20
+          command: |
+            set -e
+            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+            export server_port=$APPIUM_TEST_SERVER_PORT
+            export platform=android
+            pip3 install -r requirements.txt
+            python3 manage.py runtest android_test.core
+            echo "TASK_STATUS=success" >> $GITHUB_OUTPUT
         id: run_test
       - name: Collect Lynx-E2E execution logs
         if: always()
