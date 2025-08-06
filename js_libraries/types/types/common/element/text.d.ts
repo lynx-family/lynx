@@ -11,14 +11,16 @@ import { StandardProps } from '../props';
 export interface TextProps extends StandardProps {
   /**
    * Maximum number of lines for text display
-   * @defaultValue "-1"
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
    * @since 1.0
    */
   'text-maxline'?: string;
 
   /**
    * Maximum number of characters for text display
-   * @defaultValue ""
    * @since 1.0
    * @deprecated Suggest preprocessing the text content length.
    */
@@ -27,6 +29,7 @@ export interface TextProps extends StandardProps {
   /**
    * Whether font-size is affected by system font scaling
    * @defaultValue false
+   * @deprecated
    * @since 1.6
    */
   'enable-font-scaling'?: boolean;
@@ -42,15 +45,18 @@ export interface TextProps extends StandardProps {
   /**
    * By default, if text truncation occurs, the color of the inserted ... will be specified by the style on the nearest inline-text. If this attribute is enabled, the color of ... will be specified by the style on the outermost text tag.
    * @defaultValue false
+   * @Android
+   * @iOS
    * @since 2.0
    */
   'tail-color-convert'?: boolean;
 
   /**
    * Set single-line plain text to be centered and aligned within the line. Inline text settings are not supported. Recommended only when the default font doesn't meet center alignment needs, as it increases text measurement time.
-   * @defaultValue normal
+   * @defaultValue 'normal'
    * @iOS
    * @Android
+   * @PC
    * @since 2.12
    */
   'text-single-line-vertical-align'?: 'normal' | 'bottom' | 'center' | 'top';
@@ -110,11 +116,17 @@ export interface TextProps extends StandardProps {
   /**
    * Text layout event
    * @since 2.7
+   * @Android
+   * @iOS
+   * @Harmony
+   * @PC
    */
   bindlayout?: (e: LayoutEvent) => void;
 
   /**
    * Text selection change event
+   * @Android
+   * @iOS
    * @since 2.18
    */
   bindselectionchange?: (e: SelectionChangeEvent) => void;
@@ -205,6 +217,7 @@ interface SetTextSelectionMethod extends BaseMethod {
  * Gets the bounding rectangle of the text.
  * @Android
  * @iOS
+ * @PC
  * @since 2.18
  */
 interface GetTextBoundingRectMethod extends BaseMethod {

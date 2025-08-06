@@ -10,10 +10,11 @@ import { ImageProps, ImageUIMethods } from './image';
 import { ListItemProps, ListProps, ListRowProps, ListUIMethods } from './list';
 import { PageProps } from './page';
 import { ScrollViewProps, ScrollViewUIMethods } from './scroll-view';
-import { TextProps } from './text';
+import { TextProps, TextUIMethods } from './text';
 import { ViewProps } from './view';
 import { InputProps, InputUIMethods } from './input';
 import { TextAreaProps, TextAreaUIMethods } from './textarea';
+
 
 export interface UIMethods {
   'list': ListUIMethods;
@@ -21,6 +22,7 @@ export interface UIMethods {
   'image': ImageUIMethods;
   'input': InputUIMethods;
   'textarea': TextAreaUIMethods;
+  'text': TextUIMethods;
 }
 
 type LynxComponentProps = ComponentProps;

@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.4.4
+- Complete the documentation for text related APIs.
+
 ## 3.4.3
 - Add `font-variation-settings`,`font-feature-settings` and `font-optical-sizing` CSS properties.
 - Add `experimental-recycle-available-item-before-layout` property for list.
