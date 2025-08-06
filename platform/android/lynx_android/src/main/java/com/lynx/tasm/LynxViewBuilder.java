@@ -223,6 +223,26 @@ public class LynxViewBuilder
   }
 
   @Override
+  public void setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher) {
+    super.setGenericResourceFetcher(fetcher);
+  }
+
+  @Override
+  public void setMediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher) {
+    super.setMediaResourceFetcher(fetcher);
+  }
+
+  @Override
+  public void setTemplateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher) {
+    super.setTemplateResourceFetcher(fetcher);
+  }
+
+  @Override
+  public void setEnableGenericResourceFetcher(LynxBooleanOption enabled) {
+    super.setEnableGenericResourceFetcher(enabled);
+  }
+
+  @Override
   public LynxViewBuilder setFontScale(float scale) {
     return super.setFontScale(scale);
   }
