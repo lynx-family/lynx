@@ -64,6 +64,7 @@
 # as mLoader is not used in java and passed as a WeakRef in JNI.
 -keepclassmembers class com.lynx.tasm.LynxTemplateRenderer {
     private com.lynx.tasm.core.resource.LynxResourceLoader mLoader;
+    private com.lynx.tasm.core.resource.LynxResourceLoader mResourceLoader;
 }
 
 -keep class com.lynx.tasm.behavior.ui.LynxBaseUI
