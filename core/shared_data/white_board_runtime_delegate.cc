@@ -31,7 +31,9 @@ void WhiteBoardRuntimeDelegate::CallJSApiCallbackWithValue(
   if (runtime_actor_) {
     runtime_actor_->Act(
         [callback = std::move(callback), param](auto& runtime) mutable {
-          runtime->CallJSApiCallbackWithValue(std::move(callback), param);
+          // Invoke JSApiCallback without remove, js storage callback maybe
+          // invoked multiple times.
+          runtime->CallJSApiCallbackWithValue(std::move(callback), param, true);
         });
   }
 }
