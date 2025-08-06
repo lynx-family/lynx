@@ -6513,6 +6513,10 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public void com.lynx.tasm.LynxViewBuilder.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnableUserCodeCache(boolean enableUserBytecode);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setCodeCacheSourceUrl(String url);
+  public void com.lynx.tasm.LynxViewBuilder.setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher);
+  public void com.lynx.tasm.LynxViewBuilder.setMediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher);
+  public void com.lynx.tasm.LynxViewBuilder.setTemplateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher);
+  public void com.lynx.tasm.LynxViewBuilder.setEnableGenericResourceFetcher(LynxBooleanOption enabled);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setFontScale(float scale);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setScreenSize(int width, int height);
   public LynxViewBuilder com.lynx.tasm.LynxViewBuilder.setEnablePendingJsTask(boolean enablePendingJsTask);

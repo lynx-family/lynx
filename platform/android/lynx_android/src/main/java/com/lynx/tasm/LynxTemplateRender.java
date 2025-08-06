@@ -3835,8 +3835,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         .setEnablePreUpdateData(true)
         .setDynamicComponentFetcher(mLynxViewBuilder.fetcher)
         .setEnableGenericResourceFetcher(
-            mLynxViewBuilder.getLynxRuntimeOptions().isEnableGenericResourceFetcher())
-        .mergeLynxRuntimeOptions(mLynxViewBuilder.getLynxRuntimeOptions())
+            mLynxViewBuilder.getLynxRuntimeOptions().isEnableGenericResourceFetcher());
+
+    builder.mergeLynxRuntimeOptions(mLynxViewBuilder.getLynxRuntimeOptions())
         .setScreenSize(mLynxViewBuilder.getScreenWidth(), mLynxViewBuilder.getScreenHeight())
         .setThreadStrategyForRendering(mLynxViewBuilder.getThreadStrategy());
     builder.setCustomBehaviorRegistry(mLynxViewBuilder.getBehaviorRegistry());

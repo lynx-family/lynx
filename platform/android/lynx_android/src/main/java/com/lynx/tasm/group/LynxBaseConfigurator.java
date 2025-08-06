@@ -290,36 +290,32 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * set resource provider for lynx generic resources;
    * @param fetcher
    */
-  public T setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher) {
+  public void setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher) {
     this.lynxRuntimeOptions.setGenericResourceFetcher(fetcher);
-    return (T) this;
   }
 
   /**
    * set resource provider for lynx media resources;
    * @param fetcher
    */
-  public T setMediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher) {
+  public void setMediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher) {
     this.lynxRuntimeOptions.setMediaResourceFetcher(fetcher);
-    return (T) this;
   }
 
   /**
    * set resource fetcher for lynx template resources.
    * @param fetcher
    */
-  public T setTemplateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher) {
+  public void setTemplateResourceFetcher(@NonNull LynxTemplateResourceFetcher fetcher) {
     this.lynxRuntimeOptions.setTemplateResourceFetcher(fetcher);
-    return (T) this;
   }
 
   /**
    * set enableGenericResourceFetcher or not.
    * @param enabled
    */
-  public T setEnableGenericResourceFetcher(LynxBooleanOption enabled) {
+  public void setEnableGenericResourceFetcher(LynxBooleanOption enabled) {
     this.lynxRuntimeOptions.setEnableGenericResourceFetcher(enabled);
-    return (T) this;
   }
 
   public T setForceDarkAllowed(boolean allowed) {
