@@ -210,7 +210,7 @@ ElementManager::~ElementManager() {
 }
 
 void ElementManager::ReportElementStatistic() {
-  if (EnableElementStatistic() && EnableEventReporter()) {
+  if (EnableElementStatistic() && EnableEventReporter() && instance_id_ >= 0) {
     report::EventTracker::OnEvent(
         [element_count = element_count_.load(),
          layout_only_element_count = layout_only_element_count_.load(),
@@ -260,6 +260,7 @@ void ElementManager::ReportElementStatistic() {
                 static_cast<float>(view_element_count) / element_count);
           }
         });
+    report::EventTracker::Flush(instance_id_);
   }
 }
 
