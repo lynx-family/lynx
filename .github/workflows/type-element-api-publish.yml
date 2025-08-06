@@ -1,0 +1,73 @@
+name: type_element_api_publish
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'js_libraries/type-element-api/package.json'
+  workflow_dispatch:
+
+jobs:
+  check-version-change:
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check.outputs.version_changed }}
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          fetch-depth: 1 # latest 1 commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - name: Check version field change
+        id: check
+        run: |
+          # achieve content of package.json 
+          pushd $GITHUB_WORKSPACE/lynx/js_libraries/type-element-api
+          version_current=$(jq -r '.version' package.json)
+          version_before=$(npm view @lynx-js/type-element-api version)
+
+          echo "Current version: $version_current"
+          echo "Previous version: $version_before"
+
+          if [ "$version_current" != "$version_before" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+  type_element_api_publish:
+    if: needs.check-version-change.outputs.version_changed == 'true'
+    needs: check-version-change
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          fetch-depth: 1 # latest 1 commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          registry-url: 'https://registry.npmjs.org'
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@latest
+          npm --version
+      - name: Publish
+        run: |-
+          pushd $GITHUB_WORKSPACE/lynx/js_libraries/type-element-api
+          npm publish --access public
