@@ -166,7 +166,7 @@ public class LynxUIOwner {
    * @param view
    */
   public void attachUIBodyView(@Nullable UIBodyView view) {
-    mUIBody.attachUIBodyView(view);
+    mUIBody.attachUIBodyView(view, mContext);
     if (isContextFree()) {
       while (!mCreateNodeAsyncTasks.isEmpty()) {
         FutureTask<Runnable> task = mCreateNodeAsyncTasks.poll();

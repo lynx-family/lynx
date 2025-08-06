@@ -9,6 +9,7 @@ import static org.mockito.Mockito.*;
 import android.os.IBinder;
 import android.view.View;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.behavior.ui.view.UIView;
 import com.lynx.testing.base.TestingUtils;
 import org.junit.After;
@@ -140,7 +141,9 @@ public class LynxUITest {
 
     mContext.markFallbackProcess(true);
     mContext.setUIBodyView(new UIBody.UIBodyView(mContext));
+    View view = new AndroidView(mContext);
+    mContext.getUIBodyView().registerViewAccordingToNodeIndex(1, view);
     UIView fallbackUI = new UIView(mContext, new UIParams(1, 1, false, "", null, null, null));
-    assertNull(fallbackUI.getView());
+    assertEquals(fallbackUI.getView(), view);
   }
 }

@@ -277,9 +277,10 @@ public abstract class LynxBaseUI
     }
   }
 
-  protected void attachToView() {
+  protected void attachToView(LynxContext context) {
+    mContext = context;
     for (LynxBaseUI ui : mChildren) {
-      ui.attachToView();
+      ui.attachToView(context);
     }
   }
 
