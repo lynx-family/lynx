@@ -1055,11 +1055,23 @@ lepus::Value TouchEventHandler::GetCustomEventParam(
     data.Table().get()->Erase(kTimestamp);
   }
   AddTimestampProperty(dict.get(), timestamp);
-  auto current_target_dict =
-      GetTargetInfo(current_target->impl_id(), current_target->data_model(),
-                    current_target, is_js_event);
-  auto target_dict = GetTargetInfo(target->impl_id(), target->data_model(),
-                                   target, is_js_event);
+  lepus::Value current_target_dict;
+  if (current_target) {
+    current_target_dict =
+        GetTargetInfo(current_target->impl_id(), current_target->data_model(),
+                      current_target, is_js_event);
+  } else {
+    LOGE("GetCustomEventParam error: the current_target is null.");
+    current_target_dict = lepus::Value(lepus::Dictionary::Create());
+  }
+  lepus::Value target_dict;
+  if (target) {
+    target_dict = GetTargetInfo(target->impl_id(), target->data_model(), target,
+                                is_js_event);
+  } else {
+    LOGE("GetCustomEventParam error: the target is null.");
+    target_dict = lepus::Value(lepus::Dictionary::Create());
+  }
   // CustomEvent should contain type, timestamp, target, currentTarget and
   // detail. In the previous version (<= 2.0), Native CustomEvent contains
   // target.id, target.dataset, target.para. To avoid beak change, when
