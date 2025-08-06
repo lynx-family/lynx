@@ -5,26 +5,6 @@
 import { CSSProperties } from '../common';
 
 export interface Element {
-  styles: CSSProperties;
-  attributes: Record<string, any>;
-  scrollBy: (
-    width: number,
-    height: number
-  ) => {
-    consumedX: number;
-    consumedY: number;
-    unconsumedX: number;
-    unconsumedY: number;
-  };
-  getBoundingClientRect: () => {
-    width: number;
-    height: number;
-    top: number;
-    bottom: number;
-    left: number;
-    right: number;
-  };
-
   /**
    * Set an attribute.
    * @param attributeName The name of the attribute.

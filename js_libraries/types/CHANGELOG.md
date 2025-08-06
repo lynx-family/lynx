@@ -22,6 +22,7 @@
 - Introduce <input> and <textarea>
 
 ## 3.3.2
+- SelectorQuery FieldsParams adds query attribute
 - Revert automatically generated cssTypes
 - Add typing for the runtime interfaces.
 - Codegen longhand and shorthand properties from css_defines

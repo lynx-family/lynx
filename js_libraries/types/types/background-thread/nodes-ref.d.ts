@@ -47,6 +47,7 @@ export interface FieldsParams {
   index?: boolean;
   class?: boolean;
   attribute?: boolean;
+  query?:boolean;
 }
 
 export interface FieldsData {
@@ -56,6 +57,7 @@ export interface FieldsData {
   index: number;
   class: Array<string>;
   attribute: Record<string, unknown>;
+  query:SelectorQuery;
 }
 
 export type PathCallback = (data: PathData, status: { data: string; code: number }) => void;
