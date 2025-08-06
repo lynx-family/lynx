@@ -56,6 +56,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)setAttachLynxPageUICallback:(attachLynxPageUI)callback;
 
+- (void)setTiming:(uint64_t)timestamp
+              key:(NSString *)key
+       pipelineID:(nullable NSString *)pipelineID;
+
 /**
  * updateFrame for setUp and FrameView
  */

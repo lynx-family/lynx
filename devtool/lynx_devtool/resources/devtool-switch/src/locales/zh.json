@@ -14,6 +14,8 @@
   "DOM inspector desc": "开启后支持 DOM 元素审查",
   "PixelCopy": "PixelCopy 截屏",
   "PixelCopy desc": "开启后使用 PixelCopy 方式截屏",
+  "Timing Overlay": "开启性能时间指标浮窗",
+  "Timing Overlay desc": "开启后展示性能指标浮窗，显示 FCP, ActualFMP, FSP 等时间指标.",
   "LogBox": "LogBox",
   "LogBox desc": "开启后运行出错时会弹出错误提示",
   "Highlight Touch": "高亮触摸",
