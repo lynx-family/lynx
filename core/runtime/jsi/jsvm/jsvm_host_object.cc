@@ -26,8 +26,8 @@ JSVM_Value JSVMHostObjectProxy::getProperty(JSVM_Env env, JSVM_Value name,
                                             JSVM_Value this_arg,
                                             JSVM_Value data) {
   JSVMHostObjectProxy* proxy_ptr = nullptr;
-  JSVM_CALL(
-      OH_JSVM_Unwrap(env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
+  JSVM_CALL(OH_JSVM_Unwrap,
+            (env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (proxy_ptr == nullptr ||
@@ -49,8 +49,8 @@ JSVM_Value JSVMHostObjectProxy::setProperty(JSVM_Env env, JSVM_Value name,
                                             JSVM_Value this_arg,
                                             JSVM_Value data) {
   JSVMHostObjectProxy* proxy_ptr = nullptr;
-  JSVM_CALL(
-      OH_JSVM_Unwrap(env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
+  JSVM_CALL(OH_JSVM_Unwrap,
+            (env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (proxy_ptr == nullptr ||
@@ -68,8 +68,8 @@ JSVM_Value JSVMHostObjectProxy::getPropertyNames(JSVM_Env env,
                                                  JSVM_Value this_arg,
                                                  JSVM_Value data) {
   JSVMHostObjectProxy* proxy_ptr = nullptr;
-  JSVM_CALL(
-      OH_JSVM_Unwrap(env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
+  JSVM_CALL(OH_JSVM_Unwrap,
+            (env, this_arg, reinterpret_cast<void**>(&proxy_ptr)));
   JSVMRuntime* rt = nullptr;
   std::shared_ptr<HostObject> lock_host_object;
   if (proxy_ptr == nullptr ||
@@ -110,18 +110,19 @@ piper::Object JSVMHostObjectProxy::createObject(
           JSVM_Value this_value = nullptr;
           size_t argc = 1;
           JSVM_Value argv = nullptr;
-          JSVM_CALL(
-              OH_JSVM_GetCbInfo(env, info, &argc, &argv, &this_value, nullptr));
+          JSVM_CALL(OH_JSVM_GetCbInfo,
+                    (env, info, &argc, &argv, &this_value, nullptr));
           uint64_t ptr = 0;
           bool lossless = false;
-          JSVM_CALL(OH_JSVM_GetValueBigintUint64(env, argv, &ptr, &lossless));
+          JSVM_CALL(OH_JSVM_GetValueBigintUint64, (env, argv, &ptr, &lossless));
 
           JSVMHostObjectProxy* proxy =
               reinterpret_cast<JSVMHostObjectProxy*>(ptr);
-          JSVM_CALL(
-              OH_JSVM_Wrap(env, this_value, reinterpret_cast<void*>(proxy),
-                           JSVMHostObjectProxy::onFinalize, nullptr, nullptr));
-          JSVM_CALL(OH_JSVM_TypeTagObject(env, this_value, GetHostObjectTag()));
+          JSVM_CALL(OH_JSVM_Wrap,
+                    (env, this_value, reinterpret_cast<void*>(proxy),
+                     JSVMHostObjectProxy::onFinalize, nullptr, nullptr));
+          JSVM_CALL(OH_JSVM_TypeTagObject,
+                    (env, this_value, GetHostObjectTag()));
           return this_value;
         },
         .data = nullptr};
@@ -129,26 +130,26 @@ piper::Object JSVMHostObjectProxy::createObject(
     property_cfg.genericNamedPropertyGetterCallback = getProperty;
     property_cfg.genericNamedPropertySetterCallback = setProperty;
     property_cfg.genericNamedPropertyEnumeratorCallback = getPropertyNames;
-    JSVM_CALL(OH_JSVM_DefineClassWithPropertyHandler(
-        env, "JSVMHostObjectClazz", JSVM_AUTO_LENGTH, &ctor_callback, 0,
-        nullptr, &property_cfg, nullptr, &object_template));
+    JSVM_CALL(OH_JSVM_DefineClassWithPropertyHandler,
+              (env, "JSVMHostObjectClazz", JSVM_AUTO_LENGTH, &ctor_callback, 0,
+               nullptr, &property_cfg, nullptr, &object_template));
 
     JSVM_Ref object_template_ref = nullptr;
-    JSVM_CALL(
-        OH_JSVM_CreateReference(env, object_template, 1, &object_template_ref));
+    JSVM_CALL(OH_JSVM_CreateReference,
+              (env, object_template, 1, &object_template_ref));
     rt->SetHostObjectTemplate(object_template_ref);
   } else {
-    JSVM_CALL(
-        OH_JSVM_GetReferenceValue(env, object_template_ref, &object_template));
+    JSVM_CALL(OH_JSVM_GetReferenceValue,
+              (env, object_template_ref, &object_template));
   }
 
   JSVM_Value instance = nullptr;
   JSVMHostObjectProxy* proxy = new JSVMHostObjectProxy(rt, std::move(ho));
   JSVM_Value ptr_value = nullptr;
-  JSVM_CALL(OH_JSVM_CreateBigintUint64(env, reinterpret_cast<uint64_t>(proxy),
-                                       &ptr_value));
-  JSVM_CALL(
-      OH_JSVM_NewInstance(env, object_template, 1, &ptr_value, &instance));
+  JSVM_CALL(OH_JSVM_CreateBigintUint64,
+            (env, reinterpret_cast<uint64_t>(proxy), &ptr_value));
+  JSVM_CALL(OH_JSVM_NewInstance,
+            (env, object_template, 1, &ptr_value, &instance));
 
   return JSVMHelper::createObject(instance, env);
 }

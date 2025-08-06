@@ -14,7 +14,7 @@ namespace piper {
 class JSVMRuntimeInstance : public VMInstance {
  public:
   JSVMRuntimeInstance() = default;
-  virtual ~JSVMRuntimeInstance();
+  ~JSVMRuntimeInstance() override;
 
   JSRuntimeType GetRuntimeType() override { return JSRuntimeType::jsvm; };
 

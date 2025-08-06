@@ -9,29 +9,36 @@
 #include <cstdlib>
 
 #include "base/include/log/logging.h"
+#include "core/runtime/jsi/jsvm/jsvm_dyn_load.h"
 #include "core/runtime/jsi/jsvm/jsvm_helper.h"
 
 namespace lynx {
 namespace piper {
-#define JSVM_CALL(status)                       \
-  if (status != JSVM_Status::JSVM_OK) {         \
-    LOGE("jsvm call failed status:" << status); \
-  }
+#define JSVM_CALL(name, params)                                 \
+  do {                                                          \
+    auto status = DynamicLoader::GetFuncTable() -> name params; \
+    if (status != JSVM_Status::JSVM_OK) {                       \
+      LOGE("jsvm call failed status:" << status);               \
+    }                                                           \
+  } while (0)
 
-#define JSVM_CALL_RETURN(status, ret)           \
-  if (status != JSVM_Status::JSVM_OK) {         \
-    LOGE("jsvm call failed status:" << status); \
-    return ret;                                 \
-  }
+#define JSVM_CALL_RETURN(name, params, ret)                     \
+  do {                                                          \
+    auto status = DynamicLoader::GetFuncTable() -> name params; \
+    if (status != JSVM_Status::JSVM_OK) {                       \
+      LOGE("jsvm call failed status:" << status);               \
+      return ret;                                               \
+    }                                                           \
+  } while (0)
 
 class HandleScopeWrapper {
  public:
   explicit HandleScopeWrapper(JSVM_Env env) : env(env) {
-    JSVM_CALL(OH_JSVM_OpenHandleScope(env, &handleScope));
+    JSVM_CALL(OH_JSVM_OpenHandleScope, (env, &handleScope));
   }
 
   ~HandleScopeWrapper() {
-    JSVM_CALL(OH_JSVM_CloseHandleScope(env, handleScope));
+    JSVM_CALL(OH_JSVM_CloseHandleScope, (env, handleScope));
   }
 
   HandleScopeWrapper(const HandleScopeWrapper&) = delete;

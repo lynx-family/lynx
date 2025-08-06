@@ -10,6 +10,7 @@ lynx_core_source_set("jsvm") {
   sources = [
     "jsvm_context_wrapper.cc",
     "jsvm_context_wrapper.h",
+    "jsvm_dyn_load.h",
     "jsvm_helper.cc",
     "jsvm_helper.h",
     "jsvm_host_function.cc",
