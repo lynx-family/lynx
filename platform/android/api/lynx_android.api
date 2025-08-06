@@ -8590,6 +8590,7 @@ public class com::lynx::tasm::behavior::StylesDiffMap :  {
 
 public class com::lynx::tasm::behavior::ui::ViewInfo::SubDrawInfo :  {
   public com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background);
+  public com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.SubDrawInfo(boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background, ViewInfo subViewInfo, View subView);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setImageManager(LynxImageManager imageManager);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setTextLayout(Layout textLayout);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setDrawOffset(int left, int top);
@@ -9986,6 +9987,7 @@ public class com::lynx::tasm::behavior::ui::utils::ViewHelper :  {
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromAncestorToDescendant(final View ancestor, final View descendant, RectF rect);
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromDescendantToAncestor(final View descendant, final View ancestor, RectF rect);
   public static RectF com.lynx.tasm.behavior.ui.utils.ViewHelper.convertRectFromViewToAnother(final View view, final View another, RectF rect);
+  public static void com.lynx.tasm.behavior.ui.utils.ViewHelper.measureView(View view, int width, int height);
 }
 
 public class com::lynx::tasm::behavior::ui::ViewInfo : com.lynx.tasm.behavior.ui.IDrawChildHook {

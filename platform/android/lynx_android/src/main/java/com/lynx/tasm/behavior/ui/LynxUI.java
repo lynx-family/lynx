@@ -78,6 +78,7 @@ import com.lynx.tasm.behavior.ui.text.AndroidText;
 import com.lynx.tasm.behavior.ui.utils.BackgroundManager;
 import com.lynx.tasm.behavior.ui.utils.PlatformLength;
 import com.lynx.tasm.behavior.ui.utils.TransformRaw;
+import com.lynx.tasm.behavior.ui.utils.ViewHelper;
 import com.lynx.tasm.behavior.ui.view.AndroidView;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
@@ -381,7 +382,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @Override
   public void dispatchProcessViewInfo() {
-    for (LynxBaseUI ui : mChildren) {
+    for (LynxBaseUI ui = mDrawHead; ui != null; ui = ui.mNextDrawUI) {
       if (ui instanceof LynxUI) {
         processChildViewInfo((LynxUI) ui);
       }
@@ -817,10 +818,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       traceEvent = TraceEventDef.LYNX_UI_MEASURE + getTagName();
       TraceEvent.beginSection(traceEvent);
     }
-    setLayoutParamsInternal();
-    int widthSpec = View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.EXACTLY);
-    int heightSpec = View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.EXACTLY);
-    mView.measure(widthSpec, heightSpec);
+    if (!isDetachedWithView()) {
+      // Do not manipulate the view when detached, it could be dangling.
+      setLayoutParamsInternal();
+      ViewHelper.measureView(mView, getWidth(), getHeight());
+    }
     if (TraceEvent.isTracingStarted()) {
       TraceEvent.endSection(traceEvent);
     }
@@ -858,6 +860,11 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   }
 
   public void handleLayout() {
+    if (isDetachedWithView()) {
+      // Do not manipulate the view when detached, it could be dangling.
+      return;
+    }
+
     String layoutTrace = null;
     if (TraceEvent.isTracingStarted()) {
       layoutTrace = TraceEventDef.LYNX_UI_LAYOUT + getTagName();

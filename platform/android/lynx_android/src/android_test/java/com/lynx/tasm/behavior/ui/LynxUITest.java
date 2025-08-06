@@ -115,6 +115,9 @@ public class LynxUITest {
     parentUI.mChildren.add(childUI0);
     parentUI.mChildren.add(childUI1);
     parentUI.mChildren.add(childUI2);
+    parentUI.mDrawHead = childUI0;
+    childUI0.mNextDrawUI = childUI1;
+    childUI1.mNextDrawUI = childUI2;
 
     parentUI.dispatchProcessViewInfo();
 
