@@ -6,6 +6,8 @@
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
+#include <memory>
+#include "core/public/list_element_proxy.h"
 #include "core/shell/ios/js_proxy_darwin.h"
 #include "core/shell/ios/lynx_layout_proxy_darwin.h"
 
@@ -16,6 +18,7 @@
  @public
   std::shared_ptr<lynx::shell::JSProxyDarwin> proxy_;
   std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin> layout_proxy_;
+  std::shared_ptr<lynx::shell::ListElementProxy> list_element_proxy_;
 }
 
 @property(nonatomic, weak) LynxUIOwner* _Nullable uiOwner;

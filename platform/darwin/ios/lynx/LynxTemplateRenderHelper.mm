@@ -47,6 +47,7 @@
 #include "core/shell/ios/lynx_engine_proxy_darwin.h"
 #include "core/shell/ios/native_facade_darwin.h"
 #include "core/shell/ios/tasm_platform_invoker_darwin.h"
+#include "core/shell/list_element_proxy_impl.h"
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
@@ -259,6 +260,8 @@
   auto layout_proxy =
       std::make_shared<lynx::shell::LynxLayoutProxyDarwin>(shell_->GetLayoutActor());
   [_context setLayoutProxy:layout_proxy];
+  _context->list_element_proxy_ =
+      std::make_shared<lynx::shell::ListElementProxyImpl>(shell_->GetEngineActor());
   [LynxEventReporter moveExtraParams:lastInstanceId toInstanceId:_context.instanceId];
   [LynxEventReporter updateGenericInfo:@(_threadStrategyForRendering)
                                    key:kPropThreadMode

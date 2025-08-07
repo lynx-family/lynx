@@ -119,7 +119,7 @@ public class LineSpacingAdaptation : NSObject, <NSLayoutManagerDelegate> {
 }
 
 public class ListNodeInfoFetcher : NSObject, <ListNodeInfoFetcherProtocol> {
-  public instancetype ListNodeInfoFetcher::initWithShell:(int64_t shellPtr);
+  public instancetype ListNodeInfoFetcher::initWithContext:(LynxContext *context);
 }
 
 public protocol ListNodeInfoFetcherProtocol-p : <NSObject> {
@@ -1003,6 +1003,7 @@ public class LynxContext : NSObject {
   public nullable NSDictionary * LynxContext()::extentionModules();
   public std::shared_ptr<lynx::shell::JSProxyDarwin> LynxContext()::proxy_ proxy_;
   public std::shared_ptr<lynx::shell::LynxLayoutProxyDarwin> LynxContext()::layout_proxy_ layout_proxy_;
+  public std::shared_ptr<lynx::shell::ListElementProxy> LynxContext()::list_element_proxy_ list_element_proxy_;
 }
 
 public protocol LynxContextModule-p : <LynxModule> {

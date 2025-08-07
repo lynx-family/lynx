@@ -7,17 +7,16 @@
 #import <Lynx/LynxUIComponent.h>
 #import <Lynx/LynxUIListCellContentProducer.h>
 #import <Lynx/LynxUIListLight.h>
-#import "LynxTemplateRender+Internal.h"
-
 #import <Lynx/LynxView+Internal.h>
-
+#import "LynxContext+Internal.h"
+#import "LynxTemplateRender+Internal.h"
+#include "core/public/list_element_proxy.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/shell/lynx_shell.h"
 
 @interface LynxUIListCellContentProducer ()
 @property(nonatomic, weak) LynxUIContext *UIContext;
-@property(nonatomic, readonly, nullable) lynx::tasm::ListNode *listNode;
 @property(nonatomic, assign) NSUInteger operationIDCount;
 @end
 
@@ -73,32 +72,33 @@
 
 #pragma mark generate content
 
-- (lynx::tasm::ListNode *)listNode {
-  auto shellPtr = _UIContext.shellPtr;
-  if (shellPtr) {
-    return reinterpret_cast<lynx::shell::LynxShell *>(shellPtr)->GetListNode(
-        static_cast<int32_t>(self.sign));
+- (lynx::shell::ListElementProxy *)listElementProxy {
+  if (!_UIContext.lynxContext) {
+    return nullptr;
   }
-  return nullptr;
+  return _UIContext.lynxContext->list_element_proxy_.get();
 }
 
 - (LynxUI *)uiAtIndex:(NSInteger)index {
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return nil;
   }
-  int32_t uiSign = listNode->ComponentAtIndex(static_cast<int32_t>(index), 0,
-                                              self.needsInternalCellPrepareForReuseNotification);
+  int32_t uiSign = proxy->GetLegacy()->ObtainListChild(
+      static_cast<int32_t>(self.sign), static_cast<int32_t>(index), 0,
+      self.needsInternalCellPrepareForReuseNotification);
+
   return [_UIContext.uiOwner findUIBySign:uiSign];
 }
 
 #pragma mark clear & enqueue
 - (void)recycleLynxUI:(LynxUI *)ui {
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return;
   }
-  listNode->EnqueueComponent(static_cast<int32_t>(ui.sign));
+  proxy->GetLegacy()->RecycleListChild(static_cast<int32_t>(self.sign),
+                                       static_cast<int32_t>(ui.sign));
 }
 
 - (void)recycleCell:(LynxListViewCellLight *)cell {
@@ -131,12 +131,13 @@
 }
 
 - (void)asyncUIAtIndexPath:(NSInteger)index operationID:(int64_t)operationID {
-  auto shellPtr = _UIContext.shellPtr;
-  if (shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(shellPtr)->LoadListNode(
-        static_cast<int32_t>(self.sign), static_cast<int32_t>(index), operationID,
-        self.needsInternalCellPrepareForReuseNotification);
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
+    return;
   }
+  proxy->GetLegacy()->ObtainListChildAsync(static_cast<int32_t>(self.sign),
+                                           static_cast<int32_t>(index), operationID,
+                                           self.needsInternalCellPrepareForReuseNotification);
 }
 
 - (void)asyncClearCellContent:(LynxListViewCellLightLynxUI *)cell {
@@ -147,11 +148,12 @@
 }
 
 - (void)asyncRecycleLynxUI:(LynxUI *)ui {
-  auto shellPtr = _UIContext.shellPtr;
-  if (shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(shellPtr)->EnqueueListNode(
-        static_cast<int32_t>(self.sign), static_cast<int32_t>(ui.sign));
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
+    return;
   }
+  proxy->GetLegacy()->RecycleListChildAsync(static_cast<int32_t>(self.sign),
+                                            static_cast<int32_t>(ui.sign));
 }
 
 @end

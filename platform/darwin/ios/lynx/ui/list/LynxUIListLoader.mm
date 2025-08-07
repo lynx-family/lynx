@@ -7,7 +7,9 @@
 #import <Lynx/LynxUIListLoader.h>
 #import <Lynx/LynxView+Internal.h>
 #include <numeric>
+#import "LynxContext+Internal.h"
 #import "LynxTemplateRender+Internal.h"
+#include "core/public/list_element_proxy.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/diff_algorithm.h"
 #include "core/shell/lynx_shell.h"
@@ -202,11 +204,11 @@ static const CGFloat kLynxUIListLoaderScreenWidthInRpx = 750.;
 - (LynxUI *)renderLynxUIAtIndexPath:(NSIndexPath *)indexPath {
   [self validateIndexPath:indexPath];
   uint32_t nativeIndex = static_cast<uint32_t>(indexPath.row);
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return nil;
   }
-  listNode->RenderComponentAtIndex(nativeIndex);
+  proxy->GetLegacy()->RenderListChild(static_cast<int32_t>(self.sign), nativeIndex, 0);
   LynxUI *lynxUI = _currentUI;
   _currentUI = nil;
   return lynxUI;
@@ -216,50 +218,56 @@ static const CGFloat kLynxUIListLoaderScreenWidthInRpx = 750.;
   [self validateLynxUI:lynxUI indexPath:indexPath];
   uint32_t nativeIndex = static_cast<uint32_t>(indexPath.row);
   uint32_t uiSign = static_cast<uint32_t>(lynxUI.sign);
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return;
   }
-  listNode->UpdateComponent(uiSign, nativeIndex);
+
+  proxy->GetLegacy()->UpdateListChild(static_cast<int32_t>(self.sign), uiSign, nativeIndex, 0);
 }
 
 #pragma mark - Public, New List Arch APIs
 
 - (LynxUI *)uiAtIndexPath:(NSIndexPath *)indexPath {
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return nil;
   }
-  int32_t uiSign = listNode->ComponentAtIndex(static_cast<int32_t>(indexPath.row), 0,
-                                              self.needsInternalCellPrepareForReuseNotification);
+  int32_t uiSign = proxy->GetLegacy()->ObtainListChild(
+      static_cast<int32_t>(self.sign), static_cast<int32_t>(indexPath.row), 0,
+      self.needsInternalCellPrepareForReuseNotification);
+
   LynxUI *ui = [self.context.uiOwner findUIBySign:uiSign];
   return ui;
 }
 
 - (void)asyncUIAtIndexPath:(NSIndexPath *)indexPath operationID:(int64_t)operationID {
-  auto shellPtr = super.context.shellPtr;
-  if (shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(shellPtr)->LoadListNode(
-        static_cast<int32_t>(self.sign), static_cast<int32_t>(indexPath.row), operationID,
-        self.needsInternalCellPrepareForReuseNotification);
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
+    return;
   }
+  proxy->GetLegacy()->ObtainListChildAsync(static_cast<int32_t>(self.sign),
+                                           static_cast<int32_t>(indexPath.row), operationID,
+                                           self.needsInternalCellPrepareForReuseNotification);
 }
 
 // TODO(@hujing.1) Unified Interface
 - (void)recycleLynxUI:(LynxUI *)ui {
-  auto *listNode = self.listNode;
-  if (!listNode) {
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
     return;
   }
-  listNode->EnqueueComponent(static_cast<int32_t>(ui.sign));
+  proxy->GetLegacy()->RecycleListChild(static_cast<int32_t>(self.sign),
+                                       static_cast<int32_t>(ui.sign));
 }
 
 - (void)asyncRecycleLynxUI:(LynxUI *)ui {
-  auto shellPtr = super.context.shellPtr;
-  if (shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(shellPtr)->EnqueueListNode(
-        static_cast<int32_t>(self.sign), static_cast<int32_t>(ui.sign));
+  auto *proxy = [self listElementProxy];
+  if (!proxy) {
+    return;
   }
+  proxy->GetLegacy()->RecycleListChildAsync(static_cast<int32_t>(self.sign),
+                                            static_cast<int32_t>(ui.sign));
 }
 
 #pragma mark - Private, LynxUI Validation
@@ -292,6 +300,13 @@ static const CGFloat kLynxUIListLoaderScreenWidthInRpx = 750.;
         static_cast<int32_t>(self.sign));
   }
   return nullptr;
+}
+
+- (lynx::shell::ListElementProxy *)listElementProxy {
+  if (!super.context.lynxContext) {
+    return nullptr;
+  }
+  return super.context.lynxContext->list_element_proxy_.get();
 }
 
 // return true,when the threadStrategy is not ALL_ON_UI and the swith of "enableAsyncList" is on

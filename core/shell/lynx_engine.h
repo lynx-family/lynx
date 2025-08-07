@@ -164,6 +164,8 @@ class LynxEngine {
 
   tasm::ListNode* GetListNode(int32_t tag);
 
+  tasm::Element* GetElementById(int32_t tag);
+
   // This function constructs and returns a list of element tags synchronized
   // that represent the specified element and its ancestor elements in the DOM
   // hierarchy. The elements should not affected by the z-index attribute.
