@@ -9,6 +9,7 @@
 
 #include "base/include/closure.h"
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "base/include/value/base_value.h"
 #include "core/base/android/java_only_array.h"
 #include "third_party/rapidjson/document.h"
 
@@ -72,6 +73,8 @@ class JavaOnlyMap {
                                            jstring key);
   static double JavaOnlyMapGetDoubleAtIndex(JNIEnv* env, jobject map,
                                             jstring key);
+  static lynx::base::android::ScopedLocalJavaRef<jobject>
+  JavaOnlyMapGetTemplateDataAtIndex(JNIEnv* env, jobject map, jstring key);
   static lynx::base::android::ScopedLocalJavaRef<jobject>
   JavaOnlyMapGetMapAtIndex(JNIEnv* env, jobject map, jstring key);
   static lynx::base::android::ScopedLocalJavaRef<jobject>

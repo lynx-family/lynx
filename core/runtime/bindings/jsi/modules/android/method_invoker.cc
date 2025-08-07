@@ -679,6 +679,18 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Fire(
               lynx_object,
               base::android::JavaValue::JavaValueType::LynxObject));
     }
+    case 'E': {  // means templateData;
+      lynx::base::android::ScopedLocalJavaRef<jobject> data(
+          env, env->CallObjectMethodA(module, method_, java_arguments));
+      auto error = ReportPendingJniException();
+      if (error.has_value()) {
+        return base::unexpected(
+            std::make_pair(std::move(jni_error_hit), std::move(error)));
+      }
+      return std::make_unique<lynx::pub::ValueImplAndroid>(
+          base::android::JavaValue(
+              data, base::android::JavaValue::JavaValueType::TemplateData));
+    }
     default:
       LOGF("NativeModule: FireMethod Unknown Return Type: " << return_type);
       std::string error_message =

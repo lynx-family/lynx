@@ -12,6 +12,7 @@
 package com.lynx.react.bridge;
 
 import android.util.Log;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.CalledByNative;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -404,6 +405,16 @@ public class JavaOnlyMap extends HashMap<String, Object> implements ReadableMap,
   }
 
   @Override
+  @CalledByNative
+  public TemplateData getTemplateData(String name) {
+    Object obj = get(name);
+    if (obj instanceof TemplateData) {
+      return (TemplateData) obj;
+    }
+    return null;
+  }
+
+  @Override
   public byte[] getByteArray(String name, byte[] defaultValue) {
     Object result = get(name);
     if (result instanceof byte[]) {
@@ -477,6 +488,8 @@ public class JavaOnlyMap extends HashMap<String, Object> implements ReadableMap,
       return ReadableType.ByteArray;
     } else if (value instanceof PiperData) {
       return ReadableType.PiperData;
+    } else if (value instanceof TemplateData) {
+      return ReadableType.TemplateData;
     } else if (value instanceof Dynamic) {
       return ((Dynamic) value).getType();
     } else {

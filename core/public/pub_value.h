@@ -65,6 +65,9 @@ class Value {
   // ParseLynxObject
   virtual bool IsLynxObject() const { return false; };
 
+  // Indicates whether a templateData inside;
+  virtual bool IsTemplateData() const { return false; }
+
   // Getter
   virtual bool Bool() const = 0;
   virtual double Double() const = 0;
@@ -166,6 +169,11 @@ class Value {
 
   // LynxObject
   virtual std::unique_ptr<pub::Value> ParseLynxObject(
+      std::shared_ptr<PubValueFactory> value_factory) const {
+    return nullptr;
+  }
+
+  virtual std::unique_ptr<pub::Value> ParseTemplateData(
       std::shared_ptr<PubValueFactory> value_factory) const {
     return nullptr;
   }

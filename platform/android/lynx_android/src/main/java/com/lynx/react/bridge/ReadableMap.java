@@ -8,6 +8,7 @@
 package com.lynx.react.bridge;
 
 import androidx.annotation.Keep;
+import com.lynx.tasm.TemplateData;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 
@@ -28,6 +29,7 @@ public interface ReadableMap {
   String getString(String name);
   ReadableArray getArray(String name);
   ReadableMap getMap(String name);
+  TemplateData getTemplateData(String name);
   byte[] getByteArray(String name);
   PiperData getPiperData(String name);
   ByteBuffer getByteBuffer(String name);

@@ -1317,7 +1317,17 @@ public class com::lynx::tasm::gesture::handler::DefaultGestureHandler : com.lynx
 }
 
 public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExecutor {
+  public final String com.lynx.tasm.DefaultLogicExecutor.EVENT_METHOD EVENT_METHOD;
+  public final String com.lynx.tasm.DefaultLogicExecutor.EVENT_ARGS EVENT_ARGS;
+  public final String com.lynx.tasm.DefaultLogicExecutor.GLOBAL_EVENT_METHOD GLOBAL_EVENT_METHOD;
+  public final String com.lynx.tasm.DefaultLogicExecutor.GLOBAL_EVENT_NAME GLOBAL_EVENT_NAME;
+  public final String com.lynx.tasm.DefaultLogicExecutor.GLOBAL_EVENT_PARAMS GLOBAL_EVENT_PARAMS;
+  public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD LIFECYCLE_EVENT_ON_LOAD;
+  public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED LIFECYCLE_EVENT_ON_DATA_CHANGED;
+  public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY LIFECYCLE_EVENT_ON_DESTROY;
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
+  public void com.lynx.tasm.DefaultLogicExecutor.destroy();
 }
 
 public class com::lynx::tasm::utils::DeviceUtils :  {
@@ -2190,6 +2200,7 @@ public interface com::lynx::devtoolwrapper::ILynxLogBox {
 
 public interface com::lynx::tasm::ILynxLogicExecutor {
   public void com.lynx.tasm.ILynxLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
+  public void com.lynx.tasm.ILynxLogicExecutor.destroy();
 }
 
 public interface com::lynx::tasm::service::ILynxLogService {
@@ -2389,6 +2400,11 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
 }
 
 public interface com::lynx::tasm::group::ILynxViewGroup {
+  public int com.lynx.tasm.group.ILynxViewGroup.generateNextLynxViewID();
+  public void com.lynx.tasm.group.ILynxViewGroup.addLynxView(int LynxViewId, LynxView view);
+  public void com.lynx.tasm.group.ILynxViewGroup.removeLynxView(int LynxViewId);
+  public LynxView com.lynx.tasm.group.ILynxViewGroup.getLynxViewById(int LynxViewId);
+  public void com.lynx.tasm.group.ILynxViewGroup.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public String com.lynx.tasm.group.ILynxViewGroup.getUrl();
   public TemplateData com.lynx.tasm.group.ILynxViewGroup.getGlobalProps();
 }
@@ -2754,6 +2770,7 @@ public class com::lynx::react::bridge::JavaOnlyArray : ArrayList< Object >, com.
   public void com.lynx.react.bridge.JavaOnlyArray.pushMap(WritableMap map);
   public void com.lynx.react.bridge.JavaOnlyArray.pushNull();
   public void com.lynx.react.bridge.JavaOnlyArray.pushByteArray(byte[] array);
+  public void com.lynx.react.bridge.JavaOnlyArray.pushTemplateData(TemplateData data);
   public void com.lynx.react.bridge.JavaOnlyArray.pushByteArrayAsString(byte[] array);
   public void com.lynx.react.bridge.JavaOnlyArray.pushPiperData(PiperData json);
   public void com.lynx.react.bridge.JavaOnlyArray.clear();
@@ -2784,6 +2801,7 @@ public class com::lynx::react::bridge::JavaOnlyMap : HashMap< String, Object >, 
   public ReadableArray com.lynx.react.bridge.JavaOnlyMap.getArray(String name, ReadableArray defaultValue);
   public ReadableMap com.lynx.react.bridge.JavaOnlyMap.getMap(String name, ReadableMap defaultValue);
   public ReadableArray com.lynx.react.bridge.JavaOnlyMap.getArray(String name);
+  public TemplateData com.lynx.react.bridge.JavaOnlyMap.getTemplateData(String name);
   public byte[] com.lynx.react.bridge.JavaOnlyMap.getByteArray(String name, byte[] defaultValue);
   public byte[] com.lynx.react.bridge.JavaOnlyMap.getByteArray(String name);
   public PiperData com.lynx.react.bridge.JavaOnlyMap.getPiperData(String name, PiperData defaultValue);
@@ -3438,6 +3456,8 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public void com.lynx.tasm.LynxBackgroundRuntime.addLynxBackgroundRuntimeClient(LynxBackgroundRuntimeClient client);
   public void com.lynx.tasm.LynxBackgroundRuntime.removeLynxBackgroundRuntimeClient(LynxBackgroundRuntimeClient client);
   public void com.lynx.tasm.LynxBackgroundRuntime.evaluateJavaScript(String url, @NonNull String sources);
+  public void com.lynx.tasm.LynxBackgroundRuntime.evaluateTemplateBundle(String url, @NonNull TemplateBundle bundle, @NonNull String js_file);
+  public void com.lynx.tasm.LynxBackgroundRuntime.callFunction(String module, String method, JavaOnlyArray arguments);
   public String com.lynx.tasm.LynxBackgroundRuntime.getLastScriptUrl();
   public void com.lynx.tasm.LynxBackgroundRuntime.sendGlobalEvent(String name, JavaOnlyArray params);
   public void com.lynx.tasm.LynxBackgroundRuntime.destroy();
@@ -3481,6 +3501,7 @@ public class com::lynx::tasm::LynxBackgroundRuntimeOptions :  {
   public LynxResourceProvider com.lynx.tasm.LynxBackgroundRuntimeOptions.getResourceProvidersByKey(String key);
   public Set< Map.Entry< String, LynxResourceProvider > > com.lynx.tasm.LynxBackgroundRuntimeOptions.getAllResourceProviders();
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setPresetData(TemplateData data);
+  public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setGlobalProps(TemplateData data);
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher);
   public LynxGenericResourceFetcher com.lynx.tasm.LynxBackgroundRuntimeOptions.getGenericResourceFetcher();
   public void com.lynx.tasm.LynxBackgroundRuntimeOptions.setMediaResourceFetcher(@NonNull LynxMediaResourceFetcher fetcher);
@@ -4255,6 +4276,13 @@ public class com::lynx::devtoolwrapper::LynxDevToolUtils :  {
 }
 
 public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager< T extends LayerDrawable :  {
+}
+
+public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxModule {
+  public final String com.lynx.jsbridge.LynxEmbeddedModule.NAME NAME;
+  public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(Context context, Object param);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.updateData(final int lynxViewId, final ReadableMap params, final Callback resolve);
+  public TemplateData com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId);
 }
 
 public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder {
@@ -5851,6 +5879,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public void com.lynx.tasm.LynxTemplateRender.setTheme(@NonNull ByteBuffer rawTheme);
   public LynxTheme com.lynx.tasm.LynxTemplateRender.getTheme();
   public void com.lynx.tasm.LynxTemplateRender.updateData(String json, String processorName);
+  public TemplateData com.lynx.tasm.LynxTemplateRender.getTemplateData();
   public void com.lynx.tasm.LynxTemplateRender.updateMetaData(LynxUpdateMeta meta);
   public void com.lynx.tasm.LynxTemplateRender.updateData(TemplateData data);
   public void com.lynx.tasm.LynxTemplateRender.resetData(TemplateData data);
@@ -5882,6 +5911,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public LynxBaseUI com.lynx.tasm.LynxTemplateRender.findUIByIdSelector(String id);
   public boolean com.lynx.tasm.LynxTemplateRender.attachLynxView(@NonNull final LynxView lynxView);
   public long com.lynx.tasm.LynxTemplateRender.getFirstMeasureTime();
+  public void com.lynx.tasm.LynxTemplateRender.onLynxEvent(ReadableMap event);
   public LynxBaseUI com.lynx.tasm.LynxTemplateRender.findUIByIndex(int index);
   public void com.lynx.tasm.LynxTemplateRender.onDispatchInputEvent(InputEvent ev);
   public Map< String, Object > com.lynx.tasm.LynxTemplateRender.getAllJsSource();
@@ -6324,6 +6354,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public com.lynx.tasm.LynxView.LynxView(Context context, AttributeSet attrs);
   public com.lynx.tasm.LynxView.LynxView(Context context, LynxViewBuilder builder);
   public com.lynx.tasm.LynxView.LynxView(Context context, @NonNull ILynxEngine templateRender);
+  public int com.lynx.tasm.LynxView.getLynxViewId();
   public void com.lynx.tasm.LynxView.initWithLynxViewBuilder(LynxViewBuilder builder);
   public LynxContext com.lynx.tasm.LynxView.getLynxContext();
   public void com.lynx.tasm.LynxView.reloadAndInit();
@@ -6392,6 +6423,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public boolean com.lynx.tasm.LynxView.dispatchTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.LynxView.onInterceptTouchEvent(MotionEvent ev);
   public boolean com.lynx.tasm.LynxView.onTouchEvent(MotionEvent ev);
+  public TemplateData com.lynx.tasm.LynxView.getTemplateData();
   public View com.lynx.tasm.LynxView.findViewByName(String name);
   public LynxBaseUI com.lynx.tasm.LynxView.findUIByName(String name);
   public View com.lynx.tasm.LynxView.findViewByIdSelector(String id);
@@ -6631,6 +6663,7 @@ public interface com::lynx::tasm::behavior::herotransition::HeroTransitionManage
 }
 
 public class com::lynx::tasm::group::LynxViewGroupBuilder : LynxBaseConfigurator< LynxViewGroupBuilder > {
+  public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setContext(@NonNull Context context);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setUrl(@NonNull String url);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setTemplateBundle(@NonNull TemplateBundle templateBundle);
   public LynxViewGroupBuilder com.lynx.tasm.group.LynxViewGroupBuilder.setGlobalProps(@NonNull TemplateData globalProps);
@@ -7963,6 +7996,7 @@ public interface com::lynx::react::bridge::ReadableMap {
   public String com.lynx.react.bridge.ReadableMap.getString(String name);
   public ReadableArray com.lynx.react.bridge.ReadableMap.getArray(String name);
   public ReadableMap com.lynx.react.bridge.ReadableMap.getMap(String name);
+  public TemplateData com.lynx.react.bridge.ReadableMap.getTemplateData(String name);
   public byte[] com.lynx.react.bridge.ReadableMap.getByteArray(String name);
   public PiperData com.lynx.react.bridge.ReadableMap.getPiperData(String name);
   public ByteBuffer com.lynx.react.bridge.ReadableMap.getByteBuffer(String name);
@@ -8049,6 +8083,7 @@ public enum com::lynx::react::bridge::ReadableType {
   public com.lynx.react.bridge.ReadableType.PiperData PiperData;
   public com.lynx.react.bridge.ReadableType.LynxObject LynxObject;
   public com.lynx.react.bridge.ReadableType.ByteBuffer ByteBuffer;
+  public com.lynx.react.bridge.ReadableType.TemplateData TemplateData;
 }
 
 public interface com::lynx::tasm::image::ReleasableImage {
@@ -9080,6 +9115,9 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE LYNX_ENGINE_POOL_POOL_ENGINE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DESTORY_LYNXVIEW DESTORY_LYNXVIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNXVIEW_BUILDER_BUILD LYNXVIEW_BUILDER_BUILD;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE TRIGGER_EMBEDDED_MODE_LIFECYCLE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_INIT LOGIC_EXECUTOR_INIT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LOGIC_EXECUTOR_EVENT LOGIC_EXECUTOR_EVENT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_LYNXVIEW_AND_JSRUNTIME_DESTORY CLIENT_LYNXVIEW_AND_JSRUNTIME_DESTORY;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_PIPER_INVOKED CLIENT_PIPER_INVOKED;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLIENT_DESTORY CLIENT_DESTORY;
@@ -10106,6 +10144,7 @@ public interface com::lynx::react::bridge::WritableArray {
   public void com.lynx.react.bridge.WritableArray.pushMap(WritableMap map);
   public void com.lynx.react.bridge.WritableArray.pushByteArray(byte[] array);
   public void com.lynx.react.bridge.WritableArray.pushPiperData(PiperData json);
+  public void com.lynx.react.bridge.WritableArray.pushTemplateData(TemplateData data);
 }
 
 public interface com::lynx::react::bridge::WritableMap {

@@ -89,6 +89,11 @@ public class TraceEventDef {
   public static final String DESTORY_LYNXVIEW = "DestroyLynxView";
   public static final String LYNXVIEW_BUILDER_BUILD = "CreateLynxView";
 
+  public static final String TRIGGER_EMBEDDED_MODE_LIFECYCLE = "TriggerEmbeddedModeLifecycle";
+
+  public static final String LOGIC_EXECUTOR_INIT = "LogicExecutor.Init";
+  public static final String LOGIC_EXECUTOR_EVENT = "LogicExecutor.OnLynxEvent";
+
   public static final String CLIENT_LYNXVIEW_AND_JSRUNTIME_DESTORY =
       "Client.onLynxViewAndJSRuntimeDestroy";
   public static final String CLIENT_PIPER_INVOKED = "Client.onPiperInvoked";

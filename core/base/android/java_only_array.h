@@ -27,6 +27,8 @@ enum ReadableType {
   ByteArray,
   PiperData,
   LynxObject,
+  ByteBuffer,
+  TemplateData,
 };
 
 std::string jstring2string(JNIEnv* env, jstring jStr);

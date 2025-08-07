@@ -9,6 +9,7 @@
 #include "core/base/android/java_value.h"
 #include "core/base/android/piper_data.h"
 #include "core/base/js_constants.h"
+#include "core/renderer/dom/android/lynx_view_data_manager_android.h"
 #include "core/runtime/bindings/jsi/modules/android/platform_jsi/lynx_platform_jsi_object_android.h"
 #include "core/runtime/common/utils.h"
 #include "core/value_wrapper/value_impl_piper.h"
@@ -334,6 +335,24 @@ std::unique_ptr<Value> ValueImplAndroid::ParseLynxObject(
     auto host_object =
         piper::Object::createFromHostObject(*rt, std::move(object_module));
     return std::make_unique<ValueImplPiper>(*rt, std::move(host_object));
+  }
+  return nullptr;
+}
+
+std::unique_ptr<Value> ValueImplAndroid::ParseTemplateData(
+    std::shared_ptr<PubValueFactory> value_factory) const {
+  if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
+    piper::Runtime* rt =
+        reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
+    piper::Scope scope(*rt);
+    JNIEnv* env = base::android::AttachCurrentThread();
+    auto j_object = backend_value_.TemplateData();
+    auto value = tasm::LynxViewDataManagerAndroid::GetTemplateDataNativeData(
+        env, j_object);
+    auto result = piper::valueFromLepus(*rt, value);
+    if (result.has_value()) {
+      return std::make_unique<ValueImplPiper>(*rt, std::move(result.value()));
+    }
   }
   return nullptr;
 }

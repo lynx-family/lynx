@@ -20,6 +20,9 @@ class LynxViewDataManagerAndroid : public LynxViewDataManager {
                                                       jobject jni_object);
   static void ConsumeTemplateDataActions(JNIEnv* env, jobject jni_object);
 
+  static lepus::Value GetTemplateDataNativeData(JNIEnv* env,
+                                                jobject jni_object);
+
   LynxViewDataManagerAndroid(JNIEnv* env, jobject jni_object);
 
  private:

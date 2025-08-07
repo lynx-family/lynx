@@ -115,9 +115,14 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     final int runtimeFlags =
         LynxBackgroundRuntimeOptions.calcRuntimeFlags(false, options.useQuickJSEngine(), false,
             options.isEnableUserBytecode(), enableJSGroupThread, options.isPendingCoreJsLoad());
+    long globalPropsPtr = 0;
+    TemplateData globalProps = options.getGlobalProps();
+    if (globalProps != null) {
+      globalPropsPtr = globalProps.getNativePtr();
+    }
     mNativePtr = nativeCreateBackgroundRuntimeWrapper(mResourceLoader, mModuleFactory,
         mInspectorObserverPtr, whiteBoard, groupId, groupName, preloadJSPaths,
-        options.getBytecodeSourceUrl(), runtimeFlags);
+        options.getBytecodeSourceUrl(), runtimeFlags, globalPropsPtr);
     mInspectorObserverPtr = 0;
 
     TemplateData presetData = options.getPresetData();
@@ -173,6 +178,35 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
       mLastScriptUrl = url;
       nativeEvaluateScript(mNativePtr, url, sources.getBytes(Charset.forName("UTF-8")));
     }
+  }
+
+  /**
+   * Execute a Background Script, valid until LynxBackgroundRuntime is destroyed or attached.
+   * @param url unique identifier for each script, will be used to track the script and related
+   *     reports
+   * @param bundle script will be inside of the TemplateBundle
+   * @param js_file related js file name
+   */
+  @AnyThread
+  public void evaluateTemplateBundle(
+      String url, @NonNull TemplateBundle bundle, @NonNull String js_file) {
+    synchronized (mStateLock) {
+      if (mState == STATE_START && mDevTool != null) {
+        mDevTool.attachToDebugBridge(url);
+        mDevTool.onLoadFromURL(url, "", null, null, null);
+      }
+    }
+
+    if (mNativePtr != 0 && bundle.isValid()) {
+      mLastScriptUrl = url;
+      nativeEvaluateTemplateBundle(mNativePtr, url, bundle.getNativePtr(), js_file);
+    }
+  }
+
+  @AnyThread
+  public void callFunction(String module, String method, JavaOnlyArray arguments) {
+    LLog.i(TAG, "LynxContext callFunction, module: " + module + ", method: " + method);
+    mJSProxy.callFunction(module, method, arguments);
   }
 
   @AnyThread
@@ -396,11 +430,14 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   private native long nativeCreateBackgroundRuntimeWrapper(LynxResourceLoader resourceLoader,
       LynxModuleFactory moduleFactory, long inspectorObserverPtr, long whiteBoardPtr,
       String groupId, String groupName, String[] preloadJSPaths, String bytecodeSourceUrl,
-      int runtimeFlags);
+      int runtimeFlags, long globalPropsPtr);
 
   private native void nativeSetPresetData(long nativePtr, boolean readOnly, long presetData);
 
   private native void nativeEvaluateScript(long nativePtr, String url, byte[] data);
+
+  private native void nativeEvaluateTemplateBundle(
+      long mNativePtr, String url, long templateBundlePtr, String js_file);
 
   // Release C++ objects hold by actors, such as LynxRuntime, NativeFacade. This is only
   // necessary when the runtime is not attached to LynxView. This call does not allow

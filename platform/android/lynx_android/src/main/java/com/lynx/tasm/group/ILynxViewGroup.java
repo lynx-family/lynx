@@ -3,12 +3,19 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
+import com.lynx.jsbridge.LynxModule;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateData;
 
 /**
  * Interface provider for accessing LynxViewGroup prop getter;
  */
 public interface ILynxViewGroup extends ILynxViewConfigProvider {
+  int generateNextLynxViewID();
+  void addLynxView(int LynxViewId, LynxView view);
+  void removeLynxView(int LynxViewId);
+  LynxView getLynxViewById(int LynxViewId);
+  void registerModule(String name, Class<? extends LynxModule> module, Object param);
   String getUrl();
 
   TemplateData getGlobalProps();

@@ -279,6 +279,13 @@ JavaValue JavaOnlyArray::JavaOnlyArrayGetJavaValueAtIndex(JNIEnv* env,
       return JavaValue(JavaOnlyArrayGetObjectAtIndex(env, array, index),
                        JavaValue::JavaValueType::Transfer);
     }
+    case ByteBuffer: {
+      return JavaValue();
+    }
+    case TemplateData: {
+      return JavaValue(JavaOnlyArrayGetObjectAtIndex(env, array, index),
+                       JavaValue::JavaValueType::TemplateData);
+    }
   }
 }
 
