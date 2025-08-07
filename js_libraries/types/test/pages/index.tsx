@@ -101,3 +101,37 @@ function startAnimation(ele: MainThread.Element) {
   // Should work if option is number
   ele.animate([{ opacity: 0 }, { opacity: 1 }], 200);
 }
+
+// fetch api
+{
+  const streamToArrayBuffer = async (stream: ReadableStream) => {
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      } else {
+        const text = TextCodecHelper.decode(value);
+        const firstChar = text.charAt(0);
+        const arrayBuffer = TextCodecHelper.encode(text);
+      }
+    }
+  };
+
+  lynx
+    .fetch('url', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        a: 1,
+      }),
+      lynxExtension: {
+        useStreaming: true,
+      },
+    })
+    .then((response) => {
+      streamToArrayBuffer(response.body);
+    });
+}
