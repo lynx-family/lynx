@@ -52,10 +52,11 @@ export abstract class LynxNodeController extends NodeController {
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
+  autoHeight?: boolean; = false
   uri?: url.URL;
   platformConfig?: string;
   logBox: ILogBox | null; = null
-  @Prop fitContentHeight: boolean; = false
+  @Prop fitContentHeight: boolean; = this.autoHeight ?? false
   experimentalFixFitContent?: boolean; = false
   onCreate: (context: LynxContext) => void; = ((context: LynxContext) => {
   })
