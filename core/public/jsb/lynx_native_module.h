@@ -46,7 +46,9 @@ class BASE_EXPORT_FOR_DEVTOOL LynxNativeModule {
   class Delegate {
    public:
     virtual void InvokeCallback(
-        const std::shared_ptr<LynxModuleCallback>& callback) = 0;
+        const std::shared_ptr<LynxModuleCallback>& callback,
+        base::MoveOnlyClosure<bool, const std::shared_ptr<LynxModuleCallback>&>
+            invoke_pre_func = nullptr) = 0;
     virtual void RunOnJSThread(base::closure func) = 0;
     virtual void RunOnPlatformThread(base::closure func) = 0;
     virtual const std::shared_ptr<pub::PubValueFactory>& GetValueFactory() = 0;

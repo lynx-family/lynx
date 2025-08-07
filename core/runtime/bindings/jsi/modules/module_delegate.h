@@ -29,6 +29,8 @@ class ModuleDelegate {
   // ret just is post to js thread or not
   virtual void CallJSCallback(
       const std::shared_ptr<ModuleCallback>& callback,
+      base::MoveOnlyClosure<bool, const std::shared_ptr<ModuleCallback>&>
+          invoke_pre_func = nullptr,
       int64_t id_to_delete = ModuleCallback::kInvalidCallbackId) = 0;
   virtual void OnErrorOccurred(base::LynxError error) = 0;
   virtual void OnMethodInvoked(const std::string& module_name,

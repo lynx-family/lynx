@@ -30,9 +30,12 @@ class ModuleDelegateImpl : public piper::ModuleDelegate {
   ModuleDelegateImpl& operator=(ModuleDelegateImpl&&) = delete;
 
   int64_t RegisterJSCallbackFunction(piper::Function func) override;
-  void CallJSCallback(const std::shared_ptr<piper::ModuleCallback>& callback,
-                      int64_t id_to_delete =
-                          piper::ModuleCallback::kInvalidCallbackId) override;
+  void CallJSCallback(
+      const std::shared_ptr<piper::ModuleCallback>& callback,
+      base::MoveOnlyClosure<bool, const std::shared_ptr<piper::ModuleCallback>&>
+          invoke_pre_func = nullptr,
+      int64_t id_to_delete =
+          piper::ModuleCallback::kInvalidCallbackId) override;
   void OnErrorOccurred(base::LynxError error) override;
   void OnMethodInvoked(const std::string& module_name,
                        const std::string& method_name, int32_t code) override;

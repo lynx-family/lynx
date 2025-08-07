@@ -60,8 +60,11 @@
 class MockDelegate : public lynx::piper::ModuleDelegate {
  public:
   int64_t RegisterJSCallbackFunction(lynx::piper::Function func) override { return 1; }
-  void CallJSCallback(const std::shared_ptr<lynx::piper::ModuleCallback> &callback,
-                      int64_t id_to_delete) override {}
+  void CallJSCallback(
+      const std::shared_ptr<lynx::piper::ModuleCallback> &callback,
+      lynx::base::MoveOnlyClosure<bool, const std::shared_ptr<lynx::piper::ModuleCallback> &>
+          invoke_pre_func,
+      int64_t id_to_delete) override {}
   void OnErrorOccurred(lynx::base::LynxError error) override {}
   void OnMethodInvoked(const std::string &module_name, const std::string &method_name,
                        int32_t code) override {}

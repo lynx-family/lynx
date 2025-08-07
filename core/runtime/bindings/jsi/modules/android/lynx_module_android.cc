@@ -362,31 +362,32 @@ void LynxModuleAndroid::InvokeCallback(
          << callback->callback_id());
     return;
   }
-  lock_delegate->RunOnJSThread([callback, ref = shared_from_this(), promise]() {
-    ref->InvokeCallbackInternal(callback, promise);
-  });
-}
-
-// You must ensure that the call is made in the JS thread
-void LynxModuleAndroid::InvokeCallbackInternal(
-    const std::shared_ptr<ModuleCallback>& callback,
-    std::weak_ptr<LynxPromiseImpl> weak_promise) {
-  auto lock_delegate = delegate_.lock();
-  if (!lock_delegate) {
-    LOGR("NativeModule: LynxModuleCallback Has Been Destroyed. id:"
-         << callback->callback_id());
-    return;
-  }
-  std::shared_ptr<LynxPromiseImpl> promise = weak_promise.lock();
-  if (promise) {
-    if (promise->GetReject() == callback) {
-      lock_delegate->InvokeCallback(promise->GetReject());
+  std::shared_ptr<LynxPromiseImpl> lock_promise = promise.lock();
+  if (lock_promise) {
+    auto promise_pre_func =
+        [lock_promise,
+         this](const std::shared_ptr<LynxModuleCallback>&) -> bool {
+      promises_.erase(lock_promise);
+      LOGV("NativeModule: Promise Has Been Removed From Holder .");
+      return true;
+    };
+    if (lock_promise->GetReject() == callback) {
+      lock_delegate->InvokeCallback(lock_promise->GetReject(),
+                                    std::move(promise_pre_func));
     } else {
-      lock_delegate->InvokeCallback(promise->GetResolve());
+      lock_delegate->InvokeCallback(lock_promise->GetResolve(),
+                                    std::move(promise_pre_func));
     }
-    promises_.erase(promise);
-  } else if (callbackHolders_.erase(callback->callback_id())) {
-    lock_delegate->InvokeCallback(callback);
+  }
+  if (callback) {
+    auto callback_pre_func =
+        [this](
+            const std::shared_ptr<LynxModuleCallback>& exec_callback) -> bool {
+      LOGV("NativeModule: Callback Has Been Removed From Holder , CallbackId."
+           << exec_callback->CallbackId());
+      return callbackHolders_.erase(exec_callback->CallbackId());
+    };
+    lock_delegate->InvokeCallback(callback, std::move(callback_pre_func));
   }
 }
 

@@ -31,6 +31,8 @@ class MockDelegate : public piper::ModuleDelegate {
   }
   virtual void CallJSCallback(
       const std::shared_ptr<piper::ModuleCallback>& callback,
+      base::MoveOnlyClosure<bool, const std::shared_ptr<piper::ModuleCallback>&>
+          invoke_pre_func = nullptr,
       int64_t id_to_delete =
           piper::ModuleCallback::kInvalidCallbackId) override {
     latch.Signal();

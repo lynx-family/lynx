@@ -14,6 +14,8 @@ int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(piper::Function func) {
 
 void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<piper::ModuleCallback>& callback,
+    base::MoveOnlyClosure<bool, const std::shared_ptr<piper::ModuleCallback>&>
+        invoke_pre_func,
     int64_t id_to_delete) {}
 
 void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {}
