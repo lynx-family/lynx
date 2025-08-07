@@ -860,7 +860,7 @@ void LynxRuntime::EvaluateScriptStandalone(std::string url,
   // can only be used in LynxBackgroundRuntime which will
   // never use pending JS so the app_ is always created.
   app_->OnStandaloneScriptAdded(url, std::move(script));
-  app_->loadApp(tasm::TasmRuntimeBundle(), lepus::Value(),
+  app_->loadApp(tasm::TasmRuntimeBundle(), init_global_props_,
                 tasm::PackageInstanceDSL::STANDALONE,
                 tasm::PackageInstanceBundleModuleMode::RETURN_BY_FUNCTION_MODE,
                 url);

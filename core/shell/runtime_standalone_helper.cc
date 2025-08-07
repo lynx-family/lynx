@@ -30,7 +30,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths,
     const std::string& bytecode_source_url, uint32_t runtime_flag,
-    bool long_task_monitor_disabled) {
+    const lepus::Value* global_props, bool long_task_monitor_disabled) {
   auto instance_id = lynx::shell::LynxShell::NextInstanceId();
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner =
       lynx::base::TaskRunnerManufactor::GetJSRunner(group_name);
@@ -92,13 +92,16 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
   external_resource_loader_ptr->SetRuntimeActor(runtime_actor);
   white_board_delegate->SetRuntimeActor(runtime_actor);
   white_board_delegate->SetRuntimeFacadeActor(native_runtime_facade);
-
+  const auto global_props_value = global_props
+                                      ? lynx::lepus::Value::Clone(*global_props)
+                                      : lynx::lepus::Value();
   runtime_actor->ActAsync(
       [module_manager, preload_js_paths = std::move(preload_js_paths),
-       runtime_observer,
+       runtime_observer, global_props_value,
        vsync_monitor](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
+        runtime->OnGlobalPropsUpdated(global_props_value);
         runtime->Init(module_manager, runtime_observer,
                       std::move(preload_js_paths));
       });

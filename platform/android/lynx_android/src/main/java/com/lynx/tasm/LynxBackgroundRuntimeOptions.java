@@ -35,6 +35,7 @@ public class LynxBackgroundRuntimeOptions {
   private final List<ParamWrapper> mWrappers;
   private final Map<String, LynxResourceProvider> mResourceProviders;
   private TemplateData mPresetData;
+  private TemplateData mGlobalProps;
   LynxGenericResourceFetcher genericResourceFetcher;
   LynxMediaResourceFetcher mediaResourceFetcher;
   LynxTemplateResourceFetcher templateResourceFetcher;
@@ -122,6 +123,19 @@ public class LynxBackgroundRuntimeOptions {
 
   TemplateData getPresetData() {
     return mPresetData;
+  }
+
+  /**
+   * Set readonly data for LynxBackgroundRuntime, FE can access this data
+   * via `lynx.__globalProps`
+   * @important set data {@link TemplateData#markReadOnly()} readonly} to avoid copy
+   */
+  public void setGlobalProps(TemplateData data) {
+    mGlobalProps = data;
+  }
+
+  TemplateData getGlobalProps() {
+    return mGlobalProps;
   }
 
   public void setGenericResourceFetcher(@NonNull LynxGenericResourceFetcher fetcher) {

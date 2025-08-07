@@ -27,4 +27,5 @@ public enum ReadableType {
   PiperData,
   LynxObject,
   ByteBuffer,
+  TemplateData,
 }

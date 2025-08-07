@@ -71,6 +71,7 @@ public final class TemplateData {
       return mBuffer;
     }
 
+    @CalledByNative
     long getNativeData() {
       return mNativeData;
     }
@@ -578,6 +579,11 @@ public final class TemplateData {
   @CalledByNative
   long getDataForJSThread() {
     return getDataForJSThreadInner();
+  }
+
+  @CalledByNative
+  long getNativeTemplateData() {
+    return this.mNativeData;
   }
 
   @CalledByNative

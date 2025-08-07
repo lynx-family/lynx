@@ -235,9 +235,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private boolean mEnableFallbackEngine = false;
   private WeakReference<TasmPlatformInvoker> mTasmPlatformInvoker;
 
-  private TemplateData mTemplateData;
+  private TemplateData mTemplateData = TemplateData.fromMap(new HashMap<>());
   @Nullable private LynxEngine mLynxEngineRef;
-  private ILynxLogicExecutor mLogicExecutor;
 
   @Keep
   public LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder) {
@@ -314,10 +313,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mLynxUIRender = lynxUIRenderer();
     }
 
-    mLogicExecutor = builder.getLogicExecutor();
-    if (mLogicExecutor == null) {
-      mLogicExecutor = new DefaultLogicExecutor(mTemplateBundle);
-    }
     mRuntime = builder.lynxBackgroundRuntime;
     mTemplateProvider = builder.templateProvider;
     mEnableSyncFlush = mLynxViewConfigProvider.isEnableSyncFlush();
@@ -907,6 +902,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           mDevTool.onRegisterModule(mModuleFactory);
         }
         mLynxContext.setJSProxy(mJSProxy);
+      } else {
+        mEngineProxy = new LynxEngineProxy(mNativePtr);
       }
       mLynxContext.setEventEmitter(new LynxEventEmitter(mEngineProxy));
     }
@@ -1058,6 +1055,13 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mLynxContext.sendGlobalEvent(name, finalParams);
     } else {
       LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
+    }
+    if (mLynxContext.isEmbeddedModeOn()) {
+      JavaOnlyMap args = new JavaOnlyMap();
+      args.putString(DefaultLogicExecutor.EVENT_METHOD, DefaultLogicExecutor.GLOBAL_EVENT_METHOD);
+      args.putString(DefaultLogicExecutor.GLOBAL_EVENT_NAME, name);
+      args.putArray(DefaultLogicExecutor.GLOBAL_EVENT_PARAMS, finalParams);
+      onLynxEvent(args);
     }
   }
 
@@ -1703,6 +1707,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     templateData.markState(processorName);
     templateData.markReadOnly();
     this.updateData(templateData);
+  }
+
+  public TemplateData getTemplateData() {
+    return mTemplateData;
   }
 
   public void updateMetaData(LynxUpdateMeta meta) {
@@ -3035,9 +3043,15 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
     @Override
     public void onLynxEvent(ReadableMap event) {
-      if (mLogicExecutor != null) {
-        mLogicExecutor.onLynxEvent(getLynxView(), event);
+      if (mLynxViewConfigProvider.getLogicExecutor() != null) {
+        mLynxViewConfigProvider.getLogicExecutor().onLynxEvent(getLynxView(), event);
       }
+    }
+  }
+
+  public void onLynxEvent(ReadableMap event) {
+    if (mLynxViewConfigProvider.getLogicExecutor() != null) {
+      mLynxViewConfigProvider.getLogicExecutor().onLynxEvent(getLynxView(), event);
     }
   }
 

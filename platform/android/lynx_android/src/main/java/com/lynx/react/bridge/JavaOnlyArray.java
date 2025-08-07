@@ -13,6 +13,7 @@ package com.lynx.react.bridge;
 
 import android.util.Log;
 import com.lynx.jsbridge.jsi.ILynxJSIObject;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.CalledByNative;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -228,6 +229,8 @@ public class JavaOnlyArray
       return ReadableType.PiperData;
     } else if (object instanceof ILynxJSIObject) {
       return ReadableType.LynxObject;
+    } else if (object instanceof TemplateData) {
+      return ReadableType.TemplateData;
     } else {
       throw new IllegalArgumentException(
           "unsupported type " + object.getClass() + " contained in JavaOnlyArray");
@@ -291,6 +294,11 @@ public class JavaOnlyArray
   @CalledByNative
   public void pushByteArray(byte[] array) {
     this.add(array);
+  }
+
+  @Override
+  public void pushTemplateData(TemplateData data) {
+    this.add(data);
   }
 
   @CalledByNative

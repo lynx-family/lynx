@@ -257,6 +257,12 @@ double JavaOnlyMap::JavaOnlyMapGetDoubleAtIndex(JNIEnv* env, jobject map,
 }
 
 lynx::base::android::ScopedLocalJavaRef<jobject>
+JavaOnlyMap::JavaOnlyMapGetTemplateDataAtIndex(JNIEnv* env, jobject map,
+                                               jstring key) {
+  return Java_JavaOnlyMap_getTemplateData(env, map, key);
+}
+
+lynx::base::android::ScopedLocalJavaRef<jobject>
 JavaOnlyMap::JavaOnlyMapGetMapAtIndex(JNIEnv* env, jobject map, jstring key) {
   return Java_JavaOnlyMap_getMap(env, map, key);
 }
@@ -352,6 +358,13 @@ JavaValue JavaOnlyMap::JavaOnlyMapGetJavaValueAtIndex(JNIEnv* env, jobject map,
     case LynxObject: {
       // LynxObject should not be operated in JavaOnlyMap
       return JavaValue();
+    }
+    case ByteBuffer: {
+      return JavaValue();
+    }
+    case TemplateData: {
+      return JavaValue(JavaOnlyMapGetTemplateDataAtIndex(env, map, key),
+                       JavaValue::JavaValueType::TemplateData);
     }
   }
 }

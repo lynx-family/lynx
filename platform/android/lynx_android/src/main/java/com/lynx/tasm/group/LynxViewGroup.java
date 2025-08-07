@@ -3,12 +3,16 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.group;
 
+import android.content.Context;
+import com.lynx.jsbridge.LynxModule;
+import com.lynx.tasm.DefaultLogicExecutor;
 import com.lynx.tasm.EmbeddedMode;
 import com.lynx.tasm.ILynxEngine;
 import com.lynx.tasm.ILynxLogicExecutor;
 import com.lynx.tasm.IUIRendererCreator;
 import com.lynx.tasm.LynxBackgroundRuntimeOptions;
 import com.lynx.tasm.LynxBooleanOption;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -22,10 +26,13 @@ import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
+import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * LynxViewGroup is used to build LynxView that shares the same Runtime Environment.
@@ -33,6 +40,9 @@ import java.util.concurrent.FutureTask;
 class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   static final String TAG = "LynxViewGroup";
 
+  private final AtomicInteger mViewIdGenerator = new AtomicInteger(0);
+  private final ConcurrentHashMap<Integer, WeakReference<LynxView>> mLynxViewMap =
+      new ConcurrentHashMap<>();
   // App Bundle url shared by multiple lynxViews config by the same LynxViewGroup;
   private final String url;
 
@@ -71,6 +81,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private int embeddedMode = EmbeddedMode.UNSET;
   private boolean hasPresetMeasureSpec = false;
   private ILynxLogicExecutor logicExecutor;
+  private Context mContext;
 
   /** Runtime Cache Manager **/
   private Future<Void> templateResultFutureTask;
@@ -80,7 +91,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     return hasPresetMeasureSpec;
   }
 
-  LynxViewGroup(String url, TemplateBundle bundle, TemplateData globalProps,
+  LynxViewGroup(Context context, String url, TemplateBundle bundle, TemplateData globalProps,
       BehaviorRegistry registry, LynxBackgroundRuntimeOptions runtimeOptions, HashMap contextData,
       ThreadStrategyForRendering threadStrategy, boolean enableAutoExpose,
       boolean enableLayoutSafepoint, boolean enableUnifiedPipeline, boolean forceDarkAllowed,
@@ -91,6 +102,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       int presetHeightMeasureSpec, float fontScale, boolean enablePreUpdateData,
       IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec,
       ILynxLogicExecutor logicExecutor) {
+    this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
     this.globalProps = globalProps;
@@ -127,8 +139,14 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   }
 
   private void init() {
+    if (this.lynxRuntimeOptions != null) {
+      this.lynxRuntimeOptions.setGlobalProps(this.globalProps);
+    }
     if (templateBundle == null) {
       this.templateResultFutureTask = this.fetchTemplate();
+    } else if (this.logicExecutor == null) {
+      this.logicExecutor = new DefaultLogicExecutor(
+          templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
     }
   }
 
@@ -328,6 +346,34 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     return logicExecutor;
   }
 
+  @Override
+  public int generateNextLynxViewID() {
+    return mViewIdGenerator.getAndIncrement();
+  }
+
+  @Override
+  public void addLynxView(int LynxViewId, LynxView view) {
+    if (view != null) {
+      mLynxViewMap.put(LynxViewId, new WeakReference<>(view));
+    }
+  }
+
+  @Override
+  public void removeLynxView(int LynxViewId) {
+    mLynxViewMap.remove(LynxViewId);
+  }
+
+  @Override
+  public LynxView getLynxViewById(int LynxViewId) {
+    WeakReference<LynxView> ref = mLynxViewMap.get(LynxViewId);
+    return ref != null ? ref.get() : null;
+  }
+
+  @Override
+  public void registerModule(String name, Class<? extends LynxModule> module, Object param) {
+    lynxRuntimeOptions.registerModule(name, module, param);
+  }
+
   /**
    * Fetching template result as soon as possible.
    * @return A future object to get the result.
@@ -349,6 +395,12 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
                   } else if (result.getTemplateBinary() != null) {
                     templateBundle = TemplateBundle.fromTemplate(result.getTemplateBinary());
                   }
+                  if (templateBundle != null) {
+                    if (logicExecutor == null) {
+                      logicExecutor = new DefaultLogicExecutor(
+                          templateBundle, lynxRuntimeOptions, mContext, LynxViewGroup.this);
+                    }
+                  }
                 }
               }
             });
@@ -369,6 +421,9 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   public void release() {
     if (templateBundle != null) {
       templateBundle.release();
+    }
+    if (logicExecutor != null) {
+      logicExecutor.destroy();
     }
   }
 }

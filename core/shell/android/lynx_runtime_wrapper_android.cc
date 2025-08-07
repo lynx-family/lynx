@@ -37,7 +37,7 @@ static jlong CreateBackgroundRuntimeWrapper(
     jobject java_module_factory, jlong inspectorObserverPtr,
     jlong white_board_ptr, jstring java_group_id, jstring java_group_name,
     jobjectArray preload_js_paths, jstring bytecode_source_url,
-    jint runtime_flags) {
+    jint runtime_flags, jlong globalPropsPtr) {
   auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
   module_manager->SetPlatformModuleFactory(
       std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
@@ -78,12 +78,13 @@ static jlong CreateBackgroundRuntimeWrapper(
     white_board = *reinterpret_cast<std::shared_ptr<lynx::tasm::WhiteBoard> *>(
         white_board_ptr);
   }
+  auto *global_props = reinterpret_cast<lynx::lepus::Value *>(globalPropsPtr);
 
   auto result = lynx::shell::InitRuntimeStandalone(
       group_name, group_id, std::move(native_facade_runtime),
       observer ? *observer : nullptr, loader, module_manager, bundle_creator,
       white_board, on_runtime_actor_created, std::move(paths), source_url,
-      runtime_flags);
+      runtime_flags, global_props);
 
   // Delete observer to decrease ref count.
   delete observer;
@@ -91,6 +92,21 @@ static jlong CreateBackgroundRuntimeWrapper(
   auto *runtime_wrapper = new lynx::shell::LynxRuntimeWrapperAndroid(
       std::move(result), std::move(group_name), module_manager);
   return reinterpret_cast<jlong>(runtime_wrapper);
+}
+
+void EvaluateTemplateBundle(JNIEnv *env, jobject jcaller, jlong ptr,
+                            jstring java_url, jlong template_bundle_ptr,
+                            jstring java_js_file) {
+  auto *runtime_wrapper =
+      reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
+  auto *bundle =
+      reinterpret_cast<lynx::tasm::LynxTemplateBundle *>(template_bundle_ptr);
+  if (!bundle || !runtime_wrapper) {
+    return;
+  }
+  auto url = JNIConvertHelper::ConvertToString(env, java_url);
+  auto js_file = JNIConvertHelper::ConvertToString(env, java_js_file);
+  runtime_wrapper->EvaluateScript(std::move(url), bundle, std::move(js_file));
 }
 
 void EvaluateScript(JNIEnv *env, jobject jcaller, jlong ptr, jstring java_url,
@@ -187,6 +203,33 @@ void LynxRuntimeWrapperAndroid::EvaluateScript(std::string url,
   runtime_standalone_bundle_.runtime_actor_->Act(
       [url = std::move(url),
        script = std::move(script)](auto &runtime) mutable {
+        runtime->EvaluateScriptStandalone(std::move(url), std::move(script));
+      });
+}
+
+void LynxRuntimeWrapperAndroid::EvaluateScript(
+    std::string url, lynx::tasm::LynxTemplateBundle *bundle,
+    std::string js_file) {
+  auto js_content = bundle->GetJsBundle().GetJsContent(js_file);
+  if (!js_content.has_value()) {
+    return;
+  }
+  auto js_content_val = js_content->get();
+  if (js_content_val.IsError()) {
+    return;
+  }
+  auto buffer = js_content_val.GetBuffer();
+
+  if (!buffer || !buffer->data()) {
+    return;
+  }
+
+  const auto length = buffer->size();
+  const auto *data = reinterpret_cast<const char *>(buffer->data());
+
+  runtime_standalone_bundle_.runtime_actor_->Act(
+      [url = std::move(url),
+       script = std::string(data, length)](auto &runtime) mutable {
         runtime->EvaluateScriptStandalone(std::move(url), std::move(script));
       });
 }

@@ -52,6 +52,9 @@ class LynxRuntimeWrapperAndroid {
 
   void EvaluateScript(std::string url, std::string script);
 
+  void EvaluateScript(std::string url, lynx::tasm::LynxTemplateBundle* bundle,
+                      std::string js_file);
+
   void DestroyRuntime();
 
   void SetSessionStorageItem(const std::string& key,

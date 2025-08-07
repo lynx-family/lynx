@@ -33,6 +33,7 @@ import com.lynx.jsbridge.JSModule;
 import com.lynx.jsbridge.LynxModuleFactory;
 import com.lynx.jsbridge.RuntimeLifecycleListener;
 import com.lynx.react.bridge.JavaOnlyArray;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
@@ -48,9 +49,12 @@ import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.core.VSyncMonitor;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
+import com.lynx.tasm.group.ILynxViewGroup;
 import com.lynx.tasm.theme.LynxTheme;
 import com.lynx.tasm.utils.CallStackUtil;
 import com.lynx.tasm.utils.DisplayMetricsHolder;
+import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -69,6 +73,18 @@ public class LynxView extends UIBodyView {
   private final static String TAG = "LynxView";
   private boolean mIsAccessibilityDisabled = false;
   private KeyboardEvent mKeyboardEvent;
+  /**
+   * Unique identifier generated when LynxView is added to a LynxViewGroup,
+   * assigned by the view group's ID generation mechanism.
+   */
+  private int mLynxViewId = 0;
+  /**
+   * Lifecycle state flag indicating whether the onLoad event has been triggered.
+   * Set to true after the first dispatchDraw call.
+   */
+  private boolean mOnLoadFired = false;
+  private boolean mIsPrePaintingStage = false;
+  private WeakReference<ILynxViewGroup> mLynxViewGroupRef;
 
   private String mUrl;
   private volatile boolean mHasReportedAccessFromNonUiThread = false;
@@ -94,6 +110,10 @@ public class LynxView extends UIBodyView {
     initialize(context, null);
   }
 
+  public int getLynxViewId() {
+    return mLynxViewId;
+  }
+
   /**
    * method to initialize a LynxView with a prepared LynxViewBuilder.
    *
@@ -110,6 +130,11 @@ public class LynxView extends UIBodyView {
     mLynxUIRender.onInitBodyView(
         this, getContext(), builder.getLynxRuntimeOptions().getLynxGroup());
     initialize(getContext(), builder);
+    if (builder.lynxViewGroup != null) {
+      mLynxViewId = builder.lynxViewGroup.generateNextLynxViewID();
+      builder.lynxViewGroup.addLynxView(mLynxViewId, this);
+      mLynxViewGroupRef = new WeakReference<>(builder.lynxViewGroup);
+    }
   }
 
   private void initialize(Context context, LynxViewBuilder builder) {
@@ -598,6 +623,10 @@ public class LynxView extends UIBodyView {
     if (meta == null) {
       return;
     }
+    if (meta.getLoadMode() == LynxLoadMode.PRE_PAINTING
+        || meta.getLoadMode() == LynxLoadMode.PRE_PAINTING_DRAW) {
+      mIsPrePaintingStage = true;
+    }
     if (isLayoutRequested() && LynxLoadMode.PRE_PAINTING == meta.getLoadMode()) {
       /**
        * When LynxView is created, isLayoutRequested native flag is set to true by default.
@@ -822,6 +851,11 @@ public class LynxView extends UIBodyView {
       return;
     }
     mLynxTemplateRender.updateData(json, processorName);
+    if (mIsPrePaintingStage) {
+      mIsPrePaintingStage = false;
+    } else {
+      triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED, true);
+    }
   }
 
   /**
@@ -836,6 +870,11 @@ public class LynxView extends UIBodyView {
       return;
     }
     mLynxTemplateRender.updateData(data);
+    if (mIsPrePaintingStage) {
+      mIsPrePaintingStage = false;
+    } else {
+      triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED, true);
+    }
   }
 
   /**
@@ -851,6 +890,11 @@ public class LynxView extends UIBodyView {
     checkAccessFromNonUiThread("updateMetaData");
     if (mLynxTemplateRender != null && meta != null) {
       mLynxTemplateRender.updateMetaData(meta);
+      if (mIsPrePaintingStage) {
+        mIsPrePaintingStage = false;
+      } else {
+        triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED, true);
+      }
     }
   }
 
@@ -865,6 +909,11 @@ public class LynxView extends UIBodyView {
       return;
     }
     mLynxTemplateRender.resetData(data);
+    if (mIsPrePaintingStage) {
+      mIsPrePaintingStage = false;
+    } else {
+      triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED, true);
+    }
   }
 
   /**
@@ -1058,7 +1107,14 @@ public class LynxView extends UIBodyView {
    */
   public void destroy() {
     LLog.i(TAG, "lynxview destroy " + this.toString());
+    triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY, true);
     TraceEvent.beginSection(TraceEventDef.DESTORY_LYNXVIEW);
+    if (mLynxViewGroupRef != null) {
+      final ILynxViewGroup group = mLynxViewGroupRef.get();
+      if (group != null) {
+        group.removeLynxView(mLynxViewId);
+      }
+    }
     if (mKeyboardEvent.isStart()) {
       mKeyboardEvent.stop();
     }
@@ -1260,12 +1316,56 @@ public class LynxView extends UIBodyView {
     return false;
   }
 
+  public TemplateData getTemplateData() {
+    if (mLynxTemplateRender != null) {
+      return mLynxTemplateRender.getTemplateData();
+    }
+    return null;
+  }
+
   @Override
   protected void dispatchDraw(Canvas canvas) {
     super.dispatchDraw(canvas);
     if (mLynxTemplateRender != null) {
       mLynxTemplateRender.onRootViewDraw(canvas);
     }
+    if (!mOnLoadFired && !mIsPrePaintingStage) {
+      mOnLoadFired = true;
+      triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD, true);
+    }
+  }
+
+  private void triggerEmbeddedModeLifecycle(String name, boolean needData) {
+    if (mLynxTemplateRender == null) {
+      return;
+    }
+    LynxContext context = mLynxTemplateRender.getLynxContext();
+    if (context == null || !context.isEmbeddedModeOn()) {
+      return;
+    }
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        if (mLynxTemplateRender == null) {
+          return;
+        }
+        if (TraceEvent.isTracingStarted()) {
+          Map<String, String> map = new HashMap<>();
+          map.put("lifecycle", name);
+          TraceEvent.beginSection(TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE, map);
+        }
+        JavaOnlyMap event = new JavaOnlyMap();
+        event.put(DefaultLogicExecutor.EVENT_METHOD, name);
+        if (needData) {
+          TemplateData templateData = mLynxTemplateRender.getTemplateData();
+          event.put(DefaultLogicExecutor.EVENT_ARGS, templateData);
+        }
+        mLynxTemplateRender.onLynxEvent(event);
+        if (TraceEvent.isTracingStarted()) {
+          TraceEvent.endSection(TraceEventDef.TRIGGER_EMBEDDED_MODE_LIFECYCLE);
+        }
+      }
+    });
   }
 
   @Keep

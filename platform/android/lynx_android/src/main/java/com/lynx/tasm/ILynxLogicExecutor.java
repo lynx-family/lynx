@@ -9,4 +9,6 @@ public interface ILynxLogicExecutor {
   // Trigger event callback, event contains two parameters, one is method, which represents the name
   // of the called method, and the other is args, which represents the event parameters.
   void onLynxEvent(LynxView lynxView, ReadableMap event);
+
+  void destroy();
 }

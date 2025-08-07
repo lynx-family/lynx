@@ -128,7 +128,14 @@ class ValueImplAndroid : public pub::Value {
 
   bool IsLynxObject() const override { return backend_value_.IsLynxObject(); };
 
+  bool IsTemplateData() const override {
+    return backend_value_.IsTemplateData();
+  }
+
   std::unique_ptr<pub::Value> ParseLynxObject(
+      std::shared_ptr<PubValueFactory> value_factory) const override;
+
+  std::unique_ptr<pub::Value> ParseTemplateData(
       std::shared_ptr<PubValueFactory> value_factory) const override;
 
  private:

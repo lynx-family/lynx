@@ -60,7 +60,9 @@ class JavaValue {
     // Only use for Java returnType:piperdata
     Transfer,
     // Only use for Java returnType:LynxObject
-    LynxObject
+    LynxObject,
+
+    TemplateData
   };
 
   JavaValue() : type_(JavaValueType::Null) {}
@@ -112,6 +114,7 @@ class JavaValue {
   bool IsMap() const { return type_ == JavaValueType::Map; }
   bool IsTransfer() const { return type_ == JavaValueType::Transfer; }
   bool IsLynxObject() const { return type_ == JavaValueType::LynxObject; }
+  bool IsTemplateData() const { return type_ == JavaValueType::TemplateData; }
 
   bool Bool() const;
   int32_t Int32() const;
@@ -162,6 +165,12 @@ class JavaValue {
   }
 
   jobject LynxObject() const {
+    return std::get<base::android::ScopedGlobalJavaRef<jobject>>(
+               j_variant_value_)
+        .Get();
+  }
+
+  jobject TemplateData() const {
     return std::get<base::android::ScopedGlobalJavaRef<jobject>>(
                j_variant_value_)
         .Get();

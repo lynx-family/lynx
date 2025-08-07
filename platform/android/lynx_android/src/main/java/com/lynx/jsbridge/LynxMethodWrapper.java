@@ -25,6 +25,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.WritableArray;
 import com.lynx.react.bridge.WritableMap;
+import com.lynx.tasm.TemplateData;
 import com.lynx.tasm.base.Assertions;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -107,6 +108,8 @@ public class LynxMethodWrapper {
       return 'J';
     } else if (returnClass == ILynxJSIObject.class) {
       return 'O';
+    } else if (returnClass == TemplateData.class) {
+      return 'E';
     } else {
       throw new RuntimeException("Got unknown return class: " + returnClass.getSimpleName());
     }

@@ -8,6 +8,7 @@
 package com.lynx.react.bridge;
 
 import androidx.annotation.Keep;
+import com.lynx.tasm.TemplateData;
 
 /**
  * Interface for a mutable array. Used to pass arguments from Java to JS.
@@ -24,4 +25,5 @@ public interface WritableArray extends ReadableArray {
   void pushMap(WritableMap map);
   void pushByteArray(byte[] array);
   void pushPiperData(PiperData json);
+  void pushTemplateData(TemplateData data);
 }
