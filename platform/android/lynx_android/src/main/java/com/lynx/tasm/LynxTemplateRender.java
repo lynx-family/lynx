@@ -1926,28 +1926,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     onTraceEventBegin(TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE);
 
-    // TODO(huangweiwu): refine measure on reuse engine.
-    if (mEnableReuseEngine && mLynxEngineRef == null) {
-      int width = mLynxContext.getPlatformMeasureWidthCache();
-      int height = mLynxContext.getPlatformMeasureHeightCache();
-      if (width == 0 && height == 0) {
-        int widthMode = MeasureSpec.getMode(widthMeasureSpec);
-        if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
-          width = mBodyView.getWidth();
-        } else {
-          width = MeasureSpec.getSize(widthMeasureSpec);
-        }
-        int heightMode = MeasureSpec.getMode(heightMeasureSpec);
-        if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
-          height = mBodyView.getHeight();
-        } else {
-          height = MeasureSpec.getSize(heightMeasureSpec);
-        }
-      }
-      mBodyView.innerSetMeasuredDimension(width, height);
-      return;
-    }
-
     boolean needLongTaskMonitor = false;
     if (mLynxContext != null) {
       needLongTaskMonitor = LynxLongTaskMonitor.willProcessTask(

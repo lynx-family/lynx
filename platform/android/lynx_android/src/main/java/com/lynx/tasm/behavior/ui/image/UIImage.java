@@ -168,7 +168,7 @@ public class UIImage extends UIView {
   protected void detachWithViewInfo(ViewInfo parentViewInfo) {
     if (mLynxImageManager != null) {
       mLynxImageManager.setLynxBaseUI(null);
-      mLynxImageManager.setViewInfo(parentViewInfo);
+      mLynxImageManager.setViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
       // TODO(songshourui.null): We can nullify LynxImageManager upon src changes or layout updates
       // to optimize performance.
       mLynxImageManager = null;

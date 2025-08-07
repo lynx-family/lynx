@@ -8595,6 +8595,7 @@ public class com::lynx::tasm::behavior::ui::ViewInfo::SubDrawInfo :  {
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setTextLayout(Layout textLayout);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setDrawOffset(int left, int top);
   public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.setFlattenUIInfo(int left, int top, int width, int height, int paddingLeft, int paddingTop, int paddingRight, int paddingBottom, float alpha);
+  public void com.lynx.tasm.behavior.ui.ViewInfo.SubDrawInfo.recordSubView(LynxBaseUI baseUI, View subView);
 }
 
 public class com::lynx::tasm::behavior::ui::swiper::SwiperShadowNode : com.lynx.tasm.behavior.shadow.CustomLayoutShadowNode, com.lynx.tasm.behavior.shadow.CustomMeasureFunc {
@@ -9307,6 +9308,8 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
   public synchronized void com.lynx.tasm.behavior.ui.UIBody.detachUIBodyView();
   public void com.lynx.tasm.behavior.ui.UIBody.appendUIWithCreateViewAsync(LynxUI ui);
   public void com.lynx.tasm.behavior.ui.UIBody.rebuildViewTree();
+  public void com.lynx.tasm.behavior.ui.UIBody.onAttach();
+  public synchronized void com.lynx.tasm.behavior.ui.UIBody.tryRunDetachAndAttachTask();
   public void com.lynx.tasm.behavior.ui.UIBody.initialize();
   public void com.lynx.tasm.behavior.ui.UIBody.onPageConfigDecoded(PageConfig config);
   public void com.lynx.tasm.behavior.ui.UIBody.onLayoutUpdated();
@@ -9324,6 +9327,8 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public int com.lynx.tasm.behavior.ui.UIBody.UIBodyView.mSign mSign;
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context);
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.performMeasure(int widthMeasureSpec, int width, int heightMeasureSpec, int height);
   public View com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainViewAccordingToNodeIndex(int nodeIndex);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerViewAccordingToNodeIndex(int nodeIndex, View view);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.markNeedRemoveExistingViews();

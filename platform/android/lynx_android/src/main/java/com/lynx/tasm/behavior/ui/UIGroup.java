@@ -135,9 +135,10 @@ public abstract class UIGroup<T extends ViewGroup>
       if (!ui.isFlatten()) {
         if (((LynxUI) ui).getView() == child) {
           mCurrentDrawUI = ui.mNextDrawUI;
-          info.addSubDrawInfo(mCurrentDrawIndex,
-              new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null, ((LynxUI<?>) ui).mViewInfo,
-                  ((LynxUI<?>) ui).getView()));
+          ViewInfo.SubDrawInfo subInfo = new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null,
+              ((LynxUI<?>) ui).mViewInfo, ((LynxUI<?>) ui).getView());
+          info.addSubDrawInfo(mCurrentDrawIndex, subInfo);
+          subInfo.recordSubView(ui, child);
           mCurrentDrawIndex++;
           break;
         }
@@ -218,7 +219,15 @@ public abstract class UIGroup<T extends ViewGroup>
       ui = ui.mNextDrawUI;
     }
 
-    mView.addView(((LynxUI<?>) child).getView(), nonFlattenIndex);
+    View childView = ((LynxUI<?>) child).getView();
+    if (childView.getParent() != null) {
+      if (childView.getParent() == mView) {
+        return;
+      }
+      ((ViewGroup) childView.getParent()).removeView(childView);
+    }
+
+    mView.addView(childView, nonFlattenIndex);
   }
 
   @Override
@@ -230,6 +239,10 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   public void insertView(LynxUI child) {
+    if (mContext != null && mContext.isFallbackProcess()) {
+      return;
+    }
+
     int i = -1;
     for (LynxBaseUI ui = mDrawHead; ui != null; ui = ui.mNextDrawUI) {
       if (ui instanceof LynxUI) {
@@ -245,9 +258,7 @@ public abstract class UIGroup<T extends ViewGroup>
       onRemoveChildUI(child);
     }
 
-    if (mContext != null && !mContext.isFallbackProcess()) {
-      mView.addView(child.mView, i);
-    }
+    mView.addView(child.mView, i);
     onAddChildUI(child, i);
   }
 

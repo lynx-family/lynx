@@ -321,7 +321,15 @@ void PaintingContextAndroidRef::SetNeedMarkPaintEndTiming(
 }
 
 void PaintingContextAndroidRef::MarkUIOperationQueueFlushForRecreateEngine(
-    bool enable) {}
+    bool enable) {
+  base::android::ScopedLocalJavaRef<jobject> local_ref(java_ref_);
+  if (local_ref.IsNull()) {
+    return;
+  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_PaintingContext_markUIOperationQueueFlushForRecreateEngine(
+      env, local_ref.Get(), enable);
+}
 
 void PaintingContextAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {

@@ -494,7 +494,10 @@ PipelineLayoutData ElementManager::RequestLayout(
 
   // TODO(songshourui.null): we can optimize the performance here within
   // checking layout dirty.
-  layout_node_manager_->DestroyPlatformLayoutNodes();
+  if (layout_node_manager_) {
+    layout_node_manager_->DestroyPlatformLayoutNodes();
+  }
+
   if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);
