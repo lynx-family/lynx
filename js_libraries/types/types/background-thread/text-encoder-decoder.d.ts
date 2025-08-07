@@ -1,22 +1,16 @@
-export interface TextEncoder {
-    encode(str: string): ArrayBuffer;
-    encoding: 'utf-8';
-}
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
 
-type TypedArray =
-  | Int8Array
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int16Array
-  | Uint16Array
-  | Int32Array
-  | Uint32Array
-  | Float32Array
-  | Float64Array;
-
-export interface TextDecoder {
-    decode(buffer: ArrayBuffer | TypedArray | DataView): string;
-    encoding: 'utf-8';
-    fatal: false;
-    ignoreBOM: true;
+export interface ITextCodecHelper {
+  /**
+   * @description decode array buffer to string
+   * @since 3.4
+   */
+  decode(input: ArrayBuffer): string;
+  /**
+   * @description encode string to array buffer
+   * @since 3.4
+   */
+  encode(input: string): ArrayBuffer;
 }

@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { SystemInfo } from './system-info';
-import { Lynx as BackgroundLynx, NativeModules as INativeModules, GetElementByIdFunc } from '../background-thread';
+import { Lynx as BackgroundLynx, NativeModules as INativeModules, GetElementByIdFunc, ITextCodecHelper } from '../background-thread';
 import { Lynx as MainThreadLynx } from '../main-thread';
 import { CommonLynx } from './lynx';
 
@@ -25,6 +25,7 @@ declare global {
   var getElementById: GetElementByIdFunc;
 
   var NativeModules: INativeModules;
+  var TextCodecHelper: ITextCodecHelper;
 
   /**
    * @description requestAnimationFrame
@@ -38,7 +39,8 @@ declare global {
    * @since 3.0
    * below Lynx 3.0, use lynx.cancelAnimationFrame.
    */
-  function cancelAnimationFrame(requestID?: number): void;
+  function cancelAnimationFrame(requestID?: number): void; 
+
 }
 
 declare function setTimeout(callback: (...args: unknown[]) => unknown, number: number): number;

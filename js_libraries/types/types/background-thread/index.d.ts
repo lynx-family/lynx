@@ -9,3 +9,4 @@ export * from './nodes-ref';
 export * from './performance';
 export * from './native-modules';
 export * from './lynx-performance-entry';
+export * from './text-encoder-decoder';

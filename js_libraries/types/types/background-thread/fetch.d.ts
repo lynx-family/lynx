@@ -74,6 +74,10 @@ export declare var Request: {
   new (input: RequestInfo | URL, init?: RequestInit): Request;
 };
 
+export interface LynxExtension {
+  useStreaming?: boolean;
+}
+
 /**
  * @description This Fetch API interface represents the response to a request.
  * @see https://developer.mozilla.org/docs/Web/API/Response
@@ -95,6 +99,11 @@ export interface RequestInit {
    * @since 2.18
    */
   method?: string;
+  /**
+   * @description Lynx extension, currently used for requesting chunk streaming
+   * @since 3.4
+   */
+  lynxExtension?: LynxExtension;
 }
 
 /**
@@ -133,6 +142,12 @@ export interface Response extends Body {
    * @since 2.18
    */
   readonly url: string;
+  /**
+   * @description body of ReadableStream
+   * @see https://developer.mozilla.org/docs/Web/API/Response/body
+   * @since 3.4
+   */
+  readonly body: ReadableStream;
   /**
    * @description clone()
    * @see https://developer.mozilla.org/docs/Web/API/Response/clone

@@ -7,7 +7,7 @@ import { AnimationElement } from './animation';
 import { BeforePublishEvent, GlobalEventEmitter, IntersectionObserver } from './event';
 import { SelectorQuery } from './nodes-ref';
 import { Performance } from './performance';
-import { Response } from './fetch';
+import { Response, RequestInit } from './fetch';
 
 export * from './fetch';
 
