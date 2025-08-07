@@ -263,7 +263,7 @@ void TimingHandlerNg::DispatchPipelineEntryIfNeeded(
       SendOrPendingPerformanceEntry(std::move(pipeline_entry));
       has_dispatched_timing_flags_.emplace(flag);
     }
-  } else {
+  } else if (IsLoadBundlePipeline(pipeline_id)) {
     SendOrPendingPerformanceEntry(std::move(pipeline_entry));
   }
 

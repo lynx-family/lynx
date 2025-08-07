@@ -233,6 +233,10 @@ void TimingHandler::DispatchUpdateTiming(const PipelineID& pipeline_id) {
   // Check if the specific ID exists in the map
   auto it = pipeline_id_to_timing_flags_map_.find(pipeline_id);
   if (it == pipeline_id_to_timing_flags_map_.end()) {
+    // A specific version of the front-end framework marks all pipelines as
+    // requiring timing, but lacks a timing flag. This data is of no value and
+    // needs to be cleared and not sent to developers.
+    ReleaseTiming(pipeline_id);
     return;
   }
   // Iterate over the vector of TimingFlags for the specific ID
