@@ -92,7 +92,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, nullable, strong) NSString* lynxAccessibilityStatus;
 @property(nonatomic, strong) NSString* lynxAccessibilityLabel;
 
-@property(nonatomic, nullable, strong) LynxUILastInfo* transformInfo;
+@property(nonatomic, nullable, strong) LynxUILastInfo* lastInfo;
 
 - (void)prepareKeyframeManager;
 - (void)prepareLayoutAnimationManager;
@@ -1566,7 +1566,7 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
                                                    rotationY:&currentRotationY
                                                    rotationZ:&currentRotationZ];
 
-  LynxAnimationTransformRotation* oldTransformRotation = _transformInfo.lastTransformRotation;
+  LynxAnimationTransformRotation* oldTransformRotation = _lastInfo.lastTransformRotation;
   LynxAnimationTransformRotation* newTransformRotation =
       [[LynxAnimationTransformRotation alloc] init];
   newTransformRotation.rotationX = currentRotationX;
@@ -1587,23 +1587,23 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
                                         callback:^(BOOL finished) {
                                           weakSelf.view.layer.transform = transform3D;
                                           weakSelf.backgroundManager.transform = transform3D;
-                                          weakSelf.transformInfo.lastTransformRotation =
+                                          weakSelf.lastInfo.lastTransformRotation =
                                               newTransformRotation;
-                                          weakSelf.transformInfo.lastTransformWithoutRotate =
+                                          weakSelf.lastInfo.lastTransformWithoutRotate =
                                               transformWithoutRotate;
-                                          weakSelf.transformInfo.lastTransformWithoutRotateXY =
+                                          weakSelf.lastInfo.lastTransformWithoutRotateXY =
                                               transformWithoutRotateXY;
                                           [weakSelf.view setNeedsDisplay];
                                         }];
   } else {
     if (!CATransform3DEqualToTransform(_view.layer.transform, transform3D) ||
-        ![_transformInfo.lastTransformRotation isEqualToTransformRotation:newTransformRotation]) {
+        ![_lastInfo.lastTransformRotation isEqualToTransformRotation:newTransformRotation]) {
       // Transform will be apply on background manager
       _view.layer.transform = transform3D;
       _backgroundManager.transform = transform3D;
-      _transformInfo.lastTransformRotation = newTransformRotation;
-      _transformInfo.lastTransformWithoutRotate = transformWithoutRotate;
-      _transformInfo.lastTransformWithoutRotateXY = transformWithoutRotateXY;
+      _lastInfo.lastTransformRotation = newTransformRotation;
+      _lastInfo.lastTransformWithoutRotate = transformWithoutRotate;
+      _lastInfo.lastTransformWithoutRotateXY = transformWithoutRotateXY;
       [self.view setNeedsDisplay];
       // Static transform animation changes the UI‘s layout.
       [self.context.observer notifyLayout:nil];
