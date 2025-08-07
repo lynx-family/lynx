@@ -128,7 +128,7 @@ export struct LynxView {
   logBox: ILogBox | null = null;
   private nodeController?: LynxNodeController;
   private clients: LynxViewClient[] = [];
-  // TODO(Jin song): rename to fitContent for lay out LynxView refer to the content size.
+  @Prop fitContentWidth: boolean = false;
   @Prop fitContentHeight: boolean = false;
   //TODO(chengjunnan): This is an issue with OpenHarmony.
   // We have introduced an experimental switch as a temporary workaround for the abnormal layout problem in the waterfall flow scenario.
@@ -192,15 +192,11 @@ export struct LynxView {
     if (this.uiRendererCreator) {
       this.uiRenderer =
         this.uiRendererCreator.createUIRenderer(this.context,
-          this.rootSize,
-          providers,
-          this.behaviors,
-          this.fitContentHeight) as LynxUIRenderer;
+          this.rootSize, providers, this.behaviors) as LynxUIRenderer;
     } else {
       this.uiRenderer =
         new HarmonyUIRenderer(this.context, this.rootSize,
-          this.behaviors,
-          this.getUIContext(), this.fitContentHeight, this.perfController);
+          this.behaviors, this.getUIContext(), this.perfController);
     }
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
@@ -230,8 +226,7 @@ export struct LynxView {
     const initEndTiming = new Date().getTime();
     this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
     this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
-    this.nodeController?.updateNode(this.uiRenderer,
-      this.fitContentHeight && !!this.experimentalFixFitContent);
+    this.nodeController?.updateNode(this.uiRenderer, this.fitContentHeight && !!this.experimentalFixFitContent);
     this.templateLoaded = false;
     this.beforeLoadTemplate(this.context);
     this.loadingID++;
@@ -348,6 +343,9 @@ export struct LynxView {
     if (params.clients !== undefined && this.clients != params.clients) {
       this.clients = params.clients;
     }
+    if (params.fitContentWidth !== undefined && this.fitContentWidth != params.fitContentWidth) {
+      this.fitContentWidth = params.fitContentWidth;
+    }
     if (params.fitContentHeight !== undefined && this.fitContentHeight != params.fitContentHeight) {
       this.fitContentHeight = params.fitContentHeight;
     }
@@ -393,8 +391,9 @@ export struct LynxView {
 
   private updateViewport(width: number, height: number) {
     LLog.d(TAG, `update view port width: ${width}, height: ${height}`);
-    this.templateRenderer?.updateViewport(width, MeasureMode.DEFINITE, height,
-      this.fitContentHeight ? MeasureMode.INDEFINITE : MeasureMode.DEFINITE);
+    this.templateRenderer?.updateViewport(width,
+      this.fitContentWidth ? MeasureMode.INDEFINITE : MeasureMode.DEFINITE,
+      height, this.fitContentHeight ? MeasureMode.INDEFINITE : MeasureMode.DEFINITE);
     this.uiRenderer?.updateViewport(width, height);
   }
 
@@ -414,6 +413,9 @@ export struct LynxView {
     }
     // trigger native layout here, and rootSize will updated.
     this.updateViewport(result.width, result.height);
+    if (this.fitContentWidth) {
+      result.width = this.rootSize.width;
+    }
     if (this.fitContentHeight) {
       result.height = this.rootSize.height;
     }
@@ -579,7 +581,7 @@ export struct LynxView {
         ).position({ bottom: 0 })
       }
     }
-    .width('100%')
+    .width(this.fitContentWidth ? this.rootSize.width : '100%')
     .height(this.fitContentHeight
       ? (!this.uiRendererCreator && this.experimentalFixFitContent ? 'auto' : this.rootSize.height)
       : '100%')

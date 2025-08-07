@@ -55,6 +55,7 @@ export abstract class LynxNodeController extends NodeController {
   uri?: url.URL;
   platformConfig?: string;
   logBox: ILogBox | null; = null
+  @Prop fitContentWidth: boolean; = false
   @Prop fitContentHeight: boolean; = false
   experimentalFixFitContent?: boolean; = false
   onCreate: (context: LynxContext) => void; = ((context: LynxContext) => {
@@ -905,7 +906,7 @@ export interface LynxUIRenderer {
 }
 
 export abstract class LynxUIRendererCreator {
-  abstract createUIRenderer(context: LynxContext, rootSize: Size, providers: (LynxResourceProvider | undefined)[], behaviors: BehaviorRegistryMap, fitContentHeight: boolean): LynxUIRenderer | undefined;
+  abstract createUIRenderer(context: LynxContext, rootSize: Size, providers: (LynxResourceProvider | undefined)[], behaviors: BehaviorRegistryMap): LynxUIRenderer | undefined;
   abstract createNodeController(): LynxNodeController;
 }
 

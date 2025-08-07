@@ -14,16 +14,14 @@ export class ShadowNodeOwner {
   nodeHolder: Map<number, ShadowNode> = new Map();
   behaviors: BehaviorRegistryMap;
   rootSize: Size;
-  fitContentHeight: boolean;
   isDestroyed: boolean = false;
 
-  constructor(context: LynxContext, behaviors: BehaviorRegistryMap, rootSize: Size, fitContentHeight: boolean) {
+  constructor(context: LynxContext, behaviors: BehaviorRegistryMap, rootSize: Size) {
     this.behaviors = behaviors;
 
     this.native = new lynx.ShadowNodeOwner(this, this.create);
     this.context = context;
     this.rootSize = rootSize;
-    this.fitContentHeight = fitContentHeight;
     context.setShadowNodeOwner(this);
   }
 

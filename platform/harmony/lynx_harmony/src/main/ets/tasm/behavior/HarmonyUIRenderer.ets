@@ -25,7 +25,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
 
   constructor(context: LynxContext,
     rootSize: Size,
-    behaviors: BehaviorRegistryMap, uiContext: UIContext, fitContentHeight: boolean,
+    behaviors: BehaviorRegistryMap, uiContext: UIContext,
     perfController: PerformanceController) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.TEMPLATE_RENDER_INIT);
 
@@ -35,7 +35,7 @@ export class HarmonyUIRenderer implements LynxUIRenderer {
     // todo(renzhongyue): context here and contextDelegate in UIBase should be merged, they do the same thing.
     this.uiOwner = new UIOwner(behaviors, uiContext, context, perfController);
     context.setUIOwner(this.uiOwner);
-    this.shadowNodeOwner = new ShadowNodeOwner(context, behaviors, rootSize, fitContentHeight);
+    this.shadowNodeOwner = new ShadowNodeOwner(context, behaviors, rootSize);
 
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
     this.embedderPlatform =

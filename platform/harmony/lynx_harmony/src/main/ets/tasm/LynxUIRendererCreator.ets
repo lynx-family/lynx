@@ -10,8 +10,8 @@ import { LynxNodeController } from './LynxView';
 
 export abstract class LynxUIRendererCreator {
   abstract createUIRenderer(context: LynxContext,
-    rootSize: Size, providers: (LynxResourceProvider | undefined)[], behaviors: BehaviorRegistryMap,
-    fitContentHeight: boolean): LynxUIRenderer | undefined;
+    rootSize: Size, providers: (LynxResourceProvider | undefined)[],
+    behaviors: BehaviorRegistryMap): LynxUIRenderer | undefined;
 
   abstract createNodeController(): LynxNodeController;
 }
