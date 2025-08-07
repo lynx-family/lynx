@@ -6,6 +6,8 @@
 
 #include <vector>
 
+#include "core/template_bundle/template_codec/binary_decoder/auto_gen_lynx_config_constants.h"
+
 namespace lynx {
 namespace tasm {
 
@@ -19,45 +21,37 @@ namespace tasm {
 static constexpr const char* const kPipelineSchedulerConfig =
     "pipelineSchedulerConfig";
 
-/**
- * @name: enableNativeList
- * @description: Indicates whether use c++ list.
- * @supportVersion: 3.2
- */
-static constexpr const char* const kEnableNativeList = "enableNativeList";
-
 const PageConfig::PageConfigMap<TernaryBool>& PageConfig::GetFuncBoolMap() {
   static const base::NoDestructor<const PageConfigMap<TernaryBool>>
       kPageConfigFuncBoolMap{{
-          {"trailNewImage",
+          {config::kTrailNewImage,
            {&PageConfig::SetTrailNewImage, &PageConfig::GetTrailNewImage}},
-          {"asyncRedirect",
-           {&PageConfig::SetAsyncRedirectUrl,
-            &PageConfig::GetAsyncRedirectUrl}},
-          {"enableUseMapBuffer",
+          {config::kAsyncRedirect,
+           {&PageConfig::SetAsyncRedirect, &PageConfig::GetAsyncRedirect}},
+          {config::kEnableUseMapBuffer,
            {&PageConfig::SetEnableUseMapBuffer,
             &PageConfig::GetEnableUseMapBuffer}},
-          {"enableUIOperationOptimize",
+          {config::kEnableUIOperationOptimize,
            {&PageConfig::SetEnableUIOperationOptimize,
             &PageConfig::GetEnableUIOperationOptimize}},
-          {kEnableNativeList,
+          {config::kEnableNativeList,
            {&PageConfig::SetEnableNativeList,
             &PageConfig::GetEnableNativeList}},
-          {"enableFiberElementForRadonDiff",
+          {config::kEnableFiberElementForRadonDiff,
            {&PageConfig::SetEnableFiberElementForRadonDiff,
             &PageConfig::GetEnableFiberElementForRadonDiff}},
-          {"enableMicrotaskPromisePolyfill",
+          {config::kEnableMicrotaskPromisePolyfill,
            {&PageConfig::SetEnableMicrotaskPromisePolyfill,
             &PageConfig::GetEnableMicrotaskPromisePolyfill}},
-          {kEnableSignalAPI,
+          {config::kEnableSignalAPI,
            {&PageConfig::SetEnableSignalAPI, &PageConfig::GetEnableSignalAPI}},
-          {"enableOptPushStyleToBundle",
+          {config::kEnableOptPushStyleToBundle,
            {&PageConfig::SetEnableOptPushStyleToBundle,
             &PageConfig::GetEnableOptPushStyleToBundle}},
-          {kEnableNativeScheduleCreateViewAsync,
+          {config::kEnableNativeScheduleCreateViewAsync,
            {&PageConfig::SetEnableNativeScheduleCreateViewAsync,
             &PageConfig::GetEnableNativeScheduleCreateViewAsync}},
-          {"enableUnifiedPipeline",
+          {config::kEnableUnifiedPipeline,
            {&PageConfig::SetEnableUnifiedPipeline,
             &PageConfig::GetEnableUnifiedPipeline}},
       }};

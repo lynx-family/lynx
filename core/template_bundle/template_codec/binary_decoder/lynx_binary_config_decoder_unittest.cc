@@ -7,6 +7,8 @@
 
 #include "core/template_bundle/template_codec/binary_decoder/lynx_binary_config_decoder_unittest.h"
 
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
+
 namespace lynx {
 namespace tasm {
 namespace test {
@@ -19,10 +21,12 @@ TEST_F(LynxBinaryConfigDecoderTest, ReadPipelineSchedulerConfig) {
 }
 
 TEST_F(LynxBinaryConfigDecoderTest, ReadEnableAsyncResolveSubtree) {
-  EXPECT_FALSE(page_config_->GetEnableAsyncResolveSubtree());
+  EXPECT_FALSE(page_config_->GetEnableAsyncResolveSubtree() ==
+               TernaryBool::TRUE_VALUE);
   config_decoder_->DecodePageConfig(
       "{\n  \"enableAsyncResolveSubtree\" : true\n}", page_config_);
-  EXPECT_TRUE(page_config_->GetEnableAsyncResolveSubtree());
+  EXPECT_TRUE(page_config_->GetEnableAsyncResolveSubtree() ==
+              TernaryBool::TRUE_VALUE);
 }
 
 }  // namespace test

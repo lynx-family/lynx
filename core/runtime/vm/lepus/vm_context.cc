@@ -1567,13 +1567,13 @@ void VMContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
 void VMContext::ApplyConfig(
     const std::shared_ptr<tasm::PageConfig>& page_config,
     const tasm::CompileOptions& options) {
-  SetEnableStrictCheck(page_config->GetEnableLepusStrictCheck());
+  SetEnableStrictCheck(page_config->GetLepusStrict());
   bool data_strict_mode =
       page_config->GetDSL() == tasm::PackageInstanceDSL::REACT
           ? false
           : page_config->GetDataStrictMode();
   SetEnableTopVarStrictMode(data_strict_mode);
-  SetNullPropAsUndef(page_config->GetEnableLepusNullPropAsUndef());
+  SetNullPropAsUndef(page_config->GetLepusNullPropAsUndef());
   return;
 }
 

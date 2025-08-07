@@ -9,9 +9,12 @@ import os
 import yaml
 import re
 from jinja2 import Template
+from config_utils import clang_format
 
 
 class Config:
+    _type_known_list = ["PackageInstanceBundleModuleMode", "PackageInstanceDSL"]
+
     def __init__(
         self,
         name: str,
@@ -21,10 +24,13 @@ class Config:
         sync_to: list[str],
         version_overrides: list[dict],
         author: str,
+        codeGen: list[str],
     ):
         self.name = name
         self.upper_camel_case_name = f"{name[0].upper()}{name[1:]}"
-        self.snake_case_name = re.sub(r"(?<=[a-z])(?=[A-Z])", "_", name).lower()
+        self.snake_case_name = re.sub(
+            r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name
+        ).lower()
         self.const_name = f"k{self.upper_camel_case_name}"
         self.desc = desc
         self.default_value = default_value
@@ -43,6 +49,9 @@ class Config:
             else:
                 self.default_value = '"' + self.default_value + '"'
 
+        if self.default_value is None:
+            self.default_value = ""
+
         self.doc_type = None
         if self.value_type == "bool" or self.value_type == "TernaryBool":
             self.doc_type = "Bool"
@@ -60,11 +69,12 @@ class Config:
             self.doc_type = "Uint"
         elif self.value_type == "uint64_t":
             self.doc_type = "Uint64"
-        else:
+        elif self.value_type not in self._type_known_list:
             print(f"Document unsupported type: {self.value_type}")
 
         self.version_overrides = version_overrides
         self.author = author
+        self.codeGen = codeGen if codeGen is not None else ["ALL"]
 
 
 _binary_decoder_path = os.path.abspath(
@@ -96,6 +106,7 @@ def parse_config() -> list[Config]:
                 value["syncTo"],
                 version_overrides,
                 value.get("author"),
+                value.get("codeGen"),
             )
         )
     return configs
@@ -104,21 +115,27 @@ def parse_config() -> list[Config]:
 def gen_native_members_config(configs: list[Config], page_config_path: str):
     native_config_members_tmpl = """
 {% for config in configs %}
+{% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
   {{ config.value_type }} {{ config.snake_case_name }}_{{ '{' }}{{ config.default_value }}{{ '}' }};
+{% endif %}
 {% endfor %}
 """
     start_marker = "// BEGIN CONFIG MEMBER GEN"
     end_marker = "// END CONFIG MEMBER GEN"
-    gen_code = Template(native_config_members_tmpl).render(configs=configs)
+    gen_code = Template(
+        native_config_members_tmpl, trim_blocks=True, lstrip_blocks=True
+    ).render(configs=configs)
     replace_comments_with_code(start_marker, end_marker, gen_code, page_config_path)
 
 
 def gen_native_get_set_func_config(configs: list[Config], page_config_path: str):
     native_config_get_set_func_tmpl = """
 {% for config in configs %}
+{% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
   inline void Set{{ config.upper_camel_case_name }}({{ config.setter_input_type }} {{ config.snake_case_name }}) { {{ config.snake_case_name }}_ = {{ config.snake_case_name }}; }
   inline {{ config.value_type }} Get{{ config.upper_camel_case_name }}() const { return {{ config.snake_case_name }}_; }
 
+{% endif %}
 {% endfor %}
 """
     start_marker = "// BEGIN CONFIG GET ADN SET FUNC GEN"
@@ -151,6 +168,7 @@ def gen_native_config():
     )
     gen_native_members_config(configs, page_config_path)
     gen_native_get_set_func_config(configs, page_config_path)
+    clang_format(page_config_path)
 
 
 def gen_page_config_decode():
@@ -161,6 +179,7 @@ def gen_page_config_decode():
     )
     config_decode_tmpl = """
 {% for config in configs %}
+{% if "ALL" in config.codeGen or "DECODE" in config.codeGen %}
   if (doc.HasMember(config::{{ config.const_name }}) && doc[config::{{ config.const_name }}].Is{{ config.doc_type }}()) {
     {% if config.value_type == "TernaryBool" %}
     page_config->Set{{ config.upper_camel_case_name }}(doc[config::{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
@@ -176,6 +195,7 @@ def gen_page_config_decode():
   {% else %}
   }
   {% endif %}
+{% endif %}
 
 {% endfor %}
 """
@@ -185,6 +205,7 @@ def gen_page_config_decode():
         config_decode_tmpl, trim_blocks=True, lstrip_blocks=True
     ).render(configs=configs)
     replace_comments_with_code(start_marker, end_marker, gen_code, config_decode_path)
+    clang_format(config_decode_path)
 
 
 def gen_lynx_config():
@@ -216,6 +237,7 @@ namespace config {
                 configs=configs
             )
         )
+    clang_format(gen_lynx_config_path)
 
 
 def gen_config():

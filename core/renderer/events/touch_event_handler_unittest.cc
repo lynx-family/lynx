@@ -103,11 +103,11 @@ TEST_F(TouchEventHandlerTest, TestHandleTriggerComponentEvent2) {
   EXPECT_EQ(delegate_->DumpDelegate(), "");
 
   tasm_->page_config_ = std::make_shared<PageConfig>();
-  tasm_->page_config_->need_remove_component_element_ = true;
+  tasm_->page_config_->remove_component_element_ = true;
   touch_event_handler_->HandleTriggerComponentEvent(tasm_.get(), "xxxx", obj);
   EXPECT_EQ(delegate_->DumpDelegate(), "");
 
-  tasm_->page_config_->need_remove_component_element_ = false;
+  tasm_->page_config_->remove_component_element_ = false;
   DispatchOption option(tasm_->page_proxy());
   component->SetStaticEvent("bindEvent", "xxxx", "onXXXX");
   component->RadonNode::DispatchSelf(option);

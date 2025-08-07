@@ -64,6 +64,7 @@
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
 #include "core/shared_data/white_board_tasm_delegate.h"
+#include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
@@ -2946,7 +2947,7 @@ void TemplateAssembler::OnPageConfigDecoded(
   // TODO(zhouzhitao):CSSFragmentParsingOnTASMWorker will become enabled by
   // default in the future. Once it is enabled by default, this configuration
   // should be removed.
-  if (config->GetEnableAsyncResolveSubtree()) {
+  if (config->GetEnableAsyncResolveSubtree() == TernaryBool::TRUE_VALUE) {
     element_manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(true);
   }
 }

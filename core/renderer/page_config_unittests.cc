@@ -24,9 +24,9 @@ namespace test {
                            expect_false_value)                                 \
   PageConfig page_config;                                                      \
   EXPECT_EQ(expect_default_value, page_config.Get##func_name());               \
-  page_config.Set##func_name(true);                                            \
+  page_config.Set##func_name(TernaryBool::TRUE_VALUE);                         \
   EXPECT_EQ(expect_true_value, page_config.Get##func_name());                  \
-  page_config.Set##func_name(false);                                           \
+  page_config.Set##func_name(TernaryBool::FALSE_VALUE);                        \
   EXPECT_EQ(expect_false_value, page_config.Get##func_name());
 
 TEST(PageConfigTest, EnableParallelParseElementTemplate) {

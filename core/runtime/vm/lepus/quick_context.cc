@@ -1037,8 +1037,8 @@ void QuickContext::RegisterCtxBuiltin(const tasm::ArchOption& option) {
 void QuickContext::ApplyConfig(
     const std::shared_ptr<tasm::PageConfig>& page_config,
     const tasm::CompileOptions& options) {
-  SetEnableStrictCheck(page_config->GetEnableLepusStrictCheck());
-  SetStackSize(page_config->GetLepusQuickjsStackSize());
+  SetEnableStrictCheck(page_config->GetLepusStrict());
+  SetStackSize(page_config->GetLepusQuickjsStacksize());
 
   if (options.lepusng_debuginfo_outside_) {
     set_debuginfo_outside(true);

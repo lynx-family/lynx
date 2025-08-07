@@ -805,7 +805,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
     // fiber mode. Support for JS DataProcessor in all scenarios will be added
     // in the future.
     return EnableFiberArch() && page_config_ &&
-           page_config_->GetEnableDataProcessorOnJs();
+           page_config_->GetEnableJSDataProcessor();
   }
 
   void DidComponentLoaded(

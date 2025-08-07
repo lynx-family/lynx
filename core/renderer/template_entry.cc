@@ -204,7 +204,7 @@ bool TemplateEntry::InitWithPageConfigger(
         template_bundle_.themed_.pageTransMaps);
   }
 
-  SetCircularDataCheck(page_config->GetGlobalCircularDataCheck());
+  SetCircularDataCheck(page_config->GetEnableCircularDataCheck());
 
   SetEnableJsBindingApiThrowException(
       page_config->GetEnableJsBindingApiThrowException());
@@ -213,7 +213,7 @@ bool TemplateEntry::InitWithPageConfigger(
 
   ApplyConfigsToLepusContext(page_config);
 
-  if (page_config->GetEnableBindICU()) {
+  if (page_config->GetEnableICU()) {
     SetEnableBindICU(true);
 #if ENABLE_LEPUSNG_WORKLET
     Napi::Env env = napi_environment_->proxy()->Env();
