@@ -29,23 +29,28 @@ void wait(fml::Thread& thread) {
 
 TEST(TestBenchBaseRecorder, RecordScripts) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
+  int64_t record_id = 1;
+  rapidjson::Value& scripts_table = ark.GetRecordedFile(record_id)[kScripts];
+  ASSERT_TRUE(scripts_table.IsObject());
+  EXPECT_EQ(scripts_table.MemberCount(), 0);
   // enable record
   ark.is_recording_ = true;
   std::string url = "url";
   std::string content = "content";
-  ark.RecordScripts(url.c_str(), content.c_str());
+  ark.RecordScripts(url.c_str(), content.c_str(), record_id);
   wait(ark.thread_);
-  ASSERT_TRUE(ark.scripts_table_.IsObject());
-  EXPECT_EQ(ark.scripts_table_.MemberCount(), 1);
-  ASSERT_TRUE(ark.scripts_table_.HasMember(url));
-  EXPECT_STREQ((ark.scripts_table_[url]).GetString(), "eJxLzs8rSc0rAQALywL8");
+
+  ASSERT_TRUE(scripts_table.IsObject());
+  EXPECT_EQ(scripts_table.MemberCount(), 1);
+  ASSERT_TRUE(scripts_table.HasMember(url));
+  EXPECT_STREQ((scripts_table[url]).GetString(), "eJxLzs8rSc0rAQALywL8");
 }
 
 void CheckLynxViewTable(TestBenchBaseRecorder& ark, int64_t record_id) {
   rapidjson::Value& recorded_file = ark.lynx_view_table_[record_id];
 
   ASSERT_TRUE(recorded_file.IsObject());
-  EXPECT_EQ(recorded_file.MemberCount(), 6);
+  EXPECT_EQ(recorded_file.MemberCount(), 7);
 
   rapidjson::Value& action_list = recorded_file[kActionList];
   ASSERT_TRUE(action_list.IsArray());
@@ -70,6 +75,10 @@ void CheckLynxViewTable(TestBenchBaseRecorder& ark, int64_t record_id) {
   rapidjson::Value& shared_data = recorded_file[kSharedData];
   ASSERT_TRUE(shared_data.IsObject());
   EXPECT_EQ(shared_data.MemberCount(), 0);
+
+  rapidjson::Value& scripts = recorded_file[kScripts];
+  ASSERT_TRUE(scripts.IsObject());
+  EXPECT_EQ(scripts.MemberCount(), 0);
 }
 
 TEST(TestBenchBaseRecorder, Clear) {

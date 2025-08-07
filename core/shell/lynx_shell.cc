@@ -266,6 +266,9 @@ void LynxShell::InitRuntime(
       facade_actor_, engine_actor_, perf_controller_actor_,
       card_cached_data_mgr_, js_task_runner,
       std::move(external_resource_loader));
+#if ENABLE_TESTBENCH_RECORDER
+  delegate->SetRecordID(record_id);
+#endif
   delegate->SetPropBundleCreator(prop_bundle_creator_);
   auto* delegate_raw_ptr = delegate.get();
   tasm_mediator_->SetPropBundleCreator(prop_bundle_creator_);

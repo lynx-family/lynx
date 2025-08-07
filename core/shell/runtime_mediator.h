@@ -214,6 +214,10 @@ class RuntimeMediator : public runtime::TemplateDelegate {
 
   void SubscribeSessionStorage(const std::string& key, double listener_id,
                                const piper::ApiCallBack& callback) override;
+#if ENABLE_TESTBENCH_RECORDER
+  void SetRecordID(int64_t record_id) { record_id_ = record_id; }
+  int64_t record_id_ = 0;
+#endif
 
  private:
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;

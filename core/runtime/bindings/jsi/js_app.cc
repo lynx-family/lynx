@@ -2147,7 +2147,7 @@ void App::EvaluateScript(const std::string& url, std::string script,
   LOGI("App::EvaluateScript:" << url << " length: " << script.length());
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
-      url.c_str(), script.c_str());
+      url.c_str(), script.c_str(), record_id_);
 #endif
 
   auto rt = rt_.lock();

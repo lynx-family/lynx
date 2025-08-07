@@ -102,7 +102,7 @@ piper::JsContent RuntimeMediator::GetJSContentFromExternal(
   }
 #if ENABLE_TESTBENCH_RECORDER
   tasm::recorder::TestBenchBaseRecorder::GetInstance().RecordScripts(
-      name.c_str(), external_resource_content.c_str());
+      name.c_str(), external_resource_content.c_str(), record_id_);
   return {std::move(external_resource_content), type};
 #else
   return {std::move(external_resource_content), type};

@@ -43,7 +43,7 @@ class TestBenchBaseRecorder {
 
   void RecordComponent(const char* name, int type, int64_t record_id);
 
-  void RecordScripts(const char* url, const char* source);
+  void RecordScripts(const char* url, const char* source, int64_t record_id);
 
   rapidjson::Document::AllocatorType& GetAllocator();
   void SetRecorderPath(const std::string& path);
@@ -73,7 +73,6 @@ class TestBenchBaseRecorder {
 
   std::unordered_map<int64_t, rapidjson::Value> lynx_view_table_;
   rapidjson::Value resource_table_;
-  rapidjson::Value scripts_table_;
   bool is_recording_;
   std::string file_path_;
   std::unordered_map<int64_t, rapidjson::Value> replay_config_map_;

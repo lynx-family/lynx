@@ -124,9 +124,6 @@ void TestBenchBaseRecorder::EndRecord(
         if (ifs.is_open()) {
           rapidjson::Value& doc = lynx_view_pair.second;
           rapidjson::Document::AllocatorType& allocator = GetAllocator();
-          doc.AddMember(rapidjson::StringRef(kScripts),
-                        rapidjson::Value(scripts_table_, GetAllocator()),
-                        allocator);
           doc.AddMember(rapidjson::StringRef(kConfig), config, allocator);
           rapidjson::StringBuffer os;
           rapidjson::Writer<rapidjson::StringBuffer, rapidjson::UTF8<>,
@@ -381,12 +378,18 @@ void TestBenchBaseRecorder::RecordDebugInfo(int64_t record_id,
   thread_.GetTaskRunner()->PostTask(std::move(record_debug_info_task));
 }
 
-void TestBenchBaseRecorder::RecordScripts(const char* url, const char* source) {
+void TestBenchBaseRecorder::RecordScripts(const char* url, const char* source,
+                                          int64_t record_id) {
   auto record_scripts_task = [this, url = std::string(url),
-                              source = std::string(source)]() {
+                              source = std::string(source), record_id]() {
     if (!is_recording_) {
       return;
     }
+    if (lynx_view_table_.count(record_id) == 0) {
+      return;
+    }
+    rapidjson::Value& scripts = GetRecordedFileField(record_id, kScripts);
+
     rapidjson::Document::AllocatorType& allocator = GetAllocator();
 
     rapidjson::Value url_val(rapidjson::kStringType);
@@ -404,12 +407,7 @@ void TestBenchBaseRecorder::RecordScripts(const char* url, const char* source) {
                         compressed_size, &base64_size);
       source_val.SetString(base64_data.get(), allocator);
     }
-    // scripts_table_ will be reset to null each time recording ends,
-    // So it needs to be judged to avoid crash
-    if (!scripts_table_.IsObject()) {
-      scripts_table_.SetObject();
-    }
-    scripts_table_.AddMember(url_val, source_val, allocator);
+    scripts.AddMember(url_val, source_val, allocator);
   };
   thread_.GetTaskRunner()->PostTask(std::move(record_scripts_task));
 }
@@ -513,6 +511,10 @@ void TestBenchBaseRecorder::CreateRecordedFile(int64_t record_id) {
   shared_data.SetObject();
   dump_document.AddMember(rapidjson::StringRef(kSharedData), shared_data,
                           allocator);
+  // scripts
+  rapidjson::Value scripts;
+  scripts.SetObject();
+  dump_document.AddMember(rapidjson::StringRef(kScripts), scripts, allocator);
 
   lynx_view_table_[record_id] = dump_document;
 }
