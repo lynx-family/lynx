@@ -39,7 +39,7 @@ void MockTasmDelegate::OnDynamicComponentPerfReady(
 
 void MockTasmDelegate::OnConfigUpdated(const lepus::Value& data) {
   ss_ << "OnConfigUpdated ";
-  data.PrintValue(ss_);
+  data.PrintValueSorted(ss_);
   ss_ << std::endl;
   UpdateMockDelegateThemeConfig(data);
 }
@@ -285,7 +285,7 @@ void MockTasmDelegate::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
                                                   const lepus::Value& value,
                                                   bool persist) {
   ss_ << "CallJSApiCallbackWithValue " << callback.id();
-  value.PrintValue(ss_);
+  value.PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 void MockTasmDelegate::RemoveJSApiCallback(piper::ApiCallBack callback) {
@@ -296,7 +296,7 @@ void MockTasmDelegate::CallPlatformCallbackWithValue(
     const std::shared_ptr<shell::PlatformCallBackHolder>& callback,
     const lepus::Value& value) {
   ss_ << "CallPlatformCallbackWithValue " << callback->id();
-  value.PrintValue(ss_);
+  value.PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 
@@ -309,25 +309,25 @@ void MockTasmDelegate::CallJSFunction(const std::string& module_id,
                                       const std::string& method_id,
                                       const lepus::Value& arguments) {
   ss_ << "CallJSFunction " << module_id << " " << method_id << " ";
-  arguments.PrintValue(ss_);
+  arguments.PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 void MockTasmDelegate::OnDataUpdatedByNative(tasm::TemplateData data,
                                              const bool reset) {
   ss_ << "OnDataUpdatedByNative: ";
-  data.GetValue().PrintValue(ss_);
+  data.GetValue().PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 void MockTasmDelegate::OnJSAppReload(
     tasm::TemplateData init_data,
     const std::shared_ptr<tasm::PipelineOptions>& pipeline_options) {
   ss_ << "OnJSAppReload ";
-  init_data.GetValue().PrintValue(ss_);
+  init_data.GetValue().PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 void MockTasmDelegate::OnLifecycleEvent(const lepus::Value& args) {
   ss_ << "OnLifecycleEvent ";
-  args.PrintValue(ss_);
+  args.PrintValueSorted(ss_);
   ss_ << std::endl;
 }
 

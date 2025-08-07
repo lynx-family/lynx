@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <list>
+#include <map>
 #include <memory>
 #include <set>
 #include <unordered_map>
@@ -1060,8 +1061,8 @@ void TemplateBinaryWriter::EncodeAirParsedStyles() {
               }
               const auto& table = vv.Table();
               // Air Styles
-              std::unordered_map<CSSPropertyID, lepus::Value> raw_map;
-              StyleMap map;
+              std::map<CSSPropertyID, lepus::Value> raw_map;  // ordered map
+              StyleMap map;  // style map is ordered
               for (const auto& pair : *table) {
                 CSSPropertyID property_id =
                     CSSProperty::GetPropertyID(pair.first.str());

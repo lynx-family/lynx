@@ -21,9 +21,10 @@ namespace devtool {
 
 class InspectorElement;
 
-std::string ConvertLepusValueToJsonValue(const lynx::lepus::Value& lepus_value);
+std::string ConvertLepusValueToJsonValue(const lynx::lepus::Value& lepus_value,
+                                         bool sort_keys = false);
 std::string convertLepusTableToDictionaryString(
-    const lynx::lepus::Value& lepus_value);
+    const lynx::lepus::Value& lepus_value, bool sort_keys = false);
 
 void MergeCSSStyle(Json::Value& res,
                    const lynx::devtool::InspectorStyleSheet& style_sheet,

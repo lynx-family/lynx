@@ -4,6 +4,8 @@
 
 #include "devtool/lynx_devtool/element/helper_util.h"
 
+#include "base/include/sorted_for_each.h"
+
 namespace lynx {
 namespace devtool {
 
@@ -18,8 +20,8 @@ constexpr const char* kAnimationFillModes[] = {"none", "forwards", "backwards",
 
 constexpr const char* kAnimationPlayStates[] = {"paused", "running"};
 
-std::string ConvertLepusValueToJsonValue(
-    const lynx::lepus::Value& lepus_value) {
+std::string ConvertLepusValueToJsonValue(const lynx::lepus::Value& lepus_value,
+                                         bool sort_keys) {
   std::string result = "";
   switch (lepus_value.Type()) {
     case lynx::lepus::ValueType::Value_Nil: {
@@ -58,7 +60,7 @@ std::string ConvertLepusValueToJsonValue(
     }
     case lynx::lepus::ValueType::Value_Table: {
       std::string table_string =
-          convertLepusTableToDictionaryString(lepus_value);
+          convertLepusTableToDictionaryString(lepus_value, sort_keys);
       if (table_string[table_string.length() - 1] == ',')
         table_string.erase(table_string.length() - 1);
       result = "{" + table_string + "}";
@@ -71,16 +73,28 @@ std::string ConvertLepusValueToJsonValue(
 }
 
 std::string convertLepusTableToDictionaryString(
-    const lynx::lepus::Value& lepus_value) {
+    const lynx::lepus::Value& lepus_value, bool sort_keys) {
   std::string result = "";
   auto table = lepus_value.Table();
-  for (auto iter = table->begin(); iter != table->end(); iter++) {
-    auto c_str = iter->first.c_str();
-    std::string key(c_str);
-    std::string val = ConvertLepusValueToJsonValue(iter->second);
-    result += '"' + key + '"' + ": ";
 
-    result += val + ",";
+  if (sort_keys) {
+    base::sorted_for_each(
+        table->begin(), table->end(),
+        [&](const auto& iter) {
+          std::string val =
+              ConvertLepusValueToJsonValue(iter.second, sort_keys);
+          result += '"' + iter.first.str() + '"' + ": ";
+          result += val + ",";
+        },
+        [](const auto& left, const auto& right) {
+          return left.first.str() < right.first.str();
+        });
+  } else {
+    for (const auto& p : *table) {
+      std::string val = ConvertLepusValueToJsonValue(p.second, sort_keys);
+      result += '"' + p.first.str() + '"' + ": ";
+      result += val + ",";
+    }
   }
   return result;
 }

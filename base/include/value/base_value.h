@@ -608,7 +608,10 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
 
   void Print() const;
   void PrintValue(std::ostream& output, bool ignore_other = false,
-                  bool pretty = false) const;
+                  bool pretty = false, bool sort_map_key = false) const;
+  inline void PrintValueSorted(std::ostream& output) const {
+    PrintValue(output, false, false, true);
+  }
   friend std::ostream& operator<<(std::ostream& output, const lepus::Value& v) {
     v.PrintValue(output);
     return output;

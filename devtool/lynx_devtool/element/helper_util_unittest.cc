@@ -46,8 +46,8 @@ TEST(HelperUtilTest, ConvertLepusValueToJsonValueTest) {
   value9.SetProperty("num", lepus::Value(0xff));
   value9.SetProperty("bool", lepus::Value(false));
   value9.SetProperty("null", lepus::Value());
-  EXPECT_EQ(ConvertLepusValueToJsonValue(value9),
-            "{\"null\": null,\"bool\": 0,\"num\": 255,\"str\": \"bar\"}");
+  EXPECT_EQ(ConvertLepusValueToJsonValue(value9, true),
+            "{\"bool\": 0,\"null\": null,\"num\": 255,\"str\": \"bar\"}");
 
   lepus::Value dict1 = lepus::Value(lepus::Dictionary::Create());
   lepus::Value dict2 = lepus::Value(lepus::Dictionary::Create());
@@ -59,9 +59,9 @@ TEST(HelperUtilTest, ConvertLepusValueToJsonValueTest) {
   dict2.SetProperty("b", lepus::Value(3.89756));
   dict2.SetProperty("f", dict1);
   dict2.SetProperty("g", dict3);
-  EXPECT_EQ(ConvertLepusValueToJsonValue(dict2),
-            "{\"g\": {},\"b\": 3.897560,\"f\": {\"e\": 3333335,\"d\": "
-            "\"url_link\",\"c\": 1},\"a\": null}");
+  EXPECT_EQ(ConvertLepusValueToJsonValue(dict2, true),
+            "{\"a\": null,\"b\": 3.897560,\"f\": {\"c\": 1,\"d\": "
+            "\"url_link\",\"e\": 3333335},\"g\": {}}");
 }
 
 TEST(HelperUtilTest, NormalizeAnimationStringTest) {

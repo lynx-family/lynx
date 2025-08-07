@@ -70,8 +70,8 @@ TEST_F(FiberNodeInfoTest, GetNodeInfo) {
   {
     auto info = FiberNodeInfo::GetNodeInfo(element.get(), fields);
     std::stringstream ss;
-    info.PrintValue(ss);
-    EXPECT_EQ(ss.str(), "{class:[],dataset:{},tag:view,index:0,name:,id:}");
+    info.PrintValueSorted(ss);
+    EXPECT_EQ(ss.str(), "{class:[],dataset:{},id:,index:0,name:,tag:view}");
   }
 
   auto element_0 = manager->CreateFiberNode("view");
@@ -83,10 +83,10 @@ TEST_F(FiberNodeInfoTest, GetNodeInfo) {
   {
     auto info = FiberNodeInfo::GetNodeInfo(element.get(), fields);
     std::stringstream ss;
-    info.PrintValue(ss);
+    info.PrintValueSorted(ss);
     EXPECT_EQ(ss.str(),
               "{class:[test_class],dataset:{test_dataset:test_dataset_value},"
-              "tag:view,index:1,name:test_name,id:test_id}");
+              "id:test_id,index:1,name:test_name,tag:view}");
   }
 }
 
@@ -106,7 +106,7 @@ TEST_F(FiberNodeInfoTest, GetNodesInfo) {
         FiberNodeInfo::GetNodesInfo({element_0.get(), element.get()},
                                     {"tag", "id", "dataSet", "index", "class"});
     std::stringstream ss;
-    info.PrintValue(ss);
+    info.PrintValueSorted(ss);
     EXPECT_EQ(ss.str(),
               "[{class:[],dataSet:{},id:,index:0,tag:view},{class:[test_class],"
               "dataSet:{test_dataset:test_dataset_value},id:test_id,index:0,"

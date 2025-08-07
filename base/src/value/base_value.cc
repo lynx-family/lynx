@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "base/include/base_defines.h"
+#include "base/include/sorted_for_each.h"
 #include "base/include/string/string_number_convert.h"
 #include "base/include/string/string_utils.h"
 #include "base/include/value/array.h"
@@ -965,8 +966,8 @@ void Value::Print() const {
   LOGE(s.str() << std::endl);
 }
 
-void Value::PrintValue(std::ostream& output, bool ignore_other,
-                       bool pretty) const {
+void Value::PrintValue(std::ostream& output, bool ignore_other, bool pretty,
+                       bool sort_map_key) const {
   if (IsJSValue()) {
     lynx_value_print(env_, value_, &output, nullptr);
     return;
@@ -1011,26 +1012,50 @@ void Value::PrintValue(std::ostream& output, bool ignore_other,
         output << CString();
       }
       break;
-    case lynx_value_map:
+    case lynx_value_map: {
+      auto table = Table();
       output << "{";
-      for (auto it = Table()->begin(); it != Table()->end(); it++) {
-        if (it != Table()->begin()) {
-          output << ",";
+      if (sort_map_key) {
+        bool first = true;
+        base::sorted_for_each(
+            table->begin(), table->end(),
+            [&](const auto& it) {
+              if (!first) {
+                output << ",";
+              }
+              if (pretty) {
+                output << "\"" << it.first.str() << "\""
+                       << ":";
+              } else {
+                output << it.first.str() << ":";
+              }
+              it.second.PrintValue(output, ignore_other, pretty, sort_map_key);
+              first = false;
+            },
+            [](const auto& left, const auto& right) {
+              return left.first.str() < right.first.str();
+            });
+      } else {
+        for (auto it = table->begin(); it != table->end(); it++) {
+          if (it != table->begin()) {
+            output << ",";
+          }
+          if (pretty) {
+            output << "\"" << it->first.str() << "\""
+                   << ":";
+          } else {
+            output << it->first.str() << ":";
+          }
+          it->second.PrintValue(output, ignore_other, pretty, sort_map_key);
         }
-        if (pretty) {
-          output << "\"" << it->first.str() << "\""
-                 << ":";
-        } else {
-          output << it->first.str() << ":";
-        }
-        it->second.PrintValue(output, ignore_other);
       }
       output << "}";
       break;
+    }
     case lynx_value_array:
       output << "[";
       for (size_t i = 0; i < Array()->size(); i++) {
-        Array()->get(i).PrintValue(output, ignore_other);
+        Array()->get(i).PrintValue(output, ignore_other, pretty, sort_map_key);
         if (i != (Array()->size() - 1)) {
           output << ",";
         }

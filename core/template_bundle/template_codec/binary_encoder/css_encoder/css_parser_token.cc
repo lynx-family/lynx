@@ -77,10 +77,10 @@ CSSParseToken::CSSParseToken(const lepus::Value& style, std::string& rule,
                              const lepus::Value& style_variables,
                              const tasm::CompileOptions& compile_options)
     : CSSParseToken(
-          base::strToJson(lepus::lepusValueToJSONString(style).c_str()), rule,
-          path,
+          base::strToJson(lepus::lepusValueToJSONString(style, true).c_str()),
+          rule, path,
           base::strToJson(
-              lepus::lepusValueToJSONString(style_variables).c_str()),
+              lepus::lepusValueToJSONString(style_variables, true).c_str()),
           compile_options) {}
 
 void CSSParseToken::ParseAttributes(const rapidjson::Value& value) {
