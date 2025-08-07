@@ -59,7 +59,13 @@ public class UIBody extends UIGroup<UIBodyView> {
     mBodyView = view;
     initialize();
   }
+
   public UIBodyView getBodyView() {
+    return mBodyView;
+  }
+
+  @Override
+  UIBodyView getOrCreateView(Context context, Object params) {
     return mBodyView;
   }
 
@@ -98,6 +104,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
         TraceEvent.beginSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);
 
+        mContext.setUIBodyView(mBodyView);
         mCreateViewUI = new ArrayList<>();
         attachToView(context);
         mBodyView.markNeedRemoveExistingViews();
@@ -124,6 +131,8 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     boolean isLayoutRequested = mView.isLayoutRequested();
+
+    mBodyView.cacheLayoutInfo(getWidth(), getHeight());
 
     mDetachTask = new OnceTask<>(new Callable<Void>() {
       @Override
@@ -215,6 +224,29 @@ public class UIBody extends UIGroup<UIBodyView> {
     mCreateViewUI.clear();
 
     TraceEvent.endSection(TraceEventDef.UI_BODY_REBUILD_VIEW_TREE);
+  }
+
+  @Override
+  public void onAttach() {
+    if (mContext.isEnginePoolEnabled()) {
+      tryRunDetachAndAttachTask();
+    }
+    super.onAttach();
+  }
+
+  synchronized public void tryRunDetachAndAttachTask() {
+    if (!mContext.isEnginePoolEnabled()) {
+      return;
+    }
+
+    if (mDetachTask != null) {
+      mDetachTask.run();
+      mDetachTask.get();
+    }
+    if (mAttachTask != null) {
+      mAttachTask.run();
+      mAttachTask.get();
+    }
   }
 
   @Override
@@ -344,6 +376,9 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private boolean mNeedRemoveExistingViews = false;
 
+    private int mCacheWidth;
+    private int mCacheHeight;
+
     // assign with the uiRenderer instance on TemplateRender
     @RestrictTo(RestrictTo.Scope.LIBRARY) protected ILynxUIRenderer mLynxUIRender;
 
@@ -357,6 +392,42 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     public UIBodyView(Context context, AttributeSet attrs) {
       super(context, attrs);
+    }
+
+    public void cacheLayoutInfo(int width, int height) {
+      mCacheWidth = width;
+      mCacheHeight = height;
+    }
+
+    protected void onMeasureWhenDetach(int widthMeasureSpec, int heightMeasureSpec) {
+      performMeasure(widthMeasureSpec, mCacheWidth, heightMeasureSpec, mCacheHeight);
+      if (mDrawChildHook instanceof ViewInfo) {
+        ((ViewInfo) mDrawChildHook).measure();
+      }
+    }
+
+    protected void onLayoutWhenDetach() {
+      if (mDrawChildHook instanceof ViewInfo) {
+        ((ViewInfo) mDrawChildHook).layout();
+      }
+    }
+
+    public void performMeasure(int widthMeasureSpec, int width, int heightMeasureSpec, int height) {
+      int finalWidth = 0;
+      int finalHeight = 0;
+      int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+      if (widthMode == MeasureSpec.AT_MOST || widthMode == MeasureSpec.UNSPECIFIED) {
+        finalWidth = mCacheWidth;
+      } else {
+        finalWidth = MeasureSpec.getSize(widthMeasureSpec);
+      }
+      int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+      if (heightMode == MeasureSpec.AT_MOST || heightMode == MeasureSpec.UNSPECIFIED) {
+        finalHeight = mCacheHeight;
+      } else {
+        finalHeight = MeasureSpec.getSize(heightMeasureSpec);
+      }
+      innerSetMeasuredDimension(finalWidth, finalHeight);
     }
 
     public View obtainViewAccordingToNodeIndex(int nodeIndex) {

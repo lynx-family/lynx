@@ -497,6 +497,7 @@ PipelineLayoutData ElementManager::RequestLayout(
   if (layout_node_manager_) {
     layout_node_manager_->DestroyPlatformLayoutNodes();
   }
+
   if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(tasm::timing::kLayoutStart);

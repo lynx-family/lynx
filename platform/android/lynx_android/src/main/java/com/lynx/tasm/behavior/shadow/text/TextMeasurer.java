@@ -8,6 +8,7 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTSTYLE_ITALIC;
 import static com.lynx.tasm.behavior.AutoGenStyleConstants.FONTSTYLE_OBLIQUE;
 import static com.lynx.tasm.behavior.StyleConstants.TEXTALIGN_CENTER;
 import static com.lynx.tasm.behavior.StyleConstants.TEXTALIGN_RIGHT;
+import static java.util.Arrays.asList;
 
 import android.graphics.Typeface;
 import android.os.Build;
@@ -105,6 +106,9 @@ public class TextMeasurer {
 
     InlineImageProps inlineImageProps = null;
     int mWordBreakStyle = StyleConstants.WORDBREAK_NORMAL;
+    boolean isSetVerticalAlign = false;
+    ArrayList<AbsBaselineShiftCalculatorSpan> baselineShiftCalculatorSpans = new ArrayList<>();
+    float maxFontSize = Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density));
 
     TextAttributes textAttributes = null;
     while (iterator.hasNext()) {
@@ -119,7 +123,8 @@ public class TextMeasurer {
           end = iterator.next().getInt();
           if (inlineImageProps != null) {
             // inline image
-            buildImageStyledSpan(start, end, ops, inlineImageProps, textAttributes, shadowStyle);
+            buildImageStyledSpan(start, end, ops, inlineImageProps, textAttributes, shadowStyle,
+                baselineShiftCalculatorSpans);
           } else {
             buildStyledSpanIfNeeded(
                 start, end, ops, textAttributes, new TypefaceListener(sign, this));
@@ -148,6 +153,7 @@ public class TextMeasurer {
         case kTextPropFontSize:
           textAttributes = ensureTextAttributes(textAttributes);
           textAttributes.setFontSize((float) iterator.next().getDouble());
+          maxFontSize = Math.max(maxFontSize, textAttributes.mFontSize);
           break;
         case kTextPropFontFamily:
           textAttributes = ensureTextAttributes(textAttributes);
@@ -215,6 +221,7 @@ public class TextMeasurer {
           shadowStyle = new ShadowStyle();
           shadowStyle.verticalAlign = iterator.next().getInt();
           shadowStyle.verticalAlignLength = (float) iterator.next().getDouble();
+          isSetVerticalAlign = true;
           break;
 
         case kTextPropTextAlign:
@@ -314,6 +321,21 @@ public class TextMeasurer {
     span = spannableString;
     if (span == null || textAttributes == null) {
       return;
+    }
+
+    if (isSetVerticalAlign) {
+      float minAscender = -maxFontSize * 1.2f * 0.78f;
+      float maxDescender = maxFontSize * 1.2f * 0.22f;
+      float maxXHeight = maxFontSize * 1.2f * 0.5f;
+      float lineHeight =
+          textAttributes.mLineHeight == MeasureUtils.UNDEFINED ? 0.f : textAttributes.mLineHeight;
+      BaselineShiftCalculator baselineShiftCalculator =
+          new BaselineShiftCalculator(asList(minAscender, maxDescender, maxXHeight, lineHeight));
+      for (int i = 0; i < baselineShiftCalculatorSpans.size(); i++) {
+        AbsBaselineShiftCalculatorSpan baselineShiftCalculatorSpan =
+            baselineShiftCalculatorSpans.get(i);
+        baselineShiftCalculatorSpan.setBaselineShiftCalculator(baselineShiftCalculator);
+      }
     }
 
     textAttributes.setHasImageSpan(mHasImageSpan);
@@ -434,7 +456,8 @@ public class TextMeasurer {
 
   private void buildImageStyledSpan(int start, int end,
       List<BaseTextShadowNode.SetSpanOperation> ops, InlineImageProps imageProps,
-      TextAttributes attributes, ShadowStyle shadowStyle) {
+      TextAttributes attributes, ShadowStyle shadowStyle,
+      ArrayList<AbsBaselineShiftCalculatorSpan> baselineShiftCalculatorSpans) {
     if (imageProps.mSrc == null) {
       return;
     }
@@ -442,6 +465,9 @@ public class TextMeasurer {
     AbsInlineImageSpan imageSpan =
         new InlineImageSpan(imageProps.mWidth, imageProps.mHeight, imageProps.mMargins);
     imageSpan.setEnableTextRefactor(true);
+    if (baselineShiftCalculatorSpans != null) {
+      baselineShiftCalculatorSpans.add(imageSpan);
+    }
 
     LynxImageManager lynxImageManager = new LynxImageManager(mContext) {
       @Override

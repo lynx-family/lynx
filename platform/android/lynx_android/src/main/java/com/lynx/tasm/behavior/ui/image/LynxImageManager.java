@@ -842,7 +842,6 @@ public class LynxImageManager implements Drawable.Callback {
         mPlaceholderDrawable = null;
       }
       mCurPlaceholderRequest = null;
-      mPlaceholderDrawable = null;
       updatePlaceholderSource();
     }
 

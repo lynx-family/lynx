@@ -121,6 +121,10 @@ public class ViewInfo implements IDrawChildHook {
     int mDrawOffsetY = 0;
     LynxBackground mBackground = null;
 
+    float mSkewX = 0;
+    float mSkewY = 0;
+    int mOverflow = 0;
+
     public SubDrawInfo(
         boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background) {
       mIsView = isView;
@@ -161,6 +165,26 @@ public class ViewInfo implements IDrawChildHook {
       mPaddingBottom = paddingBottom;
 
       mAlpha = alpha;
+    }
+
+    public void recordSubView(LynxBaseUI baseUI, View subView) {
+      if (!(baseUI instanceof LynxUI)) {
+        return;
+      }
+
+      LynxUI ui = (LynxUI) baseUI;
+
+      mSubView = subView;
+
+      mLeft = ui.getLeft();
+      mTop = ui.getTop();
+      mWidth = ui.getWidth();
+      mHeight = ui.getHeight();
+
+      mSkewX = ui.getSkewX();
+      mSkewY = ui.getSkewY();
+
+      mOverflow = ui.getOverflow();
     }
   }
 

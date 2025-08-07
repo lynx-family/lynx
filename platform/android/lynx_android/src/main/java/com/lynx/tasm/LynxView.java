@@ -965,12 +965,17 @@ public class LynxView extends UIBodyView {
       return;
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_START);
-    mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
-
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
-    if ((lynxUIRenderer != null) && lynxUIRenderer.shouldInvokeNativeViewMethod()) {
-      super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+
+    if (lynxUIRenderer != null) {
+      mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      }
+    } else {
+      onMeasureWhenDetach(widthMeasureSpec, heightMeasureSpec);
     }
+
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_END);
   }
 
@@ -982,11 +987,14 @@ public class LynxView extends UIBodyView {
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_START);
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
-    if ((lynxUIRenderer != null) && lynxUIRenderer.shouldInvokeNativeViewMethod()) {
-      super.onLayout(changed, left, top, right, bottom);
+    if ((lynxUIRenderer != null)) {
+      if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
+        super.onLayout(changed, left, top, right, bottom);
+      }
+      mLynxTemplateRender.onLayout(changed, left, top, right, bottom);
+    } else {
+      onLayoutWhenDetach();
     }
-
-    mLynxTemplateRender.onLayout(changed, left, top, right, bottom);
 
     if (changed && getLynxContext() != null && getLynxContext().useRelativeKeyboardHeightApi()) {
       if (mKeyboardEvent.isStart()) {

@@ -199,6 +199,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
       View view = mContext.getUIBodyView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
+        view.setBackground(null);
         return (T) view;
       }
     }
@@ -292,21 +293,21 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   protected void attachToView(LynxContext context) {
     mContext = context;
     if (mView == null) {
-      View view = mContext.getLynxView().obtainViewAccordingToNodeIndex(mNodeIndex);
+      View view = mContext.getUIBodyView().obtainViewAccordingToNodeIndex(mNodeIndex);
       if (view != null) {
         mView = (T) view;
-        mContext.getUIBody().appendUIWithCreateViewAsync(this);
       } else {
         createViewAsync();
       }
     }
+    mContext.getUIBody().appendUIWithCreateViewAsync(this);
     super.attachToView(context);
   }
 
   @Override
   protected void createViewAsync() {
     super.createViewAsync();
-    mOnceTask = new OnceTask<>(new Callable<T>() {
+    OnceTask<T> onceTask = new OnceTask<>(new Callable<T>() {
       @Override
       public T call() {
         try {
@@ -321,24 +322,20 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       }
     });
 
+    mOnceTask = onceTask;
+
     LynxThreadPool.postUIOperationTask(new Runnable() {
       @Override
       public void run() {
-        mOnceTask.run();
+        onceTask.run();
       }
     });
-    mContext.getUIBody().appendUIWithCreateViewAsync(this);
   }
 
   protected void ensureCreateView() {
     if (mOnceTask != null) {
       mOnceTask.run();
-      try {
-        mView = mOnceTask.get();
-      } catch (Throwable e) {
-        LLog.e(TAG, e.toString());
-      }
-
+      mView = mOnceTask.get();
       mOnceTask = null;
     }
 
