@@ -66,15 +66,11 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 
 #define IS_ZERO(num) (fabs(num) < 0.0000000001)
 
-@interface LynxUILastInfo : NSObject
+@interface LynxUITransformInfo : NSObject
 @property(nonatomic, nonnull, strong) LynxAnimationTransformRotation* lastTransformRotation;
 @property(nonatomic) CATransform3D lastTransformWithoutRotate;
 @property(nonatomic) CATransform3D lastTransformWithoutRotateXY;
-@property(nonatomic, readwrite) CATransform3D offsetEffectTransform;
-@property(nonatomic, readwrite) CGFloat lastOffsetX;
-@property(nonatomic, readwrite) CGFloat lastOffsetY;
 @end
-
 @interface LynxUI () <NSCopying>
 // transition animation
 @property(nonatomic, strong, nullable) LynxTransitionAnimationManager* transitionAnimationManager;
@@ -92,7 +88,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
 @property(nonatomic, nullable, strong) NSString* lynxAccessibilityStatus;
 @property(nonatomic, strong) NSString* lynxAccessibilityLabel;
 
-@property(nonatomic, nullable, strong) LynxUILastInfo* transformInfo;
+@property(nonatomic, nullable, strong) LynxUITransformInfo* transformInfo;
 
 - (void)prepareKeyframeManager;
 - (void)prepareLayoutAnimationManager;
@@ -131,7 +127,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   BOOL _autoResumeAnimation;
   BOOL _enableReuseAnimationState;
   NSMutableArray<LynxAnimationInfo*>* _animationInfos;
-  LynxUILastInfo* _lastInfo;
+  LynxUITransformInfo* _transformInfo;
 }
 
 @dynamic lastTransformRotation;
@@ -198,6 +194,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _enableExposureUIMargin = kLynxPropUndefined;
   _animationInfos = nil;
   _isAutoOffsetRotate = YES;
+  _offsetEffectTransform = CATransform3DIdentity;
 }
 
 - (instancetype)init {
@@ -1520,32 +1517,32 @@ LYNX_PROP_DEFINE("async-display", setAsyncDisplay, BOOL) {
   self.backgroundManager.transformOrigin = CGPointMake(anchorX, anchorY);
 }
 
-- (void)prepareLastInfo {
-  if (!_lastInfo) {
-    _lastInfo = [[LynxUILastInfo alloc] init];
+- (void)prepareTransformInfo {
+  if (!_transformInfo) {
+    _transformInfo = [[LynxUITransformInfo alloc] init];
   }
 }
 
 // To keep pulbic API stable, to be checked and removed
 - (LynxAnimationTransformRotation*)lastTransformRotation {
-  [self prepareLastInfo];
-  return _lastInfo.lastTransformRotation;
+  [self prepareTransformInfo];
+  return _transformInfo.lastTransformRotation;
 }
 
 - (CATransform3D)lastTransformWithoutRotate {
-  [self prepareLastInfo];
-  return _lastInfo.lastTransformWithoutRotate;
+  [self prepareTransformInfo];
+  return _transformInfo.lastTransformWithoutRotate;
 }
 
 - (CATransform3D)lastTransformWithoutRotateXY {
-  [self prepareLastInfo];
-  return _lastInfo.lastTransformWithoutRotateXY;
+  [self prepareTransformInfo];
+  return _transformInfo.lastTransformWithoutRotateXY;
 }
 
 - (void)applyTransform {
   // TODO(renzhongyue): modify this function such that it can run on the async thread.
   LYNX_ASSERT_ON_MAIN_THREAD;
-  [self prepareLastInfo];
+  [self prepareTransformInfo];
   [_transitionAnimationManager removeTransitionAnimation:TRANSITION_TRANSFORM];
   if (_enableNewTransformOrigin) {
     [self applyTransformOrigin];
@@ -4104,25 +4101,23 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
 
 - (void)applyOffset:(CGPoint)resultPoint andRotate:(CGFloat)rotateDeg toLayer:(CALayer*)layer {
   if (layer) {
-    [self prepareLastInfo];
-
     // Remove the old offset effect.
     CGPoint newPosition = layer.position;
-    newPosition.x -= _lastInfo.lastOffsetX;
-    newPosition.y -= _lastInfo.lastOffsetY;
-    CATransform3D inverseTransform = CATransform3DInvert(_lastInfo.offsetEffectTransform);
+    newPosition.x -= _lastOffsetX;
+    newPosition.y -= _lastOffsetY;
+    CATransform3D inverseTransform = CATransform3DInvert(_offsetEffectTransform);
     layer.transform = CATransform3DConcat(layer.transform, inverseTransform);
 
     // Record new offset effect to old offset effect.
-    _lastInfo.lastOffsetX = resultPoint.x;
-    _lastInfo.lastOffsetY = resultPoint.y;
-    _lastInfo.offsetEffectTransform = CATransform3DMakeRotation(rotateDeg, 0, 0, 1);
-    newPosition.x += _lastInfo.lastOffsetX;
-    newPosition.y += _lastInfo.lastOffsetY;
+    _lastOffsetX = resultPoint.x;
+    _lastOffsetY = resultPoint.y;
+    _offsetEffectTransform = CATransform3DMakeRotation(rotateDeg, 0, 0, 1);
+    newPosition.x += _lastOffsetX;
+    newPosition.y += _lastOffsetY;
 
     // Apply the new offset effect.
     layer.position = newPosition;
-    layer.transform = CATransform3DConcat(layer.transform, _lastInfo.offsetEffectTransform);
+    layer.transform = CATransform3DConcat(layer.transform, _offsetEffectTransform);
   }
 }
 
@@ -4181,14 +4176,13 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
 
 @end
 
-@implementation LynxUILastInfo
+@implementation LynxUITransformInfo
 - (instancetype)init {
   self = [super init];
   if (self) {
     _lastTransformRotation = [[LynxAnimationTransformRotation alloc] init];
     _lastTransformWithoutRotate = CATransform3DIdentity;
     _lastTransformWithoutRotateXY = CATransform3DIdentity;
-    _offsetEffectTransform = CATransform3DIdentity;
   }
   return self;
 }
