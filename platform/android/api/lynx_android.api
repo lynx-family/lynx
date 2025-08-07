@@ -5267,6 +5267,7 @@ public class com::lynx::jsbridge::LynxModuleFactory :  {
 
 public class com::lynx::jsbridge::LynxModuleWrapper :  {
   public com.lynx.jsbridge.LynxModuleWrapper.LynxModuleWrapper(String name, LynxModule module);
+  public void com.lynx.jsbridge.LynxModuleWrapper.setLynxContext(WeakReference< Context > weakContext);
   public LynxModule com.lynx.jsbridge.LynxModuleWrapper.getModule();
   public String com.lynx.jsbridge.LynxModuleWrapper.getName();
   public Collection< MethodDescriptor > com.lynx.jsbridge.LynxModuleWrapper.getMethodDescriptors();

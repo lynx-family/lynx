@@ -3,11 +3,17 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.jsbridge;
 
+import android.content.Context;
 import android.util.Pair;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.ReadableArray;
+import com.lynx.tasm.LynxError;
+import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
+import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.utils.UIThreadUtils;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -24,12 +30,17 @@ public class LynxModuleWrapper {
   private final ArrayList<MethodDescriptor> mDescriptors;
   private final ArrayList<AttributeDescriptor> mAttributeDescriptors;
   private final String mName;
+  private WeakReference<Context> mWeakContext;
 
   public LynxModuleWrapper(String name, LynxModule module) {
     mName = name;
     mModule = module;
     mDescriptors = new ArrayList<>();
     mAttributeDescriptors = new ArrayList<>();
+  }
+
+  public void setLynxContext(WeakReference<Context> weakContext) {
+    mWeakContext = weakContext;
   }
 
   @CalledByNative
@@ -95,6 +106,21 @@ public class LynxModuleWrapper {
       try {
         findMethods();
       } catch (RuntimeException exp) {
+        UIThreadUtils.runOnUiThread(new Runnable() {
+          @Override
+          public void run() {
+            if (mWeakContext != null) {
+              Context lynxContext = mWeakContext.get();
+              if (lynxContext != null && lynxContext instanceof LynxContext) {
+                LynxError error = new LynxError(LynxSubErrorCode.E_NATIVE_MODULES_EXCEPTION,
+                    "NativeModules: GetMethodDescriptors error!"
+                        + "moduleName: " + mName + " exception: " + exp.toString());
+                error.setLogBoxOnly(true);
+                ((LynxContext) lynxContext).handleLynxError(error);
+              }
+            }
+          }
+        });
         LLog.e(TAG, exp.toString());
       }
     }
@@ -107,6 +133,21 @@ public class LynxModuleWrapper {
       try {
         findAttributes();
       } catch (RuntimeException exp) {
+        UIThreadUtils.runOnUiThread(new Runnable() {
+          @Override
+          public void run() {
+            if (mWeakContext != null) {
+              Context lynxContext = mWeakContext.get();
+              if (lynxContext != null && lynxContext instanceof LynxContext) {
+                LynxError error = new LynxError(LynxSubErrorCode.E_NATIVE_MODULES_EXCEPTION,
+                    "NativeModules: getAttributeDescriptors error!"
+                        + "moduleName: " + mName + " exception: " + exp.toString());
+                error.setLogBoxOnly(true);
+                ((LynxContext) lynxContext).handleLynxError(error);
+              }
+            }
+          }
+        });
         LLog.e(TAG, exp.toString());
       }
     }

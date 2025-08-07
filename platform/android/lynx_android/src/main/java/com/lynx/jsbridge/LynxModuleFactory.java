@@ -193,7 +193,7 @@ public class LynxModuleFactory {
     }
     module.setExtraData(mLynxModuleExtraData);
     LynxModuleWrapper moduleWrapper = new LynxModuleWrapper(name, module);
-
+    moduleWrapper.setLynxContext(mWeakContext);
     mModulesByName.put(name, moduleWrapper);
     return moduleWrapper;
   }
