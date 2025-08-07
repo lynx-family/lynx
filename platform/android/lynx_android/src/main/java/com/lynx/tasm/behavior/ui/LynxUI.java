@@ -757,6 +757,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI {
       // The front-end modify the animation properties, causing the UI to slide.
       mContext.onPropsChanged(this);
     }
+    mHasTranslateDiff = false;
   }
 
   public void applyOffsetAndRotate(float offsetX, float offsetY, float rotate) {
