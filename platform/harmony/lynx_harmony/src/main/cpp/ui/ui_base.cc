@@ -740,22 +740,22 @@ void UIBase::ApplyOverflowClip() {
     } else {
       NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     }
-  } else if (overflow_.overflow_x && overflow_.overflow_y &&
-             (dirty_flags_ & kFlagOverflowChanged) != 0) {
-    if (background_drawable_ && background_drawable_->GetBorderRadius() &&
-        !background_drawable_->GetBorderRadius()->IsZero()) {
-      need_clip_ = true;
-      ApplyOverflowClipPath(width_, height_);
-    } else {
-      need_clip_ = false;
-      // overflow changed to visible.
-      NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
+  } else if (overflow_.overflow_x && overflow_.overflow_y) {
+    if ((dirty_flags_ & kFlagOverflowChanged) != 0) {
+      if (background_drawable_ && background_drawable_->GetBorderRadius() &&
+          !background_drawable_->GetBorderRadius()->IsZero()) {
+        need_clip_ = true;
+        ApplyOverflowClipPath(width_, height_);
+      } else {
+        need_clip_ = false;
+        // overflow changed to visible.
+        NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
+                                                            0);
+      }
     }
-  } else if ((overflow_.overflow_x || overflow_.overflow_y) &&
-             (dirty_flags_ & kFlagOverflowChanged) != 0) {
-    need_clip_ = true;
-    if (background_drawable_ && background_drawable_->GetBorderRadius() &&
-        !background_drawable_->GetBorderRadius()->IsZero()) {
+  } else {
+    if ((dirty_flags_ & (kFlagOverflowChanged | kFlagFrameSizeChanged)) != 0) {
+      need_clip_ = true;
       float screen_size[2] = {0};
       context_->ScreenSize(screen_size);
       float clip_width = overflow_.overflow_x ? screen_size[0] : width_;
