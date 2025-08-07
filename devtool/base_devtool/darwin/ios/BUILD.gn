@@ -3,11 +3,17 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
+import("//${lynx_dir}/core/Lynx.gni")
 
 podspec_target("BaseDevtool_podspec") {
   output_name = "BaseDevtool.podspec"
   output_path = "//"
   global_variables = [ "\$package_version = ENV[\"version\"]" ]
+  if (enable_trace == "perfetto") {
+    global_variables += [ "\$enable_trace = 1" ]
+  } else {
+    global_variables += [ "\$enable_trace = 0 " ]
+  }
   root_specification = {
     name = "BaseDevtool"
     version = "$lynx_version"
@@ -32,6 +38,7 @@ podspec_target("BaseDevtool_podspec") {
         "//PODS_ROOT/LynxBase",
       ]
       GCC_PREPROCESSOR_DEFINITIONS = [
+        "ENABLE_TRACE_PERFETTO=#{\$enable_trace}",
         "OS_IOS=1",
         "HOST_OSTYPE=HOST_IOS",
         "LYNX_DEBUG=0",
@@ -59,6 +66,7 @@ podspec_target("BaseDevtool_podspec") {
     deps = [
       ":DebugResource",
       ":ThirdParty",
+      ":Trace",
       ":framework",
       ":logbox",
     ]
@@ -101,6 +109,7 @@ subspec_target("framework") {
     flatten_deps += [
       ":DebugResource",
       ":ThirdParty",
+      ":Trace",
       ":logbox",
     ]
   }
@@ -146,6 +155,20 @@ subspec_target("ThirdParty") {
       ":rapidjson",
       ":zlib",
     ]
+  }
+}
+
+subspec_target("Trace") {
+  pod_target_xcconfig = {
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+      "../../../../lynx",
+    ]
+  }
+  deps = [ "../../native/tracing:tracing" ]
+  if (!use_flatten_deps) {
+    dependency = [ "Lynx/Trace" ]
   }
 }
 

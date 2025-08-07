@@ -5,6 +5,7 @@
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 
 #include <cstddef>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -19,6 +20,7 @@
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/lynx_devtool/js_debug/lepus/inspector_lepus_debugger_impl.h"
 #include "devtool/lynx_devtool/lynx_devtool_ng.h"
+#include "devtool/lynx_devtool/tracing/devtool_trace_event_def.h"
 
 namespace lynx {
 namespace devtool {
@@ -654,10 +656,15 @@ void LynxDevToolMediator::Destroy() {
 
 void LynxDevToolMediator::DispatchJSMessage(const Json::Value& message) {
   if (message.isMember(kKeySessionId) && lepus_debugger_ != nullptr) {
-    lepus_debugger_->DispatchMessage(message.toStyledString(),
-                                     message[kKeySessionId].asString());
+    std::string msg = message.toStyledString();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+                LYNX_DEVTOOL_MEDIATOR_DISPATCH_MTS_MESSAGE, "msg", msg);
+    lepus_debugger_->DispatchMessage(msg, message[kKeySessionId].asString());
   } else if (js_debugger_ != nullptr) {
-    js_debugger_->DispatchMessage(message.toStyledString());
+    std::string msg = message.toStyledString();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+                LYNX_DEVTOOL_MEDIATOR_DISPATCH_BTS_MESSAGE, "msg", msg);
+    js_debugger_->DispatchMessage(msg);
   }
 }
 

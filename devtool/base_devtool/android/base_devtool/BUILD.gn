@@ -11,6 +11,7 @@ cmake_target("base_devtool") {
   deps = [
     ":base_devtool_jni_files",
     "../../../../base/platform/android:LynxBase",
+    "../../../../base/trace/android:LynxTrace",
     "../../native:base_devtool_lib",
   ]
   libs = [
@@ -40,7 +41,10 @@ group("base_devtool_jni_files") {
 }
 
 config("devtool_common_defines") {
-  defines = [ "RAPIDJSON_HAS_STDSTRING=1" ]
+  defines = [
+    "RAPIDJSON_HAS_STDSTRING=1",
+    "ENABLE_TRACE_PERFETTO=1",
+  ]
   if (!is_debug) {
     defines += [
       "ENABLE_LOGGING=0",

@@ -7,6 +7,7 @@
 #include "base/include/log/logging.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
+#include "devtool/lynx_devtool/tracing/devtool_trace_event_def.h"
 
 namespace lynx {
 namespace devtool {
@@ -50,6 +51,9 @@ void InspectorClientDelegateImpl::OnContextDestroyed(
 
 void InspectorClientDelegateImpl::SendResponse(const std::string& message,
                                                int instance_id) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              INSPECTOR_CLIENT_DELEGATE_IMPL_SEND_RESPONSE, "vm_type", vm_type_,
+              "instance_id", instance_id, "message", message.substr(0, 100));
   auto debugger = GetDebuggerByViewId(instance_id).lock();
   CHECK_NULL_AND_LOG_RETURN(debugger, "js debug: debugger is null");
   std::string res = PrepareResponseMessage(message, instance_id);

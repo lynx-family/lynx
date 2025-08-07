@@ -8,6 +8,7 @@
 #include "base/include/log/logging.h"
 #include "base/include/timer/time_utils.h"
 #include "core/base/json/json_util.h"
+#include "devtool/base_devtool/native/tracing/base_devtool_trace_event_def.h"
 
 namespace lynx {
 namespace devtool {
@@ -18,6 +19,10 @@ InspectorClientDelegateBaseImpl::InspectorClientDelegateBaseImpl(
 
 void InspectorClientDelegateBaseImpl::DispatchMessageAsync(
     const std::string &message, int instance_id) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              INSPECTOR_CLIENT_DELEGATE_BASE_IMPL_DISPATCH_MESSAGE_ASYNC,
+              "vm_type", vm_type_, "instance_id", instance_id, "message",
+              message);
   rapidjson::Document json_mes;
   if (!ParseStrToJson(json_mes, message)) {
     return;
@@ -110,7 +115,13 @@ void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld() {
     std::string mes = message_queue_.front().second;
     message_queue_.pop();
     mutex_.unlock();  // Unlock to dispatch message to js engine.
-    DispatchMessage(mes, instance_id);
+    {
+      TRACE_EVENT(
+          LYNX_TRACE_CATEGORY_DEVTOOL,
+          INSPECTOR_CLIENT_DELEGATE_BASE_IMPL_FLUSH_MESSAGE_QUEUE_WITH_LOCK_HELD,
+          "vm_type", vm_type_, "instance_id", instance_id, "message", mes);
+      DispatchMessage(mes, instance_id);
+    }
     mutex_.lock();
   }
 }
@@ -118,6 +129,9 @@ void InspectorClientDelegateBaseImpl::FlushMessageQueueWithLockHeld() {
 void InspectorClientDelegateBaseImpl::DispatchInitMessage(
     int instance_id, const std::unique_ptr<ScriptManagerNG> &script_manager,
     bool runtime_enable) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              INSPECTOR_CLIENT_DELEGATE_BASE_IMPL_DISPATCH_INIT_MESSAGE,
+              "vm_type", vm_type_, "instance_id", instance_id);
   DispatchMessage(GenSimpleMessage(kMethodDebuggerEnable), instance_id);
   if (runtime_enable) {
     DispatchMessage(GenSimpleMessage(kMethodRuntimeEnable), instance_id);

@@ -15,7 +15,7 @@ InspectorElementObserverImpl::InspectorElementObserverImpl(
     : element_executor_wp_(element_executor) {}
 
 void InspectorElementObserverImpl::OnDocumentUpdated() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_DOCUMENT_UPDATE);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL, ELEMENT_OBSERVER_ON_DOCUMENT_UPDATE);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnDocumentUpdated();
@@ -23,7 +23,8 @@ void InspectorElementObserverImpl::OnDocumentUpdated() {
 
 void InspectorElementObserverImpl::OnElementNodeAdded(
     lynx::tasm::Element *ptr) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_ELEMENT_NODE_ADDED);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_ELEMENT_NODE_ADDED);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnElementNodeAdded(ptr);
@@ -31,7 +32,8 @@ void InspectorElementObserverImpl::OnElementNodeAdded(
 
 void InspectorElementObserverImpl::OnElementNodeRemoved(
     lynx::tasm::Element *ptr) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_ELEMENT_NODE_REMOVED);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_ELEMENT_NODE_REMOVED);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnElementNodeRemoved(ptr);
@@ -39,7 +41,8 @@ void InspectorElementObserverImpl::OnElementNodeRemoved(
 
 void InspectorElementObserverImpl::OnCharacterDataModified(
     lynx::tasm::Element *ptr) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_CHARACTER_DATA_MODIFIED);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_CHARACTER_DATA_MODIFIED);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnCharacterDataModified(ptr);
@@ -47,14 +50,15 @@ void InspectorElementObserverImpl::OnCharacterDataModified(
 
 void InspectorElementObserverImpl::OnElementDataModelSet(
     lynx::tasm::Element *ptr) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_ELEMENT_DATA_MODEL_SET);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_ELEMENT_DATA_MODEL_SET);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnElementDataModelSet(ptr);
 }
 
 void InspectorElementObserverImpl::OnElementManagerWillDestroy() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
               ELEMENT_OBSERVER_ON_ELEMENT_MANAGER_WILL_DESTORY);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
@@ -65,7 +69,8 @@ void InspectorElementObserverImpl::OnSetNativeProps(lynx::tasm::Element *ptr,
                                                     const std::string &name,
                                                     const std::string &value,
                                                     bool is_style) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_SET_NATIVE_PROPS);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_SET_NATIVE_PROPS);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnSetNativeProps(ptr, name, value, is_style);
@@ -73,7 +78,8 @@ void InspectorElementObserverImpl::OnSetNativeProps(lynx::tasm::Element *ptr,
 
 void InspectorElementObserverImpl::OnCSSStyleSheetAdded(
     lynx::tasm::Element *ptr) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_OBSERVER_ON_CSS_STYLE_SHEET_ADDED);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_DEVTOOL,
+              ELEMENT_OBSERVER_ON_CSS_STYLE_SHEET_ADDED);
   auto element_executor = element_executor_wp_.lock();
   CHECK_NULL_AND_LOG_RETURN(element_executor, "element_executor is null");
   element_executor->OnCSSStyleSheetAdded(ptr);

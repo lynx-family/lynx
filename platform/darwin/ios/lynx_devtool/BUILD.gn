@@ -266,6 +266,7 @@ subspec_target("Trace") {
   }
   deps = [
     "../../../../base/trace/native:trace_public_headers",
+    "../../../../devtool/base_devtool/native/tracing:tracing",
     "../../../../devtool/lynx_devtool/tracing",
   ]
   if (!use_flatten_deps) {
