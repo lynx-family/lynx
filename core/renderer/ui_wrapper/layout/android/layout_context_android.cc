@@ -197,6 +197,7 @@ void LayoutContextAndroid::DestroyLayoutNodes(
 }
 
 void LayoutContextAndroid::Destroy() {
+  trigger_layout_callback_ = nullptr;
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
   if (local_ref.IsNull()) {
@@ -257,7 +258,11 @@ LayoutContextAndroid::ReleasePlatformBundleHolder() {
   return std::move(bundle_holder_);
 }
 
-void LayoutContextAndroid::TriggerLayout() { trigger_layout_callback_(); }
+void LayoutContextAndroid::TriggerLayout() {
+  if (trigger_layout_callback_ != nullptr) {
+    trigger_layout_callback_();
+  }
+}
 
 void LayoutContextAndroid::SetLayoutNodeManager(
     LayoutNodeManager* layout_node_manager) {

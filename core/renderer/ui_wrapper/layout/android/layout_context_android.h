@@ -52,7 +52,7 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
   base::android::ScopedWeakGlobalJavaRef<jobject> impl_;
   std::unique_ptr<PlatformBundleHolderAndroid> bundle_holder_;
 
-  base::closure trigger_layout_callback_;
+  base::closure trigger_layout_callback_ = nullptr;
 
   LayoutContextAndroid(const LayoutContextAndroid&) = delete;
   LayoutContextAndroid& operator=(const LayoutContextAndroid&) = delete;
