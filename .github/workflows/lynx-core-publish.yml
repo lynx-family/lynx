@@ -4,7 +4,8 @@ on: workflow_dispatch
 
 jobs:
   lynx_types_publish:
-    runs-on: macOS-latest
+    runs-on: ubuntu-latest
+    environment: npm
     permissions:
       contents: read
       id-token: write
@@ -25,19 +26,18 @@ jobs:
         with:
           node-version: 18
           registry-url: 'https://registry.npmjs.org'
-      - uses: pnpm/action-setup@v4.0.0
-        with:
-          version: 7.33.6
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@latest
+          npm --version
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.REPO_LYNX_CORE_NPM_TOKEN }}
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           pushd js_libraries/lynx-runtime-shared
-          pnpm run build
+          npm run build
           popd
           pushd js_libraries/lynx-core
-          pnpm run build:web
+          npm run build:web
           npm publish --access public
           popd

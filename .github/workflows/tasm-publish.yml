@@ -53,9 +53,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - uses: pnpm/action-setup@v4.0.0
-        with:
-          version: 7.33.6
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -91,9 +88,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 18
-      - uses: pnpm/action-setup@v4.0.0
-        with:
-          version: 7.33.6
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -114,8 +108,9 @@ jobs:
           path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
 
   tasm-publish:
-    runs-on: macOS-latest
+    runs-on: ubuntu-latest
     needs: [tasm-linux-build, tasm-darwin-build]
+    environment: npm
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -129,9 +124,10 @@ jobs:
         with:
           node-version: 18
           registry-url: 'https://registry.npmjs.org'
-      - uses: pnpm/action-setup@v4.0.0
-        with:
-          version: 7.33.6
+      - name: Setup Package Managers
+        run: |
+          npm install -g npm@latest
+          npm --version
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
@@ -156,8 +152,6 @@ jobs:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.REPO_TASM_NPM_TOKEN }}
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
