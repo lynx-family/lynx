@@ -39,6 +39,7 @@ public class TraceEventDef {
   public static final String UI_BODY_ATTACH_UI_BODY_VIEW = "UIBody.attachUIBodyView";
   public static final String UI_BODY_DETACH_UI_BODY_VIEW = "UIBody.detachUIBodyView";
   public static final String UI_BODY_REBUILD_VIEW_TREE = "UIBody.rebuildViewTree";
+  public static final String UI_BODY_SET_MEASURED_DIMENSION = "UIBody.innerSetMeasuredDimension";
 
   public static final String DEVTOOL_INIT = "LynxDevtool initialized";
 
@@ -60,6 +61,7 @@ public class TraceEventDef {
       "TemplateRender.onRunPipelineFinished";
   public static final String TEMPLATE_RENDER_DETACH_LYNX_ENGINE =
       "TemplateRender.detachLynxEngineWrapper";
+  public static final String TEMPLATE_RENDER_UPDATE_META_DATE = "LynxTemplateRender.updateMetaData";
   public static final String TEMPLATE_RENDER_PROCESS_RENDER = "TemplateRender.processRender";
   public static final String TEMPLATE_RENDER_ATTACH_LYNX_VIEW = "TemplateRender.attachLynxView";
   public static final String TEMPLATE_RENDER_RELOAD_AND_INIT = "TemplateRender.reloadAndInit";

@@ -136,6 +136,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     }
     lynxContext.setLynxUIOwner(mLynxUIOwner);
     lynxContext.setUIBody(mLynxUIOwner.getRootUI());
+    lynxContext.setUIBodyView(body);
     mLynxContext = new WeakReference<>(lynxContext);
     mLongTaskMonitorEnabled = longTaskMonitorEnabled;
 
