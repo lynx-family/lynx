@@ -277,12 +277,12 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
           .ToFloat());
   int margin_top = static_cast<int>(
       starlight::NLengthToFakeLayoutUnit(
-          image_element->slnode()->GetCSSStyle()->GetMarginRight())
+          image_element->slnode()->GetCSSStyle()->GetMarginTop())
           .ClampIndefiniteToZero()
           .ToFloat());
   int margin_right = static_cast<int>(
       starlight::NLengthToFakeLayoutUnit(
-          image_element->slnode()->GetCSSStyle()->GetMarginTop())
+          image_element->slnode()->GetCSSStyle()->GetMarginRight())
           .ClampIndefiniteToZero()
           .ToFloat());
   int margin_bottom = static_cast<int>(
@@ -327,6 +327,16 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
     resolve_length(props, top_right);
     resolve_length(props, bottom_left);
     resolve_length(props, bottom_right);
+  }
+
+  const auto& text_attributes =
+      image_element->computed_css_style()->GetTextAttributes();
+  if (text_attributes.has_value() &&
+      text_attributes->vertical_align !=
+          starlight::DefaultComputedStyle::DEFAULT_VERTICAL_ALIGN) {
+    props->AddProp(kTextPropVerticalAlign);
+    props->AddProp(static_cast<int>(text_attributes->vertical_align));
+    props->AddProp(text_attributes->vertical_align_length);
   }
 
   // inline range end
