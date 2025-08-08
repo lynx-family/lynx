@@ -9095,6 +9095,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW UI_BODY_ATTACH_UI_BODY_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW UI_BODY_DETACH_UI_BODY_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_REBUILD_VIEW_TREE UI_BODY_REBUILD_VIEW_TREE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_SET_MEASURED_DIMENSION UI_BODY_SET_MEASURED_DIMENSION;
   public final String com.lynx.tasm.base.trace.TraceEventDef.DEVTOOL_INIT DEVTOOL_INIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CANCEL_RESOURCE_PREFETCH CANCEL_RESOURCE_PREFETCH;
   public final String com.lynx.tasm.base.trace.TraceEventDef.REQUEST_RESOURCE_PREFETCH REQUEST_RESOURCE_PREFETCH;
@@ -9111,6 +9112,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_SET_GLOBAL_PROPS TEMPLATE_RENDER_SET_GLOBAL_PROPS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_ON_RUN_PIPELINE_FINISHED TEMPLATE_RENDER_ON_RUN_PIPELINE_FINISHED;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_DETACH_LYNX_ENGINE TEMPLATE_RENDER_DETACH_LYNX_ENGINE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE TEMPLATE_RENDER_UPDATE_META_DATE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_PROCESS_RENDER TEMPLATE_RENDER_PROCESS_RENDER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_ATTACH_LYNX_VIEW TEMPLATE_RENDER_ATTACH_LYNX_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_RELOAD_AND_INIT TEMPLATE_RENDER_RELOAD_AND_INIT;

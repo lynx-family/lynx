@@ -2159,7 +2159,7 @@ void TemplateAssembler::UpdateDataByPreParsedData(
   if (template_data == nullptr || destroyed()) {
     return;
   }
-
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_UPDATE_DATA);
   PipelineScope pipeline_scope(this, pipeline_options);
 
   if (page_proxy_.HasSSRRadonPage()) {

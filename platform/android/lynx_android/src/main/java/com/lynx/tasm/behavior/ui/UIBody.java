@@ -681,6 +681,13 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public void innerSetMeasuredDimension(int w, int h) {
+      if (TraceEvent.isTracingStarted()) {
+        HashMap<String, String> map = new HashMap<>();
+        map.put("width", String.valueOf(w));
+        map.put("height", String.valueOf(h));
+        TraceEvent.instant(
+            TraceEvent.CATEGORY_DEFAULT, TraceEventDef.UI_BODY_SET_MEASURED_DIMENSION, map);
+      }
       setMeasuredDimension(w, h);
     }
 

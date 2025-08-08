@@ -228,6 +228,8 @@ inline constexpr const char* const TEMPLATE_ASSEMBLER_CALL_LEPUS_METHOD =
     "TemplateAssembler::CallLepusMethod";
 inline constexpr const char* const TEMPLATE_ASSEMBLER_FETCH_BUNDLE =
     "TemplateAssembler::FetchBundle";
+inline constexpr const char* const TEMPLATE_ASSEMBLER_UPDATE_DATA =
+    "UpdateData";
 inline constexpr const char* const LYNX_UPDATE_GLOBAL_PROPS =
     "LynxUpdateGlobalProps";
 inline constexpr const char* const TEMPLATE_ENTRY_SET_INIT_DATA =

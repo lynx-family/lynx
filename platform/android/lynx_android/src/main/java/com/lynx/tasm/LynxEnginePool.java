@@ -33,6 +33,8 @@ class LynxEnginePool {
     if (TraceEvent.isTracingStarted()) {
       Map<String, String> map = new HashMap<>();
       map.put("engineQueue", engineQueue.toString());
+      map.put("registerEngine", String.valueOf(engineWrapper));
+      map.put("templateBundle", String.valueOf(engineWrapper.getTemplateBundle()));
       TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_REGISTER_ENGINE, map);
     }
     synchronized (this) {
@@ -48,26 +50,50 @@ class LynxEnginePool {
   }
 
   @Nullable
-  LynxEngine pollEngineFromPool(TemplateBundle templateBundle) {
+  LynxEngine pollEngineFromPool(
+      TemplateBundle templateBundle, ThreadStrategyForRendering threadStrategyForRendering) {
     LinkedList<LynxEngine> engineQueue = getEngineQueue(templateBundle);
     LLog.i(TAG, "pollEngine EngineQueue Cache: " + engineQueue + ", bundle:" + templateBundle);
     if (TraceEvent.isTracingStarted()) {
       Map<String, String> map = new HashMap<>();
       map.put("engineQueue", engineQueue.toString());
+      map.put("engineQueue", String.valueOf(templateBundle));
       TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE, map);
     }
+    LynxEngine backupLynxEngine = null;
+    LynxEngine result = null;
     synchronized (this) {
       for (int i = 0; i < engineQueue.size(); i++) {
         LynxEngine lynxEngine = engineQueue.get(i);
-        if (lynxEngine.canReused()) {
+        // Prioritize fetching engines with the same thread mode
+        if (threadStrategyForRendering == lynxEngine.getThreadStrategy()
+            && lynxEngine.tryBeReusing()) {
           engineQueue.remove(i);
-          TraceEvent.endSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE);
-          return lynxEngine;
+          result = lynxEngine;
+          TraceEvent.endSection("pollEngineFromPool");
+          break;
+        } else if (lynxEngine.canReused()) {
+          backupLynxEngine = lynxEngine;
         }
+      }
+      if (result == null && backupLynxEngine != null && backupLynxEngine.tryBeReusing()) {
+        result = backupLynxEngine;
       }
     }
     TraceEvent.endSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE);
-    return null;
+    return result;
+  }
+
+  void delete(@NonNull LynxEngine lynxEngine) {
+    TemplateBundle templateBundle = lynxEngine.getTemplateBundle();
+    if (templateBundle == null) {
+      return;
+    }
+    LinkedList<LynxEngine> engineQueue = getEngineQueue(templateBundle);
+    LLog.i(TAG, "deleteEngine EngineQueue Cache: " + engineQueue + ", bundle:" + templateBundle);
+    synchronized (this) {
+      engineQueue.remove(lynxEngine);
+    }
   }
 
   @NonNull
