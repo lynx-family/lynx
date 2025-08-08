@@ -9376,6 +9376,9 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.performMeasure(int widthMeasureSpec, int width, int heightMeasureSpec, int height);
   public View com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainViewAccordingToNodeIndex(int nodeIndex);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerViewAccordingToNodeIndex(int nodeIndex, View view);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerImageAccordingToNodeIndex(int nodeIndex, LynxImageManager image);
+  public LynxImageManager com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainImageAccordingToNodeIndex(int nodeIndex);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.clearNodeIndexImageMap();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.markNeedRemoveExistingViews();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.removeExistingViews();
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.bindDrawChildHook(IDrawChildHook hook);
