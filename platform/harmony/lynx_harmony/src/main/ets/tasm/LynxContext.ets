@@ -17,6 +17,8 @@ import { LLog, LynxEnv, LynxGenericResourceFetcher, LynxMediaResourceFetcher } f
 import { componentUtils } from '@kit.ArkUI';
 import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
+import { TimingOption } from './performance/timing/TimingOption';
+import { TimingConstants } from './performance/timing/TimingConstants';
 
 const TAG = 'LynxContext'
 
@@ -169,8 +171,16 @@ export class LynxContext implements IContext {
 
   public reload(data: MetaData) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
-    this.renderer?.reloadTemplate(data.templateData?.processor, data.templateData?.data, data.templateData?.readOnly,
-      data.globalProps?.data);
+    let timingOption: TimingOption = new TimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE);
+    let loadBundleStartTimestamp = Date.now();
+    timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
+    timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, loadBundleStartTimestamp);
+    timingOption.setTiming(TimingConstants.FFI_START, Date.now());
+    this.renderer?.reloadTemplate(data.templateData?.processor,
+      data.templateData?.data,
+      data.templateData?.readOnly,
+      data.globalProps?.data,
+      timingOption.toRecord());
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RELOAD);
   }
 

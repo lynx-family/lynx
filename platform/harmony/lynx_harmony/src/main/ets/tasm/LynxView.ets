@@ -434,9 +434,9 @@ export struct LynxView {
     }
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_RELOAD);
     let timingOption: TimingOption = new TimingOption(TimingConstants.RELOAD_BUNDLE_FROM_NATIVE);
-    let loadBundleStartTimestamp = Date.now();
-    timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
-    timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, loadBundleStartTimestamp);
+    let nowStartTimestamp = Date.now();
+    timingOption.setTiming(TimingConstants.PIPELINE_START, nowStartTimestamp);
+    timingOption.setTiming(TimingConstants.RELOAD_BUNDLE_START, nowStartTimestamp);
     this.onPageStarted(LynxPipelineOrigin.LynxReload);
     timingOption.setTiming(TimingConstants.FFI_START, Date.now());
     this.templateRenderer.reloadTemplate(this.metaData.templateData?.processor, this.metaData.templateData?.data,

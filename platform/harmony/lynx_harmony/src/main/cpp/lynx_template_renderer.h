@@ -188,8 +188,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   void MergeGlobalProps(lepus::Value global_props);
   void SetupExtensionDelegate(pub::LynxExtensionDelegate* delegate);
   std::vector<uint8_t> LoadJSSource(const std::string& url);
-  std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
-      napi_env env, napi_value arg);
+  std::shared_ptr<tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
+      napi_env env, napi_value arg, std::string pipeline_origin);
   void ResetTimingBeforeReload() const;
 
   napi_env env_;
