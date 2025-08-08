@@ -94,10 +94,10 @@ class PageConfig final : public EntryConfig {
   // Enable attribute flatten if it not defined in index.json
   // Attribute auto-expose is automatically opended
   PageConfig()
-      : page_flatten(true),
+      : bundle_module_mode_(PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
+        page_flatten(true),
         dsl_(PackageInstanceDSL::TT),
         enable_auto_show_hide(true),
-        bundle_module_mode_(PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
         enable_async_display_(true),
         enable_view_receive_touch_(false),
         enable_lepus_strict_check_(false),
@@ -1205,25 +1205,90 @@ class PageConfig final : public EntryConfig {
   void MarkPostToPlatform() { need_post_to_platform_ = false; }
 
  private:
+  // Used for lynx config
+  tasm::DynamicCSSConfigs css_configs_;
+  // user defined extraInfo.
+  lepus::Value extra_info_{};
   std::string page_version;
+  std::string cli_version_;
+  std::string custom_data_;
+  std::string target_sdk_version_;
+  std::string lepus_version_;
+  std::string tap_slop_{};
+  std::string react_version_;
+  std::string absetting_disable_css_lazy_decode_;
+  // peferredFps
+  std::string preferred_fps_ = "auto";
+  std::string original_config_{};
+  // gc threshold of lepusNG. Let default value be 256, and the unit is KB.
+  int64_t lepus_gc_threshold_{256};
+  // force report lynx scroll fluency event.
+  // When setting pageConfig.enableLynxScrollFluency to a double value in the
+  // range [0, 1], we will monitor the fluency metrics for this LynxUI based on
+  // this probability. The probability indicates the likelihood of enabling
+  // fluency monitoring, and the metrics will be reported unconditionally
+  // through the applogService.
+  double enable_scroll_fluency_monitor{-1};
+  // Composite config representing configs including enableParallelElement,
+  // batch-rendering
+  uint64_t pipeline_scheduler_config_{0};
+  PackageInstanceBundleModuleMode bundle_module_mode_;
+  // TernaryBool
+  TernaryBool trail_New_Image_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool use_new_image{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool async_redirect_url{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_text_layer_render_{TernaryBool::UNDEFINE_VALUE};
+  // Enable Android text BoringLayout
+  TernaryBool enable_text_boring_layout_{TernaryBool::UNDEFINE_VALUE};
+  // Enable lazy_bundles to be decoded in child threads before they are
+  // delivered into tasm in async-loading.
+  TernaryBool enable_component_async_decode_{TernaryBool::UNDEFINE_VALUE};
+  // enable use quick_context_pool to construct quick context
+  TernaryBool enable_use_context_pool_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_use_map_buffer_{TernaryBool::UNDEFINE_VALUE};
+  // introduced in 2.16, enable the optimization aboult UIOperation batching and
+  // CreateViewAsync at Android
+  TernaryBool enable_ui_operation_optimize_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_opt_push_style_to_bundle_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_fiber_element_for_radon_diff_{TernaryBool::UNDEFINE_VALUE};
+  // Indicates whether use c++ list.
+  TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
+  // CSSLazyImport
+  TernaryBool enable_css_lazy_import_{TernaryBool::UNDEFINE_VALUE};
+  // enableNewAnimator
+  TernaryBool enable_new_animator_{TernaryBool::UNDEFINE_VALUE};
+  // enable microtask promise polyfill
+  TernaryBool enable_microtask_promise_polyfill_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_native_schedule_create_view_async_{
+      TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_text_layout_cache_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_unified_pipeline_{TernaryBool::UNDEFINE_VALUE};
+  TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
+  // page's engine version controller
+  uint32_t lepus_quickjs_stack_size_ = 0;
+  // default big image warning threshold, adjust it if necessary
+  uint32_t log_box_image_size_warning_threshold_ = 1000000;
+  // default include font padding
+  // 1 means true
+  // -1 means false
+  int32_t include_font_padding_{0};
+  int32_t observer_frame_rate_{20};
+  int32_t long_press_duration_{-1};
+  CSSParserConfigs css_parser_configs_;
   bool page_flatten;
   bool enable_a11y_mutation_observer{false};
   bool enable_a11y{false};
   bool page_implicit{true};
   PackageInstanceDSL dsl_;
   bool enable_auto_show_hide;
-  PackageInstanceBundleModuleMode bundle_module_mode_;
   bool enable_async_display_;
   bool enable_image_downsampling_{false};
   bool enable_New_Image_{true};
   bool enable_text_language_alignment_{false};
   bool enable_x_text_layout_reused_{false};
-  TernaryBool trail_New_Image_{TernaryBool::UNDEFINE_VALUE};
   bool enable_view_receive_touch_;
   bool enable_lepus_strict_check_;
-  uint32_t lepus_quickjs_stack_size_ = 0;
-  // default big image warning threshold, adjust it if necessary
-  uint32_t log_box_image_size_warning_threshold_ = 1000000;
   bool enable_event_through_;
   bool enable_simultaneous_tap_{false};
   // Default value is false. If this flag is true, the external gesture which's
@@ -1247,20 +1312,11 @@ class PageConfig final : public EntryConfig {
   bool enable_new_layout_only_{true};
   bool css_align_with_legacy_w3c_{false};
   bool enable_component_lifecycle_align_webview_{false};
-  tasm::DynamicCSSConfigs css_configs_;
-  TernaryBool use_new_image{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool async_redirect_url{TernaryBool::UNDEFINE_VALUE};
   bool sync_image_attach{true};
   bool use_image_post_processor_{false};
-  std::string cli_version_;
-  std::string custom_data_;
   bool use_new_swiper{true};
   bool async_init_tt_video_engine{false};
-  CSSParserConfigs css_parser_configs_;
-  std::string target_sdk_version_;
-  std::string lepus_version_;
   bool enable_lepus_ng_{true};
-  std::string tap_slop_{};
   bool default_overflow_visible_{false};
   bool enable_create_view_async_{true};
   bool enable_vsync_aligned_flush{false};
@@ -1273,7 +1329,6 @@ class PageConfig final : public EntryConfig {
   bool enable_accessibility_element_{true};
   bool enable_overlap_for_accessibility_element_{true};
   bool enable_new_accessibility_{false};
-  std::string react_version_;
   bool enable_text_refactor_{false};
   bool data_strict_mode{true};
   bool enable_z_index_{false};
@@ -1282,42 +1337,28 @@ class PageConfig final : public EntryConfig {
   bool enable_remove_component_extra_data_{false};
   bool enable_lynx_air_{false};
   bool enable_fiber_arch_{false};
-  TernaryBool enable_text_layer_render_{TernaryBool::UNDEFINE_VALUE};
   bool auto_resume_animation_{true};
   bool enable_reduce_init_data_copy_{false};
   bool enable_component_layout_only_{false};
   bool enable_cascade_pseudo_{false};
   // Used for lynx config
   bool enable_css_parser_{false};
-  std::string absetting_disable_css_lazy_decode_;
-  // default include font padding
-  // 1 means true
-  // -1 means false
-  int32_t include_font_padding_{0};
-
-  // page's engine version controller
   bool is_target_sdk_verion_higher_than_2_1_{false};
   bool keyboard_callback_pass_relative_height_{false};
   bool enable_event_refactor_{true};
   bool force_calc_new_style_{true};
   bool enable_check_data_when_update_page_{true};
   bool compile_render_{false};
-
   // If this flag is true, iOS will not recognize the corresponding long press
   // gesture after triggering scrolling.
   bool disable_longpress_after_scroll_{false};
 
   bool enable_new_intersection_observer_{false};
-
-  int32_t observer_frame_rate_{20};
-
   // The switch controlling whether to enable exposure detection optimization.
   bool enable_check_exposure_optimize_{false};
-
   // The switch controlling whether to enable send disexposure events when
   // lynxview is hidden.
   bool enable_disexposure_when_lynx_hidden_{true};
-
   // Enable exposure check when LynxView is layoutRequest. In certain scenarios,
   // exposure detection can be inaccurate if it is conducted before the layout
   // is complete. This is because the detection is calculated based on incorrect
@@ -1334,14 +1375,11 @@ class PageConfig final : public EntryConfig {
 
   bool enable_new_gesture_{false};
 
-  int32_t long_press_duration_{-1};
-
   uint8_t map_container_type_{0};
 
   bool enable_check_local_image_{true};
 
   bool enable_async_request_image_{false};
-
   // If this flag is true ,new transform origin algorithm will apply
   bool enable_new_transform_origin_{true};
   // If this flag is true, circular data check will enable when convert js value
@@ -1352,22 +1390,12 @@ class PageConfig final : public EntryConfig {
   bool enable_background_shape_layer_{true};
 
   CompileOptionAirMode air_mode_{CompileOptionAirMode::AIR_MODE_OFF};
-
   // set text overflow as visible if true
+
   bool enable_text_overflow_{false};
-
-  // Enable Android text BoringLayout
-  TernaryBool enable_text_boring_layout_{TernaryBool::UNDEFINE_VALUE};
-
   // TODO(zhouzhuangzhuang): remove this config in 3.4
   // set new clip mode if true
   bool enable_new_clip_mode_{true};
-
-  // user defined extraInfo.
-  lepus::Value extra_info_{};
-
-  // gc threshold of lepusNG. Let default value be 256, and the unit is KB.
-  int64_t lepus_gc_threshold_{256};
 
   // support component can be passed null props.
   // null props is only be supported in LepusNG now.
@@ -1395,10 +1423,6 @@ class PageConfig final : public EntryConfig {
   // enable air mode to detect removed keys in updating data from native
   bool enable_air_detect_removed_keys_when_update_data_{false};
 
-  // Enable lazy_bundles to be decoded in child threads before they are
-  // delivered into tasm in async-loading.
-  TernaryBool enable_component_async_decode_{TernaryBool::UNDEFINE_VALUE};
-
   // A config to force make some special properties can be used to layout only
   // (such as: direction&text-align,etc.)
   bool extended_layout_only_opt_{false};
@@ -1410,25 +1434,8 @@ class PageConfig final : public EntryConfig {
   // enable raster animation
   bool enable_raster_animation_{false};
 
-  // enable use quick_context_pool to construct quick context
-  TernaryBool enable_use_context_pool_{TernaryBool::UNDEFINE_VALUE};
-
-  // force report lynx scroll fluency event.
-  // When setting pageConfig.enableLynxScrollFluency to a double value in the
-  // range [0, 1], we will monitor the fluency metrics for this LynxUI based on
-  // this probability. The probability indicates the likelihood of enabling
-  // fluency monitoring, and the metrics will be reported unconditionally
-  // through the applogService.
-  double enable_scroll_fluency_monitor{-1};
-
   // enable js binding api throw exception rather than report
   bool enable_js_binding_api_throw_exception_{false};
-
-  TernaryBool enable_use_map_buffer_{TernaryBool::UNDEFINE_VALUE};
-
-  // introduced in 2.16, enable the optimization aboult UIOperation batching and
-  // CreateViewAsync at Android
-  TernaryBool enable_ui_operation_optimize_{TernaryBool::UNDEFINE_VALUE};
 
   // enable avoid throwing RenderFatal for element api when argument type
   // checking failed
@@ -1440,42 +1447,12 @@ class PageConfig final : public EntryConfig {
   // enable bind primjs-icu
   bool enable_bind_icu_{false};
 
-  TernaryBool enable_opt_push_style_to_bundle_{TernaryBool::UNDEFINE_VALUE};
-
-  TernaryBool enable_fiber_element_for_radon_diff_{TernaryBool::UNDEFINE_VALUE};
-
   bool enable_query_component_sync_{false};
-
-  // Indicates whether use c++ list.
-  TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
-
-  // peferredFps
-  std::string preferred_fps_ = "auto";
-
-  // CSSLazyImport
-  TernaryBool enable_css_lazy_import_{TernaryBool::UNDEFINE_VALUE};
-
-  // enableNewAnimator
-  TernaryBool enable_new_animator_{TernaryBool::UNDEFINE_VALUE};
-
-  // Composite config representing configs including enableParallelElement,
-  // batch-rendering
-  uint64_t pipeline_scheduler_config_{0};
-
-  // enable microtask promise polyfill
-  TernaryBool enable_microtask_promise_polyfill_{TernaryBool::UNDEFINE_VALUE};
-
-  TernaryBool enable_native_schedule_create_view_async_{
-      TernaryBool::UNDEFINE_VALUE};
 
   // disable tracing gc mode in quick context
   bool disable_quick_tracing_gc_{false};
 
   bool fix_css_import_rule_order_{true};
-
-  TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
-
-  TernaryBool enable_text_layout_cache_{TernaryBool::UNDEFINE_VALUE};
 
   /**
    * Not a config but a marker to indicate whether the page config needs to be
@@ -1486,12 +1463,6 @@ class PageConfig final : public EntryConfig {
    * TODO(zhoupeng.z): Apply this optimization to all platforms.
    */
   bool need_post_to_platform_{true};
-
-  TernaryBool enable_unified_pipeline_{TernaryBool::UNDEFINE_VALUE};
-
-  TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
-
-  std::string original_config_{};
 
   template <typename T>
   using PageConfigSetter = void (PageConfig::*)(T);
