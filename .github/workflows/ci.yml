@@ -536,3 +536,52 @@ jobs:
         uses: ./lynx/.github/actions/ios-explorer-build
         with:
           build-arch: ${{ matrix.arch }}
+
+  ios-integration-test:
+    timeout-minutes: 15
+    runs-on: lynx-darwin-14-medium
+    env:
+      LOCAL_POD_NAME: 'local_pod'
+      POD_VERSION: '0.0.1-alpha.1'
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lynx
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+      - name: Setup Ruby Cache
+        uses: ./lynx/.github/actions/ios-common-deps
+      - name: Prepare cocoapods publish source
+        run: |-
+          ruby -e 'puts RUBY_PLATFORM'
+          source tools/envsetup.sh
+          export LANG=en_US.UTF-8
+          python3 tools/ios_tools/cocoapods_publish_helper.py --prepare-source --tag $POD_VERSION --version $POD_VERSION --component all
+      - name: Publish to Local Pod Source
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          git config --global user.name "lynx.authors"
+          git config --global user.email "lynx.authors@users.noreply.github.com"
+          python3 tools/ios_tools/cocoapods_publish_helper.py --publish_local $LOCAL_POD_NAME --component all
+      - name: Download the Demo Project
+        uses: actions/checkout@v4.2.2
+        with:
+          path: demo
+          repository: lynx-family/integrating-lynx-demo-projects
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build the Demo Project
+        run: |-
+          cd $GITHUB_WORKSPACE
+          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component Lynx --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component LynxService --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          python3 lynx/tools/ios_tools/process_podfile.py --action replace_pod_version --component XElement --version $POD_VERSION --podfile demo/ios/HelloLynxObjc/Podfile
+          python3 lynx/tools/ios_tools/process_podfile.py --action insert_pod_source --podfile demo/ios/HelloLynxObjc/Podfile --pod_source "file://$GITHUB_WORKSPACE/lynx/$LOCAL_POD_NAME"
+          cd demo/ios/HelloLynxObjc
+          export LANG=en_US.UTF-8
+          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle --version
+          BUNDLE_GEMFILE=$GITHUB_WORKSPACE/lynx/Gemfile bundle exec pod install
+          xcodebuild -workspace Hello-Lynx-OC.xcworkspace/ -scheme Hello-Lynx-OC CODE_SIGNING_ALLOWED=NO build

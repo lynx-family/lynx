@@ -7,7 +7,7 @@ import argparse
 import os
 import shutil
 import subprocess
-import re
+import json
 from skip_pod_lint import skip_pod_lint
 
 def run_command(command, check=True):
@@ -47,7 +47,7 @@ def generate_zip_file(src_dir, tag, component):
             podspec_name = filename.split('.')[0]
             if component == podspec_name or component == 'all':
                 print(f'Generating zip file for {podspec_name}')
-                run_command(f'export PACKAGE_ENV=prod && geniospkg --output_type both --repo {podspec_name} --tag {tag} --cache_path lynx')
+                run_command(f'export PACKAGE_ENV=prod && geniospkg --output_type both --repo {podspec_name} --tag {tag} --cache_path .')
 
 def get_enable_trace_param(version: str) -> str:
     """
@@ -81,41 +81,34 @@ def prepare_cocoapods_publish_source(version, tag, component):
     generate_zip_file(root_path, tag, component)
 
 def use_local_pod_source(component):
-    pattern_source = "(\S+.source\s*=\s*{)\s*\S+\s*=>[\s\S]*?(})"
-    with open(f"{component}.podspec",'r',encoding='utf8') as f:
-        content=f.read()
-    content = re.sub(pattern_source, f"\\1 :http => \"file:\"+__dir__+\"/{component}.zip\"\\2", content)
-    with open(f"{component}.podspec","w",encoding='utf8') as f:
-        f.write(content)
+    with open(f"{component}.podspec.json",'r',encoding='utf8') as f:
+        content = json.load(f)
+    version = content["version"]
+    source_url = f"file:{os.getcwd()}/{component}-{version}.zip"
+    
+    content["source"] = {"http": source_url}
+    with open(f"{component}.podspec.json","w",encoding='utf8') as f:
+        json.dump(content, f, indent=4)
 
 def create_local_pod_source(local_pod_source_name):
     run_command(f'mkdir ./{local_pod_source_name}')
     run_command(f'cd {local_pod_source_name} && git init && git commit --allow-empty --message "Initial commit."')
-    run_command(f'pod repo add {local_pod_source_name} file://{os.getcwd()}/{local_pod_source_name}')
+    run_command(f'bundle exec pod repo add {local_pod_source_name} file://{os.getcwd()}/{local_pod_source_name}')
+
+def publish_component_to_local_source(component,local_pod_source_name):
+    file_name = f"{component}.podspec.json"
+    if not os.path.exists(file_name):
+        run_command(f'bundle exec pod ipc spec {component}.podspec > {file_name}')
+    use_local_pod_source(component)
+    run_command(f'bundle exec pod repo push {local_pod_source_name} {component}.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests --verbose')
 
 def run_pod_lint(component):
     print(f'Start pod lint to {component} podspec')
-    run_command("pod repo add-cdn trunk https://cdn.cocoapods.org/")
+    run_command("bundle exec pod repo add-cdn trunk https://cdn.cocoapods.org/")
+
     local_pod_source_name = 'local_specs'
-    create_local_pod_source(local_pod_source_name)
-    skip_pod_lint('public')
-    
-    # firstly publish the all pods to local source to support components dependencies 
-    use_local_pod_source('Lynx')
-    run_command(f'bundle exec pod ipc spec Lynx.podspec > Lynx.podspec.json')
-    run_command(f'bundle exec pod repo push {local_pod_source_name} Lynx.podspec.json --local-only')
-    use_local_pod_source('BaseDevtool')
-    run_command(f'bundle exec pod ipc spec BaseDevtool.podspec > BaseDevtool.podspec.json')
-    run_command(f'bundle exec pod repo push {local_pod_source_name} BaseDevtool.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
-    use_local_pod_source('LynxDevtool')
-    run_command(f'bundle exec pod ipc spec LynxDevtool.podspec > LynxDevtool.podspec.json')
-    run_command(f'bundle exec pod repo push {local_pod_source_name} LynxDevtool.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
-    use_local_pod_source('LynxService')
-    run_command(f'bundle exec pod ipc spec LynxService.podspec > LynxService.podspec.json')
-    run_command(f'bundle exec pod repo push {local_pod_source_name} LynxService.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
-    use_local_pod_source('XElement')
-    run_command(f'bundle exec pod ipc spec XElement.podspec > XElement.podspec.json')
-    run_command(f'bundle exec pod repo push {local_pod_source_name} XElement.podspec.json --local-only --skip-import-validation --allow-warnings --skip-tests')
+    publish_to_local(local_pod_source_name, component)
+    skip_pod_lint('private')
     
     if component == 'all':
         # skip lint and push pod to local pod source
@@ -151,6 +144,19 @@ def publish_to_cocoapods(component, sources):
         publish_component(component, sources)
 
 
+def publish_to_local(component, local_source_name):
+    create_local_pod_source(local_source_name)
+    
+    skip_pod_lint('private')
+    if component == 'all':
+        publish_component_to_local_source('Lynx',local_source_name)
+        publish_component_to_local_source('BaseDevtool',local_source_name)
+        publish_component_to_local_source('LynxDevtool',local_source_name)
+        publish_component_to_local_source('LynxService',local_source_name)
+        publish_component_to_local_source('XElement',local_source_name)
+    else:
+        publish_component_to_local_source(component, local_source_name)
+
 def main():
     """
     usage: 1. 'python3 cocoapods_publish_helper.py --prepare-source --version <version> --component <component>'
@@ -171,6 +177,7 @@ def main():
     )
     parser.add_argument('--sources', type=str, help='the cocoapods sources', required=False)
     parser.add_argument('--pod_lint', action="store_true", help='Run pod lint')
+    parser.add_argument('--publish_local', type=str, help='Publish pod to local source')
 
     args = parser.parse_args()
     if args.prepare_source:
@@ -179,8 +186,10 @@ def main():
         publish_to_cocoapods(args.component, args.sources)
     elif args.pod_lint:
         run_pod_lint(args.component)
+    elif args.publish_local:
+        publish_to_local(args.component, args.publish_local)
     else:
-        print('Please specify --prepare-source , --publish or --pod_lint')
+        print('Please specify --prepare-source , --publish, --pod_lint or --publish_local')
         exit(1)
 
 
