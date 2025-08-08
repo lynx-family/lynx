@@ -503,23 +503,23 @@ jobs:
           ./gradlew :app:assembleDebug
           popd
 
-  harmony-explorer-build:
-    runs-on: lynx-custom-container
-    container:
-      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
-      credentials:
-        username: lynx-family
-        password: ${{ secrets.GITHUB_TOKEN }}
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Download Source
-        uses: actions/checkout@v4.2.2
-        with:
-          path: lynx
-      - name: Build Explorer App
-        uses: ./lynx/.github/actions/harmony-explorer-build
+  # harmony-explorer-build:
+  #   runs-on: lynx-custom-container
+  #   container:
+  #     image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
+  #     credentials:
+  #       username: lynx-family
+  #       password: ${{ secrets.GITHUB_TOKEN }}
+  #   defaults:
+  #     run:
+  #       shell: bash
+  #   steps:
+  #     - name: Download Source
+  #       uses: actions/checkout@v4.2.2
+  #       with:
+  #         path: lynx
+  #     - name: Build Explorer App
+  #       uses: ./lynx/.github/actions/harmony-explorer-build
 
   ios-explorer-build:
     timeout-minutes: 60
