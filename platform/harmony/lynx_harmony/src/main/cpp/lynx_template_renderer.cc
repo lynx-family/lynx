@@ -20,6 +20,7 @@
 #include "core/runtime/jscache/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
+#include "core/services/timing_handler/timing_constants.h"
 #include "core/shell/harmony/native_facade_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
@@ -290,10 +291,25 @@ void LynxTemplateRenderer::LoadTemplateBundle(
   shell_->LoadTemplateBundle(url, bundle, pipeline_options, template_data);
 }
 
-std::shared_ptr<lynx::tasm::PipelineOptions>
-LynxTemplateRenderer::ProcessLoadTemplateTimingOption(napi_env env,
-                                                      napi_value arg) {
+std::shared_ptr<tasm::PipelineOptions>
+LynxTemplateRenderer::ProcessLoadTemplateTimingOption(
+    napi_env env, napi_value arg, std::string pipeline_origin) {
+  std::shared_ptr<tasm::PipelineOptions> pipeline_options =
+      std::make_shared<tasm::PipelineOptions>();
+  pipeline_options->pipeline_origin = std::move(pipeline_origin);
+  pipeline_options->need_timestamps = true;
+  napi_valuetype type;
+  napi_typeof(env, arg, &type);
+  if (type != napi_object) {
+    shell_->OnPipelineStart(pipeline_options->pipeline_id,
+                            pipeline_options->pipeline_origin,
+                            pipeline_options->pipeline_start_timestamp);
+    return pipeline_options;
+  }
+  // Process TimingOption, generate PipelineOptions
+  lepus::Value timing_option;
   /**
+   * @see: performance/timing/TimingOption.ets
    * TimingOption: Record<string, string | <string, double>>
    * {
    * "pipelineOrigin": "loadBundle",
@@ -307,44 +323,37 @@ LynxTemplateRenderer::ProcessLoadTemplateTimingOption(napi_env env,
    *  },
    * }
    */
-  std::shared_ptr<tasm::PipelineOptions> pipeline_options = nullptr;
-  napi_valuetype type;
-  napi_typeof(env, arg, &type);
-  lepus::Value timing_option;
-  if (type == napi_object) {
-    timing_option = base::NapiConvertHelper::ConvertToLepusValue(env, arg);
-  } else {
-    return pipeline_options;
+  timing_option = base::NapiConvertHelper::ConvertToLepusValue(env, arg);
+
+  // 1. update `pipeline_origin` if exists.
+  auto timing_pipeline_origin = timing_option.GetProperty(
+      BASE_STATIC_STRING(tasm::timing::kPipelineOrigin));
+  if (timing_pipeline_origin.IsString()) {
+    pipeline_options->pipeline_origin = timing_pipeline_origin.StdString();
   }
-
-  // Process TimingOption, generate PipelineOptions
-  std::string pipeline_origin = static_cast<std::string>(
-      timing_option
-          .GetProperty(BASE_STATIC_STRING(tasm::timing::kPipelineOrigin))
-          .String()
-          .str());
-  uint64_t pipeline_start_timestamp = static_cast<uint64_t>(
-      timing_option
-          .GetProperty(BASE_STATIC_STRING(tasm::timing::kPipelineStart))
-          .Number());
-  pipeline_options = std::make_shared<tasm::PipelineOptions>();
-  pipeline_options->pipeline_origin = pipeline_origin;
-  pipeline_options->pipeline_start_timestamp = pipeline_start_timestamp;
-  pipeline_options->need_timestamps = true;
-  shell_->OnPipelineStart(pipeline_options->pipeline_id, pipeline_origin,
-                          pipeline_start_timestamp);
-
-  // mark all timing
-  auto timingStampMap = timing_option.GetProperty(
+  // 2. update `pipeline_start_timestamp` if exists.
+  auto timestamp_map = timing_option.GetProperty(
       BASE_STATIC_STRING(tasm::timing::kTimestampMap));
-  tasm::ForEachLepusValue(timingStampMap, [this, &pipeline_options](
-                                              const lepus::Value& timingKey,
-                                              const lepus::Value& timingStamp) {
+  if (!timestamp_map.IsEmpty()) {
+    auto timing_pipeline_origin = timestamp_map.GetProperty(
+        BASE_STATIC_STRING(tasm::timing::kPipelineStart));
+    if (timing_pipeline_origin.IsNumber()) {
+      pipeline_options->pipeline_start_timestamp =
+          static_cast<uint64_t>(timing_pipeline_origin.Number());
+    }
+  }
+  // 3. start pipeline
+  shell_->OnPipelineStart(pipeline_options->pipeline_id,
+                          pipeline_options->pipeline_origin,
+                          pipeline_options->pipeline_start_timestamp);
+  // 4. set all timing
+  tasm::ForEachLepusValue(timestamp_map, [this, &pipeline_options](
+                                             const lepus::Value& timingKey,
+                                             const lepus::Value& timingStamp) {
     this->shell_->SetTiming(static_cast<uint64_t>(timingStamp.Number()),
                             timingKey.StdString(),
                             pipeline_options->pipeline_id);
   });
-
   return pipeline_options;
 }
 
@@ -949,10 +958,8 @@ napi_value LynxTemplateRenderer::LoadTemplate(napi_env env,
         base::NapiUtil::ConvertToBoolean(env, args[5]);
   }
 
-  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(env, args[6]);
-  if (pipeline_options == nullptr) {
-    return nullptr;
-  }
+  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(
+      env, args[6], tasm::timing::kLoadBundle);
   obj->LoadTemplate(url, std::move(source), pipeline_options, template_data,
                     enable_recycle_template_bundle);
 
@@ -980,10 +987,8 @@ napi_value LynxTemplateRenderer::ReloadTemplate(napi_env env,
       base::NapiConvertHelper::JSONToLepusValue(env, args[3]);
 
   obj->ResetTimingBeforeReload();
-  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(env, args[4]);
-  if (pipeline_options == nullptr) {
-    return nullptr;
-  }
+  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(
+      env, args[4], tasm::timing::kReloadBundleFromNative);
   pipeline_options->is_reload_template = true;
   obj->ReloadTemplate(template_data, pipeline_options, std::move(global_props));
   return nullptr;
@@ -1022,10 +1027,8 @@ napi_value LynxTemplateRenderer::LoadTemplateBundle(napi_env env,
     enable_dump_element_tree = base::NapiUtil::ConvertToBoolean(env, args[5]);
   }
 
-  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(env, args[6]);
-  if (pipeline_options == nullptr) {
-    return nullptr;
-  }
+  auto pipeline_options = obj->ProcessLoadTemplateTimingOption(
+      env, args[6], tasm::timing::kLoadBundle);
   obj->LoadTemplateBundle(std::move(url), bundle->GetBundle(), pipeline_options,
                           template_data, enable_dump_element_tree);
   return nullptr;
