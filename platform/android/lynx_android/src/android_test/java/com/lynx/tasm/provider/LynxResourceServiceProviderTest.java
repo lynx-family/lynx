@@ -50,8 +50,7 @@ public class LynxResourceServiceProviderTest {
     clearInitialization();
 
     // Register LynxResourceService with the mock LynxResourceServiceProxy
-    LynxServiceCenter.inst().registerService(
-        ILynxResourceService.class, sLynxResourceServiceProxyMock);
+    LynxServiceCenter.inst().registerService(sLynxResourceServiceProxyMock);
   }
 
   @After

@@ -28,30 +28,29 @@ public class LynxFeatureCounterTest extends TestCase {
     super.setUp();
     mLock = new CountDownLatch(1);
     mRet = false;
-    LynxServiceCenter.inst().registerService(
-        ILynxEventReporterService.class, new ILynxEventReporterService() {
-          @Override
-          public void onPerformanceEvent(@NonNull PerformanceEntry entry) {
-            // do nothing in this test
-          }
+    LynxServiceCenter.inst().registerService(new ILynxEventReporterService() {
+      @Override
+      public void onPerformanceEvent(@NonNull PerformanceEntry entry) {
+        // do nothing in this test
+      }
 
-          @Override
-          public void onReportEvent(@NonNull String eventName, int instanceId,
-              @NonNull Map<String, ? extends Object> data,
-              @Nullable Map<String, ? extends Object> extraData) {
-            try {
-              Object value = data.get("java_hardware_layer");
-              if (eventName.equals("lynxsdk_feature_count_event") && value != null
-                  && value instanceof Boolean && (boolean) value == true) {
-                mRet = true;
-              }
-              mLock.countDown();
-            } catch (Exception e) {
-              e.printStackTrace();
-              mLock.countDown();
-            }
+      @Override
+      public void onReportEvent(@NonNull String eventName, int instanceId,
+          @NonNull Map<String, ? extends Object> data,
+          @Nullable Map<String, ? extends Object> extraData) {
+        try {
+          Object value = data.get("java_hardware_layer");
+          if (eventName.equals("lynxsdk_feature_count_event") && value != null
+              && value instanceof Boolean && (boolean) value == true) {
+            mRet = true;
           }
-        });
+          mLock.countDown();
+        } catch (Exception e) {
+          e.printStackTrace();
+          mLock.countDown();
+        }
+      }
+    });
   }
 
   @After
