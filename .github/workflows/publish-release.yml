@@ -11,7 +11,7 @@ on:
 
 jobs:
   get-version:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
@@ -35,7 +35,7 @@ jobs:
           fi
   android-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     needs: get-version
     steps:
       - name: Download Source
@@ -106,7 +106,7 @@ jobs:
   #         allowUpdates: true
 
   android-sdk-release:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     needs: get-version
     timeout-minutes: 60
     steps:

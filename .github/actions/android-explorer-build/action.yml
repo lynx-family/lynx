@@ -30,7 +30,7 @@ runs:
         ./gradlew :LynxExplorer:assembleNoasanRelease -Penable_trace=perfetto -PabiList=${{ inputs.abi-list }} -no-daemon ${{ inputs.build-params }}
         popd
     - name: upload artifact
-      uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+      uses: coolkiid/upload-artifact@8e57639d07f6cd544cc9f5afdd568e5ddc7585f3
       continue-on-error: true
       with:
         name: android-lynx-explorer
