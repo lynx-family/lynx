@@ -13,6 +13,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
+import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.event.EventsListener;
@@ -27,8 +28,16 @@ public class FlattenUIImage extends LynxFlattenUI {
 
   public FlattenUIImage(LynxContext context, Object params) {
     super(context, params);
-    mLynxImageManager = new LynxImageManager(getLynxContext());
+    if (mContext != null && mContext.isFallbackProcess() && mContext.getUIBodyView() != null
+        && params instanceof UIParams) {
+      setNodeIndex(((UIParams) params).mNodeIndex);
+      mLynxImageManager = context.getUIBodyView().obtainImageAccordingToNodeIndex(mNodeIndex);
+    }
+    if (mLynxImageManager == null) {
+      mLynxImageManager = new LynxImageManager(getLynxContext());
+    }
     mLynxImageManager.setLynxBaseUI(this);
+    mLynxImageManager.setViewInfo(null);
   }
 
   private void ensureLynxImageManager() {
@@ -142,8 +151,11 @@ public class FlattenUIImage extends LynxFlattenUI {
       mLynxImageManager.setViewInfo(parentViewInfo);
       // TODO(songshourui.null): We can nullify LynxImageManager upon src changes or layout updates
       // to optimize performance.
-      mLynxImageManager = null;
+      getLynxContext().getUIBodyView().registerImageAccordingToNodeIndex(
+          mNodeIndex, mLynxImageManager);
     }
+    mLynxImageManager = null;
+
     super.detachWithViewInfo(parentViewInfo);
   }
 

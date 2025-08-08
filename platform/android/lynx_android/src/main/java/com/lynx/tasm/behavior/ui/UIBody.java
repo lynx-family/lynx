@@ -30,6 +30,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
+import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.ITimingCollector;
@@ -356,6 +357,7 @@ public class UIBody extends UIGroup<UIBodyView> {
   public static class UIBodyView
       extends FrameLayout implements IDrawChildHook.IDrawChildHookBinding {
     private ConcurrentHashMap<Integer, View> mViewMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Integer, LynxImageManager> mImageMap = new ConcurrentHashMap<>();
     public int mSign;
 
     private IDrawChildHook mDrawChildHook;
@@ -438,6 +440,20 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     public void registerViewAccordingToNodeIndex(int nodeIndex, View view) {
       mViewMap.put(nodeIndex, view);
+    }
+
+    public void registerImageAccordingToNodeIndex(int nodeIndex, LynxImageManager image) {
+      mImageMap.put(nodeIndex, image);
+    }
+
+    public LynxImageManager obtainImageAccordingToNodeIndex(int nodeIndex) {
+      LynxImageManager image = mImageMap.get(nodeIndex);
+      mImageMap.remove(nodeIndex);
+      return image;
+    }
+
+    public void clearNodeIndexImageMap() {
+      mImageMap.clear();
     }
 
     public void markNeedRemoveExistingViews() {
