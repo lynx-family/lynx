@@ -208,25 +208,25 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
                                      int32_t instance_id,
                                      bool enable_unified_pipeline)
     : page_proxy_(this, std::move(client), &delegate),
-      support_component_js_(false),
       target_sdk_version_("null"),
-      template_loaded_(false),
       delegate_(delegate),
       layout_scheduler_(layout_scheduler),
       touch_event_handler_(nullptr),
 #if ENABLE_AIR
       air_touch_event_handler_(nullptr),
 #endif
-      has_load_page_(false),
       page_config_(nullptr),
       instance_id_(instance_id),
-      destroyed_(false),
-      is_loading_template_(false),
       font_scale_(1.0),
       component_loader_(nullptr),
       pipeline_context_manager_(std::make_unique<PipelineContextManager>(
           enable_unified_pipeline ||
-          LynxEnv::GetInstance().EnableUnifiedPixelPipeline())) {
+          LynxEnv::GetInstance().EnableUnifiedPixelPipeline())),
+      support_component_js_(false),
+      template_loaded_(false),
+      has_load_page_(false),
+      destroyed_(false),
+      is_loading_template_(false) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CONSTRUCTOR);
   pipeline_context_manager_->SetOnCreateHook(
       [this]() { EnsureOnLayoutReadyHooksFinish(); });

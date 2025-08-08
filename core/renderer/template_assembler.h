@@ -939,17 +939,11 @@ class TemplateAssembler final : public TemplateEntryHolder,
     }
   }
 
-  bool default_use_lepus_ng_ = false;
-
   PageProxy page_proxy_;
 
   static thread_local TemplateAssembler* curr_;
 
-  bool support_component_js_;
   std::string target_sdk_version_;
-  bool can_use_snapshot_;
-  bool template_loaded_;
-
   Delegate& delegate_;
   LayoutScheduler& layout_scheduler_;
   I18n i18n;
@@ -957,15 +951,13 @@ class TemplateAssembler final : public TemplateEntryHolder,
   std::unique_ptr<TouchEventHandler> touch_event_handler_;
 
   std::unique_ptr<AirTouchEventHandlerBase> air_touch_event_handler_;
-
-  std::atomic<bool> has_load_page_;
   //  std::string page_name_;
   std::shared_ptr<PageConfig> page_config_;
 
   std::string platform_config_json_string_;
 
   const int32_t instance_id_;
-  bool destroyed_;
+
   lepus::Value default_processor_;
   std::unordered_map<std::string, lepus::Value> processor_with_name_;
   // key: [0]entry_name -> [1]component_path -> [3]processor_name
@@ -980,7 +972,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   lepus::Value global_props_;  // cache globalProps
   std::string url_;
   size_t source_size_;
-  bool is_loading_template_;
+
   float font_scale_;
   std::unordered_map<std::string, lepus::Value> lepus_event_listeners_;
 
@@ -997,11 +989,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
 
   // enable updateData before loadTemplate
-  bool enable_pre_update_data_{false};
   // data updated before loadTemplate
   std::vector<std::shared_ptr<TemplateData>> cache_data_;
-
-  bool pre_painting_{false};
 
   std::string android_package_external_path;
 
@@ -1022,6 +1011,16 @@ class TemplateAssembler final : public TemplateEntryHolder,
   base::Vector<base::closure> on_layout_ready_hooks_;
 
   base::OnceTaskRefptr<void> execute_on_layout_ready_hooks_{nullptr};
+
+  bool default_use_lepus_ng_ = false;
+  bool support_component_js_;
+  bool can_use_snapshot_;
+  bool template_loaded_;
+  std::atomic<bool> has_load_page_;
+  bool destroyed_;
+  bool is_loading_template_;
+  bool enable_pre_update_data_{false};
+  bool pre_painting_{false};
 };
 }  // namespace tasm
 }  // namespace lynx
