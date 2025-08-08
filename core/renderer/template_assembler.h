@@ -938,35 +938,17 @@ class TemplateAssembler final : public TemplateEntryHolder,
       context->Call(func_name, args...);
     }
   }
-
-  bool default_use_lepus_ng_ = false;
-
   PageProxy page_proxy_;
 
-  static thread_local TemplateAssembler* curr_;
+  SignalContext signal_context_;
 
-  bool support_component_js_;
-  std::string target_sdk_version_;
-  bool can_use_snapshot_;
-  bool template_loaded_;
+  ElementManagerDelegateImpl element_manager_delegate_{this};
 
-  Delegate& delegate_;
-  LayoutScheduler& layout_scheduler_;
+  std::unique_ptr<ContextProxyInLepus>
+      context_proxy_vector_[static_cast<int32_t>(
+          runtime::ContextProxy::Type::kUnknown)] = {nullptr};
+
   I18n i18n;
-
-  std::unique_ptr<TouchEventHandler> touch_event_handler_;
-
-  std::unique_ptr<AirTouchEventHandlerBase> air_touch_event_handler_;
-
-  std::atomic<bool> has_load_page_;
-  //  std::string page_name_;
-  std::shared_ptr<PageConfig> page_config_;
-
-  std::string platform_config_json_string_;
-
-  const int32_t instance_id_;
-  bool destroyed_;
-  lepus::Value default_processor_;
   std::unordered_map<std::string, lepus::Value> processor_with_name_;
   // key: [0]entry_name -> [1]component_path -> [3]processor_name
   // value: processor
@@ -977,51 +959,79 @@ class TemplateAssembler final : public TemplateEntryHolder,
       ComponentProcessorMap;
   ComponentProcessorMap component_processor_with_name_;
 
-  lepus::Value global_props_;  // cache globalProps
-  std::string url_;
-  size_t source_size_;
-  bool is_loading_template_;
-  float font_scale_;
   std::unordered_map<std::string, lepus::Value> lepus_event_listeners_;
+
+  lepus::Value default_processor_;
+
+  lepus::Value global_props_;  // cache globalProps
+
+  std::string target_sdk_version_;
+
+  std::string platform_config_json_string_;
+
+  std::string url_;
+
+  std::string locale_;
+  // enable updateData before loadTemplate
+  // data updated before loadTemplate
+  std::vector<std::shared_ptr<TemplateData>> cache_data_;
+
+  std::string android_package_external_path;
+
+  std::shared_ptr<PageConfig> page_config_;
 
   std::shared_ptr<lepus::InspectorLepusObserver> lepus_observer_;
 
   std::shared_ptr<LazyBundleLoader> component_loader_;
-  std::string locale_;
-
-  PageOptions page_options_;
-
-  TemplateAssembler(const TemplateAssembler&) = delete;
-  TemplateAssembler& operator=(const TemplateAssembler&) = delete;
-
-  ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
-
-  // enable updateData before loadTemplate
-  bool enable_pre_update_data_{false};
-  // data updated before loadTemplate
-  std::vector<std::shared_ptr<TemplateData>> cache_data_;
-
-  bool pre_painting_{false};
-
-  std::string android_package_external_path;
 
   std::shared_ptr<WhiteBoardDelegate> white_board_delegate_{nullptr};
 
-  std::unique_ptr<ContextProxyInLepus>
-      context_proxy_vector_[static_cast<int32_t>(
-          runtime::ContextProxy::Type::kUnknown)] = {nullptr};
-
-  SignalContext signal_context_;
-
-  // Called by ElementManager
-  ElementManagerDelegateImpl element_manager_delegate_{this};
-
-  // Manage the lifecycle of all pilepine contexts in current lynx engine.
-  std::unique_ptr<PipelineContextManager> pipeline_context_manager_{nullptr};
-
   base::Vector<base::closure> on_layout_ready_hooks_;
 
+  Delegate& delegate_;
+
+  LayoutScheduler& layout_scheduler_;
+
+  std::unique_ptr<TouchEventHandler> touch_event_handler_;
+
+  std::unique_ptr<AirTouchEventHandlerBase> air_touch_event_handler_;
+
+  size_t source_size_;
+
+  ALLOW_UNUSED_TYPE int64_t record_id_ = 0;
+
+  std::unique_ptr<PipelineContextManager> pipeline_context_manager_{nullptr};
+
   base::OnceTaskRefptr<void> execute_on_layout_ready_hooks_{nullptr};
+
+  PageOptions page_options_;
+
+  const int32_t instance_id_;
+
+  float font_scale_;
+
+  bool default_use_lepus_ng_ = false;
+
+  bool support_component_js_;
+
+  bool can_use_snapshot_;
+
+  bool template_loaded_;
+
+  std::atomic<bool> has_load_page_;
+
+  bool destroyed_;
+
+  bool is_loading_template_;
+
+  bool enable_pre_update_data_{false};
+
+  bool pre_painting_{false};
+
+  static thread_local TemplateAssembler* curr_;
+
+  TemplateAssembler(const TemplateAssembler&) = delete;
+  TemplateAssembler& operator=(const TemplateAssembler&) = delete;
 };
 }  // namespace tasm
 }  // namespace lynx
