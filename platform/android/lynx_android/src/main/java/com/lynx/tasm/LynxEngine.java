@@ -5,6 +5,7 @@ package com.lynx.tasm;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ILynxUIRenderer;
 import java.lang.ref.WeakReference;
 import java.util.Deque;
@@ -30,6 +31,7 @@ class LynxEngine {
   private LynxEngineState mLynxEngineState = LynxEngineState.UN_LOADED;
   private WeakReference<Deque<LynxEngine>> mLynxEngineWrapperQueue;
 
+  private ThreadStrategyForRendering mThreadStrategy;
   private ILynxUIRenderer mLynxUIRenderer;
   private TasmPlatformInvoker mTasmPlatformInvoker;
   // LynxContext or PageConfig
@@ -55,6 +57,15 @@ class LynxEngine {
     mNativePtr = nativeCreate();
     mLynxTemplateRender = new WeakReference<>(templateRender);
     mTemplateBundle = templateBundle;
+    mThreadStrategy = templateRender.getThreadStrategyForRendering();
+  }
+
+  public ThreadStrategyForRendering getThreadStrategy() {
+    return mThreadStrategy;
+  }
+
+  public void setThreadStrategy(ThreadStrategyForRendering threadStrategy) {
+    this.mThreadStrategy = mThreadStrategy;
   }
 
   public TemplateBundle getTemplateBundle() {
@@ -100,44 +111,46 @@ class LynxEngine {
     }
   }
 
-  public LynxEngineState getLynxEngineState() {
-    return mLynxEngineState;
-  }
-
-  public void updateLynxEngineState(LynxEngineState lynxEngineState) {
+  public synchronized void updateLynxEngineState(LynxEngineState lynxEngineState) {
+    LLog.i(TAG, this + "updateLynxEngineState:" + lynxEngineState.name());
+    if (this.mLynxEngineState == LynxEngineState.DESTROYED) {
+      if (lynxEngineState != LynxEngineState.DESTROYED) {
+        LLog.e(TAG, "lynxEngineState has been destroyed." + this);
+      }
+      return;
+    }
     this.mLynxEngineState = lynxEngineState;
   }
 
-  public boolean hasLoaded() {
+  public synchronized boolean hasLoaded() {
     return mLynxEngineState != LynxEngineState.UN_LOADED;
   }
 
-  public boolean canReused() {
+  public synchronized boolean canReused() {
     return mLynxEngineState == LynxEngineState.READY_BE_REUSED;
   }
 
-  public synchronized void attachCurrentTemplateRender(LynxTemplateRender templateRender) {
+  public synchronized boolean tryBeReusing() {
+    if (mLynxEngineState == LynxEngineState.READY_BE_REUSED) {
+      updateLynxEngineState(LynxEngineState.ON_REUSING);
+      return true;
+    }
+    return false;
+  }
+
+  public void attachCurrentTemplateRender(LynxTemplateRender templateRender) {
     mLynxTemplateRender = new WeakReference<>(templateRender);
   }
 
-  public synchronized boolean isRunOnCurrentTemplateRender(LynxTemplateRender templateRender) {
-    if (mLynxTemplateRender == null || mLynxTemplateRender.get() == null) {
-      return false;
-    }
-    return mLynxTemplateRender.get() == templateRender;
-  }
-
   public void registerLynxEngineReused() {
-    mLynxEngineState = LynxEngineState.READY_BE_REUSED;
+    updateLynxEngineState(LynxEngineState.READY_BE_REUSED);
     LynxEnginePool.getInstance().registerReuseEngineWrapper(this);
   }
 
   public void destroy() {
-    if (mLynxEngineWrapperQueue != null && mLynxEngineWrapperQueue.get() != null) {
-      mLynxEngineWrapperQueue.get().remove(this);
-    }
+    updateLynxEngineState(LynxEngineState.DESTROYED);
+    LynxEnginePool.getInstance().delete(this);
     if (mNativePtr != 0) {
-      mLynxEngineState = LynxEngineState.DESTROYED;
       long nativePtr = mNativePtr;
       mNativePtr = 0;
       nativeDestroyEngine(nativePtr);
