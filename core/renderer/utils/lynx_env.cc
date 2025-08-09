@@ -274,6 +274,10 @@ bool LynxEnv::EnableMemoryMonitor() {
   return GetBoolEnv(Key::ENABLE_MEMORY_MONITOR, false);
 }
 
+uint32_t LynxEnv::TimingMapExceededSize() {
+  return static_cast<uint32_t>(GetLongEnv(Key::TIMING_MAP_EXCEEDED_SIZE, 1000));
+}
+
 uint32_t LynxEnv::GetMemoryChangeThresholdMb() {
   return static_cast<uint32_t>(GetLongEnv(Key::MEMORY_CHANGE_THRESHOLD_MB, 0));
 }

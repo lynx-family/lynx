@@ -60,6 +60,7 @@ class TimingMediator : public TimingHandlerDelegate {
   void OnTimingSetup(const TimingInfo& timing_info) const override;
   void OnTimingUpdate(const TimingInfo& timing_info,
                       const std::string& update_flag) const override;
+  uint32_t TimingMapExceededSize() override;
 
  private:
   const int32_t instance_id_ = 0;
