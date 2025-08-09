@@ -159,6 +159,7 @@ class TimingHandler {
   std::unordered_map<PipelineID, PipelineOrigin> pipeline_id_to_origin_map_;
   base::InlineVector<PipelineID, 16> pending_dispatched_pipeline_id_;
   std::unordered_set<TimingFlag> has_dispatched_timing_flags_;
+  bool log_pipeline_map_exceeded_ = false;
 
   // Internal methods for checking which timing type.
   bool IsInitTiming(const TimestampKey& timing_key) const;
@@ -166,6 +167,8 @@ class TimingHandler {
 
   // Internal methods for checking which pipeline type.
   bool IsSetupPipeline(const PipelineID& pipeline_id) const;
+
+  bool IsPipelineMapExceeded();
 
   // Internal methods for processing timing information.
   void ProcessInitTiming(TimestampKey& timing_key, TimestampUs us_timestamp);
