@@ -24,6 +24,7 @@ class TimingHandlerDelegate {
   virtual void OnTimingSetup(const TimingInfo &timing_info) const = 0;
   virtual void OnTimingUpdate(const TimingInfo &timing_info,
                               const TimingFlag &update_flag) const = 0;
+  virtual uint32_t TimingMapExceededSize() { return 1000; }
 };
 }  // namespace timing
 }  // namespace tasm

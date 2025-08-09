@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "base/include/fml/thread.h"
+#include "base/include/log/logging.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
 #include "core/public/pipeline_option.h"
@@ -71,6 +72,7 @@ class TimingHandler {
   // Delegate interface for handling timing events.
   explicit TimingHandler(std::unique_ptr<TimingHandlerDelegate> delegate,
                          performance::PerformanceEventSender* sender);
+  ~TimingHandler() { LOGI("[TimingHandler.h] ~TimingHandler, this:" << this); }
 
   // Methods for setting timing information.
   void SetTiming(tasm::Timing timing);
@@ -159,6 +161,7 @@ class TimingHandler {
   std::unordered_map<PipelineID, PipelineOrigin> pipeline_id_to_origin_map_;
   base::InlineVector<PipelineID, 16> pending_dispatched_pipeline_id_;
   std::unordered_set<TimingFlag> has_dispatched_timing_flags_;
+  bool log_pipeline_map_exceeded_ = false;
 
   // Internal methods for checking which timing type.
   bool IsInitTiming(const TimestampKey& timing_key) const;
@@ -166,6 +169,8 @@ class TimingHandler {
 
   // Internal methods for checking which pipeline type.
   bool IsSetupPipeline(const PipelineID& pipeline_id) const;
+
+  bool IsPipelineMapExceeded();
 
   // Internal methods for processing timing information.
   void ProcessInitTiming(TimestampKey& timing_key, TimestampUs us_timestamp);
