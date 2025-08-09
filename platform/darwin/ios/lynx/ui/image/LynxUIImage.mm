@@ -323,15 +323,15 @@ LYNX_REGISTER_UI("image")
         UIEdgeInsetsEqualToEdgeInsets(strongSelf.capInsets, UIEdgeInsetsZero)) {
       if (strongSelf.enableImageAsyncLayout) {
         __weak typeof(strongSelf) layoutWeakSelf = strongSelf;
-        [self.context findShadowNodeAndRunTask:strongSelf.sign
-                                          task:^(LynxShadowNode* node) {
-                                            typeof(layoutWeakSelf) layoutStrongSelf =
-                                                layoutWeakSelf;
-                                            if (!layoutStrongSelf) {
-                                              return;
-                                            }
-                                            [layoutStrongSelf justShadowNodeSize:node];
-                                          }];
+        [strongSelf.context findShadowNodeAndRunTask:strongSelf.sign
+                                                task:^(LynxShadowNode* node) {
+                                                  typeof(layoutWeakSelf) layoutStrongSelf =
+                                                      layoutWeakSelf;
+                                                  if (!layoutStrongSelf) {
+                                                    return;
+                                                  }
+                                                  [layoutStrongSelf justShadowNodeSize:node];
+                                                }];
       } else {
         LynxShadowNodeOwner* owner = strongSelf.context.nodeOwner;
         if (!owner) {
@@ -664,8 +664,8 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       BOOL isAnimatedImage = [LynxUIImage isAnimatedImage:strongSelf.image];
       if (isAnimatedImage) {
         [[LynxImageLoader imageService] setAutoPlay:strongSelf.view value:strongSelf.autoPlay];
-        if (self.frameCacheAutomatically != LynxBooleanOptionUnset) {
-          BOOL frameCache = self.frameCacheAutomatically == LynxBooleanOptionTrue ? YES : NO;
+        if (strongSelf.frameCacheAutomatically != LynxBooleanOptionUnset) {
+          BOOL frameCache = strongSelf.frameCacheAutomatically == LynxBooleanOptionTrue ? YES : NO;
           [[LynxImageLoader imageService] setFrameCacheAutomatically:strongSelf.view
                                                                value:frameCache];
         }
