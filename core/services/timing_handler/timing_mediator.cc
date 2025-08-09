@@ -10,6 +10,7 @@
 
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
@@ -77,6 +78,12 @@ void TimingMediator::OnTimingUpdate(const TimingInfo& timing_info,
   TriggerUpdateClientCallback(timing_info, update_flag);
   TriggerUpdateRuntimeCallback(timing_info, update_flag);
   ReportUpdateEvent(timing_info, update_flag);
+}
+
+uint32_t TimingMediator::TimingMapExceededSize() {
+  static uint32_t pipeline_map_exceeded_size =
+      LynxEnv::GetInstance().TimingMapExceededSize();
+  return pipeline_map_exceeded_size;
 }
 
 // OnTimingSetup callback

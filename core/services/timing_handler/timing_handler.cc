@@ -7,7 +7,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include "base/include/log/logging.h"
 #include "base/include/string/string_utils.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
@@ -24,11 +23,15 @@ TimingHandler::TimingHandler(std::unique_ptr<TimingHandlerDelegate> delegate,
   if (delegate_) {
     timing_info_.SetValueFactory(delegate_->GetValueFactory());
   }
+  LOGI("[TimingHandler.cc] new TimingHandler, this:" << this);
 }
 
 void TimingHandler::OnPipelineStart(const PipelineID& pipeline_id,
                                     const PipelineOrigin& pipeline_origin,
                                     TimestampUs pipeline_start_timestamp) {
+  if (IsPipelineMapExceeded()) {
+    return;
+  }
   pipeline_id_to_origin_map_.emplace(pipeline_id, pipeline_origin);
   handler_ng_.OnPipelineStart(pipeline_id, pipeline_origin,
                               pipeline_start_timestamp);
@@ -40,15 +43,23 @@ void TimingHandler::OnPipelineStart(const PipelineID& pipeline_id,
 void TimingHandler::BindPipelineIDWithTimingFlag(
     const PipelineID& pipeline_id, const TimingFlag& timing_flag) {
   if (timing_flag.empty() || pipeline_id.empty()) {
+    LOGE(
+        "Invalid timing_flag or pipeline_id in "
+        "TimingHandler::BindPipelineIDWithTimingFlag");
+    return;
+  }
+  if (IsPipelineMapExceeded()) {
     return;
   }
   pipeline_id_to_timing_flags_map_[pipeline_id].emplace_back(timing_flag);
-
   handler_ng_.BindPipelineIDWithTimingFlag(pipeline_id, timing_flag);
 }
 
 // Methods for setting timing information.
 void TimingHandler::SetTiming(tasm::Timing timing) {
+  if (IsPipelineMapExceeded()) {
+    return;
+  }
   for (auto& [timing_key, timestamp] : timing.framework_timings_) {
     SetFrameworkTiming(timing_key, timestamp, timing.pipeline_id_);
   }
@@ -62,6 +73,9 @@ void TimingHandler::SetFrameworkTiming(TimestampKey& timing_key,
                                        const PipelineID& pipeline_id) {
   if (timing_key.empty() || us_timestamp == 0) {
     LOGE("Invalid timing key or timestamp");
+    return;
+  }
+  if (IsPipelineMapExceeded()) {
     return;
   }
   handler_ng_.SetFrameworkTiming(timing_key, us_timestamp, pipeline_id);
@@ -86,6 +100,9 @@ void TimingHandler::SetHostPlatformTiming(TimestampKey& timing_key,
     LOGE("Invalid timing key or timestamp");
     return;
   }
+  if (IsPipelineMapExceeded()) {
+    return;
+  }
   handler_ng_.SetHostPlatformTiming(timing_key, us_timestamp, pipeline_id);
 }
 
@@ -94,6 +111,9 @@ void TimingHandler::SetTiming(TimestampKey& timing_key,
                               const PipelineID& pipeline_id) {
   if (timing_key.empty() || us_timestamp == 0) {
     LOGE("Invalid timing key or timestamp");
+    return;
+  }
+  if (IsPipelineMapExceeded()) {
     return;
   }
   handler_ng_.SetTiming(timing_key, us_timestamp, pipeline_id);
@@ -114,6 +134,9 @@ void TimingHandler::SetTiming(TimestampKey& timing_key,
 void TimingHandler::SetTimingWithTimingFlag(
     const tasm::timing::TimingFlag& timing_flag,
     const std::string& timestamp_key, tasm::timing::TimestampUs timestamp) {
+  if (IsPipelineMapExceeded()) {
+    return;
+  }
   TimestampKey polyfillKey = "";
   if (!TryUpdatePolyfillTimingKey(timestamp_key, polyfillKey)) {
     return;
@@ -149,6 +172,24 @@ bool TimingHandler::IsSetupPipeline(const PipelineID& pipeline_id) const {
            it->second == kLoadSSRData || it->second == kLoadBundle ||
            it->second == kReloadBundleFromNative ||
            it->second == kReloadBundleFromBts;
+  }
+  return false;
+}
+
+bool TimingHandler::IsPipelineMapExceeded() {
+  uint32_t pipeline_map_exceeded_size = 1000;
+  if (delegate_) {
+    pipeline_map_exceeded_size = delegate_->TimingMapExceededSize();
+  }
+  if (pipeline_id_to_origin_map_.size() > pipeline_map_exceeded_size) {
+    if (!log_pipeline_map_exceeded_) {
+      LOGE("[TimingHandler.cc] Pipeline map exceeded size limit. this:"
+               << this
+               << ", Current size: " << pipeline_id_to_origin_map_.size()
+               << ", Limit: " << pipeline_map_exceeded_size;);
+      log_pipeline_map_exceeded_ = true;
+    }
+    return true;
   }
   return false;
 }
