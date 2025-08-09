@@ -42,6 +42,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_ASYNC_JSB_TIMING,
     ENABLE_LONG_TASK_TIMING,
     ENABLE_MEMORY_MONITOR,
+    TIMING_MAP_EXCEEDED_SIZE,
     MEMORY_CHANGE_THRESHOLD_MB,
     DEVTOOL_CONNECTED,
     ENABLE_QUICKJS_DEBUG,
@@ -134,6 +135,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ASYNC_JSB_TIMING, "enable_async_jsb_timing"},
             {Key::ENABLE_LONG_TASK_TIMING, "enable_long_task_timing"},
             {Key::ENABLE_MEMORY_MONITOR, "enable_memory_monitor"},
+            {Key::TIMING_MAP_EXCEEDED_SIZE, "timing_map_exceeded_size"},
             {Key::MEMORY_CHANGE_THRESHOLD_MB, "memory_change_threshold_mb"},
             {Key::DEVTOOL_CONNECTED, "devtool_connected"},
             {Key::STORAGE_DIR, "storage_dir"},
@@ -301,6 +303,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableAsyncJSBTiming();
   bool EnableLongTaskTiming();
   bool EnableMemoryMonitor();
+  uint32_t TimingMapExceededSize();
   uint32_t GetMemoryChangeThresholdMb();
   int64_t GetV8HeapSize();
   std::unordered_set<std::string> GetActivatedCDPDomains();

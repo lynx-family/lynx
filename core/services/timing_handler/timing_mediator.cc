@@ -8,6 +8,7 @@
 #include <utility>
 #include <vector>
 
+#include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/lepus_value.h"
@@ -123,6 +124,12 @@ void TimingMediator::OnPerformanceEvent(
                                   lepus_value(std::move(arguments)));
         });
   }
+}
+
+uint32_t TimingMediator::TimingMapExceededSize() {
+  static uint32_t pipeline_map_exceeded_size =
+      LynxEnv::GetInstance().TimingMapExceededSize();
+  return pipeline_map_exceeded_size;
 }
 
 // OnTimingSetup callback

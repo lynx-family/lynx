@@ -70,6 +70,8 @@ class TimingMediator : public TimingHandlerDelegate {
       const std::unique_ptr<lynx::pub::Value> performance_entry,
       bool enable_engine_callback) const override;
 
+  uint32_t TimingMapExceededSize() override;
+
  private:
   const int32_t instance_id_ = 0;
   bool enable_js_runtime_{true};

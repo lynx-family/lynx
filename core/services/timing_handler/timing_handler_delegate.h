@@ -27,6 +27,7 @@ class TimingHandlerDelegate {
   virtual void OnPerformanceEvent(
       const std::unique_ptr<lynx::pub::Value> performance_entry,
       bool enable_engine_callback) const = 0;
+  virtual uint32_t TimingMapExceededSize() { return 1000; };
 };
 }  // namespace timing
 }  // namespace tasm
