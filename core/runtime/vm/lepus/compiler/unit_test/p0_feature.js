@@ -31,8 +31,11 @@ let object = {
 
 let json_obj = JSON.stringify(object);
 let str = '{"result":true,"count":42}';
+// JSON.stringify does not guarantee key order
 print(json_obj);
- Assert(json_obj == str);
+Assert(String.indexOf(json_obj, '"result":true') != -1);
+Assert(String.indexOf(json_obj, '"count":42') != -1);
+Assert(json_obj.length == str.length);
 
 let Data = {
   name: '123' + '456',

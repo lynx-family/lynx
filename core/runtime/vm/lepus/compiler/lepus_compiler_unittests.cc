@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 
+#include "base/include/sorted_for_each.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -74,19 +75,24 @@ static lepus::Value EmptyFunc(lepus::Context* context) {
   return lepus::Value();
 }
 
-static void Print_Value(lepus::Value* val, std::ostream& output);
+static void Print_Value(const lepus::Value* val, std::ostream& output);
 
-static void Dump_Table(lepus::Value* val, std::ostream& output) {
-  auto it = val->Table()->begin();
+static void Dump_Table(const lepus::Value* val, std::ostream& output) {
+  auto table = val->Table();
   output << "{ " << std::endl;
-  for (; it != val->Table()->end(); it++) {
-    output << it->first.str() << " : ";
-    Print_Value(&(it->second), output);
-    output << "\n";
-  }
+  base::sorted_for_each(
+      table->begin(), table->end(),
+      [&](const auto& it) {
+        output << it.first.str() << " : ";
+        Print_Value(&(it.second), output);
+        output << "\n";
+      },
+      [](const auto& left, const auto& right) {
+        return left.first.str() < right.first.str();
+      });
   output << "} " << std::endl;
 }
-static void Print_Value(lepus::Value* val, std::ostream& output) {
+static void Print_Value(const lepus::Value* val, std::ostream& output) {
   switch (val->Type()) {
     case lepus::ValueType::Value_Nil:
       output << "null";
@@ -121,7 +127,7 @@ static void Print_Value(lepus::Value* val, std::ostream& output) {
     case lepus::ValueType::Value_Array:
       output << "[";
       for (size_t i = 0; i < val->Array()->size(); i++) {
-        Print_Value(const_cast<lepus::Value*>(&(val->Array()->get(i))), output);
+        Print_Value(&(val->Array()->get(i)), output);
         if (i != (val->Array()->size() - 1)) {
           output << ", ";
         }

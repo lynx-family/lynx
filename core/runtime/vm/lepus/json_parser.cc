@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/sorted_for_each.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
@@ -311,27 +312,46 @@ std::string lepusValueToJSONString(const lepus_value& value, bool in_order) {
 }
 
 std::string lepusValueMapToJSONString(
-    const std::unordered_map<base::String, lepus::Value>& map) {
+    const std::unordered_map<base::String, lepus::Value>& map, bool ordered) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_VALUE_MAP_TO_JSON_STRING);
   std::stringstream ss;
   ss << "{";
-  for (auto it = map.begin(); it != map.end();) {
-    ss << "\"" << it->first.str() << "\"";
-    ss << ":";
-    lepusValueToJSONString(ss, it->second, false);
+  if (ordered) {
+    const size_t count = map.size();
+    size_t index = 0;
+    base::sorted_for_each(
+        map.begin(), map.end(),
+        [&](const auto& it) {
+          ss << "\"" << it.first.str() << "\"";
+          ss << ":";
+          lepusValueToJSONString(ss, it.second, ordered);
 
-    if (++it != map.end()) {
-      ss << ",";
+          if (++index != count) {
+            ss << ",";
+          }
+        },
+        [](const auto& left, const auto& right) {
+          return left.first.str() < right.first.str();
+        });
+  } else {
+    for (auto it = map.begin(); it != map.end();) {
+      ss << "\"" << it->first.str() << "\"";
+      ss << ":";
+      lepusValueToJSONString(ss, it->second, ordered);
+
+      if (++it != map.end()) {
+        ss << ",";
+      }
     }
   }
   ss << "}";
   return ss.str();
 }
 
-std::string lepusValueToString(const lepus_value& value) {
+std::string lepusValueToString(const lepus_value& value, bool ordered) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_VALUE_TO_STRING);
   std::stringstream ss;
-  lepusValueToJSONString(ss, value, false);
+  lepusValueToJSONString(ss, value, ordered);
   return ss.str();
 }
 

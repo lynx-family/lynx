@@ -609,9 +609,15 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   void Print() const;
   void PrintValue(std::ostream& output, bool ignore_other = false,
                   bool pretty = false, bool sort_map_key = false) const;
+
+  // Preferred for unit-tests for stable output.
   inline void PrintValueSorted(std::ostream& output) const {
     PrintValue(output, false, false, true);
   }
+
+  // `operator<<` will NOT print entries of a map in order of keys.
+  // So avoid using it in unit-tests for comparision. Use `PrintValueSorted`
+  // instead.
   friend std::ostream& operator<<(std::ostream& output, const lepus::Value& v) {
     v.PrintValue(output);
     return output;

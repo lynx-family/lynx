@@ -97,7 +97,7 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   EXPECT_EQ(error_msg, "");
   auto result3 = white_board_->GetGlobalSharedData(key3);
   auto lepus_result3 = pub::ValueUtils::ConvertValueToLepusValue(*(result3));
-  auto str_result3 = lepus::lepusValueToString(lepus_result3);
+  auto str_result3 = lepus::lepusValueToString(lepus_result3, true);
   EXPECT_EQ(str_result3, value3);
 
   // number value
@@ -108,29 +108,29 @@ TEST_F(WhiteBoardInspectorImplTest, SetSharedData) {
   EXPECT_EQ(error_msg, "");
   auto result4 = white_board_->GetGlobalSharedData(key4);
   auto lepus_result4 = pub::ValueUtils::ConvertValueToLepusValue(*(result4));
-  auto str_result4 = lepus::lepusValueToString(lepus_result4);
+  auto str_result4 = lepus::lepusValueToString(lepus_result4, true);
   EXPECT_EQ(str_result4, value4);
 
   // object value
   std::string key5 = "key5";
-  std::string value5 = "{\"string\":\"123\",\"number\":123}";
+  std::string value5 = "{\"number\":123,\"string\":\"123\"}";
   inspector_->SetSharedData(key5, value5, error_code, error_msg);
   EXPECT_EQ(error_code, 0);
   EXPECT_EQ(error_msg, "");
   auto result5 = white_board_->GetGlobalSharedData(key5);
   auto lepus_result5 = pub::ValueUtils::ConvertValueToLepusValue(*(result5));
-  auto str_result5 = lepus::lepusValueToString(lepus_result5);
-  EXPECT_EQ(str_result5, "{\"number\":123,\"string\":\"123\"}");
+  auto str_result5 = lepus::lepusValueToString(lepus_result5, true);
+  EXPECT_EQ(str_result5, value5);
 
   // json string value
   std::string key6 = "key6";
-  std::string value6 = "\"{\\\"string\\\":\\\"123\\\",\\\"number\\\":123}\"";
+  std::string value6 = "\"{\\\"number\\\":123,\\\"string\\\":\\\"123\\\"}\"";
   inspector_->SetSharedData(key6, value6, error_code, error_msg);
   EXPECT_EQ(error_code, 0);
   EXPECT_EQ(error_msg, "");
   auto result6 = white_board_->GetGlobalSharedData(key6);
   auto lepus_result6 = pub::ValueUtils::ConvertValueToLepusValue(*(result6));
-  auto str_result6 = lepus::lepusValueToString(lepus_result6);
+  auto str_result6 = lepus::lepusValueToString(lepus_result6, true);
   EXPECT_EQ(str_result6, value6);
 }
 

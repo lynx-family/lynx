@@ -36,10 +36,11 @@ jsonValueTolepusValue(const rapid_value& rapValue);
 lepus_value jsonValueTolepusValue(const char* json);
 std::string lepusValueToJSONString(const lepus_value& value,
                                    bool in_order = false);
-BASE_EXPORT_FOR_DEVTOOL std::string lepusValueToString(
-    const lepus_value& value);
+BASE_EXPORT_FOR_DEVTOOL std::string lepusValueToString(const lepus_value& value,
+                                                       bool ordered = false);
 std::string lepusValueMapToJSONString(
-    const std::unordered_map<base::String, lepus::Value>& map);
+    const std::unordered_map<base::String, lepus::Value>& map,
+    bool ordered = false);
 
 // If want the output keys to be ordered, the ordered must be true. Otherwise,
 // ordered can be false.
