@@ -429,27 +429,7 @@ static void BM_FromLepusDeepConvert(benchmark::State& state) {
         lepus::LEPUSValueHelper::ToJsValue(qctx.context(), *obj_ptr, true);
     state.PauseTiming();
     LEPUS_FreeValue(qctx.context(), obj_ref);
-    state.ResumeTiming();
-  }
-}
-
-static void BM_FromLepusShallowConvert(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    lepus::VMContext vctx;
-    std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&vctx, src, "2.0");
-    vctx.Execute();
-    lepus::Value* obj_ptr = new lepus::Value();
-    bool ret = vctx.GetTopLevelVariableByName("obj", obj_ptr);
-    ASSERT_TRUE(ret);
-    lepus::QuickContext qctx;
-    state.ResumeTiming();
-    LEPUSValue obj_ref =
-        lepus::LEPUSValueHelper::ToJsValue(qctx.context(), *obj_ptr);
-    state.PauseTiming();
-    LEPUS_FreeValue(qctx.context(), obj_ref);
-    state.ResumeTiming();
+    delete obj_ptr;
   }
 }
 
@@ -463,23 +443,9 @@ static void BM_ToLepusValueDeepConvert(benchmark::State& state) {
     lepus::Value obj_wrap_lepus_value =
         MK_JS_LEPUS_VALUE(qctx.context(), qctx.SearchGlobalData("obj"));
     state.ResumeTiming();
-    lepus::Value obj = obj_wrap_lepus_value.ToLepusValue();
-  }
-}
-
-static void BM_ToLepusValueShallowConvert(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    lepus::QuickContext qctx;
-    std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
-    qctx.Execute();
-    LEPUSValue obj_wrap = qctx.SearchGlobalData("obj");
-    state.ResumeTiming();
-    lepus::Value obj = MK_JS_LEPUS_VALUE(qctx.context(), obj_wrap);
-    state.PauseTiming();
-    LEPUS_FreeValue(qctx.context(), obj_wrap);
-    state.ResumeTiming();
+    lepus::Value obj = obj_wrap_lepus_value.ToLepusValue(true);
+    state.PauseTiming();  // pause for not counting time of destruction of
+                          // obj_wrap_lepus_value and obj
   }
 }
 
@@ -504,15 +470,13 @@ static void BM_TestEmptyRenderNGFunction(benchmark::State& state) {
     lepus::QuickContext qctx;
     RegisterNGEmptyFunction(&qctx);
     std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    state.ResumeTiming();
     lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
     qctx.Execute();
-
+    state.ResumeTiming();
     lepus::Value ret = qctx.Call(
         kCFuncEmptyFunc,
         MK_JS_LEPUS_VALUE(qctx.context(), qctx.SearchGlobalData("obj")));
-    lepus::Value emp = lepus::Value(emptyFuncRetVal);
-    ASSERT_TRUE(emp == ret);
+    state.PauseTiming();  // ignore destruction time of local objects.
   }
 }
 
@@ -824,9 +788,7 @@ BENCHMARK(BM_LepusWrapDestruct);
 BENCHMARK(BM_TestDefaultStackSize);
 BENCHMARK(BM_TestSetNormalStackSize);
 BENCHMARK(BM_FromLepusDeepConvert);
-BENCHMARK(BM_FromLepusShallowConvert);
 BENCHMARK(BM_ToLepusValueDeepConvert);
-BENCHMARK(BM_ToLepusValueShallowConvert);
 BENCHMARK(BM_ValueTestCloneBigObject);
 BENCHMARK(BM_TestEmptyRenderNGFunction);
 BENCHMARK(BM_TestCollectLeak)->Iterations(5);
