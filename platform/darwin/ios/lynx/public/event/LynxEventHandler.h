@@ -32,6 +32,11 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateUiOwner:(nullable LynxUIOwner *)owner eventEmitter:(LynxEventEmitter *)eventEmitter;
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
+- (void)handleFocus:(id<LynxEventTarget>)target
+             onView:(UIView *)view
+      withContainer:(UIView *)container
+           andPoint:(CGPoint)point
+           andEvent:(UIEvent *)event;
 
 - (void)onGestureRecognized;
 - (void)onGestureRecognizedByEventTarget:(id<LynxEventTarget>)ui;

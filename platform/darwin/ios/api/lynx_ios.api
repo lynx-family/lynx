@@ -1409,6 +1409,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler::attachContainerView:(UIView *rootView);
   public void LynxEventHandler::updateUiOwner:eventEmitter:(nullable LynxUIOwner *owner,[eventEmitter] LynxEventEmitter *eventEmitter);
   public id< LynxEventTarget > LynxEventHandler::hitTest:withEvent:(CGPoint point,[withEvent] nullable UIEvent *event);
+  public void LynxEventHandler::handleFocus:onView:withContainer:andPoint:andEvent:(id< LynxEventTarget > target,[onView] UIView *view,[withContainer] UIView *container,[andPoint] CGPoint point,[andEvent] UIEvent *event);
   public void LynxEventHandler::onGestureRecognized();
   public void LynxEventHandler::onGestureRecognizedByEventTarget:(id< LynxEventTarget > ui);
   public void LynxEventHandler::onPropsChangedByEventTarget:(id< LynxEventTarget > ui);
@@ -1428,7 +1429,6 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::setLongPressDuration:(int32_t value);
   public void LynxEventHandler()::dispatchPanEvent:(UIPanGestureRecognizer *sender);
   public void LynxEventHandler()::needCheckConsumeSlideEvent();
-  public void LynxEventHandler()::handleFocus:onView:withContainer:andPoint:andEvent:(id< LynxEventTarget > target, [onView] UIView *view, [withContainer] UIView *container, [andPoint] CGPoint point, [andEvent] UIEvent *event);
   public id< LynxEventTarget > LynxEventHandler()::hitTestInner:withEvent:(CGPoint point, [withEvent] nullable UIEvent *event);
   public NSInteger LynxEventHandler()::checkCanRespondTapOrClick:withSet:(id< LynxEventTarget > ui, [withSet] NSSet *set);
   public void LynxEventHandler()::removeEventGestures();
