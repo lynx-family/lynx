@@ -18,9 +18,6 @@ static int64_t GetNextUniqueTouchEventID() {
   return g_unique_touch_event_id_++;
 }
 
-lepus::Value TouchEvent::current_touches_ =
-    lepus::Value(lepus::CArray::Create());
-
 bool TouchEvent::long_press_consumed_ = false;
 
 TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
@@ -76,12 +73,12 @@ void TouchEvent::HandleEventCustomDetail() {
     if (type_ == EVENT_TOUCH_CANCEL) {
       if (enable_multi_touch_params_compatible) {
         dict.get()->SetValue(kChangedTouches,
-                             lepus::Value::Clone(TouchEvent::current_touches_));
+                             lepus::Value::Clone(GetCurrentTouches()));
         dict.get()->SetValue(kTouches,
-                             lepus::Value::Clone(TouchEvent::current_touches_));
+                             lepus::Value::Clone(GetCurrentTouches()));
       } else {
         dict.get()->SetValue(kChangedTouches,
-                             lepus::Value::Clone(TouchEvent::current_touches_));
+                             lepus::Value::Clone(GetCurrentTouches()));
         dict.get()->SetValue(kTouches, lepus::CArray::Create());
       }
       return;
@@ -89,8 +86,7 @@ void TouchEvent::HandleEventCustomDetail() {
 
     float detail_x = 0.f, detail_y = 0.f;
     auto changed_touches = lepus::CArray::Create();
-    auto touches_with_deleted =
-        lepus::Value::Clone(TouchEvent::current_touches_);
+    auto touches_with_deleted = lepus::Value::Clone(GetCurrentTouches());
     for (const auto& target_touches : *(targets_touches_.Table())) {
       if (target_touches.second.IsArray()) {
         // touches: includes all touches on the same target.
@@ -128,7 +124,7 @@ void TouchEvent::HandleEventCustomDetail() {
           // it isn't in current_touches_, then insert it, or modify or delete
           // it
           bool in_current_touches = false;
-          const auto& current_touches = TouchEvent::current_touches_.Array();
+          const auto& current_touches = GetCurrentTouches().Array();
           for (size_t j = 0; j < current_touches->size(); ++j) {
             if (current_touches->get(j)
                     .Table()
@@ -164,8 +160,7 @@ void TouchEvent::HandleEventCustomDetail() {
     if (enable_multi_touch_params_compatible && type_ == EVENT_TOUCH_END) {
       dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
     } else {
-      dict.get()->SetValue(kTouches,
-                           lepus::Value::Clone(TouchEvent::current_touches_));
+      dict.get()->SetValue(kTouches, lepus::Value::Clone(GetCurrentTouches()));
     }
   } else {
     detail.get()->SetValue(kX, page_x_ / layouts_unit_per_px);
@@ -202,9 +197,15 @@ bool TouchEvent::HandleEventConflictAndParam() {
     return true;
   }
   if (type_ == EVENT_TOUCH_CANCEL) {
-    TouchEvent::current_touches_ = lepus::Value(lepus::CArray::Create());
+    GetCurrentTouches() = lepus::Value(lepus::CArray::Create());
   }
   return false;
+}
+
+lepus::Value& TouchEvent::GetCurrentTouches() {
+  // Save the finger information on the screen before the event is distributed.
+  static lepus::Value current_touches = lepus::Value(lepus::CArray::Create());
+  return current_touches;
 }
 
 }  // namespace event
