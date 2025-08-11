@@ -198,7 +198,7 @@ void qjsValueToJSONString(std::stringstream& ss, const lepus::Value& value,
 }
 
 void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
-                            bool ordered,
+                            bool ordered, bool fixed,
                             const std::shared_ptr<LepusValueSet>& all_set) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_VALUE_TO_JSON_STRING);
   if (value.IsJSValue()) {
@@ -221,7 +221,11 @@ void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
       ss << value.UInt32();
       break;
     case lepus::ValueType::Value_Double:
-      ss << value.Number();
+      if (fixed) {
+        ss << std::fixed << value.Number();
+      } else {
+        ss << value.Number();
+      }
       break;
     case lepus::ValueType::Value_Bool:
       ss << (value.Bool() ? "true" : "false");
@@ -246,7 +250,7 @@ void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
         for (auto it = table->begin(); it != table->end();) {
           ss << "\"" << it->first.str() << "\"";
           ss << ":";
-          lepusValueToJSONString(ss, it->second, ordered, all_set);
+          lepusValueToJSONString(ss, it->second, ordered, fixed, all_set);
           if (++it != table->end()) {
             ss << ",";
           }
@@ -265,7 +269,8 @@ void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
         for (auto it = temp_v.begin(); it != temp_v.end();) {
           ss << "\"" << it->str() << "\"";
           ss << ":";
-          lepusValueToJSONString(ss, table->GetValue(*it), ordered, all_set);
+          lepusValueToJSONString(ss, table->GetValue(*it), ordered, fixed,
+                                 all_set);
           if (++it != temp_v.end()) {
             ss << ",";
           }
@@ -283,7 +288,7 @@ void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
       auto array = value.Array();
       ss << "[";
       for (size_t i = 0; i < array->size(); ++i) {
-        lepusValueToJSONString(ss, array->get(i), ordered, all_set);
+        lepusValueToJSONString(ss, array->get(i), ordered, fixed, all_set);
         if (array->size() - 1 != i) {
           ss << ",";
         }
@@ -349,10 +354,11 @@ std::string lepusValueMapToJSONString(
   return ss.str();
 }
 
-std::string lepusValueToString(const lepus_value& value, bool ordered) {
+std::string lepusValueToString(const lepus_value& value, bool ordered,
+                               bool fixed) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LEPUS_VALUE_TO_STRING);
   std::stringstream ss;
-  lepusValueToJSONString(ss, value, ordered);
+  lepusValueToJSONString(ss, value, ordered, fixed);
   return ss.str();
 }
 

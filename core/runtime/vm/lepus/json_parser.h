@@ -37,15 +37,22 @@ lepus_value jsonValueTolepusValue(const char* json);
 std::string lepusValueToJSONString(const lepus_value& value,
                                    bool in_order = false);
 BASE_EXPORT_FOR_DEVTOOL std::string lepusValueToString(const lepus_value& value,
-                                                       bool ordered = false);
+                                                       bool ordered = false,
+                                                       bool fixed = false);
 std::string lepusValueMapToJSONString(
     const std::unordered_map<base::String, lepus::Value>& map,
     bool ordered = false);
 
 // If want the output keys to be ordered, the ordered must be true. Otherwise,
 // ordered can be false.
+// `fixed`: Whether double values are displayed in fixed-point notation (instead
+// of scientific notation).
+// For example:
+// Double number: 123123123123.0
+// Fixed-point (`fixed` is true): 123123123123.000000
+// Scientific (`fixed` is false): 1.23123e+11
 void lepusValueToJSONString(std::stringstream& ss, const lepus_value& value,
-                            bool ordered,
+                            bool ordered, bool fixed = false,
                             const std::shared_ptr<LepusValueSet>& all_set =
                                 std::make_shared<LepusValueSet>());
 

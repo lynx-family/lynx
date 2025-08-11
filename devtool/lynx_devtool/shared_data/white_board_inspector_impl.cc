@@ -70,7 +70,7 @@ void WhiteBoardInspectorImpl::GetSharedData(
   for (const auto& item : data) {
     auto lepus_value =
         pub::ValueUtils::ConvertValueToLepusValue(*(item.second));
-    auto str_value = lepus::lepusValueToString(lepus_value);
+    auto str_value = lepus::lepusValueToString(lepus_value, false, true);
     shared_data.emplace_back(std::make_pair(item.first, str_value));
   }
 }
