@@ -8804,6 +8804,7 @@ public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
   public float com.lynx.tasm.behavior.shadow.text.TextAttributes.mTextStrokeWidth mTextStrokeWidth;
   public BackgroundGradientLayer com.lynx.tasm.behavior.shadow.text.TextAttributes.mTextGradient mTextGradient;
   public int com.lynx.tasm.behavior.shadow.text.TextAttributes.getTypefaceStyle();
+  public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.isFontWeightBOLD();
   public TextAttributes com.lynx.tasm.behavior.shadow.text.TextAttributes.copy();
   public boolean com.lynx.tasm.behavior.shadow.text.TextAttributes.equals(Object o);
   public int com.lynx.tasm.behavior.shadow.text.TextAttributes.hashCode();
