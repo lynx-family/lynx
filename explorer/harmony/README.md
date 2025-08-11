@@ -31,7 +31,7 @@ Also, ensure the `hdc` and `ohpm` tools are in your `PATH`.
 Add the following lines to your shell configuration file:
 
 ```bash
-export PATH=/Applications/DevEco-Studio.app/Contents/tools/ohpm/bin:$DEVECO_SDK_HOME/default/openharmony/toolchains:$PATH
+export PATH=/Applications/DevEco-Studio.app/Contents/tools/ohpm/bin:$HARMONY_HOME/default/openharmony/toolchains:$PATH
 ```
 
 ## Get the Code
