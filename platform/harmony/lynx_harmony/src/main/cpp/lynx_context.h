@@ -114,6 +114,10 @@ class LynxContext {
 
   void SendGlobalEvent(lepus::Value params) const;
 
+  void SetEnableEventThrough(bool enable_event_through);
+
+  bool EnableEventThrough();
+
   void CallJSApiCallbackWithValue(int32_t callback_id,
                                   const lepus::Value& params) const;
 
@@ -294,6 +298,8 @@ class LynxContext {
   std::shared_ptr<PubLynxContextDelegate> delegate_{nullptr};
   pub::LynxExtensionDelegate* extension_delegate_{nullptr};
   napi_env env_;
+
+  bool enable_event_through_{false};
 };
 
 }  // namespace harmony

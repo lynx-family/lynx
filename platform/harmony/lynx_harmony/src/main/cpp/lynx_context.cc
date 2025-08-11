@@ -198,6 +198,12 @@ void LynxContext::SendGlobalEvent(lepus::Value params) const {
   CallJSFunction("GlobalEventEmitter", "emit", std::move(params));
 }
 
+void LynxContext::SetEnableEventThrough(bool enable_event_through) {
+  enable_event_through_ = enable_event_through;
+}
+
+bool LynxContext::EnableEventThrough() { return enable_event_through_; }
+
 void LynxContext::CallJSApiCallbackWithValue(int32_t callback_id,
                                              const lepus::Value& params) const {
   if (!runtime_proxy_) {

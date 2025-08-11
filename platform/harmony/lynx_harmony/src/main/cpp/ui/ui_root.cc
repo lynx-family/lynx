@@ -145,6 +145,14 @@ void UIRoot::OnNodeReady() {
   }
 }
 
+bool UIRoot::EventThrough() {
+  bool res = UIBase::EventThrough();
+  if (!res) {
+    res |= context_->EnableEventThrough();
+  }
+  return res;
+}
+
 void UIRoot::GetOffsetToScreen(float offset_screen[2]) {
   ArkUI_IntOffset page_offset;
   OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root_proxy_,
