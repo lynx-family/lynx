@@ -4288,8 +4288,8 @@ public class abstract com::lynx::tasm::behavior::ui::utils::LynxDrawableManager<
 public class com::lynx::jsbridge::LynxEmbeddedModule : com.lynx.jsbridge.LynxModule {
   public final String com.lynx.jsbridge.LynxEmbeddedModule.NAME NAME;
   public com.lynx.jsbridge.LynxEmbeddedModule.LynxEmbeddedModule(Context context, Object param);
-  public void com.lynx.jsbridge.LynxEmbeddedModule.updateData(final int lynxViewId, final ReadableMap params, final Callback resolve);
-  public TemplateData com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.updateData(final int lynxViewId, final ReadableMap params, final Callback resolve, final Callback reject);
+  public void com.lynx.jsbridge.LynxEmbeddedModule.getData(final int lynxViewId, final Callback resolve, final Callback reject);
 }
 
 public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder {
