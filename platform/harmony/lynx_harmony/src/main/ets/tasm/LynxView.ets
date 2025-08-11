@@ -117,6 +117,7 @@ export struct LynxView {
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
+  autoHeight?: boolean = false;
   /**
    * URL for LynxView, which will be parsed by ILynxTrailService in building LynxView.
    */
@@ -129,7 +130,7 @@ export struct LynxView {
   private nodeController?: LynxNodeController;
   private clients: LynxViewClient[] = [];
   // TODO(Jin song): rename to fitContent for lay out LynxView refer to the content size.
-  @Prop fitContentHeight: boolean = false;
+  @Prop fitContentHeight: boolean = this.autoHeight ?? false;
   //TODO(chengjunnan): This is an issue with OpenHarmony.
   // We have introduced an experimental switch as a temporary workaround for the abnormal layout problem in the waterfall flow scenario.
   // This switch will be removed once OpenHarmony is fixed. Please avoid using it unnecessarily.
