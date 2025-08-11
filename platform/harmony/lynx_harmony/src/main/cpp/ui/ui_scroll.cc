@@ -69,7 +69,7 @@ void UIScroll::InvokeMethod(
                lepus_value("params is not table!"));
     }
     // Compatible with historical logic without index parameter
-    int index{0};
+    int index{-1};
     float offset{0};
     bool smooth{false};
     const auto table = args.Table();
@@ -77,6 +77,14 @@ void UIScroll::InvokeMethod(
       if (k.IsEqual("index")) {
         if (v.IsNumber()) {
           index = static_cast<int>(v.Number());
+          if (index < 0 || index >= children_.size()) {
+            callback(LynxGetUIResult::PARAM_INVALID,
+                     lepus::Value(base::FormatString(
+                         "on the scrollTo() method, the index  %d is out of "
+                         "range [ 0, %d ]",
+                         index, children_.size())));
+            return;
+          }
         } else {
           index = -1;
         }
@@ -620,39 +628,30 @@ void UIScroll::InvokeScrollTo(
     return;
   }
 
-  if (index < 0 || index >= children_.size()) {
-    callback(
-        LynxGetUIResult::PARAM_INVALID,
-        lepus::Value(base::FormatString(
-            "on the scrollTo() method, the index  %d is out of range [ 0, %d ]",
-            index, children_.size())));
-
-    return;
-  }
   bool is_horizontal = IsHorizontal();
-  float can_scroll_distance = 0;
-  UIBase* targetView = children_[index];
-  // calculate the offset and distance
-  if (targetView) {
-    if (is_horizontal) {
-      offset += targetView->left_;
-      can_scroll_distance = content_width_;
-    } else {
-      offset += targetView->top_;
-      can_scroll_distance = content_height_;
+  float can_scroll_distance = is_horizontal ? content_width_ : content_height_;
+  if (index >= 0 && index < children_.size()) {
+    UIBase* targetView = children_[index];
+    // calculate the offset and distance
+    if (targetView) {
+      if (is_horizontal) {
+        offset += targetView->left_;
+      } else {
+        offset += targetView->top_;
+      }
     }
+  }
 
-    if (offset < 0 || offset > can_scroll_distance) {
-      callback(LynxGetUIResult::PARAM_INVALID, lepus_value(""));
-    } else {
-      ScrollTo((is_horizontal ? offset : 0), (is_horizontal ? 0 : offset),
-               smooth);
-      callback(
-          LynxGetUIResult::SUCCESS,
-          lepus_value(base::FormatString("Target scroll position %d is beyond "
-                                         "threshold.  [0,  %d ]",
-                                         offset, can_scroll_distance)));
-    }
+  if (offset < 0 || offset > can_scroll_distance) {
+    callback(LynxGetUIResult::PARAM_INVALID, lepus_value(""));
+  } else {
+    ScrollTo((is_horizontal ? offset : 0), (is_horizontal ? 0 : offset),
+             smooth);
+    callback(
+        LynxGetUIResult::SUCCESS,
+        lepus_value(base::FormatString("Target scroll position %d is beyond "
+                                       "threshold.  [0,  %d ]",
+                                       offset, can_scroll_distance)));
   }
 }
 

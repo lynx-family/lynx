@@ -31,6 +31,7 @@ class UIRoot : public UIView {
   void GetOffsetToScreen(float offset_screen[2]);
   bool IsVisible() override;
   void OnNodeReady() override;
+  bool EventThrough() override;
 
  protected:
   UIRoot(LynxContext* context, int sign, const std::string& tag);

@@ -955,45 +955,36 @@ void UIBase::SetHitSlop(const lepus::Value& value) {
   float slop = 0;
   if (value.IsString()) {
     slop = ToVPFromUnitValue(value.StdString());
-    if (base::FloatsNotEqual(slop, hit_slop_left_) ||
+    if (base::FloatsNotEqual(slop, -hit_slop_left_) ||
         base::FloatsNotEqual(slop, hit_slop_right_) ||
-        base::FloatsNotEqual(slop, hit_slop_top_) ||
+        base::FloatsNotEqual(slop, -hit_slop_top_) ||
         base::FloatsNotEqual(slop, hit_slop_bottom_)) {
       hit_slop_left_ = hit_slop_right_ = hit_slop_top_ = hit_slop_bottom_ =
           slop;
+      return;
     }
   }
 
-  if (!value.IsTable()) {
+  if (!value.IsObject()) {
     return;
   }
-  for (auto& it : *value.Table()) {
-    if (it.first.str() == "left") {
-      slop = ToVPFromUnitValue(it.second.StdString());
+  tasm::ForEachLepusValue(value, [this](const auto& key, const auto& val) {
+    auto slop = ToVPFromUnitValue(val.StdString());
+    if (key.StdString() == "left") {
       hit_slop_left_ =
           base::FloatsNotEqual(slop, hit_slop_left_) ? slop : hit_slop_left_;
-      continue;
-    }
-    if (it.first.str() == "right") {
-      slop = ToVPFromUnitValue(it.second.StdString());
+    } else if (key.StdString() == "right") {
       hit_slop_right_ =
           base::FloatsNotEqual(slop, hit_slop_right_) ? slop : hit_slop_right_;
-      continue;
-    }
-    if (it.first.str() == "top") {
-      slop = ToVPFromUnitValue(it.second.StdString());
+    } else if (key.StdString() == "top") {
       hit_slop_top_ =
           base::FloatsNotEqual(slop, hit_slop_top_) ? slop : hit_slop_top_;
-      continue;
-    }
-    if (it.first.str() == "bottom") {
-      slop = ToVPFromUnitValue(it.second.StdString());
+    } else if (key.StdString() == "bottom") {
       hit_slop_bottom_ = base::FloatsNotEqual(slop, hit_slop_bottom_)
                              ? slop
                              : hit_slop_bottom_;
-      continue;
     }
-  }
+  });
 }
 
 void UIBase::SetIgnoreFocus(const lepus::Value& value) {
@@ -1670,9 +1661,9 @@ void UIBase::GetOriginRect(float origin_rect[4]) {
 
 bool UIBase::ContainsPoint(float point[2]) {
   float x = point[0], y = point[1];
-  bool contain = base::FloatsLargerOrEqual(x, hit_slop_left_) &&
+  bool contain = base::FloatsLargerOrEqual(x, -hit_slop_left_) &&
                  base::FloatsLargerOrEqual(width_ + hit_slop_right_, x) &&
-                 base::FloatsLargerOrEqual(y, hit_slop_top_) &&
+                 base::FloatsLargerOrEqual(y, -hit_slop_top_) &&
                  base::FloatsLargerOrEqual(height_ + hit_slop_bottom_, y);
   if (!contain) {
     if (overflow_.overflow_x && overflow_.overflow_y) {
@@ -2038,7 +2029,7 @@ bool UIBase::EventThrough() {
 
   EventTarget* parent = this->ParentTarget();
   while (parent) {
-    if (!parent->ParentTarget()) {
+    if (parent == context_->Root()) {
       return false;
     }
     return parent->EventThrough();

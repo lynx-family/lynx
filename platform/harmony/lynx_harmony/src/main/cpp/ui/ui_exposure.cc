@@ -125,7 +125,16 @@ void UIExposure::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
 
 void UIExposure::StopExposure(const lepus::Value& options) {
   UnregisterExposureCheckCallBack();
-  if (options.IsTable() && options.Table()->GetValue("sendEvent").Bool()) {
+  bool is_send_event = false;
+  if (options.IsObject()) {
+    tasm::ForEachLepusValue(options,
+                            [&is_send_event](const auto& key, const auto& val) {
+                              if (key.StdString() == "sendEvent") {
+                                is_send_event = val.Bool();
+                              }
+                            });
+  }
+  if (is_send_event) {
     SendEvent(ui_visible_before_, "disexposure");
     ui_visible_before_.clear();
   }
@@ -301,23 +310,27 @@ bool UIExposure::IsLynxViewChanged() {
 }
 
 void UIExposure::SetObserverFrameRate(const lepus::Value& options) {
-  if (!options.IsTable()) {
+  if (!options.IsObject()) {
     return;
   }
 
-  int value = options.Table()->GetValue("forExposureCheck").Number();
-  if (0 < value && value <= 60) {
-    time_interval_for_exposure_check_ = std::max(16, 1000 / value);
-    ScheduleUIExposureCheck();
-  }
-
-  value = options.Table()->GetValue("forPageRect").Number();
-  if (0 <= value && value <= 60) {
-    time_interval_for_lynxview_check_ = value ? std::max(16, 1000 / value) : 0;
-    if (time_interval_for_lynxview_check_) {
-      ScheduleUIExposureCheck();
+  tasm::ForEachLepusValue(options, [this](const auto& key, const auto& val) {
+    int frequency = val.Number();
+    if (key.StdString() == "forExposureCheck") {
+      if (0 < frequency && frequency <= 60) {
+        time_interval_for_exposure_check_ = std::max(16, 1000 / frequency);
+        ScheduleUIExposureCheck();
+      }
+    } else if (key.StdString() == "forPageRect") {
+      if (0 <= frequency && frequency <= 60) {
+        time_interval_for_lynxview_check_ =
+            frequency ? std::max(16, 1000 / frequency) : 0;
+        if (time_interval_for_lynxview_check_) {
+          ScheduleUIExposureCheck();
+        }
+      }
     }
-  }
+  });
 }
 
 void UIExposure::AddCommonAncestorUI(UIBase* ui) {
