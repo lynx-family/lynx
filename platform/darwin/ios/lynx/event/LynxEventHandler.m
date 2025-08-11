@@ -402,7 +402,8 @@
   if (_touchTarget == nil || [_touchRecognizer isEnableAndGetMultiTouch]) {
     return;
   }
-  CGPoint clientPoint = [sender locationInView:nil];
+  // TODO(hexionghui): change other touch event's client position in 3.5.
+  CGPoint clientPoint = [sender locationInView:[LynxUIKitAPIAdapter getKeyWindow]];
   CGPoint pagePoint = [sender locationInView:_rootView];
   CGPoint viewPoint = pagePoint;
   if ([self.touchRecognizer.preTarget isKindOfClass:[LynxUI class]]) {
