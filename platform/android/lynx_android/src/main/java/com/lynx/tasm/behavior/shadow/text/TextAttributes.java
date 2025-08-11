@@ -113,7 +113,7 @@ public class TextAttributes {
     return style;
   }
 
-  private boolean isFontWeightBOLD() {
+  public boolean isFontWeightBOLD() {
     return mFontWeight == Typeface.BOLD
         || (mFontWeight >= FONTWEIGHT_500 && mFontWeight <= FONTWEIGHT_900);
   }
