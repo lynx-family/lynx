@@ -581,7 +581,12 @@ void UIOwner::InvokeUIMethod(
                                          const lepus::Value& data) {
           callback(code, PubLepusValue(data));
         };
-    it->second->InvokeMethod(method, map, std::move(cb));
+
+    if (map.IsJSValue()) {
+      it->second->InvokeMethod(method, map.ToLepusValue(), std::move(cb));
+    } else {
+      it->second->InvokeMethod(method, map, std::move(cb));
+    }
   }
 }
 
