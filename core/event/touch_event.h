@@ -21,8 +21,6 @@ namespace event {
 
 class TouchEvent : public Event {
  public:
-  // Save the finger information on the screen before the event is distributed.
-  static lepus::Value current_touches_;
   // Indicates whether a long press event is triggered and consumed.
   static bool long_press_consumed_;
 
@@ -44,6 +42,8 @@ class TouchEvent : public Event {
   void HandleEventCustomDetail() override;
 
   bool HandleEventConflictAndParam() override;
+
+  lepus::Value& GetCurrentTouches();
 
  private:
   float x_;
