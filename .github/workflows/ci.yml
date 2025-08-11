@@ -340,6 +340,11 @@ jobs:
         with:
           java-version: 17
           distribution: 'zulu'
+      - name: Gradle Wrapper Cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: gradle-${{ runner.os }}
       - name: Start Android 28 emulator
         run: |
           set -x
@@ -493,6 +498,11 @@ jobs:
         with:
           java-version: 17
           distribution: 'zulu'
+      - name: Gradle Wrapper Cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: gradle-${{ runner.os }}
       - name: Build With Local AAR
         id: build_apk
         run: |
