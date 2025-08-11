@@ -7,9 +7,18 @@
  */
 export interface TraceOption {
   /**
-   * An optional unique identifier for tracing the event flow.
+   * An optional unique identifier for tracing a single event flow.
+   * 
+   * Note: If `flowIds` is set, this parameter will be ignored.
    */
   flowId?: number;
+
+  /**
+   * An optional unique identifier for tracing multiple event flows.
+   * Support from Lynx 3.5
+   */
+  flowIds?: number[];
+
   /**
    * An optional collection of key-value pairs providing additional context for the tracing event.
    */

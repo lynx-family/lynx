@@ -6075,6 +6075,17 @@ static void HandleProfileNameAndOption(
             }
           });
     }
+    auto flow_ids = arg1->GetProperty(BASE_STATIC_STRING(runtime::kFlowIds));
+    if (flow_ids.IsArrayOrJSArray()) {
+      tasm::ForEachLepusValue(
+          flow_ids, [&event_context](const auto& index, const auto& value) {
+            if (value.IsNumber()) {
+              event_context.event()->add_flow_ids(value.Number());
+            }
+          });
+      return;
+    }
+
     auto flow_id = arg1->GetProperty(BASE_STATIC_STRING(runtime::kFlowId));
     if (flow_id.IsNumber()) {
       event_context.event()->add_flow_ids(flow_id.Number());

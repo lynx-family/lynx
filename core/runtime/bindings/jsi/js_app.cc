@@ -115,6 +115,16 @@ static void HandleProfileNameAndOption(const piper::Value* args, size_t count,
     }
     ctx.event()->add_debug_annotations("runtime_id",
                                        std::to_string(rt.getRuntimeId()));
+    auto flow_ids = option->GetProperty(BASE_STATIC_STRING(runtime::kFlowIds));
+    if (flow_ids.IsArrayOrJSArray()) {
+      tasm::ForEachLepusValue(flow_ids,
+                              [&ctx](const auto& index, const auto& value) {
+                                if (value.IsNumber()) {
+                                  ctx.event()->add_flow_ids(value.Number());
+                                }
+                              });
+      return;
+    }
     auto flow_id = option->GetProperty(BASE_STATIC_STRING(runtime::kFlowId));
     if (flow_id.IsNumber()) {
       ctx.event()->add_flow_ids(flow_id.Number());

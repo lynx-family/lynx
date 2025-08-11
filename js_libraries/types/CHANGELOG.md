@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.5.0
+- Add a new `flowIds` subfield to the TraceOption parameter in the Trace API to support one-to-many trace associations.
+
 ## 3.4.9
 - Add more interface for `scroll-view`.
 
