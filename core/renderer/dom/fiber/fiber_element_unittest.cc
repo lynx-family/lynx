@@ -1724,6 +1724,25 @@ TEST_P(FiberElementTest, RemoveWrapperElementCase02) {
                                      text->impl_id(), -1));
   page->FlushActionsAsRoot();
 
+  // check dom tree
+  EXPECT_TRUE(page->scoped_children_.size() == 3);
+  EXPECT_TRUE(page->scoped_children_[0] == element0);
+  EXPECT_TRUE(page->scoped_children_[1] == element_before_black);
+  EXPECT_TRUE(page->scoped_children_[2] == wrapper);
+
+  // check page painting node tree
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context->Flush();
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  auto page_painting_children = page_painting_node->children_;
+  EXPECT_TRUE(page_painting_children.size() == 3);
+  EXPECT_TRUE(page_painting_children[0]->id_ == element0->impl_id());
+  EXPECT_TRUE(page_painting_children[1]->id_ ==
+              element_before_black->impl_id());
+  EXPECT_TRUE(page_painting_children[2]->id_ == first_wrapper_child->impl_id());
+
   // remove wrapper
   page->RemoveNode(wrapper);
 
@@ -1736,12 +1755,11 @@ TEST_P(FiberElementTest, RemoveWrapperElementCase02) {
   EXPECT_TRUE(page->scoped_children_[1] == element_before_black);
 
   // check page painting node tree
-  auto painting_context =
+  painting_context =
       static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
   painting_context->Flush();
-  auto* page_painting_node =
-      painting_context->node_map_.at(page->impl_id()).get();
-  auto page_painting_children = page_painting_node->children_;
+  page_painting_node = painting_context->node_map_.at(page->impl_id()).get();
+  page_painting_children = page_painting_node->children_;
   EXPECT_TRUE(page_painting_children.size() == 2);
   EXPECT_TRUE(page_painting_children[0]->id_ == element0->impl_id());
   EXPECT_TRUE(page_painting_children[1]->id_ ==
@@ -13970,6 +13988,296 @@ TEST_P(FiberElementTest, FontSizeResetTest) {
   page->FlushActionsAsRoot();
   EXPECT_TRUE(text->GetFontSize() ==
               manager->GetLynxEnvConfig().PageDefaultFontSize());
+}
+
+TEST_P(FiberElementTest, TransitionToNativeViewTest) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDFontFamily};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+  // class .root
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDFontFamily;
+    auto impl = lepus::Value("icon-font");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".root";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto container = manager->CreateFiberNode("view");
+  container->parent_component_element_ = page.get();
+  container->SetClass("root");
+  page->InsertNode(container);
+
+  auto parent = manager->CreateFiberNode("view");
+  container->parent_component_element_ = page.get();
+  container->InsertNode(parent);
+
+  auto image_element = manager->CreateFiberImage("image");
+  image_element->parent_component_element_ = page.get();
+  image_element->SetAttribute("src", lepus::Value("https://fakeimage"));
+  parent->InsertNode(image_element);
+
+  auto view_element0 = manager->CreateFiberNode("view");
+  view_element0->parent_component_element_ = page.get();
+  parent->InsertNode(view_element0);
+
+  auto text_element0 = manager->CreateFiberText("text");
+  text_element0->parent_component_element_ = page.get();
+  text_element0->SetAttribute("text", lepus::Value("dummy text"));
+  view_element0->InsertNode(text_element0);
+
+  page->FlushActionsAsRoot();
+
+  auto parent_element_container = parent->element_container();
+  EXPECT_TRUE(parent_element_container->children().size() == 2);
+  EXPECT_TRUE(parent_element_container->children()[0] ==
+              image_element->element_container());
+  EXPECT_TRUE(parent_element_container->children()[1] ==
+              view_element0->element_container());
+}
+
+TEST_P(FiberElementTest, TestTwoLevelReplaceElements) {
+  // styles for fiber_element
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+  CSSParserTokenMap indexTokensMap;
+  // class .test
+  {
+    auto id = CSSPropertyID::kPropertyIDZIndex;
+    auto impl = lepus::Value(2);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".test";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+  auto container1 = manager->CreateFiberNode("view");
+  container1->parent_component_element_ = page.get();
+  container1->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container1);
+  auto container2 = manager->CreateFiberNode("view");
+  container2->parent_component_element_ = page.get();
+  container2->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container2);
+  auto container3 = manager->CreateFiberNode("view");
+  container3->parent_component_element_ = page.get();
+  container3->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container3);
+  auto z_index_element_1 = manager->CreateFiberNode("view");
+  z_index_element_1->parent_component_element_ = page.get();
+  z_index_element_1->SetClass("test");
+  z_index_element_1->overflow_ = Element::OVERFLOW_HIDDEN;
+  container1->InsertNode(z_index_element_1);
+
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  EXPECT_TRUE(page_painting_node->children_.size() == 4);
+
+  tasm_mediator.captured_remove_id_pairs_.clear();
+
+  auto z_index_element_2 = manager->CreateFiberNode("view");
+  z_index_element_2->parent_component_element_ = page.get();
+  z_index_element_2->overflow_ = Element::OVERFLOW_HIDDEN;
+  z_index_element_2->SetStyle(kPropertyIDZIndex, lepus::Value(1));
+  auto z_index_element_3 = manager->CreateFiberNode("view");
+  z_index_element_3->parent_component_element_ = page.get();
+  z_index_element_3->overflow_ = Element::OVERFLOW_HIDDEN;
+  z_index_element_3->SetStyle(kPropertyIDZIndex, lepus::Value(0));
+
+  base::Vector<fml::RefPtr<FiberElement>> child_inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> child_removed_elements{};
+  child_inserted_elements.emplace_back(z_index_element_1);
+  child_inserted_elements.emplace_back(z_index_element_2);
+  child_inserted_elements.emplace_back(z_index_element_3);
+  child_removed_elements.emplace_back(z_index_element_1);
+  container1->ReplaceElements(child_inserted_elements, child_removed_elements,
+                              nullptr);
+
+  base::Vector<fml::RefPtr<FiberElement>> container_inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> container_removed_elements{};
+  container_inserted_elements.emplace_back(container1);
+  container_inserted_elements.emplace_back(container2);
+  container_inserted_elements.emplace_back(container3);
+  container_removed_elements.emplace_back(container1);
+  container_removed_elements.emplace_back(container2);
+  container_removed_elements.emplace_back(container3);
+  page->ReplaceElements(container_inserted_elements, container_removed_elements,
+                        nullptr);
+
+  page->FlushActionsAsRoot();
+
+  painting_context->Flush();
+
+  EXPECT_TRUE(page_painting_node->children_.size() == 5);
+  EXPECT_TRUE(page->element_container()->children().size() == 5);
+  EXPECT_TRUE(page->element_container()->children()[0] ==
+              container1->element_container());
+  EXPECT_TRUE(page->element_container()->children()[1] ==
+              container2->element_container());
+  EXPECT_TRUE(page->element_container()->children()[2] ==
+              container3->element_container());
+  EXPECT_TRUE(page->element_container()->children()[3] ==
+              z_index_element_1->element_container());
+  EXPECT_TRUE(page->element_container()->children()[4] ==
+              z_index_element_2->element_container());
+  EXPECT_TRUE(HasCapturedLayoutContextRemoveIDPairExactlyNTimes(
+      container1->impl_id(), z_index_element_1->impl_id(), 1));
+}
+
+TEST_P(FiberElementTest, TestTwoLevelReplaceElements01) {
+  manager->fix_remove_twice_for_fiber_ = true;
+  // styles for fiber_element
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+  CSSParserTokenMap indexTokensMap;
+  // class .test
+  {
+    auto id = CSSPropertyID::kPropertyIDZIndex;
+    auto impl = lepus::Value(2);
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".test";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+  auto container1 = manager->CreateFiberNode("view");
+  container1->parent_component_element_ = page.get();
+  container1->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container1);
+  auto container2 = manager->CreateFiberNode("view");
+  container2->parent_component_element_ = page.get();
+  container2->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container2);
+  auto container3 = manager->CreateFiberNode("view");
+  container3->parent_component_element_ = page.get();
+  container3->overflow_ = Element::OVERFLOW_HIDDEN;
+  page->InsertNode(container3);
+  auto z_index_element_1 = manager->CreateFiberNode("view");
+  z_index_element_1->parent_component_element_ = page.get();
+  z_index_element_1->SetClass("test");
+  z_index_element_1->overflow_ = Element::OVERFLOW_HIDDEN;
+  container1->InsertNode(z_index_element_1);
+
+  page->FlushActionsAsRoot();
+
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* page_painting_node =
+      painting_context->node_map_.at(page->impl_id()).get();
+  EXPECT_TRUE(page_painting_node->children_.size() == 4);
+
+  tasm_mediator.captured_remove_id_pairs_.clear();
+
+  auto z_index_element_2 = manager->CreateFiberNode("view");
+  z_index_element_2->parent_component_element_ = page.get();
+  z_index_element_2->overflow_ = Element::OVERFLOW_HIDDEN;
+  z_index_element_2->SetStyle(kPropertyIDZIndex, lepus::Value(1));
+  auto z_index_element_3 = manager->CreateFiberNode("view");
+  z_index_element_3->parent_component_element_ = page.get();
+  z_index_element_3->overflow_ = Element::OVERFLOW_HIDDEN;
+  z_index_element_3->SetStyle(kPropertyIDZIndex, lepus::Value(0));
+
+  base::Vector<fml::RefPtr<FiberElement>> child_inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> child_removed_elements{};
+  child_inserted_elements.emplace_back(z_index_element_1);
+  child_inserted_elements.emplace_back(z_index_element_2);
+  child_inserted_elements.emplace_back(z_index_element_3);
+  child_removed_elements.emplace_back(z_index_element_1);
+  container1->ReplaceElements(child_inserted_elements, child_removed_elements,
+                              nullptr);
+
+  base::Vector<fml::RefPtr<FiberElement>> container_inserted_elements{};
+  base::Vector<fml::RefPtr<FiberElement>> container_removed_elements{};
+  container_inserted_elements.emplace_back(container1);
+  container_inserted_elements.emplace_back(container2);
+  container_inserted_elements.emplace_back(container3);
+  container_removed_elements.emplace_back(container1);
+  container_removed_elements.emplace_back(container2);
+  container_removed_elements.emplace_back(container3);
+  page->ReplaceElements(container_inserted_elements, container_removed_elements,
+                        nullptr);
+
+  page->FlushActionsAsRoot();
+
+  painting_context->Flush();
+
+  EXPECT_TRUE(page_painting_node->children_.size() == 5);
+  EXPECT_TRUE(page->element_container()->children().size() == 5);
+  EXPECT_TRUE(page->element_container()->children()[0] ==
+              container1->element_container());
+  EXPECT_TRUE(page->element_container()->children()[1] ==
+              container2->element_container());
+  EXPECT_TRUE(page->element_container()->children()[2] ==
+              container3->element_container());
+  EXPECT_TRUE(page->element_container()->children()[3] ==
+              z_index_element_1->element_container());
+  EXPECT_TRUE(page->element_container()->children()[4] ==
+              z_index_element_2->element_container());
+  EXPECT_TRUE(HasCapturedLayoutContextRemoveIDPairExactlyNTimes(
+      container1->impl_id(), z_index_element_1->impl_id(), 1));
+  manager->fix_remove_twice_for_fiber_ = false;
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,

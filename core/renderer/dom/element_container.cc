@@ -23,6 +23,12 @@ ElementContainer::ElementContainer(Element* element) : element_(element) {
   was_stacking_context_ = IsStackingContextNode();
   was_position_fixed_ = element->IsNewFixed();
   old_index_ = ZIndex();
+  if (!element_->IsFiberArch() &&
+      !element_->element_manager()->GetEnableFiberElementForRadonDiff()) {
+    // non fiber element is ready to use immediately when creating
+    element_prepared_.store(true);
+    ready_to_use_ = true;
+  }
 }
 
 ElementContainer::~ElementContainer() {
@@ -47,6 +53,9 @@ ElementContainer::~ElementContainer() {
 int ElementContainer::id() const { return element_->impl_id(); }
 
 void ElementContainer::AddChild(ElementContainer* child, int index) {
+  if (!ready_to_use_ || !child->ready_to_use_) {
+    return;
+  }
   if (child->parent()) {
     child->RemoveFromParent(true);
   }
@@ -587,6 +596,15 @@ ElementManager* ElementContainer::element_manager() {
 
 bool ElementContainer::IsStackingContextNode() {
   return element()->IsStackingContextNode();
+}
+
+void ElementContainer::NotifyReadyToUse() {
+  if (element_prepared_.load()) {
+    return;
+  }
+  element_prepared_.store(true);
+  was_stacking_context_ = IsStackingContextNode();
+  ready_to_use_ = true;
 }
 
 bool ElementContainer::IsSticky() { return element()->is_sticky(); }

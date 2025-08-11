@@ -268,6 +268,16 @@ bool FiberElementTest::HasCaptureSignWithFontSize(int32_t target_id,
   return count == 0;
 }
 
+bool FiberElementTest::HasCapturedLayoutContextRemoveIDPairExactlyNTimes(
+    int32_t parent_id, int32_t child_id, int32_t count) {
+  return std::count_if(tasm_mediator.captured_remove_id_pairs_.begin(),
+                       tasm_mediator.captured_remove_id_pairs_.end(),
+                       [&](const std::pair<int32_t, int32_t>& pair) {
+                         return pair.first == parent_id &&
+                                pair.second == child_id;
+                       }) == count;
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

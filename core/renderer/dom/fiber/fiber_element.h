@@ -1089,6 +1089,8 @@ class FiberElement : public Element,
 
   virtual void DispatchLayoutBefore();
 
+  void NotifyElementContainerPrepared();
+
   // relevant to hierarchy
   base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>
       scoped_children_;
