@@ -5,10 +5,12 @@ package com.lynx.tasm.behavior.shadow.text;
 
 import static org.mockito.Mockito.mock;
 
+import android.graphics.Typeface;
 import android.text.Layout;
 import com.lynx.react.bridge.DynamicFromMap;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.behavior.LayoutNodeManager;
+import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.LayoutNode;
 import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
@@ -74,5 +76,18 @@ public class TextShadowNodeTest {
         textShadowNode.getTextRenderer().getTextLayout().getLineCount() == 2
             && String.valueOf(textShadowNode.getTextRenderer().getTextLayout().getText())
                    .endsWith("truncation"));
+  }
+
+  @Test
+  public void testUpdateFontWeight() {
+    textShadowNode.setFontStyle(StyleConstants.FONTSTYLE_ITALIC);
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getFontStyle());
+
+    textShadowNode.setFontWeight(StyleConstants.FONTWEIGHT_700);
+    Assert.assertEquals(Typeface.ITALIC, textShadowNode.getTextAttributes().getFontStyle());
+    Assert.assertEquals(
+        StyleConstants.FONTWEIGHT_700, textShadowNode.getTextAttributes().getFontWeight());
+    Assert.assertEquals(
+        Typeface.BOLD_ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
   }
 }

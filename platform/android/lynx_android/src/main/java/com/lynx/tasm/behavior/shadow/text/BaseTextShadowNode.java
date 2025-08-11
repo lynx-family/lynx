@@ -161,30 +161,8 @@ public class BaseTextShadowNode extends ShadowNode {
 
   @LynxProp(name = PropsConstants.FONT_WEIGHT, defaultInt = FONTWEIGHT_NORMAL)
   public void setFontWeight(int fontWeightNumeric) {
-    int fontWeight = fontWeightNumeric;
-    int fontStyle = Typeface.NORMAL;
-    switch (fontWeightNumeric) {
-      case FONTWEIGHT_BOLD:
-      case FONTWEIGHT_500:
-      case FONTWEIGHT_600:
-      case FONTWEIGHT_700:
-      case FONTWEIGHT_800:
-      case FONTWEIGHT_900:
-        fontStyle = Typeface.BOLD;
-        break;
-      case FONTWEIGHT_NORMAL:
-      case FONTWEIGHT_100:
-      case FONTWEIGHT_200:
-      case FONTWEIGHT_300:
-      case FONTWEIGHT_400:
-        fontStyle = Typeface.NORMAL;
-        break;
-      default:
-        break;
-    }
-    if (fontWeight != mTextAttributes.mFontWeight) {
-      mTextAttributes.mFontWeight = fontWeight;
-      mTextAttributes.mFontStyle = fontStyle;
+    if (fontWeightNumeric != mTextAttributes.mFontWeight) {
+      mTextAttributes.mFontWeight = fontWeightNumeric;
       markDirty();
     }
   }
