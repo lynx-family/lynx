@@ -61,7 +61,7 @@ rapidjson::Value ElementDumpHelper::DumpToJSON(Element* element,
       rapidjson::Value key(key_str, allocator);
 
       rapidjson::Document temp_doc;
-      const auto& value_str = lepus::lepusValueToString(it->second);
+      const auto& value_str = lepus::lepusValueToString(it->second, true);
       temp_doc.Parse(value_str);
       if (temp_doc.IsObject()) {
         std::sort(temp_doc.MemberBegin(), temp_doc.MemberEnd(),
@@ -130,7 +130,7 @@ lepus::Value ElementDumpHelper::DumpToSnapshot(Element* element,
       for (auto& it : ordered_computed_styles_map) {
         styles->SetValue(
             CSSProperty::GetPropertyName(it.first),
-            tasm::CSSDecoder::CSSValueToString(it.first, it.second));
+            tasm::CSSDecoder::CSSValueToString(it.first, it.second, true));
       }
 
       // The name `computed-style` is from DOM spec
@@ -186,7 +186,8 @@ void ElementDumpHelper::DumpToMarkup(Element* element, std::ostringstream& ss,
       ss << " computed-style=\"";
       for (auto& it : ordered_computed_styles_map) {
         ss << CSSProperty::GetPropertyName(it.first).str() << ": "
-           << tasm::CSSDecoder::CSSValueToString(it.first, it.second) << "; ";
+           << tasm::CSSDecoder::CSSValueToString(it.first, it.second, true)
+           << "; ";
       }
       ss << "\"";
     }
@@ -247,7 +248,7 @@ rapidjson::Value ElementDumpHelper::DumpComponentInfoMap(
        it != ordered_component_info_map.end(); ++it) {
     rapidjson::Value key((it->first).str(), allocator);
     lepus::Value lepus_val = it->second;
-    std::string json_str = lepusValueToJSONString(lepus_val);
+    std::string json_str = lepusValueToJSONString(lepus_val, true);
     rapidjson::Value val(json_str, allocator);
     component_info_value.AddMember(key, val, allocator);
   }
@@ -314,9 +315,9 @@ rapidjson::Value ElementDumpHelper::RadonNodeDumpToJSON(
                    it != ordered_cached_styles_map.end(); ++it) {
                 rapidjson::Value key(
                     CSSProperty::GetPropertyName(it->first).str(), allocator);
-                rapidjson::Value val(
-                    tasm::CSSDecoder::CSSValueToString(it->first, it->second),
-                    allocator);
+                rapidjson::Value val(tasm::CSSDecoder::CSSValueToString(
+                                         it->first, it->second, true),
+                                     allocator);
                 cached_styles_value.AddMember(key, val, allocator);
               }
               target.AddMember("Cached Styles", cached_styles_value, allocator);
@@ -386,7 +387,8 @@ rapidjson::Value ElementDumpHelper::DumpAttributeToJSON(
       rapidjson::Value key(CSSProperty::GetPropertyName(it->first).str(),
                            allocator);
       rapidjson::Value val(
-          tasm::CSSDecoder::CSSValueToString(it->first, it->second), allocator);
+          tasm::CSSDecoder::CSSValueToString(it->first, it->second, true),
+          allocator);
       inline_styles_value.AddMember(key, val, allocator);
     }
     value.AddMember("Inline Styles", inline_styles_value, allocator);
@@ -410,7 +412,8 @@ rapidjson::Value ElementDumpHelper::DumpAttributeToJSON(
       rapidjson::Value key(CSSProperty::GetPropertyName(it->first).str(),
                            allocator);
       rapidjson::Value val(
-          tasm::CSSDecoder::CSSValueToString(it->first, it->second), allocator);
+          tasm::CSSDecoder::CSSValueToString(it->first, it->second, true),
+          allocator);
       inline_styles_value.AddMember(key, val, allocator);
     }
     value.AddMember("Inline Styles", inline_styles_value, allocator);
@@ -509,7 +512,7 @@ void ElementDumpHelper::DumpAttributeToLepusValue(
     for (auto& it : ordered_inline_styles_map) {
       inline_styles->SetValue(
           CSSProperty::GetPropertyName(it.first),
-          tasm::CSSDecoder::CSSValueToString(it.first, it.second));
+          tasm::CSSDecoder::CSSValueToString(it.first, it.second, true));
     }
 
     props->SetValue("style", inline_styles);
@@ -594,7 +597,8 @@ void ElementDumpHelper::DumpAttributeToMarkup(std::ostringstream& ss,
     ss << " style=\"";
     for (auto& it : ordered_inline_styles_map) {
       ss << CSSProperty::GetPropertyName(it.first).str() << ": "
-         << tasm::CSSDecoder::CSSValueToString(it.first, it.second) << "; ";
+         << tasm::CSSDecoder::CSSValueToString(it.first, it.second, true)
+         << "; ";
     }
     ss << "\"";
   }
@@ -697,7 +701,8 @@ rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
       rapidjson::Value key(CSSProperty::GetPropertyName(it.first).str(),
                            allocator);
       rapidjson::Value val(
-          tasm::CSSDecoder::CSSValueToString(it.first, it.second), allocator);
+          tasm::CSSDecoder::CSSValueToString(it.first, it.second, true),
+          allocator);
       inline_styles_value.AddMember(key, val, allocator);
     }
     value.AddMember("Inline Styles", inline_styles_value, allocator);
@@ -712,7 +717,8 @@ rapidjson::Value ElementDumpHelper::DumpFiberElementToJSON(
       rapidjson::Value key(CSSProperty::GetPropertyName(it.first).str(),
                            allocator);
       rapidjson::Value val(
-          tasm::CSSDecoder::CSSValueToString(it.first, it.second), allocator);
+          tasm::CSSDecoder::CSSValueToString(it.first, it.second, true),
+          allocator);
       parsed_styles_value.AddMember(key, val, allocator);
     }
     value.AddMember("Parsed Styles", parsed_styles_value, allocator);

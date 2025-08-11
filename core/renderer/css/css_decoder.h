@@ -18,7 +18,8 @@ namespace tasm {
 class CSSDecoder : public AutoGenCSSDecoder {
  public:
   static std::string CSSValueToString(const lynx::tasm::CSSPropertyID id,
-                                      const lynx::tasm::CSSValue& value);
+                                      const lynx::tasm::CSSValue& value,
+                                      bool map_key_ordered = false);
   static std::string CSSValueEnumToString(const lynx::tasm::CSSPropertyID id,
                                           const lynx::tasm::CSSValue& value);
 

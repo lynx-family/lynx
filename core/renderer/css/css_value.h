@@ -219,7 +219,7 @@ class BASE_EXPORT_FOR_DEVTOOL CSSValue {
 
   bool AsBool() const;
 
-  std::string AsJsonString() const;
+  std::string AsJsonString(bool map_key_ordered = false) const;
 
   friend bool operator==(const CSSValue& left, const CSSValue& right) {
     return left.pattern_ == right.pattern_ && left.value_ == right.value_;

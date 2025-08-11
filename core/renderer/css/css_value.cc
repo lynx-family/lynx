@@ -8,8 +8,8 @@
 namespace lynx {
 namespace tasm {
 
-std::string CSSValue::AsJsonString() const {
-  return lepus::lepusValueToString(value_);
+std::string CSSValue::AsJsonString(bool map_key_ordered) const {
+  return lepus::lepusValueToString(value_, map_key_ordered);
 }
 
 bool CSSValue::AsBool() const { return value_.Bool(); }

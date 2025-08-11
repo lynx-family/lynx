@@ -68,7 +68,8 @@ std::string NumberToLineHeightString(double number) {
 }  // namespace
 
 std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
-                                         const lynx::tasm::CSSValue &value) {
+                                         const lynx::tasm::CSSValue &value,
+                                         bool map_key_ordered) {
   if (value.IsEmpty()) {
     return "";
   } else if (value.IsString()) {
@@ -103,7 +104,7 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
     return CSSValueArrayToString(id, value);
   } else if (value.IsMap()) {
     // TODO(liyanbo): de parser map type.
-    return value.AsJsonString();
+    return value.AsJsonString(map_key_ordered);
   } else if (value.IsEnum()) {
     return CSSValueEnumToString(id, value);
   } else if (value.IsBoolean()) {
