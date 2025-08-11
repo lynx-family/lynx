@@ -5,6 +5,7 @@ package com.lynx.jsbridge;
 
 import android.content.Context;
 import com.lynx.react.bridge.Callback;
+import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.LynxUpdateMeta;
 import com.lynx.tasm.LynxView;
@@ -36,9 +37,13 @@ public class LynxEmbeddedModule extends LynxModule {
   }
 
   @LynxMethod
-  public void updateData(final int lynxViewId, final ReadableMap params, final Callback resolve) {
+  public void updateData(final int lynxViewId, final ReadableMap params, final Callback resolve,
+      final Callback reject) {
     LynxView lynxView = getLynxViewById(lynxViewId);
     if (lynxView == null) {
+      JavaOnlyMap error = new JavaOnlyMap();
+      error.put("message", "Cannot get related lynxView (ID: " + lynxViewId + ")");
+      reject.invoke(error);
       return;
     }
     UIThreadUtils.runOnUiThread(new Runnable() {
@@ -52,11 +57,20 @@ public class LynxEmbeddedModule extends LynxModule {
     });
   }
   @LynxMethod
-  public TemplateData getData(final int lynxViewId) {
+  public void getData(final int lynxViewId, final Callback resolve, final Callback reject) {
     LynxView lynxView = getLynxViewById(lynxViewId);
-    if (lynxView != null) {
-      return lynxView.getTemplateData();
+    if (lynxView == null) {
+      JavaOnlyMap error = new JavaOnlyMap();
+      error.put("message", "Cannot get related lynxView (ID: " + lynxViewId + ")");
+      reject.invoke(error);
+      return;
     }
-    return null;
+    UIThreadUtils.runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        TemplateData data = lynxView.getTemplateData();
+        resolve.invoke(data);
+      }
+    });
   }
 }
