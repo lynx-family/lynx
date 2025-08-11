@@ -73,8 +73,8 @@ id convertLepusValueToNSObject(const lepus_value &value) {
 }
 
 static NSArray *convertLepusArrayToNSArray(const lepus_value &value) {
-  NSMutableArray *nsArr = [[NSMutableArray alloc] init];
   auto arr = value.Array();
+  NSMutableArray *nsArr = [[NSMutableArray alloc] initWithCapacity:arr->size()];
   for (size_t i = 0; i < arr->size(); i++) {
     auto v = arr->get(i);
     id nsValue = convertLepusValueToNSObject(v);
@@ -82,12 +82,12 @@ static NSArray *convertLepusArrayToNSArray(const lepus_value &value) {
       [nsArr addObject:nsValue];
     }
   }
-  return [nsArr copy];
+  return nsArr;
 }
 
 static NSDictionary *convertLepusTableToNSDictionary(const lepus_value &value) {
-  NSMutableDictionary *nsDict = [[NSMutableDictionary alloc] init];
   auto table = value.Table();
+  NSMutableDictionary *nsDict = [[NSMutableDictionary alloc] initWithCapacity:table->size()];
   for (auto iter = table->begin(); iter != table->end(); iter++) {
     NSString *key = convertCStringToNSString(iter->first.c_str());
     id nsValue = convertLepusValueToNSObject(iter->second);
@@ -95,7 +95,7 @@ static NSDictionary *convertLepusTableToNSDictionary(const lepus_value &value) {
       [nsDict setValue:nsValue forKey:key];
     }
   }
-  return [nsDict copy];
+  return nsDict;
 }
 
 static id convertQjsValueToNSObject(const lepus::Value &value) {
