@@ -19,6 +19,7 @@ static Value Freeze(VMContext* context) {
   Value result = Value(Dictionary::Create());
   auto object_table = object.Table();
   auto result_table = result.Table();
+  result_table->reserve(object_table->size());
   for (auto iter = object_table->begin(); iter != object_table->end(); iter++) {
     result_table->SetValue(iter->first, iter->second);
   }

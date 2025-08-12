@@ -24,6 +24,7 @@ class JavaOnlyMap {
   // arguments: JNIENV, JavaOnlyMap, jstring key, std::string key
   using ForEachClosure = base::MoveOnlyClosure<void, JNIEnv*, jobject, jstring,
                                                const std::string&>;
+  using OnSizeAwareClosure = base::MoveOnlyClosure<void, jint>;
 
   JavaOnlyMap();
 
@@ -87,7 +88,8 @@ class JavaOnlyMap {
   static JavaValue JavaOnlyMapGetJavaValueAtIndex(JNIEnv* env, jobject map,
                                                   jstring key);
 
-  static void ForEach(JNIEnv* env, jobject map, ForEachClosure closure);
+  static void ForEach(JNIEnv* env, jobject map, ForEachClosure closure,
+                      OnSizeAwareClosure size_aware_closure = nullptr);
 
  private:
   base::android::ScopedGlobalJavaRef<jobject> jni_object_;

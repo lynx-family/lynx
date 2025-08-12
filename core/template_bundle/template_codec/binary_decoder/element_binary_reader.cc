@@ -645,6 +645,7 @@ bool ElementBinaryReader::DecodeAttributesSection(ElementInfo& info) {
 bool ElementBinaryReader::DecodeDatasetSection(ElementInfo& info) {
   DECODE_COMPACT_U32(size);
   auto table = lepus::Dictionary::Create();
+  table->reserve(size);
   for (uint32_t i = 0; i < size; ++i) {
     DECODE_STR(key);
     DECODE_VALUE_INTO(

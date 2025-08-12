@@ -198,6 +198,9 @@ lepus::Value ValueConverterAndroid::ConvertJavaOnlyArrayToLepus(JNIEnv* env,
 lepus::Value ValueConverterAndroid::ConvertJavaOnlyMapToLepus(JNIEnv* env,
                                                               jobject map) {
   auto table = lepus::Dictionary::Create();
+  base::android::JavaOnlyMap::OnSizeAwareClosure size_aware_closure =
+      [&table](jint size) { table->reserve(size); };
+
   base::android::JavaOnlyMap::ForEachClosure closure =
       [&table](JNIEnv* env, jobject map, jstring j_key,
                const std::string& key) {
@@ -255,7 +258,8 @@ lepus::Value ValueConverterAndroid::ConvertJavaOnlyMapToLepus(JNIEnv* env,
             break;
         }
       };
-  base::android::JavaOnlyMap::ForEach(env, map, std::move(closure));
+  base::android::JavaOnlyMap::ForEach(env, map, std::move(closure),
+                                      std::move(size_aware_closure));
 
   return lepus::Value(table);
 }

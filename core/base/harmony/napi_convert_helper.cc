@@ -77,6 +77,7 @@ void create_lepus_value_from_js_object(napi_env env, napi_value obj,
                                     napi_key_numbers_to_strings, &object_keys);
         uint32_t length;
         napi_get_array_length(env, object_keys, &length);
+        dict->reserve(length);
         for (uint32_t i = 0; i < length; i++) {
           napi_value k;
           napi_get_element(env, object_keys, i, &k);

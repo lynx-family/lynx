@@ -184,6 +184,7 @@ bool BaseBinaryReader::DecodeUtf8Str(std::string* result) {
 bool BaseBinaryReader::DecodeTable(fml::RefPtr<Dictionary>& out_value,
                                    bool is_header) {
   DECODE_COMPACT_U32(size);
+  out_value->reserve(size);
   for (size_t i = 0; i < size; ++i) {
     // If encode happens in parsing header stage, nothing in string_list, so
     // read string directly

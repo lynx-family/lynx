@@ -76,6 +76,7 @@ lepus::Value ValueUtils::ConvertValueToLepusArray(
     return (reinterpret_cast<const PubLepusValue*>(&value))->backend_value();
   } else {
     auto array = lepus::CArray::Create();
+    array->reserve(value.Length());
     value.ForeachArray([&array, &prev_value_vector, depth](
                            int64_t index, const pub::Value& val) {
       array->emplace_back(
@@ -92,6 +93,7 @@ lepus::Value ValueUtils::ConvertValueToLepusTable(
     return (reinterpret_cast<const PubLepusValue*>(&value))->backend_value();
   } else {
     auto dict = lepus::Dictionary::Create();
+    dict->reserve(value.Length());
     value.ForeachMap([&dict, &prev_value_vector, depth](const pub::Value& key,
                                                         const pub::Value& val) {
       dict->SetValue(key.str(),

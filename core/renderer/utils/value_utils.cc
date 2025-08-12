@@ -170,6 +170,7 @@ lepus::Value ConvertJSValueToLepusValue(const lepus::Value& value) {
     result.SetArray(std::move(array));
   } else if (value.IsTable() || value.IsJSTable()) {
     auto dic = lepus::Dictionary::Create();
+    dic->reserve(value.GetLength());
     tasm::ForEachLepusValue(
         value, [&dic](const lepus::Value& key, const lepus::Value& val) {
           dic->SetValue(key.String(), ConvertJSValueToLepusValue(val));

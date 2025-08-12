@@ -126,6 +126,7 @@ lepus_value RecursiveLynxConvertToLepusValue(id data, NSMutableSet* allObjects,
     }
     [allObjects addObject:data];
     lynx::fml::RefPtr<Dictionary> dict = Dictionary::Create();
+    dict->reserve([data count]);
     [data enumerateKeysAndObjectsUsingBlock:^(NSString* _Nonnull key, id _Nonnull value,
                                               BOOL* _Nonnull stop) {
       dict->SetValue([key UTF8String],
@@ -189,6 +190,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   }
   if (inputValue.IsTable()) {
     auto dict = inputValue.Table();
+    value_.Table()->reserve(dict->size());
     for (auto iter = dict->begin(); iter != dict->end(); iter++) {
       if (iter->second.IsTable()) {
         lynx::lepus::Value oldValue = value_.GetProperty(iter->first);

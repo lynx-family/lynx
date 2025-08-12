@@ -258,6 +258,7 @@ std::optional<lepus_value> ParseJSValue(
       if (!size) {
         return std::optional<lepus_value>();
       }
+      lepus_map->reserve(*size);
       for (size_t i = 0; i < *size; ++i) {
         auto item = (*names).getValueAtIndex(runtime, i);
         if (!item) {

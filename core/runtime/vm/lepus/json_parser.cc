@@ -106,6 +106,7 @@ lepus_value jsonValueTolepusValue(const rapid_value& rapValue) {
     }
     case rapidjson::Type::kObjectType: {
       fml::RefPtr<Dictionary> dict = Dictionary::Create();
+      dict->reserve(rapValue.MemberCount());
       for (rapid_value::ConstMemberIterator itr = rapValue.MemberBegin();
            itr != rapValue.MemberEnd(); ++itr) {
         dict->SetValue(itr->name.GetString(),

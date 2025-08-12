@@ -205,6 +205,7 @@ fml::RefPtr<lepus::Dictionary> LepusDecoder::forwardDictionary() {
   if (in_exception_) {
     return dict;
   }
+  dict->reserve(size);
   for (int32_t index = 0; index < size; index++) {
     uint8_t type = forwardType();
     DCHECK(type == TypeString);

@@ -24,6 +24,7 @@ lepus::Value GenerateSystemInfo(const lepus::Value* config) {
 
   // add for global setting
   lepus::Value system_info = lepus::Value(lepus::Dictionary::Create());
+  system_info.Table()->reserve(10);
   system_info.SetProperty(kPlatform, lepus::Value(kPlatformValue));
   system_info.SetProperty(kPixelRatio, lepus::Value(Config::pixelRatio()));
   system_info.SetProperty(kPixelWidth, lepus::Value(Config::pixelWidth()));

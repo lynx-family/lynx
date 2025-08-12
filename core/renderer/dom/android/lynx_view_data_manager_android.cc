@@ -58,6 +58,7 @@ void UpdateData(JNIEnv* env, jclass jcaller, jlong nativePtr, jobject data,
       auto baseValue = reinterpret_cast<lynx::lepus::Value*>(nativePtr);
       if (value.IsTable()) {
         lynx::lepus::Dictionary* dict = value.Table().get();
+        baseValue->Table()->reserve(dict->size());
         for (const auto& [outer_key, outer_value] : *dict) {
           if (outer_value.IsTable()) {
             lynx::lepus::Value old_value =

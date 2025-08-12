@@ -284,7 +284,8 @@ JavaOnlyMap::JavaOnlyMapGetPiperDataAtIndex(JNIEnv* env, jobject map,
   return Java_JavaOnlyMap_getPiperData(env, map, key);
 }
 
-void JavaOnlyMap::ForEach(JNIEnv* env, jobject map, ForEachClosure closure) {
+void JavaOnlyMap::ForEach(JNIEnv* env, jobject map, ForEachClosure closure,
+                          OnSizeAwareClosure size_aware_closure) {
   auto keys = base::android::JavaOnlyMap::JavaOnlyMapGetKeys(env, map);
 
   jclass cls_arraylist = env->GetObjectClass(keys.Get());
@@ -297,6 +298,11 @@ void JavaOnlyMap::ForEach(JNIEnv* env, jobject map, ForEachClosure closure) {
   jmethodID arraylist_size =
       env->GetMethodID(cls_arraylist_global.Get(), "size", "()I");
   jint module_len = env->CallIntMethod(keys.Get(), arraylist_size);
+
+  if (size_aware_closure) {
+    // Let caller do reserve.
+    size_aware_closure(module_len);
+  }
 
   for (int i = 0; i < module_len; i++) {
     jstring key_str = static_cast<jstring>(

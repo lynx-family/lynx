@@ -226,6 +226,10 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
 
   size_t size() const { return hash_map_.size(); }
 
+  void reserve(size_t count) {
+    // TODO(yuyang), implement after refactored.
+  }
+
   /// @note Do not cache pointer to value using `&(it->second)`
   /// to other variables. Later the underlying implementation
   /// of this map will be changed to flat based instead of node
