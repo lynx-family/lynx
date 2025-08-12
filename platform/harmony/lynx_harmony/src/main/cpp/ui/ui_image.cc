@@ -214,6 +214,7 @@ void UIImage::AutoSizeIfNeeded() {
 void UIImage::UpdateAutoSize(const lepus::Value& value) {
   auto_size_ = value.Bool();
 }
+
 void UIImage::UpdateBlurRadius(const lepus::Value& value) {
   CSSStringParser parser = CSSStringParser::FromLepusString(value, {});
   CSSValue radius;
@@ -226,6 +227,13 @@ void UIImage::UpdateBlurRadius(const lepus::Value& value) {
 
 void UIImage::SetImageSrcFromPath(const std::string& url, bool placeholder) {
   ArkUI_NodeAttributeType type = placeholder ? NODE_IMAGE_ALT : NODE_IMAGE_SRC;
+  bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
+                  base::BeginsWith(url, image::kResourceScheme);
+  if (is_local) {
+    ArkUI_AttributeItem item{.string = url.c_str()};
+    NodeManager::Instance().SetAttribute(Node(), type, &item);
+    return;
+  }
   char* result = nullptr;
   OH_FileUri_GetUriFromPath(url.data(), url.size(), &result);
   ArkUI_AttributeItem item{.string = result};
@@ -236,21 +244,15 @@ void UIImage::SetImageSrcFromPath(const std::string& url, bool placeholder) {
 void UIImage::LoadImageFromURL(bool placeholder) {
   const std::string& url = placeholder ? place_holder_ : src_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
-  if (is_base64) {
+  bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
+                  base::BeginsWith(url, image::kResourceScheme);
+  if (is_base64 || is_local) {
     if (placeholder) {
       ArkUI_AttributeItem item{.string = url.c_str()};
       NodeManager::Instance().SetAttribute(Node(), NODE_IMAGE_ALT, &item);
     } else {
-      SetImageSrcAttribute(url, true);
+      SetImageSrcAttribute(url, is_base64);
     }
-    return;
-  }
-  bool is_local = base::BeginsWith(url, image::kLocalScheme);
-  if (is_local) {
-    ArkUI_NodeAttributeType type =
-        placeholder ? NODE_IMAGE_ALT : NODE_IMAGE_SRC;
-    ArkUI_AttributeItem item{.string = url.c_str()};
-    NodeManager::Instance().SetAttribute(Node(), type, &item);
     return;
   }
 

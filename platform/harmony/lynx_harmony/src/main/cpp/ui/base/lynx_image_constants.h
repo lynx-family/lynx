@@ -20,6 +20,7 @@ inline constexpr const char* const kModeScaleToFill = "scaleToFill";
 // image path protocol
 inline constexpr const char* const kBase64Scheme = "data:image";
 inline constexpr const char* const kLocalScheme = "file://";
+inline constexpr const char* const kResourceScheme = "resource://";
 
 // event name
 inline constexpr const char* const kLoadEventName = "load";
