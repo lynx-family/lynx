@@ -152,8 +152,7 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 
   // for Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value value,
-                       const piper::ApiCallBack& callback,
-                       uint64_t trace_flow_id) override {}
+                       const piper::ApiCallBack& callback) override {}
 
   event::DispatchEventResult DispatchMessageEvent(
       runtime::MessageEvent event) override {

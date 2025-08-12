@@ -102,13 +102,15 @@ lepus::Value WhiteBoardDelegate::GetSessionStorageItem(const std::string& key) {
 void WhiteBoardDelegate::SubscribeJSSessionStorage(
     const std::string& key, double listener_id,
     const piper::ApiCallBack& callback) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY,
-              WHITE_BOARD_DELEGATE_SUBSCRIBE_JS_SESSION_STORAGE,
-              [&key, &listener_id](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("key", key);
-                ctx.event()->add_debug_annotations("listener_id",
-                                                   std::to_string(listener_id));
-              });
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, WHITE_BOARD_DELEGATE_SUBSCRIBE_JS_SESSION_STORAGE,
+      [&key, &listener_id,
+       flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations("key", key);
+        ctx.event()->add_debug_annotations("listener_id",
+                                           std::to_string(listener_id));
+        ctx.event()->add_flow_ids(flow_id);
+      });
   if (white_board_) {
     // invoked while session storage changed.
     auto triggered_callback = [weak_self = weak_from_this(),

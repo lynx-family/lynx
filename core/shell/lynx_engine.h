@@ -278,8 +278,7 @@ class LynxEngine {
 
   // For Fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
-                       const piper::ApiCallBack& callback,
-                       uint64_t trace_flow_id);
+                       const piper::ApiCallBack& callback);
 
   inline void SetOperationQueue(
       const std::shared_ptr<TASMOperationQueue>& tasm_operation_queue) {

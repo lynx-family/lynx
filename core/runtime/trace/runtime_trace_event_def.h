@@ -51,7 +51,7 @@ inline constexpr const char* const APP_PROXY_SELECT_COMPONENT =
 inline constexpr const char* const APP_GET_PATH_INFO = "App::getPathInfo";
 inline constexpr const char* const APP_GET_ENV = "App::getEnv";
 inline constexpr const char* const APP_GET_FIELDS = "App::getFields";
-inline constexpr const char* const APP_INVOKE_UI_METHOD = "App::getEnv";
+inline constexpr const char* const APP_INVOKE_UI_METHOD = "App::invokeUIMethod";
 inline constexpr const char* const APP_CALL_LEPUS_METHOD = "callLepusMethod";
 inline constexpr const char* const APP_CALL_LEPUS_METHOD_INNER =
     "CallLepusMethodInner";
@@ -526,6 +526,13 @@ inline constexpr const char* const FIBER_ELEMENT_CREATE_WRAPPER_ELEMENT =
  */
 inline constexpr const char* const APP_QUERY_COMPONENT = "App::QueryComponent";
 
+inline constexpr const char* const APP_GET_CONTEXT_DATA_ASYNC =
+    "App::getContextDataAsync";
+
+inline constexpr const char* const APP_GET_SESSION_STORAGE_ITEM =
+    "App::getSessionStorageItem";
+inline constexpr const char* const APP_SUBSCRIBE_SESSION_STORAGE =
+    "App::subscribeSessionStorage";
 #if ENABLE_AIR
 inline constexpr const char* const AIR_CREATE_ELEMENT = "AirCreateElement";
 inline constexpr const char* const AIR_GET_ELEMENT = "AirGetElement";

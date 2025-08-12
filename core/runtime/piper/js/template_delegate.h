@@ -197,8 +197,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
   // for Fiber
   virtual void CallLepusMethod(const std::string& method_name,
                                lepus::Value value,
-                               const piper::ApiCallBack& callback,
-                               uint64_t trace_flow_id) = 0;
+                               const piper::ApiCallBack& callback) = 0;
 
   virtual fml::RefPtr<tasm::PropBundle> CreatePropBundle() = 0;
 

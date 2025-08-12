@@ -1638,16 +1638,17 @@ lepus::Value TemplateAssembler::GetPageDataByKey(
 void TemplateAssembler::UpdateComponentData(
     const runtime::UpdateDataTask& task,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_COMPONENT_DATA_BY_JS,
-              [update_data_type = static_cast<uint32_t>(task.type_),
-               instance_id = instance_id_,
-               stacks = task.stacks_](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations(
-                    "update_data_type", std::to_string(update_data_type));
-                ctx.event()->add_debug_annotations(INSTANCE_ID,
-                                                   std::to_string(instance_id));
-                ctx.event()->add_debug_annotations("stacks", stacks);
-              });
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, LYNX_UPDATE_COMPONENT_DATA_BY_JS,
+      [&task, instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(
+            "update_data_type",
+            std::to_string(static_cast<uint32_t>(task.type_)));
+        ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                           std::to_string(instance_id));
+        ctx.event()->add_debug_annotations("stacks", task.stacks_);
+        ctx.event()->add_flow_ids(task.callback_.trace_flow_id());
+      });
 
   Scope scope(this);
   {
@@ -2259,16 +2260,17 @@ bool TemplateAssembler::UpdateConfig(
 void TemplateAssembler::UpdateDataByJS(
     const runtime::UpdateDataTask& task,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_UPDATE_DATA_BY_JS,
-              [update_data_type = static_cast<uint32_t>(task.type_),
-               instance_id = instance_id_, stacks = std::move(task.stacks_)](
-                  lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations(
-                    "update_data_type", std::to_string(update_data_type));
-                ctx.event()->add_debug_annotations(INSTANCE_ID,
-                                                   std::to_string(instance_id));
-                ctx.event()->add_debug_annotations("stacks", stacks);
-              });
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, LYNX_UPDATE_DATA_BY_JS,
+      [&task, instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_debug_annotations(
+            "update_data_type",
+            std::to_string(static_cast<uint32_t>(task.type_)));
+        ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                           std::to_string(instance_id));
+        ctx.event()->add_debug_annotations("stacks", task.stacks_);
+        ctx.event()->add_flow_ids(task.callback_.trace_flow_id());
+      });
 
   PipelineScope pipeline_scope(this, pipeline_options);
 
@@ -3269,12 +3271,10 @@ lepus::Value TemplateAssembler::CallLepusMethod(
 
 void TemplateAssembler::CallLepusMethod(const std::string& method_name,
                                         lepus::Value args,
-                                        const piper::ApiCallBack& callback,
-                                        uint64_t trace_flow_id) {
+                                        const piper::ApiCallBack& callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CALL_LEPUS_METHOD,
               [&](perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(callback.trace_flow_id());
-                ctx.event()->add_terminating_flow_ids(trace_flow_id);
                 auto* debug = ctx.event()->add_debug_annotations();
                 debug->set_name("methodName");
                 debug->set_string_value(method_name);

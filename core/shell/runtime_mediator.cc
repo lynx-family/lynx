@@ -501,18 +501,16 @@ void RuntimeMediator::ResetTimingBeforeReload() {
 
 void RuntimeMediator::CallLepusMethod(const std::string& method_name,
                                       lepus::Value args,
-                                      const piper::ApiCallBack& callback,
-                                      uint64_t trace_flow_id) {
+                                      const piper::ApiCallBack& callback) {
   if (runtime_standalone_mode_) {
     REPORT_JSI_NATIVE_EXCEPTION(
         "CallLepusMethod not supported on runtime standalone mode");
     return;
   }
-  engine_actor_->ActAsync([method_name, args = std::move(args), callback,
-                           trace_flow_id](auto& engine) mutable {
-    engine->CallLepusMethod(method_name, std::move(args), callback,
-                            trace_flow_id);
-  });
+  engine_actor_->ActAsync(
+      [method_name, args = std::move(args), callback](auto& engine) mutable {
+        engine->CallLepusMethod(method_name, std::move(args), callback);
+      });
 }
 
 event::DispatchEventResult RuntimeMediator::DispatchMessageEvent(

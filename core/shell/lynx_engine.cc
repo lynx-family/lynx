@@ -496,6 +496,11 @@ void LynxEngine::TriggerWorkletFunction(std::string component_id,
                                         std::string method_name,
                                         lepus::Value args,
                                         piper::ApiCallBack callback) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ENGINE_TRIGGER_WORKLET_FUNC,
+      [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
   tasm_->TriggerWorkletFunction(
       std::move(component_id), std::move(worklet_module_name),
       std::move(method_name), std::move(args), std::move(callback));
@@ -532,6 +537,11 @@ void LynxEngine::SelectComponent(const std::string& component_id,
                                  const std::string& id_selector,
                                  const bool single,
                                  piper::ApiCallBack callBack) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ENGINE_SELECT_COMPONENT,
+      [flow_id = callBack.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
   tasm_->SelectComponent(component_id, id_selector, single, callBack);
 }
 
@@ -550,6 +560,11 @@ void LynxEngine::ElementAnimateV2(const std::string& component_id,
 void LynxEngine::GetComponentContextDataAsync(const std::string& component_id,
                                               const std::string& key,
                                               piper::ApiCallBack callback) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ENGINE_GET_COMPONENT_CONTEXT_DATA_ASYNC,
+      [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
   tasm_->GetComponentContextDataAsync(component_id, key, callback);
 }
 
@@ -613,6 +628,11 @@ void LynxEngine::InvokeUIMethod(const tasm::NodeSelectRoot& root,
                                 const std::string& method,
                                 fml::RefPtr<tasm::PropBundle> params,
                                 piper::ApiCallBack callback) {
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, ENGINE_INVOKE_UI_METHOD,
+      [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
   auto result = tasm_->page_proxy()->GetLynxUI(root, options);
   if (!result.Success()) {
     delegate_->CallJSApiCallbackWithValue(callback,
@@ -627,6 +647,10 @@ void LynxEngine::InvokeUIMethod(const tasm::NodeSelectRoot& root,
 void LynxEngine::GetPathInfo(const tasm::NodeSelectRoot& root,
                              const tasm::NodeSelectOptions& options,
                              piper::ApiCallBack call_back) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ENGINE_GET_PATH_INFO,
+              [&call_back](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(call_back.trace_flow_id());
+              });
   auto result = tasm_->page_proxy()->GetPathInfo(root, options);
   delegate_->CallJSApiCallbackWithValue(call_back, result);
 }
@@ -635,6 +659,10 @@ void LynxEngine::GetFields(const tasm::NodeSelectRoot& root,
                            const tasm::NodeSelectOptions& options,
                            const std::vector<std::string>& fields,
                            piper::ApiCallBack call_back) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ENGINE_GET_FIELDS,
+              [&call_back](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(call_back.trace_flow_id());
+              });
   auto result = tasm_->page_proxy()->GetFields(root, options, fields);
   delegate_->CallJSApiCallbackWithValue(call_back, result);
 }
@@ -653,18 +681,22 @@ void LynxEngine::SetInspectorElementObserver(
 
 void LynxEngine::CallLepusMethod(const std::string& method_name,
                                  lepus::Value args,
-                                 const piper::ApiCallBack& callback,
-                                 uint64_t trace_flow_id) {
+                                 const piper::ApiCallBack& callback) {
   tasm::timing::LongTaskMonitor::Scope longTaskScope(
       tasm_->GetPageOptions(), tasm::timing::kNativeFuncTask,
       tasm::timing::kTaskNameLynxEngineCallLepusMethod, method_name);
-  tasm_->CallLepusMethod(method_name, std::move(args), callback, trace_flow_id);
+  tasm_->CallLepusMethod(method_name, std::move(args), callback);
 }
 
 void LynxEngine::GetJSSessionStorage(const std::string& key,
                                      const piper::ApiCallBack& callback) {
   auto white_board_delegate = tasm_->GetWhiteBoardDelegate();
   if (white_board_delegate) {
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, ENGINE_GET_JS_SESSION_STORAGE,
+        [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_flow_ids(flow_id);
+        });
     auto value = white_board_delegate->GetSessionStorageItem(key);
     delegate_->CallJSApiCallbackWithValue(callback, value);
   }

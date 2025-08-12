@@ -720,8 +720,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   // For fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,
-                       const piper::ApiCallBack& callback,
-                       uint64_t trace_flow_id);
+                       const piper::ApiCallBack& callback);
 
   // currently, this method is provided for use by list
   lepus::Value CallLepusMethod(const lepus::Value& closure,

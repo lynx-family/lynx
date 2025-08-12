@@ -347,7 +347,7 @@ void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               TASM_MEDIATOR_CALL_JS_API_CALLBACK_WITH_VALUE,
               [=](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_terminating_flow_ids(callback.trace_flow_id());
+                ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
 
   runtime_actor_->ActAsync([callback = std::move(callback),
@@ -605,6 +605,11 @@ void TasmMediator::InvokeUIMethod(tasm::LynxGetUIResult ui_result,
   facade_actor_->Act([ui_result = std::move(ui_result), method,
                       params = std::move(params),
                       callback = std::move(callback)](auto& facade) mutable {
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, NATIVE_FACADE_INVOKE_UI_METHOD,
+        [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_flow_ids(flow_id);
+        });
     facade->InvokeUIMethod(ui_result, method, std::move(params),
                            std::move(callback));
   });
