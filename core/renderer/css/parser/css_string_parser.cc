@@ -581,7 +581,9 @@ CSSValue CSSStringParser::ParseCursor() {
         url->emplace_back(0.f);
       }
       result->emplace_back(std::move(url));
-    } else if (ConsumeAndSave(TokenType::IDENTIFIER, t1)) {
+    } else if (ConsumeAndSave(TokenType::IDENTIFIER, t1) ||
+               ConsumeAndSave(TokenType::TEXT, t1)) {
+      // TODO(renzhongyue): make all cursor keywords builtin keywords.
       result->emplace_back(
           static_cast<uint32_t>(starlight::CursorType::kKeyword));
       result->emplace_back(std::string(t1.start, t1.length));
