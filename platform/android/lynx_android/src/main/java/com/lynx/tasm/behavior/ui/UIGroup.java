@@ -58,6 +58,7 @@ public abstract class UIGroup<T extends ViewGroup>
     mDrawingOrderHelper = new ViewGroupDrawingOrderHelper(getView());
     if (mView instanceof IDrawChildHookBinding) {
       if (mContext.isEnginePoolEnabled()) {
+        // TODO(renzhongyue): obtain the existing view info during fallback.
         mViewInfo = new ViewInfo(this, mView);
         ((IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
       } else {
@@ -239,7 +240,9 @@ public abstract class UIGroup<T extends ViewGroup>
   }
 
   public void insertView(LynxUI child) {
-    if (mContext != null && mContext.isFallbackProcess()) {
+    if (mContext != null && mContext.isFallbackProcess()
+        && child.getView().getParent() == getView()) {
+      child.getView().invalidate();
       return;
     }
 
