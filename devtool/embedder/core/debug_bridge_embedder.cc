@@ -68,12 +68,12 @@ void DebugBridgeEmbedder::OpenCard(const std::string& url) {
 
 void DebugBridgeEmbedder::OnMessage(const std::string& message,
                                     const std::string& type) {
+  Json::Value root;
+  Json::Reader reader;
+  if (!reader.parse(message, root, false)) {
+    return;
+  }
   if (!type.compare("SetGlobalSwitch")) {
-    Json::Value root;
-    Json::Reader reader;
-    if (!reader.parse(message, root, false)) {
-      return;
-    }
     bool valid = root["global_key"].isString() && root["global_value"].isBool();
     if (!valid) {
       return;
@@ -85,6 +85,15 @@ void DebugBridgeEmbedder::OnMessage(const std::string& message,
     EnvEmbedder::SetSwitch(key, value);
 
     DebugRouter::GetInstance().SendDataAsync(message, "SetGlobalSwitch", -1);
+  } else if (!type.compare("GetGlobalSwitch")) {
+    bool valid = root["global_key"].isString();
+    if (!valid) {
+      return;
+    }
+    std::string key = root["global_key"].asString();
+    bool value = EnvEmbedder::GetSwitch(key);
+    DebugRouter::GetInstance().SendDataAsync(value ? "true" : "false",
+                                             "GetGlobalSwitch", -1);
   }
 }
 

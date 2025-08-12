@@ -241,5 +241,9 @@ void EnvEmbedder::SetSwitch(const std::string &key, bool value) {
       key, value, devtool::DevToolEnvHarmony::NeedPersistent(key));
 }
 
+bool EnvEmbedder::GetSwitch(const std::string &key) {
+  return devtool::DevToolEnvHarmony::GetInstance().GetSwitch(key);
+}
+
 }  // namespace devtool
 }  // namespace lynx

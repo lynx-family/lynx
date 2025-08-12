@@ -19,7 +19,7 @@ class EnvEmbedder {
  public:
   static void SetSwitch(const std::string& key, bool value);
 
-  // TODO(zhengyuwei.123) : The GetSwitch function will be added later.
+  static bool GetSwitch(const std::string& key);
 };
 
 }  // namespace devtool
