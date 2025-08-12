@@ -239,6 +239,15 @@ class String {
     return this_impl->hash_ == other_impl->hash_ &&
            this_impl->str() == other_impl->str();
   }
+
+  // A callable comparer of two Strings if their hash values are known to be
+  // equal. Only compares string content.
+  struct EqualWhenHashEqual {
+    bool operator()(const String& x, const String& y) const {
+      return x.str() == y.str();
+    }
+  };
+
   bool operator==(const char* other) const { return str() == other; }
   bool operator==(const std::string& other) const { return str() == other; }
 

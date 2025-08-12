@@ -141,7 +141,31 @@ struct IsTriviallyRelocatable<T, true> {
            is_instance<typename T::second_type, std::pair>{}>::value);
 };
 
+template <typename T>
+class alignas(T) TypeOfPlainBytes {
+ public:
+  bool operator==(const TypeOfPlainBytes& other) const {
+    return reinterpret_cast<const T&>(*this) ==
+           reinterpret_cast<const T&>(other);
+  }
+
+  // Must be trivially relocatable.
+  using TriviallyRelocatable = bool;
+
+ private:
+  [[maybe_unused]] char buffer_[sizeof(T)];
+};
+
 }  // namespace base
 }  // namespace lynx
+
+namespace std {
+template <typename T>
+struct hash<lynx::base::TypeOfPlainBytes<T>> {
+  std::size_t operator()(const lynx::base::TypeOfPlainBytes<T>& k) const {
+    return hash<T>()(reinterpret_cast<const T&>(k));
+  }
+};
+}  // namespace std
 
 #endif  // BASE_INCLUDE_TYPE_TRAITS_ADDON_H_

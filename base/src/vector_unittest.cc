@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include <numeric>
+#include <random>
 #include <stack>
 #include <string>
 #include <vector>
@@ -15,12 +16,12 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wsign-compare"
 
+#include "base/include/value/base_string.h"
 #include "base/include/vector_helper.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
 namespace lynx {
 namespace base {
-
 /**
  * @brief Insertion sort algorithm.
  *
@@ -1690,7 +1691,7 @@ TEST(Vector, Trivial) {
     int buffer[5] = {10, 11, 12, 13, 14};
     Vector<int> array(sizeof(buffer) / sizeof(buffer[0]), buffer);
 
-    VectorTemplateless::PushBackBatch(&array, sizeof(int), buffer, 5);
+    VectorTemplateless<0>::PushBackBatch(&array, sizeof(int), buffer, 5);
     CheckVector(array);
     EXPECT_EQ(to_s(array), "10111213141011121314");
   }
@@ -3399,7 +3400,7 @@ TEST(Vector, PairElement) {
         {{2, 2}, {2, 2}},
         {{3, 3}, {3, 3}},
         {{4, 4}, {4, 4}}};
-    VectorTemplateless::PushBackBatch(
+    VectorTemplateless<0>::PushBackBatch(
         &array, sizeof(std::pair<std::pair<int, int>, std::pair<int, int>>),
         buffer, 5);
     EXPECT_EQ(array.size(), 5);
@@ -3469,10 +3470,10 @@ TEST(Vector, Slice) {
   }
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless::Erase(&array, 4, 0, 0));
+  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 0));
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless::Erase(&array, 4, 99, 0));
+  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 99, 0));
   EXPECT_EQ(array.size(), 100);
   for (int i = 0; i < 100; i++) {
     // Data not changed.
@@ -3480,24 +3481,24 @@ TEST(Vector, Slice) {
   }
 
   // DeleteCount == 0 is allowed but index 100 is out of range, so return false.
-  EXPECT_FALSE(VectorTemplateless::Erase(&array, 4, 100, 0));
+  EXPECT_FALSE(VectorTemplateless<0>::Erase(&array, 4, 100, 0));
   EXPECT_EQ(array.size(), 100);
 
-  EXPECT_TRUE(VectorTemplateless::Erase(&array, 4, 0, 50));
+  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 50));
 
   EXPECT_EQ(array.size(), 50);
   EXPECT_EQ(array[0], 50);
 
-  EXPECT_TRUE(VectorTemplateless::Erase(&array, 4, 10, 10));
+  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 10, 10));
 
   EXPECT_EQ(array.size(), 40);
   EXPECT_EQ(array[0], 50);
   EXPECT_EQ(array[10], 70);
 
-  EXPECT_FALSE(VectorTemplateless::Erase(&array, 4, 10, 100));
+  EXPECT_FALSE(VectorTemplateless<0>::Erase(&array, 4, 10, 100));
   EXPECT_EQ(array.size(), 40);
 
-  EXPECT_TRUE(VectorTemplateless::Erase(&array, 4, 0, 40));
+  EXPECT_TRUE(VectorTemplateless<0>::Erase(&array, 4, 0, 40));
   EXPECT_EQ(array.size(), 0);
 }
 
@@ -4596,7 +4597,7 @@ TEST(MapStringTest, InsertOrAssign) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
-  EXPECT_EQ(it->first, "new_key");  // 确保迭代器指向正确位置
+  EXPECT_EQ(it->first, "new_key");
 }
 
 TEST(MapStringTest, EmplacePiecewise) {
@@ -4911,7 +4912,7 @@ TEST(MapStringTest, LinearInsertOrAssign) {
   EXPECT_EQ(m["empty"], "");
 
   auto [it, _] = m.insert_or_assign("new_key", "value");
-  EXPECT_EQ(it->first, "new_key");  // 确保迭代器指向正确位置
+  EXPECT_EQ(it->first, "new_key");
 }
 
 TEST(MapStringTest, LinearEmplacePiecewise) {
@@ -5194,7 +5195,7 @@ bool AssertSetContent_abc(const SetType& m) {
 }
 }  // namespace
 
-TEST(SetStringTest, emplace) {
+TEST(SetStringTest, Emplace) {
   OrderedFlatSet<std::string> s;
   s.emplace("ABC", 2);
   s.emplace("D");
@@ -5204,7 +5205,7 @@ TEST(SetStringTest, emplace) {
   EXPECT_TRUE(s.contains("D"));
 }
 
-TEST(SetStringTest, linear_emplace) {
+TEST(SetStringTest, LinearEmplace) {
   LinearFlatSet<std::string> s;
   s.emplace("ABC", 2);
   s.emplace("D");
@@ -6324,6 +6325,4842 @@ TEST(LinearSet, Merge) {
     m1.merge(m2);
     EXPECT_TRUE(AssertSetContent_ABCbD(m1));
     EXPECT_TRUE(AssertMapContent_AC(m2));
+  }
+}
+
+TEST(Vector, LinearMapInsertOrAssignBaseStringKey) {
+  InlineLinearFlatMap<String, std::string, 5> map{
+      {"3", "c"}, {"2", "b"}, {"1", "a"}};
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["1"], "a");
+  EXPECT_EQ(map["2"], "b");
+  EXPECT_EQ(map["3"], "c");
+  EXPECT_EQ(map["4"], "");
+
+  auto r = map.insert_or_assign("4", "d");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(map["4"], "d");
+
+  String s5("5");
+  std::string se = "e";
+  auto r2 = map.insert_or_assign(s5, std::move(se));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(map["5"], "e");
+  EXPECT_EQ(s5, "5");
+  EXPECT_TRUE(se.empty());
+
+  String s6("6");
+  std::string sf = "f";
+  auto r3 = map.insert_or_assign(std::move(s6), std::move(sf));
+  EXPECT_TRUE(r3.second);
+  EXPECT_EQ(map["6"], "f");
+  EXPECT_TRUE(s6.empty());
+  EXPECT_TRUE(sf.empty());
+
+  String s7("7");
+  std::string sg = "g";
+  auto r4 = map.insert_or_assign(std::move(s7), sg);
+  EXPECT_TRUE(r4.second);
+  EXPECT_EQ(map["7"], "g");
+  EXPECT_TRUE(s7.empty());
+  EXPECT_EQ(sg, "g");
+
+  EXPECT_EQ(map.size(), 7);
+}
+
+TEST(Vector, LinearSetInsertBaseStringKey) {
+  LinearFlatSet<String> set{"1", "2", "3"};
+  auto r = set.insert("3");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(set.size(), 3);
+
+  auto r2 = set.insert("4");
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(set.size(), 4);
+
+  std::string s5 = "5";
+  auto r3 = set.insert(std::move(s5));
+  EXPECT_TRUE(r3.second);
+  EXPECT_TRUE(s5.empty());
+
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains("1"));
+  EXPECT_TRUE(set.contains("2"));
+  EXPECT_TRUE(set.contains("3"));
+  EXPECT_TRUE(set.contains("4"));
+  EXPECT_TRUE(set.contains("5"));
+  EXPECT_FALSE(set.contains("6"));
+}
+
+TEST(Vector, LinearSetInsertUniqueBaseStringKey) {
+  LinearFlatSet<String> set;
+  set.insert_unique("1");
+  set.insert_unique("3");
+  const String two("2");
+  set.insert_unique(two);
+  set.insert_unique("6");
+  auto it = set.insert_unique("0");
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains("1"));
+  EXPECT_TRUE(set.contains("3"));
+  EXPECT_TRUE(set.contains("2"));
+  EXPECT_TRUE(set.contains("6"));
+  EXPECT_TRUE(set.contains("0"));
+  EXPECT_TRUE(*it == "0");
+}
+
+TEST(Vector, LinearMapEmplaceBaseStringKey) {
+  LinearFlatMap<String, std::string> map;
+  auto r = map.emplace(std::piecewise_construct,
+                       std::tuple<const char*, size_t>("123", 2),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(r.first->first, "12");
+  EXPECT_EQ(r.first->second, "ab");
+  auto r2 = map.emplace(std::piecewise_construct,
+                        std::tuple<const char*, size_t>("112", 2),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(r2.first->first, "11");
+  EXPECT_EQ(r2.first->second, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple("12"),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "12");
+  EXPECT_EQ(r3.first->second, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace("11", "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(r4.first->first, "11");
+  EXPECT_EQ(r4.first->second, "xy");
+
+  String s11("11");
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(std::move(s11), std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(r5.first->first, "11");
+  EXPECT_EQ(r5.first->second, "xy");
+  EXPECT_EQ(s11, "11");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  std::string s13 = "13";
+  auto r6 = map.try_emplace(std::move(s13), std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(r6.first->first, "13");
+  EXPECT_EQ(r6.first->second, "xyz");
+  EXPECT_TRUE(s13.empty());
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+
+  std::string s14 = "14";
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(s14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(r7.first->first, "14");
+  EXPECT_EQ(r7.first->second, "uvw");
+  EXPECT_EQ(s14, "14");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+  EXPECT_EQ(map["14"], "uvw");
+}
+
+TEST(MapStringTest, LinearBasicOperationsBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({"apple", "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(ret.first->first, "apple");
+  EXPECT_EQ(ret.first->second, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapStringTest, LinearElementAccessBaseStringKey) {
+  LinearFlatMap<String, std::string> m{{"apple", "red"}, {"banana", "yellow"}};
+
+  EXPECT_EQ(m["apple"], "red");
+
+  m["apple"] = "green";
+  EXPECT_EQ(m["apple"], "green");
+  EXPECT_EQ(m.at("apple"), "green");
+
+  EXPECT_EQ(m["grape"], "");
+  EXPECT_EQ(m.at("grape"), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapStringTest, LinearInsertUpdateBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  auto ret1 = m.insert({"fruit", "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({"fruit", "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(ret2.first->second, "apple");
+
+  auto emp_ret = m.emplace("color", "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(emp_ret.first->first, "color");
+
+  m["color"] = "red";
+  EXPECT_EQ(m["color"], "red");
+
+  std::pair<const String, std::string> value_type{String("vehicle"), "car"};
+  auto ret3 = m.insert(value_type);
+  EXPECT_TRUE(ret3.second);
+  EXPECT_TRUE(!value_type.first.empty());
+  auto ret4 = m.insert(std::move(value_type));
+  EXPECT_FALSE(ret4.second);
+  EXPECT_TRUE(!value_type.second.empty());
+
+  m.erase("vehicle");
+  auto ret5 = m.insert(std::move(value_type));
+  EXPECT_TRUE(ret5.second);
+  EXPECT_TRUE(!value_type.first.empty());
+  EXPECT_TRUE(value_type.second.empty());
+
+  std::pair<const String, std::string> value_data0{"job", "doctor"};
+  std::pair<const String, std::string> value_data1{"road", "highway"};
+  std::pair<String, std::string> value_data2{"building", "hospital"};
+  std::pair<String, std::string> value_data3{"animal", "tiger"};
+  auto it = m.insert_unique(value_data0);
+  EXPECT_TRUE(it->first == "job" && it->second == "doctor");
+  EXPECT_FALSE(value_data0.first.empty());
+  EXPECT_FALSE(value_data0.second.empty());
+  auto it2 = m.insert_unique(std::move(value_data1));
+  EXPECT_TRUE(it2->first == "road" && it2->second == "highway");
+  EXPECT_FALSE(value_data1.first.empty());
+  EXPECT_TRUE(value_data1.second.empty());
+  auto it3 = m.insert_unique(value_data2);
+  EXPECT_TRUE(it3->first == "building" && it3->second == "hospital");
+  EXPECT_FALSE(value_data2.first.empty());
+  EXPECT_FALSE(value_data2.second.empty());
+  auto it4 = m.insert_unique(std::move(value_data3));
+  EXPECT_TRUE(it4->first == "animal" && it4->second == "tiger");
+  EXPECT_TRUE(value_data3.first.empty());
+  EXPECT_TRUE(value_data3.second.empty());
+  EXPECT_TRUE(m.contains("job"));
+  EXPECT_TRUE(m.contains("road"));
+  EXPECT_TRUE(m.contains("building"));
+  EXPECT_TRUE(m.contains("animal"));
+  auto it5 = m.emplace_unique("number", "111", 2);
+  EXPECT_TRUE(it5->first == "number" && it5->second == "11");
+  EXPECT_TRUE(m["number"] == "11");
+  String key_body = "body";
+  auto it6 = m.emplace_unique(key_body, "hand");
+  EXPECT_TRUE(it6->first == key_body && it6->second == "hand");
+  EXPECT_TRUE(!key_body.empty());
+  EXPECT_TRUE(m["body"] == "hand");
+  auto it7 = m.emplace_unique(std::piecewise_construct,
+                              std::forward_as_tuple("letter"),
+                              std::forward_as_tuple(5, 'X'));
+  EXPECT_TRUE(it7->first == "letter" && it7->second == "XXXXX");
+  EXPECT_TRUE(m["letter"] == "XXXXX");
+}
+
+TEST(MapStringTest, LinearEraseOperationsBaseStringKey) {
+  LinearFlatMap<String, std::string> m{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m["A"], "1");
+  EXPECT_EQ(m["B"], "2");
+  EXPECT_EQ(m["C"], "3");
+
+  size_t cnt = m.erase("B");
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains("B"));
+
+  auto it = m.find("A");
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+
+  EXPECT_EQ(m.erase("X"), 0);
+}
+
+TEST(SetStringTest, LinearIteratorsBaseStringKey) {
+  InlineLinearFlatSet<String, 10> s{"a", "z", "c", "b", "m", "g", "q", "h"};
+  std::string order;
+  for (auto it = s.begin(); it != s.end(); it++) {
+    order += (*it).str();
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "abcghmqz" : "azcbmgqh");
+
+  order = "";
+  for (auto it = s.rbegin(); it != s.rend(); it++) {
+    order += (*it).str();
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "zqmhgcba" : "hqgmbcza");
+}
+
+TEST(SetStringTest, LinearBasicBaseStringKey) {
+  InlineLinearFlatSet<String, 10> s{"a", "z", "c", "b", "m", "g", "q", "h"};
+  EXPECT_TRUE(s.is_static_buffer());
+  EXPECT_TRUE(s.contains("a"));
+  EXPECT_FALSE(s.contains("y"));
+  EXPECT_TRUE(s.find("c") != s.end());
+  EXPECT_TRUE(s.find("y") == s.end());
+  EXPECT_TRUE(s.count("q") == 1);
+  EXPECT_TRUE(s.count("y") == 0);
+  EXPECT_EQ(s.erase("y"), 0);
+  EXPECT_EQ(s.size(), 8);
+  EXPECT_EQ(s.erase("z"), 1);
+  EXPECT_EQ(s.size(), 7);
+  EXPECT_FALSE(s.contains("z"));
+  auto it = s.erase(s.find("g"));
+  EXPECT_EQ(s.size(), 6);
+  EXPECT_EQ(*it, s.is_data_ordered() ? "h" : "q");
+}
+
+TEST(MapStringTest, LinearIteratorsBaseStringKey) {
+  LinearFlatMap<String, std::string> m{{"Z", "26"}, {"A", "1"}, {"M", "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "A" : "Z");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "M" : "A");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "Z" : "M");
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "Z" : "M");
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "M" : "A");
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "A" : "Z");
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapStringTest, LinearEdgeCasesBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  m[""] = "empty_key";
+  m.emplace("empty_value", "");
+  EXPECT_EQ(m[""], "empty_key");
+  EXPECT_EQ(m["empty_value"], "");
+
+  std::string big_key(1000, 'K');
+  std::string big_value(10000, 'V');
+  m[big_key] = big_value;
+  EXPECT_EQ(m[big_key].size(), 10000);
+}
+
+TEST(MapStringTest, LinearInsertOrAssignBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, LinearEmplacePiecewiseBaseStringKey) {
+  LinearFlatMap<String, std::string> m;
+
+  auto emp_it =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(emp_it.first->second, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple("KKKKK", 3),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m["KKK"], "kkk");
+
+  auto emp_fail =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m["piece_key"], "XXXXX");
+}
+
+TEST(MapStringTest, LinearMixedInlineSizeBaseStringKey) {
+  LinearFlatMap<String, std::string> m_src{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_TRUE(AssertMapContent_ABC_123(m_src));
+  InlineLinearFlatMap<String, std::string, 3> m_src2{
+      {"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_TRUE(AssertMapContent_ABC_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatMap<String, std::string> m1(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatMap<String, std::string> m2(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatMap<String, std::string, 2> m3(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatMap<String, std::string, 2> m4(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatMap<String, std::string, 5> m5(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatMap<String, std::string, 5> m6(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatMap<String, std::string> m7{{"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m7));
+
+  InlineLinearFlatMap<String, std::string, 3> m8{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatMap<String, std::string, 2> m9{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatMap<String, std::string, 5> m10{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatMap<String, std::string> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatMap<String, std::string, 3> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatMap<String, std::string, 2> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatMap<String, std::string, 5> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatMap<String, std::string> m15{{"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatMap<String, std::string, 3> m16{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatMap<String, std::string, 2> m17{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(SetStringTest, LinearEmplaceBaseStringKey) {
+  LinearFlatSet<String> s;
+  s.emplace("ABC", 2);
+  s.emplace("D");
+  s.insert("AB");
+  EXPECT_EQ(s.size(), 2);
+  EXPECT_TRUE(s.contains("AB"));
+  EXPECT_TRUE(s.contains("D"));
+}
+
+TEST(SetStringTest, LinearMixedInlineSizeBaseStringKey) {
+  LinearFlatSet<String> m_src{"A", "B", "C"};
+  EXPECT_TRUE(AssertSetContent_ABC(m_src));
+  InlineLinearFlatSet<String, 3> m_src2{"A", "B", "C"};
+  EXPECT_TRUE(AssertSetContent_ABC(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatSet<String> m1(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatSet<String> m2(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatSet<String, 2> m3(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatSet<String, 2> m4(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatSet<String, 5> m5(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatSet<String, 5> m6(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatSet<String> m7{"a", "b", "c"};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m7));
+
+  InlineLinearFlatSet<String, 3> m8{"a", "b", "c"};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatSet<String, 2> m9{"a", "b", "c"};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatSet<String, 5> m10{"a", "b", "c"};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatSet<String> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatSet<String, 3> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatSet<String, 2> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatSet<String, 5> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatSet<String> m15{"a", "b", "c"};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatSet<String, 3> m16{"a", "b", "c"};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatSet<String, 2> m17{"a", "b", "c"};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(LinearMap, FromSourceArrayBaseStringKey) {
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    LinearFlatMap<String, std::string> map(std::move(source_array));
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+    EXPECT_TRUE(source_array.empty());
+  }
+
+  {
+    InlineVector<std::pair<String, std::string>, 5> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    LinearFlatMap<String, std::string> map(std::move(source_array));
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 2> map(std::move(source_array));
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 5> map(std::move(source_array));
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    InlineVector<std::pair<String, std::string>, 5> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 5> map(std::move(source_array));
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    LinearFlatMap<String, std::string> map;
+    map = std::move(source_array);
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+    EXPECT_TRUE(source_array.empty());
+  }
+
+  {
+    InlineVector<std::pair<String, std::string>, 5> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    LinearFlatMap<String, std::string> map;
+    map = std::move(source_array);
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 2> map;
+    map = std::move(source_array);
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    Vector<std::pair<String, std::string>> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 5> map;
+    map = std::move(source_array);
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+
+  {
+    InlineVector<std::pair<String, std::string>, 5> source_array{
+        {"z", "Z"}, {"a", "A"}, {"e", "E"}};
+    InlineLinearFlatMap<String, std::string, 5> map;
+    map = std::move(source_array);
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["z"], "Z");
+    EXPECT_EQ(map["a"], "A");
+    EXPECT_EQ(map["e"], "E");
+  }
+}
+
+TEST(LinearSet, FromSourceArrayBaseStringKey) {
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    LinearFlatSet<String> set(std::move(source_array));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+    EXPECT_TRUE(source_array.empty());
+  }
+
+  {
+    InlineVector<String, 5> source_array{"z", "a", "e"};
+    LinearFlatSet<String> set(std::move(source_array));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 2> set(std::move(source_array));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 5> set(std::move(source_array));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    InlineVector<String, 5> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 5> set(std::move(source_array));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    LinearFlatSet<String> set;
+    set = std::move(source_array);
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+    EXPECT_TRUE(source_array.empty());
+  }
+
+  {
+    InlineVector<String, 5> source_array{"z", "a", "e"};
+    LinearFlatSet<String> set;
+    set = std::move(source_array);
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 2> set;
+    set = std::move(source_array);
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    Vector<String> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 5> set;
+    set = std::move(source_array);
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+
+  {
+    InlineVector<String, 5> source_array{"z", "a", "e"};
+    InlineLinearFlatSet<String, 5> set;
+    set = std::move(source_array);
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_TRUE(set.contains("z"));
+    EXPECT_TRUE(set.contains("a"));
+    EXPECT_TRUE(set.contains("e"));
+  }
+}
+
+TEST(LinearMap, SwapBaseStringKey) {
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 2> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2{{"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 2> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+}
+
+TEST(LinearSet, SwapBaseStringKey) {
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 2> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 2> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+}
+
+TEST(LinearMap, MergeBaseStringKey) {
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    LinearFlatMap<String, std::string> m1{{"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2{
+        {"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_AC_1030(m2));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 3> m2{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 4> m2{
+        {"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_AC_1030(m2));
+  }
+}
+
+TEST(LinearSet, MergeBaseStringKey) {
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2{"A", "B", "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    LinearFlatSet<String> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2{"A", "b", "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertMapContent_AC(m2));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3> m1{"A", "B", "C"};
+    LinearFlatSet<String> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatSet<String, 3> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 3> m2{"A", "B", "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 4> m2{"A", "b", "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertMapContent_AC(m2));
+  }
+}
+
+TEST(Vector, LinearMapInsertOrAssignBaseStringKeyWithPolicy) {
+  {
+    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> map{
+        {"3", "c"}, {"2", "b"}, {"1", "a"}};
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map["1"], "a");
+    EXPECT_EQ(map["2"], "b");
+    EXPECT_EQ(map["3"], "c");
+    EXPECT_EQ(map["4"], "");
+
+    auto r = map.insert_or_assign("4", "d");
+    EXPECT_FALSE(r.second);
+    EXPECT_EQ(map["4"], "d");
+
+    String s5("5");
+    std::string se = "e";
+    auto r2 = map.insert_or_assign(s5, std::move(se));
+    EXPECT_TRUE(r2.second);
+    EXPECT_EQ(map["5"], "e");
+    EXPECT_EQ(s5, "5");
+    EXPECT_TRUE(se.empty());
+
+    String s6("6");
+    std::string sf = "f";
+    auto r3 = map.insert_or_assign(std::move(s6), std::move(sf));
+    EXPECT_TRUE(r3.second);
+    EXPECT_EQ(map["6"], "f");
+    EXPECT_TRUE(s6.empty());
+    EXPECT_TRUE(sf.empty());
+
+    String s7("7");
+    std::string sg = "g";
+    auto r4 = map.insert_or_assign(std::move(s7), sg);
+    EXPECT_TRUE(r4.second);
+    EXPECT_EQ(map["7"], "g");
+    EXPECT_TRUE(s7.empty());
+    EXPECT_EQ(sg, "g");
+
+    EXPECT_EQ(map.size(), 7);
+  }
+}
+
+TEST(Vector, LinearSetInsertBaseStringKeyWithPolicy) {
+  LinearFlatSet<String, KeyPolicy<String>> set{"1", "2", "3"};
+  auto r = set.insert("3");
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(set.size(), 3);
+
+  auto r2 = set.insert("4");
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(set.size(), 4);
+
+  std::string s5 = "5";
+  auto r3 = set.insert(std::move(s5));
+  EXPECT_TRUE(r3.second);
+  EXPECT_TRUE(s5.empty());
+
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains("1"));
+  EXPECT_TRUE(set.contains("2"));
+  EXPECT_TRUE(set.contains("3"));
+  EXPECT_TRUE(set.contains("4"));
+  EXPECT_TRUE(set.contains("5"));
+  EXPECT_FALSE(set.contains("6"));
+}
+
+TEST(Vector, LinearSetInsertUniqueBaseStringKeyWithPolicy) {
+  LinearFlatSet<String, KeyPolicy<String>> set;
+  set.insert_unique("1");
+  set.insert_unique("3");
+  const String two("2");
+  set.insert_unique(two);
+  set.insert_unique("6");
+  auto it = set.insert_unique("0");
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains("1"));
+  EXPECT_TRUE(set.contains("3"));
+  EXPECT_TRUE(set.contains("2"));
+  EXPECT_TRUE(set.contains("6"));
+  EXPECT_TRUE(set.contains("0"));
+  EXPECT_TRUE(*it == "0");
+}
+
+TEST(Vector, LinearMapEmplaceBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> map;
+  auto r = map.emplace(std::piecewise_construct,
+                       std::tuple<const char*, size_t>("123", 2),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(r.first->first, "12");
+  EXPECT_EQ(r.first->second, "ab");
+  auto r2 = map.emplace(std::piecewise_construct,
+                        std::tuple<const char*, size_t>("112", 2),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(r2.first->first, "11");
+  EXPECT_EQ(r2.first->second, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple("12"),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, "12");
+  EXPECT_EQ(r3.first->second, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace("11", "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(r4.first->first, "11");
+  EXPECT_EQ(r4.first->second, "xy");
+
+  String s11("11");
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(std::move(s11), std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(r5.first->first, "11");
+  EXPECT_EQ(r5.first->second, "xy");
+  EXPECT_EQ(s11, "11");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  std::string s13 = "13";
+  auto r6 = map.try_emplace(std::move(s13), std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(r6.first->first, "13");
+  EXPECT_EQ(r6.first->second, "xyz");
+  EXPECT_TRUE(s13.empty());
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+
+  std::string s14 = "14";
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(s14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(r7.first->first, "14");
+  EXPECT_EQ(r7.first->second, "uvw");
+  EXPECT_EQ(s14, "14");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map["12"], "ab");
+  EXPECT_EQ(map["11"], "xy");
+  EXPECT_EQ(map["13"], "xyz");
+  EXPECT_EQ(map["14"], "uvw");
+}
+
+TEST(MapStringTest, LinearBasicOperationsBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({"apple", "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(ret.first->first, "apple");
+  EXPECT_EQ(ret.first->second, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapStringTest, LinearElementAccessBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m{{"apple", "red"},
+                                                          {"banana", "yellow"}};
+
+  EXPECT_EQ(m["apple"], "red");
+
+  m["apple"] = "green";
+  EXPECT_EQ(m["apple"], "green");
+  EXPECT_EQ(m.at("apple"), "green");
+
+  EXPECT_EQ(m["grape"], "");
+  EXPECT_EQ(m.at("grape"), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapStringTest, LinearInsertUpdateBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  auto ret1 = m.insert({"fruit", "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({"fruit", "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(ret2.first->second, "apple");
+
+  auto emp_ret = m.emplace("color", "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(emp_ret.first->first, "color");
+
+  m["color"] = "red";
+  EXPECT_EQ(m["color"], "red");
+
+  std::pair<const String, std::string> value_type{String("vehicle"), "car"};
+  auto ret3 = m.insert(value_type);
+  EXPECT_TRUE(ret3.second);
+  EXPECT_TRUE(!value_type.first.empty());
+  auto ret4 = m.insert(std::move(value_type));
+  EXPECT_FALSE(ret4.second);
+  EXPECT_TRUE(!value_type.second.empty());
+
+  m.erase("vehicle");
+  auto ret5 = m.insert(std::move(value_type));
+  EXPECT_TRUE(ret5.second);
+  EXPECT_TRUE(!value_type.first.empty());
+  EXPECT_TRUE(value_type.second.empty());
+
+  std::pair<const String, std::string> value_data0{"job", "doctor"};
+  std::pair<const String, std::string> value_data1{"road", "highway"};
+  std::pair<String, std::string> value_data2{"building", "hospital"};
+  std::pair<String, std::string> value_data3{"animal", "tiger"};
+  auto it = m.insert_unique(value_data0);
+  EXPECT_TRUE(it->first == "job" && it->second == "doctor");
+  EXPECT_FALSE(value_data0.first.empty());
+  EXPECT_FALSE(value_data0.second.empty());
+  auto it2 = m.insert_unique(std::move(value_data1));
+  EXPECT_TRUE(it2->first == "road" && it2->second == "highway");
+  EXPECT_FALSE(value_data1.first.empty());
+  EXPECT_TRUE(value_data1.second.empty());
+  auto it3 = m.insert_unique(value_data2);
+  EXPECT_TRUE(it3->first == "building" && it3->second == "hospital");
+  EXPECT_FALSE(value_data2.first.empty());
+  EXPECT_FALSE(value_data2.second.empty());
+  auto it4 = m.insert_unique(std::move(value_data3));
+  EXPECT_TRUE(it4->first == "animal" && it4->second == "tiger");
+  EXPECT_TRUE(value_data3.first.empty());
+  EXPECT_TRUE(value_data3.second.empty());
+  EXPECT_TRUE(m.contains("job"));
+  EXPECT_TRUE(m.contains("road"));
+  EXPECT_TRUE(m.contains("building"));
+  EXPECT_TRUE(m.contains("animal"));
+  auto it5 = m.emplace_unique("number", "111", 2);
+  EXPECT_TRUE(it5->first == "number" && it5->second == "11");
+  EXPECT_TRUE(m["number"] == "11");
+  String key_body = "body";
+  auto it6 = m.emplace_unique(key_body, "hand");
+  EXPECT_TRUE(it6->first == key_body && it6->second == "hand");
+  EXPECT_TRUE(!key_body.empty());
+  EXPECT_TRUE(m["body"] == "hand");
+  auto it7 = m.emplace_unique(std::piecewise_construct,
+                              std::forward_as_tuple("letter"),
+                              std::forward_as_tuple(5, 'X'));
+  EXPECT_TRUE(it7->first == "letter" && it7->second == "XXXXX");
+  EXPECT_TRUE(m["letter"] == "XXXXX");
+}
+
+TEST(MapStringTest, LinearEraseOperationsBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m{
+      {"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m["A"], "1");
+  EXPECT_EQ(m["B"], "2");
+  EXPECT_EQ(m["C"], "3");
+
+  size_t cnt = m.erase("B");
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains("B"));
+
+  auto it = m.find("A");
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+
+  EXPECT_EQ(m.erase("X"), 0);
+}
+
+TEST(SetStringTest, LinearIteratorsBaseStringKeyWithPolicy) {
+  InlineLinearFlatSet<String, 10, KeyPolicy<String>> s{"a", "z", "c", "b",
+                                                       "m", "g", "q", "h"};
+  std::string order;
+  for (auto it = s.begin(); it != s.end(); it++) {
+    order += (*it).str();
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "abcghmqz" : "azcbmgqh");
+
+  order = "";
+  for (auto it = s.rbegin(); it != s.rend(); it++) {
+    order += (*it).str();
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "zqmhgcba" : "hqgmbcza");
+}
+
+TEST(SetStringTest, LinearBasicBaseStringKeyWithPolicy) {
+  InlineLinearFlatSet<String, 10, KeyPolicy<String>> s{"a", "z", "c", "b",
+                                                       "m", "g", "q", "h"};
+  EXPECT_TRUE(s.is_static_buffer());
+  EXPECT_TRUE(s.contains("a"));
+  EXPECT_FALSE(s.contains("y"));
+  EXPECT_TRUE(s.find("c") != s.end());
+  EXPECT_TRUE(s.find("y") == s.end());
+  EXPECT_TRUE(s.count("q") == 1);
+  EXPECT_TRUE(s.count("y") == 0);
+  EXPECT_EQ(s.erase("y"), 0);
+  EXPECT_EQ(s.size(), 8);
+  EXPECT_EQ(s.erase("z"), 1);
+  EXPECT_EQ(s.size(), 7);
+  EXPECT_FALSE(s.contains("z"));
+  auto it = s.erase(s.find("g"));
+  EXPECT_EQ(s.size(), 6);
+  EXPECT_EQ(*it, s.is_data_ordered() ? "h" : "q");
+}
+
+TEST(MapStringTest, LinearIteratorsBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m{
+      {"Z", "26"}, {"A", "1"}, {"M", "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "A" : "Z");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "M" : "A");
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? "Z" : "M");
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "Z" : "M");
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "M" : "A");
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? "A" : "Z");
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapStringTest, LinearEdgeCasesBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  m[""] = "empty_key";
+  m.emplace("empty_value", "");
+  EXPECT_EQ(m[""], "empty_key");
+  EXPECT_EQ(m["empty_value"], "");
+
+  std::string big_key(1000, 'K');
+  std::string big_value(10000, 'V');
+  m[big_key] = big_value;
+  EXPECT_EQ(m[big_key].size(), 10000);
+}
+
+TEST(MapStringTest, LinearInsertOrAssignBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign("fruit", "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign("empty", "");
+  EXPECT_EQ(m["empty"], "");
+
+  auto [it, _] = m.insert_or_assign("new_key", "value");
+  EXPECT_EQ(it->first, "new_key");
+}
+
+TEST(MapStringTest, LinearEmplacePiecewiseBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m;
+
+  auto emp_it =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(emp_it.first->second, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple("KKKKK", 3),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m["KKK"], "kkk");
+
+  auto emp_fail =
+      m.emplace(std::piecewise_construct, std::forward_as_tuple("piece_key"),
+                std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m["piece_key"], "XXXXX");
+}
+
+TEST(MapStringTest, LinearMixedInlineSizeBaseStringKeyWithPolicy) {
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m_src{
+      {"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_TRUE(AssertMapContent_ABC_123(m_src));
+  InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m_src2{
+      {"A", "1"}, {"B", "2"}, {"C", "3"}};
+  EXPECT_TRUE(AssertMapContent_ABC_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m1(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m2(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m3(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m4(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m5(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m6(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m7{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m7));
+
+  InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m8{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m9{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m10{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m12(
+      std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m13(
+      std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m14(
+      std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatMap<String, std::string, KeyPolicy<String>> m15{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m16{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m17{
+      {"A", "11"}, {"B", "22"}, {"C", "33"}};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertMapContent_ABC_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(SetStringTest, LinearEmplaceBaseStringKeyWithPolicy) {
+  LinearFlatSet<String, KeyPolicy<String>> s;
+  s.emplace("ABC", 2);
+  s.emplace("D");
+  s.insert("AB");
+  EXPECT_EQ(s.size(), 2);
+  EXPECT_TRUE(s.contains("AB"));
+  EXPECT_TRUE(s.contains("D"));
+}
+
+TEST(SetStringTest, LinearMixedInlineSizeBaseStringKeyWithPolicy) {
+  LinearFlatSet<String, KeyPolicy<String>> m_src{"A", "B", "C"};
+  EXPECT_TRUE(AssertSetContent_ABC(m_src));
+  InlineLinearFlatSet<String, 3, KeyPolicy<String>> m_src2{"A", "B", "C"};
+  EXPECT_TRUE(AssertSetContent_ABC(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatSet<String, KeyPolicy<String>> m1(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatSet<String, KeyPolicy<String>> m2(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatSet<String, 2, KeyPolicy<String>> m3(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatSet<String, 2, KeyPolicy<String>> m4(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatSet<String, 5, KeyPolicy<String>> m5(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatSet<String, 5, KeyPolicy<String>> m6(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatSet<String, KeyPolicy<String>> m7{"a", "b", "c"};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m7));
+
+  InlineLinearFlatSet<String, 3, KeyPolicy<String>> m8{"a", "b", "c"};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatSet<String, 2, KeyPolicy<String>> m9{"a", "b", "c"};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatSet<String, 5, KeyPolicy<String>> m10{"a", "b", "c"};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatSet<String, KeyPolicy<String>> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatSet<String, 3, KeyPolicy<String>> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatSet<String, 2, KeyPolicy<String>> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatSet<String, 5, KeyPolicy<String>> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatSet<String, KeyPolicy<String>> m15{"a", "b", "c"};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatSet<String, 3, KeyPolicy<String>> m16{"a", "b", "c"};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertSetContent_ABC(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatSet<String, 2, KeyPolicy<String>> m17{"a", "b", "c"};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertSetContent_ABC(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(LinearMap, SwapBaseStringKeyWithPolicy) {
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 2, KeyPolicy<String>> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 5, KeyPolicy<String>> m2{
+        {"a", "1"}, {"b", "2"}, {"c", "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_abc_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_abc_123(m2));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+  }
+}
+
+TEST(LinearSet, SwapBaseStringKeyWithPolicy) {
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 2, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5, KeyPolicy<String>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 2, KeyPolicy<String>> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5, KeyPolicy<String>> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 5, KeyPolicy<String>> m2{"a", "b", "c"};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_abc(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_abc(m2));
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+  }
+}
+
+TEST(LinearMap, MergeBaseStringKeyWithPolicy) {
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2{
+        {"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_AC_1030(m2));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    LinearFlatMap<String, std::string, KeyPolicy<String>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m2{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABC_123(m1));
+    EXPECT_TRUE(AssertMapContent_ABC_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<String, std::string, 3, KeyPolicy<String>> m1{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    InlineLinearFlatMap<String, std::string, 4, KeyPolicy<String>> m2{
+        {"A", "10"}, {"b", "20"}, {"C", "30"}, {"D", "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_ABCbD_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_AC_1030(m2));
+  }
+}
+
+TEST(LinearSet, MergeBaseStringKeyWithPolicy) {
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2{"A", "B", "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    LinearFlatSet<String, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2{"A", "b", "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertMapContent_AC(m2));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m1{"A", "B", "C"};
+    LinearFlatSet<String, KeyPolicy<String>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m2{"A", "B", "C"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABC(m1));
+    EXPECT_TRUE(AssertSetContent_ABC(m2));
+  }
+
+  {
+    InlineLinearFlatSet<String, 3, KeyPolicy<String>> m1{"A", "B", "C"};
+    InlineLinearFlatSet<String, 4, KeyPolicy<String>> m2{"A", "b", "C", "D"};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_ABCbD(m1));
+    EXPECT_TRUE(AssertMapContent_AC(m2));
+  }
+}
+
+namespace {
+template <class SetType>
+bool AssertSetContent_123(const SetType& m) {
+  return m.size() == 3 && m.contains(1) && m.contains(2) && m.contains(3);
+}
+
+template <class SetType>
+bool AssertSetContent_n1n2n3(const SetType& m) {
+  return m.size() == 3 && m.contains(-1) && m.contains(-2) && m.contains(-3);
+}
+
+template <class SetType>
+bool AssertSetContent_123n24(SetType& m) {
+  return m.size() == 5 && m.contains(1) && m.contains(2) && m.contains(3) &&
+         m.contains(-2) && m.contains(4);
+}
+
+template <class SetType>
+bool AssertMapContent_13(SetType& m) {
+  return m.size() == 2 && m.contains(1) && m.contains(3);
+}
+
+template <class MapType>
+bool AssertMapContent_123_123(MapType& m) {
+  return (m.size() == 3) && (m[1] == "1") && (m[2] == "2") && (m[3] == "3");
+}
+
+template <class MapType>
+bool AssertMapContent_n1n2n3_123(MapType& m) {
+  return (m.size() == 3) && (m[-1] == "1") && (m[-2] == "2") && (m[-3] == "3");
+}
+
+template <class MapType>
+bool AssertMapContent_123n24_1232040(MapType& m) {
+  return (m.size() == 5) && (m[1] == "1") && (m[2] == "2") && (m[3] == "3") &&
+         (m[-2] == "20") && (m[4] == "40");
+}
+
+template <class MapType>
+bool AssertMapContent_13_1030(MapType& m) {
+  return (m.size() == 2) && (m[1] == "10") && (m[3] == "30");
+}
+}  // namespace
+
+TEST(Vector, LinearMapInsertOrAssignIntKey) {
+  {
+    InlineLinearFlatMap<int16_t, std::string, 5> map{
+        {3, "c"}, {2, "b"}, {1, "a"}};
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map[1], "a");
+    EXPECT_EQ(map[2], "b");
+    EXPECT_EQ(map[3], "c");
+    EXPECT_EQ(map[4], "");
+
+    auto r = map.insert_or_assign(4, "d");
+    EXPECT_FALSE(r.second);
+    EXPECT_EQ(map[4], "d");
+
+    std::string se = "e";
+    auto r2 = map.insert_or_assign(5, std::move(se));
+    EXPECT_TRUE(r2.second);
+    EXPECT_EQ(map[5], "e");
+    EXPECT_TRUE(se.empty());
+
+    std::string sf = "f";
+    auto r3 = map.insert_or_assign(6, std::move(sf));
+    EXPECT_TRUE(r3.second);
+    EXPECT_EQ(map[6], "f");
+    EXPECT_TRUE(sf.empty());
+
+    std::string sg = "g";
+    auto r4 = map.insert_or_assign(7, sg);
+    EXPECT_TRUE(r4.second);
+    EXPECT_EQ(map[7], "g");
+    EXPECT_EQ(sg, "g");
+
+    EXPECT_EQ(map.size(), 7);
+  }
+}
+
+TEST(Vector, LinearSetInsertIntKey) {
+  LinearFlatSet<int16_t> set{1, 2, 3};
+  auto r = set.insert(3);
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(set.size(), 3);
+
+  auto r2 = set.insert(4);
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(set.size(), 4);
+
+  auto r3 = set.insert(5);
+  EXPECT_TRUE(r3.second);
+
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains(1));
+  EXPECT_TRUE(set.contains(2));
+  EXPECT_TRUE(set.contains(3));
+  EXPECT_TRUE(set.contains(4));
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_FALSE(set.contains(6));
+}
+
+TEST(Vector, LinearMapEmplaceIntKey) {
+  LinearFlatMap<int16_t, std::string> map;
+  auto r = map.emplace(std::piecewise_construct, std::tuple<int16_t>(12),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(r.first->first, 12);
+  EXPECT_EQ(r.first->second, "ab");
+  auto r2 = map.emplace(std::piecewise_construct, std::tuple<int16_t>(11),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(r2.first->first, 11);
+  EXPECT_EQ(r2.first->second, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple(12),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, 12);
+  EXPECT_EQ(r3.first->second, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace(11, "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(r4.first->first, 11);
+  EXPECT_EQ(r4.first->second, "xy");
+
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(11, std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(r5.first->first, 11);
+  EXPECT_EQ(r5.first->second, "xy");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  auto r6 = map.try_emplace(13, std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(r6.first->first, 13);
+  EXPECT_EQ(r6.first->second, "xyz");
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(r7.first->first, 14);
+  EXPECT_EQ(r7.first->second, "uvw");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+  EXPECT_EQ(map[14], "uvw");
+}
+
+TEST(MapIntTest, LinearBasicOperationsIntKey) {
+  LinearFlatMap<int8_t, std::string> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({99, "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(ret.first->first, 99);
+  EXPECT_EQ(ret.first->second, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapIntTest, LinearElementAccessIntKey) {
+  LinearFlatMap<int32_t, std::string> m{{99, "red"}, {100, "yellow"}};
+
+  EXPECT_EQ(m[99], "red");
+
+  m[99] = "green";
+  EXPECT_EQ(m[99], "green");
+  EXPECT_EQ(m.at(99), "green");
+
+  EXPECT_EQ(m[101], "");
+  EXPECT_EQ(m.at(101), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapIntTest, LinearInsertUpdateIntKey) {
+  LinearFlatMap<int16_t, std::string> m;
+
+  auto ret1 = m.insert({99, "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({99, "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(ret2.first->second, "apple");
+
+  auto emp_ret = m.emplace(100, "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(emp_ret.first->first, 100);
+
+  m[100] = "red";
+  EXPECT_EQ(m[100], "red");
+}
+
+TEST(MapIntTest, LinearEraseOperationsIntKey) {
+  LinearFlatMap<int16_t, std::string> m{{30, "1"}, {31, "2"}, {32, "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m[30], "1");
+  EXPECT_EQ(m[31], "2");
+  EXPECT_EQ(m[32], "3");
+
+  size_t cnt = m.erase(31);
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains(31));
+
+  auto it = m.find(30);
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+  EXPECT_FALSE(m.contains(30));
+
+  EXPECT_EQ(m.erase(100), 0);
+}
+
+TEST(SetIntTest, LinearIteratorsIntKey) {
+  InlineLinearFlatSet<int32_t, 10> s{5, 4, 9, 0, 1, 8, 2, 7};
+  std::string order;
+  for (auto it = s.begin(); it != s.end(); it++) {
+    order += std::to_string((*it));
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "01245789" : "54901827");
+
+  order = "";
+  for (auto it = s.rbegin(); it != s.rend(); it++) {
+    order += std::to_string((*it));
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "98754210" : "72810945");
+}
+
+TEST(SetIntTest, LinearBasicIntKey) {
+  {
+    InlineLinearFlatSet<int8_t, 10> s{5, 4, 9, 0, 1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+  {
+    InlineLinearFlatSet<int16_t, 10> s{5, 4, 9, 0, 1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+  {
+    InlineLinearFlatSet<int32_t, 10> s{5, 4, 9, 0, 1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+}
+
+TEST(MapIntTest, LinearIteratorsIntKey) {
+  LinearFlatMap<int32_t, std::string> m{{26, "26"}, {1, "1"}, {13, "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 1 : 26);
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 13 : 1);
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 26 : 13);
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 26 : 13);
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 13 : 1);
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 1 : 26);
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapIntTest, LinearInsertOrAssignIntKey) {
+  LinearFlatMap<int16_t, std::string> m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(it->first, 12);
+}
+
+TEST(MapIntTest, LinearEmplacePiecewiseIntKey) {
+  LinearFlatMap<uint32_t, std::string> m;
+
+  auto emp_it = m.emplace(std::piecewise_construct, std::forward_as_tuple(99u),
+                          std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(emp_it.first->second, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple(199u),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m[199], "kkk");
+
+  auto emp_fail = m.emplace(std::piecewise_construct, std::forward_as_tuple(99),
+                            std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m[99], "XXXXX");
+}
+
+TEST(MapIntTest, LinearMixedInlineSizeIntKey) {
+  LinearFlatMap<int8_t, std::string> m_src{{1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src));
+  InlineLinearFlatMap<int8_t, std::string, 3> m_src2{
+      {1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatMap<int8_t, std::string> m1(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatMap<int8_t, std::string> m2(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 2> m3(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 2> m4(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 5> m5(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 5> m6(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatMap<int8_t, std::string> m7{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m7));
+
+  InlineLinearFlatMap<int8_t, std::string, 3> m8{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 2> m9{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 5> m10{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatMap<int8_t, std::string> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 5> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatMap<int8_t, std::string> m15{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3> m16{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2> m17{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(SetIntTest, LinearEmplaceIntKey) {
+  LinearFlatSet<int32_t> s;
+  s.emplace(9);
+  s.emplace(8);
+  s.insert(9);
+  EXPECT_EQ(s.size(), 2);
+  EXPECT_TRUE(s.contains(9));
+  EXPECT_TRUE(s.contains(8));
+}
+
+TEST(SetIntTest, LinearMixedInlineSizeIntKey) {
+  LinearFlatSet<int16_t> m_src{1, 2, 3};
+  EXPECT_TRUE(AssertSetContent_123(m_src));
+  InlineLinearFlatSet<int16_t, 3> m_src2{1, 2, 3};
+  EXPECT_TRUE(AssertSetContent_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatSet<int16_t> m1(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatSet<int16_t> m2(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatSet<int16_t, 2> m3(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatSet<int16_t, 2> m4(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatSet<int16_t, 5> m5(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatSet<int16_t, 5> m6(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatSet<int16_t> m7{21, 22, 23};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m7));
+
+  InlineLinearFlatSet<int16_t, 3> m8{21, 22, 23};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatSet<int16_t, 2> m9{21, 22, 23};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatSet<int16_t, 5> m10{21, 22, 23};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatSet<int16_t> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatSet<int16_t, 3> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatSet<int16_t, 2> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatSet<int16_t, 5> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatSet<int16_t> m15{21, 22, 23};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatSet<int16_t, 3> m16{21, 22, 23};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatSet<int16_t, 2> m17{21, 22, 23};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(LinearMap, SwapIntKey) {
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string> m2{{-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+}
+
+TEST(LinearSet, SwapIntKey) {
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    LinearFlatSet<int> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 2> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    InlineLinearFlatSet<int, 3> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    LinearFlatSet<int> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 2> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    InlineLinearFlatSet<int, 3> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+}
+
+TEST(LinearMap, MergeIntKey) {
+  {
+    LinearFlatMap<uint8_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string> m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string> m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string> m2{
+        {1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 3> m2{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 4> m2{
+        {1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+}
+
+TEST(LinearSet, MergeIntKey) {
+  {
+    LinearFlatSet<int8_t> m1{1, 2, 3};
+    LinearFlatSet<int8_t> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatSet<int8_t> m1{1, 2, 3};
+    LinearFlatSet<int8_t> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    LinearFlatSet<int8_t> m1{1, 2, 3};
+    LinearFlatSet<int8_t> m2{1, -2, 3, 4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_13(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3> m1{1, 2, 3};
+    LinearFlatSet<int8_t> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 3> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 4> m2{1, -2, 3, 4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_13(m2));
+  }
+}
+
+TEST(Vector, LinearMapInsertOrAssignIntKeyWithPolicy) {
+  {
+    InlineLinearFlatMap<int16_t, std::string, 5, KeyPolicy<int16_t>> map{
+        {3, "c"}, {2, "b"}, {1, "a"}};
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map[1], "a");
+    EXPECT_EQ(map[2], "b");
+    EXPECT_EQ(map[3], "c");
+    EXPECT_EQ(map[4], "");
+
+    auto r = map.insert_or_assign(4, "d");
+    EXPECT_FALSE(r.second);
+    EXPECT_EQ(map[4], "d");
+
+    std::string se = "e";
+    auto r2 = map.insert_or_assign(5, std::move(se));
+    EXPECT_TRUE(r2.second);
+    EXPECT_EQ(map[5], "e");
+    EXPECT_TRUE(se.empty());
+
+    std::string sf = "f";
+    auto r3 = map.insert_or_assign(6, std::move(sf));
+    EXPECT_TRUE(r3.second);
+    EXPECT_EQ(map[6], "f");
+    EXPECT_TRUE(sf.empty());
+
+    std::string sg = "g";
+    auto r4 = map.insert_or_assign(7, sg);
+    EXPECT_TRUE(r4.second);
+    EXPECT_EQ(map[7], "g");
+    EXPECT_EQ(sg, "g");
+
+    EXPECT_EQ(map.size(), 7);
+  }
+}
+
+TEST(Vector, LinearSetInsertIntKeyWithPolicy) {
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> set{1, 2, 3};
+  auto r = set.insert(3);
+  EXPECT_FALSE(r.second);
+  EXPECT_EQ(set.size(), 3);
+
+  auto r2 = set.insert(4);
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(set.size(), 4);
+
+  auto r3 = set.insert(5);
+  EXPECT_TRUE(r3.second);
+
+  EXPECT_EQ(set.size(), 5);
+  EXPECT_TRUE(set.contains(1));
+  EXPECT_TRUE(set.contains(2));
+  EXPECT_TRUE(set.contains(3));
+  EXPECT_TRUE(set.contains(4));
+  EXPECT_TRUE(set.contains(5));
+  EXPECT_FALSE(set.contains(6));
+}
+
+TEST(Vector, LinearMapEmplaceIntKeyWithPolicy) {
+  LinearFlatMap<int16_t, std::string, KeyPolicy<int16_t>> map;
+  auto r = map.emplace(std::piecewise_construct, std::tuple<int16_t>(12),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(r.first->first, 12);
+  EXPECT_EQ(r.first->second, "ab");
+  auto r2 = map.emplace(std::piecewise_construct, std::tuple<int16_t>(11),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(r2.first->first, 11);
+  EXPECT_EQ(r2.first->second, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple(12),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(r3.first->first, 12);
+  EXPECT_EQ(r3.first->second, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace(11, "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(r4.first->first, 11);
+  EXPECT_EQ(r4.first->second, "xy");
+
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(11, std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(r5.first->first, 11);
+  EXPECT_EQ(r5.first->second, "xy");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  auto r6 = map.try_emplace(13, std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(r6.first->first, 13);
+  EXPECT_EQ(r6.first->second, "xyz");
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(r7.first->first, 14);
+  EXPECT_EQ(r7.first->second, "uvw");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+  EXPECT_EQ(map[14], "uvw");
+}
+
+TEST(MapIntTest, LinearBasicOperationsIntKeyWithPolicy) {
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({99, "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(ret.first->first, 99);
+  EXPECT_EQ(ret.first->second, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapIntTest, LinearElementAccessIntKeyWithPolicy) {
+  LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m{{99, "red"},
+                                                            {100, "yellow"}};
+
+  EXPECT_EQ(m[99], "red");
+
+  m[99] = "green";
+  EXPECT_EQ(m[99], "green");
+  EXPECT_EQ(m.at(99), "green");
+
+  EXPECT_EQ(m[101], "");
+  EXPECT_EQ(m.at(101), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapIntTest, LinearInsertUpdateIntKeyWithPolicy) {
+  LinearFlatMap<int16_t, std::string, KeyPolicy<int16_t>> m;
+
+  auto ret1 = m.insert({99, "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({99, "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(ret2.first->second, "apple");
+
+  auto emp_ret = m.emplace(100, "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(emp_ret.first->first, 100);
+
+  m[100] = "red";
+  EXPECT_EQ(m[100], "red");
+}
+
+TEST(MapIntTest, LinearEraseOperationsIntKeyWithPolicy) {
+  LinearFlatMap<int16_t, std::string, KeyPolicy<int16_t>> m{
+      {30, "1"}, {31, "2"}, {32, "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m[30], "1");
+  EXPECT_EQ(m[31], "2");
+  EXPECT_EQ(m[32], "3");
+
+  size_t cnt = m.erase(31);
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains(31));
+
+  auto it = m.find(30);
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+  EXPECT_FALSE(m.contains(30));
+
+  EXPECT_EQ(m.erase(100), 0);
+}
+
+TEST(SetIntTest, LinearIteratorsIntKeyWithPolicy) {
+  InlineLinearFlatSet<int32_t, 10, KeyPolicy<int32_t>> s{5, 4, 9, 0,
+                                                         1, 8, 2, 7};
+  std::string order;
+  for (auto it = s.begin(); it != s.end(); it++) {
+    order += std::to_string((*it));
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "01245789" : "54901827");
+
+  order = "";
+  for (auto it = s.rbegin(); it != s.rend(); it++) {
+    order += std::to_string((*it));
+  }
+  EXPECT_EQ(order, s.is_data_ordered() ? "98754210" : "72810945");
+}
+
+TEST(SetIntTest, LinearBasicIntKeyWithPolicy) {
+  {
+    InlineLinearFlatSet<int8_t, 10, KeyPolicy<int8_t>> s{5, 4, 9, 0,
+                                                         1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+  {
+    InlineLinearFlatSet<int16_t, 10, KeyPolicy<int16_t>> s{5, 4, 9, 0,
+                                                           1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+  {
+    InlineLinearFlatSet<int32_t, 10, KeyPolicy<int32_t>> s{5, 4, 9, 0,
+                                                           1, 8, 2, 7};
+    EXPECT_TRUE(s.is_static_buffer());
+    EXPECT_TRUE(s.contains(5));
+    EXPECT_FALSE(s.contains(3));
+    EXPECT_TRUE(s.find(9) != s.end());
+    EXPECT_TRUE(s.find(3) == s.end());
+    EXPECT_TRUE(s.count(2) == 1);
+    EXPECT_TRUE(s.count(3) == 0);
+    EXPECT_EQ(s.erase(3), 0);
+    EXPECT_EQ(s.size(), 8);
+    EXPECT_EQ(s.erase(4), 1);
+    EXPECT_EQ(s.size(), 7);
+    EXPECT_FALSE(s.contains(4));
+    auto it = s.erase(s.find(8));
+    EXPECT_EQ(s.size(), 6);
+    EXPECT_EQ(*it, s.is_data_ordered() ? 9 : 2);
+  }
+}
+
+TEST(MapIntTest, LinearIteratorsIntKeyWithPolicy) {
+  LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m{
+      {26, "26"}, {1, "1"}, {13, "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 1 : 26);
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 13 : 1);
+  ++it;
+  EXPECT_EQ(it->first, m.is_data_ordered() ? 26 : 13);
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 26 : 13);
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 13 : 1);
+  ++rit;
+  EXPECT_EQ(rit->first, m.is_data_ordered() ? 1 : 26);
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapIntTest, LinearInsertOrAssignIntKeyWithPolicy) {
+  LinearFlatMap<int16_t, std::string, KeyPolicy<int16_t>> m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(it->second, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(it->second, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(it->first, 12);
+}
+
+TEST(MapIntTest, LinearEmplacePiecewiseIntKeyWithPolicy) {
+  LinearFlatMap<uint32_t, std::string, KeyPolicy<uint32_t>> m;
+
+  auto emp_it = m.emplace(std::piecewise_construct, std::forward_as_tuple(99u),
+                          std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(emp_it.first->second, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple(199u),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m[199], "kkk");
+
+  auto emp_fail = m.emplace(std::piecewise_construct, std::forward_as_tuple(99),
+                            std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m[99], "XXXXX");
+}
+
+TEST(MapIntTest, LinearMixedInlineSizeIntKeyWithPolicy) {
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m_src{
+      {1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src));
+  InlineLinearFlatMap<int8_t, std::string, 3, KeyPolicy<int8_t>> m_src2{
+      {1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m1(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m2(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 2, KeyPolicy<int8_t>> m3(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 2, KeyPolicy<int8_t>> m4(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 5, KeyPolicy<int8_t>> m5(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 5, KeyPolicy<int8_t>> m6(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m7{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m7));
+
+  InlineLinearFlatMap<int8_t, std::string, 3, KeyPolicy<int8_t>> m8{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 2, KeyPolicy<int8_t>> m9{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 5, KeyPolicy<int8_t>> m10{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3, KeyPolicy<int8_t>> m12(
+      std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2, KeyPolicy<int8_t>> m13(
+      std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 5, KeyPolicy<int8_t>> m14(
+      std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatMap<int8_t, std::string, KeyPolicy<int8_t>> m15{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3, KeyPolicy<int8_t>> m16{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2, KeyPolicy<int8_t>> m17{
+      {1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(SetIntTest, LinearEmplaceIntKeyWithPolicy) {
+  LinearFlatSet<int32_t, KeyPolicy<int32_t>> s;
+  s.emplace(9);
+  s.emplace(8);
+  s.insert(9);
+  EXPECT_EQ(s.size(), 2);
+  EXPECT_TRUE(s.contains(9));
+  EXPECT_TRUE(s.contains(8));
+}
+
+TEST(SetIntTest, LinearMixedInlineSizeIntKeyWithPolicy) {
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m_src{1, 2, 3};
+  EXPECT_TRUE(AssertSetContent_123(m_src));
+  InlineLinearFlatSet<int16_t, 3, KeyPolicy<int16_t>> m_src2{1, 2, 3};
+  EXPECT_TRUE(AssertSetContent_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m1(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m2(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatSet<int16_t, 2, KeyPolicy<int16_t>> m3(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatSet<int16_t, 2, KeyPolicy<int16_t>> m4(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatSet<int16_t, 5, KeyPolicy<int16_t>> m5(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatSet<int16_t, 5, KeyPolicy<int16_t>> m6(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m7{21, 22, 23};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m7));
+
+  InlineLinearFlatSet<int16_t, 3, KeyPolicy<int16_t>> m8{21, 22, 23};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatSet<int16_t, 2, KeyPolicy<int16_t>> m9{21, 22, 23};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatSet<int16_t, 5, KeyPolicy<int16_t>> m10{21, 22, 23};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatSet<int16_t, 3, KeyPolicy<int16_t>> m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatSet<int16_t, 2, KeyPolicy<int16_t>> m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatSet<int16_t, 5, KeyPolicy<int16_t>> m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatSet<int16_t, KeyPolicy<int16_t>> m15{21, 22, 23};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertSetContent_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatSet<int16_t, 3, KeyPolicy<int16_t>> m16{21, 22, 23};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertSetContent_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatSet<int16_t, 2, KeyPolicy<int16_t>> m17{21, 22, 23};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertSetContent_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(LinearMap, SwapIntKeyWithPolicy) {
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2, KeyPolicy<int32_t>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5, KeyPolicy<int32_t>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5, KeyPolicy<int32_t>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2, KeyPolicy<int32_t>> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5, KeyPolicy<int32_t>> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3, KeyPolicy<int32_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5, KeyPolicy<int32_t>> m2{
+        {-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+}
+
+TEST(LinearSet, SwapIntKeyWithPolicy) {
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    LinearFlatSet<int, KeyPolicy<int>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 2, KeyPolicy<int>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5, KeyPolicy<int>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    InlineLinearFlatSet<int, 3, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5, KeyPolicy<int>> m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    LinearFlatSet<int, KeyPolicy<int>> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 2, KeyPolicy<int>> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    LinearFlatSet<int, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5, KeyPolicy<int>> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+
+  {
+    InlineLinearFlatSet<int, 3, KeyPolicy<int>> m1{1, 2, 3};
+    InlineLinearFlatSet<int, 5, KeyPolicy<int>> m2{-1, -2, -3};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertSetContent_n1n2n3(m2));
+    EXPECT_TRUE(AssertSetContent_123(m1));
+  }
+}
+
+TEST(LinearMap, MergeIntKeyWithPolicy) {
+  {
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m2{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m2{
+        {1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string, KeyPolicy<uint8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 3, KeyPolicy<uint8_t>> m2{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3, KeyPolicy<uint8_t>> m1{
+        {1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 4, KeyPolicy<uint8_t>> m2{
+        {1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+}
+
+TEST(LinearSet, MergeIntKeyWithPolicy) {
+  {
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m2{1, -2, 3, 4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_13(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, KeyPolicy<int8_t>> m1{1, 2, 3};
+    LinearFlatSet<int8_t, KeyPolicy<int8_t>> m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertSetContent_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, KeyPolicy<int8_t>> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 3, KeyPolicy<int8_t>> m2{1, 2, 3};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123(m1));
+    EXPECT_TRUE(AssertSetContent_123(m2));
+  }
+
+  {
+    InlineLinearFlatSet<int8_t, 3, KeyPolicy<int8_t>> m1{1, 2, 3};
+    InlineLinearFlatSet<int8_t, 4, KeyPolicy<int8_t>> m2{1, -2, 3, 4};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertSetContent_123n24(m1));
+    EXPECT_TRUE(AssertMapContent_13(m2));
+  }
+}
+
+TEST(Vector, LinearMapInsertOrAssignIntKeyWithConsecutivePolicy) {
+  {
+    InlineLinearFlatMap<int16_t, std::string, 5,
+                        MapKeyPolicyConsecutiveIntegers<int16_t>>
+        map{{3, "c"}, {2, "b"}, {1, "a"}};
+    EXPECT_EQ(map.size(), 3);
+    EXPECT_EQ(map[1], "a");
+    EXPECT_EQ(map[2], "b");
+    EXPECT_EQ(map[3], "c");
+    EXPECT_EQ(map[4], "");
+
+    auto r = map.insert_or_assign(4, "d");
+    EXPECT_FALSE(r.second);
+    EXPECT_EQ(map[4], "d");
+
+    std::string se = "e";
+    auto r2 = map.insert_or_assign(5, std::move(se));
+    EXPECT_TRUE(r2.second);
+    EXPECT_EQ(map[5], "e");
+    EXPECT_TRUE(se.empty());
+
+    std::string sf = "f";
+    auto r3 = map.insert_or_assign(6, std::move(sf));
+    EXPECT_TRUE(r3.second);
+    EXPECT_EQ(map[6], "f");
+    EXPECT_TRUE(sf.empty());
+
+    std::string sg = "g";
+    auto r4 = map.insert_or_assign(7, sg);
+    EXPECT_TRUE(r4.second);
+    EXPECT_EQ(map[7], "g");
+    EXPECT_EQ(sg, "g");
+
+    EXPECT_EQ(map.size(), 7);
+  }
+}
+
+TEST(Vector, LinearMapEmplaceIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>
+      map;
+  auto r = map.emplace(std::piecewise_construct, std::tuple<int16_t>(12),
+                       std::tuple<const char*, size_t>("abc", 2));
+  EXPECT_TRUE(r.second);
+  EXPECT_EQ(*r.first, "ab");
+  auto r2 = map.emplace(std::piecewise_construct, std::tuple<int16_t>(11),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(r2.second);
+  EXPECT_EQ(*r2.first, "xy");
+
+  EXPECT_EQ(map.size(), 2);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+
+  auto r3 = map.emplace(std::piecewise_construct, std::forward_as_tuple(12),
+                        std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_FALSE(r3.second);
+  EXPECT_EQ(*r3.first, "ab");
+
+  EXPECT_EQ(map.size(), 2);
+
+  auto r4 = map.try_emplace(11, "ab");
+  EXPECT_FALSE(r4.second);
+  EXPECT_EQ(*r4.first, "xy");
+
+  std::string sXYZ = "xyz";
+  auto r5 = map.try_emplace(11, std::move(sXYZ));
+  EXPECT_FALSE(r5.second);
+  EXPECT_EQ(*r5.first, "xy");
+  EXPECT_EQ(sXYZ, "xyz");
+
+  auto r6 = map.try_emplace(13, std::move(sXYZ));
+  EXPECT_TRUE(r6.second);
+  EXPECT_EQ(*r6.first, "xyz");
+  EXPECT_TRUE(sXYZ.empty());
+
+  EXPECT_EQ(map.size(), 3);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+
+  std::string sUVW = "uvw";
+  auto r7 = map.try_emplace(14, sUVW);
+  EXPECT_TRUE(r7.second);
+  EXPECT_EQ(*r7.first, "uvw");
+  EXPECT_EQ(sUVW, "uvw");
+
+  EXPECT_EQ(map.size(), 4);
+  EXPECT_EQ(map[12], "ab");
+  EXPECT_EQ(map[11], "xy");
+  EXPECT_EQ(map[13], "xyz");
+  EXPECT_EQ(map[14], "uvw");
+}
+
+TEST(MapIntTest, LinearBasicOperationsIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>> m;
+
+  EXPECT_TRUE(m.empty());
+  EXPECT_EQ(m.size(), 0);
+
+  auto ret = m.insert({99, "red"});
+  ASSERT_TRUE(ret.second);
+  EXPECT_EQ(*ret.first, "red");
+  EXPECT_EQ(m.size(), 1);
+}
+
+TEST(MapIntTest, LinearElementAccessIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int32_t, std::string, MapKeyPolicyConsecutiveIntegers<int32_t>>
+      m{{99, "red"}, {100, "yellow"}};
+
+  EXPECT_EQ(m[99], "red");
+
+  m[99] = "green";
+  EXPECT_EQ(m[99], "green");
+  EXPECT_EQ(m.at(99), "green");
+
+  EXPECT_EQ(m[101], "");
+  EXPECT_EQ(m.at(101), "");
+  EXPECT_EQ(m.size(), 3);
+}
+
+TEST(MapIntTest, LinearInsertUpdateIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>
+      m;
+
+  auto ret1 = m.insert({99, "apple"});
+  EXPECT_TRUE(ret1.second);
+  auto ret2 = m.insert({99, "banana"});
+  EXPECT_FALSE(ret2.second);
+  EXPECT_EQ(*ret2.first, "apple");
+
+  auto emp_ret = m.emplace(100, "blue");
+  EXPECT_TRUE(emp_ret.second);
+  EXPECT_EQ(*emp_ret.first, "blue");
+
+  m[100] = "red";
+  EXPECT_EQ(m[100], "red");
+
+  auto it = m.insert_unique({101, "car"});
+  EXPECT_TRUE(*it == "car");
+  std::pair<const int16_t, std::string> value_type{102, "train"};
+  auto it2 = m.insert_unique(value_type);
+  EXPECT_TRUE(*it2 == "train");
+  EXPECT_TRUE(!value_type.second.empty());
+  EXPECT_TRUE(m[101] == "car");
+  EXPECT_TRUE(m[102] == "train");
+
+  std::pair<const int16_t, std::string> value_type2{200, "tiger"};
+  auto it3 = m.insert_unique(std::move(value_type2));
+  EXPECT_TRUE(*it3 == "tiger");
+  EXPECT_TRUE(value_type2.second.empty());
+  EXPECT_TRUE(m[200] == "tiger");
+
+  std::pair<int16_t, std::string> value_type3{201, "student"};
+  auto it4 = m.insert_unique(value_type3);
+  EXPECT_TRUE(*it4 == "student");
+  EXPECT_FALSE(value_type3.second.empty());
+  EXPECT_TRUE(m[201] == "student");
+
+  std::pair<int16_t, std::string> value_type4{202, "doctor"};
+  auto it5 = m.insert_unique(std::move(value_type4));
+  EXPECT_TRUE(*it5 == "doctor");
+  EXPECT_TRUE(value_type4.second.empty());
+  EXPECT_TRUE(m[202] == "doctor");
+
+  auto it6 = m.emplace_unique(300, "fanfan", 3);
+  EXPECT_TRUE(*it6 == "fan");
+  EXPECT_TRUE(m[300] == "fan");
+
+  const int16_t key301 = 301;
+  auto it7 = m.emplace_unique(key301, 3, 'x');
+  EXPECT_TRUE(*it7 == "xxx");
+  EXPECT_TRUE(m[301] == "xxx");
+
+  auto it8 =
+      m.emplace_unique(std::piecewise_construct, std::forward_as_tuple(302),
+                       std::tuple<const char*, size_t>("xyz", 2));
+  EXPECT_TRUE(*it8 == "xy");
+  EXPECT_TRUE(m[302] == "xy");
+}
+
+TEST(MapIntTest, LinearEraseOperationsIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>
+      m{{30, "1"}, {31, "2"}, {32, "3"}};
+  EXPECT_EQ(m.size(), 3);
+  EXPECT_EQ(m[30], "1");
+  EXPECT_EQ(m[31], "2");
+  EXPECT_EQ(m[32], "3");
+
+  size_t cnt = m.erase(31);
+  EXPECT_EQ(cnt, 1);
+  EXPECT_EQ(m.size(), 2);
+  EXPECT_FALSE(m.contains(31));
+
+  auto it = m.find(30);
+  m.erase(it);
+  EXPECT_EQ(m.size(), 1);
+  EXPECT_FALSE(m.contains(30));
+
+  EXPECT_EQ(m.erase(100), 0);
+}
+
+TEST(MapIntTest, LinearIteratorsIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int32_t, std::string, MapKeyPolicyConsecutiveIntegers<int32_t>>
+      m{{26, "26"}, {1, "1"}, {13, "13"}};
+
+  auto it = m.begin();
+  EXPECT_EQ(*it, m.is_data_ordered() ? "1" : "26");
+  ++it;
+  EXPECT_EQ(*it, m.is_data_ordered() ? "13" : "1");
+  ++it;
+  EXPECT_EQ(*it, m.is_data_ordered() ? "26" : "13");
+  ++it;
+  EXPECT_EQ(it, m.end());
+
+  auto rit = m.rbegin();
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "26" : "13");
+  ++rit;
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "13" : "1");
+  ++rit;
+  EXPECT_EQ(*rit, m.is_data_ordered() ? "1" : "26");
+  ++rit;
+  EXPECT_EQ(rit, m.rend());
+}
+
+TEST(MapIntTest, LinearInsertOrAssignIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int16_t, std::string, MapKeyPolicyConsecutiveIntegers<int16_t>>
+      m;
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "apple");
+    EXPECT_TRUE(inserted);
+    EXPECT_EQ(*it, "apple");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  {
+    auto [it, inserted] = m.insert_or_assign(10, "banana");
+    EXPECT_FALSE(inserted);
+    EXPECT_EQ(*it, "banana");
+    EXPECT_EQ(m.size(), 1);
+  }
+
+  m.insert_or_assign(11, "11");
+  EXPECT_EQ(m[11], "11");
+
+  auto [it, _] = m.insert_or_assign(12, "orange");
+  EXPECT_EQ(*it, "orange");
+}
+
+TEST(MapIntTest, LinearEmplacePiecewiseIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<uint32_t, std::string,
+                MapKeyPolicyConsecutiveIntegers<uint32_t>>
+      m;
+
+  auto emp_it = m.emplace(std::piecewise_construct, std::forward_as_tuple(99u),
+                          std::forward_as_tuple(5, 'X'));
+  ASSERT_TRUE(emp_it.second);
+  EXPECT_EQ(*emp_it.first, "XXXXX");
+
+  m.emplace(std::piecewise_construct, std::forward_as_tuple(199u),
+            std::forward_as_tuple(3, 'k'));
+  EXPECT_EQ(m[199], "kkk");
+
+  auto emp_fail = m.emplace(std::piecewise_construct, std::forward_as_tuple(99),
+                            std::forward_as_tuple("new_value"));
+  EXPECT_FALSE(emp_fail.second);
+  EXPECT_EQ(m[99], "XXXXX");
+}
+
+TEST(MapIntTest, LinearMixedInlineSizeIntKeyWithConsecutivePolicy) {
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m_src{{1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src));
+  InlineLinearFlatMap<int8_t, std::string, 3,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m_src2{{1, "1"}, {2, "2"}, {3, "3"}};
+  EXPECT_TRUE(AssertMapContent_123_123(m_src2));
+  EXPECT_TRUE(m_src2.is_static_buffer());
+  EXPECT_TRUE(m_src == m_src2);
+
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m1(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m1));
+  EXPECT_TRUE(m1 == m_src);
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m2(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m2));
+  EXPECT_TRUE(m2 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 2,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m3(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m3));
+  EXPECT_FALSE(m3.is_static_buffer());
+  EXPECT_TRUE(m3 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 2,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m4(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m4));
+  EXPECT_FALSE(m4.is_static_buffer());
+  EXPECT_TRUE(m4 == m_src2);
+  InlineLinearFlatMap<int8_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m5(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m5));
+  EXPECT_TRUE(m5.is_static_buffer());
+  EXPECT_TRUE(m5 == m_src);
+  InlineLinearFlatMap<int8_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m6(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m6));
+  EXPECT_TRUE(m6.is_static_buffer());
+  EXPECT_TRUE(m6 == m_src2);
+
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m7{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m7 == m_src);
+  EXPECT_TRUE(m7 != m_src);
+  m7 = m_src;
+  EXPECT_TRUE(m7 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m7));
+
+  InlineLinearFlatMap<int8_t, std::string, 3,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m8{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m8 == m_src);
+  EXPECT_TRUE(m8 != m_src);
+  m8 = m_src;
+  EXPECT_TRUE(m8 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m8));
+  EXPECT_TRUE(m8.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 2,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m9{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m9 == m_src);
+  EXPECT_TRUE(m9 != m_src);
+  m9 = m_src;
+  EXPECT_TRUE(m9 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m9));
+  EXPECT_FALSE(m9.is_static_buffer());
+
+  InlineLinearFlatMap<int8_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m10{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m10 == m_src);
+  EXPECT_TRUE(m10 != m_src);
+  m10 = m_src;
+  EXPECT_TRUE(m10 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m10));
+  EXPECT_TRUE(m10.is_static_buffer());
+
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m11(std::move(m7));
+  EXPECT_TRUE(m11 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m11));
+  EXPECT_TRUE(m7.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m12(std::move(m8));
+  EXPECT_TRUE(m12 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m12));
+  EXPECT_TRUE(m12.is_static_buffer());
+  EXPECT_TRUE(m8.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m13(std::move(m9));
+  EXPECT_TRUE(m13 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m13));
+  EXPECT_FALSE(m13.is_static_buffer());
+  EXPECT_TRUE(m9.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 5,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m14(std::move(m10));
+  EXPECT_TRUE(m14 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m14));
+  EXPECT_TRUE(m14.is_static_buffer());
+  EXPECT_TRUE(m10.empty());
+
+  LinearFlatMap<int8_t, std::string, MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m15{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m15 == m_src);
+  EXPECT_TRUE(m15 != m_src);
+  m15 = std::move(m11);
+  EXPECT_TRUE(m15 == m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m15));
+  EXPECT_TRUE(m11.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 3,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m16{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m16 == m_src);
+  EXPECT_TRUE(m16 != m_src);
+  m16 = std::move(m_src);
+  EXPECT_TRUE(AssertMapContent_123_123(m16));
+  EXPECT_TRUE(m_src.empty());
+
+  InlineLinearFlatMap<int8_t, std::string, 2,
+                      MapKeyPolicyConsecutiveIntegers<int8_t>>
+      m17{{1, "11"}, {2, "22"}, {3, "33"}};
+  EXPECT_FALSE(m17 == m_src);
+  EXPECT_TRUE(m17 != m_src);
+  m17 = std::move(m_src2);
+  EXPECT_TRUE(AssertMapContent_123_123(m17));
+  EXPECT_TRUE(m_src2.empty());
+}
+
+TEST(LinearMap, SwapIntKeyWithConsecutivePolicy) {
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2;
+    m1.swap(m2);
+    EXPECT_TRUE(m1.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(m2.empty());
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2{{-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 2,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2{{-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    LinearFlatMap<int32_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2{{-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+
+  {
+    InlineLinearFlatMap<int32_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<int32_t, std::string, 5,
+                        MapKeyPolicyConsecutiveIntegers<int32_t>>
+        m2{{-1, "1"}, {-2, "2"}, {-3, "3"}};
+    m1.swap(m2);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+
+    m2.swap(m1);
+    EXPECT_TRUE(AssertMapContent_n1n2n3_123(m2));
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+  }
+}
+
+TEST(LinearMap, MergeIntKeyWithConsecutivePolicy) {
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    LinearFlatMap<uint8_t, std::string,
+                  MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2;
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(m2.empty());
+    m2.merge(m1);
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+    EXPECT_TRUE(m1.empty());
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "1"}, {2, "2"}, {3, "3"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123_123(m1));
+    EXPECT_TRUE(AssertMapContent_123_123(m2));
+  }
+
+  {
+    InlineLinearFlatMap<uint8_t, std::string, 3,
+                        MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m1{{1, "1"}, {2, "2"}, {3, "3"}};
+    InlineLinearFlatMap<uint8_t, std::string, 4,
+                        MapKeyPolicyConsecutiveIntegers<uint8_t>>
+        m2{{1, "10"}, {-2, "20"}, {3, "30"}, {4, "40"}};
+    m1.merge(m2);
+    EXPECT_TRUE(AssertMapContent_123n24_1232040(m1));
+    EXPECT_TRUE(AssertMapContent_13_1030(m2));
+  }
+}
+
+template <class MAP>
+static void IntKeyMapComprehensiveTest() {
+  const int num_elements = 1001;
+  MAP original_map;
+  std::vector<std::pair<const int, std::string>> data_vector;
+  data_vector.reserve(num_elements);
+  for (int i = 0; i < num_elements; ++i) {
+    std::string value = "Value_" + std::to_string(i);
+    original_map[i] = value;
+    data_vector.emplace_back(i, value);
+  }
+  // Make sure data is correct
+  ASSERT_EQ(original_map.size(), num_elements);
+  ASSERT_EQ(data_vector.size(), num_elements);
+  // =========================================================================
+  // 2. Test Constructors
+  // =========================================================================
+  // 2.1 Test default constructors
+  MAP default_constructed_map;
+  ASSERT_TRUE(default_constructed_map.empty());
+  // 2.3 Copy Constructor
+  MAP copy_constructed_map(original_map);
+  ASSERT_EQ(copy_constructed_map.size(), num_elements);
+  ASSERT_EQ(copy_constructed_map, original_map);
+  copy_constructed_map.erase(0);
+  ASSERT_NE(copy_constructed_map, original_map);
+  ASSERT_EQ(original_map.size(), num_elements);
+  // 2.4 Move Constructor
+  MAP map_to_move = original_map;
+  MAP move_constructed_map(std::move(map_to_move));
+  ASSERT_EQ(move_constructed_map.size(), num_elements);
+  ASSERT_EQ(move_constructed_map, original_map);
+  ASSERT_TRUE(map_to_move.empty());
+  // Assignment Operators
+  MAP copy_assigned_map;
+  copy_assigned_map[9999] = "some_value";
+  copy_assigned_map = original_map;
+  ASSERT_EQ(copy_assigned_map.size(), num_elements);
+  ASSERT_EQ(copy_assigned_map, original_map);
+  copy_assigned_map.erase(1);
+  ASSERT_NE(copy_assigned_map, original_map);
+  ASSERT_EQ(original_map.size(), num_elements);
+  // 3.2 test move
+  MAP map_to_move_assign = original_map;
+  MAP move_assigned_map;
+  move_assigned_map[8888] = "another_value";
+  move_assigned_map = std::move(map_to_move_assign);
+  ASSERT_EQ(move_assigned_map.size(), num_elements);
+  ASSERT_EQ(move_assigned_map, original_map);
+  ASSERT_TRUE(map_to_move_assign.empty());
+  // 4. Equality/Inequality
+  MAP map_for_comparison = original_map;
+  ASSERT_TRUE(map_for_comparison == original_map);
+  map_for_comparison[0] = "Modified_Value";
+  ASSERT_TRUE(map_for_comparison != original_map);
+  ASSERT_NE(map_for_comparison, original_map);
+
+  MAP loop_test_map = original_map;
+  ASSERT_EQ(loop_test_map.size(), num_elements);
+  for (int i = 0; i < num_elements; ++i) {
+    // 5.1 test find
+    auto it = loop_test_map.find(i);
+    ASSERT_NE(it, loop_test_map.end()) << "Failed to find key " << i;
+    ASSERT_EQ(it->first, i);
+    ASSERT_EQ(it->second, "Value_" + std::to_string(i));
+    // 5.2 test erase
+    size_t size_before_erase = loop_test_map.size();
+    loop_test_map.erase(it);
+    ASSERT_EQ(loop_test_map.size(), size_before_erase - 1);
+    // make sure erased
+    ASSERT_EQ(loop_test_map.find(i), loop_test_map.end())
+        << "Key " << i << " should have been erased.";
+    // 5.3 test insert
+    std::string value_to_insert = "Value_" + std::to_string(i);
+    auto insert_result = loop_test_map.insert({i, value_to_insert});
+    // test inserted
+    ASSERT_TRUE(insert_result.second) << "Failed to re-insert key " << i;
+    // test size
+    ASSERT_EQ(loop_test_map.size(), size_before_erase);
+    // test content of inserted value
+    ASSERT_EQ(insert_result.first->second, value_to_insert);
+  }
+  // Map unchanged
+  ASSERT_EQ(loop_test_map, original_map);
+}
+
+template <class MAP>
+static void IntKeyMapRandomInsertEraseTest() {
+  const int num_elements = 1000;
+  std::vector<int> keys(num_elements);
+  std::iota(keys.begin(), keys.end(), 0);
+  ASSERT_EQ(keys.size(), num_elements);
+  ASSERT_EQ(keys[0], 0);
+  ASSERT_EQ(keys[num_elements - 1], 999);
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(keys.begin(), keys.end(), g);
+  MAP map_under_test;
+  for (int key : keys) {
+    map_under_test[key] = "Value_" + std::to_string(key);
+  }
+  ASSERT_FALSE(map_under_test.empty());
+  ASSERT_EQ(map_under_test.size(), num_elements);
+  ASSERT_EQ(map_under_test.at(0), "Value_0");
+  ASSERT_EQ(map_under_test.at(500), "Value_500");
+  ASSERT_EQ(map_under_test.at(999), "Value_999");
+  std::shuffle(keys.begin(), keys.end(), g);
+  size_t expected_size = num_elements;
+  for (int key_to_erase : keys) {
+    ASSERT_EQ(map_under_test.size(), expected_size);
+    size_t erased_count = map_under_test.erase(key_to_erase);
+    ASSERT_EQ(erased_count, 1) << "Failed to erase key: " << key_to_erase;
+    expected_size--;
+  }
+  ASSERT_TRUE(map_under_test.empty())
+      << "Map should be empty after erasing all elements.";
+  ASSERT_EQ(map_under_test.size(), 0)
+      << "Map size should be 0 after erasing all elements.";
+}
+
+TEST(IntKeyMap, ComprehensiveTestLinearFlat) {
+  IntKeyMapComprehensiveTest<LinearFlatMap<int, std::string>>();
+  IntKeyMapRandomInsertEraseTest<LinearFlatMap<int, std::string>>();
+}
+
+TEST(IntKeyMap, ComprehensiveTestOrderedFlat) {
+  IntKeyMapComprehensiveTest<OrderedFlatMap<int, std::string>>();
+  IntKeyMapRandomInsertEraseTest<LinearFlatMap<int, std::string>>();
+}
+
+TEST(IntKeyMap, ComprehensiveTestLinearFlatWithConsecutivePolicy) {
+  IntKeyMapRandomInsertEraseTest<
+      LinearFlatMap<int, std::string, MapKeyPolicyConsecutiveIntegers<int>>>();
+}
+
+template <class MAP>
+static MAP GenerateStringStringMapRandomInsert() {
+  const int num_elements = 1000;
+  std::vector<int> keys(num_elements);
+  std::iota(keys.begin(), keys.end(), 0);
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(keys.begin(), keys.end(), g);
+  MAP map_under_test;
+  for (int key : keys) {
+    map_under_test[std::string("Key_") + std::to_string(key)] =
+        "Value_" + std::to_string(key);
+  }
+  return map_under_test;
+}
+
+template <class MAP>
+static MAP GenerateIntStringMapRandomInsert() {
+  const int num_elements = 1000;
+  std::vector<int> keys(num_elements);
+  std::iota(keys.begin(), keys.end(), 0);
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(keys.begin(), keys.end(), g);
+  MAP map_under_test;
+  for (int key : keys) {
+    map_under_test[key] = "Value_" + std::to_string(key);
+  }
+  return map_under_test;
+}
+
+TEST(Map, EqualityCheck) {
+  {
+    auto map1 = GenerateStringStringMapRandomInsert<
+        OrderedFlatMap<std::string, std::string>>();
+    auto map2 = GenerateStringStringMapRandomInsert<
+        InlineOrderedFlatMap<std::string, std::string, 500>>();
+    EXPECT_TRUE(map1 == map2);
+    map2["Key_500"] = "0";
+    EXPECT_TRUE(map1 != map2);
+    map2["Key_500"] = "Value_500";
+    EXPECT_TRUE(map1 == map2);
+    map1.erase("Key_100");
+    EXPECT_TRUE(map1 != map2);
+    map1["Key_100"] = "Value_100";
+    EXPECT_TRUE(map1 == map2);
+  }
+
+  {
+    auto map1 =
+        GenerateIntStringMapRandomInsert<OrderedFlatMap<int, std::string>>();
+    auto map2 = GenerateIntStringMapRandomInsert<
+        InlineOrderedFlatMap<int, std::string, 500>>();
+    EXPECT_TRUE(map1 == map2);
+    map2[500] = "0";
+    EXPECT_TRUE(map1 != map2);
+    map2[500] = "Value_500";
+    EXPECT_TRUE(map1 == map2);
+    map1.erase(100);
+    EXPECT_TRUE(map1 != map2);
+    map1[100] = "Value_100";
+    EXPECT_TRUE(map1 == map2);
+  }
+
+  {
+    auto map1 = GenerateStringStringMapRandomInsert<
+        LinearFlatMap<std::string, std::string>>();
+    auto map2 = GenerateStringStringMapRandomInsert<
+        InlineLinearFlatMap<std::string, std::string, 500>>();
+    EXPECT_TRUE(map1 == map2);
+    map2["Key_500"] = "0";
+    EXPECT_TRUE(map1 != map2);
+    map2["Key_500"] = "Value_500";
+    EXPECT_TRUE(map1 == map2);
+    map1.erase("Key_100");
+    EXPECT_TRUE(map1 != map2);
+    map1["Key_100"] = "Value_100";
+    EXPECT_TRUE(map1 == map2);
+  }
+
+  {
+    auto map1 =
+        GenerateIntStringMapRandomInsert<LinearFlatMap<int, std::string>>();
+    auto map2 = GenerateIntStringMapRandomInsert<
+        InlineLinearFlatMap<int, std::string, 500>>();
+    EXPECT_TRUE(map1 == map2);
+    map2[500] = "0";
+    EXPECT_TRUE(map1 != map2);
+    map2[500] = "Value_500";
+    EXPECT_TRUE(map1 == map2);
+    map1.erase(100);
+    EXPECT_TRUE(map1 != map2);
+    map1[100] = "Value_100";
+    EXPECT_TRUE(map1 == map2);
+  }
+
+  {
+    auto map1 = GenerateIntStringMapRandomInsert<LinearFlatMap<
+        int, std::string, MapKeyPolicyConsecutiveIntegers<int>>>();
+    auto map2 = GenerateIntStringMapRandomInsert<InlineLinearFlatMap<
+        int, std::string, 500, MapKeyPolicyConsecutiveIntegers<int>>>();
+    EXPECT_TRUE(map1 == map2);
+    map2[500] = "0";
+    EXPECT_TRUE(map1 != map2);
+    map2[500] = "Value_500";
+    EXPECT_TRUE(map1 == map2);
+    map1.erase(100);
+    EXPECT_TRUE(map1 != map2);
+    map1[100] = "Value_100";
+    EXPECT_TRUE(map1 == map2);
+  }
+}
+
+TEST(LinearFlatMap, for_each) {
+  {
+    LinearFlatMap<std::string, std::string> map{
+        {"A", "1"}, {"B", "2"}, {"C", "3"}};
+    std::string out;
+    map.for_each([&](const std::string& key, std::string& value) {
+      out += key;
+      out += value;
+      if (key == "B") {
+        value = "22";
+      }
+    });
+    EXPECT_TRUE(map["B"] == "22");
+    EXPECT_TRUE(out == "A1B2C3");
+
+    const auto map2 = map;
+    map2.for_each([&](const std::string& key, const std::string& value) {
+      out += key;
+      out += value;
+    });
+    EXPECT_TRUE(out == "A1B2C3A1B22C3");
+  }
+  {
+    LinearFlatMap<int, std::string> map{{1, "A"}, {2, "B"}, {3, "C"}};
+    std::string out;
+    map.for_each([&](int key, std::string& value) {
+      out += std::to_string(key);
+      out += value;
+      if (key == 2) {
+        value = "BB";
+      }
+    });
+    EXPECT_TRUE(map[2] == "BB");
+    EXPECT_TRUE(out == "1A2B3C");
+
+    const auto map2 = map;
+    map2.for_each([&](int key, const std::string& value) {
+      out += std::to_string(key);
+      out += value;
+    });
+    EXPECT_TRUE(out == "1A2B3C1A2BB3C");
+  }
+  {
+    LinearFlatMap<int, std::string, MapKeyPolicyConsecutiveIntegers<int>> map{
+        {1, "A"}, {2, "B"}, {3, "C"}};
+    std::string out;
+    map.for_each([&](int key, std::string& value) {
+      out += std::to_string(key);
+      out += value;
+      if (key == 2) {
+        value = "BB";
+      }
+    });
+    EXPECT_TRUE(map[2] == "BB");
+    EXPECT_TRUE(out == "1A2B3C");
+
+    const auto map2 = map;
+    map2.for_each([&](int key, const std::string& value) {
+      out += std::to_string(key);
+      out += value;
+    });
+    EXPECT_TRUE(out == "1A2B3C1A2BB3C");
   }
 }
 

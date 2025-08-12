@@ -17,10 +17,44 @@
 
 #include "base/include/type_traits_addon.h"
 
+#ifndef BASE_VECTOR_DISABLE_SSE2
+#if defined(BASE_VECTOR_ENABLE_SSE2) || defined(__SSE2__) || \
+    defined(_M_X64) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#define BASE_VECTOR_SSE2
+#endif
+#endif
+
+#ifndef BASE_VECTOR_DISABLE_NEON
+#if defined(BASE_VECTOR_ENABLE_NEON) || defined(__ARM_NEON)
+#define BASE_VECTOR_NEON
+#endif
+#endif
+
+#ifdef BASE_VECTOR_SSE2
+#include <immintrin.h>
+#elif defined(BASE_VECTOR_NEON)
+#include <arm_neon.h>
+#if defined(__aarch64__)
+#define BASE_VECTOR_NEON_ARMV8
+#endif
+#endif
+
+#ifdef _MSC_VER
+#include <intrin.h>  // for _BitScanForward
+#endif
+
 #ifdef DEBUG
 #define BASE_VECTOR_DCHECK(...) assert(__VA_ARGS__)
 #else
 #define BASE_VECTOR_DCHECK(...)
+#endif
+
+#ifdef _MSC_VER
+#define BASE_VECTOR_UNLIKELY(x) x
+#define BASE_VECTOR_LIKELY(x) x
+#else
+#define BASE_VECTOR_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#define BASE_VECTOR_LIKELY(x) __builtin_expect(!!(x), 1)
 #endif
 
 /**
@@ -48,6 +82,22 @@ BASE_VECTOR_INLINE void* HeapAlloc(const size_t size) {
 }
 
 BASE_VECTOR_INLINE void HeapFree(void* ptr) { std::free(ptr); }
+
+template <typename T>
+constexpr T AlignUp(T a, unsigned int align) {
+  const T mask = T(align - 1);
+  return T((a + mask) & ~mask);
+}
+
+BASE_VECTOR_INLINE int unchecked_count_right_zero(int x) {
+#ifdef _MSC_VER
+  unsigned long r;
+  _BitScanForward(&r, (unsigned long)x);
+  return (int)r;
+#else
+  return __builtin_ctz((unsigned int)x);
+#endif
+}
 
 template <class T>
 void _nontrivial_destruct_reverse([[maybe_unused]] T* begin,
@@ -117,8 +167,14 @@ BASE_VECTOR_NEVER_INLINE void _nontrivial_construct_copy(T* dest, T* source,
 /**
  * Prototype of Vector provides view of its three members.
  * This base class does not provide any method to change data.
+ *
+ * `ExtraBytesPerElement`: Leading extra bytes allocated along with array
+ * buffer. This extra space is currently used by map/set to store hash values
+ * and is transparent to Vector or InlineVector's insert, push_back or other
+ * data modifier methods. But the data is copied along with array elements by
+ * Vector's copy and move constructors and copy and move assign operators.
  */
-template <class T>
+template <class T, size_t ExtraBytesPerElement>
 struct VectorPrototype {
   static constexpr auto is_trivial =
       IsTrivial<T, is_instance<T, std::pair>{}>::value;
@@ -145,23 +201,34 @@ struct VectorPrototype {
 
   T* data() const { return reinterpret_cast<T*>(_begin_iter()); }
 
-  /**
-   * Returns if the array buffer is static or inplace buffer that should not be
-   * freed.
-   */
   bool is_static_buffer() const { return capacity_ < 0; }
 
+  BASE_VECTOR_INLINE void* get_memory_allocate() const {
+    return _buffer_alloc_address(_begin_iter(), capacity());
+  }
+
  protected:
-  template <class U>
+  template <class, size_t>
   friend struct VectorPrototype;
 
+  template <size_t>
   friend struct VectorTemplateless;
+
+  template <class, class, class, size_t, bool>
+  friend struct KeyValueArray;
+
+  BASE_VECTOR_INLINE static void* _buffer_alloc_address(const void* buffer,
+                                                        size_t capacity) {
+    return static_cast<uint8_t*>(const_cast<void*>(buffer)) -
+           AlignUp(capacity * ExtraBytesPerElement, 8);
+  }
 
   BASE_VECTOR_NEVER_INLINE static void* _reallocate_buffer(void* array,
                                                            size_t element_size,
                                                            size_t count) {
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     auto old_capacity = proto_array->capacity();
     // old*2 for consistent with std::vector of libc++.
     // But we do not use max(count, old_cap * 2).
@@ -173,17 +240,31 @@ struct VectorPrototype {
                           ? 1
                           : (element_size >= 16 ? 2 : (32 / element_size)))
                    : 2 * old_capacity);
-    if (new_capacity <= old_capacity) {
+    if (BASE_VECTOR_UNLIKELY(new_capacity <= old_capacity)) {
       return nullptr;
     }
-    const auto buffer_size = new_capacity * element_size;
-    auto buffer = HeapAlloc(buffer_size);
-    if (buffer == nullptr) {
+    size_t extra_bytes_size = 0;
+    if constexpr (ExtraBytesPerElement > 0) {
+      extra_bytes_size = AlignUp(new_capacity * ExtraBytesPerElement, 8);
+    }
+    const auto buffer_size = extra_bytes_size + new_capacity * element_size;
+    auto buffer = static_cast<uint8_t*>(HeapAlloc(buffer_size));
+    if (BASE_VECTOR_UNLIKELY(buffer == nullptr)) {
       return nullptr;
     }
+    buffer += extra_bytes_size;  // slide extra bytes
     proto_array->_set_memory(buffer);
-    proto_array->capacity_ = static_cast<int32_t>(new_capacity);
+    proto_array->_set_capacity(new_capacity, false);
     return buffer;
+  }
+
+  BASE_VECTOR_INLINE void _copy_extra_bytes_from(const VectorPrototype& other) {
+    if constexpr (ExtraBytesPerElement > 0) {
+      if (other.size() > 0) {
+        std::memcpy(get_memory_allocate(), other.get_memory_allocate(),
+                    ExtraBytesPerElement * other.size());
+      }
+    }
   }
 
   BASE_VECTOR_NEVER_INLINE void _reallocate_nontrivial(size_t count = 0) {
@@ -191,10 +272,23 @@ struct VectorPrototype {
         !is_trivial,
         "Only for non-trivial element types you can use this method.");
     auto prev_begin = _begin_iter();
+    [[maybe_unused]] void* prev_alloc_buffer;
+    if constexpr (ExtraBytesPerElement > 0) {
+      prev_alloc_buffer = get_memory_allocate();
+    }
     bool need_free = !is_static_buffer();
     auto buffer =
-        VectorPrototype<uint8_t>::_reallocate_buffer(this, sizeof(T), count);
+        VectorPrototype<uint8_t, ExtraBytesPerElement>::_reallocate_buffer(
+            this, sizeof(T), count);
     if (buffer && prev_begin) {
+      /* Leading bytes should be copied separately. */
+      if constexpr (ExtraBytesPerElement > 0) {
+        if (size() > 0) {
+          std::memcpy(get_memory_allocate(), prev_alloc_buffer,
+                      ExtraBytesPerElement * size());
+        }
+      }
+
       if constexpr (is_trivially_relocatable) {
         /* Fastest, allowing memcpy to copy all and skip destructors. */
         std::memcpy(buffer, prev_begin, sizeof(T) * size());
@@ -210,7 +304,11 @@ struct VectorPrototype {
         }
       }
       if (need_free) {
-        HeapFree(prev_begin);
+        if constexpr (ExtraBytesPerElement > 0) {
+          HeapFree(prev_alloc_buffer);
+        } else {
+          HeapFree(prev_begin);
+        }
       }
     }
   }
@@ -221,7 +319,7 @@ struct VectorPrototype {
         _nontrivial_destruct_reverse(_begin_iter(), size());
       }
       if (!is_static_buffer()) {
-        HeapFree(_begin_iter());
+        HeapFree(get_memory_allocate());
       }
     }
   }
@@ -262,15 +360,9 @@ struct VectorPrototype {
     count_ -= static_cast<uint32_t>(count);
   }
 
-  /**
-   * @brief Set capacity value by sub-classes.
-   * @param value Capacity value.
-   * @param static_buffer If true, capacity value will be stored as negative and
-   *   the buffer will not be freed in reallocation or destructor.
-   */
-  BASE_VECTOR_INLINE void _set_capacity(size_t value, bool static_buffer) {
-    capacity_ = static_buffer ? -static_cast<int32_t>(value)
-                              : static_cast<int32_t>(value);
+  BASE_VECTOR_INLINE void _set_capacity(size_t value, bool is_static) {
+    capacity_ =
+        is_static ? -static_cast<int32_t>(value) : static_cast<int32_t>(value);
   }
 
   BASE_VECTOR_INLINE void _transfer_from(VectorPrototype& other) {
@@ -281,18 +373,6 @@ struct VectorPrototype {
     memory_ = other.memory_;
     count_ = other.count_;
     capacity_ = other.capacity_;
-  }
-
-  template <class U>
-  BASE_VECTOR_INLINE void _transfer_as_byte_array_from(
-      VectorPrototype<U>& other) {
-    // Memory buffer of other array might be an inplace buffer which is
-    // unsafe to be directly transferred ownership to self.
-    BASE_VECTOR_DCHECK(!other.is_static_buffer());
-
-    memory_ = reinterpret_cast<T*>(other.memory_);
-    count_ = static_cast<uint32_t>(other.count_ * sizeof(U));
-    capacity_ = static_cast<int32_t>(other.capacity_ * sizeof(U));
   }
 
   void _swap(VectorPrototype& other) {
@@ -318,25 +398,40 @@ struct VectorPrototype {
  APIs to manipulate Vector without template argument T.
  Note that templateless manipulators should only be used for trivial T types.
 */
+template <size_t ExtraBytesPerElement>
 struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static void ReallocateTrivial(void* array,
                                                          size_t element_size,
                                                          size_t count) {
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
-    /**
-     Vector is also used for ECS dynamic buffer component storage.
-     Buffer may be initially in chunk and the capacity_ value is negative
-     to indicate that the memory should not be freed.
-     */
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     const bool free_prev = !proto_array->is_static_buffer();
     auto prev_begin = proto_array->_begin_iter();
-    auto buffer = VectorPrototype<uint8_t>::_reallocate_buffer(
-        array, element_size, count);
+    [[maybe_unused]] void* prev_alloc_buffer;
+    if constexpr (ExtraBytesPerElement > 0) {
+      prev_alloc_buffer = proto_array->get_memory_allocate();
+    }
+    auto buffer =
+        VectorPrototype<uint8_t, ExtraBytesPerElement>::_reallocate_buffer(
+            array, element_size, count);
     if (buffer && prev_begin) {
+      /* Leading bytes should be copied separately. */
+      if constexpr (ExtraBytesPerElement > 0) {
+        if (proto_array->size() > 0) {
+          std::memcpy(proto_array->get_memory_allocate(), prev_alloc_buffer,
+                      ExtraBytesPerElement * proto_array->size());
+        }
+      }
+
+      /* Copy array data. */
       std::memcpy(buffer, prev_begin, proto_array->size() * element_size);
       if (free_prev) {
-        HeapFree(prev_begin);
+        if constexpr (ExtraBytesPerElement > 0) {
+          HeapFree(prev_alloc_buffer);
+        } else {
+          HeapFree(prev_begin);
+        }
       }
     }
   }
@@ -359,11 +454,12 @@ struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static bool Resize(void* array, size_t element_size,
                                               size_t count,
                                               const void* fill_value) {
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     bool reallocated = false;
-    if (count > proto_array->size()) {
-      if (count > proto_array->capacity()) {
+    if (BASE_VECTOR_LIKELY(count > proto_array->size())) {
+      if (BASE_VECTOR_LIKELY(count > proto_array->capacity())) {
         ReallocateTrivial(array, element_size, count);
         reallocated = true;
       }
@@ -385,19 +481,20 @@ struct VectorTemplateless {
   BASE_VECTOR_NEVER_INLINE static void* PrepareInsert(void* array,
                                                       size_t element_size,
                                                       const void* dest) {
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     auto diff = static_cast<const uint8_t*>(dest) - proto_array->_begin_iter();
-    if (proto_array->size() == proto_array->capacity()) {
+    if (BASE_VECTOR_UNLIKELY(proto_array->size() == proto_array->capacity())) {
       ReallocateTrivial(array, element_size);
     }
     auto pos = proto_array->_begin_iter() + diff;
     auto new_last =
         proto_array->_begin_iter() + proto_array->size() * element_size;
-    if (pos > new_last) {
+    if (BASE_VECTOR_UNLIKELY(pos > new_last)) {
       BASE_VECTOR_DCHECK(false);
     } else {
-      if (pos < new_last) {
+      if (BASE_VECTOR_LIKELY(pos < new_last)) {
         std::memmove(pos + element_size, pos, new_last - pos);
       }
       // The actual assignment is performed after PrepareInsert() so that memcpy
@@ -413,12 +510,13 @@ struct VectorTemplateless {
    */
   BASE_VECTOR_NEVER_INLINE static bool Erase(void* array, size_t element_size,
                                              size_t index, size_t count = 1) {
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
-    if (index >= proto_array->size()) {
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
+    if (BASE_VECTOR_UNLIKELY(index >= proto_array->size())) {
       return false;
     }
-    if (index + count > proto_array->size()) {
+    if (BASE_VECTOR_UNLIKELY(index + count > proto_array->size())) {
       return false;
     }
     auto dst = proto_array->_begin_iter() + element_size * index;
@@ -435,11 +533,12 @@ struct VectorTemplateless {
                                                      size_t element_size,
                                                      const void* source,
                                                      size_t count) {
-    if (source == nullptr) {
+    if (BASE_VECTOR_UNLIKELY(source == nullptr)) {
       return;
     }
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     if (proto_array->size() + count > proto_array->capacity()) {
       ReallocateTrivial(array, element_size, proto_array->size() + count);
     }
@@ -456,11 +555,12 @@ struct VectorTemplateless {
                                             const void* source,
                                             size_t byte_size, size_t position) {
     const auto source_count = byte_size / element_size;
-    if (source_count == 0) {
+    if (BASE_VECTOR_UNLIKELY(source_count == 0)) {
       return;
     }
-    VectorPrototype<uint8_t>* proto_array =
-        reinterpret_cast<VectorPrototype<uint8_t>*>(array);
+    auto* proto_array =
+        reinterpret_cast<VectorPrototype<uint8_t, ExtraBytesPerElement>*>(
+            array);
     auto count = source_count + position;
     ReallocateTrivial(array, element_size, count);
     auto dest = proto_array->_begin_iter() + position * element_size;
@@ -478,29 +578,37 @@ struct VectorTemplateless {
  * provides basic methods of Vector with the same method signatures. For
  * POD types, it also provides some non-stl-standard methods for convenience.
  */
-template <class T>
-struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
-  using typename VectorPrototype<T>::iterator;
-  using typename VectorPrototype<T>::const_iterator;
-  using VectorPrototype<T>::is_trivial;
-  using VectorPrototype<T>::is_trivially_destructible;
-  using VectorPrototype<T>::is_trivially_destructible_after_move;
-  using VectorPrototype<T>::is_trivially_relocatable;
-  using VectorPrototype<T>::size;
-  using VectorPrototype<T>::capacity;
-  using VectorPrototype<T>::is_static_buffer;
-  using VectorPrototype<T>::_begin_iter;
-  using VectorPrototype<T>::_end_iter;
-  using VectorPrototype<T>::_finish_iter;
-  using VectorPrototype<T>::_free;
-  using VectorPrototype<T>::_transfer_from;
-  using VectorPrototype<T>::_transfer_as_byte_array_from;
-  using VectorPrototype<T>::_swap;
-  using VectorPrototype<T>::_reset;
-  using VectorPrototype<T>::_set_count;
-  using VectorPrototype<T>::_inc_count;
-  using VectorPrototype<T>::_dec_count;
-  using VectorPrototype<T>::_reallocate_nontrivial;
+template <class T, size_t ExtraBytesPerElement = 0>
+struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
+                public VectorPrototype<T, ExtraBytesPerElement> {
+  using typename VectorPrototype<T, ExtraBytesPerElement>::iterator;
+  using typename VectorPrototype<T, ExtraBytesPerElement>::const_iterator;
+  using VectorPrototype<T, ExtraBytesPerElement>::is_trivial;
+  using VectorPrototype<T, ExtraBytesPerElement>::is_trivially_destructible;
+  using VectorPrototype<
+      T, ExtraBytesPerElement>::is_trivially_destructible_after_move;
+  using VectorPrototype<T, ExtraBytesPerElement>::is_trivially_relocatable;
+  using VectorPrototype<T, ExtraBytesPerElement>::size;
+  using VectorPrototype<T, ExtraBytesPerElement>::capacity;
+  using VectorPrototype<T, ExtraBytesPerElement>::is_static_buffer;
+  using VectorPrototype<T, ExtraBytesPerElement>::_begin_iter;
+  using VectorPrototype<T, ExtraBytesPerElement>::_end_iter;
+  using VectorPrototype<T, ExtraBytesPerElement>::_finish_iter;
+  using VectorPrototype<T, ExtraBytesPerElement>::_free;
+  using VectorPrototype<T, ExtraBytesPerElement>::_transfer_from;
+  using VectorPrototype<T, ExtraBytesPerElement>::_swap;
+  using VectorPrototype<T, ExtraBytesPerElement>::_reset;
+  using VectorPrototype<T, ExtraBytesPerElement>::_set_count;
+  using VectorPrototype<T, ExtraBytesPerElement>::_inc_count;
+  using VectorPrototype<T, ExtraBytesPerElement>::_dec_count;
+  using VectorPrototype<T, ExtraBytesPerElement>::_reallocate_nontrivial;
+  using VectorPrototype<T, ExtraBytesPerElement>::_copy_extra_bytes_from;
+
+  using VectorTemplateless<ExtraBytesPerElement>::ReallocateTrivial;
+  using VectorTemplateless<ExtraBytesPerElement>::Resize;
+  using VectorTemplateless<ExtraBytesPerElement>::PrepareInsert;
+  using VectorTemplateless<ExtraBytesPerElement>::PushBackBatch;
+  using VectorTemplateless<ExtraBytesPerElement>::Fill;
 
   using size_type = size_t;
   using difference_type = ptrdiff_t;
@@ -554,12 +662,14 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
 
   Vector(const Vector& other) {
     _from(other.data(), other.size(), _nontrivial_construct_copy);
+    _copy_extra_bytes_from(other);
   }
 
   Vector& operator=(const Vector& other) {
-    if (this != &other) {
+    if (BASE_VECTOR_LIKELY(this != &other)) {
       clear();
       _from(other.data(), other.size(), _nontrivial_construct_copy);
+      _copy_extra_bytes_from(other);
     }
     return *this;
   }
@@ -570,9 +680,10 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
     return *this;
   }
 
-  Vector(Vector&& other) {
+  Vector(Vector&& other) noexcept {
     if (other.is_static_buffer()) {
       _from(other.data(), other.size(), _nontrivial_construct_move);
+      _copy_extra_bytes_from(other);
       other.clear();
     } else {
       _transfer_from(other);
@@ -581,10 +692,11 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
   }
 
   Vector& operator=(Vector&& other) {
-    if (this != &other) {
+    if (BASE_VECTOR_LIKELY(this != &other)) {
       if (other.is_static_buffer()) {
         clear();
         _from(other.data(), other.size(), _nontrivial_construct_move);
+        _copy_extra_bytes_from(other);
         other.clear();
       } else {
         _free();
@@ -704,13 +816,11 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
                  std::nullptr_t) = delete;  // Avoid misuse of erase(0)
   iterator erase(iterator pos) { return erase(pos, pos + 1); }
 
-  const_iterator erase(const_iterator pos) {
-    return (const_iterator)erase((iterator)pos);
-  }
+  iterator erase(const_iterator pos) { return erase((iterator)pos); }
 
   iterator erase(iterator first, iterator last) {
     BASE_VECTOR_DCHECK(first <= last);
-    if (first != last) {
+    if (BASE_VECTOR_LIKELY(first != last)) {
       if constexpr (is_trivial || is_trivially_relocatable) {
         std::memmove(first, last, (_end_iter() - last) * sizeof(T));
       } else {
@@ -770,7 +880,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
    * @return True if reallocation occurs.
    */
   bool reserve(size_t count) {
-    if (count > capacity()) {
+    if (BASE_VECTOR_LIKELY(count > capacity())) {
       _reallocate(count);
       return true;
     }
@@ -794,11 +904,12 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
     if (is_static_buffer()) {
       return;
     }
-    if (capacity() > size()) {
+    if (BASE_VECTOR_LIKELY(capacity() > size())) {
       // This is not optimal for InlineVector if current size fits into inline
       // buffer.
       Vector tmp;
       tmp._from(data(), size(), _nontrivial_construct_move);
+      tmp._copy_extra_bytes_from(*this);
       _swap(tmp);
     }
   }
@@ -905,7 +1016,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         reallocated = true;
       }
       _fill(_end_iter(), _begin_iter() + count, value);
-      _set_count(static_cast<uint32_t>(count));
+      _set_count(count);
     } else {
       erase(_begin_iter() + count, _end_iter());
     }
@@ -927,7 +1038,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         reallocated = true;
       }
       _fill(_end_iter(), _begin_iter() + count);
-      _set_count(static_cast<uint32_t>(count));
+      _set_count(count);
     } else {
       erase(_begin_iter() + count, _end_iter());
     }
@@ -968,7 +1079,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         _reallocate(count);
       }
       _fill(_end_iter(), _begin_iter() + count);
-      _set_count(static_cast<uint32_t>(count));
+      _set_count(count);
     } else if (count < size()) {
       BASE_VECTOR_DCHECK(false);
     }
@@ -985,7 +1096,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
   template <class U = T>
   typename std::enable_if<std::is_same_v<U, T> && is_trivial>::type fill(
       const void* data, size_type byte_size, size_type position = 0) {
-    VectorTemplateless::Fill(this, sizeof(T), data, byte_size, position);
+    Fill(this, sizeof(T), data, byte_size, position);
   }
 
   /**
@@ -1005,24 +1116,10 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
    */
   template <class W = T, class U>
   typename std::enable_if<std::is_same_v<W, T> && is_trivial>::type append(
-      const Vector<U>& other) {
+      const Vector<U, ExtraBytesPerElement>& other) {
     if (!other.empty()) {
       fill(other.data(), other.size() * sizeof(U), size());
     }
-  }
-
-  /**
-   * @brief Transfer buffer to result array and set length of result array to
-   * byte length of data.
-   */
-  template <class U = T>
-  typename std::enable_if<std::is_same_v<U, T> && is_trivial && (sizeof(T) > 1),
-                          Vector<uint8_t>>::type
-  transfer_to_byte_array() {
-    Vector<uint8_t> result;
-    result._transfer_as_byte_array_from<T>(*this);
-    _reset();
-    return result;
   }
 
   /**
@@ -1036,7 +1133,24 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
     }
   }
 
+  class Unsafe {
+    // ATTENTION: function under this class is UNSAFE to use.
+    // Do NOT use them unless you have consulted with the owners of Vector.
+   public:
+    Unsafe() = delete;
+
+    // Force to set size of vector to target value. It is usually called for a
+    // vector that is about to be destroyed and sets the size to 0 to avoid
+    // calling the destructor method of the internal objects that have been
+    // relocated.
+    static void SetSize(Vector& vector, size_t value) {
+      vector._set_count(value);
+    }
+  };
+
  protected:
+  friend class Unsafe;
+
   template <class U>
   struct always_false : std::false_type {};
 
@@ -1048,8 +1162,8 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
     }
   }
 
-  void _grow_if_need() {
-    if (size() == capacity()) {
+  BASE_VECTOR_INLINE void _grow_if_need() {
+    if (BASE_VECTOR_UNLIKELY(size() == capacity())) {
       // _grow_if_need is inlined at caller side. Although we can call
       // _reallocate(0) but implement standalone for binary size optimization.
       if constexpr (is_trivial) {
@@ -1069,7 +1183,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         reserve(size);
         func(_begin_iter(), reinterpret_cast<iterator>(const_cast<void*>(src)),
              size);
-        _set_count(static_cast<uint32_t>(size));
+        _set_count(size);
       }
     }
   }
@@ -1098,7 +1212,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         // `resize` method instantiates `erase` method.
         _reallocate(count);
         _fill(_end_iter(), _begin_iter() + count);
-        _set_count(static_cast<uint32_t>(count));
+        _set_count(count);
       }
     }
   }
@@ -1120,7 +1234,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
         // `resize` method instantiates `erase` method.
         _reallocate(count);
         _fill(_end_iter(), _begin_iter() + count, value);
-        _set_count(static_cast<uint32_t>(count));
+        _set_count(count);
       }
     }
   }
@@ -1133,7 +1247,7 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
     auto dest_pos = _begin_iter() + diff;
     auto new_last = _end_iter();
     bool construct_at_end = false;
-    if (dest_pos > new_last) {
+    if (BASE_VECTOR_UNLIKELY(dest_pos > new_last)) {
       BASE_VECTOR_DCHECK(false);
     } else {
       if (dest_pos < new_last) {
@@ -1157,39 +1271,60 @@ struct Vector : protected VectorTemplateless, public VectorPrototype<T> {
   }
 };
 
-template <class T>
-inline bool operator==(const Vector<T>& __x, const Vector<T>& __y) {
-  const typename Vector<T>::size_type __sz = __x.size();
-  return __sz == __y.size() && std::equal(__x.begin(), __x.end(), __y.begin());
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator==(const Vector<T, ExtraBytesPerElement>& __x,
+                       const Vector<T, ExtraBytesPerElement>& __y) {
+  const typename Vector<T, ExtraBytesPerElement>::size_type __sz = __x.size();
+  if (__sz != __y.size()) {
+    return false;
+  }
+  if (!std::equal(__x.begin(), __x.end(), __y.begin())) {
+    return false;
+  }
+  if constexpr (ExtraBytesPerElement > 0) {
+    // Also compares extra bytes.
+    if (__sz > 0) {
+      if (std::memcmp(__x.get_memory_allocate(), __y.get_memory_allocate(),
+                      __sz * ExtraBytesPerElement) != 0) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
-template <class T>
-inline bool operator!=(const Vector<T>& __x, const Vector<T>& __y) {
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator!=(const Vector<T, ExtraBytesPerElement>& __x,
+                       const Vector<T, ExtraBytesPerElement>& __y) {
   return !(__x == __y);
 }
 
-template <class T>
-inline bool operator<(const Vector<T>& __x, const Vector<T>& __y) {
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator<(const Vector<T, ExtraBytesPerElement>& __x,
+                      const Vector<T, ExtraBytesPerElement>& __y) {
   return std::lexicographical_compare(__x.begin(), __x.end(), __y.begin(),
                                       __y.end());
 }
 
-template <class T>
-inline bool operator>(const Vector<T>& __x, const Vector<T>& __y) {
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator>(const Vector<T, ExtraBytesPerElement>& __x,
+                      const Vector<T, ExtraBytesPerElement>& __y) {
   return __y < __x;
 }
 
-template <class T>
-inline bool operator>=(const Vector<T>& __x, const Vector<T>& __y) {
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator>=(const Vector<T, ExtraBytesPerElement>& __x,
+                       const Vector<T, ExtraBytesPerElement>& __y) {
   return !(__x < __y);
 }
 
-template <class T>
-inline bool operator<=(const Vector<T>& __x, const Vector<T>& __y) {
+template <class T, size_t ExtraBytesPerElement>
+inline bool operator<=(const Vector<T, ExtraBytesPerElement>& __x,
+                       const Vector<T, ExtraBytesPerElement>& __y) {
   return !(__y < __x);
 }
 
-using ByteArray = Vector<uint8_t>;
+using ByteArray = Vector<uint8_t, 0>;
 
 /**
  * @brief Sugar for construction ByteArray from static primitive array.
@@ -1205,31 +1340,31 @@ ByteArray ByteArrayFromBuffer(const T (&data)[Num]) {
  * is inplace following up the array struct. When element count exceeds N, a new
  * external buffer will be allocated and the inplace_buffer_ will be wasted.
  */
-template <class T, size_t N>
-struct InlineVector : public Vector<T> {
-  using typename VectorPrototype<T>::iterator;
-  using typename VectorPrototype<T>::const_iterator;
-  using VectorPrototype<T>::is_trivial;
-  using VectorPrototype<T>::size;
-  using VectorPrototype<T>::capacity;
-  using VectorPrototype<T>::_set_memory;
-  using VectorPrototype<T>::_set_capacity;
-  using Vector<T>::_begin_iter;
-  using Vector<T>::_end_iter;
-  using Vector<T>::reserve;
-  using Vector<T>::clear;
-  using Vector<T>::clear_and_shrink;
-  using Vector<T>::_from;
-  using Vector<T>::_construct_fill;
-  using Vector<T>::_construct_fill_default;
+template <class T, size_t N, size_t ExtraBytesPerElement = 0>
+struct InlineVector : public Vector<T, ExtraBytesPerElement> {
+  using typename VectorPrototype<T, ExtraBytesPerElement>::iterator;
+  using typename VectorPrototype<T, ExtraBytesPerElement>::const_iterator;
+  using VectorPrototype<T, ExtraBytesPerElement>::is_trivial;
+  using VectorPrototype<T, ExtraBytesPerElement>::size;
+  using VectorPrototype<T, ExtraBytesPerElement>::capacity;
+  using VectorPrototype<T, ExtraBytesPerElement>::_set_memory;
+  using VectorPrototype<T, ExtraBytesPerElement>::_set_capacity;
+  using VectorPrototype<T, ExtraBytesPerElement>::_copy_extra_bytes_from;
+  using Vector<T, ExtraBytesPerElement>::_begin_iter;
+  using Vector<T, ExtraBytesPerElement>::_end_iter;
+  using Vector<T, ExtraBytesPerElement>::reserve;
+  using Vector<T, ExtraBytesPerElement>::clear;
+  using Vector<T, ExtraBytesPerElement>::clear_and_shrink;
+  using Vector<T, ExtraBytesPerElement>::_from;
+  using Vector<T, ExtraBytesPerElement>::_construct_fill;
+  using Vector<T, ExtraBytesPerElement>::_construct_fill_default;
 
   static constexpr size_t kInlinedSize = N;
 
-  InlineVector() : Vector<T>() {
+  InlineVector() : Vector<T, ExtraBytesPerElement>() {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
   }
 
   InlineVector(std::nullptr_t) : InlineVector() {}  // NOLINT
@@ -1237,120 +1372,113 @@ struct InlineVector : public Vector<T> {
   explicit InlineVector(size_t count) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     _construct_fill_default(count);
   }
 
   InlineVector(size_t count, const T& value) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     _construct_fill(count, value);
   }
 
   InlineVector(const_iterator begin, const_iterator end) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     _from(begin, end - begin, _nontrivial_construct_copy);
   }
 
   InlineVector(iterator begin, iterator end) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     _from(begin, end - begin, _nontrivial_construct_copy);
   }
 
-  InlineVector(std::initializer_list<T> list) : Vector<T>() {
+  InlineVector(std::initializer_list<T> list)
+      : Vector<T, ExtraBytesPerElement>() {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = std::move(list);
   }
 
-  InlineVector(const Vector<T>& other) {  // NOLINT
+  InlineVector(const Vector<T, ExtraBytesPerElement>& other) {  // NOLINT
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = other;
   }
 
   InlineVector(const InlineVector& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = other;
   }
 
   template <size_t N2>
-  InlineVector(const InlineVector<T, N2>& other) {
+  InlineVector(const InlineVector<T, N2, ExtraBytesPerElement>& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = other;
   }
 
-  InlineVector(Vector<T>&& other) {  // NOLINT
+  InlineVector(Vector<T, ExtraBytesPerElement>&& other) {  // NOLINT
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = std::move(other);
   }
 
   InlineVector(InlineVector&& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = std::move(other);
   }
 
   template <size_t N2>
-  InlineVector(InlineVector<T, N2>&& other) {
+  InlineVector(InlineVector<T, N2, ExtraBytesPerElement>&& other) {
     static_assert(N > 0,
                   "InlineVector must have initial capacity larger than 0.");
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    _init_static();
     *this = std::move(other);
   }
 
   InlineVector& operator=(std::initializer_list<T> list) {
-    reinterpret_cast<Vector<T>*>(this)->operator=(std::move(list));
+    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(
+        std::move(list));
     return *this;
   }
 
-  InlineVector& operator=(const Vector<T>& other) {
-    reinterpret_cast<Vector<T>*>(this)->operator=(other);
+  InlineVector& operator=(const Vector<T, ExtraBytesPerElement>& other) {
+    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
     return *this;
   }
 
   InlineVector& operator=(const InlineVector& other) {
-    reinterpret_cast<Vector<T>*>(this)->operator=(other);
+    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
     return *this;
   }
 
   template <size_t N2>
-  InlineVector& operator=(const InlineVector<T, N2>& other) {
-    reinterpret_cast<Vector<T>*>(this)->operator=(other);
+  InlineVector& operator=(
+      const InlineVector<T, N2, ExtraBytesPerElement>& other) {
+    reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(other);
     return *this;
   }
 
-  InlineVector& operator=(Vector<T>&& other) {
+  InlineVector& operator=(Vector<T, ExtraBytesPerElement>&& other) {
     if (this != &other) {
       if (other.size() > capacity()) {
         if (!other.is_static_buffer()) {
           // Just swap pointers.
-          reinterpret_cast<Vector<T>*>(this)->operator=(std::move(other));
+          reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(this)->operator=(
+              std::move(other));
           return *this;
         } else {
           reserve(other.size());
@@ -1360,29 +1488,36 @@ struct InlineVector : public Vector<T> {
       // Trying best to use inplace buffer, move items of other to self.
       clear();
       _from(other.begin(), other.size(), _nontrivial_construct_move);
+      _copy_extra_bytes_from(other);
       other.clear();
     }
     return *this;
   }
 
   InlineVector& operator=(InlineVector&& other) {
-    return operator=(std::move(*reinterpret_cast<Vector<T>*>(&other)));
+    return operator=(
+        std::move(*reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(&other)));
   }
 
   template <size_t N2>
-  InlineVector& operator=(InlineVector<T, N2>&& other) {
-    return operator=(std::move(*reinterpret_cast<Vector<T>*>(&other)));
+  InlineVector& operator=(InlineVector<T, N2, ExtraBytesPerElement>&& other) {
+    return operator=(
+        std::move(*reinterpret_cast<Vector<T, ExtraBytesPerElement>*>(&other)));
   }
 
   void clear_and_shrink() {
-    Vector<T>::clear_and_shrink();
-    _set_capacity(N, true);
-    _set_memory(&inplace_buffer_[0]);
+    Vector<T, ExtraBytesPerElement>::clear_and_shrink();
+    _init_static();
   }
 
  private:
-  alignas(std::max(alignof(T),
-                   sizeof(void*))) uint8_t inplace_buffer_[sizeof(T) * N];
+  alignas(std::max(alignof(T), sizeof(void*))) uint8_t
+      inplace_buffer_[AlignUp(N * ExtraBytesPerElement, 8) + sizeof(T) * N];
+
+  void _init_static() {
+    _set_capacity(N, true);
+    _set_memory(&inplace_buffer_[AlignUp(N * ExtraBytesPerElement, 8)]);
+  }
 };
 
 /**
@@ -1435,40 +1570,205 @@ struct MapStatisticsBase<false> {
                   [[maybe_unused]] size_t find_of_count) const {}
 };
 
+// Only stores 32bit hash value for SIMD/NEON instructions.
+using KeyPolicyReducedHashValueType = uint32_t;
+
+/**
+ * The KeyPolicy type is used to speed up key lookups. For example, you can
+ * provide a hash method for the key type. When implementing Map/Set, internal
+ * lookups can use hash values for quick judgment. Currently, this only works
+ * for Map/Set implemented by linear search.
+ *
+ * `Hash` is optional. You could also provide a policy like `KeyPolicy<K, void,
+ * CustomEqual>` to customize the equality check function such as case
+ * insensitive comparision without using hash.
+ *
+ * `EqualWhenHashEqual` is optional. When provided, it would be used to check if
+ * two keys are strict equal after their hash values are known to be equal.
+ * Sometimes you can use this to do tiny optimizations. For example, if the
+ * `operator==` method of the K type already has a hash check, then when the
+ * hashes are known to be equal, the hash check can be avoided and other
+ * attributes can be checked to save one integer equality check and branch.
+ * For another example, if the hash value of the K is itself, EqualWhenHashEqual
+ * can directly return true which will be optimized out.
+ */
+template <class K, class Hash = std::hash<K>, class Equal = std::equal_to<K>,
+          class EqualWhenHashEqual = Equal>
+struct KeyPolicy {
+  static constexpr auto use_hash = !std::is_void_v<Hash>;
+
+  using hash = Hash;
+  using equal = Equal;
+  using equal_when_hash_equal = EqualWhenHashEqual;
+};
+
+/**
+ * This is a key policy for map and to optimize key of integer types.
+ * By default, the map stores `std::pair<K, V>`, and the data can be accessed
+ * through `it->first` and `it->second` during iteration. When
+ * `MapKeyPolicyConsecutiveIntegers` is used, keys and values are stored
+ * independently and continuously. In short, key values are stored like
+ * "K-K-K-V-V-V..." instead of "K-V-K-V-K-V..." and iterators only return
+ * values. Requirements:
+ * 1. K is trivial and fits into 32 bits. uint32_t, int16_t, enums are
+ * supported.
+ * 2. hash(key) == key.
+ * 3. Only for maps.
+ */
+template <class K>
+struct MapKeyPolicyConsecutiveIntegers {
+  static_assert(Vector<K>::is_trivial && sizeof(K) <= 4,
+                "Using MapKeyPolicyConsecutiveIntegers, the key type K must be "
+                "trivial and fit into 32 bits.");
+
+  static constexpr auto use_hash = true;
+  static constexpr auto consecutive_key = true;
+
+  using hash = struct _ {
+    KeyPolicyReducedHashValueType operator()(K k) const noexcept {
+      return static_cast<KeyPolicyReducedHashValueType>(k);
+    }
+  };
+
+  using equal = std::equal_to<K>;
+  using equal_when_hash_equal = struct __ {
+    bool operator()([[maybe_unused]] K x, [[maybe_unused]] K y) const {
+      return true;
+    }
+  };
+};
+
+#define BASE_VECTOR_HAS_MEMBER_OF_NAME(N)                                      \
+  template <typename T, typename = void>                                       \
+  struct has_##N##_member : std::false_type {};                                \
+  template <typename T>                                                        \
+  struct has_##N##_member<T, std::void_t<decltype(T::N)>> : std::true_type {}; \
+  template <typename T>                                                        \
+  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
+
+#define BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(N)                                \
+  template <typename T, typename = void>                                      \
+  struct has_##N##_member : std::false_type {};                               \
+  template <typename T>                                                       \
+  struct has_##N##_member<T, std::void_t<typename T::N>> : std::true_type {}; \
+  template <typename T>                                                       \
+  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
+
+BASE_VECTOR_HAS_MEMBER_OF_NAME(use_hash);
+BASE_VECTOR_HAS_MEMBER_OF_NAME(consecutive_key);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(hash);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal_when_hash_equal);
+
+#undef BASE_VECTOR_HAS_MEMBER_OF_NAME
+
 /**
  * @brief Base storage type for binary-search array and linear search array.
  * It provides definitions and interfaces which have nothing to do with
  * query method of key.
  */
-template <class K, class T, size_t N, bool Stat>
+template <class K, class T, class KeyPolicy, size_t N, bool Stat>
 struct KeyValueArray : protected MapStatisticsBase<Stat> {
-  static constexpr auto is_map = !std::is_void_v<T>;
+ private:
+  static constexpr bool get_is_key_hash() {
+    if constexpr (has_use_hash_member_v<KeyPolicy>) {
+      return KeyPolicy::use_hash;
+    } else {
+      return false;
+    }
+  }
 
+  static constexpr bool get_consecutive_key() {
+    if constexpr (has_consecutive_key_member_v<KeyPolicy>) {
+      return KeyPolicy::consecutive_key;
+    } else {
+      return false;
+    }
+  }
+
+ public:
+  static constexpr auto is_map = !std::is_void_v<T>;
+  static constexpr auto is_key_hash = get_is_key_hash();
+  static constexpr auto consecutive_key = get_consecutive_key();
+
+  static_assert(!consecutive_key || is_map, "KeyPolicy only applies for map.");
+
+ private:
+  // V is insert_value_type or store_value_type.
+  struct KeyExtractor {
+    template <typename V>
+    const auto& operator()(V&& v) {
+      if constexpr (is_map) {
+        return v.first;
+      } else {
+        return v;
+      }
+    }
+  };
+
+  struct ValueExtractor {
+    template <typename V>
+    auto& operator()(V&& v) {
+      if constexpr (is_map) {
+        if constexpr (consecutive_key) {
+          return v;
+        } else {
+          return v.second;
+        }
+      } else {
+        return v;
+      }
+    }
+  };
+
+ public:
   using key_type = K;
   using mapped_type = T;
-  using value_type =
-      typename std::conditional_t<is_map, std::pair<const K, T>, K>;
-  using container_type =
-      typename std::conditional_t<(N > 0), InlineVector<value_type, N>,
-                                  Vector<value_type>>;
+  using key_policy = KeyPolicy;
+  using key_extractor = KeyExtractor;
+  using value_extractor = ValueExtractor;
 
- protected:
-  // Storing pair<K, T> with non-const K for assignment.
-  using store_value_type =
+  // Paramater type for traditional map insert() method and constructor from
+  // initializer list.
+  using insert_value_type =
+      typename std::conditional_t<is_map, std::pair<const K, T>, K>;
+
+  using non_const_insert_value_type =
       typename std::conditional_t<is_map, std::pair<K, T>, K>;
-  using store_container_type =
-      typename std::conditional_t<(N > 0), InlineVector<store_value_type, N>,
-                                  Vector<store_value_type>>;
+
+  // Value type in array from user's perspective.
+  using value_type = typename std::conditional_t<
+      is_map, std::conditional_t<consecutive_key, T, std::pair<const K, T>>, K>;
+
+  // The actual type for array template `T` which removes const qualifier of K.
+  using store_value_type = typename std::conditional_t<
+      is_map, std::conditional_t<consecutive_key, T, std::pair<K, T>>, K>;
+
+  using container_type = typename std::conditional_t<
+      (N > 0),
+      InlineVector<value_type, N,
+                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>,
+      Vector<value_type,
+             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>>;
+
+  using store_container_type = typename std::conditional_t<
+      (N > 0),
+      InlineVector<store_value_type, N,
+                   is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>,
+      Vector<store_value_type,
+             is_key_hash ? sizeof(KeyPolicyReducedHashValueType) : 0>>;
   using store_iterator =
       std::conditional_t<is_map, typename store_container_type::iterator,
                          typename store_container_type::const_iterator>;
+  using const_store_iterator = typename store_container_type::const_iterator;
 
+ protected:
   container_type& array() const {
     return *reinterpret_cast<container_type*>(
         const_cast<store_container_type*>(&array_));
   }
 
-  template <class K2, class T2, size_t N2, bool Stat2>
+  template <class K2, class T2, class KeyPolicy2, size_t N2, bool Stat2>
   friend struct KeyValueArray;
 
   using MapStatisticsBase<Stat>::UpdateMaxCount;
@@ -1487,32 +1787,39 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
  public:
   KeyValueArray() = default;
 
-  KeyValueArray(Vector<store_value_type>&& source_array)
+  // Only when not using hash, the internal array can be moved from source.
+  // Because we are using extra leading bytes of array buffer to store hash
+  // values.
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  KeyValueArray(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
       : array_(std::move(source_array)) {
+    static_assert(!is_key_hash);
     UpdateMaxCount(array_.size());
   }
 
   template <size_t N2>
-  KeyValueArray(const KeyValueArray<K, T, N2, Stat>& other)
+  KeyValueArray(const KeyValueArray<K, T, KeyPolicy, N2, Stat>& other)
       : array_(other.array_) {
     UpdateMaxCount(array_.size());
   }
 
   template <size_t N2>
-  KeyValueArray(KeyValueArray<K, T, N2, Stat>&& other)
+  KeyValueArray(KeyValueArray<K, T, KeyPolicy, N2, Stat>&& other)
       : array_(std::move(other.array_)) {
     UpdateMaxCount(array_.size());
   }
 
   template <size_t N2>
-  KeyValueArray& operator=(const KeyValueArray<K, T, N2, Stat>& other) {
+  KeyValueArray& operator=(
+      const KeyValueArray<K, T, KeyPolicy, N2, Stat>& other) {
     array_ = other.array_;
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  KeyValueArray& operator=(KeyValueArray<K, T, N2, Stat>&& other) {
+  KeyValueArray& operator=(KeyValueArray<K, T, KeyPolicy, N2, Stat>&& other) {
     array_ = std::move(other.array_);
     UpdateMaxCount(array_.size());
     return *this;
@@ -1556,28 +1863,67 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
 
   const_reverse_iterator crend() const { return array().crend(); }
 
-  iterator erase(iterator pos) {
+  template <typename It,
+            typename = std::enable_if_t<std::is_same_v<It, iterator> ||
+                                        std::is_same_v<It, const_iterator>>>
+  iterator erase(It pos) {
     IncreaseEraseCount();
-    return reinterpret_cast<iterator>(
-        array_.erase(reinterpret_cast<store_iterator>(pos)));
+    if constexpr (is_key_hash) {
+      _erase_key_hash(pos - begin());
+    }
+    if constexpr (std::is_same_v<It, iterator>) {
+      return reinterpret_cast<iterator>(
+          array_.erase(reinterpret_cast<store_iterator>(pos)));
+    } else {
+      return reinterpret_cast<iterator>(
+          array_.erase(reinterpret_cast<const_store_iterator>(pos)));
+    }
   }
 
   template <size_t N2>
-  bool operator==(const KeyValueArray<K, T, N2, Stat>& other) const {
+  bool operator==(const KeyValueArray<K, T, KeyPolicy, N2, Stat>& other) const {
     return array_ == other.array_;
   }
 
   template <size_t N2>
-  bool operator!=(const KeyValueArray<K, T, N2, Stat>& other) const {
+  bool operator!=(const KeyValueArray<K, T, KeyPolicy, N2, Stat>& other) const {
     return array_ != other.array_;
   }
 
+  class Unsafe {
+    // ATTENTION: function under this class is UNSAFE to use.
+    // Do NOT use them unless you have consulted with the owners of Vector.
+   public:
+    Unsafe() = delete;
+
+    // Force to set size of vector to target value. It is usually called for a
+    // vector that is about to be destroyed and sets the size to 0 to avoid
+    // calling the destructor method of the internal objects that have been
+    // relocated.
+    static void SetSize(KeyValueArray& map, size_t value) {
+      decltype(map.array_)::Unsafe::SetSize(map.array_, value);
+    }
+  };
+
  protected:
+  friend class Unsafe;
+
   store_container_type array_;
 
   template <size_t N2>
-  void _swap(KeyValueArray<K, T, N2, Stat>& other) {
+  void _swap(KeyValueArray<K, T, KeyPolicy, N2, Stat>& other) {
     array_.swap(other.array_);
+  }
+
+  BASE_VECTOR_INLINE KeyPolicyReducedHashValueType* _key_hash_data() const {
+    return static_cast<KeyPolicyReducedHashValueType*>(
+        array_.get_memory_allocate());
+  }
+
+  void _erase_key_hash(size_t index) {
+    auto* data = _key_hash_data();
+    std::memmove(&data[index], &data[index + 1],
+                 (size() - index - 1) * sizeof(KeyPolicyReducedHashValueType));
   }
 };
 
@@ -1615,9 +1961,12 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
  *
  * When implementing custom Compare method. Use f(const K&, const K&) as
  * signature to avoid unnecessary copy.
+ *
+ * Binary search array is ordered and does not support KeyPolicy with hash
+ * value to boost finding right now.
  */
 template <class K, class T, size_t N, class Compare, bool Stat>
-struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
+struct BinarySearchArray : public KeyValueArray<K, T, void, N, Stat> {
  protected:
   template <class K2, class T2, size_t N2, class Compare2, bool Stat2>
   friend struct BinarySearchArray;
@@ -1627,20 +1976,21 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   using MapStatisticsBase<Stat>::IncreaseEraseCount;
   using MapStatisticsBase<Stat>::RecordFind;
 
-  using KeyValueArray<K, T, N, Stat>::is_map;
-  using KeyValueArray<K, T, N, Stat>::array_;
-  using KeyValueArray<K, T, N, Stat>::_swap;
+  using KeyValueArray<K, T, void, N, Stat>::is_map;
+  using KeyValueArray<K, T, void, N, Stat>::array_;
+  using KeyValueArray<K, T, void, N, Stat>::_swap;
 
  public:
   using key_compare = Compare;
-  using typename KeyValueArray<K, T, N, Stat>::value_type;
-  using typename KeyValueArray<K, T, N, Stat>::store_value_type;
-  using typename KeyValueArray<K, T, N, Stat>::iterator;
-  using typename KeyValueArray<K, T, N, Stat>::const_iterator;
-  using typename KeyValueArray<K, T, N, Stat>::store_iterator;
-  using KeyValueArray<K, T, N, Stat>::begin;
-  using KeyValueArray<K, T, N, Stat>::end;
-  using KeyValueArray<K, T, N, Stat>::erase;
+  using typename KeyValueArray<K, T, void, N, Stat>::key_extractor;
+  using typename KeyValueArray<K, T, void, N, Stat>::value_type;
+  using typename KeyValueArray<K, T, void, N, Stat>::store_value_type;
+  using typename KeyValueArray<K, T, void, N, Stat>::iterator;
+  using typename KeyValueArray<K, T, void, N, Stat>::const_iterator;
+  using typename KeyValueArray<K, T, void, N, Stat>::store_iterator;
+  using KeyValueArray<K, T, void, N, Stat>::begin;
+  using KeyValueArray<K, T, void, N, Stat>::end;
+  using KeyValueArray<K, T, void, N, Stat>::erase;
 
  public:
   BinarySearchArray() = default;
@@ -1653,11 +2003,11 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
 
   template <size_t N2>
   BinarySearchArray(const BinarySearchArray<K, T, N2, Compare, Stat>& other)
-      : KeyValueArray<K, T, N, Stat>(other) {}
+      : KeyValueArray<K, T, void, N, Stat>(other) {}
 
   template <size_t N2>
   BinarySearchArray(BinarySearchArray<K, T, N2, Compare, Stat>&& other)
-      : KeyValueArray<K, T, N, Stat>(std::move(other)) {}
+      : KeyValueArray<K, T, void, N, Stat>(std::move(other)) {}
 
   template <size_t N2>
   BinarySearchArray& operator=(
@@ -1678,7 +2028,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   std::pair<iterator, bool> insert(const value_type& value) {
     if constexpr (is_map) {
       auto pos = lower_bound(value.first);
-      if (pos != end() && pos->first == value.first) {
+      if (BASE_VECTOR_UNLIKELY(pos != end() && pos->first == value.first)) {
         RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
         return {pos, false};  // duplicate
       } else {
@@ -1692,7 +2042,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
       }
     } else {
       auto pos = lower_bound(value);
-      if (pos != end() && *pos == value) {
+      if (BASE_VECTOR_UNLIKELY(pos != end() && *pos == value)) {
         RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
         return {pos, false};  // duplicate
       } else {
@@ -1707,7 +2057,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   std::pair<iterator, bool> insert(value_type&& value) {
     if constexpr (is_map) {
       auto pos = lower_bound(value.first);
-      if (pos != end() && pos->first == value.first) {
+      if (BASE_VECTOR_UNLIKELY(pos != end() && pos->first == value.first)) {
         RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
         return {pos, false};  // duplicate
       } else {
@@ -1721,7 +2071,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
       }
     } else {
       auto pos = lower_bound(value);
-      if (pos != end() && *pos == value) {
+      if (BASE_VECTOR_UNLIKELY(pos != end() && *pos == value)) {
         RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
         return {pos, false};  // duplicate
       } else {
@@ -1739,7 +2089,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
                          is_map && std::is_same_v<U, store_value_type>>>
   std::pair<iterator, bool> insert(U&& value) {
     auto pos = lower_bound(value.first);
-    if (pos != end() && pos->first == value.first) {
+    if (BASE_VECTOR_UNLIKELY(pos != end() && pos->first == value.first)) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return {pos, false};  // duplicate
     } else {
@@ -1754,7 +2104,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
     IncreaseEraseCount();
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       array_.erase(reinterpret_cast<store_iterator>(pos));
       return 1;
     } else {
@@ -1765,7 +2115,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   iterator find(const K& key) {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       return pos;
     } else {
       return end();
@@ -1775,7 +2125,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   const_iterator find(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       return pos;
     } else {
       return end();
@@ -1819,7 +2169,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
   BASE_VECTOR_NEVER_INLINE iterator lower_bound(const K& key) const {
     return const_cast<iterator>(std::lower_bound(
         begin(), end(), key, [](const value_type& item, const K& value) {
-          return Compare()(*reinterpret_cast<const K*>(&item), value);
+          return Compare()(key_extractor()(item), value);
         }));
   }
 };
@@ -1832,11 +2182,42 @@ struct BinarySearchArray : public KeyValueArray<K, T, N, Stat> {
  * It is very suitable for scenarios that require a map/set interface, but the
  * amount of data is relatively small, and the number of container traversals is
  * far greater than the number of searches.
+ *
+ * You could provide non-void KeyPolicy to boost key finding with hash value and
+ * customize key equality check function.
  */
-template <class K, class T, size_t N, bool Stat>
-struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
+template <class K, class T, class KeyPolicy, size_t N, bool Stat>
+struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
+ private:
+  template <typename AnyType>
+  struct type_identity {
+    using type = AnyType;
+  };
+
+  template <bool Flag>
+  struct KeyPolicyEqualHelper {
+    static auto select() {
+      if constexpr (Flag) {
+        return type_identity<typename KeyPolicy::equal>{};
+      } else {
+        return type_identity<std::equal_to<K>>{};
+      }
+    }
+  };
+
+  template <bool Flag>
+  struct KeyPolicyEqualWhenHashEqualHelper {
+    static auto select() {
+      if constexpr (Flag) {
+        return type_identity<typename KeyPolicy::equal_when_hash_equal>{};
+      } else {
+        return type_identity<std::equal_to<K>>{};
+      }
+    }
+  };
+
  protected:
-  template <class K2, class T2, size_t N2, bool Stat2>
+  template <class K2, class T2, class KeyPolicy2, size_t N2, bool Stat2>
   friend struct LinearSearchArray;
 
   using MapStatisticsBase<Stat>::UpdateMaxCount;
@@ -1844,138 +2225,372 @@ struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
   using MapStatisticsBase<Stat>::IncreaseEraseCount;
   using MapStatisticsBase<Stat>::RecordFind;
 
-  using KeyValueArray<K, T, N, Stat>::is_map;
-  using KeyValueArray<K, T, N, Stat>::array_;
-  using KeyValueArray<K, T, N, Stat>::_swap;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::is_map;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::array_;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::_swap;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::_key_hash_data;
 
  public:
   using key_compare = void;
-  using typename KeyValueArray<K, T, N, Stat>::value_type;
-  using typename KeyValueArray<K, T, N, Stat>::store_value_type;
-  using typename KeyValueArray<K, T, N, Stat>::iterator;
-  using typename KeyValueArray<K, T, N, Stat>::const_iterator;
-  using typename KeyValueArray<K, T, N, Stat>::store_iterator;
-  using KeyValueArray<K, T, N, Stat>::begin;
-  using KeyValueArray<K, T, N, Stat>::end;
-  using KeyValueArray<K, T, N, Stat>::erase;
+  using key_equal =
+      typename decltype(KeyPolicyEqualHelper<
+                        has_equal_member_v<KeyPolicy>>::select())::type;
+  using key_equal_when_hash_equal =
+      typename decltype(KeyPolicyEqualWhenHashEqualHelper<
+                        has_equal_when_hash_equal_member_v<KeyPolicy>>::
+                            select())::type;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::key_extractor;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::is_key_hash;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::consecutive_key;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::insert_value_type;
+  using typename KeyValueArray<K, T, KeyPolicy, N,
+                               Stat>::non_const_insert_value_type;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::value_type;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::store_value_type;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::iterator;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::const_iterator;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::store_iterator;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::begin;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::end;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::erase;
+
+ protected:
+  inline static KeyPolicyReducedHashValueType _reduced_key_hash(const K& key) {
+    if constexpr (is_key_hash) {
+      return static_cast<KeyPolicyReducedHashValueType>(
+          typename KeyPolicy::hash()(key));
+    } else {
+      return KeyPolicyReducedHashValueType{};
+    }
+  }
 
  public:
   LinearSearchArray() = default;
-  LinearSearchArray(std::initializer_list<value_type> list) {
+
+  LinearSearchArray(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
       insert(std::move(v));
     }
   }
 
-  LinearSearchArray(Vector<store_value_type>&& source_array)
-      : KeyValueArray<K, T, N, Stat>(std::move(source_array)) {}
+  // Only when not using hash, the internal array can be moved from source.
+  // Because we are using extra leading bytes of array buffer to store hash
+  // values.
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchArray(
+      Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+      : KeyValueArray<K, T, KeyPolicy, N, Stat>(std::move(source_array)) {
+    static_assert(!is_key_hash);
+  }
 
-  LinearSearchArray& operator=(Vector<store_value_type>&& source_array) {
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchArray& operator=(
+      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+    static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchArray(const LinearSearchArray<K, T, N2, Stat>& other)
-      : KeyValueArray<K, T, N, Stat>(other) {}
+  LinearSearchArray(const LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other)
+      : KeyValueArray<K, T, KeyPolicy, N, Stat>(other) {}
 
   template <size_t N2>
-  LinearSearchArray(LinearSearchArray<K, T, N2, Stat>&& other)
-      : KeyValueArray<K, T, N, Stat>(std::move(other)) {}
+  LinearSearchArray(LinearSearchArray<K, T, KeyPolicy, N2, Stat>&& other)
+      : KeyValueArray<K, T, KeyPolicy, N, Stat>(std::move(other)) {}
 
   template <size_t N2>
-  LinearSearchArray& operator=(const LinearSearchArray<K, T, N2, Stat>& other) {
+  LinearSearchArray& operator=(
+      const LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) {
     array_ = other.array_;
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchArray& operator=(LinearSearchArray<K, T, N2, Stat>&& other) {
+  LinearSearchArray& operator=(
+      LinearSearchArray<K, T, KeyPolicy, N2, Stat>&& other) {
     array_ = std::move(other.array_);
     UpdateMaxCount(array_.size());
     return *this;
   }
 
-  std::pair<iterator, bool> insert(const value_type& value) {
+  // No check of key existence.
+  iterator insert_unique(const insert_value_type& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+    }
+
+    iterator result;
     if constexpr (is_map) {
-      auto pos = find_exact(value.first);
-      if (pos != nullptr) {
-        RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-        return {pos, false};  // duplicate
+      if constexpr (consecutive_key) {
+        result = reinterpret_cast<iterator>(&array_.emplace_back(value.second));
       } else {
-        RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-        return {
+        result = reinterpret_cast<iterator>(&array_.emplace_back(
+            std::piecewise_construct, std::forward_as_tuple(value.first),
+            std::forward_as_tuple(value.second)));
+      }
+    } else {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(value));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  iterator insert_unique(insert_value_type&& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+    }
+
+    iterator result;
+    if constexpr (is_map) {
+      if constexpr (consecutive_key) {
+        result = reinterpret_cast<iterator>(
+            &array_.emplace_back(std::move(value.second)));
+      } else {
+        result = reinterpret_cast<iterator>(&array_.emplace_back(
+            std::piecewise_construct,
+            std::forward_as_tuple(std::move(value.first)),
+            std::forward_as_tuple(std::move(value.second))));
+      }
+    } else {
+      result =
+          reinterpret_cast<iterator>(&array_.emplace_back(std::move(value)));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  template <bool enabled = is_map>
+  std::enable_if_t<enabled, iterator> insert_unique(
+      const non_const_insert_value_type& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+    }
+
+    iterator result;
+    if constexpr (consecutive_key) {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(value.second));
+    } else {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(
+          std::piecewise_construct, std::forward_as_tuple(value.first),
+          std::forward_as_tuple(value.second)));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  template <bool enabled = is_map>
+  std::enable_if_t<enabled, iterator> insert_unique(
+      non_const_insert_value_type&& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+    }
+
+    iterator result;
+    if constexpr (consecutive_key) {
+      result = reinterpret_cast<iterator>(
+          &array_.emplace_back(std::move(value.second)));
+    } else {
+      result = reinterpret_cast<iterator>(
+          &array_.emplace_back(std::piecewise_construct,
+                               std::forward_as_tuple(std::move(value.first)),
+                               std::forward_as_tuple(std::move(value.second))));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  std::pair<iterator, bool> insert(const insert_value_type& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+      pos = find_exact(key_extractor()(value),
+                       hash);  // find with hash value
+    } else {
+      pos = find_exact(key_extractor()(value));
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      result = {pos, false};  // duplicate
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      if constexpr (is_map) {
+        if constexpr (consecutive_key) {
+          result = {
+              reinterpret_cast<iterator>(&array_.emplace_back(value.second)),
+              true};
+        } else {
+          result = {
+              reinterpret_cast<iterator>(&array_.emplace_back(
+                  std::piecewise_construct, std::forward_as_tuple(value.first),
+                  std::forward_as_tuple(value.second))),
+              true};
+        }
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(value)),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
+    }
+    return result;
+  }
+
+  std::pair<iterator, bool> insert(insert_value_type&& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+      pos = find_exact(key_extractor()(value),
+                       hash);  // find with hash value
+    } else {
+      pos = find_exact(key_extractor()(value));
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      result = {pos, false};  // duplicate
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      if constexpr (is_map) {
+        if constexpr (consecutive_key) {
+          result = {reinterpret_cast<iterator>(
+                        &array_.emplace_back(std::move(value.second))),
+                    true};
+        } else {
+          result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                        std::piecewise_construct,
+                        std::forward_as_tuple(std::move(value.first)),
+                        std::forward_as_tuple(std::move(value.second)))),
+                    true};
+        }
+      } else {
+        result = {
+            reinterpret_cast<iterator>(&array_.emplace_back(std::move(value))),
+            true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
+    }
+    return result;
+  }
+
+  template <bool enabled = is_map>
+  std::enable_if_t<enabled, std::pair<iterator, bool>> insert(
+      const non_const_insert_value_type& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+      pos = find_exact(key_extractor()(value),
+                       hash);  // find with hash value
+    } else {
+      pos = find_exact(key_extractor()(value));
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
+      RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
+      result = {pos, false};  // duplicate
+    } else {
+      RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
+      if constexpr (consecutive_key) {
+        result = {
+            reinterpret_cast<iterator>(&array_.emplace_back(value.second)),
+            true};
+      } else {
+        result = {
             reinterpret_cast<iterator>(&array_.emplace_back(
                 std::piecewise_construct, std::forward_as_tuple(value.first),
                 std::forward_as_tuple(value.second))),
             true};
       }
-    } else {
-      auto pos = find_exact(value);
-      if (pos != nullptr) {
-        RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-        return {pos, false};  // duplicate
-      } else {
-        RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-        return {reinterpret_cast<iterator>(&array_.emplace_back(value)), true};
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
       }
     }
+    return result;
   }
 
-  std::pair<iterator, bool> insert(value_type&& value) {
-    if constexpr (is_map) {
-      auto pos = find_exact(value.first);
-      if (pos != nullptr) {
-        RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-        return {pos, false};  // duplicate
-      } else {
-        RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-        return {reinterpret_cast<iterator>(&array_.emplace_back(
-                    std::piecewise_construct,
-                    std::forward_as_tuple(std::move(value.first)),
-                    std::forward_as_tuple(std::move(value.second)))),
-                true};
-      }
+  template <bool enabled = is_map>
+  std::enable_if_t<enabled, std::pair<iterator, bool>> insert(
+      non_const_insert_value_type&& value) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key_extractor()(value));
+      pos = find_exact(key_extractor()(value),
+                       hash);  // find with hash value
     } else {
-      auto pos = find_exact(value);
-      if (pos != nullptr) {
-        RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-        return {pos, false};  // duplicate
-      } else {
-        RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-        return {
-            reinterpret_cast<iterator>(&array_.emplace_back(std::move(value))),
-            true};
-      }
+      pos = find_exact(key_extractor()(value));
     }
-  }
 
-  // Without this overload, `std::pair<K, T> v; map.insert(std::move(v));` would
-  // implicitly construct `std::pair<const K, T>` from `std::move(v)`.
-  template <class U, class = std::enable_if_t<
-                         is_map && std::is_same_v<U, store_value_type>>>
-  std::pair<iterator, bool> insert(U&& value) {
-    auto pos = find_exact(value.first);
-    if (pos != nullptr) {
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return {pos, false};  // duplicate
+      result = {pos, false};  // duplicate
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {
-          reinterpret_cast<iterator>(&array_.emplace_back(std::move(value))),
-          true};
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::move(value.second))),
+                  true};
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct,
+                      std::forward_as_tuple(std::move(value.first)),
+                      std::forward_as_tuple(std::move(value.second)))),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return result;
   }
 
   size_t erase(const K& key) {
-    IncreaseEraseCount();
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = find_exact(key);
+    iterator pos;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
     if (pos != nullptr) {
-      array_.erase(reinterpret_cast<store_iterator>(pos));
+      erase(pos);
       return 1;
     } else {
       return 0;
@@ -1984,7 +2599,13 @@ struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
 
   iterator find(const K& key) {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = find_exact(key);
+    iterator pos;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
     if (pos != nullptr) {
       return pos;
     } else {
@@ -1994,7 +2615,13 @@ struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
 
   const_iterator find(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = find_exact(key);
+    iterator pos;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
     if (pos != nullptr) {
       return pos;
     } else {
@@ -2004,22 +2631,46 @@ struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
 
   bool contains(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    return find_exact(key) != nullptr;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      return find_exact(key, hash) != nullptr;  // find with hash value
+    } else {
+      return find_exact(key) != nullptr;
+    }
   }
 
   size_t count(const K& key) const { return contains(key) ? 1 : 0; }
 
   template <size_t N2>
-  void swap(LinearSearchArray<K, T, N2, Stat>& other) {
+  void swap(LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) {
     _swap(other);
   }
 
   template <size_t N2>
-  void merge(LinearSearchArray<K, T, N2, Stat>& other) {
+  void merge(LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) {
     auto& other_array = other.array_;
+    const auto* other_key_hash_data = other._key_hash_data();
     for (intptr_t i = other_array.size() - 1; i >= 0; i--) {
-      if (insert(std::move(other_array[i])).second) {
-        other_array.erase(other_array.begin() + i);
+      auto& object = other_array[i];
+      [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+      iterator pos;
+      if constexpr (is_key_hash) {
+        hash = other_key_hash_data[i];
+        if constexpr (consecutive_key) {
+          pos = find_exact(static_cast<K>(hash), hash);
+        } else {
+          pos = find_exact(key_extractor()(object), hash);
+        }
+      } else {
+        pos = find_exact(key_extractor()(object));
+      }
+      if (pos == nullptr) {
+        array_.emplace_back(std::move(object));
+        if constexpr (is_key_hash) {
+          // Store hash value after array insertion because array may expand.
+          _key_hash_data()[array_.size() - 1] = hash;
+        }
+        other.erase(other.begin() + i);
       }
     }
   }
@@ -2027,24 +2678,110 @@ struct LinearSearchArray : public KeyValueArray<K, T, N, Stat> {
   bool is_data_ordered() const { return false; }
 
   template <size_t N2>
-  bool operator==(const LinearSearchArray<K, T, N2, Stat>& other) const {
+  bool operator==(
+      const LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) const {
     return array_ == other.array_;
   }
 
   template <size_t N2>
-  bool operator!=(const LinearSearchArray<K, T, N2, Stat>& other) const {
+  bool operator!=(
+      const LinearSearchArray<K, T, KeyPolicy, N2, Stat>& other) const {
     return array_ != other.array_;
   }
 
  protected:
-  BASE_VECTOR_NEVER_INLINE iterator find_exact(const K& key) const {
+  BASE_VECTOR_INLINE iterator find_exact(const K& key) const {
     for (auto it = array_.begin(), end = array_.end(); it != end; it++) {
-      if (*reinterpret_cast<const K*>(it) == key) {
+      if (key_equal()(key_extractor()(*it), key)) {
         return reinterpret_cast<iterator>(const_cast<store_iterator>(it));
       }
     }
     return nullptr;
   }
+
+  template <bool enabled = is_key_hash>
+  std::enable_if_t<enabled, iterator> find_exact(
+      const K& key, KeyPolicyReducedHashValueType hash) const {
+    // Boosted find with hash value when KeyPolicy provided.
+    const auto* key_hash_data = _key_hash_data();
+    const intptr_t count = static_cast<intptr_t>(array_.size());
+    auto begin = array_.begin();
+    intptr_t i = 0;
+
+#define BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL                            \
+  if constexpr (consecutive_key) {                                       \
+    return reinterpret_cast<iterator>(const_cast<store_iterator>(it));   \
+  } else {                                                               \
+    if (key_equal_when_hash_equal()(key_extractor()(*it), key)) {        \
+      return reinterpret_cast<iterator>(const_cast<store_iterator>(it)); \
+    }                                                                    \
+  }
+
+#ifdef BASE_VECTOR_NEON
+    const uint32x4_t target_vec = vdupq_n_u32(hash);
+    for (; i <= count - 4; i += 4) {
+      uint32x4_t data_vec = vld1q_u32(key_hash_data + i);
+      uint32x4_t mask = vceqq_u32(data_vec, target_vec);
+
+#ifdef BASE_VECTOR_NEON_ARMV8
+      // Using armv8, pre-checking once for existence is faster than checking
+      // twice.
+      if (vmaxvq_u32(mask) != 0)
+#endif
+      {
+        if (auto pair = vgetq_lane_u64(mask, 0); pair != 0) {
+          if ((uint32_t)pair != 0) {
+            auto it = begin + i + 0;
+            BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+          }
+          if ((pair >> 32) != 0) {
+            auto it = begin + i + 1;
+            BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+          }
+        }
+        if (auto pair = vgetq_lane_u64(mask, 1); pair != 0) {
+          if ((uint32_t)pair != 0) {
+            auto it = begin + i + 2;
+            BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+          }
+          if ((pair >> 32) != 0) {
+            auto it = begin + i + 3;
+            BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+          }
+        }
+      }
+    }
+#elif defined(BASE_VECTOR_SSE2)
+    const __m128i target_vec = _mm_set1_epi32(static_cast<int>(hash));
+    for (; i <= count - 4; i += 4) {
+      __m128i data_vec =
+          _mm_loadu_si128(reinterpret_cast<const __m128i*>(key_hash_data + i));
+      __m128i mask = _mm_cmpeq_epi32(data_vec, target_vec);
+      int movemask_result = _mm_movemask_ps(_mm_castsi128_ps(mask));
+      if (movemask_result != 0) {
+        int temp_mask = movemask_result;
+        while (temp_mask != 0) {
+          int j = unchecked_count_right_zero(temp_mask);
+          auto it = begin + i + j;
+          BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+          // Clear this bit and goto the next iteration.
+          temp_mask &= (temp_mask - 1);
+        }
+      }
+    }
+#else
+    // No SIMD supports, fall-through
+#endif
+
+    for (; i < count; ++i) {
+      if (key_hash_data[i] == hash) {
+        auto it = begin + i;
+        BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
+      }
+    }
+    return nullptr;
+  }
+#undef BASE_VECTOR_CHECK_KEY_WHEN_HASH_EQUAL
 };
 
 template <class K, class T, size_t N, class Compare, bool Stat>
@@ -2058,15 +2795,16 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   using MapStatisticsBase<Stat>::IncreaseEraseCount;
   using MapStatisticsBase<Stat>::RecordFind;
 
-  using KeyValueArray<K, T, N, Stat>::array_;
+  using KeyValueArray<K, T, void, N, Stat>::array_;
 
  public:
+  using typename KeyValueArray<K, T, void, N, Stat>::key_extractor;
   using typename BinarySearchArray<K, T, N, Compare, Stat>::value_type;
   using typename BinarySearchArray<K, T, N, Compare, Stat>::iterator;
   using typename BinarySearchArray<K, T, N, Compare, Stat>::store_iterator;
   using BinarySearchArray<K, T, N, Compare, Stat>::insert;
   using BinarySearchArray<K, T, N, Compare, Stat>::lower_bound;
-  using KeyValueArray<K, T, N, Stat>::end;
+  using KeyValueArray<K, T, void, N, Stat>::end;
 
   BinarySearchMap() = default;
   BinarySearchMap(std::initializer_list<value_type> list) {
@@ -2107,7 +2845,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   T& at(const K& key) {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (BASE_VECTOR_LIKELY(pos != end() && key_extractor()(*pos) == key)) {
       return pos->second;
     }
     ::abort();  // Always nothrow
@@ -2116,7 +2854,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   const T& at(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (BASE_VECTOR_LIKELY(pos != end() && key_extractor()(*pos) == key)) {
       return pos->second;
     }
     ::abort();  // Always nothrow
@@ -2125,7 +2863,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   template <class V>
   std::pair<iterator, bool> insert_or_assign(const K& key, V&& value) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       pos->second = std::forward<V>(value);
       return {pos, false};
@@ -2142,7 +2880,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   template <class V>
   std::pair<iterator, bool> insert_or_assign(K&& key, V&& value) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       pos->second = std::forward<V>(value);
       return {pos, false};
@@ -2160,7 +2898,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   template <class... Args>
   std::pair<iterator, bool> emplace(const K& key, Args&&... args) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return {pos, false};
     } else {
@@ -2176,7 +2914,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   template <class... Args>
   std::pair<iterator, bool> emplace(K&& key, Args&&... args) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return {pos, false};
     } else {
@@ -2204,7 +2942,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
 
     // Do emplace.
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return {pos, false};  // key is discarded
     } else {
@@ -2230,7 +2968,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
  protected:
   iterator try_insert(const K& key) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return pos;
     } else {
@@ -2243,7 +2981,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
 
   iterator try_insert(K&& key) {
     auto pos = lower_bound(key);
-    if (pos != end() && *reinterpret_cast<const K*>(pos) == key) {
+    if (pos != end() && key_extractor()(*pos) == key) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
       return pos;
     } else {
@@ -2317,10 +3055,10 @@ struct BinarySearchSet : public BinarySearchArray<K, void, N, Compare, Stat> {
   }
 };
 
-template <class K, class T, size_t N, bool Stat>
-struct LinearSearchMap : public LinearSearchArray<K, T, N, Stat> {
+template <class K, class T, class KeyPolicy, size_t N, bool Stat>
+struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
  protected:
-  template <class K2, class T2, size_t N2, bool Stat2>
+  template <class K2, class T2, class KeyPolicy2, size_t N2, bool Stat2>
   friend struct LinearSearchMap;
 
   using MapStatisticsBase<Stat>::UpdateMaxCount;
@@ -2328,51 +3066,71 @@ struct LinearSearchMap : public LinearSearchArray<K, T, N, Stat> {
   using MapStatisticsBase<Stat>::IncreaseEraseCount;
   using MapStatisticsBase<Stat>::RecordFind;
 
-  using KeyValueArray<K, T, N, Stat>::array_;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::array_;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::_key_hash_data;
+  using typename KeyValueArray<K, T, KeyPolicy, N, Stat>::value_extractor;
+
+  using LinearSearchArray<K, T, KeyPolicy, N, Stat>::_reduced_key_hash;
 
  public:
-  using typename LinearSearchArray<K, T, N, Stat>::value_type;
-  using typename LinearSearchArray<K, T, N, Stat>::store_value_type;
-  using typename LinearSearchArray<K, T, N, Stat>::iterator;
-  using typename LinearSearchArray<K, T, N, Stat>::store_iterator;
-  using LinearSearchArray<K, T, N, Stat>::insert;
-  using LinearSearchArray<K, T, N, Stat>::find_exact;
-  using KeyValueArray<K, T, N, Stat>::end;
+  using LinearSearchArray<K, T, KeyPolicy, N, Stat>::is_key_hash;
+  using LinearSearchArray<K, T, KeyPolicy, N, Stat>::consecutive_key;
+  using typename LinearSearchArray<K, T, KeyPolicy, N, Stat>::insert_value_type;
+  using typename LinearSearchArray<K, T, KeyPolicy, N, Stat>::value_type;
+  using typename LinearSearchArray<K, T, KeyPolicy, N, Stat>::store_value_type;
+  using typename LinearSearchArray<K, T, KeyPolicy, N, Stat>::iterator;
+  using typename LinearSearchArray<K, T, KeyPolicy, N, Stat>::store_iterator;
+  using LinearSearchArray<K, T, KeyPolicy, N, Stat>::insert;
+  using LinearSearchArray<K, T, KeyPolicy, N, Stat>::find_exact;
+  using KeyValueArray<K, T, KeyPolicy, N, Stat>::end;
 
   LinearSearchMap() = default;
-  LinearSearchMap(std::initializer_list<value_type> list) {
+  LinearSearchMap(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
       insert(std::move(v));
     }
   }
 
-  LinearSearchMap(Vector<store_value_type>&& source_array)
-      : LinearSearchArray<K, T, N, Stat>(std::move(source_array)) {}
+  // Only when not using hash, the internal array can be moved from source.
+  // Because we are using extra leading bytes of array buffer to store hash
+  // values.
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchMap(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+      : LinearSearchArray<K, T, KeyPolicy, N, Stat>(std::move(source_array)) {
+    static_assert(!is_key_hash);
+  }
 
-  LinearSearchMap& operator=(Vector<store_value_type>&& source_array) {
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchMap& operator=(
+      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+    static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchMap(const LinearSearchMap<K, T, N2, Stat>& other)
-      : LinearSearchArray<K, T, N, Stat>(other) {}
+  LinearSearchMap(const LinearSearchMap<K, T, KeyPolicy, N2, Stat>& other)
+      : LinearSearchArray<K, T, KeyPolicy, N, Stat>(other) {}
 
   template <size_t N2>
-  LinearSearchMap(LinearSearchMap<K, T, N2, Stat>&& other)
-      : LinearSearchArray<K, T, N, Stat>(std::move(other)) {}
+  LinearSearchMap(LinearSearchMap<K, T, KeyPolicy, N2, Stat>&& other)
+      : LinearSearchArray<K, T, KeyPolicy, N, Stat>(std::move(other)) {}
 
   template <size_t N2>
-  LinearSearchMap& operator=(const LinearSearchMap<K, T, N2, Stat>& other) {
+  LinearSearchMap& operator=(
+      const LinearSearchMap<K, T, KeyPolicy, N2, Stat>& other) {
     array_ = other.array_;
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchMap& operator=(LinearSearchMap<K, T, N2, Stat>&& other) {
+  LinearSearchMap& operator=(
+      LinearSearchMap<K, T, KeyPolicy, N2, Stat>&& other) {
     array_ = std::move(other.array_);
     UpdateMaxCount(array_.size());
     return *this;
@@ -2380,89 +3138,261 @@ struct LinearSearchMap : public LinearSearchArray<K, T, N, Stat> {
 
   template <class U>
   T& operator[](U&& key) {
-    return try_insert(std::forward<U>(key))->second;
+    return value_extractor()(*try_insert(std::forward<U>(key)));
   }
 
   T& at(const K& key) {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = find_exact(key);
-    if (pos != nullptr) {
-      return pos->second;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+    if (BASE_VECTOR_LIKELY(pos != nullptr)) {
+      return value_extractor()(*pos);
     }
     ::abort();  // Always nothrow
   }
 
   const T& at(const K& key) const {
     RecordFind(MapStatisticsFindKind::kFind, array_.size());
-    auto pos = find_exact(key);
-    if (pos != nullptr) {
-      return pos->second;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      auto hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+    if (BASE_VECTOR_LIKELY(pos != nullptr)) {
+      return value_extractor()(*pos);
     }
     ::abort();  // Always nothrow
   }
 
   template <class V>
   std::pair<iterator, bool> insert_or_assign(const K& key, V&& value) {
-    auto pos = find_exact(key);
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      pos->second = std::forward<V>(value);
-      return {pos, false};
+      value_extractor()(*pos) = std::forward<V>(value);
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {reinterpret_cast<iterator>(&array_.emplace_back(
-                  std::piecewise_construct, std::forward_as_tuple(key),
-                  std::forward_as_tuple(std::forward<V>(value)))),
-              true};
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<V>(value))),
+                  true};
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct, std::forward_as_tuple(key),
+                      std::forward_as_tuple(std::forward<V>(value)))),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return result;
   }
 
   template <class V>
   std::pair<iterator, bool> insert_or_assign(K&& key, V&& value) {
-    auto pos = find_exact(key);
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      pos->second = std::forward<V>(value);
-      return {pos, false};
+      value_extractor()(*pos) = std::forward<V>(value);
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {
-          reinterpret_cast<iterator>(&array_.emplace_back(
-              std::piecewise_construct, std::forward_as_tuple(std::move(key)),
-              std::forward_as_tuple(std::forward<V>(value)))),
-          true};
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<V>(value))),
+                  true};
+      } else {
+        result = {
+            reinterpret_cast<iterator>(&array_.emplace_back(
+                std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+                std::forward_as_tuple(std::forward<V>(value)))),
+            true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return result;
+  }
+
+  // No check of key existence.
+  template <class... Args>
+  iterator emplace_unique(const K& key, Args&&... args) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+    }
+
+    iterator result;
+    if constexpr (consecutive_key) {
+      result = reinterpret_cast<iterator>(
+          &array_.emplace_back(std::forward<Args>(args)...));
+    } else {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(
+          std::piecewise_construct, std::forward_as_tuple(key),
+          std::forward_as_tuple(std::forward<Args>(args)...)));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  template <class... Args>
+  iterator emplace_unique(K&& key, Args&&... args) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+    }
+
+    iterator result;
+    if constexpr (consecutive_key) {
+      result = reinterpret_cast<iterator>(
+          &array_.emplace_back(std::forward<Args>(args)...));
+    } else {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(
+          std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+          std::forward_as_tuple(std::forward<Args>(args)...)));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
+  }
+
+  template <typename... Args1, typename... Args2>
+  iterator emplace_unique(std::piecewise_construct_t,
+                          std::tuple<Args1...> args1,
+                          std::tuple<Args2...> args2) {
+    // Construct key in first place and find.
+    K key = std::make_from_tuple<K>(std::move(args1));
+
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+    }
+
+    // Do emplace.
+    iterator result;
+    if constexpr (consecutive_key) {
+      std::apply(
+          [&](auto&&... unpacked_args) {
+            result = reinterpret_cast<iterator>(&array_.emplace_back(
+                std::forward<decltype(unpacked_args)>(unpacked_args)...));
+          },
+          std::move(args2));
+    } else {
+      result = reinterpret_cast<iterator>(&array_.emplace_back(
+          std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+          std::move(args2)));
+    }
+    if constexpr (is_key_hash) {
+      // Store hash value after array insertion because array may expand.
+      _key_hash_data()[array_.size() - 1] = hash;
+    }
+    return result;
   }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(const K& key, Args&&... args) {
-    auto pos = find_exact(key);
-    if (pos != nullptr) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return {pos, false};
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {reinterpret_cast<iterator>(&array_.emplace_back(
-                  std::piecewise_construct, std::forward_as_tuple(key),
-                  std::forward_as_tuple(std::forward<Args>(args)...))),
-              true};
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<Args>(args)...)),
+                  true};
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct, std::forward_as_tuple(key),
+                      std::forward_as_tuple(std::forward<Args>(args)...))),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return result;
   }
 
   template <class... Args>
   std::pair<iterator, bool> emplace(K&& key, Args&&... args) {
-    auto pos = find_exact(key);
-    if (pos != nullptr) {
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return {pos, false};
+      result = {pos, false};
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {
-          reinterpret_cast<iterator>(&array_.emplace_back(
-              std::piecewise_construct, std::forward_as_tuple(std::move(key)),
-              std::forward_as_tuple(std::forward<Args>(args)...))),
-          true};
+      if constexpr (consecutive_key) {
+        result = {reinterpret_cast<iterator>(
+                      &array_.emplace_back(std::forward<Args>(args)...)),
+                  true};
+      } else {
+        result = {
+            reinterpret_cast<iterator>(&array_.emplace_back(
+                std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+                std::forward_as_tuple(std::forward<Args>(args)...))),
+            true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return result;
   }
 
   template <class U, class... Args>
@@ -2474,111 +3404,324 @@ struct LinearSearchMap : public LinearSearchArray<K, T, N, Stat> {
   std::pair<iterator, bool> emplace(std::piecewise_construct_t,
                                     std::tuple<Args1...> args1,
                                     std::tuple<Args2...> args2) {
-    // Construct key in first place.
+    // Construct key in first place and find.
     K key = std::make_from_tuple<K>(std::move(args1));
 
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
     // Do emplace.
-    auto pos = find_exact(key);
-    if (pos != nullptr) {
+    std::pair<iterator, bool> result;
+    if (BASE_VECTOR_UNLIKELY(pos != nullptr)) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return {pos, false};  // key is discarded
+      result = {pos, false};  // insertion failed and key is discarded
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return {reinterpret_cast<iterator>(&array_.emplace_back(
-                  std::piecewise_construct,
-                  std::forward_as_tuple(std::move(key)), std::move(args2))),
-              true};
+      if constexpr (consecutive_key) {
+        std::apply(
+            [&](auto&&... unpacked_args) {
+              result = {
+                  reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::forward<decltype(unpacked_args)>(unpacked_args)...)),
+                  true};
+            },
+            std::move(args2));
+      } else {
+        result = {reinterpret_cast<iterator>(&array_.emplace_back(
+                      std::piecewise_construct,
+                      std::forward_as_tuple(std::move(key)), std::move(args2))),
+                  true};
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * @brief Iterates over each key-value pair in the map and applies a
+   * user-provided callback.
+   *
+   * This method supports two types of callbacks for maximum flexibility:
+   * 1.  **Callback with `void` return type**: The function will be executed for
+   * every element in the map. Signature: `void(const K& key, const T& value)`
+   *
+   * 2.  **Callback with `bool` return type**: This allows for early termination
+   * of the loop. If the callback returns `true`, the iteration stops
+   * immediately. If it returns `false`, the iteration continues to the next
+   * element. Signature: `bool(const K& key, const T& value)`
+   *
+   * @tparam Callback The type of the callback function or callable object
+   * (e.g., a lambda).
+   *
+   * @param callback The callable object to be invoked for each key-value pair.
+   * It will be perfectly forwarded.
+   *
+   * @note This method is enabled only if the provided `Callback` is invocable
+   * with arguments of type `const K&` and `const T&`.
+   * @note The method uses `if constexpr` to create a zero-overhead abstraction,
+   * ensuring that the check for a boolean return value happens at compile-time
+   * with no runtime cost.
+   *
+   * @code
+   * MyMap<std::string, int> map = {{"a", 1}, {"b", 2}};
+   *
+   * // Example 1: Print all elements (void return).
+   * map.for_each([](const std::string& key, int value) {
+   *   std::cout << key << ": " << value << std::endl;
+   * });
+   *
+   * // Example 2: Find an element and stop (bool return).
+   * map.for_each([](const std::string& key, int value) -> bool {
+   *   if (key == "b") {
+   *     std::cout << "Found 'b'!" << std::endl;
+   *     return true; // Stop iterating
+   *   }
+   *   return false; // Continue iterating
+   * });
+   * @endcode
+   */
+  template <typename Callback, typename = std::enable_if_t<std::is_invocable_v<
+                                   Callback, const K&, const T&>>>
+  void for_each(Callback&& callback) const {
+    using callback_ret_type =
+        std::invoke_result_t<Callback, const K&, const T&>;
+    constexpr bool callback_returns_bool =
+        std::is_same_v<callback_ret_type, bool>;
+    const auto sz = array_.size();
+    auto* begin = array_.begin();
+    if constexpr (consecutive_key) {
+      const auto* hash_data = _key_hash_data();
+      if constexpr (callback_returns_bool) {
+        for (size_t i = 0; i < sz; i++) {
+          if (callback(static_cast<K>(hash_data[i]), *(begin + i))) {
+            break;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < sz; i++) {
+          callback(static_cast<K>(hash_data[i]), *(begin + i));
+        }
+      }
+    } else {
+      if constexpr (callback_returns_bool) {
+        for (size_t i = 0; i < sz; i++) {
+          auto it = begin + i;
+          if (callback(it->first, it->second)) {
+            break;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < sz; i++) {
+          auto it = begin + i;
+          callback(it->first, it->second);
+        }
+      }
+    }
+  }
+
+  template <typename Callback, typename = std::enable_if_t<
+                                   std::is_invocable_v<Callback, const K&, T&>>>
+  void for_each(Callback&& callback) {
+    using callback_ret_type = std::invoke_result_t<Callback, const K&, T&>;
+    constexpr bool callback_returns_bool =
+        std::is_same_v<callback_ret_type, bool>;
+    const auto sz = array_.size();
+    auto* begin = array_.begin();
+    if constexpr (consecutive_key) {
+      const auto* hash_data = _key_hash_data();
+      if constexpr (callback_returns_bool) {
+        for (size_t i = 0; i < sz; i++) {
+          if (callback(static_cast<K>(hash_data[i]), *(begin + i))) {
+            break;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < sz; i++) {
+          callback(static_cast<K>(hash_data[i]), *(begin + i));
+        }
+      }
+    } else {
+      if constexpr (callback_returns_bool) {
+        for (size_t i = 0; i < sz; i++) {
+          auto it = begin + i;
+          if (callback(it->first, it->second)) {
+            break;
+          }
+        }
+      } else {
+        for (size_t i = 0; i < sz; i++) {
+          auto it = begin + i;
+          callback(it->first, it->second);
+        }
+      }
     }
   }
 
   template <size_t N2>
-  bool operator==(const LinearSearchMap<K, T, N2, Stat>& other) const {
-    return array_ == other.array_;
+  bool operator==(
+      const LinearSearchMap<K, T, KeyPolicy, N2, Stat>& other) const {
+    // Data in self is not ordered, we cannot compare array_ directly.
+    if (array_.size() != other.array_.size()) {
+      return false;
+    }
+    bool equal = true;
+    for_each([&](const K& k, const T& v) -> bool {
+      auto it = other.find(k);
+      if (it == other.end()) {
+        equal = false;
+        return true;  // stop
+      }
+      if (value_extractor()(*it) != v) {
+        equal = false;
+        return true;  // stop
+      }
+      return false;  // continue
+    });
+    return equal;
   }
 
   template <size_t N2>
-  bool operator!=(const LinearSearchMap<K, T, N2, Stat>& other) const {
-    return array_ != other.array_;
+  bool operator!=(
+      const LinearSearchMap<K, T, KeyPolicy, N2, Stat>& other) const {
+    return !(*this == other);
   }
 
  protected:
   iterator try_insert(const K& key) {
-    auto pos = find_exact(key);
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return pos;
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return reinterpret_cast<iterator>(
-          &array_.emplace_back(std::piecewise_construct,
-                               std::forward_as_tuple(key), std::tuple<>()));
+      if constexpr (consecutive_key) {
+        pos = reinterpret_cast<iterator>(&array_.emplace_back());
+      } else {
+        pos = reinterpret_cast<iterator>(
+            &array_.emplace_back(std::piecewise_construct,
+                                 std::forward_as_tuple(key), std::tuple<>()));
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return pos;
   }
 
   iterator try_insert(K&& key) {
-    auto pos = find_exact(key);
+    [[maybe_unused]] KeyPolicyReducedHashValueType hash;
+    iterator pos;
+    if constexpr (is_key_hash) {
+      hash = _reduced_key_hash(key);
+      pos = find_exact(key, hash);  // find with hash value
+    } else {
+      pos = find_exact(key);
+    }
+
     if (pos != nullptr) {
       RecordFind(MapStatisticsFindKind::kInsertFindCollision, array_.size());
-      return pos;
     } else {
       RecordFind(MapStatisticsFindKind::kInsertFind, array_.size());
-      return reinterpret_cast<iterator>(&array_.emplace_back(
-          std::piecewise_construct, std::forward_as_tuple(std::move(key)),
-          std::tuple<>()));
+      if constexpr (consecutive_key) {
+        pos = reinterpret_cast<iterator>(&array_.emplace_back());
+      } else {
+        pos = reinterpret_cast<iterator>(&array_.emplace_back(
+            std::piecewise_construct, std::forward_as_tuple(std::move(key)),
+            std::tuple<>()));
+      }
+      if constexpr (is_key_hash) {
+        // Store hash value after array insertion because array may expand.
+        _key_hash_data()[array_.size() - 1] = hash;
+      }
     }
+    return pos;
   }
 };
 
-template <class K, size_t N, bool Stat>
-struct LinearSearchSet : public LinearSearchArray<K, void, N, Stat> {
+template <class K, class KeyPolicy, size_t N, bool Stat>
+struct LinearSearchSet : public LinearSearchArray<K, void, KeyPolicy, N, Stat> {
  protected:
-  template <class K2, size_t N2, bool Stat2>
+  template <class K2, class KeyPolicy2, size_t N2, bool Stat2>
   friend struct LinearSearchSet;
 
   using MapStatisticsBase<Stat>::UpdateMaxCount;
 
-  using LinearSearchArray<K, void, N, Stat>::array_;
+  using LinearSearchArray<K, void, KeyPolicy, N, Stat>::array_;
 
  public:
-  using typename LinearSearchArray<K, void, N, Stat>::value_type;
-  using typename LinearSearchArray<K, void, N, Stat>::store_value_type;
-  using typename LinearSearchArray<K, void, N, Stat>::iterator;
-  using LinearSearchArray<K, void, N, Stat>::insert;
+  using LinearSearchArray<K, void, KeyPolicy, N, Stat>::is_key_hash;
+  using typename LinearSearchArray<K, void, KeyPolicy, N,
+                                   Stat>::insert_value_type;
+  using typename LinearSearchArray<K, void, KeyPolicy, N, Stat>::value_type;
+  using
+      typename LinearSearchArray<K, void, KeyPolicy, N, Stat>::store_value_type;
+  using typename LinearSearchArray<K, void, KeyPolicy, N, Stat>::iterator;
+  using LinearSearchArray<K, void, KeyPolicy, N, Stat>::insert;
 
   LinearSearchSet() = default;
-  LinearSearchSet(std::initializer_list<value_type> list) {
+  LinearSearchSet(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
       insert(std::move(v));
     }
   }
 
-  LinearSearchSet(Vector<store_value_type>&& source_array)
-      : LinearSearchArray<K, void, N, Stat>(std::move(source_array)) {}
+  // Only when not using hash, the internal array can be moved from source.
+  // Because we are using extra leading bytes of array buffer to store hash
+  // values.
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchSet(Vector<store_value_type, ExtraBytesPerElement>&& source_array)
+      : LinearSearchArray<K, void, KeyPolicy, N, Stat>(
+            std::move(source_array)) {
+    static_assert(!is_key_hash);
+  }
 
-  LinearSearchSet& operator=(Vector<store_value_type>&& source_array) {
+  template <size_t ExtraBytesPerElement,
+            typename = std::enable_if_t<ExtraBytesPerElement == 0>>
+  LinearSearchSet& operator=(
+      Vector<store_value_type, ExtraBytesPerElement>&& source_array) {
+    static_assert(!is_key_hash);
     array_ = std::move(source_array);
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchSet(const LinearSearchSet<K, N2, Stat>& other)
-      : LinearSearchArray<K, void, N, Stat>(other) {}
+  LinearSearchSet(const LinearSearchSet<K, KeyPolicy, N2, Stat>& other)
+      : LinearSearchArray<K, void, KeyPolicy, N, Stat>(other) {}
 
   template <size_t N2>
-  LinearSearchSet(LinearSearchSet<K, N2, Stat>&& other)
-      : LinearSearchArray<K, void, N, Stat>(std::move(other)) {}
+  LinearSearchSet(LinearSearchSet<K, KeyPolicy, N2, Stat>&& other)
+      : LinearSearchArray<K, void, KeyPolicy, N, Stat>(std::move(other)) {}
 
   template <size_t N2>
-  LinearSearchSet& operator=(const LinearSearchSet<K, N2, Stat>& other) {
+  LinearSearchSet& operator=(
+      const LinearSearchSet<K, KeyPolicy, N2, Stat>& other) {
     array_ = other.array_;
     UpdateMaxCount(array_.size());
     return *this;
   }
 
   template <size_t N2>
-  LinearSearchSet& operator=(LinearSearchSet<K, N2, Stat>&& other) {
+  LinearSearchSet& operator=(LinearSearchSet<K, KeyPolicy, N2, Stat>&& other) {
     array_ = std::move(other.array_);
     UpdateMaxCount(array_.size());
     return *this;
@@ -2590,13 +3733,22 @@ struct LinearSearchSet : public LinearSearchArray<K, void, N, Stat> {
   }
 
   template <size_t N2>
-  bool operator==(const LinearSearchSet<K, N2, Stat>& other) const {
-    return array_ == other.array_;
+  bool operator==(const LinearSearchSet<K, KeyPolicy, N2, Stat>& other) const {
+    // Data in self is not ordered, we cannot compare array_ directly.
+    if (array_.size() != other.array_.size()) {
+      return false;
+    }
+    for (const auto& k : *this) {
+      if (!other.contains(k)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   template <size_t N2>
-  bool operator!=(const LinearSearchSet<K, N2, Stat>& other) const {
-    return array_ != other.array_;
+  bool operator!=(const LinearSearchSet<K, KeyPolicy, N2, Stat>& other) const {
+    return !(*this == other);
   }
 };
 
@@ -2612,17 +3764,27 @@ using OrderedFlatSet = BinarySearchSet<K, 0, Compare, false>;
 template <class K, size_t N, class Compare = std::less<K>>
 using InlineOrderedFlatSet = BinarySearchSet<K, N, Compare, false>;
 
-template <class K, class T>
-using LinearFlatMap = LinearSearchMap<K, T, 0, false>;
+template <class K, class T, class KeyPolicy = void>
+using LinearFlatMap = LinearSearchMap<K, T, KeyPolicy, 0, false>;
 
-template <class K, class T, size_t N>
-using InlineLinearFlatMap = LinearSearchMap<K, T, N, false>;
+template <class K, class T, size_t N, class KeyPolicy = void>
+using InlineLinearFlatMap = LinearSearchMap<K, T, KeyPolicy, N, false>;
 
-template <class K>
-using LinearFlatSet = LinearSearchSet<K, 0, false>;
+template <class K, class KeyPolicy = void>
+using LinearFlatSet = LinearSearchSet<K, KeyPolicy, 0, false>;
 
-template <class K, size_t N>
-using InlineLinearFlatSet = LinearSearchSet<K, N, false>;
+template <class K, size_t N, class KeyPolicy = void>
+using InlineLinearFlatSet = LinearSearchSet<K, KeyPolicy, N, false>;
+
+// As HybridMap's policy template argument for inlined flat map types.
+// The generic MapPolicy template wont't accept InlineOrderedFlatMap
+// which contains non-type template arguments.
+template <template <typename, typename, size_t, typename...> class T, size_t N,
+          typename... Args>
+struct InlineFlatMapPolicy {
+  template <typename Key, typename Value>
+  using type = T<Key, Value, N, Args...>;
+};
 
 /**
  Helper to declare inlined version of existing map type.
@@ -2645,13 +3807,19 @@ struct Inlined {
 
           std::conditional_t<
               std::is_same_v<From, LinearFlatMap<typename From::key_type,
-                                                 typename From::mapped_type>>,
+                                                 typename From::mapped_type,
+                                                 typename From::key_policy>>,
               InlineLinearFlatMap<typename From::key_type,
-                                  typename From::mapped_type, N>,
+                                  typename From::mapped_type, N,
+                                  typename From::key_policy>,
 
               std::conditional_t<
-                  std::is_same_v<From, LinearFlatSet<typename From::key_type>>,
-                  InlineLinearFlatSet<typename From::key_type, N>, void>>>>;
+                  std::is_same_v<From,
+                                 LinearFlatSet<typename From::key_type,
+                                               typename From::key_policy>>,
+                  InlineLinearFlatSet<typename From::key_type, N,
+                                      typename From::key_policy>,
+                  void>>>>;
 };
 
 static_assert(std::is_same_v<Inlined<OrderedFlatMap<int, int>, 5>::type,
@@ -2664,22 +3832,13 @@ static_assert(std::is_same_v<Inlined<OrderedFlatSet<int>, 5>::type,
 static_assert(std::is_same_v<Inlined<LinearFlatSet<int>, 5>::type,
                              InlineLinearFlatSet<int, 5>>);
 
-static_assert(sizeof(OrderedFlatMap<int, int>) ==
-              sizeof(Vector<std::pair<int, int>>));
-
-static_assert(sizeof(OrderedFlatSet<int>) == sizeof(Vector<int>));
-
-static_assert(sizeof(LinearFlatMap<int, int>) ==
-              sizeof(Vector<std::pair<int, int>>));
-
-static_assert(sizeof(LinearFlatSet<int>) == sizeof(Vector<int>));
-
 }  // namespace base
 }  // namespace lynx
 
 namespace std {
-template <class T>
-inline void swap(lynx::base::Vector<T>& x, lynx::base::Vector<T>& y) {
+template <class T, size_t ExtraBytesPerElement>
+inline void swap(lynx::base::Vector<T, ExtraBytesPerElement>& x,
+                 lynx::base::Vector<T, ExtraBytesPerElement>& y) {
   x.swap(y);
 }
 
@@ -2699,17 +3858,17 @@ inline void swap(lynx::base::BinarySearchSet<K, N1, Compare1, Stat1>& x,
   x.swap(y);
 }
 
-template <class K, class T, size_t N1, size_t N2, bool Stat1, bool Stat2,
-          typename = typename std::enable_if<N1 != N2>::type>
-inline void swap(lynx::base::LinearSearchMap<K, T, N1, Stat1>& x,
-                 lynx::base::LinearSearchMap<K, T, N2, Stat2>& y) {
+template <class K, class T, class KeyPolicy, size_t N1, size_t N2, bool Stat1,
+          bool Stat2, typename = typename std::enable_if<N1 != N2>::type>
+inline void swap(lynx::base::LinearSearchMap<K, T, KeyPolicy, N1, Stat1>& x,
+                 lynx::base::LinearSearchMap<K, T, KeyPolicy, N2, Stat2>& y) {
   x.swap(y);
 }
 
-template <class K, size_t N1, size_t N2, bool Stat1, bool Stat2,
-          typename = typename std::enable_if<N1 != N2>::type>
-inline void swap(lynx::base::LinearSearchSet<K, N1, Stat1>& x,
-                 lynx::base::LinearSearchSet<K, N2, Stat2>& y) {
+template <class K, class KeyPolicy, size_t N1, size_t N2, bool Stat1,
+          bool Stat2, typename = typename std::enable_if<N1 != N2>::type>
+inline void swap(lynx::base::LinearSearchSet<K, KeyPolicy, N1, Stat1>& x,
+                 lynx::base::LinearSearchSet<K, KeyPolicy, N2, Stat2>& y) {
   x.swap(y);
 }
 }  // namespace std
