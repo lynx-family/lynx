@@ -116,7 +116,8 @@ void TasmMediator::OnPageConfigDecoded(
   tasm_platform_invoker_->OnPageConfigDecoded(config);
   // default enableAirStrictMode in timing_handler is false,
   // avoid using post task to send duplicate false value
-  if (config->GetEnableLynxAir()) {
+  if (config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
+      config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_FIBER) {
     perf_actor_->ActAsync([](auto& performance) mutable {
       performance->SetEnableMainThreadCallback(true);
     });
