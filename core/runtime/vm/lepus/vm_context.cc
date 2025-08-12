@@ -518,6 +518,7 @@ std::string VMContext::BuildBackTrace(const base::Vector<int>& pc,
     int current_pc = index >= pc.size() ? -1 : pc[index++];
     fml::RefPtr<Closure> current_closure = fml::static_ref_ptr_cast<Closure>(
         current_frame->function_->RefCounted());
+    if (!current_closure.get()) break;
     fml::RefPtr<Function> current_function = current_closure->function();
     if (!current_function.get()) break;
 
