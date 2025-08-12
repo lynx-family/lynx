@@ -252,12 +252,13 @@ class TouchEventHandler {
 
   void SendPageEvent(const EventType &type, const std::string &page_name,
                      const std::string &event_name, const std::string &handler,
-                     const lepus::Value &info) const;
+                     const lepus::Value &info, uint64_t trace_flow_id) const;
   void PublishComponentEvent(const EventType &type,
                              const std::string &component_id,
                              const std::string &event_name,
                              const std::string &handler,
-                             const lepus::Value &info) const;
+                             const lepus::Value &info,
+                             uint64_t trace_flow_id) const;
   void SendGlobalEvent(const EventType &type, const std::string &name,
                        const lepus::Value &info) const;
   void TriggerLepusBridgesAsync(

@@ -60,6 +60,7 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
         ctx.event()->add_debug_annotations(
             "phase", std::to_string(static_cast<int>(event.event_phase())));
         ctx.event()->add_debug_annotations("target", target->GetUniqueID());
+        ctx.event()->add_flow_ids(event.TraceFlowId());
       });
   LOGI("EventTarget::DispatchEvent name: "
        << event.type() << ", phase: " << static_cast<int>(event.event_phase())
