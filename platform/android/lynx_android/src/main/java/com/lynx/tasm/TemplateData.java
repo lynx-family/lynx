@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -90,9 +91,10 @@ public final class TemplateData {
   private String mProcessorName;
   private volatile boolean mIsConcurrent;
   private boolean readOnly = false;
-  // To garantee multi-thread safety, any access of mJsNativeData must
+  // To guarantee multi-thread safety, any access of mJsNativeData must
   // by synchronized.
   volatile long mJsNativeData;
+  private final Object mJsDataLock = new Object();
   private final AtomicBoolean mConsumed = new AtomicBoolean(false);
 
   enum ActionType {
@@ -100,7 +102,7 @@ public final class TemplateData {
     BYTE_BUFFER,
     NATIVE_DATA,
   }
-  List<UpdateAction> mUpdateActions = new ArrayList<>();
+  List<UpdateAction> mUpdateActions = new CopyOnWriteArrayList<>();
 
   /**
    * @apidoc
@@ -158,18 +160,20 @@ public final class TemplateData {
     mUpdateActions.add(action);
   }
 
-  private synchronized List<UpdateAction> getUpdateActionsWithJsNativeData() {
-    List<UpdateAction> actions = new ArrayList<>();
-    if (mJsNativeData != 0) {
-      actions.add(new UpdateAction(nativeShallowCopy(mJsNativeData)));
+  private List<UpdateAction> getUpdateActionsWithJsNativeData() {
+    synchronized (mJsDataLock) {
+      List<UpdateAction> actions = new ArrayList<>();
+      if (mJsNativeData != 0) {
+        actions.add(new UpdateAction(nativeShallowCopy(mJsNativeData)));
+      }
+      actions.addAll(mUpdateActions);
+      // When `getUpdateActionsWithNativeData` is called, it indicates that the current
+      // `TemplateData` has been deep cloned or updated to another `TemplateData`. At this point, it
+      // is highly likely that the current `TemplateData` will not be consumed by `LynxView`.
+      // Therefore, it is necessary to actively call `consumeUpdateActions` to avoid OOM.
+      consumeUpdateActions();
+      return actions;
     }
-    actions.addAll(mUpdateActions);
-    // When `getUpdateActionsWithNativeData` is called, it indicates that the current `TemplateData`
-    // has been deep cloned or updated to another `TemplateData`. At this point, it is highly likely
-    // that the current `TemplateData` will not be consumed by `LynxView`. Therefore, it is
-    // necessary to actively call `consumeUpdateActions` to avoid OOM.
-    consumeUpdateActions();
-    return actions;
   }
 
   private synchronized List<UpdateAction> obtainUpdateActions() {
@@ -324,10 +328,12 @@ public final class TemplateData {
     }
   }
 
-  synchronized void recycleJsData() {
-    if (checkIfEnvPrepared() && mJsNativeData != 0) {
-      nativeReleaseData(mJsNativeData);
-      mJsNativeData = 0;
+  private void recycleJsData() {
+    synchronized (mJsDataLock) {
+      if (checkIfEnvPrepared() && mJsNativeData != 0) {
+        nativeReleaseData(mJsNativeData);
+        mJsNativeData = 0;
+      }
     }
   }
 
@@ -543,37 +549,40 @@ public final class TemplateData {
     });
   }
 
-  synchronized long getDataForJSThreadInner() {
+  private long getDataForJSThreadInner() {
     // Init mJsNativeData or update mUpdateActions to mJsNativeData
     List<UpdateAction> actions = obtainUpdateActions();
     if (actions.isEmpty()) {
       return mJsNativeData;
     }
 
-    if (mJsNativeData == 0) {
-      mJsNativeData = nativeCreateObject();
-    }
-
-    for (UpdateAction action : actions) {
-      if (action.getType() == ActionType.STRING_DATA) {
-        String jsonString = action.getJsonString();
-        if (TextUtils.isEmpty(jsonString)) {
-          continue;
-        }
-        long mergePtr = nativeParseStringData(jsonString);
-        nativeMergeTemplateData(mJsNativeData, mergePtr);
-        nativeReleaseData(mergePtr);
-      } else if (action.getType() == ActionType.NATIVE_DATA) {
-        nativeMergeTemplateData(mJsNativeData, action.getNativeData());
-      } else {
-        ByteBuffer buffer = action.getByteBuffer();
-        if (buffer == null || buffer.position() == 0) {
-          continue;
-        }
-        nativeUpdateData(mJsNativeData, action.getByteBuffer(), action.getByteBuffer().position());
+    synchronized (mJsDataLock) {
+      if (mJsNativeData == 0) {
+        mJsNativeData = nativeCreateObject();
       }
+
+      for (UpdateAction action : actions) {
+        if (action.getType() == ActionType.STRING_DATA) {
+          String jsonString = action.getJsonString();
+          if (TextUtils.isEmpty(jsonString)) {
+            continue;
+          }
+          long mergePtr = nativeParseStringData(jsonString);
+          nativeMergeTemplateData(mJsNativeData, mergePtr);
+          nativeReleaseData(mergePtr);
+        } else if (action.getType() == ActionType.NATIVE_DATA) {
+          nativeMergeTemplateData(mJsNativeData, action.getNativeData());
+        } else {
+          ByteBuffer buffer = action.getByteBuffer();
+          if (buffer == null || buffer.position() == 0) {
+            continue;
+          }
+          nativeUpdateData(
+              mJsNativeData, action.getByteBuffer(), action.getByteBuffer().position());
+        }
+      }
+      return mJsNativeData;
     }
-    return mJsNativeData;
   }
 
   @CalledByNative
