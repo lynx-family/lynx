@@ -54,6 +54,8 @@ std::string UnicodeDecodeUtils::Decode(const std::string_view input_string,
             output.push_back(input_string[i]);
           }
         }
+      } else {
+        output.push_back(input_string[i]);
       }
     } else {
       output.push_back(input_string[i]);
