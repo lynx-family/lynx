@@ -120,4 +120,40 @@ TEST(StyleObjectParser, ParseSimpleStyleObject) {
         style_rule_min_height.Properties().contains(kPropertyIDMinHeight));
   }
 }
+
+TEST(StyleObjectParser, ParseFontFaceRule) {
+  std::string json_input = R"(
+  {
+    "simpleStyleObjects": [
+      {
+      "type": "FontFaceRule",
+      "style": [
+        {
+          "name": "font-family",
+          "value": "test"
+        },
+        {
+          "name": "src",
+          "value": "link"
+        }
+      ]
+    }
+   ]
+   })";
+
+  rapidjson::Document document;
+  document.Parse(json_input);
+  CompileOptions encoder_options;
+  encoder_options.enable_simple_styling_ = true;
+  auto style_object_parser =
+      std::make_unique<StyleObjectParser>(encoder_options);
+  style_object_parser->Parse(document["simpleStyleObjects"]);
+  auto& fontfaces = style_object_parser->StyleObjectsFontFaces();
+  ASSERT_EQ(fontfaces.size(), 1);
+  auto fontface = fontfaces.begin();
+  EXPECT_EQ(fontface->first, "test");
+  EXPECT_EQ(fontface->second[0]->GetAttrMap().at("font-family"), "test");
+  EXPECT_EQ(fontface->second[0]->GetAttrMap().at("src"), "link");
+}
+
 }  // namespace lynx::tasm::test

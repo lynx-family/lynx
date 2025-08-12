@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/css/unit_handler.h"
@@ -23,9 +24,11 @@ bool StyleObjectParser::Parse(const rapidjson::Value &value) {
     if (!styleObj.IsObject()) {
       return false;
     }
+
+    // Keyframes token
     if (encoder::CSSKeyframesToken::IsCSSKeyframesToken(styleObj)) {
       std::string key =
-          encoder::CSSKeyframesToken::GetCSSKeyframesTokenName(value);
+          encoder::CSSKeyframesToken::GetCSSKeyframesTokenName(styleObj);
       if (!key.empty()) {
         fml::RefPtr<encoder::CSSKeyframesToken> token(
             new encoder::CSSKeyframesToken(styleObj, "", compile_options_));
@@ -35,7 +38,32 @@ bool StyleObjectParser::Parse(const rapidjson::Value &value) {
         }
         style_objects_keyframes_.insert({key, token});
       }
-    } else {
+      continue;
+    }
+
+    // Font-face token
+    if (tasm::CSSFontFaceToken::IsCSSFontFaceToken(styleObj)) {
+      std::string family =
+          tasm::CSSFontFaceToken::GetCSSFontFaceTokenKey(styleObj);
+      if (family.empty()) {
+        continue;
+      }
+
+      std::shared_ptr<CSSFontFaceToken> font_token(
+          new tasm::CSSFontFaceToken(styleObj, ""));
+      auto it_font_face = style_objects_fontfaces_.find(family);
+      if (it_font_face == style_objects_fontfaces_.end()) {
+        std::vector<std::shared_ptr<CSSFontFaceToken>> font_face_token_list{
+            font_token};
+        style_objects_fontfaces_[family] = std::move(font_face_token_list);
+      } else {
+        it_font_face->second.emplace_back(font_token);
+      }
+      continue;
+    }
+
+    // Style object
+    {
       StyleMap style;
       auto configs =
           tasm::CSSParserConfigs::GetCSSParserConfigsByComplierOptions(

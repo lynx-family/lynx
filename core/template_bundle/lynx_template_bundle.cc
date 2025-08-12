@@ -152,5 +152,13 @@ LynxTemplateBundle::InitKeyframesMap(size_t size) {
   return keyframes_;
 }
 
+CSSFontFaceRuleMap &LynxTemplateBundle::InitFontFacesMap(size_t size) {
+  if (!font_face_rules_.empty()) {
+    return font_face_rules_;
+  }
+  font_face_rules_.reserve(size);
+  return font_face_rules_;
+}
+
 }  // namespace tasm
 }  // namespace lynx

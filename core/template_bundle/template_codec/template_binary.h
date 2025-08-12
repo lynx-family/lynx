@@ -82,6 +82,7 @@ enum class CustomSectionEncodingType { STRING, JS_BYTECODE };
 enum class StyleObjectSectionType {
   STYLE_OBJECT,
   STYLE_OBJECT_KEYFRAMES,
+  STYLE_OBJECT_FONTFACES,
   SECTION_COUNT
 };
 

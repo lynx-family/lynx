@@ -480,6 +480,32 @@ void TemplateBinaryWriter::EncodeSimpleStyleObjects() {
   EncodeSimpleStyleObjectsRoute(keyframes_route);
   end = stream()->size();
   stream_->Move(descriptor_offset, start, end - start);
+  // Encode fontfaces section
+  static_assert(static_cast<uint32_t>(
+                    StyleObjectSectionType::STYLE_OBJECT_FONTFACES) == 2);
+  auto& style_objects_fontfaces = style_object_parser_->StyleObjectsFontFaces();
+  descriptor_offset = stream()->size();
+  start = 0;
+  end = 0;
+  StyleObjectRoute fontfaces_route;
+
+  if (!style_objects_fontfaces.empty()) {
+    base::sorted_for_each(
+        style_objects_fontfaces.begin(), style_objects_fontfaces.end(),
+        [descriptor_offset, &fontfaces_route, &start, &end,
+         this](const auto& it) {
+          EncodeUtf8Str(it.first.c_str(), it.first.length());
+          EncodeCSSFontFaceTokenList(it.second);
+          end = stream()->size() - descriptor_offset;
+          fontfaces_route.style_object_ranges.emplace_back(start, end);
+          start = end;
+        });
+  }
+
+  start = stream()->size();
+  EncodeSimpleStyleObjectsRoute(fontfaces_route);
+  end = stream()->size();
+  stream_->Move(descriptor_offset, start, end - start);
 }
 
 void TemplateBinaryWriter::EncodeSimpleStyleObjectsRoute(

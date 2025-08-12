@@ -914,6 +914,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void OnNativeAppReady();
 
+  void HandleSimpleStyleFontFaces(const std::shared_ptr<TemplateEntry>& card);
+
   template <
       class... Args,
       class = std::enable_if_t<
