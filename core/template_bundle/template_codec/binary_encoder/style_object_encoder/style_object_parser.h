@@ -20,15 +20,20 @@ class StyleObjectParser {
       : compile_options_(compile_options) {}
   bool Parse(const rapidjson::Value &value);
   bool ParseKeyframes(const rapidjson::Value &value);
+  bool ParseFontFace(const rapidjson::Value &value);
   const std::list<style::StyleObject> &StyleObjects() { return style_objects_; }
   const encoder::CSSKeyframesTokenMapForEncode &StyleObjectsKeyframes() {
     return style_objects_keyframes_;
+  }
+  const encoder::CSSFontFaceTokenMapForEncode &StyleObjectsFontFaces() {
+    return style_objects_fontfaces_;
   }
 
  private:
   const CompileOptions &compile_options_;
   std::list<style::StyleObject> style_objects_;
   encoder::CSSKeyframesTokenMapForEncode style_objects_keyframes_;
+  encoder::CSSFontFaceTokenMapForEncode style_objects_fontfaces_;
 };
 
 }  // namespace lynx::tasm

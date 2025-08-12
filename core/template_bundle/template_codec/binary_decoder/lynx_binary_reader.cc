@@ -104,7 +104,7 @@ bool LynxBinaryReader::DecodeStyleObjects() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "DecodeStyleObjectSection");
   DECODE_COMPACT_U32(section_count);
   // Decode style_object section
-  if (section_count <
+  if (section_count <=
       static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT)) {
     return true;
   }
@@ -122,7 +122,7 @@ bool LynxBinaryReader::DecodeStyleObjects() {
     stream_->Seek(style_objects_section_range_.start + range.end);
   }
   // Decode keyframes section
-  if (section_count <
+  if (section_count <=
       static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES)) {
     return true;
   }
@@ -138,6 +138,29 @@ bool LynxBinaryReader::DecodeStyleObjects() {
     CSSKeyframesToken* token = new CSSKeyframesToken(parser_config);
     ERROR_UNLESS(DecodeCSSKeyframesToken(token));
     keyframes.emplace(std::move(name), token);
+    stream_->Seek(style_objects_section_range_.start + range.end);
+  }
+  // Decode fontfaces section
+  if (section_count <=
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_FONTFACES)) {
+    return true;
+  }
+
+  StyleObjectRoute font_face_route;
+  ERROR_UNLESS(DecodeStyleObjectRoute(font_face_route));
+  auto font_faces = template_bundle().InitFontFacesMap(
+      font_face_route.style_object_ranges.size());
+  for (const auto& range : font_face_route.style_object_ranges) {
+    stream_->Seek(style_objects_section_range_.start + range.start);
+    DECODE_STDSTR(name);
+    std::vector<std::shared_ptr<CSSFontFaceRule>> token_list;
+    DECODE_COMPACT_U32(token_size);
+    for (size_t i = 0; i < token_size; ++i) {
+      auto token = std::make_shared<CSSFontFaceRule>();
+      ERROR_UNLESS(DecodeCSSFontFaceToken(token.get()));
+      token_list.emplace_back(std::move(token));
+    }
+    font_faces.emplace(std::move(name), token_list);
     stream_->Seek(style_objects_section_range_.start + range.end);
   }
   return true;

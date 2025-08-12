@@ -690,6 +690,7 @@ void TemplateAssembler::RenderTemplateForFiber(
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kCreateVdomEnd);
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kMtsRenderEnd);
 
+  HandleSimpleStyleFontFaces(card);
   // TODO(nihao.royal): use `enable_unified_pixel_pipeline` to switch multi
   // behaviours. After `RunPixelPipeline` is unified, we may remove the
   // redundant logic here.
@@ -701,6 +702,20 @@ void TemplateAssembler::RenderTemplateForFiber(
       DumpElementTree(card);
     }
   }
+}
+
+void TemplateAssembler::HandleSimpleStyleFontFaces(
+    const std::shared_ptr<TemplateEntry>& card) {
+  if (!card->compile_options().enable_simple_styling_) {
+    return;
+  }
+
+  auto& font_face_rule = card->CSSFontFaceRuleMap();
+  if (font_face_rule.size() == 0) {
+    return;
+  }
+
+  page_proxy()->element_manager()->SetFontFaces(font_face_rule);
 }
 
 void TemplateAssembler::RenderTemplateForAir(

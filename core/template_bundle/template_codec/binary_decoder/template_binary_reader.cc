@@ -120,7 +120,7 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
   }
   DECODE_COMPACT_U32(section_count);
   // Decode style_object section
-  if (section_count <
+  if (section_count <=
       static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT)) {
     return true;
   }
@@ -148,7 +148,7 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
                   route.style_object_ranges[size - 1].end);
   }
   // Decode keyframes section
-  if (section_count <
+  if (section_count <=
       static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_KEYFRAMES)) {
     return true;
   }
@@ -169,6 +169,35 @@ bool TemplateBinaryReader::DecodeStyleObjects() {
     }
     stream_->Seek(style_objects_section_range_.start +
                   keyframes_route.style_object_ranges[keyframe_size - 1].end);
+  }
+
+  // Decode fontfaces section
+  if (section_count <=
+      static_cast<uint32_t>(StyleObjectSectionType::STYLE_OBJECT_FONTFACES)) {
+    return true;
+  }
+
+  StyleObjectRoute font_face_route;
+  ERROR_UNLESS(DecodeStyleObjectRoute(font_face_route));
+  size_t font_face_size = font_face_route.style_object_ranges.size();
+  if (font_face_size > 0) {
+    auto font_faces = template_bundle().InitFontFacesMap(font_face_size);
+    for (const auto& range : font_face_route.style_object_ranges) {
+      stream_->Seek(style_objects_section_range_.start + range.start);
+      DECODE_STDSTR(name);
+      std::vector<std::shared_ptr<CSSFontFaceRule>> token_list;
+      DECODE_COMPACT_U32(token_size);
+      for (size_t i = 0; i < token_size; ++i) {
+        auto token = std::make_shared<CSSFontFaceRule>();
+        ERROR_UNLESS(DecodeCSSFontFaceToken(token.get()));
+        token_list.emplace_back(std::move(token));
+      }
+      font_faces.emplace(std::move(name), token_list);
+      stream_->Seek(style_objects_section_range_.start + range.end);
+    }
+
+    stream_->Seek(style_objects_section_range_.start +
+                  font_face_route.style_object_ranges[font_face_size - 1].end);
   }
   // Decode other sub_section below
   stream_->Seek(style_objects_section_range_.end);

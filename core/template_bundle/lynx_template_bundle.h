@@ -111,6 +111,8 @@ class LynxTemplateBundle final {
   base::LinearFlatMap<base::String, fml::RefPtr<CSSKeyframesToken>> &
   InitKeyframesMap(size_t size);
 
+  CSSFontFaceRuleMap &InitFontFacesMap(size_t size);
+
   void SetLepusChunkManager(std::shared_ptr<LepusChunkManager> manager) {
     lepus_chunk_manager_ = std::move(manager);
   }
@@ -193,6 +195,8 @@ class LynxTemplateBundle final {
   std::shared_ptr<style::StyleObject *> style_object_list_{nullptr};
 
   CSSKeyframesTokenMap keyframes_;
+
+  CSSFontFaceRuleMap font_face_rules_;
 
   // body - APP
   std::string app_name_;
