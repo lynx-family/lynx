@@ -127,6 +127,47 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
     const Value* value_;
   };
 
+  class Unsafe {
+   public:
+    /// These methods are usually used to copy data between dictionaries. When
+    /// it is known that the data to be added will not have duplicate keys,
+    /// calling these methods can complete the construction of the entire
+    /// dictionary more quickly. Implement not using `template<K, V>` and
+    /// `std::forward<>` for binary size friendly.
+    static Value& SetValueUniqueKey(Dictionary& target,
+                                    const base::String& key) {
+      // Default construct value for key. This is to optimize table decoding.
+      return target.hash_map_.try_emplace(key).first->second;
+    }
+
+    static Value& SetValueUniqueKey(Dictionary& target, base::String&& key) {
+      // Default construct value for key. This is to optimize table decoding.
+      return target.hash_map_.try_emplace(std::move(key)).first->second;
+    }
+
+    static void SetValueUniqueKey(Dictionary& target, const base::String& key,
+                                  const Value& value) {
+      target.hash_map_.try_emplace(key, value);
+    }
+
+    static void SetValueUniqueKey(Dictionary& target, const base::String& key,
+                                  Value&& value) {
+      target.hash_map_.try_emplace(key, std::move(value));
+    }
+
+    static void SetValueUniqueKey(Dictionary& target, base::String&& key,
+                                  const Value& value) {
+      target.hash_map_.try_emplace(std::move(key), value);
+    }
+
+    static void SetValueUniqueKey(Dictionary& target, base::String&& key,
+                                  Value&& value) {
+      target.hash_map_.try_emplace(std::move(key), std::move(value));
+    }
+  };
+
+  friend class Unsafe;
+
  private:
   class alignas(Value) ValueNoOpCtor {
    private:
@@ -225,6 +266,7 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
   auto find(const base::String& key) { return hash_map_.find(key); }
 
   size_t size() const { return hash_map_.size(); }
+  bool empty() const { return hash_map_.empty(); }
 
   void reserve(size_t count) {
     // TODO(yuyang), implement after refactored.

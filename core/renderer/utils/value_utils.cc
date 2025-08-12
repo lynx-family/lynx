@@ -173,7 +173,8 @@ lepus::Value ConvertJSValueToLepusValue(const lepus::Value& value) {
     dic->reserve(value.GetLength());
     tasm::ForEachLepusValue(
         value, [&dic](const lepus::Value& key, const lepus::Value& val) {
-          dic->SetValue(key.String(), ConvertJSValueToLepusValue(val));
+          lepus::Dictionary::Unsafe::SetValueUniqueKey(
+              *dic, key.String(), ConvertJSValueToLepusValue(val));
         });
     result.SetTable(std::move(dic));
   } else {

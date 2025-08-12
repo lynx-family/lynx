@@ -96,8 +96,9 @@ lepus::Value ValueUtils::ConvertValueToLepusTable(
     dict->reserve(value.Length());
     value.ForeachMap([&dict, &prev_value_vector, depth](const pub::Value& key,
                                                         const pub::Value& val) {
-      dict->SetValue(key.str(),
-                     ConvertValueToLepusValue(val, prev_value_vector, depth));
+      lepus::Dictionary::Unsafe::SetValueUniqueKey(
+          *dict, key.str(),
+          ConvertValueToLepusValue(val, prev_value_vector, depth));
     });
     return lepus::Value(std::move(dict));
   }

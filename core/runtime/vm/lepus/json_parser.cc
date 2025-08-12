@@ -109,8 +109,8 @@ lepus_value jsonValueTolepusValue(const rapid_value& rapValue) {
       dict->reserve(rapValue.MemberCount());
       for (rapid_value::ConstMemberIterator itr = rapValue.MemberBegin();
            itr != rapValue.MemberEnd(); ++itr) {
-        dict->SetValue(itr->name.GetString(),
-                       jsonValueTolepusValue(itr->value));
+        Dictionary::Unsafe::SetValueUniqueKey(
+            *dict, itr->name.GetString(), jsonValueTolepusValue(itr->value));
       }
       return lepus_value(std::move(dict));
     }

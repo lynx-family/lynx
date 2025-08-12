@@ -806,9 +806,11 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
       const auto src_tbl =
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
+        lepus_map->reserve(src_tbl->size());
         auto it = src_tbl->begin();
         for (; it != src_tbl->end(); it++) {
-          lepus_map->SetValue(it->first, Value::Clone(it->second));
+          Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
+                                                Value::Clone(it->second));
         }
       }
       return Value(std::move(lepus_map));
@@ -865,12 +867,15 @@ Value Value::ShallowCopy(const Value& src, bool clone_as_jsvalue) {
       const auto src_tbl =
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
+        lepus_map->reserve(src_tbl->size());
         auto it = src_tbl->begin();
         for (; it != src_tbl->end(); it++) {
           if (it->second.MarkConst()) {
-            lepus_map->SetValue(it->first, it->second);
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
+                                                  it->second);
           } else {
-            lepus_map->SetValue(it->first, Value::Clone(it->second));
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
+                                                  Value::Clone(it->second));
           }
         }
       }
@@ -1518,7 +1523,8 @@ Value Value::ToLepusMap(lynx_api_env env, const lynx_value& val, int32_t flag) {
                    const lynx_value& value) {
         std::string str;
         lynx_value_to_string_utf8(env, key, &str);
-        map->SetValue(std::move(str), ToLepusValue(env, value, flag));
+        Dictionary::Unsafe::SetValueUniqueKey(*map, std::move(str),
+                                              ToLepusValue(env, value, flag));
       };
   IterateExtendedValue(env, val, &callback);
   return Value(std::move(map));

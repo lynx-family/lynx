@@ -183,6 +183,7 @@ bool BaseBinaryReader::DecodeUtf8Str(std::string* result) {
 
 bool BaseBinaryReader::DecodeTable(fml::RefPtr<Dictionary>& out_value,
                                    bool is_header) {
+  DCHECK(out_value->empty());
   DECODE_COMPACT_U32(size);
   out_value->reserve(size);
   for (size_t i = 0; i < size; ++i) {
@@ -191,12 +192,12 @@ bool BaseBinaryReader::DecodeTable(fml::RefPtr<Dictionary>& out_value,
     if (is_header) {
       std::string key;
       ERROR_UNLESS(ReadStringDirectly(&key));
-      DECODE_VALUE_HEADER_INTO((const_cast<lepus::Value&>(
-          *out_value->GetValueOrInsert(std::move(key)))));
+      DECODE_VALUE_HEADER_INTO(
+          Dictionary::Unsafe::SetValueUniqueKey(*out_value, std::move(key)));
     } else {
       DECODE_STR(key);
-      DECODE_VALUE_INTO((const_cast<lepus::Value&>(
-          *out_value->GetValueOrInsert(std::move(key)))));
+      DECODE_VALUE_INTO(
+          Dictionary::Unsafe::SetValueUniqueKey(*out_value, std::move(key)));
     }
   }
   return true;
