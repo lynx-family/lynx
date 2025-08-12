@@ -64,7 +64,21 @@ inline constexpr const char* const UI_OPERATION_QUEUE_FLUSH =
  */
 inline constexpr const char* const UI_OPERATION_QUEUE_EXECUTE =
     "LynxUIOperationQueue::ExecuteOperation";
-
+inline constexpr const char* const NATIVE_FACADE_INVOKE_UI_METHOD =
+    "NativeFacade::InvokeUIMethod";
+inline constexpr const char* const ENGINE_INVOKE_UI_METHOD =
+    "LynxEngine::InvokeUIMethod";
+inline constexpr const char* const ENGINE_GET_FIELDS = "LynxEngine::GetFields";
+inline constexpr const char* const ENGINE_GET_JS_SESSION_STORAGE =
+    "LynxEngine::GetJSSessionStorage";
+inline constexpr const char* const ENGINE_GET_PATH_INFO =
+    "LynxEngine::GetPathInfo";
+inline constexpr const char* const ENGINE_GET_COMPONENT_CONTEXT_DATA_ASYNC =
+    "LynxEngine::GetComponentContextDataAsync";
+inline constexpr const char* const ENGINE_SELECT_COMPONENT =
+    "LynxEngine::SelectComponent";
+inline constexpr const char* const ENGINE_TRIGGER_WORKLET_FUNC =
+    "LynxEngine::TriggerWorkletFunction";
 inline constexpr const char* const DYNAMIC_UI_OPERATION_QUEUE_TRANSFER =
     "DynamicUIOperationQueue::Transfer";
 inline constexpr const char* const LAYOUT_MEDIATOR_ON_LAYOUT_AFTER =

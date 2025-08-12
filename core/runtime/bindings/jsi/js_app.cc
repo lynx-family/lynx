@@ -291,6 +291,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                       [&](lynx::perfetto::EventContext ctx) {
                         ctx.event()->add_debug_annotations(
                             "CallbackID", std::to_string(callback.id()));
+                        ctx.event()->add_flow_ids(callback.trace_flow_id());
                       });
           ptr->appDataChange(std::move(*lepus_value_opt), callback,
                              std::move(update_data_type));
@@ -598,6 +599,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                   ctx.event()->add_debug_annotations(
                       "update_data_type",
                       std::to_string(static_cast<uint32_t>(update_data_type)));
+                  ctx.event()->add_flow_ids(callback.trace_flow_id());
                 });
             ptr->updateComponentData(id, std::move(*lepus_value_opt), callback,
                                      std::move(update_data_type));
@@ -679,8 +681,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "selectComponent args count must be 4"));
           }
-
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PROXY_SELECT_COMPONENT);
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -707,6 +707,14 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             callback =
                 ptr->CreateCallBack(args[3].getObject(rt).getFunction(rt));
           }
+          TRACE_EVENT(
+              LYNX_TRACE_CATEGORY, APP_PROXY_SELECT_COMPONENT,
+              [&comp_id, &id_selector, flow_id = callback.trace_flow_id()](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("componentId", comp_id);
+                ctx.event()->add_debug_annotations("idSelector", id_selector);
+                ctx.event()->add_flow_ids(flow_id);
+              });
           ptr->selectComponent(comp_id, id_selector, single, callback);
           return piper::Value::undefined();
         });
@@ -738,7 +746,12 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             callback =
                 ptr->CreateCallBack(args[1].getObject(rt).getFunction(rt));
           }
-
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_LOAD_SCRIPT_ASYNC,
+                      [&url, flow_id = callback.trace_flow_id()](
+                          lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_debug_annotations("url", url);
+                        ctx.event()->add_flow_ids(flow_id);
+                      });
           ptr->LoadScriptAsync(url, callback);
           return piper::Value::undefined();
         });
@@ -782,7 +795,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 BUILD_JSI_NATIVE_EXCEPTION("getPathInfo args count must be 5"));
           }
 
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_PATH_INFO);
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -809,6 +821,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               count >= 6 && args[5].isNumber()
                   ? tasm::NodeSelectRoot::ByUniqueId(args[5].getNumber())
                   : tasm::NodeSelectRoot::ByComponentId(component_id);
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_PATH_INFO,
+                      [flow_id = callback.trace_flow_id()](
+                          lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(flow_id);
+                      });
           ptr->GetPathInfo(std::move(root), std::move(info), callback);
           return piper::Value::undefined();
         });
@@ -855,8 +872,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 "invokeUIMethod args count must be 6"));
           }
 
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_INVOKE_UI_METHOD);
-
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -878,6 +893,14 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               count >= 7 && args[6].isNumber()
                   ? tasm::NodeSelectRoot::ByUniqueId(args[6].getNumber())
                   : tasm::NodeSelectRoot::ByComponentId(component_id);
+          TRACE_EVENT(
+              LYNX_TRACE_CATEGORY, APP_INVOKE_UI_METHOD,
+              [&component_id, &method, flow_id = callback.trace_flow_id()](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations("componentId", component_id);
+                ctx.event()->add_debug_annotations("method", method);
+              });
           ptr->InvokeUIMethod(std::move(root), std::move(options),
                               std::move(method), params, callback);
           return piper::Value::undefined();
@@ -894,7 +917,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
                 BUILD_JSI_NATIVE_EXCEPTION("getFields args count must be 6"));
           }
 
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_FIELDS);
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -922,6 +944,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               count >= 7 && args[6].isNumber()
                   ? tasm::NodeSelectRoot::ByUniqueId(args[6].getNumber())
                   : tasm::NodeSelectRoot::ByComponentId(component_id);
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_FIELDS,
+                      [flow_id = callback.trace_flow_id()](
+                          lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(flow_id);
+                      });
           ptr->GetFields(std::move(root), std::move(info),
                          std::move(fields_native), callback);
           return piper::Value::undefined();
@@ -1044,6 +1071,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             callback =
                 ptr->CreateCallBack(args[1].getObject(rt).getFunction(rt));
           }
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_GET_SESSION_STORAGE_ITEM,
+                      [flow_id = callback.trace_flow_id()](
+                          lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(flow_id);
+                      });
           ptr->GetSessionStorageItem(key_opt->String(), callback);
           return piper::Value::undefined();
         });
@@ -1094,6 +1126,11 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             callback =
                 ptr->CreateCallBack(args[2].getObject(rt).getFunction(rt));
           }
+          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_SUBSCRIBE_SESSION_STORAGE,
+                      [flow_id = callback.trace_flow_id()](
+                          lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(flow_id);
+                      });
           ptr->SubscribeSessionStorage(key_opt->String(),
                                        listener_id_opt->Number(), callback);
 
@@ -1115,7 +1152,7 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "callLepusMethod arg count must >= 2"));
           }
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_CALL_LEPUS_METHOD);
+
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -1161,7 +1198,13 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
               callback =
                   ptr->CreateCallBack(args[2].getObject(rt).getFunction(rt));
             }
-
+            TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_CALL_LEPUS_METHOD,
+                        [&method_name, flow_id = callback.trace_flow_id()](
+                            lynx::perfetto::EventContext ctx) {
+                          ctx.event()->add_debug_annotations("method",
+                                                             method_name);
+                          ctx.event()->add_flow_ids(flow_id);
+                        });
             ptr->CallLepusMethod(method_name, std::move(*lepus_value_opt),
                                  std::move(callback), std::move(stacks));
           }
@@ -1352,7 +1395,6 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(
                 "triggerWorkletFunction arg count must >= 3"));
           }
-          TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_TRIGGER_WORKLET_FUNC);
           auto ptr = native_app_.lock();
           if (!ptr || ptr->IsDestroying()) {
             return piper::Value::undefined();
@@ -1386,7 +1428,18 @@ Value AppProxy::get(Runtime* rt, const PropNameID& name) {
             callback =
                 ptr->CreateCallBack(args[4].getObject(rt).getFunction(rt));
           }
-
+          TRACE_EVENT(
+              LYNX_TRACE_CATEGORY, APP_TRIGGER_WORKLET_FUNC,
+              [&component_id, &worklet_module_name, &method_name,
+               flow_id =
+                   callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("component_id",
+                                                   component_id);
+                ctx.event()->add_debug_annotations("worklet_module_name",
+                                                   worklet_module_name);
+                ctx.event()->add_debug_annotations("methodName", method_name);
+                ctx.event()->add_flow_ids(flow_id);
+              });
           ptr->triggerWorkletFunction(
               std::move(component_id), std::move(worklet_module_name),
               std::move(method_name), std::move(*lepus_value_opt),
@@ -2119,7 +2172,6 @@ void App::handleLoadAppFailed(std::string error_msg) {
 }
 
 void App::LoadScriptAsync(const std::string& url, ApiCallBack callback) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_LOAD_SCRIPT_ASYNC, "url", url);
   LOGI("App::LoadScriptAsync " << url << " " << this);
   delegate_->LoadScriptAsync(url, callback);
 }
@@ -3037,14 +3089,21 @@ void App::getContextDataAsync(const std::string& component_id,
   if (!rt) {
     return;
   }
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, APP_GET_CONTEXT_DATA_ASYNC,
+      [flow_id = callback.trace_flow_id()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(flow_id);
+      });
   delegate_->GetComponentContextDataAsync(component_id, key, callback);
 }
 
 void App::QueryComponent(const std::string& url, ApiCallBack callback,
                          const std::vector<std::string>& ids) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_QUERY_COMPONENT,
-              [&url](lynx::perfetto::EventContext ctx) {
+              [&url, flow_id = callback.trace_flow_id()](
+                  lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_flow_ids(flow_id);
               });
 
   auto holder = weak_js_bundle_holder_.lock();
@@ -3393,16 +3452,8 @@ void App::CallLepusMethod(const std::string& method_name, lepus::Value args,
   // This `trace_flow_id` is used to trace the flow of CallLepusMethod.
   // ApiCallBack's creation and invocation use different trace_flow_id
   // generated in ApiCallBack's constructor
-  auto trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_CALL_LEPUS_METHOD_INNER,
-              [&](perfetto::EventContext ctx) {
-                ctx.event()->add_flow_ids(trace_flow_id);
-                ctx.event()->add_debug_annotations("method_name", method_name);
-                ctx.event()->add_debug_annotations("stacks", stacks);
-              });
   LOGI(" CallLepusMethod: " << method_name << " " << this);
-  delegate_->CallLepusMethod(method_name, std::move(args), callback,
-                             trace_flow_id);
+  delegate_->CallLepusMethod(method_name, std::move(args), callback);
 }
 
 void App::SetFrameworkExtraTimingInfo(const std::string& pipeline_id,

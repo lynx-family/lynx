@@ -494,6 +494,7 @@ void LynxRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
                 auto* debug = ctx.event()->add_debug_annotations();
                 debug->set_name("CallbackID");
                 debug->set_string_value(std::to_string(callback.id()));
+                ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBack(std::move(callback));
 }
@@ -513,6 +514,7 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
                 auto* debug = ctx.event()->add_debug_annotations();
                 debug->set_name("CallbackID");
                 debug->set_string_value(std::to_string(callback.id()));
+                ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBackWithValue(std::move(callback), value, persist);
 }
@@ -530,6 +532,7 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
               [&](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations(
                     "callback_id", std::to_string(callback.id()));
+                ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBackWithValue(std::move(callback), std::move(value));
 }

@@ -17,18 +17,6 @@ namespace piper {
 ApiCallBack ApiCallBackManager::createCallbackImpl(piper::Function func) {
   int id = next_timer_index_++;
   const auto &callback = ApiCallBack(id);
-
-  // Now ApiCallBack supports tracing with flow.
-  // TRACE_EVENT_FLOW_BEGIN0 and TRACE_EVENT_FLOW_END0 is already
-  // implemented in ApiCallBackManager.
-  // If you want to trace ApiCallBack, you can use
-  // `ctx.event()->add_flow_ids(callback.trace_flow_id());` to
-  // add you trace in the lifecycle of ApiCallBack.
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, API_CALLBACK_MANAGER_CREATE_CALLBACK,
-              [=](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_flow_ids(callback.trace_flow_id());
-              });
-
   std::shared_ptr<CallBackHolder> holder =
       std::make_shared<CallBackHolder>(std::move(func));
   callback_map_.insert(std::make_pair(id, holder));
