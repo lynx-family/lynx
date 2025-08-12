@@ -3017,9 +3017,17 @@ piper::Value App::setTimeout(piper::Function func, int time) {
     return piper::Value::undefined();
   }
 
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_SET_TIMEOUT, "delay", time,
-              INSTANCE_ID, rt->getRuntimeId());
-  return js_task_adapter_->SetTimeout(std::move(func), time);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_SET_TIMEOUT,
+      [trace_flow_id, time,
+       instance_id = rt->getRuntimeId()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(trace_flow_id);
+        ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                           std::to_string(instance_id));
+        ctx.event()->add_debug_annotations("delay", std::to_string(time));
+      });
+  return js_task_adapter_->SetTimeout(std::move(func), time, trace_flow_id);
 }
 
 piper::Value App::setInterval(piper::Function func, int time) {
@@ -3027,9 +3035,18 @@ piper::Value App::setInterval(piper::Function func, int time) {
   if (!rt || !js_task_adapter_) {
     return piper::Value::undefined();
   }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_SET_INTERVAL, "delay",
-              time, INSTANCE_ID, rt->getRuntimeId());
-  return js_task_adapter_->SetInterval(std::move(func), time);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_SET_INTERVAL,
+      [trace_flow_id, time,
+       instance_id = rt->getRuntimeId()](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(trace_flow_id);
+        ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                           std::to_string(instance_id));
+        ctx.event()->add_debug_annotations("delay", std::to_string(time));
+      });
+
+  return js_task_adapter_->SetInterval(std::move(func), time, trace_flow_id);
 }
 
 void App::clearTimeout(double task) {
@@ -3043,7 +3060,17 @@ void App::QueueMicrotask(piper::Function func) {
   if (!rt || !js_task_adapter_) {
     return;
   }
-  return js_task_adapter_->QueueMicrotask(std::move(func));
+
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, BACKGROUND_THREAD_QUEUE_MICROTASK,
+              [trace_flow_id, instance_id = rt->getRuntimeId()](
+                  lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+              });
+
+  return js_task_adapter_->QueueMicrotask(std::move(func), trace_flow_id);
 }
 
 void App::RunOnJSThreadWhenIdle(base::closure closure) {

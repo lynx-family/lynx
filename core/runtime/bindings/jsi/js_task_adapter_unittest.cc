@@ -35,7 +35,7 @@ class JsTaskTest : public JSITestBase {
 
 TEST_P(JsTaskTest, SetTimeoutTaskTest) {
   auto func = function("function () { globalThis.foo = 'bar' }");
-  adapter->SetTimeout(std::move(func), 100);
+  adapter->SetTimeout(std::move(func), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.foo")->isUndefined());
@@ -49,7 +49,7 @@ TEST_P(JsTaskTest, SetTimeoutTaskTest) {
 TEST_P(JsTaskTest, SetIntervalTaskTest) {
   auto func =
       function("function () { globalThis.foo = (globalThis.foo || 0) + 1 }");
-  adapter->SetInterval(std::move(func), 100);
+  adapter->SetInterval(std::move(func), 100, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.foo")->isUndefined());
@@ -68,7 +68,7 @@ TEST_P(JsTaskTest, SetIntervalTaskTest) {
 TEST_P(JsTaskTest, ThrownErrorTaskTest) {
   auto thrown_func = function("function() { throw new Error('foo') }");
 
-  adapter->SetTimeout(std::move(thrown_func), 100);
+  adapter->SetTimeout(std::move(thrown_func), 100, 0);
 
   std::this_thread::sleep_for(200ms);
   // Should throw error with message 'foo'
@@ -79,7 +79,7 @@ TEST_P(JsTaskTest, ThrownErrorTaskTest) {
 
 TEST_P(JsTaskTest, QueueMicrotaskTaskTest) {
   auto func = function("function () { globalThis.microtask = 'microtask' }");
-  adapter->QueueMicrotask(std::move(func));
+  adapter->QueueMicrotask(std::move(func), 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.microtask")->isUndefined());
@@ -95,8 +95,8 @@ TEST_P(JsTaskTest, MicrotaskTimeoutTaskOrderTest) {
       function("function () { globalThis.lastTask = 'timeout'; }");
   auto microtask_func =
       function("function () { globalThis.lastTask = 'microtask'; }");
-  adapter->QueueMicrotask(std::move(microtask_func));
-  adapter->SetTimeout(std::move(timeout_func), 0);
+  adapter->QueueMicrotask(std::move(microtask_func), 0);
+  adapter->SetTimeout(std::move(timeout_func), 0, 0);
   EXPECT_CALL(*exception_handler_, onJSIException).Times(0);
 
   EXPECT_TRUE(eval("globalThis.lastTask")->isUndefined());

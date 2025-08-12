@@ -88,6 +88,8 @@ inline constexpr const char* const BACKGROUND_THREAD_SET_TIMEOUT =
     "BackgroundThread::SetTimeout";
 inline constexpr const char* const BACKGROUND_THREAD_SET_INTERVAL =
     "BackgroundThread::SetInterval";
+inline constexpr const char* const BACKGROUND_THREAD_QUEUE_MICROTASK =
+    "BackgroundThread::QueueMicrotask";
 inline constexpr const char* const APP_PUBLISH_COMPONENT_EVENT =
     "App::PublishComponentEvent";
 inline constexpr const char* const JS_UPDATE_COMPONET_DATA =
