@@ -72,6 +72,17 @@
       }];
 }
 
+- (void)onPerformanceEvent:(nonnull LynxPerformanceEntry*)entry {
+  NSArray* allLifecycleClients = self.lifecycleClients;
+  [allLifecycleClients
+      enumerateObjectsUsingBlock:^(id _Nonnull client, NSUInteger idx, BOOL* _Nonnull stop) {
+        if ([client respondsToSelector:@selector(onPerformanceEvent:)] ||
+            [client isKindOfClass:LynxLifecycleDispatcher.class]) {
+          [client onPerformanceEvent:entry];
+        }
+      }];
+}
+
 - (void)forwardInvocation:(NSInvocation*)invocation {
   SEL sel = invocation.selector;
 
