@@ -20,6 +20,8 @@ FOUNDATION_EXPORT NSString *const LynxScrollViewInitialScrollOffset;
 FOUNDATION_EXPORT NSString *const LynxScrollViewInitialScrollIndex;
 FOUNDATION_EXPORT NSString *const LynxEventStickyTop;
 FOUNDATION_EXPORT NSString *const LynxEventStickyBottom;
+FOUNDATION_EXPORT NSString *const LynxEventStickyStart;
+FOUNDATION_EXPORT NSString *const LynxEventStickyEnd;
 FOUNDATION_EXPORT NSString *const LynxEventSnap;
 
 @protocol LynxCustomScrollDelegate

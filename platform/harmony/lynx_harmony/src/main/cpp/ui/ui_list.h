@@ -83,8 +83,8 @@ class UIList : public BaseScrollContainer,
   UIComponent* GetStickyItemWithIndex(int index, bool isStickyTop);
   void ResetStickyItem(UIComponent* component);
   void UpdateListContainerInfo(const lepus::Value& value);
-  void UpdateStickyTopView(float scrollY);
-  void UpdateStickyBottomView(float scrollY);
+  void UpdateStickyStartView(float scroll_offset_x, float scroll_offset_y);
+  void UpdateStickyEndView(float scroll_offset_x, float scroll_offset_y);
 
   int GetIndexFromItemKey(const std::string& item_key) const;
   void SetScrollState(list::ScrollState state);

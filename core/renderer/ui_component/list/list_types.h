@@ -131,6 +131,8 @@ static constexpr const char* const kDataSourceEstimatedMainAxisSizePx =
 static constexpr const char* const kDataSourceFullSpan = "fullspan";
 static constexpr const char kDataSourceStickyTop[] = "stickyTop";
 static constexpr const char kDataSourceStickyBottom[] = "stickyBottom";
+static constexpr const char kDataSourceStickyStart[] = "stickyStart";
+static constexpr const char kDataSourceStickyEnd[] = "stickyEnd";
 static constexpr const char* const kEnableScrollBar = "scroll-bar-enable";
 static constexpr const char* const kItemSnap = "item-snap";
 

@@ -9851,8 +9851,8 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onScrollStateChange(NestedScrollContainerView scrollView, int state);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.sendCustomEvent(int l, int t, int oldl, int oldt, String type);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateScrollInfo(boolean smooth, float estimatedOffset, boolean scrolling);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyTops(int offsetTop);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyBottoms(int offsetTop);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyStarts();
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateStickyEnds();
   public int com.lynx.tasm.behavior.ui.list.container.UIListContainer.getScrollX();
   public int com.lynx.tasm.behavior.ui.list.container.UIListContainer.getScrollY();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onPropsUpdated();

@@ -137,8 +137,8 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
     NSMutableDictionary<NSString *, LynxUIComponent *> *stickyTopListItemDict;
 @property(nonatomic, strong)
     NSMutableDictionary<NSString *, LynxUIComponent *> *stickyBottomListItemDict;
-@property(nonatomic, weak) LynxUI *prevStickyTopItem;
-@property(nonatomic, weak) LynxUI *prevStickyBottomItem;
+@property(nonatomic, weak) LynxUI *prevStickyStartItem;
+@property(nonatomic, weak) LynxUI *prevStickyEndItem;
 @property(nonatomic, assign) CGFloat pagingAlignFactor;
 @property(nonatomic, assign) CGFloat pagingAlignOffset;
 @property(nonatomic, assign) BOOL enableRecycleStickyItem;
@@ -554,8 +554,8 @@ LYNX_PROP_SETTER("item-snap", setPagingAlignment, NSDictionary *) {
 }
 
 LYNX_PROP_SETTER("list-container-info", setStickyInfo, NSDictionary *) {
-  _stickyTopIndexes = value[@"stickyTop"];
-  _stickyBottomIndexes = value[@"stickyBottom"];
+  _stickyTopIndexes = value[@"stickyStart"];
+  _stickyBottomIndexes = value[@"stickyEnd"];
   _itemKeys = value[@"itemkeys"];
 }
 
@@ -789,62 +789,95 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
 
   // TODO(xiamengfei.monface) Support sticky with bounces for iOS
 
-  CGFloat offset = MAX(0, self.view.contentOffset.y) + self.stickyOffset;
-  LynxUI *stickyTopItem = nil;
-  LynxUI *nextStickyTopItem = nil;
+  CGFloat offset = (self.verticalOrientation ? MAX(0, self.view.contentOffset.y)
+                                             : MAX(0, self.view.contentOffset.x)) +
+                   self.stickyOffset;
+
+  LynxUI *stickyStartItem = nil;
+  LynxUI *nextStickyStartItem = nil;
 
   // enumerate from bottom to top to find sticky top item
-  for (NSNumber *topIndex in self.stickyTopIndexes.reverseObjectEnumerator) {
-    LynxUIComponent *top = [self getStickyItemWithIndex:topIndex isStickyTop:YES];
-    if (!top) {
+  for (NSNumber *startIndex in self.stickyTopIndexes.reverseObjectEnumerator) {
+    LynxUIComponent *startItem = [self getStickyItemWithIndex:startIndex isStickyTop:YES];
+    if (!startItem) {
       continue;
     }
-    if (CGRectGetMinY(top.frame) > offset) {
+    CGFloat startOffset =
+        self.verticalOrientation ? CGRectGetMinY(startItem.frame) : CGRectGetMinX(startItem.frame);
+    if (startOffset > offset) {
       // cache potential next sticky item
-      nextStickyTopItem = top;
+      nextStickyStartItem = startItem;
       // hold its position
-      [self resetStickyItem:(LynxUIComponent *)top];
-    } else if (stickyTopItem) {
+      [self resetStickyItem:(LynxUIComponent *)startItem];
+    } else if (stickyStartItem) {
       // sticky top item found, hold upper sticky top's position
-      [self resetStickyItem:(LynxUIComponent *)top];
+      [self resetStickyItem:(LynxUIComponent *)startItem];
     } else {
-      stickyTopItem = top;
+      stickyStartItem = startItem;
     }
   }
 
-  if (stickyTopItem) {
-    if (self.prevStickyTopItem != stickyTopItem) {
-      [self.scrollEventManager sendScrollEvent:LynxEventStickyTop
+  if (stickyStartItem) {
+    if (self.prevStickyStartItem != stickyStartItem) {
+      if (self.verticalOrientation) {
+        [self.scrollEventManager sendScrollEvent:LynxEventStickyTop
+                                      scrollView:self.view
+                                          detail:@{
+                                            @"top" : ((LynxUIComponent *)stickyStartItem).itemKey,
+                                          }];
+      }
+
+      [self.scrollEventManager sendScrollEvent:LynxEventStickyStart
                                     scrollView:self.view
                                         detail:@{
-                                          @"top" : ((LynxUIComponent *)stickyTopItem).itemKey,
+                                          @"start" : ((LynxUIComponent *)stickyStartItem).itemKey,
                                         }];
-      self.prevStickyTopItem = stickyTopItem;
+      self.prevStickyStartItem = stickyStartItem;
     }
 
-    CGFloat stickyTopY = offset;
+    CGFloat stickyStartOffset = offset;
 
-    if (nextStickyTopItem) {
-      CGFloat nextStickyTopItemDistanceFromOffset = CGRectGetMinY(nextStickyTopItem.frame) - offset;
+    if (nextStickyStartItem) {
+      CGFloat nextStickyStartItemDistanceFromOffset = 0;
+      CGFloat squashStickyStartDelta = 0;
 
-      CGFloat squashStickyTopDelta =
-          CGRectGetHeight(stickyTopItem.frame) - nextStickyTopItemDistanceFromOffset;
+      if (self.verticalOrientation) {
+        nextStickyStartItemDistanceFromOffset = CGRectGetMinY(nextStickyStartItem.frame) - offset;
 
-      if (squashStickyTopDelta > 0) {
+        squashStickyStartDelta =
+            CGRectGetHeight(stickyStartItem.frame) - nextStickyStartItemDistanceFromOffset;
+      } else {
+        nextStickyStartItemDistanceFromOffset = CGRectGetMinX(nextStickyStartItem.frame) - offset;
+
+        squashStickyStartDelta =
+            CGRectGetWidth(stickyStartItem.frame) - nextStickyStartItemDistanceFromOffset;
+      }
+
+      if (squashStickyStartDelta > 0) {
         // need push sticky top item to upper
-        stickyTopY -= squashStickyTopDelta;
+        stickyStartOffset -= squashStickyStartDelta;
       }
     }
 
-    stickyTopItem.view.superview.frame = {{
-                                              stickyTopItem.frame.origin.x,
-                                              stickyTopY,
-                                          },
-                                          stickyTopItem.frame.size};
-    stickyTopItem.view.frame =
-        [LynxListContainerComponentWrapper getAlignedFrame:stickyTopItem.frame];
-    [self.view bringSubviewToFront:stickyTopItem.view.superview];
-    stickyTopItem.view.superview.layer.zPosition = NSIntegerMax;
+    if (self.verticalOrientation) {
+      stickyStartItem.view.superview.frame = {{
+                                                  stickyStartItem.frame.origin.x,
+                                                  stickyStartOffset,
+                                              },
+                                              stickyStartItem.frame.size};
+    } else {
+      stickyStartItem.view.superview.frame = {{
+                                                  stickyStartOffset,
+                                                  stickyStartItem.frame.origin.y,
+
+                                              },
+                                              stickyStartItem.frame.size};
+    }
+
+    stickyStartItem.view.frame =
+        [LynxListContainerComponentWrapper getAlignedFrame:stickyStartItem.frame];
+    [self.view bringSubviewToFront:stickyStartItem.view.superview];
+    stickyStartItem.view.superview.layer.zPosition = NSIntegerMax;
   }
 }
 
@@ -852,64 +885,104 @@ LYNX_PROP_SETTER("experimental-update-sticky-for-diff", setUpdateStickyForDiff, 
   if (!self.enableListSticky) {
     return;
   }
-  CGFloat offset = MIN(self.view.contentOffset.y,
-                       MAX(0, self.view.contentSize.height - self.view.frame.size.height)) +
-                   CGRectGetHeight(self.view.frame) - self.stickyOffset;
-  LynxUI *stickyBottomItem = nil;
-  LynxUI *nextStickyBottomItem = nil;
+  CGFloat offset = 0;
+
+  if (self.verticalOrientation) {
+    offset = MIN(self.view.contentOffset.y,
+                 MAX(0, self.view.contentSize.height - self.view.frame.size.height)) +
+             CGRectGetHeight(self.view.frame) - self.stickyOffset;
+  } else {
+    offset = MIN(self.view.contentOffset.x,
+                 MAX(0, self.view.contentSize.width - self.view.frame.size.width)) +
+             CGRectGetWidth(self.view.frame) - self.stickyOffset;
+  }
+
+  LynxUI *stickyEndItem = nil;
+  LynxUI *nextStickyEndItem = nil;
 
   // enumerate from top to bottom to find sticky top item
-  for (NSNumber *bottomIndex in self.stickyBottomIndexes) {
-    LynxUIComponent *bottom = [self getStickyItemWithIndex:bottomIndex isStickyTop:NO];
-    if (!bottom) {
+  for (NSNumber *endIndex in self.stickyBottomIndexes) {
+    LynxUIComponent *endComponent = [self getStickyItemWithIndex:endIndex isStickyTop:NO];
+    if (!endComponent) {
       continue;
     }
-    if (CGRectGetMaxY(bottom.frame) < offset) {
+    CGFloat curOffset = self.verticalOrientation ? CGRectGetMaxY(endComponent.frame)
+                                                 : CGRectGetMaxX(endComponent.frame);
+
+    if (curOffset < offset) {
       // cache potential next sticky item
-      nextStickyBottomItem = bottom;
+      nextStickyEndItem = endComponent;
       // hold its position
-      [self resetStickyItem:(LynxUIComponent *)bottom];
-    } else if (stickyBottomItem) {
+      [self resetStickyItem:(LynxUIComponent *)endComponent];
+    } else if (stickyEndItem) {
       // sticky bottom item found, hold upper sticky top's position
-      [self resetStickyItem:(LynxUIComponent *)bottom];
+      [self resetStickyItem:(LynxUIComponent *)endComponent];
     } else {
-      stickyBottomItem = bottom;
+      stickyEndItem = endComponent;
     }
   }
 
-  if (stickyBottomItem) {
-    if (self.prevStickyBottomItem != stickyBottomItem) {
-      [self.scrollEventManager sendScrollEvent:LynxEventStickyBottom
+  if (stickyEndItem) {
+    if (self.prevStickyEndItem != stickyEndItem) {
+      if (self.verticalOrientation) {
+        [self.scrollEventManager sendScrollEvent:LynxEventStickyBottom
+                                      scrollView:self.view
+                                          detail:@{
+                                            @"bottom" : ((LynxUIComponent *)stickyEndItem).itemKey,
+                                          }];
+      }
+
+      [self.scrollEventManager sendScrollEvent:LynxEventStickyEnd
                                     scrollView:self.view
                                         detail:@{
-                                          @"bottom" : ((LynxUIComponent *)stickyBottomItem).itemKey,
+                                          @"end" : ((LynxUIComponent *)stickyEndItem).itemKey,
                                         }];
-      self.prevStickyBottomItem = stickyBottomItem;
+
+      self.prevStickyEndItem = stickyEndItem;
     }
 
-    CGFloat stickyTopY = offset - CGRectGetHeight(stickyBottomItem.frame);
+    CGFloat stickyStartOffset =
+        offset - (self.verticalOrientation ? CGRectGetHeight(stickyEndItem.frame)
+                                           : CGRectGetWidth(stickyEndItem.frame));
 
-    if (nextStickyBottomItem) {
-      CGFloat nextStickyBottomItemDistanceFromOffset =
-          offset - CGRectGetMaxY(nextStickyBottomItem.frame);
+    if (nextStickyEndItem) {
+      CGFloat nextStickyEndItemDistanceFromOffset = 0;
+      CGFloat squashStickyEndDelta = 0;
 
-      CGFloat squashStickyBottomDelta =
-          CGRectGetHeight(stickyBottomItem.frame) - nextStickyBottomItemDistanceFromOffset;
+      if (self.verticalOrientation) {
+        nextStickyEndItemDistanceFromOffset = offset - CGRectGetMaxY(nextStickyEndItem.frame);
+        squashStickyEndDelta =
+            CGRectGetHeight(stickyEndItem.frame) - nextStickyEndItemDistanceFromOffset;
+      } else {
+        nextStickyEndItemDistanceFromOffset = offset - CGRectGetMaxX(nextStickyEndItem.frame);
+        squashStickyEndDelta =
+            CGRectGetWidth(stickyEndItem.frame) - nextStickyEndItemDistanceFromOffset;
+      }
 
-      if (squashStickyBottomDelta > 0) {
-        stickyTopY += squashStickyBottomDelta;
+      if (squashStickyEndDelta > 0) {
+        stickyStartOffset += squashStickyEndDelta;
       }
     }
 
-    stickyBottomItem.view.superview.frame = {{
-                                                 stickyBottomItem.frame.origin.x,
-                                                 stickyTopY,
-                                             },
-                                             stickyBottomItem.frame.size};
-    stickyBottomItem.view.frame =
-        [LynxListContainerComponentWrapper getAlignedFrame:stickyBottomItem.frame];
-    [self.view bringSubviewToFront:stickyBottomItem.view.superview];
-    stickyBottomItem.view.superview.layer.zPosition = NSIntegerMax;
+    if (self.verticalOrientation) {
+      stickyEndItem.view.superview.frame = {{
+                                                stickyEndItem.frame.origin.x,
+                                                stickyStartOffset,
+                                            },
+                                            stickyEndItem.frame.size};
+    } else {
+      stickyEndItem.view.superview.frame = {{
+                                                stickyStartOffset,
+                                                stickyEndItem.frame.origin.y,
+
+                                            },
+                                            stickyEndItem.frame.size};
+    }
+
+    stickyEndItem.view.frame =
+        [LynxListContainerComponentWrapper getAlignedFrame:stickyEndItem.frame];
+    [self.view bringSubviewToFront:stickyEndItem.view.superview];
+    stickyEndItem.view.superview.layer.zPosition = NSIntegerMax;
   }
 }
 
