@@ -96,11 +96,11 @@ list::ListAdapterDiffResult ListAdapter::UpdateDataSource(
           } else if (key_str == list::kDataSourceStickyTop) {
             adapter_helper_->UpdateStickyTops(value);
             list_container_info->SetValue(
-                BASE_STATIC_STRING(list::kDataSourceStickyTop), value);
+                BASE_STATIC_STRING(list::kDataSourceStickyStart), value);
           } else if (key_str == list::kDataSourceStickyBottom) {
             adapter_helper_->UpdateStickyBottoms(value);
             list_container_info->SetValue(
-                BASE_STATIC_STRING(list::kDataSourceStickyBottom), value);
+                BASE_STATIC_STRING(list::kDataSourceStickyEnd), value);
           } else if (key_str == list::kDataSourceItemKeys) {
             adapter_helper_->UpdateItemKeys(value);
             list_container_info->SetValue(
@@ -228,15 +228,15 @@ void ListAdapter::UpdateListContainerDataSource(
   for (auto cur : adapter_helper_->sticky_tops()) {
     lepus_stick_tops->emplace_back(cur);
   }
-  list_container_info->SetValue(BASE_STATIC_STRING(list::kDataSourceStickyTop),
-                                lepus_stick_tops);
+  list_container_info->SetValue(
+      BASE_STATIC_STRING(list::kDataSourceStickyStart), lepus_stick_tops);
 
   auto lepus_stick_bottoms = lepus::CArray::Create();
   for (auto cur : adapter_helper_->sticky_bottoms()) {
     lepus_stick_bottoms->emplace_back(cur);
   }
-  list_container_info->SetValue(
-      BASE_STATIC_STRING(list::kDataSourceStickyBottom), lepus_stick_bottoms);
+  list_container_info->SetValue(BASE_STATIC_STRING(list::kDataSourceStickyEnd),
+                                lepus_stick_bottoms);
 }
 
 // Update the latest data source to the ItemHolder and add updated ItemHolders

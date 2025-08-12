@@ -6546,6 +6546,8 @@ public enum LynxGestureState {
   public FOUNDATION_EXPORT NSString* const LynxScrollViewInitialScrollIndex LynxScrollViewInitialScrollIndex;
   public FOUNDATION_EXPORT NSString* const LynxEventStickyTop LynxEventStickyTop;
   public FOUNDATION_EXPORT NSString* const LynxEventStickyBottom LynxEventStickyBottom;
+  public FOUNDATION_EXPORT NSString* const LynxEventStickyStart LynxEventStickyStart;
+  public FOUNDATION_EXPORT NSString* const LynxEventStickyEnd LynxEventStickyEnd;
   public FOUNDATION_EXPORT NSString* const LynxEventSnap LynxEventSnap;
 
   typedef void(^ lynx_async_operation_completion_block_t) (id _Nullable value, BOOL canceled)

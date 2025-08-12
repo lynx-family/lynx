@@ -164,8 +164,8 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 void UIList::OnNodeReady() {
   BaseScrollContainer::OnNodeReady();
   std::pair result = GetScrollOffset();
-  UpdateStickyTopView(result.second);
-  UpdateStickyBottomView(result.second);
+  UpdateStickyStartView(result.first, result.second);
+  UpdateStickyEndView(result.first, result.second);
 }
 
 void UIList::AutoScrollStopped() {
@@ -289,7 +289,7 @@ void UIList::UpdateListContainerInfo(const lepus::Value& params) {
           item_keys_.emplace_back(item_key.StdString());
         }
       }
-    } else if (k.IsEqual(list::kDataSourceStickyBottom)) {
+    } else if (k.IsEqual(list::kDataSourceStickyEnd)) {
       sticky_bottom_indexes_.clear();
       if (!v.IsArray()) {
         continue;
@@ -302,7 +302,7 @@ void UIList::UpdateListContainerInfo(const lepus::Value& params) {
               static_cast<int32_t>(sticky_bottom_item.Number()));
         }
       }
-    } else if (k.IsEqual(list::kDataSourceStickyTop)) {
+    } else if (k.IsEqual(list::kDataSourceStickyStart)) {
       sticky_top_indexes_.clear();
       if (!v.IsArray()) {
         continue;
@@ -710,8 +710,8 @@ void UIList::HandleScrollEvent() {
     ScrollByListContainer(result.first, result.second, result.first,
                           result.second);
   }
-  UpdateStickyTopView(result.second);
-  UpdateStickyBottomView(result.second);
+  UpdateStickyStartView(result.first, result.second);
+  UpdateStickyEndView(result.first, result.second);
   context_->NotifyUIScroll();
 }
 
@@ -749,9 +749,11 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
           result.first + delta_offset_x, result.second + delta_offset_y,
           result.first + delta_offset_x, result.second + delta_offset_y);
     }
+    float scroll_offset_x = result.first + delta_offset_x;
     float scroll_offset_y = result.second + delta_offset_y;
     if (IsHorizontal()) {
       component_event->data[0].f32 += delta_offset_;
+      scroll_offset_x += delta_offset_;
     } else {
       component_event->data[1].f32 += delta_offset_;
       scroll_offset_y += delta_offset_;
@@ -761,8 +763,8 @@ void UIList::HandleWillScrollEvent(ArkUI_NodeComponentEvent* component_event) {
     // the component_event->data[0].f32 or component_event->data[1].f32 and
     // reset delta_offset_ to 0.
     delta_offset_ = 0;
-    UpdateStickyTopView(scroll_offset_y);
-    UpdateStickyBottomView(scroll_offset_y);
+    UpdateStickyStartView(scroll_offset_x, scroll_offset_y);
+    UpdateStickyEndView(scroll_offset_x, scroll_offset_y);
     context_->NotifyUIScroll();
   }
 }
@@ -1088,13 +1090,15 @@ UIComponent* UIList::GetStickyItemWithIndex(int index, bool is_sticky_top) {
   return ui_component;
 }
 
-void UIList::UpdateStickyTopView(float scroll_y) {
+void UIList::UpdateStickyStartView(float scroll_offset_x,
+                                   float scroll_offset_y) {
   if (!enable_list_sticky_) {
     return;
   }
-  float offset = scroll_y + sticky_offset_;
-  UIComponent* sticky_top_item = nullptr;
-  UIComponent* next_sticky_top_item = nullptr;
+  float offset =
+      (!is_horizontal_ ? scroll_offset_y : scroll_offset_x) + sticky_offset_;
+  UIComponent* sticky_start_item = nullptr;
+  UIComponent* next_sticky_start_item = nullptr;
 
   for (auto rit = sticky_top_indexes_.rbegin();
        rit != sticky_top_indexes_.rend(); ++rit) {
@@ -1102,96 +1106,162 @@ void UIList::UpdateStickyTopView(float scroll_y) {
     if (!element) {
       continue;
     }
-    if (base::FloatsLarger(element->top_, offset)) {
-      next_sticky_top_item = element;
+    float current_offset = !is_horizontal_ ? element->top_ : element->left_;
+    if (base::FloatsLarger(current_offset, offset)) {
+      next_sticky_start_item = element;
       ResetStickyItem(element);
-    } else if (sticky_top_item) {
+    } else if (sticky_start_item) {
       ResetStickyItem(element);
     } else {
-      sticky_top_item = element;
+      sticky_start_item = element;
     }
   }
 
-  if (sticky_top_item) {
-    if (prev_sticky_top_item_ != sticky_top_item) {
-      auto param = lepus::Dictionary::Create();
-      param->SetValue("top", sticky_top_item->item_key());
-      CustomEvent event{Sign(), "stickytop", "detail", lepus_value(param)};
-      context_->SendEvent(event);
-      prev_sticky_top_item_ = sticky_top_item;
+  if (sticky_start_item) {
+    if (prev_sticky_top_item_ != sticky_start_item) {
+      if (!is_horizontal_) {
+        auto top_param = lepus::Dictionary::Create();
+        top_param->SetValue("top", sticky_start_item->item_key());
+        CustomEvent top_event{Sign(), "stickytop", "detail",
+                              lepus_value(top_param)};
+        context_->SendEvent(top_event);
+      }
+      auto start_param = lepus::Dictionary::Create();
+      start_param->SetValue("start", sticky_start_item->item_key());
+      CustomEvent start_event{Sign(), "stickystart", "detail",
+                              lepus_value(start_param)};
+      context_->SendEvent(start_event);
+
+      prev_sticky_top_item_ = sticky_start_item;
     }
 
-    float sticky_top_y = offset;
-    if (next_sticky_top_item) {
-      float next_sticky_top_item_distance_from_offset =
-          next_sticky_top_item->top_ - offset;
-      float squash_sticky_top_delta =
-          sticky_top_item->height_ - next_sticky_top_item_distance_from_offset;
-      if (squash_sticky_top_delta > 0) {
+    float sticky_start_offset = offset;
+    if (next_sticky_start_item) {
+      float next_sticky_start_item_distance_from_offset = 0;
+      float squash_sticky_start_delta = 0;
+      if (!is_horizontal_) {
+        next_sticky_start_item_distance_from_offset =
+            next_sticky_start_item->top_ - offset;
+        squash_sticky_start_delta = sticky_start_item->height_ -
+                                    next_sticky_start_item_distance_from_offset;
+      } else {
+        next_sticky_start_item_distance_from_offset =
+            next_sticky_start_item->left_ - offset;
+        squash_sticky_start_delta = sticky_start_item->width_ -
+                                    next_sticky_start_item_distance_from_offset;
+      }
+
+      if (squash_sticky_start_delta > 0) {
         // need push sticky top item to upper
-        sticky_top_y -= squash_sticky_top_delta;
+        sticky_start_offset -= squash_sticky_start_delta;
       }
     }
+    if (!is_horizontal_) {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          sticky_start_item->DrawNode(), NODE_TRANSLATE, 0,
+          sticky_start_offset - sticky_start_item->top_, 0);
+    } else {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          sticky_start_item->DrawNode(), NODE_TRANSLATE,
+          sticky_start_offset - sticky_start_item->left_, 0, 0);
+    }
 
     NodeManager::Instance().SetAttributeWithNumberValue(
-        sticky_top_item->DrawNode(), NODE_TRANSLATE, 0,
-        sticky_top_y - sticky_top_item->top_, 0);
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        sticky_top_item->DrawNode(), NODE_Z_INDEX,
+        sticky_start_item->DrawNode(), NODE_Z_INDEX,
         std::numeric_limits<int32_t>::max());
   }
 }
 
-void UIList::UpdateStickyBottomView(float scroll_y) {
+void UIList::UpdateStickyEndView(float scroll_offset_x, float scroll_offset_y) {
   if (!enable_list_sticky_) {
     return;
   }
-  float offset = scroll_y + height_ - sticky_offset_;
-  UIComponent* sticky_bottom_item = nullptr;
-  UIComponent* next_sticky_bottom_item = nullptr;
+
+  float offset = 0;
+
+  if (!is_horizontal_) {
+    offset = scroll_offset_y + height_ - sticky_offset_;
+  } else {
+    offset = scroll_offset_x + width_ - sticky_offset_;
+  }
+
+  UIComponent* sticky_end_item = nullptr;
+  UIComponent* next_sticky_end_item = nullptr;
 
   for (auto index : sticky_bottom_indexes_) {
     UIComponent* element = GetStickyItemWithIndex(index, false);
     if (!element) {
       continue;
     }
-    if (base::FloatsLarger(offset, element->top_ + element->height_)) {
-      next_sticky_bottom_item = element;
+    float current_offset = !is_horizontal_ ? (element->top_ + element->height_)
+                                           : (element->left_ + element->width_);
+
+    if (base::FloatsLarger(offset, current_offset)) {
+      next_sticky_end_item = element;
       ResetStickyItem(element);
-    } else if (sticky_bottom_item != nullptr) {
+    } else if (sticky_end_item != nullptr) {
       ResetStickyItem(element);
     } else {
-      sticky_bottom_item = element;
+      sticky_end_item = element;
     }
   }
 
-  if (sticky_bottom_item) {
-    if (prev_sticky_bottom_item_ != sticky_bottom_item) {
-      auto param = lepus::Dictionary::Create();
-      param->SetValue("bottom", sticky_bottom_item->item_key());
-      CustomEvent event{Sign(), "stickybottom", "detail", lepus_value(param)};
-      context_->SendEvent(event);
-      prev_sticky_bottom_item_ = sticky_bottom_item;
+  if (sticky_end_item) {
+    if (prev_sticky_bottom_item_ != sticky_end_item) {
+      if (!is_horizontal_) {
+        auto bottom_param = lepus::Dictionary::Create();
+        bottom_param->SetValue("bottom", sticky_end_item->item_key());
+        CustomEvent bottom_event{Sign(), "stickybottom", "detail",
+                                 lepus_value(bottom_param)};
+        context_->SendEvent(bottom_event);
+      }
+
+      auto end_param = lepus::Dictionary::Create();
+      end_param->SetValue("end", sticky_end_item->item_key());
+      CustomEvent end_event{Sign(), "stickyend", "detail",
+                            lepus_value(end_param)};
+      context_->SendEvent(end_event);
+
+      prev_sticky_bottom_item_ = sticky_end_item;
     }
 
-    float sticky_top_y = offset - sticky_bottom_item->height_;
-    if (next_sticky_bottom_item) {
-      float next_sticky_item_distance_from_offset =
-          offset - next_sticky_bottom_item->top_ -
-          next_sticky_bottom_item->height_;
-      float squash_sticky_top_delta =
-          sticky_bottom_item->height_ - next_sticky_item_distance_from_offset;
-      if (squash_sticky_top_delta > 0) {
+    float sticky_start_offset =
+        offset -
+        (!is_horizontal_ ? sticky_end_item->height_ : sticky_end_item->width_);
+    if (next_sticky_end_item) {
+      float next_sticky_item_distance_from_offset = 0;
+      float squash_sticky_start_delta = 0;
+
+      if (!is_horizontal_) {
+        next_sticky_item_distance_from_offset =
+            offset - next_sticky_end_item->top_ - next_sticky_end_item->height_;
+        squash_sticky_start_delta =
+            sticky_end_item->height_ - next_sticky_item_distance_from_offset;
+      } else {
+        next_sticky_item_distance_from_offset =
+            offset - next_sticky_end_item->left_ - next_sticky_end_item->width_;
+        squash_sticky_start_delta =
+            sticky_end_item->width_ - next_sticky_item_distance_from_offset;
+      }
+
+      if (squash_sticky_start_delta > 0) {
         // need push sticky top item to upper
-        sticky_top_y += squash_sticky_top_delta;
+        sticky_start_offset += squash_sticky_start_delta;
       }
     }
 
+    if (!is_horizontal_) {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          sticky_end_item->DrawNode(), NODE_TRANSLATE, 0,
+          sticky_start_offset - sticky_end_item->top_, 0);
+    } else {
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          sticky_end_item->DrawNode(), NODE_TRANSLATE,
+          sticky_start_offset - sticky_end_item->left_, 0, 0);
+    }
+
     NodeManager::Instance().SetAttributeWithNumberValue(
-        sticky_bottom_item->DrawNode(), NODE_TRANSLATE, 0,
-        sticky_top_y - sticky_bottom_item->top_, 0);
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        sticky_bottom_item->DrawNode(), NODE_Z_INDEX,
+        sticky_end_item->DrawNode(), NODE_Z_INDEX,
         std::numeric_limits<int32_t>::max());
   }
 }
