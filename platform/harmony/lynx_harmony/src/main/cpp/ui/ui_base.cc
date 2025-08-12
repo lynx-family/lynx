@@ -462,6 +462,13 @@ void UIBase::OnNodeReady() {
     Invalidate();
   }
 
+  if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
+    if (background_drawable_) {
+      background_drawable_->SetBackgroundColor(background_color_);
+      Invalidate();
+    }
+  }
+
   if (NeedDrawNode()) {
     InitDrawNode();
   }
@@ -501,18 +508,17 @@ void UIBase::OnNodeReady() {
     ArkUI_AttributeItem item{.string = id.c_str()};
     NodeManager::Instance().SetAttribute(DrawNode(), NODE_ID, &item);
   }
+
   if ((dirty_flags_ & kFlagBackgroundColor) != 0) {
     if (background_drawable_) {
       if (has_background_color_) {
-        NodeManager::Instance().ResetAttribute(DrawNode(),
-                                               NODE_BACKGROUND_COLOR);
+        NodeManager::Instance().ResetAttribute(Node(), NODE_BACKGROUND_COLOR);
         has_background_color_ = false;
       }
-      background_drawable_->SetBackgroundColor(background_color_);
     } else {
       has_background_color_ = true;
       NodeManager::Instance().SetAttributeWithNumberValue(
-          DrawNode(), NODE_BACKGROUND_COLOR, background_color_);
+          Node(), NODE_BACKGROUND_COLOR, background_color_);
     }
   }
 
