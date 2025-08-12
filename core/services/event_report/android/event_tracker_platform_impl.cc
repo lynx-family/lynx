@@ -20,21 +20,27 @@ bool RegisterJNIForLynxEventReporter(JNIEnv* env) {
 }  // namespace jni
 }  // namespace lynx
 
-void RunOnReportThread(JNIEnv* env, jobject jcaller, jobject runnable) {
+void RunOnReportThread(JNIEnv* env, jobject jcaller, jobject runnable,
+                       jlong delay_ms) {
   auto taskRunner =
       lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner();
   if (!taskRunner) {
     return;
   }
-  taskRunner->PostTask(
-      [runnable =
-           lynx::base::android::ScopedGlobalJavaRef<jobject>{env, runnable}]() {
-        if (runnable.IsNull()) {
-          return;
-        }
-        JNIEnv* env = lynx::base::android::AttachCurrentThread();
-        Java_LynxEventReporter_callRunnable(env, runnable.Get());
-      });
+  auto task = [runnable = lynx::base::android::ScopedGlobalJavaRef<jobject>{
+                   env, runnable}]() {
+    if (runnable.IsNull()) {
+      return;
+    }
+    JNIEnv* env = lynx::base::android::AttachCurrentThread();
+    Java_LynxEventReporter_callRunnable(env, runnable.Get());
+  };
+  if (delay_ms > 0) {
+    taskRunner->PostDelayedTask(std::move(task),
+                                fml::TimeDelta::FromMilliseconds(delay_ms));
+  } else {
+    taskRunner->PostTask(std::move(task));
+  }
 }
 
 namespace lynx {

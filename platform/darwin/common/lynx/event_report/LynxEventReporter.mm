@@ -257,12 +257,20 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
   if (instanceId < 0) {
     return;
   }
-  [self runOnReportThread:^{
-    LynxEventReporter *reporter = [self sharedInstance];
-    NSNumber *key = @(instanceId);
-    [[reporter allGenericInfo] removeObjectForKey:key];
-    [[reporter allExtraParams] removeObjectForKey:key];
-  }];
+
+  /* During page destruction, cross-thread cleanup may prematurely clear generic params
+   * before event reporting completes, causing retrieval failures. To resolve, delay
+   * generic params cleanup by 5000ms.
+   * FIXME:(chenkai.kay) Remove the delay logic when clearCache can be triggered at the right time
+   */
+  [self
+      delayRunOnReportThread:^{
+        LynxEventReporter *reporter = [self sharedInstance];
+        NSNumber *key = @(instanceId);
+        [[reporter allGenericInfo] removeObjectForKey:key];
+        [[reporter allExtraParams] removeObjectForKey:key];
+      }
+                     delayMs:5000];
 }
 
 + (void)addEventReportObserver:(id<LynxEventReportObserverProtocol>)observer {
@@ -306,6 +314,14 @@ NSString *const kLynxSDKErrorEvent = @"lynxsdk_error_event";
   } else {
     taskRunner->PostTask([task]() { task(); });
   }
+}
+
++ (void)delayRunOnReportThread:(void (^)(void))task delayMs:(int64_t)delayMS {
+  if (!task) {
+    return;
+  }
+  auto taskRunner = lynx::tasm::report::EventTrackerPlatformImpl::GetReportTaskRunner();
+  taskRunner->PostDelayedTask([task]() { task(); }, fml::TimeDelta::FromMilliseconds(delayMS));
 }
 
 - (void)handleEvent:(NSString *)eventName

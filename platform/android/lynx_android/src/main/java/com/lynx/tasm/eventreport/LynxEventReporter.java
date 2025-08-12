@@ -272,11 +272,16 @@ public class LynxEventReporter {
     if (instanceId < 0) {
       return;
     }
-    runOnReportThread(() -> {
+    /* During page destruction, cross-thread cleanup may prematurely clear generic params
+     * before event reporting completes, causing retrieval failures. To resolve, delay
+     * generic params cleanup by 5000ms.
+     * FIXME:(chenkai.kay) Remove the delay logic when clearCache can be triggered at the right time
+     */
+    delayRunOnReportThread(() -> {
       LynxEventReporter reporter = LynxEventReporter.getInstance();
       reporter.mAllGenericInfos.remove(instanceId);
       reporter.mAllExtraParams.remove(instanceId);
-    });
+    }, 5000);
   }
 
   @AnyThread
@@ -375,7 +380,25 @@ public class LynxEventReporter {
           LynxEnv.inst().isNativeLibraryLoaded();
     }
     if (LynxEventReporter.getInstance().mIsNativeLibraryLoaded) {
-      LynxEventReporter.getInstance().nativeRunOnReportThread(runnable);
+      LynxEventReporter.getInstance().nativeRunOnReportThread(runnable, 0);
+    }
+  }
+
+  /**
+   * Execute runnable on reporter thread
+   *
+   * @param runnable runnable to be executed
+   * @param delayMs  delay time in ms
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
+  @AnyThread
+  public static void delayRunOnReportThread(Runnable runnable, long delayMs) {
+    if (!LynxEventReporter.getInstance().mIsNativeLibraryLoaded) {
+      LynxEventReporter.getInstance().mIsNativeLibraryLoaded =
+          LynxEnv.inst().isNativeLibraryLoaded();
+    }
+    if (LynxEventReporter.getInstance().mIsNativeLibraryLoaded) {
+      LynxEventReporter.getInstance().nativeRunOnReportThread(runnable, delayMs);
     }
   }
 
@@ -442,5 +465,5 @@ public class LynxEventReporter {
   /**
    * Post runnable to native report thread.
    */
-  private native void nativeRunOnReportThread(Object runnable);
+  private native void nativeRunOnReportThread(Object runnable, long delayMs);
 }
