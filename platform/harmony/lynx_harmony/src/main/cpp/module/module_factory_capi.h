@@ -24,7 +24,9 @@ class ModuleFactoryCAPI : public piper::NativeModuleFactory {
  public:
   explicit ModuleFactoryCAPI(
       const std::shared_ptr<tasm::harmony::LynxContext>& context)
-      : context_(context) {}
+      : context_(context) {
+    InitNativeModules();
+  }
 
   std::shared_ptr<piper::LynxNativeModule> CreateModule(
       const std::string& name) override;
