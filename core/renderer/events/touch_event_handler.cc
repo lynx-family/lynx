@@ -351,7 +351,7 @@ void TouchEventHandler::HandleCustomEvent(TemplateAssembler *tasm,
                                           const std::string &name, int tag,
                                           const lepus::Value &params,
                                           const std::string &pname) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_TOUCH_EVENT,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_HANDLE_CUSTOM_EVENT,
               [&name, instance_id = tasm->GetInstanceId()](
                   lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("name", name);
@@ -420,16 +420,20 @@ void TouchEventHandler::FireEvent(const EventType &type,
                                   const Element *target,
                                   const Element *current_target,
                                   const lepus::Value &params) const {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_FIRE_EVENT);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TOUCH_EVENT_FIRE_EVENT,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
 
   bool in_component = current_target->InComponent();
   if (!support_component_js_ || !in_component) {
     SendPageEvent(type, page_name, handler->name().str(),
-                  handler->function().str(), params);
+                  handler->function().str(), params, trace_flow_id);
   } else {
     PublishComponentEvent(type, current_target->ParentComponentIdString(),
                           handler->name().str(), handler->function().str(),
-                          params);
+                          params, trace_flow_id);
   }
 }
 
@@ -1266,7 +1270,8 @@ void TouchEventHandler::SendPageEvent(const EventType &type,
                                       const std::string &page_name,
                                       const std::string &event_name,
                                       const std::string &handler,
-                                      const lepus::Value &info) const {
+                                      const lepus::Value &info,
+                                      uint64_t trace_flow_id) const {
   LOGI("SendPageEvent " << GetEventType(type) << ": " << event_name
                         << " with function: " << handler);
   auto args = lepus::CArray::Create();
@@ -1279,6 +1284,7 @@ void TouchEventHandler::SendPageEvent(const EventType &type,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+  event.SetTraceFlowId(trace_flow_id);
   context_proxy_delegate_.DispatchMessageEvent(std::move(event));
   if (type != EventType::kComponent) {
     constexpr const static char *kPrefix = "Page";
@@ -1292,7 +1298,8 @@ void TouchEventHandler::PublishComponentEvent(const EventType &type,
                                               const std::string &component_id,
                                               const std::string &event_name,
                                               const std::string &handler,
-                                              const lepus::Value &info) const {
+                                              const lepus::Value &info,
+                                              uint64_t trace_flow_id) const {
   LOGI("PublishComponentEvent " << GetEventType(type) << ": " << event_name
                                 << " with function: " << handler);
 
@@ -1306,6 +1313,7 @@ void TouchEventHandler::PublishComponentEvent(const EventType &type,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(lepus::Value(std::move(args))));
+  event.SetTraceFlowId(trace_flow_id);
   context_proxy_delegate_.DispatchMessageEvent(std::move(event));
   if (type != EventType::kComponent) {
     constexpr const static char *kPrefix = "Component";

@@ -53,8 +53,11 @@ EventDispatcher::EventDispatcher(EventTarget& target, Event& event)
 }
 
 DispatchEventResult EventDispatcher::Dispatch() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH, "name",
-              event_->type());
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, EVENT_DISPATCHER_DISPATCH,
+              [this](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(event_->TraceFlowId());
+                ctx.event()->add_debug_annotations("name", event_->type());
+              });
   LOGI("EventDispatcher::Dispatch name: " << event_->type());
   if (!target_) {
     LOGE("EventDispatcher::Dispatch error: the target is null.");

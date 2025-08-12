@@ -69,30 +69,39 @@ MessageEvent MessageEvent::ShallowCopy(const MessageEvent& event) {
   if (event.message_ != nullptr &&
       event.message_->backend_type() ==
           pub::ValueBackendType::ValueBackendTypeLepus) {
-    return MessageEvent(
+    auto message_event = MessageEvent(
         event.type(), event.time_stamp(), event.origin_, event.target_,
         std::make_unique<pub::ValueImplLepus>(lepus::Value::ShallowCopy(
             pub::ValueUtils::ConvertValueToLepusValue(*event.message_))));
+    message_event.SetTraceFlowId(event.TraceFlowId());
+    return message_event;
   }
-  return MessageEvent(
+
+  auto message_event = MessageEvent(
       event.type(), event.time_stamp(), event.origin_, event.target_,
       std::make_unique<pub::ValueImplLepus>(
           pub::ValueUtils::ConvertValueToLepusValue(*event.message_)));
+  message_event.SetTraceFlowId(event.TraceFlowId());
+  return message_event;
 }
 
 MessageEvent MessageEvent::ShallowCopy(MessageEvent& event) {
   if (event.message_ != nullptr &&
       event.message_->backend_type() ==
           pub::ValueBackendType::ValueBackendTypeLepus) {
-    return MessageEvent(
+    auto message_event = MessageEvent(
         event.type(), event.time_stamp(), event.origin_, event.target_,
         std::make_unique<pub::ValueImplLepus>(lepus::Value::ShallowCopy(
             pub::ValueUtils::ConvertValueToLepusValue(*event.message_))));
+    message_event.SetTraceFlowId(event.TraceFlowId());
+    return message_event;
   }
-  return MessageEvent(
+  auto message_event = MessageEvent(
       event.type(), event.time_stamp(), event.origin_, event.target_,
       std::make_unique<pub::ValueImplLepus>(
           pub::ValueUtils::ConvertValueToLepusValue(*event.message_)));
+  message_event.SetTraceFlowId(event.TraceFlowId());
+  return message_event;
 }
 
 std::string MessageEvent::GetTargetString() const {

@@ -36,6 +36,7 @@
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/value/table.h"
+#include "base/trace/native/trace_event.h"
 #include "core/event/event_dispatch_result.h"
 
 #define EVENT_TYPE_CAPTURE "captureEvent"
@@ -145,6 +146,11 @@ class Event {
 
   const std::vector<fml::WeakPtr<EventTarget>>& event_path() const;
 
+  void SetTraceFlowId(uint64_t trace_flow_id) {
+    trace_flow_id_ = trace_flow_id;
+  }
+  uint64_t TraceFlowId() const { return trace_flow_id_; }
+
   void InitEventPath(EventTarget& target);
   virtual DispatchEventResult DispatchEvent(EventDispatcher&);
 
@@ -177,6 +183,8 @@ class Event {
   lepus::Value detail_{lepus::Dictionary::Create()};
 
   std::vector<fml::WeakPtr<EventTarget>> event_path_;
+
+  uint64_t trace_flow_id_{TRACE_FLOW_ID()};
 };
 
 }  // namespace event
