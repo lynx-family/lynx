@@ -466,7 +466,9 @@ void VMContext::ReportException(const std::string& exception_info, int& pc,
         if (current_frame_->function_) {
           current_frame_closure = fml::static_ref_ptr_cast<Closure>(
               current_frame_->function_->RefCounted());
-          current_frame_function = current_frame_closure->function().get();
+          if (current_frame_closure) {
+            current_frame_function = current_frame_closure->function().get();
+          }
         }
         current_frame_base = current_frame_->instruction_;
         current_frame_regs = current_frame_->register_;
@@ -491,7 +493,9 @@ void VMContext::ReportException(const std::string& exception_info, int& pc,
     if (current_frame_->function_) {
       current_frame_closure = fml::static_ref_ptr_cast<Closure>(
           current_frame_->function_->RefCounted());
-      current_frame_function = current_frame_closure->function().get();
+      if (current_frame_closure) {
+        current_frame_function = current_frame_closure->function().get();
+      }
     }
     exception_info_.erase(exception_info_.find_last_not_of('\n') + 1,
                           exception_info_.size());
@@ -518,6 +522,7 @@ std::string VMContext::BuildBackTrace(const base::Vector<int>& pc,
     int current_pc = index >= pc.size() ? -1 : pc[index++];
     fml::RefPtr<Closure> current_closure = fml::static_ref_ptr_cast<Closure>(
         current_frame->function_->RefCounted());
+    if (!current_closure.get()) break;
     fml::RefPtr<Function> current_function = current_closure->function();
     if (!current_function.get()) break;
 
