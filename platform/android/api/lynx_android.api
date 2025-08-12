@@ -7144,6 +7144,10 @@ public interface com::lynx::tasm::behavior::ui::swiper::ViewPager::OnPageScrollL
   public void com.lynx.tasm.behavior.ui.swiper.ViewPager.OnPageScrollListener.onScrollToBounce(boolean toBegin, boolean toEnd);
 }
 
+public interface com::lynx::tasm::TemplateBundle::OnReleaseCallback {
+  public void com.lynx.tasm.TemplateBundle.OnReleaseCallback.onRelease();
+}
+
 public interface com::lynx::tasm::behavior::ui::scroll::AndroidScrollView::OnScrollListener {
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.OnScrollListener.onScrollStop();
   public void com.lynx.tasm.behavior.ui.scroll.AndroidScrollView.OnScrollListener.onScrollChanged(int l, int t, int oldl, int oldt);

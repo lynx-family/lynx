@@ -102,8 +102,16 @@ class LynxEnginePool {
     if (engineQueue == null) {
       engineQueue = new LinkedList<>();
       mCache.put(templateBundle, engineQueue);
-      // FIXME(huangweiwu) : Attach as needed, no need for active
-      // release.(templateBundle.setReleaseCallback if need)
+      LinkedList<LynxEngine> finalEngineQueue = engineQueue;
+      templateBundle.setOnReleaseCallback(new TemplateBundle.OnReleaseCallback() {
+        @Override
+        public void onRelease() {
+          synchronized (LynxEnginePool.this) {
+            finalEngineQueue.clear();
+            mCache.remove(templateBundle);
+          }
+        }
+      });
     }
     return engineQueue;
   }

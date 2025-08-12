@@ -93,6 +93,7 @@ public final class TemplateData {
   // To garantee multi-thread safety, any access of mJsNativeData must
   // by synchronized.
   volatile long mJsNativeData;
+  private boolean mEnableJSData = true;
   private final AtomicBoolean mConsumed = new AtomicBoolean(false);
 
   enum ActionType {
@@ -142,6 +143,9 @@ public final class TemplateData {
     if (actions == null) {
       return;
     }
+    if (!mEnableJSData) {
+      return;
+    }
     if (mUpdateActions == null) {
       mUpdateActions = new ArrayList<>();
     }
@@ -152,6 +156,9 @@ public final class TemplateData {
     if (action == null) {
       return;
     }
+    if (!mEnableJSData) {
+      return;
+    }
     if (mUpdateActions == null) {
       mUpdateActions = new ArrayList<>();
     }
@@ -159,6 +166,9 @@ public final class TemplateData {
   }
 
   private synchronized List<UpdateAction> getUpdateActionsWithJsNativeData() {
+    if (!mEnableJSData) {
+      return null;
+    }
     List<UpdateAction> actions = new ArrayList<>();
     if (mJsNativeData != 0) {
       actions.add(new UpdateAction(nativeShallowCopy(mJsNativeData)));
@@ -521,6 +531,10 @@ public final class TemplateData {
     mConsumed.set(true);
   }
 
+  void setEnableJSData(boolean enableJSData) {
+    this.mEnableJSData = enableJSData;
+  }
+
   // Just for android unit test.
   static long createNativeTemplateData(TemplateData data) {
     data.flush();
@@ -544,6 +558,9 @@ public final class TemplateData {
   }
 
   synchronized long getDataForJSThreadInner() {
+    if (!mEnableJSData) {
+      return 0;
+    }
     // Init mJsNativeData or update mUpdateActions to mJsNativeData
     List<UpdateAction> actions = obtainUpdateActions();
     if (actions.isEmpty()) {

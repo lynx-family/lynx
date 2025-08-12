@@ -37,7 +37,11 @@ public final class TemplateBundle {
   private final int templateSize;
 
   private final PageConfig pageConfig;
+  private OnReleaseCallback onReleaseCallback;
 
+  interface OnReleaseCallback {
+    void onRelease();
+  }
   private TemplateBundle(
       long ptr, int templateSize, String url, String errMsg, ReadableMap pageConfigMap) {
     this.nativePtr = ptr;
@@ -223,6 +227,10 @@ public final class TemplateBundle {
    */
   public void release() {
     if (checkIfEnvPrepared() && nativePtr != 0) {
+      if (onReleaseCallback != null) {
+        onReleaseCallback.onRelease();
+        onReleaseCallback = null;
+      }
       nativeReleaseBundle(nativePtr);
       nativePtr = 0;
     }
@@ -323,6 +331,9 @@ public final class TemplateBundle {
     return constructContext(1);
   }
 
+  void setOnReleaseCallback(OnReleaseCallback callback) {
+    onReleaseCallback = callback;
+  }
   private static native void nativePostJsCacheGenerationTask(
       long bundle, String bytecodeSourceUrl, boolean useV8, LynxBytecodeCallback callback);
 
