@@ -32,13 +32,14 @@ class JsTaskAdapter {
   JsTaskAdapter(JsTaskAdapter&&) = default;
   JsTaskAdapter& operator=(JsTaskAdapter&&) = default;
 
-  piper::Value SetTimeout(Function func, int32_t delay);
+  piper::Value SetTimeout(Function func, int32_t delay, uint64_t trace_flow_id);
 
-  piper::Value SetInterval(Function func, int32_t delay);
+  piper::Value SetInterval(Function func, int32_t delay,
+                           uint64_t trace_flow_id);
 
   void RemoveTask(uint32_t task);
 
-  void QueueMicrotask(Function func);
+  void QueueMicrotask(Function func, uint64_t trace_flow_id);
 
   void SetPageOptions(const tasm::PageOptions& options) {
     page_options_ = options;
@@ -50,7 +51,8 @@ class JsTaskAdapter {
     kSetInterval,
     kQueueMicrotask,
   };
-  base::closure MakeTask(Function func, TaskType task_type);
+  base::closure MakeTask(Function func, TaskType task_type,
+                         uint64_t trace_flow_id);
 
   std::unique_ptr<base::TimedTaskManager> manager_;
   std::shared_ptr<std::unordered_map<uint64_t, base::closure>> micro_tasks_;
