@@ -17,7 +17,9 @@ NSString *const LynxEventScrollStateChange = @"scrollstatechange";
 NSString *const LynxEventScrollToBounce = @"scrolltobounce";
 NSString *const LynxScrollViewInitialScrollOffset = @"initialScrollOffset";
 NSString *const LynxScrollViewInitialScrollIndex = @"initialScrollIndex";
+NSString *const LynxEventStickyLeft = @"stickyleft";
 NSString *const LynxEventStickyTop = @"stickytop";
+NSString *const LynxEventStickyRight = @"stickyright";
 NSString *const LynxEventStickyBottom = @"stickybottom";
 NSString *const LynxEventSnap = @"snap";
 

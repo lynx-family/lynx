@@ -83,8 +83,8 @@ class UIList : public BaseScrollContainer,
   UIComponent* GetStickyItemWithIndex(int index, bool isStickyTop);
   void ResetStickyItem(UIComponent* component);
   void UpdateListContainerInfo(const lepus::Value& value);
-  void UpdateStickyTopView(float scrollY);
-  void UpdateStickyBottomView(float scrollY);
+  void UpdateStickyStartView(float scroll_offset_x, float scroll_offset_y);
+  void UpdateStickyEndView(float scroll_offset_x, float scroll_offset_y);
 
   int GetIndexFromItemKey(const std::string& item_key) const;
   void SetScrollState(list::ScrollState state);
@@ -111,8 +111,8 @@ class UIList : public BaseScrollContainer,
 
  private:
   ArkUI_NodeHandle container_layout_{nullptr};
-  UIComponent* prev_sticky_top_item_{nullptr};
-  UIComponent* prev_sticky_bottom_item_{nullptr};
+  UIComponent* prev_sticky_start_item_{nullptr};
+  UIComponent* prev_sticky_end_item_{nullptr};
   std::vector<std::string> item_keys_{};
   std::vector<int> sticky_top_indexes_{};
   std::vector<int> sticky_bottom_indexes_{};

@@ -18,7 +18,9 @@ FOUNDATION_EXPORT NSString *const LynxEventScrollStateChange;
 FOUNDATION_EXPORT NSString *const LynxEventScrollToBounce;
 FOUNDATION_EXPORT NSString *const LynxScrollViewInitialScrollOffset;
 FOUNDATION_EXPORT NSString *const LynxScrollViewInitialScrollIndex;
+FOUNDATION_EXPORT NSString *const LynxEventStickyLeft;
 FOUNDATION_EXPORT NSString *const LynxEventStickyTop;
+FOUNDATION_EXPORT NSString *const LynxEventStickyRight;
 FOUNDATION_EXPORT NSString *const LynxEventStickyBottom;
 FOUNDATION_EXPORT NSString *const LynxEventSnap;
 

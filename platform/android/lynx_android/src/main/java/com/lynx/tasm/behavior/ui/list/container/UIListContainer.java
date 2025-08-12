@@ -80,10 +80,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   public Map<String, HashSet<String>> initialFlushPropCache = new HashMap<>();
   private final HashMap<Integer, UIComponent> mStickyTopItems = new LinkedHashMap<>();
   private final HashMap<Integer, UIComponent> mStickyBottomItems = new LinkedHashMap<>();
-  private JavaOnlyArray mStickyTopIndexes = new JavaOnlyArray();
-  private JavaOnlyArray mStickyBottomIndexes = new JavaOnlyArray();
-  private UIComponent mPrevStickyTopItem = null;
-  private UIComponent mPrevStickyBottomItem = null;
+  private JavaOnlyArray mStickyStartIndexes = new JavaOnlyArray();
+  private JavaOnlyArray mStickyEndIndexes = new JavaOnlyArray();
+  private UIComponent mPrevStickyStartItem = null;
+  private UIComponent mPrevStickyEndItem = null;
   private boolean mEnableFadeInAnimation = false;
   private int mUpdateAnimationFadeInDuration = DEFAULT_FADE_IN_ANIMATION_DURATION;
   private boolean mEnableRecycleStickyItem = true;
@@ -170,9 +170,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     super.onInsertChild(child, index);
     if (mEnableListSticky && !mUpdateStickyForDiff) {
       int indexFromItemKey = getIndexFromItemKey(((UIComponent) child).getItemKey());
-      updateStickyInfoForInsertedChild(child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
       updateStickyInfoForInsertedChild(
-          child, mStickyBottomItems, mStickyBottomIndexes, indexFromItemKey);
+          child, mStickyTopItems, mStickyStartIndexes, indexFromItemKey);
+      updateStickyInfoForInsertedChild(
+          child, mStickyBottomItems, mStickyEndIndexes, indexFromItemKey);
     }
   }
 
@@ -303,9 +304,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
         } else {
           int indexFromItemKey = getIndexFromItemKey(child.getItemKey());
           updateStickyInfoForUpdatedChild(
-              child, mStickyTopItems, mStickyTopIndexes, indexFromItemKey);
+              child, mStickyTopItems, mStickyStartIndexes, indexFromItemKey);
           updateStickyInfoForUpdatedChild(
-              child, mStickyBottomItems, mStickyBottomIndexes, indexFromItemKey);
+              child, mStickyBottomItems, mStickyEndIndexes, indexFromItemKey);
         }
       }
     }
@@ -394,8 +395,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void onNodeReady() {
     super.onNodeReady();
-    updateStickyTops(mView.getScrollY());
-    updateStickyBottoms(mView.getScrollY());
+    updateStickyStarts();
+    updateStickyEnds();
   }
 
   @Override
@@ -649,12 +650,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
       ReadableArray tempStickyTopIndexes = listDiffInfo.getArray("stickyTop");
       if (tempStickyTopIndexes instanceof JavaOnlyArray) {
-        mStickyTopIndexes = ((JavaOnlyArray) tempStickyTopIndexes);
+        mStickyStartIndexes = ((JavaOnlyArray) tempStickyTopIndexes);
       }
 
       ReadableArray tempStickyBottomIndexes = listDiffInfo.getArray("stickyBottom");
       if (tempStickyBottomIndexes instanceof JavaOnlyArray) {
-        mStickyBottomIndexes = ((JavaOnlyArray) tempStickyBottomIndexes);
+        mStickyEndIndexes = ((JavaOnlyArray) tempStickyBottomIndexes);
       }
 
       ReadableArray tempItemKeys = listDiffInfo.getArray("itemkeys");
@@ -1122,7 +1123,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
   private void resetStickyItem(UIComponent component) {
     if (component.getView() != null) {
-      component.getView().setTranslationY(0);
+      if (mIsVertical) {
+        component.getView().setTranslationY(0);
+      } else {
+        component.getView().setTranslationX(0);
+      }
+
       setChildTranslationZ(component);
     }
   }
@@ -1147,105 +1153,156 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     return component;
   }
 
-  public void updateStickyTops(int offsetTop) {
+  public void updateStickyStarts() {
     if (!mEnableListSticky) {
       return;
     }
-    int offset = offsetTop + mStickyOffset;
-    UIComponent stickyTopItem = null;
-    UIComponent nextStickyTopItem = null;
+    int offset = (mIsVertical ? getScrollY() : getScrollX()) + mStickyOffset;
+    UIComponent stickyStartItem = null;
+    UIComponent nextStickyStartItem = null;
     // enumerate from bottom to top to find sticky top item
-    ListIterator<Object> listIterator = mStickyTopIndexes.listIterator(mStickyTopIndexes.size());
+    ListIterator<Object> listIterator =
+        mStickyStartIndexes.listIterator(mStickyStartIndexes.size());
     while (listIterator.hasPrevious()) {
-      Integer topIndex = (Integer) listIterator.previous();
-      UIComponent top = getStickyItemWithIndex(topIndex, true);
-      if (top == null) {
+      Integer startIndex = (Integer) listIterator.previous();
+      UIComponent startComponent = getStickyItemWithIndex(startIndex, true);
+      if (startComponent == null) {
         continue;
       }
-      if (top.getTop() > offset) {
+      int curComponentOffset = mIsVertical ? startComponent.getTop() : startComponent.getLeft();
+      if (curComponentOffset > offset) {
         // cache potential next sticky item
-        nextStickyTopItem = top;
+        nextStickyStartItem = startComponent;
         // hold its position
-        resetStickyItem(top);
-      } else if (stickyTopItem != null) {
-        // sticky top item found, hold upper sticky top's position
-        resetStickyItem(top);
+        resetStickyItem(startComponent);
+      } else if (stickyStartItem != null) {
+        // sticky startComponent item found, hold upper sticky startComponent's position
+        resetStickyItem(startComponent);
       } else {
-        stickyTopItem = top;
+        stickyStartItem = startComponent;
       }
     }
-    if (stickyTopItem != null) {
-      if (mPrevStickyTopItem != stickyTopItem) {
-        LynxDetailEvent event = new LynxDetailEvent(getSign(), "stickytop");
-        event.addDetail("top", stickyTopItem.getItemKey());
+    if (stickyStartItem != null) {
+      if (mPrevStickyStartItem != stickyStartItem) {
+        LynxDetailEvent event = null;
+        if (mIsVertical) {
+          event = new LynxDetailEvent(getSign(), "stickytop");
+          event.addDetail("top", stickyStartItem.getItemKey());
+        } else {
+          event = new LynxDetailEvent(getSign(), "stickyleft");
+          event.addDetail("left", stickyStartItem.getItemKey());
+        }
         mContext.getEventEmitter().sendCustomEvent(event);
-        mPrevStickyTopItem = stickyTopItem;
+        mPrevStickyStartItem = stickyStartItem;
       }
 
-      int stickyTopY = offset;
-      if (nextStickyTopItem != null) {
-        int nextStickyTopItemDistanceFromOffset = nextStickyTopItem.getTop() - offset;
-        int squashStickyTopDelta = stickyTopItem.getHeight() - nextStickyTopItemDistanceFromOffset;
-        if (squashStickyTopDelta > 0) {
+      int stickyStartOffset = offset;
+      if (nextStickyStartItem != null) {
+        int nextStickyStartItemDistanceFromOffset = 0;
+        int squashStickyStartDelta = 0;
+
+        if (mIsVertical) {
+          nextStickyStartItemDistanceFromOffset = nextStickyStartItem.getTop() - offset;
+          squashStickyStartDelta =
+              stickyStartItem.getHeight() - nextStickyStartItemDistanceFromOffset;
+        } else {
+          nextStickyStartItemDistanceFromOffset = nextStickyStartItem.getLeft() - offset;
+          squashStickyStartDelta =
+              stickyStartItem.getWidth() - nextStickyStartItemDistanceFromOffset;
+        }
+
+        if (squashStickyStartDelta > 0) {
           // need push sticky top item to upper
-          stickyTopY -= squashStickyTopDelta;
+          stickyStartOffset -= squashStickyStartDelta;
         }
       }
-      if (stickyTopItem.getView() != null) {
-        stickyTopItem.getView().setTranslationY(stickyTopY - stickyTopItem.getTop());
-        stickyTopItem.getView().bringToFront();
-        setChildTranslationZ(stickyTopItem, Integer.MAX_VALUE);
+      if (stickyStartItem.getView() != null) {
+        if (mIsVertical) {
+          stickyStartItem.getView().setTranslationY(stickyStartOffset - stickyStartItem.getTop());
+        } else {
+          stickyStartItem.getView().setTranslationX(stickyStartOffset - stickyStartItem.getLeft());
+        }
+        stickyStartItem.getView().bringToFront();
+        setChildTranslationZ(stickyStartItem, Integer.MAX_VALUE);
       }
     }
   }
 
-  public void updateStickyBottoms(int offsetTop) {
+  public void updateStickyEnds() {
     if (!mEnableListSticky) {
       return;
     }
-    int offset = offsetTop + getHeight() - mStickyOffset;
-    UIComponent stickyBottomItem = null;
-    UIComponent nextStickyBottomItem = null;
+    int offset = 0;
+    if (mIsVertical) {
+      offset = getHeight() + getScrollY() - mStickyOffset;
+    } else {
+      offset = getWidth() + getScrollX() - mStickyOffset;
+    }
+    UIComponent stickyEndItem = null;
+    UIComponent nextStickyEndItem = null;
     // enumerate from top to bottom to find sticky top item
-    for (Object bottomIndex : mStickyBottomIndexes) {
-      UIComponent bottom = getStickyItemWithIndex((Integer) bottomIndex, false);
-      if (bottom == null) {
+    for (Object EndIndex : mStickyEndIndexes) {
+      UIComponent endComponent = getStickyItemWithIndex((Integer) EndIndex, false);
+      if (endComponent == null) {
         continue;
       }
-      if (bottom.getTop() + bottom.getHeight() < offset) {
+      int currentComponentOffset = mIsVertical ? (endComponent.getTop() + endComponent.getHeight())
+                                               : (endComponent.getLeft() + endComponent.getWidth());
+      if (currentComponentOffset < offset) {
         // cache potential next sticky item
-        nextStickyBottomItem = bottom;
+        nextStickyEndItem = endComponent;
         // hold its position
-        resetStickyItem(bottom);
-      } else if (stickyBottomItem != null) {
-        // sticky bottom item found, hold upper sticky top's position
-        resetStickyItem(bottom);
+        resetStickyItem(endComponent);
+      } else if (stickyEndItem != null) {
+        // sticky endComponent item found, hold upper sticky top's position
+        resetStickyItem(endComponent);
       } else {
-        stickyBottomItem = bottom;
+        stickyEndItem = endComponent;
       }
     }
-    if (stickyBottomItem != null) {
-      if (mPrevStickyBottomItem != stickyBottomItem) {
-        LynxDetailEvent event = new LynxDetailEvent(getSign(), "stickybottom");
-        event.addDetail("bottom", stickyBottomItem.getItemKey());
+
+    if (stickyEndItem != null) {
+      if (mPrevStickyEndItem != stickyEndItem) {
+        LynxDetailEvent event = null;
+        if (mIsVertical) {
+          event = new LynxDetailEvent(getSign(), "stickybottom");
+          event.addDetail("bottom", stickyEndItem.getItemKey());
+        } else {
+          event = new LynxDetailEvent(getSign(), "stickyright");
+          event.addDetail("right", stickyEndItem.getItemKey());
+        }
+
         mContext.getEventEmitter().sendCustomEvent(event);
-        mPrevStickyBottomItem = stickyBottomItem;
+        mPrevStickyEndItem = stickyEndItem;
       }
 
-      int stickyTopY = offset - stickyBottomItem.getHeight();
-      if (nextStickyBottomItem != null) {
-        int nextStickyBottomItemDistanceFromOffset =
-            offset - (nextStickyBottomItem.getTop() + nextStickyBottomItem.getHeight());
-        int squashStickyBottomDelta =
-            stickyBottomItem.getHeight() - nextStickyBottomItemDistanceFromOffset;
-        if (squashStickyBottomDelta > 0) {
-          stickyTopY += squashStickyBottomDelta;
+      int stickyLeftOffset =
+          offset - (mIsVertical ? stickyEndItem.getHeight() : stickyEndItem.getWidth());
+      if (nextStickyEndItem != null) {
+        int nextStickyEndItemDistanceFromOffset = 0;
+        int squashStickyEndDelta = 0;
+        if (mIsVertical) {
+          nextStickyEndItemDistanceFromOffset =
+              offset - (nextStickyEndItem.getTop() + nextStickyEndItem.getHeight());
+          squashStickyEndDelta = stickyEndItem.getHeight() - nextStickyEndItemDistanceFromOffset;
+        } else {
+          nextStickyEndItemDistanceFromOffset =
+              offset - (nextStickyEndItem.getLeft() + nextStickyEndItem.getWidth());
+          squashStickyEndDelta = stickyEndItem.getWidth() - nextStickyEndItemDistanceFromOffset;
+        }
+
+        if (squashStickyEndDelta > 0) {
+          stickyLeftOffset += squashStickyEndDelta;
         }
       }
-      if (stickyBottomItem.getView() != null) {
-        stickyBottomItem.getView().setTranslationY(stickyTopY - stickyBottomItem.getTop());
-        stickyBottomItem.getView().bringToFront();
-        setChildTranslationZ(stickyBottomItem, Integer.MAX_VALUE);
+      if (stickyEndItem.getView() != null) {
+        if (mIsVertical) {
+          stickyEndItem.getView().setTranslationY(stickyLeftOffset - stickyEndItem.getTop());
+        } else {
+          stickyEndItem.getView().setTranslationX(stickyLeftOffset - stickyEndItem.getLeft());
+        }
+        stickyEndItem.getView().bringToFront();
+        setChildTranslationZ(stickyEndItem, Integer.MAX_VALUE);
       }
     }
   }
@@ -1289,8 +1346,8 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     super.onPropsUpdated();
     if (mEnableListSticky && mUpdateStickyForDiff) {
       // Generate sticky top/bottom item key set.
-      generateStickyItemKeySet(mStickyTopItemKeySet, mStickyTopIndexes, mStickyTopItemMap);
-      generateStickyItemKeySet(mStickyBottomItemKeySet, mStickyBottomIndexes, mStickyBottomItemMap);
+      generateStickyItemKeySet(mStickyTopItemKeySet, mStickyStartIndexes, mStickyTopItemMap);
+      generateStickyItemKeySet(mStickyBottomItemKeySet, mStickyEndIndexes, mStickyBottomItemMap);
     }
   }
 

@@ -6439,7 +6439,9 @@ public enum LynxGestureState {
   public FOUNDATION_EXPORT NSString* const LynxEventScrollToBounce LynxEventScrollToBounce;
   public FOUNDATION_EXPORT NSString* const LynxScrollViewInitialScrollOffset LynxScrollViewInitialScrollOffset;
   public FOUNDATION_EXPORT NSString* const LynxScrollViewInitialScrollIndex LynxScrollViewInitialScrollIndex;
+  public FOUNDATION_EXPORT NSString* const LynxEventStickyLeft LynxEventStickyLeft;
   public FOUNDATION_EXPORT NSString* const LynxEventStickyTop LynxEventStickyTop;
+  public FOUNDATION_EXPORT NSString* const LynxEventStickyRight LynxEventStickyRight;
   public FOUNDATION_EXPORT NSString* const LynxEventStickyBottom LynxEventStickyBottom;
   public FOUNDATION_EXPORT NSString* const LynxEventSnap LynxEventSnap;
 
