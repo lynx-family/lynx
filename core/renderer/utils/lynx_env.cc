@@ -9,6 +9,9 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/trace/native/trace_event.h"
+#include "core/base/trace/trace_event_def.h"
+#include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_trail_hub.h"
 #include "third_party/rapidjson/stringbuffer.h"
 #include "third_party/rapidjson/writer.h"
@@ -90,6 +93,8 @@ void LynxEnv::SetGroupedEnv(
 }
 
 long LynxEnv::GetLongEnv(Key key, int default_value, EnvType type) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_LONG_ENV, "key",
+              static_cast<uint64_t>(key));
   std::optional<std::string> string_result = GetStringEnv(key, type);
   if (!string_result.has_value() || (*string_result).empty()) {
     return default_value;
@@ -118,6 +123,7 @@ bool LynxEnv::ConvertToBool(const std::string& value) {
 }
 
 bool LynxEnv::GetBoolEnv(const std::string& key, bool default_value) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_BOOL_ENV, "key", key);
   std::lock_guard<std::mutex> lock(mutex_);
   auto it = local_env_map_.find(key);
   if (it != local_env_map_.end()) {
@@ -127,6 +133,8 @@ bool LynxEnv::GetBoolEnv(const std::string& key, bool default_value) {
 }
 
 bool LynxEnv::GetBoolEnv(Key key, bool default_value, EnvType type) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_BOOL_ENV, "key",
+              static_cast<uint64_t>(key));
   std::optional<std::string> string_result = GetStringEnv(key, type);
   if (!string_result.has_value() || (*string_result).empty()) {
     return default_value;
@@ -135,6 +143,8 @@ bool LynxEnv::GetBoolEnv(Key key, bool default_value, EnvType type) {
 }
 
 std::optional<std::string> LynxEnv::GetStringEnv(Key key, EnvType type) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_STRING_ENV, "key",
+              static_cast<uint64_t>(key));
   std::optional<std::string> result = std::nullopt;
   switch (type) {
     case EnvType::EXTERNAL: {
@@ -331,6 +341,8 @@ int64_t LynxEnv::GetV8HeapSize() {
 }
 
 std::optional<std::string> LynxEnv::GetExternalEnv(Key key) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_ENV_GET_EXTERNAL_ENV, "key",
+              static_cast<uint64_t>(key));
   std::lock_guard<std::recursive_mutex> lock(external_env_mutex_);
   auto env_it = external_env_map_.find(key);
   if (env_it != external_env_map_.end()) {

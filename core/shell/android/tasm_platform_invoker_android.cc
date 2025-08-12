@@ -8,7 +8,9 @@
 #include <utility>
 #include <vector>
 
+#include "base/trace/native/trace_event.h"
 #include "core/base/android/java_only_map.h"
+#include "core/shell/common/shell_trace_event_def.h"
 // TODO(heshan):Temporarily utilize the JNI methods of TemplateAssembler.
 //              Introduce TasmPlatformInvoker.java as a replacement
 //              subsequently.
@@ -122,6 +124,8 @@ constexpr const char* kEnableTextLayoutCache = "enableTextLayoutCache";
 
 base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
     const std::shared_ptr<tasm::PageConfig>& config) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              TASM_PLATFORM_INVOKER_CONVERT_TO_JAVA_ONLY_MAP);
   base::android::JavaOnlyMap java_config;
   // put config that platform needed.
   java_config.PushBoolean(kAutoExpose, config->GetAutoExpose());

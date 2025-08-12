@@ -113,6 +113,7 @@ void TasmMediator::RemovePlatformCallback(
 
 void TasmMediator::OnPageConfigDecoded(
     const std::shared_ptr<tasm::PageConfig>& config) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_CALL_ON_PAGE_CONFIG_DECODED);
   tasm_platform_invoker_->OnPageConfigDecoded(config);
   // default enableAirStrictMode in timing_handler is false,
   // avoid using post task to send duplicate false value

@@ -21,6 +21,10 @@ static constexpr const char* const JSI_OBJECT_GET =
     "LynxPlatformJSIObjectAndroid::get";
 static constexpr const char* const JSI_OBJECT_GET_DESCRIPTOR =
     "LynxPlatformJSIObjectAndroid::GetJSIObjectDescriptor";
+static constexpr const char* const LYNX_ENV_GET_BOOL_ENV = "GetBoolEnv";
+static constexpr const char* const LYNX_ENV_GET_LONG_ENV = "GetLongEnv";
+static constexpr const char* const LYNX_ENV_GET_STRING_ENV = "GetStringEnv";
+static constexpr const char* const LYNX_ENV_GET_EXTERNAL_ENV = "GetExternalEnv";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

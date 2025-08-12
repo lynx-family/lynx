@@ -136,6 +136,8 @@ inline constexpr const char* const TASM_MEDIATOR_CALL_JS_API_CALLBACK =
 inline constexpr const char* const
     TASM_MEDIATOR_CALL_JS_API_CALLBACK_WITH_VALUE =
         "CallJSApiCallbackWithValue";
+inline constexpr const char* const TASM_MEDIATOR_CALL_ON_PAGE_CONFIG_DECODED =
+    "OnPageConfigDecoded";
 
 inline constexpr const char* const TASM_OPERATION_QUEUE_ASYNC_FLUSH =
     "TASMOperationQueueAsync::Flush";
@@ -144,6 +146,10 @@ inline constexpr const char* const JSB_TIMING_FLUSH_JSB_TIMING =
 inline constexpr const char* const
     CALL_JS_FUNCTION_JAVA_ONLY_ARRAY_TO_JS_ARRAY =
         "CallJSFunction:JavaOnlyArrayToJSArray";
+
+inline constexpr const char* const
+    TASM_PLATFORM_INVOKER_CONVERT_TO_JAVA_ONLY_MAP =
+        "TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap";
 
 inline constexpr const char* const CONVERT_NS_BINARY = "ConvertNSBinary";
 
