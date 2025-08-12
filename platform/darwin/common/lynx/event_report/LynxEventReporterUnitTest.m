@@ -275,6 +275,10 @@ static const int32_t kTestInstanceId2 = 10011;
   }
                       forInstanceId:kTestInstanceId];
   [LynxEventReporter clearCacheForInstanceId:kTestInstanceId];
+
+  // Wait for 10000ms to ensure the delayed clearCache operation is completed
+  [NSThread sleepForTimeInterval:10.0];
+
   [LynxEventReporter
            onEvent:@"testClearCache"
         instanceId:kTestInstanceId
