@@ -38,6 +38,7 @@ public class UIText
     extends UIGroup<AndroidText> implements IUIText, GestureArenaMember, LynxNewGestureDelegate {
   // key is gesture id, value is gesture handler
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
+  private TextUpdateBundle mTextUpdateBundle;
 
   @Deprecated
   public UIText(Context context) {
@@ -80,11 +81,18 @@ public class UIText
   @Override
   public void updateExtraData(Object data) {
     if (data instanceof TextUpdateBundle) {
-      mView.setTextBundle((TextUpdateBundle) data);
+      mTextUpdateBundle = (TextUpdateBundle) data;
+      mView.setTextBundle(mTextUpdateBundle);
       if (mEvents != null) {
         mView.setBindSelectionChange(mEvents.containsKey(SELECTION_CHANGE_EVENT), getSign());
       }
     }
+  }
+
+  @Override
+  public void didEnsureCreateView() {
+    super.didEnsureCreateView();
+    mView.setTextBundle(mTextUpdateBundle);
   }
 
   @Override
