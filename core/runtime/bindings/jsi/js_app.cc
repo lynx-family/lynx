@@ -2583,8 +2583,11 @@ void App::EraseApiCallBack(ApiCallBack callback) {
   api_callback_manager_.EraseWithCallback(callback);
 }
 
-void App::NotifyUpdatePageData() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_UPDATE_CARD_DATA);
+void App::NotifyUpdatePageData(uint64_t trace_flow_id) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_UPDATE_CARD_DATA,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   auto rt = rt_.lock();
   if (rt && IsJsAppStateValid()) {
     auto updated_card_data = delegate_->FetchUpdatedCardData();
@@ -2708,8 +2711,13 @@ void App::setJsAppObj(piper::Object&& obj) {
   }
 
   js_app_ = piper::Value(*rt, obj);
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_NOTIFY_JS_UPDATE_PAGE_DATA,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   // check if there has cached data changes
-  NotifyUpdatePageData();
+  NotifyUpdatePageData(trace_flow_id);
 }
 
 void App::appDataChange(lepus_value&& data, ApiCallBack callback,

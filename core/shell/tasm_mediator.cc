@@ -233,14 +233,20 @@ void TasmMediator::NotifyJSUpdatePageData() {
   if (!runtime_actor_) {
     return;
   }
+
+  uint64_t trace_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_NOTIFY_JS_UPDATE_PAGE_DATA,
+              [trace_flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
   // if there also has a "UpdateDataByJS" task pending in tasm thread, do
   // nothing,  "UpdateNativeData" will call "NotifyJSUpdatePageData" again
-  runtime_actor_->ActAsync(
-      [card_cached_data_mgr = card_cached_data_mgr_](auto& runtime) mutable {
-        if (card_cached_data_mgr->GetTaskCount() <= 0) {
-          runtime->NotifyJSUpdatePageData();
-        }
-      });
+  runtime_actor_->ActAsync([card_cached_data_mgr = card_cached_data_mgr_,
+                            trace_flow_id](auto& runtime) mutable {
+    if (card_cached_data_mgr->GetTaskCount() <= 0) {
+      runtime->NotifyJSUpdatePageData(trace_flow_id);
+    }
+  });
 }
 
 void TasmMediator::OnCardConfigDataChanged(const lepus::Value& data) {

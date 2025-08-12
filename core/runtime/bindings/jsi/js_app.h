@@ -105,7 +105,7 @@ class App : public std::enable_shared_from_this<App> {
 
   // native call to js
   void onAppReload(tasm::TemplateData init_data);
-  void NotifyUpdatePageData();
+  void NotifyUpdatePageData(uint64_t trace_flow_id);
   void NotifyUpdateCardConfigData();
   void CallFunction(const std::string& module_id, const std::string& method_id,
                     const piper::Array& arguments);

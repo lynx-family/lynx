@@ -147,6 +147,8 @@ inline constexpr const char* const TIMING_BIND_PIPELINE_ID_WITH_TIMING_FLAG =
 
 inline constexpr const char* const TASM_MEDIATOR_CALL_JS_API_CALLBACK =
     "CallJSApiCallback";
+inline constexpr const char* const TASM_MEDIATOR_NOTIFY_JS_UPDATE_PAGE_DATA =
+    "NotifyJSUpdatePageData";
 inline constexpr const char* const
     TASM_MEDIATOR_CALL_JS_API_CALLBACK_WITH_VALUE =
         "CallJSApiCallbackWithValue";

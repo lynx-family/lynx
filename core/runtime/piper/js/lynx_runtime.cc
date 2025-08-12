@@ -891,8 +891,10 @@ void LynxRuntime::I18nResourceChanged(const std::string& msg) {
   QueueOrExecTask([this, msg] { app_->I18nResourceChanged(msg); });
 }
 
-void LynxRuntime::NotifyJSUpdatePageData() {
-  QueueOrExecTask([this]() mutable { app_->NotifyUpdatePageData(); });
+void LynxRuntime::NotifyJSUpdatePageData(uint64_t trace_flow_id) {
+  QueueOrExecTask([this, trace_flow_id]() mutable {
+    app_->NotifyUpdatePageData(trace_flow_id);
+  });
   return;
 }
 

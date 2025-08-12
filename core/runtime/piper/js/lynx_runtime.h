@@ -120,7 +120,7 @@ class LynxRuntime final {
   void OnScriptLoaded(const std::string& url, std::string script,
                       std::string err_msg, piper::ApiCallBack callback);
 
-  void NotifyJSUpdatePageData();
+  void NotifyJSUpdatePageData(uint64_t trace_flow_id);
   void NotifyJSUpdateCardConfigData();
   void InsertCallbackForDataUpdateFinishedOnRuntime(base::closure callback);
 

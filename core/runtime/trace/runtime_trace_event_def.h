@@ -73,6 +73,14 @@ inline constexpr const char* const JS_VALUE_TO_PUB_VALUE = "JSValueToPubValue";
 inline constexpr const char* const APP_LOAD_SCRIPT_ASYNC =
     "App::LoadScriptAsync";
 inline constexpr const char* const APP_UPDATE_CARD_DATA = "App::updateCardData";
+/**
+ * @trace_description: After the frontend framework completes the initialization
+ * of the App object in the background thread, the Lynx framework will notify
+ * the frontend framework to update the page data.
+ */
+inline constexpr const char* const APP_NOTIFY_JS_UPDATE_PAGE_DATA =
+    "NotifyJSUpdatePageData";
+
 inline constexpr const char* const APP_JS_UPDATE_CARD_CONFIG_DATA =
     "App::NotifyJSUpdateCardConfigData";
 inline constexpr const char* const APP_EVAL_SCRIPT = "App::EvalScript";
