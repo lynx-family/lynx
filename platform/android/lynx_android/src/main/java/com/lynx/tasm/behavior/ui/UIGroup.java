@@ -223,6 +223,7 @@ public abstract class UIGroup<T extends ViewGroup>
     View childView = ((LynxUI<?>) child).getView();
     if (childView.getParent() != null) {
       if (childView.getParent() == mView) {
+        childView.requestLayout();
         return;
       }
       ((ViewGroup) childView.getParent()).removeView(childView);
@@ -242,7 +243,7 @@ public abstract class UIGroup<T extends ViewGroup>
   public void insertView(LynxUI child) {
     if (mContext != null && mContext.isFallbackProcess()
         && child.getView().getParent() == getView()) {
-      child.getView().invalidate();
+      child.getView().requestLayout();
       return;
     }
 
