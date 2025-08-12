@@ -492,6 +492,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       mLynxEngineRef.attachCurrentTemplateRender(this);
       mIsEngineFromReuse = false;
     }
+    if (mTemplateData != null) {
+      mTemplateData.setEnableJSData(false);
+    }
   }
 
   private void tryReuseLynxEngineFromPool() {
@@ -1550,6 +1553,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
         onTraceEventEnd(eventName);
         return true;
       }
+      fallbackNewEngine(false);
     } else if (mLynxEngineRef.hasLoaded()) {
       updateData(data, true);
       onTraceEventEnd(eventName);
@@ -1563,6 +1567,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     LynxLoadMode loadMode = metaData.loadMode;
     boolean isPrePainting =
         LynxLoadMode.PRE_PAINTING == loadMode || LynxLoadMode.PRE_PAINTING_DRAW == loadMode;
+
+    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn()
+        && metaData.getInitialData() != null) {
+      metaData.getInitialData().setEnableJSData(false);
+    }
 
     if (mEnableReuseEngine && tryRenderByReuseLynxRender(metaData.initialData)) {
       return;
@@ -1730,13 +1739,18 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     }
     onTraceEventBegin(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
 
+    TemplateData data = meta.getUpdatedData();
+    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn() && data != null) {
+      data.setEnableJSData(false);
+    }
+
     if (mEnableReuseEngine) {
-      mTemplateData.updateWithTemplateData(meta.getUpdatedData());
+      mTemplateData.updateWithTemplateData(data);
       if (mLynxEngineRef == null) {
         tryReuseLynxEngineFromPool();
         if (mLynxEngineRef == null) {
           fallbackNewEngine(false);
-          renderTemplateBundle(mTemplateBundle, meta.getUpdatedData(), mUrl);
+          renderTemplateBundle(mTemplateBundle, data, mUrl);
           onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
           return;
         } else {
@@ -1767,7 +1781,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       updatedGlobalProps = globalProps;
     }
     if (mNativePtr != 0) {
-      updateMetaDataInternal(meta.getUpdatedData(), updatedGlobalProps);
+      updateMetaDataInternal(data, updatedGlobalProps);
     }
     onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
   }
