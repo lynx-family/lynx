@@ -554,8 +554,11 @@ TEST_P(AppTest, NotifyUpdatePageData) {
 
   delegate_.SetCacheDataOP(std::move(op_vec));
 
-  // call NotifyUpdatePageData
-  app->NotifyUpdatePageData();
+  // Call NotifyUpdatePageData with trace_flow_id = 0
+  // Here passing 0 has no effect in the current unittest scenario,
+  // only to satisfy the updated function signature and resolve compilation
+  // issues.
+  app->NotifyUpdatePageData(0);
 
   // check equal
   EXPECT_EQ(mock_js_app_->call_count, 3);
