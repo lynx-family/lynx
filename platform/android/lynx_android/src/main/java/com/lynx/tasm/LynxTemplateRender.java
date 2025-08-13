@@ -1575,12 +1575,14 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
 
-    if (metaData.isBundleValid()) {
+    if (metaData.isBundleValid() || (mTemplateBundle != null && mTemplateBundle.isValid())) {
       if (mEnableReuseEngine) {
         mEmbeddedPipelineCounter.incrementAndGet();
       }
+
+      TemplateBundle bundle = metaData.isBundleValid() ? metaData.bundle : mTemplateBundle;
       if (mDevTool != null) {
-        mDevTool.onLoadFromBundle(metaData.bundle, metaData.initialData, metaData.url);
+        mDevTool.onLoadFromBundle(bundle, metaData.initialData, metaData.url);
       }
       this.prepareLynxEngineIfNeeded();
       this.initLynxEngineWithLoadMeta(metaData);
@@ -1589,7 +1591,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           "LoadMeta with bundle, pre-painting: " + isPrePainting
               + " ,pre-painting with draw:" + (LynxLoadMode.PRE_PAINTING_DRAW == loadMode)
               + " enableDumpElementTree: " + enableDumpElementTree);
-      loadTemplateBundle(metaData.bundle, metaData.url, metaData.initialData, isPrePainting,
+      loadTemplateBundle(bundle, metaData.url, metaData.initialData, isPrePainting,
           metaData.loadOptions, new TASMCallback(), timingOption);
     } else if (metaData.isByteBufferValid()) {
       if (mEnableReuseEngine) {
