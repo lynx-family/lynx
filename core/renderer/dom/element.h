@@ -827,7 +827,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   float height_{0};
   float top_{0};
   float left_{0};
-  // left, right, top, bottom -> starlight::Direction
+  // left, top, right, bottom
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
   std::array<float, 4> paddings_{};
