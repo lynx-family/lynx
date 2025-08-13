@@ -347,8 +347,9 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
 
     if (mView instanceof IDrawChildHook.IDrawChildHookBinding) {
-      mViewInfo = new ViewInfo(this, mView);
-      ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
+      if (this instanceof IDrawChildHook) {
+        ((IDrawChildHook.IDrawChildHookBinding) mView).bindDrawChildHook((IDrawChildHook) this);
+      }
     }
 
     if (mDrawParent instanceof UIGroup && mView.getParent() == null) {
@@ -356,6 +357,8 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
 
     didEnsureCreateView();
+    mView.requestLayout();
+    mView.invalidate();
   }
 
   protected void didEnsureCreateView() {
