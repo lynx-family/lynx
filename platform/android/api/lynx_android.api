@@ -8390,6 +8390,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE X_AUTO_FONT_SIZE;
   public final String com.lynx.tasm.behavior.PropsConstants.X_AUTO_FONT_SIZE_PRESET_SIZES X_AUTO_FONT_SIZE_PRESET_SIZES;
   public final String com.lynx.tasm.behavior.PropsConstants.EXTRA_LOAD_INFO EXTRA_LOAD_INFO;
+  public final String com.lynx.tasm.behavior.PropsConstants.ENABLE_REPORT_INFO ENABLE_REPORT_INFO;
   public final String com.lynx.tasm.behavior.PropsConstants.HIT_SLOP HIT_SLOP;
   public final String com.lynx.tasm.behavior.PropsConstants.HIT_SLOP_TOP HIT_SLOP_TOP;
   public final String com.lynx.tasm.behavior.PropsConstants.HIT_SLOP_BOTTOM HIT_SLOP_BOTTOM;

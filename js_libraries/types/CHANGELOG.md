@@ -1,4 +1,12 @@
 # CHANGELOG
+## 3.6.1
+- Add new reporting fields for `ImageLoadEvent`
+
+## 3.6.0
+
+### Major Changes
+- Update into Lynx3.6.
+
 ## 3.5.9
 - Update `list` and `list-item` typings.
 

@@ -283,8 +283,69 @@ export interface BaseImageLoadEvent<T> extends BaseEventOrig<{}, T> {
 }
 
 export interface ImageLoadEvent extends BaseImageLoadEvent<Target> {
-    width: number;
-    height: number;
+  /**
+   * Image start loading timestamp, Unit (ms).
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  load_start?: number;
+
+  /**
+   * Image loading completion timestamp, Unit (ms). It mainly includes image downloading and image decoding.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  load_finish?: number;
+
+  /**
+   * Image loading duration (load_finish - load_start), Unit (ms).
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  cost?: number;
+
+  /**
+   * image URI.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  src?: string;
+
+  /**
+   * image view width. Unit: (px)
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  view_width?: number,
+
+  /**
+   * image view height. Unit: (px)
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  view_height?: number;
+
+  /**
+   * Image memory size, Unit: Byte (B).
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  memory_cost?: number;
+
+  /**
+   * Source of image, network download, memory cache or disk cache.
+   * @Android
+   * @iOS
+   * @since 3.6
+   */
+  origin?: number;
 }
 
 

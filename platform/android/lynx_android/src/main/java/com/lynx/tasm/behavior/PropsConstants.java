@@ -255,6 +255,7 @@ public class PropsConstants {
   public static final String X_AUTO_FONT_SIZE = "-x-auto-font-size";
   public static final String X_AUTO_FONT_SIZE_PRESET_SIZES = "-x-auto-font-size-preset-sizes";
   public static final String EXTRA_LOAD_INFO = "extra-load-info";
+  public static final String ENABLE_REPORT_INFO = "enable-report-info";
   public static final String HIT_SLOP = "hit-slop";
   public static final String HIT_SLOP_TOP = "top";
   public static final String HIT_SLOP_BOTTOM = "bottom";

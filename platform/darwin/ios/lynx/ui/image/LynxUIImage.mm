@@ -44,6 +44,16 @@ typedef NS_ENUM(NSInteger, LynxResizeMode) {
   LynxResizeModeCenter = UIViewContentModeCenter
 };
 
+typedef NS_ENUM(NSInteger, LynxImageOrigin) {
+  LynxImageUnknown = 1,
+  LynxImageNetwork = 2,
+  LynxImageDisk = 3,
+  LynxImageMemoryEncoded = 4,
+  LynxImageMemoryDecoded = 5,
+  LynxImageLocal = 6,  /// local file or base64
+  LynxImageMax = 7,    /// reserved field
+};
+
 #pragma mark LynxURL
 
 @interface LynxUIImageDrawParameter : NSObject
@@ -149,6 +159,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic) BOOL autoPlay;
 @property(nonatomic) UIColor* tintColor;
 @property(nonatomic) BOOL enableExtraLoadInfo;
+@property(nonatomic) BOOL enableReportInfo;
 @property(nonatomic, assign) BOOL skipRedirection;
 @property(nonatomic, assign) BOOL enableImageSR;
 @property(nonatomic, assign) BOOL enableFadeIn;
@@ -197,6 +208,7 @@ LYNX_REGISTER_UI("image")
   _enableImageCancelRequest = [LynxEnv.sharedInstance enableImageCancelRequest];
   _frameCacheAutomatically = LynxBooleanOptionUnset;
   _superResolutionScale = 0.0;
+  _enableReportInfo = false;
 }
 
 - (void)dealloc {
@@ -723,10 +735,17 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
       [requestUrl updateTimeStamp:getImageTime startRequestTime:strongSelf.startRequestTime];
       if (requestUrl.type == LynxImageRequestSrc &&
           [strongSelf.eventSet valueForKey:LynxImageEventLoad]) {
-        [strongSelf addReportInfo:requestUrl];
         [[LynxImageLoader imageService] appendExtraImageLoadDetailForEvent:image
                                                             originalDetail:requestUrl.reportInfo];
-        if (strongSelf.enableExtraLoadInfo) {
+        if (strongSelf.enableReportInfo) {
+          NSMutableDictionary* reportInfo =
+              [strongSelf createReportInfo:requestUrl isNewImage:[strongSelf shouldUseNewImage]];
+          [strongSelf.context.eventEmitter
+              dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
+                                                             targetSign:strongSelf.sign
+                                                                 detail:reportInfo]];
+        } else if (strongSelf.enableExtraLoadInfo) {
+          [strongSelf addReportInfo:requestUrl];
           [strongSelf.context.eventEmitter
               dispatchCustomEvent:[[LynxDetailEvent alloc] initWithName:LynxImageEventLoad
                                                              targetSign:strongSelf.sign
@@ -945,6 +964,56 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   }
 }
 
+- (LynxImageOrigin)getImageOrigin:(LynxURL*)reportUrl isNewImage:(BOOL)newImage {
+  LynxImageOrigin origin = LynxImageUnknown;
+  if (newImage) {
+    NSNumber* fromNum = reportUrl.resourceInfo[@"from"] ?: @(-1);
+    NSInteger from = [fromNum integerValue];
+    if (from == -1) {  // unknown
+      if (((NSNumber*)reportUrl.resourceInfo[@"isBase64"]).boolValue) {
+        origin = LynxImageLocal;
+      } else if (![reportUrl.resourceInfo[@"res_from"] isEqualToString:@"cdn"]) {
+        origin = LynxImageLocal;
+      }
+    } else if (from == 0) {
+      origin = LynxImageNetwork;
+    } else if (from == 2) {
+      origin = LynxImageDisk;  // disk
+    } else if (from == 1) {
+      origin = LynxImageMemoryDecoded;  // LYNX_MEMORY_DECODED
+    } else if (from == 3) {
+      origin = LynxImageMemoryEncoded;  // LYNX_MEMORY_ENCODED
+    } else {
+      origin = LynxImageMax;
+    }
+  }
+  return origin;
+}
+
+- (NSMutableDictionary*)createReportInfo:(LynxURL*)reportUrl isNewImage:(BOOL)newImage {
+  LynxImageOrigin origin = [self getImageOrigin:reportUrl isNewImage:newImage];
+
+  NSMutableDictionary* reportInfo = [NSMutableDictionary dictionary];
+  NSDate* completeRequestTime = [NSDate date];
+  double loadStartTime = self.startRequestTime.timeIntervalSince1970 * 1000;  // ms
+  double loadFinishTime = completeRequestTime.timeIntervalSince1970 * 1000;   // ms
+
+  reportInfo[@"load_start"] = [NSNumber numberWithDouble:loadStartTime];
+  reportInfo[@"load_finish"] = [NSNumber numberWithDouble:loadFinishTime];
+  reportInfo[@"cost"] = [NSNumber
+      numberWithDouble:[completeRequestTime timeIntervalSinceDate:self.startRequestTime]];  // ms
+  reportInfo[@"src"] = reportUrl.url.absoluteString ?: @"";
+  reportInfo[@"origin"] = [NSNumber numberWithInteger:origin];
+  reportInfo[@"width"] = @(self.image.size.width);
+  reportInfo[@"height"] = @(self.image.size.height);
+  reportInfo[@"view_width"] = @(self.view.frame.size.width);
+  reportInfo[@"view_height"] = @(self.view.frame.size.height);
+  reportInfo[@"memory_cost"] = @(reportUrl.memoryCost) ?: @"";
+  reportInfo[@"scale"] = @(self.image.scale);
+  reportInfo[@"downsampled"] = reportUrl.reportInfo[@"isDownsampled"] ?: @"";
+  return reportInfo;
+}
+
 - (void)addReportInfo:(LynxURL*)reportUrl {
   NSDictionary* timeMetrics = @{
     @"fetchTime" : [NSNumber numberWithDouble:reportUrl.fetchTime],
@@ -962,6 +1031,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
     @"height" : @(self.image.size.height),
     @"viewWidth" : @(self.view.frame.size.width),
     @"viewHeight" : @(self.view.frame.size.height),
+    @"scale" : @(self.image.scale),
   };
   NSMutableDictionary* reportData = reportUrl.reportInfo;
   // Basic info
@@ -969,6 +1039,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   reportData[@"metric"] = templateMetric ?: @"";
   reportData[@"image_url"] = reportUrl.url.absoluteString ?: @"";
   // Image info
+  LynxImageOrigin origin = [self getImageOrigin:reportUrl isNewImage:[self shouldUseNewImage]];
   reportData[@"width"] = @(self.image.size.width);
   reportData[@"height"] = @(self.image.size.height);
   reportData[@"timeMetrics"] = timeMetrics ?: @"";
@@ -976,6 +1047,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
   reportData[@"memoryCost"] = @(reportUrl.memoryCost) ?: @"";
   reportData[@"resourceFromDiskCache"] = reportUrl.resourceInfo[@"is_disk"] ?: @"";
   reportData[@"resourceFromMemoryCache"] = reportUrl.resourceInfo[@"is_memory"] ?: @"";
+  reportData[@"origin"] = [NSNumber numberWithInteger:origin];
   if (((NSNumber*)reportUrl.resourceInfo[@"isBase64"]).boolValue) {
     reportData[@"resourceFrom"] = @"base64";
   } else if ([reportUrl.resourceInfo[@"res_from"] isEqualToString:@"cdn"]) {
@@ -1381,6 +1453,21 @@ LYNX_PROP_SETTER("extra-load-info", setBindLoadExtraInfo, BOOL) {
     value = NO;
   }
   _enableExtraLoadInfo = value;
+}
+
+/**
+ * @name: enable-report-info
+ * @description:  If enabled, the loading callback will include additional information, which may
+ *negatively impact performance. It is recommended to use this feature in DEBUG mode.
+ * @category: different
+ * @standardAction: keep
+ * @supportVersion: 3.6
+ **/
+LYNX_PROP_SETTER("enable-report-info", setEnableReportInfo, BOOL) {
+  if (requestReset) {
+    value = NO;
+  }
+  _enableReportInfo = value;
 }
 
 /**
