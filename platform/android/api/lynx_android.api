@@ -1342,6 +1342,7 @@ public class com::lynx::tasm::utils::DeviceUtils :  {
   public static boolean com.lynx.tasm.utils.DeviceUtils.isHuaWei();
   public static boolean com.lynx.tasm.utils.DeviceUtils.isMeizu();
   public static boolean com.lynx.tasm.utils.DeviceUtils.isMeizu15();
+  public static boolean com.lynx.tasm.utils.DeviceUtils.isHonor();
   public static boolean com.lynx.tasm.utils.DeviceUtils.is64BitDevice();
   public static float com.lynx.tasm.utils.DeviceUtils.getRefreshRate(LynxContext context);
   public static float com.lynx.tasm.utils.DeviceUtils.getRefreshRate(Context context);
