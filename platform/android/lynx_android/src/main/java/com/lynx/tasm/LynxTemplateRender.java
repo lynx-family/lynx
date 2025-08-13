@@ -1536,7 +1536,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   private boolean tryRenderByReuseLynxRender(TemplateData data) {
     String eventName = "LynxTemplateRender.tryRenderByReuseLynxRender";
     onTraceEventBegin(eventName);
-    mTemplateData.updateWithTemplateData(data);
     if (mLynxEngineRef == null) {
       tryReuseLynxEngineFromPool();
       if (mLynxEngineRef != null) {
@@ -1569,6 +1568,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (mLynxContext != null && mLynxContext.isEmbeddedModeOn()
         && metaData.getInitialData() != null) {
       metaData.getInitialData().setEnableJSData(false);
+      mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }
 
     if (mEnableReuseEngine && tryRenderByReuseLynxRender(metaData.initialData)) {
@@ -1753,10 +1753,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     TemplateData data = meta.getUpdatedData();
     if (mLynxContext != null && mLynxContext.isEmbeddedModeOn() && data != null) {
       data.setEnableJSData(false);
+      mTemplateData.updateWithTemplateData(data);
     }
 
     if (mEnableReuseEngine) {
-      mTemplateData.updateWithTemplateData(data);
       if (mLynxEngineRef == null) {
         tryReuseLynxEngineFromPool();
         if (mLynxEngineRef == null) {
@@ -1866,7 +1866,6 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     onTraceEventBegin(eventName);
 
     if (mEnableReuseEngine) {
-      mTemplateData.updateWithTemplateData(data);
       mEmbeddedPipelineCounter.incrementAndGet();
     }
 
