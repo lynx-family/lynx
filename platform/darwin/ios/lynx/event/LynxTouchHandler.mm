@@ -1079,14 +1079,30 @@
 // It is necessary to override this function to return "No" to ensure that the current gesture will
 // not prevent other gestures.
 - (BOOL)canPreventGestureRecognizer:(__unused UIGestureRecognizer*)preventedGestureRecognizer {
-  return NO;
+  if ([self isDescendantOfLynxView:preventedGestureRecognizer]) {
+    return NO;
+  } else {
+    if ([self blockNativeEvent:self]) {
+      return YES;
+    } else {
+      return NO;
+    }
+  }
 }
 
 // Override this function to return "NO" if it is a LynxView gesture or an internal LynxView
 // gesture, indicating that it will not be prevented by these gestures. Otherwise, return "YES" to
 // indicate that it can be prevented by external gestures.
 - (BOOL)canBePreventedByGestureRecognizer:(UIGestureRecognizer*)preventingGestureRecognizer {
-  return ![preventingGestureRecognizer.view isDescendantOfView:_eventHandler.rootView];
+  if ([self isDescendantOfLynxView:preventingGestureRecognizer]) {
+    return NO;
+  } else {
+    if ([self blockNativeEvent:self]) {
+      return NO;
+    } else {
+      return YES;
+    }
+  }
 }
 
 #pragma mark - UIGestureRecognizerDelegate
@@ -1094,6 +1110,10 @@
 - (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
     shouldRecognizeSimultaneouslyWithGestureRecognizer:
         (UIGestureRecognizer*)otherGestureRecognizer {
+  if (![self isDescendantOfLynxView:otherGestureRecognizer] &&
+      [self blockNativeEvent:gestureRecognizer]) {
+    return NO;
+  }
   // _enableTouchRefactor's default value is false. If this flag is true, the external gesture
   // which's state is possible or began will not cancel the Lynx iOS touch gesture see issue:#7920.
   if (_enableTouchRefactor && ![self isDescendantOfLynxView:otherGestureRecognizer] &&

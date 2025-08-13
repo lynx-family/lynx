@@ -1008,7 +1008,7 @@ RENDERER_FUNCTION_CC(FiberDispatchEvent) {
 RENDERER_FUNCTION_CC(FiberStopPropagation) {
   // parameter size = 1
   // [0] RefCounted -> event
-  CHECK_ARGC_GE(FiberDispatchEvent, 1);
+  CHECK_ARGC_GE(FiberStopPropagation, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberStopPropagation);
 
@@ -1021,7 +1021,7 @@ RENDERER_FUNCTION_CC(FiberStopPropagation) {
 RENDERER_FUNCTION_CC(FiberStopImmediatePropagation) {
   // parameter size = 1
   // [0] RefCounted -> event
-  CHECK_ARGC_GE(FiberDispatchEvent, 1);
+  CHECK_ARGC_GE(FiberStopImmediatePropagation, 1);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberStopImmediatePropagation);
 
