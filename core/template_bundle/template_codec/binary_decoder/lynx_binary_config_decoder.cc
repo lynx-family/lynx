@@ -572,11 +572,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kEnableListMoveOperation].GetBool());
   }
 
-  if (doc.HasMember(kEnableCSSStrictMode) &&
-      doc[kEnableCSSStrictMode].IsBool()) {
-    page_config->SetEnableCSSStrictMode(doc[kEnableCSSStrictMode].GetBool());
-  }
-
   if (doc.HasMember(kTapSlop) && doc[kTapSlop].IsString()) {
     page_config->SetTapSlop(doc[kTapSlop].GetString());
   } else {
