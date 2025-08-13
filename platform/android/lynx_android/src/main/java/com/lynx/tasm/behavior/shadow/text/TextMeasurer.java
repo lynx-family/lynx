@@ -426,8 +426,15 @@ public class TextMeasurer {
     }
 
     // Set text font weight and font style
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      if (attributes.isFontWeightBOLD() || attributes.mFontStyle == Typeface.ITALIC) {
+    // FIXME(zhouzhuangzhuang): need to fix the inline node default attributes not working issue
+    // later
+    if (attributes.isFontWeightBOLD() || attributes.mFontStyle > Typeface.NORMAL) {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        ops.add(new BaseTextShadowNode.SetSpanOperation(start, end,
+            new CustomStyleSpan(attributes.mFontStyle, attributes.mFontWeight,
+                attributes.mFontFamily, attributes.getFontVariationSettings(),
+                attributes.getFontFeatureSettings(), attributes.mHasValidTypeface)));
+      } else {
         ops.add(new BaseTextShadowNode.SetSpanOperation(
             start, end, new StyleSpan(attributes.getTypefaceStyle())));
       }
