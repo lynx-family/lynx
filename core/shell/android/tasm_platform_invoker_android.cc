@@ -137,7 +137,7 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
 
   java_config.PushBoolean(
       kAsyncRedirectUrl,
-      config->GetAsyncRedirectUrl() == lynx::tasm::TernaryBool::TRUE_VALUE);
+      config->GetAsyncRedirect() == lynx::tasm::TernaryBool::TRUE_VALUE);
   java_config.PushBoolean(kSyncImageAttach, config->GetSyncImageAttach());
   java_config.PushBoolean(kEnableCheckLocalImage,
                           config->GetEnableCheckLocalImage());
@@ -146,11 +146,11 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   java_config.PushBoolean(kUseImagePostProcessor,
                           config->GetUseImagePostProcessor());
   java_config.PushString(kPageType, tasm::GetDSLName(config->GetDSL()));
-  java_config.PushString(kCliVersion, config->GetCliVersion());
+  java_config.PushString(kCliVersion, config->GetCli());
   java_config.PushString(kCustomData, config->GetCustomData());
   java_config.PushBoolean(kUseNewSwiper, config->GetUseNewSwiper());
   java_config.PushBoolean(kEnableAsyncInitVideoEngine,
-                          config->GetEnableAsyncInitTTVideoEngine());
+                          config->GetEnableAsyncInitVideoEngine());
   java_config.PushString(kTargetSdkVersion, config->GetTargetSDKVersion());
   java_config.PushBoolean(kEnableNewGesture, config->GetEnableNewGesture());
   java_config.PushString(kLepusVersion, config->GetLepusVersion());
@@ -188,7 +188,7 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   }
   java_config.PushBoolean(kEnableNewClipMode, config->GetEnableNewClipMode());
   java_config.PushBoolean(kKeyboardCallbackUseRelativeHeight,
-                          config->GetKeyboardCallbackUseRelativeHeight());
+                          config->GetKeyboardCallbackPassRelativeHeight());
 
   java_config.PushBoolean(kEnableCSSParser, config->GetEnableCSSParser());
   java_config.PushBoolean(kEnableEventRefactor,
@@ -213,7 +213,7 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
         kIncludeFontPadding,
         version >= LYNX_VERSION_2_4 && version < LYNX_VERSION_2_9);
   }
-  java_config.PushBoolean(kPageFlatten, config->GetGlobalFlattern());
+  java_config.PushBoolean(kPageFlatten, config->GetFlatten());
   java_config.PushBoolean(kEnableFlattenTranslateZ,
                           version >= LYNX_VERSION_2_5);
   java_config.PushString(kAbSettingDisableCSSLazyDecode,

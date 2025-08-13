@@ -498,7 +498,7 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetEnableExtendedLayoutOnlyOpt() {
     if (config_) {
-      return config_->GetEnableExtendedLayoutOpt();
+      return config_->GetExtendedLayoutOnlyOpt();
     }
     return false;
   }
@@ -558,7 +558,7 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetPageFlatten() {
     if (config_) {
-      return config_->GetGlobalFlattern();
+      return config_->GetFlatten();
     }
     return true;
   }
@@ -590,7 +590,7 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetListNewArchitecture() {
     if (config_) {
-      return config_->GetListNewArchitecture();
+      return config_->GetEnableListNewArchitecture();
     }
     return false;
   }
@@ -657,7 +657,7 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetListEnablePlug() {
     if (config_) {
-      return config_->list_enable_plug();
+      return config_->GetEnableListPlug();
     }
     return false;
   }
@@ -690,7 +690,7 @@ class ElementManager : public ElementContextDelegate {
   }
 
   bool GetKeyboardCallbackUseRelativeHeight() {
-    return config_ ? config_->GetKeyboardCallbackUseRelativeHeight() : false;
+    return config_ ? config_->GetKeyboardCallbackPassRelativeHeight() : false;
   }
 
   bool GetForceCalcNewStyle() {

@@ -10927,7 +10927,7 @@ TEST_P(FiberElementTest, TestGenerateResponseChain4) {
 TEST_P(FiberElementTest, ExtendedLayoutOnlyOpt) {
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
-  config->SetEnableExtendedLayoutOpt(
+  config->SetExtendedLayoutOnlyOpt(
       false);  // false can not make the opt invalid
   manager->SetConfig(config);
 

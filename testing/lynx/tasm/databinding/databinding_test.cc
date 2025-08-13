@@ -406,7 +406,8 @@ void DataBindingLoadTemplateBundleShell::TasmLoadTemplate(
 
   // pre-create context
   if (template_bundle.page_configs_) {
-    template_bundle.page_configs_->SetEnableUseContextPool(true);
+    template_bundle.page_configs_->SetEnableUseContextPool(
+        TernaryBool::TRUE_VALUE);
   }
   // Some tasks of ContextPool will be executed in background threads. In
   // order to prevent affecting the stability of the unit test, the background

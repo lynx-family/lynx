@@ -120,7 +120,7 @@
 }
 
 - (bool)globalImplicit {
-  return _config->GetGlobalImplicit();
+  return _config->GetImplicit();
 }
 
 - (bool)imageMonitorEnabled {

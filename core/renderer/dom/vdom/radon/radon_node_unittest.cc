@@ -225,7 +225,7 @@ TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithoutOptimization) {
 }
 
 TEST_F(RadonNodeTest, TestViewCanBeLayoutOnlyWithOptimization) {
-  page_proxy->element_manager()->config_->SetEnableExtendedLayoutOpt(true);
+  page_proxy->element_manager()->config_->SetExtendedLayoutOnlyOpt(true);
   page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
       TernaryBool::TRUE_VALUE);
   auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
