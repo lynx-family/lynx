@@ -1064,7 +1064,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     } else {
       LLog.e(TAG, "sendGlobalEvent error, can't get GlobalEventEmitter in " + this.toString());
     }
-    if (mLynxContext.isEmbeddedModeOn()) {
+    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn()) {
       JavaOnlyMap args = new JavaOnlyMap();
       args.putString(DefaultLogicExecutor.EVENT_METHOD, DefaultLogicExecutor.GLOBAL_EVENT_METHOD);
       args.putString(DefaultLogicExecutor.GLOBAL_EVENT_NAME, name);
