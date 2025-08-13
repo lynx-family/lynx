@@ -211,8 +211,9 @@ class ValueImplLepus : public Value {
     if (!IsMap()) {
       return false;
     }
-    return backend_value_.Table()->SetValue(
-        key, ValueUtils::ConvertValueToLepusValue(value));
+    return backend_value_.Table()
+        ->SetValue(key, ValueUtils::ConvertValueToLepusValue(value))
+        .has_value();
   }
 
   bool PushValueToMap(const std::string& key,
@@ -220,15 +221,16 @@ class ValueImplLepus : public Value {
     if (!IsMap()) {
       return false;
     }
-    return backend_value_.Table()->SetValue(
-        key, ValueUtils::ConvertValueToLepusValue(*(value.get())));
+    return backend_value_.Table()
+        ->SetValue(key, ValueUtils::ConvertValueToLepusValue(*(value.get())))
+        .has_value();
   }
 
   bool PushNullToMap(const std::string& key) override {
     if (!IsMap()) {
       return false;
     }
-    return backend_value_.Table()->SetValue(key);
+    return backend_value_.Table()->SetValue(key).has_value();
   }
 
   bool PushArrayBufferToMap(const std::string& key,
@@ -237,8 +239,9 @@ class ValueImplLepus : public Value {
     if (!IsMap()) {
       return false;
     }
-    return backend_value_.Table()->SetValue(
-        key, lepus::ByteArray::Create(std::move(value), length));
+    return backend_value_.Table()
+        ->SetValue(key, lepus::ByteArray::Create(std::move(value), length))
+        .has_value();
   }
 
   bool PushBigIntToMap(const std::string& key,
@@ -256,7 +259,7 @@ class ValueImplLepus : public Value {
     if (!IsMap()) {                                                     \
       return false;                                                     \
     }                                                                   \
-    return backend_value_.Table()->SetValue(key, value);                \
+    return backend_value_.Table()->SetValue(key, value).has_value();    \
   }
   DeclarationTypeList(NormalTypePushMapImpl)
 #undef NormalTypePushMapImpl

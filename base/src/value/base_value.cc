@@ -587,7 +587,8 @@ bool Value::SetProperty(base::String&& key, const Value& val) {
 
   if (IsTable() && value_.val_ptr != nullptr) {
     return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)
-        ->SetValue(std::move(key), val);
+        ->SetValue(std::move(key), val)
+        .has_value();
   }
   return false;
 }
@@ -600,7 +601,8 @@ bool Value::SetProperty(base::String&& key, Value&& val) {
 
   if (IsTable() && value_.val_ptr != nullptr) {
     return reinterpret_cast<lepus::Dictionary*>(value_.val_ptr)
-        ->SetValue(std::move(key), std::move(val));
+        ->SetValue(std::move(key), std::move(val))
+        .has_value();
   }
   return false;
 }

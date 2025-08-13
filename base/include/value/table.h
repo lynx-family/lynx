@@ -209,10 +209,12 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
   ///  By introducing ValueNoOpCtor and casting hash_map_ to
   ///  ValueNoOpCtorHashMap, the emplace and construct of ValueNoOpCtor is
   ///  cheap.
+  ///
+  ///  @return ValueWrapper to Value if success or nullptr on failure.
   template <class... Args>
-  bool SetValue(const base::String& key, Args&&... args) {
+  ValueWrapper SetValue(const base::String& key, Args&&... args) {
     if (IsConstLog()) {
-      return false;
+      return ValueWrapper(nullptr);
     }
 
     auto& hash_map_no_op = reinterpret_cast<ValueNoOpCtorHashMap&>(hash_map_);
@@ -227,7 +229,7 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
           if (target_ptr == &std::get<0>(std::tie(args...))) {
             // Possibile that input args is a 'Value' happens to be exactly
             // the same instance of exsiting one.
-            return true;
+            return ValueWrapper(target_ptr);
           }
         }
       }
@@ -236,7 +238,7 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
     }
     // Placement new Value() on target_ptr with variadic args.
     new (target_ptr) Value(std::forward<Args>(args)...);
-    return true;
+    return ValueWrapper(target_ptr);
   }
 
   /// Return a default nil value if key not found.
