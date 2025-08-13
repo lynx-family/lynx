@@ -1980,7 +1980,6 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
   GCPauseSuppressionMode mode(GetRuntime().get());
 
   Scope scope(*rt.get());
-  state_ = State::kStarted;
   LOGI(" App::loadApp start " << this);
   piper::Object global = rt->global();
   auto load_app_func = global.getPropertyAsFunction(*rt, "loadCard");
@@ -2884,8 +2883,8 @@ base::expected<Value, JSINativeException> App::loadScript(
       auto prep =
           rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
       auto ret = rt->evaluatePreparedJavaScript(prep);
-      if (is_app_service_js) {
-        state_ = ret.has_value() ? State::kAppLoaded : State::kAppLoadFailed;
+      if (is_app_service_js && !ret.has_value()) {
+        state_ = State::kAppLoadFailed;
       }
       return ret;
     }

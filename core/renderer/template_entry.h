@@ -194,6 +194,10 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
     enable_microtask_promise_polyfill_ = enable;
   }
 
+  void SetEnableJsControlRuntimeState(bool enable) {
+    enable_js_control_runtime_state_ = enable;
+  }
+
   LynxBinaryLazyReaderDelegate* GetReader() { return reader_.get(); }
 
   TasmRuntimeBundle CreateTasmRuntimeBundle();
@@ -297,6 +301,7 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
   bool enable_js_binding_api_throw_exception_ = false;
   bool enable_bind_icu_ = false;
   bool enable_microtask_promise_polyfill_{false};
+  bool enable_js_control_runtime_state_{false};
 #if ENABLE_LEPUSNG_WORKLET
   std::unique_ptr<lynx::piper::NapiEnvironment> napi_environment_;
 #endif

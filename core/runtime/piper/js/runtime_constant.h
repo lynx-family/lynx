@@ -80,6 +80,8 @@ constexpr const char kMessageEventTypeUpdatePage[] = "__UpdatePage";
 constexpr const char kMessageEventTypeUpdateGlobalProps[] =
     "__UpdateGlobalProps";
 constexpr const char kMessageEventTypeRemoveComponents[] = "__RemoveComponents";
+constexpr const char kMessageEventTypeUpdateRuntimeState[] =
+    "__UpdateRuntimeState";
 
 /**
  * @name: enableMicrotaskPromisePolyfill

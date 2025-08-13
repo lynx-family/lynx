@@ -1157,6 +1157,14 @@ class PageConfig final : public EntryConfig {
     }
   }
 
+  bool GetEnableJsControlRuntimeState() const {
+    return enable_js_control_runtime_state_;
+  }
+
+  void SetEnableJsControlRuntimeState(bool enable) {
+    enable_js_control_runtime_state_ = enable;
+  }
+
   TernaryBool GetEnableSignalAPI() const { return enable_signal_api_; }
 
   bool GetEnableSignalAPIBoolValue() {
@@ -1463,6 +1471,9 @@ class PageConfig final : public EntryConfig {
    * TODO(zhoupeng.z): Apply this optimization to all platforms.
    */
   bool need_post_to_platform_{true};
+
+  // enable js control runtime state
+  bool enable_js_control_runtime_state_{false};
 
   template <typename T>
   using PageConfigSetter = void (PageConfig::*)(T);

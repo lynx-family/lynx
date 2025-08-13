@@ -29,7 +29,7 @@ struct TasmRuntimeBundle {
       const piper::JsBundle& js_bundle, bool enable_circular_data_check,
       bool enable_js_binding_api_throw_exception, bool enable_bind_icu,
       bool enable_microtask_promise_polyfill,
-      const lepus::Value& custom_sections)
+      bool enable_js_control_runtime_state, const lepus::Value& custom_sections)
       : name(name),
         target_sdk_version(target_sdk_version),
         support_component_js(support_component_js),
@@ -42,6 +42,7 @@ struct TasmRuntimeBundle {
             enable_js_binding_api_throw_exception),
         enable_bind_icu(enable_bind_icu),
         enable_microtask_promise_polyfill(enable_microtask_promise_polyfill),
+        enable_js_control_runtime_state(enable_js_control_runtime_state),
         custom_sections(custom_sections) {}
 
   // move only
@@ -63,6 +64,7 @@ struct TasmRuntimeBundle {
   bool enable_js_binding_api_throw_exception;
   bool enable_bind_icu;
   bool enable_microtask_promise_polyfill;
+  bool enable_js_control_runtime_state;
 
   lepus::Value custom_sections{};
 };

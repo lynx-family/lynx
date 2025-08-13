@@ -224,6 +224,8 @@ bool TemplateEntry::InitWithPageConfigger(
   SetEnableMicrotaskPromisePolyfill(
       page_config->GetEnableMicrotaskPromisePolyfill() ==
       TernaryBool::TRUE_VALUE);
+
+  SetEnableJsControlRuntimeState(page_config->GetEnableJsControlRuntimeState());
   return true;
 }
 
@@ -544,6 +546,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_js_binding_api_throw_exception_,
           enable_bind_icu_,
           enable_microtask_promise_polyfill_,
+          enable_js_control_runtime_state_,
           template_bundle().custom_sections_};
 }
 

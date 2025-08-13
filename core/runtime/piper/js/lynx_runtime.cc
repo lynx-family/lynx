@@ -689,11 +689,18 @@ void LynxRuntime::OnJSSourcePrepared(
       }
 #endif
     }
+    enable_js_control_runtime_state_ = bundle.enable_js_control_runtime_state;
+    if (enable_js_control_runtime_state_) {
+      AddRuntimeStateChangedListener();
+    }
+
     app_->loadApp(std::move(bundle), init_global_props_, dsl,
                   bundle_module_mode, url, trace_flow_id);
     tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadBackgroundEnd);
 
-    UpdateState(State::kRuntimeReady);
+    if (!enable_js_control_runtime_state_) {
+      UpdateState(State::kRuntimeReady);
+    }
   };
   if (state_ == State::kSsrRuntimeReady || state_ == State::kJsCoreLoaded) {
     task();
@@ -941,6 +948,28 @@ void LynxRuntime::AddEventListeners() {
 
   if (js_context_proxy != nullptr) {
     delegate_->AddEventListenersToWhiteBoard(js_context_proxy.get());
+  }
+}
+
+void LynxRuntime::AddRuntimeStateChangedListener() {
+  auto js_context_proxy =
+      app_->GetContextProxy(runtime::ContextProxy::Type::kJSContext);
+
+  if (js_context_proxy != nullptr && enable_js_control_runtime_state_) {
+    // add event listener for js control runtime state
+    js_context_proxy->AddEventListener(
+        kMessageEventTypeUpdateRuntimeState,
+        std::make_unique<event::ClosureEventListener>(
+            [this](lepus::Value args) {
+              LOGD("UpdateRuntimeState: " << static_cast<int>(state_));
+              if (state_ == State::kJsCoreLoaded && args.IsNumber()) {
+                auto state = static_cast<int>(args.Number());
+                if (state == static_cast<int>(State::kRuntimeReady)) {
+                  LOGI("Runtime state changed to kRuntimeReady by js.");
+                  UpdateState(State::kRuntimeReady);
+                }
+              }
+            }));
   }
 }
 

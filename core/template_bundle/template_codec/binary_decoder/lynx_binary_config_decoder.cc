@@ -302,6 +302,15 @@ static constexpr const char* const kEnableQueryComponentSync =
 static constexpr const char* const kEnableAsyncFlushSubtree =
     "enableAsyncResolveSubtree";
 
+/**
+ * @name: enableJsControlRuntimeState
+ * @description: Enable js control runtime state
+ * @platform: Both
+ * @supportVersion: 3.5
+ **/
+static constexpr const char* const kEnableJsControlRuntimeState =
+    "enableJsControlRuntimeState";
+
 bool LynxBinaryConfigDecoder::DecodePageConfig(
     std::string config_str, std::shared_ptr<PageConfig>& page_config) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
@@ -1159,6 +1168,13 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       doc[kEnableAsyncFlushSubtree].IsBool()) {
     page_config->SetEnableAsyncResolveSubtree(
         doc[kEnableAsyncFlushSubtree].GetBool());
+  }
+
+  // enableJSControlRuntimeState
+  if (doc.HasMember(kEnableJsControlRuntimeState) &&
+      doc[kEnableJsControlRuntimeState].IsBool()) {
+    page_config->SetEnableJsControlRuntimeState(
+        doc[kEnableJsControlRuntimeState].GetBool());
   }
 
   config_helper_.HandlePageConfig(doc, page_config);

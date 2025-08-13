@@ -322,13 +322,11 @@ class App : public std::enable_shared_from_this<App> {
                                              const lepus::Value& info);
 
   enum class State {
-    kNotStarted,     // only app created
-    kStarted,        // app started loadApp
-    kAppLoaded,      // app has been loaded successfully
+    kInit,           // only app created
     kAppLoadFailed,  // app load failed
     kDestroying,     // app is destroying
   };
-  State state_ = State::kNotStarted;
+  State state_ = State::kInit;
 
   std::string app_guid_;
   std::weak_ptr<Runtime> rt_;

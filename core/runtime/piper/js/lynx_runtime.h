@@ -220,6 +220,8 @@ class LynxRuntime final {
   void QueueOrExecTask(base::closure&& task);
   void QueueOrExecAppTask(base::closure&& task);
 
+  void AddRuntimeStateChangedListener();
+
 #if ENABLE_NAPI_BINDING
   void PrepareNapiEnvironment();
   void PrepareRestrictedNapiEnvironment();
@@ -269,6 +271,7 @@ class LynxRuntime final {
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       cached_native_factories_;
   bool destroy_js_app_early_{false};
+  bool enable_js_control_runtime_state_{false};
 };
 
 }  // namespace runtime
