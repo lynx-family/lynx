@@ -894,7 +894,7 @@ public class TextHelper {
         textPaint.setTypeface(tf);
       } else {
         // Not cached → apply both settings, then cache the resulting typeface:
-        if (fontVariationSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (fontVariationSettings != null && enableSetFontVariation()) {
           textPaint.setFontVariationSettings(fontVariationSettings);
         }
         if (fontFeatureSettings != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -906,6 +906,16 @@ public class TextHelper {
         }
       }
     }
+  }
+
+  private static boolean enableSetFontVariation() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+      return false;
+    }
+
+    // On Honor devices running Android 15, calling setFontVariationSettings on a non-main thread
+    // may cause a crash in Minikin.
+    return Build.VERSION.SDK_INT != 35 || UIThreadUtils.isOnUiThread() || !DeviceUtils.isHonor();
   }
 
   private static int getStyleWeight(int weight) {

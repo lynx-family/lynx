@@ -97,6 +97,15 @@ public class DeviceUtils {
     return false;
   }
 
+  public static boolean isHonor() {
+    String brand = Build.BRAND;
+    if (brand == null) {
+      return false;
+    }
+
+    return brand.toLowerCase(Locale.ENGLISH).indexOf("honor") > -1;
+  }
+
   /**
    * after API 21, use {Build#SUPPORTED_ABIS} to get APIs, like: [arm64-v8a, armeabi-v7a, armeabi]
    * otherwise, use {Build#CPU_ABI} instead
