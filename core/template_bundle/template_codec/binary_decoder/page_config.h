@@ -63,18 +63,30 @@ class EntryConfig {
 
   // layout configs
   inline const starlight::LayoutConfigs& GetLayoutConfigs() {
+    layout_configs_.default_display_linear_ = default_display_linear_;
+    layout_configs_.is_absolute_in_content_bound_ =
+        is_absolute_in_content_bound_;
+    layout_configs_.enable_fixed_new_ = enable_fixed_new_;
+    layout_configs_.font_scale_sp_only_ = font_scale_sp_only_;
+    layout_configs_.css_align_with_legacy_w3c_ = css_align_with_legacy_w3c_;
+    layout_configs_.SetQuirksMode(quirks_mode_);
+
     return layout_configs_;
   }
 
   // default display linear
   inline void SetDefaultDisplayLinear(bool is_linear) {
     default_display_linear_ = is_linear;
-    layout_configs_.default_display_linear_ = is_linear;
   }
   inline bool GetDefaultDisplayLinear() { return default_display_linear_; }
 
  protected:
   starlight::LayoutConfigs layout_configs_;
+  base::Version quirks_mode_ = base::Version(kQuirksModeEnableVersion);
+  bool is_absolute_in_content_bound_{false};
+  bool enable_fixed_new_{false};
+  bool font_scale_sp_only_{false};
+  bool css_align_with_legacy_w3c_{false};
 
  private:
   bool default_display_linear_{false};
@@ -209,34 +221,21 @@ class PageConfig final : public EntryConfig {
   inline void SetDataStrictMode(bool strict) { data_strict_mode = strict; }
 
   inline void SetAbsoluteInContentBound(bool enable) {
-    layout_configs_.is_absolute_in_content_bound_ = enable;
+    is_absolute_in_content_bound_ = enable;
   }
 
   inline bool GetAbsoluteInContentBound() {
-    return layout_configs_.is_absolute_in_content_bound_;
-  }
-
-  inline void SetQuirksMode(bool enable) {
-    if (css_align_with_legacy_w3c_ || !enable) {
-      layout_configs_.SetQuirksMode(kQuirksModeDisableVersion);
-    } else {
-      layout_configs_.SetQuirksMode(kQuirksModeEnableVersion);
-    }
-  }
-  inline bool GetQuirksMode() const {
-    return layout_configs_.IsFullQuirksMode();
+    return is_absolute_in_content_bound_;
   }
 
   inline void SetQuirksModeByVersion(const base::Version& version) {
     if (css_align_with_legacy_w3c_) {
-      layout_configs_.SetQuirksMode(kQuirksModeDisableVersion);
+      quirks_mode_ = kQuirksModeDisableVersion;
     } else {
-      layout_configs_.SetQuirksMode(version);
+      quirks_mode_ = version;
     }
   }
-  inline base::Version GetQuirksModeVersion() const {
-    return layout_configs_.GetQuirksMode();
-  }
+  inline base::Version GetQuirksModeVersion() const { return quirks_mode_; }
 
   inline bool GetAutoExpose() { return enable_auto_show_hide; }
 
@@ -249,15 +248,16 @@ class PageConfig final : public EntryConfig {
   inline bool GetDefaultOverflowVisible() { return default_overflow_visible_; }
 
   inline const tasm::DynamicCSSConfigs& GetDynamicCSSConfigs() {
+    css_configs_.enable_css_inheritance_ = enable_css_inheritance_;
+    css_configs_.custom_inherit_list_ = custom_inherit_list_;
+    css_configs_.unify_vw_vh_behavior_ = unify_vw_vh_behavior_;
+    css_configs_.once_inheritance_disabled_ = once_inheritance_disabled_;
+
     return css_configs_;
   }
 
-  inline void SetEnableFixedNew(bool enable) {
-    layout_configs_.enable_fixed_new_ = enable;
-  }
-  inline bool GetEnableFixedNew() const {
-    return layout_configs_.enable_fixed_new_;
-  }
+  inline void SetEnableFixedNew(bool enable) { enable_fixed_new_ = enable; }
+  inline bool GetEnableFixedNew() const { return enable_fixed_new_; }
 
   inline PackageInstanceDSL GetDSL() { return dsl_; }
 
@@ -343,12 +343,10 @@ class PageConfig final : public EntryConfig {
   }
 
   inline void SetFontScaleSpOnly(bool font_scale) {
-    layout_configs_.font_scale_sp_only_ = font_scale;
+    font_scale_sp_only_ = font_scale;
   }
 
-  inline bool GetFontScaleSpOnly() {
-    return layout_configs_.font_scale_sp_only_;
-  }
+  inline bool GetFontScaleSpOnly() { return font_scale_sp_only_; }
 
   bool GetEnableLepusStrictCheck() { return enable_lepus_strict_check_; }
 
@@ -391,20 +389,18 @@ class PageConfig final : public EntryConfig {
   bool GetStrictPropType() const { return strict_prop_type_; }
 
   void SetEnableCSSInheritance(bool enable) {
-    css_configs_.enable_css_inheritance_ = enable;
+    enable_css_inheritance_ = enable;
   }
 
-  bool GetEnableCSSInheritance() {
-    return css_configs_.enable_css_inheritance_;
-  }
+  bool GetEnableCSSInheritance() { return enable_css_inheritance_; }
 
   void SetCustomCSSInheritList(std::unordered_set<CSSPropertyID>&& list) {
-    css_configs_.custom_inherit_list_ =
+    custom_inherit_list_ =
         std::forward<std::unordered_set<CSSPropertyID>>(list);
   }
 
   const std::unordered_set<CSSPropertyID>& GetCustomCSSInheritList() {
-    return css_configs_.custom_inherit_list_;
+    return custom_inherit_list_;
   }
 
   void SetEnableNewLayoutOnly(bool enable) { enable_new_layout_only_ = enable; }
@@ -413,9 +409,8 @@ class PageConfig final : public EntryConfig {
   bool GetCSSAlignWithLegacyW3C() const { return css_align_with_legacy_w3c_; }
   void SetCSSAlignWithLegacyW3C(bool val) {
     css_align_with_legacy_w3c_ = val;
-    layout_configs_.css_align_with_legacy_w3c_ = val;
     if (val) {
-      layout_configs_.SetQuirksMode(kQuirksModeDisableVersion);
+      quirks_mode_ = kQuirksModeDisableVersion;
     }
   }
 
@@ -464,10 +459,6 @@ class PageConfig final : public EntryConfig {
 
   bool GetEnableAsyncInitTTVideoEngine() const {
     return async_init_tt_video_engine;
-  }
-
-  void SetEnableCSSStrictMode(bool enable) {
-    css_parser_configs_.enable_css_strict_mode = enable;
   }
 
   bool GetEnableCSSStrictMode() {
@@ -592,8 +583,8 @@ class PageConfig final : public EntryConfig {
     enable_text_refactor_ = enable_text_refactor;
   }
 
-  void SetUnifyVWVH(bool unify) { css_configs_.unify_vw_vh_behavior_ = unify; }
-  bool GetUnifyVWVH() { return css_configs_.unify_vw_vh_behavior_; }
+  void SetUnifyVWVH(bool unify) { unify_vw_vh_behavior_ = unify; }
+  bool GetUnifyVWVH() { return unify_vw_vh_behavior_; }
 
   inline bool GetEnableZIndex() { return enable_z_index_; }
   inline void SetEnableZIndex(bool enable) { enable_z_index_ = enable; }
@@ -1310,7 +1301,6 @@ class PageConfig final : public EntryConfig {
   bool need_remove_component_element_;
   bool strict_prop_type_{false};
   bool enable_new_layout_only_{true};
-  bool css_align_with_legacy_w3c_{false};
   bool enable_component_lifecycle_align_webview_{false};
   bool sync_image_attach{true};
   bool use_image_post_processor_{false};
@@ -1463,6 +1453,14 @@ class PageConfig final : public EntryConfig {
    * TODO(zhoupeng.z): Apply this optimization to all platforms.
    */
   bool need_post_to_platform_{true};
+
+  // DynamicCSSConfigs members
+  bool enable_css_inheritance_{false};
+  std::unordered_set<CSSPropertyID> custom_inherit_list_{};
+  // Hack to keep the old behavior that vw is resolved against screen metrics
+  // only for font size if viweport size is specified as definite value.
+  bool unify_vw_vh_behavior_{false};
+  bool once_inheritance_disabled_{true};
 
   template <typename T>
   using PageConfigSetter = void (PageConfig::*)(T);
