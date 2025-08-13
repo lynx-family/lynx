@@ -178,11 +178,15 @@ uint32_t MemoryMonitor::ScriptingEngineMode() {
 }
 
 MemoryMonitor::~MemoryMonitor() {
-  if (Enable()) {
-    // Clear records and report 0 memory usage.
-    memory_records_.clear();
+  // Clear records and report 0 memory usage.
+  memory_records_.clear();
+  bool enable = Enable();
+  if (enable) {
     ReportMemory();
   }
+  LOGI("[memory_monitor.h] ~MemoryMonitor, this:"
+       << this << ", Enable:" << enable
+       << ", MemoryChangeThresholdMb:" << MemoryChangeThresholdMb());
 }
 
 void MemoryMonitor::AllocateMemory(MemoryRecord&& record) {
