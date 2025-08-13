@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "base/include/log/logging.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/performance/memory_monitor/memory_record.h"
 #include "core/services/performance/performance_event_sender.h"
@@ -74,7 +75,11 @@ class MemoryMonitor {
 
   explicit MemoryMonitor(PerformanceEventSender* observer,
                          int32_t instance_id = report::kUninitializedInstanceId)
-      : instance_id_(instance_id), sender_(observer){};
+      : instance_id_(instance_id), sender_(observer) {
+    LOGI("[memory_monitor.h] new MemoryMonitor, this:"
+         << this << ", Enable:" << Enable()
+         << ", MemoryChangeThresholdMb:" << MemoryChangeThresholdMb());
+  };
   ~MemoryMonitor();
   MemoryMonitor(const MemoryMonitor& timing) = delete;
   MemoryMonitor& operator=(const MemoryMonitor&) = delete;
