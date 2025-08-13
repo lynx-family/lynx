@@ -9460,6 +9460,7 @@ public class abstract com::lynx::tasm::behavior::ui::UIGroup : com.lynx.tasm.beh
   public com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.UIGroup(final LynxContext context);
   public com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.UIGroup(final LynxContext context, Object param);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.initialize();
+  public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.markDetachWithViewRecursively(boolean detached);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeProcessViewInfo(ViewInfo info);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeDispatchProcessViewInfo(ViewInfo info);
   public void com.lynx.tasm.behavior.ui.UIGroup< T extends ViewGroup >.beforeProcessChildViewInfo(ViewInfo info, View child, long drawingTime);

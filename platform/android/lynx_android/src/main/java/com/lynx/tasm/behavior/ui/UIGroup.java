@@ -37,9 +37,11 @@ public abstract class UIGroup<T extends ViewGroup>
   private static WeakHashMap<View, Integer> mZIndexHash = new WeakHashMap<>();
   private ViewGroupDrawingOrderHelper mDrawingOrderHelper;
   private boolean mIsInsertViewCalled = false;
+
   public boolean isInsertViewCalled() {
     return mIsInsertViewCalled;
   }
+
   public boolean enableAutoClipRadius() {
     return false;
   }
@@ -57,14 +59,19 @@ public abstract class UIGroup<T extends ViewGroup>
     super.initialize();
     mDrawingOrderHelper = new ViewGroupDrawingOrderHelper(getView());
     if (mView instanceof IDrawChildHookBinding) {
-      if (mContext.isEnginePoolEnabled()) {
-        // TODO(renzhongyue): obtain the existing view info during fallback.
-        mViewInfo = new ViewInfo(this, mView);
+      ((IDrawChildHookBinding) mView).bindDrawChildHook(this);
+    }
+  }
+
+  @Override
+  public void markDetachWithViewRecursively(boolean detached) {
+    if (detached) {
+      mViewInfo = new ViewInfo(this, mView);
+      if (mView instanceof IDrawChildHookBinding) {
         ((IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
-      } else {
-        ((IDrawChildHookBinding) mView).bindDrawChildHook(this);
       }
     }
+    super.markDetachWithViewRecursively(detached);
   }
 
   // The following code shares structural similarities with IDrawChildHook implementations

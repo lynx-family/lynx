@@ -229,6 +229,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     isFallbackProcess = enable;
     if (!enable && getUIBodyView() != null) {
       getUIBodyView().clearNodeIndexImageMap();
+      getUIBodyView().markNeedRemoveExistingViews();
+      getUIBodyView().removeExistingViews();
     }
   }
 

@@ -101,6 +101,15 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     return mOriginText;
   }
 
+  @Override
+  protected void detachWithViewInfo(ViewInfo parentViewInfo) {
+    super.detachWithViewInfo(parentViewInfo);
+    if (mHasImage && getText() instanceof Spanned) {
+      Spanned spannable = (Spanned) getText();
+      AbsInlineImageSpan.possiblyUpdateInlineImageSpans(spannable, new DrawableCallback(this));
+    }
+  }
+
   private void dispatchDetachImageSpan() {
     if (mHasImage && getText() instanceof Spanned) {
       Spanned text = (Spanned) getText();

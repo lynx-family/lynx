@@ -2720,6 +2720,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       builder.setUrl(mUrl);
       builder.setTemplateBundle(mTemplateBundle);
       loadTemplate(builder.build());
+      mLynxUIRender.lynxUIOwner().performMeasure();
+      mLynxUIRender.lynxUIOwner().performLayout();
       return true;
     }
     return false;
