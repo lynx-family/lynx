@@ -6,70 +6,102 @@ package com.lynx.tasm.service;
 
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.core.LynxThreadPool;
-import java.util.concurrent.CountDownLatch;
+import com.lynx.tasm.utils.RunOnceRunnable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Helper base class for lazy initializing
+ * A helper base class for performing expensive initialization lazily.
+ * <p>
+ * Subclasses must implement {@link #doInitialize()} to perform the actual initialization logic.
+ * This logic is guaranteed to be executed at most once.
+ * <p>
+ * Initialization can be triggered asynchronously via {@link #initialize()} or performed
+ * synchronously by calling {@link #ensureInitialized(boolean)} with {@code true}.
  */
 public abstract class LynxLazyInitializer {
   private static final String TAG = "LynxLazyInitializer";
 
   /**
-   * timeout 3s
+   * Timeout for waiting for asynchronous initialization to complete, in seconds.
    */
   private static final long TIMEOUT = 3;
 
-  private final AtomicBoolean mIsInitializeStarted = new AtomicBoolean(false);
-  protected final AtomicBoolean mIsInitialized = new AtomicBoolean(false);
-  private final CountDownLatch countDownLatch = new CountDownLatch(1);
+  private final RunOnceRunnable runnable = new RunOnceRunnable(this::runCatching);
+  private final AtomicBoolean initialized = new AtomicBoolean(false);
 
   /**
-   * Initialize the class, need to be implemented by subclass.
-   * This method will be invoked by `initialize()` in a background thread. Do not call this method
-   * directly, use `initialize()` instead.
-   * @return true if initialized, false if failed
+   * Performs the actual initialization. This method will be invoked at most once.
+   * <p>
+   * Subclasses must implement this method to contain the initialization logic.
+   * It will be executed on a background thread if {@link #initialize()} is called, or on the
+   * calling thread if {@link #ensureInitialized(boolean)} is called with {@code true}.
+   *
+   * @return {@code true} if initialization was successful, {@code false} otherwise.
    */
   protected abstract boolean doInitialize();
 
-  /**
-   * Initialize the class, will call `doInitialize` in a background thread
-   * It should be called early in the lifecycle of the class.
-   */
-  public void initialize() {
-    if (mIsInitializeStarted.getAndSet(true)) {
-      return;
+  private void runCatching() {
+    try {
+      initialized.set(doInitialize());
+    } catch (Exception e) {
+      // pass
+      LLog.e(TAG, "initialize failed: " + e);
     }
-
-    final Runnable initTask = new Runnable() {
-      @Override
-      public void run() {
-        boolean res = doInitialize();
-        mIsInitialized.set(res);
-        countDownLatch.countDown();
-      }
-    };
-
-    LynxThreadPool.getAsyncServiceExecutor().execute(initTask);
   }
 
   /**
-   * Ensure the class is initialized, will call `initialize` if not initialized with a timeout of
-   * 5s. It should be called before using the methods of the class.
-   * @return true if initialized, false if timeout
+   * Triggers the initialization asynchronously on a background thread if it has not already
+   * started. This method returns immediately and does not block.
+   */
+  public void initialize() {
+    if (runnable.getStatus() == RunOnceRunnable.STATUS_IDLE) {
+      LynxThreadPool.getAsyncServiceExecutor().execute(runnable);
+    }
+  }
+
+  /**
+   * Ensures that the initialization is complete, with an option for synchronous execution.
+   *
+   * @param runImmediately If {@code true}, and initialization has not yet run, this method
+   *                       will try to execute the initialization logic synchronously on the
+   *                       current thread.
+   *                       <p>
+   *                       If {@code false}, this method will trigger asynchronous initialization
+   *                       (if not already started) and block the current thread until it
+   *                       completes or the {@param #TIMEOUT} is reached.
+   * @return {@code true} if initialization is considered complete, {@code false} otherwise.
+   *         Returning false means this task throw an exception or timeout.
+   */
+  public boolean ensureInitialized(boolean runImmediately) {
+    if (runnable.getStatus() == RunOnceRunnable.STATUS_FINISHED) {
+      // fast path
+      return true;
+    }
+    if (!runImmediately) {
+      initialize();
+    } else {
+      // If a background run has already started, RunOnceRunnable will ignore this run,
+      //  so just call it.
+      runnable.run();
+    }
+    if (!runnable.waitForComplete(TIMEOUT, TimeUnit.SECONDS)) {
+      LLog.e(TAG, "ensureInitialized timeout");
+      return false;
+    }
+    return initialized.get();
+  }
+
+  /**
+   * Ensures the class is initialized by running the initialization logic synchronously on the
+   * calling thread if it has not already run.
+   * <p>
+   * This is a convenience method for {@code ensureInitialized(true)}.
+   *
+   * @return {@code true} if initialization is considered complete, {@code false} otherwise.
+   *         Returning false means this task throw an exception or timeout.
    */
   public boolean ensureInitialized() {
-    if (!mIsInitialized.get()) {
-      initialize();
-      try {
-        if (!countDownLatch.await(TIMEOUT, TimeUnit.SECONDS)) {
-          LLog.e(TAG, "ensureInitialized timeout");
-        }
-      } catch (InterruptedException e) {
-        LLog.e(TAG, "ensureInitialized failed: " + e);
-      }
-    }
-    return mIsInitialized.get();
+    return ensureInitialized(true);
   }
 }
