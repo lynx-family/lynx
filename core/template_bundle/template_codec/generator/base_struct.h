@@ -17,20 +17,6 @@
 namespace lynx {
 namespace tasm {
 
-struct EncodeResult {
-  int status;
-  std::string error_msg;
-  std::vector<uint8_t> buffer;
-  std::string lepus_code;
-  std::string lepus_debug;
-  std::string section_size;
-};
-
-struct DecodeResult {
-  int status;
-  std::string result;
-};
-
 // Options used in encode time, but not be used in run time.
 struct GeneratorOptions {
   std::string cli_version_{};

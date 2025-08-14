@@ -6,8 +6,6 @@
 #include <string>
 #include <vector>
 
-#include "core/template_bundle/template_codec/generator/base_struct.h"
-
 namespace lynx {
 namespace tasm {
 enum EncodeSSRError {
@@ -16,6 +14,19 @@ enum EncodeSSRError {
   ERR_NOT_SSR,
   ERR_BUF,
   ERR_DATA_EMPTY
+};
+
+struct EncodeResult {
+  int status;
+  std::string error_msg;
+  std::vector<uint8_t> buffer;
+  std::string lepus_code;
+  std::string lepus_debug;
+  std::string section_size;
+};
+struct DecodeResult {
+  int status;
+  std::string result;
 };
 
 lynx::tasm::EncodeResult encode(const std::string& options_str);
