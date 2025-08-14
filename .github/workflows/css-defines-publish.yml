@@ -31,10 +31,11 @@ jobs:
         run: |
           npm install -g npm@latest
           npm --version
-      - name: Publish
+      - name: Build
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          pushd tools/css_generator
+      - name: Publish
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/tools/css_generator
           npm publish --access public --provenance
-          popd

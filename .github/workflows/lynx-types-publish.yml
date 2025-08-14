@@ -30,10 +30,11 @@ jobs:
         run: |
           npm install -g npm@latest
           npm --version
-      - name: Publish
+      - name: Build
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
-          pushd js_libraries/types
-          npm publish --access public
-          popd
+      - name: Publish
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/js_libraries/types
+          npm publish --access public --provenance

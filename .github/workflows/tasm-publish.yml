@@ -151,12 +151,14 @@ jobs:
         with:
           name: tasm_darwin
           path: lynx/oliver/lynx-tasm/build/darwin/Release
-      - name: Publish
+      - name: Build
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
           pushd oliver/lynx-tasm
           npm install
           npm run build:wasm
-          npm publish --access public
-          popd
+      - name: Publish
+        run: |-
+          cd $GITHUB_WORKSPACE/lynx/oliver/lynx-tasm
+          npm publish --access public --provenance
