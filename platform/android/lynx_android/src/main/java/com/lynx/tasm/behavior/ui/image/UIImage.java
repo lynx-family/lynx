@@ -12,6 +12,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
+import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
 import com.lynx.tasm.behavior.ui.view.UIView;
@@ -27,7 +28,14 @@ public class UIImage extends UIView {
 
   public UIImage(LynxContext context, Object params) {
     super(context, params);
-    mLynxImageManager = new LynxImageManager(getLynxContext());
+    if (mContext != null && mContext.isFallbackProcess() && mContext.getUIBodyView() != null
+        && params instanceof UIParams) {
+      setNodeIndex(((UIParams) params).mNodeIndex);
+      mLynxImageManager = context.getUIBodyView().obtainImageAccordingToNodeIndex(mNodeIndex);
+    }
+    if (mLynxImageManager == null) {
+      mLynxImageManager = new LynxImageManager(getLynxContext());
+    }
     mLynxImageManager.setLynxBaseUI(this);
     mView.setWillNotDraw(false);
   }
@@ -169,10 +177,13 @@ public class UIImage extends UIView {
     if (mLynxImageManager != null) {
       mLynxImageManager.setLynxBaseUI(null);
       mLynxImageManager.setViewInfo(mViewInfo != null ? mViewInfo : parentViewInfo);
+      getLynxContext().getUIBodyView().registerImageAccordingToNodeIndex(
+          mNodeIndex, mLynxImageManager);
       // TODO(songshourui.null): We can nullify LynxImageManager upon src changes or layout updates
       // to optimize performance.
       mLynxImageManager = null;
     }
+
     super.detachWithViewInfo(parentViewInfo);
   }
 }
