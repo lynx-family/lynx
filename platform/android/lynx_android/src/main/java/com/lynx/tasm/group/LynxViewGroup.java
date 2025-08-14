@@ -318,6 +318,14 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.templateBundle = templateBundle;
   }
 
+  /**
+   * Get the associated TemplateBundle with LynxViewGroup.
+   * If templateBundle is not ready yet. It will block current thread
+   * and waiting for the result.
+   *
+   * @return The Associated TemplateBundle
+   */
+  @Override
   public TemplateBundle getTemplateBundle() {
     if (templateBundle == null) {
       try {
@@ -329,6 +337,16 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       }
     }
     return this.templateBundle;
+  }
+
+  /**
+   * Check if the bundle in LynxViewGroup is ready yet.
+   *
+   * @return TemplateBundle ready or not.
+   */
+  @Override
+  public boolean isTemplateBundleReady() {
+    return templateBundle != null;
   }
 
   @Override
