@@ -173,7 +173,7 @@ class LayoutComputedStyle {
   return_value Get##func_name() const { return flex_data_->property_name; }
   STYLE_GET_FLEX_PROPERTY(float, FlexGrow, flex_grow_)
   STYLE_GET_FLEX_PROPERTY(float, FlexShrink, flex_shrink_)
-  STYLE_GET_FLEX_PROPERTY(NLength, FlexBasis, flex_basis_)
+  STYLE_GET_FLEX_PROPERTY(const NLength&, FlexBasis, flex_basis_)
   STYLE_GET_FLEX_PROPERTY(FlexDirectionType, FlexDirection, flex_direction_)
   STYLE_GET_FLEX_PROPERTY(FlexWrapType, FlexWrap, flex_wrap_)
   STYLE_GET_FLEX_PROPERTY(JustifyContentType, JustifyContent, justify_content_)
