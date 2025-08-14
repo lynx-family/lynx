@@ -50,6 +50,9 @@ class Config:
                 if name_as.get("getter")
                 else self.getter_func_name
             )
+            self.const_name = (
+                name_as.get("const") if name_as.get("const") else self.const_name
+            )
 
         self.desc = desc
         self.default_value = default_value
@@ -132,55 +135,31 @@ def parse_config() -> list[Config]:
     return configs
 
 
-def replace_comments_with_code(
-    start_marker: str, end_marker: str, gen_code: str, page_config_path: str
-):
-    with open(page_config_path, "r") as f:
-        content = f.read()
-    pattern = re.compile(
-        r"(?<={})(.*?)(?={})".format(start_marker, end_marker),
-        re.DOTALL,
-    )
-    content = re.sub(pattern, gen_code, content)
-    with open(page_config_path, "w") as f:
-        f.write(content)
-
-
 def gen_page_config_decode():
     configs = parse_config()
-    config_decode_path = os.path.join(
+    config_decode_tmpl_path = os.path.join(
         _binary_decoder_path,
-        "lynx_binary_config_decoder.cc",
+        "lynx_config_decoder.tmpl",
     )
-    config_decode_tmpl = """
-{% for config in configs %}
-{% if "ALL" in config.codeGen or "DECODE" in config.codeGen %}
-  if (doc.HasMember({{ config.const_name }}) && doc[{{ config.const_name }}].Is{{ config.doc_type }}()) {
-    {% if config.value_type == "TernaryBool" %}
-    page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
-    {% else %}
-    page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].Get{{ config.doc_type }}());
-    {% endif %}
-  {% if config.version_overrides %}
-  {% for version_override in config.version_overrides %}
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_, {{ version_override["minSDKVersion"] }})) {
-    page_config->{{ config.setter_func_name}}({{ version_override["value"] }});
-  }
-  {% endfor %}
-  {% else %}
-  }
-  {% endif %}
-{% endif %}
+    if not os.path.exists(config_decode_tmpl_path):
+        print(f"{config_decode_tmpl_path} not found when gen lynx config decoder")
+        sys.exit(1)
 
-{% endfor %}
-"""
-    start_marker = "// BEGIN CONFIG DECODE GEN"
-    end_marker = "// END CONFIG DECODE GEN"
-    gen_code = Template(
-        config_decode_tmpl, trim_blocks=True, lstrip_blocks=True
-    ).render(configs=configs)
-    replace_comments_with_code(start_marker, end_marker, gen_code, config_decode_path)
-    clang_format(config_decode_path)
+    lynx_config_decoder_header_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_decoder.h",
+    )
+    if os.path.exists(lynx_config_decoder_header_path):
+        os.remove(lynx_config_decoder_header_path)
+    with open(config_decode_tmpl_path, "r") as f:
+        lynx_config_tmpl = f.read()
+    with open(lynx_config_decoder_header_path, "w") as f:
+        f.write(
+            Template(lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True).render(
+                configs=configs
+            )
+        )
+    clang_format(lynx_config_decoder_header_path)
 
 
 def gen_lynx_config():

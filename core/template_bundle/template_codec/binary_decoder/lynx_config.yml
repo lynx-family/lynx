@@ -8,6 +8,36 @@ version:
   valueType: string
   nameAs:
     member: page_version
+cli:
+  description: cli version
+  defaultValue: null
+  valueType: string
+  nameAs:
+    member: cli_version
+    setter: SetCliVersion
+    getter: GetCliVersion
+    const: kCliVersion
+reactVersion:
+  description:
+  defaultValue: null
+  valueType: string
+customData:
+  description:
+  defaultValue: null
+  valueType: string
+tapSlop:
+  description:
+  defaultValue: 50px
+  valueType: string
+redBoxImageSizeWarningThreshold:
+  description: null
+  defaultValue: 1000000
+  valueType: uint32_t
+  nameAs:
+    member: log_box_image_size_warning_threshold
+    setter: SetLogBoxImageSizeWarningThreshold
+    getter: GetLogBoxImageSizeWarningThreshold
+    const: kLogBoxImageSizeWarningThreshold
 lepusQuickjsStacksize:
   description: null
   defaultValue: 0
@@ -16,6 +46,18 @@ lepusQuickjsStacksize:
     member: lepus_quickjs_stack_size
     setter: SetLepusQuickjsStackSize
     getter: GetLepusQuickjsStackSize
+useNewImage:
+  description: null
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+enableTextBoringLayout:
+  description: Enable Android text BoringLayout.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+enableTextLayerRender:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
 flatten:
   description:
   defaultValue: true
@@ -70,3 +112,178 @@ enableNewImage:
   description: null
   defaultValue: true
   valueType: bool
+enableTextNonContiguousLayout:
+  description: null
+  defaultValue: true
+  valueType: bool
+enableViewReceiveTouch:
+  description: null
+  defaultValue: false
+  valueType: bool
+enableEventThrough:
+  description: null
+  defaultValue: false
+  valueType: bool
+removeComponentElement:
+  description: null
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: need_remove_component_element
+strictPropType:
+  description: null
+  defaultValue: false
+  valueType: bool
+syncImageAttach:
+  description: null
+  defaultValue: true
+  valueType: bool
+useImagePostProcessor:
+  description: null
+  defaultValue: false
+  valueType: bool
+useNewSwiper:
+  description: null
+  defaultValue: true
+  valueType: bool
+enableAsyncInitVideoEngine:
+  description: null
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: async_init_tt_video_engine
+    setter: SetEnableAsyncInitTTVideoEngine
+    getter: GetEnableAsyncInitTTVideoEngine
+enableComponentLifecycleAlignWebview:
+  description:
+  defaultValue: false
+  valueType: bool
+enableListNewArchitecture:
+  description:
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: list_new_architecture
+    setter: SetListNewArchitecture
+    getter: GetListNewArchitecture
+enableNewListContainer:
+  description:
+  defaultValue: false
+  valueType: bool
+enableListPlug:
+  description:
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: list_enable_plug
+enableListMoveOperation:
+  description:
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: list_enable_move_operation
+enableCreateViewAsync:
+  description:
+  defaultValue: true
+  valueType: bool
+enableVsyncAlignedFlush:
+  description:
+  defaultValue: false
+  valueType: bool
+enableAccessibilityElement:
+  description:
+  defaultValue: true
+  valueType: bool
+enableOverlapForAccessibilityElement:
+  description:
+  defaultValue: true
+  valueType: bool
+enableNewAccessibility:
+  description:
+  defaultValue: false
+  valueType: bool
+enableNewLayoutOnly:
+  description:
+  defaultValue: true
+  valueType: bool
+enableReactOnlyPropsId:
+  description:
+  defaultValue: false
+  valueType: bool
+enableGlobalComponentMap:
+  description:
+  defaultValue: false
+  valueType: bool
+enableTextRefactor:
+  description:
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_2
+      value: 'true'
+enableTextOverflow:
+  description: Set text overflow as visible if true.
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_8
+      value: 'true'
+enableNewClipMode:
+  description: Set new clip mode if true.
+  defaultValue: true
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_10
+      value: 'true'
+autoResumeAnimation:
+  description:
+  defaultValue: true
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_3
+      value: 'true'
+  nameAs:
+    setter: SetGlobalAutoResumeAnimation
+    getter: GetGlobalAutoResumeAnimation
+enableNewTransformOrigin:
+  description: If this flag is true, new transform origin algorithm will apply.
+  defaultValue: true
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_6
+      value: 'true'
+  nameAs:
+    setter: SetGlobalEnableNewTransformOrigin
+    getter: GetGlobalEnableNewTransformOrigin
+enableCircularDataCheck:
+  description: If this flag is true, circular data check will enable when convert js value to other vale.
+  defaultValue: true
+  valueType: bool
+  nameAs:
+    setter: SetGlobalCircularDataCheck
+    getter: GetGlobalCircularDataCheck
+enableReduceInitDataCopy:
+  description:
+  defaultValue: false
+  valueType: bool
+enableSimultaneousTap:
+  description:
+  defaultValue: false
+  valueType: bool
+enableComponentLayoutOnly:
+  description:
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_6
+      value: 'true'
+extendedLayoutOnlyOpt:
+  description: A config to force make some special properties can be used to layout only (such as direction&text-align,etc.).
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_13
+      value: 'true'
+  nameAs:
+    setter: SetEnableExtendedLayoutOpt
+    getter: GetEnableExtendedLayoutOpt

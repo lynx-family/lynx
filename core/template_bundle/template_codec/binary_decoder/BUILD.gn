@@ -23,6 +23,7 @@ binary_decoder_shared_sources = [
   "lynx_binary_reader.cc",
   "lynx_binary_reader.h",
   "lynx_config_auto_gen.h",
+  "lynx_config_decoder.h",
   "page_config.cc",
   "page_config.h",
   "parallel_parse_task_scheduler.cc",

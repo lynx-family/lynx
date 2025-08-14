@@ -657,7 +657,7 @@ class ElementManager : public ElementContextDelegate {
 
   bool GetListEnablePlug() {
     if (config_) {
-      return config_->list_enable_plug();
+      return config_->GetEnableListPlug();
     }
     return false;
   }

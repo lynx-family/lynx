@@ -16,6 +16,7 @@
 #include "core/services/event_report/event_tracker.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_decoder.h"
 
 namespace lynx {
 namespace tasm {
@@ -23,82 +24,17 @@ static constexpr const char* const kAbsoluteInContentBound =
     "absoluteInContentBound";
 static constexpr const char* const kQuirksMode = "quirksMode";
 static constexpr const char* const kEnableFixedNew = "enableFixedNew";
-static constexpr const char* const kLogBoxImageSizeWarningThreshold =
-    "redBoxImageSizeWarningThreshold";
-static constexpr const char* const kEnableTextNonContiguousLayout =
-    "enableTextNonContiguousLayout";
-static constexpr const char* const kEnableViewReceiveTouch =
-    "enableViewReceiveTouch";
-static constexpr const char* const kEnableEventThrough = "enableEventThrough";
-static constexpr const char* const kRemoveComponentElement =
-    "removeComponentElement";
-static constexpr const char* const kStrictPropType = "strictPropType";
 static constexpr const char* const kEnableCSSInheritance =
     "enableCSSInheritance";
 static constexpr const char* const kCustomCSSInheritanceList =
     "customCSSInheritanceList";
 static constexpr const char* const kCSSAlignWithLegacyW3C =
     "cssAlignWithLegacyW3C";
-static constexpr const char* const kUseNewImage = "useNewImage";
-static constexpr const char* const kSyncImageAttach = "syncImageAttach";
-static constexpr const char* const kUseImagePostProcessor =
-    "useImagePostProcessor";
-static constexpr const char* const kUseNewSwiper = "useNewSwiper";
-static constexpr const char* const kEnableAsyncInitVideoEngine =
-    "enableAsyncInitVideoEngine";
-static constexpr const char* const kCliVersion = "cli";
-static constexpr const char* const kReactVersion = "reactVersion";
-static constexpr const char* const kCustomData = "customData";
-static constexpr const char* const kEnableComponentLifecycleAlignWebview =
-    "enableComponentLifecycleAlignWebview";
-static constexpr const char* const kEnableListNewArchitecture =
-    "enableListNewArchitecture";
-static constexpr const char* const kEnableListNewContainer =
-    "enableNewListContainer";
-static constexpr const char* const kEnableListPlug = "enableListPlug";
-static constexpr const char* const kEnableListMoveOperation =
-    "enableListMoveOperation";
 static constexpr const char* const kEnableCSSStrictMode = "enableCSSStrictMode";
-static constexpr const char* const kTapSlop = "tapSlop";
-static constexpr const char* const kDefaultTapSlop = "50px";
-static constexpr const char* const kEnableCreateViewAsync =
-    "enableCreateViewAsync";
-static constexpr const char* const kEnableVsyncAlignedFlush =
-    "enableVsyncAlignedFlush";
-static constexpr const char* const kEnableAccessibilityElement =
-    "enableAccessibilityElement";
-static constexpr const char* const kEnableOverlapForAccessibilityElement =
-    "enableOverlapForAccessibilityElement";
-static constexpr const char* const kEnableNewAccessibility =
-    "enableNewAccessibility";
-static constexpr const char* const kEnableNewLayoutOnly = "enableNewLayoutOnly";
-static constexpr const char* const kEnableReactOnlyPropsId =
-    "enableReactOnlyPropsId";
-static constexpr const char* const kEnableGlobalComponentMap =
-    "enableGlobalComponentMap";
-static constexpr const char* const kEnableTextRefactor = "enableTextRefactor";
-static constexpr const char* const kEnableTextOverflow = "enableTextOverflow";
-static constexpr const char* const kEnableTextBoringLayout =
-    "enableTextBoringLayout";
-static constexpr const char* const kEnableNewClipMode = "enableNewClipMode";
-static constexpr const char* const kAutoResumeAnimation = "AutoResumeAnimation";
-static constexpr const char* const kEnableNewTransformOrigin =
-    "enableNewTransformOrigin";
-static constexpr const char* const kEnableCircularDataCheck =
-    "enableCircularDataCheck";
-static constexpr const char* const kEnableTextLayerRender =
-    "enableTextLayerRender";
-static constexpr const char* const kEnableReduceInitDataCopy =
-    "enableReduceInitDataCopy";
 static constexpr const char* const kUnifyVWVHBehavior = "unifyVWVHBehavior";
 static constexpr const char* const kFontScaleEffectiveOnlyOnSp =
     "fontScaleEffectiveOnlyOnSp";
-static constexpr const char* const kEnableSimultaneousTap =
-    "enableSimultaneousTap";
-static constexpr const char* const kEnableComponentLayoutOnly =
-    "enableComponentLayoutOnly";
-static constexpr const char* const kExtendedLayoutOnlyOpt =
-    "extendedLayoutOnlyOpt";
+
 static constexpr const char* const kEnableTouchRefactor = "enableTouchRefactor";
 static constexpr const char* const kEnableEndGestureAtLastFingerUp =
     "enableEndGestureAtLastFingerUp";
@@ -308,60 +244,10 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     return false;
   }
 
-  // BEGIN CONFIG DECODE GEN
-  if (doc.HasMember(kVersion) && doc[kVersion].IsString()) {
-    page_config->SetVersion(doc[kVersion].GetString());
-  }
-
-  if (doc.HasMember(kLepusQuickjsStacksize) &&
-      doc[kLepusQuickjsStacksize].IsUint()) {
-    page_config->SetLepusQuickjsStackSize(
-        doc[kLepusQuickjsStacksize].GetUint());
-  }
-
-  if (doc.HasMember(kFlatten) && doc[kFlatten].IsBool()) {
-    page_config->SetGlobalFlattern(doc[kFlatten].GetBool());
-  }
-
-  if (doc.HasMember(kImplicit) && doc[kImplicit].IsBool()) {
-    page_config->SetGlobalImplicit(doc[kImplicit].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_0)) {
-    page_config->SetGlobalImplicit(false);
-  }
-
-  if (doc.HasMember(kLepusStrict) && doc[kLepusStrict].IsBool()) {
-    page_config->SetEnableLepusStrictCheck(doc[kLepusStrict].GetBool());
-  }
-
-  if (doc.HasMember(kLepusNullPropAsUndef) &&
-      doc[kLepusNullPropAsUndef].IsBool()) {
-    page_config->SetEnableLepusNullPropAsUndef(
-        doc[kLepusNullPropAsUndef].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_1_6)) {
-    page_config->SetEnableLepusNullPropAsUndef(true);
-  }
-
-  if (doc.HasMember(kDataStrictMode) && doc[kDataStrictMode].IsBool()) {
-    page_config->SetDataStrictMode(doc[kDataStrictMode].GetBool());
-  }
-
-  if (doc.HasMember(kEnableAsyncDisplay) && doc[kEnableAsyncDisplay].IsBool()) {
-    page_config->SetEnableAsyncDisplay(doc[kEnableAsyncDisplay].GetBool());
-  }
-
-  if (doc.HasMember(kEnableImageDownsampling) &&
-      doc[kEnableImageDownsampling].IsBool()) {
-    page_config->SetEnableImageDownsampling(
-        doc[kEnableImageDownsampling].GetBool());
-  }
-
-  if (doc.HasMember(kEnableNewImage) && doc[kEnableNewImage].IsBool()) {
-    page_config->SetEnableNewImage(doc[kEnableNewImage].GetBool());
-  }
-
-  // END CONFIG DECODE GEN
+  // Most of the read/write and decode code for page_config has been
+  // automatically generated through IDL files. Here, the automatically
+  // generated page_config decode method is called first.
+  LynxConfigDecoder::DecodePageConfig(page_config, doc, target_sdk_version_);
 
   if (doc.HasMember(TEMPLATE_BUNDLE_MODULE_MODE) &&
       doc[TEMPLATE_BUNDLE_MODULE_MODE].IsInt()) {
@@ -443,38 +329,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kEnableXTextLayoutReused].GetBool());
   }
 
-  if (doc.HasMember(kLogBoxImageSizeWarningThreshold) &&
-      doc[kLogBoxImageSizeWarningThreshold].IsInt()) {
-    page_config.get()->SetLogBoxImageSizeWarningThreshold(
-        doc[kLogBoxImageSizeWarningThreshold].GetInt());
-  }
-
-  if (doc.HasMember(kEnableTextNonContiguousLayout) &&
-      doc[kEnableTextNonContiguousLayout].IsBool()) {
-    page_config->SetEnableTextNonContiguousLayout(
-        doc[kEnableTextNonContiguousLayout].GetBool());
-  }
-
-  if (doc.HasMember(kEnableViewReceiveTouch) &&
-      doc[kEnableViewReceiveTouch].IsBool()) {
-    page_config.get()->SetEnableViewReceiveTouch(
-        doc[kEnableViewReceiveTouch].GetBool());
-  }
-
-  if (doc.HasMember(kEnableEventThrough) && doc[kEnableEventThrough].IsBool()) {
-    page_config->SetEnableEventThrough(doc[kEnableEventThrough].GetBool());
-  }
-
-  if (doc.HasMember(kRemoveComponentElement) &&
-      doc[kRemoveComponentElement].IsBool()) {
-    page_config->SetRemoveComponentElement(
-        doc[kRemoveComponentElement].GetBool());
-  }
-
-  if (doc.HasMember(kStrictPropType) && doc[kStrictPropType].IsBool()) {
-    page_config->SetStrictPropType(doc[kStrictPropType].GetBool());
-  }
-
   if (doc.HasMember(kEnableCSSInheritance) &&
       doc[kEnableCSSInheritance].IsBool()) {
     page_config->SetEnableCSSInheritance(doc[kEnableCSSInheritance].GetBool());
@@ -500,192 +354,15 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kCSSAlignWithLegacyW3C].GetBool());
   }
 
-  if (doc.HasMember(kUseNewImage) && doc[kUseNewImage].IsBool()) {
-    page_config->SetUseNewImage(doc[kUseNewImage].GetBool()
-                                    ? TernaryBool::TRUE_VALUE
-                                    : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kSyncImageAttach) && doc[kSyncImageAttach].IsBool()) {
-    page_config->SetSyncImageAttach(doc[kSyncImageAttach].GetBool());
-  }
-
-  if (doc.HasMember(kUseImagePostProcessor) &&
-      doc[kUseImagePostProcessor].IsBool()) {
-    page_config->SetUseImagePostProcessor(
-        doc[kUseImagePostProcessor].GetBool());
-  }
-
-  if (doc.HasMember(kUseNewSwiper) && doc[kUseNewSwiper].IsBool()) {
-    page_config->SetUseNewSwiper(doc[kUseNewSwiper].GetBool());
-  }
-
-  if (doc.HasMember(kEnableAsyncInitVideoEngine) &&
-      doc[kEnableAsyncInitVideoEngine].IsBool()) {
-    page_config->SetEnableAsyncInitTTVideoEngine(
-        doc[kEnableAsyncInitVideoEngine].GetBool());
-  }
-
-  if (doc.HasMember(kCliVersion) && doc[kCliVersion].IsString()) {
-    page_config->SetCliVersion(doc[kCliVersion].GetString());
-  }
-
-  if (doc.HasMember(kReactVersion) && doc[kReactVersion].IsString()) {
-    page_config->SetReactVersion(doc[kReactVersion].GetString());
-  }
-
-  if (doc.HasMember(kCustomData) && doc[kCustomData].IsString()) {
-    page_config->SetCustomData(doc[kCustomData].GetString());
-  }
-
-  if (doc.HasMember(kEnableComponentLifecycleAlignWebview) &&
-      doc[kEnableComponentLifecycleAlignWebview].IsBool()) {
-    page_config->SetEnableComponentLifecycleAlignWebview(
-        doc[kEnableComponentLifecycleAlignWebview].GetBool());
-  }
-
-  if (doc.HasMember(kEnableListNewArchitecture) &&
-      doc[kEnableListNewArchitecture].IsBool()) {
-    page_config->SetListNewArchitecture(
-        doc[kEnableListNewArchitecture].GetBool());
-  }
-
-  if (doc.HasMember(kEnableListNewContainer) &&
-      doc[kEnableListNewContainer].IsBool()) {
-    page_config->SetEnableNewListContainer(
-        doc[kEnableListNewContainer].GetBool());
-  }
-
-  if (doc.HasMember(kEnableListPlug) && doc[kEnableListPlug].IsBool()) {
-    page_config->SetEnableListPlug(doc[kEnableListPlug].GetBool());
-  }
-
-  if (doc.HasMember(kEnableListMoveOperation) &&
-      doc[kEnableListMoveOperation].IsBool()) {
-    page_config->SetEnableListMoveOperation(
-        doc[kEnableListMoveOperation].GetBool());
-  }
-
   if (doc.HasMember(kEnableCSSStrictMode) &&
       doc[kEnableCSSStrictMode].IsBool()) {
     page_config->SetEnableCSSStrictMode(doc[kEnableCSSStrictMode].GetBool());
-  }
-
-  if (doc.HasMember(kTapSlop) && doc[kTapSlop].IsString()) {
-    page_config->SetTapSlop(doc[kTapSlop].GetString());
-  } else {
-    page_config->SetTapSlop(kDefaultTapSlop);
-  }
-
-  if (doc.HasMember(kEnableCreateViewAsync) &&
-      doc[kEnableCreateViewAsync].IsBool()) {
-    page_config->SetEnableCreateViewAsync(
-        doc[kEnableCreateViewAsync].GetBool());
-  }
-
-  if (doc.HasMember(kEnableVsyncAlignedFlush) &&
-      doc[kEnableVsyncAlignedFlush].IsBool()) {
-    page_config->SetEnableVsyncAlignedFlush(
-        doc[kEnableVsyncAlignedFlush].GetBool());
-  }
-
-  if (doc.HasMember(kEnableAccessibilityElement) &&
-      doc[kEnableAccessibilityElement].IsBool()) {
-    page_config->SetEnableAccessibilityElement(
-        doc[kEnableAccessibilityElement].GetBool());
-  }
-
-  if (doc.HasMember(kEnableOverlapForAccessibilityElement) &&
-      doc[kEnableOverlapForAccessibilityElement].IsBool()) {
-    page_config->SetEnableOverlapForAccessibilityElement(
-        doc[kEnableOverlapForAccessibilityElement].GetBool());
-  }
-
-  if (doc.HasMember(kEnableNewAccessibility) &&
-      doc[kEnableNewAccessibility].IsBool()) {
-    page_config->SetEnableNewAccessibility(
-        doc[kEnableNewAccessibility].GetBool());
-  }
-  if (doc.HasMember(kEnableNewLayoutOnly) &&
-      doc[kEnableNewLayoutOnly].IsBool()) {
-    page_config->SetEnableNewLayoutOnly(doc[kEnableNewLayoutOnly].GetBool());
-  }
-
-  if (doc.HasMember(kEnableReactOnlyPropsId) &&
-      doc[kEnableReactOnlyPropsId].IsBool()) {
-    page_config->SetEnableReactOnlyPropsId(
-        doc[kEnableReactOnlyPropsId].GetBool());
-  }
-
-  if (doc.HasMember(kEnableGlobalComponentMap) &&
-      doc[kEnableGlobalComponentMap].IsBool()) {
-    page_config->SetEnableGlobalComponentMap(
-        doc[kEnableGlobalComponentMap].GetBool());
   }
 
   if (doc.HasMember(kEnableRemoveComponentExtraData) &&
       doc[kEnableRemoveComponentExtraData].IsBool()) {
     page_config->SetEnableRemoveComponentExtraData(
         doc[kEnableRemoveComponentExtraData].GetBool());
-  }
-
-  if (doc.HasMember(kEnableTextRefactor) && doc[kEnableTextRefactor].IsBool()) {
-    page_config->SetEnableTextRefactor(doc[kEnableTextRefactor].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_2)) {
-    page_config->SetEnableTextRefactor(true);
-  }
-
-  if (doc.HasMember(kEnableTextOverflow) && doc[kEnableTextOverflow].IsBool()) {
-    page_config->SetEnableTextOverflow(doc[kEnableTextOverflow].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_8)) {
-    page_config->SetEnableTextOverflow(true);
-  }
-
-  if (doc.HasMember(kEnableTextBoringLayout) &&
-      doc[kEnableTextBoringLayout].IsBool()) {
-    page_config->SetEnableTextBoringLayout(
-        doc[kEnableTextBoringLayout].GetBool() ? TernaryBool::TRUE_VALUE
-                                               : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kEnableNewClipMode) && doc[kEnableNewClipMode].IsBool()) {
-    page_config->SetEnableNewClipMode(doc[kEnableNewClipMode].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_10)) {
-    page_config->SetEnableNewClipMode(true);
-  }
-
-  if (doc.HasMember(kAutoResumeAnimation) &&
-      doc[kAutoResumeAnimation].IsBool()) {
-    page_config->SetGlobalAutoResumeAnimation(
-        doc[kAutoResumeAnimation].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_3)) {
-    page_config->SetGlobalAutoResumeAnimation(true);
-  }
-
-  if (doc.HasMember(kEnableNewTransformOrigin) &&
-      doc[kEnableNewTransformOrigin].IsBool()) {
-    page_config->SetGlobalEnableNewTransformOrigin(
-        doc[kEnableNewTransformOrigin].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_6)) {
-    page_config->SetGlobalEnableNewTransformOrigin(true);
-  }
-
-  if (doc.HasMember(kEnableCircularDataCheck) &&
-      doc[kEnableCircularDataCheck].IsBool()) {
-    page_config->SetGlobalCircularDataCheck(
-        doc[kEnableCircularDataCheck].GetBool());
-  }
-
-  if (doc.HasMember(kEnableTextLayerRender) &&
-      doc[kEnableTextLayerRender].IsBool()) {
-    page_config->SetEnableTextLayerRender(doc[kEnableTextLayerRender].GetBool()
-                                              ? TernaryBool::TRUE_VALUE
-                                              : TernaryBool::FALSE_VALUE);
   }
 
   if (doc.HasMember(kEnableTextLayoutCache) &&
@@ -708,12 +385,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
   }
 
-  if (doc.HasMember(kEnableReduceInitDataCopy) &&
-      doc[kEnableReduceInitDataCopy].IsBool()) {
-    page_config->SetEnableReduceInitDataCopy(
-        doc[kEnableReduceInitDataCopy].GetBool());
-  }
-
   if (doc.HasMember(kUnifyVWVHBehavior) && doc[kUnifyVWVHBehavior].IsBool()) {
     page_config->SetUnifyVWVH(doc[kUnifyVWVHBehavior].GetBool());
   } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
@@ -724,30 +395,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   if (doc.HasMember(kFontScaleEffectiveOnlyOnSp) &&
       doc[kFontScaleEffectiveOnlyOnSp].IsBool()) {
     page_config->SetFontScaleSpOnly(doc[kFontScaleEffectiveOnlyOnSp].GetBool());
-  }
-
-  if (doc.HasMember(kEnableSimultaneousTap) &&
-      doc[kEnableSimultaneousTap].IsBool()) {
-    page_config->SetEnableSimultaneousTap(
-        doc[kEnableSimultaneousTap].GetBool());
-  }
-
-  if (doc.HasMember(kEnableComponentLayoutOnly) &&
-      doc[kEnableComponentLayoutOnly].IsBool()) {
-    page_config->SetEnableComponentLayoutOnly(
-        doc[kEnableComponentLayoutOnly].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_6)) {
-    page_config->SetEnableComponentLayoutOnly(true);
-  }
-
-  if (doc.HasMember(kExtendedLayoutOnlyOpt) &&
-      doc[kExtendedLayoutOnlyOpt].IsBool()) {
-    page_config->SetEnableExtendedLayoutOpt(
-        doc[kExtendedLayoutOnlyOpt].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_13)) {
-    page_config->SetEnableExtendedLayoutOpt(true);
   }
 
   if (doc.HasMember(kEnableTouchRefactor) &&
