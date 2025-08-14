@@ -63,9 +63,8 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
   invoke<'scroll-view'>({
     method: 'autoScroll',
     params: {
-      rate: '',
+      rate: 1,
       start: true,
-      autoStop: false,
     },
   });
 

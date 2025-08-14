@@ -4,7 +4,6 @@
 
 import { BaseEvent, BaseMethod, EventHandler } from '../events';
 import { StandardProps } from '../props';
-import { AutoScrollMethod } from './list';
 import {
   ContentSizeChangedEvent,
   ScrollEndEvent,
@@ -19,125 +18,79 @@ import {
 
 export interface ScrollViewProps extends StandardProps {
   /**
-   * Scroll horizontaly.
-   * @defaultValue false
-   * @since 1.4
-   * @iOS
-   * @Android
-   * @H
-   */
-  'scroll-x'?: boolean;
-
-  /**
-   * Scroll vertically
-   * @defaultValue false
-   * @since 1.4
-   * @iOS
-   * @Android
-   * @H
-   */
-  'scroll-y'?: boolean;
-
-  /**
    * Replacement of scroll-x and scroll-y
+   * @defaultValue 'vertical'
    * @since 3.0
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'scroll-orientation'?: 'vertical' | 'horizontal';
 
   /**
    * Enable bounce effect
-   * @defaultValue false
+   * @defaultValue true
    * @since 1.4
    * @iOS
-   * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   bounces?: boolean;
 
   /**
    * Enable dragging
-   * @defaultValue false
+   * @defaultValue true
    * @since 1.4
    * @iOS
    * @Android 2.2
-   * @H
+   * @Harmony
+   * @PC
    */
   'enable-scroll'?: boolean;
 
   /**
    * Enable scrollbar
-   * @defaultValue false
+   * @defaultValue true
    * @since 1.4
    * @iOS
-   * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'scroll-bar-enable'?: boolean;
 
   /**
-   * Not recommended to use. Please use upper-threshold-item-count instead. Set upper threshold to bindscrolltoupper event.
+   * Set upper threshold to bindscrolltoupper event.
    * @defaultValue 0
    * @since 1.4
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'upper-threshold'?: number;
 
   /**
-   * Not recommended to use. Please use lower-threshold-item-count instead. Set upper threshold to bindscrolltoupper event.
+   * Set upper threshold to bindscrolltoupper event.
    * @defaultValue 0
    * @since 1.4
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'lower-threshold'?: number;
 
   /**
-   * Please use initial-scroll-offset or ScrollTo method. Set the content offset from the top.
-   * @defaultValue 0
-   * @since 1.4
-   * @deprecated 2.17
-   * @iOS
-   * @Android
-   * @H
-   */
-  'scroll-top'?: number;
-
-  /**
-   * Please use initial-scroll-offset or ScrollTo method. Set the content offset from the left.
-   * @defaultValue 0
-   * @since 1.4
-   * @deprecated 2.17
-   * @iOS
-   * @Android
-   * @H
-   */
-  'scroll-left'?: number;
-
-  /**
-   * Initial scroll position, only effective once
+   * Initial scroll position, only effective once, in PX
    * @defaultValue 0
    * @since 2.17
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'initial-scroll-offset'?: number;
-
-  /**
-   * Please use initial-scroll-index or ScrollTo method。Set the first item at the first screen
-   * @defaultValue 0
-   * @since 2.1
-   * @deprecated 2.17
-   * @iOS
-   * @Android
-   */
-  'scroll-to-index'?: number;
 
   /**
    * Scroll to specified child node on first screen, only effective once. All direct child nodes must be flatten=false.
@@ -145,35 +98,10 @@ export interface ScrollViewProps extends StandardProps {
    * @since 2.17
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
   'initial-scroll-to-index'?: number;
-
-  /**
-   * On iOS, force-can-scroll should be used with ios-block-gesture-class and ios-recognized-view-tag. Can be used alone on Android.
-   * @defaultValue false
-   * @since 2.10.1
-   * @iOS
-   * @Android
-   * @H
-   */
-  'force-can-scroll'?: boolean;
-
-  /**
-   * Force-can-scroll should be used with ios-block-gesture-class、ios-recognized-view-tag. Specify the class name of scrollable container that should be blocked by force-can-scroll. Given by container's developer.
-   * @defaultValue none
-   * @since 2.10.1
-   * @iOS
-   */
-  'ios-block-gesture-class'?: string;
-
-  /**
-   *  force-can-scroll should be used with ios-block-gesture-class、ios-recognized-view-tag. Specify scrollable container's tag, the UIView's tag. Set and given by container's developer.
-   * @defaultValue none
-   * @since 2.10.1
-   * @iOS
-   */
-  'ios-recognized-view-tag'?: number;
 
   /**
    * This event is triggered when the upper/left edge of the scrolling area intersects with the visible area defined by the upperThreshold.
@@ -181,9 +109,9 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.4
    * @iOS
    * @Android
-   * @H
+   * @Harmony
    */
-  bindscrolltoupper?: EventHandler<ScrollToUpperEvent>;
+  bindscrolltoupper?: (e: ScrollToUpperEvent) => void;
 
   /**
    * This event is triggered when the lower/right edge of the scrolling area intersects with the visible area defined by the lowerThreshold.
@@ -191,9 +119,9 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.4
    * @iOS
    * @Android
-   * @H
+   * @Harmony
    */
-  bindscrolltolower?: EventHandler<ScrollToLowerEvent>;
+  bindscrolltolower?: (e: ScrollToLowerEvent) => void;
 
   /**
    * This event is triggered when the scrollview is scrolling.
@@ -201,9 +129,10 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.4
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
-  bindscroll?: EventHandler<ScrollEvent>;
+  bindscroll?: (e: ScrollEvent) => void;
 
   /**
    * This event is triggered when the scrollview's scroll ended.
@@ -211,9 +140,10 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.6
    * @iOS
    * @Android
-   * @H
+   * @Harmony
+   * @PC
    */
-  bindscrollend?: EventHandler<ScrollEndEvent>;
+  bindscrollend?: (e: ScrollEndEvent) => void;
 
   /**
    * This event is triggered when the scrollview's content size changed.
@@ -221,42 +151,19 @@ export interface ScrollViewProps extends StandardProps {
    * @since 1.6
    * @iOS
    * @Android
-   * @H
+   * @Harmony
    */
-  bindcontentsizechanged?: EventHandler<ContentSizeChangedEvent>;
-
-  /**
-   * scrollview scrolls to upper edge
-   * @defaultValue none
-   * @since 3.0
-   * @iOS
-   * @Android
-   * @H
-   */
-  bindscrolltoupperedge?: EventHandler<ScrollToUpperEdgeEvent>;
-
-  /**
-   * scrollview scrolls to lower edge
-   * @defaultValue none
-   * @since 3.0
-   * @iOS
-   * @Android
-   * @H
-   */
-  bindscrolltoloweredge?: EventHandler<ScrollToLowerEdgeEvent>;
-
-  /**
-   * scrollview scrolls to normal position. Not at upper or lower edge
-   * @defaultValue none
-   * @since 3.0
-   * @iOS
-   * @Android
-   * @H
-   */
-  bindscrolltonormalstate?: EventHandler<ScrollToNormalStateEvent>;
+  bindcontentsizechanged?: (e: ContentSizeChangedEvent) => void;
 }
 
-export interface ScrollToMethod extends BaseMethod {
+/**
+ * Scroll to specified position
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export interface ScrollViewScrollToMethod extends BaseMethod {
   method: 'scrollTo';
   params: {
     /**
@@ -277,4 +184,52 @@ export interface ScrollToMethod extends BaseMethod {
   };
 }
 
-export type ScrollViewUIMethods = ScrollToMethod | AutoScrollMethod;
+/**
+ * Scroll by specified offset
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export interface ScrollViewScrollByMethod extends BaseMethod {
+  method: 'scrollBy';
+  params: {
+    /**
+     * Offset to scroll
+     */
+    offset?: number;
+  };
+}
+
+
+
+/**
+ * Automatic scrolling
+ * @Android
+ * @iOS
+ * @Harmony
+ * @PC
+ */
+export interface ScrollViewAutoScrollMethod extends BaseMethod {
+  method: 'autoScroll';
+  params: {
+    /**
+     *  The distance of each second's scrolling, which supports positive and negative values. The unit of distance can be "px", "rpx", "ppx", or null (for iOS, the value must be greater than 1/screen.scale px).
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    rate: number;
+    /**
+     * Start/stop automatic scrolling.
+     * @Android
+     * @iOS
+     * @Harmony
+     * @PC
+     */
+    start: boolean;
+  };
+}
+
+export type ScrollViewUIMethods = ScrollViewScrollToMethod | ScrollViewScrollByMethod | ScrollViewAutoScrollMethod;

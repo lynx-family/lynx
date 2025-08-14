@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.4.9
+- Add more interface for `scroll-view`.
+
 ## 3.4.8
 - Introduce `disabled` for input and textarea.
 

@@ -4,11 +4,11 @@
 
 import { BaseMethod, Callback } from '../events';
 import { AutoScrollMethod, ScrollToPositionMethod } from './list';
-import { ScrollToMethod } from './scroll-view';
+import {  ScrollViewUIMethods } from './scroll-view';
 
 export type ListParams = ScrollToPositionMethod;
 
-export type ScrollViewParams = ScrollToMethod | AutoScrollMethod;
+export type ScrollViewParams = ScrollViewUIMethods | AutoScrollMethod;
 
 interface BoundingClientRectMethod extends BaseMethod {
   method: 'boundingClientRect';
