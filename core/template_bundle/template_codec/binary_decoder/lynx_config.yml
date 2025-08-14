@@ -1,0 +1,72 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+version:
+  description:
+  defaultValue: null
+  valueType: string
+  nameAs:
+    member: page_version
+lepusQuickjsStacksize:
+  description: null
+  defaultValue: 0
+  valueType: uint32_t
+  nameAs:
+    member: lepus_quickjs_stack_size
+    setter: SetLepusQuickjsStackSize
+    getter: GetLepusQuickjsStackSize
+flatten:
+  description:
+  defaultValue: true
+  valueType: bool
+  nameAs:
+    member: page_flatten
+    setter: SetGlobalFlattern
+    getter: GetGlobalFlattern
+implicit:
+  description: null
+  defaultValue: true
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_0
+      value: 'false'
+  nameAs:
+    member: page_implicit
+    setter: SetGlobalImplicit
+    getter: GetGlobalImplicit
+lepusStrict:
+  description: null
+  defaultValue: false
+  valueType: bool
+  nameAs:
+    member: enable_lepus_strict_check
+    setter: SetEnableLepusStrictCheck
+    getter: GetEnableLepusStrictCheck
+lepusNullPropAsUndef:
+  description: null
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_1_6
+      value: 'true'
+  nameAs:
+    member: enable_lepus_null_prop_as_undef
+    setter: SetEnableLepusNullPropAsUndef
+    getter: GetEnableLepusNullPropAsUndef
+dataStrictMode:
+  description: null
+  defaultValue: true
+  valueType: bool
+enableAsyncDisplay:
+  description: null
+  defaultValue: true
+  valueType: bool
+enableImageDownsampling:
+  description: null
+  defaultValue: false
+  valueType: bool
+enableNewImage:
+  description: null
+  defaultValue: true
+  valueType: bool

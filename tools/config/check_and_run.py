@@ -8,13 +8,13 @@
 import os
 import subprocess
 import sys
-from gen_config import gen_config
 
 
 def check_and_run():
     try:
         import yaml
         import jinja2
+        from gen_config import gen_config
 
         gen_config()
         sys.exit(0)
