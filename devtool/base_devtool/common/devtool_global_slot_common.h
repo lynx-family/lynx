@@ -9,7 +9,7 @@
 #include <string>
 
 #include "devtool/base_devtool/native/devtool_global_slot.h"
-#include "third_party/debug_router/src/debug_router/Common/debug_router_global_handler.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router_global_handler.h"
 
 namespace lynx {
 namespace devtool {

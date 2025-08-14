@@ -12,7 +12,7 @@
 
 #include "base/include/no_destructor.h"
 #include "devtool/embedder/core/debug_state_listener_embedder.h"
-#include "third_party/debug_router/src/debug_router/Common/debug_router_global_handler.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router_global_handler.h"
 
 namespace lynx {
 namespace devtool {

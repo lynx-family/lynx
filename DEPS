@@ -249,7 +249,7 @@ deps = {
     "third_party/debug_router/src": {
         'type': 'git',
         'url': 'https://github.com/lynx-family/debug-router.git',
-        'commit': 'f886640266c6511c70ba0327b10f86e63ba6f126',
+        'commit': '031a44bc1b1fffc6a001a1245dda41b977316062',
         "ignore_in_git": True,
     },
     'buildtools/corepack/pnpm/7.33.6': {

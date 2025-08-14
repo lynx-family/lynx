@@ -4,7 +4,7 @@
 
 #include "devtool/base_devtool/common/devtool_global_slot_common.h"
 
-#include "third_party/debug_router/src/debug_router/Common/debug_router.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace devtool {

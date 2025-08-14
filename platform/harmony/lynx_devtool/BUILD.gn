@@ -26,7 +26,7 @@ devtool_source_set("lynx_devtool_lib") {
     "../../../core/build:build",
     "../../../devtool/embedder/core:lynx_devtool_embedder_core",
     "../../../devtool/lynx_devtool:lynx_devtool_group",
-    "../../../third_party/debug_router/src/debug_router/Common:debug_router_source",
+    "../../../third_party/debug_router/src/debug_router/common:debug_router_source",
   ]
 
   deps += [

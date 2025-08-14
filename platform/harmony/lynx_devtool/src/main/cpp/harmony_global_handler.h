@@ -12,7 +12,7 @@
 #include <memory>
 #include <string>
 
-#include "third_party/debug_router/src/debug_router/Common/debug_router_global_handler.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router_global_handler.h"
 #include "third_party/napi/include/js_native_api_types.h"
 
 namespace lynx {

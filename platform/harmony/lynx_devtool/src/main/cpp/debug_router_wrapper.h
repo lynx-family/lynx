@@ -14,7 +14,7 @@
 
 #include "platform/harmony/lynx_devtool/src/main/cpp/harmony_global_handler.h"
 #include "platform/harmony/lynx_devtool/src/main/cpp/harmony_session_handler.h"
-#include "third_party/debug_router/src/debug_router/Common/debug_router.h"
+#include "third_party/debug_router/src/debug_router/common/debug_router.h"
 
 namespace lynx {
 namespace devtool {
