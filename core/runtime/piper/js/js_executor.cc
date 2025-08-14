@@ -97,7 +97,7 @@ std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
     module_manager_testBench_->SetGroupInterceptor(
         module_manager_->GetGroupInterceptor());
     module_manager_testBench_.get()->initBindingPtr(
-        module_manager_testBench_, module_manager_.get()->delegate,
+        module_manager_testBench_, module_manager_.get()->delegate_,
         module_manager_.get()->bindingPtr);
     module_manager_testBench_.get()->initRecordModuleData(js_runtime_.get());
     nativeModuleProxy = piper::Object::createFromHostObject(

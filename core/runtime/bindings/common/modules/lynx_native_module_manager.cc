@@ -1,0 +1,41 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#include "core/runtime/bindings/common/modules/lynx_native_module_manager.h"
+
+namespace lynx {
+namespace pub {
+
+std::shared_ptr<piper::LynxNativeModule> LynxNativeModuleManager::GetModule(
+    const std::string &name) {
+  std::shared_ptr<piper::LynxNativeModule> native_module;
+  // Find PlatformModuleFactories First
+  if (platform_module_factory_) {
+    native_module = platform_module_factory_->CreateModule(name);
+    if (native_module) {
+      return native_module;
+    }
+  }
+  // Find NativeModuleFactories Later
+  for (const auto &module_factory : module_factories_) {
+    native_module = module_factory->CreateModule(name);
+    if (native_module) {
+      return native_module;
+    }
+  }
+  return native_module;
+}
+
+void LynxNativeModuleManager::SetPlatformModuleFactory(
+    std::unique_ptr<piper::NativeModuleFactory> module_factory) {
+  platform_module_factory_ = std::move(module_factory);
+}
+
+piper::NativeModuleFactory *
+LynxNativeModuleManager::GetPlatformModuleFactory() {
+  return platform_module_factory_.get();
+}
+
+}  // namespace pub
+}  // namespace lynx

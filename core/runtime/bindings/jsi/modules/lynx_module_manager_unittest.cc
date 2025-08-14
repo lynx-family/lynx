@@ -79,29 +79,60 @@ class LynxModuleManagerTest : public ::testing::Test {
     });
     module_manager_->SetModuleFactory(std::move(native_module_factory));
     module_manager_->SetRecordID(12345);
+
+    auto native_module_manager =
+        std::make_shared<pub::LynxNativeModuleManager>();
+    use_native_module_manager_ =
+        std::make_shared<LynxModuleManager>(std::move(*native_module_manager));
+    use_native_module_manager_->initBindingPtr(use_native_module_manager_,
+                                               nullptr);
+    auto platform_module_factory_2 = std::make_unique<NativeModuleFactory>();
+    platform_module_factory_2->Register("platform_module", []() {
+      return std::make_shared<MockNativeModule>("platform_module");
+    });
+    use_native_module_manager_->SetPlatformModuleFactory(
+        std::move(platform_module_factory_2));
+
+    auto native_module_factory_2 = std::make_unique<NativeModuleFactory>();
+    native_module_factory_2->Register("native_module", []() {
+      return std::make_shared<MockNativeModule>("native_module");
+    });
+    use_native_module_manager_->SetModuleFactory(
+        std::move(native_module_factory_2));
+    use_native_module_manager_->SetRecordID(12345);
   }
 
   void TearDown() override {}
 
   std::shared_ptr<LynxModuleManager> module_manager_;
+  std::shared_ptr<LynxModuleManager> use_native_module_manager_;
 };
 
 TEST_F(LynxModuleManagerTest, CheckPlatformFactory) {
   EXPECT_NE(module_manager_->GetPlatformModuleFactory(), nullptr);
+  EXPECT_NE(use_native_module_manager_->GetPlatformModuleFactory(), nullptr);
 }
 
 TEST_F(LynxModuleManagerTest, GetNativeModule) {
-  auto module = module_manager_->bindingPtr->GetModule("native_module");
-  EXPECT_NE(module, nullptr);
+  auto module_1 = module_manager_->bindingPtr->GetModule("native_module");
+  EXPECT_NE(module_1, nullptr);
+  auto module_2 =
+      use_native_module_manager_->bindingPtr->GetModule("native_module");
+  EXPECT_NE(module_2, nullptr);
 }
 
 TEST_F(LynxModuleManagerTest, GetPlatformModule) {
-  auto module = module_manager_->bindingPtr->GetModule("platform_module");
-  EXPECT_NE(module, nullptr);
+  auto module_1 = module_manager_->bindingPtr->GetModule("platform_module");
+  EXPECT_NE(module_1, nullptr);
+
+  auto module_2 =
+      use_native_module_manager_->bindingPtr->GetModule("platform_module");
+  EXPECT_NE(module_2, nullptr);
 }
 
 TEST_F(LynxModuleManagerTest, GetRecordId) {
   EXPECT_EQ(module_manager_->record_id_, 12345);
+  EXPECT_EQ(use_native_module_manager_->record_id_, 12345);
 }
 
 }  // namespace piper

@@ -22,49 +22,38 @@ void LynxModuleManager::initBindingPtr(
     const std::shared_ptr<ModuleDelegate> &delegate) {
   bindingPtr = std::make_shared<lynx::piper::LynxJSIModuleBinding>(
       BindingFunc(weak_manager, delegate));
+  pub::LynxNativeModuleManager::SetModuleDelegate(delegate);
 #if ENABLE_TESTBENCH_REPLAY
-  this->delegate = delegate;
+  this->delegate_ = delegate;
 #endif
 }
 
 std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
     const std::string &name, const std::shared_ptr<ModuleDelegate> &delegate) {
+  // find module from cache
   auto itr = module_map_.find(name);
   if (itr != module_map_.end()) {
     return itr->second;
   }
 
-  std::shared_ptr<LynxNativeModule> native_module;
-  for (const auto &module_factory : module_factories_) {
-    native_module = module_factory->CreateModule(name);
-    if (native_module) {
-      break;
-    }
-  }
-
-  // Use platform module factory to create module for Android & iOS
-  std::shared_ptr<LynxModule> lynx_module;
-  if (!native_module && platform_module_factory_) {
-    native_module = platform_module_factory_->CreateModule(name);
-  }
-
+  // create new native module
+  std::shared_ptr<piper::LynxNativeModule> native_module =
+      pub::LynxNativeModuleManager::GetModule(name);
   if (native_module) {
-    auto lynx_module_impl =
+    auto lynx_jsi_module =
         std::make_shared<LynxJSIModule>(name, delegate, native_module);
-    native_module->SetDelegate(lynx_module_impl);
+    // set delegate & proxy
+    native_module->SetDelegate(lynx_jsi_module);
     native_module->SetRuntimeProxy(runtime_proxy);
-    lynx_module = std::move(lynx_module_impl);
-  }
-  if (lynx_module) {
+    // set interceptor
+    lynx_jsi_module->SetModuleInterceptor(group_interceptor_);
 #if ENABLE_TESTBENCH_RECORDER
-    lynx_module->SetRecordID(record_id_);
+    lynx_jsi_module->SetRecordID(record_id_);
 #endif
-    lynx_module->SetModuleInterceptor(group_interceptor_);
-    itr = module_map_.emplace(name, std::move(lynx_module)).first;
+    itr = module_map_.emplace(name, std::move(lynx_jsi_module)).first;
     return itr->second;
-  } else {
-    return std::shared_ptr<LynxModule>(nullptr);
   }
+  return std::shared_ptr<LynxModule>(nullptr);
 }
 
 LynxModuleProviderFunction LynxModuleManager::BindingFunc(
@@ -93,15 +82,6 @@ LynxModuleProviderFunction LynxModuleManager::BindingFunc(
 
 void LynxModuleManager::InitModuleInterceptor() {
   group_interceptor_ = InterceptorFactory::CreateGroupInterceptor();
-}
-
-void LynxModuleManager::SetPlatformModuleFactory(
-    std::unique_ptr<NativeModuleFactory> module_factory) {
-  platform_module_factory_ = std::move(module_factory);
-}
-
-NativeModuleFactory *LynxModuleManager::GetPlatformModuleFactory() {
-  return platform_module_factory_.get();
 }
 
 void LynxModuleManager::SetTemplateUrl(const std::string &url) {

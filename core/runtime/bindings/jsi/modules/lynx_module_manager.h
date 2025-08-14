@@ -16,6 +16,7 @@
 #include "base/include/vector.h"
 #include "core/public/jsb/native_module_factory.h"
 #include "core/public/lynx_runtime_proxy.h"
+#include "core/runtime/bindings/common/modules/lynx_native_module_manager.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module_binding.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module.h"
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
@@ -39,33 +40,25 @@ struct LynxModuleManagerAllowList {
 using LynxJSIModuleBindingPtr =
     std::shared_ptr<lynx::piper::LynxJSIModuleBinding>;
 
-class LynxModuleManager {
+class LynxModuleManager : public pub::LynxNativeModuleManager {
  public:
   LynxJSIModuleBindingPtr bindingPtr;
 
-  LynxModuleManager() = default;
+  explicit LynxModuleManager() = default;
+  explicit LynxModuleManager(
+      pub::LynxNativeModuleManager &&native_module_manager)
+      : pub::LynxNativeModuleManager(std::move(native_module_manager)) {}
   virtual ~LynxModuleManager();
 
   void initBindingPtr(std::weak_ptr<LynxModuleManager> weak_manager,
                       const std::shared_ptr<ModuleDelegate> &delegate);
 
-  void SetRecordID(int64_t record_id) { record_id_ = record_id; };
-
   void InitModuleInterceptor();
-
-  void SetModuleFactory(std::unique_ptr<NativeModuleFactory> module_factory) {
-    if (module_factory) {
-      module_factories_.push_back(std::move(module_factory));
-    }
-  }
-
-  void SetPlatformModuleFactory(
-      std::unique_ptr<NativeModuleFactory> module_factory);
-
-  NativeModuleFactory *GetPlatformModuleFactory();
-
   void SetTemplateUrl(const std::string &url);
-
+  void SetRecordID(int64_t record_id) override {
+    LynxNativeModuleManager::SetRecordID(record_id);
+    record_id_ = record_id;
+  }
 #if ENABLE_TESTBENCH_REPLAY
   std::shared_ptr<GroupInterceptor> GetGroupInterceptor() {
     return group_interceptor_;
@@ -73,7 +66,7 @@ class LynxModuleManager {
 #endif
 
   std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy;
-  std::shared_ptr<ModuleDelegate> delegate;
+  std::shared_ptr<ModuleDelegate> delegate_;
   int64_t record_id_ = 0;
 
  protected:
@@ -85,15 +78,8 @@ class LynxModuleManager {
       std::weak_ptr<LynxModuleManager> weak_manager,
       const std::shared_ptr<ModuleDelegate> &delegate);
 
+  // JSIModule cache
   std::unordered_map<std::string, std::shared_ptr<LynxModule>> module_map_;
-
-  // Managed by LynxModuleManager
-  base::InlineVector<std::unique_ptr<NativeModuleFactory>, 4> module_factories_;
-  // Maybe use by platform.
-  // When re-attaching in standalone mode, it needs to support modification, so
-  // it needs to be accessed by the platform, so it is placed independently.
-  std::unique_ptr<NativeModuleFactory> platform_module_factory_;
-
   std::shared_ptr<GroupInterceptor> group_interceptor_;
 };
 
