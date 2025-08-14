@@ -5,6 +5,7 @@ package com.lynx.tasm.group;
 
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.tasm.LynxView;
+import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.TemplateData;
 
 /**
@@ -19,5 +20,19 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
   String getUrl();
   TemplateData getGlobalProps();
 
+  /**
+   * Get the associated TemplateBundle with LynxViewGroup.
+   * If templateBundle is not ready yet. It will block current thread
+   * and waiting for the result.
+   *
+   * @return The Associated TemplateBundle
+   */
+  TemplateBundle getTemplateBundle();
+
+  /**
+   * Check if the bundle in LynxViewGroup is ready yet.
+   *
+   * @return TemplateBundle ready or not.
+   */
   boolean isTemplateBundleReady();
 }
