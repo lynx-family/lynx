@@ -15,25 +15,14 @@
 #include "core/runtime/vm/lepus/json_parser.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 
 namespace lynx {
 namespace tasm {
-static constexpr const char* const kVersion = "version";
-static constexpr const char* const kFlatten = "flatten";
-static constexpr const char* const kImplicit = "implicit";
-static constexpr const char* const kLepusCheck = "lepusStrict";
-static constexpr const char* const kLepusQuickjsStackSize =
-    "lepusQuickjsStacksize";
-static constexpr const char* const kNullPropAsUndef = "lepusNullPropAsUndef";
-static constexpr const char* const kDataStrictMode = "dataStrictMode";
 static constexpr const char* const kAbsoluteInContentBound =
     "absoluteInContentBound";
 static constexpr const char* const kQuirksMode = "quirksMode";
-static constexpr const char* const kEnableAsyncDisplay = "enableAsyncDisplay";
-static constexpr const char* const kEnableImageDownsampling =
-    "enableImageDownsampling";
 static constexpr const char* const kEnableFixedNew = "enableFixedNew";
-static constexpr const char* const kEnableNewImage = "enableNewImage";
 static constexpr const char* const kLogBoxImageSizeWarningThreshold =
     "redBoxImageSizeWarningThreshold";
 static constexpr const char* const kEnableTextNonContiguousLayout =
@@ -319,6 +308,61 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     return false;
   }
 
+  // BEGIN CONFIG DECODE GEN
+  if (doc.HasMember(kVersion) && doc[kVersion].IsString()) {
+    page_config->SetVersion(doc[kVersion].GetString());
+  }
+
+  if (doc.HasMember(kLepusQuickjsStacksize) &&
+      doc[kLepusQuickjsStacksize].IsUint()) {
+    page_config->SetLepusQuickjsStackSize(
+        doc[kLepusQuickjsStacksize].GetUint());
+  }
+
+  if (doc.HasMember(kFlatten) && doc[kFlatten].IsBool()) {
+    page_config->SetGlobalFlattern(doc[kFlatten].GetBool());
+  }
+
+  if (doc.HasMember(kImplicit) && doc[kImplicit].IsBool()) {
+    page_config->SetGlobalImplicit(doc[kImplicit].GetBool());
+  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
+                                                 LYNX_VERSION_2_0)) {
+    page_config->SetGlobalImplicit(false);
+  }
+
+  if (doc.HasMember(kLepusStrict) && doc[kLepusStrict].IsBool()) {
+    page_config->SetEnableLepusStrictCheck(doc[kLepusStrict].GetBool());
+  }
+
+  if (doc.HasMember(kLepusNullPropAsUndef) &&
+      doc[kLepusNullPropAsUndef].IsBool()) {
+    page_config->SetEnableLepusNullPropAsUndef(
+        doc[kLepusNullPropAsUndef].GetBool());
+  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
+                                                 LYNX_VERSION_1_6)) {
+    page_config->SetEnableLepusNullPropAsUndef(true);
+  }
+
+  if (doc.HasMember(kDataStrictMode) && doc[kDataStrictMode].IsBool()) {
+    page_config->SetDataStrictMode(doc[kDataStrictMode].GetBool());
+  }
+
+  if (doc.HasMember(kEnableAsyncDisplay) && doc[kEnableAsyncDisplay].IsBool()) {
+    page_config->SetEnableAsyncDisplay(doc[kEnableAsyncDisplay].GetBool());
+  }
+
+  if (doc.HasMember(kEnableImageDownsampling) &&
+      doc[kEnableImageDownsampling].IsBool()) {
+    page_config->SetEnableImageDownsampling(
+        doc[kEnableImageDownsampling].GetBool());
+  }
+
+  if (doc.HasMember(kEnableNewImage) && doc[kEnableNewImage].IsBool()) {
+    page_config->SetEnableNewImage(doc[kEnableNewImage].GetBool());
+  }
+
+  // END CONFIG DECODE GEN
+
   if (doc.HasMember(TEMPLATE_BUNDLE_MODULE_MODE) &&
       doc[TEMPLATE_BUNDLE_MODULE_MODE].IsInt()) {
     int bundleModuleModeInt = doc[TEMPLATE_BUNDLE_MODULE_MODE].GetInt();
@@ -337,13 +381,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE);
   }
 
-  if (doc.HasMember(kVersion) && doc[kVersion].IsString()) {
-    page_config->SetVersion(doc[kVersion].GetString());
-  }
-  if (doc.HasMember(kFlatten) && doc[kFlatten].IsBool()) {
-    page_config->SetGlobalFlattern(doc[kFlatten].GetBool());
-  }
-
   if (doc.HasMember(kEnableA11yIDMutationObserver) &&
       doc[kEnableA11yIDMutationObserver].IsBool()) {
     page_config->SetEnableA11yIDMutationObserver(
@@ -359,32 +396,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableCascadePseudo(doc[kEnableCascadePseudo].GetBool());
   }
 
-  if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                          LYNX_VERSION_2_0)) {
-    page_config->SetGlobalImplicit(false);
-  }
-
-  if (doc.HasMember(kImplicit) && doc[kImplicit].IsBool()) {
-    page_config->SetGlobalImplicit(doc[kImplicit].GetBool());
-  }
-
-  if (doc.HasMember(kLepusCheck) && doc[kLepusCheck].IsBool()) {
-    page_config->SetEnableLepusStrictCheck(doc[kLepusCheck].GetBool());
-  }
-
-  if (doc.HasMember(kLepusQuickjsStackSize) &&
-      doc[kLepusQuickjsStackSize].IsUint()) {
-    page_config->SetLepusQuickjsStackSize(
-        doc[kLepusQuickjsStackSize].GetUint());
-  }
-
-  if (doc.HasMember(kNullPropAsUndef) && doc[kNullPropAsUndef].IsBool()) {
-    page_config->SetEnableLepusNullPropAsUndef(doc[kNullPropAsUndef].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_1_6)) {
-    page_config->SetEnableLepusNullPropAsUndef(true);
-  }
-
   if (doc.HasMember(TEMPLATE_BUNDLE_APP_DSL) &&
       doc[TEMPLATE_BUNDLE_APP_DSL].IsInt()) {
     page_config->SetDSL(
@@ -393,10 +404,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
   if (doc.HasMember(kAutoExpose) && doc[kAutoExpose].IsBool()) {
     page_config.get()->SetAutoExpose(doc[kAutoExpose].GetBool());
-  }
-
-  if (doc.HasMember(kDataStrictMode) && doc[kDataStrictMode].IsBool()) {
-    page_config.get()->SetDataStrictMode(doc[kDataStrictMode].GetBool());
   }
 
   if (doc.HasMember(kEnableFixedNew) && doc[kEnableFixedNew].IsBool()) {
@@ -423,21 +430,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
                                                   kQuirksModeDisableVersion))) {
     page_config.get()->SetQuirksModeByVersion(
         base::Version(target_sdk_version_));
-  }
-
-  if (doc.HasMember(kEnableAsyncDisplay) && doc[kEnableAsyncDisplay].IsBool()) {
-    page_config.get()->SetEnableAsyncDisplay(
-        doc[kEnableAsyncDisplay].GetBool());
-  }
-
-  if (doc.HasMember(kEnableImageDownsampling) &&
-      doc[kEnableImageDownsampling].IsBool()) {
-    page_config.get()->SetEnableImageDownsampling(
-        doc[kEnableImageDownsampling].GetBool());
-  }
-
-  if (doc.HasMember(kEnableNewImage) && doc[kEnableNewImage].IsBool()) {
-    page_config.get()->SetEnableNewImage(doc[kEnableNewImage].GetBool());
   }
 
   if (doc.HasMember(kEnableTextLanguageAlignment) &&
