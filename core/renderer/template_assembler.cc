@@ -1917,9 +1917,11 @@ lepus::Value TemplateAssembler::GetComponentPathMap(
 void TemplateAssembler::SendBubbleEvent(const std::string& name, int tag,
                                         lepus::DictionaryPtr dict) {
 #if ENABLE_TESTBENCH_RECORDER
-  tasm::recorder::TemplateAssemblerRecorder::RecordBubbleEvent(
-      name, tag, page_proxy()->element_manager()->root()->impl_id(),
-      lepus::Value(dict), record_id_);
+  if (page_proxy()->element_manager()->root()) {
+    tasm::recorder::TemplateAssemblerRecorder::RecordBubbleEvent(
+        name, tag, page_proxy()->element_manager()->root()->impl_id(),
+        lepus::Value(dict), record_id_);
+  }
 #endif
   if (!template_loaded_) {
     LOGI("Lynx SendBubbleEvent failed, template_loaded_=false"
