@@ -441,6 +441,76 @@ TEST_F(RadonNodeTest, MarkSubNodeStyleDirtyForFiber) {
   EXPECT_TRUE(child_element->StyleDirty());
 }
 
+TEST_F(RadonNodeTest, DiffAttr) {
+  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
+      TernaryBool::TRUE_VALUE);
+  auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  radon_node->CreateElementIfNeeded();
+  EXPECT_TRUE(radon_node->element()->is_fiber_element());
+  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  radon_node->SetStaticAttribute("123", lepus::Value("black"));
+  EXPECT_FALSE(radon_node->attributes().empty());
+  EXPECT_TRUE(radon_node->attributes().count("123"));
+  const auto& fiber_attribute = fiber_element->updated_attr_map_;
+  EXPECT_TRUE(fiber_attribute.empty());
+  radon_node->DispatchFirstTime();
+  EXPECT_FALSE(fiber_attribute.empty());
+  EXPECT_TRUE(fiber_attribute.count("123"));
+  auto val = fiber_attribute.find("123");
+  EXPECT_TRUE(val->second == lepus::Value("black"));
+
+  auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  radon_node2->CreateElementIfNeeded();
+  EXPECT_TRUE(radon_node2->element()->is_fiber_element());
+  const auto* fiber_element2 =
+      static_cast<FiberElement*>(radon_node2->element());
+  radon_node2->SetStaticAttribute("123", lepus::Value("red"));
+  EXPECT_FALSE(radon_node2->attributes().empty());
+  EXPECT_TRUE(radon_node2->attributes().count("123"));
+  const auto& fiber_attribute2 = fiber_element2->updated_attr_map_;
+  EXPECT_TRUE(fiber_attribute2.empty());
+
+  radon_node2->ShouldFlushAttr(radon_node.get());
+
+  EXPECT_FALSE(fiber_attribute2.empty());
+  EXPECT_TRUE(fiber_attribute2.count("123"));
+  auto val2 = fiber_attribute2.find("123");
+  EXPECT_TRUE(val2->second == lepus::Value("red"));
+}
+
+TEST_F(RadonNodeTest, DiffEmptyAttr) {
+  page_proxy->element_manager()->SetEnableFiberElementForRadonDiff(
+      TernaryBool::TRUE_VALUE);
+  auto radon_node = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  radon_node->CreateElementIfNeeded();
+  EXPECT_TRUE(radon_node->element()->is_fiber_element());
+  const auto* fiber_element = static_cast<FiberElement*>(radon_node->element());
+  radon_node->SetStaticAttribute("123", lepus::Value("black"));
+  EXPECT_FALSE(radon_node->attributes().empty());
+  EXPECT_TRUE(radon_node->attributes().count("123"));
+  const auto& fiber_attribute = fiber_element->updated_attr_map_;
+  EXPECT_TRUE(fiber_attribute.empty());
+  radon_node->DispatchFirstTime();
+  EXPECT_FALSE(fiber_attribute.empty());
+  EXPECT_TRUE(fiber_attribute.count("123"));
+  auto val = fiber_attribute.find("123");
+  EXPECT_TRUE(val->second == lepus::Value("black"));
+
+  auto radon_node2 = std::make_unique<RadonNode>(page_proxy.get(), "view", 123);
+  radon_node2->CreateElementIfNeeded();
+  EXPECT_TRUE(radon_node2->element()->is_fiber_element());
+  const auto* fiber_element2 =
+      static_cast<FiberElement*>(radon_node2->element());
+  radon_node2->SetStaticAttribute("123", lepus::Value());
+  EXPECT_FALSE(radon_node2->attributes().empty());
+  EXPECT_TRUE(radon_node2->attributes().count("123"));
+  const auto& fiber_attribute2 = fiber_element2->updated_attr_map_;
+  EXPECT_TRUE(fiber_attribute2.empty());
+
+  radon_node2->ShouldFlushAttr(radon_node.get());
+  EXPECT_TRUE(fiber_attribute2.empty());
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

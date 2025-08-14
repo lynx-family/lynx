@@ -1010,6 +1010,16 @@ bool RadonNode::DiffAttrMapForFiber(const AttrMap& old_map,
     // if r does not exist in lhs, r is a new style to add
     // if r exist in lhs but with different value, update it
     if (it_old_map == old_map.end() || !(it.second == it_old_map->second)) {
+      // Fiber and Radon architectures handle undefined/null property updates
+      // differently:
+      // - Fiber architecture sets property value to empty
+      // - Radon architecture ignores the update
+      // Early return here to maintain backward compatibility with Radon's
+      // original behavior when processing empty values in Radon-Fiber
+      // architecture
+      if (it.second.IsEmpty()) {
+        continue;
+      }
       need_update = true;
       if (should_convert_to_lepus_value) {
         fiber_element()->SetAttribute(it.first, it.second.ToLepusValue(),
