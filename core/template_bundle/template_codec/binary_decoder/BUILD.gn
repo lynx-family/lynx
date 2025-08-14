@@ -22,6 +22,7 @@ binary_decoder_shared_sources = [
   "lynx_binary_lazy_reader_delegate.h",
   "lynx_binary_reader.cc",
   "lynx_binary_reader.h",
+  "lynx_config_auto_gen.h",
   "page_config.cc",
   "page_config.h",
   "parallel_parse_task_scheduler.cc",
@@ -34,6 +35,8 @@ binary_decoder_shared_sources = [
 
 lynx_core_source_set("binary_decoder") {
   sources = binary_decoder_shared_sources
+  exec_script("../../../../tools/config/check_and_run.py")
+
   deps = [
     "../../../../base/src:base_log_headers",
     "../../../../third_party/rapidjson:rapidjson",

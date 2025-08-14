@@ -51,12 +51,14 @@ def copy_python3_exe(root_dir):
   if os.path.exists(python_exe):
     shutil.copy(python_exe, python3_exe_path)
 
-def install_requirements(python_bin_path, python_package_index, root_dir):
+def install_requirements(python_bin_path, python_package_index, root_dir, pip_install_args):
   python_path = os.path.join(python_bin_path, "python")
   index_url = ''
   if python_package_index:
     index_url = f'-i {python_package_index}'
-  cmd = f'{python_path} -m pip install -r {requirements_path} {index_url}'
+  if pip_install_args is None:
+    pip_install_args = ''
+  cmd = f'{python_path} -m pip install -r {requirements_path} {index_url} {pip_install_args}'
   try:
     if system == "Windows":
       copy_python3_exe(root_dir)
@@ -71,13 +73,15 @@ def main():
   parser = argparse.ArgumentParser(description='Setup Python virtual environment.')
   parser.add_argument('python_package_index', nargs='?', default='', help='Python package index URL')
   parser.add_argument('--root_dir', default=os.path.dirname(lynx_dir), help='Root directory for the virtual environment')
+  parser.add_argument('--pip_install_args', nargs='?', default='', help='Additional arguments for pip install')
   args = parser.parse_args()
   print("python_package_index: ", args.python_package_index)
   print("root_dir: ", args.root_dir)
+  print("pip_install_args: ", args.pip_install_args)
 
   python_bin_path = os.path.join(args.root_dir, ".venv", "bin") if system != "Windows" else os.path.join(args.root_dir, ".venv", "Scripts")
   if create_venv(python_bin_path, args.root_dir):
-      return install_requirements(python_bin_path, args.python_package_index, args.root_dir)
+      return install_requirements(python_bin_path, args.python_package_index, args.root_dir, args.pip_install_args)
   return 0
 
 if __name__ == "__main__":

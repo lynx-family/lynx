@@ -8,10 +8,14 @@
 import os
 import yaml
 import re
+import sys
 from jinja2 import Template
+from config_utils import clang_format
 
 
 class Config:
+    _type_known_list = ["PackageInstanceBundleModuleMode", "PackageInstanceDSL"]
+
     def __init__(
         self,
         name: str,
@@ -21,11 +25,32 @@ class Config:
         sync_to: list[str],
         version_overrides: list[dict],
         author: str,
+        code_gen: list[str],
+        name_as: dict[str],
     ):
         self.name = name
         self.upper_camel_case_name = f"{name[0].upper()}{name[1:]}"
-        self.snake_case_name = re.sub(r"(?<=[a-z])(?=[A-Z])", "_", name).lower()
+        self.setter_func_name = f"Set{self.upper_camel_case_name}"
+        self.getter_func_name = f"Get{self.upper_camel_case_name}"
+        self.snake_case_name = re.sub(
+            r"(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])", "_", name
+        ).lower()
         self.const_name = f"k{self.upper_camel_case_name}"
+        if name_as is not None:
+            self.snake_case_name = (
+                name_as.get("member") if name_as.get("member") else self.snake_case_name
+            )
+            self.setter_func_name = (
+                name_as.get("setter")
+                if name_as.get("setter")
+                else self.setter_func_name
+            )
+            self.getter_func_name = (
+                name_as.get("getter")
+                if name_as.get("getter")
+                else self.getter_func_name
+            )
+
         self.desc = desc
         self.default_value = default_value
         self.value_type = value_type
@@ -42,6 +67,9 @@ class Config:
                 self.default_value = '""'
             else:
                 self.default_value = '"' + self.default_value + '"'
+
+        if self.default_value is None:
+            self.default_value = ""
 
         self.doc_type = None
         if self.value_type == "bool" or self.value_type == "TernaryBool":
@@ -60,11 +88,12 @@ class Config:
             self.doc_type = "Uint"
         elif self.value_type == "uint64_t":
             self.doc_type = "Uint64"
-        else:
+        elif self.value_type not in self._type_known_list:
             print(f"Document unsupported type: {self.value_type}")
 
         self.version_overrides = version_overrides
         self.author = author
+        self.codeGen = code_gen if code_gen is not None else ["ALL"]
 
 
 _binary_decoder_path = os.path.abspath(
@@ -78,7 +107,7 @@ _binary_decoder_path = os.path.abspath(
         "binary_decoder",
     )
 )
-_config_yaml_path = os.path.join(_binary_decoder_path, "config.yml")
+_config_yaml_path = os.path.join(_binary_decoder_path, "lynx_config.yml")
 
 
 def parse_config() -> list[Config]:
@@ -93,40 +122,14 @@ def parse_config() -> list[Config]:
                 value["description"],
                 value["defaultValue"],
                 value["valueType"],
-                value["syncTo"],
+                value.get("syncTo"),
                 version_overrides,
                 value.get("author"),
+                value.get("codeGen"),
+                value.get("nameAs"),
             )
         )
     return configs
-
-
-def gen_native_members_config(configs: list[Config], page_config_path: str):
-    native_config_members_tmpl = """
-{% for config in configs %}
-  {{ config.value_type }} {{ config.snake_case_name }}_{{ '{' }}{{ config.default_value }}{{ '}' }};
-{% endfor %}
-"""
-    start_marker = "// BEGIN CONFIG MEMBER GEN"
-    end_marker = "// END CONFIG MEMBER GEN"
-    gen_code = Template(native_config_members_tmpl).render(configs=configs)
-    replace_comments_with_code(start_marker, end_marker, gen_code, page_config_path)
-
-
-def gen_native_get_set_func_config(configs: list[Config], page_config_path: str):
-    native_config_get_set_func_tmpl = """
-{% for config in configs %}
-  inline void Set{{ config.upper_camel_case_name }}({{ config.setter_input_type }} {{ config.snake_case_name }}) { {{ config.snake_case_name }}_ = {{ config.snake_case_name }}; }
-  inline {{ config.value_type }} Get{{ config.upper_camel_case_name }}() const { return {{ config.snake_case_name }}_; }
-
-{% endfor %}
-"""
-    start_marker = "// BEGIN CONFIG GET ADN SET FUNC GEN"
-    end_marker = "// END CONFIG GET ADN SET FUNC GEN"
-    gen_code = Template(
-        native_config_get_set_func_tmpl, trim_blocks=True, lstrip_blocks=True
-    ).render(configs=configs)
-    replace_comments_with_code(start_marker, end_marker, gen_code, page_config_path)
 
 
 def replace_comments_with_code(
@@ -143,16 +146,6 @@ def replace_comments_with_code(
         f.write(content)
 
 
-def gen_native_config():
-    configs = parse_config()
-    page_config_path = os.path.join(
-        _binary_decoder_path,
-        "page_config.h",
-    )
-    gen_native_members_config(configs, page_config_path)
-    gen_native_get_set_func_config(configs, page_config_path)
-
-
 def gen_page_config_decode():
     configs = parse_config()
     config_decode_path = os.path.join(
@@ -161,21 +154,23 @@ def gen_page_config_decode():
     )
     config_decode_tmpl = """
 {% for config in configs %}
-  if (doc.HasMember(config::{{ config.const_name }}) && doc[config::{{ config.const_name }}].Is{{ config.doc_type }}()) {
+{% if "ALL" in config.codeGen or "DECODE" in config.codeGen %}
+  if (doc.HasMember({{ config.const_name }}) && doc[{{ config.const_name }}].Is{{ config.doc_type }}()) {
     {% if config.value_type == "TernaryBool" %}
-    page_config->Set{{ config.upper_camel_case_name }}(doc[config::{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+    page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
     {% else %}
-    page_config->Set{{ config.upper_camel_case_name }}(doc[config::{{ config.const_name }}].Get{{ config.doc_type }}());
+    page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].Get{{ config.doc_type }}());
     {% endif %}
   {% if config.version_overrides %}
   {% for version_override in config.version_overrides %}
   } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_, {{ version_override["minSDKVersion"] }})) {
-    page_config->Set{{ config.upper_camel_case_name }}({{ version_override["value"] }});
+    page_config->{{ config.setter_func_name}}({{ version_override["value"] }});
   }
   {% endfor %}
   {% else %}
   }
   {% endif %}
+{% endif %}
 
 {% endfor %}
 """
@@ -185,42 +180,37 @@ def gen_page_config_decode():
         config_decode_tmpl, trim_blocks=True, lstrip_blocks=True
     ).render(configs=configs)
     replace_comments_with_code(start_marker, end_marker, gen_code, config_decode_path)
+    clang_format(config_decode_path)
 
 
 def gen_lynx_config():
     configs = parse_config()
-    gen_lynx_config_path = os.path.join(
+    lynx_config_tmpl_path = os.path.join(
         _binary_decoder_path,
-        "auto_gen_lynx_config_constants.h",
+        "lynx_config.tmpl",
     )
-    lynx_config_tmpl = """// Copyright 2025 The Lynx Authors. All rights reserved.
-// Licensed under the Apache License Version 2.0 that can be found in the
-// LICENSE file in the root directory of this source tree.
+    if not os.path.exists(lynx_config_tmpl_path):
+        print(f"{lynx_config_tmpl_path} not found when gen lynx config")
+        sys.exit(1)
 
-namespace lynx {
-namespace tasm {
-namespace config {
-{% for config in configs %}
-  static constexpr const char {{ config.const_name }}[] = "{{ config.name }}";
-{% endfor %}
-}  // namespace config
-}  // namespace tasm
-}  // namespace lynx
-
-"""
-    if os.path.exists(gen_lynx_config_path):
-        os.remove(gen_lynx_config_path)
-    with open(gen_lynx_config_path, "w") as f:
+    lynx_config_header_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_auto_gen.h",
+    )
+    if os.path.exists(lynx_config_header_path):
+        os.remove(lynx_config_header_path)
+    with open(lynx_config_tmpl_path, "r") as f:
+        lynx_config_tmpl = f.read()
+    with open(lynx_config_header_path, "w") as f:
         f.write(
             Template(lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True).render(
                 configs=configs
             )
         )
+    clang_format(lynx_config_header_path)
 
 
 def gen_config():
-    # gen native config setter and getter
-    gen_native_config()
     # gen page config decode
     gen_page_config_decode()
     # gen lynx config constants

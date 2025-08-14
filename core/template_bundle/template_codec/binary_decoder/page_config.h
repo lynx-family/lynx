@@ -20,14 +20,13 @@
 #include "core/renderer/starlight/types/layout_configs.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
 #include "core/template_bundle/template_codec/compile_options.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "core/template_bundle/template_codec/version.h"
 
 namespace lynx {
 namespace tasm {
-enum class TernaryBool { TRUE_VALUE, FALSE_VALUE, UNDEFINE_VALUE };
-
 // Preallocate 64 bit unsigned integer for pipeline scheduler config.
 // 0 ~ 7 bit: Reserved for parsing binary bundle into C++ bundle.
 // 8 ~ 15 bit: Reserved for MTS Render.
@@ -52,34 +51,6 @@ constexpr static uint64_t kEnableListBatchRenderAsyncResolveTreeMask = 1 << 20;
 // constexpr static int32_t kTernaryInt32UndefinedValue = 0x7fffffff;
 // constexpr static const char* kTernaryStringUndefinedValue = "undefined";
 
-/**
- * EntryConfig provide an independent config for entry.
- * Usually, a lazy bundle / card corresponds to an entry.
- */
-class EntryConfig {
- public:
-  EntryConfig() = default;
-  virtual ~EntryConfig() = default;
-
-  // layout configs
-  inline const starlight::LayoutConfigs& GetLayoutConfigs() {
-    return layout_configs_;
-  }
-
-  // default display linear
-  inline void SetDefaultDisplayLinear(bool is_linear) {
-    default_display_linear_ = is_linear;
-    layout_configs_.default_display_linear_ = is_linear;
-  }
-  inline bool GetDefaultDisplayLinear() { return default_display_linear_; }
-
- protected:
-  starlight::LayoutConfigs layout_configs_;
-
- private:
-  bool default_display_linear_{false};
-};
-
 static constexpr const char kEnableSignalAPI[] = "enableSignalAPI";
 static constexpr const char kEnableNativeScheduleCreateViewAsync[] =
     "enableNativeScheduleCreateViewAsync";
@@ -89,18 +60,15 @@ static constexpr const char kEnableNativeScheduleCreateViewAsync[] =
  * When adding or modifying some properties, please modify
  * oliver/type-lynx/compile/page-config.d.ts at the same time.
  */
-class PageConfig final : public EntryConfig {
+class PageConfig final : public LynxConfig {
  public:
   // Enable attribute flatten if it not defined in index.json
   // Attribute auto-expose is automatically opended
   PageConfig()
       : bundle_module_mode_(PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
-        page_flatten(true),
         dsl_(PackageInstanceDSL::TT),
         enable_auto_show_hide(true),
-        enable_async_display_(true),
         enable_view_receive_touch_(false),
-        enable_lepus_strict_check_(false),
         enable_event_through_(false),
         need_remove_component_element_(false){};
 
@@ -162,7 +130,7 @@ class PageConfig final : public EntryConfig {
 
   std::unordered_map<std::string, std::string> GetPageConfigMap() {
     std::unordered_map<std::string, std::string> map;
-    map.insert({"page_flatten", page_flatten ? "true" : "false"});
+    map.insert({"page_flatten", page_flatten_ ? "true" : "false"});
     map.insert({"target_sdk_version", target_sdk_version_});
     map.insert({"enable_lepus_ng", enable_lepus_ng_ ? "true" : "false"});
     map.insert({"react_version", react_version_});
@@ -178,21 +146,11 @@ class PageConfig final : public EntryConfig {
 
   inline std::string GetOriginalConfig() { return original_config_; }
 
-  inline void SetVersion(const std::string& version) { page_version = version; }
-
-  inline std::string GetVersion() { return page_version; }
-
-  inline void SetGlobalFlattern(bool flattern) { page_flatten = flattern; }
-
   inline void SetEnableA11yIDMutationObserver(bool enable) {
     enable_a11y_mutation_observer = enable;
   }
 
   inline void SetEnableA11y(bool enable) { enable_a11y = enable; }
-
-  inline void SetGlobalImplicit(bool implicit) { page_implicit = implicit; }
-
-  inline bool GetGlobalFlattern() { return page_flatten; }
 
   inline bool GetEnableA11yIDMutationObserver() {
     return enable_a11y_mutation_observer;
@@ -200,13 +158,9 @@ class PageConfig final : public EntryConfig {
 
   inline bool GetEnableA11y() { return enable_a11y; }
 
-  inline bool GetGlobalImplicit() { return page_implicit; }
-
   inline void SetDSL(PackageInstanceDSL dsl) { dsl_ = dsl; }
 
   inline void SetAutoExpose(bool enable) { enable_auto_show_hide = enable; }
-
-  inline void SetDataStrictMode(bool strict) { data_strict_mode = strict; }
 
   inline void SetAbsoluteInContentBound(bool enable) {
     layout_configs_.is_absolute_in_content_bound_ = enable;
@@ -240,8 +194,6 @@ class PageConfig final : public EntryConfig {
 
   inline bool GetAutoExpose() { return enable_auto_show_hide; }
 
-  inline bool GetDataStrictMode() { return data_strict_mode; }
-
   inline void SetDefaultOverflowVisible(bool is_visible) {
     default_overflow_visible_ = is_visible;
   }
@@ -269,24 +221,6 @@ class PageConfig final : public EntryConfig {
   inline PackageInstanceBundleModuleMode GetBundleModuleMode() {
     return bundle_module_mode_;
   }
-
-  inline void SetEnableAsyncDisplay(bool enable) {
-    enable_async_display_ = enable;
-  }
-
-  inline bool GetEnableAsyncDisplay() { return enable_async_display_; }
-
-  inline void SetEnableImageDownsampling(bool enable) {
-    enable_image_downsampling_ = enable;
-  }
-
-  inline bool GetEnableImageDownsampling() {
-    return enable_image_downsampling_;
-  }
-
-  inline void SetEnableNewImage(bool enable) { enable_New_Image_ = enable; }
-
-  inline bool GetEnableNewImage() { return enable_New_Image_; }
 
   inline void SetTrailNewImage(TernaryBool enable) {
     trail_New_Image_ = enable;
@@ -330,32 +264,12 @@ class PageConfig final : public EntryConfig {
 
   inline bool GetEnableViewReceiveTouch() { return enable_view_receive_touch_; }
 
-  inline void SetEnableLepusStrictCheck(bool enable) {
-    enable_lepus_strict_check_ = enable;
-  }
-
-  inline void SetLepusQuickjsStackSize(uint32_t stack_size) {
-    lepus_quickjs_stack_size_ = stack_size;
-  }
-
-  inline void SetEnableLepusNullPropAsUndef(bool enable) {
-    enable_lepus_null_prop_as_undef_ = enable;
-  }
-
   inline void SetFontScaleSpOnly(bool font_scale) {
     layout_configs_.font_scale_sp_only_ = font_scale;
   }
 
   inline bool GetFontScaleSpOnly() {
     return layout_configs_.font_scale_sp_only_;
-  }
-
-  bool GetEnableLepusStrictCheck() { return enable_lepus_strict_check_; }
-
-  bool GetLepusQuickjsStackSize() { return lepus_quickjs_stack_size_; }
-
-  bool GetEnableLepusNullPropAsUndef() {
-    return enable_lepus_null_prop_as_undef_;
   }
 
   void SetEnableEventThrough(bool enable) { enable_event_through_ = enable; }
@@ -1181,9 +1095,9 @@ class PageConfig final : public EntryConfig {
   // TODO(songshourui.null): move this function to testing file
   void PrintPageConfig(std::ostream& output) {
 #define PAGE_CONFIG_DUMP(key) output << #key << ":" << key << ",";
-    PAGE_CONFIG_DUMP(page_version)
-    PAGE_CONFIG_DUMP(page_flatten)
-    PAGE_CONFIG_DUMP(page_implicit)
+    output << "page_version:" << page_version_ << ",";
+    output << "page_flatten:" << page_flatten_ << ",";
+    output << "page_implicit:" << page_implicit_ << ",";
     output << "dsl_:" << static_cast<int>(dsl_) << ",";
     PAGE_CONFIG_DUMP(enable_auto_show_hide)
     output << "bundle_module_mode_:" << static_cast<int>(bundle_module_mode_)
@@ -1217,7 +1131,6 @@ class PageConfig final : public EntryConfig {
   tasm::DynamicCSSConfigs css_configs_;
   // user defined extraInfo.
   lepus::Value extra_info_{};
-  std::string page_version;
   std::string cli_version_;
   std::string custom_data_;
   std::string target_sdk_version_;
@@ -1273,8 +1186,6 @@ class PageConfig final : public EntryConfig {
   TernaryBool enable_text_layout_cache_{TernaryBool::UNDEFINE_VALUE};
   TernaryBool enable_unified_pipeline_{TernaryBool::UNDEFINE_VALUE};
   TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
-  // page's engine version controller
-  uint32_t lepus_quickjs_stack_size_ = 0;
   // default big image warning threshold, adjust it if necessary
   uint32_t log_box_image_size_warning_threshold_ = 1000000;
   // default include font padding
@@ -1284,19 +1195,13 @@ class PageConfig final : public EntryConfig {
   int32_t observer_frame_rate_{20};
   int32_t long_press_duration_{-1};
   CSSParserConfigs css_parser_configs_;
-  bool page_flatten;
   bool enable_a11y_mutation_observer{false};
   bool enable_a11y{false};
-  bool page_implicit{true};
   PackageInstanceDSL dsl_;
   bool enable_auto_show_hide;
-  bool enable_async_display_;
-  bool enable_image_downsampling_{false};
-  bool enable_New_Image_{true};
   bool enable_text_language_alignment_{false};
   bool enable_x_text_layout_reused_{false};
   bool enable_view_receive_touch_;
-  bool enable_lepus_strict_check_;
   bool enable_event_through_;
   bool enable_simultaneous_tap_{false};
   // Default value is false. If this flag is true, the external gesture which's
@@ -1313,7 +1218,6 @@ class PageConfig final : public EntryConfig {
   // ended the gesture if _touches was empty. This resolved the problem.
   // only for ios, detail can see f-12375631 and its mr.
   bool enable_end_gesture_at_last_finger_up_{false};
-  bool enable_lepus_null_prop_as_undef_{false};
   bool enable_text_non_contiguous_layout_{true};
   bool need_remove_component_element_;
   bool strict_prop_type_{false};
@@ -1338,7 +1242,6 @@ class PageConfig final : public EntryConfig {
   bool enable_overlap_for_accessibility_element_{true};
   bool enable_new_accessibility_{false};
   bool enable_text_refactor_{false};
-  bool data_strict_mode{true};
   bool enable_z_index_{false};
   bool enable_react_only_props_id_{false};
   bool enable_global_component_map_{false};

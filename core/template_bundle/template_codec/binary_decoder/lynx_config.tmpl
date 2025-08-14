@@ -1,0 +1,76 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_H_
+#define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_H_
+
+#include <cstddef>
+#include <string>
+
+#include "base/include/value/base_value.h"
+#include "core/renderer/starlight/types/layout_configs.h"
+#include "core/template_bundle/template_codec/ttml_constant.h"
+
+namespace lynx {
+namespace tasm {
+enum class TernaryBool : uint8_t { TRUE_VALUE, FALSE_VALUE, UNDEFINE_VALUE };
+
+/**
+ * EntryConfig provide an independent config for entry.
+ * Usually, a lazy bundle / card corresponds to an entry.
+ */
+class EntryConfig {
+ public:
+  EntryConfig() = default;
+  virtual ~EntryConfig() = default;
+
+  // layout configs
+  inline const starlight::LayoutConfigs& GetLayoutConfigs() {
+    return layout_configs_;
+  }
+
+  // default display linear
+  inline void SetDefaultDisplayLinear(bool is_linear) {
+    default_display_linear_ = is_linear;
+    layout_configs_.default_display_linear_ = is_linear;
+  }
+  inline bool GetDefaultDisplayLinear() { return default_display_linear_; }
+
+ protected:
+  starlight::LayoutConfigs layout_configs_;
+
+ private:
+  bool default_display_linear_{false};
+};
+
+{% for config in configs %}
+  static constexpr const char {{ config.const_name }}[] = "{{ config.name }}";
+{% endfor %}
+
+class LynxConfig : public EntryConfig {
+ public:
+  LynxConfig() = default;
+  ~LynxConfig() override = default;
+
+{% for config in configs %}
+{% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
+  inline void {{ config.setter_func_name }}({{ config.setter_input_type }} {{ config.snake_case_name }}) { {{ config.snake_case_name }}_ = {{ config.snake_case_name }}; }
+  inline {{ config.value_type }} {{ config.getter_func_name }}() const { return {{ config.snake_case_name }}_; }
+
+{% endif %}
+{% endfor %}
+
+  protected:
+{% for config in configs %}
+{% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
+  {{ config.value_type }} {{ config.snake_case_name }}_{{ '{' }}{{ config.default_value }}{{ '}' }};
+{% endif %}
+{% endfor %}
+
+};
+}  // namespace tasm
+}  // namespace lynx
+
+#endif  // CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_H_
+
