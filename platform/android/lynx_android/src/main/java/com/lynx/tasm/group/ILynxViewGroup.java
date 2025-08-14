@@ -17,6 +17,7 @@ public interface ILynxViewGroup extends ILynxViewConfigProvider {
   LynxView getLynxViewById(int LynxViewId);
   void registerModule(String name, Class<? extends LynxModule> module, Object param);
   String getUrl();
-
   TemplateData getGlobalProps();
+
+  boolean isTemplateBundleReady();
 }

@@ -332,6 +332,16 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     return this.templateBundle;
   }
 
+  /**
+   * Check if the bundle in LynxViewGroup is ready yet.
+   *
+   * @return TemplateBundle ready or not.
+   */
+  @Override
+  public boolean isTemplateBundleReady() {
+    return templateBundle != null;
+  }
+
   @Override
   public void setLynxEngine(ILynxEngine lynxEngine) {
     // TODO(@huangweiwu): to impl this;

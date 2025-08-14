@@ -2413,6 +2413,7 @@ public interface com::lynx::tasm::group::ILynxViewGroup {
   public void com.lynx.tasm.group.ILynxViewGroup.registerModule(String name, Class<? extends LynxModule > module, Object param);
   public String com.lynx.tasm.group.ILynxViewGroup.getUrl();
   public TemplateData com.lynx.tasm.group.ILynxViewGroup.getGlobalProps();
+  public boolean com.lynx.tasm.group.ILynxViewGroup.isTemplateBundleReady();
 }
 
 public interface com::lynx::tasm::group::ILynxViewRuntimeCacheManager {
