@@ -1,9 +1,10 @@
 opencv-python
 requests>=2.25.1
-lynx-e2e-appium==0.0.5
+lynx-e2e-appium==0.0.7
 pyyaml
 retrying
 appium-python-client==3.1.1
 selenium==4.17.2
 ujson
 six>=1.16.0
+setuptools>=75.6.0

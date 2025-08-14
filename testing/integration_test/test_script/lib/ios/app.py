@@ -8,6 +8,7 @@ from lynx_e2e.api.app import LynxApp as LynxAppBase
 class LynxApp(LynxAppBase):
     app_spec = {
         "bundleId": "com.lynx.LynxExplorer",
+        "showXcodeLog": True,
     }
     popup_rules = []
 

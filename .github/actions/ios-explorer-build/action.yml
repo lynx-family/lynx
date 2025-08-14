@@ -6,6 +6,10 @@ inputs:
   build-arch:
     description: The architecture of explorer we are building. It could be x86_64,arm64
     required: true
+  build-params:
+    description: The build params of explorer we are building.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -25,7 +29,7 @@ runs:
           source tools/envsetup.sh
           pushd explorer/darwin/ios/lynx_explorer
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          bash bundle_install.sh
+          bash bundle_install.sh ${{ inputs.build-params }}
           popd
     - name: Build Explorer App
       shell: bash

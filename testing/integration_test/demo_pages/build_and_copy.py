@@ -45,6 +45,7 @@ if os.path.exists(automation_ios):
 os.makedirs(automation_ios)
 
 print("========== build integration test demo pages ==========")
+os.chdir(script_dir)
 # Install dependencies and build
 run_pnpm_command(["pnpm", "install", "--frozen-lockfile"], os.getcwd())
 run_pnpm_command(["pnpm", "run", "build"], os.getcwd())
