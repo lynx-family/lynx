@@ -39,6 +39,7 @@ class UIRoot : public UIView {
  private:
   bool are_gestures_attached_{false};
   bool is_root_attached_{false};
+  bool is_root_visible_{false};
   ArkUI_NodeHandle root_proxy_{nullptr};
   ArkUI_NodeHandle normal_sibling_{nullptr};
   ArkUI_NodeHandle transparent_sibling_{nullptr};

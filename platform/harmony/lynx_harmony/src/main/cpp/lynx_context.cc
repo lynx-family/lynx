@@ -204,6 +204,16 @@ void LynxContext::SetEnableEventThrough(bool enable_event_through) {
 
 bool LynxContext::EnableEventThrough() { return enable_event_through_; }
 
+void LynxContext::SetEnableHarmonyVisibleAreaChangeForExposure(
+    bool enable_harmony_visible_area_change_for_exposure) {
+  enable_harmony_visible_area_change_for_exposure_ =
+      enable_harmony_visible_area_change_for_exposure;
+}
+
+bool LynxContext::EnableHarmonyVisibleAreaChangeForExposure() {
+  return enable_harmony_visible_area_change_for_exposure_;
+}
+
 void LynxContext::CallJSApiCallbackWithValue(int32_t callback_id,
                                              const lepus::Value& params) const {
   if (!runtime_proxy_) {

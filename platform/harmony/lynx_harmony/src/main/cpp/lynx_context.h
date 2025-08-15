@@ -118,6 +118,11 @@ class LynxContext {
 
   bool EnableEventThrough();
 
+  void SetEnableHarmonyVisibleAreaChangeForExposure(
+      bool enable_harmony_visible_area_change_for_exposure);
+
+  bool EnableHarmonyVisibleAreaChangeForExposure();
+
   void CallJSApiCallbackWithValue(int32_t callback_id,
                                   const lepus::Value& params) const;
 
@@ -300,6 +305,7 @@ class LynxContext {
   napi_env env_;
 
   bool enable_event_through_{false};
+  bool enable_harmony_visible_area_change_for_exposure_{false};
 };
 
 }  // namespace harmony

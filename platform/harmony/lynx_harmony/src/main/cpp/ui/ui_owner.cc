@@ -203,7 +203,7 @@ void UIOwner::DestroySubTree(UIBase* root) {
 
 UIRoot* UIOwner::Root() {
   if (!root_) {
-    root_ = std::shared_ptr<UIBase>(UIRoot::Make(context_.get(), 0, "page"));
+    root_ = std::shared_ptr<UIBase>(UIRoot::Make(context_.get(), 10, "page"));
   }
   return reinterpret_cast<UIRoot*>(root_.get());
 }
