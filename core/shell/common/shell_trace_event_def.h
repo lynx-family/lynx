@@ -141,8 +141,6 @@ inline constexpr const char* const
 
 inline constexpr const char* const TASM_OPERATION_QUEUE_ASYNC_FLUSH =
     "TASMOperationQueueAsync::Flush";
-inline constexpr const char* const JSB_TIMING_FLUSH_JSB_TIMING =
-    "JSBTiming::FlushJSBTiming";
 inline constexpr const char* const
     CALL_JS_FUNCTION_JAVA_ONLY_ARRAY_TO_JS_ARRAY =
         "CallJSFunction:JavaOnlyArrayToJSArray";

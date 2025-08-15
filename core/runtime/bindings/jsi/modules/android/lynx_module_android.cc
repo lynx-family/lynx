@@ -362,6 +362,11 @@ void LynxModuleAndroid::InvokeCallback(
          << callback->callback_id());
     return;
   }
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JSB,
+                      NATIVE_MODULE_PLATFORM_CALLBACK_START,
+                      [&callback](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(callback->CallbackFlowId());
+                      });
   if (callback->timing_collector_) {
     callback->timing_collector_->CallbackThreadSwitchStart();
   }
