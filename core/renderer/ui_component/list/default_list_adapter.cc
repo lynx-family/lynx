@@ -100,7 +100,7 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
     // In ReactLynx 3.0, binding item_holder twice without enqueuing will result
     // in cloning of the old element. This MR aims to avoid this scenario by
     // mandating enqueuing before binding.
-    if (list_element_->is_fiber_element() && item_holder->element()) {
+    if (list_element_->IsFiberArch() && item_holder->element()) {
       NLIST_LOGI("[" << list_container_
                      << "] DefaultListAdapter::BindItemHolder: enqueue "
                         "component before render with item_key = "
