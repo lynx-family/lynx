@@ -52,7 +52,9 @@
 
     if (LynxEnv.sharedInstance.logBoxEnabled && devtoolService) {
       _logbox = [devtoolService createLogBoxWithLynxView:view];
+#if OS_IOS
       [_logbox setLynxDevTool:self];
+#endif
     } else {
       _logbox = nil;
     }

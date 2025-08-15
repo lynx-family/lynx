@@ -21,8 +21,12 @@
                         }]);
     return;
   }
+#if OS_OSX
+  NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:bundleUrl withExtension:@"bundle"];
+#else
   NSURL *debugBundleUrl = [[NSBundle bundleForClass:[self class]] URLForResource:bundleUrl
                                                                    withExtension:@"bundle"];
+#endif
   if (!debugBundleUrl) {
     completion(nil, [NSError errorWithDomain:@"com.basedevtool.utils"
                                         code:-1

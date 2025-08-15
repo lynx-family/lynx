@@ -6,7 +6,7 @@
 
 #import "DevToolFileLoadUtils.h"
 
-typedef void (^LoadErrorParserBlock)(DevToolFileLoadCallback completion);
+typedef void (^LoadErrorParserBlock)(DevToolFileLoadCallback _Nonnull completion);
 
 NS_ASSUME_NONNULL_BEGIN
 

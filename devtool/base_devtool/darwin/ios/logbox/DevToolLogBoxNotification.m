@@ -205,10 +205,15 @@ static CGFloat imageMargin = 3.0;
     _closeButton.layer.cornerRadius = _closeButton.bounds.size.width / 2.0;
     _closeButton.layer.masksToBounds = YES;
 
-    // Set image to _closeButton(iOS)/_closeImage(MacOS).
+// Set image to _closeButton(iOS)/_closeImage(MacOS).
+#if OS_OSX
+    NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxDebugResources"
+                                                    withExtension:@"bundle"];
+#else
     NSURL *debugBundleUrl =
         [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
                                                  withExtension:@"bundle"];
+#endif
     if (debugBundleUrl) {
       NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
       NSString *path = [bundle pathForResource:@"notification_cancel" ofType:@"png"];
@@ -494,6 +499,10 @@ static CGFloat imageMargin = 3.0;
 #if OS_IOS
     view.userInteractionEnabled = YES;
 #endif
+#if OS_OSX
+    tap.numberOfClicksRequired = 1;
+    tap.delaysPrimaryMouseButtonEvents = NO;
+#endif
     [view addGestureRecognizer:tap];
     @synchronized(_notificationViews) {
       [_notificationViews setObject:view forKey:level];
@@ -542,7 +551,7 @@ static CGFloat imageMargin = 3.0;
 }
 
 - (void)hideNotification {
-  for (NSNumber *level in _notificationViews) {
+  for (NSString *level in _notificationViews) {
     DevToolLogNotificationView *view = [_notificationViews objectForKey:level];
     if ([view isShowing]) {
       [view hide];
@@ -552,7 +561,7 @@ static CGFloat imageMargin = 3.0;
 
 - (void)hideNotificationOfIndex:(NSInteger)index {
   --_currentLayoutIndex;
-  for (NSNumber *level in _notificationViews) {
+  for (NSString *level in _notificationViews) {
     DevToolLogNotificationView *view = [_notificationViews objectForKey:level];
     if (index < [view layoutIndex]) {
       [view updateLayout:[view layoutIndex] - 1];

@@ -3,8 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 
 #import "DevToolLogBox.h"
+
+#if OS_OSX
+#import <Lynx/DevToolDownloader.h>
+#import <Lynx/DevToolToast.h>
+#else
 #import <BaseDevtool/DevToolDownloader.h>
 #import <BaseDevtool/DevToolToast.h>
+#endif
 #import <TargetConditionals.h>
 #import <WebKit/WebKit.h>
 #import "DevToolLogBoxEnv.h"
@@ -270,9 +276,14 @@ NSString *const BRIDGE_JS =
 
 - (NSURL *)getLogBoxPageUrl {
   NSURL *url;
+#if OS_OSX
+  NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxDebugResources"
+                                                  withExtension:@"bundle"];
+#else
   NSURL *debugBundleUrl =
       [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
                                                withExtension:@"bundle"];
+#endif
   if (debugBundleUrl) {
     NSBundle *bundle = [NSBundle bundleWithURL:debugBundleUrl];
     url = [bundle URLForResource:@"logbox/index" withExtension:@".html"];
@@ -422,6 +433,7 @@ NSString *const BRIDGE_JS =
         self->_stackTraceWebView.animator.frame = endAnimationFrame;
       }
       completionHandler:^{
+        [self sendJsEvent:@{@"event" : @"reset"}];
         self.hidden = YES;
       }];
 #else
@@ -610,9 +622,14 @@ NSString *const BRIDGE_JS =
 }
 
 - (void)loadMappingsWasm {
+#if OS_OSX
+  NSURL *debugBundleUrl = [[NSBundle mainBundle] URLForResource:@"LynxDebugResources"
+                                                  withExtension:@"bundle"];
+#else
   NSURL *debugBundleUrl =
       [[NSBundle bundleForClass:[self class]] URLForResource:@"LynxBaseDevToolResources"
                                                withExtension:@"bundle"];
+#endif
   if (!debugBundleUrl) {
     NSLog(@"Failed to load mappings.wasm: resource bundle not exists");
     return;
@@ -761,8 +778,9 @@ NSString *const BRIDGE_JS =
       if (strongSelf) {
         strongSelf->_isLoadingFinished = true;
         [strongSelf updateViewInfoOnWindow];
-        __strong typeof(_currentProxy) currentProxy = _currentProxy;
-        [[currentProxy logMessagesWithLevel:_currentLevel]
+        __weak typeof(strongSelf->_currentProxy) weakCurrentProxy = strongSelf->_currentProxy;
+        __strong typeof(weakCurrentProxy) currentProxy = weakCurrentProxy;
+        [[currentProxy logMessagesWithLevel:strongSelf->_currentLevel]
             enumerateObjectsUsingBlock:^(NSString *_Nonnull message, NSUInteger idx,
                                          BOOL *_Nonnull stop) {
               [strongSelf showLogMessageOnWindow:message

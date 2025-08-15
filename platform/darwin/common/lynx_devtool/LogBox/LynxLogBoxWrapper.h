@@ -4,7 +4,11 @@
 #ifndef LYNX_PLATFORM_DARWIN_COMMON_LYNX_DEVTOOL_LOG_BOX_LYNX_LOG_BOX_WRAPPER_H_
 #define LYNX_PLATFORM_DARWIN_COMMON_LYNX_DEVTOOL_LOG_BOX_LYNX_LOG_BOX_WRAPPER_H_
 
+#if OS_OSX
+#import <Lynx/DevToolLogBoxResProvider.h>
+#else
 #import <BaseDevtool/DevToolLogBoxResProvider.h>
+#endif
 #import <Foundation/Foundation.h>
 #import <Lynx/LynxLogBoxProtocol.h>
 #import <Lynx/LynxView.h>

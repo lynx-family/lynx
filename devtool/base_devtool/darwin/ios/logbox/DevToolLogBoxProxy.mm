@@ -8,7 +8,11 @@
 
 @implementation DevToolLogBoxProxy {
   __weak id<DevToolLogBoxResProvider> _resProvider;
+#if OS_IOS
   __weak UIViewController* _pageViewController;
+#else
+  __strong UIViewController* _pageViewController;
+#endif
   BOOL _needFlush;
   NSString* _errorNamespace;
 }
@@ -41,6 +45,12 @@
   if (_pageViewController) {
     return _pageViewController;
   }
+
+#if OS_OSX
+  _pageViewController = [[UIViewController alloc] init];
+  return _pageViewController;
+#endif
+
   __strong id<DevToolLogBoxResProvider> provider = _resProvider;
   if (!provider) {
     return nil;

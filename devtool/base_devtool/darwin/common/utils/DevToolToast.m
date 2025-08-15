@@ -2,8 +2,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#if OS_OSX
+#import <AppKit/AppKit.h>
+#import <Lynx/DevToolToast.h>
+#else
 #import <BaseDevTool/DevToolToast.h>
 #import <Lynx/LynxUIKitAPIAdapter.h>
+#endif
 
 @interface DevToolToast ()
 

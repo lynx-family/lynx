@@ -62,19 +62,24 @@ podspec_target("BaseDevtool_podspec") {
   }
 }
 
+common_util_sources = [
+  "../common/utils/DevToolDownloader.h",
+  "../common/utils/DevToolDownloader.m",
+  "../common/utils/DevToolFileLoadUtils.h",
+  "../common/utils/DevToolFileLoadUtils.mm",
+  "../common/utils/DevToolToast.h",
+  "../common/utils/DevToolToast.m",
+]
+
 subspec_target("framework") {
   sources = [
-    "../common/utils/DevToolDownloader.h",
-    "../common/utils/DevToolDownloader.m",
-    "../common/utils/DevToolFileLoadUtils.h",
-    "../common/utils/DevToolFileLoadUtils.mm",
-    "../common/utils/DevToolToast.h",
-    "../common/utils/DevToolToast.m",
     "DevToolGlobalSlotIOS.h",
     "DevToolGlobalSlotIOS.mm",
     "DevToolSlotIOS.h",
     "DevToolSlotIOS.mm",
   ]
+  sources += common_util_sources
+
   public_header_files = [
     "DevToolGlobalSlotIOS.h",
     "DevToolSlotIOS.h",
@@ -204,25 +209,34 @@ subspec_target("DebugResource") {
   resource_bundles = [ ":LynxBaseDevToolResources" ]
 }
 
+common_logbox_sources = [
+  "logbox/DevToolLogBox.h",
+  "logbox/DevToolLogBox.mm",
+  "logbox/DevToolLogBoxEnv.h",
+  "logbox/DevToolLogBoxEnv.mm",
+  "logbox/DevToolLogBoxHelper.h",
+  "logbox/DevToolLogBoxManager.h",
+  "logbox/DevToolLogBoxManager.m",
+  "logbox/DevToolLogBoxNotification.h",
+  "logbox/DevToolLogBoxNotification.m",
+  "logbox/DevToolLogBoxOwner.h",
+  "logbox/DevToolLogBoxOwner.mm",
+  "logbox/DevToolLogBoxProxy.h",
+  "logbox/DevToolLogBoxProxy.mm",
+  "logbox/DevToolLogBoxResProvider.h",
+]
+
 subspec_target("logbox") {
-  sources = [
-    "logbox/DevToolLogBox.h",
-    "logbox/DevToolLogBox.mm",
-    "logbox/DevToolLogBoxEnv.h",
-    "logbox/DevToolLogBoxEnv.mm",
-    "logbox/DevToolLogBoxHelper.h",
-    "logbox/DevToolLogBoxManager.h",
-    "logbox/DevToolLogBoxManager.m",
-    "logbox/DevToolLogBoxNotification.h",
-    "logbox/DevToolLogBoxNotification.m",
-    "logbox/DevToolLogBoxOwner.h",
-    "logbox/DevToolLogBoxOwner.mm",
-    "logbox/DevToolLogBoxProxy.h",
-    "logbox/DevToolLogBoxProxy.mm",
-    "logbox/DevToolLogBoxResProvider.h",
-  ]
+  sources = common_logbox_sources
   public_header_files = [
     "logbox/DevToolLogBoxProxy.h",
     "logbox/DevToolLogBoxResProvider.h",
+    "logbox/DevToolLogBoxHelper.h",
   ]
+}
+
+source_set("logbox_source") {
+  sources = common_util_sources + common_logbox_sources
+
+  public_configs = darwin_config
 }

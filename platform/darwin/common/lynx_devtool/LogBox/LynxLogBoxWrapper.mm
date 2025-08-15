@@ -3,8 +3,14 @@
 // LICENSE file in the root directory of this source tree.
 #import "LynxLogBoxWrapper.h"
 
+#if OS_OSX
+#import <Lynx/DevToolLogBoxHelper.h>
+#import <Lynx/DevToolLogBoxProxy.h>
+#else
+#import <BaseDevtool/DevToolLogBoxHelper.h>
 #import <BaseDevtool/DevToolLogBoxProxy.h>
 #import <Lynx/LynxDevtool.h>
+#endif
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxView+Internal.h>
 
@@ -14,7 +20,9 @@ NSString* const ERR_NAMESPACE = @"lynx";
   DevToolLogBoxProxy* _logBoxProxy;
   __weak LynxView* _lynxView;
   __weak UIViewController* _pageViewController;
+#if OS_IOS
   __weak LynxDevtool* _devtool;
+#endif
   NSString* _url;
 }
 
@@ -33,9 +41,11 @@ NSString* const ERR_NAMESPACE = @"lynx";
 
 #pragma mark - LynxLogBoxProtocol
 
+#if OS_IOS
 - (void)setLynxDevTool:(LynxDevtool*)devtool {
   _devtool = devtool;
 }
+#endif
 
 - (void)showLogMessage:(LynxError*)error {
   if (!error) {
@@ -61,12 +71,14 @@ NSString* const ERR_NAMESPACE = @"lynx";
 }
 
 - (void)sendErrorEventToPerf:(NSString*)message {
+#if OS_IOS
   __strong typeof(_lynxView) lynxView = _lynxView;
   if (!lynxView) {
     return;
   }
   NSDictionary* eventData = @{@"error" : message};
   [[[lynxView templateRender] devTool] onPerfMetricsEvent:@"lynx_error_event" withData:eventData];
+#endif
 }
 
 - (void)destroy {
@@ -91,12 +103,14 @@ NSString* const ERR_NAMESPACE = @"lynx";
 }
 
 - (NSString*)logSourceWithFileName:(NSString*)fileName {
+#if OS_IOS
   if ([fileName hasSuffix:@"main-thread.js"]) {
     __strong typeof(_devtool) devtool = _devtool;
     if (devtool != nil) {
       return [devtool debugInfoUrl:fileName];
     }
   } else {
+#endif
     NSDictionary* logSources = [self logSources];
     NSString* value = @"";
     int matchLength = 0;
@@ -107,8 +121,10 @@ NSString* const ERR_NAMESPACE = @"lynx";
       }
     }
     return value;
+#if OS_IOS
   }
   return @"";
+#endif
 }
 
 @end

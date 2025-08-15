@@ -4,8 +4,8 @@
 #ifndef DEVTOOL_BASE_DEVTOOL_DARWIN_IOS_LOGBOX_DEVTOOLLOGBOXPROXY_H_
 #define DEVTOOL_BASE_DEVTOOL_DARWIN_IOS_LOGBOX_DEVTOOLLOGBOXPROXY_H_
 
-#import <BaseDevtool/DevToolLogBoxResProvider.h>
 #import <Foundation/Foundation.h>
+#import "DevToolLogBoxResProvider.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
