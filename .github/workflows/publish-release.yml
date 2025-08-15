@@ -183,62 +183,62 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           component: all
 
-  # harmony-sdk-publish:
-  #   runs-on: lynx-custom-container
-  #   container:
-  #     image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
-  #     credentials:
-  #       username: lynx-family
-  #       password: ${{ secrets.GITHUB_TOKEN }}
-  #   defaults:
-  #     run:
-  #       shell: bash
-  #   steps:
-  #     - name: Install Rust toolchain
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: stable
-  #         profile: minimal
-  #         override: true
-  #     - name: Install git-cliff
-  #       run: |
-  #         cargo install git-cliff --locked
-  #         git-cliff --version
-  #     - name: Download Source
-  #       uses: actions/checkout@v4.2.2
-  #       with:
-  #         path: lynx
-  #         fetch-depth: 0
-  #         fetch-tags: true
-  #     - name: Get latest tag
-  #       id: get-latest-tag
-  #       uses: ./lynx/.github/actions/get-latest-tag
-  #     - name: Install Common Dependencies
-  #       uses: ./lynx/.github/actions/common-deps
-  #       with:
-  #         cache-key-prefix: 'hab-container'
-  #     - name: Generate Change Log
-  #       run: |
-  #         cd $GITHUB_WORKSPACE/lynx
-  #         source tools/envsetup.sh
-  #         COMMIT_ID=$(git rev-list -n 1 ${{ steps.get-latest-tag.outputs.latest-tag }})
-  #         python3 explorer/harmony/script/generate_changelog.py --version ${{ needs.get-version.outputs.version }} --modules default --base_commit $COMMIT_ID
-  #     - name: Build Harmony SDK
-  #       run: |
-  #         cd $GITHUB_WORKSPACE/lynx
-  #         source tools/envsetup.sh
-  #         pushd platform/harmony && ohpm install && popd
-  #         pushd explorer/harmony && ohpm install && popd
-  #         python3 explorer/harmony/script/build.py --build_lynx_core --build_har --modules default --override_version ${{ needs.get-version.outputs.version }}
-  #     - name: Publish Harmony SDK
-  #       run: |
-  #         cd $GITHUB_WORKSPACE/lynx
-  #         source tools/envsetup.sh
-  #         export PUBLISH_KEY_PASSPHRASE=${{ secrets.HARMONY_PUBLISH_KEY_PASSPHRASE }}
-  #         cat << EOF > publish_key
-  #         ${{ secrets.HARMONY_PUBLISH_KEY }}
-  #         EOF
-  #         ohpm config set publish_registry https://ohpm.openharmony.cn/ohpm
-  #         export PUBLISH_ID=${{ secrets.HARMONY_PUBLISH_ID }}
-  #         export KEY_PATH=$GITHUB_WORKSPACE/lynx/publish_key
-  #         python3 explorer/harmony/script/publish.py --modules default --version ${{ needs.get-version.outputs.version }}
+  harmony-sdk-publish:
+    runs-on: lynx-custom-container
+    container:
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
+      credentials:
+        username: lynx-family
+        password: ${{ secrets.GITHUB_TOKEN }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Install git-cliff
+        run: |
+          cargo install git-cliff --locked
+          git-cliff --version
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Get latest tag
+        id: get-latest-tag
+        uses: ./lynx/.github/actions/get-latest-tag
+      - name: Install Common Dependencies
+        uses: ./lynx/.github/actions/common-deps
+        with:
+          cache-key-prefix: 'hab-container'
+      - name: Generate Change Log
+        run: |
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          COMMIT_ID=$(git rev-list -n 1 ${{ steps.get-latest-tag.outputs.latest-tag }})
+          python3 explorer/harmony/script/generate_changelog.py --version ${{ needs.get-version.outputs.version }} --modules default --base_commit $COMMIT_ID
+      - name: Build Harmony SDK
+        run: |
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          pushd platform/harmony && ohpm install && popd
+          pushd explorer/harmony && ohpm install && popd
+          python3 explorer/harmony/script/build.py --build_lynx_core --build_har --modules default --override_version ${{ needs.get-version.outputs.version }}
+      - name: Publish Harmony SDK
+        run: |
+          cd $GITHUB_WORKSPACE/lynx
+          source tools/envsetup.sh
+          export PUBLISH_KEY_PASSPHRASE=${{ secrets.HARMONY_PUBLISH_KEY_PASSPHRASE }}
+          cat << EOF > publish_key
+          ${{ secrets.HARMONY_PUBLISH_KEY }}
+          EOF
+          ohpm config set publish_registry https://ohpm.openharmony.cn/ohpm
+          export PUBLISH_ID=${{ secrets.HARMONY_PUBLISH_ID }}
+          export KEY_PATH=$GITHUB_WORKSPACE/lynx/publish_key
+          python3 explorer/harmony/script/publish.py --modules default --version ${{ needs.get-version.outputs.version }}
