@@ -2,7 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-export type PlatformType = 'Android' | 'iOS';
+/**
+ * use 'windows' and 'macOS' instead of 'pc' since 3.3
+ */
+export type PlatformType = 'Android' | 'iOS' | 'Harmony' | 'windows' | 'macOS' | PCPlatform;
+
+/**
+ * @deprecated use 'windows' and 'macOS' instead since 3.3
+ */
+type PCPlatform = 'pc';
 
 export interface SystemInfo {
   /**

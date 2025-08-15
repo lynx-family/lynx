@@ -2,6 +2,7 @@
 
 ## 3.5.0
 - Add a new `flowIds` subfield to the TraceOption parameter in the Trace API to support one-to-many trace associations.
+- Add `pc`, `windows`, `macOS` and `Harmony` platforms to System info.
 - Refactor event definitions for improved IDE compatibility.
 
 ## 3.4.9
