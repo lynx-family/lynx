@@ -504,7 +504,14 @@ void ElementContainer::StyleChanged() {
 void ElementContainer::ZIndexChanged() {
   if (!parent() || !element()->parent() || element()->IsLayoutOnly()) return;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_CONTAINER_Z_INDEX_CHANGED);
-  auto* element_parent = element()->parent();
+  Element* element_parent = nullptr;
+  if (element_manager()->FixFixedZIndexSwitchBug()) {
+    element_parent = element()->is_fiber_element() ? element()->render_parent()
+                                                   : element()->parent();
+  } else {
+    // TODO(linxs): remove below code after verification in next version
+    element_parent = element()->parent();
+  }
   bool is_stacking_context = IsStackingContextNode();
   auto* parent_stacking_context = parent()->EnclosingStackingContextNode();
   auto z = ZIndex();

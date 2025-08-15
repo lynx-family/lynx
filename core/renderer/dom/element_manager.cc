@@ -186,6 +186,8 @@ ElementManager::ElementManager(
       LynxEnv::GetInstance().FixFontSizeOverrideDirectionChangeBug();
   fix_negative_z_index_bug_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, true);
+  fix_fixed_z_index_switch_bug_ = LynxEnv::GetInstance().GetBoolEnv(
+      LynxEnv::Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   if (platform_layout_context_) {
