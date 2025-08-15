@@ -131,7 +131,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
   }
 #endif
   uint64_t flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, HARMONY_INVOKE_NATIVE_MODULE,
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, HARMONY_NATIVE_MODULE_INVOKE,
               [this, &method_name, &flow_id,
                &first_arg](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("module_name", module_name_);
@@ -226,6 +226,7 @@ napi_value NativeModuleHarmony::Callback(napi_env env,
         ctx.event()->add_debug_annotations("module_name", data->module_name);
         ctx.event()->add_debug_annotations("method_name", data->method_name);
         ctx.event()->add_debug_annotations("arg0", data->first_arg);
+        ctx.event()->add_flow_ids(data->flow_id);
       });
   delegate->InvokeCallback(data->callback);
   if (dynamic_args != nullptr) {

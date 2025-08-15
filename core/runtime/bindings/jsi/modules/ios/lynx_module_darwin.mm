@@ -226,7 +226,7 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
                           "Please check the arguments.", base::LynxErrorLevel::Error});
     }
   };
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_OBJC_VALUE);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_OBJC_VALUE);
   // index: i + 2 ==> objc arguments: [this, _cmd, args..., resoledBlock, rejectedBlock]
   for (size_t i = 0; i < count; i++) {
     auto arg = args->GetValueAtIndex(static_cast<int>(i));
@@ -567,7 +567,6 @@ base::expected<std::unique_ptr<pub::Value>, std::string> LynxModuleDarwin::invok
   }
   LOGV("NativeModule: LynxModuleDarwin::invokeObjCMethod, module: "
        << module_name_ << " method: " << methodName << " did PerformMethodInvocation");
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_ON_METHOD_INVOKE);
   return res;
 }
 
@@ -682,7 +681,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
 
 base::expected<std::unique_ptr<pub::Value>, std::string> PerformMethodInvocation(NSInvocation *inv,
                                                                                  const id module) {
-  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, MODULE_INVOKE_FIRE);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, CALL_PLATFORM_IMPLEMENTATION);
   const char *returnType = [[inv methodSignature] methodReturnType];
   void (^block)() = ^{
     [inv invokeWithTarget:module];
