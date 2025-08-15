@@ -24,6 +24,7 @@ import { TextInfo, TextMetrics } from '../modules/nativeModules';
 import nativeGlobal from '../common/nativeGlobal';
 import Element from '../modules/element';
 import { LynxErrorLevel } from '../modules/report';
+import { createEventSource } from '../modules/fetch';
 import Performance from '../modules/performance';
 import SelectorQuery from '../modules/selectorQuery/SelectorQuery';
 import { KeyframeEffectV2 } from '../modules/animation/effect';
@@ -473,6 +474,8 @@ export class Lynx {
       );
     });
   };
+
+  EventSource = createEventSource(this.fetch);
 
   createSelectorQuery = (component?: string): SelectorQuery => {
     return SelectorQuery.newEmptyQuery(

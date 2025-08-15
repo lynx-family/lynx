@@ -226,4 +226,20 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   XCTAssertEqual(self.eventArray[0][@"error"], ERROR_STREAMING_MALFORMED_RESPONSE);
 }
 
+- (void)testProcessSseData {
+  NSString *chunk = @"12345\n\n1234567890\n\n";
+  NSData *data = [chunk dataUsingEncoding:NSUTF8StringEncoding];
+
+  [self.mockDelegate processSseData:self.buffer withData:data];
+
+  XCTAssertEqual([self.eventArray count], 2);
+  NSString *expectedString = @"12345\n\n";
+  NSData *expectedData = [expectedString dataUsingEncoding:NSUTF8StringEncoding];
+  XCTAssertEqualObjects(self.eventArray[0][@"data"], expectedData);
+
+  expectedString = @"1234567890\n\n";
+  expectedData = [expectedString dataUsingEncoding:NSUTF8StringEncoding];
+  XCTAssertEqualObjects(self.eventArray[1][@"data"], expectedData);
+}
+
 @end

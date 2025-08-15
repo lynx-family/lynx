@@ -1,6 +1,32 @@
 // Copyright 2024 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+import { MessageEvent } from '../common/lynx';
+
+/**
+* @description EventSource to support SSE protocol
+* @see https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+* @since 3.5
+*/
+export interface EventSource {
+  new(url: string | URL, options?: RequestInit): EventSource;
+
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/EventSource/error_event) */
+  onerror: ((this: EventSource, ev: Event) => any) | null;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/EventSource/message_event) */
+  onmessage: ((this: EventSource, ev: MessageEvent) => any) | null;
+  /**
+   * The **`close()`** method of the EventSource interface closes the connection, if one is made, and sets the ```js-nolint close() ``` None.
+   *
+   * [MDN Reference](https://developer.mozilla.org/docs/Web/API/EventSource/close)
+   */
+  close(): void;
+  addEventListener<K extends keyof EventSourceEventMap>(type: K, listener: (this: EventSource, ev: EventSourceEventMap[K]) => any): void;
+  addEventListener(type: string, listener: (event: MessageEvent) => void): void;
+  removeEventListener<K extends keyof EventSourceEventMap>(type: K, listener: (this: EventSource, ev: EventSourceEventMap[K]) => any): void;
+  removeEventListener(type: string, listener: (event: MessageEvent) => void): void;
+}
+
 /**
  * @description Http Body
  * @since 2.18
@@ -71,7 +97,7 @@ export interface Request extends Body {
  */
 export declare var Request: {
   prototype: Request;
-  new (input: RequestInfo | URL, init?: RequestInit): Request;
+  new(input: RequestInfo | URL, init?: RequestInit): Request;
 };
 
 export interface LynxExtension {
@@ -163,5 +189,5 @@ export interface Response extends Body {
  */
 export declare var Response: {
   prototype: Response;
-  new (body?: BodyInit | null, init?: ResponseInit): Response;
+  new(body?: BodyInit | null, init?: ResponseInit): Response;
 };

@@ -12,3 +12,4 @@ export * from './UrlSearchParamsPolyfill';
 export * from './AbortController';
 export * from './TextDecoder';
 export * from './TextEncoder';
+export * from './EventSource';

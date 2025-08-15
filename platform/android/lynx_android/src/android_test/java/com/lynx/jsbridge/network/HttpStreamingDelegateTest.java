@@ -162,4 +162,16 @@ public class HttpStreamingDelegateTest {
     assertEquals(sender.eventList.get(0).getString("error"),
         HttpStreamingDelegate.ERROR_STREAMING_MALFORMED_RESPONSE);
   }
+
+  @Test
+  public void testStreamingBodySSE() throws IOException {
+    String input = "12345\n\n1234567890\n\n";
+    InputStream is = new ByteArrayInputStream(input.getBytes());
+
+    processor.streamingBodySSE(is);
+
+    assertEquals(sender.eventList.size(), 2);
+    assertArrayEquals(sender.eventList.get(0).getByteArray("data"), "12345\n\n".getBytes());
+    assertArrayEquals(sender.eventList.get(1).getByteArray("data"), "1234567890\n\n".getBytes());
+  }
 }

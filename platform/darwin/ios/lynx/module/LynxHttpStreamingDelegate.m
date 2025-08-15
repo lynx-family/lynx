@@ -91,6 +91,33 @@ static NSString *const ERROR_STREAMING_MALFORMED_RESPONSE = @"errorStreamingMalf
   [buffer setData:newData];
 }
 
+- (BOOL)sendSseChunkIfComplete:(NSMutableData *)buffer {
+  uint8_t prev = '\0';
+  uint8_t curr;
+  size_t byteLength = buffer.length;
+  const uint8_t *bufferBytes = [buffer bytes];
+  for (size_t i = 0; i < byteLength; ++i) {
+    curr = bufferBytes[i];
+    if (prev == '\n' && curr == '\n') {
+      [self onData:[buffer subdataWithRange:NSMakeRange(0, i + 1)]];
+      [buffer setData:[buffer subdataWithRange:NSMakeRange(i + 1, byteLength - i - 1)]];
+      return YES;
+    }
+    prev = curr;
+  }
+
+  return NO;
+}
+
+// streaming chunk split by '\n\n'
+// see: https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+- (void)processSseData:(NSMutableData *)buffer withData:(NSData *)data {
+  [buffer appendData:data];
+
+  while ([self sendSseChunkIfComplete:buffer]) {
+  }
+}
+
 // split chunck defined by `Transfer-Encoding: chunked`:
 // see: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Transfer-Encoding
 - (void)processChunkedData:(NSMutableData *)buffer withData:(NSData *)data {

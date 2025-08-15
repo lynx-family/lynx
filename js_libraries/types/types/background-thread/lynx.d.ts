@@ -7,7 +7,7 @@ import { AnimationElement } from './animation';
 import { BeforePublishEvent, GlobalEventEmitter, IntersectionObserver } from './event';
 import { SelectorQuery } from './nodes-ref';
 import { Performance } from './performance';
-import { Response, RequestInit } from './fetch';
+import { Response, RequestInit, EventSource } from './fetch';
 
 export * from './fetch';
 
@@ -134,6 +134,13 @@ export interface Lynx extends CommonLynx {
   stopExposure(options?: { sendEvent: boolean }): void;
 
   setObserverFrameRate(options?: { forPageRect?: number; forExposureCheck?: number }): void;
+
+  /**
+   * @description EventSource to support SSE protocol
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/EventSource
+   * @since 3.5
+   */
+  EventSource: EventSource;
 
   /**
    * @description subset of Fetch API

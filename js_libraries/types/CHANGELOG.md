@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.5.2
+- Add `EventSource` types.
+
 ## 3.5.1
 - Add `frame` element types.
 

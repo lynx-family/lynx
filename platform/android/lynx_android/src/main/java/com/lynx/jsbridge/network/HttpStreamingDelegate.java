@@ -7,6 +7,7 @@ package com.lynx.jsbridge.network;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -86,6 +87,25 @@ public class HttpStreamingDelegate {
       return new byte[0];
     }
     return bytes;
+  }
+
+  // streaming chunk split by '\n\n'
+  // see:
+  // https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
+  public void streamingBodySSE(InputStream in) throws IOException {
+    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    int prev = -1;
+    int curr;
+    while ((curr = in.read()) != -1) {
+      buffer.write(curr);
+      if (prev == '\n' && curr == '\n') {
+        onData(buffer.toByteArray());
+        buffer.reset();
+        prev = -1;
+        continue;
+      }
+      prev = curr;
+    }
   }
 
   // split chunk defined by `Transfer-Encoding: chunked`:

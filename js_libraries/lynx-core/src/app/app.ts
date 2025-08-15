@@ -49,6 +49,7 @@ import {
   createResponseClass,
   createRequestClass,
   createReadableStreamClass,
+  createEventSource,
 } from '../modules/fetch';
 import { MessageEventType } from '../lynx';
 import { TraceEventDef } from '../util/TraceEventDef';

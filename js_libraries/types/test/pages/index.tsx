@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { MainThread, UIMethods } from '../../types';
+import { MainThread, UIMethods, MessageEvent } from '../../types';
 
 // StandardProps Types Check
 {
@@ -88,6 +88,8 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
         break;
       } else {
         const text = TextCodecHelper.decode(value);
+        const firstChar = text.charAt(0);
+        const arrayBuffer = TextCodecHelper.encode(text);
       }
     }
   };
@@ -108,6 +110,34 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
     .then((response) => {
       streamToArrayBuffer(response.body);
     });
+
+  const eventSource = new lynx.EventSource('https://sse.dev/test');
+
+  eventSource.onmessage = (event: MessageEvent) => {
+    console.log('Received message:', event.data);
+  };
+
+  // @ts-expect-error message should follow MessageEvent
+  eventSource.onmessage = (event: Event) => {
+    console.log('Received message:', event);
+  };
+
+  eventSource.onerror = (error: Event) => {
+    console.error('EventSource failed:', error);
+  };
+
+  const listener = (event: MessageEvent) => {
+    console.log(event.data);
+  };
+
+  eventSource.addEventListener('system', listener);
+  eventSource.removeEventListener('system', listener);
+
+  const errorListener = (event: Event) => {
+    console.log(event);
+  };
+  eventSource.addEventListener('error', errorListener);
+  eventSource.removeEventListener('error', errorListener);
 }
 
 // MTS Animate

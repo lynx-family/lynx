@@ -39,8 +39,7 @@ declare global {
    * @since 3.0
    * below Lynx 3.0, use lynx.cancelAnimationFrame.
    */
-  function cancelAnimationFrame(requestID?: number): void; 
-
+  function cancelAnimationFrame(requestID?: number): void;
 }
 
 declare function setTimeout(callback: (...args: unknown[]) => unknown, number: number): number;
