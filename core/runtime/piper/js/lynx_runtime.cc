@@ -432,20 +432,6 @@ void LynxRuntime::CallJSCallback(
   if (callback == nullptr) {
     return;
   }
-  if (callback->timing_collector_ != nullptr) {
-    TRACE_EVENT_INSTANT(
-        LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_CALLBACK_THREAD_SWITCH_END,
-        [collector = callback->timing_collector_,
-         callback_thread_switch_end](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_debug_annotations(
-              "timestamp", std::to_string(callback_thread_switch_end));
-          ctx.event()->add_debug_annotations(
-              "jsb_callback_thread_switch",
-              std::to_string(callback_thread_switch_end -
-                             collector->GetCallbackThreadSwitchStart()));
-          ctx.event()->add_flow_ids(collector->FlowId());
-        });
-  }
 
   auto iterator = callbacks_.find(callback->callback_id());
   if (iterator == callbacks_.end()) {
@@ -456,19 +442,6 @@ void LynxRuntime::CallJSCallback(
     return;
   }
   uint64_t callback_call_start_time = base::CurrentSystemTimeMilliseconds();
-  if (callback->timing_collector_ != nullptr) {
-    TRACE_EVENT_INSTANT(
-        LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_CALLBACK_CALL_START,
-        [callback_call_start_time,
-         timing_collector =
-             callback->timing_collector_](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_debug_annotations(
-              "timestamp", std::to_string(callback_call_start_time));
-          if (timing_collector != nullptr) {
-            ctx.event()->add_flow_ids(timing_collector->FlowId());
-          }
-        });
-  }
   js_executor_->invokeCallback(callback, &iterator->second);
   callback->ReportLynxErrors(delegate_.get());
   LOGV(
