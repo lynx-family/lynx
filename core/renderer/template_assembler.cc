@@ -2949,7 +2949,7 @@ void TemplateAssembler::OnPageConfigDecoded(
   // TODO(zhouzhitao):CSSFragmentParsingOnTASMWorker will become enabled by
   // default in the future. Once it is enabled by default, this configuration
   // should be removed.
-  if (config->GetEnableAsyncResolveSubtree()) {
+  if (config->GetEnableAsyncResolveSubtree() == TernaryBool::TRUE_VALUE) {
     element_manager->SetCSSFragmentParsingOnTASMWorkerMTSRender(true);
   }
 }

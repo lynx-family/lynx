@@ -17,14 +17,27 @@ if not os.path.exists(CLANG_FORMAT_PATH):
     )
 
 
-def clang_format(file: str, style="Google") -> str:
+def clang_format(file: str, style="Google", file_extension=None) -> str:
     try:
-        process = subprocess.run(
-            [CLANG_FORMAT_PATH, f"--style={style}", "-i", file],
-            text=True,
-            capture_output=True,
-            check=True,
-        )
+        if file_extension is not None:
+            process = subprocess.run(
+                [
+                    CLANG_FORMAT_PATH,
+                    f"--style={style}",
+                    f"--assume-filename={file_extension}",
+                ],
+                input=file,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+        else:
+            process = subprocess.run(
+                [CLANG_FORMAT_PATH, f"--style={style}", "-i", file],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
         return process.stdout
     except subprocess.CalledProcessError as e:
         print(f"clang format failed: {e.stderr}")

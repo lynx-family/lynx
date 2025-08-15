@@ -34,65 +34,18 @@ static constexpr const char* const kEnableCSSStrictMode = "enableCSSStrictMode";
 static constexpr const char* const kUnifyVWVHBehavior = "unifyVWVHBehavior";
 static constexpr const char* const kFontScaleEffectiveOnlyOnSp =
     "fontScaleEffectiveOnlyOnSp";
-
-static constexpr const char* const kEnableTouchRefactor = "enableTouchRefactor";
-static constexpr const char* const kEnableEndGestureAtLastFingerUp =
-    "enableEndGestureAtLastFingerUp";
-static constexpr const char* const kDisableLongpressAfterScroll =
-    "disableLongpressAfterScroll";
-static constexpr const char* const kKeyboardCallbackPassRelativeHeight =
-    "keyboardCallbackPassRelativeHeight";
 static constexpr const char* const kEnableNewIntersectionObserver =
     "enableNewIntersectionObserver";
-static constexpr const char* const kObserverFrameRate = "observerFrameRate";
-static constexpr const char* const kEnableCheckDataWhenUpdatePage =
-    "enableCheckDataWhenUpdatePage";
 static constexpr const char* const kForceCalcNewStyleKey = "forceCalcNewStyle";
 static constexpr const char* const kIncludeFontPadding = "includeFontPadding";
-static constexpr const char* const kEnableBackgroundShapeLayer =
-    "enableBackgroundShapeLayer";
-static constexpr const char* const kCompileRender = "compileRender";
-static constexpr const char* const kEnableTextLanguageAlignment =
-    "enableTextLanguageAlignment";
-static constexpr const char* const kEnableXTextLayoutReused =
-    "enableXTextLayoutReused";
-static constexpr const char* const kEnableRemoveComponentExtraData =
-    "enableRemoveComponentExtraData";
-static constexpr const char* const kEnableExposureUIMargin =
-    "enableExposureUIMargin";
-static constexpr const char* const kEnableNewGesture = "enableNewGesture";
-static constexpr const char* const kLongPressDuration = "longPressDuration";
-static constexpr const char* const kMapContainerType = "mapContainerType";
-static constexpr const char* const kEnableCheckLocalImage =
-    "enableCheckLocalImage";
-static constexpr const char* const kEnableAsyncRequestImage =
-    "enableAsyncRequestImage";
 static constexpr const char* kUserDefinedExtraInfo = "extraInfo";
-static constexpr const char* kLepusGCThreshold = "lepusGCThreshold";
-static constexpr const char* kEnableComponentNullProp =
-    "enableComponentNullProp";
-static constexpr const char* kEnableCascadePseudo = "enableCascadePseudo";
 static constexpr const char* kRemoveDescendantSelectorScope =
     "removeDescendantSelectorScope";
-static constexpr const char* kAutoExpose = TEMPLATE_AUTO_EXPOSE;
 static constexpr const char* kEnableUseContextPool = "enableUseContextPool";
-static constexpr const char* kEnableUseMapBuffer = "enableUseMapBuffer";
-static constexpr const char* kEnableFiberElementForRadonDiff =
-    "enableFiberElementForRadonDiff";
-static constexpr const char* kEnableOptPushStyleToBundle =
-    "enableOptPushStyleToBundle";
 static constexpr const char* kEnableLynxScrollFluency =
     "enableLynxScrollFluency";
-static constexpr const char* kPreferredFps = "preferredFps";
 static constexpr const char* kEnableCSSLazyImport = "enableCSSLazyImport";
 static constexpr const char* kEnableNewAnimator = "enableNewAnimator";
-static constexpr const char* kDisableQuickTracingGC = "disableQuickTracingGC";
-
-static constexpr const char* kFixCSSImportRuleOrder = "fixCSSImportRuleOrder";
-static constexpr const char* const kEnableTextLayoutCache =
-    "enableTextLayoutCache";
-static constexpr const char* const kEnableUnifiedPipeline =
-    "enableUnifiedPipeline";
 static constexpr const char* const kEnableHarmonyVisibleAreaChangeForExposure =
     "enableHarmonyVisibleAreaChangeForExposure";
 
@@ -101,71 +54,6 @@ static constexpr const char* const kEnableHarmonyVisibleAreaChangeForExposure =
 /// event.
 static constexpr const char* kLynxSDKGlobalFeatureSwitchEvent =
     "lynxsdk_global_feature_switch_statistic";
-
-static constexpr const char* kEnableReloadLifecycle = "enableReloadLifecycle";
-
-// @name: enableA11y
-// @description: Enable Android A11y
-// @platform: Android
-// @supportVersion: 2.10
-// TODO(dingwang): Default value should be set to true in the future.
-static constexpr const char* const kEnableA11y = "enableA11y";
-
-/**
- * @name: enableA11yIDMutationObserver
- * @description: Enable MutationObserver for accessibility
- * @platform: Both
- * @supportVersion: 2.8
- **/
-static constexpr const char* const kEnableA11yIDMutationObserver =
-    "enableA11yIDMutationObserver";
-
-/**
- * @name: enableCheckExposureOptimize
- * @description: Enable exposure detection optimization
- * @platform: Both
- * @supportVersion: 2.10
- **/
-static constexpr const char* const kEnableCheckExposureOptimize =
-    "enableCheckExposureOptimize";
-
-/**
- * @name: enableDisexposureWhenLynxHidden
- * @description: Enable send disexposure events when lynxview is hidden
- * @platform: Android
- * @supportVersion: 2.10
- **/
-static constexpr const char* const kEnableDisexposureWhenLynxHidden =
-    "enableDisexposureWhenLynxHidden";
-
-/**
- * @name: enableExposureWhenLayout
- * @description: Enable exposure check when LynxView is layoutRequest
- * @platform: Android
- * @supportVersion: 2.11
- **/
-static constexpr const char* const kEnableExposureWhenLayout =
-    "enableExposureWhenLayout";
-
-/**
- * @name: enableAirDetectRemovedKeysWhenUpdateData
- * @description: enable Air Mode detect removed keys when updating data from
- *native
- * @platform: Both
- * @supportVersion: 2.11
- **/
-static constexpr const char* const kEnableAirDetectRemovedKeysWhenUpdateData =
-    "enableAirDetectRemovedKeysWhenUpdateData";
-
-/**
- * @name: enableJSDataProcessor
- * @description: Enable data processor on JS thread
- * @platform: Both
- * @supportVersion: 2.12
- **/
-static constexpr const char* const kEnableJSDataProcessor =
-    "enableJSDataProcessor";
-
 /**
  * @name: enableMultiTouch
  * @description: Enable support multi-finger events
@@ -173,7 +61,6 @@ static constexpr const char* const kEnableJSDataProcessor =
  * @supportVersion: 2.12
  **/
 static constexpr const char* const kEnableMultiTouch = "enableMultiTouch";
-
 /**
  * @name: enableMultiTouchParamsCompatible
  * @description: Enable support multi-finger event parameter compatibility
@@ -182,7 +69,6 @@ static constexpr const char* const kEnableMultiTouch = "enableMultiTouch";
  **/
 static constexpr const char* const kEnableMultiTouchParamsCompatible =
     "enableMultiTouchParamsCompatible";
-
 /**
  * @name: enableComponentAsyncDecode
  * @description: Enable dynamic components to be decoded in child threads before
@@ -192,42 +78,6 @@ static constexpr const char* const kEnableMultiTouchParamsCompatible =
  **/
 static constexpr const char kEnableComponentAsyncDecode[] =
     "enableComponentAsyncDecode";
-
-/**
- * @name: enableJsBindingApiThrowException
- * @description: Enable js binding api throw exception
- * @platform: Both
- * @supportVersion: 2.14
- **/
-static constexpr const char* const kEnableJsBindingApiThrowException =
-    "enableJsBindingApiThrowException";
-/**
- * @name: enableICU
- * @description: Enable Bind PRIMJS-ICU
- * @platform: Both
- * @supportVersion: 2.17
- **/
-static constexpr const char* const kEnableBindICU = "enableICU";
-
-/**
- * @name: enableQueryComponentSync
- * @description: Enable query component sync in background runtime
- * @platform: Both
- * @supportVersion: 3.0
- **/
-static constexpr const char* const kEnableQueryComponentSync =
-    "enableQueryComponentSync";
-
-/**
- * @name: enableAsyncFlushSubtree
- * @description: FE Framework use this config to notify Engine that resolve
- * subtree binding will be triggered when render DOM (Not exposed to normal
- * user)
- * @platform: Both
- * @supportVersion: 3.4
- */
-static constexpr const char* const kEnableAsyncFlushSubtree =
-    "enableAsyncResolveSubtree";
 
 bool LynxBinaryConfigDecoder::DecodePageConfig(
     std::string config_str, std::shared_ptr<PageConfig>& page_config) {
@@ -267,29 +117,10 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE);
   }
 
-  if (doc.HasMember(kEnableA11yIDMutationObserver) &&
-      doc[kEnableA11yIDMutationObserver].IsBool()) {
-    page_config->SetEnableA11yIDMutationObserver(
-        doc[kEnableA11yIDMutationObserver].GetBool());
-  }
-
-  if (doc.HasMember(kEnableA11y) && doc[kEnableA11y].IsBool()) {
-    page_config->SetEnableA11y(doc[kEnableA11y].GetBool());
-  }
-
-  if (doc.HasMember(kEnableCascadePseudo) &&
-      doc[kEnableCascadePseudo].IsBool()) {
-    page_config->SetEnableCascadePseudo(doc[kEnableCascadePseudo].GetBool());
-  }
-
   if (doc.HasMember(TEMPLATE_BUNDLE_APP_DSL) &&
       doc[TEMPLATE_BUNDLE_APP_DSL].IsInt()) {
     page_config->SetDSL(
         static_cast<PackageInstanceDSL>(doc[TEMPLATE_BUNDLE_APP_DSL].GetInt()));
-  }
-
-  if (doc.HasMember(kAutoExpose) && doc[kAutoExpose].IsBool()) {
-    page_config.get()->SetAutoExpose(doc[kAutoExpose].GetBool());
   }
 
   if (doc.HasMember(kEnableFixedNew) && doc[kEnableFixedNew].IsBool()) {
@@ -316,17 +147,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
                                                   kQuirksModeDisableVersion))) {
     page_config.get()->SetQuirksModeByVersion(
         base::Version(target_sdk_version_));
-  }
-
-  if (doc.HasMember(kEnableTextLanguageAlignment) &&
-      doc[kEnableTextLanguageAlignment].IsBool()) {
-    page_config.get()->SetEnableTextLanguageAlignment(
-        doc[kEnableTextLanguageAlignment].GetBool());
-  }
-  if (doc.HasMember(kEnableXTextLayoutReused) &&
-      doc[kEnableXTextLayoutReused].IsBool()) {
-    page_config.get()->SetEnableXTextLayoutReused(
-        doc[kEnableXTextLayoutReused].GetBool());
   }
 
   if (doc.HasMember(kEnableCSSInheritance) &&
@@ -359,26 +179,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableCSSStrictMode(doc[kEnableCSSStrictMode].GetBool());
   }
 
-  if (doc.HasMember(kEnableRemoveComponentExtraData) &&
-      doc[kEnableRemoveComponentExtraData].IsBool()) {
-    page_config->SetEnableRemoveComponentExtraData(
-        doc[kEnableRemoveComponentExtraData].GetBool());
-  }
-
-  if (doc.HasMember(kEnableTextLayoutCache) &&
-      doc[kEnableTextLayoutCache].IsBool()) {
-    page_config->SetEnableTextLayoutCache(doc[kEnableTextLayoutCache].GetBool()
-                                              ? TernaryBool::TRUE_VALUE
-                                              : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kEnableUnifiedPipeline) &&
-      doc[kEnableUnifiedPipeline].IsBool()) {
-    page_config->SetEnableUnifiedPipeline(doc[kEnableUnifiedPipeline].GetBool()
-                                              ? TernaryBool::TRUE_VALUE
-                                              : TernaryBool::FALSE_VALUE);
-  }
-
   if (doc.HasMember(kEnableHarmonyVisibleAreaChangeForExposure) &&
       doc[kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
     page_config->SetEnableHarmonyVisibleAreaChangeForExposure(
@@ -395,23 +195,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   if (doc.HasMember(kFontScaleEffectiveOnlyOnSp) &&
       doc[kFontScaleEffectiveOnlyOnSp].IsBool()) {
     page_config->SetFontScaleSpOnly(doc[kFontScaleEffectiveOnlyOnSp].GetBool());
-  }
-
-  if (doc.HasMember(kEnableTouchRefactor) &&
-      doc[kEnableTouchRefactor].IsBool()) {
-    page_config->SetEnableTouchRefactor(doc[kEnableTouchRefactor].GetBool());
-  }
-
-  if (doc.HasMember(kEnableEndGestureAtLastFingerUp) &&
-      doc[kEnableEndGestureAtLastFingerUp].IsBool()) {
-    page_config->SetEnableEndGestureAtLastFingerUp(
-        doc[kEnableEndGestureAtLastFingerUp].GetBool());
-  }
-
-  if (doc.HasMember(kDisableLongpressAfterScroll) &&
-      doc[kDisableLongpressAfterScroll].IsBool()) {
-    page_config->SetDisableLongpressAfterScroll(
-        doc[kDisableLongpressAfterScroll].GetBool());
   }
 
   if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
@@ -431,15 +214,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableZIndex(true);
   }
 
-  if (doc.HasMember(kKeyboardCallbackPassRelativeHeight) &&
-      doc[kKeyboardCallbackPassRelativeHeight].IsBool()) {
-    page_config->SetKeyboardCallbackUseRelativeHeight(
-        doc[kKeyboardCallbackPassRelativeHeight].GetBool());
-  } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                 LYNX_VERSION_2_2)) {
-    page_config->SetKeyboardCallbackUseRelativeHeight(true);
-  }
-
   if (doc.HasMember(kEnableNewIntersectionObserver) &&
       doc[kEnableNewIntersectionObserver].IsBool()) {
     page_config->SetEnableNewIntersectionObserver(
@@ -447,77 +221,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   } else {
     page_config->SetEnableNewIntersectionObserver(
         LynxEnv::GetInstance().EnableNewIntersectionObserver());
-  }
-
-  if (doc.HasMember(kObserverFrameRate) && doc[kObserverFrameRate].IsInt()) {
-    page_config->SetObserverFrameRate(doc[kObserverFrameRate].GetInt());
-  }
-
-  if (doc.HasMember(kEnableCheckExposureOptimize) &&
-      doc[kEnableCheckExposureOptimize].IsBool()) {
-    page_config->SetEnableCheckExposureOptimize(
-        doc[kEnableCheckExposureOptimize].GetBool());
-  }
-
-  if (doc.HasMember(kEnableDisexposureWhenLynxHidden) &&
-      doc[kEnableDisexposureWhenLynxHidden].IsBool()) {
-    page_config->SetEnableDisexposureWhenLynxHidden(
-        doc[kEnableDisexposureWhenLynxHidden].GetBool());
-  }
-
-  if (doc.HasMember(kEnableExposureWhenLayout) &&
-      doc[kEnableExposureWhenLayout].IsBool()) {
-    page_config->SetEnableExposureWhenLayout(
-        doc[kEnableExposureWhenLayout].GetBool());
-  }
-
-  if (doc.HasMember(kEnableAirDetectRemovedKeysWhenUpdateData) &&
-      doc[kEnableAirDetectRemovedKeysWhenUpdateData].IsBool()) {
-    page_config->SetEnableAirDetectRemovedKeysWhenUpdateData(
-        doc[kEnableAirDetectRemovedKeysWhenUpdateData].GetBool());
-  }
-
-  if (doc.HasMember(kEnableExposureUIMargin) &&
-      doc[kEnableExposureUIMargin].IsBool()) {
-    page_config->SetEnableExposureUIMargin(
-        doc[kEnableExposureUIMargin].GetBool());
-  }
-
-  // parse enable new gesture config
-  if (doc.HasMember(kEnableNewGesture) && doc[kEnableNewGesture].IsBool()) {
-    page_config->SetEnableNewGesture(doc[kEnableNewGesture].GetBool());
-  }
-
-  if (doc.HasMember(kLongPressDuration) && doc[kLongPressDuration].IsInt()) {
-    page_config->SetLongPressDuration(doc[kLongPressDuration].GetInt());
-  }
-
-  if (doc.HasMember(kMapContainerType) && doc[kMapContainerType].IsInt()) {
-    page_config->SetMapContainerType(doc[kMapContainerType].GetInt());
-  }
-
-  if (doc.HasMember(kEnableCheckLocalImage) &&
-      doc[kEnableCheckLocalImage].IsBool()) {
-    page_config->SetEnableCheckLocalImage(
-        doc[kEnableCheckLocalImage].GetBool());
-  }
-
-  if (doc.HasMember(kEnableAsyncRequestImage) &&
-      doc[kEnableAsyncRequestImage].IsBool()) {
-    page_config->SetEnableAsyncRequestImage(
-        doc[kEnableAsyncRequestImage].GetBool());
-  }
-
-  if (doc.HasMember(kEnableCheckDataWhenUpdatePage) &&
-      doc[kEnableCheckDataWhenUpdatePage].IsBool()) {
-    page_config->SetEnableCheckDataWhenUpdatePage(
-        doc[kEnableCheckDataWhenUpdatePage].GetBool());
-  }
-
-  if (doc.HasMember(kEnableJSDataProcessor) &&
-      doc[kEnableJSDataProcessor].IsBool()) {
-    page_config->SetEnableDataProcessorOnJs(
-        doc[kEnableJSDataProcessor].GetBool());
   }
 
   if (doc.HasMember(kEnableMultiTouch) && doc[kEnableMultiTouch].IsBool()) {
@@ -578,17 +281,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetIncludeFontPadding(doc[kIncludeFontPadding].GetBool());
   }
 
-  if (doc.HasMember(kEnableBackgroundShapeLayer) &&
-      doc[kEnableBackgroundShapeLayer].IsBool()) {
-    page_config->SetEnableBackgroundShapeLayer(
-        doc[kEnableBackgroundShapeLayer].GetBool());
-  }
-
-  // compile render
-  if (doc.HasMember(kCompileRender) && doc[kCompileRender].IsBool()) {
-    page_config.get()->SetCompileRender(doc[kCompileRender].GetBool());
-  }
-
   /**
    * @name: extraInfo
    * @description: user defined extra info.
@@ -600,30 +292,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       doc[kUserDefinedExtraInfo].IsObject()) {
     page_config->SetExtraInfo(
         lepus::jsonValueTolepusValue(doc[kUserDefinedExtraInfo]));
-  }
-
-  /**
-   * @name: lepusGCThreshold
-   * @description: the gc threshold of lepusNG.
-   * @note: None
-   * @platform: Both
-   * @supportVersion: 2.9
-   **/
-  if (doc.HasMember(kLepusGCThreshold) && doc[kLepusGCThreshold].IsInt()) {
-    page_config->SetLepusGCThreshold(doc[kLepusGCThreshold].GetInt());
-  }
-
-  /**
-   * @name: enableComponentNullProp
-   * @description: lepus support use null as component prop
-   * @note: None
-   * @platform: Both
-   * @supportVersion: 2.9
-   **/
-  if (doc.HasMember(kEnableComponentNullProp) &&
-      doc[kEnableComponentNullProp].IsBool()) {
-    page_config->SetEnableComponentNullProp(
-        doc[kEnableComponentNullProp].GetBool());
   }
 
   if (doc.HasMember(kRemoveDescendantSelectorScope) &&
@@ -651,27 +319,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableUseContextPool(doc[kEnableUseContextPool].GetBool());
   }
 
-  if (doc.HasMember(kEnableUseMapBuffer) && doc[kEnableUseMapBuffer].IsBool()) {
-    page_config->SetEnableUseMapBuffer(doc[kEnableUseMapBuffer].GetBool()
-                                           ? TernaryBool::TRUE_VALUE
-                                           : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kEnableFiberElementForRadonDiff) &&
-      doc[kEnableFiberElementForRadonDiff].IsBool()) {
-    page_config->SetEnableFiberElementForRadonDiff(
-        doc[kEnableFiberElementForRadonDiff].GetBool()
-            ? TernaryBool::TRUE_VALUE
-            : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kEnableOptPushStyleToBundle) &&
-      doc[kEnableOptPushStyleToBundle].IsBool()) {
-    page_config->SetEnableOptPushStyleToBundle(
-        doc[kEnableOptPushStyleToBundle].GetBool() ? TernaryBool::TRUE_VALUE
-                                                   : TernaryBool::FALSE_VALUE);
-  }
-
   // enableLynxScrollFluency
   if (doc.HasMember(kEnableLynxScrollFluency)) {
     if (doc[kEnableLynxScrollFluency].IsBool()) {
@@ -684,11 +331,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       page_config->SetEnableScrollFluencyMonitor(
           doc[kEnableLynxScrollFluency].GetInt());
     }
-  }
-
-  // preferred_fps
-  if (doc.HasMember(kPreferredFps) && doc[kPreferredFps].IsString()) {
-    page_config->SetPreferredFps(doc[kPreferredFps].GetString());
   }
 
   // enableCSSLazyImport
@@ -707,24 +349,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
   } else {
     page_config->SetEnableNewAnimator(TernaryBool::UNDEFINE_VALUE);
   }
-
-  // TODO(nihao.royal): removed in later versions
-  if (doc.HasMember(kEnableReloadLifecycle) &&
-      doc[kEnableReloadLifecycle].IsBool()) {
-    page_config->SetEnableReloadLifecycle(
-        doc[kEnableReloadLifecycle].GetBool());
-  }
-
-  // enableJsBindApiThrowException
-  // user configuration takes priority, otherwise the default configuration is
-  // set by target_sdk_version. Enable it if it is greater than version 2.14,
-  // disable it if it is less than.
-  page_config->SetEnableJsBindingApiThrowException(
-      (doc.HasMember(kEnableJsBindingApiThrowException) &&
-       doc[kEnableJsBindingApiThrowException].IsBool())
-          ? doc[kEnableJsBindingApiThrowException].GetBool()
-          : lynx::tasm::Config::IsHigherOrEqual(target_sdk_version_,
-                                                LYNX_VERSION_2_14));
 
   // Parse page config dynamically
   // TODO(nihao.royal) enumerate doc and parse page config one by one, and unify
@@ -752,18 +376,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
 
   UpdateCSSConfigs(page_config);
 
-  // enableICU
-  if (doc.HasMember(kEnableBindICU) && doc[kEnableBindICU].IsBool()) {
-    page_config->SetEnableBindICU(doc[kEnableBindICU].GetBool());
-  }
-
-  // enableQueryComponentSync
-  if (doc.HasMember(kEnableQueryComponentSync) &&
-      doc[kEnableQueryComponentSync].IsBool()) {
-    page_config->SetEnableQueryComponentSync(
-        doc[kEnableQueryComponentSync].GetBool());
-  }
-
   // enableMicrotaskPromisePolyfill
   if (doc.HasMember(runtime::kEnableMicrotaskPromisePolyfill) &&
       doc[runtime::kEnableMicrotaskPromisePolyfill].IsBool()) {
@@ -771,20 +383,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[runtime::kEnableMicrotaskPromisePolyfill].GetBool()
             ? TernaryBool::TRUE_VALUE
             : TernaryBool::FALSE_VALUE);
-  }
-
-  // disableQuickTracingGC
-  if (doc.HasMember(kDisableQuickTracingGC) &&
-      doc[kDisableQuickTracingGC].IsBool()) {
-    page_config->SetDisableQuickTracingGC(
-        doc[kDisableQuickTracingGC].GetBool());
-  }
-
-  // fix css import rule order issue
-  if (doc.HasMember(kFixCSSImportRuleOrder) &&
-      doc[kFixCSSImportRuleOrder].IsBool()) {
-    page_config->SetFixCSSImportRuleOrder(
-        doc[kFixCSSImportRuleOrder].GetBool());
   }
 
   // enableSignalAPI
@@ -800,12 +398,6 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
         doc[kEnableNativeScheduleCreateViewAsync].GetBool()
             ? TernaryBool::TRUE_VALUE
             : TernaryBool::FALSE_VALUE);
-  }
-
-  if (doc.HasMember(kEnableAsyncFlushSubtree) &&
-      doc[kEnableAsyncFlushSubtree].IsBool()) {
-    page_config->SetEnableAsyncResolveSubtree(
-        doc[kEnableAsyncFlushSubtree].GetBool());
   }
 
   config_helper_.HandlePageConfig(doc, page_config);
