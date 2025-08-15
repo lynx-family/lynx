@@ -287,15 +287,16 @@ bool UIExposure::IsLynxViewChanged() {
   if (exposed_ui_map_.empty() || ui_owner_->Destroyed()) {
     return false;
   }
-  ArkUI_NodeHandle proxy_node = ui_owner_->Root()->GetProxyNode();
-  float left =
-      NodeManager::Instance().GetAttribute<float>(proxy_node, NODE_POSITION, 0);
-  float top =
-      NodeManager::Instance().GetAttribute<float>(proxy_node, NODE_POSITION, 1);
-  float right = left + NodeManager::Instance().GetAttribute<float>(proxy_node,
-                                                                   NODE_WIDTH);
-  float bottom = top + NodeManager::Instance().GetAttribute<float>(proxy_node,
-                                                                   NODE_HEIGHT);
+  auto root = ui_owner_->Root();
+
+  ArkUI_IntOffset page_offset;
+  OH_ArkUI_NodeUtils_GetPositionWithTranslateInScreen(root->GetProxyNode(),
+                                                      &page_offset);
+  float scaled_density = root->GetContext()->ScaledDensity();
+  float left = page_offset.x / scaled_density;
+  float top = page_offset.y / scaled_density;
+  float right = left + root->width_;
+  float bottom = top + root->height_;
 
   bool res = base::FloatsNotEqual(left, old_lynx_origin_rect_[0]) ||
              base::FloatsNotEqual(right, old_lynx_origin_rect_[2]) ||

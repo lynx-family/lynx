@@ -949,6 +949,14 @@ class PageConfig final : public EntryConfig {
     enable_multi_touch_params_compatible_ = enable;
   }
 
+  bool GetEnableHarmonyVisibleAreaChangeForExposure() const {
+    return enable_harmony_visible_area_change_for_exposure_;
+  }
+
+  void SetEnableHarmonyVisibleAreaChangeForExposure(bool enable) {
+    enable_harmony_visible_area_change_for_exposure_ = enable;
+  }
+
   bool GetEnableComponentAsyncDecode() const {
     switch (enable_component_async_decode_) {
       case TernaryBool::TRUE_VALUE:
@@ -1419,6 +1427,9 @@ class PageConfig final : public EntryConfig {
 
   // enable support multi-finger event parameter compatibility.
   bool enable_multi_touch_params_compatible_{false};
+
+  // enable harmony to detect exposure with visible area change event.
+  bool enable_harmony_visible_area_change_for_exposure_{false};
 
   // enable air mode to detect removed keys in updating data from native
   bool enable_air_detect_removed_keys_when_update_data_{false};

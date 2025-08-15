@@ -25,6 +25,12 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
   NodeManager::Instance().SetAttributeWithNumberValue(
       transparent_sibling_, NODE_HIT_TEST_BEHAVIOR,
       static_cast<int32_t>(ARKUI_HIT_TEST_MODE_TRANSPARENT));
+  ArkUI_NumberValue change_ratio[] = {{.f32 = 0.01f}};
+  ArkUI_AttributeItem item{
+      .value = change_ratio,
+      .size = sizeof(change_ratio) / sizeof(ArkUI_NumberValue)};
+  NodeManager::Instance().SetAttribute(root_proxy_,
+                                       NODE_VISIBLE_AREA_CHANGE_RATIO, &item);
 
   NodeManager::Instance().AddNodeEventReceiver(transparent_sibling_,
                                                UIBase::EventReceiver);
@@ -40,6 +46,8 @@ UIRoot::UIRoot(LynxContext* context, int sign, const std::string& tag)
                                             0, this);
   NodeManager::Instance().RegisterNodeEvent(root_proxy_, NODE_EVENT_ON_DETACH,
                                             0, this);
+  NodeManager::Instance().RegisterNodeEvent(
+      root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE, 0, this);
 }
 
 UIRoot::~UIRoot() {
@@ -55,6 +63,8 @@ UIRoot::~UIRoot() {
                                               NODE_EVENT_ON_ATTACH);
   NodeManager::Instance().UnregisterNodeEvent(root_proxy_,
                                               NODE_EVENT_ON_DETACH);
+  NodeManager::Instance().UnregisterNodeEvent(
+      root_proxy_, NODE_EVENT_ON_VISIBLE_AREA_CHANGE);
   NodeManager::Instance().DisposeNode(root_proxy_);
   NodeManager::Instance().DisposeNode(normal_sibling_);
   NodeManager::Instance().DisposeNode(transparent_sibling_);
@@ -84,7 +94,13 @@ void UIRoot::UpdateLayout(float left, float top, float width, float height,
 }
 
 void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
-  if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
+  if (OH_ArkUI_NodeEvent_GetEventType(event) ==
+      NODE_EVENT_ON_VISIBLE_AREA_CHANGE) {
+    ArkUI_NodeComponentEvent* visible_event =
+        OH_ArkUI_NodeEvent_GetNodeComponentEvent(event);
+    is_root_visible_ = visible_event->data[0].i32;
+    context_->NotifyUIScroll();
+  } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_ATTACH) {
     is_root_attached_ = true;
     context_->ResumeExposure();
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_EVENT_ON_DETACH) {
@@ -135,7 +151,11 @@ void UIRoot::AttachToNodeContent(NativeNodeContent* content) {
 
 bool UIRoot::IsRoot() { return true; }
 
-bool UIRoot::IsVisible() { return is_root_attached_ && UIBase::IsVisible(); }
+bool UIRoot::IsVisible() {
+  return is_root_attached_ && UIBase::IsVisible() &&
+         (!context_->EnableHarmonyVisibleAreaChangeForExposure() ||
+          is_root_visible_);
+}
 
 void UIRoot::OnNodeReady() {
   UIBase::OnNodeReady();

@@ -77,6 +77,8 @@ void UIDelegateHarmony::OnPageConfigDecoded(
       ui_owner_->InitGestureArenaManager(lynx_context.get());
     }
     lynx_context->SetEnableEventThrough(config->GetEnableEventThrough());
+    lynx_context->SetEnableHarmonyVisibleAreaChangeForExposure(
+        config->GetEnableHarmonyVisibleAreaChangeForExposure());
   }
 }
 

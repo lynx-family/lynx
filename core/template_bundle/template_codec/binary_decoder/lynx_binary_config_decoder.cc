@@ -168,6 +168,8 @@ static constexpr const char* const kEnableTextLayoutCache =
     "enableTextLayoutCache";
 static constexpr const char* const kEnableUnifiedPipeline =
     "enableUnifiedPipeline";
+static constexpr const char* const kEnableHarmonyVisibleAreaChangeForExposure =
+    "enableHarmonyVisibleAreaChangeForExposure";
 
 /// Upload global feature switches in PageConfig with common data about lynx
 /// view. If you add a new  global feature switch, you should add it to report
@@ -706,6 +708,12 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
     page_config->SetEnableUnifiedPipeline(doc[kEnableUnifiedPipeline].GetBool()
                                               ? TernaryBool::TRUE_VALUE
                                               : TernaryBool::FALSE_VALUE);
+  }
+
+  if (doc.HasMember(kEnableHarmonyVisibleAreaChangeForExposure) &&
+      doc[kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
+    page_config->SetEnableHarmonyVisibleAreaChangeForExposure(
+        doc[kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
   }
 
   if (doc.HasMember(kEnableReduceInitDataCopy) &&

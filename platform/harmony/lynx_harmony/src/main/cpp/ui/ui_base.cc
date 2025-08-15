@@ -1832,8 +1832,7 @@ bool UIBase::IsVisibleForExposure(
           parent_rect[2] = rect[2];
           parent_rect[3] = rect[3];
         } else {
-          current->GetBoundingClientRect(parent_rect);
-          LynxUIHelper::OffsetRect(parent_rect, offset_screen);
+          current->GetBoundingClientRect(parent_rect, true);
           auto& rect = it->second.ui_rect;
           rect[0] = parent_rect[0];
           rect[1] = parent_rect[1];
@@ -1842,8 +1841,7 @@ bool UIBase::IsVisibleForExposure(
           it->second.ui_rect_updated = true;
         }
       } else {
-        current->GetBoundingClientRect(parent_rect);
-        LynxUIHelper::OffsetRect(parent_rect, offset_screen);
+        current->GetBoundingClientRect(parent_rect, true);
         UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                                  .ui_rect_updated = true,
                                                  .ui_rect[0] = parent_rect[0],
@@ -1868,8 +1866,7 @@ bool UIBase::IsVisibleForExposure(
       parent_rect[2] = rect[2];
       parent_rect[3] = rect[3];
     } else {
-      parent->GetBoundingClientRect(parent_rect);
-      LynxUIHelper::OffsetRect(parent_rect, offset_screen);
+      parent->GetBoundingClientRect(parent_rect, true);
       UIExposure::CommonAncestorUIRect rect = {.ui_count = 1,
                                                .ui_rect_updated = true,
                                                .ui_rect[0] = parent_rect[0],
