@@ -129,7 +129,7 @@ int64_t BatchListAdapter::BindItemHolderInternal(
       // primarily for adapting to the Fiber architecture, where recycling
       // must occur before re-rendering.
       Element* list_item = GetListItemElement(item_key);
-      if (list_element_->is_fiber_element() && list_item) {
+      if (list_element_->IsFiberArch() && list_item) {
         NLIST_LOGI("BatchListAdapter::BindItemHolderInternal: "
                    << "enqueue component before rendering with item_key = "
                    << item_key << ", index = " << index);
