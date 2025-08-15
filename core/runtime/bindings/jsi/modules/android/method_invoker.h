@@ -69,8 +69,9 @@ class MethodInvoker : public std::enable_shared_from_this<MethodInvoker> {
 
   base::expected<jvalue, std::string> ExtractPubValue(
       const base::android::JavaValue& args, int arg_index, char type);
-  base::expected<std::unique_ptr<pub::Value>, ErrorPair> Fire(
-      JNIEnv* env, jobject module, jvalue* java_arguments);
+  base::expected<std::unique_ptr<pub::Value>, ErrorPair>
+  CallPlatformImplementation(JNIEnv* env, jobject module,
+                             jvalue* java_arguments);
   std::optional<base::LynxError> ReportPendingJniException();
 };
 

@@ -397,7 +397,7 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
   // Therefore, list is used for caching here to prevent crash when Vector is
   // expanded.
   std::list<base::android::ScopedGlobalJavaRef<jobject>> callback_container;
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_JNI_VALUE);
+  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, PUB_VALUE_TO_JNI_VALUE);
   for (size_t i = 0; i < args_count_; i++) {
     char type = signature_[i + 2];
     base::expected<jvalue, std::string> ret;
@@ -437,20 +437,20 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
   }
   // Real Call Module Method!
   base::expected<std::unique_ptr<pub::Value>, ErrorPair> ret =
-      Fire(env, module, java_arguments);
+      CallPlatformImplementation(env, module, java_arguments);
   if (!ret.has_value()) {
     return base::unexpected(std::move(ret.error()));
   }
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_ON_METHOD_INVOKE);
   LOGI("NativeModules: LynxModuleAndroid MethodInvoker::InvokeMethod, method: ("
        << module_name_ << "." << method_name_ << "." << first_arg_str
-       << ") did fire " << this)
+       << ") call platform implementation" << this)
   return ret;
 }
 
-base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Fire(
-    JNIEnv* env, jobject module, jvalue* java_arguments) {
-  TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, "Fire");
+base::expected<std::unique_ptr<pub::Value>, ErrorPair>
+MethodInvoker::CallPlatformImplementation(JNIEnv* env, jobject module,
+                                          jvalue* java_arguments) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, CALL_PLATFORM_IMPLEMENTATION);
 #define PRIMITIVE_CASE(METHOD)                                                 \
   {                                                                            \
     auto result = env->Call##METHOD##MethodA(module, method_, java_arguments); \

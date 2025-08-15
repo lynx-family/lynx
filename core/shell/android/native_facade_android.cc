@@ -249,14 +249,6 @@ void NativeFacadeAndroid::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
 }
 
 void NativeFacadeAndroid::FlushJSBTiming(piper::NativeModuleInfo timing) {
-  TRACE_EVENT(
-      LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_FLUSH_JSB_TIMING,
-      [&timing](lynx::perfetto::EventContext ctx) {
-        ctx.event()->add_debug_annotations("module_name_", timing.module_name_);
-        ctx.event()->add_debug_annotations("method_name_", timing.method_name_);
-        ctx.event()->add_debug_annotations("method_first_arg_name_",
-                                           timing.method_first_arg_name_);
-      });
   JNIEnv* env = base::android::AttachCurrentThread();
   JavaOnlyMap map;
   JavaOnlyMap info_map;

@@ -103,46 +103,25 @@ inline constexpr const char* const APP_PUBLISH_COMPONENT_EVENT =
 inline constexpr const char* const JS_UPDATE_COMPONET_DATA =
     "LynxJSUpdateComponentData";
 
+inline constexpr const char* const NATIVE_MODULE_CALLBACK =
+    "NativeModule::Callback";
 inline constexpr const char* const MODULE_INVOKE_CALLBACK = "InvokeCallback";
-inline constexpr const char* const MODULE_INVOKE_FIRE = "Fire";
+inline constexpr const char* const CALL_PLATFORM_IMPLEMENTATION =
+    "CallPlatformImplementation";
 inline constexpr const char* const MODULE_ON_METHOD_INVOKE = "OnMethodInvoked";
-inline constexpr const char* const JSB_TIMING_CALLBACK_CONVERT_PARAMS_START =
-    "JSBTiming::jsb_callback_convert_params_start";
-inline constexpr const char* const JSB_TIMING_CALLBACK_CONVERT_PARAMS_END =
-    "JSBTiming::jsb_callback_convert_params_end";
-inline constexpr const char* const JSB_TIMING_CALLBACK_INVOKE_START =
-    "JSBTiming::jsb_callback_invoke_start";
-inline constexpr const char* const JSB_TIMING_CALLBACK_INVOKE_END =
-    "JSBTiming::jsb_callback_invoke_end";
-inline constexpr const char* const JSB_TIMING_CALLBACK_CALL_START =
-    "JSBTiming::jsb_callback_call_start";
-inline constexpr const char* const JSB_TIMING_CALLBACK_CALL_END =
-    "JSBTiming::jsb_callback_call_end";
-inline constexpr const char* const JSB_TIMING_FUNC_CALL_START =
-    "JSBTiming::jsb_func_call_start";
-inline constexpr const char* const JSB_TIMING_FUNC_CALL_END =
-    "JSBTiming::jsb_func_call_end";
-inline constexpr const char* const JSB_TIMING_FUNC_CONVERT_PARAMS_START =
-    "JSBTiming::jsb_func_convert_params_start";
-inline constexpr const char* const JSB_TIMING_FUNC_CONVERT_PARAMS_END =
-    "JSBTiming::jsb_func_convert_params_end";
-inline constexpr const char* const JSB_TIMING_FUNC_PLATFORM_METHOD_START =
-    "JSBTiming::jsb_func_platform_method_start";
-inline constexpr const char* const JSB_TIMING_FUNC_PLATFORM_METHOD_END =
-    "JSBTiming::jsb_func_platform_method_end";
-inline constexpr const char* const JSB_TIMING_CALLBACK_THREAD_SWITCH_START =
-    "JSBTiming::jsb_callback_thread_switch_start";
-inline constexpr const char* const JSB_TIMING_CALLBACK_THREAD_SWITCH_END =
-    "JSBTiming::jsb_callback_thread_switch_end";
+/**
+ * @history_name{JSBTiming::jsb_callback_thread_switch_start}
+ */
+inline constexpr const char* const NATIVE_MODULE_PLATFORM_CALLBACK_START =
+    "NativeModule::PlatformCallbackStart";
 inline constexpr const char* const CREATE_JSB_CALLBACK = "CreateJSB Callback";
-inline constexpr const char* const JSB_TIMING_FLUSH = "JSBTiming::Flush";
 inline constexpr const char* const JNI_VALUE_TO_JS_VALUE = "JNIValueToJSValue";
-inline constexpr const char* const JS_VALUE_TO_JNI_VALUE = "JSValueToJNIValue";
+inline constexpr const char* const PUB_VALUE_TO_JNI_VALUE =
+    "PubValueToJNIValue";
 inline constexpr const char* const OBJC_VALUE_TO_JSI_VALUE =
     "ObjCValueToJSIValue";
-inline constexpr const char* const JS_VALUE_TO_OBJC_VALUE =
-    "JSValueToObjCValue";
-
+inline constexpr const char* const PUB_VALUE_TO_OBJC_VALUE =
+    "PubValueToObjCValue";
 inline constexpr const char* const SLOT_FUNCTION = "SlotFunction";
 inline constexpr const char* const TRIGGER_GC = "TriggerGC";
 inline constexpr const char* const TRIGGER_GC_FOR_TESTING =
@@ -486,9 +465,10 @@ inline constexpr const char* const
 /**
  * @trace_description: Invoke the NativeModule method with module name
  * @args{module}, method name @args(method} and first_args @args{first_arg}.
- * @history_name{CallJSB}
+ * @history_name{InvokeNativeModule}
  */
-inline constexpr const char* const INVOKE_NATIVE_MODULE = "InvokeNativeModule";
+inline constexpr const char* const NATIVE_MODULE_INVOKE =
+    "NativeModule::Invoke";
 /*
  * @trace_description: Convert the updated value into LepusValue. Then send this
  * value to the Engine thread to trigger the component's update process.
