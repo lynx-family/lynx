@@ -21,15 +21,21 @@ inline constexpr const char* const LEPUS_VALUE_TO_NAPI_VALUE =
 inline constexpr const char* const CALL_JSB_ON_ARK_TS = "CallJSBOnArkTS";
 inline constexpr const char* const PUB_VALUE_TO_LEPUS_VALUE =
     "PubValueToLepusValue";
-inline constexpr const char* const HARMONY_INVOKE_NATIVE_MODULE =
-    "InvokeNativeModule";
+/**
+ * @history_name{InvokeNativeModule}
+ */
+inline constexpr const char* const HARMONY_NATIVE_MODULE_INVOKE =
+    "NativeModule::Invoke";
 inline constexpr const char* const INVOKE_CALLBACK_ON_UI_THREAD =
     "InvokeCallbackOnUIThread";
 inline constexpr const char* const NAPI_VALUE_TO_LEPUS_VALUE =
     "NapiValueToLepusValue";
+/**
+ * @history_name{JSBTiming::jsb_callback_thread_switch_start}
+ */
 inline constexpr const char* const
     NATIVE_MODULE_HARMONY_CALLBACK_THREAD_SWITCH_START =
-        "JSBTiming::jsb_callback_thread_switch_start";
+        "NativeModule::PlatformCallbackStart";
 inline constexpr const char* const LOAD_JS_SOURCE = "LoadJSSource";
 inline constexpr const char* const BASE_TEXT_SHADOW_NODE_LOAD_FONT_FAMILY =
     "BaseTextShadowNode::LoadFontFamily";

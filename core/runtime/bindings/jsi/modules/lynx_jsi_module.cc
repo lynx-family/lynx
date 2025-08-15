@@ -65,24 +65,15 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
   piper::NativeModuleInfoCollectorPtr timing_collector =
       std::make_shared<piper::NativeModuleInfoCollector>(
           delegate_, name_, method.name, first_arg_str);
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_FUNC_CALL_START,
-                      [collector = timing_collector,
-                       call_func_start](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_debug_annotations(
-                            "timestamp", std::to_string(call_func_start));
-                        if (collector != nullptr) {
-                          ctx.event()->add_flow_ids(collector->FlowId());
-                        }
-                      });
 
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, INVOKE_NATIVE_MODULE,
-              [&, self = shared_from_this()](lynx::perfetto::EventContext ctx) {
+  uint64_t callback_flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_INVOKE,
+              [&, self = shared_from_this(),
+               callback_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("module_name", name_);
                 ctx.event()->add_debug_annotations("method_name", method.name);
                 ctx.event()->add_debug_annotations("arg0", first_arg_str);
-                if (timing_collector != nullptr) {
-                  ctx.event()->add_flow_ids(timing_collector->FlowId());
-                }
+                ctx.event()->add_flow_ids(callback_flow_id);
 
                 for (size_t param_idx = 1; param_idx < count; param_idx++) {
                   if (!args[param_idx].isObject()) {
@@ -103,16 +94,6 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
               });
 
   uint64_t convert_params_start = base::CurrentSystemTimeMilliseconds();
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JSB,
-                      JSB_TIMING_FUNC_CONVERT_PARAMS_START,
-                      [collector = timing_collector,
-                       convert_params_start](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_debug_annotations(
-                            "timestamp", std::to_string(convert_params_start));
-                        if (collector != nullptr) {
-                          ctx.event()->add_flow_ids(collector->FlowId());
-                        }
-                      });
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_JSB, JS_VALUE_TO_PUB_VALUE);
   CallbackMap callback_map;
   auto args_array = value_factory_->CreateArray();
@@ -139,21 +120,6 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
         args_array->PushArrayBufferToArray(
             pub::ValueUtils::ConvertPiperToArrayBuffer(*rt, o, length), length);
       } else if (o.isFunction(*rt)) {
-        uint64_t callback_flow_id = TRACE_FLOW_ID();
-
-        // FIXME: The trace below is still utilized by some
-        // platforms. Once NativeModule timing is implemented on these
-        // platforms, we can proceed to remove the macro and trace event.
-#if (!OS_IOS && !OS_ANDROID)
-        TRACE_EVENT_INSTANT(
-            LYNX_TRACE_CATEGORY_JSB, CREATE_JSB_CALLBACK,
-            [=](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(callback_flow_id);
-              auto* debug = ctx.event()->add_debug_annotations();
-              debug->set_name("startTimestamp");
-              debug->set_string_value(std::to_string(call_func_start));
-            });
-#endif
         auto function = o.getFunction(*rt);
         auto callback_id =
             delegate_->RegisterJSCallbackFunction(std::move(function));
@@ -189,16 +155,6 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
   timing_collector->EndFuncParamsConvert(convert_params_start);
   // issue: #1510
   uint64_t invoke_facade_method_start = base::CurrentSystemTimeMilliseconds();
-  TRACE_EVENT_INSTANT(
-      LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_FUNC_PLATFORM_METHOD_START,
-      [invoke_facade_method_start,
-       collector = timing_collector](lynx::perfetto::EventContext ctx) {
-        ctx.event()->add_debug_annotations(
-            "timestamp", std::to_string(invoke_facade_method_start));
-        if (collector != nullptr) {
-          ctx.event()->add_flow_ids(collector->FlowId());
-        }
-      });
   InvokeInfo invoke_info{.method_name = method.name,
                          .timing_collector = timing_collector,
                          .has_error = false};
@@ -261,11 +217,10 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
         response.value(), rt, record_id_);
   }
 #endif  // ENABLE_TESTBENCH_RECORDER
-
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_ON_METHOD_INVOKE);
   if (!invoke_info.has_error) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_ON_METHOD_INVOKE);
     delegate_->OnMethodInvoked(name_, method.name, error::E_SUCCESS);
   }
   return response;
@@ -275,6 +230,11 @@ void LynxJSIModule::InvokeCallback(
     const std::shared_ptr<LynxModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func) {
   auto module_callback = std::static_pointer_cast<ModuleCallback>(callback);
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JSB,
+                      NATIVE_MODULE_PLATFORM_CALLBACK_START,
+                      [&callback](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(callback->CallbackFlowId());
+                      });
   if (module_callback->timing_collector_) {
     module_callback->timing_collector_->CallbackThreadSwitchStart();
   }
