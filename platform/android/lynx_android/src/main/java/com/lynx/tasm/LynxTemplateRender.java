@@ -1147,7 +1147,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
     onTraceEventBegin("LynxTemplateRender.renderTemplate");
-    if (templateUrl == null) {
+    if (templateUrl != null) {
       String[] urls = processUrl(templateUrl);
       setUrl(urls[0]);
 
