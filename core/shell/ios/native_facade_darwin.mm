@@ -157,13 +157,6 @@ void NativeFacadeDarwin::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
 }
 
 void NativeFacadeDarwin::FlushJSBTiming(piper::NativeModuleInfo timing) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, JSB_TIMING_FLUSH_JSB_TIMING,
-              [&timing](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_debug_annotations("module_name", timing.module_name_);
-                ctx.event()->add_debug_annotations("method_name", timing.method_name_);
-                ctx.event()->add_debug_annotations("method_first_arg_name",
-                                                   timing.method_first_arg_name_);
-              });
   __strong id<TemplateRenderCallbackProtocol> render = _render;
   NSDictionary* info = @{
     @"jsb_module_name" : [NSString stringWithUTF8String:timing.module_name_.c_str()],
