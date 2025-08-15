@@ -66,8 +66,7 @@ class PageConfig final : public LynxConfig {
   // Attribute auto-expose is automatically opended
   PageConfig()
       : bundle_module_mode_(PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
-        dsl_(PackageInstanceDSL::TT),
-        enable_auto_show_hide(true){};
+        dsl_(PackageInstanceDSL::TT){};
 
   ~PageConfig() override = default;
 
@@ -143,21 +142,7 @@ class PageConfig final : public LynxConfig {
 
   inline std::string GetOriginalConfig() { return original_config_; }
 
-  inline void SetEnableA11yIDMutationObserver(bool enable) {
-    enable_a11y_mutation_observer = enable;
-  }
-
-  inline void SetEnableA11y(bool enable) { enable_a11y = enable; }
-
-  inline bool GetEnableA11yIDMutationObserver() {
-    return enable_a11y_mutation_observer;
-  }
-
-  inline bool GetEnableA11y() { return enable_a11y; }
-
   inline void SetDSL(PackageInstanceDSL dsl) { dsl_ = dsl; }
-
-  inline void SetAutoExpose(bool enable) { enable_auto_show_hide = enable; }
 
   inline void SetAbsoluteInContentBound(bool enable) {
     layout_configs_.is_absolute_in_content_bound_ = enable;
@@ -188,8 +173,6 @@ class PageConfig final : public LynxConfig {
   inline base::Version GetQuirksModeVersion() const {
     return layout_configs_.GetQuirksMode();
   }
-
-  inline bool GetAutoExpose() { return enable_auto_show_hide; }
 
   inline void SetDefaultOverflowVisible(bool is_visible) {
     default_overflow_visible_ = is_visible;
@@ -225,38 +208,12 @@ class PageConfig final : public LynxConfig {
 
   inline TernaryBool GetTrailNewImage() const { return trail_New_Image_; }
 
-  inline void SetEnableTextLanguageAlignment(bool enable) {
-    enable_text_language_alignment_ = enable;
-  }
-
-  inline bool GetEnableTextLanguageAlignment() {
-    return enable_text_language_alignment_;
-  }
-  inline void SetEnableXTextLayoutReused(bool enable) {
-    enable_x_text_layout_reused_ = enable;
-  }
-  inline bool GetEnableXTextLayoutReused() {
-    return enable_x_text_layout_reused_;
-  }
-
   inline void SetFontScaleSpOnly(bool font_scale) {
     layout_configs_.font_scale_sp_only_ = font_scale;
   }
 
   inline bool GetFontScaleSpOnly() {
     return layout_configs_.font_scale_sp_only_;
-  }
-
-  void SetEnableTouchRefactor(bool enable) { enable_touch_refactor_ = enable; }
-
-  bool GetEnableTouchRefactor() { return enable_touch_refactor_; }
-
-  void SetEnableEndGestureAtLastFingerUp(bool enable) {
-    enable_end_gesture_at_last_finger_up_ = enable;
-  }
-
-  bool GetEnableEndGestureAtLastFingerUp() {
-    return enable_end_gesture_at_last_finger_up_;
   }
 
   void SetEnableCSSInheritance(bool enable) {
@@ -354,33 +311,10 @@ class PageConfig final : public LynxConfig {
   inline bool GetEnableZIndex() { return enable_z_index_; }
   inline void SetEnableZIndex(bool enable) { enable_z_index_ = enable; }
 
-  inline bool GetEnableRemoveComponentExtraData() const {
-    return enable_remove_component_extra_data_;
-  }
-  inline void SetEnableRemoveComponentExtraData(bool enable) {
-    enable_remove_component_extra_data_ = enable;
-  }
-
   inline bool GetEnableLynxAir() { return enable_lynx_air_; }
   inline void SetEnableLynxAir(bool enable) { enable_lynx_air_ = enable; }
   inline bool GetEnableFiberArch() { return enable_fiber_arch_; }
   inline void SetEnableFiberArch(bool enable) { enable_fiber_arch_ = enable; }
-
-  void SetEnableTextLayoutCache(TernaryBool enable_text_layout_cache) {
-    enable_text_layout_cache_ = enable_text_layout_cache;
-  }
-
-  inline TernaryBool GetEnableTextLayoutCache() {
-    return enable_text_layout_cache_;
-  }
-
-  void SetEnableUnifiedPipeline(TernaryBool enable_unified_pipeline) {
-    enable_unified_pipeline_ = enable_unified_pipeline;
-  }
-
-  TernaryBool GetEnableUnifiedPipeline() const {
-    return enable_unified_pipeline_;
-  }
 
   inline bool GetEnableCSSParser() { return enable_css_parser_; }
   inline void SetEnableCSSParser(bool enable) { enable_css_parser_ = enable; }
@@ -390,14 +324,6 @@ class PageConfig final : public LynxConfig {
   }
   inline void SetAbSettingDisableCSSLazyDecode(std::string disable) {
     absetting_disable_css_lazy_decode_ = disable;
-  }
-
-  inline void SetKeyboardCallbackUseRelativeHeight(bool enable) {
-    keyboard_callback_pass_relative_height_ = enable;
-  }
-
-  inline bool GetKeyboardCallbackUseRelativeHeight() const {
-    return keyboard_callback_pass_relative_height_;
   }
 
   inline void SetEnableEventRefactor(bool option) {
@@ -411,26 +337,6 @@ class PageConfig final : public LynxConfig {
   }
 
   bool GetForceCalcNewStyle() const { return force_calc_new_style_; }
-
-  inline void SetCompileRender(bool option) { compile_render_ = option; }
-
-  bool GetCompileRender() const { return compile_render_; }
-
-  inline void SetDisableLongpressAfterScroll(bool value) {
-    disable_longpress_after_scroll_ = value;
-  }
-
-  inline bool GetDisableLongpressAfterScroll() {
-    return disable_longpress_after_scroll_;
-  }
-
-  inline void SetEnableCheckDataWhenUpdatePage(bool option) {
-    enable_check_data_when_update_page_ = option;
-  }
-
-  bool GetEnableCheckDataWhenUpdatePage() const {
-    return enable_check_data_when_update_page_;
-  }
 
   int32_t GetIncludeFontPadding() const { return include_font_padding_; }
 
@@ -446,101 +352,11 @@ class PageConfig final : public LynxConfig {
     return enable_new_intersection_observer_;
   }
 
-  inline void SetObserverFrameRate(int32_t option) {
-    observer_frame_rate_ = option;
-  }
-
-  inline int32_t GetObserverFrameRate() const { return observer_frame_rate_; }
-
-  inline void SetEnableCheckExposureOptimize(
-      bool enable_check_exposure_optimize) {
-    enable_check_exposure_optimize_ = enable_check_exposure_optimize;
-  }
-
-  inline bool GetEnableCheckExposureOptimize() const {
-    return enable_check_exposure_optimize_;
-  }
-
-  inline void SetEnableDisexposureWhenLynxHidden(
-      bool enable_disexposure_when_lynx_hidden) {
-    enable_disexposure_when_lynx_hidden_ = enable_disexposure_when_lynx_hidden;
-  }
-
-  inline bool GetEnableDisexposureWhenLynxHidden() const {
-    return enable_disexposure_when_lynx_hidden_;
-  }
-
-  inline void SetEnableExposureWhenLayout(bool value) {
-    enable_exposure_when_layout_ = value;
-  }
-
-  inline bool GetEnableExposureWhenLayout() const {
-    return enable_exposure_when_layout_;
-  }
-
-  inline void SetEnableAirDetectRemovedKeysWhenUpdateData(bool value) {
-    enable_air_detect_removed_keys_when_update_data_ = value;
-  }
-  inline bool GetEnableAirDetectRemovedKeysWhenUpdateData() const {
-    return enable_air_detect_removed_keys_when_update_data_;
-  }
-
-  inline void SetEnableExposureUIMargin(bool option) {
-    enable_exposure_ui_margin_ = option;
-  }
-
-  inline bool GetEnableExposureUIMargin() const {
-    return enable_exposure_ui_margin_;
-  }
-
-  inline void SetEnableNewGesture(bool enable) { enable_new_gesture_ = enable; }
-
-  inline bool GetEnableNewGesture() const { return enable_new_gesture_; }
-
-  inline void SetLongPressDuration(int32_t option) {
-    long_press_duration_ = option;
-  }
-
-  inline void SetMapContainerType(uint8_t type) { map_container_type_ = type; }
-
-  inline uint8_t GetMapContainerType() { return map_container_type_; }
-
-  inline int32_t GetLongPressDuration() const { return long_press_duration_; }
-
-  inline void SetEnableCheckLocalImage(bool option) {
-    enable_check_local_image_ = option;
-  }
-
-  inline bool GetEnableCheckLocalImage() const {
-    return enable_check_local_image_;
-  }
-
-  inline void SetEnableAsyncRequestImage(bool option) {
-    enable_async_request_image_ = option;
-  }
-
-  inline bool GetEnableAsyncRequestImage() const {
-    return enable_async_request_image_;
-  }
-
-  inline void SetEnableBackgroundShapeLayer(bool enable) {
-    enable_background_shape_layer_ = enable;
-  }
-
-  inline bool GetEnableBackgroundShapeLayer() {
-    return enable_background_shape_layer_;
-  }
-
   inline void SetLynxAirMode(CompileOptionAirMode air_mode) {
     air_mode_ = air_mode;
   }
 
   inline CompileOptionAirMode GetLynxAirMode() { return air_mode_; }
-
-  inline bool GetEnableCascadePseudo() const { return enable_cascade_pseudo_; }
-  inline void SetEnableCascadePseudo(bool value) {
-    enable_cascade_pseudo_ = value;
-  }
 
   inline bool GetEnableRasterAnimation() const {
     return enable_raster_animation_;
@@ -553,17 +369,6 @@ class PageConfig final : public LynxConfig {
 
   inline void SetExtraInfo(lepus::Value extra_info) {
     extra_info_ = extra_info;
-  }
-
-  int64_t GetLepusGCThreshold() { return lepus_gc_threshold_; }
-  void SetLepusGCThreshold(int64_t value) { lepus_gc_threshold_ = value; }
-
-  inline bool GetEnableComponentNullProp() const {
-    return enable_component_null_prop_;
-  }
-
-  inline void SetEnableComponentNullProp(bool enable_component_null_prop) {
-    enable_component_null_prop_ = enable_component_null_prop;
   }
 
   inline bool GetEnableCSSInvalidation() const {
@@ -606,14 +411,6 @@ class PageConfig final : public LynxConfig {
 
   void SetEnableStandardCSSSelector(bool enable) {
     enable_standard_css_selector_ = enable;
-  }
-
-  bool GetEnableDataProcessorOnJs() const {
-    return enable_data_processor_on_js_;
-  }
-
-  void SetEnableDataProcessorOnJs(bool enable) {
-    enable_data_processor_on_js_ = enable;
   }
 
   inline TernaryBool GetEnableNativeList() const { return enable_native_list_; }
@@ -665,15 +462,6 @@ class PageConfig final : public LynxConfig {
         enable ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
   }
 
-  inline void SetEnableAsyncResolveSubtree(bool enable) {
-    enable_async_resolve_subtree_ =
-        enable ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
-  }
-
-  inline bool GetEnableAsyncResolveSubtree() {
-    return enable_async_resolve_subtree_ == TernaryBool::TRUE_VALUE;
-  }
-
   bool GetEnableUseContextPool() const {
     switch (enable_use_context_pool_) {
       case TernaryBool::TRUE_VALUE:
@@ -700,20 +488,6 @@ class PageConfig final : public LynxConfig {
     return enable_scroll_fluency_monitor;
   }
 
-  bool GetEnableJsBindingApiThrowException() const {
-    return enable_js_binding_api_throw_exception_;
-  }
-
-  void SetEnableJsBindingApiThrowException(bool enable) {
-    enable_js_binding_api_throw_exception_ = enable;
-  }
-
-  void SetEnableUseMapBuffer(TernaryBool use_map_buffer) {
-    enable_use_map_buffer_ = use_map_buffer;
-  }
-
-  TernaryBool GetEnableUseMapBuffer() const { return enable_use_map_buffer_; }
-
   void SetEnableUIOperationOptimize(TernaryBool enable) {
     enable_ui_operation_optimize_ = enable;
   }
@@ -729,58 +503,6 @@ class PageConfig final : public LynxConfig {
   bool GetEnableElementAPITypeCheckThrowWarning() {
     return enable_element_api_type_check_throw_warning_;
   }
-
-  void SetEnableBindICU(bool enable) { enable_bind_icu_ = enable; }
-
-  bool GetEnableBindICU() { return enable_bind_icu_; }
-
-  void SetEnableQueryComponentSync(bool enable) {
-    enable_query_component_sync_ = enable;
-  }
-
-  bool GetEnableQueryComponentSync() const {
-    return enable_query_component_sync_;
-  }
-
-  void SetDisableQuickTracingGC(bool disable) {
-    disable_quick_tracing_gc_ = disable;
-  }
-
-  bool GetDisableQuickTracingGC() const { return disable_quick_tracing_gc_; }
-
-  void SetFixCSSImportRuleOrder(bool enable) {
-    fix_css_import_rule_order_ = enable;
-  }
-
-  bool GetFixCSSImportRuleOrder() const { return fix_css_import_rule_order_; }
-
-  void SetEnableReloadLifecycle(bool enable) {
-    enable_reload_lifecycle_ = enable;
-  }
-
-  bool GetEnableReloadLifecycle() { return enable_reload_lifecycle_; }
-
-  void SetEnableOptPushStyleToBundle(TernaryBool enable) {
-    enable_opt_push_style_to_bundle_ = enable;
-  }
-
-  TernaryBool GetEnableOptPushStyleToBundle() const {
-    return enable_opt_push_style_to_bundle_;
-  }
-
-  inline void SetEnableFiberElementForRadonDiff(TernaryBool enable) {
-    enable_fiber_element_for_radon_diff_ = enable;
-  }
-
-  inline TernaryBool GetEnableFiberElementForRadonDiff() const {
-    return enable_fiber_element_for_radon_diff_;
-  }
-
-  inline void SetPreferredFps(const std::string& preferred_fps) {
-    preferred_fps_ = preferred_fps;
-  }
-
-  inline std::string GetPreferredFps() { return preferred_fps_; }
 
   inline void SetEnableCSSLazyImport(TernaryBool enable_css_lazy_import) {
     enable_css_lazy_import_ = enable_css_lazy_import;
@@ -864,7 +586,7 @@ class PageConfig final : public LynxConfig {
     output << "page_flatten:" << page_flatten_ << ",";
     output << "page_implicit:" << page_implicit_ << ",";
     output << "dsl_:" << static_cast<int>(dsl_) << ",";
-    PAGE_CONFIG_DUMP(enable_auto_show_hide)
+    output << "enable_auto_show_hide:" << enable_auto_show_hide_ << ",";
     output << "bundle_module_mode_:" << static_cast<int>(bundle_module_mode_)
            << ",";
     PAGE_CONFIG_DUMP(enable_async_display_)
@@ -899,11 +621,7 @@ class PageConfig final : public LynxConfig {
   std::string target_sdk_version_;
   std::string lepus_version_;
   std::string absetting_disable_css_lazy_decode_;
-  // peferredFps
-  std::string preferred_fps_ = "auto";
   std::string original_config_{};
-  // gc threshold of lepusNG. Let default value be 256, and the unit is KB.
-  int64_t lepus_gc_threshold_{256};
   // force report lynx scroll fluency event.
   // When setting pageConfig.enableLynxScrollFluency to a double value in the
   // range [0, 1], we will monitor the fluency metrics for this LynxUI based on
@@ -923,12 +641,9 @@ class PageConfig final : public LynxConfig {
   TernaryBool enable_component_async_decode_{TernaryBool::UNDEFINE_VALUE};
   // enable use quick_context_pool to construct quick context
   TernaryBool enable_use_context_pool_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_use_map_buffer_{TernaryBool::UNDEFINE_VALUE};
   // introduced in 2.16, enable the optimization aboult UIOperation batching and
   // CreateViewAsync at Android
   TernaryBool enable_ui_operation_optimize_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_opt_push_style_to_bundle_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_fiber_element_for_radon_diff_{TernaryBool::UNDEFINE_VALUE};
   // Indicates whether use c++ list.
   TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
   // CSSLazyImport
@@ -940,96 +655,30 @@ class PageConfig final : public LynxConfig {
   TernaryBool enable_native_schedule_create_view_async_{
       TernaryBool::UNDEFINE_VALUE};
   TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_text_layout_cache_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_unified_pipeline_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_async_resolve_subtree_{TernaryBool::UNDEFINE_VALUE};
   // default include font padding
   // 1 means true
   // -1 means false
   int32_t include_font_padding_{0};
-  int32_t observer_frame_rate_{20};
-  int32_t long_press_duration_{-1};
   CSSParserConfigs css_parser_configs_;
-  bool enable_a11y_mutation_observer{false};
-  bool enable_a11y{false};
   PackageInstanceDSL dsl_;
-  bool enable_auto_show_hide;
-  bool enable_text_language_alignment_{false};
-  bool enable_x_text_layout_reused_{false};
-  // Default value is false. If this flag is true, the external gesture which's
-  // state is possible or began will not cancel the Lynx iOS touch gesture see
-  // issue:#7920.
-  bool enable_touch_refactor_{true};
-  // In the previous commit, when determining whether all fingers had moved off
-  // the screen in multiple touch scenarios, touch.view was used for judgment.
-  // However, in a scrolling container, touch.view obtained from
-  // touchesEnd/touchesMove could be nil, resulting in incorrect judgment of
-  // whether all fingers had moved off the screen. _touches could not be
-  // cleared, leading to a subsequent failure to trigger tap events.
-  // To fix this issue, we added null checks before calling touch.view, and
-  // ended the gesture if _touches was empty. This resolved the problem.
-  // only for ios, detail can see f-12375631 and its mr.
-  bool enable_end_gesture_at_last_finger_up_{false};
   bool css_align_with_legacy_w3c_{false};
   bool enable_lepus_ng_{true};
   bool default_overflow_visible_{false};
   bool enable_save_page_data_{false};
   bool list_remove_component_{false};
   bool enable_z_index_{false};
-  bool enable_remove_component_extra_data_{false};
   bool enable_lynx_air_{false};
   bool enable_fiber_arch_{false};
-  bool enable_cascade_pseudo_{false};
   // Used for lynx config
   bool enable_css_parser_{false};
   bool is_target_sdk_verion_higher_than_2_1_{false};
-  bool keyboard_callback_pass_relative_height_{false};
   bool enable_event_refactor_{true};
   bool force_calc_new_style_{true};
-  bool enable_check_data_when_update_page_{true};
-  bool compile_render_{false};
-  // If this flag is true, iOS will not recognize the corresponding long press
-  // gesture after triggering scrolling.
-  bool disable_longpress_after_scroll_{false};
 
   bool enable_new_intersection_observer_{false};
-  // The switch controlling whether to enable exposure detection optimization.
-  bool enable_check_exposure_optimize_{false};
-  // The switch controlling whether to enable send disexposure events when
-  // lynxview is hidden.
-  bool enable_disexposure_when_lynx_hidden_{true};
-  // Enable exposure check when LynxView is layoutRequest. In certain scenarios,
-  // exposure detection can be inaccurate if it is conducted before the layout
-  // is complete. This is because the detection is calculated based on incorrect
-  // positioning information. To address this issue, exposure detection is not
-  // performed when LynxView isLayoutRequested. However, in some cases, LynxView
-  // will call requestsLayout frequently, which prevents exposure detection from
-  // being performed, resulting in fewer exposure events. To accommodate both
-  // scenarios, a new enableExposureWhenLayout switch has been added to enable
-  // businesses to control whether exposure detection is performed during
-  // LynxView isLayoutRequested.
-  bool enable_exposure_when_layout_{false};
-
-  bool enable_exposure_ui_margin_{false};
-
-  bool enable_new_gesture_{false};
-
-  uint8_t map_container_type_{0};
-
-  bool enable_check_local_image_{true};
-
-  bool enable_async_request_image_{false};
-
-  // Enable iOS background manager to apply shape layer optimization.
-  bool enable_background_shape_layer_{true};
 
   CompileOptionAirMode air_mode_{CompileOptionAirMode::AIR_MODE_OFF};
   // set text overflow as visible if true
-
-  // support component can be passed null props.
-  // null props is only be supported in LepusNG now.
-  // open this switch to support lepus use null prop.
-  bool enable_component_null_prop_{false};
 
   // support CSS invalidation
   bool enable_css_invalidation_{false};
@@ -1040,9 +689,6 @@ class PageConfig final : public LynxConfig {
   // indicate that enable standard css selector
   bool enable_standard_css_selector_{false};
 
-  // indicate that enable data processor on js thread.
-  bool enable_data_processor_on_js_{false};
-
   // enable support multi-finger events
   bool enable_multi_touch_{false};
 
@@ -1052,9 +698,6 @@ class PageConfig final : public LynxConfig {
   // enable harmony to detect exposure with visible area change event.
   bool enable_harmony_visible_area_change_for_exposure_{false};
 
-  // enable air mode to detect removed keys in updating data from native
-  bool enable_air_detect_removed_keys_when_update_data_{false};
-
   // Indicates whether the parallel flush of Element has been enabled. And the
   // default value is false.
   bool enable_parallel_element_{false};
@@ -1062,25 +705,9 @@ class PageConfig final : public LynxConfig {
   // enable raster animation
   bool enable_raster_animation_{false};
 
-  // enable js binding api throw exception rather than report
-  bool enable_js_binding_api_throw_exception_{false};
-
   // enable avoid throwing RenderFatal for element api when argument type
   // checking failed
   bool enable_element_api_type_check_throw_warning_{false};
-
-  // enable LynxUI onNodeReload lifecycle;
-  bool enable_reload_lifecycle_{false};
-
-  // enable bind primjs-icu
-  bool enable_bind_icu_{false};
-
-  bool enable_query_component_sync_{false};
-
-  // disable tracing gc mode in quick context
-  bool disable_quick_tracing_gc_{false};
-
-  bool fix_css_import_rule_order_{true};
 
   /**
    * Not a config but a marker to indicate whether the page config needs to be
