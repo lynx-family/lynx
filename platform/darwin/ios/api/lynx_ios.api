@@ -600,6 +600,7 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public nonnull instancetype LynxBaseInspectorOwner-p::initWithLynxView:(nullable LynxView *view);
   public void LynxBaseInspectorOwner-p::setReloadHelper:(nullable LynxPageReloadHelper *reloadHelper);
   public void LynxBaseInspectorOwner-p::setDebugInfoInterceptor:(nonnull id< LynxDebugInfoRecorderProtocol > debugInfoRecorder);
+  public void LynxBaseInspectorOwner-p::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
   public void LynxBaseInspectorOwner-p::onTemplateAssemblerCreated:(intptr_t ptr);
   public void LynxBaseInspectorOwner-p::handleLongPress();
   public void LynxBaseInspectorOwner-p::stopCasting();
@@ -621,6 +622,7 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public void LynxBaseInspectorOwner-p::attachDebugBridge:(NSString *url);
   public void LynxBaseInspectorOwner-p::endTestbench:(NSString *_Nonnull filePath);
   public void LynxBaseInspectorOwner-p::onPageUpdate();
+  public void LynxBaseInspectorOwner-p::attachLynxUIOwnerToAgent:(nullable LynxUIOwner *uiOwner);
   public void LynxBaseInspectorOwner-p::downloadResource:callback:(NSString *_Nonnull url,[callback] LynxResourceLoadBlock _Nonnull callback);
   public void LynxBaseInspectorOwner-p::setLynxInspectorConsoleDelegate:(id _Nonnull delegate);
   public void LynxBaseInspectorOwner-p::getConsoleObject:needStringify:resultHandler:(NSString *_Nonnull objectId,[needStringify] BOOL stringify,[resultHandler] void(^_Nonnull handler)(NSString *_Nonnull detail));
@@ -1029,6 +1031,7 @@ public class LynxConverter : NSObject {
   public CATransform3D LynxConverter(Transform)::toCATransform3D:ui:(NSArray< LynxTransformRaw * > *value, [ui] LynxUI *ui);
   public BOOL LynxConverter(Transform)::isDefaultTransformOrigin:(LynxTransformOriginRaw *transformOrigin);
   public COLOR_CLASS * LynxConverter(UI)::toUIColor:(id value);
+  public UIAccessibilityTraits LynxConverter(UI)::toAccessibilityTraits:(id value);
 }
 
 public interface LynxConverter(CAMediaTimingFunction) {
@@ -1067,6 +1070,7 @@ public interface LynxConverter(Transform) {
 
 public interface LynxConverter(UI) {
   public COLOR_CLASS * LynxConverter(UI)::toUIColor:(id value);
+  public UIAccessibilityTraits LynxConverter(UI)::toAccessibilityTraits:(id value);
 }
 
 public interface LynxConverter(UIViewContentMode) {
@@ -1156,6 +1160,7 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::onUpdateDataWithTemplateData:(LynxTemplateData *data);
   public void LynxDevtool::onResetDataWithTemplateData:(LynxTemplateData *data);
   public void LynxDevtool::onStandaloneRuntimeLoadFromURL:(NSString *url);
+  public void LynxDevtool::onBackgroundRuntimeCreated:groupThreadName:(LynxBackgroundRuntime *runtime,[groupThreadName] NSString *groupThreadName);
   public void LynxDevtool::onTemplateAssemblerCreated:(intptr_t ptr);
   public void LynxDevtool::onEnterForeground();
   public void LynxDevtool::onEnterBackground();
@@ -1163,6 +1168,7 @@ public class LynxDevtool : NSObject {
   public void LynxDevtool::handleLongPress();
   public void LynxDevtool::showErrorMessage:(LynxError *error);
   public void LynxDevtool::attachLynxView:(LynxView *lynxView);
+  public void LynxDevtool::attachLynxUIOwner:(nullable LynxUIOwner *uiOwner);
   public void LynxDevtool::onMovedToWindow();
   public void LynxDevtool::onPageUpdate();
   public void LynxDevtool::downloadResource:callback:(NSString *_Nonnull url,[callback] LynxResourceLoadBlock _Nonnull callback);
@@ -3000,6 +3006,26 @@ public protocol LynxServiceHttpProtocol-p : <LynxServiceProtocol> {
 
 public protocol LynxServiceI18nProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceI18nProtocol-p::registerNapiEnv:(napi_env napiEnv);
+}
+
+public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
+  public UIImageView * LynxServiceImageProtocol-p::imageView();
+  public void LynxServiceImageProtocol-p::pauseImage:callback:(id view,[callback] LynxUIMethodCallbackBlock _Nullable callback);
+  public void LynxServiceImageProtocol-p::stopImage:callback:(id view,[callback] LynxUIMethodCallbackBlock _Nullable callback);
+  public void LynxServiceImageProtocol-p::resumeImage:callback:(id view,[callback] LynxUIMethodCallbackBlock _Nullable callback);
+  public BOOL LynxServiceImageProtocol-p::restartImageIfPossible:callback:(id view,[callback] LynxUIMethodCallbackBlock _Nullable callback);
+  public void LynxServiceImageProtocol-p::setAutoPlay:value:(id view,[value] BOOL autoPlay);
+  public void LynxServiceImageProtocol-p::addAnimatedImageCallBack:UI:(id view,[UI] LynxUIImage *ui);
+  public BOOL LynxServiceImageProtocol-p::isAnimatedImage:(UIImage *image);
+  public BOOL LynxServiceImageProtocol-p::checkImageType:(id view);
+  public dispatch_block_t LynxServiceImageProtocol-p::loadNewImageFromURL:size:enableGenericFetcher:contextInfo:processors:completed:LynxUIImage:(LynxURL *url,[size] CGSize targetSize,[enableGenericFetcher] BOOL enableGenericFetcher,[contextInfo] NSDictionary *contextInfo,[processors] NSArray *processors,[completed] LynxImageLoadCompletionBlock completed,[LynxUIImage] LynxUIImage *lynxUIImage);
+  public void LynxServiceImageProtocol-p::appendExtraImageLoadDetailForEvent:originalDetail:(UIImage *image,[originalDetail] NSMutableDictionary *detail);
+  public void LynxServiceImageProtocol-p::reportResourceStatus:data:extra:(LynxView *LynxView,[data] NSMutableDictionary *data,[extra] NSDictionary *__nullable extra);
+  public NSNumber * LynxServiceImageProtocol-p::getMappedCategorizedPicErrorCode:(NSNumber *errorCode);
+  public void LynxServiceImageProtocol-p::prefetchImage:params:(LynxURL *url,[params] nullable NSDictionary *params);
+  public UIImage * LynxServiceImageProtocol-p::decodeImage:(NSData *data);
+  public void LynxServiceImageProtocol-p::handleAnimatedImage:view:loopCount:(UIImage *image,[view] UIImageView *imageView,[loopCount] NSInteger loopCount);
+  public void LynxServiceImageProtocol-p::setFrameCacheAutomatically:value:(id view,[value] BOOL frameCacheAutomatically);
 }
 
 public class LynxServiceInfo : NSObject {
@@ -5266,6 +5292,11 @@ public enum LynxBooleanOption {
 }
 
 
+  typedef UIColor COLOR_CLASS
+  typedef UITextView TEXTVIEW_CLASS
+  typedef UIView VIEW_CLASS
+  typedef UIImage IMAGE_CLASS
+
 public enum LynxOverflowType {
   LynxOverflowVisible
   LynxOverflowHidden
@@ -5844,6 +5875,10 @@ public enum ELynxConsumer {
 
   typedef void(^ LynxTemplateLoadBlock) (id data, NSError *error)
 
+  public LynxResourceFetcher LynxResourceFetcher;
+  public LynxViewLifecycle LynxViewLifecycle;
+  public __attribute__((deprecated("lifecycle functions in LynxViewClient will be moved to protocol LynxViewLifeCycle"))) @protocol LynxViewClient< LynxImageFetcher;
+
 public enum LynxPipelineOrigin {
   LynxFirstScreen
   LynxReload
@@ -5931,6 +5966,8 @@ public enum LynxResourceRequestType {
   typedef void(^ LynxHttpCallback) (LynxHttpResponse *result)
 
   typedef typedefNS_ASSUME_NONNULL_BEGIN struct napi_env__* napi_env
+
+  public NS_ASSUME_NONNULL_BEGIN typedef void(^ LynxImageLoadCompletionBlock) (UIImage *_Nullable image, NSError *_Nullable error, NSURL *_Nullable imageURL) LynxImageLoadCompletionBlock;
 
 public enum LynxContextTagType {
   LynxContextTagLastLynxURL
