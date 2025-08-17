@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "base/include/value/base_value.h"
 #include "core/renderer/utils/value_utils.h"
@@ -24,6 +26,30 @@ constexpr char bar_other[] = "bar_other";
 
 namespace lynx {
 namespace lepusbenchmark {
+
+static const std::string sdk_version = "2.0";
+
+class MockContextDelegate : public lepus::Context::Delegate {
+ public:
+  const std::string& TargetSdkVersion() override { return sdk_version; }
+  void ReportError(base::LynxError error) override {
+    LOGE("lepus_benchmark_error: " << error.error_message_);
+  }
+  void OnBTSConsoleEvent(const std::string& func_name,
+                         const std::string& args) override {}
+  void ReportGCTimingEvent(const char* start, const char* end) override {}
+  void OnRuntimeGC(
+      std::unordered_map<std::string, std::string> mem_info) override {}
+
+  fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override {
+    return nullptr;
+  }
+
+  void OnScriptingStart() override {}
+  void OnScriptingEnd() override {}
+};
+
+static MockContextDelegate mock_delegate_instance;
 
 static const char* kCFuncEmptyFunc = "_EmptyFunc";
 static const char* emptyFuncRetVal = "empty";
@@ -162,6 +188,235 @@ static void BM_ShadowEqualSameTableValue(benchmark::State& state) {
 
     ASSERT_TRUE(tasm::CheckTableShadowUpdated(lepus::Value(lepus_map),
                                               lepus::Value(target_map)));
+  }
+}
+
+static void BM_ValueCopyConstruct(benchmark::State& state) {
+  std::vector<lepus::Value> source_arr;
+  source_arr.emplace_back((int)5);
+  source_arr.emplace_back((uint64_t)0xFFFFFFFFFF);
+  source_arr.emplace_back("abcdefg");
+  source_arr.emplace_back(lepus::Dictionary::Create());
+  source_arr.emplace_back((void*)&BM_ValueCopyConstruct);
+  source_arr.emplace_back(true);
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr;
+    dest_arr.reserve(source_arr.size() * 1000);
+    state.ResumeTiming();
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr.emplace_back(source_arr[j]);
+      }
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueCopyAssign(benchmark::State& state) {
+  std::vector<lepus::Value> source_arr;
+  source_arr.emplace_back((int)5);
+  source_arr.emplace_back((uint64_t)0xFFFFFFFFFF);
+  source_arr.emplace_back("abcdefg");
+  source_arr.emplace_back(lepus::Dictionary::Create());
+  source_arr.emplace_back((void*)&BM_ValueCopyAssign);
+  source_arr.emplace_back(true);
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr;
+    dest_arr.resize(source_arr.size() * 1000);  // default constructed
+    // Set some values as refcounted.
+    for (size_t i = 0; i < dest_arr.size(); i++) {
+      if (i % 20 == 0) {
+        dest_arr[i] = lepus::Value(lepus::Dictionary::Create());
+      }
+    }
+    state.ResumeTiming();
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr[i * source_arr.size() + j] = source_arr[j];
+      }
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueMoveConstruct(benchmark::State& state) {
+  std::vector<lepus::Value> source_arr;
+  source_arr.emplace_back((int)5);
+  source_arr.emplace_back((uint64_t)0xFFFFFFFFFF);
+  source_arr.emplace_back("abcdefg");
+  source_arr.emplace_back(lepus::Dictionary::Create());
+  source_arr.emplace_back((void*)&BM_ValueMoveConstruct);
+  source_arr.emplace_back(true);
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr1;
+    std::vector<lepus::Value> dest_arr2;
+    dest_arr1.reserve(source_arr.size() * 1000);
+    dest_arr2.reserve(source_arr.size() * 1000);
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr1.emplace_back(source_arr[j]);
+      }
+    }
+    state.ResumeTiming();
+    for (size_t i = 0; i < dest_arr1.size(); i++) {
+      dest_arr2.emplace_back(std::move(dest_arr1[i]));
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueConstructFromDict(benchmark::State& state) {
+  std::vector<fml::RefPtr<lepus::Dictionary>> source_arr;
+  for (int i = 0; i < 20; i++) {
+    source_arr.emplace_back(lepus::Dictionary::Create());
+  }
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr;
+    dest_arr.reserve(source_arr.size() * 1000);
+    state.ResumeTiming();
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr.emplace_back(source_arr[j]);
+      }
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueDictVisit(benchmark::State& state) {
+  std::vector<lepus::Value> arr;
+  for (int j = 0; j < 2000; j++) {
+    arr.emplace_back(lepus::Dictionary::Create());
+  }
+  for (auto _ : state) {
+    for (size_t i = 0; i < arr.size(); i++) {
+      auto ptr = arr[i].Table();
+      benchmark::DoNotOptimize(ptr);
+    }
+  }
+}
+
+static void BM_ValueConstructFromArray(benchmark::State& state) {
+  std::vector<fml::RefPtr<lepus::CArray>> source_arr;
+  for (int i = 0; i < 20; i++) {
+    source_arr.emplace_back(lepus::CArray::Create());
+  }
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr;
+    dest_arr.reserve(source_arr.size() * 1000);
+    state.ResumeTiming();
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr.emplace_back(source_arr[j]);
+      }
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueArrayVisit(benchmark::State& state) {
+  std::vector<lepus::Value> arr;
+  for (int j = 0; j < 2000; j++) {
+    arr.emplace_back(lepus::CArray::Create());
+  }
+  for (auto _ : state) {
+    for (size_t i = 0; i < arr.size(); i++) {
+      auto ptr = arr[i].Array();
+      benchmark::DoNotOptimize(ptr);
+    }
+  }
+}
+
+static void BM_ValueConstructCopyString(benchmark::State& state) {
+  std::vector<base::String> source_arr;
+  for (int i = 0; i < 26; i++) {
+    source_arr.emplace_back(std::string(10, 'a' + i));
+  }
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<lepus::Value> dest_arr;
+    dest_arr.reserve(source_arr.size() * 1000);
+    state.ResumeTiming();
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        dest_arr.emplace_back(source_arr[j]);
+      }
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueConstructMoveString(benchmark::State& state) {
+  std::vector<base::String> source_arr;
+  for (int i = 0; i < 26; i++) {
+    source_arr.emplace_back(std::string(10, 'a' + i));
+  }
+  for (auto _ : state) {
+    state.PauseTiming();
+    std::vector<base::String> temp_arr;
+    std::vector<lepus::Value> dest_arr;
+    temp_arr.reserve(source_arr.size() * 1000);
+    dest_arr.reserve(source_arr.size() * 1000);
+    for (int i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < source_arr.size(); j++) {
+        temp_arr.emplace_back(source_arr[j]);
+      }
+    }
+    state.ResumeTiming();
+    for (size_t i = 0; i < temp_arr.size(); i++) {
+      dest_arr.emplace_back(std::move(temp_arr[i]));
+    }
+    state.PauseTiming();  // ~Value not measured
+  }
+}
+
+static void BM_ValueStringVisit(benchmark::State& state) {
+  std::vector<const lepus::Value> arr;
+  for (int j = 0; j < 1000; j++) {
+    for (int i = 0; i < 26; i++) {
+      arr.emplace_back(std::string(10, 'a' + i));
+    }
+  }
+  volatile int64_t total = 0;
+  for (auto _ : state) {
+    for (size_t i = 0; i < arr.size(); i++) {
+      total += arr[i].String().length();
+    }
+  }
+}
+
+static void BM_ValueStringRValueVisit(benchmark::State& state) {
+  std::vector<lepus::Value> arr;
+  for (int j = 0; j < 1000; j++) {
+    for (int i = 0; i < 26; i++) {
+      arr.emplace_back(std::string(10, 'a' + i));
+    }
+  }
+  volatile int64_t total = 0;
+  for (auto _ : state) {
+    for (size_t i = 0; i < arr.size(); i++) {
+      total += std::move(arr[i]).String().length();
+    }
+  }
+}
+
+static void BM_ValueStringStdStringVisit(benchmark::State& state) {
+  std::vector<lepus::Value> arr;
+  for (int j = 0; j < 1000; j++) {
+    for (int i = 0; i < 26; i++) {
+      arr.emplace_back(std::string(10, 'a' + i));
+    }
+  }
+  volatile int64_t total = 0;
+  for (auto _ : state) {
+    for (size_t i = 0; i < arr.size(); i++) {
+      total += arr[i].StdString().length();
+    }
   }
 }
 
@@ -320,8 +575,11 @@ static void BM_ValueMethodsTestLepusValueOperatorEqual(
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = "function entry() {}";
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     state.ResumeTiming();
     lepus::Value left;
@@ -341,8 +599,11 @@ static void BM_ValueMethodsTestToLepusValue(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = "let obj = {a: 3}; let obj2 = {b: 3};";
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.1");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
 
     state.ResumeTiming();
@@ -370,6 +631,9 @@ static void BM_LepusWrapDestruct(benchmark::State& state) {
     state.PauseTiming();
     state.ResumeTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     lepus::Value number = lepus::Value(1);
     lepus::Value number_wrap =
         MK_JS_LEPUS_VALUE_WITH_CONVERT(qctx.context(), number, false);
@@ -386,8 +650,11 @@ static void BM_TestDefaultStackSize(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = "function entry(){let a=1;let b=1;return a+b;}";
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.1");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     state.ResumeTiming();
     LEPUSValue res = qctx.GetAndCall("entry", nullptr, 0);
@@ -401,9 +668,12 @@ static void BM_TestSetNormalStackSize(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     qctx.SetStackSize(1024 * 1024);
     std::string src = "function sayHello(){let a=1;let b=1;return a+b;}";
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.1");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     state.ResumeTiming();
     LEPUSValue res = qctx.GetAndCall("sayHello", nullptr, 0);
@@ -417,8 +687,11 @@ static void BM_FromLepusDeepConvert(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::VMContext vctx;
+    vctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&vctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&vctx, src, sdk_version);
     vctx.Execute();
     lepus::Value* obj_ptr = new lepus::Value();
     bool ret = vctx.GetTopLevelVariableByName("obj", obj_ptr);
@@ -437,8 +710,11 @@ static void BM_ToLepusValueDeepConvert(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     lepus::Value obj_wrap_lepus_value =
         MK_JS_LEPUS_VALUE(qctx.context(), qctx.SearchGlobalData("obj"));
@@ -453,8 +729,11 @@ static void BM_ValueTestCloneBigObject(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     lepus::Value obj =
         MK_JS_LEPUS_VALUE(qctx.context(), qctx.SearchGlobalData("obj"))
@@ -468,9 +747,12 @@ static void BM_TestEmptyRenderNGFunction(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::QuickContext qctx;
+    qctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     RegisterNGEmptyFunction(&qctx);
     std::string src = lepus::readFile("./benchmark_test_files/big_object.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&qctx, src, sdk_version);
     qctx.Execute();
     state.ResumeTiming();
     lepus::Value ret = qctx.Call(
@@ -484,8 +766,11 @@ static void BM_TestCollectLeak(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     lepus::VMContext vctx;
+    vctx.SetGlobalData(
+        "$kTemplateAssembler",
+        lepus::Value((void*)&mock_delegate_instance));  // to mute error log
     std::string src = lepus::readFile("./benchmark_test_files/leak_objects.js");
-    lepus::BytecodeGenerator::GenerateBytecode(&vctx, src, "2.0");
+    lepus::BytecodeGenerator::GenerateBytecode(&vctx, src, sdk_version);
     vctx.Execute();
     lepus::Value* obj_ptr = new lepus::Value();
     bool ret = vctx.GetTopLevelVariableByName("obj", obj_ptr);
@@ -773,6 +1058,18 @@ BENCHMARK(BM_ShadowEqualSameIntTable);
 BENCHMARK(BM_ShadowEqualDiffSameStringTable);
 BENCHMARK(BM_ShadowEqualHasNewKey);
 BENCHMARK(BM_ShadowEqualSameTableValue);
+BENCHMARK(BM_ValueCopyConstruct);
+BENCHMARK(BM_ValueCopyAssign);
+BENCHMARK(BM_ValueMoveConstruct);
+BENCHMARK(BM_ValueConstructFromDict);
+BENCHMARK(BM_ValueDictVisit);
+BENCHMARK(BM_ValueConstructFromArray);
+BENCHMARK(BM_ValueArrayVisit);
+BENCHMARK(BM_ValueConstructCopyString);
+BENCHMARK(BM_ValueConstructMoveString);
+BENCHMARK(BM_ValueStringVisit);
+BENCHMARK(BM_ValueStringRValueVisit);
+BENCHMARK(BM_ValueStringStdStringVisit);
 BENCHMARK(BM_ValueMethodsValuePrint);
 BENCHMARK(BM_ValueMethodsIsEqual);
 BENCHMARK(BM_ValueMethodsClone);
@@ -804,6 +1101,7 @@ BENCHMARK(BM_TableSetValueNoEmplace);
 BENCHMARK(BM_TableSetValueEmplace);
 BENCHMARK(BM_TableSetValueNoEmplaceKeyConflict);
 BENCHMARK(BM_TableSetValueEmplaceKeyConflict);
+
 }  // namespace lepusbenchmark
 }  // namespace lynx
 

@@ -10,8 +10,10 @@
 
 #if _MSC_VER
 #define BASE_INLINE inline __forceinline
+#define BASE_NEVER_INLINE __declspec(noinline)
 #else
 #define BASE_INLINE inline __attribute__((always_inline))
+#define BASE_NEVER_INLINE __attribute__((noinline))
 #endif
 
 #endif  // BASE_INCLUDE_BASE_DEFINES_H_

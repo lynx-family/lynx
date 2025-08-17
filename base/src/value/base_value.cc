@@ -1643,19 +1643,19 @@ void Value::ForEachLepusValue(const lepus::Value& value,
   }
 }
 
-CArray* Value::DummyArray() {
+BASE_NEVER_INLINE CArray* Value::DummyArray() {
   static thread_local CArray dummy;
   dummy.Reset();
   return &dummy;
 }
 
-Dictionary* Value::DummyTable() {
+BASE_NEVER_INLINE Dictionary* Value::DummyTable() {
   static thread_local Dictionary dummy;
   dummy.Reset();
   return &dummy;
 }
 
-ByteArray* Value::DummyByteArray() {
+BASE_NEVER_INLINE ByteArray* Value::DummyByteArray() {
   static thread_local lepus::ByteArray dummy(nullptr, 0);
   dummy.Reset();
   return &dummy;
