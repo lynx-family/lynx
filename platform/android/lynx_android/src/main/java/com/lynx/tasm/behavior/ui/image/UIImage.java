@@ -126,7 +126,11 @@ public class UIImage extends UIView {
   @Override
   public void destroy() {
     super.destroy();
-    mLynxImageManager.destroy();
+    if (mLynxImageManager != null) {
+      // mLynxImageManager will be set to null when detached from the LynxImageManager.
+      // And we will ensure it exists before draw and we can ignore the destroy call if it's null.
+      mLynxImageManager.destroy();
+    }
   }
 
   @Override
