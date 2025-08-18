@@ -99,22 +99,32 @@ std::optional<Value> valueFromLepus(
     case lepus::Value_Table: {
       lepus::Dictionary* dict = data.Table().get();
       Object ret(runtime);
-      for (auto& iter : *dict) {
+      bool early_return = false;
+      dict->for_each([&](const auto& key, const auto& value) {
         auto element =
-            valueFromLepus(runtime, iter.second, jsi_object_wrapper_manager);
+            valueFromLepus(runtime, value, jsi_object_wrapper_manager);
         if (!element) {
-          return std::optional<Value>();
+          early_return = true;
+          return true;  // stop
         }
         if (runtime.getGCFlag()) {
-          if (!runtime.setPropertyValueGC(ret, iter.first.c_str(),
-                                          detail::toValue(runtime, *element)))
-            return std::optional<Value>();
-        } else if (!ret.setProperty(runtime, iter.first.c_str(),
+          if (!runtime.setPropertyValueGC(ret, key.c_str(),
+                                          detail::toValue(runtime, *element))) {
+            early_return = true;
+            return true;  // stop
+          }
+        } else if (!ret.setProperty(runtime, key.c_str(),
                                     std::move(*element))) {
-          return std::optional<Value>();
+          early_return = true;
+          return true;  // stop
         }
+        return false;
+      });
+      if (early_return) {
+        return std::optional<Value>();
+      } else {
+        return Value(std::move(ret));
       }
-      return Value(std::move(ret));
     }
     case lepus::Value_JSObject: {
       if (jsi_object_wrapper_manager) {

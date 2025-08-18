@@ -125,10 +125,9 @@ void ForEachLepusValue(const lepus::Value& value,
     case lepus::ValueType::Value_Table: {
       auto value_scope_ref_ptr = value.Table();
       auto& table = *value_scope_ref_ptr;
-      for (auto& pair : table) {
-        auto key = lepus::Value(pair.first);
-        func(key, pair.second);
-      }
+      table.for_each([&](const auto& key, const auto& value) {
+        func(lepus::Value(key), value);
+      });
     } break;
     case lepus::ValueType::Value_Array: {
       auto value_scope_ref_ptr = value.Array();

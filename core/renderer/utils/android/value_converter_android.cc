@@ -67,7 +67,7 @@ base::android::JavaOnlyMap ValueConverterAndroid::ConvertLepusToJavaOnlyMap(
   }
 
   tasm::ForEachLepusValue(
-      value, [&jni_map](const lepus::Value key, const lepus::Value& value) {
+      value, [&jni_map](const lepus::Value& key, const lepus::Value& value) {
         PushKeyAndValueToJavaOnlyMap(jni_map, key.CString(), value);
       });
 
@@ -111,7 +111,7 @@ ValueConverterAndroid::ConvertLepusToJavaOnlyMapForTiming(
   }
 
   tasm::ForEachLepusValue(
-      value, [&jni_map](const lepus::Value key, const lepus::Value& value) {
+      value, [&jni_map](const lepus::Value& key, const lepus::Value& value) {
         PushKeyAndValueToJavaOnlyMapForTiming(jni_map, key.CString(), value);
       });
 
@@ -129,7 +129,7 @@ base::android::JavaOnlyArray ValueConverterAndroid::ConvertLepusToJavaOnlyArray(
   }
 
   tasm::ForEachLepusValue(
-      value, [&jni_ary](const lepus::Value key, const lepus::Value& value) {
+      value, [&jni_ary](const lepus::Value& key, const lepus::Value& value) {
         PushValueToJavaOnlyArray(jni_ary, value);
       });
 

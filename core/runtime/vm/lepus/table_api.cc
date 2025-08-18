@@ -42,9 +42,8 @@ static Value Keys(VMContext* context) {
   } else if (param->IsTable()) {
     auto param_table = param->Table();
     result_array->reserve(param_table->size());
-    for (auto& iter : *param_table) {
-      result_array->emplace_back(iter.first);
-    }
+    param_table->for_each(
+        [&](const auto& key, const auto&) { result_array->emplace_back(key); });
   }
   return result;
 }

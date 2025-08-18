@@ -243,9 +243,9 @@ void Value::ToLepusValueRecursively(Value& value, bool deep_convert) {
       const auto tbl =
           reinterpret_cast<lepus::Dictionary*>(value.value_.val_ptr);
       if (tbl != nullptr) {
-        for (auto& itr : *tbl) {
-          ToLepusValueRecursively(itr.second, deep_convert);
-        }
+        tbl->for_each([&](const auto& key, Value& value) {
+          ToLepusValueRecursively(value, deep_convert);
+        });
       }
     } else if (value.IsArray()) {
       const auto arr = reinterpret_cast<lepus::CArray*>(value.value_.val_ptr);
@@ -826,11 +826,10 @@ Value Value::CloneRecursively(const Value& src, bool clone_as_jsvalue) {
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         lepus_map->reserve(src_tbl->size());
-        auto it = src_tbl->begin();
-        for (; it != src_tbl->end(); it++) {
-          Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                Value::Clone(it->second));
-        }
+        src_tbl->for_each([&](const auto& key, const auto& value) {
+          Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key,
+                                                Value::Clone(value));
+        });
       }
       return Value(std::move(lepus_map));
     }
@@ -887,16 +886,14 @@ Value Value::ShallowCopy(const Value& src, bool clone_as_jsvalue) {
           reinterpret_cast<lepus::Dictionary*>(src.value_.val_ptr);
       if (src_tbl != nullptr) {
         lepus_map->reserve(src_tbl->size());
-        auto it = src_tbl->begin();
-        for (; it != src_tbl->end(); it++) {
-          if (it->second.MarkConst()) {
-            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                  it->second);
+        src_tbl->for_each([&](const auto& key, auto& value) {
+          if (value.MarkConst()) {
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key, value);
           } else {
-            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, it->first,
-                                                  Value::Clone(it->second));
+            Dictionary::Unsafe::SetValueUniqueKey(*lepus_map, key,
+                                                  Value::Clone(value));
           }
-        }
+        });
       }
       return Value(std::move(lepus_map));
     }
@@ -1598,15 +1595,23 @@ bool Value::IsLepusDictEqualToExtendedDict(lynx_api_env env,
   if (src->size() != static_cast<size_t>(len)) {
     return false;
   }
-  for (auto& it : *src) {
+  bool result = true;
+  src->for_each([&](const auto& key, Value& value) {
     lynx_value val;
     lynx_api_status status =
-        lynx_value_get_named_property(env, dst, it.first.c_str(), &val);
-    if (status != lynx_api_ok) return false;
+        lynx_value_get_named_property(env, dst, key.c_str(), &val);
+    if (status != lynx_api_ok) {
+      result = false;
+      return true;  // stop
+    }
     lepus::Value dst_property(env, std::move(val));
-    if (it.second != dst_property) return false;
-  }
-  return true;
+    if (value != dst_property) {
+      result = false;
+      return true;  // stop
+    }
+    return false;  // continue
+  });
+  return result;
 }
 
 // TODO(frendy): Remove lynx::tasm:ForEachLepusValue
@@ -1621,10 +1626,9 @@ void Value::ForEachLepusValue(const lepus::Value& value,
     case lynx_value_map: {
       auto value_scope_ref_ptr = value.Table();
       auto& table = *value_scope_ref_ptr;
-      for (auto& pair : table) {
-        auto key = lepus::Value(pair.first);
-        func(key, pair.second);
-      }
+      table.for_each([&](const auto& key, const auto& value) {
+        func(lepus::Value(key), value);
+      });
     } break;
     case lynx_value_array: {
       auto value_scope_ref_ptr = value.Array();

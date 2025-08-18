@@ -304,6 +304,92 @@ class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
     return true;
   }
 
+  /**
+   * @brief Iterates over each key-value pair in the map and applies a
+   * user-provided callback.
+   *
+   * This method supports two types of callbacks for maximum flexibility:
+   * 1.  **Callback with `void` return type**: The function will be executed for
+   * every element in the map. Signature: `void(const K& key, const T& value)`
+   *
+   * 2.  **Callback with `bool` return type**: This allows for early termination
+   * of the loop. If the callback returns `true`, the iteration stops
+   * immediately. If it returns `false`, the iteration continues to the next
+   * element. Signature: `bool(const K& key, const T& value)`
+   *
+   * @tparam Callback The type of the callback function or callable object
+   * (e.g., a lambda).
+   *
+   * @param callback The callable object to be invoked for each key-value pair.
+   * It will be perfectly forwarded.
+   *
+   * @note This method is enabled only if the provided `Callback` is invocable
+   * with arguments of type `const K&` and `const T&`.
+   * @note The method uses `if constexpr` to create a zero-overhead abstraction,
+   * ensuring that the check for a boolean return value happens at compile-time
+   * with no runtime cost.
+   *
+   * @code
+   * MyMap<std::string, int> map = {{"a", 1}, {"b", 2}};
+   *
+   * // Example 1: Print all elements (void return).
+   * map.for_each([](const std::string& key, int value) {
+   *   std::cout << key << ": " << value << std::endl;
+   * });
+   *
+   * // Example 2: Find an element and stop (bool return).
+   * map.for_each([](const std::string& key, int value) -> bool {
+   *   if (key == "b") {
+   *     std::cout << "Found 'b'!" << std::endl;
+   *     return true; // Stop iterating
+   *   }
+   *   return false; // Continue iterating
+   * });
+   * @endcode
+   */
+  template <typename Callback,
+            typename = std::enable_if_t<std::is_invocable_v<
+                Callback, const base::String&, const Value&>>>
+  void for_each(Callback&& callback) const {
+    using callback_ret_type =
+        std::invoke_result_t<Callback, const base::String&, const Value&>;
+    constexpr bool callback_returns_bool =
+        std::is_same_v<callback_ret_type, bool>;
+
+    if constexpr (callback_returns_bool) {
+      for (auto& p : hash_map_) {
+        if (callback(p.first, p.second)) {
+          break;
+        }
+      }
+    } else {
+      for (auto& p : hash_map_) {
+        callback(p.first, p.second);
+      }
+    }
+  }
+
+  template <typename Callback, typename = std::enable_if_t<std::is_invocable_v<
+                                   Callback, const base::String&, Value&>>>
+  void for_each(Callback&& callback) {
+    using callback_ret_type =
+        std::invoke_result_t<Callback, const base::String&, Value&>;
+    constexpr bool callback_returns_bool =
+        std::is_same_v<callback_ret_type, bool>;
+
+    if constexpr (callback_returns_bool) {
+      for (auto& p : hash_map_) {
+        if (callback(p.first, p.second)) {
+          break;
+        }
+      }
+    } else {
+      for (auto& p : hash_map_) {
+        callback(p.first, p.second);
+      }
+    }
+  }
+
  protected:
   Dictionary() = default;
   Dictionary(HashMap map);

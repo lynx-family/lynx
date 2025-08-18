@@ -135,11 +135,11 @@ int32_t LEPUSValueGetOwnPropertyNames(LEPUSContext* ctx, LEPUSValue this_obj,
     // malloc failed return -1;
     if (!tab_enum) return -1;
     uint32_t i = 0;
-    for (auto& pair : table) {
-      tab_enum[i].atom = LEPUS_NewAtom(ctx, pair.first.c_str());
+    table.for_each([&](const auto& key, const auto& value) {
+      tab_enum[i].atom = LEPUS_NewAtom(ctx, key.c_str());
       tab_enum[i].is_enumerable = 1;
       ++i;
-    }
+    });
     *props = tab_enum;
     return 0;
   }
