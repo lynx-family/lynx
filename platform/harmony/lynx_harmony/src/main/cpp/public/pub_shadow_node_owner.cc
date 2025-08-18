@@ -75,7 +75,7 @@ void PubShadowNodeOwner::SetContext(PubLynxContext* context) {
 }
 
 void PubShadowNodeOwner::ScheduleLayout(base::closure callback) const {
-  shadow_node_owner_->ScheduleLayout(std::move(callback));
+  shadow_node_owner_->ScheduleLayout();
 }
 
 LayoutResult PubShadowNodeOwner::MeasureNode(int id, float width,

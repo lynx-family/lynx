@@ -9,12 +9,16 @@
   BOOL _enableLayout;
 }
 
-- (instancetype)initWithBlock:(LynxOnLayoutBlock)block {
+- (instancetype)init {
   self = [super init];
   if (self) {
-    _block = block;
+    _block = nil;
   }
   return self;
+}
+
+- (void)setLayoutBlock:(LynxOnLayoutBlock)block {
+  _block = block;
 }
 
 - (void)requestLayout {
@@ -28,7 +32,12 @@
 
 - (void)triggerLayout {
   if (_enableLayout) {
-    _block();
+    if (_block) {
+      _block();
+    } else {
+      [NSException raise:@"LynxLayoutTickException"
+                  format:@"triggerLayout called without a layout block set"];
+    }
     _enableLayout = NO;
   }
 }

@@ -90,6 +90,8 @@ class LynxEngineProxy {
   virtual float GetDensity() const = 0;
 
   virtual void OnFirstMeaningfulPaint() = 0;
+
+  virtual void TriggerLayout() = 0;
 };
 
 }  // namespace shell

@@ -10,6 +10,8 @@
 #include <memory>
 
 #include "core/public/ui_delegate.h"
+#include "core/renderer/ui_wrapper/layout/android/layout_context_android.h"
+#include "core/renderer/ui_wrapper/painting/android/painting_context_android.h"
 
 namespace lynx {
 namespace tasm {
@@ -18,9 +20,9 @@ class UIDelegateAndroid : public UIDelegate {
  public:
   UIDelegateAndroid(long painting_context, long layout_context)
       : painting_context_(
-            reinterpret_cast<PaintingCtxPlatformImpl*>(painting_context)),
+            reinterpret_cast<PaintingContextAndroid*>(painting_context)),
         layout_context_(
-            reinterpret_cast<LayoutCtxPlatformImpl*>(layout_context)) {}
+            reinterpret_cast<LayoutContextAndroid*>(layout_context)) {}
 
   ~UIDelegateAndroid() override = default;
 
@@ -38,14 +40,16 @@ class UIDelegateAndroid : public UIDelegate {
       const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+      const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
       const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-      const fml::RefPtr<fml::TaskRunner>& layout_task_runner) override {}
+      const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+      bool is_embedded_mode = false) override;
 
  protected:
-  PaintingCtxPlatformImpl* painting_context_;
-  LayoutCtxPlatformImpl* layout_context_;
+  PaintingContextAndroid* painting_context_;
+  LayoutContextAndroid* layout_context_;
 };
 
 }  // namespace tasm

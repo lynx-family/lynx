@@ -1642,8 +1642,7 @@ void ElementManager::SetPageOptions(const PageOptions &options) {
 
 void ElementManager::ScheduleLayout() {
   if (platform_layout_context_) {
-    platform_layout_context_->ScheduleLayoutInEmbeddedMode(
-        [this]() { request_layout_callback_(); });
+    platform_layout_context_->ScheduleLayout();
   }
 }
 

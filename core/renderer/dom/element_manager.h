@@ -1179,10 +1179,6 @@ class ElementManager : public ElementContextDelegate {
 
   void ScheduleLayout();
 
-  void SetRequestLayoutCallback(base::MoveOnlyClosure<void> callback) {
-    request_layout_callback_ = std::move(callback);
-  }
-
   std::optional<std::thread::id> GetCurrentEngineThreadId() {
     return engine_thread_id_;
   }

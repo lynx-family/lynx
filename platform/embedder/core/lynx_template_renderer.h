@@ -13,6 +13,7 @@
 
 #include "core/public/devtool/lynx_devtool_proxy.h"
 #include "core/public/devtool/lynx_inspector_owner.h"
+#include "core/public/lynx_layout_proxy.h"
 #include "core/public/lynx_resource_loader.h"
 #include "core/public/performance_controller_platform_impl.h"
 #include "core/public/ui_delegate.h"
@@ -20,6 +21,7 @@
 #include "core/renderer/data/template_data.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -253,6 +255,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
+  std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
   std::unique_ptr<shell::LynxShell> shell_;
   tasm::UIDelegate* ui_delegate_;
   std::shared_ptr<WeakFlag> weak_flag_;

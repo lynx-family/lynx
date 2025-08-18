@@ -46,7 +46,7 @@ class PlatformImplEmptyImpl : public LayoutCtxPlatformImpl {
   virtual void RemoveLayoutNode(int parent, int child, int index) override {}
   virtual void DestroyLayoutNodes(const std::unordered_set<int>& ids) override {
   }
-  virtual void ScheduleLayout(base::closure callback) override {}
+  virtual void ScheduleLayout() override {}
   virtual void OnLayoutBefore(int sign) override {}
   virtual void OnLayout(int id, float left, float top, float width,
                         float height, const std::array<float, 4>& paddings,

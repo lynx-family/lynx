@@ -10,7 +10,7 @@
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/renderer/ui_wrapper/layout/layout_context.h"
 #include "core/shell/lynx_actor_specialization.h"
-#include "core/shell/lynx_layout_proxy.h"
+#include "core/shell/lynx_layout_proxy_impl.h"
 
 namespace lynx {
 namespace shell {
@@ -18,13 +18,14 @@ class LynxLayoutProxyAndroid {
  public:
   explicit LynxLayoutProxyAndroid(
       std::shared_ptr<shell::LynxActor<tasm::LayoutContext>> actor)
-      : layout_proxy_(std::make_unique<LynxLayoutProxy>(std::move(actor))) {}
+      : layout_proxy_(std::make_unique<LynxLayoutProxyImpl>(std::move(actor))) {
+  }
   ~LynxLayoutProxyAndroid() = default;
   void RunOnLayoutThread(JNIEnv *env, jobject jcaller, jlong nativePtr,
                          jobject java_runnable);
 
  private:
-  std::unique_ptr<LynxLayoutProxy> layout_proxy_;
+  std::unique_ptr<LynxLayoutProxyImpl> layout_proxy_;
 };
 }  // namespace shell
 }  // namespace lynx

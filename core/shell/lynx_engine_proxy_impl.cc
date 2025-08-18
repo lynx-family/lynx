@@ -360,6 +360,19 @@ float LynxEngineProxyImpl::GetDensity() const {
 // TODO(huzhanbo.luc): remove this later
 void LynxEngineProxyImpl::OnFirstMeaningfulPaint(){};
 
+void LynxEngineProxyImpl::TriggerLayout() {
+  if (engine_actor_ == nullptr) {
+    LOGE(
+        "LynxEngineProxy::TriggerLayout failed since engine_actor_ is "
+        "nullptr");
+    return;
+  }
+  engine_actor_->Act([](auto& engine) {
+    auto pipeline_option = std::make_shared<tasm::PipelineOptions>();
+    engine->GetTasm()->TriggerLayout(pipeline_option);
+  });
+}
+
 }  // namespace shell
 
 }  // namespace lynx

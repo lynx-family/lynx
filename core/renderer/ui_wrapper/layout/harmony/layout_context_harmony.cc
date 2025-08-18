@@ -49,9 +49,7 @@ void LayoutContextHarmony::OnLayout(int id, float left, float top, float width,
   node_owner_->OnLayout(id, left, top, width, height);
 }
 
-void LayoutContextHarmony::ScheduleLayout(base::closure callback) {
-  node_owner_->ScheduleLayout(std::move(callback));
-}
+void LayoutContextHarmony::ScheduleLayout() { node_owner_->ScheduleLayout(); }
 
 void LayoutContextHarmony::DestroyLayoutNodes(
     const std::unordered_set<int>& ids) {

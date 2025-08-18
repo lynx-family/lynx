@@ -242,7 +242,8 @@ class LynxContext {
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
       const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-      const fml::RefPtr<fml::TaskRunner>& layout_task_runner);
+      const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+      bool is_embedded_mode = false);
   void PostTaskOnUIThread(base::closure task) const;
 
   // The task will run immediately if on main thread, or it will post to ui task

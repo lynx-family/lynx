@@ -9,8 +9,9 @@ typedef void (^LynxOnLayoutBlock)(void);
 // TODO: use producer and consumer mode
 @interface LynxLayoutTick : NSObject
 
-- (nonnull instancetype)initWithBlock:(nonnull LynxOnLayoutBlock)block;
+- (nonnull instancetype)init;
 
+- (void)setLayoutBlock:(nonnull LynxOnLayoutBlock)block;
 - (void)requestLayout;
 - (void)requestLayout:(nonnull LynxOnLayoutBlock)block;
 - (void)triggerLayout;

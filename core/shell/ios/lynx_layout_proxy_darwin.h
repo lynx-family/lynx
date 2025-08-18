@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "core/shell/lynx_layout_proxy.h"
+#include "core/shell/lynx_layout_proxy_impl.h"
 
 namespace lynx {
 namespace shell {
@@ -18,12 +18,13 @@ class LynxLayoutProxyDarwin {
  public:
   explicit LynxLayoutProxyDarwin(
       std::shared_ptr<shell::LynxActor<tasm::LayoutContext>> actor)
-      : layout_proxy_(std::make_unique<LynxLayoutProxy>(actor)) {}
+      : layout_proxy_(std::make_unique<LynxLayoutProxyImpl>(actor)) {}
   ~LynxLayoutProxyDarwin() = default;
   void RunOnLayoutThread(dispatch_block_t task);
+  void TriggerLayout();
 
  private:
-  std::unique_ptr<LynxLayoutProxy> layout_proxy_;
+  std::unique_ptr<LynxLayoutProxyImpl> layout_proxy_;
 };
 
 }  // namespace shell

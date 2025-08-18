@@ -57,13 +57,7 @@
 - (void)setUpShadowNodeOwner {
   // FIXME(huangweiwu): fix layout tick both android.
   if (!_uilayoutTick) {
-    __weak typeof(self) weakSelf = self;
-    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_containerView
-                                                     block:^() {
-                                                       __strong LynxTemplateRender* strongSelf =
-                                                           weakSelf;
-                                                       strongSelf->shell_->TriggerLayout();
-                                                     }];
+    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_containerView];
   }
   if (!_isEngineInitFromReusePool) {
     BOOL isAsyncLayout = _threadStrategyForRendering != LynxThreadStrategyForRenderAllOnUI;
@@ -179,8 +173,10 @@
 
   auto perf_proxy =
       std::make_shared<lynx::shell::PerfControllerProxyImpl>(shell_->GetPerfControllerActor());
+  auto layout_proxy = std::make_shared<lynx::shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
   ui_delegate->OnLynxCreate(shell_->GetListEngineProxy(), [_lynxEngineProxy nativeProxy],
-                            std::move(js_proxy), std::move(perf_proxy), nullptr, nullptr, nullptr);
+                            std::move(js_proxy), std::move(layout_proxy), std::move(perf_proxy),
+                            nullptr, nullptr, nullptr, _embeddedMode);
 
   // reset ui flush flag
   [self setNeedPendingUIOperation:_needPendingUIOperation];

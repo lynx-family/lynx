@@ -84,6 +84,8 @@ class LynxEngineProxyImpl : public LynxEngineProxy {
 
   void OnFirstMeaningfulPaint() override;
 
+  void TriggerLayout() override;
+
  protected:
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
 };

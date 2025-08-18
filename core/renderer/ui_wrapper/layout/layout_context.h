@@ -181,10 +181,6 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
 
   void UpdateLayoutInfo(LayoutNode* node);
 
-  void SetRequestLayoutCallback(RequestLayoutCallback callback) {
-    request_layout_callback_ = std::move(callback);
-  }
-
   std::weak_ptr<LayoutCtxPlatformImpl> GetWeakPlatformImpl() const {
     return std::weak_ptr<LayoutCtxPlatformImpl>(platform_impl_);
   }
@@ -293,8 +289,6 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
 #endif
 
   CalculatedViewport calculated_viewport_;
-
-  RequestLayoutCallback request_layout_callback_;
 
   LayoutContext(const LayoutContext&) = delete;
   LayoutContext& operator=(const LayoutContext&) = delete;

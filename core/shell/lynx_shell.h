@@ -172,8 +172,6 @@ class LynxShell {
   void UpdateViewport(float width, int32_t width_mode, float height,
                       int32_t height_mode, bool need_layout = true);
 
-  void TriggerLayout();
-
   void SyncFetchLayoutResult();
 
   void LayoutImmediatelyWithUpdatedViewport(float width, int32_t width_mode,

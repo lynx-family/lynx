@@ -23,8 +23,7 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
-void LayoutVSyncProxy::ScheduleLayout(base::closure callback) {
-  trigger_layout_callback_ = std::move(callback);
+void LayoutVSyncProxy::ScheduleLayout() {
   if (!layout_scheduled_ && vsync_monitor_) {
     vsync_monitor_->AsyncRequestVSync(
         [weak_this = weak_from_this()](int64_t, int64_t) -> void {
@@ -36,6 +35,10 @@ void LayoutVSyncProxy::ScheduleLayout(base::closure callback) {
         });
   }
   layout_scheduled_ = true;
+}
+
+void LayoutVSyncProxy::SetLayoutTriggerCallback(base::closure callback) {
+  trigger_layout_callback_ = std::move(callback);
 }
 
 ShadowNodeOwner::ShadowNodeOwner()
@@ -191,11 +194,11 @@ LayoutResult ShadowNodeOwner::MeasureNode(int id, float width,
       static_cast<MeasureMode>(height_mode), final_measure);
 }
 
-void ShadowNodeOwner::ScheduleLayout(base::closure callback) {
-  auto task = base::MoveOnlyClosure<void>(
-      [weak_self = weak_from_this(), closure = std::move(callback)]() mutable {
+void ShadowNodeOwner::ScheduleLayout() {
+  auto task =
+      base::MoveOnlyClosure<void>([weak_self = weak_from_this()]() mutable {
         auto strong_this = weak_self.lock();
-        strong_this->GetLayoutVSyncProxy()->ScheduleLayout(std::move(closure));
+        strong_this->GetLayoutVSyncProxy()->ScheduleLayout();
       });
   context_->RunOnLayoutThread(std::move(task));
 }
@@ -513,6 +516,10 @@ void ShadowNodeOwner::NotifySystemFontUpdated() {
       node->MarkDirty();
     }
   }
+}
+
+void ShadowNodeOwner::SetTriggerLayoutCallback(base::closure callback) {
+  GetLayoutVSyncProxy()->SetLayoutTriggerCallback(std::move(callback));
 }
 
 }  // namespace harmony

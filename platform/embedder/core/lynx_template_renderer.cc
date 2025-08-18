@@ -134,6 +134,8 @@ void LynxTemplateRenderer::Reset() {
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
+  layout_proxy_ =
+      std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
 
   // InitJSBridge
   if (!module_manager_) {
@@ -182,10 +184,11 @@ void LynxTemplateRenderer::Reset() {
                       settings_.vsync_monitor_platform_impl);
 
   ui_delegate_->OnLynxCreate(shell_->GetListEngineProxy(), engine_proxy_,
-                             runtime_proxy_, perf_controller_proxy_,
-                             settings_.resource_loader,
+                             runtime_proxy_, layout_proxy_,
+                             perf_controller_proxy_, settings_.resource_loader,
                              shell_->GetRunners()->GetUITaskRunner(),
-                             shell_->GetRunners()->GetLayoutTaskRunner());
+                             shell_->GetRunners()->GetLayoutTaskRunner(),
+                             shell_->GetPageOptions().IsEmbeddedModeOn());
 }
 
 void LynxTemplateRenderer::LoadTemplate(

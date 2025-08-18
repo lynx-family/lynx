@@ -22,6 +22,7 @@ lynx_core_source_set("public") {
     "list_engine_proxy.h",
     "lynx_engine_proxy.h",
     "lynx_extension_delegate.h",
+    "lynx_layout_proxy.h",
     "lynx_resource_loader.h",
     "lynx_runtime_proxy.h",
     "page_options.h",
