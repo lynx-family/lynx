@@ -625,6 +625,8 @@ inline constexpr const char* const
 inline constexpr const char* const PAGE_ELEMENT_FLUSH_ACTIONS_AS_ROOT =
     "PageElement::FlushActionsAsRoot";
 
+inline constexpr const char* const PAGE_ELEMENT_LAYOUT = "PageElement::Layout";
+
 inline constexpr const char* const TREE_RESOLVER_CLONE_ELEMENTS =
     "TreeResolver::CloneElements";
 inline constexpr const char* const TREE_RESOLVER_FROM_TEMPLATE_INFO =

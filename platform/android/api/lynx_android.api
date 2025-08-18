@@ -9101,6 +9101,8 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_TEMPLATE_RENDER_LAYOUT LYNX_TEMPLATE_RENDER_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE LYNX_TEMPLATE_RENDER_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_SHADOW_NODE_MEASURE TEXT_SHADOW_NODE_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT TEXT_LAYOUT_MEASURE_TEXT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.IMAGE_SHOULD_REDIRECT_IMAGE_URL IMAGE_SHOULD_REDIRECT_IMAGE_URL;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW UI_BODY_ATTACH_UI_BODY_VIEW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.UI_BODY_DETACH_UI_BODY_VIEW UI_BODY_DETACH_UI_BODY_VIEW;

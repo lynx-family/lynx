@@ -156,6 +156,7 @@ void PageElement::SetCSSID(int32_t id) {
  * Reference {@link LayoutContext#Layout }
  */
 void PageElement::Layout(const std::shared_ptr<PipelineOptions>& options) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_ELEMENT_LAYOUT);
   DispatchLayoutBeforeRecursively();
 
   sl_node_->ReLayout();

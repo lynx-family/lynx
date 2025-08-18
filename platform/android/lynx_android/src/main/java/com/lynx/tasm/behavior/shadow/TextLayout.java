@@ -5,6 +5,8 @@ package com.lynx.tasm.behavior.shadow;
 
 import com.lynx.react.bridge.mapbuffer.ReadableCompactArrayBuffer;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.TraceEvent;
+import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxUIOwner;
 
 public class TextLayout {
@@ -15,11 +17,16 @@ public class TextLayout {
 
   @CalledByNative
   public float[] measureText(int sign, float width, int widthMode, float height, int heightMode) {
-    return mUIOwner.measureText(sign, width, widthMode, height, heightMode);
+    TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
+    float[] result = mUIOwner.measureText(sign, width, widthMode, height, heightMode);
+    TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT);
+    return result;
   }
   @CalledByNative
   public void dispatchLayoutBefore(int sign, ReadableCompactArrayBuffer buffer) {
+    TraceEvent.beginSection(TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE);
     mUIOwner.dispatchLayoutBefore(sign, buffer);
+    TraceEvent.endSection(TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE);
   }
 
   @CalledByNative
