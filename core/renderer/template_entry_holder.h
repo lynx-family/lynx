@@ -38,6 +38,8 @@ class TemplateEntryHolder {
   std::shared_ptr<TemplateEntry> FindTemplateEntry(
       const std::string& entry_name);
 
+  LynxTemplateBundle* FindTemplateBundle(const std::string& entry_name);
+
   /**
    * insert bundle for preloading lazy bundle
    */

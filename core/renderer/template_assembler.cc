@@ -3388,7 +3388,7 @@ ContextProxyInLepus* TemplateAssembler::GetContextProxy(
 
 lepus::Value TemplateAssembler::GetCustomSection(
     const std::string& key, const std::string& bundle_name) {
-  auto bundle = FindTemplateEntry(bundle_name);
+  auto* bundle = FindTemplateBundle(bundle_name);
   return bundle ? bundle->GetCustomSection(key) : lepus::Value();
 }
 

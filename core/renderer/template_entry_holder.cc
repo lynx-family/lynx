@@ -41,6 +41,21 @@ std::shared_ptr<TemplateEntry> TemplateEntryHolder::FindTemplateEntry(
   return entry_iter == template_entries_.end() ? nullptr : entry_iter->second;
 }
 
+LynxTemplateBundle* TemplateEntryHolder::FindTemplateBundle(
+    const std::string& entry_name) {
+  auto bundle_iter = template_entries_.find(entry_name);
+  if (bundle_iter != template_entries_.end()) {
+    return &bundle_iter->second->template_bundle();
+  }
+
+  auto preload_bundle_iter = preload_template_bundles_.find(entry_name);
+  if (preload_bundle_iter != preload_template_bundles_.end()) {
+    return &preload_bundle_iter->second;
+  }
+
+  return nullptr;
+}
+
 void TemplateEntryHolder::ForEachEntry(
     base::MoveOnlyClosure<void, const std::shared_ptr<TemplateEntry>&> func) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_HOLDER_FOR_EACH_ENTRY);
