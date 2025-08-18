@@ -203,7 +203,7 @@ export struct LynxView {
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
     let uiDelegate = this.uiRenderer.getUIDelegate();
-    if (extensionService != undefined) {
+    if (!this.enableAirStrictMode && extensionService != undefined) {
       extensionService.onLynxViewSetup(this.context, uiDelegate, !this.uiRendererCreator);
     }
     this.perfController.setPerformanceObserver(this.clients);
@@ -216,7 +216,10 @@ export struct LynxView {
     if (this.platformConfig) {
       this.templateRenderer.setPlatformConfig(this.platformConfig);
     }
-    this.setupExtensionModules();
+
+    if (!this.enableAirStrictMode) {
+      this.setupExtensionModules();
+    }
 
     this.uiRenderer.updateRefreshRate(LynxEnv.getDisplayInfo().refreshRate);
     this.templateRenderer.initScreenMetrics();
@@ -286,7 +289,7 @@ export struct LynxView {
     }
     let extensionService: ILynxExtensionService | undefined =
       LynxServiceCenter.getService<ILynxExtensionService>(LynxServiceType.Extension);
-    if (extensionService != undefined) {
+    if (!this.enableAirStrictMode && extensionService != undefined) {
       extensionService.onLynxViewDestroy(this.context);
     }
   }
