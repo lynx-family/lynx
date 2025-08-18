@@ -41,6 +41,7 @@ core/build/gen/
 /core/build/jni/BUILD.gn
 **/build/gen
 /core/template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h
+/core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h
 
 
 # Auto generated error code files

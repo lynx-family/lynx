@@ -27,6 +27,8 @@ class Config:
         author: str,
         code_gen: list[str],
         name_as: dict[str],
+        bind_member_to: str,
+        read_settings: bool,
     ):
         self.name = name
         self.upper_camel_case_name = f"{name[0].upper()}{name[1:]}"
@@ -54,6 +56,9 @@ class Config:
                 name_as.get("const") if name_as.get("const") else self.const_name
             )
 
+        self.member_name = (
+            bind_member_to if bind_member_to else f"{self.snake_case_name}_"
+        )
         self.desc = desc
         self.default_value = default_value
         self.value_type = value_type
@@ -97,6 +102,7 @@ class Config:
         self.version_overrides = version_overrides
         self.author = author
         self.codeGen = code_gen if code_gen is not None else ["ALL"]
+        self.read_settings = read_settings
 
 
 _binary_decoder_path = os.path.abspath(
@@ -130,6 +136,8 @@ def parse_config() -> list[Config]:
                 value.get("author"),
                 value.get("codeGen"),
                 value.get("nameAs"),
+                value.get("bindMemberTo"),
+                value.get("readSettings"),
             )
         )
     return configs
@@ -188,6 +196,16 @@ def gen_lynx_config():
         "lynx_config_auto_gen.h",
     )
     render_code_content(lynx_config_tmpl_path, lynx_config_header_path, configs)
+
+    config_const_tmpl_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_constant.tmpl",
+    )
+    lynx_config_const_header_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_constant_auto_gen.h",
+    )
+    render_code_content(config_const_tmpl_path, lynx_config_const_header_path, configs)
 
 
 def gen_config():

@@ -132,6 +132,34 @@ class LynxConfigDecoder final {
                                                 : TernaryBool::FALSE_VALUE);
     }
 
+    if (doc.HasMember(kEnableUseContextPool) &&
+        doc[kEnableUseContextPool].IsBool()) {
+      page_config->SetEnableUseContextPool(doc[kEnableUseContextPool].GetBool()
+                                               ? TernaryBool::TRUE_VALUE
+                                               : TernaryBool::FALSE_VALUE);
+    }
+
+    if (doc.HasMember(kEnableCSSLazyImport) &&
+        doc[kEnableCSSLazyImport].IsBool()) {
+      page_config->SetEnableCSSLazyImport(doc[kEnableCSSLazyImport].GetBool()
+                                              ? TernaryBool::TRUE_VALUE
+                                              : TernaryBool::FALSE_VALUE);
+    }
+
+    if (doc.HasMember(kEnableNewAnimator) && doc[kEnableNewAnimator].IsBool()) {
+      page_config->SetEnableNewAnimator(doc[kEnableNewAnimator].GetBool()
+                                            ? TernaryBool::TRUE_VALUE
+                                            : TernaryBool::FALSE_VALUE);
+    }
+
+    if (doc.HasMember(kEnableComponentAsyncDecode) &&
+        doc[kEnableComponentAsyncDecode].IsBool()) {
+      page_config->SetEnableComponentAsyncDecode(
+          doc[kEnableComponentAsyncDecode].GetBool()
+              ? TernaryBool::TRUE_VALUE
+              : TernaryBool::FALSE_VALUE);
+    }
+
     if (doc.HasMember(kMapContainerType) && doc[kMapContainerType].IsInt()) {
       page_config->SetMapContainerType(doc[kMapContainerType].GetInt());
     }
@@ -557,6 +585,67 @@ class LynxConfigDecoder final {
       page_config->SetEnableAsyncResolveSubtree(
           doc[kEnableAsyncFlushSubtree].GetBool() ? TernaryBool::TRUE_VALUE
                                                   : TernaryBool::FALSE_VALUE);
+    }
+
+    if (doc.HasMember(kAbsoluteInContentBound) &&
+        doc[kAbsoluteInContentBound].IsBool()) {
+      page_config->SetAbsoluteInContentBound(
+          doc[kAbsoluteInContentBound].GetBool());
+    }
+
+    if (doc.HasMember(kEnableFixedNew) && doc[kEnableFixedNew].IsBool()) {
+      page_config->SetEnableFixedNew(doc[kEnableFixedNew].GetBool());
+    }
+
+    if (doc.HasMember(kEnableCSSInheritance) &&
+        doc[kEnableCSSInheritance].IsBool()) {
+      page_config->SetEnableCSSInheritance(
+          doc[kEnableCSSInheritance].GetBool());
+    }
+
+    if (doc.HasMember(kCSSAlignWithLegacyW3C) &&
+        doc[kCSSAlignWithLegacyW3C].IsBool()) {
+      page_config->SetCSSAlignWithLegacyW3C(
+          doc[kCSSAlignWithLegacyW3C].GetBool());
+    }
+
+    if (doc.HasMember(kEnableCSSStrictMode) &&
+        doc[kEnableCSSStrictMode].IsBool()) {
+      page_config->SetEnableCSSStrictMode(doc[kEnableCSSStrictMode].GetBool());
+    }
+
+    if (doc.HasMember(kUnifyVWVHBehavior) && doc[kUnifyVWVHBehavior].IsBool()) {
+      page_config->SetUnifyVWVH(doc[kUnifyVWVHBehavior].GetBool());
+    } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version,
+                                                   LYNX_VERSION_2_3)) {
+      page_config->SetUnifyVWVH(true);
+    }
+
+    if (doc.HasMember(kFontScaleEffectiveOnlyOnSp) &&
+        doc[kFontScaleEffectiveOnlyOnSp].IsBool()) {
+      page_config->SetFontScaleSpOnly(
+          doc[kFontScaleEffectiveOnlyOnSp].GetBool());
+    }
+
+    if (doc.HasMember(kEnableNewIntersectionObserver) &&
+        doc[kEnableNewIntersectionObserver].IsBool()) {
+      page_config->SetEnableNewIntersectionObserver(
+          doc[kEnableNewIntersectionObserver].GetBool());
+    }
+
+    if (doc.HasMember(kIncludeFontPadding) &&
+        doc[kIncludeFontPadding].IsBool()) {
+      page_config->SetIncludeFontPadding(doc[kIncludeFontPadding].GetBool());
+    }
+
+    if (doc.HasMember(kEnableMultiTouch) && doc[kEnableMultiTouch].IsBool()) {
+      page_config->SetEnableMultiTouch(doc[kEnableMultiTouch].GetBool());
+    }
+
+    if (doc.HasMember(kEnableHarmonyVisibleAreaChangeForExposure) &&
+        doc[kEnableHarmonyVisibleAreaChangeForExposure].IsBool()) {
+      page_config->SetEnableHarmonyVisibleAreaChangeForExposure(
+          doc[kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
     }
   };
 };

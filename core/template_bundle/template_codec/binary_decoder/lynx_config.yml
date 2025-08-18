@@ -2,6 +2,29 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+extraInfo:
+  description: user defined extraInfo.
+  defaultValue: null
+  valueType: lepus::Value
+  syncTo:
+    - script
+  codeGen:
+    - MEMBER
+    - SETTER
+    - GETTER
+  nameAs:
+    const: kUserDefinedExtraInfo
+customCSSInheritanceList:
+  description:
+  defaultValue: null
+  valueType: std::unordered_set<CSSPropertyID>
+  bindMemberTo: css_configs_.custom_inherit_list_
+  codeGen:
+    - SETTER
+    - GETTER
+  nameAs:
+    setter: SetCustomCSSInheritList
+    getter: GetCustomCSSInheritList
 version:
   description:
   defaultValue: null
@@ -33,6 +56,22 @@ preferredFps:
   description:
   defaultValue: 'auto'
   valueType: string
+quirksMode:
+  description:
+  defaultValue: 'base::Version(1, 5)'
+  valueType: base::Version
+  codeGen:
+    - NONE
+enableLynxScrollFluency:
+  description: Force report lynx scroll fluency event. When setting pageConfig.enableLynxScrollFluency to a double value in the range [0, 1], we will monitor the fluency metrics for this LynxUI based on this probability. The probability indicates the likelihood of enabling fluency monitoring, and the metrics will be reported unconditionally through the applogService.
+  defaultValue: -1
+  valueType: double
+  syncTo:
+    - script
+  codeGen:
+    - MEMBER
+  nameAs:
+    member: enable_scroll_fluency_monitor
 lepusGCThreshold:
   description: GC threshold of lepusNG. Let default value be 256, and the unit is KB.
   defaultValue: 256
@@ -98,6 +137,38 @@ enableUnifiedPipeline:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: 'nhsprite'
+enableUseContextPool:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - DECODE
+enableCSSLazyImport:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - DECODE
+enableNewAnimator:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - DECODE
+enableComponentAsyncDecode:
+  description: Enable dynamic components to be decoded in child threads before they are delivered into tasm in async-loading.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - DECODE
 mapContainerType:
   description:
   defaultValue: 0
@@ -492,3 +563,125 @@ enableAsyncResolveSubtree:
   author: 'usczz'
   nameAs:
     const: kEnableAsyncFlushSubtree
+absoluteInContentBound:
+  description:
+  defaultValue: false
+  valueType: bool
+  bindMemberTo: layout_configs_.is_absolute_in_content_bound_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+enableFixedNew:
+  description:
+  defaultValue: false
+  valueType: bool
+  bindMemberTo: layout_configs_.enable_fixed_new_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+  readSettings: true
+enableCSSInheritance:
+  description:
+  defaultValue: false
+  valueType: bool
+  bindMemberTo: css_configs_.enable_css_inheritance_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+CSSAlignWithLegacyW3C:
+  description:
+  defaultValue: false
+  valueType: bool
+  codeGen:
+    - MEMBER
+    - DECODE
+enableCSSStrictMode:
+  description:
+  defaultValue: false
+  valueType: bool
+  bindMemberTo: css_parser_configs_.enable_css_strict_mode
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+unifyVWVHBehavior:
+  description:
+  defaultValue: false
+  valueType: bool
+  versionOverrides:
+    - minSDKVersion: LYNX_VERSION_2_3
+      value: 'true'
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+  nameAs:
+    setter: SetUnifyVWVH
+    getter: GetUnifyVWVH
+  bindMemberTo: css_configs_.unify_vw_vh_behavior_
+fontScaleEffectiveOnlyOnSp:
+  description:
+  defaultValue: false
+  valueType: bool
+  bindMemberTo: layout_configs_.font_scale_sp_only_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+  nameAs:
+    setter: SetFontScaleSpOnly
+    getter: GetFontScaleSpOnly
+enableNewIntersectionObserver:
+  description:
+  defaultValue: false
+  valueType: bool
+  readSettings: true
+forceCalcNewStyle:
+  description:
+  defaultValue: true
+  valueType: bool
+  codeGen:
+    - SETTER
+    - GETTER
+    - MEMBER
+  nameAs:
+    const: kForceCalcNewStyleKey
+includeFontPadding:
+  description:
+  defaultValue: false
+  valueType: bool
+  codeGen:
+    - DECODE
+removeDescendantSelectorScope:
+  description: If false, descendant selector only works in component scope.
+  defaultValue: true
+  valueType: bool
+  syncTo:
+    - script
+  codeGen:
+    - MEMBER
+    - SETTER
+    - GETTER
+enableMultiTouch:
+  description: Enable support multi-finger events
+  defaultValue: false
+  valueType: bool
+  author: 'rAY-ooo'
+  readSettings: true
+enableMultiTouchParamsCompatible:
+  description: Enable support multi-finger event parameter compatibility
+  defaultValue: false
+  valueType: bool
+  codeGen:
+    - MEMBER
+    - SETTER
+    - GETTER
+  author: 'rAY-ooo'
+enableHarmonyVisibleAreaChangeForExposure:
+  description: Enable Harmony to detect exposure with visible area change event.
+  defaultValue: false
+  valueType: bool
+  author: 'rAY-ooo'

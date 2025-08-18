@@ -9,6 +9,8 @@
 #include <string>
 
 #include "base/include/value/base_value.h"
+#include "core/renderer/css/dynamic_css_configs.h"
+#include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/starlight/types/layout_configs.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 
@@ -44,27 +46,27 @@ class EntryConfig {
   bool default_display_linear_{false};
 };
 
-{% for config in configs %}
-  static constexpr const char {{ config.const_name }}[] = "{{ config.name }}";
-{% endfor %}
-
 class LynxConfig : public EntryConfig {
  public:
   LynxConfig() = default;
   ~LynxConfig() override = default;
 
 {% for config in configs %}
-{% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
-  inline void {{ config.setter_func_name }}({{ config.setter_input_type }} {{ config.snake_case_name }}) { {{ config.snake_case_name }}_ = {{ config.snake_case_name }}; }
-  inline {{ config.value_type }} {{ config.getter_func_name }}() const { return {{ config.snake_case_name }}_; }
+{% if "ALL" in config.codeGen or "SETTER" in config.codeGen %}
+  inline void {{ config.setter_func_name }}({{ config.setter_input_type }} {{ config.snake_case_name }}) { {{ config.member_name }} = {{ config.snake_case_name }}; }
+{% endif %}
+{% if "ALL" in config.codeGen or "GETTER" in config.codeGen %}
+  inline {{ config.value_type }} {{ config.getter_func_name }}() const { return {{ config.member_name }}; }
 
 {% endif %}
 {% endfor %}
 
   protected:
+   tasm::DynamicCSSConfigs css_configs_{};
+   CSSParserConfigs css_parser_configs_;
 {% for config in configs %}
 {% if "ALL" in config.codeGen or "MEMBER" in config.codeGen %}
-  {{ config.value_type }} {{ config.snake_case_name }}_{{ '{' }}{{ config.default_value }}{{ '}' }};
+  {{ config.value_type }} {{ config.member_name }}{{ '{' }}{{ config.default_value }}{{ '}' }};
 {% endif %}
 {% endfor %}
 

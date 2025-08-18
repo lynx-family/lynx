@@ -1,0 +1,16 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_CONSTANT_H_
+#define CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_CONSTANT_H_
+
+namespace lynx {
+namespace tasm {
+{% for config in configs %}
+  static constexpr const char {{ config.const_name }}[] = "{{ config.name }}";
+{% endfor %}
+}  // namespace tasm
+}  // namespace lynx
+#endif  // CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_CONSTANT_H_
+

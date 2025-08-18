@@ -15,9 +15,6 @@
 
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
-#include "core/renderer/css/dynamic_css_configs.h"
-#include "core/renderer/css/parser/css_parser_configs.h"
-#include "core/renderer/starlight/types/layout_configs.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/template_bundle/template_codec/binary_decoder/lynx_config_auto_gen.h"
@@ -144,14 +141,6 @@ class PageConfig final : public LynxConfig {
 
   inline void SetDSL(PackageInstanceDSL dsl) { dsl_ = dsl; }
 
-  inline void SetAbsoluteInContentBound(bool enable) {
-    layout_configs_.is_absolute_in_content_bound_ = enable;
-  }
-
-  inline bool GetAbsoluteInContentBound() {
-    return layout_configs_.is_absolute_in_content_bound_;
-  }
-
   inline void SetQuirksMode(bool enable) {
     if (css_align_with_legacy_w3c_ || !enable) {
       layout_configs_.SetQuirksMode(kQuirksModeDisableVersion);
@@ -184,13 +173,6 @@ class PageConfig final : public LynxConfig {
     return css_configs_;
   }
 
-  inline void SetEnableFixedNew(bool enable) {
-    layout_configs_.enable_fixed_new_ = enable;
-  }
-  inline bool GetEnableFixedNew() const {
-    return layout_configs_.enable_fixed_new_;
-  }
-
   inline PackageInstanceDSL GetDSL() { return dsl_; }
 
   inline void SetBundleModuleMode(
@@ -208,31 +190,6 @@ class PageConfig final : public LynxConfig {
 
   inline TernaryBool GetTrailNewImage() const { return trail_New_Image_; }
 
-  inline void SetFontScaleSpOnly(bool font_scale) {
-    layout_configs_.font_scale_sp_only_ = font_scale;
-  }
-
-  inline bool GetFontScaleSpOnly() {
-    return layout_configs_.font_scale_sp_only_;
-  }
-
-  void SetEnableCSSInheritance(bool enable) {
-    css_configs_.enable_css_inheritance_ = enable;
-  }
-
-  bool GetEnableCSSInheritance() {
-    return css_configs_.enable_css_inheritance_;
-  }
-
-  void SetCustomCSSInheritList(std::unordered_set<CSSPropertyID>&& list) {
-    css_configs_.custom_inherit_list_ =
-        std::forward<std::unordered_set<CSSPropertyID>>(list);
-  }
-
-  const std::unordered_set<CSSPropertyID>& GetCustomCSSInheritList() {
-    return css_configs_.custom_inherit_list_;
-  }
-
   bool GetCSSAlignWithLegacyW3C() const { return css_align_with_legacy_w3c_; }
   void SetCSSAlignWithLegacyW3C(bool val) {
     css_align_with_legacy_w3c_ = val;
@@ -248,14 +205,6 @@ class PageConfig final : public LynxConfig {
 
   void SetAsyncRedirectUrl(TernaryBool async) { async_redirect_url = async; }
   TernaryBool GetAsyncRedirectUrl() const { return async_redirect_url; }
-
-  void SetEnableCSSStrictMode(bool enable) {
-    css_parser_configs_.enable_css_strict_mode = enable;
-  }
-
-  bool GetEnableCSSStrictMode() {
-    return css_parser_configs_.enable_css_strict_mode;
-  }
 
   inline const CSSParserConfigs& GetCSSParserConfigs() {
     return css_parser_configs_;
@@ -305,9 +254,6 @@ class PageConfig final : public LynxConfig {
   }
   bool GetListRemoveComponent() { return list_remove_component_; }
 
-  void SetUnifyVWVH(bool unify) { css_configs_.unify_vw_vh_behavior_ = unify; }
-  bool GetUnifyVWVH() { return css_configs_.unify_vw_vh_behavior_; }
-
   inline bool GetEnableZIndex() { return enable_z_index_; }
   inline void SetEnableZIndex(bool enable) { enable_z_index_ = enable; }
 
@@ -332,24 +278,10 @@ class PageConfig final : public LynxConfig {
 
   bool GetEnableEventRefactor() const { return enable_event_refactor_; }
 
-  inline void SetForceCalcNewStyle(bool option) {
-    force_calc_new_style_ = option;
-  }
-
-  bool GetForceCalcNewStyle() const { return force_calc_new_style_; }
-
   int32_t GetIncludeFontPadding() const { return include_font_padding_; }
 
   void SetIncludeFontPadding(bool value) {
     include_font_padding_ = value ? 1 : -1;
-  }
-
-  inline void SetEnableNewIntersectionObserver(bool option) {
-    enable_new_intersection_observer_ = option;
-  }
-
-  inline bool GetEnableNewIntersectionObserver() const {
-    return enable_new_intersection_observer_;
   }
 
   inline void SetLynxAirMode(CompileOptionAirMode air_mode) {
@@ -363,12 +295,6 @@ class PageConfig final : public LynxConfig {
   }
   inline void SetEnableRasterAnimation(bool value) {
     enable_raster_animation_ = value;
-  }
-
-  inline lepus::Value GetExtraInfo() const { return extra_info_; }
-
-  inline void SetExtraInfo(lepus::Value extra_info) {
-    extra_info_ = extra_info;
   }
 
   inline bool GetEnableCSSInvalidation() const {
@@ -397,14 +323,6 @@ class PageConfig final : public LynxConfig {
     pipeline_scheduler_config_ = config;
   }
 
-  bool GetRemoveDescendantSelectorScope() const {
-    return remove_descendant_selector_scope_;
-  }
-
-  void SetRemoveDescendantSelectorScope(bool enable) {
-    remove_descendant_selector_scope_ = enable;
-  }
-
   bool GetEnableStandardCSSSelector() const {
     return enable_standard_css_selector_;
   }
@@ -419,26 +337,6 @@ class PageConfig final : public LynxConfig {
     enable_native_list_ = enable;
   }
 
-  bool GetEnableMultiTouch() const { return enable_multi_touch_; }
-
-  void SetEnableMultiTouch(bool enable) { enable_multi_touch_ = enable; }
-
-  bool GetEnableMultiTouchParamsCompatible() const {
-    return enable_multi_touch_params_compatible_;
-  }
-
-  void SetEnableMultiTouchParamsCompatible(bool enable) {
-    enable_multi_touch_params_compatible_ = enable;
-  }
-
-  bool GetEnableHarmonyVisibleAreaChangeForExposure() const {
-    return enable_harmony_visible_area_change_for_exposure_;
-  }
-
-  void SetEnableHarmonyVisibleAreaChangeForExposure(bool enable) {
-    enable_harmony_visible_area_change_for_exposure_ = enable;
-  }
-
   bool GetEnableComponentAsyncDecode() const {
     switch (enable_component_async_decode_) {
       case TernaryBool::TRUE_VALUE:
@@ -450,16 +348,6 @@ class PageConfig final : public LynxConfig {
             LynxEnv::GetInstance().EnableComponentAsyncDecode();
         return enable_from_experiment;
     }
-  }
-
-  void SetEnableComponentAsyncDecode(bool enable) {
-    enable_component_async_decode_ =
-        enable ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
-  }
-
-  void SetEnableUseContextPool(bool enable) {
-    enable_use_context_pool_ =
-        enable ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE;
   }
 
   bool GetEnableUseContextPool() const {
@@ -477,15 +365,15 @@ class PageConfig final : public LynxConfig {
 
   inline void SetEnableScrollFluencyMonitor(double value) {
     if (value < 0) {
-      enable_scroll_fluency_monitor = 0;
+      enable_scroll_fluency_monitor_ = 0;
     } else if (value > 1) {
-      enable_scroll_fluency_monitor = 1;
+      enable_scroll_fluency_monitor_ = 1;
     } else {
-      enable_scroll_fluency_monitor = value;
+      enable_scroll_fluency_monitor_ = value;
     }
   }
   inline double GetEnableScrollFluencyMonitor() {
-    return enable_scroll_fluency_monitor;
+    return enable_scroll_fluency_monitor_;
   }
 
   void SetEnableUIOperationOptimize(TernaryBool enable) {
@@ -504,10 +392,6 @@ class PageConfig final : public LynxConfig {
     return enable_element_api_type_check_throw_warning_;
   }
 
-  inline void SetEnableCSSLazyImport(TernaryBool enable_css_lazy_import) {
-    enable_css_lazy_import_ = enable_css_lazy_import;
-  }
-
   inline bool GetEnableCSSLazyImport() const {
     // pageConfig > Libra > Settings
     switch (enable_css_lazy_import_) {
@@ -520,10 +404,6 @@ class PageConfig final : public LynxConfig {
             LynxEnv::GetInstance().EnableCSSLazyImport();
         return enable_css_lazy_import;
     }
-  }
-
-  inline void SetEnableNewAnimator(TernaryBool enable_new_animator) {
-    enable_new_animator_ = enable_new_animator;
   }
 
   inline bool GetEnableNewAnimator() const {
@@ -614,21 +494,10 @@ class PageConfig final : public LynxConfig {
   void MarkPostToPlatform() { need_post_to_platform_ = false; }
 
  private:
-  // Used for lynx config
-  tasm::DynamicCSSConfigs css_configs_;
-  // user defined extraInfo.
-  lepus::Value extra_info_{};
   std::string target_sdk_version_;
   std::string lepus_version_;
   std::string absetting_disable_css_lazy_decode_;
   std::string original_config_{};
-  // force report lynx scroll fluency event.
-  // When setting pageConfig.enableLynxScrollFluency to a double value in the
-  // range [0, 1], we will monitor the fluency metrics for this LynxUI based on
-  // this probability. The probability indicates the likelihood of enabling
-  // fluency monitoring, and the metrics will be reported unconditionally
-  // through the applogService.
-  double enable_scroll_fluency_monitor{-1};
   // Composite config representing configs including enableParallelElement,
   // batch-rendering
   uint64_t pipeline_scheduler_config_{0};
@@ -636,20 +505,11 @@ class PageConfig final : public LynxConfig {
   // TernaryBool
   TernaryBool trail_New_Image_{TernaryBool::UNDEFINE_VALUE};
   TernaryBool async_redirect_url{TernaryBool::UNDEFINE_VALUE};
-  // Enable lazy_bundles to be decoded in child threads before they are
-  // delivered into tasm in async-loading.
-  TernaryBool enable_component_async_decode_{TernaryBool::UNDEFINE_VALUE};
-  // enable use quick_context_pool to construct quick context
-  TernaryBool enable_use_context_pool_{TernaryBool::UNDEFINE_VALUE};
   // introduced in 2.16, enable the optimization aboult UIOperation batching and
   // CreateViewAsync at Android
   TernaryBool enable_ui_operation_optimize_{TernaryBool::UNDEFINE_VALUE};
   // Indicates whether use c++ list.
   TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
-  // CSSLazyImport
-  TernaryBool enable_css_lazy_import_{TernaryBool::UNDEFINE_VALUE};
-  // enableNewAnimator
-  TernaryBool enable_new_animator_{TernaryBool::UNDEFINE_VALUE};
   // enable microtask promise polyfill
   TernaryBool enable_microtask_promise_polyfill_{TernaryBool::UNDEFINE_VALUE};
   TernaryBool enable_native_schedule_create_view_async_{
@@ -661,7 +521,6 @@ class PageConfig final : public LynxConfig {
   int32_t include_font_padding_{0};
   CSSParserConfigs css_parser_configs_;
   PackageInstanceDSL dsl_;
-  bool css_align_with_legacy_w3c_{false};
   bool enable_lepus_ng_{true};
   bool default_overflow_visible_{false};
   bool enable_save_page_data_{false};
@@ -673,9 +532,6 @@ class PageConfig final : public LynxConfig {
   bool enable_css_parser_{false};
   bool is_target_sdk_verion_higher_than_2_1_{false};
   bool enable_event_refactor_{true};
-  bool force_calc_new_style_{true};
-
-  bool enable_new_intersection_observer_{false};
 
   CompileOptionAirMode air_mode_{CompileOptionAirMode::AIR_MODE_OFF};
   // set text overflow as visible if true
@@ -683,20 +539,8 @@ class PageConfig final : public LynxConfig {
   // support CSS invalidation
   bool enable_css_invalidation_{false};
 
-  // If false, descendant selector only works in component scope
-  bool remove_descendant_selector_scope_{true};
-
   // indicate that enable standard css selector
   bool enable_standard_css_selector_{false};
-
-  // enable support multi-finger events
-  bool enable_multi_touch_{false};
-
-  // enable support multi-finger event parameter compatibility.
-  bool enable_multi_touch_params_compatible_{false};
-
-  // enable harmony to detect exposure with visible area change event.
-  bool enable_harmony_visible_area_change_for_exposure_{false};
 
   // Indicates whether the parallel flush of Element has been enabled. And the
   // default value is false.
