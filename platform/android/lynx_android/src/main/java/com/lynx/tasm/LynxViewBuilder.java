@@ -166,6 +166,12 @@ public class LynxViewBuilder
     return this;
   }
 
+  @Deprecated
+  public LynxViewBuilder setUIRunningMode(boolean ui) {
+    super.setUIRunningMode(ui);
+    return this;
+  }
+
   @Override
   public void setCustomBehaviorRegistry(@NonNull BehaviorRegistry registry) {
     super.setCustomBehaviorRegistry(registry);
