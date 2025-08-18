@@ -48,10 +48,12 @@ class UIDelegateHarmony : public UIDelegate {
       const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+      const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
       const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-      const fml::RefPtr<fml::TaskRunner>& layout_task_runner) override;
+      const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+      bool is_embedded_mode = false) override;
 
   void OnUpdateScreenMetrics(float width, float height,
                              float device_pixel_ratio) override;

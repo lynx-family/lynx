@@ -581,7 +581,8 @@ void LynxContext::OnLynxCreate(
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
-    const fml::RefPtr<fml::TaskRunner>& layout_task_runner) {
+    const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+    bool is_embedded_mode) {
   list_engine_proxy_ = list_engine_proxy;
   engine_proxy_ = engine_proxy;
   runtime_proxy_ = runtime_proxy;

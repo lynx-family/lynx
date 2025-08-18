@@ -41,8 +41,7 @@ class LayoutCtxPlatformImpl {
   virtual void InsertLayoutNode(int parent, int child, int index) = 0;
   virtual void RemoveLayoutNode(int parent, int child, int index) = 0;
   virtual void DestroyLayoutNodes(const std::unordered_set<int>& ids) = 0;
-  virtual void ScheduleLayout(base::closure callback) = 0;
-  virtual void ScheduleLayoutInEmbeddedMode(base::closure callback){};
+  virtual void ScheduleLayout() = 0;
   virtual void OnLayoutBefore(int id) = 0;
   virtual void OnLayout(int id, float left, float top, float width,
                         float height, const std::array<float, 4>& paddings,

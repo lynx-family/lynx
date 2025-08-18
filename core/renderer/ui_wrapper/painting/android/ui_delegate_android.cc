@@ -46,5 +46,24 @@ UIDelegateAndroid::CreatePropBundleCreator() {
   return std::make_unique<PropBundleCreatorAndroid>();
 }
 
+void UIDelegateAndroid::OnLynxCreate(
+    const std::shared_ptr<shell::ListEngineProxy>& list_engine_proxy,
+    const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
+    const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+    const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
+    const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
+    const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
+    const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
+    const fml::RefPtr<fml::TaskRunner>& layout_task_runner,
+    bool is_embedded_mode) {
+  if (is_embedded_mode) {
+    layout_context_->SetTriggerLayoutCallback(
+        [engine_proxy]() { engine_proxy->TriggerLayout(); });
+  } else {
+    layout_context_->SetTriggerLayoutCallback(
+        [layout_proxy]() { layout_proxy->TriggerLayout(); });
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx

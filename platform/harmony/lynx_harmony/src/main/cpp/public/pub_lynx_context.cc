@@ -37,7 +37,7 @@ PubLynxContext::PubLynxContext(
               .GetLoopImpl());
   // TODO(@hujing.1)add list_engine_proxy
   context_->OnLynxCreate(nullptr, nullptr, nullptr, nullptr, resource_loader,
-                         ui_task_runner, ui_task_runner);
+                         ui_task_runner, ui_task_runner, false);
 }
 
 const std::shared_ptr<LynxContext>& PubLynxContext::Context() const {

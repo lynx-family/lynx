@@ -1103,7 +1103,7 @@ void LayoutContext::RequestLayout(
       Layout(options);
     } else if (!has_layout_required_) {
       has_layout_required_ = true;
-      platform_impl_->ScheduleLayout([this]() { request_layout_callback_(); });
+      platform_impl_->ScheduleLayout();
     }
   }
 }

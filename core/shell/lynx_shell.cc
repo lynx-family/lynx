@@ -742,10 +742,6 @@ void LynxShell::UpdateViewport(float width, int32_t width_mode, float height,
   });
 }
 
-void LynxShell::TriggerLayout() {
-  layout_actor_->Act([](auto& layout) { layout->Layout(); });
-}
-
 void LynxShell::UpdateScreenMetrics(float width, float height,
                                     float device_pixel_ratio) {
   engine_actor_->Act([runtime_actor = runtime_actor_, width, height,

@@ -321,10 +321,6 @@ LynxShell* LynxShellBuilder::build() {
   }
   // after set shell members
   shell->engine_actor_->Impl()->SetOperationQueue(shell->tasm_operation_queue_);
-  shell->layout_actor_->Impl()->SetRequestLayoutCallback(
-      [layout_actor = shell->layout_actor_]() {
-        layout_actor->Act([](auto& layout) { layout->Layout(); });
-      });
   shell->prop_bundle_creator_ = prop_bundle_creator_;
   auto tasm = shell->engine_actor_->Impl()->GetTasm();
   // @note(lipin): avoid crash when lynx_shell_unittest
@@ -350,15 +346,6 @@ LynxShell* LynxShellBuilder::build() {
         shell->instance_id_);
     element_manager->painting_context()->SetPerfActor(
         shell->perf_controller_actor_);
-    if (shell_option_.page_options_.IsLayoutInElementModeOn()) {
-      element_manager->SetRequestLayoutCallback(
-          [engine_actor = shell->engine_actor_]() {
-            engine_actor->Act([](auto& engine) {
-              auto pipeline_option = std::make_shared<tasm::PipelineOptions>();
-              engine->GetTasm()->TriggerLayout(pipeline_option);
-            });
-          });
-    }
 
     shell->layout_mediator_->Init(shell->engine_actor_, shell->facade_actor_,
                                   shell->perf_controller_actor_,

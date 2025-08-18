@@ -2403,7 +2403,8 @@ public class LynxLayoutStyle : NSObject {
 }
 
 public class LynxLayoutTick : NSObject {
-  public nonnull instancetype LynxLayoutTick::initWithBlock:(nonnull LynxOnLayoutBlock block);
+  public nonnull instancetype LynxLayoutTick::init();
+  public void LynxLayoutTick::setLayoutBlock:(nonnull LynxOnLayoutBlock block);
   public void LynxLayoutTick::requestLayout();
   public void LynxLayoutTick::requestLayout:(nonnull LynxOnLayoutBlock block);
   public void LynxLayoutTick::triggerLayout();
@@ -4545,7 +4546,7 @@ public class LynxUIKitAPIAdapter : NSObject {
 }
 
 public class LynxUILayoutTick : LynxLayoutTick {
-  public instancetype LynxUILayoutTick::initWithRoot:block:(UIView< LUIBodyView > *root,[block] nonnull LynxOnLayoutBlock block);
+  public instancetype LynxUILayoutTick::initWithRoot:(UIView< LUIBodyView > *root);
   public void LynxUILayoutTick::attach:(UIView< LUIBodyView > *_Nonnull root);
 }
 

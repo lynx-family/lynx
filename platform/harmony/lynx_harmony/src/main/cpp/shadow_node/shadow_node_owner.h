@@ -35,7 +35,8 @@ class LayoutVSyncProxy : public std::enable_shared_from_this<LayoutVSyncProxy> {
     vsync_monitor_->BindToCurrentThread();
     vsync_monitor_->Init();
   }
-  void ScheduleLayout(base::closure callback);
+  void ScheduleLayout();
+  void SetLayoutTriggerCallback(base::closure callback);
   const std::shared_ptr<base::VSyncMonitor>& VSyncMonitor() const {
     return vsync_monitor_;
   }
@@ -63,7 +64,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
                            float height, int32_t height_mode,
                            bool final_measure);
   void OnLayout(int id, float left, float top, float width, float height);
-  void ScheduleLayout(base::closure callback);
+  void ScheduleLayout();
   void DestroyNode(int sign);
   void Destroy();
   fml::RefPtr<fml::RefCountedThreadSafeStorage> GetExtraBundle(int sign);
@@ -93,6 +94,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
                                 base::MoveOnlyClosure<void, ShadowNode*> task);
 
   void NotifySystemFontUpdated();
+  void SetTriggerLayoutCallback(base::closure callback);
 
  private:
   ShadowNode* CreateJSShadowNode(int sign, const std::string& tag,

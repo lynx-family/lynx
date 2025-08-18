@@ -9,7 +9,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxUILayoutTick : LynxLayoutTick
 
-- (instancetype)initWithRoot:(UIView<LUIBodyView>*)root block:(nonnull LynxOnLayoutBlock)block;
+- (instancetype)initWithRoot:(UIView<LUIBodyView>*)root;
 
 /**
  * attach view for request layout

@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 #include "core/renderer/ui_wrapper/layout/android/layout_context_android.h"
 
+#include <algorithm>
 #include <utility>
 #include <vector>
 
@@ -154,13 +155,7 @@ void LayoutContextAndroid::OnLayout(int id, float left, float top, float width,
                                       width, height);
 }
 
-void LayoutContextAndroid::ScheduleLayoutInEmbeddedMode(
-    base::closure callback) {
-  ScheduleLayout(std::move(callback));
-}
-
-void LayoutContextAndroid::ScheduleLayout(base::closure callback) {
-  trigger_layout_callback_ = std::move(callback);
+void LayoutContextAndroid::ScheduleLayout() {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
   if (local_ref.IsNull()) {
@@ -184,7 +179,6 @@ void LayoutContextAndroid::DestroyLayoutNodes(
 }
 
 void LayoutContextAndroid::Destroy() {
-  trigger_layout_callback_ = nullptr;
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
   if (local_ref.IsNull()) {
@@ -245,11 +239,7 @@ LayoutContextAndroid::ReleasePlatformBundleHolder() {
   return std::move(bundle_holder_);
 }
 
-void LayoutContextAndroid::TriggerLayout() {
-  if (trigger_layout_callback_ != nullptr) {
-    trigger_layout_callback_();
-  }
-}
+void LayoutContextAndroid::TriggerLayout() { trigger_layout_(); }
 
 void LayoutContextAndroid::SetLayoutNodeManager(
     LayoutNodeManager* layout_node_manager) {
@@ -260,6 +250,11 @@ void LayoutContextAndroid::SetLayoutNodeManager(
   }
   Java_LayoutContext_attachLayoutNodeManager(
       env, local_ref.Get(), reinterpret_cast<long>(layout_node_manager));
+}
+
+void LayoutContextAndroid::SetTriggerLayoutCallback(
+    base::MoveOnlyClosure<void> trigger_layout) {
+  trigger_layout_ = std::move(trigger_layout);
 }
 
 }  // namespace tasm

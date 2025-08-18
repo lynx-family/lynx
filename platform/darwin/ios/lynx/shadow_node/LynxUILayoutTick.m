@@ -13,8 +13,8 @@
 
 @implementation LynxUILayoutTick
 
-- (instancetype)initWithRoot:(UIView<LUIBodyView>*)root block:(LynxOnLayoutBlock)block {
-  self = [super initWithBlock:block];
+- (instancetype)initWithRoot:(UIView<LUIBodyView>*)root {
+  self = [super init];
   if (self) {
     _root = root;
   }

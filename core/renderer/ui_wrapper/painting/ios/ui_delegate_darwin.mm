@@ -22,5 +22,27 @@ std::unique_ptr<PropBundleCreator> UIDelegateDarwin::CreatePropBundleCreator() {
   return std::make_unique<PropBundleCreatorDarwin>();
 }
 
+void UIDelegateDarwin::OnLynxCreate(
+    const std::shared_ptr<shell::ListEngineProxy> &list_engine_proxy,
+    const std::shared_ptr<shell::LynxEngineProxy> &engine_proxy,
+    const std::shared_ptr<shell::LynxRuntimeProxy> &runtime_proxy,
+    const std::shared_ptr<shell::LynxLayoutProxy> &layout_proxy,
+    const std::shared_ptr<shell::PerfControllerProxy> &perf_controller_proxy,
+    const std::shared_ptr<pub::LynxResourceLoader> &resource_loader,
+    const fml::RefPtr<fml::TaskRunner> &ui_task_runner,
+    const fml::RefPtr<fml::TaskRunner> &layout_task_runner, bool is_embedded_mode) {
+  if (is_embedded_mode) {
+    engine_proxy_ = std::move(engine_proxy);
+    [[shadow_node_owner_ layoutTick] setLayoutBlock:^{
+      engine_proxy_->TriggerLayout();
+    }];
+  } else {
+    layout_proxy_ = std::move(layout_proxy);
+    [[shadow_node_owner_ layoutTick] setLayoutBlock:^{
+      layout_proxy_->TriggerLayout();
+    }];
+  }
+}
+
 }  // namespace tasm
 }  // namespace lynx
