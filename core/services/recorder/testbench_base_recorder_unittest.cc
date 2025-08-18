@@ -139,6 +139,7 @@ TEST(TestBenchBaseRecorder, SetScreenSize) {
   TestBenchBaseRecorder& ark = TestBenchBaseRecorder::GetInstance();
   int64_t record_id = 1;
   ark.SetScreenSize(record_id, 123, 456);
+  wait(ark.thread_);
   EXPECT_EQ(ark.replay_config_map_.size(), 1);
 
   rapidjson::Value& config = ark.replay_config_map_[record_id];
