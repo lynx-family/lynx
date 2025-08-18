@@ -60,10 +60,10 @@
 - (void)dealloc {
   // Remove the gesture recognizer from the view
   if (_nativeGesturePanRecognizer) {
-    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
     _nativeGesturePanRecognizer.delegate = nil;
+    [self removeGestureRecognizer:_nativeGesturePanRecognizer];
+    _nativeGesturePanRecognizer = nil;
   }
-  _nativeGesturePanRecognizer = nil;
 }
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
