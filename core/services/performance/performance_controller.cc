@@ -14,7 +14,9 @@ namespace lynx {
 namespace tasm {
 namespace performance {
 
-PerformanceController::~PerformanceController() = default;
+PerformanceController::~PerformanceController() {
+  js_blocking_monitor_.StopTimerReporting();
+}
 
 fml::RefPtr<fml::TaskRunner> PerformanceController::GetTaskRunner() {
   return report::EventTrackerPlatformImpl::GetReportTaskRunner();
@@ -31,6 +33,7 @@ void PerformanceController::OnPerformanceEvent(
   if ((type & kEventTypePlatform) && platform_impl_) {
     platform_impl_->OnPerformanceEvent(entry);
   }
+  js_blocking_monitor_.OnSetupEvent(entry);
   delegate_->OnPerformanceEvent(std::move(entry), type);
 }
 

@@ -12,8 +12,8 @@
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
+#include "core/shell/runtime_mediator.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-
 namespace lynx {
 namespace shell {
 
@@ -46,12 +46,19 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([module_id = std::move(module_id),
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id, module_id = std::move(module_id),
                method_id = std::move(method_id), getter = std::move(getter),
                is_runtime_standalone_mode =
                    is_runtime_standalone_mode_](auto& runtime) mutable {
-    auto task = [&runtime, module_id = std::move(module_id),
+    auto task = [&runtime, start_timestamp, trace_flow_id,
+                 module_id = std::move(module_id),
                  method_id = std::move(method_id), getter = std::move(getter)] {
+      static_cast<RuntimeMediator*>(runtime->GetDelegate())
+          ->AddJSBlockingTime(start_timestamp, trace_flow_id);
       auto js_runtime = runtime->GetJSRuntime();
       if (js_runtime == nullptr) {
         LOGE(
@@ -148,7 +155,14 @@ void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([callback_id, getter = std::move(getter)](auto& runtime) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id, callback_id,
+               getter = std::move(getter)](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     auto js_runtime = runtime->GetJSRuntime();
     if (js_runtime == nullptr) {
       LOGR(
@@ -179,8 +193,14 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([observer_id, callback_id,
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id, observer_id, callback_id,
                getter = std::move(getter)](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     auto js_runtime = runtime->GetJSRuntime();
     if (js_runtime == nullptr) {
       LOGE(
@@ -212,7 +232,14 @@ void LynxRuntimeProxyImpl::EvaluateScript(const std::string& url,
   if (!actor_) {
     return;
   }
-  actor_->Act([url, script = std::move(script), callback_id](auto& runtime) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id, url, script = std::move(script),
+               callback_id](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->EvaluateScript(url, std::move(script),
                             piper::ApiCallBack(callback_id));
   });
@@ -224,7 +251,14 @@ void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
   if (!actor_) {
     return;
   }
-  actor_->Act([url, callback_id, err_code, err_msg](auto& runtime) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id, url, callback_id, err_code,
+               err_msg](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->CallJSApiCallbackWithValue(
         piper::ApiCallBack(callback_id),
         tasm::lazy_bundle::ConstructErrorMessageForBTS(url, err_code, err_msg));
@@ -233,7 +267,14 @@ void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
 
 void LynxRuntimeProxyImpl::AddLifecycleListener(
     std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate) {
-  actor_->Act([delegate = std::move(delegate)](auto& runtime) mutable {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  actor_->Act([start_timestamp, trace_flow_id,
+               delegate = std::move(delegate)](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->AddLifecycleListener(std::move(delegate));
   });
 }

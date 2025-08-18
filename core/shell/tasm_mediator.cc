@@ -17,8 +17,10 @@
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_actor_specialization.h"
+#include "core/shell/runtime_mediator.h"
 
 namespace lynx {
 namespace shell {
@@ -235,20 +237,34 @@ void TasmMediator::NotifyJSUpdatePageData() {
   }
   // if there also has a "UpdateDataByJS" task pending in tasm thread, do
   // nothing,  "UpdateNativeData" will call "NotifyJSUpdatePageData" again
-  runtime_actor_->ActAsync(
-      [card_cached_data_mgr = card_cached_data_mgr_](auto& runtime) mutable {
-        if (card_cached_data_mgr->GetTaskCount() <= 0) {
-          runtime->NotifyJSUpdatePageData();
-        }
-      });
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->ActAsync([card_cached_data_mgr = card_cached_data_mgr_,
+                            start_timestamp,
+                            trace_flow_id](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+    if (card_cached_data_mgr->GetTaskCount() <= 0) {
+      runtime->NotifyJSUpdatePageData();
+    }
+  });
 }
 
 void TasmMediator::OnCardConfigDataChanged(const lepus::Value& data) {
   if (!runtime_actor_) {
     return;
   }
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   runtime_actor_->ActAsync(
-      [safe_data = lepus_value::ShallowCopy(data)](auto& runtime) {
+      [start_timestamp, trace_flow_id,
+       safe_data = lepus_value::ShallowCopy(data)](auto& runtime) {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
         runtime->OnCardConfigDataChanged(safe_data);
         runtime->NotifyJSUpdateCardConfigData();
       });
@@ -323,9 +339,16 @@ void TasmMediator::OnJSSourcePrepared(
   if (!runtime_actor_) {
     return;
   }
-  runtime_actor_->ActAsync([bundle = std::move(bundle), global_props, page_name,
-                            dsl, bundle_module_mode, url, pipeline_options,
-                            trace_flow_id](auto& runtime) mutable {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t start_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->ActAsync([start_timestamp, bundle = std::move(bundle),
+                            global_props, page_name, dsl, bundle_module_mode,
+                            url, pipeline_options, trace_flow_id,
+                            start_flow_id](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, start_flow_id);
     runtime->OnJSSourcePrepared(std::move(bundle), global_props, page_name, dsl,
                                 bundle_module_mode, url, pipeline_options,
                                 trace_flow_id);
@@ -343,9 +366,15 @@ void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
               [=](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
-
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   runtime_actor_->ActAsync(
-      [callback = std::move(callback)](auto& runtime) mutable {
+      [start_timestamp, trace_flow_id,
+       callback = std::move(callback)](auto& runtime) mutable {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
         runtime->CallJSApiCallback(std::move(callback));
       });
 }
@@ -361,10 +390,16 @@ void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
               [=](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(callback.trace_flow_id());
               });
-
-  runtime_actor_->ActAsync([callback = std::move(callback),
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->ActAsync([start_timestamp, trace_flow_id,
+                            callback = std::move(callback),
                             safe_value = lepus_value::ShallowCopy(value),
                             persist](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->CallJSApiCallbackWithValue(std::move(callback), safe_value,
                                         persist);
   });
@@ -385,9 +420,15 @@ void TasmMediator::CallJSFunction(const std::string& module_id,
   if (!runtime_actor_) {
     return;
   }
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   runtime_actor_->ActAsync(
-      [module_id, method_id,
+      [start_timestamp, trace_flow_id, module_id, method_id,
        safe_value = lepus_value::ShallowCopy(arguments)](auto& runtime) {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
         runtime->CallJSFunction(module_id, method_id, safe_value);
       });
 }
@@ -398,10 +439,17 @@ void TasmMediator::OnJSAppReload(
   if (!runtime_actor_) {
     return;
   }
-  runtime_actor_->ActAsync(
-      [data = std::move(data), pipeline_options](auto& runtime) mutable {
-        runtime->OnAppReload(std::move(data), pipeline_options);
-      });
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->ActAsync([start_timestamp, trace_flow_id,
+                            data = std::move(data),
+                            pipeline_options](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+    runtime->OnAppReload(std::move(data), pipeline_options);
+  });
 }
 
 void TasmMediator::OnLifecycleEvent(const lepus::Value& args) {
@@ -424,15 +472,30 @@ void TasmMediator::OnI18nResourceChanged(const std::string& msg) {
   if (!runtime_actor_) {
     return;
   }
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   runtime_actor_->ActAsync(
-      [msg](auto& runtime) { runtime->I18nResourceChanged(msg); });
+      [start_timestamp, trace_flow_id, msg](auto& runtime) {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+        runtime->I18nResourceChanged(msg);
+      });
 }
 
 void TasmMediator::OnComponentDecoded(tasm::TasmRuntimeBundle bundle) {
   if (!runtime_actor_) {
     return;
   }
-  runtime_actor_->ActAsync([bundle = std::move(bundle)](auto& runtime) mutable {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->ActAsync([start_timestamp, trace_flow_id,
+                            bundle = std::move(bundle)](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->OnComponentDecoded(std::move(bundle));
   });
 }
@@ -669,10 +732,17 @@ event::DispatchEventResult TasmMediator::DispatchMessageEvent(
   auto copy_event = runtime::MessageEvent::ShallowCopy(event);
   if (event.IsSendingToJSThread()) {
     if (runtime_actor_) {
-      runtime_actor_->Act(
-          [message_event = std::move(copy_event)](auto& runtime) mutable {
-            runtime->OnReceiveMessageEvent(std::move(message_event));
-          });
+      uint64_t start_timestamp =
+          tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+      uint64_t trace_flow_id =
+          tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+      runtime_actor_->Act([message_event = std::move(copy_event),
+                           start_timestamp,
+                           trace_flow_id](auto& runtime) mutable {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+        runtime->OnReceiveMessageEvent(std::move(message_event));
+      });
     }
   } else if (event.IsSendingToUIThread()) {
     facade_actor_->Act(
@@ -689,10 +759,16 @@ void TasmMediator::OnGlobalPropsUpdated(const lepus::Value& props) {
   if (!runtime_actor_) {
     return;
   }
-  runtime_actor_->Act(
-      [props = lepus::Value::ShallowCopy(props)](auto& runtime) {
-        runtime->OnGlobalPropsUpdated(props);
-      });
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->Act([props = lepus::Value::ShallowCopy(props),
+                       start_timestamp, trace_flow_id](auto& runtime) mutable {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+    runtime->OnGlobalPropsUpdated(props);
+  });
 }
 
 void TasmMediator::OnEventCapture(long target_id, bool is_catch,

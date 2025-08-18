@@ -296,11 +296,17 @@ void LynxShell::InitRuntime(
       });
 #endif
 
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   start_js_runtime_task_ =
       [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer = runtime_observer_, vsync_monitor,
-       weak_js_bundle_holder = GetWeakJsBundleHolder()](
-          std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       weak_js_bundle_holder = GetWeakJsBundleHolder(), start_timestamp,
+       trace_flow_id](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(native_module_manager, runtime_observer,
@@ -323,17 +329,24 @@ void LynxShell::AttachRuntime() {
   // timing_mediator_ will be handled inside RuntimeMediator::AttachToLynxShell
 
   if (runtime_actor_) {
-    runtime_actor_->ActAsync([facade_actor = facade_actor_,
-                              engine_actor = engine_actor_,
-                              card_cached_data_mgr = card_cached_data_mgr_,
-                              weak_js_bundle_holder = GetWeakJsBundleHolder()](
-                                 auto& runtime) mutable {
-      runtime->TransitionToFullRuntime();
-      runtime->SetJsBundleHolder(weak_js_bundle_holder);
-      static_cast<RuntimeMediator*>(runtime->GetDelegate())
-          ->AttachToLynxShell(std::move(facade_actor), std::move(engine_actor),
-                              std::move(card_cached_data_mgr));
-    });
+    uint64_t start_timestamp =
+        tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+    uint64_t trace_flow_id =
+        tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+    runtime_actor_->ActAsync(
+        [facade_actor = facade_actor_, engine_actor = engine_actor_,
+         card_cached_data_mgr = card_cached_data_mgr_,
+         weak_js_bundle_holder = GetWeakJsBundleHolder(), start_timestamp,
+         trace_flow_id](auto& runtime) mutable {
+          static_cast<RuntimeMediator*>(runtime->GetDelegate())
+              ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+          runtime->TransitionToFullRuntime();
+          runtime->SetJsBundleHolder(weak_js_bundle_holder);
+          static_cast<RuntimeMediator*>(runtime->GetDelegate())
+              ->AttachToLynxShell(std::move(facade_actor),
+                                  std::move(engine_actor),
+                                  std::move(card_cached_data_mgr));
+        });
   }
 }
 

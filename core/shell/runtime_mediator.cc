@@ -517,6 +517,28 @@ void RuntimeMediator::ResetTimingBeforeReload() {
   });
 }
 
+void RuntimeMediator::AddJSBlockingTime(uint64_t start_timestamp,
+                                        uint64_t trace_flow_id) {
+  int64_t duration =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs() - start_timestamp;
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, tasm::performance::kJSBlockingEnd,
+              [trace_flow_id, duration](lynx::perfetto::EventContext ctx) {
+                auto* debug = ctx.event()->add_debug_annotations();
+                debug->set_name("blocking_time");
+                debug->set_string_value(std::to_string(duration));
+                ctx.event()->add_flow_ids(trace_flow_id);
+              });
+  if (tasm::performance::JSBlockingMonitor::Enable()) {
+    int32_t threshold_ms =
+        tasm::performance::JSBlockingMonitor::GetThresholdMs();
+    if (duration >= threshold_ms) {
+      perf_controller_actor_->ActAsync([duration](auto& performance) {
+        performance->GetJSBlockingMonitor().AddBlockingTime(duration);
+      });
+    }
+  }
+}
+
 void RuntimeMediator::CallLepusMethod(const std::string& method_name,
                                       lepus::Value args,
                                       const piper::ApiCallBack& callback) {
