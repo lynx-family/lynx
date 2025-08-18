@@ -29,6 +29,8 @@ public class TraceEventDef {
    * @history_name{text.TextShadowNode.measure}
    */
   public static final String TEXT_SHADOW_NODE_MEASURE = "TextShadowNode.measure";
+  public static final String TEXT_LAYOUT_MEASURE_TEXT = "TextLayout.measureText";
+  public static final String TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE = "TextLayout.dispatchLayoutBefore";
 
   /**
    * @trace_description: Redirect the image URL.
