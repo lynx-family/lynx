@@ -419,6 +419,9 @@ void RuntimeMediator::ReloadFromJS(runtime::UpdateDataTask task) {
 }
 
 void RuntimeMediator::SetTiming(tasm::Timing timing) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [timing = std::move(timing)](auto& performance) mutable {
         performance->GetTimingHandler().SetTiming(std::move(timing));
@@ -428,6 +431,9 @@ void RuntimeMediator::SetTiming(tasm::Timing timing) {
 void RuntimeMediator::SetFrameworkExtraTimingInfo(
     const std::string& pipeline_id, const std::string& key,
     const std::string& value) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [pipeline_id, key, value](auto& performance) {
         performance->GetTimingHandler().SetFrameworkExtraTimingInfo(pipeline_id,
@@ -438,6 +444,9 @@ void RuntimeMediator::SetFrameworkExtraTimingInfo(
 void RuntimeMediator::SetTimingWithTimingFlag(
     const tasm::timing::TimingFlag& timing_flag,
     const std::string& timestamp_key, tasm::timing::TimestampUs timestamp) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [timing_flag, timestamp_key, timestamp](auto& performance) {
         performance->GetTimingHandler().SetTimingWithTimingFlag(
@@ -459,6 +468,9 @@ void RuntimeMediator::OnPipelineStart(
     const tasm::PipelineID& pipeline_id,
     const tasm::PipelineOrigin& pipeline_origin,
     tasm::timing::TimestampUs pipeline_start_timestamp) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, TIMING_PIPELINE_START,
       [&pipeline_id, &pipeline_origin,
@@ -480,6 +492,9 @@ void RuntimeMediator::OnPipelineStart(
 void RuntimeMediator::BindPipelineIDWithTimingFlag(
     const tasm::PipelineID& pipeline_id,
     const tasm::timing::TimingFlag& timing_flag) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, TIMING_BIND_PIPELINE_ID_WITH_TIMING_FLAG,
       [&pipeline_id, timing_flag](lynx::perfetto::EventContext ctx) {
@@ -494,6 +509,9 @@ void RuntimeMediator::BindPipelineIDWithTimingFlag(
 }
 
 void RuntimeMediator::ResetTimingBeforeReload() {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync([](auto& performance) {
     performance->GetTimingHandler().ResetTimingBeforeReload();
   });
