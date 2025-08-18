@@ -17,6 +17,10 @@
   return self;
 }
 
+- (void)setLayoutBlock:(LynxOnLayoutBlock)block {
+  _block = block;
+}
+
 - (void)requestLayout {
   _enableLayout = YES;
 }

@@ -13,6 +13,7 @@
 
 #include "base/include/platform/android/scoped_java_ref.h"
 #include "core/public/layout_ctx_platform_impl.h"
+#include "core/public/lynx_layout_proxy.h"
 
 namespace lynx {
 namespace tasm {
@@ -35,24 +36,24 @@ class LayoutContextAndroid : public LayoutCtxPlatformImpl {
   void OnLayout(int tag, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,
                 const std::array<float, 4>& borders) override;
-  void ScheduleLayout(base::closure callback) override;
+  void ScheduleLayout() override;
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override;
   void Destroy() override;
   void SetFontFaces(const CSSFontFaceRuleMap& fontfaces) override;
   void SetLayoutNodeManager(LayoutNodeManager* layout_node_manager) override;
+  void SetLayoutProxy(std::shared_ptr<shell::LynxLayoutProxy> layout_proxy);
+  void TriggerLayout();
   std::unique_ptr<PlatformExtraBundle> GetPlatformExtraBundle(
       int32_t id) override;
 
   std::unique_ptr<PlatformExtraBundleHolder> ReleasePlatformBundleHolder()
       override;
 
-  void TriggerLayout();
-
  private:
   base::android::ScopedWeakGlobalJavaRef<jobject> impl_;
   std::unique_ptr<PlatformBundleHolderAndroid> bundle_holder_;
 
-  base::closure trigger_layout_callback_ = nullptr;
+  std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
 
   LayoutContextAndroid(const LayoutContextAndroid&) = delete;
   LayoutContextAndroid& operator=(const LayoutContextAndroid&) = delete;

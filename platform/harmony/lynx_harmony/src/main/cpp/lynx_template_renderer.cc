@@ -24,6 +24,7 @@
 #include "core/shell/harmony/native_facade_harmony.h"
 #include "core/shell/harmony/tasm_platform_invoker_harmony.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
+#include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -143,6 +144,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
 
+  layout_proxy_ =
+      std::make_shared<shell::LynxLayoutProxyImpl>(shell_->GetLayoutActor());
+
   // InitJSBridge
   module_manager_ = std::make_shared<piper::LynxModuleManager>();
   module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
@@ -170,7 +174,7 @@ LynxTemplateRenderer::LynxTemplateRenderer(
                       bytecode_source_url);
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
-  ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_,
+  ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_, layout_proxy_,
                              perf_controller_proxy_, resource_loader,
                              shell_->GetRunners()->GetUITaskRunner(),
                              shell_->GetRunners()->GetLayoutTaskRunner());

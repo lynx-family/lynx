@@ -30,7 +30,7 @@ class LayoutContextDarwin : public LayoutCtxPlatformImpl {
   void MoveLayoutNode(int parent, int child, int from_index,
                       int to_index) override;
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override;
-  void ScheduleLayout(base::closure) override;
+  void ScheduleLayout() override;
   void OnLayoutBefore(int sign) override;
   void OnLayout(int sign, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,
@@ -46,6 +46,7 @@ class LayoutContextDarwin : public LayoutCtxPlatformImpl {
 
  private:
   LynxShadowNodeOwner* nodeOwner;
+  base::closure trigger_layout_callback_ = nullptr;
 
   LayoutContextDarwin(const LayoutContextDarwin&) = delete;
   LayoutContextDarwin& operator=(const LayoutContextDarwin&) = delete;

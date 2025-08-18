@@ -42,6 +42,14 @@ static void RunOnLayoutThread(JNIEnv *env, jobject jcaller, jlong nativePtr,
   }
 }
 
+static void TriggerLayout(JNIEnv *env, jobject jcaller, jlong nativePtr) {
+  auto *layout_proxy =
+      reinterpret_cast<lynx::shell::LynxLayoutProxyAndroid *>(nativePtr);
+  if (layout_proxy != nullptr) {
+    layout_proxy->TriggerLayout();
+  }
+}
+
 namespace lynx {
 
 namespace shell {
@@ -68,6 +76,8 @@ void LynxLayoutProxyAndroid::RunOnLayoutThread(JNIEnv *env, jobject jcaller,
     env->CallVoidMethod(runnable.Get(), run_method_id);
   });
 }
+
+void LynxLayoutProxyAndroid::TriggerLayout() { layout_proxy_->TriggerLayout(); }
 
 }  // namespace shell
 }  // namespace lynx

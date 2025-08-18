@@ -12,5 +12,7 @@ void LynxLayoutProxyDarwin::RunOnLayoutThread(dispatch_block_t task) {
   layout_proxy_->DispatchTaskToLynxLayout([task]() { task(); });
 }
 
+void LynxLayoutProxyDarwin::TriggerLayout() { layout_proxy_->TriggerLayout(); }
+
 }  // namespace shell
 }  // namespace lynx

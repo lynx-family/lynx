@@ -25,6 +25,7 @@
 #include "core/shell/android/tasm_platform_invoker_android.h"
 #include "core/shell/lynx_engine_proxy_impl.h"
 #include "core/shell/lynx_engine_wrapper.h"
+#include "core/shell/lynx_layout_proxy_impl.h"
 #include "core/shell/lynx_runtime_proxy_impl.h"
 #include "core/shell/lynx_shell.h"
 #include "core/shell/lynx_shell_builder.h"
@@ -418,12 +419,15 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
           shell->GetRuntimeActor());
       auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
           shell->GetEngineActor());
+      auto layout_proxy = std::make_shared<lynx::shell::LynxLayoutProxyImpl>(
+          shell->GetLayoutActor());
       auto perf_controller_proxy =
           std::make_shared<lynx::shell::PerfControllerProxyImpl>(
               shell->GetPerfControllerActor());
       ui_delegate->OnLynxCreate(
           std::move(engine_proxy), std::move(runtime_proxy),
-          std::move(perf_controller_proxy), nullptr, nullptr, nullptr);
+          std::move(layout_proxy), std::move(perf_controller_proxy), nullptr,
+          nullptr, nullptr);
     }
   };
   shell->InitRuntime(group_id, loader, module_manager,

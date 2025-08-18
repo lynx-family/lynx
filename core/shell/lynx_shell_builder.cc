@@ -306,10 +306,6 @@ LynxShell* LynxShellBuilder::build() {
   }
   // after set shell members
   shell->engine_actor_->Impl()->SetOperationQueue(shell->tasm_operation_queue_);
-  shell->layout_actor_->Impl()->SetRequestLayoutCallback(
-      [layout_actor = shell->layout_actor_]() {
-        layout_actor->Act([](auto& layout) { layout->Layout(); });
-      });
   shell->prop_bundle_creator_ = prop_bundle_creator_;
   auto tasm = shell->engine_actor_->Impl()->GetTasm();
   // @note(lipin): avoid crash when lynx_shell_unittest

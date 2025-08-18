@@ -5,7 +5,7 @@ package com.lynx.tasm.core;
 
 import java.lang.Runnable;
 public class LynxLayoutProxy {
-  private long mNativePtr;
+  private long mNativePtr = 0L;
 
   public LynxLayoutProxy(long lynxShellPtr) {
     mNativePtr = nativeCreate(lynxShellPtr);
@@ -14,6 +14,12 @@ public class LynxLayoutProxy {
   public void runOnLayoutThread(Runnable runnable) {
     if (mNativePtr != 0) {
       nativeRunOnLayoutThread(mNativePtr, runnable);
+    }
+  }
+
+  public void triggerLayout() {
+    if (mNativePtr != 0) {
+      nativeTriggerLayout(mNativePtr);
     }
   }
 
@@ -27,4 +33,6 @@ public class LynxLayoutProxy {
   private native void nativeRelease(long nativePtr);
 
   private native void nativeRunOnLayoutThread(long nativePtr, Runnable runnable);
+
+  private native void nativeTriggerLayout(long nativePtr);
 }

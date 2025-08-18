@@ -75,9 +75,7 @@ void LayoutContextDarwin::OnLayout(int sign, float left, float top, float width,
   [nodeOwner didUpdateLayoutLeft:left top:top width:width height:height onNode:sign];
 }
 
-void LayoutContextDarwin::ScheduleLayout(base::closure callback) {
-  [nodeOwner.layoutTick requestLayout];
-}
+void LayoutContextDarwin::ScheduleLayout() { [nodeOwner.layoutTick requestLayout]; }
 
 void LayoutContextDarwin::Destroy() { [nodeOwner destroy]; }
 

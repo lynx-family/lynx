@@ -42,7 +42,7 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
   void InsertLayoutNode(int parent, int child, int index) override {}
   void RemoveLayoutNode(int parent, int child, int index) override {}
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override {}
-  void ScheduleLayout(base::closure callback) override {}
+  void ScheduleLayout() override {}
   void OnLayoutBefore(int id) override {}
   void OnLayout(int id, float left, float top, float width, float height,
                 const std::array<float, 4>& paddings,

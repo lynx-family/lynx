@@ -56,13 +56,7 @@
 - (void)setUpShadowNodeOwner {
   // FIXME(huangweiwu): fix layout tick both android.
   if (!_uilayoutTick) {
-    __weak typeof(self) weakSelf = self;
-    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_containerView
-                                                     block:^() {
-                                                       __strong LynxTemplateRender* strongSelf =
-                                                           weakSelf;
-                                                       strongSelf->shell_->TriggerLayout();
-                                                     }];
+    _uilayoutTick = [[LynxUILayoutTick alloc] initWithRoot:_containerView];
   }
   if (!_isEngineInitFromReusePool) {
     BOOL isAsyncLayout = _threadStrategyForRendering != LynxThreadStrategyForRenderAllOnUI;
@@ -209,25 +203,29 @@
       _providerRegistry, _fetcher, self, templateResourceFetcher, genericResourceFetcher);
 
   __weak typeof(self) weakSelf = self;
-  auto on_runtime_actor_created =
-      [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer, context = _context,
-       js_group_thread_name = [_runtimeOptions groupThreadName]](auto& actor) {
-        std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
-            std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
-        module_manager->initBindingPtr(module_manager, module_delegate);
+  auto on_runtime_actor_created = [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer,
+                                   context = _context,
+                                   js_group_thread_name =
+                                       [_runtimeOptions groupThreadName]](auto& actor) {
+    std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
+        std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
+    module_manager->initBindingPtr(module_manager, module_delegate);
 
-        auto js_proxy = lynx::shell::JSProxyDarwin::Create(
-            actor, weakSelf, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
-        [context setJSProxy:js_proxy];
+    auto js_proxy = lynx::shell::JSProxyDarwin::Create(
+        actor, weakSelf, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
+    [context setJSProxy:js_proxy];
 
-        __strong LynxTemplateRender* strongSelf = weakSelf;
-        auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([lynx_ui_renderer uiDelegate]);
-        module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
-        auto perf_proxy = std::make_shared<lynx::shell::PerfControllerProxyImpl>(
-            strongSelf->shell_->GetPerfControllerActor());
-        ui_delegate->OnLynxCreate([strongSelf->_lynxEngineProxy nativeProxy], std::move(js_proxy),
-                                  std::move(perf_proxy), nullptr, nullptr, nullptr);
-      };
+    __strong LynxTemplateRender* strongSelf = weakSelf;
+    auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([lynx_ui_renderer uiDelegate]);
+    module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
+    auto perf_proxy = std::make_shared<lynx::shell::PerfControllerProxyImpl>(
+        strongSelf->shell_->GetPerfControllerActor());
+    auto layout_proxy =
+        std::make_shared<lynx::shell::LynxLayoutProxyImpl>(strongSelf->shell_->GetLayoutActor());
+    ui_delegate->OnLynxCreate([strongSelf->_lynxEngineProxy nativeProxy], std::move(js_proxy),
+                              std::move(layout_proxy), std::move(perf_proxy), nullptr, nullptr,
+                              nullptr);
+  };
 
   // Init Runtime
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_RUNTIME);
