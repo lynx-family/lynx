@@ -117,8 +117,10 @@ void TasmMediator::OnPageConfigDecoded(
   tasm_platform_invoker_->OnPageConfigDecoded(config);
   // default enableAirStrictMode in timing_handler is false,
   // avoid using post task to send duplicate false value
-  if (config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
-      config->GetLynxAirMode() == tasm::CompileOptionAirMode::AIR_MODE_FIBER) {
+  if (perf_actor_ && (config->GetLynxAirMode() ==
+                          tasm::CompileOptionAirMode::AIR_MODE_STRICT ||
+                      config->GetLynxAirMode() ==
+                          tasm::CompileOptionAirMode::AIR_MODE_FIBER)) {
     perf_actor_->ActAsync([](auto& performance) mutable {
       performance->SetEnableMainThreadCallback(true);
     });
@@ -130,6 +132,9 @@ void TasmMediator::OnRunPipelineFinished() {
 }
 
 void TasmMediator::SetTiming(tasm::Timing timing) {
+  if (!perf_actor_) {
+    return;
+  }
   perf_actor_->ActAsync(
       [timing = std::move(timing)](auto& performance) mutable {
         performance->GetTimingHandler().SetTiming(std::move(timing));
@@ -139,6 +144,9 @@ void TasmMediator::SetTiming(tasm::Timing timing) {
 void TasmMediator::BindPipelineIDWithTimingFlag(
     const tasm::PipelineID& pipeline_id,
     const tasm::timing::TimingFlag& timing_flag) {
+  if (!perf_actor_) {
+    return;
+  }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, TIMING_BIND_PIPELINE_ID_WITH_TIMING_FLAG,
       [&pipeline_id, timing_flag](lynx::perfetto::EventContext ctx) {
@@ -155,6 +163,9 @@ void TasmMediator::OnPipelineStart(
     const tasm::PipelineID& pipeline_id,
     const tasm::PipelineOrigin& pipeline_origin,
     tasm::timing::TimestampUs pipeline_start_timestamp) {
+  if (!perf_actor_) {
+    return;
+  }
   TRACE_EVENT_INSTANT(
       LYNX_TRACE_CATEGORY, TIMING_PIPELINE_START,
       [&pipeline_id, &pipeline_origin,

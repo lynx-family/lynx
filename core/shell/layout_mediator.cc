@@ -258,6 +258,9 @@ void LayoutMediator::OnCalculatedViewportChanged(
 }
 
 void LayoutMediator::SetTiming(tasm::Timing timing) {
+  if (!perf_controller_actor_) {
+    return;
+  }
   perf_controller_actor_->ActAsync(
       [timing = std::move(timing)](auto &performance) mutable {
         performance->GetTimingHandler().SetTiming(std::move(timing));
