@@ -29,6 +29,7 @@ import { LynxMediaResourceFetcher } from '../provider/LynxMediaResourceFetcher';
 import { LynxTemplateResourceFetcher, TemplateProviderResult } from '../provider/LynxTemplateResourceFetcher';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
 import { LynxFetchModule } from '../jsbridge/network/LynxFetchModule';
+import { LynxResourceModule } from '../jsbridge/LynxResourceModule';
 import { LynxBackgroundRuntimeOptions } from '../jsbridge/LynxBackgroundRuntimeOptions';
 import { LynxInfoReporterHelper, LynxTemplateType } from './eventreport/LynxInfoReporterHelper';
 import { TemplateBundle } from './TemplateBundle';
@@ -187,6 +188,7 @@ export struct LynxView {
     devtoolService?.registerWebSocketModule(this.moduleManager);
     this.moduleManager.registerModule('LynxFetchModule', { moduleClass: LynxFetchModule });
     this.moduleManager.registerModule('LynxSetModule', { moduleClass: LynxSetModule });
+    this.moduleManager.registerModule('LynxResourceModule', { moduleClass: LynxResourceModule });
     let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.context.setGenericResourceFetcher(this.genericResourceFetcher);
     this.context.setMediaResourceFetcher(this.mediaResourceFetcher);
