@@ -37,12 +37,10 @@ struct CSSParserConfigs {
       }
     }
     config.enable_css_strict_mode = compile_options.enable_css_strict_mode_;
-    config.remove_css_parser_log = compile_options.remove_css_parser_log_;
     return config;
   }
   // default is disable.
   bool enable_css_strict_mode = false;
-  bool remove_css_parser_log = false;
   bool enable_legacy_parser = false;
   bool enable_length_unit_check = false;
   bool enable_new_border_handler = false;

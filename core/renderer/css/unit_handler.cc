@@ -178,13 +178,6 @@ bool UnitHandler::Process(const CSSPropertyID key, const lepus::Value& input,
   }
 
   if (!maybe_handler(key, input, output, configs)) {
-    if (!configs.remove_css_parser_log) {
-      std::ostringstream output_value;
-      input.PrintValue(output_value, false, false);
-      LOGE("[UnitHandler] css:" << CSSProperty::GetPropertyName(key).c_str()
-                                << " has invalid value " << output_value.str()
-                                << " !!! It has be ignored.");
-    }
     return false;
   }
   return true;
