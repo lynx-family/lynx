@@ -20,9 +20,12 @@ int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(piper::Function func) {
 
 void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<piper::ModuleCallback>& callback,
-    int64_t id_to_delete) {
-  runtime_actor_->Act([callback, id_to_delete](auto& runtime) {
-    runtime->CallJSCallback(callback, id_to_delete);
+    base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {
+  runtime_actor_->Act([callback, id_to_delete,
+                       func = std::move(invoke_pre_func)](auto& runtime) {
+    if (!func || func()) {
+      runtime->CallJSCallback(callback, id_to_delete);
+    }
   });
 }
 

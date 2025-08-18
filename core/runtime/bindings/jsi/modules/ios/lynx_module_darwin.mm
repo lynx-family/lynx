@@ -637,7 +637,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
           resolveCallback->SetArgs(std::move(array));
           LOGV("NativeModule: LynxModule, LynxResolveBlock, put to JSThread id: "
                << resolveCallbackId);
-          module_delegate_lock->CallJSCallback(resolveCallback, rejectCallbackId);
+          module_delegate_lock->CallJSCallback(resolveCallback, nullptr, rejectCallbackId);
         };
         LynxPromiseRejectBlock rejectBlock = ^(NSString *code, NSString *message) {
           if (resolveWasCalled) {
@@ -661,7 +661,7 @@ base::expected<piper::Value, std::string> LynxModuleDarwin::createPromise(
           rejectWasCalled = YES;
           LOGV("NativeModule: LynxModule, LynxRejectBlock, put to JSThread id: "
                << rejectCallbackId);
-          module_delegate_lock->CallJSCallback(strongRejectWrapper, resolveCallbackId);
+          module_delegate_lock->CallJSCallback(strongRejectWrapper, nullptr, resolveCallbackId);
         };
 
         invokeCopy(rt, resolveBlock, rejectBlock);
