@@ -863,7 +863,6 @@ void TemplateAssembler::LoadTemplate(
   source_size_ = source.size();
   url_ = url;
   pre_painting_ = pipeline_options->enable_pre_painting;
-  ;
   if (pre_painting_) {
     page_proxy_.SetPrePaintingStage(PrePaintingStage::kStartPrePainting);
   }

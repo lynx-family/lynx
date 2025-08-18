@@ -518,6 +518,10 @@ void ElementManager::RequestLayout(
     element_manager_delegate_->OnLayoutAfter(layout_data);
     return;
   }
+
+  if (!options->enable_unified_pixel_pipeline) {
+    painting_context()->Flush();
+  }
   layout_data = {.layout_triggered = false,
                  .pipeline_version = options->version};
   element_manager_delegate_->OnLayoutAfter(layout_data);
