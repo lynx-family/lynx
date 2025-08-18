@@ -82,7 +82,8 @@ class LynxShell {
   virtual void InitRuntime(
       const std::string& group_id,
       const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
-      const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
+      const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
+          native_module_manager,
       const std::function<
           void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
           on_runtime_actor_created,
@@ -91,8 +92,7 @@ class LynxShell {
 
   // This method attaches a pre-created LynxRuntime to the LynxShell:
   // so only one of `AttachRuntime` and `InitRuntime` will be called
-  virtual void AttachRuntime(
-      std::weak_ptr<piper::LynxModuleManager> module_manager);
+  virtual void AttachRuntime();
   void InitRuntimeWithRuntimeDisabled(
       std::shared_ptr<base::VSyncMonitor> vsync_monitor);
 

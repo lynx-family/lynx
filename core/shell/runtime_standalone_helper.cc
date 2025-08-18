@@ -21,7 +21,8 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
     std::unique_ptr<NativeFacade> native_facade_runtime,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
     const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
-    const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
+    const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
+        native_module_manager,
     const std::shared_ptr<tasm::PropBundleCreator>& prop_bundle_creator,
     const std::shared_ptr<tasm::WhiteBoard>& white_board,
     const std::function<
@@ -96,13 +97,13 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
                                       ? lynx::lepus::Value::Clone(*global_props)
                                       : lynx::lepus::Value();
   runtime_actor->ActAsync(
-      [module_manager, preload_js_paths = std::move(preload_js_paths),
+      [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer, global_props_value,
        vsync_monitor](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->OnGlobalPropsUpdated(global_props_value);
-        runtime->Init(module_manager, runtime_observer,
+        runtime->Init(native_module_manager, runtime_observer,
                       std::move(preload_js_paths));
       });
 

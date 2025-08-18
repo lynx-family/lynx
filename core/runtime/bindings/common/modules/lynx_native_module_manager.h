@@ -23,6 +23,12 @@ namespace pub {
 // (Foreign Function Interface).
 class LynxNativeModuleManager {
  public:
+  enum class ManagerType {
+    NATIVE,
+    JSI,
+    NAPI,
+    LEPUS,
+  };
   LynxNativeModuleManager() = default;
   virtual ~LynxNativeModuleManager() = default;
 
@@ -63,6 +69,8 @@ class LynxNativeModuleManager {
   // used for LynxRecorder
   virtual void SetRecordID(int64_t record_id) { record_id_ = record_id; };
   int64_t record_id_ = 0;
+
+  virtual ManagerType Type() { return ManagerType::NATIVE; };
 
  private:
   // Managed by LynxNativeModuleManager

@@ -71,11 +71,11 @@ class LynxRuntime final {
   LynxRuntime& operator=(const LynxRuntime&) = delete;
 
   // now can ensure Init the first task for LynxRuntime
-  void Init(
-      const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
-      const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
-          runtime_observer,
-      std::vector<std::string> preload_js_paths);
+  void Init(const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
+                native_module_manager,
+            const std::shared_ptr<piper::InspectorRuntimeObserverNG>&
+                runtime_observer,
+            std::vector<std::string> preload_js_paths);
 
   void CallJSCallback(const std::shared_ptr<piper::ModuleCallback>& callback,
                       int64_t id_to_delete);

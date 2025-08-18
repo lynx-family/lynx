@@ -35,11 +35,9 @@ class LynxRuntimeWrapperAndroid {
  public:
   LynxRuntimeWrapperAndroid(
       InitRuntimeStandaloneResult runtime_standalone_bundle,
-      std::string group_name,
-      std::shared_ptr<lynx::piper::LynxModuleManager> module_manager)
+      std::string group_name)
       : runtime_standalone_bundle_(std::move(runtime_standalone_bundle)),
-        group_name_(std::move(group_name)),
-        weak_module_manager_(module_manager) {}
+        group_name_(std::move(group_name)) {}
 
   ~LynxRuntimeWrapperAndroid() = default;
   LynxRuntimeWrapperAndroid(const LynxRuntimeWrapperAndroid& facade) = delete;
@@ -76,18 +74,12 @@ class LynxRuntimeWrapperAndroid {
     return runtime_standalone_bundle_.perf_controller_actor_;
   }
 
-  std::weak_ptr<lynx::piper::LynxModuleManager> GetModuleManager() {
-    return weak_module_manager_;
-  }
-
   void TransitionToFullRuntime();
 
  private:
   const InitRuntimeStandaloneResult
       runtime_standalone_bundle_;  // keep this read-only until destruction
   std::string group_name_;
-  // Only ref module_manager;
-  std::weak_ptr<lynx::piper::LynxModuleManager> weak_module_manager_;
 };
 
 }  // namespace shell

@@ -40,8 +40,11 @@ static jlong CreateBackgroundRuntimeWrapper(
     jlong white_board_ptr, jstring java_group_id, jstring java_group_name,
     jobjectArray preload_js_paths, jstring bytecode_source_url,
     jint runtime_flags, jlong globalPropsPtr) {
-  auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
-  module_manager->SetPlatformModuleFactory(
+  // create native module manager
+  std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_shared<lynx::pub::LynxNativeModuleManager>();
+  // set platform factory
+  native_module_manager->SetPlatformModuleFactory(
       std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
                                                           java_module_factory));
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
@@ -55,10 +58,9 @@ static jlong CreateBackgroundRuntimeWrapper(
   auto loader = std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(
       env, java_resource_loader);
 
-  auto on_runtime_actor_created = [&module_manager](auto &actor,
-                                                    auto &facade_actor) {
-    module_manager->initBindingPtr(
-        module_manager,
+  auto on_runtime_actor_created = [&native_module_manager](auto &actor,
+                                                           auto &facade_actor) {
+    native_module_manager->SetModuleDelegate(
         std::make_shared<lynx::shell::ModuleDelegateImpl>(actor, facade_actor));
   };
   auto native_facade_runtime =
@@ -84,15 +86,15 @@ static jlong CreateBackgroundRuntimeWrapper(
 
   auto result = lynx::shell::InitRuntimeStandalone(
       group_name, group_id, std::move(native_facade_runtime),
-      observer ? *observer : nullptr, loader, module_manager, bundle_creator,
-      white_board, on_runtime_actor_created, std::move(paths), source_url,
-      runtime_flags, global_props);
+      observer ? *observer : nullptr, loader, native_module_manager,
+      bundle_creator, white_board, on_runtime_actor_created, std::move(paths),
+      source_url, runtime_flags, global_props);
 
   // Delete observer to decrease ref count.
   delete observer;
 
   auto *runtime_wrapper = new lynx::shell::LynxRuntimeWrapperAndroid(
-      std::move(result), std::move(group_name), module_manager);
+      std::move(result), std::move(group_name));
   return reinterpret_cast<jlong>(runtime_wrapper);
 }
 

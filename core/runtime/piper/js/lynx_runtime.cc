@@ -139,7 +139,8 @@ LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
 LynxRuntime::~LynxRuntime() { Destroy(); }
 
 void LynxRuntime::Init(
-    const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
+    const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
+        native_module_manager,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
     std::vector<std::string> preload_js_paths) {
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
@@ -147,7 +148,22 @@ void LynxRuntime::Init(
 
   tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get());
   lifecycle_observer_->OnRuntimeInit(GetRuntimeId());
-
+  // Create JSI ModuleManager
+  std::shared_ptr<lynx::piper::LynxModuleManager> module_manager;
+  if (native_module_manager->Type() ==
+      pub::LynxNativeModuleManager::ManagerType::NATIVE) {
+    module_manager = std::make_shared<lynx::piper::LynxModuleManager>(
+        std::move(*native_module_manager));
+    module_manager->initBindingPtr(module_manager, module_manager->delegate_);
+  } else if (native_module_manager->Type() ==
+             pub::LynxNativeModuleManager::ManagerType::JSI) {
+    module_manager = std::static_pointer_cast<piper::LynxModuleManager>(
+        native_module_manager);
+  } else {
+    delegate_->OnErrorOccurred(
+        base::LynxError(error::E_BTS_RUNTIME_ERROR,
+                        "NativeModule: module manager type is not supported"));
+  }
   if (module_manager && cached_native_factories_.size() > 0) {
     for (auto&& module : cached_native_factories_) {
       module_manager->SetModuleFactory(std::move(module));
