@@ -90,8 +90,6 @@ class LynxModuleAndroid
       const std::shared_ptr<MethodInvoker> &invoker, jobject module,
       const pub::Value *method_args, size_t args_count,
       const CallbackMap &callbacks);
-  void InvokeCallbackInternal(const std::shared_ptr<ModuleCallback> &callback,
-                              std::weak_ptr<LynxPromiseImpl> promise);
 
   inline Runtime *GetScopeRuntime() {
     if (!scope_rts_.empty()) {

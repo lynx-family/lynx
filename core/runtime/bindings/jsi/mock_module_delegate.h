@@ -32,6 +32,7 @@ class MockModuleDelegate : public ModuleDelegate {
   }
   void CallJSCallback(
       const std::shared_ptr<ModuleCallback>& callback,
+      base::MoveOnlyClosure<bool> invoke_pre_func = nullptr,
       int64_t id_to_delete = ModuleCallback::kInvalidCallbackId) override {
     if (rt_) {
       auto index = callback->callback_id();
