@@ -62,8 +62,11 @@ void TestBenchBaseRecorder::SetRecorderPath(const std::string& path) {
 
 void TestBenchBaseRecorder::SetScreenSize(int64_t record_id, float screen_width,
                                           float screen_height) {
-  InsertReplayConfig(record_id, "screenWidth", screen_width);
-  InsertReplayConfig(record_id, "screenHeight", screen_height);
+  auto set_screen_size_task = [this, record_id, screen_width, screen_height]() {
+    InsertReplayConfig(record_id, "screenWidth", screen_width);
+    InsertReplayConfig(record_id, "screenHeight", screen_height);
+  };
+  thread_.GetTaskRunner()->PostTask(std::move(set_screen_size_task));
 }
 
 template <typename T>
