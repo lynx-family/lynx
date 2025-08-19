@@ -432,6 +432,10 @@ public class UIBody extends UIGroup<UIBodyView> {
       innerSetMeasuredDimension(finalWidth, finalHeight);
     }
 
+    public boolean containsViewForNodeIndex(int nodeIndex) {
+      return mViewMap.containsKey(nodeIndex);
+    }
+
     public View obtainViewAccordingToNodeIndex(int nodeIndex) {
       View result = mViewMap.get(nodeIndex);
       mViewMap.remove(nodeIndex);
