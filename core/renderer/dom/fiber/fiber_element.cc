@@ -2762,7 +2762,6 @@ void FiberElement::MarkAsLayoutRoot() {
 
 void FiberElement::MarkLayoutDirty() {
   if (EnableLayoutInElementMode()) {
-    EnsureSLNode();
     MarkLayoutDirtyLite();
     return;
   }
@@ -3071,9 +3070,11 @@ void FiberElement::InsertLayoutNode(FiberElement *child, FiberElement *ref) {
   DCHECK(!ref || !ref->is_wrapper());
   if (EnableLayoutInElementMode()) {
     EnsureSLNode();
-    child->EnsureSLNode();
-    sl_node_->InsertChildBefore(child->sl_node_.get(),
-                                ref ? ref->sl_node_.get() : nullptr);
+    if (!is_virtual_ && !child->is_virtual_) {
+      child->EnsureSLNode();
+      sl_node_->InsertChildBefore(child->sl_node_.get(),
+                                  ref ? ref->sl_node_.get() : nullptr);
+    }
     child->attached_to_layout_parent_ = true;
     return;
   }
@@ -3994,8 +3995,19 @@ bool FiberElement::CanBeLayoutOnly() const {
 }
 
 void FiberElement::MarkLayoutDirtyLite() {
-  EnsureSLNode();
-  sl_node_->MarkDirty();
+  if (!is_virtual_) {
+    EnsureSLNode();
+    sl_node_->MarkDirty();
+  } else {
+    auto *parent = render_parent_;
+    while (parent) {
+      if (!parent->is_virtual_) {
+        parent->MarkLayoutDirtyLite();
+        break;
+      }
+      parent = parent->render_parent_;
+    }
+  }
 }
 
 /**

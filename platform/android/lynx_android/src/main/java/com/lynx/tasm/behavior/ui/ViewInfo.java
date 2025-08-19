@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 import android.text.Layout;
 import android.text.Spanned;
 import android.view.View;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.behavior.ui.shapes.BasicShape;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
@@ -291,6 +292,10 @@ public class ViewInfo implements IDrawChildHook {
     Rect bound = null;
     for (; mCurrentDrawIndex < mSubDrawInfoArray.size(); ++mCurrentDrawIndex) {
       SubDrawInfo info = mSubDrawInfoArray.get(mCurrentDrawIndex);
+      if (info == null) {
+        LLog.e("ViewInfo", "drawWithSubDrawInfo: info is null");
+        continue;
+      }
       if (info.mIsView) {
         bound = info.mBound;
         mCurrentDrawIndex++;

@@ -24,10 +24,9 @@ void RawTextElement::SetText(const lepus::Value& text) {
       stream << text.Number();
       content_ = stream.str();
     }
-    if (EnableLayoutInElementMode()) {
-      content_utf16_length_ =
-          GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
-    }
+    content_utf16_length_ =
+        GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
+    MarkLayoutDirty();
   }
 }
 

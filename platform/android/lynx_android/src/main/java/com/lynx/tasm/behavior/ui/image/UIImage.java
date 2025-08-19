@@ -144,7 +144,7 @@ public class UIImage extends UIView {
   public void beforeProcessViewInfo(ViewInfo info) {
     ensureLynxImageManager();
 
-    if (mLynxImageManager != null && !mLynxImageManager.getHasContent()) {
+    if (mLynxImageManager != null) {
       mViewInfo.setImageManagerUsedInBeforeDraw(mLynxImageManager);
     }
 
