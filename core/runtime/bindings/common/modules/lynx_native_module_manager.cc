@@ -10,16 +10,16 @@ namespace pub {
 std::shared_ptr<piper::LynxNativeModule> LynxNativeModuleManager::GetModule(
     const std::string &name) {
   std::shared_ptr<piper::LynxNativeModule> native_module;
-  // Find PlatformModuleFactories First
-  if (platform_module_factory_) {
-    native_module = platform_module_factory_->CreateModule(name);
+  // Find NativeModuleFactories First
+  for (const auto &module_factory : module_factories_) {
+    native_module = module_factory->CreateModule(name);
     if (native_module) {
       return native_module;
     }
   }
-  // Find NativeModuleFactories Later
-  for (const auto &module_factory : module_factories_) {
-    native_module = module_factory->CreateModule(name);
+  // Find PlatformModuleFactories Later
+  if (platform_module_factory_) {
+    native_module = platform_module_factory_->CreateModule(name);
     if (native_module) {
       return native_module;
     }
