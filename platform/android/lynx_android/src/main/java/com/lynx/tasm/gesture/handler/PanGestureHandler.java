@@ -75,7 +75,9 @@ public class PanGestureHandler extends BaseGestureHandler {
   @Override
   protected void onHandle(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent,
       float flingDeltaX, float flingDeltaY) {
-    mLastTouchEvent = lynxTouchEvent;
+    if (lynxTouchEvent != null) {
+      mLastTouchEvent = lynxTouchEvent;
+    }
     // If the event is empty, it means the finger not touches the screen
     if (event == null) {
       ignore();
@@ -112,7 +114,7 @@ public class PanGestureHandler extends BaseGestureHandler {
         break;
       case MotionEvent.ACTION_UP:
         fail();
-        onEnd(mLastX, mLastY, lynxTouchEvent);
+        onEnd(mLastX, mLastY, mLastTouchEvent);
         break;
       default:
         break;
