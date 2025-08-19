@@ -15,3 +15,5 @@ export { DebugRouter } from './DebugRouter'
 export { LynxWebSocketModule } from './jsbridge/LynxWebSocketModule'
 
 export { LogBox, LogBoxNodeController } from './logbox/LogBox'
+
+export { LynxRecorderEnv, LynxRecorderReplayDataModule, LynxRecorderView, RecorderDataType } from './recorder/index'
