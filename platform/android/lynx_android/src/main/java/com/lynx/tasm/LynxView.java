@@ -1316,6 +1316,7 @@ public class LynxView extends UIBodyView {
     return false;
   }
 
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
   public TemplateData getTemplateData() {
     if (mLynxTemplateRender != null) {
       return mLynxTemplateRender.getTemplateData();

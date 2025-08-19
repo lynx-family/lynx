@@ -510,6 +510,38 @@ public final class TemplateData {
   }
 
   /**
+   * Shallow Clone a copy for a using TemplateData.
+   * often used when using one TemplateData between multi Thread in a LynxView.
+   *
+   * @return The cloned TemplateData
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public TemplateData shallowClone() {
+    TraceEvent.beginSection(TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE);
+    if (!checkIfEnvPrepared()) {
+      LLog.e(TAG, "shallowClone failed since env not ready!");
+      TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE);
+      return TemplateData.empty();
+    }
+
+    this.flush();
+    TemplateData data = TemplateData.empty();
+    if (this.mNativeData != 0) {
+      data.mNativeData = nativeShallowCopy(this.mNativeData);
+    }
+    // Since it has already been flushed, `mData` must be empty, so `mData` will no longer be
+    // copied.
+    data.mProcessorName = this.mProcessorName;
+    data.readOnly = this.readOnly;
+    data.mIsConcurrent = this.mIsConcurrent;
+
+    // clone data actions
+    data.addUpdateActions(this.getUpdateActionsWithJsNativeData());
+    TraceEvent.endSection(TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE);
+    return data;
+  }
+
+  /**
    * TemplateData will be sync to Native. For Thread-Safety, we will clone the value in Native Side.
    * In some case, this may result in performance-loss, If your data won't change any more, Please
    * call this method to mark value Read-Only, so we'll no longer clone the value any more to

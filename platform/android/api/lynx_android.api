@@ -8775,6 +8775,7 @@ public class com::lynx::tasm::TemplateData :  {
   public void com.lynx.tasm.TemplateData.markState(String name);
   public String com.lynx.tasm.TemplateData.processorName();
   public TemplateData com.lynx.tasm.TemplateData.deepClone();
+  public TemplateData com.lynx.tasm.TemplateData.shallowClone();
   public void com.lynx.tasm.TemplateData.markReadOnly();
   public boolean com.lynx.tasm.TemplateData.isReadOnly();
   public boolean com.lynx.tasm.TemplateData.isEmpty();
@@ -9180,6 +9181,7 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_BUNDLE_FROM_TEMPLATE TEMPLATE_BUNDLE_FROM_TEMPLATE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_BUNDLE_FROM_BYTEBUFFER TEMPLATE_BUNDLE_FROM_BYTEBUFFER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_DATA_FROM_MAP TEMPLATE_DATA_FROM_MAP;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_DATA_SHALLOW_CLONE TEMPLATE_DATA_SHALLOW_CLONE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_DATA_FROM_STRING TEMPLATE_DATA_FROM_STRING;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLEAN_REF_RUN_CLEAN_TASK_REAPER_THREAD CLEAN_REF_RUN_CLEAN_TASK_REAPER_THREAD;
   public final String com.lynx.tasm.base.trace.TraceEventDef.CLEAN_REF_HANDLE_MESSAGE CLEAN_REF_HANDLE_MESSAGE;
