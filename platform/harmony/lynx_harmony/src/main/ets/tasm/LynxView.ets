@@ -158,6 +158,7 @@ export struct LynxView {
   });
   @State rootSize: Size = { width: 0, height: 0 };
   @State logBoxTitle: string = '';
+  @State translateY: number = 0;
   templateLoaded: boolean = false;
   private measuredSize: Size = { width: 0, height: 0 };
   threadMode: ThreadStrategyForRendering = ThreadStrategyForRendering.ALL_ON_UI;
@@ -271,8 +272,17 @@ export struct LynxView {
         const keyBoardHeight = Math.floor(px2vp(height));
         this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit',
           ['keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]]);
+        this.uiRenderer.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1: 0)
       };
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
+      this.uiRenderer.setAvoidKeyboardListener((translateY: number) => {
+        this.getUIContext()?.animateTo({
+          duration: 300,
+          curve: Curve.EaseOut,
+        }, () => {
+          this.translateY += translateY;
+        })
+      })
     }).catch((err: BusinessError) => {
       LLog.e(TAG, `Failed to getLastWindow. Code: ${err.code}, message: ${err.message}`);
     });
@@ -597,6 +607,7 @@ export struct LynxView {
       : '100%')
     // Add 'key' property to locate LynxView during UI automation.
     .key('lynxview')
+    .translate({y: this.translateY})
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.measuredSize.width = newValue.width as number;
       this.measuredSize.height = newValue.height as number;

@@ -43,12 +43,12 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
         editText.gravity = Gravity.TOP
         editText.setPadding(0,0,0,0)
         editText.setOnEditorActionListener { _, action, _ ->
-            if (isConfirmEnter()) {
-                // Send event and blur manually.
-                onConfirm();
-                blur(null, null);
-            }
-            false
+          onConfirm();
+          if (isConfirmEnter()) {
+            // Send event and blur manually.
+            blur(null, null);
+          }
+          mConfirmEnter
         }
         return editText
     }
@@ -74,7 +74,7 @@ open class LynxUITextArea(context: LynxContext, params: Any?) : LynxUIBaseInput(
         if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_GO ||
             actionId == EditorInfo.IME_ACTION_SEARCH || actionId == EditorInfo.IME_ACTION_SEND
             || actionId == EditorInfo.IME_ACTION_NEXT) {
-            return true
+            return !mConfirmEnter
         }
         return false
     }

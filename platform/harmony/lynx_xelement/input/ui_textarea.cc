@@ -227,13 +227,18 @@ ArkUI_NodeAttributeType UITextArea::GetEditingAttributeType() const {
   return NODE_TEXT_AREA_EDITING;
 }
 
-ArkUI_NodeAttributeType UITextArea::GetPlaceholderTextType() const {
+ArkUI_NodeAttributeType UITextArea::GetPlaceholderTextAttributeType() const {
   return NODE_TEXT_AREA_PLACEHOLDER;
+}
+
+ArkUI_NodeAttributeType UITextArea::GetBlurOnSubmitAttributeType() const {
+  return NODE_TEXT_AREA_BLUR_ON_SUBMIT;
 }
 
 ArkUI_NodeEventType UITextArea::GetOnWillInsertEventType() const {
   return NODE_TEXT_AREA_ON_WILL_INSERT;
 }
+
 ArkUI_NodeEventType UITextArea::GetOnWillDeleteEventType() const {
   return NODE_TEXT_AREA_ON_WILL_DELETE;
 }

@@ -42,6 +42,8 @@ napi_value UIOwner::Init(napi_env env, napi_value exports) {
       DECLARE_NAPI_FUNCTION("getId", GetId),
       DECLARE_NAPI_FUNCTION("destroy", Destroy),
       DECLARE_NAPI_FUNCTION("requestLayout", RequestLayout),
+      DECLARE_NAPI_FUNCTION("keyboardStatusChanged", KeyboardStatusChanged),
+
       DECLARE_NAPI_FUNCTION("canConsumeTouchEvent", CanConsumeTouchEvent),
   };
 #undef DECLARE_NAPI_FUNCTION
@@ -199,6 +201,7 @@ void UIOwner::DestroySubTree(UIBase* root) {
   root->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(root->Sign(), false);
   ui_holder_.erase(root->Sign());
+  keyboard_event_observers_.erase(root->Sign());
 }
 
 UIRoot* UIOwner::Root() {
@@ -401,8 +404,9 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
    * 5 - stopFluencyTrace function ref
    * 6 - getTagInfo ref
    * 7 - postDrawEndTimingFrameCallback function ref
+   * 8 - onAvoidKeyboardCallback function ref
    */
-  size_t argc = 8;
+  size_t argc = 9;
   napi_value argv[argc];
   owner->env_ = env;
   napi_get_cb_info(env, info, &argc, argv, &js_object, nullptr);
@@ -415,6 +419,7 @@ napi_value UIOwner::Constructor(napi_env env, napi_callback_info info) {
   napi_create_reference(env, argv[6], 0, &owner->js_get_node_type_);
   napi_create_reference(env, argv[7], 0,
                         &owner->post_draw_end_timing_frame_callback_);
+  napi_create_reference(env, argv[8], 0, &owner->on_avoid_keyboard_callback_);
   napi_wrap(
       env, js_object, owner,
       [](napi_env env, void* data, void* hint) -> void {}, nullptr, nullptr);
@@ -465,16 +470,19 @@ napi_value UIOwner::Destroy(napi_env env, napi_callback_info info) {
   obj->accessibility_exclusive_.clear();
   obj->ui_holder_.clear();
   obj->layout_changed_nodes_.clear();
+  obj->keyboard_event_observers_.clear();
   obj->root_ = nullptr;
   napi_delete_reference(env, obj->js_create_);
   napi_delete_reference(env, obj->js_create_node_content_);
   napi_delete_reference(env, obj->js_get_node_type_);
   napi_delete_reference(env, obj->post_draw_end_timing_frame_callback_);
+  napi_delete_reference(env, obj->on_avoid_keyboard_callback_);
   napi_delete_reference(env, obj->js_this_);
   obj->js_create_ = nullptr;
   obj->js_create_node_content_ = nullptr;
   obj->js_get_node_type_ = nullptr;
   obj->post_draw_end_timing_frame_callback_ = nullptr;
+  obj->on_avoid_keyboard_callback_ = nullptr;
   obj->js_this_ = nullptr;
   obj->env_ = nullptr;
   obj->destroyed_ = true;
@@ -801,6 +809,43 @@ napi_value UIOwner::RequestLayout(napi_env env, napi_callback_info info) {
   return nullptr;
 }
 
+napi_value UIOwner::KeyboardStatusChanged(napi_env env,
+                                          napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  auto height = base::NapiUtil::ConvertToFloat(env, args[0]);
+
+  UIOwner* obj = nullptr;
+  napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!obj) {
+    return nullptr;
+  }
+
+  bool is_show = height > 0;
+
+  for (const auto& observer : obj->keyboard_event_observers_) {
+    const auto ui = observer.second.lock();
+    if (ui != nullptr) {
+      if (is_show) {
+        ui->OnKeyboardWillShow(height);
+      } else {
+        ui->OnKeyboardWillHide();
+      }
+    }
+  }
+  return nullptr;
+}
+
+void UIOwner::AddKeyboardEventObserver(int32_t sign) {
+  if (const auto it = ui_holder_.find(sign); it != ui_holder_.end()) {
+    std::weak_ptr<UIBase> weak_ptr(it->second);
+    keyboard_event_observers_[sign] = weak_ptr;
+  }
+}
+
 void UIOwner::RequestLayout() {
   auto* root = reinterpret_cast<UIRoot*>(root_.get());
   if (!root) {
@@ -947,6 +992,26 @@ void UIOwner::PostDrawEndTimingFrameCallback(
   napi_value result;
   napi_call_function(env_, js_recv, post_draw_end_timing_frame_callback, argc,
                      argv, &result);
+}
+
+void UIOwner::OnAvoidKeyboardCallback(float translate_y) const {
+  base::NapiHandleScope scope(env_);
+  napi_value js_recv = base::NapiUtil::GetReferenceNapiValue(env_, js_this_);
+  napi_value callback =
+      base::NapiUtil::GetReferenceNapiValue(env_, on_avoid_keyboard_callback_);
+  if (!js_recv || !callback) {
+    return;
+  }
+
+  size_t argc = 1;
+  /**
+   * 0 - sign float
+   */
+  napi_value argv[argc];
+  napi_create_int32(env_, translate_y, &argv[0]);
+
+  napi_value result;
+  napi_call_function(env_, js_recv, callback, argc, argv, &result);
 }
 
 void UIOwner::AddOrRemoveUIFromExclusiveSet(int32_t sign, bool exclusive) {

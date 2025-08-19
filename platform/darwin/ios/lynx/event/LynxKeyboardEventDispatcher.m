@@ -4,11 +4,13 @@
 
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #include <Lynx/LynxLog.h>
+#import <Lynx/LynxWeakProxy.h>
 #import <UIKit/UIKit.h>
 
 #define KEYBOARD_STATUS_CHANGED "keyboardstatuschanged"
 
 @interface LynxKeyboardEventDispatcher ()
+@property(nonatomic, strong) NSMutableDictionary<NSNumber *, LynxWeakProxy *> *observers;
 @end
 
 @implementation LynxKeyboardEventDispatcher {
@@ -28,6 +30,7 @@
                                                name:UIKeyboardWillHideNotification
                                              object:nil];
   _context = context;
+  _observers = [NSMutableDictionary dictionary];
   return self;
 }
 
@@ -72,6 +75,11 @@
   [params addObject:isShow];
   [params addObject:aHeight];
   [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  [_observers enumerateKeysAndObjectsUsingBlock:^(
+                  NSNumber *_Nonnull key, LynxWeakProxy *_Nonnull obj, BOOL *_Nonnull stop) {
+    id<LynxKeyboardEventObserver> target = obj.target;
+    [target keyboardWillShow:height];
+  }];
 }
 
 - (void)keyboardWillHide:(NSNotification *)aNotification {
@@ -86,6 +94,11 @@
   [params addObject:isShow];
   [params addObject:aHeight];
   [_context sendGlobalEvent:@KEYBOARD_STATUS_CHANGED withParams:params];
+  [_observers enumerateKeysAndObjectsUsingBlock:^(
+                  NSNumber *_Nonnull key, LynxWeakProxy *_Nonnull obj, BOOL *_Nonnull stop) {
+    id<LynxKeyboardEventObserver> target = obj.target;
+    [target keyboardWillHide];
+  }];
 }
 
 - (UIView *)getKeyboardView {
@@ -148,6 +161,12 @@
     LLog(@"Can not get KeyboardView");
   }
   return keyboardView;
+}
+
+- (void)addKeyboardEventObserver:(id<LynxKeyboardEventObserver>)observer {
+  if ([observer conformsToProtocol:@protocol(LynxKeyboardEventObserver)]) {
+    [_observers setObject:[LynxWeakProxy proxyWithTarget:observer] forKey:@((uintptr_t)observer)];
+  }
 }
 
 @end

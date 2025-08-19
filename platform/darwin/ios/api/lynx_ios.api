@@ -985,6 +985,7 @@ public class LynxContext : NSObject {
   public LynxUIOwner* _Nullable LynxContext()::uiOwner uiOwner;
   public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
   public id<LUIBodyView> _Nullable LynxContext()::containerView containerView;
+  public LynxKeyboardEventDispatcher* _Nullable LynxContext()::keyboardEventDispatcher keyboardEventDispatcher;
   public int32_t LynxContext()::instanceId instanceId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
@@ -997,6 +998,7 @@ public class LynxContext : NSObject {
   public void LynxContext::runOnLayoutThread:(dispatch_block_t task);
   public void LynxContext::setExtensionModule:forKey:(nonnull id< LynxExtensionModule > extensionModule,[forKey] nonnull NSString *key);
   public nonnull id< LynxExtensionModule > LynxContext::getExtensionModuleByKey:(nonnull NSString *key);
+  public void LynxContext::addKeyboardEventObserver:(id observer);
   public nonnull instancetype LynxContext()::initWithContainerView:(id< LUIBodyView > _Nullable containerView);
   public void LynxContext()::setJSProxy:(const std::shared_ptr< lynx::shell::JSProxyDarwin > &proxy);
   public void LynxContext()::setLayoutProxy:(const std::shared_ptr< lynx::shell::LynxLayoutProxyDarwin > &layout_proxy);
@@ -1416,6 +1418,7 @@ public class LynxEventHandler : NSObject {
   public UIGestureRecognizer* LynxEventHandler::longPressRecognizer longPressRecognizer;
   public LynxGestureArenaManager* _Nullable LynxEventHandler::gestureArenaManager gestureArenaManager;
   public BOOL LynxEventHandler::enableSimultaneousTap enableSimultaneousTap;
+  public BOOL LynxEventHandler::disableEndEditing disableEndEditing;
   public instancetype LynxEventHandler::initWithRootView:(UIView *rootView);
   public instancetype LynxEventHandler::initWithRootView:withRootUI:(UIView *rootView,[withRootUI] nullable LynxUI *rootUI);
   public void LynxEventHandler::attachContainerView:(UIView *rootView);
@@ -2038,6 +2041,12 @@ public protocol LynxJSBTimingListener-p : <NSObject> {
 
 public class LynxKeyboardEventDispatcher : NSObject {
   public instancetype LynxKeyboardEventDispatcher::initWithContext:(LynxContext *context);
+  public void LynxKeyboardEventDispatcher::addKeyboardEventObserver:(id< LynxKeyboardEventObserver > observer);
+}
+
+public protocol LynxKeyboardEventObserver-p : <NSObject> {
+  public void LynxKeyboardEventObserver-p::keyboardWillShow:(CGFloat keyboardHeight);
+  public void LynxKeyboardEventObserver-p::keyboardWillHide();
 }
 
 public class LynxKeyframeAnimator : NSObject typedef enum LynxKFAnimatorState {

@@ -4,6 +4,8 @@
 
 #include "platform/harmony/lynx_xelement/input/ui_base_input.h"
 
+#include <harmony/lynx_harmony/src/main/cpp/ui/ui_owner.h>
+
 #include <memory>
 #include <utility>
 
@@ -13,12 +15,12 @@
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
 #include "platform/harmony/lynx_xelement/input/input_shadow_node.h"
 namespace lynx {
 namespace tasm {
 namespace harmony {
-
 ArkUI_EnterKeyType UIBaseInput::ParseEnterKeyType(const lepus::Value& value) {
   ArkUI_EnterKeyType type = ARKUI_ENTER_KEY_TYPE_DONE;
   if (value.IsString()) {
@@ -128,6 +130,11 @@ void UIBaseInput::UpdateLayout(float left, float top, float width, float height,
 void UIBaseInput::OnPropUpdate(const std::string& name,
                                const lepus::Value& value) {
   UIView::OnPropUpdate(name, value);
+  if (!keyboard_event_observer_registered_) {
+    keyboard_event_observer_registered_ = true;
+    context_->GetUIOwner()->AddKeyboardEventObserver(Sign());
+  }
+
   if (name == "disabled") {
     bool disabled = value.Bool();
     NodeManager::Instance().SetAttributeWithNumberValue(
@@ -236,6 +243,25 @@ void UIBaseInput::OnPropUpdate(const std::string& name,
     } else {
       placeholder_ = value.StdString();
     }
+  } else if (name == "confirm-enter") {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        input_node_, GetBlurOnSubmitAttributeType(),
+        static_cast<uint32_t>(!value.Bool()));
+  } else if (name == "avoid-keyboard") {
+    avoid_keyboard_in_lynx_view_ = value.Bool();
+  } else if (name == "avoid-keyboard-spacing") {
+    if (value.IsString()) {
+      float screen_size[2] = {0};
+      const int32_t width_index = 0;
+      context_->ScreenSize(screen_size);
+      avoid_keyboard_spacing_in_lynx_view_ = LynxUnitUtils::ToVPFromUnitValue(
+          value.StdString(), screen_size[width_index],
+          context_->DevicePixelRatio());
+    } else if (value.IsNumber()) {
+      avoid_keyboard_spacing_in_lynx_view_ = static_cast<float>(value.Number());
+    }
+  } else if (name == "hold-keyboard") {
+    hold_keyboard_ = value.Bool();
   }
 }
 
@@ -243,6 +269,11 @@ void UIBaseInput::OnNodeReady() {
   UIView::OnNodeReady();
   SetupFont();
   SetupPlaceholderFont();
+  bool focused = NodeManager::Instance().GetAttribute<int>(
+                     input_node_, NODE_FOCUS_STATUS) == 1;
+  if (focused) {
+    avoid_keyboard_dist_ += HandleAvoidKeyboard(true);
+  }
 }
 
 void UIBaseInput::SetupFont() {
@@ -312,8 +343,8 @@ void UIBaseInput::SetupPlaceholderFont() {
                                        GetPlaceholderAttributeType(), &item);
 
   ArkUI_AttributeItem placeholder = {.string = placeholder_.c_str()};
-  NodeManager::Instance().SetAttribute(input_node_, GetPlaceholderTextType(),
-                                       &placeholder);
+  NodeManager::Instance().SetAttribute(
+      input_node_, GetPlaceholderTextAttributeType(), &placeholder);
 }
 
 void UIBaseInput::OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {
@@ -388,10 +419,13 @@ void UIBaseInput::OnNodeEvent(ArkUI_NodeEvent* event) {
 void UIBaseInput::OnFocusChange(bool has_focus, bool is_focus_transition) {
   if (!has_focus) {
     if (!is_focus_transition) {
-      NodeManager::Instance().SetAttributeWithNumberValue(
-          input_node_, GetEditingAttributeType(), 0);
-      NodeManager::Instance().SetAttributeWithNumberValue(input_node_,
-                                                          NODE_FOCUS_STATUS, 0);
+      if (!hold_keyboard_) {
+        NodeManager::Instance().SetAttributeWithNumberValue(
+            input_node_, GetEditingAttributeType(), 0);
+        NodeManager::Instance().SetAttributeWithNumberValue(
+            input_node_, NODE_FOCUS_STATUS, 0);
+        was_focused_ = true;
+      }
     }
   }
 }
@@ -579,6 +613,16 @@ void UIBaseInput::SendBlurEvent() const {
   context_->SendEvent(event);
 }
 
+void UIBaseInput::SendKeyboardHeightChangedEvent(float height) const {
+  const std::string& value = NodeManager::Instance().GetAttribute<std::string>(
+      input_node_, GetTextAttributeType());
+  const auto param = lepus::Dictionary::Create();
+  param->SetValue("height", height);
+  CustomEvent event{Sign(), "keyboardheightchange", "detail",
+                    lepus_value(param)};
+  context_->SendEvent(event);
+}
+
 std::unordered_map<std::string, UIBaseInput::UIMethod>
     UIBaseInput::input_base_ui_method_map_ = {
         {"focus", &UIBaseInput::Focus},
@@ -681,6 +725,54 @@ void UIBaseInput::SetSelectionRange(
   const auto ret = lepus::Dictionary::Create();
   ret->SetValue("err", "selection is not assigned");
   callback(LynxGetUIResult::PARAM_INVALID, lepus::Value(ret));
+}
+
+float UIBaseInput::HandleAvoidKeyboard(bool keyboard_displayed) {
+  if (avoid_keyboard_in_lynx_view_) {
+    if (keyboard_displayed) {
+      float rect_in_root[4] = {0, 0, 0, 0};
+      float self_rect[4] = {0, 0, width_, height_};
+      LynxUIHelper::ConvertRectFromUIToScreen(rect_in_root, this, self_rect);
+      float screen_size[2] = {0};
+      context_->ScreenSize(screen_size);
+      float bottom_to_screen = screen_size[1] - rect_in_root[3];
+      float gap = keyboard_height_ - bottom_to_screen +
+                  avoid_keyboard_spacing_in_lynx_view_;
+      if (avoid_keyboard_dist_ == 0) {
+        if (gap > 0) {
+          context_->GetUIOwner()->OnAvoidKeyboardCallback(-gap);
+          return gap;
+        }
+      } else {
+        context_->GetUIOwner()->OnAvoidKeyboardCallback(-gap);
+        return gap;
+      }
+
+    } else {
+      if (avoid_keyboard_dist_ != 0) {
+        context_->GetUIOwner()->OnAvoidKeyboardCallback(avoid_keyboard_dist_);
+      }
+    }
+  }
+  return 0.f;
+}
+
+void UIBaseInput::OnKeyboardWillShow(float height) {
+  bool focused = NodeManager::Instance().GetAttribute<int>(
+                     input_node_, NODE_FOCUS_STATUS) == 1;
+  if (focused) {
+    keyboard_height_ = height;
+    avoid_keyboard_dist_ = HandleAvoidKeyboard(true);
+    SendKeyboardHeightChangedEvent(height);
+  }
+}
+
+void UIBaseInput::OnKeyboardWillHide() {
+  if (was_focused_) {
+    was_focused_ = false;
+    avoid_keyboard_dist_ = HandleAvoidKeyboard(false);
+    SendKeyboardHeightChangedEvent(0);
+  }
 }
 
 }  // namespace harmony

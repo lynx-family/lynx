@@ -34,8 +34,10 @@ open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(cont
                     onConfirm()
                     if (actionId != EditorInfo.IME_ACTION_NEXT) {
                         //when the action is next, don't need to hide keyboard
-                        blur(null, null);
-                        true
+                        if (!mConfirmEnter) {
+                          blur(null, null);
+                          }
+                        !mConfirmEnter
                     } else {
                         false
                     }

@@ -39,6 +39,8 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
 @property(nonatomic, assign) BOOL hasCustomGenericFetcher;
 @property(nonatomic, assign) BOOL hasCustomMediaFetcher;
 @property(nonatomic, assign) BOOL hasCustomTemplateFetcher;
+- (void)addKeyboardEventObserver:(id)observer;
+
 @end
 
 NS_ASSUME_NONNULL_END

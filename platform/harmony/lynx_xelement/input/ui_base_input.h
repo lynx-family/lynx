@@ -31,8 +31,16 @@ class UIBaseInput : public UIView {
   void SendConfirmEvent() const;
   void SendFocusEvent() const;
   void SendBlurEvent() const;
+  void SendKeyboardHeightChangedEvent(float height) const;
   bool readonly_{false};
+  bool hold_keyboard_{false};
+  bool avoid_keyboard_in_lynx_view_{false};
+  float avoid_keyboard_spacing_in_lynx_view_{0.0};
+  float keyboard_height_{0.0};
+  float avoid_keyboard_dist_{0.0};
   bool show_soft_input_on_focus_{true};
+  bool keyboard_event_observer_registered_{false};
+
   float computed_height_{INPUT_UNDEFINED_FLOAT};
   float max_height_{INPUT_UNDEFINED_FLOAT};
   float font_size_{INPUT_UNDEFINED_FLOAT};
@@ -47,6 +55,7 @@ class UIBaseInput : public UIView {
 
   ArkUI_NodeHandle input_node_{nullptr};
   ArkUI_NodeHandle custom_keyboard_{nullptr};
+  bool was_focused_{false};
 
   virtual ArkUI_NodeAttributeType GetTextAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
@@ -60,7 +69,10 @@ class UIBaseInput : public UIView {
   virtual ArkUI_NodeAttributeType GetPlaceholderAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
   }
-  virtual ArkUI_NodeAttributeType GetPlaceholderTextType() const {
+  virtual ArkUI_NodeAttributeType GetPlaceholderTextAttributeType() const {
+    return static_cast<ArkUI_NodeAttributeType>(-1);
+  }
+  virtual ArkUI_NodeAttributeType GetBlurOnSubmitAttributeType() const {
     return static_cast<ArkUI_NodeAttributeType>(-1);
   }
   virtual ArkUI_NodeEventType GetOnWillInsertEventType() const {
@@ -95,12 +107,15 @@ class UIBaseInput : public UIView {
                 base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void SetSelectionRange(const lepus::Value& args,
                          base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
+  void OnKeyboardWillShow(float height) override;
+  void OnKeyboardWillHide() override;
 
  private:
   using UIMethod = void (UIBaseInput::*)(
       const lepus::Value& args, base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   int32_t MeasureTextHeight(float font_size, float max_width, int font_weight, int font_style,
                             int line_spacing, std::string font_family, std::string value);
+  float HandleAvoidKeyboard(bool keyboard_displayed);
   static std::unordered_map<std::string, UIMethod> input_base_ui_method_map_;
 };
 }  // namespace harmony

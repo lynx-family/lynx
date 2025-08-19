@@ -32,7 +32,9 @@ open class LynxUIBaseInputShadowNode : TextShadowNode() {
     fun updateHeightIfNeeded(updatedHeight: Int) {
         if (updatedHeight != mUIHeight) {
             mUIHeight = updatedHeight
+            this.resetIsDirty()
             this.markDirty()
+            this.setNeedsLayoutForce()
         }
     }
 

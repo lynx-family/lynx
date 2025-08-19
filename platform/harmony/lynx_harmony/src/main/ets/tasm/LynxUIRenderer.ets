@@ -13,4 +13,8 @@ export interface LynxUIRenderer {
   updateViewport(width: number, height: number): void;
 
   requestLayout(): void;
+
+  keyboardStatusChanged(height: number): void;
+  
+  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void ):void;
 }

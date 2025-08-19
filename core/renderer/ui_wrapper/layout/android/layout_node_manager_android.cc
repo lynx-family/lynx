@@ -33,6 +33,13 @@ void MarkDirty(JNIEnv* env, jobject jcaller, jlong nativePtr, jint id) {
   layout_node_manager->MarkDirtyAndRequestLayout(id);
 }
 
+void SetNeedsLayoutForce(JNIEnv* env, jobject jcaller, jlong nativePtr,
+                         jint id) {
+  auto layout_node_manager =
+      reinterpret_cast<lynx::tasm::LayoutNodeManager*>(nativePtr);
+  layout_node_manager->MarkDirtyAndForceLayout(id);
+}
+
 jboolean IsDirty(JNIEnv* env, jobject jcaller, jlong nativePtr, jint id) {
   auto layout_node_manager =
       reinterpret_cast<lynx::tasm::LayoutNodeManager*>(nativePtr);

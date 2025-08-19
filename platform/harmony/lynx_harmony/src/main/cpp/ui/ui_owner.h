@@ -154,6 +154,7 @@ class UIOwner {
   void StopFluencyTrace(int sign) const;
   void PostDrawEndTimingFrameCallback(
       const tasm::PipelineID& pipeline_id) const;
+  void OnAvoidKeyboardCallback(float translate_y) const;
 
   bool Destroyed() const { return destroyed_; }
 
@@ -165,6 +166,7 @@ class UIOwner {
   void AddOrRemoveUIFromExclusiveSet(int32_t sign, bool exclusive);
   bool ContainAccessibilityExclusiveUI(int32_t sign);
   void ResetAccessibilityAttrs();
+  void AddKeyboardEventObserver(int32_t sign);
 
  private:
   static const std::unordered_map<std::string, UICreatorFunc> behaviors_;
@@ -174,6 +176,9 @@ class UIOwner {
   static napi_value Destroy(napi_env, napi_callback_info info);
   static napi_value RequestLayout(napi_env env, napi_callback_info info);
   static napi_value CanConsumeTouchEvent(napi_env env, napi_callback_info info);
+  static napi_value KeyboardStatusChanged(napi_env env,
+                                          napi_callback_info info);
+
   void DestroySubTree(UIBase* root);
   void MarkHasUIOperations(UIBase* ui);
   void MarkHasUIOperationsBottomUp(UIBase* ui);
@@ -185,6 +190,8 @@ class UIOwner {
   std::unordered_set<int32_t> accessibility_exclusive_;
   std::unordered_map<std::string, int32_t> component_map_;
   std::unordered_map<int32_t, std::weak_ptr<UIBase>> layout_changed_nodes_;
+  std::unordered_map<int32_t, std::weak_ptr<UIBase>> keyboard_event_observers_;
+
   napi_env env_{nullptr};
   napi_ref js_this_{nullptr};
   napi_ref js_create_{nullptr};
@@ -192,6 +199,7 @@ class UIOwner {
   napi_ref js_start_fluency_trace_{nullptr};
   napi_ref js_stop_fluency_trace_{nullptr};
   napi_ref post_draw_end_timing_frame_callback_{nullptr};
+  napi_ref on_avoid_keyboard_callback_{nullptr};
   napi_ref js_get_node_type_{nullptr};
 
   std::shared_ptr<LynxContext> context_{nullptr};
@@ -209,6 +217,7 @@ class UIOwner {
   std::string id_;
 
   bool destroyed_ = false;
+
   std::shared_ptr<GestureArenaManager> gesture_arena_manager_{nullptr};
 };
 

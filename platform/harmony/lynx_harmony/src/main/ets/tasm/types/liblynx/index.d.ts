@@ -194,7 +194,7 @@ export class ShadowNode {
 export class UIOwner {
   constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function,
     startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number,
-    postDrawEndTimingFrameCallback: Function);
+    postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function);
 
   attachPageRoot(content: NativeContent): void;
 
@@ -204,7 +204,9 @@ export class UIOwner {
 
   requestLayout(): void;
 
-  canConsumeTouchEvent(x: number, y: number): boolean;
+  keyboardStatusChanged(height: number): void;
+
+    canConsumeTouchEvent(x: number, y: number): boolean;
 }
 
 export class UIBase {

@@ -19,6 +19,10 @@ public class LayoutNodeManager {
   public void markDirty(int id) {
     nativeMarkDirty(mNativePtr, id);
   }
+
+  public void setNeedsLayoutForce(int id) {
+    nativeSetNeedsLayoutForce(mNativePtr, id);
+  }
   public boolean isDirty(int id) {
     return nativeIsDirty(mNativePtr, id);
   }
@@ -79,6 +83,7 @@ public class LayoutNodeManager {
 
   private native void nativeSetMeasureFunc(long nativePtr, int id, Object shadowNode);
   private native void nativeMarkDirty(long nativePtr, int id);
+  private native void nativeSetNeedsLayoutForce(long nativePtr, int id);
   private native boolean nativeIsDirty(long nativePtr, int id);
 
   // inline view methods

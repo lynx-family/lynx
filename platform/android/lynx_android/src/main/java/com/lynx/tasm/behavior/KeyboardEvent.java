@@ -31,6 +31,10 @@ import java.util.WeakHashMap;
  * Each LynxContext or LynxView would own a KeyboardEvent once it enable that.
  */
 public class KeyboardEvent {
+  public interface KeyboardEventObserver {
+    void keyboardWillShow(int keyboardHeight);
+    void keyboardWillHide();
+  }
   private LynxContext mLynxContext;
   private ViewTreeObserver.OnGlobalLayoutListener mListener = null;
   private float mDpi;
@@ -45,6 +49,8 @@ public class KeyboardEvent {
   private int keyboardTopFromLynxView = 0;
   private WeakHashMap<Object, ViewTreeObserver.OnGlobalLayoutListener> mOnGlobalLayoutListenerList =
       new WeakHashMap<>();
+
+  private WeakHashMap<Object, KeyboardEventObserver> mObservers = new WeakHashMap<>();
 
   public KeyboardEvent(LynxContext lynxContext) {
     LLog.d(LynxConstants.TAG, "KeyboardEvent initialized.");
@@ -261,6 +267,14 @@ public class KeyboardEvent {
       args.pushInt(heightCompat);
       mLynxContext.sendGlobalEvent(LynxKeyboardEvent.KEYBOARD_STATUS_CHANGED, args);
     }
+    for (Map.Entry<Object, KeyboardEventObserver> entry : mObservers.entrySet()) {
+      KeyboardEventObserver observer = entry.getValue();
+      if (isVisible) {
+        observer.keyboardWillShow((int) (heightCompat * mDpi));
+      } else {
+        observer.keyboardWillHide();
+      }
+    }
   }
 
   public Rect getDisplayFrame() {
@@ -279,6 +293,12 @@ public class KeyboardEvent {
         ViewTreeObserver.OnGlobalLayoutListener listener = entry.getValue();
         listener.onGlobalLayout();
       }
+    }
+  }
+
+  public void addKeyboardEventObserver(KeyboardEventObserver observer) {
+    if (observer != null) {
+      mObservers.put(observer, observer);
     }
   }
 }

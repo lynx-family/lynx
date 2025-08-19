@@ -20,6 +20,7 @@ export class UIOwner {
   private perfController: PerformanceController;
   private readonly id: string;
   protected fluencyTraceHelper?: FluencyTraceHelper;
+  private avoidKeyboardListener?: (translateY: number) => void;
   lynxContext: LynxContext;
 
   constructor(behaviors: BehaviorRegistryMap, uiContext: UIContext, lynxContext: LynxContext,
@@ -28,7 +29,7 @@ export class UIOwner {
     this.behaviors = behaviors;
     this.perfController = perfCollector;
     this.native = new lynx.UIOwner(this, this.create, uiContext, this.createNativeContent, this.startFluencyTrace,
-      this.stopFluencyTrace, this.getNodeType, this.postDrawEndTimingFrameCallback);
+      this.stopFluencyTrace, this.getNodeType, this.postDrawEndTimingFrameCallback, this.onAvoidKeyboardCallback);
     this.uiContext = uiContext;
     this.id = this.native.getId();
     this.lynxContext = lynxContext;
@@ -103,7 +104,19 @@ export class UIOwner {
     this.native.requestLayout();
   }
 
-  canConsumeTouchEvent(x: number, y: number): boolean {
+  keyboardStatusChanged(height: number) {
+    this.native.keyboardStatusChanged(height);
+  }
+
+  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void):void {
+    this.avoidKeyboardListener = avoidKeyboardListener;
+  }
+
+  onAvoidKeyboardCallback(translateY: number) {
+    this.avoidKeyboardListener?.(translateY)
+  }
+
+    canConsumeTouchEvent(x: number, y: number): boolean {
     return this.native.canConsumeTouchEvent(x, y);
   }
 }

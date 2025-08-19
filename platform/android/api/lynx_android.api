@@ -2893,6 +2893,12 @@ public class com::lynx::tasm::behavior::KeyboardEvent :  {
   public synchronized void com.lynx.tasm.behavior.KeyboardEvent.stop();
   public Rect com.lynx.tasm.behavior.KeyboardEvent.getDisplayFrame();
   public int com.lynx.tasm.behavior.KeyboardEvent.getEventViewHeight();
+  public void com.lynx.tasm.behavior.KeyboardEvent.addKeyboardEventObserver(KeyboardEventObserver observer);
+}
+
+public interface com::lynx::tasm::behavior::KeyboardEvent::KeyboardEventObserver {
+  public void com.lynx.tasm.behavior.KeyboardEvent.KeyboardEventObserver.keyboardWillShow(int keyboardHeight);
+  public void com.lynx.tasm.behavior.KeyboardEvent.KeyboardEventObserver.keyboardWillHide();
 }
 
 public class com::lynx::tasm::behavior::KeyboardMonitor : Dialog {
@@ -3024,6 +3030,7 @@ public class com::lynx::tasm::behavior::shadow::LayoutNode :  {
   public void com.lynx.tasm.behavior.shadow.LayoutNode.setCustomMeasureFunc(CustomMeasureFunc customMeasureFunc);
   public boolean com.lynx.tasm.behavior.shadow.LayoutNode.isDirty();
   public void com.lynx.tasm.behavior.shadow.LayoutNode.markDirty();
+  public void com.lynx.tasm.behavior.shadow.LayoutNode.setNeedsLayoutForce();
   public void com.lynx.tasm.behavior.shadow.LayoutNode.resetIsDirty();
   public Style com.lynx.tasm.behavior.shadow.LayoutNode.getStyle();
   public float[] com.lynx.tasm.behavior.shadow.LayoutNode.measure(float width, int widthMode, float height, int heightMode, boolean finalMeasure);
@@ -3036,6 +3043,7 @@ public class com::lynx::tasm::behavior::LayoutNodeManager :  {
   public void com.lynx.tasm.behavior.LayoutNodeManager.attachNativePtr(long mNativePtr);
   public void com.lynx.tasm.behavior.LayoutNodeManager.setMeasureFunc(int id, Object shadowNode);
   public void com.lynx.tasm.behavior.LayoutNodeManager.markDirty(int id);
+  public void com.lynx.tasm.behavior.LayoutNodeManager.setNeedsLayoutForce(int id);
   public boolean com.lynx.tasm.behavior.LayoutNodeManager.isDirty(int id);
   public long com.lynx.tasm.behavior.LayoutNodeManager.measureNativeNode(int id, float width, int widthMode, float height, int heightMode, boolean finalMeasure);
   public int[] com.lynx.tasm.behavior.LayoutNodeManager.measureNativeNodeReturnWithBaseline(int id, float width, int widthMode, float height, int heightMode, boolean finalMeasure);

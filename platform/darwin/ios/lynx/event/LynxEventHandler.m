@@ -762,7 +762,7 @@
     }
   }
 
-  return YES;
+  return !self.disableEndEditing;
 }
 
 - (void)handleFocus:(id<LynxEventTarget>)target

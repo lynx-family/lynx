@@ -95,6 +95,10 @@ public class LayoutNode {
     }
   }
 
+  public void setNeedsLayoutForce() {
+    layoutNodeManager.setNeedsLayoutForce(mSignature);
+  }
+
   public void resetIsDirty() {
     mIsDirty = false;
   }

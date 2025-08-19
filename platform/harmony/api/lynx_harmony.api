@@ -67,6 +67,7 @@ export abstract class LynxNodeController extends NodeController {
   })
   @State rootSize: Size; = { width: 0, height: 0 }
   @State logBoxTitle: string; = ''
+  @State translateY: number; = 0
   templateLoaded: boolean; = false
   threadMode: ThreadStrategyForRendering; = ThreadStrategyForRendering.ALL_ON_UI
   backgroundRuntimeOptions: LynxBackgroundRuntimeOptions; = new LynxBackgroundRuntimeOptions()
@@ -371,11 +372,12 @@ export class ShadowNode {
 }
 
 export class UIOwner {
-  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function);
+  constructor(ref: Object, create: Function, uiContext: UIContext, createNodeContent: Function, startFluencyTrace: Function, stopFluencyTrace: Function, getNodeType: (string) => number, postDrawEndTimingFrameCallback: Function, onAvoidKeyboardCallback: Function);
   attachPageRoot(content: NativeContent): void;
   getId(): string;
   destroy(id: string): void;
   requestLayout(): void;
+  keyboardStatusChanged(height: number): void;
   canConsumeTouchEvent(x: number, y: number): boolean;
 }
 
@@ -904,6 +906,8 @@ export interface LynxUIRenderer {
   updateRefreshRate(updateRefreshRate: number): void;
   updateViewport(width: number, height: number): void;
   requestLayout(): void;
+  keyboardStatusChanged(height: number): void;
+  setAvoidKeyboardListener(avoidKeyboardListener: (translateY: number) => void): void;
 }
 
 export abstract class LynxUIRendererCreator {

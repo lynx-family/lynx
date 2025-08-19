@@ -163,6 +163,7 @@
   _lynxContext.uiOwner = _uiOwner;
 
   _keyboardEventDispatcher = [[LynxKeyboardEventDispatcher alloc] initWithContext:_lynxContext];
+  _lynxContext.keyboardEventDispatcher = _keyboardEventDispatcher;
 }
 
 - (void)onPageConfigUpdate:(const std::shared_ptr<lynx::tasm::PageConfig> &)pageConfig {

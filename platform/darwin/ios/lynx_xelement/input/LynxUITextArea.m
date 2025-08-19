@@ -107,6 +107,7 @@ LYNX_PROP_SETTER("show-soft-input-on-focus", setShowSoftInputOnFocus, BOOL) {
 }
 
 - (void)layoutDidFinished {
+  [super layoutDidFinished];
   __weak __typeof(self) weakSelf = self;
   
   dispatch_async(dispatch_get_main_queue(), ^{
@@ -304,8 +305,7 @@ LYNX_UI_METHOD(setValue) {
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {
   if ([text isEqualToString:@"\n"] && textView.returnKeyType != UIReturnKeyDefault) {
     // If the confirm-type is not "default"(next-line), send confirm manually, cause UITextView do not have the callback of `textFieldShouldReturn:`
-    [self inputViewShouldReturn:textView];
-    return NO;
+    return [self inputViewShouldReturn:textView];
   }
   
   // The last line needs to be filtered when it is '\n'. This is essentially to be compatible with a bug from UIKit.

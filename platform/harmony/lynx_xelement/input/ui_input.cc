@@ -194,13 +194,18 @@ ArkUI_NodeAttributeType UIInput::GetEditingAttributeType() const {
   return NODE_TEXT_INPUT_EDITING;
 }
 
-ArkUI_NodeAttributeType UIInput::GetPlaceholderTextType() const {
+ArkUI_NodeAttributeType UIInput::GetPlaceholderTextAttributeType() const {
   return NODE_TEXT_INPUT_PLACEHOLDER;
+}
+
+ArkUI_NodeAttributeType UIInput::GetBlurOnSubmitAttributeType() const {
+  return NODE_TEXT_INPUT_BLUR_ON_SUBMIT;
 }
 
 ArkUI_NodeEventType UIInput::GetOnWillInsertEventType() const {
   return NODE_TEXT_INPUT_ON_WILL_INSERT;
 }
+
 ArkUI_NodeEventType UIInput::GetOnWillDeleteEventType() const {
   return NODE_TEXT_INPUT_ON_WILL_DELETE;
 }

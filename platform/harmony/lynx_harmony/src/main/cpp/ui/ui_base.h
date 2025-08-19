@@ -216,6 +216,8 @@ class BASE_EXPORT
   void GetBoundingClientRect(float* res, bool to_screen = false);
   void GetBoundingClientRect(const lepus::Value& args, float result[4]);
   void ResetAccessibilityAttrs();
+  virtual void OnKeyboardWillShow(float height) {}
+  virtual void OnKeyboardWillHide() {}
 
  protected:
   static void EventReceiver(ArkUI_NodeEvent* event);

@@ -11,6 +11,7 @@
 
 @class LynxUIIntersectionObserverManager;
 @class LynxUIOwner;
+@class LynxKeyboardEventDispatcher;
 
 @interface LynxContext () {
  @public
@@ -21,6 +22,7 @@
 @property(nonatomic, weak) LynxUIOwner* _Nullable uiOwner;
 @property(nonatomic, weak) LynxUIIntersectionObserverManager* _Nullable intersectionManager;
 @property(nonatomic, weak) id<LUIBodyView> _Nullable containerView;
+@property(nonatomic, weak) LynxKeyboardEventDispatcher* _Nullable keyboardEventDispatcher;
 
 // Generated in the LynxShell, id of template instance.
 // instanceId is a value greater than or equal to 0, the initial value is -1.

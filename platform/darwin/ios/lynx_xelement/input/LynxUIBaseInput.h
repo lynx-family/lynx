@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) NSInteger maxLength;
 @property (nonatomic, assign) BOOL readonly;
 @property (nonatomic, assign) BOOL sendComposingInputEvent;
+@property (nonatomic, assign) BOOL confirmEnter;
 
 @property (nonatomic, strong) UIFont *font;
 

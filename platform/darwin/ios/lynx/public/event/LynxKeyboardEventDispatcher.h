@@ -9,9 +9,18 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@protocol LynxKeyboardEventObserver <NSObject>
+
+- (void)keyboardWillShow:(CGFloat)keyboardHeight;
+
+- (void)keyboardWillHide;
+
+@end
+
 @interface LynxKeyboardEventDispatcher : NSObject
 
 - (instancetype)initWithContext:(LynxContext *)context;
+- (void)addKeyboardEventObserver:(id<LynxKeyboardEventObserver>)observer;
 
 @end
 

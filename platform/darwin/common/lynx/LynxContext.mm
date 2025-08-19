@@ -3,6 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxExtensionModule.h>
+#if TARGET_OS_IPHONE
+#import <Lynx/LynxKeyboardEventDispatcher.h>
+#endif
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxView+Internal.h>
@@ -120,6 +123,12 @@ NSString *const kDefaultComponentID = @"-1";
 
 - (nonnull id<LynxExtensionModule>)getExtensionModuleByKey:(nonnull NSString *)key {
   return [_extentionModules valueForKey:key];
+}
+
+- (void)addKeyboardEventObserver:(id)observer {
+#if TARGET_OS_IPHONE
+  [_keyboardEventDispatcher addKeyboardEventObserver:observer];
+#endif
 }
 
 @end

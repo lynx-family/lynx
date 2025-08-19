@@ -6,27 +6,33 @@
 #import <XElement/LynxUIBaseInputShadowNode.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxUIOwner.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxNativeLayoutNode.h>
 #import <Lynx/LynxFontFaceManager.h>
 #import <Lynx/LynxConverter+UI.h>
 #import <Lynx/LynxColorUtils.h>
 #import <Lynx/LynxShadowNodeOwner.h>
+#import <Lynx/LynxKeyboardEventDispatcher.h>
 #import <XElement/LynxTextKeyListener.h>
 #import <XElement/LynxDigitKeyListener.h>
 #import <XElement/LynxDialerKeyListener.h>
 #import <Lynx/LynxUnitUtils.h>
+#import <Lynx/LynxEventHandler.h>
 
 #define UNDEFINED_INT NSUIntegerMax
 #define UNDEFINED_FLOAT CGFLOAT_MIN
 
-@interface LynxUIBaseInput () <LynxFontFaceObserver>
+@interface LynxUIBaseInput () <LynxFontFaceObserver, LynxKeyboardEventObserver>
 
 @property (nonatomic, strong) NSString *preValue;
 @property (nonatomic, strong) NSDictionary *preInputData;
 @property (nonatomic, strong) NSString *inputFilterRegex;
 @property (nonatomic, strong) id<LynxKeyListener> keyListener;
-
+@property (nonatomic, assign) BOOL avoidKeyboardInLynxView;
+@property (nonatomic, assign) CGFloat avoidKeyboardSpacingInLynxView;
+@property (nonatomic, assign) CGFloat keyboardHeight;
+@property (nonatomic, assign) CGFloat avoidKeyboardDist;
 @end
 
 @implementation LynxUIBaseInput
@@ -60,6 +66,62 @@
     _keyListener = [[LynxTextKeyListener alloc] init];
   }
   return self;
+}
+
+- (void)setContext:(LynxUIContext *)context {
+  [super setContext:context];
+  [context.lynxContext addKeyboardEventObserver:self];
+}
+
+- (CGFloat)handleAvoidKeyboard:(BOOL)keyboardDisplayed {
+  if (self.avoidKeyboardInLynxView && self.view.isFirstResponder) {
+    if (keyboardDisplayed) {
+      CGRect rectInRoot = [self.view convertRect:self.view.bounds toView:nil];
+      CGFloat bottomToScreen = UIScreen.mainScreen.bounds.size.height - CGRectGetMaxY(rectInRoot);
+      CGFloat gap = self.keyboardHeight - bottomToScreen + self.avoidKeyboardSpacingInLynxView;
+      if (self.avoidKeyboardDist == 0) {
+        if (gap > 0) {
+          CGRect targetFrame = self.context.rootView.frame;
+          targetFrame.origin.y -= gap;
+          [UIView animateWithDuration:0.3 animations:^{
+            [self.context.rootView setFrame:targetFrame];
+          }];
+          return gap;
+        }
+      } else {
+        CGRect targetFrame = self.context.rootView.frame;
+        targetFrame.origin.y -= gap;
+        [UIView animateWithDuration:0.3 animations:^{
+          [self.context.rootView setFrame:targetFrame];
+        }];
+        return gap;
+      }
+    } else {
+      if (self.avoidKeyboardDist != 0) {
+        CGRect targetFrame = self.context.rootView.frame;
+        targetFrame.origin.y += self.avoidKeyboardDist;
+        [UIView animateWithDuration:0.3 animations:^{
+          [self.context.rootView setFrame:targetFrame];
+        }];
+      }
+    }
+  }
+  return 0;
+}
+
+- (void)keyboardWillShow:(CGFloat)keyboardHeight {
+  if (self.view.isFirstResponder) {
+    self.keyboardHeight = keyboardHeight;
+    self.avoidKeyboardDist = [self handleAvoidKeyboard:YES];
+    [self emitEvent:@"keyboardheightchange " detail:@{@"height" : @(keyboardHeight)}];
+  }
+}
+
+- (void)keyboardWillHide {
+  if (self.view.isFirstResponder) {
+    self.avoidKeyboardDist = [self handleAvoidKeyboard:NO];
+    [self emitEvent:@"keyboardheightchange " detail:@{@"height" : @(0)}];
+  }
 }
 
 - (void)onFontFaceLoad {
@@ -268,6 +330,28 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {
   self.placeholder = value;
 }
 
+LYNX_PROP_SETTER("confirm-enter", setConfirmEnter, BOOL) {
+  self.confirmEnter = value;
+}
+
+LYNX_PROP_SETTER("avoid-keyboard", setAvoidKeyboard, BOOL) {
+  self.avoidKeyboardInLynxView = value;
+}
+
+LYNX_PROP_SETTER("avoid-keyboard-spacing", setAvoidKeyboardSpacing, id) {
+  CGFloat spacing = 0;
+  if ([value isKindOfClass:NSString.class]) {
+    spacing = [self toPtWithUnitValue:value fontSize:0];
+  } else if ([value isKindOfClass:NSNumber.class]) {
+    spacing = [value doubleValue];
+  }
+  self.avoidKeyboardSpacingInLynxView = spacing;
+}
+
+LYNX_PROP_SETTER("hold-keyboard", setHoldKeyboard, BOOL) {
+  self.context.eventHandler.disableEndEditing = value;
+}
+
 - (void)propsDidUpdate {
   _font = [[LynxFontFaceManager sharedManager]
                   generateFontWithSize:self.fontSize
@@ -296,6 +380,11 @@ LYNX_PROP_SETTER("placeholder", setPlaceholder, NSString *) {
   if (_placeholderFont) {
     self.placeholderAttrs[NSFontAttributeName] = _placeholderFont;;
   }
+}
+
+- (void)layoutDidFinished {
+  [super layoutDidFinished];
+  self.avoidKeyboardDist += [self handleAvoidKeyboard:YES];
 }
 
 - (BOOL)shouldHitTest:(CGPoint)point withEvent:(nullable UIEvent*)event {
@@ -382,7 +471,9 @@ LYNX_UI_METHOD(setSelectionRange) {
   }];
   
   if (self.view.returnKeyType != UIReturnKeyNext) {
-    [self.view resignFirstResponder];
+    if (!self.confirmEnter) {
+      [self.view resignFirstResponder];
+    }
   } else {
     NSInteger nextTag = self.view.tag + 1;
     // Try to find next responder
@@ -390,11 +481,11 @@ LYNX_UI_METHOD(setSelectionRange) {
     if (nextResponder != nil) {
       // Found next responder, so set it.
       [nextResponder becomeFirstResponder];
-    } else {
+    } else if (!self.confirmEnter) {
       [self.view resignFirstResponder];
     }
   }
-  return YES;
+  return !self.confirmEnter;
 }
 
 
