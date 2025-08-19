@@ -1504,15 +1504,7 @@ bool Element::FlushAnimatedStyle() {
       break;
     }
   }
-  fml::RefPtr<PropBundle> bundle;
-  if (has_layout_style) {
-    bundle = nullptr;
-  } else if (prop_bundle_) {
-    bundle = prop_bundle_;
-  } else {
-    bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
-  }
-
+  fml::RefPtr<PropBundle> bundle = MakeBundleForAnimation(has_layout_style);
   bool has_render_style = false;
   for (const auto& style : *final_animator_map_) {
     // Record previous before rtl-converter for transition.
@@ -1526,49 +1518,73 @@ bool Element::FlushAnimatedStyle() {
       FlushAnimatedStyleInternal(style.first, style.second);
     } else {
       // If it's a render property, push it to the temporary bundle.
-      if (computed_css_style()->SetValue(style.first, style.second)) {
-        auto property_name = CSSProperty::GetPropertyName(style.first).c_str();
-        auto style_value = computed_css_style()->GetValue(style.first);
-        has_render_style = true;
-
-        switch (style.first) {
-          case kPropertyIDTransform:
-            bundle->SetProps(property_name, pub::ValueImplLepus(style_value));
-            break;
-          case kPropertyIDColor:
-          case kPropertyIDBackgroundColor:
-          case kPropertyIDBorderLeftColor:
-          case kPropertyIDBorderRightColor:
-          case kPropertyIDBorderTopColor:
-          case kPropertyIDBorderBottomColor:
-            bundle->SetProps(property_name,
-                             static_cast<unsigned int>(style_value.Number()));
-            break;
-          case kPropertyIDOpacity:
-            bundle->SetProps(property_name, style_value.Number());
-            break;
-          case kPropertyIDOffsetDistance:
-            bundle->SetProps(property_name, style_value.Number());
-            break;
-          default:
-            LOGE("[animation] unsupported animation value type for css:"
-                 << style.first);
-            break;
-        }
-      }
+      has_render_style |=
+          WriteRenderStyleToBundle(bundle, style.first, style.second);
     }
   }
   if (has_render_style && !prop_bundle_) {
-    // // Flush prop_bundle to PaintingNode for render value.
-    HandleDelayTask([this, id = impl_id(), tend_to_flatten = TendToFlatten(),
-                     bundle_ = bundle]() {
-      painting_context()->UpdatePaintingNode(id, tend_to_flatten,
-                                             std::move(bundle_));
-      painting_context()->OnNodeReady(id);
-    });
+    DispatchBundleToPaintingNode(bundle);
   }
   final_animator_map_.reset();
   return has_layout_style || !has_painting_node_;
+}
+
+void Element::FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value) {
+  auto style = std::make_pair(id, std::move(value));
+  const bool has_layout_style = NeedFastFlushPath(style);
+  auto bundle = MakeBundleForAnimation(has_layout_style);
+  if (has_layout_style || !has_painting_node_) {
+    FlushAnimatedStyleInternal(id, style.second);
+    return;
+  }
+  if (WriteRenderStyleToBundle(bundle, id, style.second) && !prop_bundle_) {
+    DispatchBundleToPaintingNode(bundle);
+  }
+}
+
+fml::RefPtr<PropBundle> Element::MakeBundleForAnimation(bool has_layout_style) {
+  if (has_layout_style) return nullptr;
+  if (prop_bundle_) return prop_bundle_;
+  return element_manager()->GetPropBundleCreator()->CreatePropBundle();
+}
+
+bool Element::WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
+                                       tasm::CSSPropertyID id,
+                                       const tasm::CSSValue& value) {
+  if (!computed_css_style()->SetValue(id, value)) {
+    return false;
+  }
+  const char* property_name = CSSProperty::GetPropertyName(id).c_str();
+  auto style_value = computed_css_style()->GetValue(id);
+  switch (id) {
+    case kPropertyIDTransform:
+      bundle->SetProps(property_name, pub::ValueImplLepus(style_value));
+      return true;
+    case kPropertyIDColor:
+    case kPropertyIDBackgroundColor:
+    case kPropertyIDBorderLeftColor:
+    case kPropertyIDBorderRightColor:
+    case kPropertyIDBorderTopColor:
+    case kPropertyIDBorderBottomColor:
+      bundle->SetProps(property_name,
+                       static_cast<unsigned int>(style_value.Number()));
+      return true;
+    case kPropertyIDOpacity:
+    case kPropertyIDOffsetDistance:
+      bundle->SetProps(property_name, style_value.Number());
+      return true;
+    default:
+      LOGE("[animation] unsupported animation value type for css:" << id);
+      return false;
+  }
+}
+
+void Element::DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle) {
+  HandleDelayTask([this, impl_id = impl_id(), tend_to_flatten = TendToFlatten(),
+                   bundle = bundle]() {
+    painting_context()->UpdatePaintingNode(impl_id, tend_to_flatten, bundle);
+    painting_context()->OnNodeReady(impl_id);
+  });
 }
 
 bool Element::ShouldConsumeTransitionStylesInAdvance() {

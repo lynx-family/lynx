@@ -152,6 +152,23 @@ bool ListChildrenHelper::AddToStickyItemHolderSet(ItemHolder* item_holder) {
   return false;
 }
 
+void ListChildrenHelper::AddDeferredDestroyItemHolder(ItemHolder* holder) {
+  deferred_destroy_children_.insert(holder);
+}
+
+void ListChildrenHelper::TraverseDeferredDestroyItemHolder(
+    std::function<void(ItemHolder*)> fn) {
+  if (!deferred_destroy_children_.empty()) {
+    for (auto& child : deferred_destroy_children_) {
+      fn(child);
+    }
+  }
+}
+
+void ListChildrenHelper::DestroyDeferredDestroyItemHolder() {
+  deferred_destroy_children_.clear();
+}
+
 bool ListChildrenHelper::InStickyItemHolderSet(
     const ItemHolder* item_holder) const {
   if (item_holder->sticky_top()) {

@@ -143,6 +143,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   virtual Element* GetListItemElement(const ItemHolder* item_holder) = 0;
 
+  virtual void RecycleItemHolder(const ItemHolder* item_holder) {}
+
   DiffResult UpdateDataSource(const lepus::Value& data_source);
 
   DiffResult UpdateFiberDataSource(const lepus::Value& data_source);

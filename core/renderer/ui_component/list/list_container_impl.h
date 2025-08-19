@@ -32,7 +32,9 @@ class ListContainerImpl : public ListContainer::Delegate,
   ~ListContainerImpl();
 
   // ItemHolder::AnimationDelegate
-  bool InAnimationProcess() const override;
+  list::ListContainerAnimationType AnimationType() const override;
+  void RecycleItemHolder(ItemHolder* holder) override;
+  void DeferredDestroyItemHolder(ItemHolder* holder) override;
 
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override;
@@ -183,11 +185,10 @@ class ListContainerImpl : public ListContainer::Delegate,
 
   // list animation.
   bool update_animation_{false};
-  ListContainer::AnimationType animation_type_{
-      ListContainer::AnimationType::kNone};
+  list::ListContainerAnimationType animation_type_{
+      list::ListContainerAnimationType::kNone};
   std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;
-
-  fml::WeakPtrFactory<ListContainerImpl> weak_factory_;
+  ListAdapter::DiffResult diff_result_{ListAdapter::DiffResult::kNone};
 
   struct ListOption {
     list::BatchRenderStrategy batch_render_strategy{
@@ -198,6 +199,8 @@ class ListContainerImpl : public ListContainer::Delegate,
 
  public:
   bool need_preload_section_on_next_frame_{false};
+
+  fml::WeakPtrFactory<ListContainerImpl> weak_factory_;
 };
 
 }  // namespace tasm

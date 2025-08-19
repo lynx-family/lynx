@@ -17,7 +17,6 @@ namespace tasm {
 
 class ListContainer {
  public:
-  enum AnimationType { kNone, kRemove };
   class Delegate {
    public:
     virtual ~Delegate() = default;
