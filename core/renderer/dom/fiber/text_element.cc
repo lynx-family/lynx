@@ -110,6 +110,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
     content_ = !is_reset ? ConvertContent(value) : base::String();
     content_utf16_length_ =
         GetUtf16SizeFromUtf8(content_.c_str(), content_.length());
+    MarkLayoutDirty();
     return true;
   }
 
@@ -119,6 +120,7 @@ bool TextElement::ProcessAttributeForLayoutInElement(const base::String& key,
         !is_reset
             ? (value.IsNumber() ? value.Number() : std::stoi(value.StdString()))
             : 1;
+    MarkLayoutDirty();
     return true;
   }
   return false;
