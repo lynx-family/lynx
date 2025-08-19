@@ -57,7 +57,7 @@ class LynxEnginePool {
     if (TraceEvent.isTracingStarted()) {
       Map<String, String> map = new HashMap<>();
       map.put("engineQueue", engineQueue.toString());
-      map.put("engineQueue", String.valueOf(templateBundle));
+      map.put("templateBundle", String.valueOf(templateBundle));
       TraceEvent.beginSection(TraceEventDef.LYNX_ENGINE_POOL_POOL_ENGINE, map);
     }
     LynxEngine backupLynxEngine = null;

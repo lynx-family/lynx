@@ -32,7 +32,13 @@ void LynxEngineWrapper::BindShell(lynx::shell::LynxShell *shell) {
   shell->tasm_mediator_->ResetMediatorActor(shell->layout_actor_,
                                             shell->facade_actor_,
                                             shell->perf_controller_actor_);
-
+  auto tasm = shell->engine_actor_->Impl()->GetTasm();
+  if (tasm) {
+    tasm->page_proxy()
+        ->element_manager()
+        ->painting_context()
+        ->SetUIOperationQueue(shell->ui_operation_queue_);
+  }
   this->engine_actor_ = shell->engine_actor_;
   this->layout_actor_ = shell->layout_actor_;
 }
