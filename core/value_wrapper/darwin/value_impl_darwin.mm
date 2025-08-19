@@ -74,7 +74,10 @@ uint8_t* ValueImplDarwin::ArrayBuffer() const {
 
 const std::string& ValueImplDarwin::str() const {
   if (IsString() && cached_str_.empty()) {
-    const_cast<ValueImplDarwin*>(this)->cached_str_ = [backend_value_ UTF8String];
+    const char* utf8_string = [backend_value_ UTF8String];
+    if (utf8_string) {
+      const_cast<ValueImplDarwin*>(this)->cached_str_ = utf8_string;
+    }
   }
   return cached_str_;
 }
