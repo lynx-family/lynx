@@ -91,6 +91,9 @@ public class LynxView extends UIBodyView {
   private volatile boolean mHasReportedAccessFromNonUiThread = false;
   private static final Looper sMainLooper = Looper.getMainLooper();
 
+  private int mCurrentWidthMeasureSpec = 0;
+  private int mCurrentHeightMeasureSpec = 0;
+
   public LynxView(Context context) {
     super(context);
   }
@@ -1005,8 +1008,19 @@ public class LynxView extends UIBodyView {
     mLynxTemplateRender.updateGlobalProps(props);
   }
 
+  int getCurrentWidthMeasureSpec() {
+    return mCurrentWidthMeasureSpec;
+  }
+
+  int getCurrentHeightMeasureSpec() {
+    return mCurrentHeightMeasureSpec;
+  }
+
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    mCurrentWidthMeasureSpec = widthMeasureSpec;
+    mCurrentHeightMeasureSpec = heightMeasureSpec;
+
     LLog.d("Lynx",
         "onMeasure:" + hashCode() + ", width" + MeasureSpec.toString(widthMeasureSpec) + ", height"
             + MeasureSpec.toString(heightMeasureSpec));
@@ -1076,6 +1090,9 @@ public class LynxView extends UIBodyView {
    * @param heightMeasureSpec Current `LynxView` height.
    */
   public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
+    mCurrentWidthMeasureSpec = widthMeasureSpec;
+    mCurrentHeightMeasureSpec = heightMeasureSpec;
+
     checkAccessFromNonUiThread("updateViewport");
     if (mLynxTemplateRender == null) {
       return;
