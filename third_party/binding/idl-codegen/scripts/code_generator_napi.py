@@ -238,17 +238,16 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             ]
         generates_remote = self.hardcoded_includes.get(template_context['component'], {}).get('has_remote', False)
         if generates_remote:
-            try:
-                template_context['remote_class'] = 'Remote' + name
-                remote_cpp_template_filename = 'remote_command_buffer.cc.tmpl'
-                remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
-                _, remote_cpp_text = self.render_templates(
-                    include_paths, remote_cpp_template, remote_cpp_template, template_context,
-                    template_context['component'])
-                out.append((remote_cpp_path, remote_cpp_text))
-            except:
-                pass
+            template_context['remote_class'] = 'Remote' + name
+            remote_cpp_template_filename = 'remote_command_buffer.cc.tmpl'
+            remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
+            _, remote_cpp_text = self.render_templates(
+                include_paths, remote_cpp_template, remote_cpp_template, template_context,
+                template_context['component'])
+            out.append((remote_cpp_path, remote_cpp_text))
+
         remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
+        template_context['remote_ids_filename'] = 'remote' + NameStyleConverter(template_context['component'] + 'Ids').to_upper_camel_case()
         for js_class in template_context.get('interfaces', []):
             if js_class['shared_impl']:
                 continue
@@ -274,7 +273,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 'overload_resolvers_prefix': self.hardcoded_includes.get(template_context['component'], {}).get('overload_resolvers_prefix', '0'),
                 'remote_type_id': js_class['remote_type_id'],
                 'remote_constructor_num': js_class['remote_constructor_num'],
-                'remote_destructor_id': js_class['remote_destructor_id'],
+                'remote_ids_filename': template_context['remote_ids_filename'],
             }
             js_template = self.jinja_env.get_template('opts.js.tmpl')
             js_path = self.js_output_path(js_class['type_name'])
@@ -283,14 +282,16 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 js_text = render_template(js_template, class_context)
                 out.append((js_path, js_text))
             if generates_remote:
-                try:
-                    remote_js_template = self.jinja_env.get_template('remote.js.tmpl')
-                    remote_js_path = self.js_output_path('remote' + js_class['type_name'], remote_js_outdir)
-                    remote_js_text = render_template(remote_js_template, class_context)
-                    out.append((remote_js_path, remote_js_text))
-                except:
-                    pass
+                remote_js_template = self.jinja_env.get_template('remote.js.tmpl')
+                remote_js_path = self.js_output_path('remote' + js_class['type_name'], remote_js_outdir)
+                remote_js_text = render_template(remote_js_template, class_context)
+                out.append((remote_js_path, remote_js_text))
 
+        if generates_remote:
+            remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
+            remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
+            remote_js_text = render_template(remote_js_template, template_context)
+            out.append((remote_js_path, remote_js_text))
         return out
 
     def generate_interface_code(self, definitions, interface_name, interface):
@@ -438,24 +439,22 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                     skip_generation = True
                     break
             if not skip_generation:
-                try:
-                    template_context['has_remote'] = True
-                    remote_cpp_template_filename = 'remote_dictionary.cc.tmpl'
-                    remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
-                    _, remote_cpp_text = self.render_templates(
-                        include_paths, remote_cpp_template, remote_cpp_template, template_context,
-                        component)
-                    _, remote_cpp_path = self.output_paths(dictionary_name, prefix='remote_')
-                    out.append((remote_cpp_path, remote_cpp_text))
+                template_context['has_remote'] = True
+                remote_cpp_template_filename = 'remote_dictionary.cc.tmpl'
+                remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
+                _, remote_cpp_text = self.render_templates(
+                    include_paths, remote_cpp_template, remote_cpp_template, template_context,
+                    component)
+                _, remote_cpp_path = self.output_paths(dictionary_name, prefix='remote_')
+                out.append((remote_cpp_path, remote_cpp_text))
 
-                    remote_js_template = self.jinja_env.get_template('remote_dictionary.js.tmpl')
-                    _, remote_js_text = self.render_templates(
-                        include_paths, remote_js_template, remote_js_template, template_context,
-                        component)
-                    remote_js_path = self.js_output_path('remote' + dictionary_name)
-                    out.append((remote_js_path, remote_js_text))
-                except Exception as e:
-                    pass
+                remote_js_template = self.jinja_env.get_template('remote_dictionary.js.tmpl')
+                _, remote_js_text = self.render_templates(
+                    include_paths, remote_js_template, remote_js_template, template_context,
+                    component)
+                remote_js_path = self.js_output_path('remote' + dictionary_name)
+                out.append((remote_js_path, remote_js_text))
+
         header_text, cpp_text = self.render_templates(
             include_paths, header_template, cpp_template, template_context)
         out.append((header_path, header_text))

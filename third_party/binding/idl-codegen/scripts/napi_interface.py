@@ -493,7 +493,6 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
         ptr_name = NameStyleConverter(interface.name).to_snake_case()
 
         # Account for remote constructors/destructors.
-        remote_destructor_id = 0
         constructors = []
         if buffer_commands_for_remote and not interface.shared_impl:
             constructors = [
@@ -508,7 +507,6 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
                     constructor.update({'overload_index': overload_index})
                     overload_index += 1
                 add_buffered_method(interface, constructor, ptr_name, command_buffer_context, overloads_child_only, True)
-            remote_destructor_id = command_buffer_context['remote_method_index']
             add_buffered_method(interface, {'name': 'destructor', 'from_shared': False}, ptr_name, command_buffer_context, overloads_child_only, True)
 
         # Convert remote attributes to setter/getters.
@@ -567,7 +565,6 @@ def methods_context(interface, component_info, interfaces_info, interfaces):
             'remote_only': remote_only,
             'remote_type_id': command_buffer_context['remote_type_id'],
             'remote_constructor_num': len(constructors),
-            'remote_destructor_id': remote_destructor_id,
         })
         command_buffer_context['remote_type_id'] += 1
 
