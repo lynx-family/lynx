@@ -140,6 +140,10 @@ public class TextMeasurer {
           text = iterator.next().getString();
           textAttributes =
               ensureTextAttributes(textAttributes); // by default, we need a para textAttributes...
+          if (textAttributes.mFontSize == MeasureUtils.UNDEFINED) {
+            textAttributes.setFontSize(
+                Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density)));
+          }
 
           // TODO(linxs): it's better to move the decode logic to C++ size
           int wordBreakStyle = UnicodeFontUtils.DECODE_DEFAULT;
@@ -198,6 +202,16 @@ public class TextMeasurer {
           }
           textAttributes = ensureTextAttributes(textAttributes);
           textAttributes.mMaxLineCount = maxLine;
+          break;
+
+        case kTextPropWhiteSpace:
+          int whitespace = iterator.next().getInt();
+          if (!isParagraph) {
+            Log.w("TextMeasurer", "white-space should be set to paragraph");
+            continue;
+          }
+          textAttributes = ensureTextAttributes(textAttributes);
+          textAttributes.mWhiteSpace = whitespace;
           break;
 
         case kTextPropTextOverflow:
@@ -525,7 +539,7 @@ public class TextMeasurer {
 
   private TextAttributes buildTextAttributes() {
     TextAttributes attr = new TextAttributes();
-    attr.setFontSize(Math.round(PixelUtils.dipToPx(14, mContext.getScreenMetrics().density)));
+    attr.setFontSize(MeasureUtils.UNDEFINED);
     return attr;
   }
 

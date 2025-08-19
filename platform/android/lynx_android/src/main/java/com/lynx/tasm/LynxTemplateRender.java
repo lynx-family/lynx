@@ -1559,7 +1559,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       }
       fallbackNewEngine(false);
     } else if (mLynxEngineRef.hasLoaded()) {
-      if (getLynxView() != null) {
+      if (getLynxView() != null && getLynxView().getCurrentWidthMeasureSpec() >= 0
+          && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
         updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
             getLynxView().getCurrentHeightMeasureSpec(), false);
       }
@@ -1586,7 +1587,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
 
-    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null) {
+    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null
+        && getLynxView().getCurrentWidthMeasureSpec() >= 0
+        && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
       updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
           getLynxView().getCurrentHeightMeasureSpec(), false);
     }

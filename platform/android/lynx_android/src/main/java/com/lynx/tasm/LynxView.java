@@ -91,8 +91,8 @@ public class LynxView extends UIBodyView {
   private volatile boolean mHasReportedAccessFromNonUiThread = false;
   private static final Looper sMainLooper = Looper.getMainLooper();
 
-  private int mCurrentWidthMeasureSpec = 0;
-  private int mCurrentHeightMeasureSpec = 0;
+  private int mCurrentWidthMeasureSpec = -1;
+  private int mCurrentHeightMeasureSpec = -1;
 
   public LynxView(Context context) {
     super(context);
