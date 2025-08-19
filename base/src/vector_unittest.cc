@@ -130,6 +130,50 @@ void _checkVector([[maybe_unused]] const Vector<T>& array,
 
 #define CheckVector(array) _checkVector(array, __LINE__)
 
+TEST(Vector, InlineTypeNoFullValueInitialization) {
+  // This test make sure that inlined types will not be fully
+  // value initialized with zero bytes.
+  {
+    using Type = InlineVector<std::string, 100>;
+    unsigned char buffer[sizeof(Type)];
+    std::memset(buffer, 0xAA, sizeof(buffer));
+    new (buffer) Type();
+    EXPECT_EQ(buffer[sizeof(buffer) - 1], 0xAA);  // byte not set to zero
+  }
+
+  {
+    using Type = InlineOrderedFlatMap<std::string, std::string, 100>;
+    unsigned char buffer[sizeof(Type)];
+    std::memset(buffer, 0xAA, sizeof(buffer));
+    new (buffer) Type();
+    EXPECT_EQ(buffer[sizeof(buffer) - 1], 0xAA);  // byte not set to zero
+  }
+
+  {
+    using Type = InlineOrderedFlatSet<std::string, 100>;
+    unsigned char buffer[sizeof(Type)];
+    std::memset(buffer, 0xAA, sizeof(buffer));
+    new (buffer) Type();
+    EXPECT_EQ(buffer[sizeof(buffer) - 1], 0xAA);  // byte not set to zero
+  }
+
+  {
+    using Type = InlineLinearFlatMap<std::string, std::string, 100>;
+    unsigned char buffer[sizeof(Type)];
+    std::memset(buffer, 0xAA, sizeof(buffer));
+    new (buffer) Type();
+    EXPECT_EQ(buffer[sizeof(buffer) - 1], 0xAA);  // byte not set to zero
+  }
+
+  {
+    using Type = InlineLinearFlatSet<std::string, 100>;
+    unsigned char buffer[sizeof(Type)];
+    std::memset(buffer, 0xAA, sizeof(buffer));
+    new (buffer) Type();
+    EXPECT_EQ(buffer[sizeof(buffer) - 1], 0xAA);  // byte not set to zero
+  }
+}
+
 TEST(Vector, ByteArray) {
   struct Range {
     uint32_t start;

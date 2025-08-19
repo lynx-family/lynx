@@ -189,7 +189,7 @@ struct VectorPrototype {
   using iterator = T*;
   using const_iterator = const T*;
 
-  VectorPrototype() = default;
+  VectorPrototype() {}
 
   [[maybe_unused]] size_t size() const { return count_; }
 
@@ -625,7 +625,7 @@ struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
    * @brief We allows 'array = nullptr' to reset and clear memory of array.
    */
   Vector(std::nullptr_t) {}  // NOLINT
-  Vector() = default;
+  Vector() {}
   explicit Vector(size_t count) { _construct_fill_default(count); }
 
   Vector(size_t count, const T& value) { _construct_fill(count, value); }
@@ -1785,7 +1785,7 @@ struct KeyValueArray : protected MapStatisticsBase<Stat> {
       typename container_type::const_reverse_iterator;
 
  public:
-  KeyValueArray() = default;
+  KeyValueArray() {}
 
   // Only when not using hash, the internal array can be moved from source.
   // Because we are using extra leading bytes of array buffer to store hash
@@ -1993,7 +1993,7 @@ struct BinarySearchArray : public KeyValueArray<K, T, void, N, Stat> {
   using KeyValueArray<K, T, void, N, Stat>::erase;
 
  public:
-  BinarySearchArray() = default;
+  BinarySearchArray() {}
   BinarySearchArray(std::initializer_list<value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
@@ -2265,7 +2265,7 @@ struct LinearSearchArray : public KeyValueArray<K, T, KeyPolicy, N, Stat> {
   }
 
  public:
-  LinearSearchArray() = default;
+  LinearSearchArray() {}
 
   LinearSearchArray(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
@@ -2806,7 +2806,7 @@ struct BinarySearchMap : public BinarySearchArray<K, T, N, Compare, Stat> {
   using BinarySearchArray<K, T, N, Compare, Stat>::lower_bound;
   using KeyValueArray<K, T, void, N, Stat>::end;
 
-  BinarySearchMap() = default;
+  BinarySearchMap() {}
   BinarySearchMap(std::initializer_list<value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
@@ -3008,7 +3008,7 @@ struct BinarySearchSet : public BinarySearchArray<K, void, N, Compare, Stat> {
   using typename BinarySearchArray<K, void, N, Compare, Stat>::iterator;
   using BinarySearchArray<K, void, N, Compare, Stat>::insert;
 
-  BinarySearchSet() = default;
+  BinarySearchSet() {}
   BinarySearchSet(std::initializer_list<value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
@@ -3084,7 +3084,7 @@ struct LinearSearchMap : public LinearSearchArray<K, T, KeyPolicy, N, Stat> {
   using LinearSearchArray<K, T, KeyPolicy, N, Stat>::find_exact;
   using KeyValueArray<K, T, KeyPolicy, N, Stat>::end;
 
-  LinearSearchMap() = default;
+  LinearSearchMap() {}
   LinearSearchMap(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
@@ -3675,7 +3675,7 @@ struct LinearSearchSet : public LinearSearchArray<K, void, KeyPolicy, N, Stat> {
   using typename LinearSearchArray<K, void, KeyPolicy, N, Stat>::iterator;
   using LinearSearchArray<K, void, KeyPolicy, N, Stat>::insert;
 
-  LinearSearchSet() = default;
+  LinearSearchSet() {}
   LinearSearchSet(std::initializer_list<insert_value_type> list) {
     array_.reserve(list.size());
     for (auto& v : list) {
