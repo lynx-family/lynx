@@ -1730,8 +1730,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     this.updateData(templateData, false);
   }
 
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
   public TemplateData getTemplateData() {
-    return mTemplateData;
+    return mTemplateData.shallowClone();
   }
 
   public void updateMetaData(LynxUpdateMeta meta) {

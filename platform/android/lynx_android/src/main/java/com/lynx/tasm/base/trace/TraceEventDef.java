@@ -110,6 +110,7 @@ public class TraceEventDef {
   public static final String CLIENT_ON_FIRST_SCREEN = "Client.onFirstScreen";
   public static final String TEMPLATE_BUNDLE_FROM_TEMPLATE = "TemplateBundle.fromTemplate";
   public static final String TEMPLATE_DATA_FROM_MAP = "TemplateData.FromMap";
+  public static final String TEMPLATE_DATA_SHALLOW_CLONE = "TemplateData.ShallowClone";
   public static final String TEMPLATE_DATA_FROM_STRING = "TemplateData.FromString";
   public static final String CLEAN_REF_RUN_CLEAN_TASK_REAPER_THREAD =
       "CleanupReference.ReaperThread.runCleanupTask";
