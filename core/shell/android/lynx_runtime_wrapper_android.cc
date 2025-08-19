@@ -45,7 +45,7 @@ static jlong CreateBackgroundRuntimeWrapper(
       std::make_shared<lynx::pub::LynxNativeModuleManager>();
   // set platform factory
   native_module_manager->SetPlatformModuleFactory(
-      std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
+      std::make_shared<lynx::piper::ModuleFactoryAndroid>(env,
                                                           java_module_factory));
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
   std::string group_name =

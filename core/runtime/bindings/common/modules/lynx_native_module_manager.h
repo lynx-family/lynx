@@ -52,7 +52,7 @@ class LynxNativeModuleManager {
   // form of weakPtr, can directly use SetModuleFactory Used for create
   // PlatformModule
   virtual void SetPlatformModuleFactory(
-      std::unique_ptr<piper::NativeModuleFactory> module_factory);
+      std::shared_ptr<piper::NativeModuleFactory> module_factory);
 
   // Set delegate for module manager.
   virtual void SetModuleDelegate(
@@ -79,7 +79,7 @@ class LynxNativeModuleManager {
   // Maybe use by platform.
   // When re-attaching in standalone mode, it needs to support modification, so
   // it needs to be accessed by the platform, so it is placed independently.
-  std::unique_ptr<piper::NativeModuleFactory> platform_module_factory_;
+  std::shared_ptr<piper::NativeModuleFactory> platform_module_factory_;
   std::shared_ptr<piper::ModuleDelegate> delegate_;
 };
 }  // namespace pub

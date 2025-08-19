@@ -165,15 +165,15 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 @implementation LynxBackgroundRuntime {
   NSHashTable<id<LynxBackgroundRuntimeLifecycle>>* _innerLifecycleClients;
   LynxBackgroundRuntimeState _state;
-  std::weak_ptr<lynx::piper::LynxModuleManager> _weak_module_manager;
+  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> _weak_module_factory;
   std::shared_ptr<lynx::shell::JSProxyDarwin> _js_proxy;
   std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG> _runtime_observer;
   lynx::shell::InitRuntimeStandaloneResult _runtime_standalone_bundle;
   LynxDevtool* _devTool;
 }
 
-- (std::weak_ptr<lynx::piper::LynxModuleManager>)moduleManagerPtr {
-  return _weak_module_manager;
+- (std::weak_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr {
+  return _weak_module_factory;
 }
 
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>)runtimeActor {
@@ -213,9 +213,14 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     _innerLifecycleClients = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory];
     [self initDevTool];
 
-    auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
-    _weak_module_manager = module_manager;
-    auto module_factory = std::make_unique<lynx::piper::ModuleFactoryDarwin>();
+    // create NativeModuleManager
+    std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+        std::make_shared<lynx::pub::LynxNativeModuleManager>();
+    // create ModuleFactory
+    auto module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+    // cache ModuleFactory with weak_ptr
+    _weak_module_factory = module_factory;
+    native_module_manager->SetPlatformModuleFactory(module_factory);
 
     LynxFetchModuleEventSender* eventSender = [[LynxFetchModuleEventSender alloc] init];
     eventSender.eventSender = self;
@@ -225,7 +230,6 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     if (globalConfig) {
       module_factory->parent = globalConfig.moduleFactoryPtr;
     }
-    module_manager->SetPlatformModuleFactory(std::move(module_factory));
 
     LynxProviderRegistry* registry = [[LynxProviderRegistry alloc] init];
     NSDictionary* providers = [LynxEnv sharedInstance].resoureProviders;
@@ -239,10 +243,10 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
     auto loader = std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
         registry, nil, self, _options.templateResourceFetcher, _options.genericResourceFetcher);
 
-    auto on_runtime_actor_created = [module_manager](auto& actor, auto facade_actor) {
+    auto on_runtime_actor_created = [native_module_manager](auto& actor, auto facade_actor) {
       std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
           std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
-      module_manager->initBindingPtr(module_manager, module_delegate);
+      native_module_manager->SetModuleDelegate(module_delegate);
     };
 
     auto native_runtime = std::make_unique<lynx::shell::NativeRuntimeFacadeDarwin>(self);
@@ -258,7 +262,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         _options.enableBytecode, &enableJSGroupThread, &pendingCoreJsLoad);
     _runtime_standalone_bundle = lynx::shell::InitRuntimeStandalone(
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
-        module_manager, bundle_creator, _options.group.whiteBoard,
+        native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
         runtime_flags);
 

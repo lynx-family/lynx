@@ -188,7 +188,7 @@
 
   [self setUpLynxContextWithLastInstanceId:lastInstanceId];
 
-  auto module_manager = [self setUpModuleManager];
+  auto native_module_manager = [self setUpModuleManager];
 
   // Attach runtime
   if (_runtime) {
@@ -210,11 +210,11 @@
 
   __weak typeof(self) weakSelf = self;
   auto on_runtime_actor_created =
-      [&weakSelf, &module_manager, lynx_ui_renderer = _lynxUIRenderer, context = _context,
+      [&weakSelf, &native_module_manager, lynx_ui_renderer = _lynxUIRenderer, context = _context,
        js_group_thread_name = [_runtimeOptions groupThreadName]](auto& actor) {
         std::shared_ptr<lynx::piper::ModuleDelegate> module_delegate =
             std::make_shared<lynx::shell::ModuleDelegateImpl>(actor);
-        module_manager->initBindingPtr(module_manager, module_delegate);
+        native_module_manager->SetModuleDelegate(module_delegate);
 
         auto js_proxy = lynx::shell::JSProxyDarwin::Create(
             actor, weakSelf, actor->Impl()->GetRuntimeId(), std::move(js_group_thread_name));
@@ -222,7 +222,7 @@
 
         __strong LynxTemplateRender* strongSelf = weakSelf;
         auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([lynx_ui_renderer uiDelegate]);
-        module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
+        native_module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
         auto perf_proxy = std::make_shared<lynx::shell::PerfControllerProxyImpl>(
             strongSelf->shell_->GetPerfControllerActor());
         ui_delegate->OnLynxCreate([strongSelf->_lynxEngineProxy nativeProxy], std::move(js_proxy),
@@ -234,7 +234,7 @@
   auto runtime_flags = lynx::runtime::CalcRuntimeFlags(
       false, _runtimeOptions.backgroundJsRuntimeType == LynxBackgroundJsRuntimeTypeQuickjs,
       _enablePendingJSTaskOnLayout, _runtimeOptions.enableBytecode);
-  shell_->InitRuntime([_runtimeOptions groupID], resource_loader, module_manager,
+  shell_->InitRuntime([_runtimeOptions groupID], resource_loader, native_module_manager,
                       std::move(on_runtime_actor_created), [_runtimeOptions preloadJSPath],
                       runtime_flags, [_runtimeOptions bytecodeUrlString]);
   [self setUpExtensionModules];
@@ -269,31 +269,25 @@
                                                       config:_config];
 }
 
-- (std::shared_ptr<lynx::piper::LynxModuleManager>)setUpModuleManager {
-  std::shared_ptr<lynx::piper::LynxModuleManager> module_manager;
-  lynx::piper::ModuleFactoryDarwin* module_factory = nullptr;
+- (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {
+  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory;
   if (_runtime) {
-    module_manager = [_runtime moduleManagerPtr].lock();
-    if (module_manager) {
-      module_factory = static_cast<lynx::piper::ModuleFactoryDarwin*>(
-          module_manager->GetPlatformModuleFactory());
+    module_factory = [_runtime moduleFactoryPtr].lock();
+    if (module_factory) {
       // Merge NativeModules
       module_factory->addModuleParamWrapperIfAbsent(_config.moduleFactoryPtr->getModuleClasses());
     } else {
       _LogE(@"RuntimeStandalone's module_manager shouldn't be null!");
     }
   }
-  if (!module_manager) {
-    module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
-    auto factory = std::make_unique<lynx::piper::ModuleFactoryDarwin>();
-    module_factory = factory.get();
-    module_manager->SetPlatformModuleFactory(std::move(factory));
+  if (!module_factory) {
+    module_factory = std::make_shared<lynx::piper::ModuleFactoryDarwin>();
     if (_config) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
       module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
     }
   }
-  module_manager_ = module_manager;
+  module_factory_ = module_factory;
 
   LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
   if (_config != globalConfig && globalConfig) {
@@ -319,10 +313,16 @@
   }
   [_extra addEntriesFromDictionary:[module_factory->extraWrappers() copy]];
 
-  [self setUpBuiltModuleWithFactory:module_factory];
-  [self setUpLepusModulesWithFactory:module_factory];
+  [self setUpBuiltModuleWithFactory:module_factory.get()];
+  [self setUpLepusModulesWithFactory:module_factory.get()];
 
-  return module_manager;
+  // Create NativeModuleManager related to platform call, JSModuleManager
+  // related to JS FFI (JSI, NAPI, Lepus) in LynxRuntime
+  std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_shared<lynx::pub::LynxNativeModuleManager>();
+  native_module_manager->SetPlatformModuleFactory(module_factory);
+
+  return native_module_manager;
 }
 
 - (void)setUpLepusModulesWithFactory:(lynx::piper::ModuleFactoryDarwin*)module_factory {

@@ -28,7 +28,7 @@ std::shared_ptr<piper::LynxNativeModule> LynxNativeModuleManager::GetModule(
 }
 
 void LynxNativeModuleManager::SetPlatformModuleFactory(
-    std::unique_ptr<piper::NativeModuleFactory> module_factory) {
+    std::shared_ptr<piper::NativeModuleFactory> module_factory) {
   platform_module_factory_ = std::move(module_factory);
 }
 

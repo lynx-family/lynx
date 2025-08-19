@@ -23,7 +23,7 @@
 @end
 
 @interface LynxBackgroundRuntime ()
-- (std::weak_ptr<lynx::piper::LynxModuleManager>)moduleManagerPtr;
+- (std::weak_ptr<lynx::piper::ModuleFactoryDarwin>)moduleFactoryPtr;
 - (LynxBackgroundRuntimeOptions *)options;
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::runtime::LynxRuntime>>)runtimeActor;
 - (std::shared_ptr<lynx::shell::LynxActor<lynx::tasm::performance::PerformanceController>>)

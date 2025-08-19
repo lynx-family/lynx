@@ -292,9 +292,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (lynx::piper::ModuleFactoryDarwin*)getModuleFactory {
-  auto manager = module_manager_.lock();
-  if (manager) {
-    return static_cast<lynx::piper::ModuleFactoryDarwin*>(manager->GetPlatformModuleFactory());
+  auto factory = module_factory_.lock();
+  if (factory) {
+    return factory.get();
   }
   return nullptr;
 }

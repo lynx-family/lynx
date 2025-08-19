@@ -81,7 +81,7 @@ NS_ASSUME_NONNULL_BEGIN
   CGSize _intrinsicContentSize;
   std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
-  std::weak_ptr<lynx::piper::LynxModuleManager> module_manager_;
+  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> module_factory_;
   id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property
   NSMutableDictionary* _extra;

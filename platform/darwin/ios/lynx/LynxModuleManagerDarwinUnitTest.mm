@@ -85,10 +85,14 @@ class ModuleFactoryDarwinTester : public lynx::piper::ModuleFactoryDarwin {};
   LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
   [options registerModule:LynxModuleMockInstance.class param:[[NSObject new] init]];
   LynxBackgroundRuntime *runtime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
-  auto manager = [runtime moduleManagerPtr].lock();
-  XCTAssertNotEqual(manager, nullptr);
-  auto module_host_object = manager->GetModule("LynxModuleMockInstance", _mockDelegate);
-  XCTAssertNotEqual(module_host_object, nullptr);
+  auto factory = [runtime moduleFactoryPtr].lock();
+  XCTAssertNotEqual(factory, nullptr);
+  std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_shared<lynx::pub::LynxNativeModuleManager>();
+  native_module_manager->SetPlatformModuleFactory(factory);
+  native_module_manager->SetModuleDelegate(_mockDelegate);
+  auto platform_module = native_module_manager->GetModule("LynxModuleMockInstance");
+  XCTAssertNotEqual(platform_module, nullptr);
 
   // TODO(huzhanbo.luc) Test ModuleManager overwriting behavior here later
 }
