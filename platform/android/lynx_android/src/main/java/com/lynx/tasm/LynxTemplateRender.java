@@ -1554,6 +1554,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       }
       fallbackNewEngine(false);
     } else if (mLynxEngineRef.hasLoaded()) {
+      if (getLynxView() != null) {
+        updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
+            getLynxView().getCurrentHeightMeasureSpec(), false);
+      }
       updateData(data, true);
       onTraceEventEnd(eventName);
       return true;
@@ -1575,6 +1579,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
     if (mEnableReuseEngine && tryRenderByReuseLynxRender(metaData.initialData)) {
       return;
+    }
+
+    if (mLynxContext.isEmbeddedModeOn() && getLynxView() != null) {
+      updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
+          getLynxView().getCurrentHeightMeasureSpec(), false);
     }
 
     if (metaData.isBundleValid() || (mTemplateBundle != null && mTemplateBundle.isValid())) {
@@ -2137,6 +2146,10 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
   }
 
   public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
+    updateViewport(widthMeasureSpec, heightMeasureSpec, true);
+  }
+
+  void updateViewport(int widthMeasureSpec, int heightMeasureSpec, boolean needLayout) {
     if (!checkIfEnvPrepared() || mNativePtr == 0) {
       return;
     }
@@ -2158,7 +2171,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     int height = MeasureSpec.getSize(heightMeasureSpec);
     // TODO: sync and async mode / should post to thread if not work on ui thread
     nativeUpdateViewport(mNativePtr, mNativeLifecycle, width, widthMode, height, heightMode,
-        mLynxContext.getScreenMetrics().density, mLynxUIRender.getUIDelegatePtr());
+        mLynxContext.getScreenMetrics().density, mLynxUIRender.getUIDelegatePtr(), needLayout);
     mPreWidthMeasureSpec = widthMeasureSpec;
     mPreHeightMeasureSpec = heightMeasureSpec;
   }
@@ -4129,7 +4142,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   // layout
   private static native void nativeUpdateViewport(long ptr, long lifecycle, int width,
-      int widthMode, int height, int heightMode, float scale, long uiDelegate);
+      int widthMode, int height, int heightMode, float scale, long uiDelegate, boolean needLayout);
 
   private static native void nativeSyncFetchLayoutResult(long ptr, long lifecycle);
 

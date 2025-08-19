@@ -834,7 +834,11 @@ void ElementManager::OnUpdateViewport(float width, int width_mode, float height,
   has_viewport_ready_ = true;
 
   if (SetViewportSizeToRootNode()) {
-    RequestLayout(std::make_shared<PipelineOptions>());
+    if (need_layout) {
+      RequestLayout(std::make_shared<PipelineOptions>());
+    } else {
+      need_layout_ = true;
+    }
   }
 }
 

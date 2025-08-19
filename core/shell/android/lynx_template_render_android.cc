@@ -773,7 +773,7 @@ void UpdateGlobalProps(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
 
 void UpdateViewport(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
                     jint width, jint width_mode, jint height, jint height_mode,
-                    jfloat scale, jlong ui_delegate_ptr) {
+                    jfloat scale, jlong ui_delegate_ptr, jboolean need_layout) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
@@ -783,10 +783,10 @@ void UpdateViewport(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
       reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
   if (ui_delegate->UsesLogicalPixels()) {
     reinterpret_cast<LynxShell*>(ptr)->UpdateViewport(
-        width / scale, width_mode, height / scale, height_mode);
+        width / scale, width_mode, height / scale, height_mode, need_layout);
   } else {
     reinterpret_cast<LynxShell*>(ptr)->UpdateViewport(width, width_mode, height,
-                                                      height_mode);
+                                                      height_mode, need_layout);
   }
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
