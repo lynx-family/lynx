@@ -9413,6 +9413,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public com.lynx.tasm.behavior.ui.UIBody.UIBodyView.UIBodyView(Context context, AttributeSet attrs);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.cacheLayoutInfo(int width, int height);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.performMeasure(int widthMeasureSpec, int width, int heightMeasureSpec, int height);
+  public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.containsViewForNodeIndex(int nodeIndex);
   public View com.lynx.tasm.behavior.ui.UIBody.UIBodyView.obtainViewAccordingToNodeIndex(int nodeIndex);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerViewAccordingToNodeIndex(int nodeIndex, View view);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.registerImageAccordingToNodeIndex(int nodeIndex, LynxImageManager image);

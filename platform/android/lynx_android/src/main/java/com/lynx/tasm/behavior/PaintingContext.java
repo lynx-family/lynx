@@ -158,7 +158,7 @@ public final class PaintingContext implements IPaintingContext {
       final ReadableMapBuffer initialStyles, final ReadableArray eventListeners,
       final boolean isFlatten, int nodeIndex, final ReadableArray gestureDetectors) {
     String finalTagName = tagName;
-    if (needCreateNodeAsync(finalTagName)) {
+    if (needCreateNodeAsync(finalTagName, nodeIndex)) {
       final Future<Runnable> future = createNodeAsync(sign, finalTagName, initialProps,
           initialStyles, eventListeners, isFlatten, nodeIndex, gestureDetectors);
       return new Runnable() {
@@ -180,7 +180,14 @@ public final class PaintingContext implements IPaintingContext {
     }
   }
 
-  private boolean needCreateNodeAsync(String tagName) {
+  private boolean needCreateNodeAsync(String tagName, int nodeIndex) {
+    // If it is a fallback process and the view is on the view tree, we should not create node async
+    // to avoid process view on async thread.
+    if (mUIOwner != null && mUIOwner.getContext() != null
+        && mUIOwner.getContext().isFallbackProcess()
+        && mUIOwner.getContext().getUIBodyView().containsViewForNodeIndex(nodeIndex)) {
+      return false;
+    }
     if (mNeedCreateNodeAsyncCache.containsKey(tagName)) {
       return mNeedCreateNodeAsyncCache.get(tagName);
     }
@@ -704,7 +711,7 @@ public final class PaintingContext implements IPaintingContext {
       return (layoutNodeType & 0xFFFF);
     }
 
-    boolean createNodeAsync = needCreateNodeAsync(tagName);
+    boolean createNodeAsync = needCreateNodeAsync(tagName, -1);
     return ((createNodeAsync ? 1 : 0) << 16 | (layoutNodeType & 0xFFFF));
   }
 
