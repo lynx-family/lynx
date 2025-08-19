@@ -40,7 +40,8 @@ core/build/gen/
 /core/build/jni/gen
 /core/build/jni/BUILD.gn
 **/build/gen
-
+.cache/
+compile_commands.json
 
 # Auto generated error code files
 /platform/darwin/common/lynx/LynxErrorBehavior.m
