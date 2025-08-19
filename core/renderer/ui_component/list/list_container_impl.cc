@@ -74,6 +74,10 @@ void ListContainerImpl::FinishBindItemHolders(
   }
 }
 
+void ListContainerImpl::DeferredDestroyItemHolder(ItemHolder* holder) {
+  list_children_helper_->AddDeferredDestroyItemHolder(holder);
+}
+
 void ListContainerImpl::ReportListItemLifecycleStatistic(
     const std::shared_ptr<PipelineOptions>& option,
     const std::string& item_key) {
@@ -358,15 +362,23 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
           list::AnchorVisibility::kAnchorVisibilityNoAdjustment);
     }
     should_set_props = false;
-  } else if (key.IsEqual(list::kListPlatformInfo)) {
-    // list-platform-info
-    auto status = list_adapter_->UpdateDataSource(value);
-    if (status != ListAdapter::DiffResult::kNone) {
-      should_mark_layout_dirty = true;
+  } else if (key.IsEqual(list::kListPlatformInfo) ||
+             key.IsEqual(list::kFiberListDiffInfo)) {
+    auto status = ListAdapter::DiffResult::kNone;
+    if (key.IsEqual(list::kListPlatformInfo)) {
+      status = list_adapter_->UpdateDataSource(value);
+    } else if (key.IsEqual(list::kFiberListDiffInfo)) {
+      status = list_adapter_->UpdateFiberDataSource(value);
     }
-    if (status ==
-        (ListAdapter::DiffResult::kRemove | ListAdapter::DiffResult::kUpdate)) {
-      animation_type_ = ListContainer::AnimationType::kRemove;
+    if (status != ListAdapter::DiffResult::kNone) {
+      if (status == (ListAdapter::DiffResult::kRemove |
+                     ListAdapter::DiffResult::kUpdate)) {
+        animation_type_ = list::ListContainerAnimationType::kRemove;
+      } else if (status == (ListAdapter::DiffResult::kInsert |
+                            ListAdapter::DiffResult::kUpdate)) {
+        animation_type_ = list::ListContainerAnimationType::kInsert;
+      }
+      should_mark_layout_dirty = true;
     }
     has_valid_diff_ = should_mark_layout_dirty;
     need_preload_section_on_next_frame_ = should_mark_layout_dirty;
@@ -376,23 +388,7 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
     need_update_item_holders_ = true;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
-    update_animation_ = value.Bool();
-  } else if (key.IsEqual(list::kFiberListDiffInfo)) {
-    auto status = list_adapter_->UpdateFiberDataSource(value);
-    if (status != ListAdapter::DiffResult::kNone) {
-      should_mark_layout_dirty = true;
-    }
-    if (status ==
-        (ListAdapter::DiffResult::kRemove | ListAdapter::DiffResult::kUpdate)) {
-      animation_type_ = ListContainer::AnimationType::kRemove;
-    }
-    has_valid_diff_ = should_mark_layout_dirty;
-    need_preload_section_on_next_frame_ = should_mark_layout_dirty;
-    if (should_mark_layout_dirty) {
-      list_layout_manager_->UpdateDiffAnchorReference();
-    }
-    should_set_props = false;
-    need_update_item_holders_ = true;
+    update_animation_ = value.StdString() == "default";
   } else if (key.IsEqual(list::kListType)) {
     // list-type
     list::LayoutType last_layout_type = layout_type_;
@@ -488,13 +484,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   return should_set_props;
 };
 
-bool ListContainerImpl::InAnimationProcess() const {
-  return animation_type_ != ListContainer::AnimationType::kNone;
-}
-
 void ListContainerImpl::InitializeAnimator() {
   starlight::AnimationData data;
-  data.duration = 500;
+  data.duration = 300;
   data.fill_mode = starlight::AnimationFillModeType::kForwards;
   starlight::TimingFunctionData timing_function_data;
   timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
@@ -526,10 +518,30 @@ void ListContainerImpl::DoAnimationFrame(float progress) {
   for (auto& it : list_children_helper_->on_screen_children()) {
     it->DoAnimationFrame(progress);
   }
+  list_children_helper_->TraverseDeferredDestroyItemHolder(
+      [=](ItemHolder* holder) { holder->DoAnimationFrame(progress); });
 }
 
 void ListContainerImpl::EndAnimation() {
-  animation_type_ = ListContainer::AnimationType::kNone;
+  // 1. Need to destroy child after the animation.
+  list_children_helper_->TraverseDeferredDestroyItemHolder(
+      [=](ItemHolder* holder) { holder->EndAnimation(); });
+  list_children_helper_->DestroyDeferredDestroyItemHolder();
+
+  // 2. Because we can't know exactly how many item holders we will create
+  // during animation, so we need to save layout infos in advance. Now clean it.
+  list_children_helper_->ForEachChild([](ItemHolder* item_holder) {
+    if (item_holder) {
+      item_holder->EndAnimation();
+    }
+    return false;
+  });
+
+  animation_type_ = list::ListContainerAnimationType::kNone;
+}
+
+list::ListContainerAnimationType ListContainerImpl::AnimationType() const {
+  return animation_type_;
 }
 
 void ListContainerImpl::OnLayoutChildren(
@@ -555,7 +567,8 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
-        if (update_animation_ && InAnimationProcess()) {
+        if (update_animation_ &&
+            AnimationType() != list::ListContainerAnimationType::kNone) {
           StartAnimation();
         }
       } else {
@@ -577,6 +590,10 @@ void ListContainerImpl::OnLayoutChildren(
       }
     }
   }
+}
+
+void ListContainerImpl::RecycleItemHolder(ItemHolder* holder) {
+  list_adapter_->RecycleItemHolder(holder);
 }
 
 bool ListContainerImpl::ShouldGenerateDebugInfo(

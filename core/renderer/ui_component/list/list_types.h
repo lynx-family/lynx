@@ -288,6 +288,10 @@ enum class ScrollState {
   kScrollAnimation
 };
 
+enum class ItemHolderAnimationType { kNone, kTransform, kOpacity };
+
+enum class ListContainerAnimationType { kNone, kRemove, kInsert };
+
 }  // namespace list
 }  // namespace tasm
 }  // namespace lynx

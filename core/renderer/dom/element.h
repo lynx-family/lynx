@@ -373,6 +373,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   virtual void CheckHasInlineContainer(Element* parent);
 
   bool FlushAnimatedStyle();
+  void FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value);
   virtual void FlushAnimatedStyleInternal(tasm::CSSPropertyID,
                                           const tasm::CSSValue&) = 0;
 
@@ -547,7 +548,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   bool will_destroy() { return will_destroy_; }
 
-  virtual void TickElement(fml::TimePoint& time){};
+  virtual void TickElement(fml::TimePoint& time) {}
 
   bool TickAllAnimation(fml::TimePoint& time,
                         std::shared_ptr<PipelineOptions>& options);
@@ -884,6 +885,13 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   // interception. eg. capture-bindtap, catchtap
   std::unordered_map<std::string, BindEventCatch> bind_event_catch_map_;
   fml::WeakPtrFactory<Element> weak_factory_{this};
+
+ private:
+  fml::RefPtr<PropBundle> MakeBundleForAnimation(bool has_layout_style);
+  bool WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
+                                tasm::CSSPropertyID id,
+                                const tasm::CSSValue& value);
+  void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
 };
 
 }  // namespace tasm

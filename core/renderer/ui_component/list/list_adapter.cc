@@ -281,6 +281,10 @@ void ListAdapter::UpdateItemHolderToLatest(
         auto holder =
             std::make_unique<AnimationItemHolder>(new_index, item_key);
         holder->SetAnimationDelegate(list_container_);
+        if (list_container_->AnimationType() ==
+            list::ListContainerAnimationType::kInsert) {
+          holder->MarkInsertOpacity();
+        }
         (*item_holder_map_)[item_key] = std::move(holder);
       } else {
         (*item_holder_map_)[item_key] =
@@ -447,10 +451,15 @@ void ListAdapter::RecycleAllItemHolders() {
 void ListAdapter::RecycleRemovedItemHolders() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_RECYCLE_REMOVED_ITEM_HOLDER);
   for (auto it = item_holder_map_->begin(); it != item_holder_map_->end();) {
-    const auto& item_holder = it->second;
-    if (item_holder && IsRemoved(item_holder.get())) {
-      RecycleItemHolder(item_holder.get());
-      item_holder_map_->erase(it++);
+    const auto& item_holder = it->second.get();
+    if (item_holder && IsRemoved(item_holder)) {
+      RecycleItemHolder(item_holder);
+      if (list_container_->AnimationType() !=
+          list::ListContainerAnimationType::kNone) {
+        ++it;
+      } else {
+        it = item_holder_map_->erase(it);
+      }
     } else {
       ++it;
     }
@@ -501,6 +510,19 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
     return;
   }
   Element* list_item = GetListItemElement(item_holder);
+  if (list_container_->AnimationType() !=
+      list::ListContainerAnimationType::kNone) {
+    if (list_container_->AnimationType() ==
+        list::ListContainerAnimationType::kRemove) {
+      item_holder->RecycleAfterAnimation(
+          list::ItemHolderAnimationType::kOpacity);
+    } else if (list_container_->AnimationType() ==
+               list::ListContainerAnimationType::kInsert) {
+      item_holder->RecycleAfterAnimation(
+          list::ItemHolderAnimationType::kTransform);
+    }
+    return;
+  }
   if (list_item) {
     // Remove list item platform view.
     int32_t list_id = list_element_->impl_id();

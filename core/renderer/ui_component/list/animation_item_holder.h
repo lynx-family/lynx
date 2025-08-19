@@ -6,9 +6,11 @@
 #define CORE_RENDERER_UI_COMPONENT_LIST_ANIMATION_ITEM_HOLDER_H_
 
 #include <array>
+#include <limits>
 #include <string>
 
 #include "core/renderer/ui_component/list/item_holder.h"
+#include "core/renderer/ui_component/list/list_types.h"
 
 namespace lynx {
 namespace tasm {
@@ -16,21 +18,28 @@ namespace tasm {
 class AnimationItemHolder : public ItemHolder {
  public:
   AnimationItemHolder(int index, const std::string& item_key);
-  void DoAnimationFrame(float progress) override;
+
   void UpdateLayoutToPlatform(float content_size, float container_size,
                               Element* element) override;
   void UpdateLayoutFromManager(float left, float top) override;
+
+  void DoAnimationFrame(float progress) override;
   void SetAnimationDelegate(ItemHolder::AnimationDelegate* delegate) override;
   void EndAnimation() override;
+  void RecycleAfterAnimation(list::ItemHolderAnimationType type) override;
+  void MarkInsertOpacity() override;
 
  private:
   float GetRTLLeft(float content_size, float container_size, float left,
                    float width);
   AnimationDelegate* animation_delegate_;
-  float animation_origin_left_{-1.f};
-  float animation_origin_top_{-1.f};
-  float content_size_{0.f};
-  float container_size_{0.f};
+  float animation_origin_left_{std::numeric_limits<float>::quiet_NaN()};
+  float animation_origin_top_{std::numeric_limits<float>::quiet_NaN()};
+  // 1.f means the opacity animation of 1 -> 0, and the 0.f is the opposite.
+  float animation_origin_opacity_{std::numeric_limits<float>::quiet_NaN()};
+  float content_size_{std::numeric_limits<float>::quiet_NaN()};
+  list::ItemHolderAnimationType animation_type_{
+      list::ItemHolderAnimationType::kNone};
 };
 
 }  // namespace tasm

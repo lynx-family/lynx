@@ -983,7 +983,7 @@ class FiberElement : public Element,
   virtual void OnNodeAdded(FiberElement* child);
 
   // called when a child element is removed
-  virtual void OnNodeRemoved(FiberElement* child){};
+  virtual void OnNodeRemoved(FiberElement* child) {}
 
   // handle default overflow logic
   void SetDefaultOverflow(bool visible);

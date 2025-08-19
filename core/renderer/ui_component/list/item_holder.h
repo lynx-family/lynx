@@ -8,6 +8,7 @@
 #include <array>
 #include <string>
 
+#include "core/renderer/ui_component/list/list_container.h"
 #include "core/renderer/ui_component/list/list_types.h"
 
 namespace lynx {
@@ -21,7 +22,9 @@ class ItemHolder {
   class AnimationDelegate {
    public:
     virtual ~AnimationDelegate() = default;
-    virtual bool InAnimationProcess() const = 0;
+    virtual list::ListContainerAnimationType AnimationType() const = 0;
+    virtual void DeferredDestroyItemHolder(ItemHolder* holder) = 0;
+    virtual void RecycleItemHolder(ItemHolder* holder) = 0;
   };
 
   ItemHolder(int index, const std::string& item_key);
@@ -105,9 +108,12 @@ class ItemHolder {
     }
   };
 
+  // list animation.
   virtual void SetAnimationDelegate(ItemHolder::AnimationDelegate* delegate) {}
   virtual void DoAnimationFrame(float progress) {}
   virtual void EndAnimation() {}
+  virtual void RecycleAfterAnimation(list::ItemHolderAnimationType type) {}
+  virtual void MarkInsertOpacity() {}
 
  private:
   float GetRTLLeft(float content_size, float container_size) const;

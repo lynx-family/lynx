@@ -128,6 +128,10 @@ class ListChildrenHelper {
     }
   }
 
+  void AddDeferredDestroyItemHolder(ItemHolder* holder);
+  void TraverseDeferredDestroyItemHolder(std::function<void(ItemHolder*)> fn);
+  void DestroyDeferredDestroyItemHolder();
+
  private:
   bool recycle_item_holder_{false};
   bool use_default_sticky_buffer_count_{true};
@@ -140,6 +144,10 @@ class ListChildrenHelper {
   ItemHolderSet on_screen_children_;
   ItemHolderSet in_preload_children_;
   ItemHolderSet in_sticky_children_;
+  // NOTE: there are maybe some item holders which cant be destroyed in diff
+  // process because of animation. And because they are managed by unique_ptr,
+  // they cant be managed by themselves.
+  ItemHolderSet deferred_destroy_children_;
 };
 
 }  // namespace tasm
