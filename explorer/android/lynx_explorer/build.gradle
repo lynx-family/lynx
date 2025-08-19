@@ -1,4 +1,4 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2024-2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 apply plugin: 'com.android.application'
@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId "com.lynx.explorer"
-        minSdkVersion 24
+        minSdkVersion 26
         targetSdkVersion 32
         versionCode 1
         versionName "1.0"
