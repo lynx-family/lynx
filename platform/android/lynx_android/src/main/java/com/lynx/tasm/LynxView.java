@@ -72,6 +72,7 @@ public class LynxView extends UIBodyView {
   private final static String VIEW_TAG = "lynxview";
   private final static String TAG = "LynxView";
   private boolean mIsAccessibilityDisabled = false;
+  private boolean mDisableDrawChildHook = false;
   private KeyboardEvent mKeyboardEvent;
   /**
    * Unique identifier generated when LynxView is added to a LynxViewGroup,
@@ -154,6 +155,7 @@ public class LynxView extends UIBodyView {
     VSyncMonitor.initUIThreadChoreographer();
     initLynxTemplateRender(context, builder);
     mKeyboardEvent = new KeyboardEvent(getLynxContext());
+    mDisableDrawChildHook = mLynxUIRender.disableBindDrawChildHook();
   }
 
   private void initLynxViewWithRuntime(Context context, LynxViewBuilder builder) {
@@ -333,7 +335,7 @@ public class LynxView extends UIBodyView {
 
   @Override
   public void bindDrawChildHook(IDrawChildHook hook) {
-    if ((lynxUIRenderer() != null) && lynxUIRenderer().disableBindDrawChildHook()) {
+    if (mDisableDrawChildHook) {
       return;
     }
 
