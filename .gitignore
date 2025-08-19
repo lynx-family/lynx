@@ -73,6 +73,7 @@ explorer/android/gradle/wrapper/gradle-6.7.1-all.zip
 explorer/android/local.properties
 explorer/android/lynx_explorer/src/main/assets/*
 !explorer/android/lynx_explorer/src/main/assets/testBench/
+explorer/android/lynx_explorer/local.properties
 core/runtime/jsi/v8/CMakeLists_impl/
 
 explorer/darwin/ios/lynx_explorer/Podfile.lock
