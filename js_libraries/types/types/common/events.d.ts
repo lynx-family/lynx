@@ -446,11 +446,83 @@ export interface LynxBindCatchEvent<T = any> {
   LongTap?: EventHandler<BaseTouchEvent<T>>;
 }
 
-export type LynxEventPropsBase<T> = {
-  [K in keyof LynxEvent<T> as Lowercase<`bind${K}` | `catch${K}` | `capture-bind${K}` | `capture-catch${K}` | `global-bind${K}`>]: LynxEvent<T>[K];
-} & {
-  [K in keyof LynxBindCatchEvent<T> as Lowercase<`bind${K}` | `catch${K}` | `capture-bind${K}` | `capture-catch${K}` | `global-bind${K}`>]: LynxBindCatchEvent<T>[K];
-};
+type PrefixedEvent<E> = {
+  bind?: E;
+  catch?: E;
+  'capture-bind'?: E;
+  'capture-catch'?: E;
+  'global-bind'?: E;
+}
+
+// Helper interfaces for each event, providing explicit properties
+// for bind, catch, capture-bind, capture-catch, and global-bind prefixes.
+interface BGLoadProps<T> { bindbgload?: LynxEvent<T>['BGLoad']; catchbgload?: LynxEvent<T>['BGLoad']; 'capture-bindbgload'?: LynxEvent<T>['BGLoad']; 'capture-catchbgload'?: LynxEvent<T>['BGLoad']; 'global-bindbgload'?: LynxEvent<T>['BGLoad']; }
+interface BGErrorProps<T> { bindbgerror?: LynxEvent<T>['BGError']; catchbgerror?: LynxEvent<T>['BGError']; 'capture-bindbgerror'?: LynxEvent<T>['BGError']; 'capture-catchbgerror'?: LynxEvent<T>['BGError']; 'global-bindbgerror'?: LynxEvent<T>['BGError']; }
+interface TouchStartProps<T> { bindtouchstart?: LynxEvent<T>['TouchStart']; catchtouchstart?: LynxEvent<T>['TouchStart']; 'capture-bindtouchstart'?: LynxEvent<T>['TouchStart']; 'capture-catchtouchstart'?: LynxEvent<T>['TouchStart']; 'global-bindtouchstart'?: LynxEvent<T>['TouchStart']; }
+interface TouchMoveProps<T> { bindtouchmove?: LynxEvent<T>['TouchMove']; catchtouchmove?: LynxEvent<T>['TouchMove']; 'capture-bindtouchmove'?: LynxEvent<T>['TouchMove']; 'capture-catchtouchmove'?: LynxEvent<T>['TouchMove']; 'global-bindtouchmove'?: LynxEvent<T>['TouchMove']; }
+interface TouchCancelProps<T> { bindtouchcancel?: LynxEvent<T>['TouchCancel']; catchtouchcancel?: LynxEvent<T>['TouchCancel']; 'capture-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; 'capture-catchtouchcancel'?: LynxEvent<T>['TouchCancel']; 'global-bindtouchcancel'?: LynxEvent<T>['TouchCancel']; }
+interface TouchEndProps<T> { bindtouchend?: LynxEvent<T>['TouchEnd']; catchtouchend?: LynxEvent<T>['TouchEnd']; 'capture-bindtouchend'?: LynxEvent<T>['TouchEnd']; 'capture-catchtouchend'?: LynxEvent<T>['TouchEnd']; 'global-bindtouchend'?: LynxEvent<T>['TouchEnd']; }
+interface LongPressProps<T> { bindlongpress?: LynxEvent<T>['LongPress']; catchlongpress?: LynxEvent<T>['LongPress']; 'capture-bindlongpress'?: LynxEvent<T>['LongPress']; 'capture-catchlongpress'?: LynxEvent<T>['LongPress']; 'global-bindlongpress'?: LynxEvent<T>['LongPress']; }
+interface TransitionStartProps<T> { bindtransitionstart?: LynxEvent<T>['TransitionStart']; catchtransitionstart?: LynxEvent<T>['TransitionStart']; 'capture-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; 'capture-catchtransitionstart'?: LynxEvent<T>['TransitionStart']; 'global-bindtransitionstart'?: LynxEvent<T>['TransitionStart']; }
+interface TransitionCancelProps<T> { bindtransitioncancel?: LynxEvent<T>['TransitionCancel']; catchtransitioncancel?: LynxEvent<T>['TransitionCancel']; 'capture-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'capture-catchtransitioncancel'?: LynxEvent<T>['TransitionCancel']; 'global-bindtransitioncancel'?: LynxEvent<T>['TransitionCancel']; }
+interface TransitionEndProps<T> { bindtransitionend?: LynxEvent<T>['TransitionEnd']; catchtransitionend?: LynxEvent<T>['TransitionEnd']; 'capture-bindtransitionend'?: LynxEvent<T>['TransitionEnd']; 'capture-catchtransitionend'?: LynxEvent<T>['TransitionEnd']; 'global-bindtransitionend'?: LynxEvent<T>['TransitionEnd']; }
+interface AnimationStartProps<T> { bindanimationstart?: LynxEvent<T>['AnimationStart']; catchanimationstart?: LynxEvent<T>['AnimationStart']; 'capture-bindanimationstart'?: LynxEvent<T>['AnimationStart']; 'capture-catchanimationstart'?: LynxEvent<T>['AnimationStart']; 'global-bindanimationstart'?: LynxEvent<T>['AnimationStart']; }
+interface AnimationIterationProps<T> { bindanimationiteration?: LynxEvent<T>['AnimationIteration']; catchanimationiteration?: LynxEvent<T>['AnimationIteration']; 'capture-bindanimationiteration'?: LynxEvent<T>['AnimationIteration']; 'capture-catchanimationiteration'?: LynxEvent<T>['AnimationIteration']; 'global-bindanimationiteration'?: LynxEvent<T>['AnimationIteration']; }
+interface AnimationCancelProps<T> { bindanimationcancel?: LynxEvent<T>['AnimationCancel']; catchanimationcancel?: LynxEvent<T>['AnimationCancel']; 'capture-bindanimationcancel'?: LynxEvent<T>['AnimationCancel']; 'capture-catchanimationcancel'?: LynxEvent<T>['AnimationCancel']; 'global-bindanimationcancel'?: LynxEvent<T>['AnimationCancel']; }
+interface AnimationEndProps<T> { bindanimationend?: LynxEvent<T>['AnimationEnd']; catchanimationend?: LynxEvent<T>['AnimationEnd']; 'capture-bindanimationend'?: LynxEvent<T>['AnimationEnd']; 'capture-catchanimationend'?: LynxEvent<T>['AnimationEnd']; 'global-bindanimationend'?: LynxEvent<T>['AnimationEnd']; }
+interface MouseDownProps<T> { bindmousedown?: LynxEvent<T>['MouseDown']; catchmousedown?: LynxEvent<T>['MouseDown']; 'capture-bindmousedown'?: LynxEvent<T>['MouseDown']; 'capture-catchmousedown'?: LynxEvent<T>['MouseDown']; 'global-bindmousedown'?: LynxEvent<T>['MouseDown']; }
+interface MouseUpProps<T> { bindmouseup?: LynxEvent<T>['MouseUp']; catchmouseup?: LynxEvent<T>['MouseUp']; 'capture-bindmouseup'?: LynxEvent<T>['MouseUp']; 'capture-catchmouseup'?: LynxEvent<T>['MouseUp']; 'global-bindmouseup'?: LynxEvent<T>['MouseUp']; }
+interface MouseMoveProps<T> { bindmousemove?: LynxEvent<T>['MouseMove']; catchmousemove?: LynxEvent<T>['MouseMove']; 'capture-bindmousemove'?: LynxEvent<T>['MouseMove']; 'capture-catchmousemove'?: LynxEvent<T>['MouseMove']; 'global-bindmousemove'?: LynxEvent<T>['MouseMove']; }
+interface MouseClickProps<T> { bindmouseclick?: LynxEvent<T>['MouseClick']; catchmouseclick?: LynxEvent<T>['MouseClick']; 'capture-bindmouseclick'?: LynxEvent<T>['MouseClick']; 'capture-catchmouseclick'?: LynxEvent<T>['MouseClick']; 'global-bindmouseclick'?: LynxEvent<T>['MouseClick']; }
+interface MouseDblClickProps<T> { bindmousedblclick?: LynxEvent<T>['MouseDblClick']; catchmousedblclick?: LynxEvent<T>['MouseDblClick']; 'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
+interface MouseLongPressProps<T> { bindmouselongpress?: LynxEvent<T>['MouseLongPress']; catchmouselongpress?: LynxEvent<T>['MouseLongPress']; 'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
+interface WheelProps<T> { bindwheel?: LynxEvent<T>['Wheel']; catchwheel?: LynxEvent<T>['Wheel']; 'capture-bindwheel'?: LynxEvent<T>['Wheel']; 'capture-catchwheel'?: LynxEvent<T>['Wheel']; 'global-bindwheel'?: LynxEvent<T>['Wheel']; }
+interface KeyDownProps<T> { bindkeydown?: LynxEvent<T>['KeyDown']; catchkeydown?: LynxEvent<T>['KeyDown']; 'capture-bindkeydown'?: LynxEvent<T>['KeyDown']; 'capture-catchkeydown'?: LynxEvent<T>['KeyDown']; 'global-bindkeydown'?: LynxEvent<T>['KeyDown']; }
+interface KeyUpProps<T> { bindkeyup?: LynxEvent<T>['KeyUp']; catchkeyup?: LynxEvent<T>['KeyUp']; 'capture-bindkeyup'?: LynxEvent<T>['KeyUp']; 'capture-catchkeyup'?: LynxEvent<T>['KeyUp']; 'global-bindkeyup'?: LynxEvent<T>['KeyUp']; }
+interface FocusProps<T> { bindfocus?: LynxEvent<T>['Focus']; catchfocus?: LynxEvent<T>['Focus']; 'capture-bindfocus'?: LynxEvent<T>['Focus']; 'capture-catchfocus'?: LynxEvent<T>['Focus']; 'global-bindfocus'?: LynxEvent<T>['Focus']; }
+interface BlurProps<T> { bindblur?: LynxEvent<T>['Blur']; catchblur?: LynxEvent<T>['Blur']; 'capture-bindblur'?: LynxEvent<T>['Blur']; 'capture-catchblur'?: LynxEvent<T>['Blur']; 'global-bindblur'?: LynxEvent<T>['Blur']; }
+interface LayoutChangeProps<T> { bindlayoutchange?: LynxEvent<T>['LayoutChange']; catchlayoutchange?: LynxEvent<T>['LayoutChange']; 'capture-bindlayoutchange'?: LynxEvent<T>['LayoutChange']; 'capture-catchlayoutchange'?: LynxEvent<T>['LayoutChange']; 'global-bindlayoutchange'?: LynxEvent<T>['LayoutChange']; }
+interface UIAppearProps<T> { binduiappear?: LynxEvent<T>['UIAppear']; catchuiappear?: LynxEvent<T>['UIAppear']; 'capture-binduiappear'?: LynxEvent<T>['UIAppear']; 'capture-catchuiappear'?: LynxEvent<T>['UIAppear']; 'global-binduiappear'?: LynxEvent<T>['UIAppear']; }
+interface UIDisappearProps<T> { binduidisappear?: LynxEvent<T>['UIDisappear']; catchuidisappear?: LynxEvent<T>['UIDisappear']; 'capture-binduidisappear'?: LynxEvent<T>['UIDisappear']; 'capture-catchuidisappear'?: LynxEvent<T>['UIDisappear']; 'global-binduidisappear'?: LynxEvent<T>['UIDisappear']; }
+interface AccessibilityActionProps<T> { bindaccessibilityaction?: LynxEvent<T>['AccessibilityAction']; catchaccessibilityaction?: LynxEvent<T>['AccessibilityAction']; 'capture-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; 'capture-catchaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; 'global-bindaccessibilityaction'?: LynxEvent<T>['AccessibilityAction']; }
+interface TapProps<T> { bindtap?: LynxBindCatchEvent<T>['Tap']; catchtap?: LynxBindCatchEvent<T>['Tap']; 'capture-bindtap'?: LynxBindCatchEvent<T>['Tap']; 'capture-catchtap'?: LynxBindCatchEvent<T>['Tap']; 'global-bindtap'?: LynxBindCatchEvent<T>['Tap']; }
+interface LongTapProps<T> { bindlongtap?: LynxBindCatchEvent<T>['LongTap']; catchlongtap?: LynxBindCatchEvent<T>['LongTap']; 'capture-bindlongtap'?: LynxBindCatchEvent<T>['LongTap']; 'capture-catchlongtap'?: LynxBindCatchEvent<T>['LongTap']; 'global-bindlongtap'?: LynxBindCatchEvent<T>['LongTap']; }
+
+/**
+ * A combination of all possible event properties, statically defined for IDE-friendliness.
+ * This replaces the previous dynamic mapped type.
+ */
+export type LynxEventPropsBase<T> = BGLoadProps<T> &
+  BGErrorProps<T> &
+  TouchStartProps<T> &
+  TouchMoveProps<T> &
+  TouchCancelProps<T> &
+  TouchEndProps<T> &
+  LongPressProps<T> &
+  TransitionStartProps<T> &
+  TransitionCancelProps<T> &
+  TransitionEndProps<T> &
+  AnimationStartProps<T> &
+  AnimationIterationProps<T> &
+  AnimationCancelProps<T> &
+  AnimationEndProps<T> &
+  MouseDownProps<T> &
+  MouseUpProps<T> &
+  MouseMoveProps<T> &
+  MouseClickProps<T> &
+  MouseDblClickProps<T> &
+  MouseLongPressProps<T> &
+  WheelProps<T> &
+  KeyDownProps<T> &
+  KeyUpProps<T> &
+  FocusProps<T> &
+  BlurProps<T> &
+  LayoutChangeProps<T> &
+  UIAppearProps<T> &
+  UIDisappearProps<T> &
+  AccessibilityActionProps<T> &
+  TapProps<T> &
+  LongTapProps<T>;
 
 export type LynxEventProps = LynxEventPropsBase<Target>;
 
