@@ -401,6 +401,11 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   public void onLayoutUpdated() {
     super.onLayoutUpdated();
+    // Note: In the scrollview nested list case, scrollview will be set the layout direction to RTL,
+    // so the ListContainerView will inheriting the RTL layout from its parent view. But the RTL
+    // layout of the list is implemented on the C++ side, so the ListContainerView view needs to
+    // enforce an LTR layout.
+    ViewCompat.setLayoutDirection(mView, ViewCompat.LAYOUT_DIRECTION_LTR);
     if (mIsVertical && mView.mMeasuredWidth != getWidth()) {
       mView.setMeasuredSize(getWidth(), mView.mMeasuredHeight);
     } else if (!mIsVertical && mView.mMeasuredHeight != getHeight()) {
