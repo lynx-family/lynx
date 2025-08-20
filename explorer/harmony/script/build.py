@@ -97,10 +97,19 @@ def build_explorer_bundle(verbose):
     else:
         print(f'Warning: {homepage_build_path} not found')
 
-def run_gn(debug, gn_out_dir):
-    cmd = f'gn gen {gn_out_dir} --args=\'target_os="harmony" jsengine_type="quickjs" is_debug={str(debug).lower()} target_cpu="arm64" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true\' --export-compile-commands'
-    check_call(cmd, shell=True, cwd=HARMONY_DIR)
+def get_out_dir(args):
+    dir_name = f'harmony_{get_build_type(args)}_arm64'
+    if args.dev:
+        dir_name += '_dev'
+    out_dir = os.path.join(HARMONY_DIR, '..', '..', 'out', dir_name)
+    return out_dir
 
+def run_gn(args, gn_out_dir):
+    gn_args = f'target_os="harmony" jsengine_type="quickjs" is_debug={str(args.debug).lower()} target_cpu="arm64" harmony_sdk_version="default" use_primjs_napi=true build_lepus_compile=false enable_primjs_prebuilt_lib=true enable_inspector=true enable_harmony_shared=true'
+    if args.dev:
+        gn_args += ' enable_testbench_replay=true enable_testbench_recorder=true enable_trace="perfetto"'
+    cmd = f'gn gen {gn_out_dir} --args=\'{gn_args}\' --export-compile-commands'
+    check_call(cmd, shell=True, cwd=HARMONY_DIR)
 
 def run_build_so(output_path, args):
     target = 'default'
@@ -124,13 +133,6 @@ def run_cp_so(output_path, args):
         shutil.copy(src, dst)
         if args.verbose:
             print(f'run command cp {src} {dst}')
-
-
-def get_out_dir(args):
-    dir_name = f'harmony_{get_build_type(args)}_arm64'
-    out_dir = os.path.join(HARMONY_DIR, '..', '..', 'out', dir_name)
-    return out_dir
-
 
 def run_package_har(module_name, module_path, verbose):
     if verbose:
@@ -173,6 +175,7 @@ def main(argv):
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--debug", action="store_true", default=False, help="debug")
+    parser.add_argument("--dev", action="store_true", default=False, help="dev mode")
     parser.add_argument("--modules", nargs="*", help="list of modules name")
     parser.add_argument("--override_version", type=str, required=False, help="override version")
     parser.add_argument("--build_lynx_core", action="store_true", default=False, help="build lynx core")
@@ -201,7 +204,7 @@ def main(argv):
         build_explorer_bundle(args.verbose)
 
     gn_out_dir = get_out_dir(args)
-    run_gn(args.debug, gn_out_dir)
+    run_gn(args, gn_out_dir)
     run_build_so(gn_out_dir, args)
     run_cp_so(gn_out_dir, args)
 
@@ -215,7 +218,7 @@ def main(argv):
             publish_version = args.override_version
         else:
             # default version, just for package test
-            publish_version = "0.0.1-placeholder"
+            publish_version = '0.0.1-placeholder'
 
         # remove .gitignore file before build har
         # since har package will ignore files in .gitignore

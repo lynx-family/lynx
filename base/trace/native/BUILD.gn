@@ -139,10 +139,11 @@ source_set("trace") {
     # "../../src:base_log",
   ]
 
+  if ((is_android || is_harmony) && enable_trace == "perfetto") {
+    public_deps += [ "//third_party/xhook:xhook" ]
+  }
+
   if (is_android) {
-    if (enable_trace == "perfetto") {
-      public_deps += [ "//third_party/xhook:xhook" ]
-    }
     public_deps += [ "../android:trace_jni_files" ]
   }
 

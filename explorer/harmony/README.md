@@ -97,10 +97,10 @@ pushd explorer/harmony && ohpm install && popd
 
 #### Build and Install
 
-If you want to build a release version, you can remove the `--debug` option.
+If you want to build a release version, you can remove the `--debug` option, if you don't want to build a development version, remove the `--dev` option.
 
 ```bash
-python3 explorer/harmony/script/build.py --debug --build_lynx_core --build_bundle --build_hap
+python3 explorer/harmony/script/build.py --debug --dev --build_lynx_core --build_bundle --build_hap
 ```
 
 After a successful build, you can use DevEco Studio or the `hdc` command-line tool to install it on a **harmony virtual device**.

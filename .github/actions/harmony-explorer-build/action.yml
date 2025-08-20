@@ -16,7 +16,7 @@ runs:
         source tools/envsetup.sh
         pushd platform/harmony && ohpm install && popd
         pushd explorer/harmony && ohpm install && popd
-        python3 explorer/harmony/script/build.py --build_lynx_core --build_bundle --build_hap
+        python3 explorer/harmony/script/build.py --dev --build_lynx_core --build_bundle --build_hap
     - name: upload artifact
       uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
       continue-on-error: true

@@ -56,7 +56,7 @@ function gnPlugin(): HvigorPlugin {
                         mode === 'skipBundle'
                           ? ''
                           : '--build_lynx_core --build_bundle'
-                      } ${mode === 'release' ? '' : '--debug'} --verbose`,
+                      } ${mode === 'release' ? '' : '--debug'} --dev --verbose`,
                     { stdio: 'inherit' }
                   );
                 }
