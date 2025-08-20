@@ -517,6 +517,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       if (mTasmPlatformInvoker.get() != null) {
         mTasmPlatformInvoker.get().setNativeFacade(mNativeFacade);
       }
+      setupReusedEngineConfig();
       mIsEngineFromReuse = true;
     }
     onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_TRY_REUSE_ENGINE);
@@ -527,8 +528,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       return;
     }
     if (mLynxEngineRef != null) {
-      PageConfig.attachPageConfig(mLynxEngineRef.getPageConfig(), mLynxContext, mLynxUIRender);
-
+      if (mLynxEngineRef.hasLoaded()) {
+        PageConfig.attachPageConfig(mTemplateBundle != null ? mTemplateBundle.getPageConfig()
+                                                            : mLynxEngineRef.getPageConfig(),
+            mLynxContext, mLynxUIRender);
+      }
       if (!mLynxEngineRef.hasLoaded() && mTasmPlatformInvoker != null) {
         mLynxEngineRef.setTasmPlatformInvoker(mTasmPlatformInvoker.get());
       }
@@ -1542,8 +1546,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
       tryReuseLynxEngineFromPool();
       if (mLynxEngineRef != null) {
         LLog.i(TAG, "call nativeReattachLynxEngineWrapper." + this);
-        nativeReattachLynxEngineWrapper(
-            mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr());
+        nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr(),
+            mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
         if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
@@ -1784,8 +1788,9 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
           return;
         } else {
           LLog.i(TAG, "call nativeReattachLynxEngineWrapper");
-          nativeReattachLynxEngineWrapper(
-              mNativePtr, mNativeLifecycle, mLynxEngineRef.getNativePtr());
+          nativeReattachLynxEngineWrapper(mNativePtr, mNativeLifecycle,
+              mLynxEngineRef.getNativePtr(),
+              mEngineProxy != null ? mEngineProxy.getNativePtr() : 0);
           if (mThreadStrategyForRendering == ThreadStrategyForRendering.ALL_ON_UI
               && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
             attachEngineToUIThread();
@@ -4242,7 +4247,8 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
 
   private native void nativeSetContextHasAttached(long ptr, long lifecycle);
 
-  public native void nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr);
+  public native void nativeReattachLynxEngineWrapper(
+      long ptr, long lifecycle, long engine_ptr, long proxy_ptr);
 
   public native void nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
 }

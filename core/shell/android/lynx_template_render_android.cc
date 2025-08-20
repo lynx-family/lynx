@@ -19,6 +19,7 @@
 #include "core/resource/lynx_resource_loader_android.h"
 #include "core/runtime/bindings/jsi/modules/android/module_factory_android.h"
 #include "core/services/performance/android/performance_controller_android.h"
+#include "core/shell/android/lynx_engine_proxy_android.h"
 #include "core/shell/android/lynx_runtime_wrapper_android.h"
 #include "core/shell/android/native_facade_android.h"
 #include "core/shell/android/platform_call_back_android.h"
@@ -1439,7 +1440,8 @@ void SetContextHasAttached(JNIEnv* env, jobject jcaller, jlong ptr,
 }
 
 void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
-                               jlong lifecycle, jlong engine_ptr) {
+                               jlong lifecycle, jlong engine_ptr,
+                               jlong proxy_ptr) {
   AtomicLifecycle* lifecycle_ptr =
       reinterpret_cast<AtomicLifecycle*>(lifecycle);
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
@@ -1449,6 +1451,11 @@ void ReattachLynxEngineWrapper(JNIEnv* env, jobject jcaller, jlong ptr,
   auto* engine_wrapper =
       reinterpret_cast<lynx::shell::LynxEngineWrapper*>(engine_ptr);
   engine_wrapper->BindShell(shell);
+  if (proxy_ptr != 0) {
+    lynx::shell::LynxEngineProxyAndroid* engine_proxy =
+        reinterpret_cast<lynx::shell::LynxEngineProxyAndroid*>(proxy_ptr);
+    engine_proxy->ResetActor(shell->GetEngineActor());
+  }
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

@@ -4303,7 +4303,7 @@ public class com::lynx::tasm::LynxEngineBuilder : com.lynx.tasm.LynxViewBuilder 
 }
 
 public class com::lynx::tasm::core::LynxEngineProxy :  {
-  public long com.lynx.tasm.core.LynxEngineProxy.mNativePtr mNativePtr;
+  public long com.lynx.tasm.core.LynxEngineProxy.getNativePtr();
   public com.lynx.tasm.core.LynxEngineProxy.LynxEngineProxy(long nativeCreator);
   public void com.lynx.tasm.core.LynxEngineProxy.destroy();
   public void com.lynx.tasm.core.LynxEngineProxy.dispatchTaskToLynxEngine(Runnable runnable);
@@ -5970,7 +5970,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public LynxViewBuilder com.lynx.tasm.LynxTemplateRender.getLynxViewBuilder();
   public void com.lynx.tasm.LynxTemplateRender.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxTemplateRender.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
-  public native void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr);
+  public native void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr, long proxy_ptr);
   public native void com.lynx.tasm.LynxTemplateRender.nativeDetachLynxEngineWrapper(long ptr, long lifecycle);
 }
 

@@ -16,7 +16,11 @@ import java.nio.ByteBuffer;
 
 public final class LynxEngineProxy {
   private static final String TAG = "LynxEngineProxy";
-  public long mNativePtr;
+  private long mNativePtr;
+
+  public long getNativePtr() {
+    return mNativePtr;
+  }
 
   public LynxEngineProxy(long nativeCreator) {
     mNativePtr = nativeCreate(nativeCreator);
