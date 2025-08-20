@@ -368,6 +368,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   }
 
   [self reset:lastInstanceId];
+  // Update info
+  [self updateNativeTheme];
+  [self updateNativeGlobalProps];
 
   [self updateViewport];
   [self setUpTiming];
