@@ -133,6 +133,7 @@ LYNX_REGISTER_UI("filter-image")
   if (!_src || self.frame.size.width == 0 || self.frame.size.height == 0) {
     return;
   }
+
   NSURL* url = [[NSURL alloc] initWithString:_src];
   LynxFatImageProcessor* fatImageProcessor =
       [[LynxFatImageProcessor alloc] initWithSize:self.frame.size
@@ -172,6 +173,7 @@ LYNX_REGISTER_UI("filter-image")
                                                      targetSign:self.sign
                                                          detail:detail]];
                      }
+                     strongSelf.meaningfulContentStatus = kLynxUIMeaningfulContentLoaded;
                    } else {
                      strongSelf.view.image = nil;
                      NSString* errorDetail = [NSString stringWithFormat:@"%@", [error userInfo]];

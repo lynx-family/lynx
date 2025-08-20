@@ -117,4 +117,5 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable id<LynxResourceFetcher>)getGenericResourceFetcher;
 
 @end
+
 NS_ASSUME_NONNULL_END

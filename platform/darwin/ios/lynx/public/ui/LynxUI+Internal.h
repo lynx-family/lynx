@@ -38,6 +38,10 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 // ui, the lynx touch gestures will not fail.
 @property(nonatomic, readonly) BOOL enableSimultaneousTouch;
 
+// fsp tracing infos
+@property(nonatomic, assign) CGRect meaningfulContentRect;
+@property(nonatomic, assign) NSTimeInterval meaningfulContentChangeTimestamp;
+
 // exposure screen border
 @property(nonatomic) CGFloat exposureMarginTop;
 @property(nonatomic) CGFloat exposureMarginBottom;
