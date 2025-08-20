@@ -6,6 +6,8 @@
 #define CORE_RUNTIME_BINDINGS_JSI_LYNX_H_
 
 #include <memory>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "core/runtime/bindings/jsi/js_app.h"
@@ -15,7 +17,7 @@ namespace lynx {
 namespace piper {
 class LynxProxy : public HostObject {
  public:
-  LynxProxy(std::weak_ptr<App> app) : native_app_(app){};
+  LynxProxy(std::weak_ptr<App> app);
   ~LynxProxy() = default;
 
   virtual Value get(Runtime*, const PropNameID& name) override;
@@ -25,6 +27,10 @@ class LynxProxy : public HostObject {
 
  private:
   std::weak_ptr<App> native_app_;
+  std::unordered_map<std::string, base::MoveOnlyClosure<Value, Runtime*>>
+      dispatch_map_;
+
+  void Init();
 
   piper::Value GetCustomSectionSync(Runtime& rt, const char* prop_name);
   piper::Value LoadScript(Runtime& rt);
