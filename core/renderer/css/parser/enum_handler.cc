@@ -67,6 +67,8 @@ static bool ToDisplayType(std::string_view str, int& result) {
     type = DisplayType::kAuto;
   } else if (str == "-x-box") {
     type = DisplayType::kXBox;
+  } else if (str == "contents") {
+    type = DisplayType::kContents;
   } else {
     return false;
   }
