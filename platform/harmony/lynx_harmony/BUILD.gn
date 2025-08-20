@@ -44,7 +44,10 @@ target(lynx_harmony_type, "lynx_harmony") {
     "../../../core/runtime/jsi/jsvm",
   ]
 
-  public_configs = [ ":harmony_public_config" ]
+  if (enable_trace == "perfetto" || enable_trace == "systrace") {
+    libs += [ "hitrace_ndk.z" ]
+  }
+
   if (enable_testbench_replay) {
     public_deps += [ "../../../core/services/replay" ]
   }
@@ -52,6 +55,8 @@ target(lynx_harmony_type, "lynx_harmony") {
   if (enable_testbench_recorder) {
     public_deps += [ "../../../core/services/recorder:recorder" ]
   }
+
+  public_configs = [ ":harmony_public_config" ]
 }
 
 config("harmony_public_config") {
