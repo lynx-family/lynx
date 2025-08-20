@@ -59,6 +59,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * @apidoc
@@ -1016,8 +1017,46 @@ public class LynxView extends UIBodyView {
     return mCurrentHeightMeasureSpec;
   }
 
+  private void onTraceEventBegin(String eventName, Callable<HashMap<String, String>> generateMap) {
+    if (!TraceEvent.isTracingStarted()) {
+      return;
+    }
+    HashMap<String, String> map = new HashMap<String, String>();
+    map.put(TraceEventDef.INSTANCE_ID,
+        getLynxContext() != null ? String.valueOf(getLynxContext().getInstanceId()) : "null");
+    map.put(TraceEventDef.LYNX_VIEW, this.toString());
+
+    if (generateMap != null) {
+      try {
+        HashMap<String, String> extraMap = generateMap.call();
+        map.putAll(extraMap);
+      } catch (Exception e) {
+        map.put(TraceEventDef.EXCEPTION, e.toString());
+      }
+    }
+
+    TraceEvent.beginSection(eventName, map);
+  }
+
+  private void onTraceEventEnd(String eventName) {
+    if (!TraceEvent.isTracingStarted()) {
+      return;
+    }
+    TraceEvent.endSection(eventName);
+  }
+
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+    onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_MEASURE, new Callable<HashMap<String, String>>() {
+      @Override
+      public HashMap<String, String> call() throws Exception {
+        HashMap<String, String> extraMap = new HashMap<>();
+        extraMap.put(TraceEventDef.WIDTH_MEASURE_SPEC, String.valueOf(widthMeasureSpec));
+        extraMap.put(TraceEventDef.HEIGHT_MEASURE_SPEC, String.valueOf(heightMeasureSpec));
+        return extraMap;
+      }
+    });
+
     mCurrentWidthMeasureSpec = widthMeasureSpec;
     mCurrentHeightMeasureSpec = heightMeasureSpec;
 
@@ -1027,6 +1066,7 @@ public class LynxView extends UIBodyView {
 
     if (mLynxTemplateRender == null) {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_MEASURE);
       return;
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_START);
@@ -1042,12 +1082,24 @@ public class LynxView extends UIBodyView {
     }
 
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_MEASURE_END);
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_MEASURE);
   }
 
   @Keep
   @Override
   protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_LAYOUT, new Callable<HashMap<String, String>>() {
+      @Override
+      public HashMap<String, String> call() throws Exception {
+        HashMap<String, String> extraMap = new HashMap<>();
+        extraMap.put(TraceEventDef.PARAMS,
+            "" + changed + " " + left + " " + top + " " + right + " " + bottom);
+        return extraMap;
+      }
+    });
+
     if (mLynxTemplateRender == null) {
+      onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_LAYOUT);
       return;
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_START);
@@ -1067,6 +1119,7 @@ public class LynxView extends UIBodyView {
       }
     }
     mLynxTemplateRender.markHostPlatformTiming(HOST_PLATFORM_LAYOUT_END);
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_LAYOUT);
   }
 
   @Keep
@@ -1090,6 +1143,17 @@ public class LynxView extends UIBodyView {
    * @param heightMeasureSpec Current `LynxView` height.
    */
   public void updateViewport(int widthMeasureSpec, int heightMeasureSpec) {
+    onTraceEventBegin(
+        TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT, new Callable<HashMap<String, String>>() {
+          @Override
+          public HashMap<String, String> call() throws Exception {
+            HashMap<String, String> extraMap = new HashMap<>();
+            extraMap.put(TraceEventDef.WIDTH_MEASURE_SPEC, String.valueOf(widthMeasureSpec));
+            extraMap.put(TraceEventDef.HEIGHT_MEASURE_SPEC, String.valueOf(heightMeasureSpec));
+            return extraMap;
+          }
+        });
+
     mCurrentWidthMeasureSpec = widthMeasureSpec;
     mCurrentHeightMeasureSpec = heightMeasureSpec;
 
@@ -1098,6 +1162,8 @@ public class LynxView extends UIBodyView {
       return;
     }
     mLynxTemplateRender.updateViewport(widthMeasureSpec, heightMeasureSpec);
+
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT);
   }
 
   /**
@@ -1391,6 +1457,8 @@ public class LynxView extends UIBodyView {
   @Keep
   @Override
   protected void onAttachedToWindow() {
+    onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_ATTACH_TO_WINDOW, null);
+
     // ensure super attach before ui owner attach
     super.onAttachedToWindow();
     LLog.i("Lynx", "onAttachedToWindow:" + hashCode());
@@ -1398,11 +1466,15 @@ public class LynxView extends UIBodyView {
       // ui owner attach here
       mLynxTemplateRender.onAttachedToWindow();
     }
+
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_ATTACH_TO_WINDOW);
   }
 
   @Keep
   @Override
   protected void onDetachedFromWindow() {
+    onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_DETACHED_FROM_WINDOW, null);
+
     LLog.i("Lynx", "onDetachedFromWindow:" + hashCode());
     if (mLynxTemplateRender != null) {
       // ui owner detach here
@@ -1410,6 +1482,8 @@ public class LynxView extends UIBodyView {
     }
     // ensure super detach after ui owner detach
     super.onDetachedFromWindow();
+
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_DETACHED_FROM_WINDOW);
   }
 
   /**

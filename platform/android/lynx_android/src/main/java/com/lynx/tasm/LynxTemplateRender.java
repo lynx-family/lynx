@@ -2117,6 +2117,8 @@ public class LynxTemplateRender
     HashMap map = new HashMap<String, String>();
     if (mLynxContext != null) {
       map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mLynxContext.getInstanceId()));
+      map.put(TraceEventDef.LYNX_VIEW,
+          mLynxContext.getLynxView() != null ? mLynxContext.getLynxView().toString() : "null");
     }
     TraceEvent.beginSection(TraceEvent.CATEGORY_VITALS, eventName, map);
   }
