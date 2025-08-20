@@ -3535,19 +3535,11 @@ private:
                                          typename type_policy::mapped_type>>) {
           // Key and T are both relocatable in flat map, fast path to copy data
           // trivially and ignores destructors.
-          // If both key_type and mapped_type are already of TypeOfPlainBytes
-          // type, this optimization is not necessary, thus avoiding the
-          // increase in binary size caused by template specialization.
-          if constexpr (!(lynx::base::IsTypeOfPlainBytes<
-                              typename type_policy::key_type>::value &&
-                          lynx::base::IsTypeOfPlainBytes<
-                              typename type_policy::mapped_type>::value)) {
-            // No destroy, trivially moved.
-            ++num_destroyed;
-            nosize_unchecked_emplace_at(
-              arrays_,position_for(hash,arrays_),hash,try_emplace_plain_bytes_t{},p);
-            return;
-          }
+          // No destroy, trivially moved.
+          ++num_destroyed;
+          nosize_unchecked_emplace_at(
+            arrays_,position_for(hash,arrays_),hash,try_emplace_plain_bytes_t{},p);
+          return;
         }
       }
     }

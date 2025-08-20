@@ -10,6 +10,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/algorithm.h"
+
 namespace lynx::base {
 
 // `sorted_for_each` work just like `std::for_each`, but in a sorted order.
@@ -24,6 +26,7 @@ namespace lynx::base {
 // see: https://en.cppreference.com/w/cpp/named_req/InputIterator
 //
 // Sort:
+// Use `InsertionSort` instead of `std::stable_sort` for binary size optimal.
 // The iterators are sorted by `std::stable_sort`, it sorts the elements with
 // the dereferenced iterators in the range [first, last) in non-descending
 // order. The order of equivalent elements is guaranteed to be preserved. If the
@@ -48,8 +51,11 @@ constexpr UnaryFunc sorted_for_each(InputIt first, InputIt last, UnaryFunc f,
   for (; first != last; first++) {
     iterators.push_back(first);
   }
-  std::stable_sort(iterators.begin(), iterators.end(),
-                   [&comp](InputIt a, InputIt b) { return comp(*a, *b); });
+
+  InsertionSort(iterators.data(), iterators.size(),
+                [&comp](InputIt a, InputIt b) { return comp(*a, *b); });
+  //  std::stable_sort(iterators.begin(), iterators.end(),
+  //                   [&comp](InputIt a, InputIt b) { return comp(*a, *b); });
 
   for (auto& it : iterators) {
     // f is called with the dereferenced iterators

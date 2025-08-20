@@ -99,10 +99,18 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   lynx_value_ref value_ref_;
 
  public:
-  explicit Value() { value_.type = lynx_value_null; };
+  Value() { value_.type = lynx_value_null; };
 
   enum CreateAsUndefinedTag { kCreateAsUndefinedTag };
   explicit Value(CreateAsUndefinedTag);
+
+  // This constructor is UNSAFE and used by lepus::Dictionary to optimize
+  // value insertion.
+  // It does not initialize any field of Value and the Value may be in some
+  // invalid status(type not set, even not set to lynx_value_null) due to
+  // random memory.
+  enum UnsafeCreateAsUninitialized { kUnsafeCreateAsUninitialized };
+  Value(UnsafeCreateAsUninitialized) {}
 
   Value(const Value& value);
   Value(Value&& value) noexcept;

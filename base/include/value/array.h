@@ -191,7 +191,7 @@ class BASE_EXPORT_FOR_DEVTOOL CArray : public RefCountedBase {
   }
 
  protected:
-  CArray() = default;
+  CArray() {}
 
   friend class Value;
 

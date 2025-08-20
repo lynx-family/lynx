@@ -423,6 +423,7 @@ source_set("base_values") {
     "../include/value/ref_type.h",
     "../include/value/table.h",
     "value/base_value.cc",
+    "value/base_value_print.cc",
     "value/byte_array.cc",
     "value/path_parser.cc",
     "value/table.cc",
