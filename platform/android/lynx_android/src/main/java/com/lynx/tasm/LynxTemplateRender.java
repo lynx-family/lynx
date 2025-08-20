@@ -1548,6 +1548,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
             && mThreadStrategyForRendering != mLynxEngineRef.getThreadStrategy()) {
           attachEngineToUIThread();
         }
+        if (getLynxView() != null && getLynxView().getCurrentWidthMeasureSpec() >= 0
+            && getLynxView().getCurrentHeightMeasureSpec() >= 0) {
+          updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
+              getLynxView().getCurrentHeightMeasureSpec(), false);
+        }
         updateData(data, true);
         onTraceEventEnd(eventName);
         return true;
