@@ -26,81 +26,42 @@ namespace lynx {
 namespace piper {
 
 Console::Console(std::shared_ptr<ConsoleMessagePostMan> post_man)
-    : post_man_(post_man) {}
+    : post_man_(post_man) {
+  Init();
+}
 
-Value Console::get(Runtime* rt, const PropNameID& name) {
-  auto methodName = name.utf8(*rt);
+void Console::Init() {
+  auto make_log_function = [this](int level, const char* name_str) {
+    return [this, level, name_str](Runtime* rt) {
+      return Function::createFromHostFunction(
+          *rt, PropNameID::forAscii(*rt, name_str), 0,
+          [this, level, name_str](
+              Runtime& rt, const Value&, const Value* args,
+              size_t count) -> base::expected<Value, JSINativeException> {
+            return this->LogWithLevel(&rt, level, args, count, name_str);
+          });
+    };
+  };
 
-  if (methodName == "log") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "log"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_INFO, args, count, "log");
-        });
-  }
+  methods_map_["log"] = make_log_function(CONSOLE_LOG_INFO, "log");
+  methods_map_["report"] = make_log_function(CONSOLE_LOG_REPORT, "log");
 
-  if (methodName == "report") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "report"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_REPORT, args, count, "log");
-        });
-  }
+  methods_map_["alog"] = make_log_function(CONSOLE_LOG_ALOG, "log");
+  methods_map_["error"] = make_log_function(CONSOLE_LOG_ERROR, "error");
+  methods_map_["warn"] = make_log_function(CONSOLE_LOG_WARNING, "warn");
+  methods_map_["info"] = make_log_function(CONSOLE_LOG_INFO, "info");
+  methods_map_["debug"] = make_log_function(CONSOLE_LOG_INFO, "debug");
 
-  if (methodName == "alog") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "alog"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_ALOG, args, count, "log");
-        });
-  }
-
-  if (methodName == "assert") {
+  methods_map_["assert"] = [this](Runtime* rt) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "assert"), 0,
         [this](Runtime& rt, const Value& thisVal, const Value* args,
                size_t count) {
           return Assert(&rt, CONSOLE_LOG_ERROR, args, count, "assert");
         });
-  }
+  };
 
-  if (methodName == "error") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "error"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_ERROR, args, count, "error");
-        });
-  }
-
-  if (methodName == "warn") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "warn"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_WARNING, args, count, "warn");
-        });
-  }
-  if (methodName == "info") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "info"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_INFO, args, count, "info");
-        });
-  }
-  if (methodName == "debug") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "debug"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_INFO, args, count, "debug");
-        });
-  }
-  if (methodName == "test") {
+  methods_map_["test"] = [](Runtime* rt) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "test"), 0,
         [](Runtime& rt, const Value& thisVal, const Value* args,
@@ -117,8 +78,9 @@ Value Console::get(Runtime* rt, const PropNameID& name) {
           return Value(String::createFromUtf8(rt, s.GetString()));
           //  return LogWithLevel(&rt, logging::LOG_WARNING, args, count);
         });
-  }
-  if (methodName == "profile") {
+  };
+
+  methods_map_["profile"] = [](Runtime* rt) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "profile"), 0,
         [](Runtime& rt, const Value& thisVal, const Value* args, size_t count) {
@@ -132,94 +94,43 @@ Value Console::get(Runtime* rt, const PropNameID& name) {
                             });
           return piper::Value::undefined();
         });
-  }
-  if (methodName == "profileEnd") {
+  };
+  methods_map_["profileEnd"] = [](Runtime* rt) {
     return Function::createFromHostFunction(
         *rt, PropNameID::forAscii(*rt, "profileEnd"), 0,
         [](Runtime& rt, const Value& thisVal, const Value* args, size_t count) {
           TRACE_EVENT_END(LYNX_TRACE_CATEGORY_JAVASCRIPT);
           return piper::Value::undefined();
         });
-  }
+  };
 
-  if (methodName == "count") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "count"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "count");
-        });
-  }
+  auto make_call_js_function = [this](const char* prop_name) {
+    return [this, prop_name](Runtime* rt) {
+      return Function::createFromHostFunction(
+          *rt, PropNameID::forAscii(*rt, prop_name), 0,
+          [this, prop_name](
+              Runtime& rt, const Value&, const Value* args,
+              size_t count) -> base::expected<Value, JSINativeException> {
+            return this->CallJSEngineConsole(&rt, args, count, prop_name);
+          });
+    };
+  };
+  methods_map_["count"] = make_call_js_function("count");
+  methods_map_["countReset"] = make_call_js_function("countReset");
+  methods_map_["group"] = make_call_js_function("group");
+  methods_map_["groupCollapsed"] = make_call_js_function("groupCollapsed");
+  methods_map_["groupEnd"] = make_call_js_function("groupEnd");
+  methods_map_["time"] = make_call_js_function("time");
+  methods_map_["timeLog"] = make_call_js_function("timeLog");
+  methods_map_["timeEnd"] = make_call_js_function("timeEnd");
+  methods_map_["table"] = make_call_js_function("table");
+}
 
-  if (methodName == "countReset") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "countReset"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "countReset");
-        });
-  }
-
-  if (methodName == "group") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "group"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "group");
-        });
-  }
-
-  if (methodName == "groupCollapsed") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "groupCollapsed"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "groupCollapsed");
-        });
-  }
-
-  if (methodName == "groupEnd") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "groupEnd"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "groupEnd");
-        });
-  }
-
-  if (methodName == "time") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "time"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "time");
-        });
-  }
-
-  if (methodName == "timeLog") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "time"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "timeLog");
-        });
-  }
-
-  if (methodName == "timeEnd") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "time"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return CallJSEngineConsole(&rt, args, count, "timeEnd");
-        });
-  }
-  if (methodName == "table") {
-    return Function::createFromHostFunction(
-        *rt, PropNameID::forAscii(*rt, "table"), 0,
-        [this](Runtime& rt, const Value& thisVal, const Value* args,
-               size_t count) -> base::expected<Value, JSINativeException> {
-          return LogWithLevel(&rt, CONSOLE_LOG_INFO, args, count, "table");
-        });
+Value Console::get(Runtime* rt, const PropNameID& name) {
+  auto method_name = name.utf8(*rt);
+  auto it = methods_map_.find(method_name);
+  if (it != methods_map_.end()) {
+    return it->second(rt);
   }
   return piper::Value::undefined();
 }
@@ -228,25 +139,10 @@ void Console::set(Runtime* rt, const PropNameID& name, const Value& value) {}
 
 std::vector<PropNameID> Console::getPropertyNames(Runtime& rt) {
   std::vector<PropNameID> vec;
-  vec.push_back(piper::PropNameID::forUtf8(rt, "log"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "error"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "warn"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "info"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "debug"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "report"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "alog"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "assert"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "profile"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "profileEnd"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "count"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "countReset"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "group"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "groupCollapsed"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "groupEnd"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "time"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "timeLog"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "timeEnd"));
-  vec.push_back(piper::PropNameID::forUtf8(rt, "table"));
+  vec.reserve(methods_map_.size());
+  for (auto& pair : methods_map_) {
+    vec.push_back(piper::PropNameID::forUtf8(rt, pair.first));
+  }
   return vec;
 }
 

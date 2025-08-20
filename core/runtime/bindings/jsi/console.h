@@ -7,8 +7,10 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include "base/include/closure.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/runtime/common/utils.h"
 #include "core/runtime/jsi/jsi.h"
@@ -35,6 +37,7 @@ class Console : public HostObject {
   static std::string LogObject(Runtime* rt, const piper::Object* obj);
 
  private:
+  void Init();
   piper::Value LogWithLevel(Runtime* rt, const int level, const Value* args,
                             size_t count, const std::string& func_name);
   piper::Value CallJSEngineConsole(Runtime* rt, const Value* args, size_t count,
@@ -51,6 +54,8 @@ class Console : public HostObject {
 
  private:
   std::weak_ptr<ConsoleMessagePostMan> post_man_;
+  std::unordered_map<std::string, base::MoveOnlyClosure<Function, Runtime*>>
+      methods_map_;
 };
 }  // namespace piper
 }  // namespace lynx
