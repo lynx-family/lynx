@@ -177,7 +177,7 @@ if (build_lynx_lepus_node) {
     sources += lynx_data_shared_sources_path
 
     # quickjs
-    if (is_wasm || is_encoder_ut || is_nodejs) {
+    if (is_wasm || is_encoder_ut) {
       sources += lynx_jsi_quickjs_sources_path
       sources += jscache_quickjs_sources
     }
