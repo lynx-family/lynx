@@ -1283,7 +1283,8 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::getEnableNewTransformOrigin();
   public void LynxEnv::setCronetEngine:(void *engine);
   public void LynxEnv::setCronetServerConfig:(void *config);
-  public void LynxEnv::enableMemoryMonitor:(BOOL value);
+  public void LynxEnv::setEnableMemoryMonitor:(BOOL value);
+  public BOOL LynxEnv::enableMemoryMonitor();
   public void LynxEnv::enableFluencyTracer:(BOOL value);
   public BOOL LynxEnv::enableComponentStatisticReport();
   public BOOL LynxEnv::enableImageEventReport();

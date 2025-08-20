@@ -123,7 +123,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setCronetEngine:(void *)engine;
 - (void)setCronetServerConfig:(void *)config;
 
-- (void)enableMemoryMonitor:(BOOL)value;
+- (void)setEnableMemoryMonitor:(BOOL)value;
+
+- (BOOL)enableMemoryMonitor;
 
 - (void)enableFluencyTracer:(BOOL)value;
 

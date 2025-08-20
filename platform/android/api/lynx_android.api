@@ -4396,6 +4396,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public void com.lynx.tasm.LynxEnv.setCreateViewAsync(boolean isCreateViewAsync);
   public void com.lynx.tasm.LynxEnv.setVsyncAlignedFlushGlobalSwitch(boolean enable);
   public boolean com.lynx.tasm.LynxEnv.getCreateViewAsync();
+  public Boolean com.lynx.tasm.LynxEnv.getEnableMemoryMonitor();
   public String com.lynx.tasm.LynxEnv.getMemoryAcquisitionDelaySec();
   public long com.lynx.tasm.LynxEnv.getMemoryReportIntervalSec();
   public boolean com.lynx.tasm.LynxEnv.getVsyncAlignedFlushGlobalSwitch();
@@ -4500,6 +4501,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_MULTI_JS_THREAD_BY_DEFAULT ENABLE_MULTI_JS_THREAD_BY_DEFAULT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD;
   public com.lynx.tasm.LynxEnvKey.ENABLE_TEXT_LAYOUT_CACHE ENABLE_TEXT_LAYOUT_CACHE;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_MEMORY_MONITOR ENABLE_MEMORY_MONITOR;
   public com.lynx.tasm.LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC MEMORY_ACQUISITION_DELAY_SEC;
   public com.lynx.tasm.LynxEnvKey.MEMORY_REPORT_INTERVAL_SEC MEMORY_REPORT_INTERVAL_SEC;
   public  final String com.lynx.tasm.LynxEnvKey.SP_KEY_ENABLE_DEBUG_MODE SP_KEY_ENABLE_DEBUG_MODE;
