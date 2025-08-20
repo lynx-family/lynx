@@ -428,8 +428,12 @@
   _cronetServerConfig = config;
 }
 
-- (void)enableMemoryMonitor:(BOOL)value {
+- (void)setEnableMemoryMonitor:(BOOL)value {
   lynx::tasm::performance::MemoryMonitor::SetForceEnable(value);
+}
+
+- (BOOL)enableMemoryMonitor {
+  return lynx::tasm::performance::MemoryMonitor::Enable();
 }
 
 - (void)enableFluencyTracer:(BOOL)value {

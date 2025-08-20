@@ -928,6 +928,10 @@ public class LynxEnv {
     return mCreateViewAsync;
   }
 
+  public Boolean getEnableMemoryMonitor() {
+    return getBooleanFromExternalEnv(LynxEnvKey.ENABLE_MEMORY_MONITOR, false);
+  }
+
   public String getMemoryAcquisitionDelaySec() {
     return getStringFromExternalEnv(LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC);
   }
