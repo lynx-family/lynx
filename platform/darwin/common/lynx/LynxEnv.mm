@@ -467,10 +467,10 @@
 
 - (BOOL)enableImageAsyncLayout {
   static dispatch_once_t onceToken;
-  static BOOL enableImageAsyncLayout = YES;
+  static BOOL enableImageAsyncLayout = NO;
   dispatch_once(&onceToken, ^{
     enableImageAsyncLayout = [self boolFromExternalEnv:LynxEnvEnableImageAsyncLayout
-                                          defaultValue:YES];
+                                          defaultValue:NO];
   });
   return enableImageAsyncLayout;
 }
