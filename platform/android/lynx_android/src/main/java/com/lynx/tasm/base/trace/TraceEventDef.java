@@ -24,6 +24,33 @@ public class TraceEventDef {
   public static final String LYNX_TEMPLATE_RENDER_MEASURE = "LynxTemplateRender.Measure";
 
   /**
+   * @trace_description: LynxView's onMeasure function, it is triggered by the Android system.
+   */
+  public static final String LYNX_VIEW_ON_MEASURE = "LynxView.onMeasure";
+
+  /**
+   * @trace_description: LynxView's onLayout function, it is triggered by the Android system.
+   */
+  public static final String LYNX_VIEW_ON_LAYOUT = "LynxView.onLayout";
+
+  /**
+   * @trace_description: LynxView's onAttachedToWindow function, it is triggered by the Android
+   * system.
+   */
+  public static final String LYNX_VIEW_ON_ATTACH_TO_WINDOW = "LynxView.onAttachedToWindow";
+
+  /**
+   * @trace_description: LynxView's onDetachedFromWindow function, it is triggered by the Android
+   * system.
+   */
+  public static final String LYNX_VIEW_ON_DETACHED_FROM_WINDOW = "LynxView.onDetachedFromWindow";
+
+  /**
+   * @trace_description: Update LynxView's viewport.
+   */
+  public static final String LYNX_VIEW_UPDATE_VIEWPORT = "LynxView.updateViewport";
+
+  /**
    * @trace_description: Layout of <text> element's platform layout node, where the preview text
    * are `@args{preview_text}`.
    * @history_name{text.TextShadowNode.measure}
@@ -200,6 +227,11 @@ public class TraceEventDef {
   public static final String FLUENCY_TRACER_START = "StartFluencyTrace";
   public static final String FLUENCY_TRACER_STOP = "StopFluencyTrace";
   public static final String INSTANCE_ID = "instance_id";
+  public static final String LYNX_VIEW = "lynx_view";
+  public static final String EXCEPTION = "exception";
+  public static final String WIDTH_MEASURE_SPEC = "widthMeasureSpec";
+  public static final String HEIGHT_MEASURE_SPEC = "heightMeasureSpec";
+  public static final String PARAMS = "params";
 
   // timing
   public static final String PIPELINE_ID = "pipeline_id";

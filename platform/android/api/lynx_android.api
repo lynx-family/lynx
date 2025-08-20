@@ -9120,6 +9120,11 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW LYNX_TEMPLATE_RENDER_DRAW;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_TEMPLATE_RENDER_LAYOUT LYNX_TEMPLATE_RENDER_LAYOUT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE LYNX_TEMPLATE_RENDER_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_MEASURE LYNX_VIEW_ON_MEASURE;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_LAYOUT LYNX_VIEW_ON_LAYOUT;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_ATTACH_TO_WINDOW LYNX_VIEW_ON_ATTACH_TO_WINDOW;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_ON_DETACHED_FROM_WINDOW LYNX_VIEW_ON_DETACHED_FROM_WINDOW;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW_UPDATE_VIEWPORT LYNX_VIEW_UPDATE_VIEWPORT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_SHADOW_NODE_MEASURE TEXT_SHADOW_NODE_MEASURE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_MEASURE_TEXT TEXT_LAYOUT_MEASURE_TEXT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE TEXT_LAYOUT_DISPATCH_LAYOUT_BEFORE;
@@ -9238,6 +9243,11 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_START FLUENCY_TRACER_START;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_STOP FLUENCY_TRACER_STOP;
   public final String com.lynx.tasm.base.trace.TraceEventDef.INSTANCE_ID INSTANCE_ID;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_VIEW LYNX_VIEW;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.EXCEPTION EXCEPTION;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.WIDTH_MEASURE_SPEC WIDTH_MEASURE_SPEC;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.HEIGHT_MEASURE_SPEC HEIGHT_MEASURE_SPEC;
+  public final String com.lynx.tasm.base.trace.TraceEventDef.PARAMS PARAMS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.PIPELINE_ID PIPELINE_ID;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_KEY TIMING_KEY;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TIMING_TIMESTAMP TIMING_TIMESTAMP;
