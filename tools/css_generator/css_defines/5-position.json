@@ -27,9 +27,14 @@
       "value": "sticky",
       "version": "1.4",
       "desc": ""
+    },
+    {
+      "value": "static",
+      "version": "4.3",
+      "desc": "Participates in normal flow, ignores inset properties, and does not establish an absolute positioning containing block in Starlight."
     }
   ],
-  "formal_syntax": "absolute | relative | fixed | sticky",
+  "formal_syntax": "absolute | relative | fixed | sticky | static",
   "compat_data": {
     "position": {
       "__compat": {
@@ -226,16 +231,16 @@
           },
           "support": {
             "android": {
-              "notes": "",
-              "version_added": false
+              "notes": "Supported by the Starlight layout engine.",
+              "version_added": "4.3"
             },
             "ios": {
-              "notes": "",
-              "version_added": false
+              "notes": "Supported by the Starlight layout engine.",
+              "version_added": "4.3"
             },
             "harmony": {
-              "notes": "",
-              "version_added": false
+              "notes": "Supported by the Starlight layout engine.",
+              "version_added": "4.3"
             },
             "clay_android": {
               "version_added": false
