@@ -1,6 +1,7 @@
 // Copyright 2019 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
+
 #import <Lynx/LUIErrorHandling.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxComponentRegistry.h>
@@ -15,6 +16,7 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTextRenderManager.h>
+#import <Lynx/LynxTimingConstants.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
@@ -34,6 +36,7 @@
 #import <Lynx/LynxWeakProxy.h>
 #import <Lynx/UIView+Lynx.h>
 #import "LynxEnv+Internal.h"
+#import "LynxFSPTracer.h"
 #import "LynxFeatureCounter.h"
 #import "LynxGestureArenaManager.h"
 #import "LynxMemoryRecord.h"
@@ -154,6 +157,9 @@ extern NSString* const kDefaultComponentID;
     _uiContext.errorHandler = errorHandler;
     _uisThatHasNewLayout = [NSMutableSet new];
     _uisThatHasOperations = [NSMutableSet new];
+    if ([LynxFSPTracer isEnabled]) {
+      _fspTracer = [[LynxFSPTracer alloc] initWithUIContext:_uiContext];
+    }
     _fontFaceContext = [LynxFontFaceContext new];
     _fontFaceContext.rootView = containerView;
     _uiContext.fontFaceContext = _fontFaceContext;
@@ -169,6 +175,7 @@ extern NSString* const kDefaultComponentID;
     _a11yIDHolder = [[NSMutableDictionary alloc] init];
     _a11yMutationList = [[NSMutableArray alloc] init];
     _foregroundListeners = [[NSMutableArray alloc] init];
+
     // make sure singleton `LynxEnv` is already initialized
     // for registry of some LynxUI
     [LynxEnv sharedInstance];
@@ -518,6 +525,13 @@ extern NSString* const kDefaultComponentID;
   _uiContext.rootUI = (LynxRootUI*)_rootUI;
   [_uiContext.uiExposure setRootUI:_rootUI];
 
+  __weak typeof(self) weakSelf = self;
+  if (_fspTracer) {
+    [_fspTracer beginTracing:^(LynxFSPResult result) {
+      __strong typeof(weakSelf) strongSelf = weakSelf;
+      strongSelf.fspTracer = nil;
+    }];
+  }
   LLogInfo(@"LynxUIOwner create rootUI %p with containerView %p", _rootUI, _containerView);
   return _rootUI;
 }
@@ -755,7 +769,7 @@ extern NSString* const kDefaultComponentID;
   }
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   if (!ui) {
-    LLogError(@"LynxUIOwner.mm unable to update ui with sign:%@ props:%@", @(sign), props);
+    LLogError(@"LynxUIOwner unable to update ui with sign:%@ props:%@", @(sign), props);
   }
 }
 
@@ -1033,6 +1047,9 @@ extern NSString* const kDefaultComponentID;
 
   // Notify layout did finish.
   [_rootUI.context.observer notifyLayout:nil];
+
+  // Track layout changes.
+  [_uiContext markMeaningfulContentChange];
 }
 
 - (void)onNodeReady:(NSInteger)sign {
@@ -1457,6 +1474,21 @@ extern NSString* const kDefaultComponentID;
   if (ui && [ui isKindOfClass:[LynxUIFrame class]]) {
     [(LynxUIFrame*)ui onReceiveAppBundle:bundle];
   }
+}
+
+- (void)stopFSPTracingWithUserInteraction {
+  [_fspTracer stopTracing:kLynxFSPTracerStopReasonUserInteraction];
+}
+
+- (void)enumerateUIsUsingBlock:(void (^)(LynxUI*, BOOL* stop))block {
+  [_uiHolder enumerateKeysAndObjectsUsingBlock:^(NSNumber* _Nonnull key, LynxUI* _Nonnull obj,
+                                                 BOOL* _Nonnull stop) {
+    BOOL innerStop = NO;
+    block(obj, &innerStop);
+    if (innerStop && stop) {
+      *stop = innerStop;
+    }
+  }];
 }
 
 #pragma mark - View Hierarchy Management
