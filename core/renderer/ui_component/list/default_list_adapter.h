@@ -16,15 +16,16 @@ namespace lynx {
 namespace tasm {
 
 namespace list {
-using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
+using BindingItemHolderWeakMap =
+    std::unordered_map<int64_t, fml::WeakPtr<ItemHolder>>;
 }
 
 class DefaultListAdapter : public ListAdapter {
  public:
   DefaultListAdapter(ListContainerImpl* list_container_impl, Element* element)
       : ListAdapter(list_container_impl, element),
-        binding_item_holder_map_(
-            std::make_unique<list::BindingItemHolderMap>()) {}
+        binding_item_holder_weak_map_(
+            std::make_unique<list::BindingItemHolderWeakMap>()) {}
 
   ~DefaultListAdapter() override = default;
 
@@ -135,7 +136,7 @@ class DefaultListAdapter : public ListAdapter {
   }
 
  private:
-  std::unique_ptr<list::BindingItemHolderMap> binding_item_holder_map_;
+  std::unique_ptr<list::BindingItemHolderWeakMap> binding_item_holder_weak_map_;
 };
 
 }  // namespace tasm

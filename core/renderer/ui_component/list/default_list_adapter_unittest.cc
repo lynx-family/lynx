@@ -50,9 +50,9 @@ class DefaultListAdapterTest : public ::testing::Test {
   std::unique_ptr<lynx::tasm::ElementManager> manager;
   std::shared_ptr<::testing::NiceMock<test::MockTasmDelegate>> tasm_mediator;
   fml::RefPtr<list::MockListElement> list_element_ref;
-  std::unique_ptr<MockDefaultListAdapter> default_list_adapter;
   std::unique_ptr<ListContainerImpl> list_container;
-  std::unique_ptr<ListChildrenHelper> list_children_helper;
+  MockDefaultListAdapter* default_list_adapter{nullptr};
+  ListChildrenHelper* list_children_helper{nullptr};
 
  protected:
   DefaultListAdapterTest() = default;
@@ -62,7 +62,7 @@ class DefaultListAdapterTest : public ::testing::Test {
                                   kDefaultPhysicalPixelsPerLayoutUnit);
     tasm_mediator = std::make_shared<
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
-    manager = std::make_unique<lynx::tasm::ElementManager>(
+    manager = std::make_unique<::testing::NiceMock<lynx::tasm::ElementManager>>(
         std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
         lynx_env_config);
     auto config = std::make_shared<PageConfig>();
@@ -77,9 +77,13 @@ class DefaultListAdapterTest : public ::testing::Test {
                                   enqueue_component, component_at_indexes));
     list_container =
         std::make_unique<ListContainerImpl>(list_element_ref.get());
-    default_list_adapter = std::make_unique<MockDefaultListAdapter>(
+    auto mock_default_list_adapter = std::make_unique<MockDefaultListAdapter>(
         list_container.get(), list_element_ref.get());
-    list_children_helper = std::make_unique<ListChildrenHelper>();
+    default_list_adapter = mock_default_list_adapter.get();
+    list_container->list_adapter_ = std::move(mock_default_list_adapter);
+    list_children_helper = list_container->list_children_helper();
+    list_container->list_layout_manager_->InitLayoutManager(
+        list_children_helper, list::Orientation::kVertical);
   }
 
  public:
@@ -113,7 +117,7 @@ TEST_F(DefaultListAdapterTest, DiffCase0) {
                 ->estimated_heights_px()
                 .size(),
             diff_result.GetItemCount());
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
   for (int i = 0; i < static_cast<int>(diff_result.GetItemCount()); ++i) {
     ItemHolder* item_holder = default_list_adapter->GetItemHolderForIndex(i);
     EXPECT_NE(item_holder, nullptr);
@@ -141,7 +145,8 @@ TEST_F(DefaultListAdapterTest, DiffCase1) {
             diff_result_0.GetItemCount());
   EXPECT_EQ(default_list_adapter->list_adapter_helper()->item_key_map().size(),
             diff_result_0.GetItemCount());
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
+  list_container->StartInterceptListElementUpdated();
   for (int index = 0; index < static_cast<int>(diff_result_0.GetItemCount());
        ++index) {
     ItemHolder* item_holder =
@@ -168,6 +173,7 @@ TEST_F(DefaultListAdapterTest, DiffCase1) {
                   nullptr);
     }
   }
+  list_container->StopInterceptListElementUpdated();
 
   // after
   list::DiffResult diff_result_1{
@@ -186,7 +192,8 @@ TEST_F(DefaultListAdapterTest, DiffCase1) {
             diff_result_1.insertion.size());
   EXPECT_EQ(default_list_adapter->list_adapter_helper()->removals().size(),
             diff_result_1.removal.size());
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
+  list_container->StartInterceptListElementUpdated();
   for (int index = 0; index < static_cast<int>(diff_result_1.GetItemCount());
        ++index) {
     ItemHolder* item_holder =
@@ -209,9 +216,93 @@ TEST_F(DefaultListAdapterTest, DiffCase1) {
       }
     }
   }
+  list_container->StopInterceptListElementUpdated();
   default_list_adapter->RecycleRemovedItemHolders();
   EXPECT_EQ(default_list_adapter->item_holder_map()->size(),
             diff_result_1.GetItemCount());
+}
+
+TEST_F(DefaultListAdapterTest, DiffCase2) {
+  // before
+  list::DiffResult diff_result_0{
+      .item_keys = {"A_0", "B_1", "C_2", "D_3", "E_4", "F_5", "G_6", "H_7",
+                    "I_8"},
+      .insertion = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+  };
+  default_list_adapter->UpdateDataSource(
+      lepus_value(diff_result_0.GenerateDiffResult()));
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
+
+  // Trigger all item holders to bind.
+  list_container->StartInterceptListElementUpdated();
+  int raw_data_count = static_cast<int>(diff_result_0.GetItemCount());
+  std::vector<std::shared_ptr<PipelineOptions>> pending_pipeline_vec;
+  for (int index = 0; index < raw_data_count; ++index) {
+    ItemHolder* item_holder =
+        default_list_adapter->GetItemHolderForIndex(index);
+    if (item_holder) {
+      EXPECT_TRUE(default_list_adapter->BindItemHolder(item_holder, index));
+      auto pipeline = std::make_shared<PipelineOptions>();
+      pipeline->operation_id =
+          list::GenerateOperationId(list_element_ref->impl_id());
+      pending_pipeline_vec.emplace_back(pipeline);
+    }
+  }
+  list_container->StopInterceptListElementUpdated();
+
+  // The item holder with index < raw_data_count / 2 is finished bind.
+  for (int index = 0; index < raw_data_count; ++index) {
+    ItemHolder* item_holder =
+        default_list_adapter->GetItemHolderForIndex(index);
+    if (item_holder) {
+      const auto& pipeline = pending_pipeline_vec[index];
+      if (index < raw_data_count / 2) {
+        auto list_item_ref = CreateComponentElement();
+        default_list_adapter->OnFinishBindItemHolder(list_item_ref.get(),
+                                                     pipeline);
+        EXPECT_FALSE(default_list_adapter->IsBinding(item_holder));
+        EXPECT_FALSE(default_list_adapter->IsRecycled(item_holder));
+        EXPECT_TRUE(default_list_adapter->IsFinishedBinding(item_holder));
+        EXPECT_FALSE(default_list_adapter->IsDirty(item_holder));
+        EXPECT_TRUE(default_list_adapter->GetListItemElement(item_holder) !=
+                    nullptr);
+      } else {
+        EXPECT_TRUE(default_list_adapter->IsBinding(item_holder));
+        EXPECT_FALSE(default_list_adapter->IsRecycled(item_holder));
+        EXPECT_FALSE(default_list_adapter->IsFinishedBinding(item_holder));
+        EXPECT_FALSE(default_list_adapter->IsDirty(item_holder));
+        EXPECT_TRUE(default_list_adapter->GetListItemElement(item_holder) ==
+                    nullptr);
+      }
+    }
+  }
+  EXPECT_TRUE(
+      static_cast<int>(
+          default_list_adapter->binding_item_holder_weak_map_->size()) ==
+      raw_data_count - raw_data_count / 2);
+
+  // after
+  list::DiffResult diff_result_1{
+      .item_keys = {"New_A_0", "New_B_1", "New_C_2", "New_D_3", "New_E_4",
+                    "New_F_5", "New_G_6", "New_H_7", "New_I_8"},
+      .insertion = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+      .removal = {0, 1, 2, 3, 4, 5, 6, 7, 8},
+  };
+  default_list_adapter->UpdateDataSource(
+      lepus_value(diff_result_1.GenerateDiffResult()));
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
+  // Simulate destroy removed item holders.
+  default_list_adapter->RecycleRemovedItemHolders();
+  for (int index = 0; index < raw_data_count; ++index) {
+    if (index >= raw_data_count / 2) {
+      auto list_item_ref = CreateComponentElement();
+      default_list_adapter->OnFinishBindItemHolder(list_item_ref.get(),
+                                                   pending_pipeline_vec[index]);
+      EXPECT_TRUE(list_item_ref->impl_id() ==
+                  list_element_ref->enqueue_component_sign_);
+    }
+  }
+  EXPECT_TRUE(default_list_adapter->binding_item_holder_weak_map_->empty());
 }
 
 TEST_F(DefaultListAdapterTest, FiberDiffCase0) {
@@ -242,7 +333,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase0) {
       10);
   EXPECT_EQ(default_list_adapter->list_adapter_helper()->unrecyclable().size(),
             10);
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
   for (int i = 0; i < 10; ++i) {
     ItemHolder* item_holder = default_list_adapter->GetItemHolderForIndex(i);
     EXPECT_NE(item_holder, nullptr);
@@ -277,7 +368,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
   };
   default_list_adapter->UpdateFiberDataSource(
       lepus::Value(fiber_diff_result_0.Resolve()));
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
 
   list::RemoveAction remove_action{
       .remove_ops_ = {0, 1, 2, 3, 4},
@@ -306,7 +397,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase1) {
       5);
   EXPECT_EQ(default_list_adapter->list_adapter_helper()->unrecyclable().size(),
             0);
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
   for (int i = 0; i < 5; ++i) {
     ItemHolder* item_holder = default_list_adapter->GetItemHolderForIndex(i);
     EXPECT_TRUE(item_holder->item_full_span());
@@ -330,8 +421,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase2) {
   list::FiberDiffResult fiber_diff_result_0{
       .insert_action_ = insert_action,
   };
-  EXPECT_CALL(*(default_list_adapter.get()), OnErrorOccurred(::testing::_))
-      .Times(0);
+  EXPECT_CALL(*default_list_adapter, OnErrorOccurred(::testing::_)).Times(0);
   default_list_adapter->UpdateFiberDataSource(
       lepus::Value(fiber_diff_result_0.Resolve()));
 
@@ -343,13 +433,12 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase2) {
   list::FiberDiffResult fiber_diff_result_1{
       .insert_action_ = insert_action_1,
   };
-  EXPECT_CALL(*(default_list_adapter.get()), OnErrorOccurred(::testing::_))
-      .Times(1);
+  EXPECT_CALL(*default_list_adapter, OnErrorOccurred(::testing::_)).Times(1);
   default_list_adapter->UpdateFiberDataSource(
       lepus::Value(fiber_diff_result_1.Resolve()));
 }
 
-TEST_F(DefaultListAdapterTest, EnqueueElementsIfNeeded) {
+TEST_F(DefaultListAdapterTest, FiberDiffCase3) {
   // test duplicated item key
   list::InsertAction insert_action{
       .insert_ops_ = {
@@ -362,13 +451,12 @@ TEST_F(DefaultListAdapterTest, EnqueueElementsIfNeeded) {
   list::FiberDiffResult fiber_diff_result_0{
       .insert_action_ = insert_action,
   };
-  EXPECT_CALL(*(default_list_adapter.get()), OnErrorOccurred(::testing::_))
-      .Times(1);
+  EXPECT_CALL(*default_list_adapter, OnErrorOccurred(::testing::_)).Times(1);
   default_list_adapter->UpdateFiberDataSource(
       lepus::Value(fiber_diff_result_0.Resolve()));
 }
 
-TEST_F(DefaultListAdapterTest, FiberDiffCase4) {
+TEST_F(DefaultListAdapterTest, FiberFlushInUpdateAction) {
   list::InsertAction insert_action{
       .insert_ops_ = {
           {.position_ = 0, "A_0", 100, false, false, false},
@@ -388,7 +476,8 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase4) {
   int item_count = 10;
   default_list_adapter->UpdateFiberDataSource(
       lepus::Value(fiber_diff_result_0.Resolve()));
-  default_list_adapter->UpdateItemHolderToLatest(list_children_helper.get());
+  default_list_adapter->UpdateItemHolderToLatest(list_children_helper);
+  list_container->StartInterceptListElementUpdated();
   for (int index = 0; index < item_count; ++index) {
     ItemHolder* item_holder =
         default_list_adapter->GetItemHolderForIndex(index);
@@ -405,6 +494,7 @@ TEST_F(DefaultListAdapterTest, FiberDiffCase4) {
                   nullptr);
     }
   }
+  list_container->StopInterceptListElementUpdated();
   // Test flush is true for update action.
   list::UpdateAction update_action{
       .update_ops_ =

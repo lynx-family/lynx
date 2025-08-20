@@ -6,6 +6,7 @@
 #define CORE_RENDERER_UI_COMPONENT_LIST_TESTING_MOCK_LIST_ELEMENT_H_
 
 #include "core/renderer/dom/fiber/list_element.h"
+#include "third_party/googletest/googlemock/include/gmock/gmock.h"
 
 namespace lynx {
 namespace tasm {
@@ -25,7 +26,11 @@ class MockListElement : public ListElement {
     return -1;
   }
 
-  void EnqueueComponent(int32_t sign) {}
+  void EnqueueComponent(int32_t sign) override {
+    enqueue_component_sign_ = sign;
+  }
+
+  int32_t enqueue_component_sign_{-1};
 };
 
 }  // namespace list

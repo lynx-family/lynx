@@ -96,7 +96,8 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
   }
   if (IsDirty(item_holder) || IsRecycled(item_holder)) {
     int64_t operation_id = GenerateOperationId();
-    (*binding_item_holder_map_)[operation_id] = item_holder;
+    (*binding_item_holder_weak_map_)[operation_id] =
+        item_holder->GetSelfWeakPtr();
     // In ReactLynx 3.0, binding item_holder twice without enqueuing will result
     // in cloning of the old element. This MR aims to avoid this scenario by
     // mandating enqueuing before binding.
@@ -147,45 +148,56 @@ void DefaultListAdapter::OnFinishBindItemHolder(
   int64_t operation_id = option->operation_id;
   TRACE_EVENT(LYNX_TRACE_CATEGORY, DEFAULT_LIST_ADAPTER_FINISH_BIND_ITEM_HOLDER,
               "operation_id", operation_id);
-  list::BindingItemHolderMap::const_iterator it =
-      binding_item_holder_map_->find(operation_id);
-  ItemHolder* binding_item_holder = nullptr;
   // Find the corresponding ItemHolder based on the operation_id and bind the
   // ItemHolder to the child element.
-  // (TODO)fangzhou.fz: if item_holder is not onscreen, it should be recycled
-  // immediately and should not trigger OnLayoutChildren().
-  // (TODO)fangzhou.fz: send viewAttach event here.
-  if (it != binding_item_holder_map_->end() &&
-      (binding_item_holder = it->second) &&
-      binding_item_holder->operation_id() == operation_id) {
-    int index = binding_item_holder->index();
-    const std::string& item_key = binding_item_holder->item_key();
-    TRACE_EVENT(LYNX_TRACE_CATEGORY,
-                DEFAULT_LIST_ADAPTER_FINISH_BIND_ITEM_HOLDER_FINISH, "index",
-                index);
-    NLIST_LOGI(
-        "[" << list_container_
-            << "] DefaultListAdapter::OnFinishBindItemHolder: with index = "
-            << index << ", item_key = " << item_key
-            << ", operation_id = " << operation_id);
-    binding_item_holder->SetElement(component);
-    binding_item_holder->UpdateLayoutFromElement();
-    // Reset operation id.
-    binding_item_holder->SetOperationId(0);
-    binding_item_holder->SetOrientation(
-        list_container_->list_layout_manager()->orientation());
-    list_container_->CheckZIndex(component);
-    // Add ItemHolder to attach_children_.
-    list_container_->list_children_helper()->AttachChild(binding_item_holder,
-                                                         component);
-    binding_item_holder_map_->erase(it);
-    // Note: Mark should_flush_finish_layout_ to determine whether needs to
-    // invoke FinishLayoutOperation().
-    list_container_->MarkShouldFlushFinishLayout(option->has_layout);
-    if (list_container_->intercept_depth() == 0) {
-      list_container_->list_layout_manager()->OnLayoutChildren(true, index);
+  if (auto it = binding_item_holder_weak_map_->find(operation_id);
+      it != binding_item_holder_weak_map_->end()) {
+    ItemHolder* binding_item_holder = nullptr;
+    if ((binding_item_holder = it->second.get()) &&
+        binding_item_holder->operation_id() == operation_id) {
+      binding_item_holder_weak_map_->erase(operation_id);
+      int index = binding_item_holder->index();
+      const std::string& item_key = binding_item_holder->item_key();
+      TRACE_EVENT(LYNX_TRACE_CATEGORY,
+                  DEFAULT_LIST_ADAPTER_FINISH_BIND_ITEM_HOLDER_FINISH, "index",
+                  index);
+      NLIST_LOGI(
+          "[" << list_container_
+              << "] DefaultListAdapter::OnFinishBindItemHolder: with index = "
+              << index << ", item_key = " << item_key
+              << ", operation_id = " << operation_id);
+      binding_item_holder->SetElement(component);
+      binding_item_holder->UpdateLayoutFromElement();
+      // Reset operation id.
+      binding_item_holder->SetOperationId(0);
+      binding_item_holder->SetOrientation(
+          list_container_->list_layout_manager()->orientation());
+      list_container_->CheckZIndex(component);
+      // Add ItemHolder to attach_children_.
+      list_container_->list_children_helper()->AttachChild(binding_item_holder,
+                                                           component);
+      // Note: Mark should_flush_finish_layout_ to determine whether needs to
+      // invoke FinishLayoutOperation().
+      list_container_->MarkShouldFlushFinishLayout(option->has_layout);
+      if (list_container_->intercept_depth() == 0) {
+        list_container_->list_layout_manager()->OnLayoutChildren(true, index);
+      }
+      list_container_->ReportListItemLifecycleStatistic(option, item_key);
+    } else {
+      NLIST_LOGI("[" << list_container_
+                     << "] DefaultListAdapter::OnFinishBindItemHolder: "
+                        "ItemHolder is destroy with operation_id = "
+                     << operation_id);
+      binding_item_holder_weak_map_->erase(operation_id);
+      list_element_->GetListNode()->EnqueueComponent(component->impl_id());
     }
-    list_container_->ReportListItemLifecycleStatistic(option, item_key);
+  } else {
+    NLIST_LOGE(
+        "[" << list_container_
+            << "] DefaultListAdapter::OnFinishBindItemHolder: "
+            << "not in binding_item_holder_weak_map_ with operation_id = "
+            << operation_id);
+    list_element_->GetListNode()->EnqueueComponent(component->impl_id());
   }
 }
 
