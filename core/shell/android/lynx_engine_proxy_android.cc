@@ -168,6 +168,13 @@ void DispatchTaskToLynxEngine(JNIEnv *env, jobject jcaller, jlong ptr,
 namespace lynx {
 namespace shell {
 
+void LynxEngineProxyAndroid::ResetActor(
+    const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &actor) {
+  if (engine_actor_ != actor) {
+    engine_actor_ = actor;
+  }
+}
+
 void LynxEngineProxyAndroid::InvokeLepusApiCallback(
     JNIEnv *env, jobject jcaller, jlong nativePtr, jint callbackID,
     jstring entryName, jobject data) {

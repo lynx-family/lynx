@@ -24,6 +24,10 @@ class LynxEngineProxyAndroid : public LynxEngineProxyImpl {
       jobject impl)
       : LynxEngineProxyImpl(actor), impl_(env, impl) {}
   virtual ~LynxEngineProxyAndroid() override = default;
+
+  void ResetActor(
+      const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &actor);
+
   void InvokeLepusApiCallback(JNIEnv *env, jobject jcaller, jlong nativePtr,
                               jint callbackID, jstring entryName, jobject data);
 
