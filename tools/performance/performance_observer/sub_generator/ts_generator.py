@@ -61,8 +61,15 @@ def generate_ts(class_name, definition, definitions):
         ts_code = generate_ts_union_type(class_name, definition, definitions)
         return ts_code
 
+    ts_code = f''
     # Define the interface name
-    ts_code = f'export interface {class_name} '
+    if 'x-deprecated' in definition:
+        ts_code += f'/**\n' \
+        f' * @deprecated {definition["x-deprecated"]}\n' \
+        f' **/\n' 
+
+    # Define the interface name
+    ts_code += f'export interface {class_name} '
 
     # Define the parent class type for the interface, if any
     if 'allOf' in definition:
