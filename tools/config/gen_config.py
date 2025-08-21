@@ -135,31 +135,45 @@ def parse_config() -> list[Config]:
     return configs
 
 
+def render_code_content(template_path: str, output_path: str, configs: list[Config]):
+    if not os.path.exists(template_path):
+        print(f"{template_path} not found when gen config")
+        sys.exit(1)
+    with open(template_path, "r") as f:
+        lynx_config_tmpl = f.read()
+
+    rendered_content = Template(
+        lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True
+    ).render(configs=configs)
+    rendered_content = clang_format(rendered_content, file_extension=".h")
+
+    if not os.path.exists(output_path):
+        with open(output_path, "w") as f:
+            f.write(rendered_content)
+    else:
+        with open(output_path, "r") as f:
+            existing_content = f.read()
+        if existing_content != rendered_content:
+            with open(output_path, "w") as f:
+                f.write(rendered_content)
+        else:
+            print(f"No need to update {output_path}")
+
+
 def gen_page_config_decode():
     configs = parse_config()
     config_decode_tmpl_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_decoder.tmpl",
     )
-    if not os.path.exists(config_decode_tmpl_path):
-        print(f"{config_decode_tmpl_path} not found when gen lynx config decoder")
-        sys.exit(1)
 
     lynx_config_decoder_header_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_decoder.h",
     )
-    if os.path.exists(lynx_config_decoder_header_path):
-        os.remove(lynx_config_decoder_header_path)
-    with open(config_decode_tmpl_path, "r") as f:
-        lynx_config_tmpl = f.read()
-    with open(lynx_config_decoder_header_path, "w") as f:
-        f.write(
-            Template(lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True).render(
-                configs=configs
-            )
-        )
-    clang_format(lynx_config_decoder_header_path)
+    render_code_content(
+        config_decode_tmpl_path, lynx_config_decoder_header_path, configs
+    )
 
 
 def gen_lynx_config():
@@ -168,25 +182,12 @@ def gen_lynx_config():
         _binary_decoder_path,
         "lynx_config.tmpl",
     )
-    if not os.path.exists(lynx_config_tmpl_path):
-        print(f"{lynx_config_tmpl_path} not found when gen lynx config")
-        sys.exit(1)
 
     lynx_config_header_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_auto_gen.h",
     )
-    if os.path.exists(lynx_config_header_path):
-        os.remove(lynx_config_header_path)
-    with open(lynx_config_tmpl_path, "r") as f:
-        lynx_config_tmpl = f.read()
-    with open(lynx_config_header_path, "w") as f:
-        f.write(
-            Template(lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True).render(
-                configs=configs
-            )
-        )
-    clang_format(lynx_config_header_path)
+    render_code_content(lynx_config_tmpl_path, lynx_config_header_path, configs)
 
 
 def gen_config():
@@ -194,6 +195,7 @@ def gen_config():
     gen_page_config_decode()
     # gen lynx config constants
     gen_lynx_config()
+    sys.exit(0)
 
 
 if __name__ == "__main__":
