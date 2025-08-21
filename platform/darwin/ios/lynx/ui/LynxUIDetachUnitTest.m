@@ -51,8 +51,8 @@
   [self.lynxUI detachManagedLayersFromView];
 
   // Verify
-  OCMVerify([self.mockView setBackgroundLayer:mockBgLayer]);
-  OCMVerify([self.mockView setBorderLayer:mockBorderLayer]);
+  OCMVerify([self.mockView setLynxBackgroundLayer:mockBgLayer]);
+  OCMVerify([self.mockView setLynxBorderLayer:mockBorderLayer]);
 }
 
 - (void)testDetachManagedLayersFromView_WhenViewDoesNotExist {
@@ -75,8 +75,8 @@
   [self.lynxUI detachManagedLayersFromView];
 
   // Verify - No crashes or exceptions should occur
-  OCMVerify(never(), [self.mockView setBackgroundLayer:[OCMArg any]]);
-  OCMVerify(never(), [self.mockView setBorderLayer:[OCMArg any]]);
+  OCMVerify(never(), [self.mockView setLynxBackgroundLayer:[OCMArg any]]);
+  OCMVerify(never(), [self.mockView setLynxBorderLayer:[OCMArg any]]);
 }
 
 - (void)testDetachManagedLayersFromView_WhenBackgroundManagerReturnsNilLayers {
@@ -88,8 +88,8 @@
   [self.lynxUI detachManagedLayersFromView];
 
   // Verify
-  OCMVerify([self.mockView setBackgroundLayer:nil]);
-  OCMVerify([self.mockView setBorderLayer:nil]);
+  OCMVerify([self.mockView setLynxBackgroundLayer:nil]);
+  OCMVerify([self.mockView setLynxBorderLayer:nil]);
 }
 
 @end
