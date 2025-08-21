@@ -8,6 +8,7 @@ definition_yaml_files/PerformanceMetric.yml
 definition_yaml_files/MetricFcpEntry.yml
 definition_yaml_files/MetricFspEntry.yml
 definition_yaml_files/MetricActualFmpEntry.yml
+definition_yaml_files/MetricTtiEntry.yml
 definition_yaml_files/ReloadBundleEntry.yml
 definition_yaml_files/MemoryUsageEntry.yml
 definition_yaml_files/MemoryUsageItem.yml

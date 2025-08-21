@@ -1,0 +1,16 @@
+MetricTtiEntry:
+  x-type: metric
+  x-name: tti
+  x-lang:
+    - ts
+  x-deprecated: "Due to the influence of long tasks on this metric, the statistical results are \n\ * inaccurate, so this type has been deprecated. \n\ * Since version 3.3, you will no longer receive this event."
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        tti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        lynxTti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'
+        totalTti:
+          $ref: 'PerformanceMetric.yml#/PerformanceMetric'

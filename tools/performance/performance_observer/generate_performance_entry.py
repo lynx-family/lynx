@@ -41,6 +41,7 @@ def prepare_before_generate(yaml_files):
 
 def generate_java_code(yaml_files):
     remove_exist_dirs(java_output_file_path)
+    java_entry_mapping = entry_mapping.copy()
     # Generate Definition files
     for yaml_file in yaml_files:
         items = read_yaml_file(os.path.join(base_dir, yaml_file))
@@ -69,9 +70,15 @@ def generate_java_code(yaml_files):
                 elif (java_codes != []):
                     java_output += 'package com.lynx.tasm.performance.performanceobserver;\n\n' + '\n'.join(java_imports) + '\n\n' + '\n'.join(java_codes)
                     write_file(os.path.join(java_output_file_path, f'{class_name}.java'), java_output)
+            else:
+                if "x-type" in definition and "x-name" in definition:
+                    x_type = definition["x-type"]
+                    x_name = definition["x-name"]
+                    key = x_type + '.' + x_name
+                    java_entry_mapping.pop(key, None)
     # Generate PerformanceEntryConverter
     java_converter_imports = []
-    java_converter_code = generate_java_converter(entry_mapping, java_converter_imports)
+    java_converter_code = generate_java_converter(java_entry_mapping, java_converter_imports)
     java_output = get_license(2024)
     java_output += '\n'.join(java_converter_imports) + '\n\n' + java_converter_code
     write_file(os.path.join(java_output_file_path, f'{converter_name}.java'), java_output)
@@ -79,6 +86,7 @@ def generate_java_code(yaml_files):
 def generate_objc_code(yaml_files):
     remove_exist_dirs(objc_header_output_file_path)
     remove_exist_dirs(objc_impl_output_file_path)
+    objc_entry_mapping = entry_mapping.copy()
     # Generate Definition files
     for yaml_file in yaml_files:
         items = read_yaml_file(os.path.join(base_dir, yaml_file))
@@ -118,12 +126,18 @@ def generate_objc_code(yaml_files):
                 if (objc_implementations != []):
                     objc_implementation_output += '\n'.join(objc_implementations_imports) + '\n\n' + '\n'.join(objc_implementations)
                     write_file(os.path.join(objc_impl_output_file_path, f'{objc_lynx_prefix}{class_name}.m'), objc_implementation_output)
+            else:
+                if "x-type" in definition and "x-name" in definition:
+                    x_type = definition["x-type"]
+                    x_name = definition["x-name"]
+                    key = x_type + '.' + x_name
+                    objc_entry_mapping.pop(key, None)
     # Generate PerformanceConverter
     objc_converter_header = get_license(2024)
     objc_converter_header += generate_objc_converter_header()
     write_file(os.path.join(objc_header_output_file_path, f'{objc_lynx_prefix}{converter_name}.h'), objc_converter_header)
     objc_converter_imports = []
-    objc_converter_code = generate_objc_converter(entry_mapping, objc_converter_imports)
+    objc_converter_code = generate_objc_converter(objc_entry_mapping, objc_converter_imports)
     objc_output = get_license(2024)
     objc_output += '\n'.join(objc_converter_imports) + '\n\n' + objc_converter_code
     write_file(os.path.join(objc_impl_output_file_path, f'{objc_lynx_prefix}{converter_name}.m'), objc_output)
@@ -151,6 +165,7 @@ def generate_ts_code(yaml_files):
 
 def generate_ets_code(yaml_files):
     remove_exist_dirs(ets_output_file_path)
+    ets_entry_mapping = entry_mapping.copy()
     for yaml_file in yaml_files:
         items = read_yaml_file(os.path.join(base_dir, yaml_file))
         ets_codes = []
@@ -175,9 +190,15 @@ def generate_ets_code(yaml_files):
                 elif (ets_codes != []):
                     ets_output += '\n'.join(ets_imports) + '\n\n' + '\n'.join(ets_codes)
                     write_file(os.path.join(ets_output_file_path, f'{class_name}.ets'), ets_output)
+            else:
+                if "x-type" in definition and "x-name" in definition:
+                    x_type = definition["x-type"]
+                    x_name = definition["x-name"]
+                    key = x_type + '.' + x_name
+                    ets_entry_mapping.pop(key, None)
     # Generate PerformanceEntryConverter
     ets_converter_imports = []
-    ets_converter_code = generate_ets_converter(entry_mapping, ets_converter_imports)
+    ets_converter_code = generate_ets_converter(ets_entry_mapping, ets_converter_imports)
     ets_output = get_license(2025)
     ets_output += '\n'.join(ets_converter_imports) + '\n\n' + ets_converter_code
     write_file(os.path.join(ets_output_file_path, f'{converter_name}.ets'), ets_output)
