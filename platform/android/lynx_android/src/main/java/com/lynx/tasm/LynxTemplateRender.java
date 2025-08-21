@@ -105,7 +105,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.json.JSONObject;
 
 // TODO(heshan): merge the init logics.
-public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
+public class LynxTemplateRender
+    implements ILynxEngine, ILynxErrorReceiver, EventEmitter.LynxEventFallback {
   private static final String TAG = "LynxTemplateRender";
 
   private final TemplateAssembler mTemplateAssembler = new TemplateAssembler();
@@ -927,6 +928,7 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (eventEmitter != null) {
       eventEmitter.addObserver(mIntersectionObserverManager);
       eventEmitter.registerEventReporter(mNativeFacade);
+      eventEmitter.registerEventFallback(this);
     }
 
     setThemeInternal(mTheme);
@@ -4000,6 +4002,11 @@ public class LynxTemplateRender implements ILynxEngine, ILynxErrorReceiver {
     if (mLynxContext != null && mLynxContext.getLynxUIOwner() != null) {
       mLynxContext.getLynxUIOwner().setAttachLynxPageUICallback(callback);
     }
+  }
+
+  @Override
+  public void checkFallbackForLynxEvent(boolean enableAsync) {
+    checkEngineFallbackAndLoad(enableAsync);
   }
 
   @CalledByNative

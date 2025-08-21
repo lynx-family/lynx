@@ -94,6 +94,7 @@ public class LynxEventEmitter extends EventEmitter {
   private boolean mInPreLoad = false;
 
   private WeakReference<LynxEventReporter> mEventReporter;
+  private WeakReference<LynxEventFallback> mEventFallback;
 
   LynxEngineProxyWrapper mEngineProxy;
 
@@ -107,6 +108,7 @@ public class LynxEventEmitter extends EventEmitter {
     super();
     mEngineProxy = new LynxEngineProxyWrapper(engineProxy);
     mEventReporter = new WeakReference<>(null);
+    mEventFallback = new WeakReference<>(null);
   }
 
   @Override
@@ -200,6 +202,14 @@ public class LynxEventEmitter extends EventEmitter {
             return;
           }
           event.addDetail("timestamp", event.getTimestamp());
+          if (mEventFallback != null && mEventFallback.get() != null) {
+            mEventFallback.get().checkFallbackForLynxEvent(false);
+          } else {
+            LLog.e(TAG,
+                "checkFallbackForLynxEvent event: " + event.getName()
+                    + " failed since mEventFallback is null.");
+            return;
+          }
           mEngineProxy.sendCustomEvent(event);
         } else {
           LLog.e(TAG,
@@ -301,6 +311,11 @@ public class LynxEventEmitter extends EventEmitter {
   @Override
   public void registerEventReporter(LynxEventReporter reporter) {
     mEventReporter = new WeakReference<>(reporter);
+  }
+
+  @Override
+  public void registerEventFallback(LynxEventFallback fallback) {
+    mEventFallback = new WeakReference<>(fallback);
   }
 
   @Override

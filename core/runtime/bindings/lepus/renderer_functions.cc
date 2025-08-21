@@ -798,6 +798,9 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
                 options->GetProperty(kBindType).Number())
           : event::Event::BindType::kBubble;
 
+  // sync event sets to the platform
+  element->SetJSEventHandler(name->String(), base::String(), base::String());
+
   // for addEventListener
   if (callback->IsCallable() &&
       closure_type == event::ClosureEventListener::ClosureType::kNone) {
@@ -896,6 +899,9 @@ RENDERER_FUNCTION_CC(FiberRemoveEventListener) {
           ? static_cast<event::Event::BindType>(
                 options->GetProperty(kBindType).Number())
           : event::Event::BindType::kBubble;
+
+  // sync event sets to the platform
+  element->RemoveEvent(name->String(), base::String());
 
   // for removeEventListener
   if (closure_type == event::ClosureEventListener::ClosureType::kNone) {

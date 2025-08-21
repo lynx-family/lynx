@@ -1499,6 +1499,7 @@ public class abstract com::lynx::tasm::EventEmitter :  {
   public abstract void com.lynx.tasm.EventEmitter.addObserver(LynxEventObserver observer);
   public abstract void com.lynx.tasm.EventEmitter.removeObserver(LynxEventObserver observer);
   public abstract void com.lynx.tasm.EventEmitter.registerEventReporter(LynxEventReporter reporter);
+  public abstract void com.lynx.tasm.EventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.EventEmitter.onInternalEvent(LynxInternalEvent event);
   public void com.lynx.tasm.EventEmitter.sendInternalEvent(LynxInternalEvent event);
   public void com.lynx.tasm.EventEmitter.startEventGenerate(LynxEvent event);
@@ -4682,11 +4683,16 @@ public class com::lynx::tasm::LynxEventEmitter : com.lynx.tasm.EventEmitter {
   public void com.lynx.tasm.LynxEventEmitter.addObserver(LynxEventObserver observer);
   public void com.lynx.tasm.LynxEventEmitter.removeObserver(LynxEventObserver observer);
   public void com.lynx.tasm.LynxEventEmitter.registerEventReporter(LynxEventReporter reporter);
+  public void com.lynx.tasm.LynxEventEmitter.registerEventFallback(LynxEventFallback fallback);
   public void com.lynx.tasm.LynxEventEmitter.startEventGenerate(LynxEvent event);
   public void com.lynx.tasm.LynxEventEmitter.setEventID(long eventID);
   public void com.lynx.tasm.LynxEventEmitter.startEventCapture(long eventID);
   public void com.lynx.tasm.LynxEventEmitter.startEventBubble(long eventID);
   public void com.lynx.tasm.LynxEventEmitter.startEventFire(boolean isStop, long eventID);
+}
+
+public interface com::lynx::tasm::EventEmitter::LynxEventFallback {
+  public void com.lynx.tasm.EventEmitter.LynxEventFallback.checkFallbackForLynxEvent(boolean enableAsync);
 }
 
 public interface com::lynx::tasm::EventEmitter::LynxEventObserver {
@@ -5843,7 +5849,7 @@ public enum com::lynx::tasm::service::security::ILynxSecurityService::LynxTasmTy
   public com.lynx.tasm.service.security.ILynxSecurityService.LynxTasmType.TYPE_DYNAMIC_COMPONENT TYPE_DYNAMIC_COMPONENT;
 }
 
-public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, com.lynx.tasm.ILynxErrorReceiver {
+public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, com.lynx.tasm.ILynxErrorReceiver, com.lynx.tasm.EventEmitter.LynxEventFallback {
   public final String com.lynx.tasm.LynxTemplateRender.RENDER_PHASE_SETUP RENDER_PHASE_SETUP;
   public final String com.lynx.tasm.LynxTemplateRender.RENDER_PHASE_UPDATE RENDER_PHASE_UPDATE;
   public com.lynx.tasm.LynxTemplateRender.LynxTemplateRender(Context context, UIBodyView bodyView, LynxViewBuilder builder);
@@ -5969,6 +5975,7 @@ public class com::lynx::tasm::LynxTemplateRender : com.lynx.tasm.ILynxEngine, co
   public ILynxUIRenderer com.lynx.tasm.LynxTemplateRender.lynxUIRenderer();
   public LynxViewBuilder com.lynx.tasm.LynxTemplateRender.getLynxViewBuilder();
   public void com.lynx.tasm.LynxTemplateRender.setAttachLynxPageUICallback(UIBodyView.attachLynxPageUICallback callback);
+  public void com.lynx.tasm.LynxTemplateRender.checkFallbackForLynxEvent(boolean enableAsync);
   public void com.lynx.tasm.LynxTemplateRender.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public native void com.lynx.tasm.LynxTemplateRender.nativeReattachLynxEngineWrapper(long ptr, long lifecycle, long engine_ptr, long proxy_ptr);
   public native void com.lynx.tasm.LynxTemplateRender.nativeDetachLynxEngineWrapper(long ptr, long lifecycle);

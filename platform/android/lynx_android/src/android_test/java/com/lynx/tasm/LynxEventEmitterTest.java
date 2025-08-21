@@ -55,6 +55,11 @@ public class LynxEventEmitterTest {
     }
   }
 
+  class MockEventFallback implements EventEmitter.LynxEventFallback {
+    @Override
+    public void checkFallbackForLynxEvent(boolean isFallback) {}
+  }
+
   class MockEventObserver implements EventEmitter.LynxEventObserver {
     public void onLynxEvent(EventEmitter.LynxEventType type, LynxEvent event) {}
   }
@@ -110,6 +115,7 @@ public class LynxEventEmitterTest {
     mEventEmitter.mEngineProxy = new MockEngineProxyWrapper(null);
     mEventEmitter.setTestTapTracker(new MockTestTapTrack());
     mEventEmitter.registerEventReporter(new MockEventReporter());
+    mEventEmitter.registerEventFallback(new MockEventFallback());
 
     reset();
   }

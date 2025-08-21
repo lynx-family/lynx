@@ -156,6 +156,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       lynxContext.setUIBodyView(bodyView);
       if (mEventDispatcher != null) {
         mEventDispatcher.attachContext(context);
+        lynxContext.setTouchEventDispatcher(mEventDispatcher);
       }
     }
     if (mLynxUIOwner != null) {
