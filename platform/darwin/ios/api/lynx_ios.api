@@ -5142,8 +5142,8 @@ public interface UIView(Lynx) {
   public NSNumber* UIView(Lynx)::lynxSign lynxSign;
   public BOOL UIView(Lynx)::lynxClickable lynxClickable;
   public BOOL UIView(Lynx)::lynxEnableTapGestureSimultaneously lynxEnableTapGestureSimultaneously;
-  public LynxBackgroundSubLayer* UIView(Lynx)::backgroundLayer backgroundLayer;
-  public LynxBorderLayer* UIView(Lynx)::borderLayer borderLayer;
+  public LynxBackgroundSubLayer* UIView(Lynx)::lynxBackgroundLayer lynxBackgroundLayer;
+  public LynxBorderLayer* UIView(Lynx)::lynxBorderLayer lynxBorderLayer;
 }
 
 public interface UIView(LynxHeroTransition) {

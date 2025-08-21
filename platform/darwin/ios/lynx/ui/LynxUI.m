@@ -4147,12 +4147,12 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
   // Detach and transfer backgroundLayer
   LynxBackgroundSubBackgroundLayer* bgLayer = [_backgroundManager relinquishBackgroundLayer];
 
-  self.view.backgroundLayer = bgLayer;  // UIView category property takes ownership
+  self.view.lynxBackgroundLayer = bgLayer;  // UIView category property takes ownership
 
   // Detach and transfer borderLayer
   LynxBorderLayer* borderLyr = [_backgroundManager relinquishBorderLayer];
 
-  self.view.borderLayer = borderLyr;  // UIView category property takes ownership
+  self.view.lynxBorderLayer = borderLyr;  // UIView category property takes ownership
 }
 
 // Call this method after self.view has been set to the new UIView.
@@ -4162,8 +4162,8 @@ LYNX_PROP_DEFINE("hit-slop", setHitSlop, NSObject*) {
   }
 
   // Ensure the new view doesn't have stale layers from a previous LynxUI via category properties
-  self.view.backgroundLayer = nil;
-  self.view.borderLayer = nil;
+  self.view.lynxBackgroundLayer = nil;
+  self.view.lynxBorderLayer = nil;
 
   // LynxBackgroundManager's internal layer references (_backgroundLayer, _borderLayer, _maskLayer,
   // _opacityView) should be nil at this point due to the relinquish/dismantle calls during detach.

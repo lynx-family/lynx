@@ -7,22 +7,22 @@
 
 @implementation UIView (Lynx)
 
-- (void)setBackgroundLayer:(LynxBackgroundSubLayer *)backgroundLayer {
-  objc_setAssociatedObject(self, @selector(backgroundLayer), backgroundLayer,
+- (void)setLynxBackgroundLayer:(LynxBackgroundSubLayer *)lynxBackgroundLayer {
+  objc_setAssociatedObject(self, @selector(lynxBackgroundLayer), lynxBackgroundLayer,
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (LynxBackgroundSubLayer *)backgroundLayer {
-  return objc_getAssociatedObject(self, @selector(backgroundLayer));
+- (LynxBackgroundSubLayer *)lynxBackgroundLayer {
+  return objc_getAssociatedObject(self, @selector(lynxBackgroundLayer));
 }
 
-- (void)setBorderLayer:(LynxBorderLayer *)borderLayer {
-  objc_setAssociatedObject(self, @selector(borderLayer), borderLayer,
+- (void)setLynxBorderLayer:(LynxBorderLayer *)lynxBorderLayer {
+  objc_setAssociatedObject(self, @selector(lynxBorderLayer), lynxBorderLayer,
                            OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-- (LynxBorderLayer *)borderLayer {
-  return objc_getAssociatedObject(self, @selector(borderLayer));
+- (LynxBorderLayer *)lynxBorderLayer {
+  return objc_getAssociatedObject(self, @selector(lynxBorderLayer));
 }
 
 - (NSNumber *)lynxSign {

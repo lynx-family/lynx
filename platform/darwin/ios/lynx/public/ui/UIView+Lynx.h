@@ -16,9 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property(nonatomic, readwrite) BOOL lynxEnableTapGestureSimultaneously;
 
-@property(nonatomic, readwrite, strong, nullable) LynxBackgroundSubLayer* backgroundLayer;
+@property(nonatomic, readwrite, strong, nullable) LynxBackgroundSubLayer* lynxBackgroundLayer;
 
-@property(nonatomic, readwrite, strong, nullable) LynxBorderLayer* borderLayer;
+@property(nonatomic, readwrite, strong, nullable) LynxBorderLayer* lynxBorderLayer;
 
 @end
 
