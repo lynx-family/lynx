@@ -328,6 +328,7 @@ void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
 void ListLayoutManager::OnPrepareForLayoutChildren() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_LAYOUT_MANAGER_PREPARE_FOR_LAYOUT_CHILDREN);
+  SetListLayoutInfoToAllItemHolders();
   list_container_->RecordVisibleItemIfNeeded(true);
 }
 

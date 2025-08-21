@@ -53,7 +53,6 @@ class ListLayoutManager {
   float GetPaddingRight() const;
   float GetPaddingTop() const;
   float GetPaddingBottom() const;
-  void SetListLayoutInfoToAllItemHolders();
   bool CanScrollHorizontally() const {
     return orientation_ == list::Orientation::kHorizontal;
   }
@@ -173,6 +172,7 @@ class ListLayoutManager {
   bool UpdateStickyItemsInternal(int& layout_changed_position,
                                  float sticky_offset, int index);
   void FlushScrollInfoToPlatformIfNeeded();
+  void SetListLayoutInfoToAllItemHolders();
 
  public:
   std::unique_ptr<ListOrientationHelper> list_orientation_helper_;
