@@ -6,29 +6,54 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import subprocess
 
 _this_dir = os.path.dirname(os.path.abspath(__file__))
 _root_dir = os.path.abspath(os.path.join(_this_dir, os.pardir, os.pardir, os.pardir))
-CLANG_FORMAT_PATH = os.path.join(_root_dir, "buildtools", "llvm", "bin", "clang-format")
-if not os.path.exists(CLANG_FORMAT_PATH):
+if sys.platform == "win32":
     CLANG_FORMAT_PATH = os.path.join(
-        _root_dir, "lynx", "buildtools", "llvm", "bin", "clang-format"
+        _root_dir, "buildtools", "llvm", "clang-format.exe"
     )
-
-
-def clang_format(file: str, style="Google") -> str:
-    try:
-        process = subprocess.run(
-            [CLANG_FORMAT_PATH, f"--style={style}", "-i", file],
-            text=True,
-            capture_output=True,
-            check=True,
+    if not os.path.exists(CLANG_FORMAT_PATH):
+        CLANG_FORMAT_PATH = os.path.join(
+            _root_dir, "lynx", "buildtools", "llvm", "clang-format.exe"
         )
+else:
+    CLANG_FORMAT_PATH = os.path.join(
+        _root_dir, "buildtools", "llvm", "bin", "clang-format"
+    )
+    if not os.path.exists(CLANG_FORMAT_PATH):
+        CLANG_FORMAT_PATH = os.path.join(
+            _root_dir, "lynx", "buildtools", "llvm", "bin", "clang-format"
+        )
+
+
+def clang_format(file: str, style="Google", file_extension=None) -> str:
+    try:
+        if file_extension is not None:
+            process = subprocess.run(
+                [
+                    CLANG_FORMAT_PATH,
+                    f"--style={style}",
+                    f"--assume-filename={file_extension}",
+                ],
+                input=file,
+                text=True,
+                capture_output=True,
+                check=True,
+            )
+        else:
+            process = subprocess.run(
+                [CLANG_FORMAT_PATH, f"--style={style}", "-i", file],
+                text=True,
+                capture_output=True,
+                check=True,
+            )
         return process.stdout
     except subprocess.CalledProcessError as e:
-        print(f"clang format failed: {e.stderr}")
-        return ""
+        print(f"clang format failed: {e.stderr}", file=sys.stderr)
+        return file
     except FileNotFoundError:
-        print(f"{CLANG_FORMAT_PATH} not found")
-        return ""
+        print(f"{CLANG_FORMAT_PATH} not found", file=sys.stderr)
+        return file
