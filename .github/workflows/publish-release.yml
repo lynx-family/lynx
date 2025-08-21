@@ -11,7 +11,7 @@ on:
 
 jobs:
   get-version:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
@@ -35,7 +35,7 @@ jobs:
           fi
   android-explorer-build:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     needs: get-version
     steps:
       - name: Download Source
@@ -78,35 +78,35 @@ jobs:
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
           allowUpdates: true
 
-  # harmony-explorer-build:
-  #   runs-on: lynx-custom-container
-  #   container:
-  #     image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
-  #     credentials:
-  #       username: lynx-family
-  #       password: ${{ secrets.GITHUB_TOKEN }}
-  #   needs: get-version
-  #   defaults:
-  #     run:
-  #       working-directory: ${{ github.workspace }}
-  #       shell: bash
-  #   steps:
-  #     - name: Download Source
-  #       uses: actions/checkout@v4.2.2
-  #       with:
-  #         path: lynx
-  #     - name: Build Explorer App
-  #       uses: ./lynx/.github/actions/harmony-explorer-build
-  #     - name: push explorer to release
-  #       uses: ncipollo/release-action@v1
-  #       with:
-  #         tag: ${{ needs.get-version.outputs.version }}
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
-  #         allowUpdates: true
+  harmony-explorer-build:
+    runs-on: lynx-custom-container
+    container:
+      image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
+      credentials:
+        username: lynx-family
+        password: ${{ secrets.GITHUB_TOKEN }}
+    needs: get-version
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}
+        shell: bash
+    steps:
+      - name: Download Source
+        uses: actions/checkout@v4.2.2
+        with:
+          path: lynx
+      - name: Build Explorer App
+        uses: ./lynx/.github/actions/harmony-explorer-build
+      - name: push explorer to release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ needs.get-version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
+          allowUpdates: true
 
   android-sdk-release:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     needs: get-version
     timeout-minutes: 60
     steps:

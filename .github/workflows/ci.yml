@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - CQ-*
+  workflow_dispatch:
 
 defaults:
   run:
@@ -12,7 +13,7 @@ defaults:
 
 jobs:
   static-check:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 30
     steps:
       - name: Python Setup
@@ -77,7 +78,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-unittests-check:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -97,7 +98,7 @@ jobs:
           tools/rtf/rtf native-ut run --names lynx
 
   linux-native-devtool-unittests-check:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -155,7 +156,7 @@ jobs:
           popd
 
   tasm-linux-build:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -220,7 +221,7 @@ jobs:
           popd
 
   lynx-types-check:
-    runs-on: lynx-ubuntu-22.04-medium
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -243,7 +244,7 @@ jobs:
 
   android-unittests-check:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -261,7 +262,7 @@ jobs:
           tools/rtf/rtf android-ut run --name lynx
 
   android-explorer-build:
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     timeout-minutes: 60
     steps:
       - name: Download Source
@@ -276,7 +277,7 @@ jobs:
 
   android-sdk-release:
     timeout-minutes: 60
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -299,7 +300,7 @@ jobs:
           cd $GITHUB_WORKSPACE/lynx/platform/android
           ./gradlew zipAllArtifacts
       - name: upload zip artifact
-        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        uses: coolkiid/upload-artifact@8e57639d07f6cd544cc9f5afdd568e5ddc7585f3
         continue-on-error: true
         with:
           name: android-sdk-release
@@ -311,7 +312,7 @@ jobs:
     env:
       APPIUM_TEST_SERVER_PORT: 4723
       APPIUM_TEST_SERVER_HOST: 127.0.0.1
-    runs-on: lynx-ubuntu-22.04-physical-medium
+    runs-on: lynx-ubuntu-22.04-physical-medium-verify
     steps:
       - name: Download Source
         uses: actions/checkout@v4.2.2
@@ -374,7 +375,7 @@ jobs:
           done
           $ANDROID_HOME/platform-tools/adb devices
       - name: Download Explorer APK
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: coolkiid/download-artifact@e4a3e45867c6ed30d6d8867bc07875366e46e518
         with:
           name: android-lynx-explorer
           path: lynx/explorer/android/lynx_explorer/build_temp
@@ -469,7 +470,7 @@ jobs:
   android-integeration-test:
     needs: [android-sdk-release]
     timeout-minutes: 15
-    runs-on: lynx-ubuntu-22.04-large
+    runs-on: lynx-ubuntu-22.04-large-verify
     steps:
       - name: Download Integeration Demo Source Code
         uses: actions/checkout@v4.2.2
@@ -485,7 +486,7 @@ jobs:
           git fetch origin 4c977faf04eb295fa2818a183e9dc66c5a7f5455
           git cherry-pick 4c977faf04eb295fa2818a183e9dc66c5a7f5455
       - name: Download Lynx SDK Artifacts
-        uses: lynx-infra/download-artifact@79d9914484f933089c2840552cf439bac85debad
+        uses: coolkiid/download-artifact@e4a3e45867c6ed30d6d8867bc07875366e46e518
         with:
           name: android-sdk-release
           path: lynx
@@ -514,7 +515,7 @@ jobs:
           popd
 
   harmony-explorer-build:
-    runs-on: lynx-custom-container
+    runs-on: lynx-custom-container-verify
     container:
       image: ghcr.io/lynx-family/ubuntu24.04-harmony@sha256:8eb0ee8da7e8592669f0fcd41d0e1bc818b33a75e27943521f57af87d04db2fb
       credentials:
@@ -524,6 +525,9 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: debug
+        run: |-
+          env
       - name: Download Source
         uses: actions/checkout@v4.2.2
         with:
