@@ -1,3 +1,6 @@
+# 0.0.16
+* Using `macOS-latest` runner to publish tasm artifact.
+
 # 0.0.14
 * add renderer functions for event handle `__AddEventListener`, `__RemoveEventListener`, `__CreateEvent`, `__DispatchEvent`, `__StopPropagation` and `__StopImmediatePropagation`.
 

@@ -108,7 +108,7 @@ jobs:
           path: lynx/oliver/lynx-tasm/build/darwin/Release/lepus.node
 
   tasm-publish:
-    runs-on: ubuntu-latest
+    runs-on: macOS-latest
     needs: [tasm-linux-build, tasm-darwin-build]
     environment: npm
     steps:
