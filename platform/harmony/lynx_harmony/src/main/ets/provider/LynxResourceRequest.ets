@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+import { LynxContext } from '../tasm/LynxContext';
+
 export enum LynxResourceType {
   LYNX_RESOURCE_TYPE_GENERIC = 0,
   LYNX_RESOURCE_TYPE_IMAGE = 1,
@@ -34,9 +36,11 @@ export class LynxResourceRequest {
   type: LynxResourceType;
   params?: Record<string, Object>;
   mode?: LynxResourceAsyncMode;
+  context: LynxContext | undefined;
 
-  constructor(url: string, type: LynxResourceType) {
+  constructor(url: string, type: LynxResourceType, context?: LynxContext) {
     this.url = url;
     this.type = type;
+    this.context = context;
   }
 }

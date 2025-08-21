@@ -29,6 +29,17 @@
   return self;
 }
 
+- (instancetype)initWithUrl:(NSString *)url
+                       type:(LynxResourceRequestType)type
+                    context:(LynxUIContext *)context {
+  if (self = [super init]) {
+    _url = url;
+    _type = type;
+    _uiContext = context;
+  }
+  return self;
+}
+
 - (LynxServiceResourceRequestParameters *_Nullable)getLynxResourceServiceRequestParams {
   if (_requestParams != nil &&
       [_requestParams isKindOfClass:[LynxServiceResourceRequestParameters class]]) {

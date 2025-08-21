@@ -2857,9 +2857,11 @@ public class LynxResourceRequest : NSObject {
   public LynxResourceRequestType LynxResourceRequest::type type;
   public id LynxResourceRequest::requestParams requestParams;
   public LynxResourceRequestAsyncMode LynxResourceRequest::mode mode;
+  public LynxUIContext* LynxResourceRequest::uiContext uiContext;
   public instancetype LynxResourceRequest::initWithUrl:(NSString *url);
   public instancetype LynxResourceRequest::initWithUrl:type:(NSString *url,[type] LynxResourceRequestType type);
   public instancetype LynxResourceRequest::initWithUrl:andRequestParams:(NSString *url,[andRequestParams] id requestParams);
+  public instancetype LynxResourceRequest::initWithUrl:type:context:(NSString *url,[type] LynxResourceRequestType type,[context] nullable LynxUIContext *context);
   public LynxServiceResourceRequestParameters *_Nullable LynxResourceRequest::getLynxResourceServiceRequestParams();
 }
 

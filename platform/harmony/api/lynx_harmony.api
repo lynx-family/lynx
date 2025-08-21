@@ -232,11 +232,12 @@ export interface TemplateProviderResult {
 }
 
 export class LynxResourceRequest {
-  constructor(url: string, type: LynxResourceType);
+  constructor(url: string, type: LynxResourceType, context: LynxContext);
   url: string;
   type: LynxResourceType;
   params?: Record<string, Object>;
   mode?: LynxResourceAsyncMode;
+  context: LynxContext | undefined;
 }
 
 export enum LynxResourceType {

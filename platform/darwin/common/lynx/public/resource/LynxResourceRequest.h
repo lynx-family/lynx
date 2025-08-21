@@ -10,6 +10,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxUIContext;
+
 typedef NS_ENUM(NSInteger, LynxResourceRequestAsyncMode) {
   EXACTLY_ASYNC,
   EXACTLY_SYNC,
@@ -38,10 +40,14 @@ typedef NS_ENUM(NSInteger, LynxResourceRequestType) {
 @property(nonatomic, readonly, assign) LynxResourceRequestType type;
 @property(nonatomic, readwrite, strong) id requestParams;
 @property(nonatomic, readwrite, assign) LynxResourceRequestAsyncMode mode;
+@property(nonatomic, weak, readonly) LynxUIContext* uiContext;
 
 - (instancetype)initWithUrl:(NSString*)url;
 - (instancetype)initWithUrl:(NSString*)url type:(LynxResourceRequestType)type;
 - (instancetype)initWithUrl:(NSString*)url andRequestParams:(id)requestParams;
+- (instancetype)initWithUrl:(NSString*)url
+                       type:(LynxResourceRequestType)type
+                    context:(nullable LynxUIContext*)context;
 
 // Only for LynxResourceFetcher use. Return the full request parameters for forest.
 - (LynxServiceResourceRequestParameters* _Nullable)getLynxResourceServiceRequestParams;

@@ -5502,12 +5502,14 @@ public class com::lynx::tasm::provider::LynxResourceRequest :  {
 
 public class com::lynx::tasm::resourceprovider::LynxResourceRequest :  {
   public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceRequest(String url, LynxResourceType type);
+  public com.lynx.tasm.resourceprovider.LynxResourceRequest.LynxResourceRequest(String url, LynxResourceType type, LynxContext context);
+  public void com.lynx.tasm.resourceprovider.LynxResourceRequest.setAsyncMode(AsyncMode mode);
+  public void com.lynx.tasm.resourceprovider.LynxResourceRequest.setParams(Map< String, Object > params);
   public String com.lynx.tasm.resourceprovider.LynxResourceRequest.getUrl();
   public LynxResourceType com.lynx.tasm.resourceprovider.LynxResourceRequest.getResourceType();
-  public void com.lynx.tasm.resourceprovider.LynxResourceRequest.setAsyncMode(AsyncMode mode);
   public AsyncMode com.lynx.tasm.resourceprovider.LynxResourceRequest.getAsyncMode();
-  public void com.lynx.tasm.resourceprovider.LynxResourceRequest.setParams(Map< String, Object > params);
   public Map< String, Object > com.lynx.tasm.resourceprovider.LynxResourceRequest.getParams();
+  public LynxContext com.lynx.tasm.resourceprovider.LynxResourceRequest.getLynxContext();
 }
 
 public class com::lynx::tasm::provider::LynxResourceResponse :  {
