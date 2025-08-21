@@ -39,6 +39,10 @@ public abstract class EventEmitter {
     void onInternalEvent(@NonNull LynxInternalEvent event);
   }
 
+  public interface LynxEventFallback {
+    void checkFallbackForLynxEvent(boolean enableAsync);
+  }
+
   public enum LynxEventType {
     kLynxEventTypeTouchEvent,
     kLynxEventTypeCustomEvent,
@@ -76,6 +80,8 @@ public abstract class EventEmitter {
   public abstract void removeObserver(LynxEventObserver observer);
 
   public abstract void registerEventReporter(LynxEventReporter reporter);
+
+  public abstract void registerEventFallback(LynxEventFallback fallback);
 
   // TODO(songshourui.null): Remove this API later. First, remove the function implementation. If
   // subsequent verification confirms that API removal does not cause a build break, then delete the
