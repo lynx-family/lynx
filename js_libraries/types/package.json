@@ -6,6 +6,10 @@
     "lynx",
     "types"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lynx-family/lynx.git"
+  },
   "license": "Apache-2.0",
   "author": "Lynx Authors",
   "types": "types/index.d.ts",
