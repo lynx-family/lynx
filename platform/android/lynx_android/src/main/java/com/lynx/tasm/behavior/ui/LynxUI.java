@@ -44,6 +44,7 @@ import android.view.inputmethod.InputMethodManager;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.Callback;
 import com.lynx.react.bridge.Dynamic;
@@ -307,20 +308,29 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
   @Override
   protected void createViewAsync() {
     super.createViewAsync();
-    OnceTask<T> onceTask = new OnceTask<>(new Callable<T>() {
-      @Override
-      public T call() {
-        try {
-          T result = createView(mContext, mParam);
-          if (result == null) {
-            return createView(mContext);
+    OnceTask<T> onceTask = new OnceTask<>(
+        new Callable<T>() {
+          @Override
+          public T call() {
+            try {
+              T result = createView(mContext, mParam);
+              if (result == null) {
+                return createView(mContext);
+              }
+            } catch (Throwable e) {
+              LLog.e(TAG, e.toString());
+            }
+            return null;
           }
-        } catch (Throwable e) {
-          LLog.e(TAG, e.toString());
-        }
-        return null;
-      }
-    });
+        },
+        new Consumer<Exception>() {
+          @Override
+          public void accept(Exception exception) {
+            if (mContext != null) {
+              mContext.handleException(exception);
+            }
+          }
+        });
 
     mOnceTask = onceTask;
 

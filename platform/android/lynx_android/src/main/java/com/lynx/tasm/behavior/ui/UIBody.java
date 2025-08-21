@@ -18,6 +18,7 @@ import android.widget.FrameLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.core.util.Consumer;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.PageConfig;
@@ -55,10 +56,21 @@ public class UIBody extends UIGroup<UIBodyView> {
 
   private OnceTask<Void> mAttachTask = null;
 
+  private Consumer<Exception> mExceptionHandler = null;
+
   public UIBody(LynxContext context, final UIBodyView view) {
     super(context);
     mBodyView = view;
     initialize();
+
+    mExceptionHandler = new Consumer<Exception>() {
+      @Override
+      public void accept(Exception exception) {
+        if (getLynxContext() != null) {
+          getLynxContext().handleException(exception);
+        }
+      }
+    };
   }
 
   public UIBodyView getBodyView() {
@@ -113,7 +125,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         TraceEvent.endSection(TraceEventDef.UI_BODY_ATTACH_UI_BODY_VIEW);
         return null;
       }
-    });
+    }, mExceptionHandler);
 
     if (mDetachTask == null) {
       mAttachTask.run();
@@ -167,7 +179,7 @@ public class UIBody extends UIGroup<UIBodyView> {
         }
         return null;
       }
-    });
+    }, mExceptionHandler);
 
     LynxThreadPool.postUIOperationTask(mDetachTask);
   }

@@ -4,6 +4,7 @@
 
 package com.lynx.tasm.base;
 
+import androidx.core.util.Consumer;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -16,8 +17,15 @@ public class OnceTask<T> implements Runnable {
 
   private final FutureTask<T> mFutureTask;
 
+  private Consumer<Exception> mExceptionHandler = null;
+
   public OnceTask(final Callable<T> task) {
     mFutureTask = new FutureTask<T>(task);
+  }
+
+  public OnceTask(final Callable<T> task, Consumer<Exception> exceptionHandler) {
+    mFutureTask = new FutureTask<T>(task);
+    mExceptionHandler = exceptionHandler;
   }
 
   protected void tryRun() {
@@ -34,8 +42,11 @@ public class OnceTask<T> implements Runnable {
   public T get() {
     try {
       return mFutureTask.get();
-    } catch (Throwable e) {
+    } catch (Exception e) {
       LLog.e(TAG, "Get result from OnceTask failed since: " + e.toString());
+      if (mExceptionHandler != null) {
+        mExceptionHandler.accept(e);
+      }
     }
     return null;
   }
