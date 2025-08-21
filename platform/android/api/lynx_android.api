@@ -7121,6 +7121,7 @@ public class com::lynx::tasm::common::NullableConcurrentHashMap : ConcurrentHash
 
 public class com::lynx::tasm::base::OnceTask : Runnable {
   public com.lynx.tasm.base.OnceTask< T >.OnceTask(final Callable< T > task);
+  public com.lynx.tasm.base.OnceTask< T >.OnceTask(final Callable< T > task, Consumer< Exception > exceptionHandler);
   public void com.lynx.tasm.base.OnceTask< T >.run();
   public T com.lynx.tasm.base.OnceTask< T >.get();
 }
