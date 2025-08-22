@@ -20,21 +20,28 @@ jobs:
           path: lynx
           fetch-depth: 2 # latest 2 commits
 
-      - name: Check version field change
+      - name: Check version field change or skip on manual trigger
         id: check
         run: |
-          # achieve content of package.json 
-          cd $GITHUB_WORKSPACE/lynx
-          version_current=$(jq -r '.version' oliver/lynx-tasm/package.json)
-          version_before=$(git show HEAD~1:oliver/lynx-tasm/package.json | jq -r '.version')
-
-          echo "Current version: $version_current"
-          echo "Previous version: $version_before"
-
-          if [ "$version_current" != "$version_before" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual trigger detected, skip version check."
             echo "version_changed=true" >> $GITHUB_OUTPUT
           else
-            echo "version_changed=false" >> $GITHUB_OUTPUT
+            cd $GITHUB_WORKSPACE/lynx
+            version_current=$(jq -r '.version' oliver/lynx-tasm/package.json)
+            if git rev-parse HEAD~1 >/dev/null 2>&1; then
+              version_before=$(git show HEAD~1:oliver/lynx-tasm/package.json | jq -r '.version')
+            else
+              version_before=""
+            fi
+            echo "Current version: $version_current"
+            echo "Previous version: $version_before"
+
+            if [ "$version_current" != "$version_before" ]; then
+              echo "version_changed=true" >> $GITHUB_OUTPUT
+            else
+              echo "version_changed=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
   tasm-linux-build:

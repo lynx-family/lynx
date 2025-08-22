@@ -4,6 +4,10 @@
     "description": "",
     "main": "index.js",
     "types": "index.d.ts",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/lynx-family/lynx.git"
+    },
     "files": [
       "build/**/*.node",
       "build-dll/liblepus.dylib",
