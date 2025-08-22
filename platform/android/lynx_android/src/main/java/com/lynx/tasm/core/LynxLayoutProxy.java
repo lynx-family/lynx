@@ -4,10 +4,15 @@
 package com.lynx.tasm.core;
 
 import java.lang.Runnable;
+
 public class LynxLayoutProxy {
   private long mNativePtr;
 
   public LynxLayoutProxy(long lynxShellPtr) {
+    initNative(lynxShellPtr);
+  }
+
+  protected void initNative(long lynxShellPtr) {
     mNativePtr = nativeCreate(lynxShellPtr);
   }
 

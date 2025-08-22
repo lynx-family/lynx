@@ -102,8 +102,14 @@ NSString *const kDefaultComponentID = @"-1";
 }
 
 - (void)runOnLayoutThread:(dispatch_block_t)task {
-  if (task && layout_proxy_) {
-    layout_proxy_->RunOnLayoutThread(task);
+  if (task) {
+    if (layout_proxy_) {
+      layout_proxy_->RunOnLayoutThread(task);
+    } else {
+      // TODO(chennengshi): We shuld remove this and set custom layoutProxy to LynxContext when
+      // layout_proxy.h become a public header.
+      task();
+    }
   }
 }
 
