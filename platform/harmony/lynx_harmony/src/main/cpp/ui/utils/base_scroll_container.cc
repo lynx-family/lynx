@@ -14,6 +14,7 @@ BaseScrollContainer::BaseScrollContainer(LynxContext* context, int sign,
     : UIView(context, ARKUI_NODE_SCROLL, sign, tag) {
   SetNestedScroll(ARKUI_SCROLL_NESTED_MODE_SELF_FIRST);
   SetScrollbar(false);
+  SetBounces(false, true);
   overflow_ = {false, false};
 }
 
@@ -90,11 +91,12 @@ void BaseScrollContainer::SetScrollDirection(ArkUI_ScrollDirection direction) {
       node_, NODE_SCROLL_SCROLL_DIRECTION, static_cast<int>(direction));
 }
 
-void BaseScrollContainer::SetBounces(bool bounces) {
+void BaseScrollContainer::SetBounces(bool bounces, bool always_enabled) {
   NodeManager::Instance().SetAttributeWithNumberValue(
       node_, NODE_SCROLL_EDGE_EFFECT,
       static_cast<int32_t>(bounces ? ARKUI_EDGE_EFFECT_SPRING
-                                   : ARKUI_EDGE_EFFECT_NONE));
+                                   : ARKUI_EDGE_EFFECT_NONE),
+      static_cast<int32_t>(always_enabled));
 }
 
 void BaseScrollContainer::SetEnableScrollInteraction(
@@ -142,6 +144,9 @@ void BaseScrollContainer::OnPropUpdate(const std::string& name,
     } else {
       SetHorizontal(false);
     }
+  } else if (name == kScrollEdgeEffect && value.IsBool()) {
+    auto data = value.Bool();
+    SetBounces(data, data);
   } else {
     UIView::OnPropUpdate(name, value);
   }

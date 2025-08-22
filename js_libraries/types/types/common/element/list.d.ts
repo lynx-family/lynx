@@ -970,6 +970,14 @@ export interface ListProps extends StandardProps {
    * @since 3.1
    */
   'experimental-batch-render-strategy'?: BatchRenderStrategy;
+  
+  /**
+   * When the content size of a component is smaller than the component itself, decide whether to enable scrolling.
+   * @defaultValue false
+   * @Harmony
+   * @since 3.4
+   */
+   'harmony-scroll-edge-effect'?: boolean | undefined;
 
   /**
    * Scroll event.
