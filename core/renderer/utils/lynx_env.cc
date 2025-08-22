@@ -488,5 +488,9 @@ bool LynxEnv::EnableNewAnimatorOnPatchFinishOpt() {
   return GetBoolEnv(Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT, true);
 }
 
+bool LynxEnv::FixRadonTransitionPropertyRemoveBug() {
+  return GetBoolEnv(Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG, true);
+}
+
 }  // namespace tasm
 }  // namespace lynx

@@ -1075,8 +1075,8 @@ void RadonNode::SetStaticInlineStyle(CSSPropertyID id, tasm::CSSValue&& value) {
 bool RadonNode::DiffStyleImpl(const StyleMap& old_map, const StyleMap& new_map,
                               bool check_remove) {
   bool need_update = false;
+  base::InlineVector<CSSPropertyID, 16> reset_style_names;
   if (check_remove) {
-    base::InlineVector<CSSPropertyID, 16> reset_style_names;
     for (auto it = old_map.begin(); it != old_map.end();) {
       auto it_new_map = new_map.find(it->first);
       // style does not exist in rhs, delete it
@@ -1093,7 +1093,9 @@ bool RadonNode::DiffStyleImpl(const StyleMap& old_map, const StyleMap& new_map,
         ++it;
       }
     }
-    element()->ResetStyle(reset_style_names);
+    if (LynxEnv::GetInstance().FixRadonTransitionPropertyRemoveBug() == false) {
+      element()->ResetStyle(reset_style_names);
+    }
   }
 
   // iterate all styles in new_map
@@ -1115,6 +1117,17 @@ bool RadonNode::DiffStyleImpl(const StyleMap& old_map, const StyleMap& new_map,
     }
     // no need to update: it_old_map != old_map.end() && it.second ==
     // it_old_map->second
+  }
+  if (LynxEnv::GetInstance().FixRadonTransitionPropertyRemoveBug() == true) {
+    // In Radon, if there are transform properties in update_styles, and
+    // properties value will be removed, try consume transition first.
+    bool should_consume_trans_styles_in_advance =
+        element()->ShouldConsumeTransitionStylesInAdvance();
+    if (should_consume_trans_styles_in_advance) {
+      element()->ConsumeTransitionStylesInAdvance(update_styles);
+    }
+
+    element()->ResetStyle(reset_style_names);
   }
   element()->ConsumeStyle(update_styles);
   return need_update;

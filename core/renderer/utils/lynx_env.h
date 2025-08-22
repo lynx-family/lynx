@@ -112,6 +112,9 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_FIXED_Z_INDEX_SWITCH_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
     ENABLE_EVENT_HANDLE_REFACTOR,
+    // FIXME(wangyifei.20010605): remove this config in the next version(remove
+    // in 3.6)
+    FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -237,6 +240,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
              "enable_new_animator_on_patch_finish_opt"},
             {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
+            {Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
+             "fix_radon_transition_property_remove_bug"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -368,6 +373,7 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
   bool FixFontSizeOverrideDirectionChangeBug();
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();
+  bool FixRadonTransitionPropertyRemoveBug();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;
