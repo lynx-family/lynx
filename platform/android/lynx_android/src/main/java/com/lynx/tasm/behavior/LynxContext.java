@@ -138,8 +138,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   // Asynchronous image request switch controlled by client
   private boolean mForceImageAsyncRequest = false;
 
-  private boolean mEnableAutoConcurrency;
-
   private FluencyTraceHelper mFluencyTraceHelper;
 
   // generic resource fetcher api
@@ -1423,12 +1421,12 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return mForceDarkAllowed;
   }
 
-  public void setEnableAutoConcurrency(boolean enable) {
-    mEnableAutoConcurrency = enable;
-  }
+  @Deprecated
+  public void setEnableAutoConcurrency(boolean enable) {}
 
+  @Deprecated
   public boolean getEnableAutoConcurrency() {
-    return mEnableAutoConcurrency;
+    return false;
   }
 
   /**

@@ -40,7 +40,6 @@
 #include "core/shell/native_facade.h"
 #include "core/shell/tasm_mediator.h"
 #include "core/shell/tasm_operation_queue.h"
-#include "core/shell/thread_mode_auto_switch.h"
 
 namespace lynx {
 
@@ -63,7 +62,6 @@ struct ShellOption {
   bool enable_js_{true};
   bool enable_multi_tasm_thread_{true};
   bool enable_multi_layout_thread_{true};
-  bool enable_auto_concurrency_{false};
   bool enable_js_group_thread_{false};
   bool enable_vsync_aligned_msg_loop_{false};
   bool enable_async_hydration_{false};
@@ -340,16 +338,6 @@ class LynxShell {
                        tasm::timing::TimestampUs pipeline_start_timestamp);
   void ResetTimingBeforeReload() const;
 
-  // TODO(heshan): The temporarily added API will be removed
-  // once the overall design for dynamically switching thread modes is
-  // implemented.
-  void BindLynxEngineToUIThread();
-
-  // TODO(heshan): The temporarily added API will be removed
-  // once the overall design for dynamically switching thread modes is
-  // implemented.
-  void UnbindLynxEngineFromUIThread();
-
   void AttachEngineToUIThread();
 
   void DetachEngineFromUIThread();
@@ -409,7 +397,6 @@ class LynxShell {
   std::function<void(std::unique_ptr<runtime::LynxRuntime>&)>
       start_js_runtime_task_;
 
-  ThreadModeManager thread_mode_manager_;
   // A SSR page will be rendered when LoadSSRData is called.
   // A ssr page will be further hydrated when a load template is called.
   bool hydration_pending_{false};
@@ -427,7 +414,6 @@ class LynxShell {
       std::make_shared<tasm::PropBundleCreatorDefault>();
   AppState app_state_{AppState::kUnknown};
 
-  std::unique_ptr<ThreadModeAutoSwitch> thread_mode_auto_switch_;
   std::shared_ptr<EngineThreadSwitch> engine_thread_switch_;
 
   // Only ref module_manager;

@@ -170,7 +170,6 @@ public class LynxTemplateRender
   private boolean mShouldUpdateViewport = true;
   // for fontscale
   private float mFontScale = 1.0f;
-  private boolean mAutoConcurrency;
   private LynxBooleanOption mLongTaskMonitorEnabled = LynxBooleanOption.UNSET;
   private boolean mEnableUIFlush = true;
 
@@ -314,10 +313,7 @@ public class LynxTemplateRender
 
     mEnableReuseEngine = EmbeddedMode.isEnginePoolEnable(mEmbeddedMode) && mTemplateBundle != null;
 
-    mAutoConcurrency = mLynxViewConfigProvider.isEnableAutoConcurrency();
-    // force using MULTI_THREADS by default for enableAutoConcurrency
-    mThreadStrategyForRendering = mAutoConcurrency ? ThreadStrategyForRendering.MULTI_THREADS
-                                                   : mLynxViewConfigProvider.getThreadStrategy();
+    mThreadStrategyForRendering = mLynxViewConfigProvider.getThreadStrategy();
 
     if (mEnableReuseEngine) {
       reuseLynxEngine();
@@ -343,11 +339,6 @@ public class LynxTemplateRender
 
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
         || mThreadStrategyForRendering == ThreadStrategyForRendering.MOST_ON_TASM);
-
-    // force disabling mForceLayoutOnBackgroundThread when mAutoConcurrency is enabled.
-    if (mAutoConcurrency) {
-      mForceLayoutOnBackgroundThread = false;
-    }
 
     // Force enabling layout thread when mForceLayoutOnBackgroundThread is enabled.
     if (mForceLayoutOnBackgroundThread) {
@@ -424,7 +415,6 @@ public class LynxTemplateRender
     if (mLynxViewBuilder.mImageCustomParam != null) {
       mLynxContext.setImageCustomParam(mLynxViewBuilder.mImageCustomParam);
     }
-    mLynxContext.setEnableAutoConcurrency(mAutoConcurrency);
     // TODO(chenyouhui): Move this function call to a more appropriate place.
     ILynxExtensionService extensionService =
         LynxServiceCenter.inst().getService(ILynxExtensionService.class);
@@ -443,8 +433,7 @@ public class LynxTemplateRender
     // use screen width as width measure spec by default
     // in order to avoid relayout when onMeasure in the maximum extent.
     // TODO(heshan): consider use screen width by default to avoid relayout
-    if ((mAutoConcurrency || mForceLayoutOnBackgroundThread) && widthMeasureSpec == 0
-        && heightMeasureSpec == 0) {
+    if (mForceLayoutOnBackgroundThread && widthMeasureSpec == 0 && heightMeasureSpec == 0) {
       widthMeasureSpec = MeasureSpec.makeMeasureSpec(
           mLynxContext.getResources().getDisplayMetrics().widthPixels, MeasureSpec.EXACTLY);
     }
@@ -819,7 +808,7 @@ public class LynxTemplateRender
         mLynxViewBuilder.enableLayoutOnly, screenMetrics.widthPixels, screenMetrics.heightPixels,
         screenMetrics.density, LynxEnv.inst().getLocale(), mLynxViewBuilder.isEnableJSRuntime(),
         mLynxViewConfigProvider.isEnableMultiAsyncThread(),
-        mLynxViewConfigProvider.isEnablePreUpdateData(), mAutoConcurrency, enableVSyncAligned,
+        mLynxViewConfigProvider.isEnablePreUpdateData(), enableVSyncAligned,
         mLynxViewConfigProvider.isEnableAsyncHydration(),
         mGroup != null && mGroup.enableJSGroupThread(), getJSGroupThreadNameIfNeed(),
         tasmPlatformInvoker, whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
@@ -2047,7 +2036,7 @@ public class LynxTemplateRender
       }
 
       // TODO(heshan):merge syncFlush, syncFetchLayoutResult and flush as one method.
-      if (getEnableVsyncAlignedFlush() || (mAutoConcurrency && mWillContentSizeChange)) {
+      if (getEnableVsyncAlignedFlush()) {
         nativeFlush(mNativePtr, mNativeLifecycle);
         mWillContentSizeChange = false;
       }
@@ -4072,12 +4061,11 @@ public class LynxTemplateRender
       Object performanceController, Object loader, int renderStrategy,
       boolean enableLayoutSafePoint, boolean enableLayoutOnly, int screenWidth, int screenHeight,
       float density, String locale, boolean enableJSRuntime, boolean enableMultiAsyncThread,
-      boolean enablePreUpdateData, boolean enableAutoConcurrency,
-      boolean enableVSyncAlignedMessageLoop, boolean enableAsyncHydration,
-      boolean enableJSGroupThread, String jsGroupThreadName, Object tasmPlatformInvoker,
-      long whiteboard, long uiDelegate, boolean useInvokeUIMethod, boolean longTaskMonitorDisabled,
-      boolean forceLayoutOnBackgroundThread, boolean enableUnifiedPipeline, int embeddedMode,
-      long enginePtr);
+      boolean enablePreUpdateData, boolean enableVSyncAlignedMessageLoop,
+      boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
+      Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
+      boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
+      boolean enableUnifiedPipeline, int embeddedMode, long enginePtr);
 
   private static native void nativeDestroy(long ptr);
 

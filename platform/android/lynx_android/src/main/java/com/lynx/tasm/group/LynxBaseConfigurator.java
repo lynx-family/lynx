@@ -36,7 +36,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected boolean enableUnifiedPipeline;
   protected boolean forceDarkAllowed = false;
   protected boolean enableSyncFlush = false;
-  protected boolean enableAutoConcurrency = false;
+  @Deprecated protected boolean enableAutoConcurrency = false;
   protected boolean enableVSyncAlignedMessageLoop = false;
   protected boolean enablePendingJsTask = false;
   protected boolean hasPresetMeasureSpec = false;
@@ -370,6 +370,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * @see ThreadStrategyForRendering#PART_ON_LAYOUT
    * @see LynxViewBuilder#setEnableMultiAsyncThread
    */
+  @Deprecated
   public T setEnableAutoConcurrency(boolean enable) {
     enableAutoConcurrency = enable;
     return (T) this;

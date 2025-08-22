@@ -138,9 +138,6 @@ TEST_F(LynxShellBuilderTest, LynxShellBuilderTotalTest) {
 
   // SetStrategy() test
   EXPECT_EQ(shell_->ThreadStrategy(), strategy_);
-  // SetShellOption() test
-  EXPECT_EQ(shell_builder_->shell_option_.enable_auto_concurrency_,
-            this->option_->enable_auto_concurrency_);
 
   EXPECT_EQ(shell_->layout_result_manager_, nullptr);
   EXPECT_EQ(shell_->layout_mediator_->layout_result_manager_, nullptr);

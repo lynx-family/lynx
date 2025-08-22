@@ -64,7 +64,6 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   private boolean enableMultiAsyncThread;
   private boolean enableSyncFlush;
-  private boolean enableAutoConcurrency;
   private boolean enableVSyncAlignedMessageLoop;
   private boolean enablePendingJsTask;
   private boolean enableAsyncHydration;
@@ -96,11 +95,10 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean enableLayoutSafepoint, boolean enableUnifiedPipeline, boolean forceDarkAllowed,
       Float density, int screenWidth, int screenHeight, boolean enableMultiAsyncThread,
       boolean enableSyncFlush, boolean enablePendingJsTask, boolean enableAsyncHydration,
-      boolean enableAutoConcurrency, boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime,
-      boolean enableAirStrictMode, boolean debuggable, int presetWidthMeasureSpec,
-      int presetHeightMeasureSpec, float fontScale, boolean enablePreUpdateData,
-      IUIRendererCreator uiRendererCreator, int embeddedMode, boolean hasPresetMeasureSpec,
-      ILynxLogicExecutor logicExecutor) {
+      boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime, boolean enableAirStrictMode,
+      boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
+      boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
+      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -120,7 +118,6 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.enableSyncFlush = enableSyncFlush;
     this.enablePendingJsTask = enablePendingJsTask;
     this.enableAsyncHydration = enableAsyncHydration;
-    this.enableAutoConcurrency = enableAutoConcurrency;
     this.enableVSyncAlignedMessageLoop = enableVSyncAlignedMessageLoop;
     this.enableJSRuntime = enableJSRuntime;
     this.enableAirStrictMode = enableAirStrictMode;
@@ -216,7 +213,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
 
   @Override
   public boolean isEnableAutoConcurrency() {
-    return this.enableAutoConcurrency;
+    return false;
   }
 
   @Override

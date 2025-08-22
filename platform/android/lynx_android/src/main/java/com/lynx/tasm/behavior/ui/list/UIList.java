@@ -736,10 +736,6 @@ public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMem
       return false;
     }
 
-    if (mContext.getEnableAutoConcurrency()) {
-      return mEnableAsyncList;
-    }
-
     ThreadStrategyForRendering strategy = mContext.getLynxView().getThreadStrategyForRendering();
     return strategy == ThreadStrategyForRendering.MOST_ON_TASM
         || strategy == ThreadStrategyForRendering.MULTI_THREADS;

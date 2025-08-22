@@ -241,7 +241,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
              jint screen_width, jint screen_height, jfloat density,
              jstring locale, jboolean enable_js,
              jboolean enable_multi_async_thread,
-             jboolean enable_pre_update_data, jboolean enable_auto_concurrency,
+             jboolean enable_pre_update_data,
              jboolean enable_vsync_aligned_msg_loop,
              jboolean enable_async_hydration, jboolean enable_js_group_thread,
              jstring js_group_thread_name, jobject tasm_platform_invoker,
@@ -273,7 +273,6 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
   shell_option.enable_js_ = enable_js;
-  shell_option.enable_auto_concurrency_ = enable_auto_concurrency;
   shell_option.enable_vsync_aligned_msg_loop_ = enable_vsync_aligned_msg_loop;
   shell_option.enable_async_hydration_ = enable_async_hydration;
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
@@ -1352,34 +1351,6 @@ void SetLongTaskMonitorDisabled(JNIEnv* env, jobject jcaller, jlong ptr,
   auto options = shell->GetPageOptions();
   options.SetLongTaskMonitorDisabled(disabled);
   shell->SetPageOptions(options);
-  AtomicLifecycle::TryFree(lifecycle_ptr);
-}
-
-void BindLynxEngineToUIThread(JNIEnv* env, jobject jcaller, jlong ptr,
-                              jlong lifecycle) {
-  AtomicLifecycle* lifecycle_ptr =
-      reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
-    return;
-  }
-
-  auto* shell = reinterpret_cast<LynxShell*>(ptr);
-  shell->BindLynxEngineToUIThread();
-
-  AtomicLifecycle::TryFree(lifecycle_ptr);
-}
-
-void UnbindLynxEngineFromUIThread(JNIEnv* env, jobject jcaller, jlong ptr,
-                                  jlong lifecycle) {
-  AtomicLifecycle* lifecycle_ptr =
-      reinterpret_cast<AtomicLifecycle*>(lifecycle);
-  if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
-    return;
-  }
-
-  auto* shell = reinterpret_cast<LynxShell*>(ptr);
-  shell->UnbindLynxEngineFromUIThread();
-
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 

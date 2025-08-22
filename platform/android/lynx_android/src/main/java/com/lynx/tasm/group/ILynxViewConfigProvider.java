@@ -89,7 +89,7 @@ public interface ILynxViewConfigProvider {
   /**
    * @return whether AutoConcurrency enabled;
    */
-  boolean isEnableAutoConcurrency();
+  @Deprecated boolean isEnableAutoConcurrency();
 
   /**
    * @return whether VsyncAlignedMessageLoop enabled;

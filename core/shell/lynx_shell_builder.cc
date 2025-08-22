@@ -175,12 +175,6 @@ LynxShellBuilder& LynxShellBuilder::SetForceLayoutOnBackgroundThread(
 
 LynxShell* LynxShellBuilder::build() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_BUILDER_BUILD);
-
-  // for auto concurrency, force using MULTI_THREADS by default.
-  if (this->shell_option_.enable_auto_concurrency_) {
-    this->strategy_ = base::ThreadStrategyForRendering::MULTI_THREADS;
-  }
-
   LynxShell* shell = new LynxShell(this->strategy_, this->shell_option_);
   if (this->shell_option_.instance_id_ == kUnknownInstanceId) {
     this->shell_option_.instance_id_ = shell->instance_id_;

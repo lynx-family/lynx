@@ -452,11 +452,9 @@ public class LynxViewBuilder
   }
 
   @Override
+  @Deprecated
   public boolean isEnableAutoConcurrency() {
-    if (lynxViewGroup != null) {
-      return lynxViewGroup.isEnableAutoConcurrency();
-    }
-    return this.enableAutoConcurrency;
+    return false;
   }
 
   @Override

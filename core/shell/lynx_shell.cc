@@ -108,7 +108,6 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
                // TODO(heshan,huangweiwu): the async_thread_cache config
                // conflicts with thread merge now.
                shell_option.enable_multi_tasm_thread_ &&
-                   !shell_option.enable_auto_concurrency_ &&
                    !DoAsyncHydration(strategy, shell_option),
                shell_option.js_group_thread_name_),
       instance_id_(shell_option.instance_id_ != kUnknownInstanceId
@@ -133,11 +132,7 @@ LynxShell::LynxShell(base::ThreadStrategyForRendering strategy,
   engine_thread_switch_ = std::make_shared<EngineThreadSwitch>(
       runners_.GetUITaskRunner(), runners_.GetTASMTaskRunner(),
       ui_operation_queue_);
-  if (shell_option.enable_auto_concurrency_) {
-    thread_mode_manager_.ui_runner = runners_.GetUITaskRunner().get();
-    thread_mode_manager_.engine_runner = runners_.GetTASMTaskRunner().get();
-    thread_mode_manager_.queue = ui_operation_queue_.get();
-  } else if (DoAsyncHydration(strategy, shell_option)) {
+  if (DoAsyncHydration(strategy, shell_option)) {
     base::ThreadMerger::Merge(runners_.GetUITaskRunner().get(),
                               runners_.GetTASMTaskRunner().get());
     ui_operation_queue_->Transfer(current_strategy_);
@@ -387,7 +382,6 @@ void LynxShell::LoadTemplate(
                     pipeline_options->pipeline_origin,
                     pipeline_options->pipeline_start_timestamp);
   }
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   bool need_to_merge_back = false;
   if (hydration_pending_ && enable_async_hydration_) {
@@ -464,7 +458,6 @@ void LynxShell::LoadTemplateBundle(
                     pipeline_options->pipeline_origin,
                     pipeline_options->pipeline_start_timestamp);
   }
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   EnsureTemplateDataThreadSafe(template_data);
   engine_actor_->Act(
@@ -518,7 +511,6 @@ void LynxShell::LoadSSRData(
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
   hydration_pending_ = true;
   EnsureTemplateDataThreadSafe(template_data);
   engine_actor_->Act(
@@ -537,7 +529,6 @@ void LynxShell::UpdateDataByParsedData(
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   EnsureTemplateDataThreadSafe(data);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
@@ -559,7 +550,6 @@ void LynxShell::UpdateMetaData(const std::shared_ptr<tasm::TemplateData>& data,
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
   EnsureTemplateDataThreadSafe(data);
   auto global_props_thread_safe = EnsureGlobalPropsThreadSafe(global_props);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
@@ -578,7 +568,6 @@ void LynxShell::ResetDataByParsedData(
   OnPipelineStart(pipeline_options->pipeline_id,
                   pipeline_options->pipeline_origin,
                   pipeline_options->pipeline_start_timestamp);
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   EnsureTemplateDataThreadSafe(data);
   auto order = ui_operation_queue_->UpdateNativeUpdateDataOrder();
@@ -644,7 +633,6 @@ void LynxShell::ReloadTemplate(
                     pipeline_options->pipeline_origin,
                     pipeline_options->pipeline_start_timestamp);
   }
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
 
   EnsureTemplateDataThreadSafe(data);
   auto global_props_thread_safe = EnsureGlobalPropsThreadSafe(global_props);
@@ -897,8 +885,6 @@ tasm::ListNode* LynxShell::GetListNode(int32_t tag) {
 
 void LynxShell::RenderListChild(int32_t tag, uint32_t index,
                                 int64_t operation_id) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node != nullptr) {
     list_node->RenderComponentAtIndex(index, operation_id);
@@ -907,8 +893,6 @@ void LynxShell::RenderListChild(int32_t tag, uint32_t index,
 
 void LynxShell::UpdateListChild(int32_t tag, uint32_t sign, uint32_t index,
                                 int64_t operation_id) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node != nullptr) {
     list_node->UpdateComponent(sign, index, operation_id);
@@ -916,8 +900,6 @@ void LynxShell::UpdateListChild(int32_t tag, uint32_t sign, uint32_t index,
 }
 
 void LynxShell::RemoveListChild(int32_t tag, uint32_t sign) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node != nullptr) {
     list_node->RemoveComponent(sign);
@@ -927,8 +909,6 @@ void LynxShell::RemoveListChild(int32_t tag, uint32_t sign) {
 int32_t LynxShell::ObtainListChild(int32_t tag, uint32_t index,
                                    int64_t operation_id,
                                    bool enable_reuse_notification) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node == nullptr) {
     return -1;
@@ -938,8 +918,6 @@ int32_t LynxShell::ObtainListChild(int32_t tag, uint32_t index,
 }
 
 void LynxShell::RecycleListChild(int32_t tag, uint32_t sign) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node != nullptr) {
     list_node->EnqueueComponent(sign);
@@ -969,8 +947,6 @@ void LynxShell::ScrollStopped(int32_t tag) {
 
 void LynxShell::AssembleListPlatformInfo(
     int32_t tag, base::MoveOnlyClosure<void, tasm::ListNode*> assembler) {
-  ThreadModeAutoSwitch auto_switch(thread_mode_manager_);
-
   auto* list_node = GetListNode(tag);
   if (list_node != nullptr) {
     assembler(list_node);
@@ -1284,21 +1260,6 @@ void LynxShell::ResetTimingBeforeReload() const {
   perf_controller_actor_->ActAsync([](auto& performance) {
     performance->GetTimingHandler().ResetTimingBeforeReload();
   });
-}
-
-void LynxShell::BindLynxEngineToUIThread() {
-  DCHECK(!thread_mode_auto_switch_);
-
-  // TODO(heshan): use TaskRunner::Bind instead.
-  thread_mode_auto_switch_ =
-      std::make_unique<ThreadModeAutoSwitch>(thread_mode_manager_);
-}
-
-void LynxShell::UnbindLynxEngineFromUIThread() {
-  DCHECK(thread_mode_auto_switch_);
-
-  // TODO(heshan): use TaskRunner::Unbind instead.
-  thread_mode_auto_switch_ = nullptr;
 }
 
 void LynxShell::SetInspectorElementObserver(
