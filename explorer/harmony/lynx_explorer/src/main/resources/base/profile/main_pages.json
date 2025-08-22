@@ -2,6 +2,7 @@
   "src": [
     "pages/Index",
     "pages/Scan",
-    "pages/Lynx"
+    "pages/Lynx",
+    "pages/LynxRecorder"
   ]
 }

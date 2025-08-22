@@ -208,11 +208,15 @@ export default struct LynxRecorderView {
   build() {
     Column() {
       Row() {
-        Text('LynxRecorder').fontSize(20).fontStyle(FontStyle.Italic).fontWeight('800')
+        Row() {
+          Image("resources/rawfile/lynx_recorder.svg").width(28).height(28)
+          Text('LynxRecorder').fontSize(20).fontStyle(FontStyle.Italic).fontWeight('800').margin({ bottom: 5, left: 5 })
+        }
+
         Stack()
-          .width(20)
-          .height(20)
-          .borderRadius(10)
+          .width(24)
+          .height(24)
+          .borderRadius(12)
           .borderWidth(3)
           .onClick(() => {
             this.ready = false;

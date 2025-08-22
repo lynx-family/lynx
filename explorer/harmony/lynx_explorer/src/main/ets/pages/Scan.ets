@@ -11,6 +11,7 @@ import { customScan, scanBarcode, scanCore } from '@kit.ScanKit';
 import { display, promptAction } from '@kit.ArkUI';
 import { LLog, LynxDebugger, LynxEnv } from '@lynx/lynx';
 import deviceInfo from '@ohos.deviceInfo';
+import { LynxRecorderEnv } from '@lynx/lynx_devtool';
 
 const TAG = 'ScanPage'
 
@@ -91,15 +92,15 @@ struct Scan {
               message: 'Devtool connected'
             });
             router.back();
-          } else if (this.url.startsWith(Constants.TEST_BENCH)) {
-            LLog.d(TAG, 'open TestBench, ' + this.url)
+          } else if (this.url.startsWith(LynxRecorderEnv.RECORDER_URL_PREFIX)) {
+            LLog.d(TAG, 'open LynxRecorder, ' + this.url)
             router.pushUrl({
-              url: Constants.TESTBENCH_URL,
+              url: Constants.LYNX_RECORDER_URL,
               params: {
                 url: this.url,
               }
             }).catch((error: Error) => {
-              LLog.d(TAG, 'open TestBench error, ' + JSON.stringify(error));
+              LLog.d(TAG, 'open LynxRecorder error, ' + JSON.stringify(error));
             });
           } else {
             router.pushUrl({

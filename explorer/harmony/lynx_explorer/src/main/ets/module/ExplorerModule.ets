@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LLog, LynxModule } from '@lynx/lynx';
+import { LynxRecorderEnv } from '@lynx/lynx_devtool';
 import router from '@ohos.router';
 import Constants from '../common/constants';
 
@@ -21,8 +22,8 @@ export class ExplorerModule extends LynxModule {
   public openSchema(url: string) {
     console.log('ExplorerModule', 'openSchema', url);
     let pageUrl = Constants.LYNX_URL;
-    if (url.startsWith(Constants.TEST_BENCH)) {
-      pageUrl = Constants.TESTBENCH_URL
+    if (url.startsWith(LynxRecorderEnv.RECORDER_URL_PREFIX)) {
+      pageUrl = Constants.LYNX_RECORDER_URL
     }
     router.pushUrl({
       url: pageUrl,

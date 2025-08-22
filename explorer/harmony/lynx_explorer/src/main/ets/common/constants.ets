@@ -8,7 +8,7 @@ export default class Constants {
    */
   static readonly SCAN_URL: string = 'pages/Scan';
   static readonly LYNX_URL: string = 'pages/Lynx';
-  static readonly TESTBENCH_URL: string = 'testbench/TestBench';
+  static readonly LYNX_RECORDER_URL: string = 'pages/LynxRecorder';
   /**
    * Full the width.
    */
