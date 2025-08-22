@@ -4,6 +4,7 @@
 
 import {
   AppProxyParams,
+  BundleInitReturnObj,
   EnvKey,
   LifeEvent,
   loadCardParams,
@@ -462,7 +463,11 @@ export abstract class BaseApp<
    */
   private _$executeInit<T>(
     exports: ReturnType<NativeApp['loadScript']>,
-    { path, entryName }: { path: string; entryName?: string }
+    {
+      path,
+      entryName,
+      shouldCache = true,
+    }: { path: string; entryName?: string; shouldCache?: boolean }
   ): T {
     let factory: <T>(injected: { tt: BaseApp }) => T;
     if (exports && exports.init) {
@@ -487,7 +492,9 @@ export abstract class BaseApp<
 
       // Here means that no error occurred when executing.
       // Only then we cache the factory.
-      BaseApp._$factoryCache[path] = factory;
+      if (shouldCache) {
+        BaseApp._$factoryCache[path] = factory;
+      }
       return ret;
     } finally {
       this.lynx.performance.profileEnd();
@@ -684,6 +691,18 @@ export abstract class BaseApp<
       hasRun: false,
       factory: factory.bind(this),
     };
+  }
+
+  execLoadScriptResult<T>(
+    exports: BundleInitReturnObj,
+    path: string,
+    options?: { bundleName?: string }
+  ): T {
+    return this._$executeInit<T>(exports, {
+      path,
+      entryName: options?.bundleName,
+      shouldCache: false,
+    });
   }
 
   /**
