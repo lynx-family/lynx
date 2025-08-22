@@ -19,7 +19,7 @@ import {
   NativeLynxProxy,
   MessageEventType,
 } from './interface';
-import { BaseApp, NativeApp } from '../app';
+import { BaseApp, BundleInitReturnObj, NativeApp } from '../app';
 import { TextInfo, TextMetrics } from '../modules/nativeModules';
 import nativeGlobal from '../common/nativeGlobal';
 import Element from '../modules/element';
@@ -28,6 +28,7 @@ import Performance from '../modules/performance';
 import SelectorQuery from '../modules/selectorQuery/SelectorQuery';
 import { KeyframeEffectV2 } from '../modules/animation/effect';
 import { AnimationV2 } from '../modules/animation/animationV2';
+import { DEFAULT_ENTRY } from '../common/constants';
 
 interface LynxModuleLoader {
   load(moduleName: string): any;
@@ -39,6 +40,11 @@ export class Lynx {
   __presetData: Record<string, unknown>;
   _switches: Record<string, boolean>;
   targetSdkVersion?: string;
+  // <bundleName, <path, exports>>
+  static _$loadScriptCache: Record<
+    string,
+    Record<string, BundleInitReturnObj>
+  > = {};
 
   constructor(
     // should use function to get native app to avoid cycle
@@ -488,7 +494,34 @@ export class Lynx {
     this.getNativeLynx().queueMicrotask(callback);
   }
 
-  loadScript = this.getNativeLynx().loadScript;
+  loadScript = (url: string, options?: { bundleName?: string }) => {
+    const { bundleName = DEFAULT_ENTRY } = options;
+    if (
+      NODE_ENV !== 'development' &&
+      Lynx._$loadScriptCache[bundleName]?.[url]
+    ) {
+      return this.getApp().execLoadScriptResult(
+        Lynx._$loadScriptCache[bundleName]?.[url],
+        url,
+        options
+      );
+    }
+    const exports = this.getNativeLynx().loadScript(url, options);
+    if (exports && typeof (exports as any).init === 'function') {
+      const ret = this.getApp().execLoadScriptResult(
+        exports as any,
+        url,
+        options
+      );
+      if (!Lynx._$loadScriptCache[bundleName]) {
+        Lynx._$loadScriptCache[bundleName] = {};
+      }
+      Lynx._$loadScriptCache[bundleName][url] = exports as any;
+      return ret;
+    } else {
+      return exports;
+    }
+  };
 
   fetchBundle = this.getNativeLynx().fetchBundle;
 
