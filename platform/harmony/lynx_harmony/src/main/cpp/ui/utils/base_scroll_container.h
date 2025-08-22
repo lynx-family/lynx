@@ -19,6 +19,7 @@ static constexpr const char* const kNestedScrollForwardOptions = "temporary-nest
 static constexpr const char* const kNestedScrollBackWardOptions =
     "temporary-nested-scroll-backward";
 static constexpr const char* const kScrollOrientation = "scroll-orientation";
+static constexpr const char* const kScrollEdgeEffect = "harmony-scroll-edge-effect";
 
 class BaseScrollContainer : public UIView {
  public:
@@ -45,7 +46,7 @@ class BaseScrollContainer : public UIView {
   void SetEnableScrollInteraction(bool enable_scroll_interaction);
   void SetScrollbar(bool enable_scroll_bar);
   void SetHorizontal(bool horizontal);
-  void SetBounces(bool bounces);
+  void SetBounces(bool bounces, bool always_enabled);
   virtual void UpdateContentSize(float width, float height) {
     content_width_ = width;
     content_height_ = height;

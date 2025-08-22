@@ -127,7 +127,7 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   } else if (name == list::kEnableScrollBar) {
     SetScrollbar(value.Bool());
   } else if (name == list::kBounces && value.IsBool()) {
-    SetBounces(value.Bool());
+    SetBounces(value.Bool(), true);
   } else if (name == list::kNeedVisibleItemInfo && value.IsBool()) {
     enable_need_visible_item_info = value.Bool();
   } else if (name == list::kExperimentalUpdateStickyForDiff && value.IsBool()) {

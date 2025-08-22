@@ -1,4 +1,6 @@
 # CHANGELOG
+## 3.4.12
+- Add `harmony-scroll-edge-effect` property for scroll container.
 
 ## 3.4.11
 - Fix types of `selectAll()` of `SelectorQuery`.

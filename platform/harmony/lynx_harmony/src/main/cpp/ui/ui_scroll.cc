@@ -314,7 +314,7 @@ void UIScroll::OnPropUpdate(const std::string& name,
   } else if (name == scroll::kEnableScrollBar && value.IsBool()) {
     SetScrollbar(value.Bool());
   } else if (name == scroll::kBounces && value.IsBool()) {
-    SetBounces(value.Bool());
+    SetBounces(value.Bool(), true);
   } else if (name == scroll::kLowerThreshold && value.IsNumber()) {
     lower_threshold_ = static_cast<int>(value.Number());
   } else if (name == scroll::kUpperThreshold && value.IsNumber()) {
