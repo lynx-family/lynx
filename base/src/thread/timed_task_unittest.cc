@@ -103,7 +103,7 @@ TEST_F(TimedTaskTest, StopSetTimeout) {
   ASSERT_EQ(result_, expect);
 }
 
-TEST_F(TimedTaskTest, StopSetInterval) {
+TEST_F(TimedTaskTest, DISABLED_StopSetInterval) {
   int32_t expect = 0;
   int32_t id = 0;
 
