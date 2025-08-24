@@ -156,6 +156,12 @@ class alignas(T) TypeOfPlainBytes {
   [[maybe_unused]] char buffer_[sizeof(T)];
 };
 
+template <typename T>
+struct IsTypeOfPlainBytes : std::false_type {};
+
+template <typename T>
+struct IsTypeOfPlainBytes<TypeOfPlainBytes<T>> : std::true_type {};
+
 }  // namespace base
 }  // namespace lynx
 

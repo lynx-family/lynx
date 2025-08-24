@@ -58,6 +58,45 @@
 #include <utility>
 #include <variant>
 
+// Lynx Add Begin
+#include "base/include/type_traits_addon.h"
+
+// This template type is used to simplify the use of boost map for 
+// lynx::base::HybridMap.
+namespace boost {
+template <template <typename...> class T, template <typename> class Hash,
+          template <typename> class Equal>
+struct MapPolicy {
+  template <typename Key, typename Value>
+  using type = T<Key, Value, Hash<Key>, Equal<Key>>;
+
+  template <typename Key, typename Value>
+  using plain_bytes_type =
+      T<lynx::base::TypeOfPlainBytes<Key>, lynx::base::TypeOfPlainBytes<Value>,
+        Hash<lynx::base::TypeOfPlainBytes<Key>>,
+        Equal<lynx::base::TypeOfPlainBytes<Key>>>;
+};
+}  // namespace boost
+
+namespace boost {
+  namespace unordered {
+    namespace detail {
+      namespace foa {
+        // Forward declare flat_map_types for custom `nosize_transfer_element` 
+        // impl.
+        template <class Key, class T> struct flat_map_types;
+      
+        // Tag type to emplace key-value with key as plain bytes and value as 
+        // uninitialized.
+        struct try_emplace_plain_bytes_key_t{};
+      
+        // Tag type to emplace key-value pair as plain bytes.
+        struct try_emplace_plain_bytes_t{};
+      }
+    }
+  }
+}
+
 // Lynx polyfill for undefined and C++17
 namespace boost {
 using uint16_t = unsigned short;
@@ -184,6 +223,7 @@ constexpr int bit_width(T t) noexcept {
 #endif
 
 // clang-format off
+// Lynx Add End
 
 // This is a minimal header that contains only the small set
 // config entries needed to use boost::unordered, so that the
@@ -1355,7 +1395,9 @@ struct hash_is_avalanching: detail::hash_is_avalanching_impl<Hash>::type{};
  * architectures.
  */
 
-#if BOOST_ARCH_ARM
+// Lynx Add Begin
+// Always use __builtin_prefetch
+ #if 0 // BOOST_ARCH_ARM
 /* Cache line size can't be known at compile time, so we settle on
  * the very frequent value of 64B.
  */
@@ -1371,6 +1413,7 @@ struct hash_is_avalanching: detail::hash_is_avalanching_impl<Hash>::type{};
 #else
 #define BOOST_UNORDERED_PREFETCH_ELEMENTS(p,N) BOOST_UNORDERED_PREFETCH(p)
 #endif
+// Lynx Add End
 
 #ifdef __has_feature
 #define BOOST_UNORDERED_HAS_FEATURE(x) __has_feature(x)
@@ -3031,6 +3074,33 @@ public:
       std::integral_constant<bool,std::is_same<key_type,value_type>::value>{},
       std::forward<Args>(args)...);
   }
+  
+// Lynx Add Begin
+  // Constructs key-value at address p, but is treated as constructing key with
+  // plain bytes from argument key and value is left as uninitialized plain
+  // bytes.
+  template<typename... Args>
+  void construct_element(element_type* p,try_emplace_plain_bytes_key_t,
+                         Args&&... args)
+  {
+    type_policy::construct_plain_bytes_key(p,std::forward<Args>(args)...);
+  }
+  
+  // Constructs key-value at address p, but is treated as constructing with
+  // plain bytes from address from_p.
+  template<typename... Args>
+  void construct_element(element_type* p,try_emplace_plain_bytes_t,
+                         Args&&... args) {
+    type_policy::construct_plain_bytes(p,std::forward<Args>(args)...);
+  }
+  
+  template<typename Key,typename... Args>
+  static inline const Key& key_from(
+    try_emplace_plain_bytes_key_t,const Key& x,const Args&...)
+  {
+    return x;
+  }
+// Lynx Add End
 
   void destroy_element(element_type* p)noexcept
   {
@@ -3451,6 +3521,37 @@ private:
     element_type* p,std::size_t hash,const arrays_type& arrays_,
     std::size_t& num_destroyed,std::true_type /* ->move */)
   {
+// Lynx Add Begin
+    if constexpr (std::is_same_v<typename type_policy::value_type,
+                                 typename type_policy::key_type>) {
+      // is set, no opt
+    } else {
+      constexpr bool is_relocatable = lynx::base::IsTriviallyRelocatable<
+          value_type, lynx::base::is_instance<value_type, std::pair>{}>::value;
+      if constexpr (is_relocatable) {
+        if constexpr (std::is_same_v<type_policy,
+                                     detail::foa::flat_map_types<
+                                         typename type_policy::key_type,
+                                         typename type_policy::mapped_type>>) {
+          // Key and T are both relocatable in flat map, fast path to copy data
+          // trivially and ignores destructors.
+          // If both key_type and mapped_type are already of TypeOfPlainBytes
+          // type, this optimization is not necessary, thus avoiding the
+          // increase in binary size caused by template specialization.
+          if constexpr (!(lynx::base::IsTypeOfPlainBytes<
+                              typename type_policy::key_type>::value &&
+                          lynx::base::IsTypeOfPlainBytes<
+                              typename type_policy::mapped_type>::value)) {
+            // No destroy, trivially moved.
+            ++num_destroyed;
+            nosize_unchecked_emplace_at(
+              arrays_,position_for(hash,arrays_),hash,try_emplace_plain_bytes_t{},p);
+            return;
+          }
+        }
+      }
+    }
+// Lynx Add End
     /* Destroy p even if an an exception is thrown in the middle of move
      * construction, which could leave the source half-moved.
      */
@@ -3617,6 +3718,15 @@ public:
   friend inline bool operator!=(
     const table_iterator& x,const table_iterator& y)
     {return !(x==y);}
+  
+// Lynx Add Begin
+  table_iterator(void* pc, const void* element): 
+    pc_(static_cast<char_pointer>(pc)), 
+    p_(static_cast<table_element_pointer>(const_cast<void*>(element))) {}
+  
+  char_pointer& inner_pc() noexcept{return pc_;}
+  table_element_pointer& inner_p() noexcept{return p_;}
+// Lynx Add End
 
 private:
   template<typename,typename,bool> friend class table_iterator;
@@ -3921,6 +4031,15 @@ public:
     return emplace_impl(
       try_emplace_args_t{},std::forward<Key>(x),std::forward<Args>(args)...);
   }
+  
+// Lynx Add Begin
+  BOOST_FORCEINLINE std::pair<iterator, bool> try_emplace_plain_bytes_key(
+    key_type const& key)
+  {
+    return emplace_impl(
+      try_emplace_plain_bytes_key_t{},key);
+  }
+// Lynx Add End
 
   BOOST_FORCEINLINE std::pair<iterator,bool>
   insert(const init_type& x){return emplace_impl(x);}
@@ -6357,6 +6476,24 @@ namespace boost {
           {
             std::allocator_traits<std::remove_cvref_t<decltype(al)>>::construct(al, p, std::forward<Args>(args)...);
           }
+          
+// Lynx Add Begin
+          static void construct_plain_bytes_key(value_type* p, const key_type& key)
+          {
+            // Simply copy bytes of key to dest memory.
+            using PlainBytesKey = lynx::base::TypeOfPlainBytes<key_type>;
+            const_cast<PlainBytesKey&>(reinterpret_cast<const PlainBytesKey&>(p->first)) =
+              reinterpret_cast<const PlainBytesKey&>(key);
+          }
+          
+          static void construct_plain_bytes(value_type* p, const value_type* from_p)
+          {
+            // Simply copy bytes of key-value.
+            using PlainBytesValueType = lynx::base::TypeOfPlainBytes<value_type>;
+            *reinterpret_cast<PlainBytesValueType*>(p) = 
+              *reinterpret_cast<const PlainBytesValueType*>(from_p);
+          }
+// Lynx Add End
 
           template <class A> static void destroy(A& al, init_type* p) noexcept
           {
@@ -7767,6 +7904,14 @@ namespace boost {
       {
         return table_.emplace(std::forward<Args>(args)...).first;
       }
+      
+// Lynx Add Begin
+      BOOST_FORCEINLINE std::pair<iterator, bool> try_emplace_plain_bytes_key(
+        key_type const& key)
+      {
+        return table_.try_emplace_plain_bytes_key(key);
+      }
+// Lynx Add End
 
       template <class... Args>
       BOOST_FORCEINLINE std::pair<iterator, bool> try_emplace(

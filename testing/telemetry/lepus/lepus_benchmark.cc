@@ -1062,9 +1062,9 @@ BENCHMARK(BM_ValueCopyConstruct);
 BENCHMARK(BM_ValueCopyAssign);
 BENCHMARK(BM_ValueMoveConstruct);
 BENCHMARK(BM_ValueConstructFromDict);
-BENCHMARK(BM_ValueDictVisit);
+// BENCHMARK(BM_ValueDictVisit); // Not stable
 BENCHMARK(BM_ValueConstructFromArray);
-BENCHMARK(BM_ValueArrayVisit);
+// BENCHMARK(BM_ValueArrayVisit); // Not stable
 BENCHMARK(BM_ValueConstructCopyString);
 BENCHMARK(BM_ValueConstructMoveString);
 BENCHMARK(BM_ValueStringVisit);
