@@ -54,6 +54,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/explorer/android/lynx_explorer/build/outputs/apk/noasan/release/LynxExplorer-noasan-release.apk'
           allowUpdates: true
+          body: ''
 
   ios-explorer-build:
     timeout-minutes: 60
@@ -78,6 +79,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/LynxExplorer-${{ matrix.arch }}.app.tar.gz'
           allowUpdates: true
+          body: ''
 
   harmony-explorer-build:
     runs-on: lynx-custom-container
@@ -105,6 +107,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: '${{ github.workspace }}/lynx/explorer/harmony/lynx_explorer/build/default/outputs/default/lynx_explorer-default-unsigned.hap'
           allowUpdates: true
+          body: ''
 
   android-sdk-release:
     runs-on: lynx-ubuntu-22.04-large

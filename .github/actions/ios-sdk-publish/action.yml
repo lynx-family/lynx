@@ -39,6 +39,7 @@ runs:
         artifacts: '${{ github.workspace }}/lynx/*.zip'
         replacesArtifacts: true
         allowUpdates: true
+        body: ''
     - name: Publish to CocoaPods Repo
       env:
         COCOAPODS_TRUNK_TOKEN: ${{ inputs.cocoapods_trunk_token }}
