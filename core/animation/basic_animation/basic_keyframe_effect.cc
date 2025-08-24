@@ -125,7 +125,7 @@ void KeyframeEffect::MakeKeyframeModel() {
     // caculate offset if option is empty
     double offset = keyframe_token->offset().value_or(0.0);
     auto value_map = keyframe_token->property_values();
-    if (value_map && value_map->empty()) {
+    if (!value_map || value_map->empty()) {
       continue;
     }
     auto timing_function = keyframe_token->timing_function();
@@ -139,7 +139,8 @@ void KeyframeEffect::MakeKeyframeModel() {
       auto iter = keyframe_models().find(value_pair.first);
       if (iter == keyframe_models().end()) {
         std::unique_ptr<AnimationCurve> new_curve =
-            AnimationCurve::Create(value_pair.first, this);
+            AnimationCurve::Create(value_pair.first, this, target_);
+        new_curve->SetCurveType(value_pair.first);
         std::unique_ptr<KeyframeModel> model =
             KeyframeModel::Create(std::move(new_curve), this);
         iter = keyframe_models()
@@ -150,6 +151,7 @@ void KeyframeEffect::MakeKeyframeModel() {
       iter->second->curve()->SetTimingFunction(raw_ptr_timing_function);
     }
   }
+  EnsureFromAndToKeyframe();
 }
 
 void KeyframeEffect::TickKeyframeModel(const fml::TimePoint& monotonic_time) {
@@ -194,6 +196,12 @@ void KeyframeEffect::TickKeyframeModel(const fml::TimePoint& monotonic_time) {
     //    send end event
     HostAnimation()->SendAnimationEvent(Animation::EventType::End);
     LOGI("Animation end, name is: ");
+  }
+}
+
+void KeyframeEffect::EnsureFromAndToKeyframe() {
+  for (auto& keyframe_model : keyframe_models_) {
+    keyframe_model.second->EnsureFromAndToKeyframe();
   }
 }
 

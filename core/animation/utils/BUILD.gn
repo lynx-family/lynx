@@ -14,8 +14,6 @@ animation_utils_shared_sources = [
 
 lynx_core_source_set("animation_utils") {
   sources = animation_utils_shared_sources
-
-  public_deps = [ "../../style" ]
 }
 
 unittest_set("animation_utils_testset") {

@@ -16,6 +16,12 @@ basic_animation_shared_sources = [
   "animation_timeline.cc",
   "animation_timeline.h",
   "animator_target.h",
+  "basic_animatable_values/color_property_value.cc",
+  "basic_animatable_values/color_property_value.h",
+  "basic_animatable_values/float_property_value.cc",
+  "basic_animatable_values/float_property_value.h",
+  "basic_animatable_values/int_property_value.cc",
+  "basic_animatable_values/int_property_value.h",
   "basic_animation.cc",
   "basic_animation.h",
   "basic_animation_curve.cc",
@@ -24,6 +30,7 @@ basic_animation_shared_sources = [
   "basic_keyframe_effect.h",
   "basic_keyframe_model.cc",
   "basic_keyframe_model.h",
+  "keyframe.cc",
   "keyframe.h",
   "property_value.h",
   "thread_local_animation_handler.cc",
@@ -33,15 +40,12 @@ basic_animation_shared_sources = [
 lynx_core_source_set("basic_animation") {
   sources = basic_animation_shared_sources
 
-  public_deps = [
-    "../../base",
-    "../utils:animation_utils",
-  ]
+  public_deps = [ "../utils:animation_utils" ]
 }
 
 unittest_set("basic_animation_testset") {
   testonly = true
-  sources = []
+  sources = [ "basic_animatable_values/animatable_values_unittest.cc" ]
   deps = []
   public_deps = [ ":basic_animation" ]
 }

@@ -16,12 +16,16 @@ class BasicFloatPropertyValue : public basic::PropertyValue {
  public:
   explicit BasicFloatPropertyValue(float value) : float_value_(value) {}
 
+  std::unique_ptr<PropertyValue> Clone() const override {
+    return std::make_unique<BasicFloatPropertyValue>(float_value_);
+  }
+
   std::unique_ptr<PropertyValue> Interpolate(
       double progress,
       const std::unique_ptr<PropertyValue>& end_value) const override;
 
   size_t GetType() const override {
-    return static_cast<size_t>(basic::PropertyValueType::Float);
+    return static_cast<size_t>(basic::BasicPropertyValueType::Float);
   }
 
   float GetFloatValue() const { return float_value_; }

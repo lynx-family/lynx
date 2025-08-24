@@ -12,7 +12,7 @@ namespace lynx {
 namespace animation {
 namespace basic {
 
-enum class PropertyValueType { Int = 0, Float, Opacity, Color };
+enum class BasicPropertyValueType { Int = 0, Float, Color, Transform };
 
 class PropertyValue {
  public:
@@ -21,6 +21,8 @@ class PropertyValue {
   virtual std::unique_ptr<PropertyValue> Interpolate(
       double progress,
       const std::unique_ptr<PropertyValue>& end_value) const = 0;
+
+  virtual std::unique_ptr<PropertyValue> Clone() const = 0;
 
   virtual size_t GetType() const = 0;
 };
