@@ -13,8 +13,8 @@ namespace animation {
 
 std::unique_ptr<basic::PropertyValue> BasicFloatPropertyValue::Interpolate(
     double progress, const std::unique_ptr<PropertyValue>& end_value) const {
-  DCHECK(static_cast<basic::PropertyValueType>(end_value->GetType()) ==
-         basic::PropertyValueType::Float);
+  DCHECK(static_cast<basic::BasicPropertyValueType>(end_value->GetType()) ==
+         basic::BasicPropertyValueType::Float);
   return std::make_unique<BasicFloatPropertyValue>(
       float_value_ +
       (reinterpret_cast<BasicFloatPropertyValue*>(end_value.get())

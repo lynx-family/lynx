@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "core/animation/basic_animation/animation_effect.h"
+#include "core/animation/basic_animation/basic_animatable_values/float_property_value.h"
 #include "core/animation/basic_animation/keyframe.h"
 
 namespace lynx {
@@ -72,18 +73,23 @@ double TransformedKeyframeProgress(
 }
 
 std::unique_ptr<AnimationCurve> AnimationCurve::Create(
-    const std::string& property_value_id, basic::AnimationEffect* effect) {
-  return std::make_unique<AnimationCurve>(property_value_id, effect);
+    const std::string& property_value_id, basic::AnimationEffect* effect,
+    std::weak_ptr<AnimatorTarget> target) {
+  return std::make_unique<AnimationCurve>(property_value_id, effect, target);
 }
 
 void AnimationCurve::EnsureFromAndToKeyframe() {
   static const double kFromTimeOffset = 0.0f;
   static const double kToTimeOffset = 1.0f;
   if (keyframes_.empty() || keyframes_.front()->offset() != kFromTimeOffset) {
-    AddKeyframe(MakeEmptyKeyframe(kFromTimeOffset));
+    auto from_keyframe = MakeEmptyKeyframe(kFromTimeOffset);
+    from_keyframe->SetDefaultPropertyValue(curve_type_, target_.lock());
+    AddKeyframe(std::move(from_keyframe));
   }
-  if (keyframes_.empty() || keyframes_.front()->offset() != kToTimeOffset) {
-    AddKeyframe(MakeEmptyKeyframe(kToTimeOffset));
+  if (keyframes_.empty() || keyframes_.back()->offset() != kToTimeOffset) {
+    auto to_keyframe = MakeEmptyKeyframe(kFromTimeOffset);
+    to_keyframe->SetDefaultPropertyValue(curve_type_, target_.lock());
+    AddKeyframe(std::move(to_keyframe));
   }
 }
 

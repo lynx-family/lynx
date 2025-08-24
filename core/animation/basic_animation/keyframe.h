@@ -6,16 +6,19 @@
 #define CORE_ANIMATION_BASIC_ANIMATION_KEYFRAME_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
 
 #include "base/include/fml/time/time_point.h"
+#include "core/animation/basic_animation/basic_animatable_values/float_property_value.h"
 #include "core/animation/basic_animation/property_value.h"
 #include "core/animation/utils/timing_function.h"
 namespace lynx {
 namespace animation {
 namespace basic {
+class AnimatorTarget;
 class Keyframe {
  public:
   using PropertyValueMap =
@@ -37,6 +40,9 @@ class Keyframe {
   TimingFunction* timing_function() const { return easing_; }
 
   void set_easing(TimingFunction* easing) { easing_ = easing; }
+
+  void SetDefaultPropertyValue(const std::string& type,
+                               const std::shared_ptr<AnimatorTarget>& target);
 
   static std::unique_ptr<PropertyValue> interpolate(Keyframe* prev_keyframe,
                                                     Keyframe* next_keyframe,
