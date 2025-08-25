@@ -1152,6 +1152,8 @@ class ElementManager : public ElementContextDelegate {
     css_fragment_parsing_tasm_worker_thread_ = enable;
   }
 
+  inline bool FixRemoveTwiceForFiber() { return fix_remove_twice_for_fiber_; }
+
   void RegisterVMUpdateOuterObjSizeCallback(
       base::MoveOnlyClosure<void, int> closure);
 
@@ -1284,6 +1286,7 @@ class ElementManager : public ElementContextDelegate {
   bool fix_negative_z_index_bug_{true};
   bool fix_fixed_z_index_switch_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
+  bool fix_remove_twice_for_fiber_{false};
 
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};

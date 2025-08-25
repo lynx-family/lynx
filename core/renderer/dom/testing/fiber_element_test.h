@@ -73,9 +73,16 @@ class FiberElementMockTasmDelegate : public test::MockTasmDelegate {
     captured_bundles_.emplace_back(std::move(bundle));
   }
 
+  void RemoveLayoutNode(int32_t parent_id, int32_t child_id) override {
+    std::unique_lock<std::mutex> locker(mutex_);
+    captured_remove_id_pairs_.emplace_back(parent_id, child_id);
+    return test::MockTasmDelegate::RemoveLayoutNode(parent_id, child_id);
+  }
+
   std::mutex mutex_;
   std::vector<int> captured_ids_;
   std::vector<std::unique_ptr<LayoutBundle>> captured_bundles_;
+  std::vector<std::pair<int, int>> captured_remove_id_pairs_;
 };
 
 class FiberElementTest
@@ -131,6 +138,10 @@ class FiberElementTest
   bool HasCaptureSignWithFontSize(int32_t target_id, double cur_node_font_size,
                                   double root_node_font_size, double font_scale,
                                   int32_t count = 1);
+
+  bool HasCapturedLayoutContextRemoveIDPairExactlyNTimes(int32_t parent_id,
+                                                         int32_t child_id,
+                                                         int32_t count = 1);
 
  protected:
   std::tuple<bool, int, bool> current_parameter_;

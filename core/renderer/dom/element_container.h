@@ -5,6 +5,7 @@
 #ifndef CORE_RENDERER_DOM_ELEMENT_CONTAINER_H_
 #define CORE_RENDERER_DOM_ELEMENT_CONTAINER_H_
 
+#include <atomic>
 #include <memory>
 #include <utility>
 
@@ -57,6 +58,7 @@ class ElementContainer {
   void UpdateZIndexList();
   ElementContainer* EnclosingStackingContextNode();
   bool IsStackingContextNode();
+  void NotifyReadyToUse();
 
  private:
   void ZIndexChanged();
@@ -102,6 +104,9 @@ class ElementContainer {
   bool is_layouted_{false};
   // true if the Element's props has changed during this patch
   bool props_changed_{true};
+  bool ready_to_use_{false};
+
+  std::atomic_bool element_prepared_{false};
 };
 
 }  // namespace tasm

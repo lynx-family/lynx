@@ -632,10 +632,9 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   // parent If the removed node's parent is the insertion_point, no need to do
   // any special action
 
-  // Todo(kechenglong): Remove IsRadonArch.
-  if (LynxEnv::GetInstance().GetBoolEnv(
-          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, false) &&
-      IsRadonArch()) {
+  if ((element_manager()->GetEnableFiberElementForRadonDiff() &&
+       IsRadonArch()) ||
+      element_manager()->FixRemoveTwiceForFiber()) {
     if (IsDetached()) {
       return;
     }
@@ -646,12 +645,12 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
         if (iter->type_ == Action::kRemoveIntergenerationAct ||
             (iter->type_ == Action::kRemoveChildAct &&
              (iter->is_fixed_ || iter->has_z_index_))) {
-          iter->type_ = Action::kRemoveIntergenerationAct;
-          insertion_point->action_param_list_.emplace_back(std::move(*iter));
-          iter = action_param_list_.erase(iter);
-        } else {
-          ++iter;
+          insertion_point->action_param_list_.emplace_back(
+              Action::kRemoveIntergenerationAct, iter->parent_, iter->child_,
+              iter->index_, iter->ref_node_, iter->is_fixed_,
+              iter->has_z_index_);
         }
+        ++iter;
       }
     }
   }
@@ -1611,6 +1610,7 @@ void FiberElement::FlushActions() {
 
   // Step I: Handle Action for current element: Prepare&HandleFixedChange
   FlushSelf();
+  NotifyElementContainerPrepared();
 
   // Step II: process insert or remove related actions
   PrepareAndGenerateChildrenActions();
@@ -1785,6 +1785,7 @@ void FiberElement::PrepareChildren() {
 
     if ((child->dirty_ & ~kDirtyTree) != 0) {
       child->PrepareForCreateOrUpdate();
+      NotifyElementContainerPrepared();
     }
 
     if (child->is_layout_only_ && !child->is_raw_text()) {
@@ -1827,6 +1828,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
                 });
     if (!has_to_store_insert_remove_actions_) {
       for (const auto &child : scoped_children_) {
+        child->NotifyElementContainerPrepared();
         if (!child->render_parent_) {
           // if no pending tree actions, we just do insertion here
           if (!child->is_fixed_ || GetEnableFixedNew()) {
@@ -1846,6 +1848,7 @@ void FiberElement::PrepareAndGenerateChildrenActions() {
       switch (param.type_) {
         case Action::kInsertChildAct: {
           PrepareChildForInsertion(param.child_.get());
+          param.child_.get()->NotifyElementContainerPrepared();
           if (!param.is_fixed_ || GetEnableFixedNew()) {
             HandleInsertChildAction(param.child_.get(),
                                     static_cast<int>(param.index_),
@@ -4207,6 +4210,12 @@ lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
   }
 
   return lepus::Value(std::move(array));
+}
+
+void FiberElement::NotifyElementContainerPrepared() {
+  if (element_container_) {
+    element_container_->NotifyReadyToUse();
+  }
 }
 
 }  // namespace tasm

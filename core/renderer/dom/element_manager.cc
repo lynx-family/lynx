@@ -190,6 +190,8 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
+  fix_remove_twice_for_fiber_ = LynxEnv::GetInstance().GetBoolEnv(
+      LynxEnv::Key::FIX_REMOVE_TWICE_BUG_FOR_FIBER, false);
   if (platform_layout_context_) {
     layout_node_manager_ = std::make_unique<ElementLayoutNodeManager>(*this);
     platform_layout_context_->SetLayoutNodeManager(layout_node_manager_.get());
