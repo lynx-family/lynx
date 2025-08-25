@@ -149,8 +149,8 @@ class BASE_EXPORT
   float ScrollX() override { return 0; }
   float ScrollY() override { return 0; }
   bool IsInterceptGesture() override;
-  virtual float OffsetXForCalcPosition() { return 0; }
-  virtual float OffsetYForCalcPosition() { return 0; }
+  virtual float OffsetXForCalcPosition();
+  virtual float OffsetYForCalcPosition();
   virtual bool IsVisible();
   virtual bool IsScrollable();
   virtual bool IsList() const { return false; }
