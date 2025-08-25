@@ -187,8 +187,8 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
       TextHelper.drawTextStroke(mTextLayout, canvas);
     }
 
-    canvas.restore();
     TextHelper.drawLine(canvas, mTextLayout);
+    canvas.restore();
     TraceEvent.endSection(TraceEventDef.FLATTEN_UI_TEXT_DRAW);
   }
 
