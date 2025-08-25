@@ -95,6 +95,8 @@ public class LynxView extends UIBodyView {
   private int mCurrentWidthMeasureSpec = -1;
   private int mCurrentHeightMeasureSpec = -1;
 
+  private boolean isInPrePainting = false;
+
   public LynxView(Context context) {
     super(context);
   }
@@ -646,6 +648,7 @@ public class LynxView extends UIBodyView {
        * Trigger measure & layout before loadTemplate with pre_painting mode
        * to consume isLayoutRequested native flags to mitigate this unexpected behavior.
        */
+      isInPrePainting = true;
       if (this.getChildCount() > 0) {
         removeAllViewsInLayout();
       }
@@ -659,6 +662,7 @@ public class LynxView extends UIBodyView {
 
       this.layout(0, 0, (lp != null && lp.width >= 0) ? lp.width : 0,
           (lp != null && lp.height >= 0) ? lp.height : 0);
+      isInPrePainting = false;
     }
 
     LLog.i(TAG, "loadTemplate with LynxLoadMeta in " + this.toString());
@@ -1064,7 +1068,7 @@ public class LynxView extends UIBodyView {
         "onMeasure:" + hashCode() + ", width" + MeasureSpec.toString(widthMeasureSpec) + ", height"
             + MeasureSpec.toString(heightMeasureSpec));
 
-    if (mLynxTemplateRender == null) {
+    if (mLynxTemplateRender == null || isInPrePainting) {
       super.onMeasure(widthMeasureSpec, heightMeasureSpec);
       onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_MEASURE);
       return;
@@ -1098,7 +1102,7 @@ public class LynxView extends UIBodyView {
       }
     });
 
-    if (mLynxTemplateRender == null) {
+    if (mLynxTemplateRender == null || isInPrePainting) {
       onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_LAYOUT);
       return;
     }
