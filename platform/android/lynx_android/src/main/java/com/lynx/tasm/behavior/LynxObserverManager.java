@@ -33,6 +33,22 @@ import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 
 public abstract class LynxObserverManager {
+  private static class LynxViewIntervalRunnable implements Runnable {
+    private final WeakReference<LynxObserverManager> mManagerRef;
+
+    public LynxViewIntervalRunnable(LynxObserverManager manager) {
+      mManagerRef = new WeakReference<>(manager);
+    }
+
+    @Override
+    public void run() {
+      LynxObserverManager manager = mManagerRef.get();
+      if (manager != null) {
+        manager.isLynxViewChanged();
+      }
+    }
+  }
+
   protected WeakReference<UIBody> mRootBodyRef;
   private ViewTreeObserver.OnGlobalLayoutListener mGlobalLayoutListener;
   private ViewTreeObserver.OnScrollChangedListener mScrollChangedListener;
@@ -195,12 +211,7 @@ public abstract class LynxObserverManager {
       mHandlerForLynxView = new Handler(Looper.getMainLooper());
     }
     if (mIntervalRunnableForLynxView == null) {
-      mIntervalRunnableForLynxView = new Runnable() {
-        @Override
-        public void run() {
-          isLynxViewChanged();
-        }
-      };
+      mIntervalRunnableForLynxView = new LynxViewIntervalRunnable(this);
     }
     mHandlerForLynxView.postDelayed(mIntervalRunnableForLynxView, mIntervalForLynxView);
   }
