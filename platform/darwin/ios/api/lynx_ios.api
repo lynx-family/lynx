@@ -934,6 +934,13 @@ public class LynxConfigInfoBuilder : NSObject {
 }
 
 public class LynxContext : NSObject {
+  public BOOL LynxContext::hasCustomGenericFetcher hasCustomGenericFetcher;
+  public BOOL LynxContext::hasCustomMediaFetcher hasCustomMediaFetcher;
+  public BOOL LynxContext::hasCustomTemplateFetcher hasCustomTemplateFetcher;
+  public LynxUIOwner* _Nullable LynxContext()::uiOwner uiOwner;
+  public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
+  public LynxView* _Nullable LynxContext()::lynxView lynxView;
+  public int32_t LynxContext()::instanceId instanceId;
   public void LynxContext::sendGlobalEvent:withParams:(nonnull NSString *name,[withParams] nullable NSArray *params);
   public nullable JSModule * LynxContext::getJSModule:(nonnull NSString *name);
   public nullable NSNumber * LynxContext::getLynxRuntimeId();
@@ -947,10 +954,6 @@ public class LynxContext : NSObject {
   public void LynxContext()::setJSProxy:(const std::shared_ptr< lynx::shell::JSProxyDarwin > &proxy);
   public nullable NSDictionary * LynxContext()::extentionModules();
   public std::shared_ptr<lynx::shell::JSProxyDarwin> LynxContext()::proxy_ proxy_;
-  public LynxUIOwner* _Nullable LynxContext()::uiOwner uiOwner;
-  public LynxUIIntersectionObserverManager* _Nullable LynxContext()::intersectionManager intersectionManager;
-  public LynxView* _Nullable LynxContext()::lynxView lynxView;
-  public int32_t LynxContext()::instanceId instanceId;
 }
 
 public protocol LynxContextModule-p : <LynxModule> {
