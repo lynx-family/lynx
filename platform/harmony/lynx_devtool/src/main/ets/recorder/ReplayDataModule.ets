@@ -7,6 +7,7 @@ import { LynxModule } from '@lynx/lynx';
 export default class LynxRecorderReplayDataModule extends LynxModule {
   static jsbInvokers: Map<string, Object>[] = [];
   static jsbCallbacks: Map<string, Object> = new Map();
+  static config: Map<string, Object> = new Map();
 
   public getData(callback: (str: string) => void) {
     let json: Record<string, string> = {};
@@ -62,7 +63,8 @@ export default class LynxRecorderReplayDataModule extends LynxModule {
   }
 
   private getJsbIgnoredInfo() {
-    return '[]';
+    let ignoreInfo: string[] = LynxRecorderReplayDataModule.config['jsbIgnoredInfo'];
+    return JSON.stringify(ignoreInfo);
   }
 
   private getJsbSettings() {

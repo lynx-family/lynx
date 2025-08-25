@@ -110,6 +110,7 @@ export default struct LynxRecorderView {
     let recordData: Map<string, object> = JSON.parse(this.data);
     LynxRecorderReplayDataModule.jsbInvokers = recordData['Invoked Method Data'];
     LynxRecorderReplayDataModule.jsbCallbacks = recordData['Callback'];
+    LynxRecorderReplayDataModule.config = recordData['Config'];
     this.jsbModule.set('LynxRecorderReplayDataModule', {
       moduleClass: LynxRecorderReplayDataModule
     });
