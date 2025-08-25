@@ -38,6 +38,7 @@ UIDelegateHarmony::GetCustomModuleFactory() {
 void UIDelegateHarmony::OnLynxCreate(
     const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
     const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+    const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
     const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
     const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
     const fml::RefPtr<fml::TaskRunner>& ui_task_runner,
@@ -49,6 +50,8 @@ void UIDelegateHarmony::OnLynxCreate(
   lynx_context->OnLynxCreate(engine_proxy, runtime_proxy, perf_controller_proxy,
                              resource_loader, ui_task_runner,
                              layout_task_runner);
+  node_owner_->SetTriggerLayoutCallback(
+      [layout_proxy]() { layout_proxy->TriggerLayout(); });
 }
 
 void UIDelegateHarmony::OnUpdateScreenMetrics(float width, float height,

@@ -190,9 +190,10 @@ LayoutResult ShadowNodeOwner::MeasureNode(int id, float width,
       static_cast<MeasureMode>(height_mode), final_measure);
 }
 
-void ShadowNodeOwner::ScheduleLayout(base::closure callback) {
+void ShadowNodeOwner::ScheduleLayout() {
   auto task = base::MoveOnlyClosure<void>(
-      [weak_self = weak_from_this(), closure = std::move(callback)]() mutable {
+      [weak_self = weak_from_this(),
+       closure = std::move(trigger_layout_callback_)]() mutable {
         auto strong_this = weak_self.lock();
         strong_this->GetLayoutVSyncProxy()->ScheduleLayout(std::move(closure));
       });
@@ -512,6 +513,10 @@ void ShadowNodeOwner::NotifySystemFontUpdated() {
       node->MarkDirty();
     }
   }
+}
+
+void ShadowNodeOwner::SetTriggerLayoutCallback(base::closure callback) {
+  trigger_layout_callback_ = std::move(callback);
 }
 
 }  // namespace harmony

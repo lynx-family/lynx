@@ -47,6 +47,7 @@ class UIDelegateHarmony : public UIDelegate {
   void OnLynxCreate(
       const std::shared_ptr<shell::LynxEngineProxy>& engine_proxy,
       const std::shared_ptr<shell::LynxRuntimeProxy>& runtime_proxy,
+      const std::shared_ptr<shell::LynxLayoutProxy>& layout_proxy,
       const std::shared_ptr<shell::PerfControllerProxy>& perf_controller_proxy,
       const std::shared_ptr<pub::LynxResourceLoader>& resource_loader,
       const fml::RefPtr<fml::TaskRunner>& ui_task_runner,

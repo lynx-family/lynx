@@ -4076,6 +4076,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public Long com.lynx.tasm.behavior.LynxContext.getRuntimeId();
   public void com.lynx.tasm.behavior.LynxContext.setJSProxy(JSProxy proxy);
   public void com.lynx.tasm.behavior.LynxContext.setLayoutProxy(LynxLayoutProxy proxy);
+  public LynxLayoutProxy com.lynx.tasm.behavior.LynxContext.getLayoutProxy();
   public JSModule com.lynx.tasm.behavior.LynxContext.getJSModule(String module);
   public void com.lynx.tasm.behavior.LynxContext.sendKeyEvent(int keyCode, String name);
   public void com.lynx.tasm.behavior.LynxContext.sendGlobalEvent(String name, JavaOnlyArray params);
@@ -5133,6 +5134,7 @@ public enum com::lynx::tasm::animation::keyframe::LynxKeyframeAnimator::LynxKFAn
 public class com::lynx::tasm::core::LynxLayoutProxy :  {
   public com.lynx.tasm.core.LynxLayoutProxy.LynxLayoutProxy(long lynxShellPtr);
   public void com.lynx.tasm.core.LynxLayoutProxy.runOnLayoutThread(Runnable runnable);
+  public void com.lynx.tasm.core.LynxLayoutProxy.triggerLayout();
   public void com.lynx.tasm.core.LynxLayoutProxy.destroy();
 }
 

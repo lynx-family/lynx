@@ -673,6 +673,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     mLayoutProxy = new WeakReference<>(proxy);
   }
 
+  public LynxLayoutProxy getLayoutProxy() {
+    if (mLayoutProxy == null) {
+      return null;
+    }
+    return mLayoutProxy.get();
+  }
+
   public JSModule getJSModule(String module) {
     if (mJSProxy == null) {
       return null;

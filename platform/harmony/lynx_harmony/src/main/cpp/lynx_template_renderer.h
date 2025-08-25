@@ -199,6 +199,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
 
   std::shared_ptr<shell::LynxEngineProxy> engine_proxy_;
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
+  std::shared_ptr<shell::LynxLayoutProxy> layout_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
   std::shared_ptr<piper::LynxModuleManager> module_manager_;

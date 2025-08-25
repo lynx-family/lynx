@@ -64,7 +64,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
                            float height, int32_t height_mode,
                            bool final_measure);
   void OnLayout(int id, float left, float top, float width, float height);
-  void ScheduleLayout(base::closure callback);
+  void ScheduleLayout();
   void DestroyNode(int sign);
   void Destroy();
   fml::RefPtr<fml::RefCountedThreadSafeStorage> GetExtraBundle(int sign);
@@ -94,6 +94,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
                                 base::MoveOnlyClosure<void, ShadowNode*> task);
 
   void NotifySystemFontUpdated();
+  void SetTriggerLayoutCallback(base::closure callback);
 
  private:
   ShadowNode* CreateJSShadowNode(int sign, const std::string& tag,
@@ -120,6 +121,7 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
   std::shared_ptr<LynxContext> context_{nullptr};
   LayoutNodeManager* layout_node_manager_{nullptr};
   std::shared_ptr<LayoutVSyncProxy> vsync_proxy_;
+  base::closure trigger_layout_callback_{nullptr};
   float root_width_{0.f};
   float root_height_{0.f};
 };
