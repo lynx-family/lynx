@@ -1271,6 +1271,74 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle8) {
       text->platform_css_style_->text_attributes_->computed_line_height == 28);
 }
 
+TEST_P(FiberElementTest, TestUpdateStyleKeepFontScale) {
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberText("text");
+  page->InsertNode(fiber_element);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(fiber_element->computed_css_style()->length_context_.font_scale_,
+            1.3f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.cur_node_font_size_,
+      18.1999989f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.root_node_font_size_,
+      18.1999989f);
+
+  fiber_element->SetStyle(CSSPropertyID::kPropertyIDWidth,
+                          lepus::Value("100px"));
+  page->SetStyle(CSSPropertyID::kPropertyIDPaddingTop, lepus::Value("10px"));
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(fiber_element->computed_css_style()->length_context_.font_scale_,
+            1.3f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.cur_node_font_size_,
+      18.1999989f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.root_node_font_size_,
+      18.1999989f);
+}
+
+// Test UpdateDynamicElementStyle with kUpdateFontScale
+TEST_P(FiberElementTest, TestUpdateDynamicElementStyle9) {
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = true;
+  manager->GetLynxEnvConfig().font_scale_ = 1.0f;
+
+  auto page = manager->CreateFiberPage("page", 11);
+  auto fiber_element = manager->CreateFiberText("text");
+  page->InsertNode(fiber_element);
+  page->FlushActionsAsRoot();
+
+  EXPECT_EQ(fiber_element->computed_css_style()->length_context_.font_scale_,
+            1.0f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.cur_node_font_size_,
+      14);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.root_node_font_size_,
+      14);
+
+  auto& env_config = manager->GetLynxEnvConfig();
+  env_config.font_scale_ = 1.3f;
+  page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
+                                  true);
+
+  EXPECT_EQ(fiber_element->computed_css_style()->length_context_.font_scale_,
+            1.3f);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.cur_node_font_size_,
+      14);
+  EXPECT_EQ(
+      fiber_element->computed_css_style()->length_context_.root_node_font_size_,
+      14);
+}
+
 TEST_P(FiberElementTest, TestComponentElement) {
   base::String component_id("21");
   int32_t css_id = 100;

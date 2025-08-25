@@ -97,8 +97,7 @@ Element::Element(const base::String& tag, ElementManager* manager,
     enable_component_layout_only_ = manager->GetEnableComponentLayoutOnly();
   }
 
-  record_parent_font_size_ = manager->GetLynxEnvConfig().DefaultFontSize();
-
+  record_parent_font_size_ = manager->GetLynxEnvConfig().PageDefaultFontSize();
   enable_layout_in_element_mode_ = element_manager_->IsLayoutInElementModeOn();
 }
 

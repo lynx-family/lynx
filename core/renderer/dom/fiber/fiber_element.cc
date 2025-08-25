@@ -154,7 +154,7 @@ void FiberElement::AttachToElementManager(
     platform_css_style_ = std::make_unique<starlight::ComputedCSSStyle>(
         *manager->platform_computed_css());
   }
-  record_parent_font_size_ = env_config.DefaultFontSize();
+  record_parent_font_size_ = env_config.PageDefaultFontSize();
 
   // ComputedCSSStyle
   platform_css_style_->SetScreenWidth(env_config.ScreenWidth());
