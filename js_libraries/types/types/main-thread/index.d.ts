@@ -5,3 +5,4 @@
 export * from './lynx';
 export * from './element';
 export * from './events';
+export * from './animation'
