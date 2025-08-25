@@ -1732,6 +1732,20 @@ EventTarget* UIBase::HitTest(float point[2]) {
   return target->HitTest(target_point);
 }
 
+float UIBase::OffsetXForCalcPosition() {
+  if (sticky_value_.empty()) {
+    return 0;
+  }
+  return -sticky_value_[4];
+}
+
+float UIBase::OffsetYForCalcPosition() {
+  if (sticky_value_.empty()) {
+    return 0;
+  }
+  return -sticky_value_[5];
+}
+
 bool UIBase::IsVisible() {
   if (!node_ || NodeManager::Instance().GetParent(DrawNode()) == nullptr) {
     return false;
