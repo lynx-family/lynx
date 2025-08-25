@@ -37,7 +37,7 @@ void ListAdapter::OnErrorOccurred(lynx::base::LynxError error) {
 }
 
 // Update data source for radon diff arch.
-ListAdapter::DiffResult ListAdapter::UpdateDataSource(
+list::ListAdapterDiffResult ListAdapter::UpdateDataSource(
     const lepus::Value& data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_DATA_SOURCE);
   bool has_updated = false;
@@ -141,32 +141,32 @@ ListAdapter::DiffResult ListAdapter::UpdateDataSource(
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
-  auto result = ListAdapter::DiffResult::kNone;
+  auto result = list::ListAdapterDiffResult::kNone;
   if (has_updated) {
     if (!adapter_helper_->removals().empty()) {
-      result |= ListAdapter::DiffResult::kRemove;
+      result |= list::ListAdapterDiffResult::kRemove;
     }
     if (!adapter_helper_->insertions().empty()) {
-      result |= ListAdapter::DiffResult::kInsert;
+      result |= list::ListAdapterDiffResult::kInsert;
     }
     if (!adapter_helper_->update_from().empty() &&
         !adapter_helper_->update_to().empty()) {
-      result |= ListAdapter::DiffResult::kUpdate;
+      result |= list::ListAdapterDiffResult::kUpdate;
     }
     if (!adapter_helper_->move_from().empty() &&
         !adapter_helper_->move_to().empty()) {
-      result |= ListAdapter::DiffResult::kMove;
+      result |= list::ListAdapterDiffResult::kMove;
     }
   }
   return result;
 }
 
 // Update data source for fiber arch.
-ListAdapter::ListAdapter::DiffResult ListAdapter::UpdateFiberDataSource(
+list::ListAdapterDiffResult ListAdapter::UpdateFiberDataSource(
     const lepus::Value& data) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_FIVER_DATA_SOURCE);
   if (!data.IsTable()) {
-    return ListAdapter::DiffResult::kNone;
+    return list::ListAdapterDiffResult::kNone;
   }
   const auto& insert_action =
       data.GetProperty(BASE_STATIC_STRING(list::kFiberInsertAction));
@@ -193,24 +193,24 @@ ListAdapter::ListAdapter::DiffResult ListAdapter::UpdateFiberDataSource(
                 UpdateTraceDebugInfo(ctx.event());
               });
   if (adapter_helper_->HasValidDiff()) {
-    auto result = ListAdapter::DiffResult::kNone;
+    auto result = list::ListAdapterDiffResult::kNone;
     if (!adapter_helper_->removals().empty()) {
-      result |= ListAdapter::DiffResult::kRemove;
+      result |= list::ListAdapterDiffResult::kRemove;
     }
     if (!adapter_helper_->insertions().empty()) {
-      result |= ListAdapter::DiffResult::kInsert;
+      result |= list::ListAdapterDiffResult::kInsert;
     }
     if (!adapter_helper_->update_from().empty() &&
         !adapter_helper_->update_to().empty()) {
-      result |= ListAdapter::DiffResult::kUpdate;
+      result |= list::ListAdapterDiffResult::kUpdate;
     }
     if (!adapter_helper_->move_from().empty() &&
         !adapter_helper_->move_to().empty()) {
-      result |= ListAdapter::DiffResult::kMove;
+      result |= list::ListAdapterDiffResult::kMove;
     }
     return result;
   } else {
-    return ListAdapter::DiffResult::kNone;
+    return list::ListAdapterDiffResult::kNone;
   }
 }
 
@@ -277,12 +277,11 @@ void ListAdapter::UpdateItemHolderToLatest(
         OnItemHolderReInsert(item_holder);
       }
     } else {
-      if (list_container_->UpdateAnimation()) {
+      if (auto mgr = list_container_->AnimationManager()) {
         auto holder =
             std::make_unique<AnimationItemHolder>(new_index, item_key);
-        holder->SetAnimationDelegate(list_container_);
-        if (list_container_->AnimationType() ==
-            list::ListContainerAnimationType::kInsert) {
+        holder->SetAnimationDelegate(mgr);
+        if (mgr->AnimationType() != list::ListContainerAnimationType::kNone) {
           holder->MarkInsertOpacity();
         }
         (*item_holder_map_)[item_key] = std::move(holder);
@@ -454,9 +453,10 @@ void ListAdapter::RecycleRemovedItemHolders() {
     const auto& item_holder = it->second.get();
     if (item_holder && IsRemoved(item_holder)) {
       RecycleItemHolder(item_holder);
-      if (list_container_->AnimationType() !=
-          list::ListContainerAnimationType::kNone) {
-        ++it;
+      if (auto mgr = list_container_->AnimationManager();
+          mgr &&
+          mgr->AnimationType() != list::ListContainerAnimationType::kNone) {
+        it++;
       } else {
         it = item_holder_map_->erase(it);
       }
@@ -510,16 +510,16 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
     return;
   }
   Element* list_item = GetListItemElement(item_holder);
-  if (list_container_->AnimationType() !=
-      list::ListContainerAnimationType::kNone) {
-    if (list_container_->AnimationType() ==
-        list::ListContainerAnimationType::kRemove) {
-      item_holder->RecycleAfterAnimation(
-          list::ItemHolderAnimationType::kOpacity);
-    } else if (list_container_->AnimationType() ==
-               list::ListContainerAnimationType::kInsert) {
-      item_holder->RecycleAfterAnimation(
-          list::ItemHolderAnimationType::kTransform);
+  if (auto mgr = list_container_->AnimationManager()) {
+    auto type = mgr->AnimationType();
+    if (type != list::ListContainerAnimationType::kNone) {
+      if (type == list::ListContainerAnimationType::kRemove) {
+        item_holder->RecycleAfterAnimation(
+            list::ItemHolderAnimationType::kOpacity);
+      } else if (type == list::ListContainerAnimationType::kInsert) {
+        item_holder->RecycleAfterAnimation(
+            list::ItemHolderAnimationType::kTransform);
+      }
     }
     return;
   }

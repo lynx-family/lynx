@@ -10,14 +10,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/include/fml/memory/weak_ptr.h"
-#include "core/animation/lynx_basic_animator/basic_animator.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/ui_component/list/item_holder.h"
 #include "core/renderer/ui_component/list/list_adapter.h"
 #include "core/renderer/ui_component/list/list_children_helper.h"
 #include "core/renderer/ui_component/list/list_container.h"
+#include "core/renderer/ui_component/list/list_container_animation_manager.h"
 #include "core/renderer/ui_component/list/list_event_manager.h"
 #include "core/renderer/ui_component/list/list_layout_manager.h"
 #include "core/renderer/ui_component/list/list_types.h"
@@ -25,16 +24,9 @@
 namespace lynx {
 namespace tasm {
 
-class ListContainerImpl : public ListContainer::Delegate,
-                          public ItemHolder::AnimationDelegate {
+class ListContainerImpl : public ListContainer::Delegate {
  public:
   ListContainerImpl(Element* element);
-  ~ListContainerImpl();
-
-  // ItemHolder::AnimationDelegate
-  list::ListContainerAnimationType AnimationType() const override;
-  void RecycleItemHolder(ItemHolder* holder) override;
-  void DeferredDestroyItemHolder(ItemHolder* holder) override;
 
   bool ResolveAttribute(const base::String& key,
                         const lepus::Value& value) override;
@@ -132,11 +124,13 @@ class ListContainerImpl : public ListContainer::Delegate,
     return should_flush_finish_layout_;
   }
 
+  ListContainerAnimationManager* AnimationManager() const;
+
+  bool UpdateAnimation() const;
+
   void UpdateBatchRenderStrategy(list::BatchRenderStrategy strategy) override;
 
   list::BatchRenderStrategy GetBatchRenderStrategy() override;
-
-  bool UpdateAnimation() const { return update_animation_; }
 
  protected:
   // Currently, the list container does not copy any member variables and is an
@@ -147,12 +141,6 @@ class ListContainerImpl : public ListContainer::Delegate,
   fml::RefPtr<lepus::CArray> GenerateVisibleItemInfo() const;
 
  private:
-  // update animation.
-  void InitializeAnimator();
-  void StartAnimation();
-  void DoAnimationFrame(float progress);
-  void EndAnimation();
-
   using BindingItemHolderMap = std::unordered_map<int64_t, ItemHolder*>;
   bool enable_dynamic_span_count_{true};
   bool span_count_changed_{false};
@@ -171,6 +159,7 @@ class ListContainerImpl : public ListContainer::Delegate,
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;
   std::unique_ptr<ListEventManager> list_event_manager_;
+  std::unique_ptr<ListContainerAnimationManager> list_animation_manager_;
   BindingItemHolderMap binding_item_holder_map_;
   fml::RefPtr<lepus::Dictionary> layout_complete_info_;
   bool need_layout_complete_info_{false};
@@ -183,12 +172,7 @@ class ListContainerImpl : public ListContainer::Delegate,
   bool should_request_state_restore_{false};
   bool has_valid_diff_{false};
 
-  // list animation.
-  bool update_animation_{false};
-  list::ListContainerAnimationType animation_type_{
-      list::ListContainerAnimationType::kNone};
-  std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;
-  ListAdapter::DiffResult diff_result_{ListAdapter::DiffResult::kNone};
+  list::ListAdapterDiffResult diff_result_{list::ListAdapterDiffResult::kNone};
 
   struct ListOption {
     list::BatchRenderStrategy batch_render_strategy{
@@ -200,7 +184,7 @@ class ListContainerImpl : public ListContainer::Delegate,
  public:
   bool need_preload_section_on_next_frame_{false};
 
-  fml::WeakPtrFactory<ListContainerImpl> weak_factory_;
+  friend class ListContainerAnimationManager;
 };
 
 }  // namespace tasm

@@ -290,7 +290,39 @@ enum class ScrollState {
 
 enum class ItemHolderAnimationType { kNone, kTransform, kOpacity };
 
-enum class ListContainerAnimationType { kNone, kRemove, kInsert };
+enum class ListContainerAnimationType { kNone, kRemove, kInsert, kUpdate };
+
+enum class ListAdapterDiffResult {
+  kNone = 0,
+  kMove = 1,
+  kInsert = 1 << 1,
+  kRemove = 1 << 2,
+  kUpdate = 1 << 3,
+};
+
+constexpr inline ListAdapterDiffResult operator|(ListAdapterDiffResult a,
+                                                 ListAdapterDiffResult b) {
+  return static_cast<ListAdapterDiffResult>(static_cast<unsigned int>(a) |
+                                            static_cast<unsigned int>(b));
+}
+
+constexpr inline ListAdapterDiffResult operator&(ListAdapterDiffResult a,
+                                                 ListAdapterDiffResult b) {
+  return static_cast<ListAdapterDiffResult>(static_cast<unsigned int>(a) &
+                                            static_cast<unsigned int>(b));
+}
+
+constexpr inline ListAdapterDiffResult& operator|=(ListAdapterDiffResult& a,
+                                                   ListAdapterDiffResult b) {
+  a = a | b;
+  return a;
+}
+
+constexpr inline ListAdapterDiffResult& operator&=(ListAdapterDiffResult& a,
+                                                   ListAdapterDiffResult b) {
+  a = a & b;
+  return a;
+}
 
 }  // namespace list
 }  // namespace tasm

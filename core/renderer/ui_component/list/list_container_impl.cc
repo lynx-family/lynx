@@ -27,8 +27,7 @@ ListContainerImpl::ListContainerImpl(Element* element)
       list_layout_manager_(std::make_unique<LinearLayoutManager>(this)),
       list_adapter_(std::make_unique<DefaultListAdapter>(this, element)),
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
-      list_event_manager_(std::make_unique<ListEventManager>(this)),
-      weak_factory_(this) {
+      list_event_manager_(std::make_unique<ListEventManager>(this)) {
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           list::Orientation::kVertical);
   list_event_manager_->SetChildrenHelper(list_children_helper_.get());
@@ -42,12 +41,6 @@ ListContainerImpl::ListContainerImpl(Element* element)
       element_manager->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
   if (base::FloatsEqual(physical_pixels_per_layout_unit_, 0.f)) {
     physical_pixels_per_layout_unit_ = 1.f;
-  }
-}
-
-ListContainerImpl::~ListContainerImpl() {
-  if (animator_ && animator_->IsRunning()) {
-    animator_->Stop();
   }
 }
 
@@ -74,8 +67,8 @@ void ListContainerImpl::FinishBindItemHolders(
   }
 }
 
-void ListContainerImpl::DeferredDestroyItemHolder(ItemHolder* holder) {
-  list_children_helper_->AddDeferredDestroyItemHolder(holder);
+ListContainerAnimationManager* ListContainerImpl::AnimationManager() const {
+  return list_animation_manager_.get();
 }
 
 void ListContainerImpl::ReportListItemLifecycleStatistic(
@@ -364,13 +357,12 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
   } else if (key.IsEqual(list::kListPlatformInfo) ||
              key.IsEqual(list::kFiberListDiffInfo)) {
-    auto status = ListAdapter::DiffResult::kNone;
     if (key.IsEqual(list::kListPlatformInfo)) {
-      status = list_adapter_->UpdateDataSource(value);
+      diff_result_ = list_adapter_->UpdateDataSource(value);
     } else if (key.IsEqual(list::kFiberListDiffInfo)) {
-      status = list_adapter_->UpdateFiberDataSource(value);
+      diff_result_ = list_adapter_->UpdateFiberDataSource(value);
     }
-    if (status != ListAdapter::DiffResult::kNone) {
+    if (diff_result_ != list::ListAdapterDiffResult::kNone) {
       should_mark_layout_dirty = true;
     }
     has_valid_diff_ = should_mark_layout_dirty;
@@ -381,7 +373,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
     need_update_item_holders_ = true;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
-    update_animation_ = value.StdString() == "default";
+    list_animation_manager_ =
+        std::make_unique<ListContainerAnimationManager>(this);
+    list_animation_manager_->SetUpdateAnimation(value.StdString());
   } else if (key.IsEqual(list::kListType)) {
     // list-type
     list::LayoutType last_layout_type = layout_type_;
@@ -477,66 +471,6 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
   return should_set_props;
 };
 
-void ListContainerImpl::InitializeAnimator() {
-  starlight::AnimationData data;
-  data.duration = 300;
-  data.fill_mode = starlight::AnimationFillModeType::kForwards;
-  starlight::TimingFunctionData timing_function_data;
-  timing_function_data.timing_func = starlight::TimingFunctionType::kEaseIn;
-  data.timing_func = timing_function_data;
-  // basic animator requires a shared_ptr.
-  animator_ =
-      std::make_shared<animation::basic::LynxBasicAnimator>(std::move(data));
-}
-
-void ListContainerImpl::StartAnimation() {
-  InitializeAnimator();
-  animator_->RegisterCustomCallback(
-      [weak_ptr = weak_factory_.GetWeakPtr()](float progress) {
-        if (auto ptr = weak_ptr.get()) {
-          ptr->DoAnimationFrame(progress);
-        }
-      });
-  animator_->RegisterEventCallback(
-      [weak_ptr = weak_factory_.GetWeakPtr()]() {
-        if (auto ptr = weak_ptr.get()) {
-          ptr->EndAnimation();
-        }
-      },
-      animation::basic::Animation::EventType::End);
-  animator_->Start();
-}
-
-void ListContainerImpl::DoAnimationFrame(float progress) {
-  for (auto& it : list_children_helper_->on_screen_children()) {
-    it->DoAnimationFrame(progress);
-  }
-  list_children_helper_->TraverseDeferredDestroyItemHolder(
-      [=](ItemHolder* holder) { holder->DoAnimationFrame(progress); });
-}
-
-void ListContainerImpl::EndAnimation() {
-  // 1. Need to destroy child after the animation.
-  list_children_helper_->TraverseDeferredDestroyItemHolder(
-      [=](ItemHolder* holder) { holder->EndAnimation(); });
-  list_children_helper_->DestroyDeferredDestroyItemHolder();
-
-  // 2. Because we can't know exactly how many item holders we will create
-  // during animation, so we need to save layout infos in advance. Now clean it.
-  list_children_helper_->ForEachChild([](ItemHolder* item_holder) {
-    if (item_holder) {
-      item_holder->EndAnimation();
-    }
-    return false;
-  });
-
-  animation_type_ = list::ListContainerAnimationType::kNone;
-}
-
-list::ListContainerAnimationType ListContainerImpl::AnimationType() const {
-  return animation_type_;
-}
-
 void ListContainerImpl::OnLayoutChildren(
     const std::shared_ptr<PipelineOptions>& options) {
   if (list_layout_manager_) {
@@ -559,9 +493,8 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
-        if (update_animation_ &&
-            AnimationType() != list::ListContainerAnimationType::kNone) {
-          StartAnimation();
+        if (list_animation_manager_) {
+          list_animation_manager_->OnLayoutChildren();
         }
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
@@ -584,10 +517,6 @@ void ListContainerImpl::OnLayoutChildren(
   }
 }
 
-void ListContainerImpl::RecycleItemHolder(ItemHolder* holder) {
-  list_adapter_->RecycleItemHolder(holder);
-}
-
 bool ListContainerImpl::ShouldGenerateDebugInfo(
     list::ListDebugInfoLevel targetLevel) {
   return list::IsInDebugMode() && list_event_manager_ &&
@@ -595,7 +524,15 @@ bool ListContainerImpl::ShouldGenerateDebugInfo(
          debug_info_level_ >= targetLevel;
 }
 
+bool ListContainerImpl::UpdateAnimation() const {
+  return list_animation_manager_ != nullptr;
+}
+
 void ListContainerImpl::PropsUpdateFinish() {
+  if (list_animation_manager_ && has_valid_diff_) {
+    list_animation_manager_->UpdateDiffResult(diff_result_);
+  }
+  diff_result_ = list::ListAdapterDiffResult::kNone;
   if (span_count_changed_) {
     span_count_changed_ = false;
     if (!enable_dynamic_span_count_) {
@@ -645,17 +582,6 @@ void ListContainerImpl::PropsUpdateFinish() {
   }
   list_children_helper_->SetRecycleStickyItem(recycle_sticky_item_);
   list_adapter()->list_adapter_helper()->ClearDiffInfo();
-
-  if (update_animation_) {
-    if (diff_result_ ==
-        (ListAdapter::DiffResult::kRemove | ListAdapter::DiffResult::kUpdate)) {
-      animation_type_ = list::ListContainerAnimationType::kRemove;
-    } else if (diff_result_ == (ListAdapter::DiffResult::kInsert |
-                                ListAdapter::DiffResult::kUpdate)) {
-      animation_type_ = list::ListContainerAnimationType::kInsert;
-    }
-  }
-  diff_result_ = ListAdapter::DiffResult::kNone;
 }
 
 void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,

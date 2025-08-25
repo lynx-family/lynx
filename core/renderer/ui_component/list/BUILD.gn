@@ -34,6 +34,8 @@ if (disable_list_platform_implementation) {
     "list_anchor_manager.h",
     "list_children_helper.cc",
     "list_children_helper.h",
+    "list_container_animation_manager.cc",
+    "list_container_animation_manager.h",
     "list_container_impl.cc",
     "list_container_impl.h",
     "list_event_manager.cc",

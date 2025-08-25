@@ -76,8 +76,11 @@ void AnimationItemHolder::EndAnimation() {
     animation_origin_top_ = std::numeric_limits<float>::quiet_NaN();
     content_size_ = std::numeric_limits<float>::quiet_NaN();
   } else if (animation_type_ == list::ItemHolderAnimationType::kOpacity) {
-    element_->FlushAnimatedStyle(CSSPropertyID::kPropertyIDOpacity,
-                                 tasm::CSSValue(1, CSSValue::kCreateNumberTag));
+    if (element_) {
+      element_->FlushAnimatedStyle(
+          CSSPropertyID::kPropertyIDOpacity,
+          tasm::CSSValue(1, CSSValue::kCreateNumberTag));
+    }
     if (animation_origin_opacity_ == 1.f) {
       animation_delegate_->RecycleItemHolder(this);
     }
