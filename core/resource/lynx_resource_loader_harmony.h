@@ -44,6 +44,9 @@ class LynxResourceLoaderHarmony : public pub::LynxResourceLoader {
     // callback for handling ArrayBuffer result.
     static napi_value HandleRequestCallback(napi_env env,
                                             napi_callback_info info);
+    // callack for handling TemplateProviderResult result.
+    static napi_value HandleTemplateRequestCallback(napi_env env,
+                                                    napi_callback_info info);
 
     // callback for handling Path result.
     static napi_value HandlePathRequestCallback(napi_env env,
@@ -104,7 +107,7 @@ class LynxResourceLoaderHarmony : public pub::LynxResourceLoader {
   napi_ref template_fetcher_;
 
   static void BuildResourceRequestValue(napi_env env, napi_value& request,
-                                        const std::string& url, uint32_t type);
+                                        const std::string& url, int32_t type);
 
   static void BuildStreamResourceDelegate(
       napi_env env, napi_value& delegate, const std::string& url,
