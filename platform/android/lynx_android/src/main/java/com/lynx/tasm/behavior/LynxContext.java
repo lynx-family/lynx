@@ -222,6 +222,14 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return (embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0;
   }
 
+  /**
+   * @brief embeddedMode value
+   */
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public int embeddedModeValue() {
+    return embeddedMode;
+  }
+
   public boolean isFallbackProcess() {
     return isFallbackProcess;
   }

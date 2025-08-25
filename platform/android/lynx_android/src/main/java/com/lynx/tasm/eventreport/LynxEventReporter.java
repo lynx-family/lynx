@@ -27,6 +27,7 @@ public class LynxEventReporter {
   public final static String PROP_NAME_LYNX_SDK_VERSION = "lynx_sdk_version";
   // The last thread strategy this lynxView is using, will be updated when the lynxView is init.
   public final static String PROP_NAME_THREAD_MODE = "thread_mode";
+  public final static String PROP_NAME_EMBEDDED_MODE = "embedded_mode";
   // GeneralInfo props name:
   // The last loaded URL in this lynxView, will be updated when lynxView render new template.
   public final static String PROP_NAME_URL = "url";

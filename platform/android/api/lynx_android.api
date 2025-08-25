@@ -4261,6 +4261,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.enableEventReporter();
   public boolean com.lynx.tasm.behavior.LynxContext.enableTiming();
   public boolean com.lynx.tasm.behavior.LynxContext.isEmbeddedModeOn();
+  public int com.lynx.tasm.behavior.LynxContext.embeddedModeValue();
   public boolean com.lynx.tasm.behavior.LynxContext.isFallbackProcess();
   public void com.lynx.tasm.behavior.LynxContext.markFallbackProcess(boolean enable);
   public boolean com.lynx.tasm.behavior.LynxContext.isLayoutInElementModeOn();
@@ -4967,6 +4968,7 @@ public interface com::lynx::tasm::EventEmitter::LynxEventReporter {
 public class com::lynx::tasm::eventreport::LynxEventReporter :  {
   public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_LYNX_SDK_VERSION PROP_NAME_LYNX_SDK_VERSION;
   public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_THREAD_MODE PROP_NAME_THREAD_MODE;
+  public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_EMBEDDED_MODE PROP_NAME_EMBEDDED_MODE;
   public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_URL PROP_NAME_URL;
   public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_RELATIVE_PATH PROP_NAME_RELATIVE_PATH;
   public final String com.lynx.tasm.eventreport.LynxEventReporter.PROP_NAME_ENABLE_SSR PROP_NAME_ENABLE_SSR;
