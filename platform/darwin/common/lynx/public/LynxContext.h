@@ -35,6 +35,10 @@ FOUNDATION_EXPORT NSString *const kDefaultComponentID;
                     forKey:(nonnull NSString *)key;
 - (nonnull id<LynxExtensionModule>)getExtensionModuleByKey:(nonnull NSString *)key;
 
+// Experimental: Temporary flags for genericResoruceRefecher verifying  (will be removed)
+@property(nonatomic, assign) BOOL hasCustomGenericFetcher;
+@property(nonatomic, assign) BOOL hasCustomMediaFetcher;
+@property(nonatomic, assign) BOOL hasCustomTemplateFetcher;
 @end
 
 NS_ASSUME_NONNULL_END

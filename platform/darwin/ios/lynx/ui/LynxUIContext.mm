@@ -142,6 +142,27 @@
   return _resourceServiceFetcher;
 }
 
+- (id<LynxGenericResourceFetcher>)genericResourceFetcher {
+  if (self.lynxContext.hasCustomGenericFetcher) {
+    return nil;
+  }
+  return _genericResourceFetcher;
+}
+
+- (id<LynxMediaResourceFetcher>)mediaResourceFetcher {
+  if (self.lynxContext.hasCustomMediaFetcher) {
+    return nil;
+  }
+  return _mediaResourceFetcher;
+}
+
+- (id<LynxTemplateResourceFetcher>)templateResourceFetcher {
+  if (self.lynxContext.hasCustomTemplateFetcher) {
+    return nil;
+  }
+  return _templateResourceFetcher;
+}
+
 - (BOOL)isDev {
   return _isDev && [[LynxEnv sharedInstance] automationEnabled];
 }
