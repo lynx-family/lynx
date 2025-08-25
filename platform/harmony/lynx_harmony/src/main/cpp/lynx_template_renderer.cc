@@ -235,7 +235,10 @@ void LynxTemplateRenderer::UpdateScreenMetrics(float width, float height,
 }
 
 void LynxTemplateRenderer::MergeGlobalProps(lepus::Value global_props) {
-  if (global_props_.IsTable() && global_props.IsTable()) {
+  if (!global_props.IsTable()) {
+    return;
+  }
+  if (global_props_.IsTable()) {
     tasm::ForEachLepusValue(
         global_props_,
         [&global_props](const lepus::Value& key, const lepus::Value& value) {
@@ -248,6 +251,9 @@ void LynxTemplateRenderer::MergeGlobalProps(lepus::Value global_props) {
 }
 
 void LynxTemplateRenderer::UpdateGlobalProps(lepus::Value value) {
+  if (!value.IsTable()) {
+    return;
+  }
   MergeGlobalProps(std::move(value));
   shell_->UpdateGlobalProps(global_props_);
 }
