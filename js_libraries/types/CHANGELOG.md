@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.4.5
+- Add `recyclable` property for list-item.
+
 ## 3.4.4
 - Revert automatically generated cssTypes
 

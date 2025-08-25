@@ -1095,6 +1095,16 @@ export interface ListItemProps extends StandardProps {
    */
   'item-key': string;
 
+  /**
+   * Control whether the list-item can be recycled. If set to false, the list-item will not be recycled after being scrolled off the screen, and do not need to be re-rendered when they come back on the screen. The default value is true.
+   * @since 3.4
+   * @defaultValue true
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  recyclable?: boolean | undefined;
+
   bindnodeappear?: EventHandler<AppearanceEvent>;
   bindnodedisappear?: EventHandler<AppearanceEvent>;
 }
