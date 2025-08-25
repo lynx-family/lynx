@@ -14,12 +14,14 @@
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
 #import "LynxEventHandler+Internal.h"
+#import "LynxFSPTracer+Internal.h"
 #import "LynxTemplateRender+Internal.h"
 #import "LynxTemplateRender+Protected.h"
 #import "LynxTouchHandler+Internal.h"
 #import "LynxUIContext+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver+Internal.h"
+#import "LynxUIOwner+Private.h"
 #import "LynxViewBuilder+Internal.h"
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
@@ -154,6 +156,12 @@
   _uiOwner.uiContext.eventHandler = _eventHandler;
 
   [_eventHandler updateUiOwner:_uiOwner eventEmitter:_eventEmitter];
+
+  [_uiOwner.fspTracer setTimingCallback:^(uint64_t timestamp, NSString *_Nonnull key) {
+    __strong typeof(weakRender) strongRender = weakRender;
+    return [strongRender setTiming:timestamp key:key pipelineID:nil];
+  }];
+
   _intersectionObserverManager =
       [[LynxUIIntersectionObserverManager alloc] initWithLynxContext:_lynxContext];
   _intersectionObserverManager.uiOwner = _uiOwner;
@@ -224,6 +232,7 @@
 }
 
 - (id<LynxEventTarget>)hitTestInEventHandler:(CGPoint)point withEvent:(UIEvent *)event {
+  [_uiOwner stopFSPTracingWithUserInteraction];
   return [_eventHandler hitTest:point withEvent:event];
 }
 

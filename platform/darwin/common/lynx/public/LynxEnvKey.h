@@ -29,6 +29,7 @@ static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_CSS = @"enable_cdp_domain_css";
 static NSString *const SP_KEY_ENABLE_CDP_DOMAIN_PAGE = @"enable_cdp_domain_page";
 static NSString *const SP_KEY_DEVTOOL_CONNECTED = @"devtool_connected";
 static NSString *const SP_KEY_ENABLE_QUICKJS_DEBUG = @"enable_quickjs_debug";
+static NSString *const SP_KEY_ENABLE_TIMING_OVERLAY = @"enable_timing_overlay";
 // deprecated after Lynx2.9
 static NSString *const SP_KEY_SHOW_DEVTOOL_BADGE = @"show_devtool_badge";
 
@@ -59,6 +60,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvEnableJSGroupThreadByDefault,
   LynxEnvEnableTextLayoutCache,
   LynxEnvEnableForceMemoryMonitorOnOom,
+  LynxEnvEnableFirstStablePaint,
 
   // Please add new enum values above
   LynxEnvKeyEndMark,  // Keep this as the last enum value, and do not use

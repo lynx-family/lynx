@@ -1699,6 +1699,32 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::setUrl:(NSString *url);
 }
 
+public struct LynxFSPConfig {
+  public LynxFSPMode LynxFSPConfig::mode mode;
+  public NSTimeInterval LynxFSPConfig::snapshotInterval snapshotInterval;
+  public NSTimeInterval LynxFSPConfig::hardTimeout hardTimeout;
+  public NSTimeInterval LynxFSPConfig::gracefulTimeout gracefulTimeout;
+  public NSTimeInterval LynxFSPConfig::extendedGracefulTimeout extendedGracefulTimeout;
+}
+
+public struct LynxFSPResult {
+  public BOOL LynxFSPResult::success success;
+  public CGSize LynxFSPResult::contentSize contentSize;
+  public NSInteger LynxFSPResult::lastUISign lastUISign;
+  public uint64_t LynxFSPResult::lastChangeTimestamp lastChangeTimestamp;
+}
+
+public class LynxFSPTracer : NSObject {
+  public BOOL LynxFSPTracer::isEnabled();
+  public void LynxFSPTracer()::setEnabled:config:(BOOL enabled, [config] LynxFSPConfig const *config);
+  public instancetype LynxFSPTracer::NS_UNAVAILABLE();
+  public nullable instancetype LynxFSPTracer::initWithUIContext:(LynxUIContext *context);
+  public BOOL LynxFSPTracer::isTracing();
+  public void LynxFSPTracer::beginTracing:(void(^ completion)(LynxFSPResult result));
+  public void LynxFSPTracer::stopTracing:(LynxFSPTracerStopReason reason);
+  public void LynxFSPTracer()::setTimingCallback:(void(^ timingCallback)(uint64_t timestamp, NSString *key));
+}
+
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResource:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourceCompletionBlock _Nonnull callback);
   public dispatch_block_t LynxGenericResourceFetcher-p::fetchResourcePath:onComplete:(nonnull LynxResourceRequest *request,[onComplete] LynxGenericResourcePathCompletionBlock _Nonnull callback);
@@ -2605,6 +2631,13 @@ public class LynxMetricFcpEntry : LynxPerformanceEntry {
   public instancetype LynxMetricFcpEntry::initWithDictionary:(NSDictionary *dictionary);
 }
 
+public class LynxMetricFspEntry : LynxPerformanceEntry {
+  public LynxPerformanceMetric* LynxMetricFspEntry::fsp fsp;
+  public LynxPerformanceMetric* LynxMetricFspEntry::lynxFsp lynxFsp;
+  public LynxPerformanceMetric* LynxMetricFspEntry::totalFsp totalFsp;
+  public instancetype LynxMetricFspEntry::initWithDictionary:(NSDictionary *dictionary);
+}
+
 public protocol LynxModule-p : <NSObject> {
   public NSDictionary<NSString *, NSString *>* LynxModule-p::methodLookup methodLookup;
   public NSDictionary* LynxModule-p::attributeLookup attributeLookup;
@@ -2675,7 +2708,7 @@ public protocol LynxPageReloadHelperProto-p : <NSObject> {
   public void LynxPageReloadHelperProto-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
   public void LynxPageReloadHelperProto-p::onReceiveTemplateFragment:withEof:(NSString *fragment,[withEof] BOOL eof);
   public void LynxPageReloadHelperProto-p::navigateLynxView:(nonnull NSString *url);
-  public void LynxPageReloadHelperProto-p::setTextLable:(NSInteger label);
+  public void LynxPageReloadHelperProto-p::setTextLabel:(NSInteger label);
   public void LynxPageReloadHelperProto-p::removeTextLabel();
   public void LynxPageReloadHelperProto-p::popTextLabel();
   public void LynxPageReloadHelperProto-p::attachLynxView:(nonnull LynxView *lynxView);
@@ -3354,6 +3387,7 @@ public class LynxTemplateRender : NSObject, <LynxTemplateRenderProtocol>, <Templ
   public LynxUIOwner * LynxTemplateRender()::uiOwner();
   public LynxPerformanceController * LynxTemplateRender()::performanceController();
   public void LynxTemplateRender()::setAttachLynxPageUICallback:(attachLynxPageUI callback);
+  public void LynxTemplateRender()::setTiming:key:pipelineID:(uint64_t timestamp, [key] NSString *key, [pipelineID] nullable NSString *pipelineID);
   public void LynxTemplateRender()::updateFrame:(CGRect frame);
   public LynxViewBuilderBlock LynxTemplateRender()::getLynxViewBuilderBlock();
   public void LynxTemplateRender()::detachLynxEngine();
@@ -3797,6 +3831,7 @@ public class LynxUI : <__covariant V UIView> {
   public UIEdgeInsets LynxUI::margin margin;
   public CGFloat LynxUI::fontSize fontSize;
   public CGPoint LynxUI::contentOffset contentOffset;
+  public LynxUIMeaningfulContentStatus LynxUI::meaningfulContentStatus meaningfulContentStatus;
   public LynxBackgroundManager* LynxUI::backgroundManager backgroundManager;
   public BOOL LynxUI::clipOnBorderRadius clipOnBorderRadius;
   public LynxKeyframeManager* LynxUI::animationManager animationManager;
@@ -3829,6 +3864,8 @@ public class LynxUI : <__covariant V UIView> {
   public NSMutableDictionary* LynxUI()::lynxProps lynxProps;
   public BOOL LynxUI()::isFirstAnimatedReady isFirstAnimatedReady;
   public BOOL LynxUI()::enableSimultaneousTouch enableSimultaneousTouch;
+  public CGRect LynxUI()::meaningfulContentRect meaningfulContentRect;
+  public NSTimeInterval LynxUI()::meaningfulContentChangeTimestamp meaningfulContentChangeTimestamp;
   public CGFloat LynxUI()::exposureMarginTop exposureMarginTop;
   public CGFloat LynxUI()::exposureMarginBottom exposureMarginBottom;
   public CGFloat LynxUI()::exposureMarginLeft exposureMarginLeft;
@@ -3903,6 +3940,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI::removeAnimationForReuse();
   public void LynxUI::setAnimation:(NSArray *value);
   public void LynxUI::setTransition:(NSArray *value);
+  public void LynxUI::setMeaningfulContentStatus:rect:(LynxUIMeaningfulContentStatus status,[rect] CGRect rect);
   public void LynxUI::sendLayoutChangeEvent();
   public CALayer * LynxUI::topLayer();
   public CALayer * LynxUI::bottomLayer();
@@ -4166,6 +4204,12 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext()::setEnableTextLayoutCache:(BOOL enable);
   public void LynxUIContext()::didReceiveResourceError:withSource:type:(LynxError *error, [withSource] NSString *resourceUrl, [type] NSString *type);
   public void LynxUIContext()::reportLynxError:(LynxError *error);
+  public BOOL LynxUIContext()::isFSPTracing();
+  public BOOL LynxUIContext()::setFSPTracing:(BOOL tracing);
+  public void LynxUIContext()::markMeaningfulContentChange();
+  public void LynxUIContext()::markMeaningfulContentLoading();
+  public BOOL LynxUIContext()::checkPendingMeaningfulContentChanges();
+  public BOOL LynxUIContext()::checkPendingMeaningfulContentLoading();
   public int32_t LynxUIContext()::instanceId();
   public void LynxUIContext(Internal)::mergeKeyframesWithLynxKeyframes:forKey:(LynxKeyframes *keyframes, [forKey] NSString *name);
 }
@@ -4465,6 +4509,7 @@ public class LynxUIOwner : NSObject {
   public LynxGestureArenaManager* _Nullable LynxUIOwner::gestureArenaManager gestureArenaManager;
   public attachLynxPageUI LynxUIOwner::attachLynxPageUICallback attachLynxPageUICallback;
   public LynxTextRenderManager* LynxUIOwner::textRenderManager textRenderManager;
+  public LynxFSPTracer* LynxUIOwner()::fspTracer fspTracer;
   public void LynxUIOwner::attachContainerView:(UIView< LUIBodyView > *_Nonnull containerView);
   public instancetype LynxUIOwner::initWithContainerView:componentRegistry:screenMetrics:(UIView< LUIBodyView > *containerView,[componentRegistry] LynxComponentScopeRegistry *registry,[screenMetrics] LynxScreenMetrics *screenMetrics);
   public instancetype LynxUIOwner::initWithContainerView:componentRegistry:screenMetrics:errorHandler:uiConfig:(UIView< LUIBodyView > *containerView,[componentRegistry] LynxComponentScopeRegistry *registry,[screenMetrics] LynxScreenMetrics *screenMetrics,[errorHandler] id< LUIErrorHandling > _Nullable errorHandler,[uiConfig] id< LUIConfig > _Nullable uiConfig);
@@ -4537,6 +4582,8 @@ public class LynxUIOwner : NSObject {
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public void LynxUIOwner(Private)::processUIOnMainThread:withSign:tagName:props:(LynxUI *ui, [withSign] NSInteger sign, [tagName] NSString *tagName, [props] NSDictionary *props);
+  public void LynxUIOwner(Private)::stopFSPTracingWithUserInteraction();
+  public void LynxUIOwner(Private)::enumerateUIsUsingBlock:(void(^ block)(LynxUI *, BOOL *stop));
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle, [withTag] NSInteger sign);
 }
@@ -4557,6 +4604,8 @@ public interface LynxUIOwner(Private) {
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public void LynxUIOwner(Private)::processUIOnMainThread:withSign:tagName:props:(LynxUI *ui,[withSign] NSInteger sign,[tagName] NSString *tagName,[props] NSDictionary *props);
+  public void LynxUIOwner(Private)::stopFSPTracingWithUserInteraction();
+  public void LynxUIOwner(Private)::enumerateUIsUsingBlock:(void(^ block)(LynxUI *, BOOL *stop));
   public LynxThreadStrategyForRender LynxUIOwner(Private)::getThreadStrategyForRender();
   public void LynxUIOwner(Private)::setFrameAppBundle:withTag:(LynxTemplateBundle *bundle,[withTag] NSInteger sign);
 }
@@ -5214,6 +5263,7 @@ public enum LynxFeature {
   public FOUNDATION_EXTERN NSString* const kTimingContainerInitEnd kTimingContainerInitEnd;
   public FOUNDATION_EXTERN NSString* const kTimingOpenTime kTimingOpenTime;
   public FOUNDATION_EXTERN NSString* const kTimingPaintEnd kTimingPaintEnd;
+  public FOUNDATION_EXTERN NSString* const kTimingFSPEnd kTimingFSPEnd;
 
 public enum LynxWhiteSpaceType {
   LynxWhiteSpaceNormal
@@ -5669,6 +5719,7 @@ public enum LynxEnvKey {
   LynxEnvEnableJSGroupThreadByDefault
   LynxEnvEnableTextLayoutCache
   LynxEnvEnableForceMemoryMonitorOnOom
+  LynxEnvEnableFirstStablePaint
   LynxEnvKeyEndMark
 }
 
@@ -5691,6 +5742,7 @@ public enum LynxEnvKey {
   public NSString* const SP_KEY_ENABLE_CDP_DOMAIN_PAGE SP_KEY_ENABLE_CDP_DOMAIN_PAGE;
   public NSString* const SP_KEY_DEVTOOL_CONNECTED SP_KEY_DEVTOOL_CONNECTED;
   public NSString* const SP_KEY_ENABLE_QUICKJS_DEBUG SP_KEY_ENABLE_QUICKJS_DEBUG;
+  public NSString* const SP_KEY_ENABLE_TIMING_OVERLAY SP_KEY_ENABLE_TIMING_OVERLAY;
   public NSString* const SP_KEY_SHOW_DEVTOOL_BADGE SP_KEY_SHOW_DEVTOOL_BADGE;
 
   public NS_ASSUME_NONNULL_BEGIN FOUNDATION_EXPORT NSString* const LynxErrorDomain LynxErrorDomain;
@@ -6059,6 +6111,22 @@ public enum LynxEngineState {
   LynxEngineStateReadyToBeReused
   LynxEngineStateOnReusing
   LynxEngineStateDestroyed
+}
+
+
+public enum LynxFSPMode {
+  LynxFSPModeAxial
+  LynxFSPModeArea
+}
+
+  typedef struct LynxFSPConfig LynxFSPConfig
+  public const LynxFSPConfig kLynxFSPConfigDefault kLynxFSPConfigDefault;
+
+public enum LynxFSPTracerStopReason {
+  kLynxFSPTracerStopReasonNone
+  kLynxFSPTracerStopReasonSuccess
+  kLynxFSPTracerStopReasonUserInteraction
+  kLynxFSPTracerStopReasonTimeout
 }
 
 
@@ -6499,6 +6567,12 @@ public enum LynxPropStatus {
   kLynxPropEnable
   kLynxPropDisable
   kLynxPropUndefined
+}
+
+public enum LynxUIMeaningfulContentStatus {
+  kLynxUIMeaningfulContentNone
+  kLynxUIMeaningfulContentLoading
+  kLynxUIMeaningfulContentLoaded
 }
 
   typedef struct TransOffset TransOffset
