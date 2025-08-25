@@ -131,14 +131,14 @@ void LynxResourceLoaderHarmony::LoadResource(
     return;
   }
 
-  uint32_t provider_index = static_cast<uint32_t>(request.type);
   std::unordered_map<std::string, std::string> params;
-  params.emplace("type", std::to_string(static_cast<int>(provider_index)));
+  params.emplace("type", std::to_string(static_cast<int32_t>(request.type)));
 
   timing.request_internal_prepare_finish = base::CurrentTimeMicroseconds();
   PostTaskOnUIThread([weak_this = weak_from_this(),
                       url = std::move(request.url), params = std::move(params),
-                      callback = std::move(callback), provider_index,
+                      callback = std::move(callback),
+                      resource_type = request.type,
                       timing = std::move(timing)]() mutable {
     timing.request_prepare_to_call_fetcher = base::CurrentTimeMicroseconds();
 
@@ -152,12 +152,20 @@ void LynxResourceLoaderHarmony::LoadResource(
     }
     napi_env env = shared_this->env_;
     base::NapiHandleScope scope(env);
-    napi_value generic_fetcher = nullptr;
-    if (shared_this->generic_fetcher_) {
-      generic_fetcher = base::NapiUtil::GetReferenceNapiValue(
-          env, shared_this->generic_fetcher_);
+    napi_value resource_fetcher = nullptr;
+    if (resource_type == pub::LynxResourceType::kLazyBundle) {
+      if (shared_this->template_fetcher_) {
+        resource_fetcher = base::NapiUtil::GetReferenceNapiValue(
+            env, shared_this->template_fetcher_);
+      }
+    } else {
+      if (shared_this->generic_fetcher_) {
+        resource_fetcher = base::NapiUtil::GetReferenceNapiValue(
+            env, shared_this->generic_fetcher_);
+      }
     }
-    if (!generic_fetcher) {
+
+    if (!resource_fetcher) {
       pub::LynxResourceResponse response{.err_code = LocalErrorCode,
                                          .err_msg = LocalErrorMsg};
       callback(response);
@@ -166,7 +174,8 @@ void LynxResourceLoaderHarmony::LoadResource(
 
     napi_value call_args[2];
     napi_create_object(env, &call_args[0]);
-    BuildResourceRequestValue(env, call_args[0], url, provider_index);
+    BuildResourceRequestValue(env, call_args[0], url,
+                              static_cast<int32_t>(resource_type));
 
     napi_value params_key;
     napi_create_string_utf8(env, "params", NAPI_AUTO_LENGTH, &params_key);
@@ -174,10 +183,10 @@ void LynxResourceLoaderHarmony::LoadResource(
                       base::NapiUtil::CreateMap(env, params));
 
     napi_valuetype type;
-    napi_typeof(env, generic_fetcher, &type);
+    napi_typeof(env, resource_fetcher, &type);
     if (type == napi_undefined) {
-      LOGE("Can not find provider of type:" << provider_index
-                                            << ", url:" << url);
+      LOGE("Can not find provider of type:"
+           << static_cast<int32_t>(resource_type) << ", url:" << url);
       pub::LynxResourceResponse response{.err_code = LocalErrorCode,
                                          .err_msg = LocalErrorMsg};
       callback(response);
@@ -189,11 +198,20 @@ void LynxResourceLoaderHarmony::LoadResource(
     timing.request_send_to_fetcher = base::CurrentTimeMicroseconds();
     auto* callback_handler =
         new CallbackHandler(std::move(callback), std::move(timing), url);
-    napi_create_function(env, "callback", 9,
-                         CallbackHandler::HandleRequestCallback,
-                         callback_handler, &call_args[1]);
-    napi_status status = base::NapiUtil::InvokeJsMethod(
-        env, generic_fetcher, "fetchResource", 2, call_args);
+    napi_status status = napi_ok;
+    if (resource_type == pub::LynxResourceType::kLazyBundle) {
+      napi_create_function(env, "callback", 9,
+                           CallbackHandler::HandleTemplateRequestCallback,
+                           callback_handler, &call_args[1]);
+      status = base::NapiUtil::InvokeJsMethod(env, resource_fetcher,
+                                              "fetchTemplate", 2, call_args);
+    } else {
+      napi_create_function(env, "callback", 9,
+                           CallbackHandler::HandleRequestCallback,
+                           callback_handler, &call_args[1]);
+      status = base::NapiUtil::InvokeJsMethod(env, resource_fetcher,
+                                              "fetchResource", 2, call_args);
+    }
     if (status != napi_ok) {
       pub::LynxResourceResponse response{.err_code = LocalErrorCode,
                                          .err_msg = LocalErrorMsg};
@@ -335,7 +353,7 @@ void LynxResourceLoaderHarmony::LoadStream(
 }
 
 void LynxResourceLoaderHarmony::BuildResourceRequestValue(
-    napi_env env, napi_value& request, const std::string& url, uint32_t type) {
+    napi_env env, napi_value& request, const std::string& url, int32_t type) {
   napi_value url_key, url_value;
   napi_value type_key, type_value;
   napi_create_string_latin1(env, "url", NAPI_AUTO_LENGTH, &url_key);
@@ -430,6 +448,45 @@ napi_value LynxResourceLoaderHarmony::CallbackHandler::HandleRequestCallback(
     callback_handler->callback_(response);
   } else {
     base::NapiUtil::ConvertToArrayBuffer(env, argv[1], response.data);
+    response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
+    callback_handler->callback_(response);
+    LynxInfoReporterHelper::GetInstance().ReportTemplateInfo(
+        callback_handler->url_);
+  }
+  delete callback_handler;
+  return js_this;
+}
+
+napi_value
+LynxResourceLoaderHarmony::CallbackHandler::HandleTemplateRequestCallback(
+    napi_env env, napi_callback_info info) {
+  auto receive_response_time_point = base::CurrentTimeMicroseconds();
+
+  napi_value js_this;
+  size_t argc = 2;
+  napi_value argv[2];
+  void* callback_ptr;
+  napi_get_cb_info(env, info, &argc, argv, &js_this, &callback_ptr);
+
+  CallbackHandler* callback_handler =
+      reinterpret_cast<CallbackHandler*>(callback_ptr);
+
+  callback_handler->timing_.response_received_from_fetcher =
+      receive_response_time_point;
+
+  napi_valuetype error_type;
+  napi_typeof(env, argv[0], &error_type);
+  pub::LynxResourceResponse response;
+  response.timing = std::move(callback_handler->timing_);
+  if (error_type == napi_valuetype::napi_object) {
+    response.err_code = -1;
+    response.err_msg = "error response";
+    response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
+    callback_handler->callback_(response);
+  } else {
+    napi_value result_binary = nullptr;
+    napi_get_named_property(env, argv[1], "binary", &result_binary);
+    base::NapiUtil::ConvertToArrayBuffer(env, result_binary, response.data);
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
     LynxInfoReporterHelper::GetInstance().ReportTemplateInfo(
