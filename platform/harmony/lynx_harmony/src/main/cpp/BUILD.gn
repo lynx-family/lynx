@@ -218,6 +218,7 @@ lynx_core_source_set("cpp") {
     "native_image",
     "pixelmap",
     "image_packer",
+    "ohresmgr",
   ]
 }
 

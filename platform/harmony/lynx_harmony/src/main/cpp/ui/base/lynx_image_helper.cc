@@ -4,12 +4,19 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_helper.h"
 
+#include <arkui/drawable_descriptor.h>
+#include <resourcemanager/ohresmgr.h>
+
 #include <cstdint>
 #include <utility>
 #include <vector>
 
+#include "base/include/log/logging.h"
+#include "base/include/string/string_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "core/resource/lynx_resource_loader_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_image_constants.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/lynx_pixel_map.h"
 
 namespace lynx {
@@ -56,6 +63,48 @@ LynxImageHelper::ImageResponse LynxImageHelper::DecodeImageSync(
     uint8_t* data = reinterpret_cast<uint8_t*>(const_cast<char*>(url.data()));
     code = OH_ImageSourceNative_CreateFromData(data, url.size(),
                                                &image_source_native);
+  } else if (base::BeginsWith(url, image::kResourceRawFile)) {
+    // for rawfile
+    code = IMAGE_BAD_PARAMETER;
+    RawFile* raw_file = OH_ResourceManager_OpenRawFile(
+        lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
+        url.substr(std::strlen(image::kResourceRawFile)).c_str());
+    if (raw_file) {
+      RawFileDescriptor descriptor;
+      if (OH_ResourceManager_GetRawFileDescriptor(raw_file, descriptor)) {
+        code = OH_ImageSourceNative_CreateFromRawFile(&descriptor,
+                                                      &image_source_native);
+        OH_ResourceManager_ReleaseRawFileDescriptor(descriptor);
+      }
+      OH_ResourceManager_CloseRawFile(raw_file);
+    }
+  } else if (base::BeginsWith(url, image::kResourceBaseMedia)) {
+    // for base media
+    std::string file_name = url.substr(std::strlen(image::kResourceBaseMedia));
+    size_t file_format = file_name.find_last_of('.');
+    if (file_format != std::string::npos) {
+      file_name = file_name.substr(0, file_format);
+    }
+    LOGD("LynxImage decode image file name:" << file_name);
+
+    uint64_t resource_len = 0;
+    uint8_t* resource_value = nullptr;
+    ResourceManager_ErrorCode error_code = OH_ResourceManager_GetMediaByName(
+        lynx::harmony::LynxResourceLoaderHarmony::resource_manager,
+        file_name.c_str(), &resource_value, &resource_len);
+    if (error_code != ResourceManager_ErrorCode::SUCCESS) {
+      LOGE("LynxImage resource manager get media failed:" << error_code);
+      ImageResponse response = {.err_code = IMAGE_BAD_SOURCE};
+      return response;
+    }
+    if (resource_value != nullptr) {
+      code = OH_ImageSourceNative_CreateFromData(resource_value, resource_len,
+                                                 &image_source_native);
+      free(resource_value);
+    } else {
+      LOGE("LynxImage Resource Manager retrieves a null media resource.");
+      code = IMAGE_ALLOC_FAILED;
+    }
   } else {
     code = OH_ImageSourceNative_CreateFromUri(const_cast<char*>(url.data()),
                                               url.size(), &image_source_native);

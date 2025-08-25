@@ -219,13 +219,10 @@ void UIFlattenImage::UpdateBlurRadius(const lepus::Value& value) {
 void UIFlattenImage::LoadImageFromURL(bool is_src) {
   const std::string& url = is_src ? src_ : place_holder_;
   bool is_base64 = base::BeginsWith(url, image::kBase64Scheme);
-  if (is_base64) {
+  bool is_local = base::BeginsWith(url, image::kLocalScheme) ||
+                  base::BeginsWith(url, image::kResourceScheme);
+  if (is_base64 || is_local) {
     SetImageAttribute(url, is_base64, is_src);
-    return;
-  }
-  bool is_local = base::BeginsWith(url, image::kLocalScheme);
-  if (is_local) {
-    SetImageAttribute(url, !is_base64, is_src);
     return;
   }
 

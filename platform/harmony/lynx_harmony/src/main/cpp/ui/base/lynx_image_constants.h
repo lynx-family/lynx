@@ -22,6 +22,10 @@ inline constexpr const char* const kBase64Scheme = "data:image";
 inline constexpr const char* const kLocalScheme = "file://";
 inline constexpr const char* const kResourceScheme = "resource://";
 
+inline constexpr const char* const kResourceRawFile = "resource://rawfile/";
+inline constexpr const char* const kResourceBaseMedia =
+    "resource://base/media/";
+
 // event name
 inline constexpr const char* const kLoadEventName = "load";
 inline constexpr const char* const kLoadEventImageWidth = "width";
