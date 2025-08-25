@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { UIMethods } from '../../types';
+import { MainThread, UIMethods } from '../../types';
 
 // StandardProps Types Check
 {
@@ -108,4 +108,27 @@ function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
     .then((response) => {
       streamToArrayBuffer(response.body);
     });
+}
+
+// MTS Animate
+function startAnimation(ele: MainThread.Element) {
+  'main thread';
+  const animation = ele.animate([{ opacity: 0 }, { opacity: 1 }], {
+    duration: 3000,
+  });
+
+  animation.pause();
+  animation.play();
+  animation.cancel();
+
+  // @ts-expect-error Should always have keyframes
+  ele.animate(undefined, {
+    duration: 3000,
+  });
+
+  // Should work if no option is provided
+  ele.animate([{ opacity: 0 }, { opacity: 1 }]);
+
+  // Should work if option is number
+  ele.animate([{ opacity: 0 }, { opacity: 1 }], 200);
 }

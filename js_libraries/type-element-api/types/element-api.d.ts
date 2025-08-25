@@ -55,7 +55,7 @@ export interface DynamicComponentResult {
 }
 
 export type ComponentAtIndexCallback = (
-  listRef: ElementNode,
+  listRef: ElementRef,
   listElementId: number,
   cellIndex: number,
   opId: number,
@@ -65,7 +65,7 @@ export type ComponentAtIndexCallback = (
 ) => number | undefined
 
 export type ComponentAtIndexesCallback = (
-  listRef: ElementNode,
+  listRef: ElementRef,
   listElementId: number,
   cellIndexes: number[],
   opIds: number[],
@@ -74,10 +74,38 @@ export type ComponentAtIndexesCallback = (
 ) => void
 
 export type EnqueueComponentCallback = (
-  listRef: ElementNode,
+  listRef: ElementRef,
   listId: number,
   eleId: number,
 ) => void
+
+/**
+ * Animation operation types for ElementAnimate function
+ */
+export enum AnimationOperation {
+  START = 0, // Start a new animation
+  PLAY = 1, // Play/resume a paused animation
+  PAUSE = 2, // Pause an existing animation
+  CANCEL = 3, // Cancel an animation
+}
+
+/**
+ * Animation timing options configuration
+ */
+export interface AnimationTimingOptions {
+  name?: string; // Animation name (optional, auto-generated if not provided)
+  duration?: number | string; // Animation duration
+  delay?: number | string; // Animation delay
+  iterationCount?: number | string; // Number of iterations (can be 'infinite')
+  fillMode?: string; // Animation fill mode
+  timingFunction?: string; // Animation timing function
+  direction?: string; // Animation direction
+}
+
+/**
+ * Keyframe definition for animation
+ */
+export type Keyframe = Record<string, string | number>;
 
 declare global {
   function __CreatePage(componentId: string, cssId: number, info?: ElementInfo): PageElementRef;
@@ -327,5 +355,22 @@ declare global {
   
   function __UpdateStyleObject(styleObjectRef: StyleObjectRef, styleObject: Object): void;
 
-  function __ElementAnimate(node: ElementRef, animateArgs: Object): void;
+  /**
+   * ElementAnimate function - controls animations on DOM elements
+   * @param element - The DOM element to animate (FiberElement reference)
+   * @param args - Animation configuration array
+   * @returns undefined
+   */
+  function __ElementAnimate(
+    element: ElementRef,
+    args: [
+      operation: AnimationOperation, // Animation operation type
+      name: string, // Animation name
+      keyframes: Keyframe[], // Array of keyframes
+      options?: AnimationTimingOptions, // Timing and configuration options
+    ] | [
+      operation: AnimationOperation.PAUSE | AnimationOperation.PLAY | AnimationOperation.CANCEL,
+      name: string, // Animation name to pause/play
+    ],
+  ): void;
 }
