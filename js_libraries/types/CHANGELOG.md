@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.4.11
+- Fix types of `selectAll()` of `SelectorQuery`.
+
 ## 3.4.10
 - Add `animate` for `MainThread.Element`
 

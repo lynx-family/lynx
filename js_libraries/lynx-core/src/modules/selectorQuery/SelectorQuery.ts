@@ -4,6 +4,7 @@
 
 import {
   NodesRef as INodesRef,
+  MultiNodesRef as IMultiNodesRef,
   SelectorQuery as ISelectorQuery,
   uiFieldsOptions,
   uiMethodOptions,
@@ -122,7 +123,7 @@ export default class SelectorQuery implements ISelectorQuery {
    * Selects all nodes satisfying CSS selector.
    * @param selector CSS selector
    */
-  selectAll(selector: string): INodesRef {
+  selectAll(selector: string): IMultiNodesRef {
     return new NodesRef(this, {
       type: IdentifierType.ID_SELECTOR,
       identifier: selector,
