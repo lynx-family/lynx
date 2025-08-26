@@ -10,6 +10,7 @@ import android.content.Context;
 import android.graphics.RectF;
 import android.text.Layout;
 import android.text.TextUtils;
+import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.core.view.ViewCompat;
 import com.lynx.react.bridge.Callback;
@@ -23,6 +24,7 @@ import com.lynx.tasm.behavior.*;
 import com.lynx.tasm.behavior.event.EventTarget;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.behavior.ui.accessibility.CustomAccessibilityDelegateCompat;
 import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
@@ -59,6 +61,27 @@ public class UIText
   @Override
   protected AndroidText createView(Context context) {
     return new AndroidText(context);
+  }
+
+  @Override
+  protected boolean needGenerateMeaningfulPaintingArea() {
+    return true;
+  }
+
+  @Override
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    if (getTextLayout() == null) {
+      return null;
+    }
+
+    MeaningfulPaintingArea area = new MeaningfulPaintingArea(
+        offsetX + getOriginLeft(), offsetY + getOriginTop(), getWidth(), getHeight(), true);
+    area.setAlpha(mView != null ? mView.getAlpha() : getAlpha());
+    area.setScaleX(mView != null ? mView.getScaleX() : getScaleX());
+    area.setScaleY(mView != null ? mView.getScaleY() : getScaleY());
+    area.setVisibleStatus(
+        mView != null ? mView.getVisibility() : (getVisibility() ? View.VISIBLE : View.INVISIBLE));
+    return area;
   }
 
   @Override

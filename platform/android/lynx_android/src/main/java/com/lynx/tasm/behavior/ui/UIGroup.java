@@ -67,6 +67,7 @@ public abstract class UIGroup<T extends ViewGroup>
   public void markDetachWithViewRecursively(boolean detached) {
     if (detached) {
       mViewInfo = new ViewInfo(this, mView);
+      mViewInfo.markNeedGenerateMeaningfulPaintingArea(needGenerateMeaningfulPaintingArea());
       if (mView instanceof IDrawChildHookBinding) {
         ((IDrawChildHookBinding) mView).bindDrawChildHook(mViewInfo);
       }
@@ -145,6 +146,7 @@ public abstract class UIGroup<T extends ViewGroup>
           mCurrentDrawUI = ui.mNextDrawUI;
           ViewInfo.SubDrawInfo subInfo = new ViewInfo.SubDrawInfo(true, ui.getBound(), null, null,
               ((LynxUI<?>) ui).mViewInfo, ((LynxUI<?>) ui).getView());
+          subInfo.markNeedGenerateMeaningfulPaintingArea(ui.needGenerateMeaningfulPaintingArea());
           info.addSubDrawInfo(mCurrentDrawIndex, subInfo);
           subInfo.recordSubView(ui, child);
           mCurrentDrawIndex++;
@@ -156,6 +158,7 @@ public abstract class UIGroup<T extends ViewGroup>
         subDrawInfo.setFlattenUIInfo(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight(),
             ui.getPaddingLeft(), ui.getPaddingTop(), ui.getPaddingRight(), ui.getPaddingBottom(),
             ((LynxFlattenUI) ui).getAlpha());
+        subDrawInfo.markNeedGenerateMeaningfulPaintingArea(ui.needGenerateMeaningfulPaintingArea());
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
       }
@@ -173,6 +176,7 @@ public abstract class UIGroup<T extends ViewGroup>
         subDrawInfo.setFlattenUIInfo(ui.getLeft(), ui.getTop(), ui.getWidth(), ui.getHeight(),
             ui.getPaddingLeft(), ui.getPaddingTop(), ui.getPaddingRight(), ui.getPaddingBottom(),
             ((LynxFlattenUI) ui).getAlpha());
+        subDrawInfo.markNeedGenerateMeaningfulPaintingArea(ui.needGenerateMeaningfulPaintingArea());
         tryAddInfoForSubDraw(subDrawInfo, ui);
         info.addSubDrawInfo(mCurrentDrawIndex, subDrawInfo);
       }
