@@ -82,6 +82,14 @@ public class UIBody extends UIGroup<UIBodyView> {
     return mBodyView;
   }
 
+  public ArrayList<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    tryRunDetachAndAttachTask();
+
+    ArrayList<MeaningfulPaintingArea> areas = new ArrayList<MeaningfulPaintingArea>();
+    convertToMeaningfulPaintingAreaRecursive(0, 0, areas);
+    return areas;
+  }
+
   /**
    * when async render, we should attach LynxView
    * @param view
@@ -392,6 +400,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private int mCacheWidth;
     private int mCacheHeight;
+    boolean mIsMeaningfulPaintingAreaInvalidate = false;
 
     // assign with the uiRenderer instance on TemplateRender
     @RestrictTo(RestrictTo.Scope.LIBRARY) protected ILynxUIRenderer mLynxUIRender;
@@ -517,6 +526,9 @@ public class UIBody extends UIGroup<UIBodyView> {
         map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
         TraceEvent.beginSection(TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW, map);
       }
+
+      mIsMeaningfulPaintingAreaInvalidate = false;
+
       ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
         timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_START);
@@ -714,6 +726,24 @@ public class UIBody extends UIGroup<UIBodyView> {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public LynxViewBuilder getLynxViewBuilder() {
       return null;
+    }
+
+    public boolean isMeaningfulPaintingAreaInvalidate() {
+      return mIsMeaningfulPaintingAreaInvalidate;
+    }
+
+    public void invalidateMeaningfulPaintingArea() {
+      mIsMeaningfulPaintingAreaInvalidate = true;
+    }
+
+    public ArrayList<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+      if (!(mDrawChildHook instanceof ViewInfo)) {
+        return null;
+      }
+
+      ArrayList<MeaningfulPaintingArea> areas = new ArrayList<>();
+      ((ViewInfo) mDrawChildHook).generateMeaningfulPaintingArea(0, 0, areas);
+      return areas;
     }
   }
 }

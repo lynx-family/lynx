@@ -284,6 +284,30 @@ public abstract class LynxBaseUI
     }
   }
 
+  protected boolean needGenerateMeaningfulPaintingArea() {
+    return false;
+  }
+
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    return null;
+  }
+
+  protected void convertToMeaningfulPaintingAreaRecursive(
+      int offsetX, int offsetY, ArrayList<MeaningfulPaintingArea> areas) {
+    MeaningfulPaintingArea area = convertToMeaningfulPaintingArea(offsetX, offsetY);
+    if (area != null) {
+      areas.add(area);
+    }
+    int newOffsetX = offsetX + getOriginLeft();
+    int newOffsetY = offsetY + getOriginTop();
+    for (LynxBaseUI ui : mChildren) {
+      if (ui == null) {
+        continue;
+      }
+      ui.convertToMeaningfulPaintingAreaRecursive(newOffsetX, newOffsetY, areas);
+    }
+  }
+
   protected void createViewAsync() {}
 
   protected void ensureCreateView(View parentView) {}
@@ -410,6 +434,16 @@ public abstract class LynxBaseUI
   public void requestLayout() {}
 
   public void invalidate() {}
+
+  public void invalidateMeaningfulPaintingArea() {
+    if (getLynxContext() == null) {
+      return;
+    }
+    if (getLynxContext().getUIBodyView() == null) {
+      return;
+    }
+    getLynxContext().getUIBodyView().invalidateMeaningfulPaintingArea();
+  }
 
   public void recognizeGesturere() {
     if (mContext != null) {

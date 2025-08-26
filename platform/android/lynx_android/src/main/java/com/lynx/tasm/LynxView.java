@@ -44,6 +44,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.herotransition.HeroTransitionManager;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
+import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.core.VSyncMonitor;
@@ -56,6 +58,7 @@ import com.lynx.tasm.utils.DisplayMetricsHolder;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -1988,6 +1991,22 @@ public class LynxView extends UIBodyView {
 
   public LynxConfigInfo getLynxConfigInfo() {
     return new LynxConfigInfo.Builder().buildLynxConfigInfo();
+  }
+
+  @Override
+  public ArrayList<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    if (getLynxContext() == null) {
+      return null;
+    }
+    if (!getLynxContext().isEmbeddedModeOn()) {
+      return null;
+    }
+    UIGroup rootUI = getLynxUIRoot();
+    if (rootUI instanceof UIBody) {
+      return ((UIBody) rootUI).getMeaningfulPaintingAreas();
+    } else {
+      return super.getMeaningfulPaintingAreas();
+    }
   }
 
   /**

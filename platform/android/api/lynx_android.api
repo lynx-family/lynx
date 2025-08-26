@@ -324,7 +324,7 @@ public class com::lynx::tasm::behavior::ui::text::AndroidText : com.lynx.tasm.be
   public void com.lynx.tasm.behavior.ui.text.AndroidText.onDestroyActionMode(ActionMode mode);
 }
 
-public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
+public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding, com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook {
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setBlurSampling(int sampling);
   public com.lynx.tasm.behavior.ui.view.AndroidView.AndroidView(Context context);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.interceptGesture(boolean interceptGesture);
@@ -344,6 +344,7 @@ public class com::lynx::tasm::behavior::ui::view::AndroidView : ViewGroup, com.l
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setConsumeHoverEvent(boolean consumeHoverEvent);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.setBlur(float radius);
   public void com.lynx.tasm.behavior.ui.view.AndroidView.removeBlur();
+  public void com.lynx.tasm.behavior.ui.view.AndroidView.invalidateMeaningfulPaintingArea();
 }
 
 public class com::lynx::tasm::animation::AnimationConstant :  {
@@ -2576,6 +2577,11 @@ public class com::lynx::tasm::image::ImageUtils :  {
   public static LocalCacheState com.lynx.tasm.image.ImageUtils.parseLocalCache(Dynamic localCache);
 }
 
+public interface com::lynx::tasm::behavior::ui::MeaningfulPaintingArea::IMeaningfulPaintingAreaInvalidateHook {
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook.invalidateMeaningfulPaintingArea();
+  public IDrawChildHook com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook.getDrawChildHook();
+}
+
 public interface com::lynx::tasm::performance::memory::IMemoryMonitor {
   public void com.lynx.tasm.performance.memory.IMemoryMonitor.allocateMemory(IMemoryRecordBuilder builder);
   public void com.lynx.tasm.performance.memory.IMemoryMonitor.deallocateMemory(IMemoryRecordBuilder builder);
@@ -3785,6 +3791,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.needCustomLayout();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.requestLayout();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.invalidate();
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.invalidateMeaningfulPaintingArea();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.recognizeGesturere();
   public CSSPropertySetter.UIPaintStyles com.lynx.tasm.behavior.ui.LynxBaseUI.getOrCreateUIPaintStyles();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.applyUIPaintStylesToTarget(LynxBaseUI targetUI);
@@ -6482,6 +6489,7 @@ public class com::lynx::tasm::LynxView : com.lynx.tasm.behavior.ui.UIBody.UIBody
   public void com.lynx.tasm.LynxView.processLayoutWithTemplateBundle( @NonNull final TemplateBundle bundle, final TemplateData templateData, String baseUrl);
   public void com.lynx.tasm.LynxView.updateFontScacle(float scale);
   public LynxConfigInfo com.lynx.tasm.LynxView.getLynxConfigInfo();
+  public ArrayList< MeaningfulPaintingArea > com.lynx.tasm.LynxView.getMeaningfulPaintingAreas();
   public void com.lynx.tasm.LynxView.setEnableUserCodeCache(boolean enableUserCodeCache, String url);
   public void com.lynx.tasm.LynxView.setAttachLynxPageUICallback(attachLynxPageUICallback callback);
   public void com.lynx.tasm.LynxView.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
@@ -6761,6 +6769,23 @@ public class com::lynx::tasm::utils::MatrixMathUtils::MatrixDecompositionContext
 public class com::lynx::tasm::utils::MatrixMathUtils :  {
   public static void com.lynx.tasm.utils.MatrixMathUtils.decomposeMatrix(double[] transformMatrix, MatrixDecompositionContext ctx);
   public static double com.lynx.tasm.utils.MatrixMathUtils.degreesToRadians(double degrees);
+}
+
+public class com::lynx::tasm::behavior::ui::MeaningfulPaintingArea :  {
+  public com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.MeaningfulPaintingArea(int offsetX, int offsetY, int width, int height, boolean isValid);
+  public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getOffsetX();
+  public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getOffsetY();
+  public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getWidth();
+  public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getHeight();
+  public boolean com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.isValid();
+  public float com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getAlpha();
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setAlpha(float alpha);
+  public float com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getScaleX();
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setScaleX(float scaleX);
+  public float com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getScaleY();
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setScaleY(float scaleY);
+  public int com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.getVisibleStatus();
+  public void com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.setVisibleStatus(int status);
 }
 
 public class com::lynx::tasm::behavior::shadow::MeasureContext :  {
@@ -9392,6 +9417,7 @@ public class com::lynx::tasm::utils::TypefaceUtils :  {
 public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.UIGroup< UIBodyView > {
   public com.lynx.tasm.behavior.ui.UIBody.UIBody(LynxContext context, final UIBodyView view);
   public UIBodyView com.lynx.tasm.behavior.ui.UIBody.getBodyView();
+  public ArrayList< MeaningfulPaintingArea > com.lynx.tasm.behavior.ui.UIBody.getMeaningfulPaintingAreas();
   public synchronized void com.lynx.tasm.behavior.ui.UIBody.attachUIBodyView(UIBodyView view, LynxContext context);
   public synchronized void com.lynx.tasm.behavior.ui.UIBody.detachUIBodyView();
   public void com.lynx.tasm.behavior.ui.UIBody.appendUIWithCreateViewAsync(LynxUI ui);
@@ -9446,6 +9472,9 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setLynxUIRendererInternal(ILynxUIRenderer uiRenderer);
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.innerSetMeasuredDimension(int w, int h);
   public LynxViewBuilder com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getLynxViewBuilder();
+  public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.isMeaningfulPaintingAreaInvalidate();
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.invalidateMeaningfulPaintingArea();
+  public ArrayList< MeaningfulPaintingArea > com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getMeaningfulPaintingAreas();
 }
 
 public class com::lynx::tasm::behavior::ui::scroll::UIBounceView : com::lynx::tasm::behavior::ui::view::UISimpleView< AndroidView > {
@@ -10121,6 +10150,8 @@ public class com::lynx::tasm::behavior::ui::ViewInfo : com.lynx.tasm.behavior.ui
   public void com.lynx.tasm.behavior.ui.ViewInfo.performLayoutChildrenUI();
   public void com.lynx.tasm.behavior.ui.ViewInfo.performMeasureChildrenUI();
   public void com.lynx.tasm.behavior.ui.ViewInfo.invalidate();
+  public void com.lynx.tasm.behavior.ui.ViewInfo.invalidateMeaningfulPaintingArea();
+  public void com.lynx.tasm.behavior.ui.ViewInfo.generateMeaningfulPaintingArea(int offsetX, int offsetY, ArrayList< MeaningfulPaintingArea > areas);
 }
 
 public class com::lynx::tasm::behavior::shadow::ViewLayoutTick : com.lynx.tasm.behavior.shadow.LayoutTick {
