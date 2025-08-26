@@ -67,6 +67,76 @@ TEST_F(PropBundleStyleWriterTest, TestWriteOpacity) {
   EXPECT_EQ(new_bundle_.props_["opacity"], lepus::Value(2.0f));
 }
 
+TEST_F(PropBundleStyleWriterTest, TestWriteColorRadialGradient) {
+  lepus::Value color_gradient = lepus::Value(
+      "radial-gradient(ellipse 34.009998% 171.479996% at 20.02% 48.110001% "
+      ",#63004e 0% ,#161823 80.360001%)");
+
+  // parse the Radial gradient to CSSValue
+  lynx::tasm::StyleMap output;
+  lynx::tasm::CSSParserConfigs configs;
+  bool ret = lynx::tasm::UnitHandler::Process(
+      tasm::CSSPropertyID::kPropertyIDColor, color_gradient, output, configs);
+  EXPECT_EQ(ret, true);
+  lepus::Value color_gradient_lepus_value =
+      output[tasm::CSSPropertyID::kPropertyIDColor].GetValue();
+  EXPECT_EQ(color_gradient_lepus_value.IsArray(), true);
+  style_.SetColor(output[tasm::CSSPropertyID::kPropertyIDColor]);
+
+  // write to bundle
+  TEST_SPECIFIC_STYLE_WRITER(Color);
+
+  // check radialGradient from bundle
+  auto bundle_value = new_bundle_.props_["color"];
+  EXPECT_EQ(bundle_value.IsArray(), true);
+
+  auto gradient_array = bundle_value.Array();
+  EXPECT_TRUE(gradient_array->size() >= 2);
+
+  auto type = gradient_array->get(0).Number();
+  EXPECT_TRUE(type == static_cast<uint32_t>(
+                          starlight::BackgroundImageType::kRadialGradient));
+
+  //[shap_arr, color_array, position_array]
+  EXPECT_TRUE(gradient_array->get(1).IsArray());
+  EXPECT_TRUE(gradient_array->get(1).Array()->size() == 3);
+
+  // check shape_array
+  auto shape_array = gradient_array->get(1).Array()->get(0).Array();
+  EXPECT_TRUE(shape_array->size() == 14);
+  // 0: shape
+  auto shape = shape_array->get(0).Number();
+  EXPECT_TRUE(shape == static_cast<uint32_t>(
+                           starlight::RadialGradientShapeType::kEllipse));
+  // 1: shape_size
+  auto shape_size = shape_array->get(1).Number();
+  EXPECT_TRUE(shape_size == static_cast<uint32_t>(
+                                starlight::RadialGradientSizeType::kLength));
+  // 2:pos-x-type
+  EXPECT_TRUE(shape_array->get(2).Number() ==
+              static_cast<uint32_t>(CSSValuePattern::PERCENT));
+  // 3:pos-x-value
+  EXPECT_TRUE(std::abs(shape_array->get(3).Number() - 20.02) < 0.0001);
+  // 4:pos-y-type
+  EXPECT_TRUE(shape_array->get(4).Number() ==
+              static_cast<uint32_t>(CSSValuePattern::PERCENT));
+  // 5:pos-y-value
+  EXPECT_TRUE(std::abs(shape_array->get(5).Number() - 48.11) < 0.0001);
+
+  // special, added in p::ComputeRadialGradient
+  // 10:shape-size-x
+  EXPECT_TRUE(std::abs(shape_array->get(10).Number() - 0.340) < 0.0001);
+  // 11:shape-size-x unit
+  EXPECT_TRUE(shape_array->get(11).Number() ==
+              static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE));
+
+  // 12:shape-size-y
+  EXPECT_TRUE(std::abs(shape_array->get(12).Number() - 1.7148) < 0.0001);
+  // 13:shape-size-y unit
+  EXPECT_TRUE(shape_array->get(13).Number() ==
+              static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE));
+}
+
 TEST_F(PropBundleStyleWriterTest, TestStyleWriter) {
   style_.animation_data_.emplace();
   style_.animation_data_->push_back(starlight::AnimationData());

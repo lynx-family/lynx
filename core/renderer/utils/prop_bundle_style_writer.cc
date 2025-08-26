@@ -11,6 +11,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/css/computed_css_style.h"
+#include "core/renderer/css/css_style_utils.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -175,6 +176,15 @@ void PropBundleStyleWriter::WriteColor(PropBundle* bundle,
   if (text_attr.has_value()) {
     if (text_attr->text_gradient.has_value() &&
         text_attr->text_gradient->IsArray()) {
+      auto gradient_array_ref = text_attr->text_gradient->Array();
+      if (gradient_array_ref->size() > 1 &&
+          gradient_array_ref->get(0).Number() ==
+              static_cast<uint32_t>(
+                  starlight::BackgroundImageType::kRadialGradient)) {
+        auto& gradient_data = gradient_array_ref->get(1);
+        starlight::CSSStyleUtils::ComputeRadialGradient(
+            gradient_data, style->length_context_, style->parser_configs_);
+      }
       bundle->SetPropsByID(CSSPropertyID::kPropertyIDColor,
                            pub::ValueImplLepus(*text_attr->text_gradient));
     } else {
