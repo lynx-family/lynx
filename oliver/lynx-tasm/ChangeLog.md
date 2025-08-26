@@ -1,3 +1,6 @@
+# 0.0.18
+* fix encode error with `experimental_enableQuickjsByteCode`.
+
 # 0.0.16
 * Using `macOS-latest` runner to publish tasm artifact.
 

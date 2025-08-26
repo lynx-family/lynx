@@ -1213,7 +1213,7 @@ void TemplateBinaryWriter::EncodeJsBytecode() {
               (file_name + " compilation error!").c_str());
         }
 
-        WriteCompactU32(static_cast<uint64_t>(bin_buffer->size()));
+        WriteCompactU64(static_cast<uint64_t>(bin_buffer->size()));
         WriteData(bin_buffer->data(), bin_buffer->size(), "quick bytecode");
         if (is_debug_info_out) {
           js_debug_info_.insert(
