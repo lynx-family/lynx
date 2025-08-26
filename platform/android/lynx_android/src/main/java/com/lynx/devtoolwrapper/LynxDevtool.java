@@ -29,6 +29,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIOwner;
 import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.service.ILynxDevToolService;
+import com.lynx.tasm.service.ILynxLogBoxService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Constructor;
@@ -42,6 +43,7 @@ public class LynxDevtool {
    * to ensure that debugging features are enabled.
    */
   private static ILynxDevToolService sDevToolService = null;
+  private static ILynxLogBoxService sLogBoxService = null;
   private static final String TAG = "LynxDevtool";
   @Keep private LynxBaseInspectorOwnerNG mOwner = null;
   private ILynxLogBox mLogBox = null;
@@ -74,6 +76,7 @@ public class LynxDevtool {
                 + ", debuggable:" + debuggable);
 
         sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+        sLogBoxService = LynxServiceCenter.inst().getService(ILynxLogBoxService.class);
 
         if ((LynxEnv.inst().isDevtoolEnabled()
                 || (LynxEnv.inst().isDevtoolEnabledForDebuggableView() && debuggable))
@@ -84,8 +87,8 @@ public class LynxDevtool {
           }
         }
 
-        if (LynxEnv.inst().isLogBoxEnabled() && sDevToolService != null) {
-          mLogBox = sDevToolService.createLogBox(this);
+        if (LynxEnv.inst().isLogBoxEnabled() && sLogBoxService != null) {
+          mLogBox = sLogBoxService.createLogBox(this);
           LLog.i(TAG, "LogBox init");
         }
 

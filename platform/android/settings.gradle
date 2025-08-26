@@ -20,6 +20,8 @@ include ':lynx_service_image'
 project(":lynx_service_image").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_image')
 include ':lynx_service_devtool'
 project(":lynx_service_devtool").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_devtool')
+include ':lynx_service_logbox'
+project(":lynx_service_logbox").projectDir = new File(rootProject.projectDir, './lynx_service/lynx_service_logbox')
 include ':LynxDevtool'
 project(":LynxDevtool").projectDir = new File(rootProject.projectDir, './lynx_devtool')
 include ":BaseDevtool"
