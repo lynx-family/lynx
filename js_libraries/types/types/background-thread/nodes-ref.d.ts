@@ -60,23 +60,9 @@ export interface FieldsData {
   query:SelectorQuery;
 }
 
-export type PathCallback = (data: PathData, status: { data: string; code: number }) => void;
+export type PathCallback = (data: PathData | null, status: { data: string; code: number }) => void;
 
-export interface NodesRef {
-  invoke(options: uiMethodOptions): SelectorQuery;
-
-  path(callback: PathCallback): SelectorQuery;
-
-  fields<T extends FieldsParams>(
-    fields: Required<FieldsParams> extends Record<keyof T, boolean> ? T : FieldsParams,
-    callback: (
-      data: {
-        [K in keyof Required<FieldsParams> as T[K] extends true ? K : never]: FieldsData[K];
-      },
-      status: { data: string; code: number }
-    ) => void
-  ): SelectorQuery;
-
+interface BaseNodesRef {
   animate(animations: AnimationV2[] | AnimationV2): SelectorQuery;
 
   playAnimation(ids: string[] | string): SelectorQuery;
@@ -86,6 +72,36 @@ export interface NodesRef {
   cancelAnimation(ids: string[] | string): SelectorQuery;
 
   setNativeProps(nativeProps: Record<string, any>): SelectorQuery;
+}
+
+export interface NodesRef extends BaseNodesRef {
+  invoke(options: uiMethodOptions): SelectorQuery;
+
+  path(callback: PathCallback): SelectorQuery;
+
+  fields<T extends FieldsParams>(
+    fields: Required<FieldsParams> extends Record<keyof T, boolean> ? T : FieldsParams,
+    callback: (
+      data: {
+        [K in keyof Required<FieldsParams> as T[K] extends true ? K : never]: FieldsData[K];
+      } | null,
+      status: { data: string; code: number }
+    ) => void
+  ): SelectorQuery;
+}
+
+export interface MultiNodesRef extends BaseNodesRef {
+  path(callback: (data: PathData[], status: { data: string; code: number }) => void): SelectorQuery;
+
+  fields<T extends FieldsParams>(
+    fields: Required<FieldsParams> extends Record<keyof T, boolean> ? T : FieldsParams,
+    callback: (
+      data: {
+        [K in keyof Required<FieldsParams> as T[K] extends true ? K : never]: FieldsData[K];
+      }[],
+      status: { data: string; code: number }
+    ) => void
+  ): SelectorQuery;
 }
 
 export interface SelectorQuery {
@@ -99,7 +115,7 @@ export interface SelectorQuery {
    * Selects all nodes satisfying CSS selector.
    * @param selector CSS selector
    */
-  selectAll(selector: string): NodesRef;
+  selectAll(selector: string): MultiNodesRef;
 
   /**
    * Select root node of the component.

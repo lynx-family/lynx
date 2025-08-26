@@ -3,7 +3,18 @@
 // LICENSE file in the root directory of this source tree.
 
 import { describe, expect, it, expectTypeOf } from 'vitest';
-import { NODE_REF_INVOKE_ERROR_CODE, uiMethodOptions, uiFieldsOptions, PathData, FieldsParams, FieldsData, PathCallback, NodesRef, SelectorQuery, AnimationV2 } from '../../types/';
+import {
+  NODE_REF_INVOKE_ERROR_CODE,
+  uiMethodOptions,
+  uiFieldsOptions,
+  PathData,
+  FieldsParams,
+  FieldsData,
+  NodesRef,
+  MultiNodesRef,
+  SelectorQuery,
+  AnimationV2,
+} from '../../types/';
 
 describe('Nodes-ref Type Definitions', () => {
   describe('uiMethodOptions', () => {
@@ -66,12 +77,21 @@ describe('Nodes-ref Type Definitions', () => {
     it('should match expected interfaces', () => {
       const mockSelectorQuery: SelectorQuery = {
         select: () => mockNodesRef,
-        selectAll: () => mockNodesRef,
+        selectAll: () => mockMultiNodesRef,
         selectRoot: () => mockNodesRef,
         exec: () => {},
       };
       const mockNodesRef: NodesRef = {
         invoke: () => mockSelectorQuery,
+        path: () => mockSelectorQuery,
+        fields: () => mockSelectorQuery,
+        animate: () => mockSelectorQuery,
+        playAnimation: () => mockSelectorQuery,
+        pauseAnimation: () => mockSelectorQuery,
+        cancelAnimation: () => mockSelectorQuery,
+        setNativeProps: () => mockSelectorQuery,
+      };
+      const mockMultiNodesRef: MultiNodesRef = {
         path: () => mockSelectorQuery,
         fields: () => mockSelectorQuery,
         animate: () => mockSelectorQuery,
@@ -121,13 +141,22 @@ describe('Nodes-ref Type Definitions', () => {
     it('should have all required methods', () => {
       const mockSelectorQuery: SelectorQuery = {
         select: () => mockNodesRef,
-        selectAll: () => mockNodesRef,
+        selectAll: () => mockMultiNodesRef,
         selectRoot: () => mockNodesRef,
         exec: () => {},
       };
 
       const mockNodesRef: NodesRef = {
         invoke: () => mockSelectorQuery,
+        path: () => mockSelectorQuery,
+        fields: () => mockSelectorQuery,
+        animate: () => mockSelectorQuery,
+        playAnimation: () => mockSelectorQuery,
+        pauseAnimation: () => mockSelectorQuery,
+        cancelAnimation: () => mockSelectorQuery,
+        setNativeProps: () => mockSelectorQuery,
+      };
+      const mockMultiNodesRef: MultiNodesRef = {
         path: () => mockSelectorQuery,
         fields: () => mockSelectorQuery,
         animate: () => mockSelectorQuery,
@@ -144,7 +173,7 @@ describe('Nodes-ref Type Definitions', () => {
         expectTypeOf<SelectorQuery>().toHaveProperty('exec');
 
         expectTypeOf(mockSelectorQuery.select('')).toMatchTypeOf<NodesRef>();
-        expectTypeOf(mockSelectorQuery.selectAll('')).toMatchTypeOf<NodesRef>();
+        expectTypeOf(mockSelectorQuery.selectAll('')).toMatchTypeOf<MultiNodesRef>();
         expectTypeOf(mockSelectorQuery.selectRoot()).toMatchTypeOf<NodesRef>();
         expectTypeOf(mockSelectorQuery.exec()).toBeVoid();
       });
@@ -161,7 +190,7 @@ describe('Nodes-ref Type Definitions', () => {
     it('should have all required methods', () => {
       const selectorQuery: SelectorQuery = {
         select: (selector) => ({} as NodesRef),
-        selectAll: (selector) => ({} as NodesRef),
+        selectAll: (selector) => ({} as MultiNodesRef),
         selectRoot: () => ({} as NodesRef),
         exec: () => {},
       };
@@ -170,6 +199,64 @@ describe('Nodes-ref Type Definitions', () => {
       expect(selectorQuery).toHaveProperty('selectAll');
       expect(selectorQuery).toHaveProperty('selectRoot');
       expect(selectorQuery).toHaveProperty('exec');
+    });
+
+    it('should have correct callback parameter types for select and selectAll path', () => {
+      const mockSelectorQuery: SelectorQuery = {
+        select: () => mockNodesRef,
+        selectAll: () => mockMultiNodesRef,
+        selectRoot: () => mockNodesRef,
+        exec: () => {},
+      };
+
+      const mockNodesRef: NodesRef = {
+        invoke: () => mockSelectorQuery,
+        path: (callback) => {
+          const data: PathData | null = null;
+          callback(data, { data: '', code: 0 });
+          return mockSelectorQuery;
+        },
+        fields: () => mockSelectorQuery,
+        animate: () => mockSelectorQuery,
+        playAnimation: () => mockSelectorQuery,
+        pauseAnimation: () => mockSelectorQuery,
+        cancelAnimation: () => mockSelectorQuery,
+        setNativeProps: () => mockSelectorQuery,
+      };
+
+      const mockMultiNodesRef: MultiNodesRef = {
+        path: (callback) => {
+          const data: PathData[] = [];
+          callback(data, { data: '', code: 0 });
+          return mockSelectorQuery;
+        },
+        fields: () => mockSelectorQuery,
+        animate: () => mockSelectorQuery,
+        playAnimation: () => mockSelectorQuery,
+        pauseAnimation: () => mockSelectorQuery,
+        cancelAnimation: () => mockSelectorQuery,
+        setNativeProps: () => mockSelectorQuery,
+      };
+
+      // Test selectAll path
+      mockSelectorQuery.selectAll('.some-class').path((data) => {
+        expectTypeOf(data).toMatchTypeOf<PathData[]>();
+      });
+
+      // Test select path
+      mockSelectorQuery.select('#some-id').path((data) => {
+        expectTypeOf(data).toMatchTypeOf<PathData | null>();
+      });
+
+      // Test selectAll fields
+      mockSelectorQuery.selectAll('.some-class').fields({ id: true, dataset: true }, (data) => {
+        expectTypeOf(data).toMatchTypeOf<{ id: string; dataset: Record<string, unknown> }[]>();
+      });
+
+      // Test select fields
+      mockSelectorQuery.select('#some-id').fields({ id: true, dataset: true }, (data) => {
+        expectTypeOf(data).toMatchTypeOf<{ id: string; dataset: Record<string, unknown> } | null>();
+      });
     });
   });
 });

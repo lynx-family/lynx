@@ -11,6 +11,9 @@
 - Add `pc`, `windows`, `macOS` and `Harmony` platforms to System info.
 - Refactor event definitions for improved IDE compatibility.
 
+## 3.4.11
+- Fix types of `selectAll()` of `SelectorQuery`.
+
 ## 3.4.10
 - Add `animate` for `MainThread.Element`
 
