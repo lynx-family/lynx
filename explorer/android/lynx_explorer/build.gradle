@@ -93,6 +93,7 @@ dependencies {
     implementation project(':lynx_service_image')
     implementation project(':lynx_service_devtool')
     implementation project(':lynx_service_http')
+    implementation project(':lynx_service_logbox')
     implementation project(':LynxDevtool')
     implementation project(':LynxXElement')
     implementation project(':LynxXElement:Input')

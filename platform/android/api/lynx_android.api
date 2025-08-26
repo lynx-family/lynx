@@ -2109,7 +2109,6 @@ public interface com::lynx::tasm::base::ILogDelegate {
 public interface com::lynx::tasm::service::ILynxDevToolService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxDevToolService.getServiceClass();
   public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view);
-  public ILynxLogBox com.lynx.tasm.service.ILynxDevToolService.createLogBox(@NonNull LynxDevtool devtool);
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolSetModuleClass();
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolWebSocketModuleClass();
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getLynxTrailModule();
@@ -2203,6 +2202,11 @@ public interface com::lynx::devtoolwrapper::ILynxLogBox {
   public void com.lynx.devtoolwrapper.ILynxLogBox.showLogMessage(final LynxError error);
   public void com.lynx.devtoolwrapper.ILynxLogBox.onLoadTemplate();
   public void com.lynx.devtoolwrapper.ILynxLogBox.attachContext(Context context);
+}
+
+public interface com::lynx::tasm::service::ILynxLogBoxService {
+  public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxLogBoxService.getServiceClass();
+  public ILynxLogBox com.lynx.tasm.service.ILynxLogBoxService.createLogBox(@NonNull LynxDevtool devtool);
 }
 
 public interface com::lynx::tasm::ILynxLogicExecutor {
