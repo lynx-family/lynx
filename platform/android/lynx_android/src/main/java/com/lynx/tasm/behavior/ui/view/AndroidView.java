@@ -13,13 +13,17 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook;
+import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.utils.BlurUtils;
 import java.lang.ref.WeakReference;
 
-public class AndroidView extends ViewGroup implements IDrawChildHookBinding {
+public class AndroidView
+    extends ViewGroup implements IDrawChildHookBinding, IMeaningfulPaintingAreaInvalidateHook {
   private Bitmap mBlurBitmap;
   private Canvas mBlurCanvas;
   private float mBlurRadius = 0;
@@ -336,6 +340,16 @@ public class AndroidView extends ViewGroup implements IDrawChildHookBinding {
       }
       mBlurBitmap = null;
       mBlurCanvas = null;
+    }
+  }
+
+  @Override
+  public void invalidateMeaningfulPaintingArea() {
+    if (getContext() instanceof LynxContext) {
+      UIBody.UIBodyView view = ((LynxContext) getContext()).getUIBodyView();
+      if (view != null) {
+        view.invalidateMeaningfulPaintingArea();
+      }
     }
   }
 }

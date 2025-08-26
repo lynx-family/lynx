@@ -38,6 +38,7 @@ import com.lynx.tasm.performance.timing.ITimingCollector;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -80,6 +81,14 @@ public class UIBody extends UIGroup<UIBodyView> {
   @Override
   UIBodyView getOrCreateView(Context context, Object params) {
     return mBodyView;
+  }
+
+  public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    tryRunDetachAndAttachTask();
+
+    ArrayList<MeaningfulPaintingArea> areas = new ArrayList<MeaningfulPaintingArea>();
+    convertToMeaningfulPaintingAreaRecursive(0, 0, areas);
+    return areas;
   }
 
   /**
@@ -392,6 +401,7 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     private int mCacheWidth;
     private int mCacheHeight;
+    boolean mIsMeaningfulPaintingAreaInvalidate = false;
 
     // assign with the uiRenderer instance on TemplateRender
     @RestrictTo(RestrictTo.Scope.LIBRARY) protected ILynxUIRenderer mLynxUIRender;
@@ -517,6 +527,9 @@ public class UIBody extends UIGroup<UIBodyView> {
         map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
         TraceEvent.beginSection(TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW, map);
       }
+
+      mIsMeaningfulPaintingAreaInvalidate = false;
+
       ITimingCollector timingCollector = mTimingCollector.get();
       if (timingCollector != null) {
         timingCollector.markHostPlatformTiming(HOST_PLATFORM_DRAW_START);
@@ -714,6 +727,24 @@ public class UIBody extends UIGroup<UIBodyView> {
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public LynxViewBuilder getLynxViewBuilder() {
       return null;
+    }
+
+    public boolean isMeaningfulPaintingAreaInvalidate() {
+      return mIsMeaningfulPaintingAreaInvalidate;
+    }
+
+    public void invalidateMeaningfulPaintingArea() {
+      mIsMeaningfulPaintingAreaInvalidate = true;
+    }
+
+    public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+      if (!(mDrawChildHook instanceof ViewInfo)) {
+        return null;
+      }
+
+      ArrayList<MeaningfulPaintingArea> areas = new ArrayList<>();
+      ((ViewInfo) mDrawChildHook).generateMeaningfulPaintingArea(0, 0, areas);
+      return areas;
     }
   }
 }

@@ -45,6 +45,7 @@ public class ViewInfo implements IDrawChildHook {
   BasicShape mClipPath;
   int[] mOrder;
   boolean mHasOverlappingRendering;
+  boolean mNeedGenerateMeaningfulPaintingArea = false;
 
   public void detachWithUI() {}
 
@@ -74,6 +75,10 @@ public class ViewInfo implements IDrawChildHook {
 
   public void setHasOverlappingRendering(boolean enable) {
     mHasOverlappingRendering = enable;
+  }
+
+  void markNeedGenerateMeaningfulPaintingArea(boolean enable) {
+    mNeedGenerateMeaningfulPaintingArea = enable;
   }
 
   // beforeDispatchDraw
@@ -126,6 +131,8 @@ public class ViewInfo implements IDrawChildHook {
     float mSkewY = 0;
     int mOverflow = 0;
 
+    boolean mNeedGenerateMeaningfulPaintingArea = false;
+
     public SubDrawInfo(
         boolean isView, Rect bound, RenderNodeCompat renderNode, LynxBackground background) {
       mIsView = isView;
@@ -139,6 +146,10 @@ public class ViewInfo implements IDrawChildHook {
       this(isView, bound, renderNode, background);
       this.mSubViewInfo = subViewInfo;
       this.mSubView = subView;
+    }
+
+    void markNeedGenerateMeaningfulPaintingArea(boolean enable) {
+      mNeedGenerateMeaningfulPaintingArea = enable;
     }
 
     public void setImageManager(LynxImageManager imageManager) {
@@ -413,6 +424,51 @@ public class ViewInfo implements IDrawChildHook {
     mView.invalidate();
   }
 
+  public void invalidateMeaningfulPaintingArea() {
+    if (mView instanceof MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook) {
+      ((MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook) mView)
+          .invalidateMeaningfulPaintingArea();
+    }
+  }
+
+  public void generateMeaningfulPaintingArea(
+      int offsetX, int offsetY, ArrayList<MeaningfulPaintingArea> areas) {
+    int currentOffsetX = offsetX + (mView != null ? mView.getLeft() : 0);
+    int currentOffsetY = offsetY + (mView != null ? mView.getTop() : 0);
+
+    if (mView != null && mNeedGenerateMeaningfulPaintingArea) {
+      MeaningfulPaintingArea area = new MeaningfulPaintingArea(currentOffsetX, currentOffsetY,
+          mView.getWidth(), mView.getHeight(),
+          mImageManagerUsedInBeforeDraw != null ? mImageManagerUsedInBeforeDraw.getHasContent()
+                                                : true);
+      area.setAlpha(mView.getAlpha());
+      area.setScaleX(mView.getScaleX());
+      area.setScaleY(mView.getScaleY());
+      area.setVisibleStatus(mView.getVisibility());
+
+      areas.add(area);
+    }
+    for (SubDrawInfo info : mSubDrawInfoArray) {
+      if (info == null) {
+        continue;
+      }
+
+      if (info.mSubView instanceof MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook) {
+        MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook hook =
+            (MeaningfulPaintingArea.IMeaningfulPaintingAreaInvalidateHook) info.mSubView;
+        if (hook.getDrawChildHook() instanceof ViewInfo) {
+          ((ViewInfo) hook.getDrawChildHook())
+              .generateMeaningfulPaintingArea(currentOffsetX, currentOffsetY, areas);
+        }
+      } else if (info.mNeedGenerateMeaningfulPaintingArea) {
+        MeaningfulPaintingArea area = new MeaningfulPaintingArea(currentOffsetX + info.mLeft,
+            currentOffsetY + info.mTop, info.mWidth, info.mHeight,
+            info.mLynxImageManager != null ? info.mLynxImageManager.getHasContent() : true);
+        areas.add(area);
+      }
+    }
+  }
+
   void measure() {
     for (SubDrawInfo info : mSubDrawInfoArray) {
       if (info.mIsView && info.mSubViewInfo != null && info.mSubView != null) {
@@ -421,6 +477,7 @@ public class ViewInfo implements IDrawChildHook {
       }
     }
   }
+
   void layout() {
     for (SubDrawInfo info : mSubDrawInfoArray) {
       if (info.mIsView && info.mSubViewInfo != null && info.mSubView != null) {

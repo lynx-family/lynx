@@ -8,10 +8,12 @@ import static com.lynx.tasm.behavior.AutoGenStyleConstants.IMAGERENDERING_PIXELA
 
 import android.graphics.Canvas;
 import android.graphics.Path;
+import android.view.View;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.LynxUIMethod;
 import com.lynx.tasm.behavior.StylesDiffMap;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.UIParams;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.behavior.ui.utils.BackgroundDrawable;
@@ -38,6 +40,29 @@ public class UIImage extends UIView {
     }
     mLynxImageManager.setLynxBaseUI(this);
     mView.setWillNotDraw(false);
+  }
+
+  @Override
+  protected boolean needGenerateMeaningfulPaintingArea() {
+    return true;
+  }
+
+  @Override
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    if (mLynxImageManager != null) {
+      mLynxImageManager.tryHandleResult();
+    }
+
+    MeaningfulPaintingArea area =
+        new MeaningfulPaintingArea(offsetX + getOriginLeft(), offsetY + getOriginTop(), getWidth(),
+            getHeight(), mLynxImageManager != null ? mLynxImageManager.getHasContent() : false);
+    area.setAlpha(mView != null ? mView.getAlpha() : getAlpha());
+    area.setScaleX(mView != null ? mView.getScaleX() : getScaleX());
+    area.setScaleY(mView != null ? mView.getScaleY() : getScaleY());
+    area.setVisibleStatus(
+        mView != null ? mView.getVisibility() : (getVisibility() ? View.VISIBLE : View.INVISIBLE));
+
+    return area;
   }
 
   private void ensureLynxImageManager() {

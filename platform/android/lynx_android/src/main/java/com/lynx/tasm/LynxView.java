@@ -44,6 +44,8 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.herotransition.HeroTransitionManager;
 import com.lynx.tasm.behavior.ui.IDrawChildHook;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
+import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.core.VSyncMonitor;
@@ -1992,6 +1994,22 @@ public class LynxView extends UIBodyView {
 
   public LynxConfigInfo getLynxConfigInfo() {
     return new LynxConfigInfo.Builder().buildLynxConfigInfo();
+  }
+
+  @Override
+  public List<MeaningfulPaintingArea> getMeaningfulPaintingAreas() {
+    if (getLynxContext() == null) {
+      return null;
+    }
+    if (!getLynxContext().isEmbeddedModeOn()) {
+      return null;
+    }
+    UIGroup rootUI = getLynxUIRoot();
+    if (rootUI instanceof UIBody) {
+      return ((UIBody) rootUI).getMeaningfulPaintingAreas();
+    } else {
+      return super.getMeaningfulPaintingAreas();
+    }
   }
 
   /**

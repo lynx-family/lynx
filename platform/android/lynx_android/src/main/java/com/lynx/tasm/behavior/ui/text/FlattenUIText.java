@@ -27,6 +27,7 @@ import com.lynx.tasm.behavior.shadow.text.TextHelper;
 import com.lynx.tasm.behavior.shadow.text.TextUpdateBundle;
 import com.lynx.tasm.behavior.ui.LynxFlattenUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
+import com.lynx.tasm.behavior.ui.MeaningfulPaintingArea;
 import com.lynx.tasm.behavior.ui.ViewInfo;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.lang.ref.WeakReference;
@@ -57,6 +58,25 @@ public class FlattenUIText extends LynxFlattenUI implements IUIText {
     }
   }
 
+  @Override
+  protected boolean needGenerateMeaningfulPaintingArea() {
+    return true;
+  }
+
+  @Override
+  protected MeaningfulPaintingArea convertToMeaningfulPaintingArea(int offsetX, int offsetY) {
+    if (getTextLayout() == null) {
+      return null;
+    }
+
+    MeaningfulPaintingArea area = new MeaningfulPaintingArea(
+        offsetX + getOriginLeft(), offsetY + getOriginTop(), getWidth(), getHeight(), true);
+    area.setAlpha(getAlpha());
+    area.setScaleX(getScaleX());
+    area.setScaleY(getScaleY());
+
+    return area;
+  }
   public void updateExtraData(Object data) {
     if (data instanceof TextUpdateBundle) {
       setTextBundle((TextUpdateBundle) data);
