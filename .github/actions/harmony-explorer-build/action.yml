@@ -8,7 +8,7 @@ runs:
     - name: Install Common Dependencies
       uses: ./lynx/.github/actions/common-deps
       with:
-        cache-key-prefix: 'hab-container'
+        cache-key-prefix: '-container'
     - name: Build Explorer App
       shell: bash
       working-directory: lynx

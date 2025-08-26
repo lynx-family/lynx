@@ -233,7 +233,7 @@ jobs:
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
-          cache-key-prefix: 'hab-container'
+          cache-key-prefix: '-container'
       - name: Generate Change Log
         run: |
           cd $GITHUB_WORKSPACE/lynx

@@ -20,7 +20,7 @@ inputs:
   # we are able to adjust the container runner's directory structure to the same as self-hosted runner.
   cache-key-prefix:
     description: cache key prefix for cache action
-    default: 'hab'
+    default: ''
     required: false
 
 runs:
@@ -31,9 +31,9 @@ runs:
       uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
       with:
         path: ~/.habitat_cache
-        key: ${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
+        key: hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-${{ hashFiles('lynx/.habitat', 'lynx/DEPS') }}
         restore-keys: |
-          ${{ inputs.cache-key-prefix }}-${{ runner.os }}-
+          hab${{ inputs.cache-key-prefix }}-${{ runner.os }}-
 
     - name: setup cache action
       if: ${{ inputs.cache-backend == 'github' }}
@@ -44,15 +44,28 @@ runs:
         restore-keys: |
           hab-${{ runner.os }}-
 
+    - name: Get Python Cache Directory
+      id: pip
+      shell: bash
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      run: echo "PIP_CACHE_DIR=$(python3 -m pip cache dir)" >> $GITHUB_OUTPUT
+
+    - name: Python Requirements Cache
+      if: ${{ inputs.cache-backend == 'lynx-infra' }}
+      uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+      with:
+        path: ${{ steps.pip.outputs.PIP_CACHE_DIR }}
+        key: pip${{ inputs.cache-key-prefix }}-${{ runner.os }}
+
     - name: install Python dependencies
       shell: bash
       run: |
         if [ "$RUNNER_OS" == "macOS" ]; then
-          python3 -m pip install PyYAML --break-system-packages
-          python3 -m pip install requests --break-system-packages
+          python3 -m pip install PyYAML==6.0.2 --break-system-packages
+          python3 -m pip install requests==2.32.5 --break-system-packages
         else
-          python3 -m pip install PyYAML
-          python3 -m pip install requests
+          python3 -m pip install PyYAML==6.0.2
+          python3 -m pip install requests==2.32.5
         fi
 
     - name: run habitat sync
