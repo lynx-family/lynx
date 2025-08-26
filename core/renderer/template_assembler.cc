@@ -218,7 +218,6 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
       page_config_(nullptr),
       instance_id_(instance_id),
       font_scale_(1.0),
-      component_loader_(nullptr),
       pipeline_context_manager_(std::make_unique<PipelineContextManager>(
           enable_unified_pipeline ||
           LynxEnv::GetInstance().EnableUnifiedPixelPipeline())),
@@ -1244,8 +1243,8 @@ void TemplateAssembler::PushRuntimeValidTid() {
 
 void TemplateAssembler::SetLazyBundleLoader(
     const std::shared_ptr<LazyBundleLoader>& loader) {
+  TemplateEntryHolder::SetLazyBundleLoader(loader);
   element_manager_delegate_.SetBundleLoader(loader);
-  component_loader_ = loader;
 }
 
 void TemplateAssembler::DidLoadComponent(
@@ -1293,23 +1292,12 @@ void TemplateAssembler::DidFetchBundle(
     } else {
       InsertLynxTemplateBundle(callback_info.component_url,
                                std::move(*callback_info.bundle));
-      // TODO(zhoupeng.z): may cause dead lock if MTS do `ResponceHandle.wait`,
-      // fix it later
-      if (request.response_promise) {
-        request.response_promise->SetValue(
-            {.url = request.url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
-      }
     }
   } else {
     // TODO(zhoupeng.z): report error about loading frame bundle
     ReportError(ConstructLynxErrorForLazyBundle(
         callback_info.component_url, callback_info.error_code,
         callback_info.error_msg, kNetworkSuggestion, true));
-    if (request.response_promise) {
-      request.response_promise->SetValue(
-          {.url = request.url,
-           .code = LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED});
-    }
   }
 }
 

@@ -37,6 +37,11 @@ std::optional<piper::JsBundle> JsBundleHolderImpl::GetJSBundleFromBT(
   return bundle;
 }
 
+lepus::Value JsBundleHolderImpl::GetCustomSectionFromBT(
+    const std::string& url) {
+  return proxy_.GetCustomSection(url);
+}
+
 bool JsBundleHolderImpl::IsRequesting(const std::string& url) {
   return requesting_url_ && *requesting_url_ == url;
 }

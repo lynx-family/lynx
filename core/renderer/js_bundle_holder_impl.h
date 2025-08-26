@@ -14,6 +14,7 @@
 #include <unordered_map>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
+#include "base/include/value/base_value.h"
 #include "core/runtime/piper/js/js_bundle_holder.h"
 
 namespace lynx {
@@ -27,11 +28,21 @@ namespace tasm {
  */
 class JsBundleHolderImpl : public piper::JsBundleHolder {
  public:
-  JsBundleHolderImpl() = default;
+  class BundleProxy {
+   public:
+    BundleProxy() = default;
+    virtual ~BundleProxy() = default;
+
+    virtual lepus::Value GetCustomSection(const std::string& url) = 0;
+  };
+
+  JsBundleHolderImpl(BundleProxy& proxy) : proxy_(proxy){};
   ~JsBundleHolderImpl() override = default;
 
   std::optional<piper::JsBundle> GetJSBundleFromBT(
       const std::string& url) override;
+
+  lepus::Value GetCustomSectionFromBT(const std::string& url) override;
 
   void InsertJSBundle(const std::string& url, const piper::JsBundle& js_bundle);
 
@@ -58,11 +69,13 @@ class JsBundleHolderImpl : public piper::JsBundleHolder {
   bool IsRequesting(const std::string& url);
 
   std::unordered_map<std::string, piper::JsBundle> js_bundle_map_{};
+  std::unordered_map<std::string, lepus::Value> custom_sections_map_{};
 
   std::atomic<bool> enable_{false};
   std::mutex mutex_;
   std::condition_variable request_cv_;
   std::optional<std::string> requesting_url_{std::nullopt};
+  BundleProxy& proxy_;
 
   friend class RequestScope;
 };

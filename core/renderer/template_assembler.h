@@ -34,8 +34,6 @@
 #include "core/renderer/template_entry_holder.h"
 #include "core/renderer/template_themed.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
-#include "core/resource/lazy_bundle/bundle_resource_info.h"
-#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/lepus/event/context_proxy_in_lepus.h"
 #include "core/runtime/piper/js/template_delegate.h"
@@ -588,7 +586,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
                                   [component_path][name] = processor;
   }
 
-  void SetLazyBundleLoader(const std::shared_ptr<LazyBundleLoader>& loader);
+  void SetLazyBundleLoader(
+      const std::shared_ptr<LazyBundleLoader>& loader) override;
 
   void SetLocale(const std::string& locale) { locale_ = locale; }
 
@@ -979,7 +978,6 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   std::shared_ptr<lepus::InspectorLepusObserver> lepus_observer_;
 
-  std::shared_ptr<LazyBundleLoader> component_loader_;
   std::string locale_;
 
   PageOptions page_options_;

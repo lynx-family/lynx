@@ -15,6 +15,8 @@
 #include "base/include/closure.h"
 #include "core/renderer/js_bundle_holder_impl.h"
 #include "core/renderer/template_entry.h"
+#include "core/resource/lazy_bundle/bundle_resource_info.h"
+#include "core/resource/lazy_bundle/lazy_bundle_loader.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 
 namespace lynx {
@@ -26,7 +28,7 @@ namespace tasm {
  * value
  * 2. provide js bundle holder for js app
  */
-class TemplateEntryHolder {
+class TemplateEntryHolder : public JsBundleHolderImpl::BundleProxy {
  public:
   TemplateEntryHolder() = default;
   virtual ~TemplateEntryHolder() = default;
@@ -47,7 +49,12 @@ class TemplateEntryHolder {
   void InsertLynxTemplateBundle(const std::string& url,
                                 LynxTemplateBundle&& bundle);
 
+  virtual void SetLazyBundleLoader(
+      const std::shared_ptr<LazyBundleLoader>& loader);
+
   std::shared_ptr<piper::JsBundleHolder> GetJsBundleHolder() const;
+
+  lepus::Value GetCustomSection(const std::string& url) override;
 
  protected:
   std::unique_ptr<JsBundleHolderImpl::RequestScope> CreateRequestScope(
@@ -64,6 +71,8 @@ class TemplateEntryHolder {
 
   void SetEnableQueryComponentSync(bool enable);
 
+  std::shared_ptr<LazyBundleLoader> component_loader_;
+
  private:
   void TryPostJSBundle(const std::string& url,
                        const LynxTemplateBundle& bundle);
@@ -74,8 +83,7 @@ class TemplateEntryHolder {
   // template bundles for preloading lazy bundle
   std::unordered_map<std::string, LynxTemplateBundle> preload_template_bundles_;
 
-  const std::shared_ptr<JsBundleHolderImpl> js_bundle_holder_{
-      std::make_shared<JsBundleHolderImpl>()};
+  std::shared_ptr<JsBundleHolderImpl> js_bundle_holder_;
 };
 }  // namespace tasm
 }  // namespace lynx

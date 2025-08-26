@@ -3644,6 +3644,15 @@ lepus::Value App::GetCustomSectionSync(const std::string& key,
     if (iter != component_bundles_.end()) {
       return iter->second.custom_sections.GetProperty(key);
     }
+
+    auto holder = weak_js_bundle_holder_.lock();
+    if (holder) {
+      auto custom_section = holder->GetCustomSectionFromBT(bundle_name);
+      if (!custom_section.IsNil()) {
+        return custom_section.GetProperty(key);
+      }
+    }
+
     return lepus::Value();
   }
 }

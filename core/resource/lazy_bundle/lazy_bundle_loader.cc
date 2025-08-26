@@ -264,6 +264,26 @@ void LazyBundleLoader::DidFetchBundle(
 #endif
   DecodeBundle(callback_info, callback_info.request.resource_type ==
                                   pub::LynxResourceType::kFrame);
+  if (callback_info.Success() && callback_info.bundle) {
+    // Insert current loaded bundle into container in lazyBundleLoader
+    // guaranteed by lock At last, bundle will be sync to engine thread & js
+    // thread in `didFetchBundle` at last.
+    InsertTemplateBundle(callback_info.request.url, *callback_info.bundle);
+    // notify response promise;
+    if (callback_info.request.response_promise) {
+      callback_info.request.response_promise->SetValue(
+          {.url = callback_info.request.url,
+           .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
+    }
+  } else {
+    // bundle fetched failed here, notify response promise with error.
+    if (callback_info.request.response_promise) {
+      callback_info.request.response_promise->SetValue(
+          {.url = callback_info.request.url,
+           .code = LYNX_BUNDLE_RESOURCE_INFO_REQUEST_FAILED});
+    }
+  }
+
   if (engine_actor_) {
     engine_actor_->Act(
         [callback_info = std::move(callback_info)](auto& engine) mutable {

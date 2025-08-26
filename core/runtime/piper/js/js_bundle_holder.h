@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 
+#include "base/include/value/base_value.h"
 #include "core/runtime/piper/js/js_bundle.h"
 
 namespace lynx {
@@ -20,6 +21,8 @@ class JsBundleHolder {
   virtual ~JsBundleHolder() = default;
 
   virtual std::optional<JsBundle> GetJSBundleFromBT(const std::string& url) = 0;
+
+  virtual lepus::Value GetCustomSectionFromBT(const std::string& url) = 0;
 };
 }  // namespace piper
 }  // namespace lynx

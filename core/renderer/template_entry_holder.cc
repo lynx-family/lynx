@@ -23,6 +23,12 @@ void TemplateEntryHolder::InsertEntry(const std::string& name,
   template_entries_.try_emplace(name, std::move(entry));
 }
 
+void TemplateEntryHolder::SetLazyBundleLoader(
+    const std::shared_ptr<LazyBundleLoader>& loader) {
+  component_loader_ = loader;
+  js_bundle_holder_ = std::make_shared<JsBundleHolderImpl>(*this);
+}
+
 const std::shared_ptr<TemplateEntry>& TemplateEntryHolder::FindEntry(
     const std::string& entry_name) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ENTRY_HOLDER_FIND_ENTRY);
@@ -53,7 +59,7 @@ std::optional<LynxTemplateBundle> TemplateEntryHolder::FindTemplateBundle(
     return preload_bundle_iter->second;
   }
 
-  return std::nullopt;
+  return component_loader_->GetTemplateBundle(entry_name);
 }
 
 void TemplateEntryHolder::ForEachEntry(
@@ -81,7 +87,7 @@ void TemplateEntryHolder::TryPostJSBundle(const std::string& url,
                                           const LynxTemplateBundle& bundle) {
   // Only needed by Fiber because Fiber will not fetch lazy bundle resources
   // from the Engine Thread except for the first screen.
-  if (bundle.EnableFiberArch()) {
+  if (bundle.EnableFiberArch() && js_bundle_holder_) {
     js_bundle_holder_->InsertJSBundle(url, bundle.GetJsBundle());
   }
 }
@@ -97,8 +103,18 @@ std::optional<LynxTemplateBundle> TemplateEntryHolder::GetPreloadTemplateBundle(
   return bundle;
 }
 
+lepus::Value TemplateEntryHolder::GetCustomSection(const std::string& url) {
+  auto bundle = component_loader_->GetTemplateBundle(url);
+  if (bundle) {
+    return bundle->GetCustomSections();
+  }
+  return lepus::Value();
+}
+
 void TemplateEntryHolder::SetEnableQueryComponentSync(bool enable) {
-  js_bundle_holder_->SetEnable(enable);
+  if (js_bundle_holder_) {
+    js_bundle_holder_->SetEnable(enable);
+  }
 }
 
 std::shared_ptr<piper::JsBundleHolder> TemplateEntryHolder::GetJsBundleHolder()
@@ -108,7 +124,10 @@ std::shared_ptr<piper::JsBundleHolder> TemplateEntryHolder::GetJsBundleHolder()
 
 std::unique_ptr<JsBundleHolderImpl::RequestScope>
 TemplateEntryHolder::CreateRequestScope(const std::string& url) const {
-  return js_bundle_holder_->CreateRequestScope(url);
+  if (js_bundle_holder_) {
+    return js_bundle_holder_->CreateRequestScope(url);
+  }
+  return nullptr;
 }
 
 }  // namespace tasm
