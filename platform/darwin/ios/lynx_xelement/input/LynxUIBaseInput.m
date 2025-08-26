@@ -131,6 +131,10 @@ LYNX_PROP_SETTER("placeholder-font-size", setPlaceholderFontSize, CGFloat) {
   self.placeholderFontSize = value;
 }
 
+LYNX_PROP_SETTER("-x-placeholder-font-size", setXPlaceholderFontSize, CGFloat) {
+  [self setPlaceholderFontSize:value requestReset:requestReset];
+}
+
 - (UIFontWeight)lynxFontWeightToUIFontWeight:(LynxFontWeightType)value {
   if (value == LynxFontWeightNormal) {
     return UIFontWeightRegular;
@@ -171,12 +175,20 @@ LYNX_PROP_SETTER("placeholder-font-weight", setPlaceholderFontWeight, LynxFontWe
   self.placeholderFontWeight = [self lynxFontWeightToUIFontWeight:value];
 }
 
+LYNX_PROP_SETTER("-x-placeholder-font-weight", setXPlaceholderFontWeight, LynxFontWeightType) {
+  [self setPlaceholderFontWeight:value requestReset:requestReset];
+}
+
 LYNX_PROP_SETTER("font-style", setFontStyle, LynxFontStyleType) {
   self.fontStyle = value;
 }
 
 LYNX_PROP_SETTER("placeholder-font-style", setPlaceholderFontStyle, LynxFontStyleType) {
   self.placeholderFontStyle = value;
+}
+
+LYNX_PROP_SETTER("-x-placeholder-font-style", setXPlaceholderFontStyle, LynxFontStyleType) {
+  [self setPlaceholderFontStyle:value requestReset:requestReset];
 }
 
 LYNX_PROP_SETTER("font-family", setFontFamily, NSString*) {
@@ -187,12 +199,20 @@ LYNX_PROP_SETTER("placeholder-font-family", setPlaceholderFontFamily, NSString*)
   self.placeholderFontFamily = value;
 }
 
+LYNX_PROP_SETTER("-x-placeholder-font-family", setXPlaceholderFontFamily, NSString*) {
+  [self setPlaceholderFontFamily:value requestReset:requestReset];
+}
+
 LYNX_PROP_SETTER("color", setColor, UIColor*) {
   self.inputAttrs[NSForegroundColorAttributeName] = value ? : [UIColor blackColor];
 }
 
 LYNX_PROP_SETTER("placeholder-color", setPlaceHolderColor, UIColor*) {
   self.placeholderAttrs[NSForegroundColorAttributeName] = value ? : [UIColor colorWithRed:0.235 green:0.263 blue:0.235 alpha:0.3];
+}
+
+LYNX_PROP_SETTER("-x-placeholder-color", setXPlaceHolderColor, UIColor*) {
+  [self setPlaceHolderColor:value requestReset:requestReset];
 }
 
 LYNX_PROP_SETTER("caret-color", setCaretColor, NSString*) {

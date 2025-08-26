@@ -136,6 +136,17 @@ void PropBundleStyleWriter::WriteFontSize(PropBundle* bundle,
   }
 }
 
+void PropBundleStyleWriter::WriteXPlaceholderFontSize(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attr = style->GetPlaceholderTextAttributes();
+  if (text_attr.has_value()) {
+    bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontSize,
+                         text_attr->font_size);
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontSize);
+  }
+}
+
 void PropBundleStyleWriter::WriteLineHeight(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
   auto& text_attr = style->GetTextAttributes();
@@ -182,6 +193,23 @@ void PropBundleStyleWriter::WriteColor(PropBundle* bundle,
     }
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDColor);
+  }
+}
+
+void PropBundleStyleWriter::WriteXPlaceholderColor(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attr = style->GetPlaceholderTextAttributes();
+  if (text_attr.has_value()) {
+    if (text_attr->text_gradient.has_value() &&
+        text_attr->text_gradient->IsArray()) {
+      bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderColor,
+                           pub::ValueImplLepus(*text_attr->text_gradient));
+    } else {
+      bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderColor,
+                           text_attr->color);
+    }
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderColor);
   }
 }
 
@@ -603,6 +631,18 @@ void PropBundleStyleWriter::WriteFontFamily(
   }
 }
 
+void PropBundleStyleWriter::WriteXPlaceholderFontFamily(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetPlaceholderTextAttributes();
+
+  if (text_attributes) {
+    bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontFamily,
+                         text_attributes->font_family.c_str());
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontFamily);
+  }
+}
+
 void PropBundleStyleWriter::WriteCaretColor(
     PropBundle* bundle, starlight::ComputedCSSStyle* style) {
   bundle->SetPropsByID(CSSPropertyID::kPropertyIDCaretColor,
@@ -645,6 +685,19 @@ void PropBundleStyleWriter::WriteFontWeight(
   }
 }
 
+void PropBundleStyleWriter::WriteXPlaceholderFontWeight(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetPlaceholderTextAttributes();
+
+  if (text_attributes) {
+    bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontWeight,
+                         static_cast<int>(text_attributes->font_weight));
+
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontWeight);
+  }
+}
+
 void PropBundleStyleWriter::WriteWordBreak(PropBundle* bundle,
                                            starlight::ComputedCSSStyle* style) {
   auto& text_attributes = style->GetTextAttributes();
@@ -668,6 +721,19 @@ void PropBundleStyleWriter::WriteFontStyle(PropBundle* bundle,
 
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDFontStyle);
+  }
+}
+
+void PropBundleStyleWriter::WriteXPlaceholderFontStyle(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  auto& text_attributes = style->GetPlaceholderTextAttributes();
+
+  if (text_attributes) {
+    bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontStyle,
+                         static_cast<int>(text_attributes->font_style));
+
+  } else {
+    bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderFontStyle);
   }
 }
 

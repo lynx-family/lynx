@@ -1,6 +1,6 @@
 [
     {
-        "count": 219
+        "count": 224
     },
     {
         "id": 1,
@@ -877,5 +877,25 @@
     {
         "id": 219,
         "name": "font-optical-sizing"
+    },
+    {
+        "id": 220,
+        "name": "-x-placeholder-color"
+    },
+    {
+        "id": 221,
+        "name": "-x-placeholder-font-family"
+    },
+    {
+        "id": 222,
+        "name": "-x-placeholder-font-size"
+    },
+    {
+        "id": 223,
+        "name": "-x-placeholder-font-weight"
+    },
+    {
+        "id": 224,
+        "name": "-x-placeholder-font-style"
     }
 ]

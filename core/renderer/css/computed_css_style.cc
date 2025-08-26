@@ -1488,6 +1488,22 @@ bool ComputedCSSStyle::SetFontSize(const tasm::CSSValue& value,
   return base::FloatsNotEqual(text_attributes_->font_size, old_value);
 }
 
+bool ComputedCSSStyle::SetXPlaceholderFontSize(const tasm::CSSValue& value,
+                                               const bool reset) {
+  PrepareOptionalForPlaceholderTextAttributes();
+  const float default_font_size =
+      DEFAULT_FONT_SIZE_DP * length_context_.layouts_unit_per_px_;
+  auto old_value = placeholder_text_attributes_->font_size;
+  if (reset) {
+    placeholder_text_attributes_->font_size = default_font_size;
+  } else {
+    CalculateCSSValueToFloat(value, placeholder_text_attributes_->font_size,
+                             length_context_, parser_configs_);
+  }
+  return base::FloatsNotEqual(placeholder_text_attributes_->font_size,
+                              old_value);
+}
+
 bool ComputedCSSStyle::SetLineHeight(const tasm::CSSValue& value,
                                      const bool reset) {
   PrepareOptionalForTextAttributes();
@@ -2159,6 +2175,35 @@ bool ComputedCSSStyle::SetColor(const tasm::CSSValue& value, const bool reset) {
          old_value_gradient != text_attributes_->text_gradient;
 }
 
+bool ComputedCSSStyle::SetXPlaceholderColor(const tasm::CSSValue& value,
+                                            const bool reset) {
+  PrepareOptionalForPlaceholderTextAttributes();
+  auto old_value_color = placeholder_text_attributes_->color;
+  auto old_value_gradient = placeholder_text_attributes_->text_gradient;
+  if (reset) {
+    placeholder_text_attributes_->color = DefaultColor::DEFAULT_TEXT_COLOR;
+    placeholder_text_attributes_->text_gradient.reset();
+  } else {
+    CSS_HANDLER_FAIL_IF_NOT(
+        value.IsNumber() || value.IsArray(),
+        parser_configs_.enable_css_strict_mode, tasm::TYPE_MUST_BE,
+        tasm::CSSProperty::GetPropertyName(tasm::kPropertyIDXPlaceholderColor)
+            .c_str(),
+        tasm::ARRAY_OR_NUMBER_TYPE)
+
+    if (value.IsNumber()) {
+      placeholder_text_attributes_->color =
+          static_cast<uint32_t>(value.GetValue().Number());
+      placeholder_text_attributes_->text_gradient.reset();
+    } else {
+      placeholder_text_attributes_->color = DefaultColor::DEFAULT_TEXT_COLOR;
+      placeholder_text_attributes_->text_gradient = value.GetValue();
+    }
+  }
+  return old_value_color != placeholder_text_attributes_->color ||
+         old_value_gradient != placeholder_text_attributes_->text_gradient;
+}
+
 bool ComputedCSSStyle::SetBackground(const tasm::CSSValue& value,
                                      const bool reset) {
   return tasm::UnitHandler::CSSMethodUnreachable(
@@ -2377,6 +2422,14 @@ bool ComputedCSSStyle::SetFontFamily(const tasm::CSSValue& value,
       "font family must be a string!", parser_configs_);
 }
 
+bool ComputedCSSStyle::SetXPlaceholderFontFamily(const tasm::CSSValue& value,
+                                                 const bool reset) {
+  PrepareOptionalForPlaceholderTextAttributes();
+  return CSSStyleUtils::ComputeStringStyle(
+      value, reset, placeholder_text_attributes_->font_family, base::String(),
+      "font family must be a string!", parser_configs_);
+}
+
 bool ComputedCSSStyle::SetCaretColor(const lynx::tasm::CSSValue& value,
                                      bool reset) {
   return CSSStyleUtils::ComputeStringStyle(
@@ -2410,6 +2463,15 @@ bool ComputedCSSStyle::SetFontWeight(const tasm::CSSValue& value,
       parser_configs_);
 }
 
+bool ComputedCSSStyle::SetXPlaceholderFontWeight(const tasm::CSSValue& value,
+                                                 const bool reset) {
+  PrepareOptionalForPlaceholderTextAttributes();
+  return CSSStyleUtils::ComputeEnumStyle<starlight::FontWeightType>(
+      value, reset, placeholder_text_attributes_->font_weight,
+      DefaultComputedStyle::DEFAULT_FONT_WEIGHT, "font weight must be an enum!",
+      parser_configs_);
+}
+
 bool ComputedCSSStyle::SetWordBreak(const tasm::CSSValue& value,
                                     const bool reset) {
   PrepareOptionalForTextAttributes();
@@ -2424,6 +2486,15 @@ bool ComputedCSSStyle::SetFontStyle(const tasm::CSSValue& value,
   PrepareOptionalForTextAttributes();
   return CSSStyleUtils::ComputeEnumStyle<starlight::FontStyleType>(
       value, reset, text_attributes_->font_style,
+      DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style must be an enum!",
+      parser_configs_);
+}
+
+bool ComputedCSSStyle::SetXPlaceholderFontStyle(const tasm::CSSValue& value,
+                                                const bool reset) {
+  PrepareOptionalForPlaceholderTextAttributes();
+  return CSSStyleUtils::ComputeEnumStyle<starlight::FontStyleType>(
+      value, reset, placeholder_text_attributes_->font_style,
       DefaultComputedStyle::DEFAULT_FONT_STYLE, "font style must be an enum!",
       parser_configs_);
 }
@@ -3016,6 +3087,14 @@ lepus_value ComputedCSSStyle::FontSizeToLepus() {
   }
 }
 
+lepus_value ComputedCSSStyle::XPlaceholderFontSizeToLepus() {
+  if (placeholder_text_attributes_) {
+    return lepus_value(placeholder_text_attributes_->font_size);
+  } else {
+    return lepus_value();
+  }
+}
+
 lepus_value ComputedCSSStyle::LineHeightToLepus() {
   if (text_attributes_) {
     return lepus_value(text_attributes_->computed_line_height);
@@ -3093,6 +3172,19 @@ lepus_value ComputedCSSStyle::ColorToLepus() {
       return *text_attributes_->text_gradient;
     } else {
       return lepus_value(text_attributes_->color);
+    }
+  } else {
+    return lepus_value();
+  }
+}
+
+lepus_value ComputedCSSStyle::XPlaceholderColorToLepus() {
+  if (placeholder_text_attributes_) {
+    if (placeholder_text_attributes_->text_gradient.has_value() &&
+        placeholder_text_attributes_->text_gradient->IsArray()) {
+      return *placeholder_text_attributes_->text_gradient;
+    } else {
+      return lepus_value(placeholder_text_attributes_->color);
     }
   } else {
     return lepus_value();
@@ -3460,6 +3552,14 @@ lepus_value ComputedCSSStyle::FontFamilyToLepus() {
   }
 }
 
+lepus_value ComputedCSSStyle::XPlaceholderFontFamilyToLepus() {
+  if (placeholder_text_attributes_) {
+    return lepus_value(placeholder_text_attributes_->font_family);
+  } else {
+    return lepus_value();
+  }
+}
+
 lepus_value ComputedCSSStyle::CaretColorToLepus() {
   return lepus::Value(caret_color_);
 }
@@ -3511,9 +3611,27 @@ lepus_value ComputedCSSStyle::FontWeightToLepus() {
   }
 }
 
+lepus_value ComputedCSSStyle::XPlaceholderFontWeightToLepus() {
+  if (placeholder_text_attributes_) {
+    return lepus_value(
+        static_cast<int>(placeholder_text_attributes_->font_weight));
+  } else {
+    return lepus_value();
+  }
+}
+
 lepus_value ComputedCSSStyle::FontStyleToLepus() {
   if (text_attributes_) {
     return lepus_value(static_cast<int>(text_attributes_->font_style));
+  } else {
+    return lepus_value();
+  }
+}
+
+lepus_value ComputedCSSStyle::XPlaceholderFontStyleToLepus() {
+  if (placeholder_text_attributes_) {
+    return lepus_value(
+        static_cast<int>(placeholder_text_attributes_->font_style));
   } else {
     return lepus_value();
   }

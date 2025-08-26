@@ -66,7 +66,7 @@ void UIInput::OnPropUpdate(const std::string& name, const lepus::Value& value) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           input_node_, NODE_TEXT_INPUT_CARET_COLOR, color.GetValue().UInt32());
     }
-  } else if (name == "placeholder-color") {
+  } else if (name == "placeholder-color" || name == "-x-placeholder-color") {
     if (value.IsNil()) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           input_node_, NODE_TEXT_INPUT_PLACEHOLDER_COLOR, INPUT_DEFAULT_COLOR);

@@ -1,0 +1,68 @@
+{
+  "name": "-x-placeholder-font-weight",
+  "id": 223,
+  "type": "enum",
+  "default_value": "normal",
+  "version": "3.5",
+  "author": "xiamengfei",
+  "consumption_status": "skip",
+  "desc": "",
+  "values": [
+    {
+      "value": "normal",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "bold",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "100",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "200",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "300",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "400",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "500",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "600",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "700",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "800",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "900",
+      "version": "3.5",
+      "desc": ""
+    }
+  ],
+  "is_shorthand": false
+}
