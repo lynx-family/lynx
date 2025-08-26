@@ -192,7 +192,7 @@
 
   // Attach runtime
   if (_runtime) {
-    shell_->AttachRuntime(module_manager);
+    shell_->AttachRuntime();
     const auto& actor = _runtime.runtimeActor;
     auto js_proxy = lynx::shell::JSProxyDarwin::Create(actor, self, actor->GetInstanceId(),
                                                        [_runtimeOptions groupThreadName]);

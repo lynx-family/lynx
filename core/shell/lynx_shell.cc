@@ -229,7 +229,8 @@ void LynxShell::InitRuntimeWithRuntimeDisabled(
 void LynxShell::InitRuntime(
     const std::string& group_id,
     const std::shared_ptr<lynx::pub::LynxResourceLoader>& resource_loader,
-    const std::shared_ptr<lynx::piper::LynxModuleManager>& module_manager,
+    const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
+        native_module_manager,
     const std::function<
         void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
         on_runtime_actor_created,
@@ -242,7 +243,7 @@ void LynxShell::InitRuntime(
       [record_id](auto& engine) { engine->SetRecordID(record_id); });
   layout_actor_->ActLite(
       [record_id](auto& layout) { layout->SetRecordId(record_id); });
-  module_manager->SetRecordID(record_id);
+  native_module_manager->SetRecordID(record_id);
   tasm::recorder::LynxViewInitRecorder::GetInstance().RecordThreadStrategy(
       static_cast<int32_t>(current_strategy_), record_id, enable_runtime_);
 #endif
@@ -296,13 +297,13 @@ void LynxShell::InitRuntime(
 #endif
 
   start_js_runtime_task_ =
-      [module_manager, preload_js_paths = std::move(preload_js_paths),
+      [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer = runtime_observer_, vsync_monitor,
        weak_js_bundle_holder = GetWeakJsBundleHolder()](
           std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
-        runtime->Init(module_manager, runtime_observer,
+        runtime->Init(native_module_manager, runtime_observer,
                       std::move(preload_js_paths));
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       };
@@ -312,8 +313,7 @@ void LynxShell::InitRuntime(
   }
 }
 
-void LynxShell::AttachRuntime(
-    std::weak_ptr<piper::LynxModuleManager> module_manager) {
+void LynxShell::AttachRuntime() {
   OnRuntimeCreate();
 
   // TODO(huzhanbo.luc): support TestBench

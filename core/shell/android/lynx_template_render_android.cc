@@ -379,11 +379,7 @@ void AttachRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle,
   if (!AtomicLifecycle::TryLock(lifecycle_ptr)) {
     return;
   }
-  auto* runtime_wrapper =
-      reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid*>(
-          background_runtime);
-  reinterpret_cast<LynxShell*>(ptr)->AttachRuntime(
-      runtime_wrapper->GetModuleManager());
+  reinterpret_cast<LynxShell*>(ptr)->AttachRuntime();
   AtomicLifecycle::TryFree(lifecycle_ptr);
 }
 
@@ -393,10 +389,20 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
                  jstring bytecode_source_url, jint runtime_flag,
                  jlong ui_delegate_ptr) {
   auto* shell = reinterpret_cast<LynxShell*>(ptr);
-  auto module_manager = std::make_shared<lynx::piper::LynxModuleManager>();
-  module_manager->SetPlatformModuleFactory(
+  // Create native module manager
+  std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
+      std::make_shared<lynx::pub::LynxNativeModuleManager>();
+  // Set platform module factory
+  native_module_manager->SetPlatformModuleFactory(
       std::make_unique<lynx::piper::ModuleFactoryAndroid>(env,
                                                           java_module_factory));
+  // Set native module factory
+  if (ui_delegate_ptr != 0) {
+    auto ui_delegate =
+        reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
+    native_module_manager->SetModuleFactory(
+        ui_delegate->GetCustomModuleFactory());
+  }
   std::string group_id = JNIConvertHelper::ConvertToString(env, java_group_id);
   std::string source_url =
       JNIConvertHelper::ConvertToString(env, bytecode_source_url);
@@ -405,15 +411,13 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
 
   auto loader = std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(
       env, resource_loader);
-  auto on_runtime_actor_created = [&module_manager, &shell,
+  auto on_runtime_actor_created = [&native_module_manager, &shell,
                                    ui_delegate_ptr](auto& actor) {
-    module_manager->initBindingPtr(
-        module_manager,
+    native_module_manager->SetModuleDelegate(
         std::make_shared<lynx::shell::ModuleDelegateImpl>(actor));
     if (ui_delegate_ptr != 0) {
       auto ui_delegate =
           reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
-      module_manager->SetModuleFactory(ui_delegate->GetCustomModuleFactory());
       auto runtime_proxy = std::make_shared<lynx::shell::LynxRuntimeProxyImpl>(
           shell->GetRuntimeActor());
       auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
@@ -426,7 +430,7 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
           std::move(perf_controller_proxy), nullptr, nullptr, nullptr);
     }
   };
-  shell->InitRuntime(group_id, loader, module_manager,
+  shell->InitRuntime(group_id, loader, native_module_manager,
                      std::move(on_runtime_actor_created), std::move(paths),
                      runtime_flag, source_url);
 }
