@@ -48,7 +48,8 @@ void BaseTextShadowNode::OnPropsUpdate(char const* attr,
     text_props_->line_height = value.Number() * ScaleDensity();
   } else if (base::StringEqual(attr, kFontFamily)) {
     text_props_->font_family = value.StdString();
-    style_.SetFontFamiliesToStyle(text_props_->font_family);
+    SetRawFontFamilies(text_props_->font_family);
+    style_.ClearCustomFontFamilies();
   } else if (base::StringEqual(attr, kFontWeight)) {
     text_props_->font_weight = static_cast<FontWeight>(value.Number());
     style_.SetFontWeightToStyle(text_props_->font_weight);
@@ -113,6 +114,15 @@ void BaseTextShadowNode::OnPropsUpdate(char const* attr,
   MarkDirty();
 }
 
+void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
+  if (!raw_font_families_.empty() && style_.GetCustomFontFamilies().empty()) {
+    std::vector<std::string> new_custom_families =
+        context_->GetFontFaceManager()->GetCustomFamiliesFromRawVector(
+            raw_font_families_);
+    style_.SetCustomFontFamilyVector(std::move(new_custom_families));
+  }
+}
+
 void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
                                            float width, float height) {
   if (!text_props_.has_value() ||
@@ -127,6 +137,14 @@ void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
 
   style_.SetHalfLeading(true);
   style_.UpdateTextPaint(width, height, context_->ScaledDensity());
+
+  // we need to set font families before PushTextStyle!
+  if (!LynxEnv::GetInstance().EnableGlobalFontCollection()) {
+    style_.SetCustomFontFamilyVector(raw_font_families_);
+  } else {
+    SetCustomFontFamiliesToStyle();
+  }
+
   builder.PushTextStyle(style_);
   OnAppendToParagraph(builder, width, height);
   builder.PopTextStyle();
@@ -149,39 +167,64 @@ void BaseTextShadowNode::OnAppendToParagraph(ParagraphBuilderHarmony& builder,
 }
 
 void BaseTextShadowNode::LoadFontFamilyIfNeeded(
-    const std::vector<std::string>& font_families,
+    const std::vector<std::string>& raw_font_families,
     FontCollectionHarmony* font_collection) const {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, BASE_TEXT_SHADOW_NODE_LOAD_FONT_FAMILY);
   // try to load font from loader or pre-register
-  for (const auto& font_family : font_families) {
-    if (!context_) {
-      return;
-    }
-    auto font_face_manager = context_->GetFontFaceManager();
-    if (!font_face_manager) {
-      return;
-    }
-    if (font_collection->GetFontLoadingState(font_family) ==
-        FontCollectionHarmony::FontLoadingState::kLoaded) {
-      return;
-    }
+  if (!context_) {
+    return;
+  }
+  auto font_face_manager = context_->GetFontFaceManager();
+  if (!font_face_manager) {
+    return;
+  }
+  for (const auto& raw_font_family : raw_font_families) {
+    auto it = font_face_manager->GetFontFaces().find(raw_font_family);
+    if (it != font_face_manager->GetFontFaces().end()) {
+      // has custom font families
+      const std::vector<FontFace::FontSrcData>& font_src_data =
+          it->second.GetSrcData();
+      for (auto& font_src : font_src_data) {
+        const auto& font_family = font_src.unique_custom_font_family;
+        if (font_family.empty() ||
+            font_collection->GetFontLoadingState(font_family) ==
+                FontCollectionHarmony::FontLoadingState::kLoaded) {
+          continue;
+        }
 
-    text_props_->loading_font_sign++;
-    font_face_manager->LoadFontWithUrl(
-        Signature(), font_family,
-        [this, font_collection](const std::string& font_family,
-                                int32_t ret_code, uint8_t* data,
-                                size_t length) {
-          text_props_->loading_font_sign--;
-          if (length > 0) {
-            if ((font_collection->GetFontLoadingState(font_family) !=
-                 FontCollectionHarmony::FontLoadingState::kLoaded) &&
-                font_collection->RegisterFontBuffer(font_family.c_str(), data,
-                                                    length)) {
-              MarkDirty();
-            }
-          }
-        });
+        text_props_->loading_font_sign++;
+        auto weak_font_manager = std::weak_ptr(font_face_manager);
+        auto sign = Signature();
+        font_face_manager->LoadFontWithUrl(
+            sign, font_family, font_src.src, font_src.type,
+            [this, font_collection, weak_font_manager, sign](
+                const std::string& font_family, int32_t ret_code,
+                std::vector<uint8_t>& data, size_t length) {
+              auto shared_font_manager = weak_font_manager.lock();
+              text_props_->loading_font_sign--;
+              if (length > 0 && shared_font_manager) {
+                if ((font_collection->GetFontLoadingState(font_family) !=
+                     FontCollectionHarmony::FontLoadingState::kLoaded)) {
+                  font_collection->SetLoadingFontState(
+                      font_family,
+                      FontCollectionHarmony::FontLoadingState::kLoaded);
+
+                  shared_font_manager->AddLoadingShadowNodes(
+                      sign, const_cast<BaseTextShadowNode*>(this));
+
+                  font_collection->RegisterFontBuffer(
+                      font_family.c_str(), data, length,
+                      [weak_font_manager, sign]() {
+                        auto shared_font_manager = weak_font_manager.lock();
+                        if (shared_font_manager) {
+                          shared_font_manager->TryMarkDirtyOnLayoutThread(sign);
+                        }
+                      });
+                }
+              }
+            });
+      }
+    }
   }
 }
 

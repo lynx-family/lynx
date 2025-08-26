@@ -27,6 +27,12 @@ class FontFace {
  public:
   enum class Type { URL, LOCAL };
 
+  struct FontSrcData {
+    Type type;
+    std::string src;
+    std::string unique_custom_font_family;  // font-family+std::hash(src)
+  };
+
   explicit FontFace(std::string font_family)
       : font_family_(std::move(font_family)) {}
 
@@ -35,10 +41,12 @@ class FontFace {
   const std::vector<std::pair<Type, std::string>>& GetSrc() const {
     return src_;
   }
+  const std::vector<FontSrcData>& GetSrcData() const { return src_data_; }
 
  private:
-  std::string font_family_;
+  std::string font_family_;  // raw font_family
   std::vector<std::pair<Type, std::string>> src_;
+  std::vector<FontSrcData> src_data_;
 };
 
 class FontFaceCache {
@@ -65,12 +73,15 @@ class FontFaceCache {
 };
 
 using FontResourceCallback =
-    base::MoveOnlyClosure<void, const std::string&, int32_t, uint8_t*, size_t>;
+    base::MoveOnlyClosure<void, const std::string&, int32_t,
+                          std::vector<uint8_t>&, size_t>;
 class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
  public:
-  explicit FontFaceManager(ShadowNodeOwner* node_owner)
+  explicit FontFaceManager(ShadowNodeOwner* node_owner,
+                           bool enable_global_font_collection = false)
       : node_owner_(node_owner),
-        font_collection_(std::make_shared<FontCollectionHarmony>()) {}
+        font_collection_(
+            FontCollectionHarmony::MakeSharedFontCollectionHarmony()) {}
   void AddFontFace(std::string font_family, FontFace font_face) {
     font_faces_.emplace(std::move(font_family), std::move(font_face));
   }
@@ -79,7 +90,8 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
     return font_faces_;
   }
 
-  void LoadFontWithUrl(int sign, const std::string& family,
+  void LoadFontWithUrl(int sign, const std::string& custom_font_family,
+                       const std::string& src, const FontFace::Type type,
                        FontResourceCallback callback);
 
   FontFaceCache& GetFontFaceCache() { return font_face_cache_; }
@@ -87,13 +99,25 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   const std::shared_ptr<FontCollectionHarmony>& GetFontCollection() {
     return font_collection_;
   }
+  std::vector<std::string> GetCustomFamiliesFromRawString(
+      const std::string& family);
+  std::vector<std::string> GetCustomFamiliesFromRawVector(
+      const std::vector<std::string>& raw_family_vec);
+
+  void SetLayoutTaskRunner(const fml::RefPtr<fml::TaskRunner>& runner) {
+    layout_task_runner_ = runner;
+  }
 
   void TryFetchSystemFont(napi_env env, bool force_update = false);
 
   const std::string& GetDefaultFontFamily() { return default_font_family_; }
 
   //@LayoutThread
-  bool CheckNodeInvalid(int sign) const;
+  bool CheckNodeValid(int sign) const;
+  void TryMarkDirtyOnLayoutThread(int sign);
+  void AddLoadingShadowNodes(int sign, ShadowNode* node) {
+    loading_shadow_nodes_.emplace(sign, node);
+  }
 
  private:
   void RegisterSystemFont(std::string font_family, std::string font_path);
@@ -101,6 +125,8 @@ class FontFaceManager : public std::enable_shared_from_this<FontFaceManager> {
   FontFaceCache font_face_cache_;
   ShadowNodeOwner* node_owner_{nullptr};
   std::shared_ptr<FontCollectionHarmony> font_collection_{nullptr};
+  fml::RefPtr<fml::TaskRunner> layout_task_runner_{nullptr};
+
   std::string default_font_family_;
   std::unordered_map<std::string, std::vector<int>>
       font_family_pending_shadow_node_;

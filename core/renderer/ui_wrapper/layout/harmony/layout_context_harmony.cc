@@ -84,7 +84,7 @@ void LayoutContextHarmony::SetFontFaces(const CSSFontFaceRuleMap& fontfaces) {
         }
       }
     }
-    if (!font_face.GetSrc().empty()) {
+    if (!font_face.GetSrcData().empty()) {
       node_owner_->AddFontFace(font_family, std::move(font_face));
     }
   }

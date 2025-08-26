@@ -41,9 +41,10 @@ TextShadowNode::~TextShadowNode() = default;
 void TextShadowNode::OnContextReady() {
   BaseTextShadowNode::OnContextReady();
   const auto font_face_manager = context_->GetFontFaceManager();
-  font_collection_ = font_face_manager
-                         ? font_face_manager->GetFontCollection()
-                         : std::make_shared<FontCollectionHarmony>();
+  font_collection_ =
+      font_face_manager
+          ? font_face_manager->GetFontCollection()
+          : FontCollectionHarmony::MakeSharedFontCollectionHarmony();
 }
 
 LayoutResult TextShadowNode::Measure(float width, MeasureMode width_mode,
@@ -310,7 +311,7 @@ void TextShadowNode::Align() {
 
 void TextShadowNode::OnAppendToParagraph(ParagraphBuilderHarmony& builder,
                                          float width, float height) {
-  LoadFontFamilyIfNeeded(style_.GetFontFamilies(), font_collection_.get());
+  LoadFontFamilyIfNeeded(GetRawFontFamilies(), font_collection_.get());
   // override word break
   BaseTextShadowNode::OnAppendToParagraph(builder, width, height);
 }

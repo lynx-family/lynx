@@ -6,6 +6,7 @@
 
 #include <limits>
 #include <memory>
+#include <utility>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/text/paragraph_builder_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
@@ -55,7 +56,7 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
     font_collection = font_face_manager->GetFontCollection();
   }
   if (font_collection == nullptr) {
-    font_collection = std::make_shared<FontCollectionHarmony>();
+    font_collection = FontCollectionHarmony::MakeSharedFontCollectionHarmony();
   }
   std::unique_ptr<ParagraphBuilderHarmony> builder =
       std::make_unique<ParagraphBuilderHarmony>(&paragraph_style,
@@ -65,7 +66,9 @@ lepus::Value TextUtils::GetTextInfo(const std::string& content,
   if (info.Contains(kFontFamily)) {
     const std::string& font_family = info.GetValueForKey(kFontFamily)->str();
     if (!font_family.empty()) {
-      text_style.SetFontFamiliesToStyle(font_family);
+      auto family_vec =
+          font_face_manager->GetCustomFamiliesFromRawString(font_family);
+      text_style.SetCustomFontFamilyVector(std::move(family_vec));
     }
   }
 

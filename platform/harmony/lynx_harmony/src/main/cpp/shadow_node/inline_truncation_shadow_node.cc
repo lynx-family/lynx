@@ -15,7 +15,7 @@ bool InlineTruncationShadowNode::IsInlineTruncation() const { return true; }
 
 void InlineTruncationShadowNode::OnAppendToParagraph(
     ParagraphBuilderHarmony& builder, float width, float height) {
-  LoadFontFamilyIfNeeded(style_.GetFontFamilies(), builder.GetFontCollection());
+  LoadFontFamilyIfNeeded(GetRawFontFamilies(), builder.GetFontCollection());
   BaseTextShadowNode::OnAppendToParagraph(builder, width, height);
 }
 
