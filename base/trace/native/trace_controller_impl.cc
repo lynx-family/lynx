@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 
+#include <chrono>
 #include <cstring>
 #include <ctime>
 #include <fstream>
@@ -564,14 +565,18 @@ std::string TraceControllerImpl::GenerateTraceFilePath(
 
   thread_local std::thread::id thread_id = std::this_thread::get_id();
   static std::hash<std::thread::id> hasher;
-  auto pthd_id = static_cast<unsigned int>(hasher(thread_id));
+  auto tid = static_cast<unsigned int>(hasher(thread_id));
 
-  time_t now = time(NULL);
-  struct tm* tm = localtime(&now);
+  auto now_time = std::chrono::system_clock::now();
+  time_t now = std::chrono::system_clock::to_time_t(now_time);
+  struct tm tm;
+  localtime_r(&now, &tm);
+  auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now_time.time_since_epoch()) %
+            1000;
   std::ostringstream file_name;
-  file_name << "lynx-profile-trace-" << pthd_id << "-" << tm->tm_year + 1900
-            << "-" << tm->tm_mon + 1 << "-" << tm->tm_mday << "-" << tm->tm_hour
-            << tm->tm_min << tm->tm_sec;
+  file_name << "lynx-profile-trace-" << tid << "-"
+            << std::put_time(&tm, "%Y-%m-%d-%H-%M-%S") << "-" << ms.count();
 
   file_path.append(file_name.str());
   return file_path;
