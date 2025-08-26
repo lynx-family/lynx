@@ -200,8 +200,8 @@ void UIOwner::DestroySubTree(UIBase* root) {
   root->OnDestroy();
   root->RemoveFromParent();
   AddOrRemoveUIFromExclusiveSet(root->Sign(), false);
-  ui_holder_.erase(root->Sign());
   keyboard_event_observers_.erase(root->Sign());
+  ui_holder_.erase(root->Sign());
 }
 
 UIRoot* UIOwner::Root() {

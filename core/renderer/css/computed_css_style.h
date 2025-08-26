@@ -241,6 +241,10 @@ class ComputedCSSStyle {
     return text_attributes_;
   }
 
+  base::flex_optional<TextAttributes>& GetPlaceholderTextAttributes() {
+    return placeholder_text_attributes_;
+  }
+
   base::flex_optional<BackgroundData>& GetBackgroundData() {
     return background_data_;
   }
@@ -318,6 +322,13 @@ class ComputedCSSStyle {
                                                     default_font_size);
   }
 
+  void PrepareOptionalForPlaceholderTextAttributes() {
+    const float default_font_size =
+        DEFAULT_FONT_SIZE_DP * length_context_.layouts_unit_per_px_;
+    CSSStyleUtils::PrepareOptionalForTextAttributes(
+        placeholder_text_attributes_, default_font_size);
+  }
+
   XAnimationColorInterpolationType new_animator_interpolation() {
     return new_animator_interpolation_;
   }
@@ -374,6 +385,7 @@ class ComputedCSSStyle {
   base::flex_optional<base::InlineVector<TransitionData, 1>> transition_data_;
   base::flex_optional<base::InlineVector<ShadowData, 1>> box_shadow_;
   base::flex_optional<TextAttributes> text_attributes_;
+  base::flex_optional<TextAttributes> placeholder_text_attributes_;
   base::flex_optional<TransformOriginData> transform_origin_;
   base::flex_optional<FilterData> filter_;
   base::flex_optional<PerspectiveData> perspective_data_;
@@ -530,7 +542,12 @@ class ComputedCSSStyle {
   V(OffsetRotate)                        \
   V(FontVariationSettings)               \
   V(FontFeatureSettings)                 \
-  V(FontOpticalSizing)
+  V(FontOpticalSizing)                   \
+  V(XPlaceholderColor)                   \
+  V(XPlaceholderFontFamily)              \
+  V(XPlaceholderFontSize)                \
+  V(XPlaceholderFontWeight)              \
+  V(XPlaceholderFontStyle)
 
 #define GETTER_STYLE_STRING(name) lepus_value name##ToLepus();
   FOREACH_PLATFORM_PROPERTY(GETTER_STYLE_STRING)

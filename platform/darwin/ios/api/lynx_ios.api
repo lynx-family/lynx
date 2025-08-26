@@ -5319,6 +5319,26 @@ public enum LynxFontOpticalSizingType {
   LynxFontOpticalSizingAuto
 }
 
+public enum LynxXPlaceholderFontWeightType {
+  LynxXPlaceholderFontWeightNormal
+  LynxXPlaceholderFontWeightBold
+  LynxXPlaceholderFontWeight100
+  LynxXPlaceholderFontWeight200
+  LynxXPlaceholderFontWeight300
+  LynxXPlaceholderFontWeight400
+  LynxXPlaceholderFontWeight500
+  LynxXPlaceholderFontWeight600
+  LynxXPlaceholderFontWeight700
+  LynxXPlaceholderFontWeight800
+  LynxXPlaceholderFontWeight900
+}
+
+public enum LynxXPlaceholderFontStyleType {
+  LynxXPlaceholderFontStyleNormal
+  LynxXPlaceholderFontStyleItalic
+  LynxXPlaceholderFontStyleOblique
+}
+
 
   typedef NSString *(^ LynxBacktraceFunction) (NSString *message, NSUInteger skippedDepth)
   public LYNX_EXTERN void LynxSetBacktraceFunction(LynxBacktraceFunction backtraceFunction);

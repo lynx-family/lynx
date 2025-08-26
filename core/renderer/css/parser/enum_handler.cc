@@ -522,6 +522,54 @@ static bool ToFontOpticalSizingType(std::string_view str, int& result) {
   return true;
 }
 
+using starlight::XPlaceholderFontWeightType;
+static bool ToXPlaceholderFontWeightType(std::string_view str, int& result) {
+  XPlaceholderFontWeightType type = XPlaceholderFontWeightType::kNormal;
+  if (str == "normal") {
+    type = XPlaceholderFontWeightType::kNormal;
+  } else if (str == "bold") {
+    type = XPlaceholderFontWeightType::kBold;
+  } else if (str == "100") {
+    type = XPlaceholderFontWeightType::k100;
+  } else if (str == "200") {
+    type = XPlaceholderFontWeightType::k200;
+  } else if (str == "300") {
+    type = XPlaceholderFontWeightType::k300;
+  } else if (str == "400") {
+    type = XPlaceholderFontWeightType::k400;
+  } else if (str == "500") {
+    type = XPlaceholderFontWeightType::k500;
+  } else if (str == "600") {
+    type = XPlaceholderFontWeightType::k600;
+  } else if (str == "700") {
+    type = XPlaceholderFontWeightType::k700;
+  } else if (str == "800") {
+    type = XPlaceholderFontWeightType::k800;
+  } else if (str == "900") {
+    type = XPlaceholderFontWeightType::k900;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
+using starlight::XPlaceholderFontStyleType;
+static bool ToXPlaceholderFontStyleType(std::string_view str, int& result) {
+  XPlaceholderFontStyleType type = XPlaceholderFontStyleType::kNormal;
+  if (str == "normal") {
+    type = XPlaceholderFontStyleType::kNormal;
+  } else if (str == "italic") {
+    type = XPlaceholderFontStyleType::kItalic;
+  } else if (str == "oblique") {
+    type = XPlaceholderFontStyleType::kOblique;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
 // AUTO INSERT END, DON'T CHANGE IT!
 
 using starlight::FlexAlignType;
@@ -713,6 +761,12 @@ HANDLER_IMPL() {
     case kPropertyIDFontOpticalSizing:
       success = ToFontOpticalSizingType(str, result);
       break;
+    case kPropertyIDXPlaceholderFontWeight:
+      success = ToXPlaceholderFontWeightType(str, result);
+      break;
+    case kPropertyIDXPlaceholderFontStyle:
+      success = ToXPlaceholderFontStyleType(str, result);
+      break;
     // AUTO INSERT END, DON'T CHANGE IT!
     case kPropertyIDLinearDirection:
       success = ToLinearOrientationType(str, result);
@@ -771,6 +825,8 @@ HANDLER_REGISTER_IMPL() {
   array[kPropertyIDXAppRegion] = &Handle;
   array[kPropertyIDXAnimationColorInterpolation] = &Handle;
   array[kPropertyIDFontOpticalSizing] = &Handle;
+  array[kPropertyIDXPlaceholderFontWeight] = &Handle;
+  array[kPropertyIDXPlaceholderFontStyle] = &Handle;
   // AUTO INSERT END, DON'T CHANGE IT!
   array[kPropertyIDLinearDirection] = &Handle;
   array[kPropertyIDAlignItems] = &Handle;

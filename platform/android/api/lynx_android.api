@@ -596,6 +596,20 @@ public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XANIMATIONCOLORINTERPOLATION_LINEARRGB XANIMATIONCOLORINTERPOLATION_LINEARRGB;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.FONTOPTICALSIZING_NONE FONTOPTICALSIZING_NONE;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.FONTOPTICALSIZING_AUTO FONTOPTICALSIZING_AUTO;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_NORMAL XPLACEHOLDERFONTWEIGHT_NORMAL;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_BOLD XPLACEHOLDERFONTWEIGHT_BOLD;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_100 XPLACEHOLDERFONTWEIGHT_100;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_200 XPLACEHOLDERFONTWEIGHT_200;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_300 XPLACEHOLDERFONTWEIGHT_300;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_400 XPLACEHOLDERFONTWEIGHT_400;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_500 XPLACEHOLDERFONTWEIGHT_500;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_600 XPLACEHOLDERFONTWEIGHT_600;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_700 XPLACEHOLDERFONTWEIGHT_700;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_800 XPLACEHOLDERFONTWEIGHT_800;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTWEIGHT_900 XPLACEHOLDERFONTWEIGHT_900;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_NORMAL XPLACEHOLDERFONTSTYLE_NORMAL;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_ITALIC XPLACEHOLDERFONTSTYLE_ITALIC;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_OBLIQUE XPLACEHOLDERFONTSTYLE_OBLIQUE;
 }
 
 public class com::lynx::tasm::image::AutoSizeImage : com.lynx.tasm.behavior.shadow.ShadowNode, com.lynx.tasm.behavior.shadow.MeasureFunc {
