@@ -61,7 +61,10 @@ class LynxConfig : public EntryConfig {
 {% endif %}
 {% endfor %}
 
-  protected:
+  void DecodePageConfigFromJsonStringWhileUndefined(
+      const std::string& config_json_string);
+
+ protected:
    tasm::DynamicCSSConfigs css_configs_{};
    CSSParserConfigs css_parser_configs_;
 {% for config in configs %}
@@ -69,6 +72,15 @@ class LynxConfig : public EntryConfig {
   {{ config.value_type }} {{ config.member_name }}{{ '{' }}{{ config.default_value }}{{ '}' }};
 {% endif %}
 {% endfor %}
+  /**
+   * Not a config but a marker to indicate whether the page config needs to be
+   * posted to platform layer. In PreDecode, PageConfig will be set to platform
+   * layer before `LoadBundle`, so that it does not need to be posted to
+   * platform layer again, which can reduce the overhead of posting. This
+   * optimization is only valid for Android now.
+   * TODO(zhoupeng.z): Apply this optimization to all platforms.
+   */
+  bool need_post_to_platform_{true};
 
 };
 }  // namespace tasm

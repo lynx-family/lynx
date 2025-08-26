@@ -48,10 +48,6 @@ constexpr static uint64_t kEnableListBatchRenderAsyncResolveTreeMask = 1 << 20;
 // constexpr static int32_t kTernaryInt32UndefinedValue = 0x7fffffff;
 // constexpr static const char* kTernaryStringUndefinedValue = "undefined";
 
-static constexpr const char kEnableSignalAPI[] = "enableSignalAPI";
-static constexpr const char kEnableNativeScheduleCreateViewAsync[] =
-    "enableNativeScheduleCreateViewAsync";
-
 /**
  * PageConfig hold overall configs of a page.
  * When adding or modifying some properties, please modify
@@ -66,60 +62,6 @@ class PageConfig final : public LynxConfig {
         dsl_(PackageInstanceDSL::TT){};
 
   ~PageConfig() override = default;
-
-  void DecodePageConfigFromJsonStringWhileUndefined(
-      const std::string& config_json_string) {
-    rapidjson::Document doc;
-
-    if (!doc.Parse(config_json_string.c_str()).HasParseError()) {
-      for (auto it = doc.MemberBegin(); it != doc.MemberEnd(); ++it) {
-        const char* const name = it->name.GetString();
-
-        // if is a boolean
-        auto bool_pair = GetFuncBoolMap().find(name);
-        if (bool_pair != GetFuncBoolMap().end()) {
-          if (it->value.IsBool()) {
-            const auto [setter, getter] = bool_pair->second;
-            if ((this->*(getter))() == TernaryBool::UNDEFINE_VALUE) {
-              (this->*(setter))(it->value.GetBool() ? TernaryBool::TRUE_VALUE
-                                                    : TernaryBool::FALSE_VALUE);
-              need_post_to_platform_ = true;
-            }
-          }
-        }
-
-        // if is a uint64
-        auto uint64_pair = GetFuncUint64Map().find(name);
-        if (uint64_pair != GetFuncUint64Map().end()) {
-          if (it->value.IsUint64()) {
-            const auto [setter, getter] = uint64_pair->second;
-            if ((this->*(getter))() == 0) {
-              (this->*(setter))(it->value.GetUint64());
-              need_post_to_platform_ = true;
-            }
-          }
-        }
-
-        // TODO(nihao.royal) unify parameters of different types.
-      }
-    }
-  }
-
-  void ForEachBoolConfig(
-      const base::MoveOnlyClosure<TernaryBool, const std::string&> func) {
-    for (const auto& [name, pair] : GetFuncBoolMap()) {
-      const auto [setter, getter] = pair;
-      (this->*(setter))(func(name));
-    }
-  }
-
-  void ForEachUint64Config(
-      const base::MoveOnlyClosure<uint64_t, const std::string&> func) {
-    for (const auto& [name, pair] : GetFuncUint64Map()) {
-      const auto [setter, getter] = pair;
-      (this->*(setter))(func(name));
-    }
-  }
 
   std::unordered_map<std::string, std::string> GetPageConfigMap() {
     std::unordered_map<std::string, std::string> map;
@@ -184,12 +126,6 @@ class PageConfig final : public LynxConfig {
     return bundle_module_mode_;
   }
 
-  inline void SetTrailNewImage(TernaryBool enable) {
-    trail_New_Image_ = enable;
-  }
-
-  inline TernaryBool GetTrailNewImage() const { return trail_New_Image_; }
-
   bool GetCSSAlignWithLegacyW3C() const { return css_align_with_legacy_w3c_; }
   void SetCSSAlignWithLegacyW3C(bool val) {
     css_align_with_legacy_w3c_ = val;
@@ -202,9 +138,6 @@ class PageConfig final : public LynxConfig {
   // TODO(liting.src): just a workaround to leave below APIs for ssr
   bool GetEnableLocalAsset() const { return false; }
   void SetEnableLocalAsset(bool val) {}
-
-  void SetAsyncRedirectUrl(TernaryBool async) { async_redirect_url = async; }
-  TernaryBool GetAsyncRedirectUrl() const { return async_redirect_url; }
 
   inline const CSSParserConfigs& GetCSSParserConfigs() {
     return css_parser_configs_;
@@ -315,26 +248,12 @@ class PageConfig final : public LynxConfig {
     enable_parallel_element_ = enable;
   }
 
-  inline uint64_t GetPipelineSchedulerConfig() const {
-    return pipeline_scheduler_config_;
-  }
-
-  inline void SetPipelineSchedulerConfig(uint64_t config) {
-    pipeline_scheduler_config_ = config;
-  }
-
   bool GetEnableStandardCSSSelector() const {
     return enable_standard_css_selector_;
   }
 
   void SetEnableStandardCSSSelector(bool enable) {
     enable_standard_css_selector_ = enable;
-  }
-
-  inline TernaryBool GetEnableNativeList() const { return enable_native_list_; }
-
-  inline void SetEnableNativeList(TernaryBool enable) {
-    enable_native_list_ = enable;
   }
 
   bool GetEnableComponentAsyncDecode() const {
@@ -376,14 +295,6 @@ class PageConfig final : public LynxConfig {
     return enable_scroll_fluency_monitor_;
   }
 
-  void SetEnableUIOperationOptimize(TernaryBool enable) {
-    enable_ui_operation_optimize_ = enable;
-  }
-
-  TernaryBool GetEnableUIOperationOptimize() const {
-    return enable_ui_operation_optimize_;
-  }
-
   void SetEnableElementAPITypeCheckThrowWarning(bool enable) {
     enable_element_api_type_check_throw_warning_ = enable;
   }
@@ -420,22 +331,6 @@ class PageConfig final : public LynxConfig {
     }
   }
 
-  TernaryBool GetEnableMicrotaskPromisePolyfill() const {
-    return enable_microtask_promise_polyfill_;
-  }
-
-  void SetEnableMicrotaskPromisePolyfill(TernaryBool enable) {
-    enable_microtask_promise_polyfill_ = enable;
-  }
-
-  TernaryBool GetEnableNativeScheduleCreateViewAsync() const {
-    return enable_native_schedule_create_view_async_;
-  }
-
-  void SetEnableNativeScheduleCreateViewAsync(TernaryBool enable) {
-    enable_native_schedule_create_view_async_ = enable;
-  }
-
   bool GetEnableNativeScheduleCreateViewAsyncAsBool() const {
     if (enable_native_schedule_create_view_async_ ==
         TernaryBool::UNDEFINE_VALUE) {
@@ -446,8 +341,6 @@ class PageConfig final : public LynxConfig {
     }
   }
 
-  TernaryBool GetEnableSignalAPI() const { return enable_signal_api_; }
-
   bool GetEnableSignalAPIBoolValue() {
     if (enable_signal_api_ == TernaryBool::UNDEFINE_VALUE) {
       enable_signal_api_ = LynxEnv::GetInstance().EnableSignalAPI()
@@ -456,8 +349,6 @@ class PageConfig final : public LynxConfig {
     }
     return enable_signal_api_ == TernaryBool::TRUE_VALUE;
   }
-
-  void SetEnableSignalAPI(TernaryBool enable) { enable_signal_api_ = enable; }
 
   // TODO(songshourui.null): move this function to testing file
   void PrintPageConfig(std::ostream& output) {
@@ -498,23 +389,7 @@ class PageConfig final : public LynxConfig {
   std::string lepus_version_;
   std::string absetting_disable_css_lazy_decode_;
   std::string original_config_{};
-  // Composite config representing configs including enableParallelElement,
-  // batch-rendering
-  uint64_t pipeline_scheduler_config_{0};
   PackageInstanceBundleModuleMode bundle_module_mode_;
-  // TernaryBool
-  TernaryBool trail_New_Image_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool async_redirect_url{TernaryBool::UNDEFINE_VALUE};
-  // introduced in 2.16, enable the optimization aboult UIOperation batching and
-  // CreateViewAsync at Android
-  TernaryBool enable_ui_operation_optimize_{TernaryBool::UNDEFINE_VALUE};
-  // Indicates whether use c++ list.
-  TernaryBool enable_native_list_{TernaryBool::UNDEFINE_VALUE};
-  // enable microtask promise polyfill
-  TernaryBool enable_microtask_promise_polyfill_{TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_native_schedule_create_view_async_{
-      TernaryBool::UNDEFINE_VALUE};
-  TernaryBool enable_signal_api_{TernaryBool::UNDEFINE_VALUE};
   // default include font padding
   // 1 means true
   // -1 means false
@@ -552,32 +427,6 @@ class PageConfig final : public LynxConfig {
   // enable avoid throwing RenderFatal for element api when argument type
   // checking failed
   bool enable_element_api_type_check_throw_warning_{false};
-
-  /**
-   * Not a config but a marker to indicate whether the page config needs to be
-   * posted to platform layer. In PreDecode, PageConfig will be set to platform
-   * layer before `LoadBundle`, so that it does not need to be posted to
-   * platform layer again, which can reduce the overhead of posting. This
-   * optimization is only valid for Android now.
-   * TODO(zhoupeng.z): Apply this optimization to all platforms.
-   */
-  bool need_post_to_platform_{true};
-
-  template <typename T>
-  using PageConfigSetter = void (PageConfig::*)(T);
-
-  template <typename T>
-  using PageConfigGetter = T (PageConfig::*)() const;
-
-  template <typename T>
-  using PageConfigPair = std::pair<PageConfigSetter<T>, PageConfigGetter<T>>;
-
-  template <typename T>
-  using PageConfigMap = std::unordered_map<std::string, PageConfigPair<T>>;
-
-  static const PageConfigMap<TernaryBool>& GetFuncBoolMap();
-
-  static const PageConfigMap<uint64_t>& GetFuncUint64Map();
 };
 }  // namespace tasm
 }  // namespace lynx

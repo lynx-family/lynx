@@ -28,11 +28,11 @@ class LynxConfigDecoder final {
                                const rapidjson::Document& doc, const std::string& target_sdk_version) {
     {% for config in configs %}
     {% if "ALL" in config.codeGen or "DECODE" in config.codeGen %}
-      if (doc.HasMember({{ config.const_name }}) && doc[{{ config.const_name }}].Is{{ config.doc_type }}()) {
+      if (doc.HasMember(config::{{ config.const_name }}) && doc[config::{{ config.const_name }}].Is{{ config.doc_type }}()) {
         {% if config.value_type == "TernaryBool" %}
-        page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+        page_config->{{ config.setter_func_name}}(doc[config::{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
         {% else %}
-        page_config->{{ config.setter_func_name}}(doc[{{ config.const_name }}].Get{{ config.doc_type }}());
+        page_config->{{ config.setter_func_name}}(doc[config::{{ config.const_name }}].Get{{ config.doc_type }}());
         {% endif %}
       {% if config.version_overrides %}
       {% for version_override in config.version_overrides %}

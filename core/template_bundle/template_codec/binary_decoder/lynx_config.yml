@@ -76,6 +76,12 @@ lepusGCThreshold:
   description: GC threshold of lepusNG. Let default value be 256, and the unit is KB.
   defaultValue: 256
   valueType: int64_t
+pipelineSchedulerConfig:
+  description: Scheduler config for pipeline, including enableParallelElement/list-framework batch render and other scheduler config.
+  defaultValue: 0
+  valueType: uint64_t
+  readNative: true
+  author: 'usczz'
 redBoxImageSizeWarningThreshold:
   description: null
   defaultValue: 1000000
@@ -117,17 +123,20 @@ enableUseMapBuffer:
   description:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
+  readNative: true
   author: 'nhsprite'
 enableFiberElementForRadonDiff:
   description:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: 'DragonDragonDDD'
+  readNative: true
 enableOptPushStyleToBundle:
   description:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: 'ShouruiSong'
+  readNative: true
 enableTextLayoutCache:
   description:
   defaultValue: TernaryBool::UNDEFINE_VALUE
@@ -137,6 +146,7 @@ enableUnifiedPipeline:
   defaultValue: TernaryBool::UNDEFINE_VALUE
   valueType: TernaryBool
   author: 'nhsprite'
+  readNative: true
 enableUseContextPool:
   description:
   defaultValue: TernaryBool::UNDEFINE_VALUE
@@ -169,6 +179,50 @@ enableComponentAsyncDecode:
     - MEMBER
     - SETTER
     - DECODE
+enableSignalAPI:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
+  author: 'ShouruiSong'
+enableNativeScheduleCreateViewAsync:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
+  author: 'ShouruiSong'
+enableNativeList:
+  description: Indicates whether use c++ list.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
+  author: 'DwwWxx'
+trailNewImage:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
+  author: 'liubb0516'
+asyncRedirect:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  nameAs:
+    member: async_redirect_url
+    setter: SetAsyncRedirectUrl
+    getter: GetAsyncRedirectUrl
+  readNative: true
+  author: 'liubb0516'
+enableUIOperationOptimize:
+  description: Enable the optimization aboult UIOperation batching and CreateViewAsync at Android.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
+enableMicrotaskPromisePolyfill:
+  description:
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readNative: true
 mapContainerType:
   description:
   defaultValue: 0

@@ -22,6 +22,7 @@ binary_decoder_shared_sources = [
   "lynx_binary_lazy_reader_delegate.h",
   "lynx_binary_reader.cc",
   "lynx_binary_reader.h",
+  "lynx_config_auto_gen.cc",
   "lynx_config_auto_gen.h",
   "lynx_config_constant_auto_gen.h",
   "lynx_config_decoder.h",

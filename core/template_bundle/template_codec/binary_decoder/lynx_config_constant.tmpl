@@ -7,9 +7,11 @@
 
 namespace lynx {
 namespace tasm {
+namespace config {
 {% for config in configs %}
   static constexpr const char {{ config.const_name }}[] = "{{ config.name }}";
 {% endfor %}
+}  // namespace config
 }  // namespace tasm
 }  // namespace lynx
 #endif  // CORE_TEMPLATE_BUNDLE_TEMPLATE_CODEC_BINARY_DECODER_LYNX_CONFIG_CONSTANT_H_

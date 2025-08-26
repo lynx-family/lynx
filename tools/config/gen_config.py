@@ -29,6 +29,7 @@ class Config:
         name_as: dict[str],
         bind_member_to: str,
         read_settings: bool,
+        read_native: bool,
     ):
         self.name = name
         self.upper_camel_case_name = f"{name[0].upper()}{name[1:]}"
@@ -103,6 +104,7 @@ class Config:
         self.author = author
         self.codeGen = code_gen if code_gen is not None else ["ALL"]
         self.read_settings = read_settings
+        self.read_native = read_native
 
 
 _binary_decoder_path = os.path.abspath(
@@ -138,6 +140,7 @@ def parse_config() -> list[Config]:
                 value.get("nameAs"),
                 value.get("bindMemberTo"),
                 value.get("readSettings"),
+                value.get("readNative"),
             )
         )
     return configs
@@ -186,16 +189,27 @@ def gen_page_config_decode():
 
 def gen_lynx_config():
     configs = parse_config()
-    lynx_config_tmpl_path = os.path.join(
+    lynx_config_header_tmpl_path = os.path.join(
         _binary_decoder_path,
-        "lynx_config.tmpl",
+        "lynx_config_header.tmpl",
     )
 
     lynx_config_header_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_auto_gen.h",
     )
-    render_code_content(lynx_config_tmpl_path, lynx_config_header_path, configs)
+    render_code_content(lynx_config_header_tmpl_path, lynx_config_header_path, configs)
+
+    lynx_config_cc_tmpl_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_cc.tmpl",
+    )
+
+    lynx_config_header_path = os.path.join(
+        _binary_decoder_path,
+        "lynx_config_auto_gen.cc",
+    )
+    render_code_content(lynx_config_cc_tmpl_path, lynx_config_header_path, configs)
 
     config_const_tmpl_path = os.path.join(
         _binary_decoder_path,

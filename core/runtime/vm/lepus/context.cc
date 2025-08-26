@@ -26,6 +26,7 @@
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/vm/lepus/tasks/lepus_raf_manager.h"
 #include "core/runtime/vm/lepus/vm_context.h"
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 #ifdef OS_IOS
 #include "gc/trace-gc.h"
 #else
@@ -448,7 +449,7 @@ void Context::RegisterLynx(bool enable_signal_api) {
   if (tasm::LynxEnv::GetInstance().EnablePostDataBeforeUpdateTemplate()) {
     SetPropertyToLynx(kPostDataBeforeUpdate, lepus::Value(true));
   }
-  SetPropertyToLynx(BASE_STATIC_STRING(tasm::kEnableSignalAPI),
+  SetPropertyToLynx(BASE_STATIC_STRING(tasm::config::kEnableSignalAPI),
                     lepus::Value(enable_signal_api));
   SetPropertyToLynx(kEnableOnLayoutReadyHook, lepus::Value(true));
 }
