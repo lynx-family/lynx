@@ -70,12 +70,33 @@ class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
                         const std::string& text);
   const std::string& text() const { return text_; }
 
+  void SetRawFontFamilies(const std::string& in_family) {
+    raw_font_families_.clear();
+    base::SplitString(in_family, ',', raw_font_families_);
+
+    // trim '\'' and whitespace
+    for (auto& item : raw_font_families_) {
+      while (item.front() == '\'' || item.front() == '\"' ||
+             item.front() == ' ') {
+        item.erase(0, 1);
+      }
+      while (item.back() == '\'' || item.back() == '\"' || item.back() == ' ') {
+        item.pop_back();
+      }
+    }
+  }
+
+  std::vector<std::string>& GetRawFontFamilies() { return raw_font_families_; }
+
+  void SetCustomFontFamiliesToStyle();
+
   std::optional<TextProps> text_props_;
-  TextStyleHarmony style_;
+  mutable TextStyleHarmony style_;
   starlight::WordBreakType word_break_{starlight::WordBreakType::kNormal};
 
  private:
   std::string text_;
+  std::vector<std::string> raw_font_families_;
   void SetTextShadow(const lepus::Value& shadow);
   void SetColor(const lepus::Value& color);
 };

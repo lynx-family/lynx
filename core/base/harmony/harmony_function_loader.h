@@ -6,6 +6,7 @@
 #define CORE_BASE_HARMONY_HARMONY_FUNCTION_LOADER_H_
 
 #include <arkui/native_node.h>
+#include <native_drawing/drawing_font_collection.h>
 
 namespace lynx {
 namespace base {
@@ -42,6 +43,21 @@ struct HarmonyCompatFunctionsHandler {
 };
 
 HarmonyCompatFunctionsHandler* GetHarmonyCompatFunctionsHandler();
+
+// native_drawing APIs from libnative_drawing.so
+#define NATIVE_DRAWING_FUNCTIONS                        \
+  X(OH_Drawing_FontCollection*,                         \
+    oh_drawing_get_font_collection_global_instance, (), \
+    "OH_Drawing_GetFontCollectionGlobalInstance")
+
+struct NativeDrawingFunctionsHandler {
+#define X(ret, name, args, symbol) ret(*name) args = nullptr;
+  NATIVE_DRAWING_FUNCTIONS
+#undef X
+};
+
+NativeDrawingFunctionsHandler* GetNativeDrawingFunctionsHandler();
+
 }  // namespace harmony
 }  // namespace base
 }  // namespace lynx

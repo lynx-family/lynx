@@ -20,7 +20,7 @@ InputShadowNode::InputShadowNode(int sign, const std::string& tag)
   text_style_->SetFontSize(INPUT_DEFAULT_FONT_SIZE);
   PrepareTextProps();
   text_props_->line_height = INPUT_DEFAULT_FONT_SIZE;
-  font_collection_ = std::make_shared<FontCollectionHarmony>();
+  font_collection_ = FontCollectionHarmony::MakeSharedFontCollectionHarmony();
   paragraph_builder_ = std::make_unique<ParagraphBuilderHarmony>(
       paragraph_style_.get(), font_collection_.get());
   paragraph_builder_->AddText(" ");

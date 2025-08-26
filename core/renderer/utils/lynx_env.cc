@@ -505,5 +505,11 @@ bool LynxEnv::FixRadonTransitionPropertyRemoveBug() {
   return GetBoolEnv(Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG, true);
 }
 
+bool LynxEnv::EnableGlobalFontCollection() {
+  static bool enable_global_font_collection =
+      GetBoolEnv(Key::ENABLE_GLOBAL_FONT_COLLECTION, true);
+  return enable_global_font_collection;
+}
+
 }  // namespace tasm
 }  // namespace lynx

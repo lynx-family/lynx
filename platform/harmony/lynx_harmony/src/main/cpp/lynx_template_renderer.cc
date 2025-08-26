@@ -622,11 +622,12 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
   });
 
   // try to load system font
-  tasm::harmony::SystemFontManager::GetInstance().GetSystemFont(
-      env, [](std::string font_family, std::string font_path) {
-        LOGI("GetSystemFont when InitGlobalEnv!")
-      });
-
+  if (!tasm::LynxEnv::GetInstance().EnableGlobalFontCollection()) {
+    tasm::harmony::SystemFontManager::GetInstance().GetSystemFont(
+        env, [](std::string font_family, std::string font_path) {
+          LOGI("GetSystemFont when InitGlobalEnv!")
+        });
+  }
   return nullptr;
 }
 

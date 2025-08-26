@@ -529,7 +529,8 @@ int32_t UIBaseInput::MeasureTextHeight(float font_size, float max_width,
     font_collection = font_face_manager->GetFontCollection();
   }
   if (font_collection == nullptr) {
-    font_collection = std::make_shared<FontCollectionHarmony>();
+    font_collection = FontCollectionHarmony::MakeSharedFontCollectionHarmony();
+    ;
   }
 
   paragraph_style.SetLineSpacingScale((font_size + line_spacing) / font_size);
@@ -542,7 +543,9 @@ int32_t UIBaseInput::MeasureTextHeight(float font_size, float max_width,
   text_style.SetFontSize(font_size);
 
   if (!font_family.empty()) {
-    text_style.SetFontFamiliesToStyle(font_family);
+    auto family_vec =
+        font_face_manager->GetCustomFamiliesFromRawString(font_family);
+    text_style.SetCustomFontFamilyVector(std::move(family_vec));
   }
 
   text_style.SetFontWeight(static_cast<OH_Drawing_FontWeight>(font_weight));

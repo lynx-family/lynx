@@ -118,6 +118,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
+    ENABLE_GLOBAL_FONT_COLLECTION,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -249,6 +250,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
             {Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
              "fix_radon_transition_property_remove_bug"},
+            {Key::ENABLE_GLOBAL_FONT_COLLECTION,
+             "enable_global_font_collection"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -384,6 +387,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableNewAnimatorOnPatchFinishOpt();
   bool EnableEventHandleRefactor();
   bool FixRadonTransitionPropertyRemoveBug();
+  bool EnableGlobalFontCollection();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

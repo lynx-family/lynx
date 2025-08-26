@@ -205,9 +205,11 @@ class TextStyleHarmony {
     OH_Drawing_SetTextStyleFontHeight(text_style_, height);
   }
 
-  const std::vector<std::string>& GetFontFamilies() const {
-    return font_families_;
+  const std::vector<std::string>& GetCustomFontFamilies() const {
+    return custom_font_families_;
   }
+
+  void ClearCustomFontFamilies() { custom_font_families_.clear(); }
 
   void SetFontStyle(OH_Drawing_FontStyle style) const {
     OH_Drawing_SetTextStyleFontStyle(text_style_, style);
@@ -245,22 +247,8 @@ class TextStyleHarmony {
     OH_Drawing_SetTextStyleHalfLeading(text_style_, b);
   }
 
-  void SetFontFamiliesToStyle(const std::string& in_family) {
-    font_families_.clear();
-    base::SplitString(in_family, ',', font_families_);
-
-    // trim '\'' and whitespace
-    for (auto& item : font_families_) {
-      while (item.front() == '\'' || item.front() == '\"' ||
-             item.front() == ' ') {
-        item.erase(0, 1);
-      }
-      while (item.back() == '\'' || item.back() == '\"' || item.back() == ' ') {
-        item.pop_back();
-      }
-    }
-
-    size_t size = font_families_.size();
+  void RegisterCustomFontFamilyToStyle() {
+    size_t size = custom_font_families_.size();
 
     if (size <= 0) {
       OH_Drawing_SetTextStyleFontFamilies(text_style_, 0, nullptr);
@@ -271,11 +259,25 @@ class TextStyleHarmony {
         std::make_unique<const char*[]>(size);
 
     for (size_t i = 0; i < size; ++i) {
-      font_families[i] = font_families_[i].c_str();
+      font_families[i] = custom_font_families_[i].c_str();
     }
 
+    LOGE("linxs OH_Drawing_SetTextStyleFontFamilies font_family: "
+         << font_families.get()[0] << ",text_style_:" << text_style_);
     OH_Drawing_SetTextStyleFontFamilies(text_style_, static_cast<int>(size),
                                         font_families.get());
+  }
+
+  void SetCustomFontFamilyVector(std::vector<std::string> families) {
+    custom_font_families_ = std::move(families);
+    RegisterCustomFontFamilyToStyle();
+  }
+
+  void SetRawFontFamiliesToStyle(const std::string& in_family) {
+    custom_font_families_.clear();
+    base::SplitString(in_family, ',', custom_font_families_);
+
+    RegisterCustomFontFamilyToStyle();
   }
 
   void SetFontWeightToStyle(FontWeight font_weight) {
@@ -421,7 +423,7 @@ class TextStyleHarmony {
   }
 
   OH_Drawing_TextStyle* text_style_;
-  std::vector<std::string> font_families_;
+  std::vector<std::string> custom_font_families_;
   OH_Drawing_Pen* foreground_pen_{nullptr};
   OH_Drawing_Brush* foreground_brush_{nullptr};
   std::unique_ptr<ShadowLayerHarmony> shadow_layer_{nullptr};
