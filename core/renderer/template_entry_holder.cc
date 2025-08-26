@@ -41,19 +41,19 @@ std::shared_ptr<TemplateEntry> TemplateEntryHolder::FindTemplateEntry(
   return entry_iter == template_entries_.end() ? nullptr : entry_iter->second;
 }
 
-LynxTemplateBundle* TemplateEntryHolder::FindTemplateBundle(
+std::optional<LynxTemplateBundle> TemplateEntryHolder::FindTemplateBundle(
     const std::string& entry_name) {
   auto bundle_iter = template_entries_.find(entry_name);
   if (bundle_iter != template_entries_.end()) {
-    return &bundle_iter->second->template_bundle();
+    return bundle_iter->second->template_bundle();
   }
 
   auto preload_bundle_iter = preload_template_bundles_.find(entry_name);
   if (preload_bundle_iter != preload_template_bundles_.end()) {
-    return &preload_bundle_iter->second;
+    return preload_bundle_iter->second;
   }
 
-  return nullptr;
+  return std::nullopt;
 }
 
 void TemplateEntryHolder::ForEachEntry(

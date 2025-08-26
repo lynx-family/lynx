@@ -648,7 +648,7 @@ RENDERER_FUNCTION_CC(GetCustomSectionSync) {
 
   auto* tasm = GET_TASM_POINTER();
   if (tasm) {
-    RETURN(tasm->GetCustomSection(arg0->StdString(), bundle_name));
+    RETURN(tasm->GetCustomSectionByKey(arg0->StdString(), bundle_name));
   }
 
   RETURN_UNDEFINED();
@@ -674,7 +674,7 @@ RENDERER_FUNCTION_CC(LoadScript) {
   auto* tasm = GET_TASM_POINTER();
   if (tasm) {
     auto url = arg0->StdString();
-    auto source_code = tasm->GetCustomSection(url, bundle_name);
+    auto source_code = tasm->GetCustomSectionByKey(url, bundle_name);
     lepus::Value res;
     if (source_code.IsByteArray()) {
       auto byte_array = source_code.ByteArray();

@@ -1283,6 +1283,8 @@ void TemplateAssembler::DidLoadComponent(
 
 void TemplateAssembler::DidFetchBundle(
     LazyBundleLoader::CallBackInfo callback_info) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_DID_FETCH_BUNDLE,
+              "bundle_url", callback_info.component_url);
   auto request = std::move(callback_info.request);
   if (callback_info.Success() && callback_info.bundle) {
     if (callback_info.bundle->IsCard()) {
@@ -2543,8 +2545,8 @@ void TemplateAssembler::FetchBundle(
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_FETCH_BUNDLE,
               "bundle_url", bundle_url);
   // TODO(nihao.royal): replacing with bundle manager.
-  auto entry = FindTemplateEntry(bundle_url);
-  if (entry) {
+  auto bundle = FindTemplateBundle(bundle_url);
+  if (bundle) {
     // bundle already loaded;
     response_promise->SetValue(
         {.url = bundle_url, .code = LYNX_BUNDLE_RESOURCE_INFO_SUCCESS});
@@ -3387,9 +3389,9 @@ ContextProxyInLepus* TemplateAssembler::GetContextProxy(
   return context_proxy_vector_[index].get();
 }
 
-lepus::Value TemplateAssembler::GetCustomSection(
+lepus::Value TemplateAssembler::GetCustomSectionByKey(
     const std::string& key, const std::string& bundle_name) {
-  auto* bundle = FindTemplateBundle(bundle_name);
+  auto bundle = FindTemplateBundle(bundle_name);
   return bundle ? bundle->GetCustomSection(key) : lepus::Value();
 }
 

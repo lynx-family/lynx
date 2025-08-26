@@ -74,6 +74,8 @@ class LynxTemplateBundle final {
   const piper::JsBundle &GetJsBundle() const { return js_bundle_; }
   piper::JsBundle &GetJsBundle() { return js_bundle_; }
 
+  lepus::Value GetCustomSections() const { return custom_sections_; }
+
   inline std::optional<std::shared_ptr<lepus::ContextBundle>> GetLepusChunk(
       const std::string &chunk_key) const {
     return lepus_chunk_manager_->GetLepusChunk(chunk_key);

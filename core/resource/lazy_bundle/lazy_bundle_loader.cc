@@ -262,12 +262,11 @@ void LazyBundleLoader::DidFetchBundle(
         lynx::piper::JSRuntimeType::quickjs);
   }
 #endif
+  DecodeBundle(callback_info, callback_info.request.resource_type ==
+                                  pub::LynxResourceType::kFrame);
   if (engine_actor_) {
     engine_actor_->Act(
         [callback_info = std::move(callback_info)](auto& engine) mutable {
-          // TODO(zhoupeng.z): decode template bundle in child thread.
-          DecodeBundle(callback_info, callback_info.request.resource_type ==
-                                          pub::LynxResourceType::kFrame);
           engine->DidFetchBundle(std::move(callback_info));
         });
   }
@@ -344,5 +343,22 @@ lepus::Value LazyBundleLoader::GetPerfInfo(const std::string& url) {
   }
   return lepus::Value();
 }
+
+void LazyBundleLoader::InsertTemplateBundle(const std::string& url,
+                                            LynxTemplateBundle bundle) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  loaded_bundles_.emplace(url, bundle);
+}
+
+std::optional<LynxTemplateBundle> LazyBundleLoader::GetTemplateBundle(
+    const std::string& url) {
+  std::unique_lock<std::mutex> lock(mutex_);
+  auto bundle_iter = loaded_bundles_.find(url);
+  if (bundle_iter != loaded_bundles_.end()) {
+    return bundle_iter->second;
+  }
+  return std::nullopt;
+}
+
 }  // namespace tasm
 }  // namespace lynx

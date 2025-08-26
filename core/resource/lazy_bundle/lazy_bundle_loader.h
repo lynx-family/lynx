@@ -196,6 +196,14 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
 
   lepus::Value GetPerfInfo(const std::string& url);
 
+  /**
+   * Manage template_bundles in LazyBundleLoader fetched with `fetchBundle` api.
+   * It's meant to be thread-safe.
+   */
+  void InsertTemplateBundle(const std::string& url, LynxTemplateBundle bundle);
+
+  std::optional<LynxTemplateBundle> GetTemplateBundle(const std::string& url);
+
  protected:
   virtual void ReportErrorInner(int32_t code, const std::string& msg){};
 
@@ -204,7 +212,6 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   std::shared_ptr<shell::LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_;
   std::shared_ptr<pub::LynxResourceLoader> resource_loader_ = nullptr;
-
   std::set<std::string> requiring_urls_{};
   UrlToLifecycleOptionMap url_to_lifecycle_option_map_{};
 
@@ -212,6 +219,9 @@ class LazyBundleLoader : public std::enable_shared_from_this<LazyBundleLoader> {
   RadonLazyComponent* requiring_component_{nullptr};
 
   bool enable_component_async_decode_{false};
+
+  std::unordered_map<std::string, LynxTemplateBundle> loaded_bundles_{};
+  std::mutex mutex_;
 };
 
 }  // namespace tasm

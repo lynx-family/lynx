@@ -752,8 +752,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   ContextProxyInLepus* GetContextProxy(runtime::ContextProxy::Type type);
 
-  lepus::Value GetCustomSection(const std::string& key,
-                                const std::string& bundle_name);
+  lepus::Value GetCustomSectionByKey(const std::string& key,
+                                     const std::string& bundle_name);
 
   inline int32_t GetInstanceId() { return instance_id_; }
 
