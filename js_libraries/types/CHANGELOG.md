@@ -26,6 +26,7 @@
 
 ## 3.4.5
 - Complete the documentation for image related APIs.
+- Add `recyclable` property for list-item.
 
 ## 3.4.4
 - Complete the documentation for text related APIs.

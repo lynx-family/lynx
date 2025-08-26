@@ -1092,18 +1092,31 @@ export interface ListItemProps extends StandardProps {
   'estimated-main-axis-size-px'?: number;
 
   /**
-   * Snap callback
+   * The unique key of list child node, and it's a mandatory property.
    * @Android
    * @iOS
-   */
-  bindsnap?: EventHandler<ListEvent<'snap'>>;
-
-  /**
-   * @Android
-   * @iOS
+   * @Harmony
    */
   'item-key': string;
 
+  /**
+   * Control whether the list-item can be recycled. If set to false, the list-item will not be recycled after being scrolled off the screen, and do not need to be re-rendered when they come back on the screen. The default value is true.
+   * @since 3.4
+   * @defaultValue true
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  recyclable?: boolean | undefined;
+
+  /**
+   * Snap callback
+   * @since 2.16
+   * @Android
+   * @iOS
+   * @Harmony
+   */
+  bindsnap?: EventHandler<ListEvent<'snap'>>;
   bindnodeappear?: EventHandler<AppearanceEvent>;
   bindnodedisappear?: EventHandler<AppearanceEvent>;
 }
