@@ -220,11 +220,17 @@ std::string CSSDecoder::CSSValueEnumToString(
     case lynx::tasm::kPropertyIDFontWeight:
       return ToFontWeightType(value.GetEnum<FontWeightType>());
       break;
+    case lynx::tasm::kPropertyIDXPlaceholderFontWeight:
+      return ToXPlaceholderFontWeightType(
+          value.GetEnum<XPlaceholderFontWeightType>());
     case lynx::tasm::kPropertyIDWordBreak:
       return ToWordBreakType(value.GetEnum<WordBreakType>());
     case lynx::tasm::kPropertyIDFontStyle:
       return ToFontStyleType(value.GetEnum<FontStyleType>());
       break;
+    case lynx::tasm::kPropertyIDXPlaceholderFontStyle:
+      return ToXPlaceholderFontStyleType(
+          value.GetEnum<XPlaceholderFontStyleType>());
     case lynx::tasm::kPropertyIDTextAlign:
       return ToTextAlignType(value.GetEnum<TextAlignType>());
       break;

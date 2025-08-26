@@ -1,0 +1,11 @@
+{
+  "name": "-x-placeholder-font-family",
+  "id": 221,
+  "type": "string",
+  "default_value": "",
+  "version": "3.5",
+  "author": "xiamengfei",
+  "consumption_status": "skip",
+  "desc": "",
+  "is_shorthand": false
+}

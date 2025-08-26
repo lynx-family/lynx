@@ -1,0 +1,28 @@
+{
+  "name": "-x-placeholder-font-style",
+  "id": 224,
+  "type": "enum",
+  "default_value": "normal",
+  "version": "3.5",
+  "author": "xiamengfei",
+  "consumption_status": "skip",
+  "desc": "",
+  "values": [
+    {
+      "value": "normal",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "italic",
+      "version": "3.5",
+      "desc": ""
+    },
+    {
+      "value": "oblique",
+      "version": "3.5",
+      "desc": ""
+    }
+  ],
+  "is_shorthand": false
+}

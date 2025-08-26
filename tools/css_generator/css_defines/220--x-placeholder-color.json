@@ -1,0 +1,11 @@
+{
+  "name": "-x-placeholder-color",
+  "id": 220,
+  "type": "color",
+  "default_value": "black",
+  "version": "3.5",
+  "author": "xiamengfei",
+  "consumption_status": "skip",
+  "desc": "",
+  "is_shorthand": false
+}
