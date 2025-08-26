@@ -143,6 +143,34 @@
   return _resourceServiceFetcher;
 }
 
+/**
+ * This is a temporary workaround to disable the new fetcher mechanism
+ * (GenericFetcher/MediaFetcher/TemplateFetcher) when a custom fetcher is present, because the
+ * container has not yet been adapted to support custom fetchers for these new types.
+ * TODO: This logic should be removed once the container is updated to handle custom fetchers
+ * correctly.
+ */
+- (id<LynxGenericResourceFetcher>)genericResourceFetcher {
+  if (self.lynxContext.hasCustomGenericFetcher) {
+    return nil;
+  }
+  return _genericResourceFetcher;
+}
+
+- (id<LynxMediaResourceFetcher>)mediaResourceFetcher {
+  if (self.lynxContext.hasCustomMediaFetcher) {
+    return nil;
+  }
+  return _mediaResourceFetcher;
+}
+
+- (id<LynxTemplateResourceFetcher>)templateResourceFetcher {
+  if (self.lynxContext.hasCustomTemplateFetcher) {
+    return nil;
+  }
+  return _templateResourceFetcher;
+}
+
 - (BOOL)isDev {
   return _isDev && [[LynxEnv sharedInstance] automationEnabled];
 }
