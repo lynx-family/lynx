@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 3.5.1
+- Add `frame` element types.
+
 ## 3.5.0
 
 ### Major Changes
