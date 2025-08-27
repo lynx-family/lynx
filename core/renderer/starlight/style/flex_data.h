@@ -23,7 +23,7 @@ class FlexData : public fml::RefCountedThreadSafeStorage {
     return fml::AdoptRef(new FlexData(*this));
   }
   FlexData() = default;
-  BASE_EXPORT FlexData(const FlexData& data);
+  LYNX_EXPORT FlexData(const FlexData& data);
   ~FlexData() = default;
   void Reset();
 

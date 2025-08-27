@@ -24,11 +24,11 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/expected.h"
 #include "base/include/log/logging.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -46,9 +46,9 @@ namespace lynx {
 namespace piper {
 constexpr char kErrorInfoSeparator[] = " ";
 
-class BASE_EXPORT Buffer {
+class LYNX_EXPORT Buffer {
  public:
-  BASE_EXPORT virtual ~Buffer() = default;
+  LYNX_EXPORT virtual ~Buffer() = default;
   virtual size_t size() const = 0;
   virtual const uint8_t* data() const = 0;
 };
@@ -89,7 +89,7 @@ class PreparedJavaScript {
   PreparedJavaScript() = default;
 
  public:
-  BASE_EXPORT virtual ~PreparedJavaScript() = 0;
+  LYNX_EXPORT virtual ~PreparedJavaScript() = 0;
 };
 
 class Runtime;
@@ -234,7 +234,7 @@ enum class JSRuntimeType { v8 = 0, jsc, quickjs, jsvm };
 /// in a non-Runtime-managed object, and not clean it up before the Runtime
 /// is shut down.  If your lifecycle is such that avoiding this is hard,
 /// you will probably need to do use your own locks.
-class BASE_EXPORT Runtime {
+class LYNX_EXPORT Runtime {
  public:
   virtual void InitRuntime(std::shared_ptr<JSIContext> sharedContext,
                            std::shared_ptr<JSIExceptionHandler> handler) = 0;
@@ -246,7 +246,7 @@ class BASE_EXPORT Runtime {
   bool getGCFlag() { return gc_flag_; }
   void setRuntimeId(int64_t rt_id) { runtime_id_ = rt_id; }
   const std::string& getGroupId() { return group_id_; }
-  BASE_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
+  LYNX_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
     group_id_ = group_id;
   }
   // will override in quickjsruntime, this version just works as a sentinel
@@ -298,7 +298,7 @@ class BASE_EXPORT Runtime {
   // shard JS context wrapper case
   virtual bool Valid() const { return true; }
 
-  BASE_EXPORT virtual ~Runtime() = default;
+  LYNX_EXPORT virtual ~Runtime() = default;
   void setCreatedType(JSRuntimeCreatedType type) { created_type_ = type; }
   JSRuntimeCreatedType getCreatedType() { return created_type_; }
 
@@ -920,7 +920,7 @@ class Object : public Pointer {
   /// getProperty(name).getObject().getFunction(), except it will
   /// throw JSIException instead of asserting if the property is
   /// not an object, or the object is not callable.
-  BASE_EXPORT std::optional<Function> getPropertyAsFunction(
+  LYNX_EXPORT std::optional<Function> getPropertyAsFunction(
       Runtime& runtime, const char* name) const;
 
   /// \return an Array consisting of all enumerable property names in
@@ -1171,7 +1171,7 @@ class Value {
                   "Value cannot be constructed directly from const char*");
   }
 
-  BASE_EXPORT Value(Value&& value);
+  LYNX_EXPORT Value(Value&& value);
 
   /// Copies a Symbol lvalue into a new JS value.
   Value(Runtime& runtime, const Symbol& sym) : Value(ValueKind::SymbolKind) {
@@ -1199,7 +1199,7 @@ class Value {
                   "Value cannot be constructed directly from const char*");
   }
 
-  BASE_EXPORT ~Value();
+  LYNX_EXPORT ~Value();
   // \return the undefined \c Value.
   static Value undefined() { return Value(); }
 
@@ -1292,7 +1292,7 @@ class Value {
 
   /// \return the String value, or throws JSIException if not a
   /// string.
-  BASE_EXPORT std::optional<String> asString(Runtime& runtime) const&;
+  LYNX_EXPORT std::optional<String> asString(Runtime& runtime) const&;
   std::optional<String> asString(Runtime& runtime) &&;
 
   /// \return the Object value, or asserts if not an object.
@@ -1316,7 +1316,7 @@ class Value {
   std::optional<Object> asObject(Runtime& runtime) &&;
 
   // \return a String like JS .toString() would do.
-  BASE_EXPORT std::optional<String> toString(Runtime& runtime) const;
+  LYNX_EXPORT std::optional<String> toString(Runtime& runtime) const;
 
   /// \return string of the type of the Value
   std::string typeToString() const;
@@ -1545,7 +1545,7 @@ class JSINativeExceptionCollector {
 /// This exception will be thrown by API functions whenever a JS
 /// operation causes an exception as described by the spec, or as
 /// otherwise described.
-class BASE_EXPORT JSError : public JSIException {
+class LYNX_EXPORT JSError : public JSIException {
  public:
   class Scope {
    public:
@@ -1579,7 +1579,7 @@ class BASE_EXPORT JSError : public JSIException {
 
   /// Creates a JSError referring to a JavaScript Object having message and
   /// stack properties set to provided values.
-  BASE_EXPORT JSError(Runtime& rt, std::string message, std::string stack);
+  LYNX_EXPORT JSError(Runtime& rt, std::string message, std::string stack);
 
   JSError(std::string message, std::string stack);
 

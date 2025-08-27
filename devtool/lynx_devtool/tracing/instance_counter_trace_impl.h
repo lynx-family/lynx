@@ -15,7 +15,7 @@
 namespace lynx {
 namespace trace {
 
-class BASE_EXPORT_FOR_DEVTOOL InstanceCounterTraceImpl
+class LYNX_EXPORT_FOR_DEVTOOL InstanceCounterTraceImpl
     : public InstanceCounterTrace::Impl {
  public:
   InstanceCounterTraceImpl();

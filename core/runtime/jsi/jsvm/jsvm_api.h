@@ -6,17 +6,17 @@
 #define CORE_RUNTIME_JSI_JSVM_JSVM_API_H_
 #include <memory>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
 namespace piper {
-BASE_EXPORT std::shared_ptr<piper::Runtime> makeJSVMRuntime();
+LYNX_EXPORT std::shared_ptr<piper::Runtime> makeJSVMRuntime();
 
-BASE_EXPORT std::shared_ptr<profile::RuntimeProfiler> makeJSVMRuntimeProfiler(
+LYNX_EXPORT std::shared_ptr<profile::RuntimeProfiler> makeJSVMRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context);
 
-BASE_EXPORT bool IsJSVMRuntimeAvailable();
+LYNX_EXPORT bool IsJSVMRuntimeAvailable();
 }  // namespace piper
 }  // namespace lynx
 #endif  // CORE_RUNTIME_JSI_JSVM_JSVM_API_H_

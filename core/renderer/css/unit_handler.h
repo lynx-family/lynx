@@ -10,8 +10,8 @@
 #include <cmath>
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/debug/lynx_assert.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_debug_msg.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/parser/css_parser_configs.h"
@@ -57,15 +57,15 @@ class UnitHandler {
   // Log unreachable message in strict mode and always returns false
   static bool CSSMethodUnreachable(bool enableCSSStrictMode);
 
-  BASE_EXPORT_FOR_DEVTOOL static bool Process(const CSSPropertyID key,
+  LYNX_EXPORT_FOR_DEVTOOL static bool Process(const CSSPropertyID key,
                                               const lepus::Value& input,
                                               StyleMap& output,
                                               const CSSParserConfigs& configs);
-  BASE_EXPORT static StyleMap Process(const CSSPropertyID key,
+  LYNX_EXPORT static StyleMap Process(const CSSPropertyID key,
                                       const lepus::Value& input,
                                       const CSSParserConfigs& configs);
 
-  BASE_EXPORT_FOR_DEVTOOL static bool ProcessCSSValue(
+  LYNX_EXPORT_FOR_DEVTOOL static bool ProcessCSSValue(
       const CSSPropertyID key, const tasm::CSSValue& input, StyleMap& output,
       const CSSParserConfigs& configs);
 

@@ -15,7 +15,7 @@
 
 namespace lynx {
 namespace lepus {
-class BASE_EXPORT_FOR_DEVTOOL CArray : public RefCountedBase {
+class BASE_EXPORT CArray : public RefCountedBase {
  public:
   static fml::RefPtr<CArray> Create() {
     return fml::AdoptRef<CArray>(new CArray());

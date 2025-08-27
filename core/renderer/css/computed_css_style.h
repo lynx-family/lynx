@@ -77,12 +77,12 @@ class ComputedCSSStyleUtilsMethod {
 
 class ComputedCSSStyle {
  public:
-  BASE_EXPORT ComputedCSSStyle(float layouts_unit_per_px,
+  LYNX_EXPORT ComputedCSSStyle(float layouts_unit_per_px,
                                double physical_pixels_per_layout_unit);
   ComputedCSSStyle(const ComputedCSSStyle& o);
   ~ComputedCSSStyle() = default;
 
-  BASE_EXPORT bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
+  LYNX_EXPORT bool SetValue(tasm::CSSPropertyID id, const tasm::CSSValue& value,
                             bool reset = false);
 
   bool AppendAnimatedAnimationValue(tasm::StyleMap animate_data,

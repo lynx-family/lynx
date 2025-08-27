@@ -13,7 +13,7 @@
 #include <string>
 #include <utility>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/bindings/napi/napi_runtime_proxy.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/piper/js/template_delegate.h"
@@ -61,7 +61,7 @@ class NapiEnvironment {
 
     virtual void LoadInstantModules(Napi::Object& lynx) {}
   };
-  BASE_EXPORT static NapiEnvironment* From(Napi::Env env);
+  LYNX_EXPORT static NapiEnvironment* From(Napi::Env env);
 
   NapiEnvironment(std::unique_ptr<Delegate> delegate);
   ~NapiEnvironment();
@@ -79,9 +79,9 @@ class NapiEnvironment {
 
   std::weak_ptr<Runtime> GetJSRuntime() { return proxy_->GetJSRuntime(); }
 
-  BASE_EXPORT void RegisterModule(const std::string& name,
+  LYNX_EXPORT void RegisterModule(const std::string& name,
                                   std::unique_ptr<Module> module);
-  BASE_EXPORT Module* GetModule(const std::string& name);
+  LYNX_EXPORT Module* GetModule(const std::string& name);
 
  private:
   std::unique_ptr<Delegate> delegate_;

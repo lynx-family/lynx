@@ -24,8 +24,8 @@ namespace starlight {
 
 class LayoutComputedStyle {
  public:
-  BASE_EXPORT LayoutComputedStyle(double physical_pixels_per_layout_unit);
-  BASE_EXPORT LayoutComputedStyle(const LayoutComputedStyle& o);
+  LYNX_EXPORT LayoutComputedStyle(double physical_pixels_per_layout_unit);
+  LYNX_EXPORT LayoutComputedStyle(const LayoutComputedStyle& o);
   ~LayoutComputedStyle() = default;
 
   void Reset();
@@ -37,7 +37,7 @@ class LayoutComputedStyle {
   bool IsFlexRow(const LayoutConfigs& configs,
                  const AttributesMap& attributes) const;
   bool IsBorderBox(const LayoutConfigs& configs) const;
-  BASE_EXPORT bool IsRtl() const { return direction_ == DirectionType::kRtl; }
+  LYNX_EXPORT bool IsRtl() const { return direction_ == DirectionType::kRtl; }
   bool IsLynxRtl() const { return direction_ == DirectionType::kLynxRtl; }
   bool IsAnyRtl() const { return IsRtl() || IsLynxRtl(); }
 
@@ -334,7 +334,7 @@ class LayoutComputedStyle {
     linear_data_.Access()->linear_cross_gravity_, LINEAR_CROSS_GRAVITY)
 
 #define SET_ENUM_LAYOUT_PROPERTY(type_name, enum_type, css_type, default_type) \
-  BASE_EXPORT bool Set##type_name(const enum_type value,                       \
+  LYNX_EXPORT bool Set##type_name(const enum_type value,                       \
                                   const bool reset = false) {                  \
     enum_type old_value = css_type;                                            \
     css_type = reset ? DefaultLayoutStyle::SL_DEFAULT_##default_type : value;  \
@@ -344,7 +344,7 @@ class LayoutComputedStyle {
 #undef SET_ENUM_LAYOUT_PROPERTY
 
 #define SET_LAYOUT_PROPERTY(type_name, enum_type, css_type, default_type) \
-  BASE_EXPORT bool Set##type_name(const enum_type& value,                 \
+  LYNX_EXPORT bool Set##type_name(const enum_type& value,                 \
                                   const bool reset = false) {             \
     enum_type old_value = css_type;                                       \
     css_type =                                                            \

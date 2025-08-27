@@ -36,7 +36,7 @@ class BoxInfo {
   void ResetBoxInfo();
   // TODO(yuanzhiwen): The exported functions will be moved to a unified
   // location.
-  BASE_EXPORT void InitializeBoxInfo(const Constraints& constraints,
+  LYNX_EXPORT void InitializeBoxInfo(const Constraints& constraints,
                                      LayoutObject& obj,
                                      const LayoutConfigs& layout_config);
 

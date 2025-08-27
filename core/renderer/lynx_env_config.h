@@ -17,10 +17,10 @@ namespace tasm {
 
 class LynxEnvConfig {
  public:
-  BASE_EXPORT LynxEnvConfig(float width, float height,
+  LYNX_EXPORT LynxEnvConfig(float width, float height,
                             float layouts_unit_per_px,
                             double physical_pixels_per_layout_unit);
-  BASE_EXPORT ~LynxEnvConfig() = default;
+  LYNX_EXPORT ~LynxEnvConfig() = default;
 
   float ScreenWidth() const { return screen_width_; }
   float ScreenHeight() const { return screen_height_; }

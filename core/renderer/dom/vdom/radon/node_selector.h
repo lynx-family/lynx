@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
 #include "core/renderer/dom/selector/element_selector.h"
 #include "core/renderer/dom/selector/select_result.h"
@@ -36,9 +36,9 @@ inline int32_t NodeSelectResult<RadonNode>::GetImplId(RadonNode *node) {
 
 class RadonNodeSelector : public ElementSelector {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static RadonNodeSelectResult Select(
+  LYNX_EXPORT_FOR_DEVTOOL static RadonNodeSelectResult Select(
       RadonBase *root, const NodeSelectOptions &options);
-  BASE_EXPORT_FOR_DEVTOOL static RadonNodeSelectResult Select(
+  LYNX_EXPORT_FOR_DEVTOOL static RadonNodeSelectResult Select(
       RadonPage *page, const NodeSelectRoot &root,
       const NodeSelectOptions &options);
 

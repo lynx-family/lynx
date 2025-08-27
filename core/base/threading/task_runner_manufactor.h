@@ -13,6 +13,7 @@
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/thread.h"
 #include "base/include/no_destructor.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -46,7 +47,7 @@ inline ThreadStrategyForRendering ToAsyncEngineStrategy(
 
 class UIThread {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static fml::RefPtr<fml::TaskRunner>& GetRunner(
+  LYNX_EXPORT_FOR_DEVTOOL static fml::RefPtr<fml::TaskRunner>& GetRunner(
       bool enable_vsync_aligned_msg_loop = false);
 
   // ensure call on ui thread.
@@ -74,16 +75,16 @@ class TaskRunnerManufactor {
   TaskRunnerManufactor(TaskRunnerManufactor&&) = default;
   TaskRunnerManufactor& operator=(TaskRunnerManufactor&&) = default;
 
-  BASE_EXPORT static fml::RefPtr<fml::TaskRunner> GetJSRunner(
+  LYNX_EXPORT static fml::RefPtr<fml::TaskRunner> GetJSRunner(
       const std::string& js_group_thread_name);
 
-  BASE_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetTASMTaskRunner();
+  LYNX_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetTASMTaskRunner();
 
   fml::RefPtr<fml::TaskRunner> GetLayoutTaskRunner();
 
-  BASE_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetUITaskRunner();
+  LYNX_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetUITaskRunner();
 
-  BASE_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetJSTaskRunner();
+  LYNX_EXPORT_FOR_DEVTOOL fml::RefPtr<fml::TaskRunner> GetJSTaskRunner();
 
   fml::RefPtr<fml::MessageLoopImpl> GetTASMLoop();
 

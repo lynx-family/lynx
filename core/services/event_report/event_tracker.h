@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -137,7 +137,7 @@ class EventTracker {
   /// Can be called from any thread.
   /// @param builder Builder of event, Builder will be called on report
   /// kLynxReportEventName.
-  BASE_EXPORT static void OnEvent(EventBuilder builder);
+  LYNX_EXPORT static void OnEvent(EventBuilder builder);
   /// Update generic info of template instance by PageConfig.
   /// Can be called from any thread.
   /// @param instance_id  The unique id of template instance.
@@ -148,7 +148,7 @@ class EventTracker {
   /// @param instance_id The unique id of template instance.
   /// @param key key of the generic info
   /// @param value string value of the generic info
-  BASE_EXPORT_FOR_DEVTOOL static void UpdateGenericInfo(int32_t instance_id,
+  LYNX_EXPORT_FOR_DEVTOOL static void UpdateGenericInfo(int32_t instance_id,
                                                         std::string key,
                                                         std::string value);
   /// Update the generic info of template instance.
@@ -169,7 +169,7 @@ class EventTracker {
   static void ClearCache(int32_t instance_id);
   // Flush all `std::vector<EventBuilder>` to platform with
   // template instance id.
-  BASE_EXPORT static void Flush(int32_t instance_id);
+  LYNX_EXPORT static void Flush(int32_t instance_id);
 
   /// Update the generic info of template instance by a pair of size.
   /// @param instance_id The unique id of template instance.

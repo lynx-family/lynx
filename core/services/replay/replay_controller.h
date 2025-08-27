@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/inspector/observer/inspector_common_observer.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/starlight/layout/layout_object.h"
@@ -25,13 +25,13 @@ namespace replay {
 
 class ReplayController {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static bool Enable();
-  BASE_EXPORT_FOR_DEVTOOL static void StartTest();
-  BASE_EXPORT_FOR_DEVTOOL static void EndTest(const std::string& file_path);
-  BASE_EXPORT_FOR_DEVTOOL static void SendFileByAgent(const std::string& type,
+  LYNX_EXPORT_FOR_DEVTOOL static bool Enable();
+  LYNX_EXPORT_FOR_DEVTOOL static void StartTest();
+  LYNX_EXPORT_FOR_DEVTOOL static void EndTest(const std::string& file_path);
+  LYNX_EXPORT_FOR_DEVTOOL static void SendFileByAgent(const std::string& type,
                                                       const std::string& file);
-  BASE_EXPORT_FOR_DEVTOOL static std::string GetLayoutTree(SLNode* slnode);
-  BASE_EXPORT_FOR_DEVTOOL static void SetDevToolObserver(
+  LYNX_EXPORT_FOR_DEVTOOL static std::string GetLayoutTree(SLNode* slnode);
+  LYNX_EXPORT_FOR_DEVTOOL static void SetDevToolObserver(
       const std::shared_ptr<lynx::tasm::InspectorCommonObserver>& observer);
   static std::string ConvertEventInfo(const lepus::Value& info);
 };

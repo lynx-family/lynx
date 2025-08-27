@@ -10,9 +10,9 @@
 #include <memory>
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/fml/memory/ref_ptr.h"
+#include "core/base/lynx_export.h"
 #include "core/public/layout_node_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/public/pub_prop_bundle_harmony.h"
 
@@ -22,7 +22,7 @@ namespace harmony {
 class ShadowNodeOwner;
 class PubLynxContext;
 
-class BASE_EXPORT PubShadowNodeOwner {
+class LYNX_EXPORT PubShadowNodeOwner {
  public:
   explicit PubShadowNodeOwner(napi_env env, napi_value shadow_node_owner);
   ~PubShadowNodeOwner() = default;

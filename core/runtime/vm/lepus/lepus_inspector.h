@@ -7,7 +7,7 @@
 #include <queue>
 #include <string>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace lepus {
@@ -37,7 +37,7 @@ class LepusInspectorClient {
 
 class LepusInspector {
  public:
-  static BASE_EXPORT_FOR_DEVTOOL std::unique_ptr<LepusInspector> create(
+  static LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<LepusInspector> create(
       lynx::lepus::Context* ctx, LepusInspectorClient*);
   virtual ~LepusInspector() = default;
   class LepusChannel {

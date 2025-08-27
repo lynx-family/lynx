@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/template_bundle/template_codec/version.h"
 #include "third_party/rapidjson/document.h"
@@ -98,7 +98,7 @@ namespace tasm {
 struct CompileOptions;
 class Config {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static void InitializeVersion(
+  LYNX_EXPORT_FOR_DEVTOOL static void InitializeVersion(
       const std::string& os_version);
 
   static inline const std::string& GetOsVersion() {
@@ -174,7 +174,7 @@ class Config {
   static const char* Platform();
 
  private:
-  BASE_EXPORT_FOR_DEVTOOL static Config* Instance();
+  LYNX_EXPORT_FOR_DEVTOOL static Config* Instance();
   Config();
   bool GetConfigInternal(LynxEnv::Key key,
                          const CompileOptions& compile_options);

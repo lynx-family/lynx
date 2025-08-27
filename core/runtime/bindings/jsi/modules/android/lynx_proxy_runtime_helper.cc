@@ -6,8 +6,8 @@
 
 #include <mutex>
 
-#include "base/include/base_export.h"
 #include "base/include/log/logging.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace runtime {
@@ -40,11 +40,11 @@ std::unique_ptr<piper::Runtime> LynxProxyRuntimeHelper::MakeRuntime() {
   return helper_->MakeRuntime();
 }
 
-BASE_EXPORT void RegisterExternalRuntimeHelper(LynxRuntimeHelper* ptr) {
+LYNX_EXPORT void RegisterExternalRuntimeHelper(LynxRuntimeHelper* ptr) {
   LynxProxyRuntimeHelper::Instance().InitWithRuntimeHelper(ptr);
 }
 
-BASE_EXPORT bool IsExternalRuntimeHelperValid() {
+LYNX_EXPORT bool IsExternalRuntimeHelperValid() {
   return LynxProxyRuntimeHelper::Instance().IsValid();
 }
 

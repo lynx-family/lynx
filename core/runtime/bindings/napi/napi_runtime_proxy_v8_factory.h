@@ -16,7 +16,7 @@ namespace piper {
 // (so as to avoid bloating liblynx.so).
 class NapiRuntimeProxyV8Factory {
  public:
-  BASE_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
+  LYNX_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<Runtime> runtime,
       runtime::TemplateDelegate *delegate = nullptr) = 0;
 };

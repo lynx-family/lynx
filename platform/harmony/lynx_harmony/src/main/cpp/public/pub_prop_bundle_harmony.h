@@ -5,7 +5,7 @@
 #ifndef PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_PUBLIC_PUB_PROP_BUNDLE_HARMONY_H_
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_PUBLIC_PUB_PROP_BUNDLE_HARMONY_H_
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
 
 namespace lynx {
@@ -13,7 +13,7 @@ namespace tasm {
 class PropBundleHarmony;
 namespace harmony {
 
-class BASE_EXPORT PubPropBundleHarmony {
+class LYNX_EXPORT PubPropBundleHarmony {
  public:
   PubPropBundleHarmony();
   ~PubPropBundleHarmony();

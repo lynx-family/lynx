@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
 #include "core/runtime/jsi/jsi.h"
 
@@ -30,7 +30,7 @@ namespace pub {
 
 class ValueUtils {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static lepus::Value ConvertValueToLepusValue(
+  LYNX_EXPORT_FOR_DEVTOOL static lepus::Value ConvertValueToLepusValue(
       const Value& value,
       std::vector<std::unique_ptr<pub::Value>>* prev_value_vector = nullptr,
       int depth = 0);

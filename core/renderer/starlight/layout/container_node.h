@@ -5,7 +5,7 @@
 #ifndef CORE_RENDERER_STARLIGHT_LAYOUT_CONTAINER_NODE_H_
 #define CORE_RENDERER_STARLIGHT_LAYOUT_CONTAINER_NODE_H_
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/layout/node.h"
 
 namespace lynx {
@@ -20,20 +20,20 @@ class ContainerNode : public Node {
    *  @param child the node will be inserted
    *  @param node before which child will be inserted
    */
-  BASE_EXPORT void InsertChildBefore(ContainerNode* child, ContainerNode* node);
-  BASE_EXPORT void AppendChild(ContainerNode* child);
+  LYNX_EXPORT void InsertChildBefore(ContainerNode* child, ContainerNode* node);
+  LYNX_EXPORT void AppendChild(ContainerNode* child);
 
-  BASE_EXPORT void RemoveChild(ContainerNode* child);
+  LYNX_EXPORT void RemoveChild(ContainerNode* child);
 
   Node* FirstChild() const { return first_child_; }
   Node* LastChild() const { return last_child_; }
 
-  BASE_EXPORT Node* Find(int n);
-  BASE_EXPORT int IndexOf(Node* node);
+  LYNX_EXPORT Node* Find(int n);
+  LYNX_EXPORT int IndexOf(Node* node);
 
-  BASE_EXPORT int GetChildCount() { return child_count_; }
+  LYNX_EXPORT int GetChildCount() { return child_count_; }
 
-  BASE_EXPORT ContainerNode* parent() { return parent_; }
+  LYNX_EXPORT ContainerNode* parent() { return parent_; }
 
  protected:
   ContainerNode* parent_;

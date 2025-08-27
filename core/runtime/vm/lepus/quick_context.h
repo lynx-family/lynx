@@ -129,7 +129,7 @@ class QuickContext : private LEPUSRuntimeData,
 
   virtual void RegisterLepusVerion() override;
   void SetDebuggerSourceAndEndLine(const std::string& source);
-  BASE_EXPORT_FOR_DEVTOOL LEPUSValue GetTopLevelFunction() const override;
+  LYNX_EXPORT_FOR_DEVTOOL LEPUSValue GetTopLevelFunction() const override;
 
   LEPUSValue ReportSetConstValueError(const LEPUSValue&, LEPUSValue);
 

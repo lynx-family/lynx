@@ -14,9 +14,9 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_counted.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_sheet.h"
 #include "core/renderer/css/css_value.h"
@@ -52,7 +52,7 @@ class CSSParseToken : public fml::RefCountedThreadSafeStorage {
   }
 
   auto& attributes() { return attributes_; }
-  BASE_EXPORT_FOR_DEVTOOL virtual const StyleMap& GetAttributes();
+  LYNX_EXPORT_FOR_DEVTOOL virtual const StyleMap& GetAttributes();
 
   auto& raw_attributes() { return raw_attributes_; }
 

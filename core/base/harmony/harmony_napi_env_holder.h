@@ -7,7 +7,7 @@
 
 #include <napi/native_api.h>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -169,7 +169,7 @@ namespace harmony {
  * DCHECK(ret == napi_ok);
  * }
  */
-BASE_EXPORT napi_env GetJSThreadNapiEnv();
+LYNX_EXPORT napi_env GetJSThreadNapiEnv();
 
 void InitializationNapiEnvForCurrentThread(napi_env env);
 

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/include/log/logging.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/layout/layout_global.h"
 #include "core/renderer/starlight/types/layout_unit.h"
 
@@ -81,15 +82,15 @@ class __attribute__((packed, aligned(4))) NLength {
     bool has_percentage_ = false;
   };
 
-  BASE_EXPORT static NLength MakeAutoNLength();
-  BASE_EXPORT static NLength MakeMaxContentNLength();
-  BASE_EXPORT static NLength MakeFitContentNLength() {
+  LYNX_EXPORT static NLength MakeAutoNLength();
+  LYNX_EXPORT static NLength MakeMaxContentNLength();
+  LYNX_EXPORT static NLength MakeFitContentNLength() {
     return NLength(kNLengthFitContent);
   }
   static NLength MakeFitContentNLength(const BaseLength& nLength);
-  BASE_EXPORT static NLength MakeUnitNLength(float value);
+  LYNX_EXPORT static NLength MakeUnitNLength(float value);
   static NLength MakeFrNLength(float value);
-  BASE_EXPORT static NLength MakePercentageNLength(float value);
+  LYNX_EXPORT static NLength MakePercentageNLength(float value);
   static NLength MakeCalcNLength(float fixed) {
     return NLength(BaseLength(fixed), NLengthType::kNLengthCalc);
   }
@@ -133,8 +134,8 @@ class __attribute__((packed, aligned(4))) NLength {
     return numeric_length_.ContainsPercentage();
   }
 
-  BASE_EXPORT bool operator==(const NLength& o) const;
-  BASE_EXPORT bool operator!=(const NLength& o) const;
+  LYNX_EXPORT bool operator==(const NLength& o) const;
+  LYNX_EXPORT bool operator!=(const NLength& o) const;
 
  private:
   NLength(NLengthType type) : type_(type) {}

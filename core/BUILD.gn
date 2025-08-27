@@ -22,6 +22,10 @@ config("lynx_public_config") {
     "../third_party",
   ]
 
+  if (!lynx_export_symbols) {
+    defines += [ "LYNX_NO_EXPORT" ]
+  }
+
   cflags += [
     "-Wno-c99-designator",
     "-Wno-unknown-warning-option",

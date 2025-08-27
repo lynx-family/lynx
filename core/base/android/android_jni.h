@@ -8,7 +8,7 @@
 #include <jni.h>
 #include <cstdint>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "base/include/platform/android/jni_utils.h"
 #include "base/include/platform/android/scoped_java_ref.h"
 
@@ -16,7 +16,7 @@ namespace lynx {
 namespace base {
 namespace android {
 
-BASE_EXPORT void CheckException(JNIEnv *env);
+LYNX_EXPORT void CheckException(JNIEnv *env);
 
 // Used to indicate whether there is an jni exception after a jni call.
 // It should be noted that only the result checked by calling this method

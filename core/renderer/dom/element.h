@@ -14,13 +14,13 @@
 #include <vector>
 
 #include "base/include/auto_create_optional.h"
-#include "base/include/base_export.h"
 #include "base/include/no_destructor.h"
 #include "base/include/value/ref_type.h"
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/animation/css_keyframe_manager.h"
 #include "core/animation/css_transition_manager.h"
+#include "core/base/lynx_export.h"
 #include "core/event/event_target.h"
 #include "core/inspector/style_sheet.h"
 #include "core/renderer/css/computed_css_style.h"
@@ -55,8 +55,8 @@ enum ElementArchTypeEnum : uint8_t {
 
 class InspectorAttribute {
  public:
-  BASE_EXPORT_FOR_DEVTOOL InspectorAttribute();
-  BASE_EXPORT_FOR_DEVTOOL ~InspectorAttribute();
+  LYNX_EXPORT_FOR_DEVTOOL InspectorAttribute();
+  LYNX_EXPORT_FOR_DEVTOOL ~InspectorAttribute();
 
  public:
   int node_type_;
@@ -156,17 +156,17 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   virtual ~Element() = default;
 
   // For style op
-  BASE_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
+  LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
       const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
 
   virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value,
                                 bool force_update = false);
-  BASE_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
+  LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
   // For attr op
   virtual void ReserveForAttribute(size_t count) {}
-  BASE_EXPORT_FOR_DEVTOOL virtual void SetAttribute(
+  LYNX_EXPORT_FOR_DEVTOOL virtual void SetAttribute(
       const base::String& key, const lepus::Value& value,
       bool need_update_data_model = true) = 0;
   virtual void ResetAttribute(const base::String& key);
@@ -224,7 +224,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   virtual ListNode* GetListNode() = 0;
 
   // Get Parent Component's Element
-  BASE_EXPORT_FOR_DEVTOOL virtual Element* GetParentComponentElement()
+  LYNX_EXPORT_FOR_DEVTOOL virtual Element* GetParentComponentElement()
       const = 0;
 
   Catalyzer* GetCaCatalyzer() { return catalyzer_; }
@@ -245,8 +245,8 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   bool GetEnableFixedNew() const;
   inline bool is_virtual() { return is_virtual_; }
   virtual bool is_fixed_new() { return false; }
-  BASE_EXPORT_FOR_DEVTOOL virtual bool GetPageElementEnabled() { return false; }
-  BASE_EXPORT_FOR_DEVTOOL virtual bool GetRemoveCSSScopeEnabled() {
+  LYNX_EXPORT_FOR_DEVTOOL virtual bool GetPageElementEnabled() { return false; }
+  LYNX_EXPORT_FOR_DEVTOOL virtual bool GetRemoveCSSScopeEnabled() {
     return false;
   }
 
@@ -291,7 +291,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   /*
    * return the font size from platform_css_style_.
    */
-  BASE_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
+  LYNX_EXPORT_FOR_DEVTOOL virtual double GetFontSize();
 
   /*
    * return the font size of parent.

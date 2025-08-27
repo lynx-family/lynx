@@ -251,7 +251,7 @@ class RadonComponent : public RadonNode, public BaseComponent {
   void RenderRadonComponentIfNeeded(RenderOption&);
   void SetGlobalPropsFromTasm();
 
-  BASE_EXPORT_FOR_DEVTOOL int32_t ComponentId();
+  LYNX_EXPORT_FOR_DEVTOOL int32_t ComponentId();
   RadonComponent* GetParentComponent();
   RadonComponent* GetComponentOfThisComponent() { return component(); }
 

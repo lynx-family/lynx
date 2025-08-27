@@ -7,7 +7,7 @@
 
 #include <list>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -16,10 +16,10 @@ class ObserverList {
  public:
   ObserverList() {}
 
-  BASE_EXPORT_FOR_DEVTOOL void AddObserver(Observer* obs);
-  BASE_EXPORT_FOR_DEVTOOL void RemoveObserver(Observer* obs);
+  LYNX_EXPORT_FOR_DEVTOOL void AddObserver(Observer* obs);
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveObserver(Observer* obs);
   void Clear();
-  BASE_EXPORT_FOR_DEVTOOL void ForEachObserver();
+  LYNX_EXPORT_FOR_DEVTOOL void ForEachObserver();
 
  private:
   std::list<Observer*> list_;

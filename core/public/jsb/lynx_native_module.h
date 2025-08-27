@@ -10,10 +10,10 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/debug/lynx_error.h"
 #include "base/include/expected.h"
+#include "core/base/lynx_export.h"
 #include "core/public/jsb/lynx_module_callback.h"
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/pub_value.h"
@@ -41,7 +41,7 @@ using NativeModuleMethods = std::unordered_map<std::string, NativeModuleMethod>;
  * Upper-level modules can inherit from LynxNativeModule to register their own
  * JSB.
  */
-class BASE_EXPORT_FOR_DEVTOOL LynxNativeModule {
+class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
  public:
   class Delegate {
    public:

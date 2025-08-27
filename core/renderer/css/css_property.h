@@ -197,7 +197,7 @@ constexpr int kCSSPropertyCount = kPropertyEnd;
  */
 constexpr size_t kCSSStyleMapFuzzyAllocationSize = 6;
 
-class BASE_EXPORT_FOR_DEVTOOL CSSProperty {
+class LYNX_EXPORT_FOR_DEVTOOL CSSProperty {
  public:
   // base::String, const char* and std::string could be implicitly converted
   // to base::static_string::GenericCacheKey very cheaply.

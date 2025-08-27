@@ -371,7 +371,7 @@ class FiberElement : public Element,
   /**
    * Element API for removing all classes of
    */
-  BASE_EXPORT_FOR_DEVTOOL void RemoveAllClass();
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllClass();
 
   /**
    * Element API for InsertingNodeBefore reference child
@@ -401,7 +401,7 @@ class FiberElement : public Element,
    * @param id the css property id
    * @param value the css property lepus type vale
    */
-  BASE_EXPORT_FOR_DEVTOOL void SetStyle(CSSPropertyID id,
+  LYNX_EXPORT_FOR_DEVTOOL void SetStyle(CSSPropertyID id,
                                         const lepus::Value& value);
 
   /**
@@ -414,7 +414,7 @@ class FiberElement : public Element,
   /**
    * Element API for removing all inline styles.
    */
-  BASE_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveAllInlineStyles();
 
   /**
    * Destroy the related platform node of this element

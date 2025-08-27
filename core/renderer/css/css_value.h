@@ -9,9 +9,9 @@
 #include <string>
 #include <utility>
 
-#include "base/include/base_export.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
@@ -51,7 +51,7 @@ enum class CSSFunctionType : uint8_t {
   MINMAX = 2,
 };
 
-class BASE_EXPORT_FOR_DEVTOOL CSSValue {
+class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
   explicit CSSValue(CSSValuePattern pattern = CSSValuePattern::STRING)
       : pattern_(pattern), type_(CSSValueType::DEFAULT) {}

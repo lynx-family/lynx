@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 
 #if defined(ENABLE_TESTBENCH_RECORDER) && ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/lynxview_init_recorder.h"
@@ -26,19 +26,19 @@ namespace recorder {
 
 class RecorderController {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static bool Enable();
-  BASE_EXPORT_FOR_DEVTOOL static void StartRecord();
-  BASE_EXPORT_FOR_DEVTOOL static void EndRecord(
+  LYNX_EXPORT_FOR_DEVTOOL static bool Enable();
+  LYNX_EXPORT_FOR_DEVTOOL static void StartRecord();
+  LYNX_EXPORT_FOR_DEVTOOL static void EndRecord(
       base::MoveOnlyClosure<void, std::vector<std::string>&,
                             std::vector<int64_t>&>
           send_complete);
-  BASE_EXPORT_FOR_DEVTOOL static void InitConfig(const std::string& path,
+  LYNX_EXPORT_FOR_DEVTOOL static void InitConfig(const std::string& path,
                                                  int64_t session_id,
                                                  float screen_width,
                                                  float screen_height,
                                                  int64_t record_id);
-  BASE_EXPORT_FOR_DEVTOOL static void* GetTestBenchBaseRecorderInstance();
-  BASE_EXPORT_FOR_DEVTOOL static void RecordDebugInfo(
+  LYNX_EXPORT_FOR_DEVTOOL static void* GetTestBenchBaseRecorderInstance();
+  LYNX_EXPORT_FOR_DEVTOOL static void RecordDebugInfo(
       int64_t record_id, const std::string& url, const std::string& debug_info);
 };
 }  // namespace recorder

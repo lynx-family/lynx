@@ -10,7 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/dom/fiber/component_element.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
 #include "core/renderer/dom/lynx_get_ui_result.h"
@@ -33,9 +33,9 @@ class FiberElementSelector : public ElementSelector {
  public:
   using ElementSelectResult = NodeSelectResult<FiberElement>;
 
-  BASE_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
+  LYNX_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
       FiberElement *root, const NodeSelectOptions &options);
-  BASE_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
+  LYNX_EXPORT_FOR_DEVTOOL static ElementSelectResult Select(
       const std::unique_ptr<ElementManager> &element_manager,
       const NodeSelectRoot &root, const NodeSelectOptions &options);
 

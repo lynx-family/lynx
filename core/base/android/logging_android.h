@@ -8,13 +8,13 @@
 #include <android/log.h>
 #include <jni.h>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
 namespace logging {
 
-BASE_EXPORT_FOR_DEVTOOL void InitLynxLog();
+LYNX_EXPORT_FOR_DEVTOOL void InitLynxLog();
 
 }  // namespace logging
 }  // namespace base

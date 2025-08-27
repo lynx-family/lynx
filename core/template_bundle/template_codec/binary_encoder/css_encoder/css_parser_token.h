@@ -14,8 +14,8 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_parser_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_sheet.h"

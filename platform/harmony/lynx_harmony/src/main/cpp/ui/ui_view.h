@@ -6,14 +6,14 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_UI_UI_VIEW_H_
 
 #include <string>
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_base.h"
 
 namespace lynx {
 namespace tasm {
 namespace harmony {
 
-class BASE_EXPORT UIView : public UIBase {
+class LYNX_EXPORT UIView : public UIBase {
  public:
   static UIBase* Make(LynxContext* context, int sign, const std::string& tag);
 

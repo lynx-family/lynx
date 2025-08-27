@@ -7,9 +7,9 @@
 
 #include <memory>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/lynx_export.h"
 #include "core/public/vsync_observer_interface.h"
 
 namespace Napi {
@@ -21,7 +21,7 @@ namespace runtime {
 
 // Runtime lifecycle observer used to listen the events of lynx runtime.
 // Triggered on runtime thread
-class BASE_EXPORT RuntimeLifecycleObserver {
+class LYNX_EXPORT RuntimeLifecycleObserver {
  public:
   RuntimeLifecycleObserver() = default;
   virtual ~RuntimeLifecycleObserver() = default;

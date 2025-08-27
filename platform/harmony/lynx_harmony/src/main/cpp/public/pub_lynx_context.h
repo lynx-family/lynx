@@ -8,10 +8,10 @@
 #include <memory>
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/lynx_export.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_runtime_proxy.h"
 #include "core/public/pub_value.h"
@@ -28,7 +28,7 @@ class LynxContext;
 class TouchEvent;
 class CustomEvent;
 
-struct BASE_EXPORT PubLynxContextDelegate {
+struct LYNX_EXPORT PubLynxContextDelegate {
   void (*touch_event_callback)(const std::string& name, int32_t tag, float x,
                                float y, float client_x, float client_y,
                                float page_x, float page_y,
@@ -48,7 +48,7 @@ struct BASE_EXPORT PubLynxContextDelegate {
   float device_pixel_ratio = 1.f;
 };
 
-class BASE_EXPORT PubLynxContext {
+class LYNX_EXPORT PubLynxContext {
  public:
   PubLynxContext(
       PubUIOwner* ui_owner, PubShadowNodeOwner* node_owner,

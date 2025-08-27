@@ -25,13 +25,13 @@
 #include "core/runtime/jsi/jsc/jsc_runtime.h"
 #endif
 
-BASE_EXPORT void RegisterV8RuntimeProxyFactory(
+LYNX_EXPORT void RegisterV8RuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyV8Factory *factory) {
   lynx::piper::NapiRuntimeProxy::SetFactory(factory);
 }
 
 // TODO(yangguangzhao.solace): remove this when jsvm refact finished.
-BASE_EXPORT void RegisterJSVMRuntimeProxyFactory(
+LYNX_EXPORT void RegisterJSVMRuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyJSVMFactory *factory) {
   lynx::piper::NapiRuntimeProxy::SetJSVMRuntimeProxyFactory(factory);
 }

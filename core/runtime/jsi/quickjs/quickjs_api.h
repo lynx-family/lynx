@@ -10,17 +10,17 @@
 
 #include <memory>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
 namespace piper {
 
-BASE_EXPORT_FOR_DEVTOOL std::unique_ptr<piper::Runtime> makeQuickJsRuntime();
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<piper::Runtime> makeQuickJsRuntime();
 std::shared_ptr<VMInstance> CreateQuickJsVM(const StartupData*, bool sync);
 void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance>& vm);
 
-BASE_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
 makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context);
 
 }  // namespace piper

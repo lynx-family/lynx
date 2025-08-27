@@ -37,7 +37,7 @@ enum class BoundType { kContent, kPadding, kBorder, kMargin };
 
 class LayoutObject : public ContainerNode {
  public:
-  BASE_EXPORT LayoutObject(
+  LYNX_EXPORT LayoutObject(
       const LayoutConfigs& config,
       const starlight::LayoutComputedStyle* init_style = nullptr);
 
@@ -52,18 +52,18 @@ class LayoutObject : public ContainerNode {
   virtual ~LayoutObject();
 
   // exports
-  BASE_EXPORT void SetSLRequestLayoutFunc(
+  LYNX_EXPORT void SetSLRequestLayoutFunc(
       SLRequestLayoutFunc request_layout_func);
 
   // export for custom layout
-  BASE_EXPORT void SetContext(void* context);
-  BASE_EXPORT void* GetContext() const;
-  BASE_EXPORT void SetSLMeasureFunc(SLMeasureFunc measure_func);
-  BASE_EXPORT void SetSLAlignmentFunc(SLAlignmentFunc alignment_func);
-  BASE_EXPORT void SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(
+  LYNX_EXPORT void SetContext(void* context);
+  LYNX_EXPORT void* GetContext() const;
+  LYNX_EXPORT void SetSLMeasureFunc(SLMeasureFunc measure_func);
+  LYNX_EXPORT void SetSLAlignmentFunc(SLAlignmentFunc alignment_func);
+  LYNX_EXPORT void SetCanReuseLayoutWithSameSizeAsGivenConstraintFunc(
       SLCanReuseLayoutWithSameSizeAsGivenConstraintFunc layout_depends_ofunc);
 
-  BASE_EXPORT void Reset(LayoutObject* node);
+  LYNX_EXPORT void Reset(LayoutObject* node);
 
   inline const LayoutConfigs& GetLayoutConfigs() const { return configs_; }
 
@@ -108,12 +108,12 @@ class LayoutObject : public ContainerNode {
   virtual void MarkDirtyAndRequestLayout(bool force = false);
   virtual void MarkDirty();
   void MarkChildrenDirtyWithoutTriggerLayout();
-  BASE_EXPORT bool IsDirty();
+  LYNX_EXPORT bool IsDirty();
 
   void MarkUpdated();
   // TODO(yuanzhiwen): The exported functions will be moved to a unified
   // location.
-  BASE_EXPORT void MarkNotDirty();
+  LYNX_EXPORT void MarkNotDirty();
   bool GetHasNewLayout() const;
 
   bool GetFinalMeasure() const { return final_measure_; }
@@ -218,7 +218,7 @@ class LayoutObject : public ContainerNode {
   void ClearCache();
 
 #define LAYOUT_OBJECT_GET_RESULT(name) \
-  BASE_EXPORT_FOR_DEVTOOL float GetLayout##name() const;
+  LYNX_EXPORT_FOR_DEVTOOL float GetLayout##name() const;
   LAYOUT_OBJECT_GET_RESULT(PaddingLeft)
   LAYOUT_OBJECT_GET_RESULT(PaddingTop)
   LAYOUT_OBJECT_GET_RESULT(PaddingRight)
@@ -235,7 +235,7 @@ class LayoutObject : public ContainerNode {
 
   // TODO(yuanzhiwen): The exported functions will be moved to a unified
   // location.
-  BASE_EXPORT BoxInfo* GetBoxInfo();
+  LYNX_EXPORT BoxInfo* GetBoxInfo();
   const BoxInfo* GetBoxInfo() const;
 
   float ClampExactWidth(float width) const;
@@ -253,7 +253,7 @@ class LayoutObject : public ContainerNode {
 
   // TODO(yuanzhiwen): The exported functions will be moved to a unified
   // location.
-  BASE_EXPORT void ReLayoutWithConstraints(
+  LYNX_EXPORT void ReLayoutWithConstraints(
       Constraints& constraints, const SLNodeSet* fixed_node_set = nullptr);
 
   void UpdateConstraintsForViewport(Constraints& constraints);

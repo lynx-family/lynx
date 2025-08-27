@@ -9,16 +9,16 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/trace/native/trace_controller.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/profile/runtime_profiler.h"
 
 namespace lynx {
 namespace profile {
 // export for devtool
-BASE_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager();
+LYNX_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager();
 
-class BASE_EXPORT RuntimeProfilerManager : public lynx::trace::TracePlugin {
+class LYNX_EXPORT RuntimeProfilerManager : public lynx::trace::TracePlugin {
  public:
   static RuntimeProfilerManager* GetInstance();
   RuntimeProfilerManager() = default;

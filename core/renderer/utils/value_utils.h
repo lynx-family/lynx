@@ -9,11 +9,11 @@
 #include <string>
 #include <utility>
 
-#include "base/include/base_export.h"
 #include "base/include/compiler_specific.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "core/base/lynx_export.h"
 #include "core/public/pipeline_option.h"
 
 namespace lynx {
@@ -30,7 +30,7 @@ bool CheckTableDeepUpdated(const lepus::Value& target,
 bool CheckTableShadowUpdated(const lepus::Value& target,
                              const lepus::Value& update);
 
-BASE_EXPORT_FOR_DEVTOOL void ForEachLepusValue(const lepus::Value& value,
+LYNX_EXPORT_FOR_DEVTOOL void ForEachLepusValue(const lepus::Value& value,
                                                lepus::LepusValueIterator func);
 
 std::string GetTimingFlag(const lepus_value& table);

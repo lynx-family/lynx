@@ -13,8 +13,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/include/base_export.h"
 #include "base/include/thread/timed_task.h"
+#include "core/base/lynx_export.h"
 #include "devtool/base_devtool/native/js_inspect/script_manager_ng.h"
 #include "devtool/fundamentals/js_inspect/inspector_client_delegate.h"
 #include "devtool/js_inspect/inspector_const.h"
@@ -23,7 +23,7 @@ namespace lynx {
 namespace devtool {
 
 // Public implementations of DevTool.
-class BASE_EXPORT InspectorClientDelegateBaseImpl
+class LYNX_EXPORT InspectorClientDelegateBaseImpl
     : public InspectorClientDelegate,
       public std::enable_shared_from_this<InspectorClientDelegateBaseImpl> {
  public:

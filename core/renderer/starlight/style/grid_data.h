@@ -26,7 +26,7 @@ class GridData : public fml::RefCountedThreadSafeStorage {
     return fml::AdoptRef(new GridData(*this));
   }
   GridData();
-  BASE_EXPORT GridData(const GridData& data);
+  LYNX_EXPORT GridData(const GridData& data);
   ~GridData() = default;
   void Reset();
 

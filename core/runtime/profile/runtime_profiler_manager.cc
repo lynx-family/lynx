@@ -18,7 +18,7 @@
 namespace lynx {
 namespace profile {
 
-BASE_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager() {
+LYNX_EXPORT lynx::trace::TracePlugin* GetRuntimeProfilerManager() {
   return RuntimeProfilerManager::GetInstance();
 }
 

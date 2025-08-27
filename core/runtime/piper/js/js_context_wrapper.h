@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/bindings/jsi/global.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/profile/runtime_profiler.h"
@@ -18,7 +18,7 @@
 namespace lynx {
 namespace runtime {
 
-class BASE_EXPORT_FOR_DEVTOOL JSContextWrapper
+class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
     : public piper::JSIContext::Observer,
       public std::enable_shared_from_this<JSContextWrapper> {
  public:
@@ -52,7 +52,7 @@ class BASE_EXPORT_FOR_DEVTOOL JSContextWrapper
 #endif
 };
 
-class BASE_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
+class LYNX_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
  public:
   class ReleaseListener {
    public:
@@ -78,7 +78,7 @@ class BASE_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
   ReleaseListener* listener_;
 };
 
-class BASE_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
+class LYNX_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
     : public JSContextWrapper {
  public:
   NoneSharedJSContextWrapper(std::shared_ptr<piper::JSIContext>);

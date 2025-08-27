@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/public/page_options.h"
 #include "core/runtime/bindings/jsi/global.h"
 #include "core/runtime/bindings/jsi/js_app.h"
@@ -33,7 +33,7 @@ class RuntimeManagerDelegate;
 
 namespace piper {
 
-class BASE_EXPORT_FOR_DEVTOOL JSExecutor {
+class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
  public:
   JSExecutor(const std::shared_ptr<JSIExceptionHandler>& handler,
              const std::string& group_id,

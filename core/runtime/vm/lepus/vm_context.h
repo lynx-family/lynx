@@ -11,11 +11,11 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
 #include "base/trace/native/trace_event.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/runtime/vm/lepus/context.h"
 #include "core/runtime/vm/lepus/function.h"
@@ -70,8 +70,8 @@ class VMContext : public Context {
   void CleanClosuresInCycleReference() override;
   int32_t CallFunction(Value* function, size_t argc, Value* ret);
 
-  BASE_EXPORT_FOR_DEVTOOL Frame* GetCurrentFrame();
-  BASE_EXPORT_FOR_DEVTOOL fml::RefPtr<Function> GetRootFunction();
+  LYNX_EXPORT_FOR_DEVTOOL Frame* GetCurrentFrame();
+  LYNX_EXPORT_FOR_DEVTOOL fml::RefPtr<Function> GetRootFunction();
   // for deserialize
   void SetRootFunction(fml::RefPtr<Function> func) {
     root_function_ = std::move(func);

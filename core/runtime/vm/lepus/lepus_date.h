@@ -13,9 +13,9 @@
 #include <sstream>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/ref_type.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace lepus {
@@ -83,7 +83,7 @@ class CDate : public lepus::RefCounted {
   }
 
   friend bool operator==(const CDate& left, const CDate& right);
-  BASE_EXPORT_FOR_DEVTOOL void print(std::stringstream& ss);
+  LYNX_EXPORT_FOR_DEVTOOL void print(std::stringstream& ss);
   void print(std::ostream& ss);
   friend bool operator!=(const CDate& left, const CDate& right) {
     return !(left == right);

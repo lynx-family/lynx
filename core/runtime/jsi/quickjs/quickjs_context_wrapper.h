@@ -17,7 +17,7 @@ namespace lynx {
 namespace piper {
 using RegisterWasmFuncType = void (*)(void*, void*);
 
-class BASE_EXPORT_FOR_DEVTOOL QuickjsContextWrapper : public piper::JSIContext {
+class LYNX_EXPORT_FOR_DEVTOOL QuickjsContextWrapper : public piper::JSIContext {
  public:
   QuickjsContextWrapper(std::shared_ptr<VMInstance> vm);
   ~QuickjsContextWrapper() override;

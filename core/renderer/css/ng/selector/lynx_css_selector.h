@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/ng/selector/lynx_css_selector_extra_data.h"
 
 namespace lynx {
@@ -40,7 +40,7 @@ class LynxCSSSelector {
 
   ~LynxCSSSelector() = default;
 
-  BASE_EXPORT_FOR_DEVTOOL std::string ToString() const;
+  LYNX_EXPORT_FOR_DEVTOOL std::string ToString() const;
 
   bool operator==(const LynxCSSSelector&) const = delete;
   bool operator!=(const LynxCSSSelector&) const = delete;

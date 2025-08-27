@@ -10,14 +10,14 @@
 #include <memory>
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/message_loop.h"
 #include "base/trace/native/trace_controller.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace profile {
 
-struct BASE_EXPORT RuntimeProfile {
+struct LYNX_EXPORT RuntimeProfile {
   std::string runtime_profile_;
   uint64_t track_id_;
 
@@ -25,7 +25,7 @@ struct BASE_EXPORT RuntimeProfile {
       : runtime_profile_(runtime_profile), track_id_(track_id) {}
 };
 
-class BASE_EXPORT RuntimeProfiler
+class LYNX_EXPORT RuntimeProfiler
     : public std::enable_shared_from_this<RuntimeProfiler> {
  public:
   RuntimeProfiler();

@@ -314,7 +314,7 @@ class ElementManager : public ElementContextDelegate {
       uint32_t node_index = 0,
       RadonNodeType radon_node_type = RadonNodeType::kRadonUnknown);
 
-  BASE_EXPORT_FOR_DEVTOOL void OnFinishUpdateProps(
+  LYNX_EXPORT_FOR_DEVTOOL void OnFinishUpdateProps(
       Element *node, std::shared_ptr<PipelineOptions> &options);
 
   void PatchEventRelatedInfo();
@@ -358,13 +358,13 @@ class ElementManager : public ElementContextDelegate {
   void UpdateViewport(float width, SLMeasureMode width_mode_, float height,
                       SLMeasureMode height_mode, bool need_layout);
 
-  BASE_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
       const std::shared_ptr<InspectorElementObserver>
           &inspector_element_observer);
 
   void OnUpdateViewport(float width, int width_mode, float height,
                         int height_mode, bool need_layout);
-  BASE_EXPORT_FOR_DEVTOOL void SetRootOnLayout(int32_t id);
+  LYNX_EXPORT_FOR_DEVTOOL void SetRootOnLayout(int32_t id);
 #if ENABLE_TESTBENCH_RECORDER
   void SetRecordId(int64_t record_id) { record_id_ = record_id; }
 #endif
@@ -956,7 +956,7 @@ class ElementManager : public ElementContextDelegate {
    */
   fml::RefPtr<FrameElement> CreateFiberFrame();
 
-  BASE_EXPORT_FOR_DEVTOOL void OnPatchFinish(
+  LYNX_EXPORT_FOR_DEVTOOL void OnPatchFinish(
       std::shared_ptr<PipelineOptions> &option, Element *root = nullptr);
 
   /**

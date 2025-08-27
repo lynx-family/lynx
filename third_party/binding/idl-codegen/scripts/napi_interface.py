@@ -328,7 +328,7 @@ def interface_context(interface, interfaces, component_info, interfaces_info):
 
     context['log_on_destruction'] = ('LogOnDestruction' in extended_attributes)
 
-    # ToImplUnsafe method needs BASE_EXPORT
+    # ToImplUnsafe method needs LYNX_EXPORT
     context['export_impl_getter'] = ('ExportImplGetter' in extended_attributes)
 
 

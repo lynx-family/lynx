@@ -399,7 +399,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
       return reinterpret_cast<EventMap&>(static_events_);
     }
 
-    BASE_EXPORT_FOR_DEVTOOL static const EventMap& DefaultEmptyEventMap();
+    LYNX_EXPORT_FOR_DEVTOOL static const EventMap& DefaultEmptyEventMap();
   };
 
   struct CSSVariableBundle {
@@ -419,12 +419,12 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     // `key: --bg-color value: red`
     CSSVariableMap css_variable_related_;
 
-    BASE_EXPORT_FOR_DEVTOOL static const CSSVariableMap&
+    LYNX_EXPORT_FOR_DEVTOOL static const CSSVariableMap&
     DefaultEmptyCSSVariableMap();
   };
 
-  BASE_EXPORT_FOR_DEVTOOL static const GestureMap& DefaultEmptyGestureMap();
-  BASE_EXPORT_FOR_DEVTOOL static const DataMap& DefaultEmptyDataMap();
+  LYNX_EXPORT_FOR_DEVTOOL static const GestureMap& DefaultEmptyGestureMap();
+  LYNX_EXPORT_FOR_DEVTOOL static const DataMap& DefaultEmptyDataMap();
 
   void SetCSSVariableBundle(const AttributeHolder& holder) {
     if (holder.css_variables_.has_value()) {

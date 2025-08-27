@@ -14,7 +14,7 @@
 namespace lynx {
 namespace lepus {
 
-class BASE_EXPORT_FOR_DEVTOOL ByteArray : public lepus::RefCounted {
+class BASE_EXPORT ByteArray : public lepus::RefCounted {
  public:
   static fml::RefPtr<ByteArray> Create() {
     return fml::AdoptRef<ByteArray>(new ByteArray());

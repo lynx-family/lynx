@@ -10,6 +10,9 @@ import("base.gni")
 config("base_public") {
   defines = []
   cflags = []
+  if (!base_export_symbols) {
+    defines += [ "BASE_NO_EXPORT" ]
+  }
   if (!is_debug) {
     defines += [ "NDEBUG" ]
   }
@@ -35,11 +38,6 @@ config("base_public") {
       "OS_WIN=1",
       "_CRT_SECURE_NO_WARNINGS=1",
     ]
-  }
-
-  # TODO(chenyouhui): Remove it later
-  if (enable_inspector) {
-    defines += [ "EXPORT_SYMBOLS_FOR_DEVTOOL=1" ]
   }
 }
 

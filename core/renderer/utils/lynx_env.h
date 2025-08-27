@@ -13,14 +13,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "base/include/base_export.h"
 #include "base/include/log/logging.h"
 #include "base/include/no_destructor.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace tasm {
 
-class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
+class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
  public:
   enum class Key : uint64_t {
     ENABLE_DEVTOOL = 0,

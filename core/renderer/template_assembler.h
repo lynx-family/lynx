@@ -376,7 +376,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SendBubbleEvent(const std::string& name, int tag,
                        lepus::DictionaryPtr dict);
 
-  BASE_EXPORT_FOR_DEVTOOL void SetLepusObserver(
+  LYNX_EXPORT_FOR_DEVTOOL void SetLepusObserver(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer);
 
   lepus::Value GetComponentInfoMap(const std::string& entry_name) override;

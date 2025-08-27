@@ -23,8 +23,8 @@ class WhiteBoardDelegate
 
   virtual ~WhiteBoardDelegate() = default;
 
-  BASE_EXPORT_FOR_DEVTOOL std::shared_ptr<WhiteBoardInspector> GetInspector();
-  BASE_EXPORT_FOR_DEVTOOL void SetInspector(
+  LYNX_EXPORT_FOR_DEVTOOL std::shared_ptr<WhiteBoardInspector> GetInspector();
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspector(
       const std::shared_ptr<WhiteBoardInspector>& inspector);
 
   virtual void CallLepusCallbackWithValue(const lepus::Value& closure,

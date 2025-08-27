@@ -10,7 +10,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "third_party/rapidjson/document.h"
 
 namespace lynx {
@@ -24,7 +24,7 @@ struct Breakpoint {
   std::string condition_;
 };
 
-class BASE_EXPORT ScriptManagerNG {
+class LYNX_EXPORT ScriptManagerNG {
  public:
   ScriptManagerNG() = default;
   virtual ~ScriptManagerNG() = default;

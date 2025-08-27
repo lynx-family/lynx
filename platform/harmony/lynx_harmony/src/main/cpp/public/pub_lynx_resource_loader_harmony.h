@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace pub {
@@ -17,7 +17,7 @@ class LynxResourceLoader;
 }
 namespace tasm {
 namespace harmony {
-class BASE_EXPORT PubLynxResourceLoaderHarmony {
+class LYNX_EXPORT PubLynxResourceLoaderHarmony {
  public:
   PubLynxResourceLoaderHarmony(napi_env env, napi_value resource_loader);
 

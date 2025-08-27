@@ -364,7 +364,7 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
         template_context['hardcoded_includes'].append('third_party/binding/napi/exception_message.h')
         template_context['hardcoded_includes'].append('third_party/binding/napi/napi_base_wrap.h')
         if template_context['export_impl_getter']:
-            template_context['header_includes'].add('base/include/base_export.h')
+            template_context['header_includes'].add('krypton/core/base/krypton_export.h')
         # add common headers to component
         common_headers = self.hardcoded_includes.get(component, {}).get('common_headers', [])
         for header in common_headers:

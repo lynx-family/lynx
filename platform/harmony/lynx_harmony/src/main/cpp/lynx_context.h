@@ -14,9 +14,9 @@
 #include <unordered_map>
 #include <utility>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/lynx_export.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/public/lynx_engine_proxy.h"
 #include "core/public/lynx_extension_delegate.h"
@@ -133,7 +133,7 @@ class LynxContext {
   void CallJSIntersectionObserver(int32_t observer_id, int32_t callback_id,
                                   lepus::Value params) const;
 
-  BASE_EXPORT float ScaledDensity() const;
+  LYNX_EXPORT float ScaledDensity() const;
 
   const std::shared_ptr<pub::LynxResourceLoader>& GetResourceLoader() const {
     return resource_loader_;
@@ -205,7 +205,7 @@ class LynxContext {
                          const std::string& tag);
   void StopFluencyTrace(int sign);
 
-  BASE_EXPORT UIRoot* Root();
+  LYNX_EXPORT UIRoot* Root();
 
   const std::string& OwnerId();
 
@@ -266,7 +266,7 @@ class LynxContext {
   const LynxContext::NodeInfo* GetNodeInfo(const std::string& node_name);
   void RegisterNodeInfo(const std::string& node_name, NodeInfo node_info);
 
-  BASE_EXPORT int32_t GetInstanceId() const;
+  LYNX_EXPORT int32_t GetInstanceId() const;
   fluency::harmony::FluencyTraceHelperHarmony& GetFluencyTraceHelper();
 
   void SetEnableTextOverflow(bool enable) { enable_text_overflow_ = enable; }
@@ -277,7 +277,7 @@ class LynxContext {
     extension_delegate_ = extension_delegate;
   }
 
-  BASE_EXPORT pub::LynxExtensionDelegate* GetExtensionDelegate() const {
+  LYNX_EXPORT pub::LynxExtensionDelegate* GetExtensionDelegate() const {
     return extension_delegate_;
   }
 

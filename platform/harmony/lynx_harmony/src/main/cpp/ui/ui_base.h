@@ -16,10 +16,10 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/value/base_value.h"
 #include "core/base/harmony/harmony_function_loader.h"
+#include "core/base/lynx_export.h"
 #include "core/public/prop_bundle.h"
 #include "core/renderer/ui_wrapper/common/harmony/platform_extra_bundle_harmony.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/custom_event.h"
@@ -48,7 +48,7 @@ struct OverflowValue {
   bool overflow_y;
 };
 
-class BASE_EXPORT
+class LYNX_EXPORT
 
     UIBase : public std::enable_shared_from_this<UIBase>,
              public EventTarget,

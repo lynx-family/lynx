@@ -9,9 +9,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/fml/memory/ref_ptr.h"
 #include "base/include/fml/task_runner.h"
+#include "core/base/lynx_export.h"
 #include "core/public/runtime_lifecycle_observer.h"
 #include "core/public/vsync_observer_interface.h"
 #include "core/runtime/piper/js/runtime_lifecycle_listener_delegate.h"

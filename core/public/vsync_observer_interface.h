@@ -9,14 +9,14 @@
 
 #include <functional>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace runtime {
 
 // C++ VsyncObserver interface, exported from lynx.so.
-class BASE_EXPORT IVSyncObserver {
+class LYNX_EXPORT IVSyncObserver {
  public:
   IVSyncObserver() = default;
   virtual ~IVSyncObserver() = default;

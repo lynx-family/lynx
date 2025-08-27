@@ -9,9 +9,9 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/include/base_export.h"
 #include "base/include/value/base_value.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_selector_constants.h"
 #include "core/renderer/css/css_variable_handler.h"
@@ -35,7 +35,7 @@ class StyleResolver {
   template <class T>
   using MatchedVector = base::InlineVector<T, kDefaultMatchedSize>;
 
-  BASE_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
+  LYNX_EXPORT_FOR_DEVTOOL static MatchedVector<css::MatchedRule>
   GetCSSMatchedRule(AttributeHolder* node, CSSFragment* style_sheet);
 
   void ResolveStyle(StyleMap& result, CSSFragment* fragment,

@@ -11,8 +11,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/include/base_export.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/error/en.h"
@@ -31,12 +31,12 @@ std::string readFile(const char* file);
 
 std::string writeFile(const uint8_t* content, const char* file, int len,
                       size_t& pos);
-BASE_EXPORT_FOR_DEVTOOL lepus_value
+LYNX_EXPORT_FOR_DEVTOOL lepus_value
 jsonValueTolepusValue(const rapid_value& rapValue);
 lepus_value jsonValueTolepusValue(const char* json);
 std::string lepusValueToJSONString(const lepus_value& value,
                                    bool in_order = false);
-BASE_EXPORT_FOR_DEVTOOL std::string lepusValueToString(const lepus_value& value,
+LYNX_EXPORT_FOR_DEVTOOL std::string lepusValueToString(const lepus_value& value,
                                                        bool ordered = false,
                                                        bool fixed = false);
 std::string lepusValueMapToJSONString(

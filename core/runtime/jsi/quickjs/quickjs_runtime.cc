@@ -967,7 +967,7 @@ void BindQuickjsVMToCurrentThread(std::shared_ptr<piper::VMInstance> &vm) {
   quickjs_vm->AddToIdContainer();
 }
 
-BASE_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
+LYNX_EXPORT_FOR_DEVTOOL std::unique_ptr<profile::RuntimeProfiler>
 makeQuickJsRuntimeProfiler(std::shared_ptr<piper::JSIContext> js_context) {
 #if ENABLE_TRACE_PERFETTO
   auto vm = js_context->getVM();

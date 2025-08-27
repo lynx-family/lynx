@@ -18,7 +18,7 @@ namespace tasm {
 namespace harmony {
 class UIOwner;
 class PubLynxContext;
-class BASE_EXPORT PubUIOwner {
+class LYNX_EXPORT PubUIOwner {
  public:
   PubUIOwner(napi_env env, napi_value ui_owner);
   ~PubUIOwner() = default;

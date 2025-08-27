@@ -9,6 +9,7 @@ import("../Lynx.gni")
 # base_shared_sources
 base_shared_sources = [
                         "js_constants.h",
+                        "lynx_export.h",
                         "thread/once_task.h",
                         "thread/thread_utils.cc",
                         "thread/thread_utils.h",

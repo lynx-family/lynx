@@ -10,7 +10,7 @@
 #include "{{filename}}"
 {% endfor %}
 {% if exported %}
-#include "base/include/base_export.h"
+#include "krypton/core/base/krypton_export.h"
 {% endif %}
 
 {% if impl_namespace %}
@@ -31,7 +31,7 @@ using {{impl_namespace}}::{{cpp_class}};
 class {{cpp_class}};
 {% endif %}
 
-class {{'BASE_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent_interface if parent_interface else 'NapiBridge'}} {
+class {{'KRYPTON_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent_interface if parent_interface else 'NapiBridge'}} {
  public:
   {{napi_class}}(const Napi::CallbackInfo&, bool skip_init_as_base = false);
   {% if dispose_on_destruction or buffer_commands or log_on_destruction or attach_native_info %}
@@ -39,7 +39,7 @@ class {{'BASE_EXPORT ' if exported}}{{napi_class}} : public {{'Napi' + parent_in
   {% endif %}
 
   {% if export_impl_getter %}
-  BASE_EXPORT {{cpp_class}}* ToImplUnsafe();
+  KRYPTON_EXPORT {{cpp_class}}* ToImplUnsafe();
   {% else %}
   {{cpp_class}}* ToImplUnsafe();
   {% endif %}

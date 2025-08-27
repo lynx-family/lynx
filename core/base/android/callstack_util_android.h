@@ -7,8 +7,8 @@
 
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/platform/android/scoped_java_ref.h"
+#include "core/base/lynx_export.h"
 
 namespace lynx {
 namespace base {
@@ -16,9 +16,9 @@ namespace android {
 
 class CallStackUtilAndroid {
  public:
-  BASE_EXPORT_FOR_DEVTOOL static std::string GetMessageOfCauseChain(
+  LYNX_EXPORT_FOR_DEVTOOL static std::string GetMessageOfCauseChain(
       JNIEnv* env, const ScopedLocalJavaRef<jthrowable>& throwable);
-  BASE_EXPORT_FOR_DEVTOOL static std::string GetStackTraceStringWithLineTrimmed(
+  LYNX_EXPORT_FOR_DEVTOOL static std::string GetStackTraceStringWithLineTrimmed(
       JNIEnv* env, const ScopedLocalJavaRef<jthrowable>& throwable);
 };
 

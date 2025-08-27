@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "third_party/binding/napi/shim/shim_napi.h"
@@ -36,7 +36,7 @@ class DelegateObserver {
   runtime::TemplateDelegate* delegate_;
 };
 
-class BASE_EXPORT NapiRuntimeProxyInterface {
+class LYNX_EXPORT NapiRuntimeProxyInterface {
  public:
   virtual ~NapiRuntimeProxyInterface() = default;
   virtual void Attach() = 0;
@@ -49,7 +49,7 @@ class BASE_EXPORT NapiRuntimeProxyInterface {
   virtual void SetUncaughtExceptionHandler() = 0;
 };
 
-class BASE_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
+class LYNX_EXPORT NapiRuntimeProxy : public NapiRuntimeProxyInterface {
  public:
   static std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<Runtime> runtime,

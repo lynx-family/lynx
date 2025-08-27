@@ -12,7 +12,7 @@ namespace lynx {
 namespace piper {
 class NapiRuntimeProxyJSVMFactory {
  public:
-  BASE_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
+  LYNX_EXPORT virtual std::unique_ptr<NapiRuntimeProxy> Create(
       std::shared_ptr<Runtime> runtime,
       runtime::TemplateDelegate *delegate = nullptr) = 0;
 };

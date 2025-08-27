@@ -27,7 +27,7 @@
 namespace lynx {
 namespace lepus {
 
-class BASE_EXPORT_FOR_DEVTOOL Dictionary : public RefCountedBase {
+class BASE_EXPORT Dictionary : public RefCountedBase {
  public:
   // Stores up-to 4 key-value pairs on inline memory.
   static constexpr size_t kInlineStorageSize = 4;

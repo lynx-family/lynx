@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_fragment_decorator.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
@@ -63,7 +63,7 @@ class ComponentElement : public WrapperElement, public BaseComponent {
 
   virtual bool CanBeLayoutOnly() const override;
 
-  BASE_EXPORT_FOR_DEVTOOL CSSFragment* GetCSSFragment();
+  LYNX_EXPORT_FOR_DEVTOOL CSSFragment* GetCSSFragment();
 
   const lepus::Value& GetData() override;
 

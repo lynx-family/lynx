@@ -9,8 +9,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "base/include/base_export.h"
 #include "base/include/log/logging.h"
+#include "core/base/lynx_export.h"
 #include "core/base/observer/observer.h"
 #include "core/base/observer/observer_list.h"
 #include "core/runtime/jscache/js_cache_tracker.h"

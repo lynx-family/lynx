@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 
+#include "core/base/lynx_export.h"
 #include "core/renderer/starlight/types/layout_types.h"
 
 namespace lynx {
@@ -25,7 +26,7 @@ DimensionValue<LayoutUnit> ComputePreferredSize(
 void ApplyAspectRatio(const LayoutObject* layout_object, Constraints& size);
 
 // TODO(yuanzhiwen): The exported functions will be moved to a unified location.
-BASE_EXPORT Constraints GenerateDefaultConstraints(
+LYNX_EXPORT Constraints GenerateDefaultConstraints(
     const LayoutObject& item, const Constraints& container_constraint);
 
 void ApplyMinMaxToConstraints(Constraints& constraints,

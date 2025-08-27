@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/no_destructor.h"
+#include "core/base/lynx_export.h"
 #include "core/inspector/observer/inspector_common_observer.h"
 
 namespace lynx {

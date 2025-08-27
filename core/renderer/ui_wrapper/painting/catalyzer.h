@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/public/prop_bundle.h"
 
 namespace lynx {
@@ -39,10 +39,10 @@ class Catalyzer {
   void UpdateLayoutRecursively();
   void UpdateLayoutRecursivelyWithoutChange();
 
-  BASE_EXPORT_FOR_DEVTOOL std::vector<float> getBoundingClientOrigin(
+  LYNX_EXPORT_FOR_DEVTOOL std::vector<float> getBoundingClientOrigin(
       Element* node);
-  BASE_EXPORT_FOR_DEVTOOL std::vector<float> GetRectToWindow(Element* node);
-  BASE_EXPORT_FOR_DEVTOOL std::vector<float> getWindowSize(Element* node);
+  LYNX_EXPORT_FOR_DEVTOOL std::vector<float> GetRectToWindow(Element* node);
+  LYNX_EXPORT_FOR_DEVTOOL std::vector<float> getWindowSize(Element* node);
 
   std::vector<float> GetRectToLynxView(Element* node);
   std::vector<float> ScrollBy(int64_t id, float width, float height);

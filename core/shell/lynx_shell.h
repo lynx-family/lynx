@@ -13,9 +13,9 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/lynx_actor.h"
 #include "base/include/value/base_value.h"
+#include "core/base/lynx_export.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
@@ -246,20 +246,20 @@ class LynxShell {
   std::unordered_map<std::string, std::string> GetAllJsSource();
 
   // TODO(huangweiwu): Delete this after adding a delegate for the devtool.
-  BASE_EXPORT_FOR_DEVTOOL tasm::TemplateAssembler* GetTasm();
+  LYNX_EXPORT_FOR_DEVTOOL tasm::TemplateAssembler* GetTasm();
 
-  BASE_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorElementObserver(
       const std::shared_ptr<tasm::InspectorElementObserver>&
           inspector_element_observer);
 
-  BASE_EXPORT_FOR_DEVTOOL void SetInspectorRuntimeObserver(
+  LYNX_EXPORT_FOR_DEVTOOL void SetInspectorRuntimeObserver(
       const std::shared_ptr<piper::InspectorRuntimeObserverNG>& observer) {
     runtime_observer_ = observer;
   }
 
-  BASE_EXPORT_FOR_DEVTOOL bool IsRuntimeEnabled() { return enable_runtime_; }
+  LYNX_EXPORT_FOR_DEVTOOL bool IsRuntimeEnabled() { return enable_runtime_; }
 
-  BASE_EXPORT_FOR_DEVTOOL void SetHierarchyObserver(
+  LYNX_EXPORT_FOR_DEVTOOL void SetHierarchyObserver(
       const std::shared_ptr<tasm::HierarchyObserver>& hierarchy_observer);
 
   int32_t GetInstanceId() { return instance_id_; }

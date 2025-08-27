@@ -92,7 +92,7 @@ class BuiltinFunctionTable;
 
 typedef Value (*CFunction)(Context*);
 
-class BASE_EXPORT_FOR_DEVTOOL Value {
+class BASE_EXPORT Value {
  private:
   lynx_value value_;
   lynx_api_env env_;
@@ -501,11 +501,9 @@ class BASE_EXPORT_FOR_DEVTOOL Value {
   }
 
   bool IsEqual(const Value& value) const;
-  BASE_EXPORT_FOR_DEVTOOL friend bool operator==(const Value& left,
-                                                 const Value& right);
+  BASE_EXPORT friend bool operator==(const Value& left, const Value& right);
 
-  BASE_EXPORT_FOR_DEVTOOL friend bool operator!=(const Value& left,
-                                                 const Value& right) {
+  BASE_EXPORT friend bool operator!=(const Value& left, const Value& right) {
     return !(left == right);
   }
 

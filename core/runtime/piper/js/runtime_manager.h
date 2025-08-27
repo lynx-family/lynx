@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include "base/include/base_export.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/piper/js/js_context_wrapper.h"
 
@@ -23,7 +23,7 @@ class JSExecutor;
 
 namespace runtime {
 
-class BASE_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
+class LYNX_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
  public:
   using ReleaseContextCallback =
       std::function<void(const std::string& group_str)>;
@@ -60,7 +60,7 @@ class BASE_EXPORT_FOR_DEVTOOL RuntimeManagerDelegate {
                                     const ReleaseVMCallback& callback) {}
 };
 
-class BASE_EXPORT_FOR_DEVTOOL RuntimeManager
+class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
     : public SharedJSContextWrapper::ReleaseListener {
  public:
   static RuntimeManager* Instance();

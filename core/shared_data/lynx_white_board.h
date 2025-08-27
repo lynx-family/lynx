@@ -10,9 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/synchronization/shared_mutex.h"
+#include "core/base/lynx_export.h"
 #include "core/public/pub_value.h"
 #include "core/shared_data/white_board_inspector.h"
 
@@ -57,13 +57,13 @@ class WhiteBoard final {
   }
 
   // set & get operation
-  BASE_EXPORT_FOR_DEVTOOL void SetGlobalSharedData(
+  LYNX_EXPORT_FOR_DEVTOOL void SetGlobalSharedData(
       const std::string& key, const std::shared_ptr<pub::Value>& value);
-  BASE_EXPORT_FOR_DEVTOOL std::shared_ptr<pub::Value> GetGlobalSharedData(
+  LYNX_EXPORT_FOR_DEVTOOL std::shared_ptr<pub::Value> GetGlobalSharedData(
       const std::string& key);
 
-  BASE_EXPORT_FOR_DEVTOOL void RemoveGlobalSharedData(const std::string& key);
-  BASE_EXPORT_FOR_DEVTOOL void ClearGlobalSharedData();
+  LYNX_EXPORT_FOR_DEVTOOL void RemoveGlobalSharedData(const std::string& key);
+  LYNX_EXPORT_FOR_DEVTOOL void ClearGlobalSharedData();
 
   // subscribe & unsubscribe operation
   void RegisterSharedDataListener(const WhiteBoardStorageType& type,
@@ -75,7 +75,7 @@ class WhiteBoard final {
   ~WhiteBoard() = default;
 
   // only used for inspector
-  BASE_EXPORT_FOR_DEVTOOL const auto& GetAllGlobalSharedData() {
+  LYNX_EXPORT_FOR_DEVTOOL const auto& GetAllGlobalSharedData() {
     return data_center_;
   }
 

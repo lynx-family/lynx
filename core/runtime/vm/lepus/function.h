@@ -16,6 +16,7 @@
 #include "base/include/value/ref_counted_class.h"
 #include "base/include/value/ref_type.h"
 #include "base/include/vector.h"
+#include "core/base/lynx_export.h"
 #include "core/runtime/vm/lepus/op_code.h"
 #include "core/runtime/vm/lepus/regexp.h"
 #include "core/runtime/vm/lepus/switch.h"
@@ -118,7 +119,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   void SetFunctionId(int64_t function_id) { function_id_ = function_id; }
 
-  BASE_EXPORT_FOR_DEVTOOL int64_t GetFunctionId();
+  LYNX_EXPORT_FOR_DEVTOOL int64_t GetFunctionId();
 
   fml::WeakRefPtr<Function> GetChildFunction(long index) {
     return fml::WeakRefPtr<Function>(child_functions_[index].get());
@@ -130,7 +131,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
     return index < const_size_ ? &const_values_[index] : nullptr;
   }
 
-  BASE_EXPORT_FOR_DEVTOOL const auto& GetConstValue() { return const_values_; }
+  LYNX_EXPORT_FOR_DEVTOOL const auto& GetConstValue() { return const_values_; }
 
   long SearchUpvalue(const base::String& name) {
     for (long i = 0; static_cast<size_t>(i) < upvalues_.size(); ++i) {
@@ -169,7 +170,7 @@ class Function : public fml::RefCountedThreadSafeStorage {
     function_name_ = function_name;
   }
 
-  BASE_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
+  LYNX_EXPORT_FOR_DEVTOOL std::string GetFunctionName();
 
   void SetUpvalueArray(const std::unordered_map<
                        std::pair<lynx::base::String, uint64_t>, long, pair_hash>
@@ -188,25 +189,25 @@ class Function : public fml::RefCountedThreadSafeStorage {
 
   int64_t CurrentLineCol() { return current_line_col_; }
 
-  BASE_EXPORT_FOR_DEVTOOL Value GetLineInfo();
+  LYNX_EXPORT_FOR_DEVTOOL Value GetLineInfo();
 
-  BASE_EXPORT_FOR_DEVTOOL void SetLineInfo(int32_t index, int64_t line_col);
+  LYNX_EXPORT_FOR_DEVTOOL void SetLineInfo(int32_t index, int64_t line_col);
 
-  BASE_EXPORT_FOR_DEVTOOL void PushDebugInfoToConstValues(const Value& value);
+  LYNX_EXPORT_FOR_DEVTOOL void PushDebugInfoToConstValues(const Value& value);
 
-  BASE_EXPORT_FOR_DEVTOOL void GetLineCol(int index, int& line, int& col);
+  LYNX_EXPORT_FOR_DEVTOOL void GetLineCol(int index, int& line, int& col);
 
   void SetSource(const std::string& source) { source_ = source; }
   const std::string GetSource() { return source_; }
-  BASE_EXPORT_FOR_DEVTOOL Value& GetScope();
-  BASE_EXPORT_FOR_DEVTOOL static void DecodeLineCol(uint64_t line_col,
+  LYNX_EXPORT_FOR_DEVTOOL Value& GetScope();
+  LYNX_EXPORT_FOR_DEVTOOL static void DecodeLineCol(uint64_t line_col,
                                                     int32_t& line,
                                                     int32_t& col);
 
   static uint32_t EncodeVariableInfo(int32_t type, int32_t reg_index,
                                      int32_t array_index, int32_t offset);
 
-  BASE_EXPORT_FOR_DEVTOOL static void DecodeVariableInfo(uint32_t val,
+  LYNX_EXPORT_FOR_DEVTOOL static void DecodeVariableInfo(uint32_t val,
                                                          int32_t& type,
                                                          int32_t& reg_index,
                                                          int32_t& array_index,

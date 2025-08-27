@@ -7,8 +7,8 @@
 
 #include <string>
 
-#include "base/include/base_export.h"
 #include "base/include/closure.h"
+#include "core/base/lynx_export.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/dom/attribute_holder.h"
 
@@ -25,7 +25,7 @@ class CSSVariableHandler {
 
   // method to get variable value by DOM structure.
   // if value not found, return default_props.
-  BASE_EXPORT_FOR_DEVTOOL base::String GetCSSVariableByRule(
+  LYNX_EXPORT_FOR_DEVTOOL base::String GetCSSVariableByRule(
       const std::string& format, AttributeHolder* holder,
       const base::String& default_props, const lepus::Value& default_value_map);
 

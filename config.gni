@@ -80,6 +80,11 @@ declare_args() {
   compiler_optimization_level = "Oz"
 
   enable_harmony_shared = false
+
+  # Controls the symbol visibility of the lynx library.
+  # If true, symbols decorated with `LYNX_EXPORT` are exported.
+  # Otherwise, no symbols from this library are exported.
+  lynx_export_symbols = true
 }
 
 declare_args() {
