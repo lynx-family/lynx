@@ -14,7 +14,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 
 sys.path.append(root_path)
-from tools.js_tools.pnpm_helper import run_pnpm_command
+from tools.js_tools.pnpm_helper import get_pnpm_env, run_pnpm_command
 
 # Define the distribution path
 dist_path = os.path.join(current_dir, 'dist')
@@ -28,7 +28,19 @@ ios_target_path = os.path.join(root_path, 'devtool', 'base_devtool', 'darwin', '
 # Define the harmony target path
 harmony_target_path = os.path.join(root_path, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', 'logbox')
 
+def git_root_dir():
+    command = ['git', 'rev-parse', '--show-toplevel']
+    p = subprocess.Popen(' '.join(command),
+                         stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE,
+                         shell=True)
+    result, error = p.communicate()
+    return result.decode('utf-8').strip()
+
 def build():
+    env = get_pnpm_env()
+    env['COREPACK_HOME'] = os.path.join(git_root_dir(), 'buildtools', 'corepack')
+    env['COREPACK_ENABLE_NETWORK'] = '0'
     # Change to the root directory
     os.chdir(root_path)
 
@@ -37,7 +49,7 @@ def build():
 
     # Run the pnpm build command
     run_pnpm_command(['pnpm', '--filter', '@lynx-dev/logbox', 'build'],
-                     root_path)
+                     root_path, env)
 
     # Remove the existing Android and iOS target directories
     if os.path.exists(android_target_path):

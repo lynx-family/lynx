@@ -25,10 +25,20 @@ def get_pnpm_env():
     return env
 
 
-def run_pnpm_command(command, cwd, env=get_pnpm_env()):
+def run_pnpm_command(command, cwd, env=None):
+    if env is None:
+        env = get_pnpm_env().copy()
+    env.setdefault("COREPACK_HOME", os.path.join(get_buildtools_path(), "corepack"))
+    env.setdefault("COREPACK_ENABLE_NETWORK", "0")
+    npm_exec = os.path.join(node_bin_path, "npm.CMD" if is_win else "npm")
     command[0] = os.path.join(node_bin_path, "pnpm.CMD" if is_win else "pnpm")
+    pnpm_command_str = ' '.join(command)
+    npm_config_cmd = f"{npm_exec} config set strict-ssl false"
+    # Force corepack to use the pnpm version specified by the build tool
+    full_command = f"corepack prepare pnpm@7.33.6 --activate && {npm_config_cmd} && {pnpm_command_str}"
     subprocess.check_call(
-        command,
+        full_command,
         cwd=cwd,
-        env=env,
+        shell=True,
+        env=env
     )
