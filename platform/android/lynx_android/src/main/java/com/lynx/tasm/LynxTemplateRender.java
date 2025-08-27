@@ -1569,6 +1569,7 @@ public class LynxTemplateRender
           updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
               getLynxView().getCurrentHeightMeasureSpec(), false);
         }
+        dispatchOnPageStart(mUrl);
         updateData(data, true);
         onTraceEventEnd(eventName);
         return true;
@@ -1580,6 +1581,7 @@ public class LynxTemplateRender
         updateViewport(getLynxView().getCurrentWidthMeasureSpec(),
             getLynxView().getCurrentHeightMeasureSpec(), false);
       }
+      dispatchOnPageStart(mUrl);
       updateData(data, true);
       onTraceEventEnd(eventName);
       return true;
