@@ -27,8 +27,12 @@ def get_pnpm_env():
 
 def run_pnpm_command(command, cwd, env=get_pnpm_env()):
     command[0] = os.path.join(node_bin_path, "pnpm.CMD" if is_win else "pnpm")
+    pnpm_command_str = ' '.join(command)
+    # Force corepack to use the pnpm version specified by the build tool
+    full_command = f"corepack prepare pnpm@7.33.6 --activate && {pnpm_command_str}"
     subprocess.check_call(
-        command,
+        full_command,
         cwd=cwd,
-        env=env,
+        shell=True,
+        env=env
     )
