@@ -40,10 +40,14 @@ boolean isAndroidModule() {
 }
 
 boolean hasDevFlavor() {
-    if (!isAndroidModule()) {
+    if (!isAndroidModule() || !project.android.productFlavors.any { it.name == "dev" }) {
         return false
     }
-    return project.android.productFlavors.any { it.name == "dev" }
+    def executedTasks = gradle.startParameter.taskNames*.toLowerCase()    
+    boolean isDevTaskExecuted = executedTasks.any { taskName ->
+        taskName.contains("dev")
+    }
+    return isDevTaskExecuted
 }
 
 Task createSourceJar(String baseName) {
