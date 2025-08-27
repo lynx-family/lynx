@@ -15,16 +15,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "base/include/value/lynx_api_types.h"
+#include "lynx_api_types.h"
 
 typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_ref) * lynx_value_ref;
-typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_handle_scope) *
-    lynx_value_handle_scope;
-typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_callback_info) *
-    lynx_value_callback_info;
-
-typedef void (*lynx_value_finalizer)(lynx_api_env env, void* finalize_data,
-                                     void* finalize_hint);
 
 typedef enum {
   lynx_value_null,
@@ -61,9 +54,6 @@ struct lynx_value {
   lynx_value_type type;
   int32_t tag;
 };
-
-typedef lynx_value (*lynx_value_function_callback)(
-    lynx_api_env env, const lynx_value_callback_info info);
 
 typedef void (*lynx_value_iterator_callback)(lynx_api_env env, lynx_value key,
                                              lynx_value val, void* pfunc,

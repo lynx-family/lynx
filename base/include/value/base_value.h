@@ -152,7 +152,7 @@ class BASE_EXPORT Value {
            value_.tag == static_cast<int32_t>(RefType::kRegExp);
   }
 
-  inline void DupValue() const;
+  void DupValue() const;
   void FreeValue();
   void ResetValueRef();
 
