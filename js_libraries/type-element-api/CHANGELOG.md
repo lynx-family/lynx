@@ -1,4 +1,9 @@
 # CHANGELOG
+## 0.0.2
+
+### Patch Changes
+
+- Add `__ElementAnimate` API
 
 ## 0.0.1
 
