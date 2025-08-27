@@ -1,20 +1,7 @@
 # CHANGELOG
 
-## 3.4.10
-- Add `animate` for `MainThread.Element`
-
-## 3.4.9
-- Add more interface for `scroll-view`.
-
-## 3.4.8
-- Introduce `disabled` for input and textarea.
-
-## 3.4.6
-- fix `TextCodecHelper` defines.
-- Update `fetch` defines for chunk streaming.
-
 ## 3.4.5
-- Complete the documentation for image related APIs.
+- Add `recyclable` property for list-item.
 
 ## 3.4.4
 - Revert automatically generated cssTypes

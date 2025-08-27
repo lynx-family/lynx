@@ -8,7 +8,7 @@
   "types":"types/index.d.ts",
   "main": "types/index.d.ts",
   "scripts": {
-    "test": "vitest --typecheck --run && tsc --noEmit"
+    "test": "tsd"
   },
   "exports": {
     ".": {
@@ -21,7 +21,6 @@
   ],
   "dependencies": {},
   "devDependencies": {
-    "tsd": "0.30.4",
-    "vitest": "2.1.9"
+    "tsd": "0.30.4"
   }
 }

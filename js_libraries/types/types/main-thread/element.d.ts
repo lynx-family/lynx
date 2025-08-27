@@ -3,7 +3,6 @@
 // LICENSE file in the root directory of this source tree.
 
 import { CSSProperties } from '../common';
-import { Animation, AnimationOptions } from './animation'
 
 export interface Element {
   styles: CSSProperties;
@@ -83,15 +82,4 @@ export interface Element {
    * @since Lynx 2.14
    */
   invoke(methodName: string, params?: Record<string, any>): Promise<any>;
-
-  /**
-   * Animate the element.
-   * @param keyframes The keyframes for the animation.
-   * @param options The options for the animation.
-   * @since Lynx 3.4
-   */
-  animate(
-    keyframes: Record<string, number | string>[],
-    options?: number | AnimationOptions,
-  ): Animation;
 }

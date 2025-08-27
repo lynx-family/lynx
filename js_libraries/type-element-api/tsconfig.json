@@ -5,14 +5,12 @@
     "baseUrl": "./types",
     "strict": true,
     "outDir": "lib",
-    "typeRoots": ["./node_modules/@types", "./types"],
-    "types": ["./types/index"],
+    "typeRoots": ["./node_modules/@types"],
     "jsx": "preserve",
     "module": "esnext",
     "moduleResolution": "Node",
     "skipLibCheck": true,
-    "noEmit": true
   },
-  "include": ["types/**/*.d.ts", "test/**/*.test-d.ts"],
-  "exclude": ["node_modules", "lib"]
+  "include": [],
+  "exclude": ["node_modules"]
 }
