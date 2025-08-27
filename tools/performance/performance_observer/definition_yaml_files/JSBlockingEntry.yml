@@ -1,0 +1,25 @@
+JSBlockingEntry:
+  x-type: jsBlocking
+  x-name: jsBlocking
+  x-lang:
+    - objc
+    - java
+    - arkts
+  allOf:
+    - $ref: 'PerformanceEntry.yml#/PerformanceEntry'
+    - type: object
+      properties:
+        stage:
+          type: string
+        total_blocking_time:
+          type: number
+        total_blocking_count:
+          type: number
+        total_duration:
+          type: number
+        blocking_ratio:
+          type: number
+        avg_blocking_time:
+          type: number
+        time_after_fcp:
+          type: number

@@ -2869,6 +2869,17 @@ public enum com::lynx::jsbridge::jsi::LynxJSIObjectHub::JObjectType {
   public com.lynx.jsbridge.jsi.LynxJSIObjectHub.JObjectType.DOUBLE_WRAPPER_TYPE DOUBLE_WRAPPER_TYPE;
 }
 
+public class com::lynx::tasm::performance::performanceobserver::JSBlockingEntry : com.lynx.tasm.performance.performanceobserver.PerformanceEntry {
+  public String com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.stage stage;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.total_blocking_time total_blocking_time;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.total_blocking_count total_blocking_count;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.total_duration total_duration;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.blocking_ratio blocking_ratio;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.avg_blocking_time avg_blocking_time;
+  public double com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.time_after_fcp time_after_fcp;
+  public com.lynx.tasm.performance.performanceobserver.JSBlockingEntry.JSBlockingEntry(HashMap< String, Object > props);
+}
+
 public class com::lynx::jsbridge::JSModule :  {
   public com.lynx.jsbridge.JSModule.JSModule(String module, JSProxy proxy);
   public void com.lynx.jsbridge.JSModule.fire(String function, JavaOnlyArray args);

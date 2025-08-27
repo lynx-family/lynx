@@ -12,6 +12,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/public/pub_value.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/performance/memory_monitor/memory_monitor.h"
 #include "core/services/performance/performance_event_sender.h"
 #include "core/services/timing_handler/timing_handler.h"
@@ -37,7 +38,8 @@ class PerformanceController : public PerformanceEventSender {
         delegate_(std::move(delegate)),
         memory_monitor_(this, instance_id),
         timing_handler_(
-            timing::TimingHandler(std::move(timing_delegate), this)) {}
+            timing::TimingHandler(std::move(timing_delegate), this)),
+        js_blocking_monitor_(std::make_shared<JSBlockingMonitor>(this)) {}
   ~PerformanceController() override;
 
   static fml::RefPtr<fml::TaskRunner> GetTaskRunner();
@@ -66,6 +68,9 @@ class PerformanceController : public PerformanceEventSender {
 
   MemoryMonitor& GetMemoryMonitor() { return memory_monitor_; }
   timing::TimingHandler& GetTimingHandler() { return timing_handler_; }
+  std::shared_ptr<JSBlockingMonitor>& GetJSBlockingMonitor() {
+    return js_blocking_monitor_;
+  }
 
   void SetInstanceId(int32_t instance_id) { instance_id_ = instance_id; }
 
@@ -82,6 +87,7 @@ class PerformanceController : public PerformanceEventSender {
   std::unique_ptr<PerformanceControllerPlatformImpl> platform_impl_;
   MemoryMonitor memory_monitor_;
   timing::TimingHandler timing_handler_;
+  std::shared_ptr<JSBlockingMonitor> js_blocking_monitor_;
 };
 
 }  // namespace performance

@@ -6,6 +6,8 @@ import("//${lynx_dir}/build_overrides/services_files.gni")
 import("../../Lynx.gni")
 
 performance_shared_sources = [
+  "js_blocking_monitor/js_blocking_monitor.cc",
+  "js_blocking_monitor/js_blocking_monitor.h",
   "memory_monitor/memory_monitor.cc",
   "memory_monitor/memory_monitor.h",
   "memory_monitor/memory_record.cc",
