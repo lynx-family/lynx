@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.4.13
+- Add `frame` element types.
+
 ## 3.4.12
 - Add `harmony-scroll-edge-effect` property for scroll container.
 

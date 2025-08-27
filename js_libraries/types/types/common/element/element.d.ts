@@ -14,6 +14,7 @@ import { TextProps } from './text';
 import { ViewProps } from './view';
 import { InputProps, InputUIMethods } from './input';
 import { TextAreaProps, TextAreaUIMethods } from './textarea';
+import { FrameProps } from './frame';
 
 export interface UIMethods {
   'list': ListUIMethods;
@@ -43,6 +44,7 @@ export interface IntrinsicElements {
   'raw-text': StandardProps & { text: number | string };
   'input': InputProps;
   'textarea': TextAreaProps;
+  'frame': FrameProps;
 }
 
 declare module 'react' {
@@ -65,6 +67,7 @@ declare module 'react' {
       'raw-text': StandardProps & { text: number | string };
       'input': InputProps;
       'textarea': TextAreaProps;
+      'frame': FrameProps;
     }
   }
 }
