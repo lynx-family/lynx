@@ -52,8 +52,7 @@ static constexpr const char* const kContentSizeChangeEvent =
 static constexpr ArkUI_NodeEventType kScrollNodeEventTypes[] = {
     NODE_SCROLL_EVENT_ON_SCROLL,      NODE_SCROLL_EVENT_ON_SCROLL_START,
     NODE_SCROLL_EVENT_ON_SCROLL_STOP, NODE_SCROLL_EVENT_ON_SCROLL_EDGE,
-    NODE_SCROLL_EVENT_ON_WILL_SCROLL,
-};
+    NODE_SCROLL_EVENT_ON_WILL_SCROLL, NODE_SCROLL_EVENT_ON_DID_SCROLL};
 // AlignmentOptions
 static constexpr const char* const kNearest = "nearest";
 static constexpr const char* const kCenter = "center";
@@ -112,6 +111,7 @@ class UIScroll : public BaseScrollContainer {
                              float deltaY);
   void UpdateContentSize(float width, float height) override;
   void FrameDidChanged() override;
+  void EnableSticky() override;
 
  private:
   void OnScrollSticky(float x_offset, float y_offset);
@@ -160,6 +160,7 @@ class UIScroll : public BaseScrollContainer {
   int upper_threshold_{0};
   bool should_consume_initial_scroll_target_{true};
   bool layout_changed_{false};
+  bool enable_sticky_{false};
   int scroll_to_index_{scroll::kInvalidIndex};
   float scroll_left_{scroll::kInvalidScrollOffset};
   float scroll_top_{scroll::kInvalidScrollOffset};
