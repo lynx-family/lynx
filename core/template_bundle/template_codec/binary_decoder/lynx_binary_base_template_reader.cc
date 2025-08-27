@@ -610,7 +610,7 @@ bool LynxBinaryBaseTemplateReader::DeserializeJSBytecodeSection() {
   DECODE_U32(count);
   for (size_t i = 0; i < count; i++) {
     DECODE_STR(path);
-    DECODE_COMPACT_U32(data_len);
+    DECODE_COMPACT_U64(data_len);
     std::string content;
     content.resize(static_cast<std::size_t>(data_len));
     ERROR_UNLESS(ReadData(reinterpret_cast<unsigned char *>(content.data()),
