@@ -144,11 +144,17 @@ void FiberMockPaintingContext::SetKeyframes(
 
 int32_t FiberMockPaintingContext::GetTagInfo(const std::string& tag_name) {
   auto it = mock_virtuality_map.find(tag_name);
+  int layout_node_type;
   if (it != mock_virtuality_map.end()) {
-    return it->second;
+    layout_node_type = it->second;
   } else {
-    return 0;
+    layout_node_type = 0;
   }
+  bool need_process_direction =
+      tag_name == "x-textarea" || tag_name == "x-textarea-ng" ||
+      tag_name == "x-input" || tag_name == "x-input-ng" || tag_name == "text" ||
+      tag_name == "x-text";
+  return ((need_process_direction ? 1 : 0) << 17 | (layout_node_type & 0xFFFF));
 }
 
 bool FiberMockPaintingContext::IsFlatten(

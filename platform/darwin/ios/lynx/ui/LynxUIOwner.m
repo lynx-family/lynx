@@ -667,6 +667,21 @@ extern NSString* const kDefaultComponentID;
   return (clazz == [LynxUIView class] || clazz == [LynxUIImage class]);
 }
 
+- (BOOL)needProcessDirection:(NSString*)tagName {
+  BOOL supported = YES;
+  Class clazz = [_componentRegistry uiClassWithName:tagName accessible:&supported];
+
+  if (!clazz) {
+    return NO;
+  }
+
+  if ([clazz respondsToSelector:@selector(needProcessDirection)]) {
+    return [clazz needProcessDirection];
+  }
+
+  return NO;
+}
+
 // Given a Class and props, create the corresponding LynxUI instance, using different LynxUI init
 // methods depending on whether it is called on the main thread or not.
 - (LynxUI*)createUIWithClass:(Class)clazz

@@ -86,12 +86,15 @@ public final class PaintingContext implements IPaintingContext {
   private TextLayout mTextLayout;
   private boolean mDestroyed;
   private ConcurrentHashMap<String, Boolean> mNeedCreateNodeAsyncCache;
+  // TODO: If more hashmap is needed in the future, we need to merge them into one.
+  private ConcurrentHashMap<String, Boolean> mNeedProcessDirectionCache;
 
   private long mNativePaintingContextPtr = 0;
   public PaintingContext(LynxUIOwner uiOwner, int threadStrategy) {
     mUIOwner = uiOwner;
     mDestroyed = false;
     mNeedCreateNodeAsyncCache = new ConcurrentHashMap<String, Boolean>();
+    mNeedProcessDirectionCache = new ConcurrentHashMap<String, Boolean>();
     if (mUIOwner.getContext().isLayoutInElementModeOn()) {
       mTextLayout = new TextLayout(uiOwner);
     }
@@ -201,6 +204,15 @@ public final class PaintingContext implements IPaintingContext {
     }
     mNeedCreateNodeAsyncCache.put(tagName, createAsync);
     return createAsync;
+  }
+
+  private boolean needProcessDirection(String tagName) {
+    if (mNeedProcessDirectionCache.containsKey(tagName)) {
+      return mNeedProcessDirectionCache.get(tagName);
+    }
+    boolean needProcessDirection = mUIOwner.behaviorNeedProcessDirection(tagName);
+    mNeedProcessDirectionCache.put(tagName, needProcessDirection);
+    return needProcessDirection;
   }
 
   @CalledByNative
@@ -695,12 +707,9 @@ public final class PaintingContext implements IPaintingContext {
    * @return 32bit integer value representing data object related to tag name including layout node
    *     type and whether need to create node on a background thread.
    * Each data object value will adhere to the following layout:
-   * ┌────────────────────────────────────────────────────────────────────────────────────────────┐
-   * │                           Data object value in bit array form (from low to high)           │
-   * │                                                                                            │
-   * ├─────────────layout node type────────────────┬───create async──┬─────Reserved bits──────────┤
-   * │                         16 bits             │     1 bit       │             15 bits        │
-   * └────────────────────────────────────────────────────────────────────────────────────────────┘
+   * Lower 16 bits represents layout node type
+   * 17th bit represents whether node with tag name support async creation
+   * 18th bit represents whether node with tag name need text align value
    */
   @CalledByNative
   public int getTagInfo(String tagName) {
@@ -712,7 +721,9 @@ public final class PaintingContext implements IPaintingContext {
     }
 
     boolean createNodeAsync = needCreateNodeAsync(tagName, -1);
-    return ((createNodeAsync ? 1 : 0) << 16 | (layoutNodeType & 0xFFFF));
+    boolean needProcessDirection = needProcessDirection(tagName);
+    return ((needProcessDirection ? 1 : 0) << 17 | (createNodeAsync ? 1 : 0) << 16
+        | (layoutNodeType & 0xFFFF));
   }
 
   @CalledByNative

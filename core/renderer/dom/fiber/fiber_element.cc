@@ -1223,7 +1223,7 @@ void FiberElement::ResolveCSSStyles(
           ResetDirectionAwareProperty(css_pair.first, css_pair.second);
         }
       }
-      if (is_text()) {
+      if (is_text() || NeedProcessDirection()) {
         auto current_text_align = CSSValue(
             lepus::Value(
                 static_cast<int32_t>(starlight::TextAlignType::kStart)),

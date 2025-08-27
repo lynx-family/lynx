@@ -138,6 +138,8 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 - (instancetype)init;
 - (instancetype)initWithView:(nullable V)view NS_DESIGNATED_INITIALIZER;
 
++ (BOOL)needProcessDirection;
+
 - (nonnull V)view;
 - (nullable V)createView;
 

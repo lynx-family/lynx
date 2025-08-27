@@ -15,4 +15,5 @@ import java.lang.annotation.Target;
 public @interface LynxBehavior {
   String[] tagName();
   boolean isCreateAsync() default false;
+  boolean needProcessDirection() default false;
 }

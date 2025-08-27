@@ -875,7 +875,9 @@ public class com::lynx::tasm::behavior::Behavior :  {
   public com.lynx.tasm.behavior.Behavior.Behavior(String name);
   public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten);
   public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten, boolean createAsync);
+  public com.lynx.tasm.behavior.Behavior.Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection);
   public boolean com.lynx.tasm.behavior.Behavior.supportCreateAsync();
+  public boolean com.lynx.tasm.behavior.Behavior.needProcessDirection();
   public LynxUI com.lynx.tasm.behavior.Behavior.createUIWithParams(LynxContext context, Object params);
   public LynxFlattenUI com.lynx.tasm.behavior.Behavior.createFlattenUIWithParams(LynxContext context, Object params);
   public LynxUI com.lynx.tasm.behavior.Behavior.createUI(LynxContext context);
@@ -3955,6 +3957,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
 public interface com::lynx::tasm::behavior::LynxBehavior {
   public String[] com.lynx.tasm.behavior.LynxBehavior.tagName();
   public boolean com.lynx.tasm.behavior.LynxBehavior.isCreateAsync() default false;
+  public boolean com.lynx.tasm.behavior.LynxBehavior.needProcessDirection() default false;
 }
 
 public enum com::lynx::tasm::LynxBooleanOption {
@@ -6306,6 +6309,7 @@ public class com::lynx::tasm::behavior::LynxUIOwner :  {
   public void com.lynx.tasm.behavior.LynxUIOwner.setContextFree(boolean isContextFree);
   public boolean com.lynx.tasm.behavior.LynxUIOwner.isContextFree();
   public boolean com.lynx.tasm.behavior.LynxUIOwner.behaviorSupportCreateAsync(String tagName);
+  public boolean com.lynx.tasm.behavior.LynxUIOwner.behaviorNeedProcessDirection(String tagName);
   public void com.lynx.tasm.behavior.LynxUIOwner.registerBoundingClientRectUI(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.LynxUIOwner.onEnterForeground();
   public void com.lynx.tasm.behavior.LynxUIOwner.onEnterBackground();

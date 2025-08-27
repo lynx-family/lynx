@@ -4093,6 +4093,75 @@ TEST_P(FiberElementTest, FiberElementDirectionCase03) {
       view_element0->impl_id(), CSSPropertyID::kPropertyIDMarginRight, 1));
 }
 
+// Verify correct text-align is propagated to extended text node
+TEST_P(FiberElementTest, FiberElementDirectionCase04) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableCSSInheritance(true);
+  std::unordered_set<CSSPropertyID> list = {kPropertyIDDirection};
+  config->SetCustomCSSInheritList(std::move(list));
+  manager->SetConfig(config);
+
+  // css related
+  StyleMap indexAttributes;
+
+  CSSParserTokenMap indexTokensMap;
+  CSSParserConfigs configs;
+
+  // class .title
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDMarginRight] =
+        CSSValue(lepus::Value("12px"));
+
+    std::string key = ".title";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheets = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheets);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  // class.root-rtl
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDDirection;
+    auto impl = lepus::Value("lynx-rtl");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".root-rtl";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    indexTokensMap.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, fontfaces);
+
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto root = manager->CreateFiberView();
+  root->parent_component_element_ = page.get();
+  root->SetClass("root-rtl");
+  page->InsertNode(root);
+
+  auto extended_element = manager->CreateFiberNode("x-textarea");
+  extended_element->parent_component_element_ = page.get();
+  extended_element->SetClass("title");
+  root->InsertNode(extended_element);
+
+  page->FlushActionsAsRoot();
+
+  EXPECT_TRUE(
+      extended_element->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
+      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kRight)));
+}
+
 TEST_P(FiberElementTest, RequireFlush) {
   auto page = manager->CreateFiberPage("10", 11);
   page->SetIdSelector("page");

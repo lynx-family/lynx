@@ -1785,6 +1785,18 @@ public class LynxUIOwner {
     }
   }
 
+  public boolean behaviorNeedProcessDirection(String tagName) {
+    if (tagName.equals(LynxConstants.ROOT_TAG_NAME)) {
+      return false;
+    }
+    Behavior behavior = mBehaviorRegistry.get(tagName);
+    if (behavior != null) {
+      return behavior.needProcessDirection();
+    } else {
+      return false;
+    }
+  }
+
   private void insertA11yMutationEvent(final int action, final LynxBaseUI ui) {
     LynxAccessibilityWrapper wrapper = mUIBody.getLynxAccessibilityWrapper();
     if (wrapper != null) {

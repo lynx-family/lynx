@@ -553,6 +553,7 @@ void PaintingContextDarwin::ConsumeGesture(int64_t idx, int32_t gesture_id,
  * Each data object value will adhere to the following layout:
  * Lower 16 bits represents layout node type
  * 17th bit represents whether node with tag name support async creation
+ * 18th bit represents whether node with tag name need text align value
  */
 int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
   int32_t layout_node_type = static_cast<int32_t>(
@@ -566,7 +567,10 @@ int32_t PaintingContextDarwin::GetTagInfo(const std::string& tag_name) {
   bool create_ui_async =
       (enable_create_ui_async_ &&
        [uiOwner_ needCreateUIAsync:[[NSString alloc] initWithUTF8String:tag_name.c_str()]] == YES);
-  return ((create_ui_async ? 1 : 0) << 16 | (layout_node_type & 0xFFFF));
+  bool need_process_direction =
+      [uiOwner_ needProcessDirection:[[NSString alloc] initWithUTF8String:tag_name.c_str()]] == YES;
+  return ((need_process_direction ? 1 : 0) << 17 | (create_ui_async ? 1 : 0) << 16 |
+          (layout_node_type & 0xFFFF));
 }
 
 bool PaintingContextDarwin::IsFlatten(base::MoveOnlyClosure<bool, bool> func) {

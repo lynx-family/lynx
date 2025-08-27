@@ -246,6 +246,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
 
   private void generateClassAndMethod(MethodSpec.Builder builder, ClassInfo classInfo) {
     boolean createAsync = classInfo.isCreateAsync;
+    boolean needProcessDirection = classInfo.needProcessDirection;
 
     for (String tag : classInfo.tagName) {
       ClassName lynxContextCln = ClassName.get("com.lynx.tasm.behavior", "LynxContext");
@@ -253,8 +254,8 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
       ClassName lynxShadowCln = ClassName.get("com.lynx.tasm.behavior.shadow", "ShadowNode");
 
       if (checkHasContextAndObjectConstructors(classInfo.mElement)) {
-        builder.addCode(
-            "result.add(new Behavior($S, false, " + (createAsync ? "true" : "false") + ") {\n",
+        builder.addCode("result.add(new Behavior($S, false, " + (createAsync ? "true" : "false")
+                + ", " + (needProcessDirection ? "true" : "false") + ") {\n",
             tag);
         builder.addCode("@Override\n");
         builder.addCode("public $T createUIWithParams($T context, Object params) {\n", lynxUICln,
@@ -262,8 +263,8 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
         builder.addCode("return new $T(context, params);\n", classInfo.mClassName);
         builder.addCode(" }\n");
       } else {
-        builder.addCode(
-            "result.add(new Behavior($S, false, " + (createAsync ? "true" : "false") + ") {\n",
+        builder.addCode("result.add(new Behavior($S, false, " + (createAsync ? "true" : "false")
+                + ", " + (needProcessDirection ? "true" : "false") + ") {\n",
             tag);
         builder.addCode("@Override\n");
         builder.addCode("public $T createUI($T context) {\n", lynxUICln, lynxContextCln);
@@ -292,6 +293,7 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     ClassInfo classInfo = new ClassInfo(className, typeElement);
     classInfo.addBehaviorTag(typeElement);
     classInfo.addBehaviorIsCreateAsync(typeElement);
+    classInfo.addBehaviorNeedProcessDirection(typeElement);
     return classInfo;
   }
 
@@ -323,12 +325,14 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public final List<String> tagName;
     public boolean isCreateAsync;
     public String shadowNodeTag;
+    public boolean needProcessDirection;
 
     public ClassInfo(ClassName mClassName, TypeElement mElement) {
       this.mClassName = mClassName;
       this.mElement = mElement;
       this.tagName = new ArrayList<>();
       this.isCreateAsync = false;
+      this.needProcessDirection = false;
     }
 
     public void addBehaviorTag(Element element) {
@@ -339,6 +343,11 @@ public class LynxBehaviorProcessor extends AbstractProcessor {
     public void addBehaviorIsCreateAsync(Element element) {
       LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
       isCreateAsync = annotation.isCreateAsync();
+    }
+
+    public void addBehaviorNeedProcessDirection(Element element) {
+      LynxBehavior annotation = element.getAnnotation(LynxBehavior.class);
+      needProcessDirection = annotation.needProcessDirection();
     }
 
     public void addShadowNodeTag(Element element) {

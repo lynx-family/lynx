@@ -1009,6 +1009,7 @@ int32_t ElementManager::GetNodeInfoByTag(const base::String &tag_name) {
   if (it != node_info_recorder_.end()) {
     return it->second;
   }
+  // TODO: Handle need_process_direction_ for other platform later
   int32_t result = painting_context()->GetTagInfo(tag_name.str());
   node_info_recorder_.emplace(tag_name, result);
   return result;

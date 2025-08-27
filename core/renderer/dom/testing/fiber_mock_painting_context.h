@@ -72,7 +72,8 @@ class FiberMockPaintingContext : public PaintingContextPlatformImpl {
       {"inline-image", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"raw-text", LayoutNodeType::CUSTOM | LayoutNodeType::VIRTUAL},
       {"list", LayoutNodeType::COMMON},
-      {"text", LayoutNodeType::CUSTOM}};
+      {"text", LayoutNodeType::CUSTOM},
+      {"x-textarea", LayoutNodeType::CUSTOM}};
   std::shared_ptr<shell::LynxUIOperationQueue> queue_ =
       std::make_shared<shell::LynxUIOperationQueue>();
 };

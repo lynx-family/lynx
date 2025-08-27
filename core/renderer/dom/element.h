@@ -690,6 +690,11 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   virtual bool is_page() const { return false; }
 
+  virtual bool NeedProcessDirection() {
+    EnsureTagInfo();
+    return need_process_direction_;
+  }
+
   EventTarget* GetParentTarget() override { return parent_; }
 
   std::unordered_map<std::string, BindEventCatch>& GetBindEventCatchMap() {
@@ -804,6 +809,10 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   // platform layer. (e.g. scroll-view will use children's margin value on
   // both android and iOS)
   bool can_has_layout_only_children_{true};
+
+  // Should be set to true if related platform node need process direction to
+  // work properly in RTL mode
+  bool need_process_direction_{false};
 
   // enable_component_layout_only_ & enable_extended_layout_only_opt_
   // optimization is enabled by default in Fiber Arch.

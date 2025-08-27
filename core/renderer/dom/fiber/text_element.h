@@ -27,6 +27,7 @@ class TextElement : public FiberElement {
   }
 
   bool is_text() const override { return true; }
+  bool NeedProcessDirection() override { return true; }
   void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value,
                         bool force_update = false) override;
   void ConvertToInlineElement() override;

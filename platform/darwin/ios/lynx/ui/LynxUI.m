@@ -227,6 +227,10 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   return self;
 }
 
++ (BOOL)needProcessDirection {
+  return NO;
+}
+
 - (UIView*)view {
   return _view;
 }

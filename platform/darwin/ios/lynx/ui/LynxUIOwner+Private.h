@@ -28,6 +28,10 @@ typedef enum : NSInteger {
 // Given a specific tagName, return whether the class can be created on background thread.
 - (BOOL)needCreateUIAsync:(NSString*)tagName;
 
+// Given a specific tagName, return whether the corresponding platform node need direction related
+// prop
+- (BOOL)needProcessDirection:(NSString*)tagName;
+
 // Given a Class and props, create the corresponding LynxUI instance, using different LynxUI init
 // methods depending on whether it is called on the main thread or not.
 - (LynxUI*)createUIWithClass:(Class)clazz

@@ -134,6 +134,7 @@ Element::Element(const Element& element, bool clone_resolved_props)
       enable_new_animator_(element.enable_new_animator_),
       has_layout_only_props_(element.has_layout_only_props_),
       can_has_layout_only_children_(element.can_has_layout_only_children_),
+      need_process_direction_(element.need_process_direction_),
       enable_extended_layout_only_opt_(
           element.enable_extended_layout_only_opt_),
       enable_component_layout_only_(element.enable_component_layout_only_),
@@ -1651,6 +1652,7 @@ void Element::EnsureTagInfo() {
     }
     layout_node_type_ = (node_info & 0xFFFF);
     create_node_async_ = ((node_info & 0x10000) > 0);
+    need_process_direction_ = ((node_info & 0x20000) > 0);
   }
 }
 

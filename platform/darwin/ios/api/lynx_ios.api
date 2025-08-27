@@ -3981,9 +3981,10 @@ public class LynxUI : <__covariant V UIView> {
   public LynxScrollInfo * LynxUI(Fluency)::infoWithScrollView:selector:(UIScrollView *view, [selector] SEL selector);
   public void LynxUI(Gesture)::consumeInternalGesture:(BOOL consume);
   public void LynxUI(Gesture)::interceptGesture:(BOOL intercept);
-  typedef void(^ LynxUI(AsyncDisplay)::LynxCGContextImageDrawingActions) (CGContextRef context)
+  public BOOL LynxUI::needProcessDirection();
   public void LynxUI(AsyncDisplay)::drawRect:withParameters:(CGRect bounds, [withParameters] id drawParameters);
   public UIImage * LynxUI(AsyncDisplay)::imageWithActionBlock:opaque:scale:size:(LynxCGContextImageDrawingActions action, [opaque] BOOL opaque, [scale] CGFloat scale, [size] CGSize size);
+  typedef void(^ LynxUI(AsyncDisplay)::LynxCGContextImageDrawingActions) (CGContextRef context)
 }
 
 public interface LynxUI(Accessibility) {
@@ -4551,6 +4552,7 @@ public class LynxUIOwner : NSObject {
   public BOOL LynxUIOwner(Accessibility)::checkNestedAccessibilityElements:(LynxUI *subTree);
   public Class LynxUIOwner(Private)::getTargetClass:props:supportedState:(NSString *tagName, [props] NSDictionary *props, [supportedState] TagSupportedState *state);
   public BOOL LynxUIOwner(Private)::needCreateUIAsync:(NSString *tagName);
+  public BOOL LynxUIOwner(Private)::needProcessDirection:(NSString *tagName);
   public LynxUI * LynxUIOwner(Private)::createUIWithClass:supportedState:onMainThread:(Class clazz, [supportedState] TagSupportedState state, [onMainThread] BOOL onMainThread);
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign, [tagName] NSString *tagName, [clazz] Class clazz, [supportedState] TagSupportedState state, [eventSet] NSSet< NSString * > *eventSet, [lepusEventSet] NSSet< NSString * > *lepusEventSet, [props] NSDictionary *props, [nodeIndex] uint32_t nodeIndex, [gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
@@ -4571,6 +4573,7 @@ public interface LynxUIOwner(Accessibility) {
 public interface LynxUIOwner(Private) {
   public Class LynxUIOwner(Private)::getTargetClass:props:supportedState:(NSString *tagName,[props] NSDictionary *props,[supportedState] TagSupportedState *state);
   public BOOL LynxUIOwner(Private)::needCreateUIAsync:(NSString *tagName);
+  public BOOL LynxUIOwner(Private)::needProcessDirection:(NSString *tagName);
   public LynxUI * LynxUIOwner(Private)::createUIWithClass:supportedState:onMainThread:(Class clazz,[supportedState] TagSupportedState state,[onMainThread] BOOL onMainThread);
   public void LynxUIOwner(Private)::createUISyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);
   public LynxUI * LynxUIOwner(Private)::createUIAsyncWithSign:tagName:clazz:supportedState:eventSet:lepusEventSet:props:nodeIndex:gestureDetectorSet:(NSInteger sign,[tagName] NSString *tagName,[clazz] Class clazz,[supportedState] TagSupportedState state,[eventSet] NSSet< NSString * > *eventSet,[lepusEventSet] NSSet< NSString * > *lepusEventSet,[props] NSDictionary *props,[nodeIndex] uint32_t nodeIndex,[gestureDetectorSet] NSSet< LynxGestureDetectorDarwin * > *gestureDetectorSet);

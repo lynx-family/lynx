@@ -12,15 +12,20 @@ public class Behavior {
   private String mName;
   private final boolean mFlatten;
   private final boolean mCreateAsync;
+  // TODO: If additional fields are necessary, including a metadata field is required
+  // to prevent the constructor from becoming overly complex.
+  private final boolean mNeedProcessDirection;
 
   public Behavior(String name) {
-    this(name, false, false);
+    this(name, false, false, false);
   }
 
   public Behavior(String name, boolean flatten) {
-    mName = name;
-    mFlatten = flatten;
-    mCreateAsync = false;
+    this(name, flatten, false, false);
+  }
+
+  public Behavior(String name, boolean flatten, boolean createAsync) {
+    this(name, flatten, createAsync, false);
   }
 
   /**
@@ -32,15 +37,22 @@ public class Behavior {
    * @param name Behavior name
    * @param flatten
    * @param createAsync whether the behavior supports create async
+   * @param needProcessDirection whether the behavior need direction-related prop to work properly
+   *     in RTL
    */
-  public Behavior(String name, boolean flatten, boolean createAsync) {
+  public Behavior(String name, boolean flatten, boolean createAsync, boolean needProcessDirection) {
     mName = name;
     mFlatten = flatten;
     mCreateAsync = createAsync;
+    mNeedProcessDirection = needProcessDirection;
   }
 
   public boolean supportCreateAsync() {
     return mCreateAsync;
+  }
+
+  public boolean needProcessDirection() {
+    return mNeedProcessDirection;
   }
 
   public LynxUI createUIWithParams(LynxContext context, Object params) {
