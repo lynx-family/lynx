@@ -121,7 +121,7 @@ PaintingContextClay::~PaintingContextClay() {
   view_context_->ResetPageView();
 }
 
-void PaintingContextClay::Flush() { queue_->Flush(); }
+void PaintingContextClay::Flush() { ui_operation_queue_ref_->Flush(); }
 
 void PaintingContextClay::HandleValidate(int tag) {
   // TODO(zhangxiao): this function use to reload image if image download
@@ -130,8 +130,10 @@ void PaintingContextClay::HandleValidate(int tag) {
 
 void PaintingContextClay::FinishLayoutOperation(
     const std::shared_ptr<PipelineOptions>& options) {
-  view_context_->FinishLayoutOperation(options->list_comp_id_,
-                                       options->list_id_);
+  Enqueue([view_context = view_context_, options]() {
+    view_context->FinishLayoutOperation(options->list_comp_id_,
+                                        options->list_id_);
+  });
 }
 
 void PaintingContextClay::FinishTasmOperation(
@@ -142,51 +144,58 @@ void PaintingContextClay::InvokeUIMethod(int32_t view_id,
                                          const std::string& method,
                                          fml::RefPtr<tasm::PropBundle> args,
                                          int32_t callback_id) {
-  clay::LynxModuleValues values;
-  auto prob = static_cast<lynx::PropBundleImpl*>(args.get());
-  for (auto& it : prob->mutable_map()) {
-    values.names.push_back(it.first);
-    values.values.push_back(std::move(it.second));
-  }
-  view_context_->InvokeUIMethod(
-      view_id, method, values,
-      [this, callback_id](clay::LynxUIMethodResult code, clay::Value data) {
-        clay::Value::Map map;
-        map.emplace("code", clay::Value(static_cast<int>(code)));
-        map.emplace("data", std::move(data));
-        runtime_proxy_->CallJSApiCallbackWithValue(
-            callback_id,
-            std::make_unique<ClayValue>(clay::Value(std::move(map))));
-      });
+  Enqueue([view_context = view_context_, runtime_proxy = runtime_proxy_,
+           args = std::move(args), view_id, method = method, callback_id]() {
+    clay::LynxModuleValues values;
+    auto prob = static_cast<lynx::PropBundleImpl*>(args.get());
+    for (auto& it : prob->mutable_map()) {
+      values.names.push_back(it.first);
+      values.values.push_back(std::move(it.second));
+    }
+    view_context->InvokeUIMethod(
+        view_id, method, values,
+        [runtime_proxy, callback_id](clay::LynxUIMethodResult code,
+                                     clay::Value data) {
+          clay::Value::Map map;
+          map.emplace("code", clay::Value(static_cast<int>(code)));
+          map.emplace("data", std::move(data));
+          runtime_proxy->CallJSApiCallbackWithValue(
+              callback_id,
+              std::make_unique<ClayValue>(clay::Value(std::move(map))));
+        });
+  });
 }
 
 void PaintingContextClay::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
     bool create_node_async, uint32_t node_index) {
-  const char* tag_name = tag.c_str();
-  auto* pda = painting_data.get();
-  // Terminology:
-  // flatten: In lynx, the view does not have a real platform view, and its
-  //          content will be drawn on the parent node that owns the platform
-  //          view.
-  // repaint_boundary: In Clay, whether this view paints separately from its
-  //                   parent.
-  //
-  // So, if flatten is true, need to paint this view and its parent together,
-  // that means repaint_boundary is false in Clay; and when flatten is false,
-  // need to draw this view and its parent separately, that means
-  // repaint_boundary is true in Clay.
-  //
-  // In Clay, we force the following components to have a repaint boundary for
-  // better performance, regardless of the value of flatten: PageView,
-  // ScrollView, ListView, Swiper, EditableView[Input].
-  view_context_->CreateView(id, tag_name);
-  // we just apply value to repaint boundary if flatten false
-  if (!flatten) {
-    view_context_->SetRepaintBoundary(id, true);
-  }
-  SetAttribute(id, pda, true);
+  Enqueue([view_context = view_context_, id, tag, painting_data = painting_data,
+           flatten, node_index] {
+    const char* tag_name = tag.c_str();
+    auto* pda = painting_data.get();
+    // Terminology:
+    // flatten: In lynx, the view does not have a real platform view, and its
+    //          content will be drawn on the parent node that owns the platform
+    //          view.
+    // repaint_boundary: In Clay, whether this view paints separately from its
+    //                   parent.
+    //
+    // So, if flatten is true, need to paint this view and its parent together,
+    // that means repaint_boundary is false in Clay; and when flatten is false,
+    // need to draw this view and its parent separately, that means
+    // repaint_boundary is true in Clay.
+    //
+    // In Clay, we force the following components to have a repaint boundary for
+    // better performance, regardless of the value of flatten: PageView,
+    // ScrollView, ListView, Swiper, EditableView[Input].
+    view_context->CreateView(id, tag_name);
+    // we just apply value to repaint boundary if flatten false
+    if (!flatten) {
+      view_context->SetRepaintBoundary(id, true);
+    }
+    SetAttribute(view_context, id, pda, true);
+  });
 }
 
 int32_t PaintingContextClay::GetTagInfo(const std::string& tag_name) {
@@ -194,23 +203,28 @@ int32_t PaintingContextClay::GetTagInfo(const std::string& tag_name) {
 }
 
 void PaintingContextClay::SetKeyframes(fml::RefPtr<PropBundle> keyframes_data) {
-  auto pdr = static_cast<PropBundleImpl*>(keyframes_data.get());
-  auto keyframes_iter = pdr->map().find("keyframes");
-  if (keyframes_iter == pdr->map().end()) {
-    FML_DLOG(ERROR) << "SetKeyframes 'keyframes' not found";
-    return;
-  }
+  Enqueue([view_context = view_context_, keyframes_data = keyframes_data]() {
+    auto pdr = static_cast<PropBundleImpl*>(keyframes_data.get());
+    auto keyframes_iter = pdr->map().find("keyframes");
+    if (keyframes_iter == pdr->map().end()) {
+      FML_DLOG(ERROR) << "SetKeyframes 'keyframes' not found";
+      return;
+    }
 
-  const auto& prop_keyframes_value = keyframes_iter->second;
-  view_context_->SetKeyframes(prop_keyframes_value);
+    const auto& prop_keyframes_value = keyframes_iter->second;
+    view_context->SetKeyframes(prop_keyframes_value);
+  });
 }
 
 void PaintingContextClay::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {
-  auto* pda = painting_data.get();
-  SetAttribute(id, pda, false);
-  view_context_->SetRepaintBoundary(id, !tend_to_flatten);
+  Enqueue([view_context = view_context_, id, tend_to_flatten,
+           painting_data = painting_data]() {
+    auto* pda = painting_data.get();
+    SetAttribute(view_context, id, pda, false);
+    view_context->SetRepaintBoundary(id, !tend_to_flatten);
+  });
 }
 
 void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
@@ -219,17 +233,37 @@ void PaintingContextClay::UpdateLayout(int tag, float x, float y, float width,
                                        const float* borders,
                                        const float* bounds, const float* sticky,
                                        float max_height, uint32_t node_index) {
+#define MAKE_UNIQUE_COPY(src, size)                      \
+  std::unique_ptr<float[]> src##_copy{nullptr};          \
+  if (src) {                                             \
+    src##_copy = std::make_unique<float[]>(size);        \
+    memcpy(src##_copy.get(), src, sizeof(float) * size); \
+  }
+
+  MAKE_UNIQUE_COPY(paddings, 4)
+  MAKE_UNIQUE_COPY(margins, 4)
+  MAKE_UNIQUE_COPY(sticky, 4)
+#undef MAKE_UNIQUE_COPY
   // Set margins, bounds, paddings.
   // Margins should be earlier then bounds because of it may be used during
   // bounds setting.
-  view_context_->SetMargins(tag, margins[0], margins[1], margins[2],
-                            margins[3]);
-  view_context_->SetBounds(tag, std::roundf(x), std::roundf(y),
-                           std::roundf(width), std::roundf(height));
-  view_context_->SetPaddings(tag, std::roundf(paddings[0]),
-                             std::roundf(paddings[1]), std::roundf(paddings[2]),
-                             std::roundf(paddings[3]));
-  view_context_->UpdateSticky(tag, sticky);
+  Enqueue([view_context = view_context_, tag, x, y, width, height,
+           paddings_ptr = std::move(paddings_copy),
+           margins_ptr = std::move(margins_copy),
+           sticky_ptr = std::move(sticky_copy)]() {
+    auto margins = margins_ptr.get();
+    auto paddings = paddings_ptr.get();
+    auto sticky = sticky_ptr.get();
+    view_context->SetMargins(tag, std::roundf(margins[0]),
+                             std::roundf(margins[1]), std::roundf(margins[2]),
+                             std::roundf(margins[3]));
+    view_context->SetBounds(tag, std::roundf(x), std::roundf(y),
+                            std::roundf(width), std::roundf(height));
+    view_context->SetPaddings(
+        tag, std::roundf(paddings[0]), std::roundf(paddings[1]),
+        std::roundf(paddings[2]), std::roundf(paddings[3]));
+    view_context->UpdateSticky(tag, sticky);
+  });
 }
 
 // Invoked by MTS/worklet
@@ -279,32 +313,28 @@ bool PaintingContextClay::IsFlatten(base::MoveOnlyClosure<bool, bool> func) {
 
 void PaintingContextClay::UpdatePlatformExtraBundle(
     int32_t id, PlatformExtraBundle* bundle) {
-  auto task =
+  Enqueue(
       [view_context = view_context_, id,
        platform_bundle =
            reinterpret_cast<PlatformExtraBundleClay*>(bundle)->GetBundle()] {
         view_context->UpdateExtraData(id, platform_bundle.get());
-      };
-  if (queue_) {
-    Enqueue(std::move(task));
-  } else {
-    task();
-  }
+      });
 }
 
 // private
-void PaintingContextClay::SetAttribute(int sign, PropBundle* attributes,
+void PaintingContextClay::SetAttribute(clay::ViewContext* view_context,
+                                       int sign, PropBundle* attributes,
                                        bool init) {
   auto pda = static_cast<PropBundleImpl*>(attributes);
 
   if (init && pda) {  // Add event props when create view
     for (auto& event : pda->event_handlers()) {
-      view_context_->AddEventProp(sign, event.c_str());
+      view_context->AddEventProp(sign, event.c_str());
     }
   }
 
   if (!pda || pda->map().empty()) {
-    view_context_->DidUpdateAttributes(sign);
+    view_context->DidUpdateAttributes(sign);
     return;
   }
 
@@ -316,7 +346,7 @@ void PaintingContextClay::SetAttribute(int sign, PropBundle* attributes,
     if (init) {
       trans = std::move(iter->second);  // Save transition value
     } else {                            // Set transition firstly and destroy it
-      view_context_->SetAttribute(sign, iter->first.c_str(), iter->second);
+      view_context->SetAttribute(sign, iter->first.c_str(), iter->second);
     }
     // Erase the transition prop
     map.erase(iter);
@@ -331,19 +361,19 @@ void PaintingContextClay::SetAttribute(int sign, PropBundle* attributes,
 
   iter = map.begin();
   for (; iter != map.end(); iter++) {
-    view_context_->SetAttribute(sign, iter->first.c_str(), iter->second);
+    view_context->SetAttribute(sign, iter->first.c_str(), iter->second);
   }
 
   // Update transition finally when create view
   if (init && trans.IsArray()) {
-    view_context_->SetAttribute(sign, kPropertyNameTransition, trans);
+    view_context->SetAttribute(sign, kPropertyNameTransition, trans);
   }
 
   if (animation_property.IsArray()) {
-    view_context_->SetAttribute(sign, kPropertyNameAnimation,
-                                animation_property);
+    view_context->SetAttribute(sign, kPropertyNameAnimation,
+                               animation_property);
   }
-  view_context_->DidUpdateAttributes(sign);
+  view_context->DidUpdateAttributes(sign);
 }
 
 clay::LynxListData* PaintingContextClay::OnListGetData(int view_id) {
@@ -420,7 +450,11 @@ std::list<int32_t> PaintingContextClay::GetAncestorElements(int32_t tag) {
 }
 
 void PaintingContextClay::Enqueue(base::closure&& op) {
-  queue_->Enqueue(std::move(op));
+  if (!EnableUIOperationQueue() || !ui_operation_queue_ref_) {
+    op();
+    return;
+  }
+  ui_operation_queue_ref_->Enqueue(std::move(op));
 }
 
 }  // namespace tasm

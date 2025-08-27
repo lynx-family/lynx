@@ -58,7 +58,7 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
 
   void SetUIOperationQueue(
       const std::shared_ptr<shell::UIOperationQueueInterface>& queue) override {
-    queue_ = queue;
+    ui_operation_queue_ref_ = queue;
   }
 
   void SetEngineProxy(
@@ -114,7 +114,8 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   bool IsFlatten(base::MoveOnlyClosure<bool, bool> func) override;
 
   bool NeedAnimationProps() override { return true; }
-  bool EnableParallelElement() override { return false; }
+  bool EnableParallelElement() override { return true; }
+  bool EnableUIOperationQueue() override { return true; }
 
   // TODO(chenhyouhui): Use default implementations
   std::vector<float> getWindowSize(int id) override { return floats_; }
@@ -134,8 +135,9 @@ class PaintingContextClay : public PaintingCtxPlatformImpl,
   void Enqueue(base::closure&& op);
 
  private:
-  std::shared_ptr<shell::UIOperationQueueInterface> queue_;
-  void SetAttribute(int sign, PropBundle* attributes, bool init);
+  std::shared_ptr<shell::UIOperationQueueInterface> ui_operation_queue_ref_;
+  static void SetAttribute(clay::ViewContext* view_context, int sign,
+                           PropBundle* attributes, bool init);
 
   // clay::UIComponentDelegate
   clay::LynxListData* OnListGetData(int view_id) override;
