@@ -75,8 +75,6 @@ public class TraceEventDef {
   public static final String CANCEL_RESOURCE_PREFETCH = "cancelResourcePrefetch";
   public static final String REQUEST_RESOURCE_PREFETCH = "requestResourcePrefetch";
   public static final String ENGINE_BUILDER_BUILD = "LynxEngineBuilder.build";
-  public final static String GENERIC_INFO_INIT = "LynxGenericInfo initialized";
-  public final static String GENERIC_INFO_UPDATE_RELATIVE_URL = "LynxGenericInfo.updateRelativeURL";
 
   public static final String TEMPLATE_RENDER_INIT = "TemplateRender.init";
   public static final String TEMPLATE_RENDER_INIT_PIPER = "TemplateRender.initPiper";

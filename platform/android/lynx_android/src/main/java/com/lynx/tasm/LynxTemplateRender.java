@@ -129,7 +129,6 @@ public class LynxTemplateRender
   private boolean mHasPageStart;
 
   private ThreadStrategyForRendering mThreadStrategyForRendering;
-  private LynxGenericInfo mGenericInfo;
   private final LynxViewClientGroup mClient = new LynxViewClientGroup();
   private final LynxViewClientGroupV2 mClientV2 = new LynxViewClientGroupV2();
   private LynxViewBuilder mLynxViewBuilder;
@@ -271,8 +270,8 @@ public class LynxTemplateRender
     if (mLynxContext != null && !TextUtils.isEmpty(mLynxContext.getLynxSessionID())) {
       builder.append(mLynxContext.getLynxSessionID()).append(" ");
     }
-    if (mGenericInfo != null && mGenericInfo.getPropValueRelativePath() != null) {
-      builder.append(mGenericInfo.getPropValueRelativePath());
+    if (mUrl != null) {
+      builder.append(mUrl);
     }
     return builder.toString();
   }
@@ -334,7 +333,6 @@ public class LynxTemplateRender
       mBodyView.setTimingCollector(mPerformanceController);
       mPerformanceController.setEnableController(!EmbeddedMode.isBaseModeEnable(mEmbeddedMode));
     }
-    mGenericInfo = new LynxGenericInfo();
     mLynxRuntimeOptions = mLynxViewConfigProvider.getLynxRuntimeOptions();
 
     mAsyncRender = (mThreadStrategyForRendering == ThreadStrategyForRendering.MULTI_THREADS
@@ -1318,22 +1316,13 @@ public class LynxTemplateRender
     }
     if (url != null) {
       int instanceId = mLynxContext.getInstanceId();
-      if (mGenericInfo != null) {
-        mGenericInfo.updateLynxUrl(mLynxContext, url);
-        String relativePath = mGenericInfo.getPropValueRelativePath();
-        if (relativePath != null) {
-          // create hashmap only when both url and relativePath not null
-          HashMap<String, Object> propMap = new HashMap<String, Object>();
-          propMap.put(LynxEventReporter.PROP_NAME_URL, url);
-          propMap.put(LynxEventReporter.PROP_NAME_RELATIVE_PATH, relativePath);
-          LynxEventReporter.updateGenericInfo(propMap, instanceId);
-          if (mReportHelper != null) {
-            mReportHelper.reportLynxCrashContext(
-                LynxInfoReportHelper.KEY_LAST_LYNX_URL, relativePath);
-          }
-        } else {
-          LynxEventReporter.updateGenericInfo(LynxEventReporter.PROP_NAME_URL, url, instanceId);
-        }
+      HashMap<String, Object> propMap = new HashMap<String, Object>();
+      propMap.put(LynxEventReporter.PROP_NAME_URL, url);
+      // TODO(kechenglong): Remove relative_path.
+      propMap.put(LynxEventReporter.PROP_NAME_RELATIVE_PATH, url);
+      LynxEventReporter.updateGenericInfo(propMap, instanceId);
+      if (mReportHelper != null) {
+        mReportHelper.reportLynxCrashContext(LynxInfoReportHelper.KEY_LAST_LYNX_URL, url);
       }
     }
   }

@@ -4887,13 +4887,6 @@ public interface com::lynx::tasm::behavior::LynxGeneratorName {
   public String com.lynx.tasm.behavior.LynxGeneratorName.packageName();
 }
 
-public class com::lynx::tasm::LynxGenericInfo :  {
-  public com.lynx.tasm.LynxGenericInfo.LynxGenericInfo();
-  public JSONObject com.lynx.tasm.LynxGenericInfo.toJSONObject();
-  public void com.lynx.tasm.LynxGenericInfo.updateLynxUrl(LynxContext lynxContext, String templateURL);
-  public String com.lynx.tasm.LynxGenericInfo.getPropValueRelativePath();
-}
-
 public class abstract com::lynx::tasm::resourceprovider::generic::LynxGenericResourceFetcher :  {
   public abstract void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchResource(LynxResourceRequest request, LynxResourceCallback< byte[]> callback);
   public abstract void com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher.fetchResourcePath(LynxResourceRequest request, LynxResourceCallback< String > callback);
@@ -9167,8 +9160,6 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.CANCEL_RESOURCE_PREFETCH CANCEL_RESOURCE_PREFETCH;
   public final String com.lynx.tasm.base.trace.TraceEventDef.REQUEST_RESOURCE_PREFETCH REQUEST_RESOURCE_PREFETCH;
   public final String com.lynx.tasm.base.trace.TraceEventDef.ENGINE_BUILDER_BUILD ENGINE_BUILDER_BUILD;
-  public final String com.lynx.tasm.base.trace.TraceEventDef.GENERIC_INFO_INIT GENERIC_INFO_INIT;
-  public final String com.lynx.tasm.base.trace.TraceEventDef.GENERIC_INFO_UPDATE_RELATIVE_URL GENERIC_INFO_UPDATE_RELATIVE_URL;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_INIT TEMPLATE_RENDER_INIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_INIT_PIPER TEMPLATE_RENDER_INIT_PIPER;
   public final String com.lynx.tasm.base.trace.TraceEventDef.TEMPLATE_RENDER_START_LOAD TEMPLATE_RENDER_START_LOAD;
