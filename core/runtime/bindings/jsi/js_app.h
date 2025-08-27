@@ -296,8 +296,8 @@ class App : public std::enable_shared_from_this<App> {
         js_app_(),
         delegate_(delegate),
         exception_handler_(exception_handler),
-        js_task_adapter_(
-            std::make_unique<JsTaskAdapter>(rt, group_id, page_options)),
+        js_task_adapter_(std::make_unique<JsTaskAdapter>(
+            rt, group_id, page_options, delegate)),
         nativeModuleProxy_(std::move(nativeModuleProxy)),
         api_handler_(std::move(api_handler)),
         jsi_object_wrapper_manager_(

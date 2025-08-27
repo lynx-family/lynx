@@ -2034,6 +2034,17 @@ public class LynxInnerImpressionView : UIView {
 public class LynxIntersectionObserverModule : NSObject, <LynxContextModule> {
 }
 
+public class LynxJSBlockingEntry : LynxPerformanceEntry {
+  public NSString* LynxJSBlockingEntry::stage stage;
+  public NSNumber* LynxJSBlockingEntry::total_blocking_time total_blocking_time;
+  public NSNumber* LynxJSBlockingEntry::total_blocking_count total_blocking_count;
+  public NSNumber* LynxJSBlockingEntry::total_duration total_duration;
+  public NSNumber* LynxJSBlockingEntry::blocking_ratio blocking_ratio;
+  public NSNumber* LynxJSBlockingEntry::avg_blocking_time avg_blocking_time;
+  public NSNumber* LynxJSBlockingEntry::time_after_fcp time_after_fcp;
+  public instancetype LynxJSBlockingEntry::initWithDictionary:(NSDictionary *dictionary);
+}
+
 public protocol LynxJSBTimingListener-p : <NSObject> {
   public void LynxJSBTimingListener-p::lynxView:onCallJSBFinished:(LynxView *lynxView,[onCallJSBFinished] NSDictionary *info);
   public void LynxJSBTimingListener-p::lynxView:onJSBInvoked:(LynxView *lynxView,[onJSBInvoked] NSDictionary *jsbInfo);

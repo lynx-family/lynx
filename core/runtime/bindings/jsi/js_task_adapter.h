@@ -15,6 +15,7 @@
 #include "base/include/thread/timed_task.h"
 #include "core/public/page_options.h"
 #include "core/runtime/jsi/jsi.h"
+#include "core/runtime/piper/js/template_delegate.h"
 
 namespace lynx {
 namespace piper {
@@ -24,7 +25,8 @@ class JsTaskAdapter {
  public:
   explicit JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
                          const std::string& group_id,
-                         const tasm::PageOptions& page_options);
+                         const tasm::PageOptions& page_options,
+                         runtime::TemplateDelegate* delegate = nullptr);
   ~JsTaskAdapter();
 
   JsTaskAdapter(const JsTaskAdapter&) = delete;
@@ -52,7 +54,7 @@ class JsTaskAdapter {
     kQueueMicrotask,
   };
   base::closure MakeTask(Function func, TaskType task_type,
-                         uint64_t trace_flow_id);
+                         uint64_t trace_flow_id, int32_t delay);
 
   std::unique_ptr<base::TimedTaskManager> manager_;
   std::shared_ptr<std::unordered_map<uint64_t, base::closure>> micro_tasks_;
@@ -66,6 +68,8 @@ class JsTaskAdapter {
   std::string group_id_;
 
   tasm::PageOptions page_options_;
+
+  runtime::TemplateDelegate* delegate_;
 };
 
 }  // namespace piper

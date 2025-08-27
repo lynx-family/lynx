@@ -175,6 +175,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   virtual void BindPipelineIDWithTimingFlag(
       const tasm::PipelineID& pipeline_id,
       const tasm::timing::TimingFlag& timing_flag) override;
+  void AddJSBlockingTime(uint64_t start_timestamp,
+                         uint64_t trace_flow_id) override;
 
   // For fiber
   void CallLepusMethod(const std::string& method_name, lepus::Value args,

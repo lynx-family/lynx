@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "core/shell/runtime_mediator.h"
+
 namespace lynx {
 namespace shell {
 int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(piper::Function func) {
@@ -21,8 +23,15 @@ int64_t ModuleDelegateImpl::RegisterJSCallbackFunction(piper::Function func) {
 void ModuleDelegateImpl::CallJSCallback(
     const std::shared_ptr<piper::ModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func, int64_t id_to_delete) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
   runtime_actor_->Act([callback, id_to_delete,
-                       func = std::move(invoke_pre_func)](auto& runtime) {
+                       func = std::move(invoke_pre_func), start_timestamp,
+                       trace_flow_id](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     if (!func || func()) {
       runtime->CallJSCallback(callback, id_to_delete);
     }
@@ -38,7 +47,14 @@ void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {
 void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,
                                          const std::string& method_name,
                                          int32_t code) {
-  runtime_actor_->Act([module_name, method_name, code](auto& runtime) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->Act([module_name, method_name, code, start_timestamp,
+                       trace_flow_id](auto& runtime) {
+    static_cast<RuntimeMediator*>(runtime->GetDelegate())
+        ->AddJSBlockingTime(start_timestamp, trace_flow_id);
     runtime->OnModuleMethodInvoked(module_name, method_name, code);
   });
 }
@@ -88,7 +104,16 @@ void ModuleDelegateImpl::FlushJSBTiming(piper::NativeModuleInfo timing) {
 }
 
 void ModuleDelegateImpl::RunOnJSThread(base::closure func) {
-  runtime_actor_->Act([func = std::move(func)](auto& runtime) { func(); });
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs();
+  uint64_t trace_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  runtime_actor_->Act(
+      [func = std::move(func), start_timestamp, trace_flow_id](auto& runtime) {
+        static_cast<RuntimeMediator*>(runtime->GetDelegate())
+            ->AddJSBlockingTime(start_timestamp, trace_flow_id);
+      });
+  func();
 }
 
 void ModuleDelegateImpl::RunOnPlatformThread(base::closure func) {

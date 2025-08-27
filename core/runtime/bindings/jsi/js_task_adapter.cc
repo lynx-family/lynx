@@ -13,6 +13,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 
 namespace lynx {
 namespace piper {
@@ -46,34 +47,38 @@ class AdapterTask {
 
 JsTaskAdapter::JsTaskAdapter(const std::weak_ptr<Runtime>& rt,
                              const std::string& group_id,
-                             const tasm::PageOptions& page_options)
+                             const tasm::PageOptions& page_options,
+                             runtime::TemplateDelegate* delegate)
     : manager_(std::make_unique<base::TimedTaskManager>()),
       micro_tasks_(
           std::make_shared<std::unordered_map<uint64_t, base::closure>>()),
       current_micro_task_id_(0),
       runner_(fml::MessageLoop::GetCurrent().GetTaskRunner()),
       rt_(rt),
-      page_options_(page_options) {}
+      page_options_(page_options),
+      delegate_(delegate) {}
 
 JsTaskAdapter::~JsTaskAdapter() { manager_->StopAllTasks(); }
 
 piper::Value JsTaskAdapter::SetTimeout(Function func, int32_t delay,
                                        uint64_t trace_flow_id) {
-  auto task = MakeTask(std::move(func), TaskType::kSetTimeout, trace_flow_id);
+  auto task =
+      MakeTask(std::move(func), TaskType::kSetTimeout, trace_flow_id, delay);
   return piper::Value(static_cast<int>(
       manager_->SetTimeout(std::move(task), static_cast<int64_t>(delay))));
 }
 
 piper::Value JsTaskAdapter::SetInterval(Function func, int32_t delay,
                                         uint64_t trace_flow_id) {
-  auto task = MakeTask(std::move(func), TaskType::kSetInterval, trace_flow_id);
+  auto task =
+      MakeTask(std::move(func), TaskType::kSetInterval, trace_flow_id, delay);
   return piper::Value(static_cast<int>(
       manager_->SetInterval(std::move(task), static_cast<int64_t>(delay))));
 }
 
 void JsTaskAdapter::QueueMicrotask(Function func, uint64_t trace_flow_id) {
   auto task =
-      MakeTask(std::move(func), TaskType::kQueueMicrotask, trace_flow_id);
+      MakeTask(std::move(func), TaskType::kQueueMicrotask, trace_flow_id, 0);
   auto current_id = current_micro_task_id_++;
   micro_tasks_->emplace(current_id, std::move(task));
   runner_->PostMicroTask(fml::MakeCopyable(
@@ -92,9 +97,14 @@ void JsTaskAdapter::QueueMicrotask(Function func, uint64_t trace_flow_id) {
 }
 
 base::closure JsTaskAdapter::MakeTask(Function func, TaskType task_type,
-                                      uint64_t trace_flow_id) {
-  return fml::MakeCopyable([weak_rt = rt_, func = std::move(func), task_type,
-                            trace_flow_id, page_options = page_options_]() {
+                                      uint64_t trace_flow_id, int32_t delay) {
+  uint64_t start_timestamp =
+      tasm::performance::JSBlockingMonitor::GetNowTimeMs() + delay;
+  uint64_t start_flow_id =
+      tasm::performance::JSBlockingMonitor::MarkStartTraceInstant();
+  return fml::MakeCopyable([this, start_timestamp, weak_rt = rt_,
+                            func = std::move(func), task_type, trace_flow_id,
+                            start_flow_id, page_options = page_options_]() {
     auto rt = weak_rt.lock();
     if (rt) {
       std::string task_name;
@@ -119,6 +129,9 @@ base::closure JsTaskAdapter::MakeTask(Function func, TaskType task_type,
                         INSTANCE_ID, std::to_string(instance_id));
                   });
 
+      if (delegate_) {
+        delegate_->AddJSBlockingTime(start_timestamp, start_flow_id);
+      }
       tasm::timing::LongTaskMonitor::Scope long_task_scope(
           page_options, tasm::timing::kTimerTask, task_name);
       piper::Scope scope(*rt);

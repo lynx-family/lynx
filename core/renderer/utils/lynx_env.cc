@@ -284,6 +284,19 @@ bool LynxEnv::EnableMemoryMonitor() {
   return GetBoolEnv(Key::ENABLE_MEMORY_MONITOR, false);
 }
 
+bool LynxEnv::EnableJSBlockingMonitor() {
+  return GetBoolEnv(Key::ENABLE_JS_BLOCKING_MONITOR, false);
+}
+
+uint32_t LynxEnv::GetJSBlockingThresholdMs() {
+  return static_cast<uint32_t>(GetLongEnv(Key::JS_BLOCKING_THRESHOLD_MS, 5));
+}
+
+uint32_t LynxEnv::GetJSBlockingReportIntervalMs() {
+  return static_cast<uint32_t>(
+      GetLongEnv(Key::JS_BLOCKING_REPORT_INTERVAL_MS, 5000));
+}
+
 uint32_t LynxEnv::TimingMapExceededSize() {
   return static_cast<uint32_t>(GetLongEnv(Key::TIMING_MAP_EXCEEDED_SIZE, 1000));
 }
