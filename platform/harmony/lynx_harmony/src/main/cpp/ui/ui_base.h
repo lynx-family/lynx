@@ -207,7 +207,6 @@ class BASE_EXPORT
   float margin_top_{0};
   float margin_right_{0};
   float margin_bottom_{0};
-  bool enable_sticky_{false};
   std::vector<float> sticky_value_;
   void GetTransformValue(float left, float right, float top, float bottom,
                          std::vector<float>& point);
@@ -230,6 +229,7 @@ class BASE_EXPORT
   virtual void ScrollIntoView(bool smooth, const UIBase* target,
                               const std::string& block,
                               const std::string& inline_value) {}
+  virtual void EnableSticky() {}
   virtual void SetImageRendering(const lepus::Value& value);
   virtual bool NeedDrawNode();
   bool NeedDraw(ArkUI_NodeHandle node);

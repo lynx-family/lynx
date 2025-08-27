@@ -373,13 +373,12 @@ void UIBase::UpdateProps(PropBundleHarmony* props) {
 }
 
 void UIBase::UpdateSticky(const float* sticky) {
-  if (!sticky) {
-    return;
+  if (sticky) {
+    sticky_value_ = {sticky[0], sticky[1], sticky[2], sticky[3], 0, 0};
+    if (parent_) {
+      parent_->EnableSticky();
+    }
   }
-  if (parent_) {
-    parent_->enable_sticky_ = true;
-  }
-  sticky_value_ = {sticky[0], sticky[1], sticky[2], sticky[3], 0, 0};
 }
 
 bool UIBase::CheckStickyOnParentScroll(float scroll_left, float scroll_top) {

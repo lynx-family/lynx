@@ -438,6 +438,16 @@ void UIScroll::OnNodeEvent(ArkUI_NodeEvent* event) {
       component_event->data[0].f32 = 0.f;
       component_event->data[1].f32 = 0.f;
     }
+  } else if (type == NODE_SCROLL_EVENT_ON_DID_SCROLL) {
+    // Note: In the case of that the content size has changed which leads to the
+    // scroll view set a new content offset, only
+    // NODE_SCROLL_EVENT_ON_DID_SCROLL event is triggered by system, so we need
+    // to handle translation for sticky child nodes here. At the same time,
+    // considering if the NODE_SCROLL_EVENT_ON_SCROLL is triggered, the
+    // NODE_SCROLL_EVENT_ON_DID_SCROLL will definitely be triggered as well, so
+    // we uniformly call OnScrollSticky here.
+    const auto& scroll_offset = GetScrollOffset();
+    OnScrollSticky(scroll_offset.first, scroll_offset.second);
   } else {
     UIBase::OnNodeEvent(event);
   }
@@ -511,7 +521,6 @@ void UIScroll::HandleScrollStartEvent() {
 
 void UIScroll::HandleScrollEvent(float delta_x, float delta_y) {
   auto offset = GetScrollOffset();
-  OnScrollSticky(offset.first, offset.second);
   // onScrollEvent
   if (end_bounce_view_ != nullptr) {
     if (IsHorizontal()) {
@@ -602,6 +611,15 @@ void UIScroll::SendCustomScrollEvent(const std::string name,
   context_->SendEvent(event);
 }
 
+void UIScroll::EnableSticky() {
+  // Note: EnableSticky() is invoked from UIBase::UpdateSticky() which means
+  // that the child node's sticky info has updated, so we need to invoke
+  // OnScrollSticky() here to handle only sticky info changing' case.
+  enable_sticky_ = true;
+  const auto& offset = GetScrollOffset();
+  OnScrollSticky(offset.first, offset.second);
+}
+
 void UIScroll::OnScrollSticky(float x_offset, float y_offset) {
   if (!enable_sticky_) {
     return;
@@ -609,7 +627,7 @@ void UIScroll::OnScrollSticky(float x_offset, float y_offset) {
   for (const auto child : children_) {
     if (child) {
       child->CheckStickyOnParentScroll(x_offset, y_offset);
-      if (!(child->sticky_value_.empty())) {
+      if (!child->sticky_value_.empty()) {
         NodeManager::Instance().SetAttributeWithNumberValue(
             child->DrawNode(), NODE_TRANSLATE, 0, child->sticky_value_[5], 0);
         NodeManager::Instance().SetAttributeWithNumberValue(child->DrawNode(),
