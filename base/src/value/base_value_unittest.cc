@@ -9,6 +9,7 @@
 
 #include "base/include/value/array.h"
 #include "base/include/value/byte_array.h"
+#include "base/include/value/lynx_value_api.h"
 #include "base/include/value/table.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -519,6 +520,118 @@ TEST_F(BaseValueTest, Dictionary) {
   ASSERT_TRUE(dict8->Contains("a"));
   ASSERT_TRUE(dict8->Contains("b"));
   ASSERT_FALSE(dict8->Contains("c"));
+}
+
+TEST_F(BaseValueTest, LynxValueAPI) {
+  lynx_api_env env = nullptr;
+  lynx_value string_value;
+  lynx_value_create_string_utf8(env, "hello lynx_value", 16, &string_value);
+  lynx_value_type t1;
+  lynx_value_typeof(env, string_value, &t1);
+  ASSERT_TRUE(t1 == lynx_value_string);
+  size_t length = 0;
+  lynx_value_get_string_utf8(env, string_value, nullptr, 0, &length);
+  ASSERT_TRUE(length == 16);
+  std::string str;
+  str.resize(length);
+  lynx_value_get_string_utf8(env, string_value, &str[0], length + 1, &length);
+  ASSERT_TRUE(str == "hello lynx_value");
+  auto* string_ptr =
+      reinterpret_cast<lynx::base::RefCountedStringImpl*>(string_value.val_ptr);
+  ASSERT_TRUE(string_ptr->HasOneRef());
+  lynx_value_remove_reference(env, string_value, nullptr);
+
+  lynx_value map_value;
+  lynx_value_create_map(env, &map_value);
+  lynx_value_type t2;
+  lynx_value_typeof(env, map_value, &t2);
+  ASSERT_TRUE(t2 == lynx_value_map);
+  lynx_value v1;
+  lynx_value_create_int32(env, 10, &v1);
+  lynx_value v2;
+  lynx_value_create_double(env, 3.14f, &v2);
+  lynx_value v3;
+  lynx_value_create_string_utf8(env, "string", 6, &v3);
+  auto* v3_ptr =
+      reinterpret_cast<lynx::base::RefCountedStringImpl*>(v3.val_ptr);
+  ASSERT_TRUE(v3_ptr->HasOneRef());
+  lynx_value_set_named_property(env, map_value, "v1", v1);
+  lynx_value_set_named_property(env, map_value, "v2", v2);
+  lynx_value_set_named_property(env, map_value, "v3", v3);
+  lynx_value_set_named_property(env, map_value, "v3", v3);
+  lynx_api_status status = lynx_value_set_named_property(env, v3, "v1", v2);
+  ASSERT_TRUE(status != lynx_api_ok);
+  ASSERT_FALSE(v3_ptr->HasOneRef());
+  lynx_value v1_ret;
+  lynx_value_get_named_property(env, map_value, "v1", &v1_ret);
+  ASSERT_TRUE(v1_ret.type == lynx_value_int32);
+  ASSERT_TRUE(v1_ret.val_int32 == 10);
+  int32_t int32_ret;
+  lynx_value_get_int32(env, v1_ret, &int32_ret);
+  ASSERT_TRUE(int32_ret == 10);
+  lynx_value v2_ret;
+  lynx_value_get_named_property(env, map_value, "v2", &v2_ret);
+  ASSERT_TRUE(v2_ret.type == lynx_value_double);
+  ASSERT_TRUE(v2_ret.val_double == 3.14f);
+  double d_ret;
+  lynx_value_get_double(env, v2_ret, &d_ret);
+  ASSERT_TRUE(d_ret == 3.14f);
+  lynx_value v3_ret;
+  lynx_value_get_named_property(env, map_value, "v3", &v3_ret);
+  lynx_value_remove_reference(env, v3, nullptr);
+  lynx_value_remove_reference(env, v3_ret, nullptr);
+  ASSERT_TRUE(v3_ptr->HasOneRef());
+  lynx_value_remove_reference(env, map_value, nullptr);
+
+  lynx_value array_value;
+  lynx_value_create_array(env, &array_value);
+  lynx_value_type t3;
+  lynx_value_typeof(env, array_value, &t3);
+  ASSERT_TRUE(t3 == lynx_value_array);
+  lynx_value v4;
+  lynx_value_create_bool(env, true, &v4);
+  lynx_value v5;
+  lynx_value_create_int64(env, 100, &v5);
+  lynx_value v6;
+  lynx_value_create_string_utf8(env, "string", 6, &v6);
+  auto* v6_ptr =
+      reinterpret_cast<lynx::base::RefCountedStringImpl*>(v6.val_ptr);
+  ASSERT_TRUE(v6_ptr->HasOneRef());
+  lynx_value_set_element(env, array_value, 0, v4);
+  lynx_value_set_element(env, array_value, 1, v5);
+  lynx_value_set_element(env, array_value, 2, v6);
+  lynx_value_set_element(env, array_value, 2, v6);
+  status = lynx_value_set_element(env, v6, 2, v5);
+  ASSERT_TRUE(status != lynx_api_ok);
+  ASSERT_FALSE(v6_ptr->HasOneRef());
+  lynx_value v4_ret;
+  lynx_value_get_element(env, array_value, 0, &v4_ret);
+  ASSERT_TRUE(v4_ret.type == lynx_value_bool);
+  ASSERT_TRUE(v4_ret.val_bool);
+  bool b_ret;
+  lynx_value_get_bool(env, v4_ret, &b_ret);
+  ASSERT_TRUE(b_ret);
+  lynx_value v5_ret;
+  lynx_value_get_element(env, array_value, 1, &v5_ret);
+  ASSERT_TRUE(v5_ret.type == lynx_value_int64);
+  ASSERT_TRUE(v5_ret.val_int64 = 100);
+  int64_t int64_ret;
+  lynx_value_get_int64(env, v5_ret, &int64_ret);
+  ASSERT_TRUE(int64_ret == 100);
+  lynx_value v6_ret;
+  lynx_value_get_element(env, array_value, 2, &v6_ret);
+  lynx_value_remove_reference(env, v6, nullptr);
+  lynx_value_remove_reference(env, v6_ret, nullptr);
+  ASSERT_TRUE(v6_ptr->HasOneRef());
+  lynx_value_remove_reference(env, array_value, nullptr);
+  lynx_value v7;
+  lynx_value_create_uint32(env, 1001, &v7);
+  ASSERT_TRUE(v7.type == lynx_value_uint32);
+  ASSERT_TRUE(v7.val_uint32 == 1001);
+  lynx_value v8;
+  lynx_value_create_uint64(env, 10001, &v8);
+  ASSERT_TRUE(v8.type == lynx_value_uint64);
+  ASSERT_TRUE(v8.val_uint64 == 10001);
 }
 
 }  // namespace base

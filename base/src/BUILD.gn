@@ -39,6 +39,7 @@ config("base_public_config") {
     defines += [
       "OS_WIN=1",
       "_CRT_SECURE_NO_WARNINGS=1",
+      "LYNX_BASE_WIN_EXPORTS",
     ]
   }
 }
@@ -320,10 +321,10 @@ lynx_base_source_set("base_values") {
               "value/base_value.cc",
               "value/base_value_print.cc",
               "value/byte_array.cc",
+              "value/lynx_value_api_impl.cc",
               "value/path_parser.cc",
               "value/table.cc",
             ]
-
   public_deps = [ ":values" ]
 }
 

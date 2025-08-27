@@ -19,7 +19,15 @@
 #ifdef BASE_NO_EXPORT
 #define BASE_EXPORT
 #else  // BASE_NO_EXPORT
+#ifdef _WIN32
+#ifdef LYNX_BASE_WIN_EXPORTS
+#define BASE_EXPORT __declspec(dllexport)
+#else
+#define BASE_EXPORT __declspec(dllimport)
+#endif  // LYNX_BASE_WIN_EXPORTS
+#else
 #define BASE_EXPORT __attribute__((visibility("default")))
+#endif  // _WIN32
 #endif  // BASE_NO_EXPORT
 
 #define BASE_HIDE __attribute__((visibility("hidden")))

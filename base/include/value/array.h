@@ -190,6 +190,13 @@ class BASE_EXPORT CArray : public RefCountedBase {
     return true;
   }
 
+  class Unsafe {
+   public:
+    Unsafe() = delete;
+
+    static BASE_INLINE CArray* RawCreate() { return new CArray(); }
+  };
+
  protected:
   CArray() {}
 

@@ -169,6 +169,7 @@ base_values_public_headers_list = [
   "value/array.h",
   "value/base_value.h",
   "value/byte_array.h",
+  "value/lynx_value_api.h",
   "value/lynx_value_extended.h",
   "value/path_parser.h",
   "value/ref_counted_class.h",

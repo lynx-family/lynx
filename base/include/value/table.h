@@ -339,6 +339,8 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
         target.SetValue(std::move(key), std::move(value));
       }
     }
+
+    static BASE_INLINE Dictionary* RawCreate() { return new Dictionary(); }
   };
 
   friend class Unsafe;
