@@ -34,7 +34,7 @@ public class ExplorerApplication extends Application {
   }
 
   private void initLynxEnv() {
-    LynxEnv.inst().init(this, null, new DemoTemplateProvider(), null, null);
+    LynxEnv.inst().init(this, null, new DemoTemplateProvider(), null);
   }
 
   private void initLynxRecorder() {
@@ -42,10 +42,10 @@ public class ExplorerApplication extends Application {
   }
 
   private void initLynxService() {
-    LynxServiceCenter.inst().registerService(
-        ILynxImageService.class, LynxImageService.getInstance());
-    LynxServiceCenter.inst().registerService(ILynxLogService.class, LynxLogService.INSTANCE);
-    LynxServiceCenter.inst().registerService(ILynxHttpService.class, LynxHttpService.INSTANCE);
+    LynxServiceCenter.inst().registerService(LynxImageService.getInstance());
+    LynxServiceCenter.inst().registerService(LynxLogService.INSTANCE);
+    LynxServiceCenter.inst().registerService(LynxHttpService.INSTANCE);
+    LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
   }
 
   // merge it into InitProcessor later.
