@@ -2194,6 +2194,7 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public boolean com.lynx.tasm.service.ILynxImageService.pauseAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.stopAnimation(@NonNull Drawable animatable);
   public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
+  public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
   public void com.lynx.tasm.service.ILynxImageService.releaseImage(@NonNull ImageRequestInfo imageRequestInfo);
   public void com.lynx.tasm.service.ILynxImageService.releaseAnimDrawable(@NonNull Drawable drawable);
@@ -5519,6 +5520,7 @@ public class com::lynx::jsbridge::LynxResourceModule : com.lynx.jsbridge.LynxCon
   public final String com.lynx.jsbridge.LynxResourceModule.AUDIO_TYPE AUDIO_TYPE;
   public final long com.lynx.jsbridge.LynxResourceModule.DEFAULT_MEDIA_SIZE DEFAULT_MEDIA_SIZE;
   public com.lynx.jsbridge.LynxResourceModule.LynxResourceModule(LynxContext context);
+  public void com.lynx.jsbridge.LynxResourceModule.requestResourcePrefetchImage(final ReadableMap data, final Callback callback);
 }
 
 public class abstract com::lynx::tasm::provider::LynxResourceProvider :  {

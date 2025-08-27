@@ -52,7 +52,7 @@ export class ResourcePrefetchDetail {
 export interface ResourcePrefetchCallback {
   code: number;
   msg: string;
-  details: ResourcePrefetchDetail[];
+  details?: ResourcePrefetchDetail[];
 }
 
 export class LynxResourceModule extends LynxModule {
@@ -159,18 +159,63 @@ export class LynxResourceModule extends LynxModule {
   requestResourcePrefetch(data: ResourcePrefetchData, callback: (res: ResourcePrefetchCallback) => void): void {
     let details = [];
     let globalRes: [number, string] = this.resourcePrefetch(data, false, details);
-    callback({
-      code: globalRes[0], msg: globalRes[1],
-      details: details
-    });
+    if (callback) {
+      callback({
+        code: globalRes[0], msg: globalRes[1],
+        details: details
+      });
+    }
   }
 
   cancelResourcePrefetch(data: ResourcePrefetchData, callback: (res: ResourcePrefetchCallback) => void): void {
     let details = [];
     let globalRes: [number, string] = this.resourcePrefetch(data, true, details);
-    callback({
-      code: globalRes[0], msg: globalRes[1],
-      details: details
-    });
+    if (callback) {
+      callback({
+        code: globalRes[0], msg: globalRes[1],
+        details: details
+      });
+    }
+  }
+
+  requestResourcePrefetchImage(data: Resource, callback: (res: ResourcePrefetchCallback) => void): void {
+    const uri = data.uri;
+    if (uri === undefined || uri.length === 0) {
+      let code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+      let msg = 'Parameters error in Lynx resource prefetch module! uri is null.';
+      if (callback) {
+        callback({
+          code: code, msg: msg,
+        });
+      }
+      return;
+    }
+    let genericFetcher: LynxGenericResourceFetcher | undefined = this.context.getGenericResourceFetcher();
+    if (genericFetcher === undefined) {
+      let code = LynxSubErrorCode.E_RESOURCE_MODULE_RESOURCE_SERVICE_NOT_EXIST;
+      let msg = 'Generic resource fetcher is undefined';
+      if (callback) {
+        callback({
+          code: code, msg: msg,
+        });
+      }
+      return;
+    }
+    const imageCallback: AsyncCallback<string> = (error: BusinessError, result: string) => {
+      let code = 0;
+      let msg = "";
+      if (error) {
+        LLog.e(TAG, `request resource failed` + JSON.stringify(error));
+        code = error.code;
+        msg = error.message;
+      }
+      if (callback) {
+        callback({
+          code: code, msg: msg,
+        });
+      }
+    };
+    let request: LynxResourceRequest = new LynxResourceRequest(uri, LynxResourceType.LYNX_RESOURCE_TYPE_IMAGE);
+    genericFetcher.fetchResourcePath(request, imageCallback);
   }
 }

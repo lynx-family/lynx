@@ -150,6 +150,18 @@ typedef void (^LynxImageLoadCompletionBlock)(UIImage *_Nullable image, NSError *
 - (void)prefetchImage:(LynxURL *)url params:(nullable NSDictionary *)params;
 
 /**
+ * Prefetches an image from a URI for faster subsequent loading.
+ *
+ * @param url The URI of the image to prefetch.
+ * @param params Additional parameters for prefetching (optional).
+ * @param completed The completion block to execute when the image load is finished (optional).
+ */
+@optional
+- (void)prefetchImage:(LynxURL *)url
+               params:(nullable NSDictionary *)params
+            completed:(nullable LynxImageLoadCompletionBlock)completed;
+
+/**
  * Decodes the image data into a UIImage.
  *
  * @param data The image data to decode.

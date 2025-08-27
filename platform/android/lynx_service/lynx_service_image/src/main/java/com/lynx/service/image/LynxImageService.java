@@ -268,8 +268,8 @@ public class LynxImageService implements ILynxImageService {
     return false;
   }
 
-  private void prefetchImageToDiskCache(
-      ImageRequest request, Object callerContext, @Nullable String priorityString) {
+  private void prefetchImageToDiskCache(ImageRequest request, Object callerContext,
+      @Nullable String priorityString, @Nullable final ImageLoadListener listener) {
     Priority priority;
     if (priorityString != null && priorityString.equals(PRIORITY_HIGH)) {
       priority = Priority.HIGH;
@@ -278,15 +278,64 @@ public class LynxImageService implements ILynxImageService {
     } else {
       priority = Priority.LOW;
     }
-    Fresco.getImagePipeline().prefetchToDiskCache(request, callerContext, priority);
+    DataSource<Void> ds =
+        Fresco.getImagePipeline().prefetchToDiskCache(request, callerContext, priority);
+    if (listener != null) {
+      final BaseDataSubscriber<Void> subscriber = new BaseDataSubscriber<Void>() {
+        @Override
+        protected void onNewResultImpl(DataSource<Void> dataSource) {
+          listener.onSuccess(null, null, null);
+        }
+
+        @Override
+        protected void onFailureImpl(DataSource<Void> dataSource) {
+          if (dataSource.getFailureCause() != null) {
+            listener.onFailure(
+                ImageErrorCodeUtils.checkImageException(dataSource.getFailureCause()),
+                dataSource.getFailureCause());
+          } else {
+            listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
+                new Throwable("image prefetch to disk cache failed."));
+          }
+        }
+      };
+      ds.subscribe(subscriber, CallerThreadExecutor.getInstance());
+    }
   }
 
-  private void prefetchImageToBitmapCache(ImageRequest request, Object callerContext) {
-    Fresco.getImagePipeline().prefetchToBitmapCache(request, callerContext);
+  private void prefetchImageToBitmapCache(
+      ImageRequest request, Object callerContext, @Nullable final ImageLoadListener listener) {
+    DataSource<Void> ds = Fresco.getImagePipeline().prefetchToBitmapCache(request, callerContext);
+    if (listener != null) {
+      final BaseDataSubscriber<Void> subscriber = new BaseDataSubscriber<Void>() {
+        @Override
+        protected void onNewResultImpl(DataSource<Void> dataSource) {
+          listener.onSuccess(null, null, null);
+        }
+
+        @Override
+        protected void onFailureImpl(DataSource<Void> dataSource) {
+          if (dataSource.getFailureCause() != null) {
+            listener.onFailure(
+                ImageErrorCodeUtils.checkImageException(dataSource.getFailureCause()),
+                dataSource.getFailureCause());
+          } else {
+            listener.onFailure(ImageErrorCodeUtils.LYNX_IMAGE_UNKNOWN_EXCEPTION,
+                new Throwable("image prefetch to bitmap cache failed."));
+          }
+        }
+      };
+      ds.subscribe(subscriber, CallerThreadExecutor.getInstance());
+    }
   }
 
   public void prefetchImage(
       @NonNull String uri, Object callerContext, @Nullable ReadableMap params) {
+    prefetchImage(uri, callerContext, params, null);
+  }
+
+  public void prefetchImage(@NonNull String uri, @Nullable Object callerContext,
+      @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener) {
     String priorityString = (params == null ? null : params.getString(PRIORITY_KEY, null));
     String cacheString = (params == null ? null : params.getString(CACHE_TARGET_KEY, null));
     Uri imageUri = Uri.parse(uri);
@@ -298,9 +347,9 @@ public class LynxImageService implements ILynxImageService {
         new ImageDecodeOptionsBuilder().setBitmapConfig(Bitmap.Config.ARGB_8888);
     builder.setImageDecodeOptions(decodeOptionsBuilder.build());
     if (cacheString != null && cacheString.equals(CACHE_BITMAP)) {
-      prefetchImageToBitmapCache(builder.build(), callerContext);
+      prefetchImageToBitmapCache(builder.build(), callerContext, loadListener);
     } else {
-      prefetchImageToDiskCache(builder.build(), callerContext, priorityString);
+      prefetchImageToDiskCache(builder.build(), callerContext, priorityString, loadListener);
     }
   }
 

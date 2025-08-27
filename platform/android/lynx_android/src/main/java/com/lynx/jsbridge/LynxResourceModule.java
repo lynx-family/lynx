@@ -20,9 +20,14 @@ import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.base.trace.TraceEventDef;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.image.ImageContent;
+import com.lynx.tasm.image.model.ImageInfo;
+import com.lynx.tasm.image.model.ImageLoadListener;
+import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.ILynxResourceService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import org.json.JSONObject;
 
 public class LynxResourceModule extends LynxContextModule {
   public static final String NAME = "LynxResourceModule";
@@ -93,6 +98,76 @@ public class LynxResourceModule extends LynxContextModule {
     if (callback != null) {
       callback.invoke(allResults);
     }
+  }
+
+  @LynxMethod
+  public void requestResourcePrefetchImage(final ReadableMap data, final Callback callback) {
+    String uri = data.getString(URI_KEY, null);
+    ReadableMap params = data.getMap(PARAMS_KEY, null);
+    int code = 0;
+    String msg = "";
+    if (uri == null) {
+      code = LynxSubErrorCode.E_RESOURCE_MODULE_PARAMS_ERROR;
+      msg = "Parameters error in Lynx resource prefetch module! 'uri' is null.";
+      LynxError error = new LynxError(code, msg,
+          "Please check the parameters passed to Lynx resource prefetch module.",
+          LynxError.LEVEL_ERROR);
+      onErrorOccurred(error);
+      if (callback != null) {
+        JavaOnlyMap result = new JavaOnlyMap();
+        result.putInt(CODE_KEY, code);
+        result.putString(MSG_KEY, msg);
+        callback.invoke(result);
+      }
+      return;
+    }
+    if (mImagePrefetchHelper == null) {
+      code = LynxSubErrorCode.E_RESOURCE_MODULE_IMG_PREFETCH_HELPER_NOT_EXIST;
+      msg = "Image prefetch helper do not exist!";
+      LynxError error = new LynxError(code, msg,
+          "If the Resource service does not exist, it may be due to an error that occurred while creating the resource service through reflection. Please contact the client RD for help.",
+          LynxError.LEVEL_ERROR);
+      onErrorOccurred(error);
+      if (callback != null) {
+        JavaOnlyMap result = new JavaOnlyMap();
+        result.putInt(CODE_KEY, code);
+        result.putString(MSG_KEY, msg);
+        callback.invoke(result);
+      }
+      return;
+    }
+    mImagePrefetchHelper.prefetchImage(
+        uri, mLynxContext.getFrescoCallerContext(), params, new ImageLoadListener() {
+          private void invokeCallback(int code, String msg) {
+            if (callback != null) {
+              JavaOnlyMap result = new JavaOnlyMap();
+              result.putInt(CODE_KEY, code);
+              result.putString(MSG_KEY, msg);
+              callback.invoke(result);
+            }
+          }
+          @Override
+          public void onRequestSubmit(ImageRequestInfo imageRequestInfo) {
+            // Do nothing
+          }
+
+          // imageContent, requestInfo, and imageInfo are null and cannot be used.
+          @Override
+          public void onSuccess(@Nullable ImageContent imageContent, ImageRequestInfo requestInfo,
+              ImageInfo imageInfo) {
+            invokeCallback(0, "");
+          }
+
+          @Override
+          public void onFailure(int errorCode, Throwable throwable) {
+            invokeCallback(errorCode, "prefetch image failed");
+          }
+
+          @Override
+          public void onImageMonitorInfo(JSONObject monitorInfo) {
+            // Do nothing
+          }
+        });
   }
 
   private Pair<Integer, String> resourcePrefetch(

@@ -3060,6 +3060,7 @@ public protocol LynxServiceImageProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceImageProtocol-p::reportResourceStatus:data:extra:(LynxView *LynxView,[data] NSMutableDictionary *data,[extra] NSDictionary *__nullable extra);
   public NSNumber * LynxServiceImageProtocol-p::getMappedCategorizedPicErrorCode:(NSNumber *errorCode);
   public void LynxServiceImageProtocol-p::prefetchImage:params:(LynxURL *url,[params] nullable NSDictionary *params);
+  public void LynxServiceImageProtocol-p::prefetchImage:params:completed:(LynxURL *url,[params] nullable NSDictionary *params,[completed] nullable LynxImageLoadCompletionBlock completed);
   public UIImage * LynxServiceImageProtocol-p::decodeImage:(NSData *data);
   public void LynxServiceImageProtocol-p::handleAnimatedImage:view:loopCount:(UIImage *image,[view] UIImageView *imageView,[loopCount] NSInteger loopCount);
   public void LynxServiceImageProtocol-p::setFrameCacheAutomatically:value:(id view,[value] BOOL frameCacheAutomatically);

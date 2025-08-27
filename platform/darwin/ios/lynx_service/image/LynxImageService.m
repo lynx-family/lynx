@@ -205,7 +205,9 @@
   };
 }
 
-- (void)prefetchImage:(nonnull LynxURL*)url params:(nullable NSDictionary*)params {
+- (void)prefetchImage:(LynxURL*)url
+               params:(nullable NSDictionary*)params
+            completed:(nullable LynxImageLoadCompletionBlock)completed {
   NSString* priority = [params objectForKey:@"priority"];
   NSString* cacheTarget = [params objectForKey:@"cacheTarget"];
   SDWebImageOptions options = SDWebImageContinueInBackground;
@@ -223,10 +225,15 @@
                options:options
               progress:nil
              completed:^(UIImage* _Nullable image, NSData* _Nullable data, NSError* _Nullable error,
-                         SDImageCacheType cacheType, BOOL finished, NSURL* _Nullable imageURL){
-                 // no need to impl
-
+                         SDImageCacheType cacheType, BOOL finished, NSURL* _Nullable imageURL) {
+               if (completed) {
+                 completed(nil, error, imageURL);
+               }
              }];
+}
+
+- (void)prefetchImage:(nonnull LynxURL*)url params:(nullable NSDictionary*)params {
+  [self prefetchImage:url params:params completed:nil];
 }
 
 - (void)reportResourceStatus:(nonnull LynxView*)LynxView

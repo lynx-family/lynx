@@ -95,6 +95,17 @@ public interface ILynxImageService extends IServiceProvider {
       @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
 
   /**
+   * Prefetches an image from a URI for faster subsequent loading.
+   *
+   * @param uri The URI of the image to prefetch.
+   * @param callerContext Optional context of the caller.
+   * @param params Additional parameters for prefetching (optional).
+   * @param loadListener Listener for image loading callbacks (optional).
+   */
+  void prefetchImage(@NonNull String uri, @Nullable Object callerContext,
+      @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener);
+
+  /**
    * Retrieve Bitmap of input requestInfo;
    *
    * @param imageRequestInfo Information about the image request.

@@ -41,6 +41,8 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
   return @{
     @"requestResourcePrefetch" : NSStringFromSelector(@selector(requestResourcePrefetch:callback:)),
     @"cancelResourcePrefetch" : NSStringFromSelector(@selector(cancelResourcePrefetch:callback:)),
+    @"requestResourcePrefetchImage" :
+        NSStringFromSelector(@selector(requestResourcePrefetchImage:callback:)),
   };
 }
 
@@ -252,6 +254,67 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
   }
   LOGI("LynxResourceModule requestResourcePrefetch uri: " << uri << " type: " << type);
   return std::make_pair(code, msg);
+}
+
+- (void)requestResourcePrefetchImage:(NSDictionary*)prefetchData
+                            callback:(LynxCallbackBlock)callback {
+  id uri = [prefetchData objectForKey:kUriKey];
+  id params = [prefetchData objectForKey:kParamsKey];
+  if (uri == nil) {
+    NSInteger code = ECLynxResourceModuleParamsError;
+    NSString* msg = @"Parameters error in Lynx resource prefetch module! 'uri' is null.";
+    LynxError* error = [LynxError
+        lynxErrorWithCode:code
+                  message:msg
+            fixSuggestion:@"Please check the parameters passed to Lynx resource prefetch module."
+                    level:LynxErrorLevelError];
+    [context_ reportLynxError:error];
+    if (callback) {
+      NSMutableDictionary* result = [[NSMutableDictionary alloc] init];
+      result[kCodeKey] = @(code);
+      result[kMsgKey] = msg;
+      callback(result);
+    }
+    return;
+  }
+  id<LynxServiceImageProtocol> service =
+      [LynxServices getInstanceWithProtocol:@protocol(LynxServiceImageProtocol)
+                                      bizID:DEFAULT_LYNX_SERVICE];
+  if (service == nil) {
+    NSInteger code = ECLynxResourceModuleImgPrefetchHelperNotExist;
+    NSString* msg = @"Image prefetch service do not exist!";
+    LynxError* error =
+        [LynxError lynxErrorWithCode:code
+                             message:msg
+                       fixSuggestion:@"If the Resource service does not exist, it may be due to an "
+                                     @"error that occurred while creating the resource service "
+                                     @"through reflection. Please contact the client RD for help."
+                               level:LynxErrorLevelError];
+    [context_ reportLynxError:error];
+    if (callback) {
+      NSMutableDictionary* result = [[NSMutableDictionary alloc] init];
+      result[kCodeKey] = @(code);
+      result[kMsgKey] = msg;
+      callback(result);
+    }
+    return;
+  }
+  LynxURL* lynxUri = [[LynxURL alloc] init];
+  lynxUri.url = [[NSURL alloc] initWithString:uri];
+  LynxImageLoadCompletionBlock requestBlock =
+      ^(UIImage* _Nullable image, NSError* _Nullable error, NSURL* _Nullable imageURL) {
+        if (callback) {
+          NSString* errorDetail = [NSString stringWithFormat:@"%@", [error description]];
+          NSNumber* errorCode = error ? [NSNumber numberWithInteger:error.code] : @(0);
+          NSInteger code = [errorCode integerValue];
+          NSMutableDictionary* result = [[NSMutableDictionary alloc] init];
+          result[kCodeKey] = @(code);
+          result[kMsgKey] = errorDetail ?: @"";
+          callback(result);
+        }
+      };
+
+  [service prefetchImage:lynxUri params:params completed:requestBlock];
 }
 
 @end
