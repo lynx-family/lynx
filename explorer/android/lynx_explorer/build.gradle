@@ -88,6 +88,7 @@ dependencies {
     implementation 'org.lynxsdk.lynx:v8so:11.1.277.4'
 
     implementation project(':LynxAndroid')
+    implementation project(':LynxBase')
 
     implementation project(':lynx_service_log')
     implementation project(':lynx_service_image')

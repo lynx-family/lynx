@@ -5,6 +5,8 @@ rootProject.name = "Explorer"
 include ':LynxExplorer'
 project(":LynxExplorer").projectDir = new File(rootProject.projectDir, './lynx_explorer')
 
+include ':LynxBase'
+project(":LynxBase").projectDir = new File(rootProject.projectDir, '../../base/platform/android')
 include ':LynxTrace'
 project(":LynxTrace").projectDir = new File(rootProject.projectDir, '../../base/trace/android')
 include ':LynxAndroid'

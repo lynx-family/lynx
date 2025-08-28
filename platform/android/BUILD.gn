@@ -19,6 +19,7 @@ config("16kb_page") {
 
 group("Android") {
   deps = [
+    "../../base/platform/android:LynxBase",
     "../../base/trace/android:LynxTrace",
     "lynx_android",
     "lynx_devtool:LynxDevtool",
