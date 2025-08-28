@@ -1,35 +1,42 @@
 // Copyright 2023 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
-
 #ifndef CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_
 #define CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_
 
-#include <string>
+// TODO(songshourui.null): This file is intentionally left blank to preserve the
+// subspec's pod install error.
 
-#include "base/include/no_destructor.h"
-#include "core/renderer/css/css_property.h"
+// #ifndef CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_
+// #define CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_
 
-namespace lynx {
-namespace tasm {
+// #include <string>
 
-class LynxAirParsedStyleStore {
- public:
-  static LynxAirParsedStyleStore& GetInstance();
+// #include "base/include/no_destructor.h"
+// #include "core/renderer/css/css_property.h"
 
-  const std::string& GetCurrentUrl() const { return url_; }
-  const AirParsedStylesMap& GetAirParsedStyleStore() const {
-    return air_parsed_styles_;
-  }
+// namespace lynx {
+// namespace tasm {
 
-  void StoreAirParsedStyle(const std::string& url,
-                           const AirParsedStylesMap& styles);
+// class LynxAirParsedStyleStore {
+//  public:
+//   static LynxAirParsedStyleStore& GetInstance();
 
- private:
-  std::string url_;
-  AirParsedStylesMap air_parsed_styles_;
-};
-}  // namespace tasm
-}  // namespace lynx
+//   const std::string& GetCurrentUrl() const { return url_; }
+//   const AirParsedStylesMap& GetAirParsedStyleStore() const {
+//     return air_parsed_styles_;
+//   }
+
+//   void StoreAirParsedStyle(const std::string& url,
+//                            const AirParsedStylesMap& styles);
+
+//  private:
+//   std::string url_;
+//   AirParsedStylesMap air_parsed_styles_;
+// };
+// }  // namespace tasm
+// }  // namespace lynx
+
+// #endif  // CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_
 
 #endif  // CORE_RENDERER_DOM_AIR_LYNX_AIR_PARSED_STYLE_STORE_H_

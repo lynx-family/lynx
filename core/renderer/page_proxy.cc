@@ -29,11 +29,6 @@
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/services/ssr/client/ssr_client_utils.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
-
-#if ENABLE_AIR
-#include "core/renderer/dom/air/air_element/air_page_element.h"
-#endif
-
 namespace lynx {
 namespace tasm {
 
@@ -119,12 +114,6 @@ std::unique_ptr<lepus::Value> PageProxy::GetData() {
   if (radon_page_) {
     return radon_page_->GetPageData();
   }
-#if ENABLE_AIR
-  else if (element_manager()->AirRoot()) {
-    return std::make_unique<lepus::Value>(
-        lepus::Value::Clone(element_manager()->AirRoot()->GetData()));
-  }
-#endif
   return nullptr;
 }
 
@@ -132,11 +121,6 @@ lepus::Value PageProxy::GetDataByKey(const std::vector<std::string> &keys) {
   if (radon_page_) {
     return radon_page_->GetPageDataByKey(keys);
   }
-#if ENABLE_AIR
-  else if (element_manager()->AirRoot()) {
-    return element_manager()->AirRoot()->GetPageDataByKey(keys);
-  }
-#endif
   return lepus::Value();
 }
 
@@ -222,12 +206,6 @@ bool PageProxy::UpdateGlobalProps(
     return radon_page_->RefreshWithGlobalProps(table, should_render,
                                                pipeline_options);
   }
-#if ENABLE_AIR
-  else if (element_manager()->AirRoot()) {
-    return element_manager()->AirRoot()->RefreshWithGlobalProps(table,
-                                                                should_render);
-  }
-#endif
   return false;
 }
 
@@ -526,12 +504,6 @@ bool PageProxy::UpdateGlobalDataInternal(
   if (Page()) {
     return Page()->UpdatePage(value, update_page_option, pipeline_options);
   }
-#if ENABLE_AIR
-  else if (element_manager()->AirRoot()) {
-    return element_manager()->AirRoot()->UpdatePageData(
-        value, update_page_option, pipeline_options);
-  }
-#endif
   return false;
 }
 

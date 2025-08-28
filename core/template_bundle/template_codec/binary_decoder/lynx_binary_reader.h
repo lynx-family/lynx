@@ -84,10 +84,6 @@ class LynxBinaryReader : public LynxBinaryBaseTemplateReader {
     return template_bundle().parsed_styles_map_;
   }
 
-  AirParsedStylesMap& GetAirParsedStylesMap() override {
-    return template_bundle().air_parsed_styles_map_;
-  }
-
   virtual LynxTemplateBundle& template_bundle();
 
   StringKeyRouter lepus_chunk_route_;

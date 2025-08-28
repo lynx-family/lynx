@@ -44,104 +44,10 @@
 #include "core/shell/layout_mediator.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
-#if ENABLE_AIR
-#include "core/renderer/dom/air/air_element/air_element.h"
-#include "core/renderer/dom/air/air_element/air_for_element.h"
-#include "core/renderer/dom/air/air_element/air_page_element.h"
-#endif
-
 constexpr const static char *kEventDomSizeKey = "dom_size";
 namespace lynx {
 namespace tasm {
 #pragma mark ElementManager
-
-#if ENABLE_AIR
-//====== for air element begin ========/
-fml::RefPtr<AirLepusRef> ElementManager::GetAirNode(const base::String &tag,
-                                                    int32_t lepus_id) {
-  uint64_t key = air_root_->GetKeyForCreatedElement(lepus_id);
-  auto element = air_node_manager_->GetForLepusId(lepus_id, key);
-  if (element) {
-    return element;
-  }
-  return nullptr;
-}
-
-fml::RefPtr<AirLepusRef> ElementManager::CreateAirNode(const base::String &tag,
-                                                       int32_t lepus_id,
-                                                       int32_t impl_id,
-                                                       uint64_t key) {
-  std::shared_ptr<AirElement> element =
-      std::make_shared<AirElement>(kAirNormal, this, tag, lepus_id, impl_id);
-  air_node_manager()->Record(element->impl_id(), element);
-
-  auto res = AirLepusRef::Create(element);
-  // In most cases, each element has a unique lepus id, but when tt:for node
-  // or component node exists, there will be multiple elements with the same
-  // lepus id. Use the double-map structure to record the elements. In the outer
-  // map, key is the lepus id. In the inner map, for elements with the same
-  // lepus id, using the unique id of tt:for or component to assemble a unique
-  // key; for other cases, the key is the lepus id. We can find the specific
-  // element with this record structrue.
-  air_node_manager()->RecordForLepusId(lepus_id, key, res);
-  return res;
-}
-
-AirPageElement *ElementManager::CreateAirPage(int32_t lepus_id) {
-  auto page = std::make_shared<AirPageElement>(this, lepus_id);
-  air_node_manager()->Record(page->impl_id(), page);
-  return page.get();
-}
-
-void AirNodeManager::EraseLepusId(int id, AirElement *node) {
-  auto iterator = air_lepus_id_map_.find(id);
-  if (iterator != air_lepus_id_map_.end()) {
-    auto &lepus_map = iterator->second;
-    for (auto it = lepus_map.begin(); it != lepus_map.end();) {
-      if (reinterpret_cast<AirLepusRef *>(it->second.get())->Get() == node) {
-        lepus_map.erase(it);
-        break;
-      } else {
-        ++it;
-      }
-    }
-  }
-}
-
-fml::RefPtr<AirLepusRef> AirNodeManager::GetForLepusId(int tag, uint64_t key) {
-  auto it = air_lepus_id_map_.find(tag);
-  if (it != air_lepus_id_map_.end()) {
-    auto &map = it->second;
-    if (map.find(key) != map.end()) {
-      return AirLepusRef::Create(
-          reinterpret_cast<AirLepusRef *>(map[key].get()));
-    }
-  }
-  return nullptr;
-}
-
-std::vector<fml::RefPtr<AirLepusRef>> AirNodeManager::GetAllNodesForLepusId(
-    int tag) const {
-  auto it = air_lepus_id_map_.find(tag);
-  if (it != air_lepus_id_map_.end()) {
-    std::vector<fml::RefPtr<AirLepusRef>> result;
-    for (auto iter = it->second.begin(); iter != it->second.end(); ++iter) {
-      // TODO(renpengcheng) delete the reinterpret_cast when AirLepusRef was
-      // included by default
-      result.push_back(AirLepusRef::Create(
-          reinterpret_cast<AirLepusRef *>(iter->second.get())));
-    }
-    return result;
-  }
-  return {};
-}
-
-void AirNodeManager::RecordForLepusId(int id, uint64_t key,
-                                      fml::RefPtr<AirLepusRef> node) {
-  air_lepus_id_map_[id].emplace(key, std::move(node));
-}
-
-#endif
 
 ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
@@ -151,7 +57,6 @@ ElementManager::ElementManager(
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context)
     : ElementContextDelegate(nullptr, nullptr),
       node_manager_(new NodeManager),
-      air_node_manager_(new AirNodeManager),
       component_manager_(new ComponentManager),
       catalyzer_(
           std::make_unique<Catalyzer>(std::make_unique<PaintingContext>(
@@ -788,14 +693,6 @@ void ElementManager::PatchEventRelatedInfo() {
     push_touch_pseudo_flag_ = false;
   }
 }
-
-#if ENABLE_AIR
-void ElementManager::OnPatchFinishInnerForAir(
-    const std::shared_ptr<PipelineOptions> &options) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_FOR_AIR);
-  DispatchLayoutUpdates(options);
-}
-#endif
 
 PaintingContext *ElementManager::painting_context() {
   return catalyzer_->painting_context();

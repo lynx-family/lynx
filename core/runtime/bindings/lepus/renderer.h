@@ -242,79 +242,15 @@ static const char* kCFunctionGetDiffData = "__GetDiffData";
 static const char* kCFunctionInvokeUIMethod = "__InvokeUIMethod";
 
 // air strict mode
-// Create Element
-static const char* kCFunctionAirCreateElement = "__AirCreateElement";
-static const char* kCFunctionAirGetElement = "__AirGetElement";
-static const char* kCFunctionAirCreatePage = "__AirCreatePage";
-static const char* kCFunctionAirCreateComponent = "__AirCreateComponent";
-static const char* kCFunctionAirCreateBlock = "__AirCreateBlock";
-static const char* kCFunctionAirCreateIf = "__AirCreateIf";
-static const char* kCFunctionAirCreateRadonIf = "__AirCreateRadonIf";
-static const char* kCFunctionAirCreateFor = "__AirCreateFor";
-static const char* kCFunctionAirCreatePlug = "__AirCreatePlug";
-static const char* kCFunctionAirCreateSlot = "__AirCreateSlot";
-// Element Tree
-static const char* kCFunctionAirAppendElement = "__AirAppendElement";
-static const char* kCFunctionAirRemoveElement = "__AirRemoveElement";
-static const char* kCFunctionAirInsertElementBefore =
-    "__AirInsertElementBefore";
 // Element SetAttribute
-static const char* kCFunctionAirGetElementUniqueID = "__AirGetElementUniqueID";
-static const char* kCFunctionAirGetTag = "__AirGetTag";
-static const char* kCFunctionAirSetAttribute = "__AirSetAttribute";
-static const char* kCFunctionAirGetAttributes = "__AirGetAttributes";
-static const char* kCFunctionAirSetInlineStyles = "__AirSetInlineStyles";
-static const char* kCFunctionAirSetEvent = "__AirSetEvent";
-static const char* kCFunctionAirSetID = "__AirSetID";
-
-static const char* kCFunctionAirGetElementByID = "__AirGetElementById";
-static const char* kCFunctionAirGetElementByUniqueID =
-    "__AirGetElementByUniqueID";
-static const char* kCFunctionAirGetElementByLepusID =
-    "__AirGetElementByLepusID";
-static const char* kCFunctionAirGetRootElement = "__AirGetRootElement";
-static const char* kCFunctionAirGetParentForNode = "__AirGetParentForNode";
-
-static const char* kCFunctionAirUpdateIfNodeIndex = "__AirUpdateIfNodeIndex";
-static const char* kCFunctionAirUpdateForNodeIndex = "__AirUpdateForNodeIndex";
-static const char* kCFunctionAirUpdateForChildCount =
-    "__AirUpdateForChildCount";
-static const char* kCFunctionAirGetForNodeChildWithIndex =
-    "__AirGetForNodeChildWithIndex";
-static const char* kCFunctionAirPushForNode = "__AirPushForNode";
-static const char* kCFunctionAirPopForNode = "__AirPopForNode";
-static const char* kCFunctionAirPushComponentNode = "__AirPushComponentNode";
-static const char* kCFunctionAirPopComponentNode = "__AirPopComponentNode";
-static const char* kCFunctionAirGetChildElementByIndex =
-    "__AirGetChildElementByIndex";
-static const char* kCFunctionAirPushAirDynamicNode = "__AirPushDynamicNode";
-static const char* kCFunctionAirGetAirDynamicNode = "__AirGetDynamicNode";
-static const char* kCFunctionAirSetAirComponentProp = "__AirSetComponentProp";
-static const char* kCFunctionAirRenderComponentInLepus =
-    "__AirRenderComponentInLepus";
-static const char* kCFunctionAirUpdateComponentInLepus =
-    "__AirUpdateComponentInLepus";
-static const char* kCFunctionAirGetComponentInfo = "__AirGetComponentInfo";
-static const char* kCFunctionAirUpdateComponentInfo =
-    "__AirUpdateComponentInfo";
-static const char* kCFunctionAirGetData = "__AirGetData";
-static const char* kCFunctionAirGetProps = "__AirGetProps";
-static const char* kCFunctionAirSetData = "__AirSetData";
-static const char* kCFunctionAirFlushElement = "__AirFlushElement";
-static const char* kCFunctionAirFlushElementTree = "__AirFlushElementTree";
-static const char* kCFunctionAirFlushTree = "__AirFlushTree";
 static const char* kCFunctionTriggerLepusBridge = "_TriggerLepusBridge";
 static const char* kCFunctionTriggerLepusBridgeSync = "_TriggerLepusBridgeSync";
-static const char* kCFunctionAirSetDataSet = "__AirSetDataSet";
-static const char* kCFunctionAirSendGlobalEvent = "__AirSendGlobalEvent";
 static const char* kCFunctionSetTimeout = "_SetTimeout";
 static const char* kCFunctionClearTimeout = "_ClearTimeout";
 static const char* kCFunctionSetTimeInterval = "_SetTimeInterval";
 static const char* kCFunctionClearTimeInterval = "_ClearTimeInterval";
 static const char* kCFunctionRemoveEventListener = "_RemoveEventListener";
 static const char* kCFunctionTriggerComponentEvent = "_TriggerComponentEvent";
-static const char* kCFunctionAirCreateRawText = "__AirCreateRawText";
-static const char* kCFunctionAirSetClasses = "__AirSetClasses";
 static const char* kCFunctionAirInvokeUIMethod = "_InvokeUIMethod";
 
 // lepusNg sourceMap
@@ -362,10 +298,9 @@ class Renderer {
  private:
   static void RegisterBuiltinForRadon(lepus::Context* context);
   static void RegisterBuiltinForFiber(lepus::Context* context);
-  static void RegisterBuiltinForAir(lepus::Context* context);
+
   static void RegisterNGBuiltinForRadon(lepus::Context* context);
   static void RegisterNGBuiltinForFiber(lepus::Context* context);
-  static void RegisterNGBuiltinForAir(lepus::Context* context);
 };
 }  // namespace tasm
 }  // namespace lynx

@@ -201,12 +201,10 @@ lepus::Value TasmMediator::TriggerLepusMethod(const std::string& method_name,
 void TasmMediator::TriggerLepusMethodAsync(const std::string& method_name,
                                            const lepus::Value& arguments,
                                            bool is_air) {
-#if ENABLE_AIR
   if (is_air) {
     tasm_platform_invoker_->TriggerLepusMethodAsync(method_name, arguments);
     return;
   }
-#endif
   facade_actor_->Act([method_name, arguments](auto& facade) {
     facade->TriggerLepusMethodAsync(method_name, arguments);
   });
@@ -216,7 +214,6 @@ void TasmMediator::LepusInvokeUIMethod(
     std::vector<int32_t> ui_impl_ids, const std::string& method,
     const lepus::Value& params, lepus::Context* context,
     std::unique_ptr<lepus::Value> callback_closure) {
-#if ENABLE_AIR
   auto callback_manager = context->GetCallbackManager();
   auto task_id =
       callback_manager->CacheTask(context, std::move(callback_closure));
@@ -226,7 +223,6 @@ void TasmMediator::LepusInvokeUIMethod(
   InvokeUIMethod(tasm::LynxGetUIResult(std::move(ui_impl_ids), 0, ""), method,
                  std::move(prop_bundle),
                  piper::ApiCallBack(static_cast<int>(task_id)));
-#endif
 }
 
 void TasmMediator::NotifyJSUpdatePageData() {

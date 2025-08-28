@@ -154,64 +154,13 @@
   V(FiberStopImmediatePropagation)    \
   V(SetSourceMapRelease)              \
   V(ReportError)                      \
-  V(AirCreateElement)                 \
-  V(AirGetElement)                    \
-  V(AirCreatePage)                    \
-  V(AirCreateComponent)               \
-  V(AirCreateBlock)                   \
-  V(AirCreateIf)                      \
-  V(AirCreateRadonIf)                 \
-  V(AirCreateFor)                     \
-  V(AirCreatePlug)                    \
-  V(AirCreateSlot)                    \
-  V(AirAppendElement)                 \
-  V(AirRemoveElement)                 \
-  V(AirInsertElementBefore)           \
-  V(AirGetElementUniqueID)            \
-  V(AirGetElementTag)                 \
-  V(AirSetAttribute)                  \
-  V(AirSetInlineStyles)               \
-  V(AirSetEvent)                      \
-  V(AirSetID)                         \
-  V(AirGetElementByID)                \
-  V(AirGetElementByLepusID)           \
-  V(AirUpdateIfNodeIndex)             \
-  V(AirUpdateForNodeIndex)            \
-  V(AirUpdateForChildCount)           \
-  V(AirGetForNodeChildWithIndex)      \
-  V(AirPushForNode)                   \
-  V(AirPopForNode)                    \
-  V(AirGetChildElementByIndex)        \
-  V(AirPushDynamicNode)               \
-  V(AirGetDynamicNode)                \
-  V(AirSetComponentProp)              \
-  V(AirRenderComponentInLepus)        \
-  V(AirUpdateComponentInLepus)        \
-  V(AirGetComponentInfo)              \
-  V(AirUpdateComponentInfo)           \
-  V(AirGetData)                       \
-  V(AirGetProps)                      \
-  V(AirSetData)                       \
-  V(AirFlushElement)                  \
-  V(AirFlushElementTree)              \
   V(TriggerLepusBridge)               \
   V(TriggerLepusBridgeSync)           \
-  V(AirSetDataSet)                    \
-  V(AirSendGlobalEvent)               \
-  V(AirSetClasses)                    \
   V(SetTimeout)                       \
   V(ClearTimeout)                     \
   V(SetInterval)                      \
   V(ClearTimeInterval)                \
-  V(AirGetElementByUniqueID)          \
-  V(AirGetRootElement)                \
-  V(RemoveEventListener)              \
   V(TriggerComponentEvent)            \
-  V(AirCreateRawText)                 \
-  V(AirPushComponentNode)             \
-  V(AirPopComponentNode)              \
-  V(AirGetParentForNode)              \
-  V(AirFlushTree)                     \
   V(SetStaticAttrTo)                  \
   V(SetStyleTo)                       \
   V(SetDynamicStyleTo)                \

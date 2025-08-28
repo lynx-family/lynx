@@ -59,13 +59,11 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
       const std::shared_ptr<LynxActor<NativeFacade>> &facade_actor,
       const std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
           &perf_controller_actor,
-      tasm::NodeManager *node_manager, tasm::AirNodeManager *air_node_manager,
-      tasm::Catalyzer *catalyzer) {
+      tasm::NodeManager *node_manager, tasm::Catalyzer *catalyzer) {
     engine_actor_ = actor;
     facade_actor_ = facade_actor;
     perf_controller_actor_ = perf_controller_actor;
     node_manager_ = node_manager;
-    air_node_manager_ = air_node_manager;
     catalyzer_ = catalyzer;
   }
   void SetEnableAirStrictMode(bool enable_air_strict_mode) override {
@@ -106,7 +104,6 @@ class LayoutMediator : public tasm::LayoutContext::Delegate,
   // dont own, external ptr from class ElementManager
   // thread safe, because they only run on tasm thread
   tasm::NodeManager *node_manager_;
-  tasm::AirNodeManager *air_node_manager_{nullptr};
   tasm::Catalyzer *catalyzer_;
 
   // TODO(heshan):now trigger onFirstScreen when first layout,

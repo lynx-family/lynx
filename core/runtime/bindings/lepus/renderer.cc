@@ -94,6 +94,9 @@ void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
     RegisterMethodToLynxPerformance(context, lynx);
     lepus::RegisterTableFunction(context, lynx_table, kFetchBundle,
                                  &FetchBundle);
+    lepus::RegisterTableFunction(context, lynx_table,
+                                 runtime::kAddReporterCustomInfo,
+                                 &LynxAddReporterCustomInfo);
   }
 }
 
@@ -181,9 +184,6 @@ void Renderer::RegisterBuiltin(lepus::Context* context, ArchOption option) {
   switch (option) {
     case FIBER_ARCH:
       RegisterBuiltinForFiber(context);
-      break;
-    case AIR_ARCH:
-      RegisterBuiltinForAir(context);
       break;
     default:
       RegisterBuiltinForRadon(context);
@@ -557,137 +557,8 @@ void Renderer::RegisterBuiltinForFiber(lepus::Context* context) {
   /* 114 */ lepus::RegisterCFunction(context,
                                      kCFunctionStopImmediatePropagation,
                                      &FiberStopImmediatePropagation);
-}
-
-void Renderer::RegisterBuiltinForAir(lepus::Context* context) {
-  // To add a RenderFunction, it needs to be registered first to avoid conflicts
-  // across different branches.
-  /* 001 */ lepus::RegisterCFunction(context, kCFunctionAirCreateElement,
-                                     &AirCreateElement);
-  /* 002 */ lepus::RegisterCFunction(context, kCFunctionAirGetElement,
-                                     &AirGetElement);
-  /* 003 */ lepus::RegisterCFunction(context, kCFunctionAirCreatePage,
-                                     &AirCreatePage);
-  /* 004 */ lepus::RegisterCFunction(context, kCFunctionAirCreateComponent,
-                                     &AirCreateComponent);
-  /* 005 */ lepus::RegisterCFunction(context, kCFunctionAirCreateBlock,
-                                     &AirCreateBlock);
-  /* 006 */ lepus::RegisterCFunction(context, kCFunctionAirCreateIf,
-                                     &AirCreateIf);
-  /* 007 */ lepus::RegisterCFunction(context, kCFunctionAirCreateRadonIf,
-                                     &AirCreateRadonIf);
-  /* 008 */ lepus::RegisterCFunction(context, kCFunctionAirCreateFor,
-                                     &AirCreateFor);
-  /* 009 */ lepus::RegisterCFunction(context, kCFunctionAirCreatePlug,
-                                     &AirCreatePlug);
-  /* 010 */ lepus::RegisterCFunction(context, kCFunctionAirCreateSlot,
-                                     &AirCreateSlot);
-  /* 011 */ lepus::RegisterCFunction(context, kCFunctionAirAppendElement,
-                                     &AirAppendElement);
-  /* 012 */ lepus::RegisterCFunction(context, kCFunctionAirRemoveElement,
-                                     &AirRemoveElement);
-  /* 013 */ lepus::RegisterCFunction(context, kCFunctionAirInsertElementBefore,
-                                     &AirInsertElementBefore);
-  /* 014 */ lepus::RegisterCFunction(context, kCFunctionAirGetElementUniqueID,
-                                     &AirGetElementUniqueID);
-  /* 015 */ lepus::RegisterCFunction(context, kCFunctionAirGetTag,
-                                     &AirGetElementTag);
-  /* 016 */ lepus::RegisterCFunction(context, kCFunctionAirSetAttribute,
-                                     &AirSetAttribute);
-  /* 017 */ lepus::RegisterCFunction(context, kCFunctionAirSetInlineStyles,
-                                     &AirSetInlineStyles);
-  /* 018 */ lepus::RegisterCFunction(context, kCFunctionAirSetEvent,
-                                     &AirSetEvent);
-  /* 019 */ lepus::RegisterCFunction(context, kCFunctionAirSetID, &AirSetID);
-  /* 020 */ lepus::RegisterCFunction(context, kCFunctionAirGetElementByID,
-                                     &AirGetElementByID);
-  /* 021 */ lepus::RegisterCFunction(context, kCFunctionAirGetElementByLepusID,
-                                     &AirGetElementByLepusID);
-  /* 022 */ lepus::RegisterCFunction(context, kCFunctionAirUpdateIfNodeIndex,
-                                     &AirUpdateIfNodeIndex);
-  /* 023 */ lepus::RegisterCFunction(context, kCFunctionAirUpdateForNodeIndex,
-                                     &AirUpdateForNodeIndex);
-  /* 024 */ lepus::RegisterCFunction(context, kCFunctionAirUpdateForChildCount,
-                                     &AirUpdateForChildCount);
-  /* 025 */ lepus::RegisterCFunction(context,
-                                     kCFunctionAirGetForNodeChildWithIndex,
-                                     &AirGetForNodeChildWithIndex);
-  /* 026 */ lepus::RegisterCFunction(context, kCFunctionAirPushForNode,
-                                     &AirPushForNode);
-  /* 027 */ lepus::RegisterCFunction(context, kCFunctionAirPopForNode,
-                                     &AirPopForNode);
-  /* 028 */ lepus::RegisterCFunction(
-      context, kCFunctionAirGetChildElementByIndex, &AirGetChildElementByIndex);
-  /* 029 */ lepus::RegisterCFunction(context, kCFunctionAirPushAirDynamicNode,
-                                     &AirPushDynamicNode);
-  /* 030 */ lepus::RegisterCFunction(context, kCFunctionAirGetAirDynamicNode,
-                                     &AirGetDynamicNode);
-  /* 031 */ lepus::RegisterCFunction(context, kCFunctionAirSetAirComponentProp,
-                                     &AirSetComponentProp);
-  /* 032 */ lepus::RegisterCFunction(
-      context, kCFunctionAirRenderComponentInLepus, &AirRenderComponentInLepus);
-  /* 033 */ lepus::RegisterCFunction(
-      context, kCFunctionAirUpdateComponentInLepus, &AirUpdateComponentInLepus);
-  /* 034 */ lepus::RegisterCFunction(context, kCFunctionAirGetComponentInfo,
-                                     &AirGetComponentInfo);
-  /* 035 */ lepus::RegisterCFunction(context, kCFunctionAirUpdateComponentInfo,
-                                     &AirUpdateComponentInfo);
-  /* 036 */ lepus::RegisterCFunction(context, kCFunctionAirGetData,
-                                     &AirGetData);
-  /* 037 */ lepus::RegisterCFunction(context, kCFunctionAirGetProps,
-                                     &AirGetProps);
-  /* 038 */ lepus::RegisterCFunction(context, kCFunctionAirSetData,
-                                     &AirSetData);
-  /* 039 */ lepus::RegisterCFunction(context, kCFunctionAirFlushElement,
-                                     &AirFlushElement);
-  /* 040 */ lepus::RegisterCFunction(context, kCFunctionAirFlushElementTree,
-                                     &AirFlushElementTree);
-  /* 041 */ lepus::RegisterCFunction(context, kCFunctionTriggerLepusBridge,
-                                     &TriggerLepusBridge);
-  /* 042 */ lepus::RegisterCFunction(context, kCFunctionTriggerLepusBridgeSync,
-                                     &TriggerLepusBridgeSync);
-  /* 043 */ lepus::RegisterCFunction(context, kCFunctionAirSetDataSet,
-                                     &AirSetDataSet);
-  /* 044 */ lepus::RegisterCFunction(context, kCFunctionAirSendGlobalEvent,
-                                     &AirSendGlobalEvent);
-  /* 045 */ lepus::RegisterCFunction(context, kCFunctionSetTimeout,
-                                     &SetTimeout);
-  /* 046 */ lepus::RegisterCFunction(context, kCFunctionClearTimeout,
-                                     &ClearTimeout);
-  /* 047 */ lepus::RegisterCFunction(context, kCFunctionSetTimeInterval,
-                                     &SetInterval);
-  /* 048 */ lepus::RegisterCFunction(context, kCFunctionClearTimeInterval,
-                                     &ClearTimeInterval);
-  /* 049 */ lepus::RegisterCFunction(context, kCFuncAddEventListener,
-                                     &AddEventListener);
-  /* 050 */ lepus::RegisterCFunction(context, kCFuncRegisterDataProcessor,
-                                     &RegisterDataProcessor);
-  /* 051 */ lepus::RegisterCFunction(context, kCFunctionAirGetElementByUniqueID,
-                                     &AirGetElementByUniqueID);
-  /* 052 */ lepus::RegisterCFunction(context, kCFunctionAirGetRootElement,
-                                     &AirGetRootElement);
-  /* 053 */ lepus::RegisterCFunction(context, kCFunctionRemoveEventListener,
-                                     &RemoveEventListener);
-  /* 054 */ lepus::RegisterCFunction(context, kCFunctionTriggerComponentEvent,
-                                     &TriggerComponentEvent);
-  /* 055 */ lepus::RegisterCFunction(context, kCFunctionAirCreateRawText,
-                                     &AirCreateRawText);
-  /* 056 */ lepus::RegisterCFunction(context, kCFunctionAirSetClasses,
-                                     &AirSetClasses);
-  /* 057 */ lepus::RegisterCFunction(context, kCFunctionAirPushComponentNode,
-                                     &AirPushComponentNode);
-  /* 058 */ lepus::RegisterCFunction(context, kCFunctionAirPopComponentNode,
-                                     &AirPopComponentNode);
-  /* 059 */ lepus::RegisterCFunction(context, kCFunctionAirGetParentForNode,
-                                     &AirGetParentForNode);
-  /* 060 */ lepus::RegisterCFunction(context, kCFunctionReportError,
-                                     &ReportError);
-  /* 061 */ lepus::RegisterCFunction(context, kCFunctionAirFlushTree,
-                                     &AirFlushTree);
-  /* 062 */ lepus::RegisterCFunction(context, kCFunctionInvokeUIMethod,
+  /* 115 */ lepus::RegisterCFunction(context, kCFunctionInvokeUIMethod,
                                      &InvokeUIMethod);
-  /* 063 */ lepus::RegisterCFunction(context, runtime::kAddReporterCustomInfo,
-                                     &LynxAddReporterCustomInfo);
 }
 
 }  // namespace tasm

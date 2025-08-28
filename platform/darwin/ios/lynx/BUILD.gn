@@ -445,9 +445,6 @@ subspec_target("UnitTests") {
 }
 
 subspec_target("Air") {
-  pod_target_xcconfig = {
-    GCC_PREPROCESSOR_DEFINITIONS = [ "ENABLE_AIR=1" ]
-  }
   deps = [ "../../../../core/renderer/dom/air:tasm_air" ]
 }
 

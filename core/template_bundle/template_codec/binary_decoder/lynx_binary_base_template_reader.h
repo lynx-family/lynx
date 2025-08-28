@@ -130,11 +130,6 @@ class LynxBinaryBaseTemplateReader : public ElementBinaryReader {
   virtual bool DecodeParsedStylesSection() = 0;
   virtual ParsedStylesMap& GetParsedStylesMap() = 0;
 
-  // Air Parsed Styles
-  virtual bool DecodeAirParsedStylesSection();
-  bool DecodeAirParsedStylesInner(StyleMap& style_map);
-  virtual AirParsedStylesMap& GetAirParsedStylesMap() = 0;
-
   // CustomSections
   virtual bool DecodeCustomSectionsSection() = 0;
 

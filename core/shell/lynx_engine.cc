@@ -245,11 +245,7 @@ void LynxEngine::SyncFetchLayoutResult() {
 }
 
 void LynxEngine::SendAirPageEvent(const std::string& name,
-                                  const lepus_value& params) {
-#if ENABLE_AIR
-  tasm_->SendAirPageEvent(name, params);
-#endif
-}
+                                  const lepus_value& params) {}
 
 void LynxEngine::SendCustomEvent(const std::string& name, int32_t tag,
                                  const lepus::Value& params,
@@ -509,8 +505,7 @@ void LynxEngine::TriggerWorkletFunction(std::string component_id,
 void LynxEngine::InvokeLepusCallback(const int32_t callback_id,
                                      const std::string& entry_name,
                                      const lepus::Value& data) {
-  if (tasm_->EnableLynxAir() ||
-      tasm_->page_proxy()->element_manager()->IsAirModeFiberEnabled()) {
+  if (tasm_->page_proxy()->element_manager()->IsAirModeFiberEnabled()) {
     tasm_->InvokeAirCallback(callback_id, entry_name, data);
     return;
   }

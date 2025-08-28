@@ -984,15 +984,6 @@ void LynxShell::OnEnterForeground() {
     return;
   }
   app_state_ = AppState::kForeground;
-// TODO(liukeang): remove macro
-#if ENABLE_AIR
-  if (!enable_runtime_) {
-    engine_actor_->Act([](auto& engine) {
-      engine->SendAirPageEvent("onShow", lepus_value());
-    });
-    return;
-  }
-#endif
   runtime::MessageEvent event(
       runtime::kMessageEventTypeOnAppEnterForeground,
       runtime::ContextProxy::Type::kCoreContext,
@@ -1009,14 +1000,6 @@ void LynxShell::OnEnterBackground() {
     return;
   }
   app_state_ = AppState::kBackground;
-#if ENABLE_AIR
-  if (!enable_runtime_) {
-    engine_actor_->Act([](auto& engine) {
-      engine->SendAirPageEvent("onHide", lepus_value());
-    });
-    return;
-  }
-#endif
   runtime::MessageEvent event(
       runtime::kMessageEventTypeOnAppEnterBackground,
       runtime::ContextProxy::Type::kCoreContext,

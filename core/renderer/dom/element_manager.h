@@ -174,62 +174,6 @@ class ComponentManager {
   std::unordered_map<std::string, Element *> component_map_;
 };
 
-class AirNodeManager {
- public:
-  AirNodeManager() = default;
-  ~AirNodeManager() = default;
-
-#if ENABLE_AIR
-  inline void Record(int id, const std::shared_ptr<AirElement> &node) {
-    air_node_map_[id] = node;
-  }
-
-  inline bool IsActive() const { return !(air_node_map_.empty()); }
-
-  void RecordForLepusId(int id, uint64_t key, fml::RefPtr<AirLepusRef> node);
-
-  inline void RecordCustomId(const std::string &id, int tag) {
-    air_customize_id_map_[id] = tag;
-  }
-
-  inline void Erase(int id) { air_node_map_.erase(id); }
-
-  inline void EraseCustomId(const std::string &id) {
-    air_customize_id_map_.erase(id);
-  }
-
-  void EraseLepusId(int id, AirElement *node);
-
-  inline std::shared_ptr<AirElement> Get(int tag) const {
-    auto it = air_node_map_.find(tag);
-    if (it != air_node_map_.end()) {
-      return it->second;
-    }
-    return nullptr;
-  }
-
-  fml::RefPtr<AirLepusRef> GetForLepusId(int tag, uint64_t key);
-
-  std::vector<fml::RefPtr<AirLepusRef>> GetAllNodesForLepusId(int tag) const;
-
-  inline const std::shared_ptr<AirElement> GetCustomId(
-      const std::string &tag) const {
-    auto it = air_customize_id_map_.find(tag);
-    if (it != air_customize_id_map_.end()) {
-      return Get(it->second);
-    }
-    return nullptr;
-  }
-
- private:
-  // TODO, choose proper map type.
-  std::unordered_map<int, std::shared_ptr<AirElement>> air_node_map_;
-  std::unordered_map<int, std::map<uint64_t, fml::RefPtr<AirLepusRef>>>
-      air_lepus_id_map_;
-  std::unordered_map<std::string, int> air_customize_id_map_;
-#endif
-};
-
 class ElementManager : public ElementContextDelegate {
  public:
   class Delegate {
@@ -337,7 +281,7 @@ class ElementManager : public ElementContextDelegate {
   PaintingContext *painting_context();
   inline Catalyzer *catalyzer() { return catalyzer_.get(); }
   inline NodeManager *node_manager() { return node_manager_.get(); }
-  inline AirNodeManager *air_node_manager() { return air_node_manager_.get(); }
+
   inline void SetRoot(Element *node) { root_ = node; }
   Element *root() { return root_; }
 
@@ -1187,7 +1131,7 @@ class ElementManager : public ElementContextDelegate {
   void PrepareComponentNodeForInspector(Element *component);
 
   std::unique_ptr<NodeManager> node_manager_;
-  std::unique_ptr<AirNodeManager> air_node_manager_;
+
   std::unique_ptr<ComponentManager> component_manager_;
   std::unique_ptr<Catalyzer> catalyzer_;
   Element *root_{nullptr};

@@ -67,12 +67,6 @@
 #include "core/template_bundle/template_codec/binary_decoder/template_binary_reader.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
-#if ENABLE_AIR
-#include "core/renderer/dom/air/air_element/air_element.h"
-#include "core/renderer/dom/air/air_element/air_page_element.h"
-#include "core/renderer/dom/air/air_touch_event_handler.h"
-#endif
-
 #if ENABLE_LEPUSNG_WORKLET
 #include "core/renderer/worklet/lepus_element.h"
 #endif  // ENABLE_LEPUSNG_WORKLET
@@ -212,9 +206,6 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
       delegate_(delegate),
       layout_scheduler_(layout_scheduler),
       touch_event_handler_(nullptr),
-#if ENABLE_AIR
-      air_touch_event_handler_(nullptr),
-#endif
       page_config_(nullptr),
       instance_id_(instance_id),
       font_scale_(1.0),
@@ -558,10 +549,6 @@ void TemplateAssembler::RenderTemplate(
     std::shared_ptr<PipelineOptions>& pipeline_options) {
   if (EnableFiberArch()) {
     RenderTemplateForFiber(card, data, pipeline_options);
-  } else if (EnableLynxAir()) {
-    // TODO(nihao.royal): as render template for air is not used now, it's no
-    // need to migrate to `RunPixelPipeline` we may delete it later;
-    RenderTemplateForAir(card, data.GetValue(), pipeline_options);
   } else {
     UpdatePageOption update_page_option;
     update_page_option.update_first_time = true;
@@ -715,59 +702,7 @@ void TemplateAssembler::RenderTemplateForFiber(
 
 void TemplateAssembler::RenderTemplateForAir(
     const std::shared_ptr<TemplateEntry>& card, const lepus::Value& data,
-    std::shared_ptr<PipelineOptions>& pipeline_options) {
-#if ENABLE_AIR
-  auto* page = page_proxy()->element_manager()->AirRoot();
-  if (!page) {
-    // AirRoot is nullptr means an error occurs during VM execution, no further
-    // steps are needed.
-    return;
-  }
-  const auto page_ptr = AirLepusRef::Create(
-      page_proxy()->element_manager()->air_node_manager()->Get(
-          page->impl_id()));
-  UpdatePageOption update_options;
-  update_options.update_first_time = true;
-  page_proxy()->element_manager()->AirRoot()->UpdatePageData(
-      data, update_options, pipeline_options);
-  page_proxy()
-      ->element_manager()
-      ->painting_context()
-      ->MarkUIOperationQueueFlushTiming(
-          tasm::timing::kPaintingUiOperationExecuteStart,
-          pipeline_options->pipeline_id);
-
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kRenderPageStartAir);
-
-  if (card->compile_options().radon_mode_ ==
-      CompileOptionRadonMode::RADON_MODE_RADON) {
-    lepus::Value p1(std::move(page_ptr));
-    BASE_STATIC_STRING_DECL(kCreatePage0, "$createPage0");
-    BASE_STATIC_STRING_DECL(kUpdatePage0, "$updatePage0");
-    card->GetVm()->Call(kCreatePage0, p1);
-    card->GetVm()->Call(kUpdatePage0, p1);
-  } else {
-    BASE_STATIC_STRING_DECL(kRenderPage0, "$renderPage0");
-    lepus::Value ret = card->GetVm()->Call(
-        kRenderPage0, lepus::Value(std::move(page_ptr)), lepus::Value(true),
-        lepus::Value(page_proxy()->element_manager()->AirRoot()->GetData()));
-    // In some cases, some element may fail to execute the flush operation due
-    // to exceptions in the execution of lepus code. As a result, layout and
-    // other operations are not necessary.
-    bool lepus_success = ret.IsBool() && ret.Bool();
-    if (!lepus_success) {
-      return;
-    }
-  }
-  tasm::TimingCollector::Instance()->Mark(tasm::timing::kRenderPageEndAir);
-
-  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, PATCH_FINISH_INNER_FOR_AIR);
-  page_proxy()->element_manager()->AirRoot()->SetFontFaces();
-  pipeline_options->is_first_screen = true;
-  EnsureAirTouchEventHandler();
-  page_proxy()->element_manager()->OnPatchFinishInnerForAir(pipeline_options);
-#endif
-}
+    std::shared_ptr<PipelineOptions>& pipeline_options) {}
 
 void TemplateAssembler::DidRenderTemplate(
     std::shared_ptr<PipelineOptions>& pipeline_options) {
@@ -1783,10 +1718,6 @@ void TemplateAssembler::LepusInvokeUIMethod(
             }));
     return;
   }
-#if ENABLE_AIR
-  delegate_.LepusInvokeUIMethod(std::move(ui_impl_ids), method, params, context,
-                                std::move(callback_closure));
-#endif
 }
 
 void TemplateAssembler::TriggerComponentEvent(const std::string& event_name,
@@ -1794,16 +1725,9 @@ void TemplateAssembler::TriggerComponentEvent(const std::string& event_name,
   if (!template_loaded_) {
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->HandleTriggerComponentEvent(this, event_name, msg);
-  }
-#if ENABLE_AIR
-  else {
-    EnsureAirTouchEventHandler();
-    air_touch_event_handler_->TriggerComponentEvent(this, event_name, msg);
-  }
-#endif
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->HandleTriggerComponentEvent(this, event_name, msg);
 }
 
 void TemplateAssembler::CallJSFunctionInLepusEvent(
@@ -1972,30 +1896,14 @@ void TemplateAssembler::SendCustomEvent(const std::string& name, int tag,
          << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
-  }
-#if ENABLE_AIR
-  else {
-    EnsureAirTouchEventHandler();
-    air_touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
-  }
-#endif
+  EnsureTouchEventHandler();
+  touch_event_handler_->HandleCustomEvent(this, name, tag, params, pname);
 }
 
 void TemplateAssembler::SendAirComponentEvent(const std::string& event_name,
                                               const int component_id,
                                               const lepus::Value& params,
-                                              const std::string& param_name) {
-#if ENABLE_AIR
-  if (EnableLynxAir()) {
-    EnsureAirTouchEventHandler();
-    air_touch_event_handler_->SendComponentEvent(this, event_name, component_id,
-                                                 params, param_name);
-  }
-#endif
-}
+                                              const std::string& param_name) {}
 
 void TemplateAssembler::OnPseudoStatusChanged(int32_t id, uint32_t pre_status,
                                               uint32_t current_status) {
@@ -2025,25 +1933,14 @@ void TemplateAssembler::SendTouchEvent(const std::string& name,
          << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->HandleTouchEvent(
-        this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info);
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->HandleTouchEvent(
+      this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info);
 #if ENABLE_TESTBENCH_RECORDER
-    tasm::recorder::TemplateAssemblerRecorder::RecordTouchEvent(
-        name, page_proxy()->element_manager()->root()->impl_id(), info,
-        record_id_);
-#endif
-  }
-#if ENABLE_AIR
-  else {
-    EnsureAirTouchEventHandler();
-    // TODO(jiyishen): optimize parameters to pass info instead of info's
-    // context
-    air_touch_event_handler_->HandleTouchEvent(
-        this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), name, info.tag, info.x,
-        info.y, info.client_x, info.client_y, info.page_x, info.page_y);
-  }
+  tasm::recorder::TemplateAssemblerRecorder::RecordTouchEvent(
+      name, page_proxy()->element_manager()->root()->impl_id(), info,
+      record_id_);
 #endif
 }
 
@@ -2055,11 +1952,10 @@ void TemplateAssembler::StartEventGenerate(const lepus::Value& event_params) {
         << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->StartEventGenerate(
-        this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), event_params);
-  }
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->StartEventGenerate(
+      this, FindEntry(DEFAULT_ENTRY_NAME)->GetName(), event_params);
 }
 
 void TemplateAssembler::StartEventCapture(int64_t event_id) {
@@ -2070,10 +1966,9 @@ void TemplateAssembler::StartEventCapture(int64_t event_id) {
         << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->StartEventCapture(this, event_id);
-  }
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->StartEventCapture(this, event_id);
 }
 
 void TemplateAssembler::StartEventBubble(int64_t event_id) {
@@ -2083,10 +1978,9 @@ void TemplateAssembler::StartEventBubble(int64_t event_id) {
         << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->StartEventBubble(this, event_id);
-  }
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->StartEventBubble(this, event_id);
 }
 
 void TemplateAssembler::StartEventFire(bool is_stop, int64_t event_id) {
@@ -2095,10 +1989,9 @@ void TemplateAssembler::StartEventFire(bool is_stop, int64_t event_id) {
          << " this:" << this);
     return;
   }
-  if (!EnableLynxAir()) {
-    EnsureTouchEventHandler();
-    touch_event_handler_->StartEventFire(this, is_stop, event_id);
-  }
+
+  EnsureTouchEventHandler();
+  touch_event_handler_->StartEventFire(this, is_stop, event_id);
 }
 
 void TemplateAssembler::OnEventCapture(long target_id, bool is_catch,
@@ -2383,20 +2276,7 @@ void TemplateAssembler::EnsureTouchEventHandler() {
   }
 }
 
-void TemplateAssembler::EnsureAirTouchEventHandler() {
-#if ENABLE_AIR
-  if (!air_touch_event_handler_) {
-    if (page_proxy_.element_manager()) {
-      air_touch_event_handler_ = std::make_unique<AirTouchEventHandler>(
-          page_proxy_.element_manager()->air_node_manager());
-    } else {
-      LYNX_ERROR(error::E_EVENT_EXCEPTION,
-                 "Element manager of page proxy is nullptr",
-                 "This error is caught by native, please ask Lynx for help.");
-    }
-  }
-#endif
-}
+void TemplateAssembler::EnsureAirTouchEventHandler() {}
 
 void TemplateAssembler::OnFontScaleChanged(float scale) {
 #if ENABLE_TESTBENCH_RECORDER
@@ -3326,14 +3206,7 @@ lepus::Value TemplateAssembler::TriggerLepusClosure(
 }
 
 void TemplateAssembler::SendAirPageEvent(const std::string& event,
-                                         const lepus::Value& value) {
-#if ENABLE_AIR
-  if (EnableLynxAir()) {
-    EnsureAirTouchEventHandler();
-    air_touch_event_handler_->SendPageEvent(this, event, value);
-  }
-#endif
-}
+                                         const lepus::Value& value) {}
 
 void TemplateAssembler::InvokeAirCallback(int64_t id,
                                           const std::string& entry_name,

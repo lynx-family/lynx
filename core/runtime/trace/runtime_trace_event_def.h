@@ -543,81 +543,13 @@ inline constexpr const char* const APP_GET_SESSION_STORAGE_ITEM =
     "App::getSessionStorageItem";
 inline constexpr const char* const APP_SUBSCRIBE_SESSION_STORAGE =
     "App::subscribeSessionStorage";
-#if ENABLE_AIR
-inline constexpr const char* const AIR_CREATE_ELEMENT = "AirCreateElement";
-inline constexpr const char* const AIR_GET_ELEMENT = "AirGetElement";
-inline constexpr const char* const AIR_CREATE_PAGE = "AirCreatePage";
-inline constexpr const char* const AIR_CREATE_COMPONENT = "AirCreateComponent";
-inline constexpr const char* const AIR_CREATE_BLOCK = "AirCreateBlock";
-inline constexpr const char* const AIR_CREATE_IF = "AirCreateIf";
-inline constexpr const char* const AIR_CREATE_FOR = "AirCreateFor";
-inline constexpr const char* const AIR_CREATE_PLUG = "AirCreatePlug";
-inline constexpr const char* const AIR_CREATE_SLOT = "AirCreateSlot";
-inline constexpr const char* const AIR_APPEND_ELEMENT = "AirAppendElement";
-inline constexpr const char* const AIR_REMOVE_ELEMENT = "AirRemoveElement";
-inline constexpr const char* const AIR_INSERT_ELEMENT_BEFORE =
-    "AirInsertElementBefore";
-inline constexpr const char* const AIR_GET_ELEMENT_UNIQUE_ID =
-    "AirGetElementUniqueID";
-inline constexpr const char* const AIR_GET_ELEMENT_TAG = "AirGetElementTag";
-inline constexpr const char* const AIR_SET_ATTRIBUTE = "AirSetAttribute";
-inline constexpr const char* const AIR_SET_INLINE_STYLES = "AirSetInlineStyles";
-inline constexpr const char* const AIR_SET_EVENT = "AirSetEvent";
-inline constexpr const char* const AIR_SET_ID = "AirSetID";
-inline constexpr const char* const AIR_GET_ELEMENT_BY_ID = "AirGetElementByID";
-inline constexpr const char* const AIR_GET_ELEMENT_BY_UNIQUE_ID =
-    "AirGetElementByUniqueID";
-inline constexpr const char* const AIR_GET_ROOT_ELEMENT = "AirGetRootElement";
-inline constexpr const char* const AIR_GET_ELEMENT_BY_LEPUS_ID =
-    "AirGetElementByLepusID";
-inline constexpr const char* const AIR_UPDATE_IF_NODE_INDEX =
-    "AirUpdateIfNodeIndex";
-inline constexpr const char* const AIR_UPDATE_FOR_NODE_INDEX =
-    "AirUpdateForNodeIndex";
-inline constexpr const char* const AIR_UPDATE_FOR_CHILD_COUNT =
-    "AirUpdateForChildCount";
-inline constexpr const char* const AIR_GET_FOR_NODE_CHILD_WITH_INDEX =
-    "AirGetForNodeChildWithIndex";
-inline constexpr const char* const AIR_PUSH_FOR_NODE = "AirPushForNode";
-inline constexpr const char* const AIR_POP_FOR_NODE = "AirPopForNode";
-inline constexpr const char* const AIR_GET_CHILD_ELEMENT_BY_INDEX =
-    "AirGetChildElementByIndex";
-inline constexpr const char* const AIR_PUSH_DYNAMIC_NODE = "AirPushDynamicNode";
-inline constexpr const char* const AIR_GET_DYNAMIC_NODE = "AirGetDynamicNode";
-inline constexpr const char* const AIR_SET_COMPONENT_PROP =
-    "AirSetComponentProp";
-inline constexpr const char* const AIR_RENDER_COMPONENT_IN_LEPUS =
-    "AirRenderComponentInLepus";
-inline constexpr const char* const AIR_UPDATE_COMPONENT_IN_LEPUS =
-    "AirUpdateComponentInLepus";
-inline constexpr const char* const AIR_GET_COMPONENT_INFO =
-    "AirGetComponentInfo";
-inline constexpr const char* const AIR_UPDATE_COMPONENT_INFO =
-    "AirUpdateComponentInfo";
-inline constexpr const char* const AIR_GET_DATA = "AirGetData";
-inline constexpr const char* const AIR_GET_PROPS = "AirGetProps";
-inline constexpr const char* const AIR_SET_DATA = "AirSetData";
-inline constexpr const char* const AIR_FLUSH_RECURSIVELY =
-    "AirFlushRecursively";
+
 inline constexpr const char* const TRIGGER_LEPUS_BRIDGE = "TriggerLepusBridge";
 inline constexpr const char* const TRIGGER_LEPUS_BRIDGE_ASYNC =
     "TriggerLepusBridgeSync";
 inline constexpr const char* const TRIGGER_COMPONENT_EVENT =
     "TriggerComponentEvent";
-inline constexpr const char* const AIR_SET_DATA_SET = "AirSetDataSet";
-inline constexpr const char* const AIR_SEND_GLOBAL_EVENT = "AirSendGlobalEvent";
-inline constexpr const char* const REMOVE_EVENT_LISTENER =
-    "RemoveEventListener";
-inline constexpr const char* const AIR_CREATE_RAW_TEXT = "AirCreateRawText";
-inline constexpr const char* const AIR_SET_CLASSES = "AirSetClasses";
-inline constexpr const char* const AIR_PUSH_COMPONENT_NODE =
-    "AirPushComponentNode";
-inline constexpr const char* const AIR_POP_COMPONENT_NODE =
-    "AirPopComponentNode";
-inline constexpr const char* const AIR_GET_PARENT_FOR_NODE =
-    "AirGetParentForNode";
-inline constexpr const char* const AIR_FLUSH_TREE = "AirFlushTree";
-#endif  // ENABLE_AIR
+
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_RUNTIME_TRACE_RUNTIME_TRACE_EVENT_DEF_H_

@@ -49,9 +49,6 @@ lynx_core_source_set("dom") {
     public_deps += [ "../tasm/react/android/mapbuffer:map_buffer" ]
   }
 
-  if (enable_air) {
-    public_deps += [ "air:tasm_air" ]
-  }
   if (enable_unittests) {
     public_deps += [ "../css:css_decoder" ]
   }
@@ -94,10 +91,6 @@ unittest_set("dom_testset") {
     "../css/layout_node_unittest.cc",
     "../css/select_element_token_unittest.cc",
     "../utils/base/tasm_worker_task_runner_unittest.cc",
-    "air/air_element/air_block_element_unittest.cc",
-    "air/air_element/air_element_container_unittest.cc",
-    "air/air_element/air_element_unittest.cc",
-    "air/air_touch_event_handler_unittest.cc",
     "attribute_holder_unittest.cc",
     "element_container_unittest.cc",
     "element_context_delegate_unittest.cc",
@@ -129,10 +122,6 @@ unittest_set("dom_testset") {
     "../../template_bundle/template_codec/binary_encoder/css_encoder:css_encoder",
   ]
   public_deps = [ ":dom" ]
-
-  if (enable_air) {
-    public_deps += [ "air:air_runtime_mockset_exec" ]
-  }
 }
 
 unittest_set("dom_trace_testset") {

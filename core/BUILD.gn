@@ -36,7 +36,6 @@ config("lynx_public_config") {
     "INSPECTOR_TEST=${enable_inspector_test}",
     "ENABLE_LEPUSNG_WORKLET=${enable_lepusng_worklet}",
     "ENABLE_NAPI_BINDING=${enable_napi_binding}",
-    "ENABLE_AIR=${enable_air}",
     "DISABLE_NANBOX=${disable_nanbox}",
     "ENABLE_JUST_LEPUSNG=${enable_just_lepusng}",
     "ENABLE_INSPECTOR=${enable_inspector}",

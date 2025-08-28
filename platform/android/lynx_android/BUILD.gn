@@ -85,9 +85,6 @@ group("lynx_android_lib") {
     "../../../core/value_wrapper:value_wrapper",
     "../../../third_party/rapidjson:rapidjson",
   ]
-  if (enable_air) {
-    public_deps += [ "../../../core/renderer/dom/air:tasm_air" ]
-  }
   if (enable_testbench_recorder) {
     public_deps += [ "../../../core/services/recorder:recorder" ]
   }

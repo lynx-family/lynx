@@ -2,21 +2,24 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/renderer/dom/air/lynx_air_parsed_style_store.h"
+// TODO(songshourui.null): This file is intentionally left blank to preserve the
+// subspec's pod install error.
 
-namespace lynx {
-namespace tasm {
+// #include "core/renderer/dom/air/lynx_air_parsed_style_store.h"
 
-LynxAirParsedStyleStore& LynxAirParsedStyleStore::GetInstance() {
-  static base::NoDestructor<LynxAirParsedStyleStore> instance;
-  return *instance;
-}
+// namespace lynx {
+// namespace tasm {
 
-void LynxAirParsedStyleStore::StoreAirParsedStyle(
-    const std::string& url, const AirParsedStylesMap& styles) {
-  url_ = url;
-  air_parsed_styles_ = styles;
-}
+// LynxAirParsedStyleStore& LynxAirParsedStyleStore::GetInstance() {
+//   static base::NoDestructor<LynxAirParsedStyleStore> instance;
+//   return *instance;
+// }
 
-}  // namespace tasm
-}  // namespace lynx
+// void LynxAirParsedStyleStore::StoreAirParsedStyle(
+//     const std::string& url, const AirParsedStylesMap& styles) {
+//   url_ = url;
+//   air_parsed_styles_ = styles;
+// }
+
+// }  // namespace tasm
+// }  // namespace lynx

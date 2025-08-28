@@ -541,8 +541,12 @@ bool LynxBinaryBaseTemplateReader::DecodeSpecificSection(
     case BinarySection::PARSED_STYLES: {
       if (compile_options_.arch_option_ == ArchOption::FIBER_ARCH) {
         ERROR_UNLESS(DecodeParsedStylesSection());
-      } else if (compile_options_.arch_option_ == ArchOption::AIR_ARCH) {
-        ERROR_UNLESS(DecodeAirParsedStylesSection());
+      } else {
+        error_message_ =
+            "Do not support decoding BinarySection::PARSED_STYLES when not "
+            "using Fiber Arch.";
+        LOGE(error_message_);
+        return false;
       }
       break;
     }
@@ -640,15 +644,6 @@ bool LynxBinaryBaseTemplateReader::DecodeDynamicComponentMould(
 }
 
 bool LynxBinaryBaseTemplateReader::DecodeThemedSection() { return true; }
-
-bool LynxBinaryBaseTemplateReader::DecodeAirParsedStylesSection() {
-  return true;
-}
-
-bool LynxBinaryBaseTemplateReader::DecodeAirParsedStylesInner(
-    StyleMap &style_map) {
-  return true;
-}
 
 void LynxBinaryBaseTemplateReader::EnsurePageConfig() {
   if (page_configs_ == nullptr) {

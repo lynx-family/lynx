@@ -15,9 +15,6 @@
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
-#if ENABLE_AIR
-#include "core/renderer/dom/air/air_element/air_element.h"
-#endif
 
 namespace lynx {
 namespace shell {
@@ -72,19 +69,6 @@ void LayoutMediator::OnLayoutUpdate(
           }
         });
   }
-#if ENABLE_AIR
-  else if (air_node_manager_ != nullptr) {
-    operation_queue_->EnqueueOperation(
-        [tag, x, y, width, height, paddings, margins, borders, max_height,
-         air_node_manager = air_node_manager_]() {
-          std::shared_ptr<tasm::AirElement> node = air_node_manager->Get(tag);
-          if (node) {
-            node.get()->UpdateLayout(x, y, width, height, paddings, margins,
-                                     borders, nullptr, max_height);
-          }
-        });
-  }
-#endif
 }
 
 void LayoutMediator::OnLayoutAfter(

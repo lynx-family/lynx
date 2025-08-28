@@ -14,9 +14,6 @@
 #include "core/renderer/dom/snapshot_element.h"
 #include "core/services/event_report/event_tracker_platform_impl.h"
 #endif
-#if ENABLE_AIR
-#include "core/renderer/dom/air/air_element/air_element.h"
-#endif
 
 namespace lynx {
 namespace tasm {
@@ -43,12 +40,6 @@ void Catalyzer::UpdateLayoutRecursively() {
   if (root_) {
     root_->element_container()->UpdateLayout(root_->left(), root_->top());
   }
-#if ENABLE_AIR
-  else if (air_root_) {
-    air_root_->element_container()->UpdateLayout(air_root_->left(),
-                                                 air_root_->top());
-  }
-#endif
 }
 
 void Catalyzer::UpdateLayoutRecursivelyWithoutChange() {
@@ -56,11 +47,6 @@ void Catalyzer::UpdateLayoutRecursivelyWithoutChange() {
   if (root_ && root_->element_container()) {
     root_->element_container()->UpdateLayoutWithoutChange();
   }
-#if ENABLE_AIR
-  else if (air_root_ && air_root_->element_container()) {
-    air_root_->element_container()->UpdateLayoutWithoutChange();
-  }
-#endif
 }
 
 std::vector<float> Catalyzer::getBoundingClientOrigin(Element* node) {

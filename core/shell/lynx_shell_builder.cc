@@ -331,10 +331,10 @@ LynxShell* LynxShellBuilder::build() {
         shell->instance_id_);
     element_manager->painting_context()->SetPerfActor(
         shell->perf_controller_actor_);
-    shell->layout_mediator_->Init(
-        shell->engine_actor_, shell->facade_actor_,
-        shell->perf_controller_actor_, element_manager->node_manager(),
-        element_manager->air_node_manager(), element_manager->catalyzer());
+    shell->layout_mediator_->Init(shell->engine_actor_, shell->facade_actor_,
+                                  shell->perf_controller_actor_,
+                                  element_manager->node_manager(),
+                                  element_manager->catalyzer());
     // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest
     shell->engine_actor_->ActLite([](auto& engine) { engine->Init(); });
 

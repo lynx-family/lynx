@@ -193,9 +193,6 @@ void Renderer::RegisterNGBuiltin(lepus::Context* context, ArchOption option) {
     case ArchOption::FIBER_ARCH:
       RegisterNGBuiltinForFiber(context);
       break;
-    case ArchOption::AIR_ARCH:
-      RegisterNGBuiltinForAir(context);
-      break;
     default:
       RegisterNGBuiltinForRadon(context);
   }
@@ -425,90 +422,6 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
   };
   lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));
   return;
-}
-
-void Renderer::RegisterNGBuiltinForAir(lepus::Context* context) {
-  static const lepus::RenderBindingFunction funcs[] = {
-      {kCFunctionAirCreateElement, &RendererFunctions::AirCreateElement},
-      {kCFunctionAirGetElement, &RendererFunctions::AirGetElement},
-      {kCFunctionAirCreatePage, &RendererFunctions::AirCreatePage},
-      {kCFunctionAirCreateComponent, &RendererFunctions::AirCreateComponent},
-      {kCFunctionAirCreateBlock, &RendererFunctions::AirCreateBlock},
-      {kCFunctionAirCreateIf, &RendererFunctions::AirCreateIf},
-      {kCFunctionAirCreateRadonIf, &RendererFunctions::AirCreateRadonIf},
-      {kCFunctionAirCreateFor, &RendererFunctions::AirCreateFor},
-      {kCFunctionAirCreatePlug, &RendererFunctions::AirCreatePlug},
-      {kCFunctionAirCreateSlot, &RendererFunctions::AirCreateSlot},
-      {kCFunctionAirAppendElement, &RendererFunctions::AirAppendElement},
-      {kCFunctionAirRemoveElement, &RendererFunctions::AirRemoveElement},
-      {kCFunctionAirInsertElementBefore,
-       &RendererFunctions::AirInsertElementBefore},
-      {kCFunctionAirGetElementUniqueID,
-       &RendererFunctions::AirGetElementUniqueID},
-      {kCFunctionAirGetTag, &RendererFunctions::AirGetElementTag},
-      {kCFunctionAirSetAttribute, &RendererFunctions::AirSetAttribute},
-      {kCFunctionAirSetInlineStyles, &RendererFunctions::AirSetInlineStyles},
-      {kCFunctionAirSetEvent, &RendererFunctions::AirSetEvent},
-      {kCFunctionAirSetID, &RendererFunctions::AirSetID},
-      {kCFunctionAirGetElementByID, &RendererFunctions::AirGetElementByID},
-      {kCFunctionAirGetElementByLepusID,
-       &RendererFunctions::AirGetElementByLepusID},
-      {kCFunctionAirUpdateIfNodeIndex,
-       &RendererFunctions::AirUpdateIfNodeIndex},
-      {kCFunctionAirUpdateForNodeIndex,
-       &RendererFunctions::AirUpdateForNodeIndex},
-      {kCFunctionAirUpdateForChildCount,
-       &RendererFunctions::AirUpdateForChildCount},
-      {kCFunctionAirGetForNodeChildWithIndex,
-       &RendererFunctions::AirGetForNodeChildWithIndex},
-      {kCFunctionAirPushForNode, &RendererFunctions::AirPushForNode},
-      {kCFunctionAirPopForNode, &RendererFunctions::AirPopForNode},
-      {kCFunctionAirGetChildElementByIndex,
-       &RendererFunctions::AirGetChildElementByIndex},
-      {kCFunctionAirPushAirDynamicNode, &RendererFunctions::AirPushDynamicNode},
-      {kCFunctionAirGetAirDynamicNode, &RendererFunctions::AirGetDynamicNode},
-      {kCFunctionAirSetAirComponentProp,
-       &RendererFunctions::AirSetComponentProp},
-      {kCFunctionAirRenderComponentInLepus,
-       &RendererFunctions::AirRenderComponentInLepus},
-      {kCFunctionAirUpdateComponentInLepus,
-       &RendererFunctions::AirUpdateComponentInLepus},
-      {kCFunctionAirGetComponentInfo, &RendererFunctions::AirGetComponentInfo},
-      {kCFunctionAirUpdateComponentInfo,
-       &RendererFunctions::AirUpdateComponentInfo},
-      {kCFunctionAirGetData, &RendererFunctions::AirGetData},
-      {kCFunctionAirGetProps, &RendererFunctions::AirGetProps},
-      {kCFunctionAirSetData, &RendererFunctions::AirSetData},
-      {kCFunctionAirFlushElement, &RendererFunctions::AirFlushElement},
-      {kCFunctionAirFlushElementTree, &RendererFunctions::AirFlushElementTree},
-      {kCFunctionTriggerLepusBridge, &RendererFunctions::TriggerLepusBridge},
-      {kCFunctionTriggerLepusBridgeSync,
-       &RendererFunctions::TriggerLepusBridgeSync},
-      {kCFunctionAirSetDataSet, &RendererFunctions::AirSetDataSet},
-      {kCFunctionAirSendGlobalEvent, &RendererFunctions::AirSendGlobalEvent},
-      {kCFunctionSetTimeout, &RendererFunctions::SetTimeout},
-      {kCFunctionClearTimeout, &RendererFunctions::ClearTimeout},
-      {kCFunctionSetTimeInterval, &RendererFunctions::SetInterval},
-      {kCFunctionClearTimeInterval, &RendererFunctions::ClearTimeInterval},
-      {kCFuncAddEventListener, &RendererFunctions::AddEventListener},
-      {kCFuncRegisterDataProcessor, &RendererFunctions::RegisterDataProcessor},
-      {kCFunctionAirGetElementByUniqueID,
-       &RendererFunctions::AirGetElementByUniqueID},
-      {kCFunctionAirGetRootElement, &RendererFunctions::AirGetRootElement},
-      {kCFunctionRemoveEventListener, &RendererFunctions::RemoveEventListener},
-      {kCFunctionTriggerComponentEvent,
-       &RendererFunctions::TriggerComponentEvent},
-      {kCFunctionAirCreateRawText, &RendererFunctions::AirCreateRawText},
-      {kCFunctionAirSetClasses, &RendererFunctions::AirSetClasses},
-      {kCFunctionAirPushComponentNode,
-       &RendererFunctions::AirPushComponentNode},
-      {kCFunctionAirPopComponentNode, &RendererFunctions::AirPopComponentNode},
-      {kCFunctionAirGetParentForNode, &RendererFunctions::AirGetParentForNode},
-      {kCFunctionReportError, &RendererFunctions::ReportError},
-      {kCFunctionAirFlushTree, &RendererFunctions::AirFlushTree},
-      {kCFunctionAirInvokeUIMethod, &RendererFunctions::InvokeUIMethod},
-  };
-  lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));
 }
 
 }  // namespace tasm
