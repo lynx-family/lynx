@@ -28,7 +28,7 @@ int32_t DataURIUtil::DecodeBase64(
   if (actual_buffer_size == static_cast<size_t>(-1)) {
     return 0;
   }
-  return actual_buffer_size;
+  return static_cast<int32_t>(actual_buffer_size);
 }
 
 int32_t DataURIUtil::DecodeDataURI(

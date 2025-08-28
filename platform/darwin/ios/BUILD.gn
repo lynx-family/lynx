@@ -7,5 +7,8 @@ assert(is_ios)
 import("../../../core/Lynx.gni")
 
 group("iOS") {
-  deps = [ "lynx:lynx_podspec" ]
+  deps = [
+    "../../../base/platform/darwin:lynx_base_podspec",
+    "lynx:lynx_podspec",
+  ]
 }
