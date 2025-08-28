@@ -59,6 +59,8 @@ class InspectorRuntimeObserverNG {
   virtual void OnRuntimeDestroyed(int64_t runtime_id) = 0;
 
   virtual void PrepareForScriptEval() = 0;
+
+  virtual std::string GetTag() { return ""; }
 };
 
 }  // namespace piper

@@ -275,6 +275,10 @@ LynxDevToolNG::OnBackgroundRuntimeCreated(
       group_thread_name, shared_from_this());
 }
 
+void LynxDevToolNG::SetTag(const std::string& tag) {
+  devtool_mediator_->SetTag(tag);
+}
+
 }  // namespace devtool
 
 }  // namespace lynx

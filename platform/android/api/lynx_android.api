@@ -3607,6 +3607,7 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.invokeCDPFromSDK(final String cdpMsg, final CDPResultCallback callback);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.addCDPEventListener(final String name, final CDPEventListener listener);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.removeCDPEventListener(final String name);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.setDebugTag(String debugTag);
 }
 
 public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwnerNG {

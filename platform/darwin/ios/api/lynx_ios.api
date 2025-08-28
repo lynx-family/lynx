@@ -636,6 +636,7 @@ public protocol LynxBaseInspectorOwner-p : <NSObject> {
   public void LynxBaseInspectorOwner-p::onGlobalPropsUpdated:(LynxTemplateData *props);
   public void LynxBaseInspectorOwner-p::showErrorMessageOnConsole:(LynxError *error);
   public void LynxBaseInspectorOwner-p::showMessageOnConsole:withLevel:(NSString *message,[withLevel] int32_t level);
+  public void LynxBaseInspectorOwner-p::setDebugTag:(NSString *debugTag);
 }
 
 public protocol LynxBaseInspectorOwnerNG-p : <LynxBaseInspectorOwner> {

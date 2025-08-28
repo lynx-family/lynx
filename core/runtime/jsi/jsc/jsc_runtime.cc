@@ -109,8 +109,8 @@ base::expected<Value, JSINativeException> JSCRuntime::evaluateJavaScript(
   JSStringRef sourceRef = JSStringCreateWithUTF8CString(tmp.c_str());
   JSStringRef sourceURLRef = nullptr;
   if (!sourceURL.empty()) {
-    sourceURLRef =
-        JSStringCreateWithUTF8CString(("file://" + sourceURL).c_str());
+    sourceURLRef = JSStringCreateWithUTF8CString(
+        AddPrefixToUrlIfNeeded(sourceURL).c_str());
   }
   JSValueRef exc = nullptr;
   JSValueRef res = JSEvaluateScript(ctx_->getContext(), sourceRef, nullptr,
@@ -775,6 +775,14 @@ void JSCRuntime::RequestGCForTesting() {
     JSGarbageCollect(ctx_->getContext());
 #endif
   }
+}
+
+std::string JSCRuntime::AddPrefixToUrlIfNeeded(const std::string& url) {
+  std::string res = Runtime::AddPrefixToUrlIfNeeded(url);
+  if (res == url) {
+    res = "file://" + url;
+  }
+  return res;
 }
 
 std::unique_ptr<Runtime> makeJSCRuntime() {

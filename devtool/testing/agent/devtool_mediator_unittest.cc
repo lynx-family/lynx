@@ -22,6 +22,7 @@
 #include "devtool/lynx_devtool/agent/inspector_default_executor.h"
 #include "devtool/lynx_devtool/agent/lynx_devtool_mediator.h"
 #include "devtool/lynx_devtool/agent/lynx_global_devtool_mediator.h"
+#include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 #include "devtool/testing/mock/cdp_event_listener_sender_mock.h"
 #include "devtool/testing/mock/devtool_platform_facade_mock.h"
 #include "devtool/testing/mock/lynx_devtool_ng_mock.h"
@@ -448,6 +449,19 @@ TEST_F(DevToolMediatorTest, SendCDPEventString) {
   cdp_event_listener_thread_->Join();
   EXPECT_EQ(listener_sender->received_msg_.second,
             "{\n   \"method\" : \"DOM.documentUpdated\"\n}\n");
+}
+
+TEST_F(DevToolMediatorTest, SetTag) {
+  std::string test_tag = "test";
+  // Test when js_debugger_ is nullptr
+  devtool_mediator_->SetTag(test_tag);
+
+  // Test when js_debugger_ is not nullptr
+  auto js_debugger = std::make_shared<devtool::InspectorJavaScriptDebuggerImpl>(
+      devtool_mediator_, devtool_mediator_->view_id_);
+  devtool_mediator_->js_debugger_ = js_debugger;
+  devtool_mediator_->SetTag(test_tag);
+  EXPECT_EQ(js_debugger->GetInspectorRuntimeObserver()->GetTag(), test_tag);
 }
 
 }  // namespace testing

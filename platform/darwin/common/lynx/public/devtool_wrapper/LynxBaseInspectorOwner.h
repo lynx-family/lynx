@@ -195,6 +195,8 @@ typedef void (^CDPResultCallback)(NSString *result);
 - (void)showErrorMessageOnConsole:(LynxError *)error;
 - (void)showMessageOnConsole:(NSString *)message withLevel:(int32_t)level;
 
+- (void)setDebugTag:(NSString *)debugTag;
+
 @end
 
 @protocol LynxViewStateListener <NSObject>

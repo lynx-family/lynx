@@ -391,6 +391,38 @@ class LYNX_EXPORT Runtime {
   virtual void InitInspector(
       const std::shared_ptr<InspectorRuntimeObserverNG>& observer) {}
   virtual void DestroyInspector() {}
+  void SetDebuggable(bool debuggable) { debuggable_ = debuggable; }
+  bool IsDebuggable() { return debuggable_; }
+  void SetSourceUrlPrefix(const std::string& prefix) {
+    if (!debuggable_ || prefix.empty()) {
+      return;
+    }
+    static constexpr char kUrlSeparator = '/';
+    url_prefix_ = prefix;
+    if (url_prefix_.back() == kUrlSeparator) {
+      url_prefix_ = url_prefix_.substr(0, url_prefix_.length() - 1);
+    }
+    if (url_prefix_.front() != kUrlSeparator) {
+      url_prefix_ = kUrlSeparator + url_prefix_;
+    }
+  }
+  virtual std::string AddPrefixToUrlIfNeeded(const std::string& url) {
+    if (!debuggable_ || url.empty()) {
+      return url;
+    }
+    static constexpr char kUrlHost[] = "file://lynx";
+    static constexpr char kUrlLynxCore[] = "lynx_core";
+    static constexpr char kUrlSeparator = '/';
+
+    std::string res = url;
+    if (res.front() != kUrlSeparator) {
+      res = kUrlSeparator + res;
+    }
+    if (res.find(kUrlLynxCore) == std::string::npos) {
+      res = url_prefix_ + res;
+    }
+    return kUrlHost + res;
+  }
 
   template <typename Host>
   void AddHostObject(std::shared_ptr<Host> host_object) {
@@ -571,6 +603,8 @@ class LYNX_EXPORT Runtime {
       host_object_containers_;
   std::unordered_map<HostFunctionType*, std::shared_ptr<HostFunctionType>>
       host_function_containers_;
+  bool debuggable_{false};
+  std::string url_prefix_;
 };
 
 // GCPauseSuppressionMode is used for performance. In GCPauseSuppressionMode

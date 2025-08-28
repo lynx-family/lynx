@@ -160,7 +160,7 @@ base::expected<Value, JSINativeException> QuickjsRuntime::evaluateJavaScript(
     const std::shared_ptr<const Buffer> &buffer,
     const std::string &source_url) {
   LOGI("QuickjsRuntime::evaluateJavaScript: " << source_url);
-  std::string filename = BuildFilenameForDevTool(source_url);
+  std::string filename = AddPrefixToUrlIfNeeded(source_url);
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT, "source_url",
                       filename, "runtime_id", getRuntimeId());
   auto eval_res = QuickjsHelper::evalBuf(
@@ -181,7 +181,7 @@ QuickjsRuntime::evaluateJavaScriptBytecode(
     const std::shared_ptr<const Buffer> &buffer,
     const std::string &source_url) {
   LOGI("QuickjsRuntime::evaluateJavaScriptBytecode: " << source_url);
-  std::string filename = BuildFilenameForDevTool(source_url);
+  std::string filename = AddPrefixToUrlIfNeeded(source_url);
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT_BYTECODE,
                       "source_url", filename, "runtime_id", getRuntimeId());
   auto eval_res = QuickjsHelper::evalBin(
@@ -914,20 +914,19 @@ std::shared_ptr<Buffer> QuickjsRuntime::GetBytecode(
   return cache;
 }
 
-std::string QuickjsRuntime::BuildFilenameForDevTool(
-    const std::string &source_url) {
+std::string QuickjsRuntime::AddPrefixToUrlIfNeeded(const std::string &url) {
   // sourceURL must have a prefix when support js debugging.
   if (inspector_manager_ != nullptr) {
     static constexpr char kUrlLynxCore[] = "lynx_core";
 
-    std::string filename = inspector_manager_->BuildInspectorUrl(source_url);
-    if (filename.find(kUrlLynxCore) == std::string::npos) {
-      inspector_manager_->InsertScript(filename);
+    std::string res = inspector_manager_->BuildInspectorUrl(url);
+    if (res.find(kUrlLynxCore) == std::string::npos) {
+      inspector_manager_->InsertScript(res);
     }
     inspector_manager_->PrepareForScriptEval();
-    return filename;
+    return res;
   }
-  return source_url;
+  return Runtime::AddPrefixToUrlIfNeeded(url);
 }
 
 bool lynx::piper::QuickjsRuntime::setPropertyValueGC(
