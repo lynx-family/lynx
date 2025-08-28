@@ -97,6 +97,8 @@ void Utils::RegisterMethodToLynx(lepus::Context* context, lepus::Value& lynx) {
     lepus::RegisterTableFunction(context, lynx_table,
                                  runtime::kAddReporterCustomInfo,
                                  &LynxAddReporterCustomInfo);
+    // NativeModule GetModule Method
+    lepus::RegisterTableFunction(context, lynx_table, kGetModule, &GetModule);
   }
 }
 
@@ -168,6 +170,14 @@ void Utils::RegisterMethodToContextProxy(lepus::Context* context,
                             runtime::kRemoveStyleSheetById,
                             &RemoveStyleSheetById);
     }
+  }
+}
+
+void Utils::RegisterMethodToLepusModule(lepus::Context* context,
+                                        lepus::Value& lepus_module) {
+  if (lepus_module.IsTable()) {
+    lepus::RegisterTableFunction(context, lepus_module.Table(),
+                                 runtime::kInvoke, &InvokeModuleMethod);
   }
 }
 

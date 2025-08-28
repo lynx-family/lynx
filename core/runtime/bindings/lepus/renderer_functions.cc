@@ -74,6 +74,7 @@
 #include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/lepus/event/event_object.h"
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
+#include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/bindings/lepus/resource/response_handler_in_lepus.h"
 #include "core/runtime/piper/js/runtime_constant.h"
@@ -754,6 +755,38 @@ RENDERER_FUNCTION_CC(AddListenerForResponse) {
 }
 
 /* ResponseHandler Lynx API END */
+
+/* NativeModules Lynx API BEGIN */
+RENDERER_FUNCTION_CC(GetModule) {
+  CHECK_ARGC_GE(GetModule, 1);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, GetModule);
+  auto module_name = arg0->StdString();
+  auto* tasm = GET_TASM_POINTER();
+  return tasm->GetModule(LEPUS_CONTEXT(), module_name);
+}
+
+RENDERER_FUNCTION_CC(InvokeModuleMethod) {
+  auto lepus_value = LEPUS_CONTEXT()->GetCurrentThis(argv, argc - 1);
+  lepus::LynxLepusModule* runtime_module =
+      lepus::LynxLepusModule::ToRuntimeValue(lepus_value);
+  CONVERT_ARG_AND_CHECK(arg0, 0, String, InvokeModuleMethod);
+  std::string method_name = arg0->StdString();
+  int param_count = -1;
+  // argv[0]:method_name  , argv[1] start:method params
+  lepus::Value* param_start = argv + 1;
+  if (LEPUS_CONTEXT()->IsVMContext()) {
+    // in VMContext , argv[argc - 1] is current this
+    param_count = argc - 2;
+  } else if (LEPUS_CONTEXT()->IsLepusNGContext()) {
+    param_count = argc - 1;
+  }
+  if (param_count > -1) {
+    return runtime_module->InvokeMethod(method_name, param_start, param_count);
+  }
+  RETURN_UNDEFINED();
+}
+
+/* NativeModule Lynx API END */
 
 RENDERER_FUNCTION_CC(FiberAddEventListener) {
   // parameter size = 4

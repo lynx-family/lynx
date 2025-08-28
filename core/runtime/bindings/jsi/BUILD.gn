@@ -42,6 +42,7 @@ lynx_core_source_set("jsi") {
     "../../../services/fluency:fluency",
     "../../trace:runtime_trace",
     "../common/event:runtime_common",
+    "../common/modules:native_modules",
     "event:js_runtime",
     "resource:js_runtime",
   ]

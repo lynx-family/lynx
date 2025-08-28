@@ -1215,6 +1215,19 @@ void TemplateAssembler::DidLoadComponent(
   }
 }
 
+void TemplateAssembler::CreateModuleManager(
+    std::unique_ptr<pub::LynxNativeModuleManager> native_module_manager) {
+  if (native_module_manager != nullptr) {
+    // Do not use native_module_manager ptr anymore, the resource has been moved
+    lepus_module_manager_ = std::make_unique<lepus::LynxLepusModuleManager>(
+        std::move(*native_module_manager));
+  } else {
+    LOGE(
+        "NativeModules: mts native_module_manager is nullptr! , please check "
+        "engine init");
+  }
+}
+
 void TemplateAssembler::DidFetchBundle(
     LazyBundleLoader::CallBackInfo callback_info) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, TEMPLATE_ASSEMBLER_DID_FETCH_BUNDLE,
@@ -1481,6 +1494,14 @@ void TemplateAssembler::OnScriptingEnd() {
   }
 }
 
+lepus::Value TemplateAssembler::GetModule(lepus::Context* context,
+                                          const std::string& module_name) {
+  if (lepus_module_manager_ != nullptr) {
+    return lepus_module_manager_->GetModule(context, module_name);
+  }
+  LOGE("NativeModules: lepus_module_manager_ is not initialized");
+  return lepus::Value();
+}
 void TemplateAssembler::ReportGCTimingEvent(const char* start,
                                             const char* end) {
   if (!EnableEventReporter()) {

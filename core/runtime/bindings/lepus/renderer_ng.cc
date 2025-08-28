@@ -90,6 +90,7 @@ void Utils::RegisterNGMethodToLynx(lepus::Context* context, lepus::Value& lynx,
         {kReportError, &RendererFunctions::ReportError},
         {kLoadScript, &RendererFunctions::LoadScript},
         {kFetchBundle, &RendererFunctions::FetchBundle},
+        {kGetModule, &RendererFunctions::GetModule},
     };
     lepus::RegisterObjectNGCFunction(context, lynx, funcs,
                                      sizeof(funcs) / sizeof(funcs[0]));
@@ -178,6 +179,18 @@ void Utils::RegisterNGMethodToGestureManager(lepus::Context* context,
     };
     // Register function for setting gesture state
     lepus::RegisterObjectNGCFunction(context, gesture_manager, funcs,
+                                     sizeof(funcs) / sizeof(funcs[0]));
+  }
+}
+
+void Utils::RegisterNGMethodToLepusModule(lepus::Context* context,
+                                          lepus::Value& lepus_module) {
+  if (lepus_module.IsJSValue()) {
+    // Register function for invoke module method
+    const static lepus::RenderBindingFunction funcs[] = {
+        {runtime::kInvoke, &RendererFunctions::InvokeModuleMethod},
+    };
+    lepus::RegisterObjectNGCFunction(context, lepus_module, funcs,
                                      sizeof(funcs) / sizeof(funcs[0]));
   }
 }

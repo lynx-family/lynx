@@ -212,6 +212,7 @@ group("lynx_native") {
     "renderer/utils:renderer_utils",
     "resource",
     "runtime/bindings/common/event:runtime_common",
+    "runtime/bindings/common/modules:native_modules",
     "runtime/bindings/common/resource:promise",
     "runtime/bindings/jsi/interceptor:interceptor_factory",
     "runtime/bindings/lepus",

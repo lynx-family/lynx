@@ -29,6 +29,7 @@ static constexpr const char* kCancelAnimationFrame = "cancelAnimationFrame";
 static constexpr const char* kReportError = "reportError";
 static constexpr const char* kLoadScript = "loadScript";
 static constexpr const char* kFetchBundle = "fetchBundle";
+static constexpr const char* kGetModule = "module";
 
 // Constant string associated with tag
 // TODO(WUJINTIAN): Those `static char[]` here will lead to duplicate redundant

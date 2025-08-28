@@ -216,5 +216,7 @@
   V(LoadScript)                       \
   V(WaitingForResponse)               \
   V(AddListenerForResponse)           \
-  V(FetchBundle)
+  V(FetchBundle)                      \
+  V(GetModule)                        \
+  V(InvokeModuleMethod)
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_RENDERER_FUNCTIONS_DEF_H_

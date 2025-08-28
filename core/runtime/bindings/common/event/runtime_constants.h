@@ -74,6 +74,9 @@ static constexpr const char* kQueueMicrotask = "queueMicrotask";
 static constexpr const char* kWait = "wait";
 static constexpr const char* kThen = "then";
 
+// native module
+static constexpr const char* kInvoke = "invoke";
+
 }  // namespace runtime
 }  // namespace lynx
 

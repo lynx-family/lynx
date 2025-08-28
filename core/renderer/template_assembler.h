@@ -36,6 +36,7 @@
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/runtime/bindings/common/resource/response_promise.h"
 #include "core/runtime/bindings/lepus/event/context_proxy_in_lepus.h"
+#include "core/runtime/bindings/lepus/modules/lynx_lepus_module_manager.h"
 #include "core/runtime/piper/js/template_delegate.h"
 #include "core/runtime/piper/js/update_data_type.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
@@ -374,6 +375,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SendBubbleEvent(const std::string& name, int tag,
                        lepus::DictionaryPtr dict);
 
+  lepus::Value GetModule(lepus::Context*, const std::string& module_name);
+
   LYNX_EXPORT_FOR_DEVTOOL void SetLepusObserver(
       const std::shared_ptr<lepus::InspectorLepusObserver>& observer);
 
@@ -588,6 +591,9 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   void SetLazyBundleLoader(
       const std::shared_ptr<LazyBundleLoader>& loader) override;
+
+  void CreateModuleManager(
+      std::unique_ptr<pub::LynxNativeModuleManager> native_module_manager);
 
   void SetLocale(const std::string& locale) { locale_ = locale; }
 
@@ -1006,6 +1012,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   // Manage the lifecycle of all pilepine contexts in current lynx engine.
   std::unique_ptr<PipelineContextManager> pipeline_context_manager_{nullptr};
+  // Manage all LepusModules
+  std::unique_ptr<lepus::LynxLepusModuleManager> lepus_module_manager_{nullptr};
 
   base::Vector<base::closure> on_layout_ready_hooks_;
 

@@ -63,6 +63,7 @@ group("lynx_android_lib") {
     "../../../core/resource",
     "../../../core/runtime",
     "../../../core/runtime/bindings/common/event:runtime_common",
+    "../../../core/runtime/bindings/common/modules:native_modules",
     "../../../core/runtime/bindings/common/resource:promise",
     "../../../core/runtime/bindings/jsi/event:js_runtime",
     "../../../core/runtime/bindings/jsi/interceptor:network_interceptor",

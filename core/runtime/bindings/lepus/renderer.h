@@ -288,6 +288,11 @@ class Utils {
 
   static void RegisterNGMethodToGestureManager(lepus::Context* context,
                                                lepus::Value& gesture_manager);
+
+  static void RegisterNGMethodToLepusModule(lepus::Context* context,
+                                            lepus::Value& lepus_module);
+  static void RegisterMethodToLepusModule(lepus::Context* context,
+                                          lepus::Value& lepus_module);
 };
 
 class Renderer {

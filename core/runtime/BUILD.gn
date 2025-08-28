@@ -21,11 +21,6 @@ lynx_core_source_set("js_common") {
   deps = [ "../../base/src:base_log_headers" ]
 }
 
-native_module_shared_sources = [
-  "bindings/common/modules/lynx_native_module_manager.cc",
-  "bindings/common/modules/lynx_native_module_manager.h",
-]
-
 # jsbridge_shared_sources
 jsbridge_shared_sources = [
   "bindings/jsi/modules/lynx_jsi_module.cc",
@@ -97,8 +92,6 @@ if (enable_unittests) {
   }
 }
 
-jsbridge_shared_sources += native_module_shared_sources
-
 # jsbridge_shared_sources end
 
 lynx_core_source_set("runtime") {
@@ -107,6 +100,7 @@ lynx_core_source_set("runtime") {
     ":js_common",
     "../../third_party/modp_b64",
     "../../third_party/rapidjson",
+    "bindings/common/modules:native_modules",
     "bindings/jsi",
     "bindings/jsi/interceptor:interceptor_factory",
     "common:reporter",
