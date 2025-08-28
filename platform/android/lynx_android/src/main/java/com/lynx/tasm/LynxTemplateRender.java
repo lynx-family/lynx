@@ -1561,8 +1561,12 @@ public class LynxTemplateRender
     boolean isPrePainting =
         LynxLoadMode.PRE_PAINTING == loadMode || LynxLoadMode.PRE_PAINTING_DRAW == loadMode;
 
-    if (mLynxContext != null && mLynxContext.isEmbeddedModeOn()
-        && metaData.getInitialData() != null) {
+    if (mLynxContext == null) {
+      LLog.e(TAG, "renderWithLoadMeta with null LynxContext");
+      return;
+    }
+
+    if (mLynxContext.isEmbeddedModeOn() && metaData.getInitialData() != null) {
       metaData.getInitialData().setEnableJSData(false);
       mTemplateData.updateWithTemplateData(metaData.getInitialData());
     }

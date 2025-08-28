@@ -249,7 +249,11 @@ void TemplateAssembler::UpdateGlobalProps(
   }
 
   if (EnableFiberArch()) {
-    if (!template_loaded_ || !need_render) {
+    // In fiber now, we need to make sure to
+    // call kUpdateGlobalProps to trigger mts pipeline.
+    // Actually, with updateMetaData, updateGlobalProps
+    // TODO(nihao.royal): may be optimized here.
+    if (!template_loaded_) {
       return;
     }
     auto& context = FindEntry(DEFAULT_ENTRY_NAME)->GetVm();
