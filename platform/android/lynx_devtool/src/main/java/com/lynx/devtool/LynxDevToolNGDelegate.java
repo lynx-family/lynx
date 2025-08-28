@@ -43,6 +43,14 @@ public class LynxDevToolNGDelegate {
     }
   }
 
+  public void setTag(String debugTag) {
+    if (mLynxDevToolNGPtr != 0) {
+      nativeSetTag(mLynxDevToolNGPtr, debugTag);
+    }
+  }
+
+  private native void nativeSetTag(long nativePtr, String debugTag);
+
   private native void nativeSendMessageToDebugPlatform(long nativePtr, String type, String msg);
 
   public long onBackgroundRuntimeCreated(String groupName) {

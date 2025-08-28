@@ -693,6 +693,11 @@ void LynxRuntime::OnJSSourcePrepared(
       // set enable_js_binding_api_throw_exception
       js_runtime->SetEnableJsBindingApiThrowException(
           bundle.enable_js_binding_api_throw_exception);
+
+      if (js_executor_->GetRuntimeObserver() != nullptr) {
+        js_runtime->SetSourceUrlPrefix(
+            js_executor_->GetRuntimeObserver()->GetTag());
+      }
     }
     // bind icu for js env
     if (bundle.enable_bind_icu) {

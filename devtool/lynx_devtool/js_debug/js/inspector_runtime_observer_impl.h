@@ -45,12 +45,16 @@ class InspectorRuntimeObserverImpl : public piper::InspectorRuntimeObserverNG {
 
   void PrepareForScriptEval() override;
 
+  std::string GetTag() override { return tag_; }
+  void SetTag(const std::string& tag) { tag_ = tag; }
+
   void OnConsoleMessagePosted(const piper::ConsoleMessage& message);
 
  private:
   std::weak_ptr<InspectorJavaScriptDebuggerImpl> debugger_wp_;
   std::weak_ptr<LynxDevToolMediator> mediator_ptr_;
   int view_id_{-1};
+  std::string tag_;
 };
 
 }  // namespace devtool

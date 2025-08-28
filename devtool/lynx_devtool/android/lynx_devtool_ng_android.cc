@@ -20,6 +20,14 @@ jlong CreateLynxDevToolNG(JNIEnv* env, jobject jcaller) {
   return reinterpret_cast<jlong>(sp_ptr);
 }
 
+void SetTag(JNIEnv* env, jobject jcaller, jlong nativePtr, jstring debugTag) {
+  auto lynx_devtool =
+      *reinterpret_cast<std::shared_ptr<lynx::devtool::LynxDevToolNG>*>(
+          nativePtr);
+  lynx_devtool->SetTag(
+      lynx::base::android::JNIConvertHelper::ConvertToString(env, debugTag));
+}
+
 void SendMessageToDebugPlatform(JNIEnv* env, jobject jcaller, jlong nativePtr,
                                 jstring type, jstring msg) {
   auto lynx_devtool =

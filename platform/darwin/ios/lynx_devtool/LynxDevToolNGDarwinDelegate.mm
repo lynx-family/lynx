@@ -175,4 +175,10 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
   }
 }
 
+- (void)setTag:(NSString*)tag {
+  if (devtool_ng_ != nullptr && tag != nil) {
+    devtool_ng_->SetTag([tag UTF8String]);
+  }
+}
+
 @end

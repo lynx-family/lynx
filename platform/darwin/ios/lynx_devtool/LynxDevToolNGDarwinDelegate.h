@@ -42,6 +42,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)unsubscribeMessage:(NSString *)type;
 
+- (void)setTag:(NSString *)tag;
+
 @end
 
 NS_ASSUME_NONNULL_END

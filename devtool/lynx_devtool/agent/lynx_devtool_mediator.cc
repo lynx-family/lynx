@@ -150,6 +150,13 @@ void LynxDevToolMediator::OnAttached() {
   }
 }
 
+void LynxDevToolMediator::SetTag(const std::string& tag) {
+  if (js_debugger_ != nullptr) {
+    auto runtime_observer = js_debugger_->GetInspectorRuntimeObserver();
+    runtime_observer->SetTag(tag);
+  }
+}
+
 // DOM protocol
 void LynxDevToolMediator::QuerySelector(
     const std::shared_ptr<lynx::devtool::MessageSender>& sender,
