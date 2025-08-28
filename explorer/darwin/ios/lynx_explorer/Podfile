@@ -23,6 +23,10 @@ target 'LynxExplorer' do
    'Framework',
   ],:testspecs => [ 'UnitTests' ]
 
+  pod 'LynxBase', :path => '../../../..', :subspecs => [
+   'Framework',
+  ]
+
   pod 'LynxDevtool', :path => '../../../..', :subspecs => [
    'Framework',
    'LynxRecorder',

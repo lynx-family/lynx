@@ -1,0 +1,102 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("../../../tools/gn_tools/podspec_target_template.gni")
+
+podspec_target("lynx_base_podspec") {
+  global_variables =
+      [ "\$enable_frozen_mode = Integer(ENV[\"LYNX_ENABLE_FROZEN\"] || 0)" ]
+  output_name = "LynxBase.podspec"
+  output_path = rebase_path("//")
+  root_specification = {
+    name = "LynxBase"
+    version = "$lynx_version"
+    summary = "The framework of LynxBase."
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "https://github.com/lynx-family/lynx.git"
+    }
+    requires_arc = true
+    default_subspec = "Framework"
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wmissing-field-initializers",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [
+        "OS_IOS=1",
+        "HOST_OSTYPE=HOST_IOS",
+      ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS = "-fno-aligned-allocation"
+    }
+    ios = {
+      deployment_target = "10.0"
+    }
+  }
+  deps = [ ":Framework" ]
+}
+
+base_darwin_public_headers = []
+
+subspec_target("Framework") {
+  # The following flags are added just to keep it consistent with the original podspec.
+  pod_target_xcconfig = {
+    GCC_PREPROCESSOR_DEFINITIONS = [
+      "RAPIDJSON_HAS_STDSTRING=1",
+      "RAPIDJSON_NAMESPACE=lynx::rapidjson",
+      "RAPIDJSON_NAMESPACE_BEGIN=\\\"namespace lynx{namespace rapidjson{\\\"",
+      "RAPIDJSON_NAMESPACE_END=\\\"}};namespace rapidjson=::lynx::rapidjson;\\\"",
+      "ENABLE_INSPECTOR=1",
+      "LYNX_ENABLE_FROZEN_MODE=#{\$enable_frozen_mode}",
+      "OS_POSIX=1",
+    ]
+    HEADER_SEARCH_PATHS = [
+      "//PODS_ROOT/LynxBase/lynx",
+      "//PODS_ROOT/LynxBase",
+      "//lynx",
+      "//",
+    ]
+
+    # TODO(yongjie): delete Lynx Pod header paths later.
+    HEADER_SEARCH_PATHS += [
+      "//PODS_ROOT/Lynx/lynx",
+      "//PODS_ROOT/Lynx",
+    ]
+    OTHER_CPLUSPLUSFLAGS = "-std=gnu++17"
+  }
+  if (!is_debug) {
+    pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
+  }
+  compiler_flags = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-Wmissing-field-initializers",
+    "-Wno-documentation",
+    "-Werror",
+  ]
+  public_header_files = base_darwin_public_headers
+  sources = base_darwin_public_headers
+  deps = [
+    "../../../third_party/modp_b64",
+    "../../../third_party/rapidjson:rapidjson",
+    "../../src:base",
+    "../../src:base_log",
+    "../../src:base_log_headers",
+    "../../src:datauri_utils",
+    "../../src:string_utils",
+    "../../src:time_utils",
+    "../../src:values",
+  ]
+  frameworks = []
+  libraries = [ "stdc++" ]
+}
