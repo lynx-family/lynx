@@ -230,6 +230,8 @@ jobs:
       - name: Get latest tag
         id: get-latest-tag
         uses: ./lynx/.github/actions/get-latest-tag
+        with:
+          current-tag: ${{ needs.get-version.outputs.version }}
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
         with:
