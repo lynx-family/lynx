@@ -185,7 +185,8 @@ void BackgroundDrawable::DrawBackground(OH_Drawing_Canvas* canvas) {
     }
     layer_manager_->Draw(canvas, *border_box_rect_.get(),
                          *padding_box_rect_.get(), *content_box_rect_.get(),
-                         outer_path, inner_path, has_border_);
+                         outer_path, inner_path,
+                         has_border_ || !border_radius_->IsZero());
     OH_Drawing_CanvasRestore(canvas);
   }
 }
