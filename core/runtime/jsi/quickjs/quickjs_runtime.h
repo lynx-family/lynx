@@ -213,7 +213,7 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
       const std::shared_ptr<const Buffer> &buffer,
       const std::string &source_url) const;
 
-  std::string BuildFilenameForDevTool(const std::string &source_url);
+  std::string AddPrefixToUrlIfNeeded(const std::string &url) override;
 
  private:
   std::shared_ptr<QuickjsContextWrapper> CreateContext_(

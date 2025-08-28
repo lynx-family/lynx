@@ -153,4 +153,6 @@ public interface LynxBaseInspectorOwner {
    * ```
    */
   void removeCDPEventListener(final String name);
+
+  void setDebugTag(String debugTag);
 }

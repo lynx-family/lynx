@@ -1589,6 +1589,58 @@ TEST_P(JSITest, JSIObjectLeakCheck) {
   rt.global().setProperty(rt, "Foo", foo);
 }
 
+TEST_P(JSITest, AddPrefixToUrlIfNeeded) {
+  std::string test_prefix1 = "test";
+  std::string test_prefix2 = "test/";
+  std::string test_prefix3 = "/test";
+  std::string test_prefix4 = "/test/";
+  std::string url1;
+  std::string url2 = "app-service.js";
+  std::string url3 = "/app-service.js";
+  std::string url4 = "lynx_core.js";
+  std::string url5 = "/lynx_core.js";
+  std::string jsc_prefix = "file://";
+  std::string expected1 = "file://lynx/app-service.js";
+  std::string expected2 = "file://lynx/test/app-service.js";
+  std::string expected3 = "file://lynx/lynx_core.js";
+
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2),
+            rt.type() == JSRuntimeType::jsc ? jsc_prefix + url2 : url2);
+
+  rt.SetDebuggable(true);
+
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url1),
+            rt.type() == JSRuntimeType::jsc ? jsc_prefix + url1 : url1);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2), expected1);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url3), expected1);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url4), expected3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url5), expected3);
+
+  rt.SetSourceUrlPrefix(test_prefix1);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url3), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url4), expected3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url5), expected3);
+
+  rt.SetSourceUrlPrefix(test_prefix2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url3), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url4), expected3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url5), expected3);
+
+  rt.SetSourceUrlPrefix(test_prefix3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url3), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url4), expected3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url5), expected3);
+
+  rt.SetSourceUrlPrefix(test_prefix4);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url3), expected2);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url4), expected3);
+  EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url5), expected3);
+}
+
 inline std::vector<RuntimeFactory> runtimeGeneratorsFull() {
   std::vector<RuntimeFactory> runtime_factories{};
 
