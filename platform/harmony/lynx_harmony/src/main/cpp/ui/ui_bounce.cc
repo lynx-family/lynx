@@ -11,7 +11,9 @@ namespace tasm {
 namespace harmony {
 
 UIBounce::UIBounce(LynxContext* context, int sign, const std::string& tag)
-    : UIView(context, ARKUI_NODE_CUSTOM, sign, tag) {}
+    : UIView(context, ARKUI_NODE_CUSTOM, sign, tag) {
+  overflow_ = {false, false};
+}
 
 void UIBounce::OnPropUpdate(const std::string& name,
                             const lepus::Value& value) {

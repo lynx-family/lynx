@@ -23,6 +23,7 @@ class UIBounce : public UIView {
  protected:
   UIBounce(LynxContext* context, int sign, const std::string& tag);
   void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
+  bool DefaultOverflowValue() override { return false; }
 };
 
 }  // namespace harmony
