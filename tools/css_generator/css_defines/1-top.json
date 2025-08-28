@@ -38,5 +38,6 @@
       }
     }
   },
+  "formal_syntax": "<length-percentage> | auto",
   "is_shorthand": false
 }

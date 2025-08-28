@@ -1,0 +1,8 @@
+{
+    "values" : {
+        "<length>": "string | 0",
+        "<percentage>": "string",
+        "<length-percentage>" : " <length> | <percentage>",
+        "<overflow-block>": "hidden | visible"
+    }
+}

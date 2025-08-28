@@ -11,5 +11,6 @@
     "visible"
   ],
   "desc": "",
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "<overflow-block>{1,2}"
 }
