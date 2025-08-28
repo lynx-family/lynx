@@ -1,6 +1,12 @@
 name: lynx_types_publish
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'The npm tag to publish with.'
+        required: false
+        default: 'latest'
 
 jobs:
   lynx_types_publish:
@@ -34,7 +40,12 @@ jobs:
         run: |-
           cd $GITHUB_WORKSPACE/lynx
           source tools/envsetup.sh
+      - name: Update version for non-latest tags
+        if: github.event.inputs.tag != 'latest'
+        run: |
+          cd $GITHUB_WORKSPACE/lynx/js_libraries/types
+          npm version prerelease --preid=${{ github.event.inputs.tag }} --no-git-tag-version
       - name: Publish
         run: |-
           cd $GITHUB_WORKSPACE/lynx/js_libraries/types
-          npm publish --access public --provenance
+          npm publish --access public --provenance --tag ${{ github.event.inputs.tag }}
