@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <thread>
 #include <vector>
 #define private public
 
@@ -263,28 +264,34 @@ TEST_F(ContextBinaryReaderTest, LynxBinaryReaderLepusNG) {
   auto all_test_file = TestUtils::GetTestFileLists(
       "core/runtime/vm/lepus/compiler/lepusng_unit_test");
 
+  std::vector<std::thread> workers;
   for (const auto& test_file : all_test_file) {
     std::cout << "[ContextDecoderTest] test file: " << test_file << std::endl;
-    auto src = TestUtils::ReadFileFromPath(test_file);
-    auto vm_ctx = lepus::QuickContext();
-    lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
-                                               target_sdk_version);
-    auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
-    binary_writer.encode();
-    auto byte_array =
-        const_cast<lepus::OutputStream*>(binary_writer.stream())->byte_array();
+    workers.emplace_back([test_file = test_file]() {
+      auto src = TestUtils::ReadFileFromPath(test_file);
+      auto vm_ctx = lepus::QuickContext();
+      lepus::BytecodeGenerator::GenerateBytecode(&vm_ctx, src,
+                                                 target_sdk_version);
+      auto binary_writer = ContextBinaryWriterTest(&vm_ctx);
+      binary_writer.encode();
+      auto byte_array = const_cast<lepus::OutputStream*>(binary_writer.stream())
+                            ->byte_array();
 
-    auto binary_reader = LynxBinaryReaderTest(
-        std::make_unique<lepus::ByteArrayInputStream>(std::move(byte_array)),
-        true);
-    ASSERT_TRUE(binary_reader.DecodeContextTest());
-    std::shared_ptr<lepus::Context> decode_ctx =
-        std::make_shared<lepus::QuickContext>();
-    TestUtils::RegisterBuiltin(decode_ctx.get());
-    auto entry = TemplateEntry(decode_ctx, target_sdk_version);
-    ASSERT_TRUE(entry.GetVm()->DeSerialize(
-        *binary_reader.GetTemplateBundle().context_bundle_, false, nullptr));
-    ASSERT_TRUE(decode_ctx->Execute());
+      auto binary_reader = LynxBinaryReaderTest(
+          std::make_unique<lepus::ByteArrayInputStream>(std::move(byte_array)),
+          true);
+      ASSERT_TRUE(binary_reader.DecodeContextTest());
+      std::shared_ptr<lepus::Context> decode_ctx =
+          std::make_shared<lepus::QuickContext>();
+      TestUtils::RegisterBuiltin(decode_ctx.get());
+      auto entry = TemplateEntry(decode_ctx, target_sdk_version);
+      ASSERT_TRUE(entry.GetVm()->DeSerialize(
+          *binary_reader.GetTemplateBundle().context_bundle_, false, nullptr));
+      ASSERT_TRUE(decode_ctx->Execute());
+    });
+  }
+  for (auto& t : workers) {
+    t.join();
   }
 }
 
