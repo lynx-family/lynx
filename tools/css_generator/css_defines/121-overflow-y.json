@@ -10,7 +10,7 @@
     "hidden",
     "visible"
   ],
-  "desc": "",
+  "desc": "The `overflow-y` property specifies whether to clip the content when it overflows at the top and bottom edges.",
   "is_shorthand": false,
   "formal_syntax": "<overflow-block>"
 }

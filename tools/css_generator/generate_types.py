@@ -33,6 +33,10 @@ def resolve_type(type_str, values_map, resolved_cache):
 
     # Handle direct primitives in the syntax string like '<length> | 0'
     if type_str not in values_map:
+        # It's a complex syntax like `url(<string>)` or `linear-gradient(...)`
+        if "(" in type_str:
+            return "(string & {})"
+
         if type_str == "string":
             return "(string & {})"
 
@@ -49,6 +53,12 @@ def resolve_type(type_str, values_map, resolved_cache):
         return type_str
 
     definition = values_map[type_str]
+
+    # If the definition itself is a complex function, treat as string
+    if "(" in definition:
+        resolved_cache[type_str] = "(string & {})"
+        return "(string & {})"
+
     parts = [part.strip() for part in definition.split("|")]
 
     resolved_parts = [resolve_type(part, values_map, resolved_cache) for part in parts]
@@ -78,6 +88,7 @@ def main():
 
     processed_properties = {}
     print(f"Processing property definitions from: {CSS_DEFINES_PATH}")
+    properties_with_empty_desc = []
 
     for filename in sorted(os.listdir(CSS_DEFINES_PATH)):
         if not filename.endswith(".json"):
@@ -96,8 +107,13 @@ def main():
             print(f"Warning: 'name' not found in {filename}, skipping.")
             continue
 
+        prop_desc = prop_define.get("desc", "").strip()
+        if not prop_desc:
+            properties_with_empty_desc.append(prop_name)
+
         print(f"- Processing {prop_name} from {filename}")
         prop_syntax = prop_define.get("formal_syntax")
+        original_syntax = prop_syntax
 
         final_types = set()
         if not prop_syntax:
@@ -108,6 +124,11 @@ def main():
             has_multiplier = re.search(r"\{[0-9,]+\}", prop_syntax)
             if has_multiplier:
                 prop_syntax = re.sub(r"\{[0-9,]+\}", "", prop_syntax).strip()
+
+            # Handle hash multiplier for comma-separated lists
+            has_hash_multiplier = prop_syntax.endswith("#")
+            if has_hash_multiplier:
+                prop_syntax = prop_syntax[:-1].strip()
 
             # Split syntax to handle cases like '<length-percentage> | auto'
             syntax_parts = [part.strip() for part in prop_syntax.split("|")]
@@ -120,7 +141,7 @@ def main():
                 for t in p.split("|"):
                     final_types.add(t.strip())
 
-            if has_multiplier:
+            if has_multiplier or has_hash_multiplier:
                 # For properties that can have multiple values (e.g., `overflow: hidden visible`),
                 # we also add a general string type to cover all combinations.
                 final_types.add("(string & {})")
@@ -131,7 +152,12 @@ def main():
         ts_type = " | ".join(sorted(list(final_types)))
 
         camel_prop_name = to_camel_case(prop_name)
-        processed_properties[camel_prop_name] = ts_type
+        processed_properties[camel_prop_name] = {
+            "type": ts_type,
+            "desc": prop_desc,
+            "syntax": original_syntax,
+            "name": prop_name,
+        }
 
     print(f"Loading Mako template from: {TEMPLATE_PATH}")
     template = Template(filename=TEMPLATE_PATH)
@@ -142,6 +168,11 @@ def main():
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(output_content)
+
+    if properties_with_empty_desc:
+        print("\nProperties with empty 'desc':")
+        for prop_name in properties_with_empty_desc:
+            print(f"- {prop_name}")
 
     print(f"\n✅ Successfully generated {OUTPUT_PATH}")
 

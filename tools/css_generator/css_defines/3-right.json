@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "right offset",
+  "desc": "The `right` CSS property participates in specifying the horizontal position of a positioned element.",
   "compat_data": {
     "right": {
       "__compat": {

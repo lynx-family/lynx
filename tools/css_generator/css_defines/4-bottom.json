@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "bottom offset",
+  "desc": "The `bottom` CSS property participates in specifying the vertical position.",
   "compat_data": {
     "bottom": {
       "__compat": {

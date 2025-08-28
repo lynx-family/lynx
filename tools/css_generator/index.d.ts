@@ -4,6 +4,13 @@
  */
 
 export interface Properties {
+  /**
+   * The `top` CSS property participates in specifying the vertical position.
+   *
+   * **Syntax**: `<length-percentage> | auto`
+   *
+   * @see https://lynxjs.org/api/css/properties/top
+   */
   top?: 'auto' | (string & {}) | 0 | undefined;
   borderTopColor?: (string & {}) | number | undefined;
   backgroundOrigin?: (string & {}) | number | undefined;
@@ -28,7 +35,21 @@ export interface Properties {
   borderBottomStyle?: (string & {}) | number | undefined;
   implicitAnimation?: (string & {}) | number | undefined;
   borderRadius?: (string & {}) | number | undefined;
+  /**
+   * The `overflow-x` property specifies whether to clip the content when it overflows at the left and right edges.
+   *
+   * **Syntax**: `<overflow-block>`
+   *
+   * @see https://lynxjs.org/api/css/properties/overflow-x
+   */
   overflowX?: 'hidden' | 'visible' | undefined;
+  /**
+   * The `overflow-y` property specifies whether to clip the content when it overflows at the top and bottom edges.
+   *
+   * **Syntax**: `<overflow-block>`
+   *
+   * @see https://lynxjs.org/api/css/properties/overflow-y
+   */
   overflowY?: 'hidden' | 'visible' | undefined;
   wordBreak?: (string & {}) | number | undefined;
   backgroundClip?: (string & {}) | number | undefined;
@@ -37,8 +58,18 @@ export interface Properties {
   outlineStyle?: (string & {}) | number | undefined;
   outlineWidth?: (string & {}) | number | undefined;
   verticalAlign?: (string & {}) | number | undefined;
+  /**
+   * auto
+   *
+   * @see https://lynxjs.org/api/css/properties/caret-color
+   */
   caretColor?: (string & {}) | number | undefined;
   borderTopLeftRadius?: (string & {}) | number | undefined;
+  /**
+   * lynx layout direction
+   *
+   * @see https://lynxjs.org/api/css/properties/direction
+   */
   direction?: (string & {}) | number | undefined;
   relativeId?: (string & {}) | number | undefined;
   relativeAlignTop?: (string & {}) | number | undefined;
@@ -51,14 +82,49 @@ export interface Properties {
   relativeLeftOf?: (string & {}) | number | undefined;
   borderBottomLeftRadius?: (string & {}) | number | undefined;
   relativeLayoutOnce?: (string & {}) | number | undefined;
+  /**
+   * TBD
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-center
+   */
   relativeCenter?: (string & {}) | number | undefined;
+  /**
+   * enter transition name
+   *
+   * @see https://lynxjs.org/api/css/properties/enter-transition-name
+   */
   enterTransitionName?: (string & {}) | number | undefined;
+  /**
+   * enter transition name
+   *
+   * @see https://lynxjs.org/api/css/properties/exit-transition-name
+   */
   exitTransitionName?: (string & {}) | number | undefined;
+  /**
+   * enter transition name
+   *
+   * @see https://lynxjs.org/api/css/properties/pause-transition-name
+   */
   pauseTransitionName?: (string & {}) | number | undefined;
+  /**
+   * enter transition name
+   *
+   * @see https://lynxjs.org/api/css/properties/resume-transition-name
+   */
   resumeTransitionName?: (string & {}) | number | undefined;
+  /**
+   * flex and wrap
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-flow
+   */
   flexFlow?: (string & {}) | number | undefined;
   zIndex?: (string & {}) | number | undefined;
   textDecorationColor?: (string & {}) | number | undefined;
+  /**
+   * default linear layout gravity for children
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-cross-gravity
+   */
   linearCrossGravity?: (string & {}) | number | undefined;
   borderTopRightRadius?: (string & {}) | number | undefined;
   marginInlineStart?: (string & {}) | number | undefined;
@@ -100,6 +166,11 @@ export interface Properties {
   justifyItems?: (string & {}) | number | undefined;
   justifySelf?: (string & {}) | number | undefined;
   gridAutoFlow?: (string & {}) | number | undefined;
+  /**
+   * The filter CSS property applies graphical effects like blur or color shift to an element. Filters are commonly used to adjust the rendering of images, backgrounds, and borders.
+   *
+   * @see https://lynxjs.org/api/css/properties/filter
+   */
   filter?: (string & {}) | number | undefined;
   listMainAxisGap?: (string & {}) | number | undefined;
   listCrossAxisGap?: (string & {}) | number | undefined;
@@ -115,6 +186,13 @@ export interface Properties {
   XAutoFontSize?: (string & {}) | number | undefined;
   XAutoFontSizePresetSizes?: (string & {}) | number | undefined;
   mask?: (string & {}) | number | undefined;
+  /**
+   * The `left` CSS property participates in specifying the horizontal position of a positioned element.
+   *
+   * **Syntax**: `<length-percentage> | auto`
+   *
+   * @see https://lynxjs.org/api/css/properties/left
+   */
   left?: 'auto' | (string & {}) | 0 | undefined;
   borderTopWidth?: (string & {}) | number | undefined;
   maskRepeat?: (string & {}) | number | undefined;
@@ -139,13 +217,32 @@ export interface Properties {
   fontFeatureSettings?: (string & {}) | number | undefined;
   fontOpticalSizing?: (string & {}) | number | undefined;
   color?: (string & {}) | number | undefined;
+  XPlaceholderColor?: (string & {}) | number | undefined;
+  XPlaceholderFontFamily?: (string & {}) | number | undefined;
+  XPlaceholderFontSize?: (string & {}) | number | undefined;
+  XPlaceholderFontWeight?: (string & {}) | number | undefined;
+  XPlaceholderFontStyle?: (string & {}) | number | undefined;
   opacity?: (string & {}) | number | undefined;
   display?: (string & {}) | number | undefined;
+  /**
+   * The `overflow` property specifies whether to clip the content when the content of an element is too big.
+   *
+   * **Syntax**: `<overflow-block>{1,2}`
+   *
+   * @see https://lynxjs.org/api/css/properties/overflow
+   */
   overflow?: 'hidden' | 'visible' | (string & {}) | undefined;
   height?: (string & {}) | number | undefined;
   width?: (string & {}) | number | undefined;
   maxWidth?: (string & {}) | number | undefined;
   minWidth?: (string & {}) | number | undefined;
+  /**
+   * The `right` CSS property participates in specifying the horizontal position of a positioned element.
+   *
+   * **Syntax**: `<length-percentage> | auto`
+   *
+   * @see https://lynxjs.org/api/css/properties/right
+   */
   right?: 'auto' | (string & {}) | 0 | undefined;
   maxHeight?: (string & {}) | number | undefined;
   minHeight?: (string & {}) | number | undefined;
@@ -157,6 +254,13 @@ export interface Properties {
   margin?: (string & {}) | number | undefined;
   marginLeft?: (string & {}) | number | undefined;
   marginRight?: (string & {}) | number | undefined;
+  /**
+   * The `bottom` CSS property participates in specifying the vertical position.
+   *
+   * **Syntax**: `<length-percentage> | auto`
+   *
+   * @see https://lynxjs.org/api/css/properties/bottom
+   */
   bottom?: 'auto' | (string & {}) | 0 | undefined;
   marginTop?: (string & {}) | number | undefined;
   marginBottom?: (string & {}) | number | undefined;
@@ -221,6 +325,13 @@ export interface Properties {
   aspectRatio?: (string & {}) | number | undefined;
   textDecoration?: (string & {}) | number | undefined;
   textShadow?: (string & {}) | number | undefined;
-  backgroundImage?: (string & {}) | number | undefined;
+  /**
+   * The `background-image` CSS property sets one or more background images on an element.
+   *
+   * **Syntax**: `<bg-image>#`
+   *
+   * @see https://lynxjs.org/api/css/properties/background-image
+   */
+  backgroundImage?: 'none' | (string & {}) | undefined;
   backgroundPosition?: (string & {}) | number | undefined;
 }

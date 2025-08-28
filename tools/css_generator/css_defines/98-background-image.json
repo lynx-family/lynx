@@ -6,6 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "The `background-image` CSS property sets one or more background images on an element.",
+  "is_shorthand": false,
+  "formal_syntax": "<bg-image>#"
 }

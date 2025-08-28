@@ -10,7 +10,7 @@
     "hidden",
     "visible"
   ],
-  "desc": "",
+  "desc": "The `overflow-x` property specifies whether to clip the content when it overflows at the left and right edges.",
   "is_shorthand": false,
   "formal_syntax": "<overflow-block>"
 }

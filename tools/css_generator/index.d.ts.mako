@@ -4,7 +4,18 @@
  */
 
 export interface Properties {
-% for name, type in properties.items():
-  ${name}?: ${type};
+% for name, data in properties.items():
+%if data.get('desc'):
+  /**
+   * ${data.get('desc')}
+   *
+%if data.get('syntax'):
+   * **Syntax**: `${data.get('syntax')}`
+   *
+%endif
+   * @see https://lynxjs.org/api/css/properties/${data.get('name')}
+   */
+%endif
+  ${name}?: ${data.get('type')};
 % endfor
 }
