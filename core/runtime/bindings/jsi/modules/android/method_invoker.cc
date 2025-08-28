@@ -410,6 +410,8 @@ base::expected<std::unique_ptr<pub::Value>, ErrorPair> MethodInvoker::Invoke(
         callback_container.push_back(std::move(expected_callback.value()));
         ret = {.l = callback_container.back().Get()};
       } else {
+        // If the Callback parameter in JS is undefined, the Callback in
+        // LynxModule will be converted to null.
         LOGE(expected_callback.error().c_str());
         ret = {.l = nullptr};
       }

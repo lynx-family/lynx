@@ -244,6 +244,8 @@ NSInvocation *LynxModuleDarwin::getMethodInvocation(
 
     if (objCArgType[0] == _C_ID) {
       id obj;
+      // If the Callback parameter in JS is undefined, the Callback in LynxModule will be converted
+      // to nil.
       if (arg->IsInt64() && callbacks.find(i) != callbacks.end()) {
         LOGV("NativeModule: LynxModuleDarwin::getMethodInvocation, "
              << " module: " << module_name_ << " method: " << methodName
