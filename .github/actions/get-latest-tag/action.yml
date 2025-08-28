@@ -2,6 +2,11 @@ name: Get Latest Ancestor Tag
 
 description: Get the latest ancestor tag of the current commit.
 
+inputs:
+  current-tag:
+    description: The current publishing tag
+    required: true
+
 outputs:
   latest-tag:
     description: 'The latest tag'
@@ -17,7 +22,7 @@ runs:
       run: |
         set -e
         pwd
-        ANCESTOR_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
+        ANCESTOR_TAG=$(git describe --tags --exclude=${{ inputs.current-tag }} --abbrev=0 2>/dev/null)
         echo "ANCESTOR_TAG=$ANCESTOR_TAG" >> $GITHUB_ENV
 
     - name: get latest tag from api
@@ -26,8 +31,14 @@ runs:
       run: |
         REPO="${{ github.repository }}"
         LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | jq -r '.tag_name')
-        if [ "$LATEST_TAG" = "null" ]; then
-          LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/tags" | jq -r '.[0].name')
+        if [ "$LATEST_TAG" = "null" ] || [ "$LATEST_TAG" = "${{ inputs.current-tag }}" ]; then
+          LATEST_TAG=$(curl -s "https://api.github.com/repos/$REPO/releases?per_page=20" \
+            | jq -r --arg CURRENT "${{ inputs.current-tag }}" \
+              '.[] | select(
+                .draft == false and 
+                .tag_name != $CURRENT
+              ) | .tag_name' \
+            | head -n 1)
         fi
         echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
 
