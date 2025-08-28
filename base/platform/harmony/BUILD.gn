@@ -1,0 +1,21 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+assert(is_harmony)
+
+shared_library("lynx_base") {
+  sources = [ "src/cpp/entry.cc" ]
+  output_name = "lynxbase"
+
+  deps = [ "../../src/:base" ]
+  cflags = []
+  libs = [
+    "ace_napi.z",
+    "uv",
+    "native_vsync",
+    "hilog_ndk.z",
+  ]
+
+  configs += [ "../../../platform/harmony/lynx_harmony:harmony_public_config" ]
+}

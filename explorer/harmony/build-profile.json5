@@ -54,6 +54,18 @@
       ]
     },
     {
+      "name": "lynx_base",
+      "srcPath": "../../base/platform/harmony",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    },
+    {
       "name": "lynx_devtool",
       "srcPath": "../../platform/harmony/lynx_devtool",
       "targets": [

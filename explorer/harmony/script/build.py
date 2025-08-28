@@ -20,6 +20,7 @@ TEMPLATE_DEVTOOL_DIR = os.path.normpath(
 
 DEFAULT_MODULES = [
     'lynx',
+    'lynx_base',
     'lynx_devtool',
     'lynx_devtool_service',
     'lynx_log_service',
@@ -122,6 +123,7 @@ def run_build_so(output_path, args):
 def run_cp_so(output_path, args):
     shared_object_cp_map = {
         'liblynx.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'libs', 'arm64-v8a'),
+        'liblynxbase.so': os.path.join(LYNX_DIR, 'base', 'platform', 'harmony', 'libs', 'arm64-v8a'),
         'liblynxdevtool.so': os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'libs', 'arm64-v8a'),
     }
     for so, dst in shared_object_cp_map.items():

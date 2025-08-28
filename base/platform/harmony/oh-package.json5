@@ -1,0 +1,14 @@
+{
+  "name": "@lynx/lynx_base",
+  "license": "Apache-2.0",
+  "devDependencies": {
+  },
+  "main": "Index.ets",
+  "version": "@param:dependencies.lynx_version",
+  "dependencies": {
+    "liblynxbase.so": "file:./src/cpp/types/liblynx_base",
+  },
+  "repository": "https://github.com/lynx-family/lynx",
+  "author": "lynx",
+  "description": "Lynx Base"
+}
