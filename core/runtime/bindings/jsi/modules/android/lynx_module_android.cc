@@ -356,6 +356,9 @@ void LynxModuleAndroid::InvokeCallback(
          << callback->callback_id());
     return;
   }
+  if (callback->timing_collector_) {
+    callback->timing_collector_->CallbackThreadSwitchStart();
+  }
   lock_delegate->RunOnJSThread([callback, ref = shared_from_this(), promise]() {
     ref->InvokeCallbackInternal(callback, promise);
   });

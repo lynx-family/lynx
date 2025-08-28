@@ -791,6 +791,10 @@ LynxCallbackBlock LynxModuleDarwin::ConvertModuleCallbackToCallbackBlock(
           module_name_copy, jsb_func_name.size() == 0 ? method_name_copy : jsb_func_name,
           schema_copy, response, std::to_string(start_time_copy));
     }
+    auto piper_module_callback = std::static_pointer_cast<ModuleCallback>(callback);
+    if (piper_module_callback->timing_collector_) {
+      piper_module_callback->timing_collector_->CallbackThreadSwitchStart();
+    }
     LOGV("LynxModule, LynxCallbackBlock, put function to JSThread, "
          << "callback id: " << callback_id << "piper::ModuleCallback: " << callback);
     lock_delegate->InvokeCallback(callback);

@@ -274,9 +274,6 @@ LynxModuleImpl::invokeMethod(const MethodMetadata& method, Runtime* rt,
 void LynxModuleImpl::InvokeCallback(
     const std::shared_ptr<LynxModuleCallback>& callback) {
   auto module_callback = std::static_pointer_cast<ModuleCallback>(callback);
-  if (module_callback->timing_collector_) {
-    module_callback->timing_collector_->CallbackThreadSwitchStart();
-  }
   delegate_->CallJSCallback(module_callback);
 }
 
