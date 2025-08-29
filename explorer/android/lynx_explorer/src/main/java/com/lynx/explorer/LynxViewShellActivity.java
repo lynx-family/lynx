@@ -31,6 +31,7 @@ import com.lynx.explorer.provider.DemoGenericResourceFetcher;
 import com.lynx.explorer.provider.DemoMediaResourceFetcher;
 import com.lynx.explorer.provider.DemoTemplateResourceFetcher;
 import com.lynx.explorer.utils.QueryMapUtils;
+import com.lynx.explorer.utils.URLManager;
 import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
@@ -61,6 +62,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
   private LynxView mLynxView;
   private String mFrontendTheme;
   private TimingHandler.ExtraTimingInfo extraTimingInfo = new TimingHandler.ExtraTimingInfo();
+  private URLManager urlManager;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -68,17 +70,26 @@ public class LynxViewShellActivity extends AppCompatActivity {
     extraTimingInfo.mOpenTime = System.currentTimeMillis();
     extraTimingInfo.mContainerInitStart = System.currentTimeMillis();
 
+    // Initialize URL manager
+    urlManager = URLManager.getInstance(this);
+
     Intent intent = getIntent();
     String url = intent.getStringExtra(URL_KEY);
     if (url == null) {
       url = HOME_PAGE_URL;
     }
-
+    
+    // Add URL to history
+      if (!url.equals(HOME_PAGE_URL) ){
+        urlManager.addToHistory(url);
+      }
+    
+    
     setTopBarAppearance(url);
     mLynxContainer = findViewById(R.id.lynx_container);
 
     extraTimingInfo.mContainerInitEnd = System.currentTimeMillis();
-
+    
     openTargetUrl(url);
   }
 
@@ -97,6 +108,15 @@ public class LynxViewShellActivity extends AppCompatActivity {
       return true;
     }
     return super.onOptionsItemSelected(item);
+  }
+
+  // Pushes the list again after closing the url on going back to homepage
+  @Override
+  protected void onResume() {
+      super.onResume();
+      if (mLynxView != null) {
+          mLynxView.updateGlobalProps(getGlobalProps(this));
+      }
   }
 
   private String getStorageItem(String key) {
@@ -211,7 +231,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
       Log.i(TAG, "openTargetUrl failed: url is null.");
       return;
     }
-
+    
     LynxViewBuilder builder = new LynxViewBuilder();
     builder.addBehaviors(new ImageBehavior().create());
     builder.addBehaviors(new XElementBehaviors().create());
@@ -311,6 +331,7 @@ public class LynxViewShellActivity extends AppCompatActivity {
     } else {
       globalProps.put("frontendTheme", "light");
     }
+    globalProps.put("recentUrls", urlManager.getRecentUrls());
 
     return TemplateData.fromMap(globalProps);
   }

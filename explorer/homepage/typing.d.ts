@@ -34,6 +34,7 @@ declare module '@lynx-js/types' {
     preferredTheme?: string;
     theme: string;
     isNotchScreen: boolean;
+    recentUrls?: Array<{ url: string; time: string } | string>;
   }
 
   interface IntrinsicElements extends Lynx.IntrinsicElements {
@@ -67,6 +68,14 @@ export interface InputProps extends StandardProps {
    */
   'text-color'?: string;
 }
+
+declare let NativeModules: { // from native modules guide on Lynx website
+  NativeLocalStorageModule: {
+    setStorageItem(key: string, value: string): void;
+    getStorageItem(key: string): string | null;
+    clearStorage(): void;
+  };
+};
 
 export type InputEvent = BaseEvent<'input', { value: string }>;
 export type BlurEvent = BaseEvent<'blur', { value: string }>;
