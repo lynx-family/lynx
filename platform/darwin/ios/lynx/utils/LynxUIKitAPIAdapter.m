@@ -44,6 +44,31 @@
   return nil;
 }
 
++ (UIWindow *)getForegroundKeyWindow {
+  if (@available(iOS 15.0, *)) {
+    for (UIScene *scene in [UIApplication sharedApplication].connectedScenes) {
+      if ((scene.activationState == UISceneActivationStateForegroundActive ||
+           scene.activationState == UISceneActivationStateForegroundInactive) &&
+          [scene isKindOfClass:[UIWindowScene class]]) {
+        return ((UIWindowScene *)scene).keyWindow;
+      }
+    }
+  }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  for (UIWindow *window in [UIApplication sharedApplication].windows) {
+#pragma clang diagnostic pop
+    if (window.isKeyWindow) {
+      return window;
+    }
+  }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  UIWindow *window = [UIApplication sharedApplication].keyWindow;
+#pragma clang diagnostic pop
+  return window;
+}
+
 + (CGRect)getStatusBarFrame {
   if (@available(iOS 13.0, *)) {
     return [LynxUIKitAPIAdapter getKeyWindow].windowScene.statusBarManager.statusBarFrame;

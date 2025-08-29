@@ -11,10 +11,13 @@
 @interface LynxUIKitAPIAdapter : NSObject
 
 // Get the window collection of the current application.
-+ (NSArray<UIWindow*>*)getWindows;
++ (NSArray<UIWindow *> *)getWindows;
 
 // Get the main window of the current application.
-+ (UIWindow*)getKeyWindow;
++ (UIWindow *)getKeyWindow;
+
+// Get the foreground key window of the current application.
++ (UIWindow *)getForegroundKeyWindow;
 
 // Get the status bar position information of the current application.
 + (CGRect)getStatusBarFrame;

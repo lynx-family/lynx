@@ -4300,6 +4300,7 @@ public class LynxUIIntersectionObserverUnitTest : XCTestCase {
 public class LynxUIKitAPIAdapter : NSObject {
   public NSArray< UIWindow * > * LynxUIKitAPIAdapter::getWindows();
   public UIWindow * LynxUIKitAPIAdapter::getKeyWindow();
+  public UIWindow * LynxUIKitAPIAdapter::getForegroundKeyWindow();
   public CGRect LynxUIKitAPIAdapter::getStatusBarFrame();
 }
 
