@@ -82,7 +82,7 @@ class BindingGeneratorTest : public ::testing::Test {
     std::string js_code = buffer.str();
 
     // Remove the trailing 'export' as this environment does not support it.
-    js_code.erase(js_code.find("export {"));
+    js_code.erase(js_code.find("export default"));
 
     env_.RunScript(js_code.c_str());
     env_.RunScript(
