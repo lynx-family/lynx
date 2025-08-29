@@ -33,16 +33,13 @@ import org.json.JSONObject;
 public class LynxGlobalDebugBridge
     implements DebugRouterGlobalHandler, StateListener, ILynxEventReportObserver {
   private static final String TAG = "LynxGlobalDebugBridge";
+  private Boolean mIsPerfMetricsEnabled = null;
 
   // protocol
   private static final String CUSTOM_FOR_SET_GLOBAL_SWITCH = "SetGlobalSwitch";
   private static final String CUSTOM_FOR_GET_GLOBAL_SWITCH = "GetGlobalSwitch";
 
   private boolean mHasContext = false;
-  private Context mContext;
-
-  // debug status view
-  private WeakReference<ViewGroup> mRootView = null;
 
   private DevToolAgentDispatcher mAgentDispatcher;
 
@@ -70,7 +67,6 @@ public class LynxGlobalDebugBridge
     if (mHasContext) {
       return;
     }
-    mContext = ctx;
     mHasContext = true;
   }
 
@@ -157,11 +153,20 @@ public class LynxGlobalDebugBridge
   @Override
   public void onReportEvent(@NonNull String eventName, int instanceId,
       @NonNull Map<String, ?> props, @Nullable Map<String, ?> extraData) {
+    if (mIsPerfMetricsEnabled == null) {
+      mIsPerfMetricsEnabled = LynxDevtoolEnv.inst().isPerfMetricsEnabled();
+    }
+    if (!mIsPerfMetricsEnabled) {
+      return;
+    }
     onPerfMetricsEvent(eventName, new JSONObject(props), instanceId);
   }
 
   public void onPerfMetricsEvent(String eventName, @NonNull JSONObject data, int instanceId) {
-    if (LynxDevtoolEnv.inst().isPerfMetricsEnabled() && mAgentDispatcher != null) {
+    if (mIsPerfMetricsEnabled == null) {
+      mIsPerfMetricsEnabled = LynxDevtoolEnv.inst().isPerfMetricsEnabled();
+    }
+    if (mIsPerfMetricsEnabled && mAgentDispatcher != null) {
       try {
         data.put("instanceId", instanceId);
         mAgentDispatcher.onPerfMetricsEvent(eventName, data);
