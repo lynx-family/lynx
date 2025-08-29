@@ -354,12 +354,16 @@ TEST(MessageLoop, CreateConcurrentMessageLoopWithThreadConfigSetter) {
   fml::CountDownLatch latch(kCount);
   for (size_t i = 0; i < kCount; ++i) {
     loop.PostTask([&]() {
+      std::cout << "Thread created" << std::endl;
       struct sched_param param;
       char thread_name[16];
       int policy = SCHED_OTHER;
       pthread_t current_thread = pthread_self();
+      std::cout << "Start get thread name" << std::endl;
       pthread_getname_np(current_thread, thread_name, sizeof(thread_name));
+      std::cout << "Start get thread parameters" << std::endl;
       pthread_getschedparam(current_thread, &policy, &param);
+      std::cout << "Compare thread info" << std::endl;
       const std::string name = "test1";
       ASSERT_EQ(thread_name, name);
       ASSERT_EQ(policy, SCHED_OTHER);
