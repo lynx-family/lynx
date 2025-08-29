@@ -77,7 +77,6 @@ class TimingMediator : public TimingHandlerDelegate {
   void TriggerSetupClientCallback(const TimingInfo& timing_info) const;
   // Internal methods for reporting OnTimingSetup event.
   void ReportSetupEvent(const TimingInfo& timing_info) const;
-
   // Internal methods for triggering runtime OnTimingUpdate callback.
   void TriggerUpdateRuntimeCallback(const TimingInfo& timing_info,
                                     const std::string& update_flag) const;

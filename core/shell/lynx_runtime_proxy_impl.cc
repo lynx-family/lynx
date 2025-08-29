@@ -12,6 +12,7 @@
 #include "core/resource/lazy_bundle/lazy_bundle_utils.h"
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/shell/common/shell_trace_event_def.h"
+#include "core/shell/runtime_mediator.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -46,11 +47,12 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([module_id = std::move(module_id),
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  actor_->Act([enqueue_info, module_id = std::move(module_id),
                method_id = std::move(method_id), getter = std::move(getter),
                is_runtime_standalone_mode =
                    is_runtime_standalone_mode_](auto& runtime) mutable {
-    auto task = [&runtime, module_id = std::move(module_id),
+    auto task = [&runtime, enqueue_info, module_id = std::move(module_id),
                  method_id = std::move(method_id), getter = std::move(getter)] {
       auto js_runtime = runtime->GetJSRuntime();
       if (js_runtime == nullptr) {
@@ -60,6 +62,12 @@ void LynxRuntimeProxyImpl::CallJSFunction(std::string module_id,
             << module_id << " method:" << method_id << &runtime);
         return;
       }
+      runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+      TRACE_EVENT(
+          LYNX_TRACE_CATEGORY, kJSTaskCallJSFunction,
+          [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
+            ctx.event()->add_flow_ids(flow_id);
+          });
       auto params = getter();
       if (params == nullptr) {
         LOGE(
@@ -148,7 +156,15 @@ void LynxRuntimeProxyImpl::CallJSApiCallbackWithValue(int32_t callback_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([callback_id, getter = std::move(getter)](auto& runtime) {
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  actor_->Act([enqueue_info, callback_id,
+               getter = std::move(getter)](auto& runtime) {
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, kJSTaskCallJSApiCallbackWithValue,
+        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_flow_ids(flow_id);
+        });
     auto js_runtime = runtime->GetJSRuntime();
     if (js_runtime == nullptr) {
       LOGR(
@@ -179,7 +195,8 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
   if (!actor_) {
     return;
   }
-  actor_->Act([observer_id, callback_id,
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  actor_->Act([enqueue_info, observer_id, callback_id,
                getter = std::move(getter)](auto& runtime) {
     auto js_runtime = runtime->GetJSRuntime();
     if (js_runtime == nullptr) {
@@ -189,6 +206,12 @@ void LynxRuntimeProxyImpl::CallJSIntersectionObserver(int32_t observer_id,
           << observer_id << " callback_id:" << callback_id << &runtime);
       return;
     }
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, kJSTaskCallJSIntersectionObserver,
+        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_flow_ids(flow_id);
+        });
     auto params = getter();
     if (params == nullptr) {
       LOGE(
@@ -212,7 +235,15 @@ void LynxRuntimeProxyImpl::EvaluateScript(const std::string& url,
   if (!actor_) {
     return;
   }
-  actor_->Act([url, script = std::move(script), callback_id](auto& runtime) {
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  actor_->Act([enqueue_info, url, script = std::move(script),
+               callback_id](auto& runtime) {
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    TRACE_EVENT(
+        LYNX_TRACE_CATEGORY, kJSTaskEvaluateScript,
+        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
+          ctx.event()->add_flow_ids(flow_id);
+        });
     runtime->EvaluateScript(url, std::move(script),
                             piper::ApiCallBack(callback_id));
   });
@@ -233,9 +264,17 @@ void LynxRuntimeProxyImpl::RejectDynamicComponentLoad(
 
 void LynxRuntimeProxyImpl::AddLifecycleListener(
     std::unique_ptr<runtime::RuntimeLifecycleListenerDelegate> delegate) {
-  actor_->Act([delegate = std::move(delegate)](auto& runtime) mutable {
-    runtime->AddLifecycleListener(std::move(delegate));
-  });
+  auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
+  actor_->Act(
+      [enqueue_info, delegate = std::move(delegate)](auto& runtime) mutable {
+        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+        TRACE_EVENT(
+            LYNX_TRACE_CATEGORY, kJSTaskAddLifecycleListener,
+            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
+              ctx.event()->add_flow_ids(flow_id);
+            });
+        runtime->AddLifecycleListener(std::move(delegate));
+      });
 }
 
 }  // namespace shell

@@ -49,23 +49,17 @@ int32_t JSBlockingMonitor::GetReportIntervalMs() {
   return GetJSBlockingMonitorArgs().report_interval_ms;
 }
 
-uint64_t JSBlockingMonitor::GetNowTimeMs() {
-  return base::CurrentTimeMilliseconds();
-}
-
-int64_t JSBlockingMonitor::MarkStartTraceInstant() {
-  uint64_t trace_flow_id = TRACE_FLOW_ID();
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, kJSBlockingStart,
-                      [trace_flow_id](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_flow_ids(trace_flow_id);
+JSTaskEnqueueRetInfo JSBlockingMonitor::MarkJSTaskEnqueue() {
+  uint64_t flow_id = TRACE_FLOW_ID();
+  uint64_t time_now = GetNowTimeMs();
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, kJSTaskEnqueue,
+                      [flow_id](lynx::perfetto::EventContext ctx) {
+                        ctx.event()->add_flow_ids(flow_id);
                       });
-  return trace_flow_id;
+  return JSTaskEnqueueRetInfo{flow_id, time_now};
 }
 
 void JSBlockingMonitor::AddBlockingTime(int64_t duration_ms) {
-  if (!Enable()) {
-    return;
-  }
   int32_t threshold_ms = GetThresholdMs();
   if (duration_ms >= threshold_ms) {
     total_blocking_time_ += duration_ms;
@@ -81,15 +75,16 @@ void JSBlockingMonitor::OnPerformanceEvent(
 
   auto entryType = entry->GetValueForKey(kPerformanceEventType)->str();
   auto name = entry->GetValueForKey(kPerformanceEventName)->str();
-  if (!entryType.empty() && entryType == timing::kEntryTypeMetric &&
+  if (!entryType.empty() && entryType == timing::kEntryTypePipeline &&
       !name.empty() && name == timing::kEntryNameLoadBundle) {
-    ReportBlockingInfo(kJSBlockingStageFCP, 0);
+    load_bundle_time_ = GetNowTimeMs();
+    ReportBlockingInfo(kJSBlockingStageLoadBundle);
     std::weak_ptr<JSBlockingMonitor> weak_self = shared_from_this();
     report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostDelayedTask(
         [weak_self]() {
           auto self = weak_self.lock();
           if (self) {
-            self->ReportWithTimer(0);
+            self->ReportWithTimer(1);
           }
         },
         fml::TimeDelta::FromMilliseconds(GetReportIntervalMs()));
@@ -97,13 +92,13 @@ void JSBlockingMonitor::OnPerformanceEvent(
 }
 
 void JSBlockingMonitor::ReportWithTimer(int8_t index) {
-  if (sender_ == nullptr || timer_stopped_) {
+  if (sender_ == nullptr) {
     return;
   }
-  auto report_interval = GetReportIntervalMs();
-  auto time_after_load_bundle = (index + 1) * report_interval;
+  auto interval = GetReportIntervalMs();
+  auto report_interval = (index + 1) * interval;
 
-  ReportBlockingInfo("timer", time_after_load_bundle);
+  ReportBlockingInfo(kJSBlockingStageTimer);
   std::weak_ptr<JSBlockingMonitor> weak_self = shared_from_this();
   report::EventTrackerPlatformImpl::GetReportTaskRunner()->PostDelayedTask(
       [weak_self, index]() {
@@ -112,19 +107,20 @@ void JSBlockingMonitor::ReportWithTimer(int8_t index) {
           self->ReportWithTimer(index + 1);
         }
       },
-      fml::TimeDelta::FromSeconds(report_interval));
+      fml::TimeDelta::FromMilliseconds(report_interval));
 }
 
-void JSBlockingMonitor::ReportBlockingInfo(const std::string& stage,
-                                           int64_t time_after_load_bundle) {
+void JSBlockingMonitor::ReportBlockingInfo(const std::string& stage) {
+  LOGI("ReportBlockingInfo stage:" << stage);
   if (!Enable() || sender_ == nullptr || total_blocking_time_ == 0 ||
       total_blocking_count_ == 0) {
     return;
   }
-  auto total_duration_ms = GetNowTimeMs() - last_report_time_;
-
+  auto now_time = GetNowTimeMs();
+  auto total_duration_ms = now_time - last_report_time_;
+  auto time_after_load_bundle = now_time - load_bundle_time_;
   // reset last_report_time_
-  last_report_time_ = GetNowTimeMs();
+  last_report_time_ = now_time;
   auto blocking_ratio =
       static_cast<double>(total_blocking_time_) / total_duration_ms;
   auto avg_blocking_time =
@@ -170,9 +166,6 @@ void JSBlockingMonitor::ReportBlockingInfo(const std::string& stage,
   total_blocking_time_ = 0;
   total_blocking_count_ = 0;
 }
-
-void JSBlockingMonitor::StopTimerReporting() { timer_stopped_ = true; }
-
 }  // namespace performance
 }  // namespace tasm
 }  // namespace lynx

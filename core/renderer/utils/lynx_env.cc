@@ -289,7 +289,7 @@ bool LynxEnv::EnableJSBlockingMonitor() {
 }
 
 uint32_t LynxEnv::GetJSBlockingThresholdMs() {
-  return static_cast<uint32_t>(GetLongEnv(Key::JS_BLOCKING_THRESHOLD_MS, 5));
+  return static_cast<uint32_t>(GetLongEnv(Key::JS_BLOCKING_THRESHOLD_MS, 20));
 }
 
 uint32_t LynxEnv::GetJSBlockingReportIntervalMs() {

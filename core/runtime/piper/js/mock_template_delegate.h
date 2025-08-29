@@ -182,6 +182,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
   void SubscribeSessionStorage(const std::string&, double listener_id,
                                const piper::ApiCallBack& callback) override{};
 
+  void AddJSBlockingTime(uint64_t enqueue_time) override{};
+
  protected:
   std::string sdk_version_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;

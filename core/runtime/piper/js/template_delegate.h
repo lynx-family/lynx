@@ -155,6 +155,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
                                       piper::ApiCallBack callback) = 0;
   virtual void RunOnJSThread(base::closure closure) = 0;
   virtual void RunOnJSThreadWhenIdle(base::closure closure) = 0;
+
+  // for performance
   virtual void SetTiming(tasm::Timing timing) = 0;
   virtual void SetTimingWithTimingFlag(
       const tasm::timing::TimingFlag& timing_flag,
@@ -174,6 +176,7 @@ class TemplateDelegate : public ContextProxy::Delegate,
   virtual void BindPipelineIDWithTimingFlag(
       const tasm::PipelineID& pipeline_id,
       const tasm::timing::TimingFlag& timing_flag) = 0;
+  virtual void AddJSBlockingTime(uint64_t enqueue_time) = 0;
 
   // for lepus event
   virtual void InvokeLepusComponentCallback(const int64_t callback_id,

@@ -31,6 +31,9 @@ void PerformanceController::OnPerformanceEvent(
   if ((type & kEventTypePlatform) && platform_impl_) {
     platform_impl_->OnPerformanceEvent(entry);
   }
+  if (js_blocking_monitor_) {
+    js_blocking_monitor_->OnPerformanceEvent(entry);
+  }
   delegate_->OnPerformanceEvent(std::move(entry), type);
 }
 

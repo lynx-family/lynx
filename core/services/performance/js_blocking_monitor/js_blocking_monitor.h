@@ -8,17 +8,21 @@
 #include <memory>
 #include <string>
 
+#include "base/include/timer/time_utils.h"
 #include "core/services/event_report/event_tracker.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_trace_event_def.h"
 #include "core/services/performance/performance_event_sender.h"
 
 namespace lynx {
 namespace tasm {
 namespace performance {
-
-static constexpr char kJSBlockingStart[] = "JSBlockingStart";
-static constexpr char kJSBlockingEnd[] = "JSBlockingEnd";
-static constexpr char kJSBlockingStageFCP[] = "fcp";
+static constexpr char kJSBlockingStageLoadBundle[] = "loadBundle";
 static constexpr char kJSBlockingStageTimer[] = "timer";
+
+struct JSTaskEnqueueRetInfo {
+  uint64_t flow_id;
+  uint64_t enqueue_time;
+};
 
 // @class JSBlockingMonitor
 // @brief A class for monitoring JavaScript blocking time and reporting blocking
@@ -59,7 +63,12 @@ class JSBlockingMonitor
 
   // Returns the current time in milliseconds.
   // @return The current time in milliseconds.
-  static uint64_t GetNowTimeMs();
+  static inline uint64_t GetNowTimeMs() {
+    if (!Enable()) {
+      return 0;
+    }
+    return base::CurrentTimeMilliseconds();
+  };
 
   // Returns the interval in milliseconds for JS blocking report timer.
   // @return The interval in milliseconds.
@@ -67,27 +76,21 @@ class JSBlockingMonitor
 
   // Mark start use trace instant
   // @return The trace flow_id.
-  static int64_t MarkStartTraceInstant();
-
-  // Stops the timer-based reporting to prevent memory leaks
-  // Should be called when the monitor is being destroyed
-  void StopTimerReporting();
+  static JSTaskEnqueueRetInfo MarkJSTaskEnqueue();
 
  private:
   // Reports blocking information with stage and total duration.
   // @param stage The stage of event ("fsp" or "timer").
   // @param total_duration_ms The total duration in milliseconds for the current
   // stage.
-  // @param time_after_fcp_ms The time after fcp event
-  void ReportBlockingInfo(const std::string& stage,
-                          int64_t time_after_load_bundle);
+  void ReportBlockingInfo(const std::string& stage);
 
   void ReportWithTimer(int8_t index);
   PerformanceEventSender* sender_;
   int64_t total_blocking_time_ = 0;
   int64_t total_blocking_count_ = 0;
-  bool timer_stopped_ = false;
   int64_t last_report_time_ = 0;
+  int64_t load_bundle_time_ = 0;
 };
 
 }  // namespace performance

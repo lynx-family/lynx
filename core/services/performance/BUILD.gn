@@ -8,6 +8,7 @@ import("../../Lynx.gni")
 performance_shared_sources = [
   "js_blocking_monitor/js_blocking_monitor.cc",
   "js_blocking_monitor/js_blocking_monitor.h",
+  "js_blocking_monitor/js_blocking_trace_event_def.h",
   "memory_monitor/memory_monitor.cc",
   "memory_monitor/memory_monitor.h",
   "memory_monitor/memory_record.cc",

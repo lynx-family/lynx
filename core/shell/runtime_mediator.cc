@@ -11,7 +11,6 @@
 #include "core/services/timing_handler/timing_mediator.h"
 #include "core/shared_data/white_board_delegate.h"
 #include "core/shell/common/shell_trace_event_def.h"
-
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/testbench_base_recorder.h"
 #endif
@@ -515,6 +514,20 @@ void RuntimeMediator::ResetTimingBeforeReload() {
   perf_controller_actor_->ActAsync([](auto& performance) {
     performance->GetTimingHandler().ResetTimingBeforeReload();
   });
+}
+
+void RuntimeMediator::AddJSBlockingTime(uint64_t enqueue_time) {
+  if (tasm::performance::JSBlockingMonitor::Enable()) {
+    int64_t duration =
+        tasm::performance::JSBlockingMonitor::GetNowTimeMs() - enqueue_time;
+    int32_t threshold_ms =
+        tasm::performance::JSBlockingMonitor::GetThresholdMs();
+    if (duration >= threshold_ms) {
+      perf_controller_actor_->ActAsync([duration](auto& performance) {
+        performance->GetJSBlockingMonitor()->AddBlockingTime(duration);
+      });
+    }
+  }
 }
 
 void RuntimeMediator::CallLepusMethod(const std::string& method_name,
