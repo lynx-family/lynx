@@ -224,6 +224,12 @@ public class TextMeasurer {
           textAttributes.mTextOverflow = textOverflow;
           break;
 
+        case kTextPropLetterSpacing:
+          double letterSpacing = iterator.next().getDouble();
+          textAttributes = ensureTextAttributes(textAttributes);
+          textAttributes.mLetterSpacing = (float) letterSpacing;
+          break;
+
         // inline -image
         case kPropImageSrc:
           inlineImageProps = new InlineImageProps();
@@ -249,9 +255,11 @@ public class TextMeasurer {
           break;
 
         case kPropRectSize:
+          int width = iterator.next().getInt();
+          int height = iterator.next().getInt();
           if (inlineImageProps != null) {
-            inlineImageProps.mWidth = iterator.next().getInt();
-            inlineImageProps.mHeight = iterator.next().getInt();
+            inlineImageProps.mWidth = width;
+            inlineImageProps.mHeight = height;
           } else {
             // inline view
           }
@@ -324,6 +332,10 @@ public class TextMeasurer {
         default:
           break;
       }
+    }
+
+    if (spannableString.length() == 0 && end > 0) {
+      Log.e("TextMeasurer", "decode buffer error:" + valueArray.getString(valueArray.count() - 1));
     }
 
     // generate spannableString
