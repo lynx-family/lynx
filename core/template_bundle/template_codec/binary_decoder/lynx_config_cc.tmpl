@@ -19,7 +19,9 @@ void LynxConfig::DecodePageConfigFromJsonStringWhileUndefined(
     {% if config.read_native %}
       if (doc.HasMember(config::{{ config.const_name }}) && doc[config::{{ config.const_name }}].Is{{ config.doc_type }}()) {
         {% if config.value_type == "TernaryBool" %}
-        {{ config.setter_func_name}}(doc[config::{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+        if ({{ config.getter_func_name }}() == TernaryBool::UNDEFINE_VALUE) {
+          {{ config.setter_func_name}}(doc[config::{{ config.const_name }}].GetBool() ? TernaryBool::TRUE_VALUE : TernaryBool::FALSE_VALUE);
+        }
         {% else %}
         {{ config.setter_func_name}}(doc[config::{{ config.const_name }}].Get{{ config.doc_type }}());
         {% endif %}
