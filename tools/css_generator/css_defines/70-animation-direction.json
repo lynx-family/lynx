@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "liyanbo, linxiaosong",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "`animation-direction` property specifies whether the animation should play in reverse.",
   "values": [
     {
       "value": "normal",

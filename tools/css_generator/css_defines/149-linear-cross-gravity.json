@@ -5,7 +5,7 @@
   "default_value": "none",
   "version": "1.6",
   "author": "zhangmin, wangzhixuan",
-  "desc": "default linear layout gravity for children",
+  "desc": "Set the position of the child element on the cross axis of the parent container in linear layout, is an style on the parent container.",
   "consumption_status": "layout-only",
   "values": [
     {

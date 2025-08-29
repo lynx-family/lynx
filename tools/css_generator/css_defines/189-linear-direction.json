@@ -6,7 +6,7 @@
   "version": "2.2",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `linear-direction` CSS property sets how linear items are placed in the linear container defining the main axis and the direction.",
   "compat_data": {
     "linear-direction": {
       "__compat": {

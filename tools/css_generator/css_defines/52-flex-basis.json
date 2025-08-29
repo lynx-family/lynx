@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `flex-basis` CSS property sets the initial main size of a flex item.",
   "compat_data": {
     "flex-basis": {
       "__compat": {

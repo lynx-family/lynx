@@ -6,7 +6,7 @@
   "default_value": "row nowrap",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": "flex and wrap",
+  "desc": "This property is a shorthand for the CSS properties: `flex-direction` and `flex-wrap`, specifies the direction of a flex container, as well as its wrapping behavior.",
   "compat_data": {
     "flex-flow": {
       "__compat": {

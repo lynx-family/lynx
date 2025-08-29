@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "yaoxiaopeng",
   "consumption_status": "layout-wanted",
-  "desc": "",
+  "desc": "The border-right-width CSS property sets the width of the left border of an element.",
   "is_shorthand": false
 }

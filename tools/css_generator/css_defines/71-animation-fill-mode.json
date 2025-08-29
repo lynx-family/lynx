@@ -4,7 +4,7 @@
   "type": "complex",
   "default_value": "none",
   "version": "1.0",
-  "desc": "",
+  "desc": "`animation-fill-mode` property sets how a CSS animation applies styles to its target before and after its execution.",
   "author": "liyanbo, linxiaosong",
   "consumption_status": "skip",
   "values": [

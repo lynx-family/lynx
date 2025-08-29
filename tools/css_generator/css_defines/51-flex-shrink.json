@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Defines the shrink factor of the flex element on the main axis.",
   "compat_data": {
     "flex-shrink": {
       "__compat": {

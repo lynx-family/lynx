@@ -5,7 +5,7 @@
   "default_value": "none",
   "version": "1.0",
   "author": "zhangmin",
-  "desc": "TBD",
+  "desc": "Used to set the centering alignment of the current element in the relative-layout.",
   "consumption_status": "layout-only",
   "values": [
     {

@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "liyun,linyiyi",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The border-top-right-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.",
   "is_shorthand": false
 }

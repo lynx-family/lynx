@@ -18,6 +18,6 @@
     "hidden",
     "none"
   ],
-  "desc": "",
+  "desc": "Used to set the styles of all four borders.",
   "is_shorthand": true
 }

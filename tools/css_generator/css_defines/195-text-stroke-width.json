@@ -6,6 +6,6 @@
   "version": "2.10",
   "author": "liumiao",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `text-stroke-width` property specifies the width of the text stroke.",
   "is_shorthand": false
 }

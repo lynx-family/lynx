@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "Defines the logical inline start padding of an element, which maps to a physical padding depending on the element's `direction`.",
   "compat_data": {
     "padding-inline-start": {
       "__compat": {

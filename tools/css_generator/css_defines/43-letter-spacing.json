@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `letter-spacing` CSS property sets the horizontal spacing behavior between text characters.",
   "is_shorthand": false
 }

@@ -6,6 +6,6 @@
   "consumption_status": "skip",
   "version": "2.4",
   "author": "baiqiang",
-  "desc": "",
+  "desc": "The text-indent attribute can define the indentation before the first line of text content of a text.",
   "is_shorthand": false
 }

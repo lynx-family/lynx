@@ -6,6 +6,6 @@
   "author": "liujilong",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `box-shadow` CSS property is used to add a shadow effect on the frame of the element.",
   "is_shorthand": false
 }

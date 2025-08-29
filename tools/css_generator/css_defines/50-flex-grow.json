@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `flex-grow` CSS property sets the flex grow factor, which specifies how much of the flex container's remaining space should be assigned to the flex item's main size.",
   "compat_data": {
     "flex-grow": {
       "__compat": {

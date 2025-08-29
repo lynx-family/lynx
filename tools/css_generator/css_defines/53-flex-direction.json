@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `flex-direction` CSS property sets how flex items are placed in the flex container defining the main axis and the direction.",
   "values": [
     {
       "value": "column",

@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `flex` CSS shorthand property sets how a flex item will grow or shrink to fit the space available in its flex container.",
   "compat_data": {
     "flex": {
       "__compat": {

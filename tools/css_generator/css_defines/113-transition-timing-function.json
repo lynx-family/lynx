@@ -16,6 +16,6 @@
     "square-bezier",
     "cubic-bezier"
   ],
-  "desc": "",
+  "desc": "The transition-timing-function CSS property sets how intermediate values are calculated for CSS properties being affected by a transition effect.",
   "is_shorthand": false
 }

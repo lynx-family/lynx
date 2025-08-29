@@ -18,6 +18,6 @@
     "hidden",
     "none"
   ],
-  "desc": "",
+  "desc": "Sets the style type of the bottom border of an element.",
   "is_shorthand": false
 }

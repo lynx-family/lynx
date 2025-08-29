@@ -6,6 +6,6 @@
   "version": "2.13",
   "author": "baiqiang",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `mask` CSS shorthand property hides an element (partially or fully) by masking or clipping the image at specific points.",
   "is_shorthand": true
 }

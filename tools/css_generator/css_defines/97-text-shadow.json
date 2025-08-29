@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `text-shadow` CSS property adds shadows to text.",
   "is_shorthand": false
 }

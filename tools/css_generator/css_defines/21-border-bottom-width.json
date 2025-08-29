@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "yaoxiaopeng",
   "consumption_status": "layout-wanted",
-  "desc": "",
+  "desc": "Used to set the width of the bottom border.",
   "is_shorthand": false
 }

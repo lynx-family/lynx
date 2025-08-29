@@ -15,7 +15,11 @@
         "<ending-shape>": "circle | ellipse",
         "<size>": "closest-side | farthest-side | closest-corner | farthest-corner | <length> | <length-percentage>{2}",
         "<position>": "[left | center |right] || [top | center | bottom] | [left | center | right | <length-percentage> ] [top | center | bottom | <length-percentage>]? | [[left | right] <length-percentage>] && [[top | bottom] <length=percentage>]",
-        "<color-stop-list>": "<linear-color-stop>#)",
-        "<linear-color-stop>": "<color> <percentage>?"
+        "<color-stop-list>": "<linear-color-stop>#",
+        "<linear-color-stop>": "<color> <percentage>?",
+        "<color>": "<hex-color> | <color-function> | <named-color> | transparent",
+        "<color-function>": "<rgb()> | <rgba()> | <hsl()> | <hsla()>",
+        "<hex-color>": "string",
+        "<named-color>": "string"
     }
 }

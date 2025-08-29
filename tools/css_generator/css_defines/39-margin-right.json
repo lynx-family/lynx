@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `margin-right` CSS property sets the margin area on the right of an element.",
   "compat_data": {
     "margin-right": {
       "__compat": {

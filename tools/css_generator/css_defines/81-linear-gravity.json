@@ -5,7 +5,7 @@
   "default_value": "none",
   "version": "1.0",
   "author": "zhangmin",
-  "desc": "",
+  "desc": "The CSS `linear-gravity` property defines how distributes space between and around content items along the main-axis of a linear container.",
   "consumption_status": "layout-only",
   "values": [
     {

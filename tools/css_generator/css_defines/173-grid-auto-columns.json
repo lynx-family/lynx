@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `grid-auto-columns` CSS property specifies the size of an implicitly-created grid column track or pattern of tracks.",
   "compat_data": {
     "grid-auto-columns": {
       "__compat": {

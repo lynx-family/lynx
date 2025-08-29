@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "liyun,linyiyi",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "Used to add a rounded border to the bottom-right corner.",
   "is_shorthand": false
 }

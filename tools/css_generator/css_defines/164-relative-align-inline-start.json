@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "wangzhixuan.0821",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to `id`.",
   "compat_data": {
     "relative-align-inline-start": {
       "__compat": {

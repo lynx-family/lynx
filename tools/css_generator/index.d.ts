@@ -12,31 +12,142 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/top
    */
   top?: 'auto' | (string & {}) | 0 | undefined;
-  borderTopColor?: (string & {}) | number | undefined;
+  /**
+   * Used to set the color of the top border.
+   *
+   * **Syntax**: `<color>`
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top-color
+   */
+  borderTopColor?: 'transparent' | (string & {}) | undefined;
+  /**
+   * The `background-origin` CSS property sets the background's origin: from the border start, inside the border, or inside the padding.
+   *
+   * @see https://lynxjs.org/api/css/properties/background-origin
+   */
   backgroundOrigin?: (string & {}) | number | undefined;
+  /**
+   * The `background-repeat` CSS property sets how background images are repeated.
+   *
+   * @see https://lynxjs.org/api/css/properties/background-repeat
+   */
   backgroundRepeat?: (string & {}) | number | undefined;
+  /**
+   * The `background-size` CSS property sets the size of the element's background image.
+   *
+   * @see https://lynxjs.org/api/css/properties/background-size
+   */
   backgroundSize?: (string & {}) | number | undefined;
+  /**
+   * The border shorthand CSS property sets an element's border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border
+   */
   border?: (string & {}) | number | undefined;
+  /**
+   * The visibility CSS property shows or hides an element without changing the layout of a document.
+   *
+   * @see https://lynxjs.org/api/css/properties/visibility
+   */
   visibility?: (string & {}) | number | undefined;
+  /**
+   * The border-right shorthand CSS property sets all the properties of an element's right border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-right
+   */
   borderRight?: (string & {}) | number | undefined;
+  /**
+   * A shorthand property for setting the left border styles of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-left
+   */
   borderLeft?: (string & {}) | number | undefined;
+  /**
+   * The border-top shorthand CSS property sets all the properties of an element's right border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top
+   */
   borderTop?: (string & {}) | number | undefined;
+  /**
+   * Used to set the styles related to the bottom border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom
+   */
   borderBottom?: (string & {}) | number | undefined;
+  /**
+   * The transition CSS property is a shorthand property for `transition-property`, `transition-duration`, `transition-timing-function`, and `transition-delay`.
+   *
+   * @see https://lynxjs.org/api/css/properties/transition
+   */
   transition?: (string & {}) | number | undefined;
-  borderBottomColor?: (string & {}) | number | undefined;
+  /**
+   * Sets the bottom border color of an element.
+   *
+   * **Syntax**: `<color>`
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom-color
+   */
+  borderBottomColor?: 'transparent' | (string & {}) | undefined;
+  /**
+   * The transition-property CSS property sets the CSS properties to which a transition effect should be applied.
+   *
+   * @see https://lynxjs.org/api/css/properties/transition-property
+   */
   transitionProperty?: (string & {}) | number | undefined;
+  /**
+   * The transition-duration CSS property sets the length of time a transition animation should take to complete.
+   *
+   * @see https://lynxjs.org/api/css/properties/transition-duration
+   */
   transitionDuration?: (string & {}) | number | undefined;
+  /**
+   * The transition-delay CSS property specifies the duration to wait before starting a property's transition effect when its value changes.
+   *
+   * @see https://lynxjs.org/api/css/properties/transition-delay
+   */
   transitionDelay?: (string & {}) | number | undefined;
+  /**
+   * The transition-timing-function CSS property sets how intermediate values are calculated for CSS properties being affected by a transition effect.
+   *
+   * @see https://lynxjs.org/api/css/properties/transition-timing-function
+   */
   transitionTimingFunction?: (string & {}) | number | undefined;
   content?: (string & {}) | number | undefined;
+  /**
+   * The border-left-style CSS property sets the line style of an element's left `border`.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-left-style
+   */
   borderLeftStyle?: (string & {}) | number | undefined;
+  /**
+   * The border-right-style CSS property sets the line style of an element's right `border`.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-right-style
+   */
   borderRightStyle?: (string & {}) | number | undefined;
+  /**
+   * The `border-top-style` CSS property sets the line style of an element's top `border`.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top-style
+   */
   borderTopStyle?: (string & {}) | number | undefined;
+  /**
+   * Sets the style type of the bottom border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom-style
+   */
   borderBottomStyle?: (string & {}) | number | undefined;
   implicitAnimation?: (string & {}) | number | undefined;
-  borderRadius?: (string & {}) | number | undefined;
   /**
-   * The `overflow-x` property specifies whether to clip the content when it overflows at the left and right edges.
+   * The border-radius CSS property rounds the corners of an element's outer border edge.
+   *
+   * **Syntax**: `<length-percentage [0,∞]>{1,4} [ / <length-percentage [0,∞]>{1,4} ]?`
+   *
+   * @see https://lynxjs.org/api/css/properties/border-radius
+   */
+  borderRadius?: (string & {}) | 0 | undefined;
+  /**
+   * The overflow-x property specifies whether to clip the content when it overflows at the left and right edges.
    *
    * **Syntax**: `<overflow-block>`
    *
@@ -44,19 +155,34 @@ export interface Properties {
    */
   overflowX?: 'hidden' | 'visible' | undefined;
   /**
-   * The `overflow-y` property specifies whether to clip the content when it overflows at the top and bottom edges.
+   * The overflow-y property specifies whether to clip the content when it overflows at the top and bottom edges.
    *
    * **Syntax**: `<overflow-block>`
    *
    * @see https://lynxjs.org/api/css/properties/overflow-y
    */
   overflowY?: 'hidden' | 'visible' | undefined;
+  /**
+   * Used to specify how to break lines within a word.
+   *
+   * @see https://lynxjs.org/api/css/properties/word-break
+   */
   wordBreak?: (string & {}) | number | undefined;
+  /**
+   * The `background-clip` CSS property sets whether an element's background extends underneath its border box, padding box, or content box.
+   *
+   * @see https://lynxjs.org/api/css/properties/background-clip
+   */
   backgroundClip?: (string & {}) | number | undefined;
   outline?: (string & {}) | number | undefined;
   outlineColor?: (string & {}) | number | undefined;
   outlineStyle?: (string & {}) | number | undefined;
   outlineWidth?: (string & {}) | number | undefined;
+  /**
+   * The vertical-align property sets vertical alignment of inline element.
+   *
+   * @see https://lynxjs.org/api/css/properties/vertical-align
+   */
   verticalAlign?: (string & {}) | number | undefined;
   /**
    * auto
@@ -64,26 +190,86 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/caret-color
    */
   caretColor?: (string & {}) | number | undefined;
+  /**
+   * The border-top-left-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top-left-radius
+   */
   borderTopLeftRadius?: (string & {}) | number | undefined;
   /**
-   * lynx layout direction
+   * The `direction` CSS property sets the direction of text.
    *
    * @see https://lynxjs.org/api/css/properties/direction
    */
   direction?: (string & {}) | number | undefined;
+  /**
+   * Used to set the number of sibling elements in the relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-id
+   */
   relativeId?: (string & {}) | number | undefined;
+  /**
+   * In relative-layout, specifies that the current element is aligned with the top edge of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-top
+   */
   relativeAlignTop?: (string & {}) | number | undefined;
+  /**
+   * In relative-layout, specifies that the current element is aligned with the right edge of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-right
+   */
   relativeAlignRight?: (string & {}) | number | undefined;
+  /**
+   * In relative-layout, specifies that the current element is aligned with the bottom edge of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-bottom
+   */
   relativeAlignBottom?: (string & {}) | number | undefined;
+  /**
+   * In relative-layout, specifies that the current element is aligned with the left edge of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-left
+   */
   relativeAlignLeft?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the top of the sibling element specified corresponding to `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-top-of
+   */
   relativeTopOf?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the right of the sibling element specified corresponding to `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-right-of
+   */
   relativeRightOf?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the below of the sibling element specified corresponding to `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-bottom-of
+   */
   relativeBottomOf?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the left of the sibling element specified corresponding to `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-left-of
+   */
   relativeLeftOf?: (string & {}) | number | undefined;
+  /**
+   * Used to add a rounded border to the bottom-left corner.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom-left-radius
+   */
   borderBottomLeftRadius?: (string & {}) | number | undefined;
+  /**
+   * Used to set typesetting acceleration in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-layout-once
+   */
   relativeLayoutOnce?: (string & {}) | number | undefined;
   /**
-   * TBD
+   * Used to set the centering alignment of the current element in the relative-layout.
    *
    * @see https://lynxjs.org/api/css/properties/relative-center
    */
@@ -113,78 +299,323 @@ export interface Properties {
    */
   resumeTransitionName?: (string & {}) | number | undefined;
   /**
-   * flex and wrap
+   * This property is a shorthand for the CSS properties: `flex-direction` and `flex-wrap`, specifies the direction of a flex container, as well as its wrapping behavior.
    *
    * @see https://lynxjs.org/api/css/properties/flex-flow
    */
   flexFlow?: (string & {}) | number | undefined;
+  /**
+   * The z-index CSS property sets the z-order of an element and its descendants or flex items.
+   *
+   * @see https://lynxjs.org/api/css/properties/z-index
+   */
   zIndex?: (string & {}) | number | undefined;
   textDecorationColor?: (string & {}) | number | undefined;
   /**
-   * default linear layout gravity for children
+   * Set the position of the child element on the cross axis of the parent container in linear layout, is an style on the parent container.
    *
    * @see https://lynxjs.org/api/css/properties/linear-cross-gravity
    */
   linearCrossGravity?: (string & {}) | number | undefined;
+  /**
+   * The border-top-right-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top-right-radius
+   */
   borderTopRightRadius?: (string & {}) | number | undefined;
+  /**
+   * The `margin-inline-start` CSS property defines the logical inline start margin of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-inline-start
+   */
   marginInlineStart?: (string & {}) | number | undefined;
+  /**
+   * The `margin-inline-end` CSS property defines the logical inline end margin of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-inline-end
+   */
   marginInlineEnd?: (string & {}) | number | undefined;
+  /**
+   * Defines the logical inline start padding of an element, which maps to a physical padding depending on the element's `direction`.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-inline-start
+   */
   paddingInlineStart?: (string & {}) | number | undefined;
+  /**
+   * Defines the logical inline end padding of an element, which maps to a physical padding depending on the element's `direction`.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-inline-end
+   */
   paddingInlineEnd?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-start-color` CSS property defines the color of the logical inline start border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-start-color
+   */
   borderInlineStartColor?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-end-color` CSS property defines the color of the logical inline-end border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-end-color
+   */
   borderInlineEndColor?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-start-width` CSS property defines the width of the logical inline-start border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-start-width
+   */
   borderInlineStartWidth?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-end-width` CSS property defines the width of the logical inline-end border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-end-width
+   */
   borderInlineEndWidth?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-start-style` CSS property defines the style of the logical inline start border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-start-style
+   */
   borderInlineStartStyle?: (string & {}) | number | undefined;
+  /**
+   * The `border-inline-end-style` CSS property defines the style of the logical inline end border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-inline-end-style
+   */
   borderInlineEndStyle?: (string & {}) | number | undefined;
+  /**
+   * Used to add a rounded border to the bottom-right corner.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom-right-radius
+   */
   borderBottomRightRadius?: (string & {}) | number | undefined;
+  /**
+   * The `border-start-start-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-start-start-radius
+   */
   borderStartStartRadius?: (string & {}) | number | undefined;
+  /**
+   * The `border-end-start-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-end-start-radius
+   */
   borderEndStartRadius?: (string & {}) | number | undefined;
+  /**
+   * The `border-start-end-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-start-end-radius
+   */
   borderStartEndRadius?: (string & {}) | number | undefined;
+  /**
+   * The `border-end-end-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-end-end-radius
+   */
   borderEndEndRadius?: (string & {}) | number | undefined;
+  /**
+   * Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-inline-start
+   */
   relativeAlignInlineStart?: (string & {}) | number | undefined;
+  /**
+   * Specifies that the current element is aligned with the left/right edges of the parent or sibling element corresponding to `id`.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-align-inline-end
+   */
   relativeAlignInlineEnd?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the left/right of the sibling element corresponding to the specified `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-inline-start-of
+   */
   relativeInlineStartOf?: (string & {}) | number | undefined;
+  /**
+   * The current element is to the left/right of the sibling element corresponding to the specified `id` in relative-layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/relative-inline-end-of
+   */
   relativeInlineEndOf?: (string & {}) | number | undefined;
+  /**
+   * The `inset-inline-start` CSS property defines the logical inline start inset of an element, which maps to a physical offset depstarting on the element's directionality.
+   *
+   * @see https://lynxjs.org/api/css/properties/inset-inline-start
+   */
   insetInlineStart?: (string & {}) | number | undefined;
+  /**
+   * The `inset-inline-end` CSS property defines the logical inline end inset of an element, which maps to a physical offset depending on the element's directionality.
+   *
+   * @see https://lynxjs.org/api/css/properties/inset-inline-end
+   */
   insetInlineEnd?: (string & {}) | number | undefined;
+  /**
+   * A shorthand property for setting the width of all four borders of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-width
+   */
   borderWidth?: (string & {}) | number | undefined;
+  /**
+   * The `mask-image` CSS property sets the image that is used as mask layer for an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/mask-image
+   */
   maskImage?: (string & {}) | number | undefined;
+  /**
+   * The `grid-template-columns` CSS property defines track sizing functions of the grid columns.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-template-columns
+   */
   gridTemplateColumns?: (string & {}) | number | undefined;
+  /**
+   * The `grid-template-rows` CSS property defines track sizing functions of the grid rows.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-template-rows
+   */
   gridTemplateRows?: (string & {}) | number | undefined;
+  /**
+   * The `grid-auto-columns` CSS property specifies the size of an implicitly-created grid column track or pattern of tracks.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-auto-columns
+   */
   gridAutoColumns?: (string & {}) | number | undefined;
+  /**
+   * The `grid-auto-rows` CSS property specifies the size of an implicitly-created grid row track or pattern of tracks.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-auto-rows
+   */
   gridAutoRows?: (string & {}) | number | undefined;
+  /**
+   * Contributes a grid span to the grid item's placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-column-span
+   */
   gridColumnSpan?: (string & {}) | number | undefined;
+  /**
+   * Contributes a grid span to the grid item's placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-row-span
+   */
   gridRowSpan?: (string & {}) | number | undefined;
+  /**
+   * The `grid-column-start` CSS property specifies a grid item's start position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-column-start
+   */
   gridColumnStart?: (string & {}) | number | undefined;
+  /**
+   * The `grid-column-end` CSS property specifies a grid item's end position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-column-end
+   */
   gridColumnEnd?: (string & {}) | number | undefined;
+  /**
+   * The `grid-row-start` CSS property specifies a grid item's start position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-row-start
+   */
   gridRowStart?: (string & {}) | number | undefined;
+  /**
+   * Used to set the width of the left border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-left-width
+   */
   borderLeftWidth?: (string & {}) | number | undefined;
+  /**
+   * The `grid-row-end` CSS property specifies a grid item's end position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-row-end
+   */
   gridRowEnd?: (string & {}) | number | undefined;
   gridColumnGap?: (string & {}) | number | undefined;
   gridRowGap?: (string & {}) | number | undefined;
+  /**
+   * The CSS `justify-items` property defines the default `justify-self` for all items of the box, giving them all a default way of justifying each box along the appropriate axis.
+   *
+   * @see https://lynxjs.org/api/css/properties/justify-items
+   */
   justifyItems?: (string & {}) | number | undefined;
+  /**
+   * The CSS `justify-self` property sets the way a box is justified inside its alignment container along the appropriate axis.
+   *
+   * @see https://lynxjs.org/api/css/properties/justify-self
+   */
   justifySelf?: (string & {}) | number | undefined;
+  /**
+   * The `grid-auto-flow` CSS property controls how the auto-placement algorithm works, specifying exactly how auto-placed items get flowed into the grid.
+   *
+   * @see https://lynxjs.org/api/css/properties/grid-auto-flow
+   */
   gridAutoFlow?: (string & {}) | number | undefined;
   /**
-   * The filter CSS property applies graphical effects like blur or color shift to an element. Filters are commonly used to adjust the rendering of images, backgrounds, and borders.
+   * The `filter` CSS property applies graphical effects like blur or color shift to an element.
    *
    * @see https://lynxjs.org/api/css/properties/filter
    */
   filter?: (string & {}) | number | undefined;
   listMainAxisGap?: (string & {}) | number | undefined;
   listCrossAxisGap?: (string & {}) | number | undefined;
+  /**
+   * The `linear-direction` CSS property sets how linear items are placed in the linear container defining the main axis and the direction.
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-direction
+   */
   linearDirection?: (string & {}) | number | undefined;
+  /**
+   * The border-right-width CSS property sets the width of the left border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-right-width
+   */
   borderRightWidth?: (string & {}) | number | undefined;
+  /**
+   * The perspective CSS property determines the distance between the z=0 plane and the user in order to give a 3D-positioned element some perspective.
+   *
+   * @see https://lynxjs.org/api/css/properties/perspective
+   */
   perspective?: (string & {}) | number | undefined;
   cursor?: (string & {}) | number | undefined;
+  /**
+   * The text-indent attribute can define the indentation before the first line of text content of a text.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-indent
+   */
   textIndent?: (string & {}) | number | undefined;
+  /**
+   * The `clip-path` CSS property creates a clipping region that sets what part of an element should be shown.
+   *
+   * @see https://lynxjs.org/api/css/properties/clip-path
+   */
   clipPath?: (string & {}) | number | undefined;
+  /**
+   * The `text-stroke` CSS property specifies the width and color of strokes for text characters.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-stroke
+   */
   textStroke?: (string & {}) | number | undefined;
+  /**
+   * The `text-stroke-width` property specifies the width of the text stroke.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-stroke-width
+   */
   textStrokeWidth?: (string & {}) | number | undefined;
+  /**
+   * `text-stroke-color` specifies the stroke color of characters of text.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-stroke-color
+   */
   textStrokeColor?: (string & {}) | number | undefined;
+  /**
+   * The `-x-auto-font-size` property sets whether to enable text adaptive font size adjustment, minimum text font size, maximum text font size, and font size adjustment granularity value.
+   *
+   * @see https://lynxjs.org/api/css/properties/-x-auto-font-size
+   */
   XAutoFontSize?: (string & {}) | number | undefined;
   XAutoFontSizePresetSizes?: (string & {}) | number | undefined;
+  /**
+   * The `mask` CSS shorthand property hides an element (partially or fully) by masking or clipping the image at specific points.
+   *
+   * @see https://lynxjs.org/api/css/properties/mask
+   */
   mask?: (string & {}) | number | undefined;
   /**
    * The `left` CSS property participates in specifying the horizontal position of a positioned element.
@@ -194,21 +625,56 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/left
    */
   left?: 'auto' | (string & {}) | 0 | undefined;
+  /**
+   * The border-top-width CSS property sets the width of the left border of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-top-width
+   */
   borderTopWidth?: (string & {}) | number | undefined;
   maskRepeat?: (string & {}) | number | undefined;
   maskPosition?: (string & {}) | number | undefined;
   maskClip?: (string & {}) | number | undefined;
   maskOrigin?: (string & {}) | number | undefined;
   maskSize?: (string & {}) | number | undefined;
+  /**
+   * The `gap` CSS shorthand property sets the gaps (gutters) between rows and columns in flexible box layout and grid layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/gap
+   */
   gap?: (string & {}) | number | undefined;
+  /**
+   * The `column-gap`/`grid-column-gap` CSS property sets the size of the gap (gutter) between an element's columns in flexible box layout and grid layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/column-gap
+   */
   columnGap?: (string & {}) | number | undefined;
+  /**
+   * The `row-gap`/`grid-row-gap` CSS property sets the size of the gap (gutter) between an element's rows in flexible box layout and grid layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/row-gap
+   */
   rowGap?: (string & {}) | number | undefined;
   imageRendering?: (string & {}) | number | undefined;
   hyphens?: (string & {}) | number | undefined;
+  /**
+   * Used to set the width of the bottom border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-bottom-width
+   */
   borderBottomWidth?: (string & {}) | number | undefined;
   XAppRegion?: (string & {}) | number | undefined;
   XAnimationColorInterpolation?: (string & {}) | number | undefined;
+  /**
+   * The `-x-handle-size` property specifies the size of the floating marker when copying text, only valid in the selection pseudo-element.
+   *
+   * @see https://lynxjs.org/api/css/properties/-x-handle-size
+   */
   XHandleSize?: (string & {}) | number | undefined;
+  /**
+   * The `-x-handle-color` property specifies the color of the floating marker when copying text, only valid in the selection pseudo-element.
+   *
+   * @see https://lynxjs.org/api/css/properties/-x-handle-color
+   */
   XHandleColor?: (string & {}) | number | undefined;
   offsetDistance?: (string & {}) | number | undefined;
   offsetPath?: (string & {}) | number | undefined;
@@ -216,25 +682,60 @@ export interface Properties {
   fontVariationSettings?: (string & {}) | number | undefined;
   fontFeatureSettings?: (string & {}) | number | undefined;
   fontOpticalSizing?: (string & {}) | number | undefined;
+  /**
+   * The `color` CSS property sets the foreground `color value` of an element's text.
+   *
+   * @see https://lynxjs.org/api/css/properties/color
+   */
   color?: (string & {}) | number | undefined;
   XPlaceholderColor?: (string & {}) | number | undefined;
   XPlaceholderFontFamily?: (string & {}) | number | undefined;
   XPlaceholderFontSize?: (string & {}) | number | undefined;
   XPlaceholderFontWeight?: (string & {}) | number | undefined;
   XPlaceholderFontStyle?: (string & {}) | number | undefined;
+  /**
+   * The opacity CSS property sets the opacity of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/opacity
+   */
   opacity?: (string & {}) | number | undefined;
+  /**
+   * In Lynx, the `display` only determines the internal display type of the element (how to layout the child elements), and does not determine the external display type (whether the element is considered a block-level element or an inline-level element).
+   *
+   * @see https://lynxjs.org/api/css/properties/display
+   */
   display?: (string & {}) | number | undefined;
   /**
-   * The `overflow` property specifies whether to clip the content when the content of an element is too big.
+   * The overflow property specifies whether to clip the content when the content of an element is too big.
    *
    * **Syntax**: `<overflow-block>{1,2}`
    *
    * @see https://lynxjs.org/api/css/properties/overflow
    */
   overflow?: 'hidden' | 'visible' | (string & {}) | undefined;
+  /**
+   * The `height` CSS property specifies the height of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/height
+   */
   height?: (string & {}) | number | undefined;
+  /**
+   * The `width` CSS property specifies the width of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/width
+   */
   width?: (string & {}) | number | undefined;
+  /**
+   * To specify max width of a view.
+   *
+   * @see https://lynxjs.org/api/css/properties/max-width
+   */
   maxWidth?: (string & {}) | number | undefined;
+  /**
+   * To specify min width of a view.
+   *
+   * @see https://lynxjs.org/api/css/properties/min-width
+   */
   minWidth?: (string & {}) | number | undefined;
   /**
    * The `right` CSS property participates in specifying the horizontal position of a positioned element.
@@ -244,15 +745,65 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/right
    */
   right?: 'auto' | (string & {}) | 0 | undefined;
+  /**
+   * To specify max height of a view.
+   *
+   * @see https://lynxjs.org/api/css/properties/max-height
+   */
   maxHeight?: (string & {}) | number | undefined;
+  /**
+   * To specify min height of a view.
+   *
+   * @see https://lynxjs.org/api/css/properties/min-height
+   */
   minHeight?: (string & {}) | number | undefined;
+  /**
+   * Sets the padding area on all four sides of an element at once.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding
+   */
   padding?: (string & {}) | number | undefined;
+  /**
+   * Sets the width of the padding area on the left of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-left
+   */
   paddingLeft?: (string & {}) | number | undefined;
+  /**
+   * Sets the width of the padding area on the right of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-right
+   */
   paddingRight?: (string & {}) | number | undefined;
+  /**
+   * Sets the height of the padding area on the top of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-top
+   */
   paddingTop?: (string & {}) | number | undefined;
+  /**
+   * Sets the height of the padding area on the bottom of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/padding-bottom
+   */
   paddingBottom?: (string & {}) | number | undefined;
+  /**
+   * The margin CSS shorthand property sets the margin area on all four sides of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin
+   */
   margin?: (string & {}) | number | undefined;
+  /**
+   * The `margin-left` CSS property sets the margin area on the left of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-left
+   */
   marginLeft?: (string & {}) | number | undefined;
+  /**
+   * The `margin-right` CSS property sets the margin area on the right of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-right
+   */
   marginRight?: (string & {}) | number | undefined;
   /**
    * The `bottom` CSS property participates in specifying the vertical position.
@@ -262,52 +813,285 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/bottom
    */
   bottom?: 'auto' | (string & {}) | 0 | undefined;
+  /**
+   * The `margin-top` CSS property sets the margin area on the top of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-top
+   */
   marginTop?: (string & {}) | number | undefined;
+  /**
+   * The `margin-bottom` CSS property sets the margin area on the bottom of an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/margin-bottom
+   */
   marginBottom?: (string & {}) | number | undefined;
+  /**
+   * `white-space`CSS property sets how white space inside an element is handled.。.
+   *
+   * @see https://lynxjs.org/api/css/properties/white-space
+   */
   whiteSpace?: (string & {}) | number | undefined;
+  /**
+   * The `letter-spacing` CSS property sets the horizontal spacing behavior between text characters.
+   *
+   * @see https://lynxjs.org/api/css/properties/letter-spacing
+   */
   letterSpacing?: (string & {}) | number | undefined;
+  /**
+   * The `text-align` CSS property sets the horizontal alignment of the inline-level content inside a block element.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-align
+   */
   textAlign?: (string & {}) | number | undefined;
+  /**
+   * The `line-height` CSS property sets the height of a line box.
+   *
+   * @see https://lynxjs.org/api/css/properties/line-height
+   */
   lineHeight?: (string & {}) | number | undefined;
+  /**
+   * The `text-overflow` CSS property sets how hidden overflow content is signaled to users.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-overflow
+   */
   textOverflow?: (string & {}) | number | undefined;
+  /**
+   * `font-size` CSS property sets the size of the font.
+   *
+   * @see https://lynxjs.org/api/css/properties/font-size
+   */
   fontSize?: (string & {}) | number | undefined;
+  /**
+   * The `font-weight` CSS property sets the weight (or boldness) of the font.
+   *
+   * @see https://lynxjs.org/api/css/properties/font-weight
+   */
   fontWeight?: (string & {}) | number | undefined;
+  /**
+   * The `flex` CSS shorthand property sets how a flex item will grow or shrink to fit the space available in its flex container.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex
+   */
   flex?: (string & {}) | number | undefined;
-  position?: (string & {}) | number | undefined;
+  /**
+   * The `position` CSS property sets how an element is positioned in a document.
+   *
+   * **Syntax**: `absolute | relative | fixed | sticky`
+   *
+   * @see https://lynxjs.org/api/css/properties/position
+   */
+  position?: 'absolute' | 'fixed' | 'relative' | 'sticky' | undefined;
+  /**
+   * The `flex-grow` CSS property sets the flex grow factor, which specifies how much of the flex container's remaining space should be assigned to the flex item's main size.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-grow
+   */
   flexGrow?: (string & {}) | number | undefined;
+  /**
+   * Defines the shrink factor of the flex element on the main axis.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-shrink
+   */
   flexShrink?: (string & {}) | number | undefined;
+  /**
+   * The `flex-basis` CSS property sets the initial main size of a flex item.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-basis
+   */
   flexBasis?: (string & {}) | number | undefined;
+  /**
+   * The `flex-direction` CSS property sets how flex items are placed in the flex container defining the main axis and the direction.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-direction
+   */
   flexDirection?: (string & {}) | number | undefined;
+  /**
+   * The `flex-wrap` CSS property sets whether flex items are forced onto one line or can wrap onto multiple lines.
+   *
+   * @see https://lynxjs.org/api/css/properties/flex-wrap
+   */
   flexWrap?: (string & {}) | number | undefined;
+  /**
+   * `align-items` property sets the `align-self` value on all direct children as a group.
+   *
+   * @see https://lynxjs.org/api/css/properties/align-items
+   */
   alignItems?: (string & {}) | number | undefined;
+  /**
+   * In flex and linear layout, `align-self` will align the elements in the current container on the cross axis.
+   *
+   * @see https://lynxjs.org/api/css/properties/align-self
+   */
   alignSelf?: (string & {}) | number | undefined;
+  /**
+   * In flexible box layout, the `align-content` property defines how flex lines are aligned along the cross-axis.
+   *
+   * @see https://lynxjs.org/api/css/properties/align-content
+   */
   alignContent?: (string & {}) | number | undefined;
+  /**
+   * The CSS `justify-content` property defines how distributes space between and around content items along the main-axis of a flexible box layout, linear container, and the inline axis of a grid layout container.
+   *
+   * @see https://lynxjs.org/api/css/properties/justify-content
+   */
   justifyContent?: (string & {}) | number | undefined;
+  /**
+   * The `background` shorthand CSS property sets all background style properties at once, such as `background-clip`,`background-color`,`background-image`,`background-origin`,`background-position`,`background-repeat`,`background-size`.
+   *
+   * @see https://lynxjs.org/api/css/properties/background
+   */
   background?: (string & {}) | number | undefined;
-  boxSizing?: (string & {}) | number | undefined;
+  /**
+   * The `box-sizing` property defines whether fixed sizes (such as `<length>`s and `<percentage>`s) are assigned to the content box or to the border box.
+   *
+   * **Syntax**: `border-box | content-box | auto`
+   *
+   * @see https://lynxjs.org/api/css/properties/box-sizing
+   */
+  boxSizing?: 'auto' | 'border-box' | 'content-box' | undefined;
+  /**
+   * The `border-color` shorthand CSS property sets the color (`border-top-color`, `border-right-color`, `border-bottom-color`, `border-left-color`) of an element's border.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-color
+   */
   borderColor?: (string & {}) | number | undefined;
+  /**
+   * The `font-family` CSS property specifies a prioritized list of one or more font family names and/or generic family names for the selected element.
+   *
+   * @see https://lynxjs.org/api/css/properties/font-family
+   */
   fontFamily?: (string & {}) | number | undefined;
+  /**
+   * Set the font style.
+   *
+   * @see https://lynxjs.org/api/css/properties/font-style
+   */
   fontStyle?: (string & {}) | number | undefined;
+  /**
+   * The transform CSS property lets you rotate, scale, skew, or translate an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/transform
+   */
   transform?: (string & {}) | number | undefined;
+  /**
+   * The animation property is a shorthand property for animation-name, animation-duration, animation-timing-function, animation-delay, animation-iteration-count, animation-direction, animation-fill-mode, and animation-play-state.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation
+   */
   animation?: (string & {}) | number | undefined;
+  /**
+   * `animation-name` property specifies a list of animations to apply to an element.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-name
+   */
   animationName?: (string & {}) | number | undefined;
+  /**
+   * `animation-duration` property specifies the length of time that an animation should take to complete one cycle.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-duration
+   */
   animationDuration?: (string & {}) | number | undefined;
+  /**
+   * `animation-timing-function` property specifies how an animation progresses through each cycle.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-timing-function
+   */
   animationTimingFunction?: (string & {}) | number | undefined;
+  /**
+   * `animation-delay` property specifies the delay before the animation starts playing.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-delay
+   */
   animationDelay?: (string & {}) | number | undefined;
+  /**
+   * `animation-iteration-count` property specifies the number of times an animation should be played.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-iteration-count
+   */
   animationIterationCount?: (string & {}) | number | undefined;
-  backgroundColor?: (string & {}) | number | undefined;
+  /**
+   * The `background-color` CSS property sets the background color of an element.
+   *
+   * **Syntax**: `<color>`
+   *
+   * @see https://lynxjs.org/api/css/properties/background-color
+   */
+  backgroundColor?: 'transparent' | (string & {}) | undefined;
+  /**
+   * `animation-direction` property specifies whether the animation should play in reverse.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-direction
+   */
   animationDirection?: (string & {}) | number | undefined;
+  /**
+   * `animation-fill-mode` property sets how a CSS animation applies styles to its target before and after its execution.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-fill-mode
+   */
   animationFillMode?: (string & {}) | number | undefined;
+  /**
+   * `animation-play-state` property specifies whether an animation is running or paused.
+   *
+   * @see https://lynxjs.org/api/css/properties/animation-play-state
+   */
   animationPlayState?: (string & {}) | number | undefined;
   lineSpacing?: (string & {}) | number | undefined;
+  /**
+   * Used to set the styles of all four borders.
+   *
+   * @see https://lynxjs.org/api/css/properties/border-style
+   */
   borderStyle?: (string & {}) | number | undefined;
+  /**
+   * The `order` CSS property sets the order to lay out an item in container.
+   *
+   * @see https://lynxjs.org/api/css/properties/order
+   */
   order?: (string & {}) | number | undefined;
+  /**
+   * The `box-shadow` CSS property is used to add a shadow effect on the frame of the element.
+   *
+   * @see https://lynxjs.org/api/css/properties/box-shadow
+   */
   boxShadow?: (string & {}) | number | undefined;
+  /**
+   * The transform-origin CSS property sets the origin for an element's transformations.
+   *
+   * @see https://lynxjs.org/api/css/properties/transform-origin
+   */
   transformOrigin?: (string & {}) | number | undefined;
   linearOrientation?: (string & {}) | number | undefined;
+  /**
+   * Child element's weight sum in linear.
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-weight-sum
+   */
   linearWeightSum?: (string & {}) | number | undefined;
-  borderLeftColor?: (string & {}) | number | undefined;
+  /**
+   * Used to set the color of the left border.
+   *
+   * **Syntax**: `<color>`
+   *
+   * @see https://lynxjs.org/api/css/properties/border-left-color
+   */
+  borderLeftColor?: 'transparent' | (string & {}) | undefined;
+  /**
+   * Child element's weight in linear.
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-weight
+   */
   linearWeight?: (string & {}) | number | undefined;
+  /**
+   * The CSS `linear-gravity` property defines how distributes space between and around content items along the main-axis of a linear container.
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-gravity
+   */
   linearGravity?: (string & {}) | number | undefined;
+  /**
+   * The position of the child element in the linear container, perpendicular to the layout direction, is a property of the child element's layout, similar to `align-self` in flexible box layout.
+   *
+   * @see https://lynxjs.org/api/css/properties/linear-layout-gravity
+   */
   linearLayoutGravity?: (string & {}) | number | undefined;
   layoutAnimationCreateDuration?: (string & {}) | number | undefined;
   layoutAnimationCreateTimingFunction?: (string & {}) | number | undefined;
@@ -316,14 +1100,36 @@ export interface Properties {
   layoutAnimationDeleteDuration?: (string & {}) | number | undefined;
   layoutAnimationDeleteTimingFunction?: (string & {}) | number | undefined;
   layoutAnimationDeleteDelay?: (string & {}) | number | undefined;
-  borderRightColor?: (string & {}) | number | undefined;
+  /**
+   * Used to set the color of the right border.
+   *
+   * **Syntax**: `<color>`
+   *
+   * @see https://lynxjs.org/api/css/properties/border-right-color
+   */
+  borderRightColor?: 'transparent' | (string & {}) | undefined;
   layoutAnimationDeleteProperty?: (string & {}) | number | undefined;
   layoutAnimationUpdateDuration?: (string & {}) | number | undefined;
   layoutAnimationUpdateTimingFunction?: (string & {}) | number | undefined;
   layoutAnimationUpdateDelay?: (string & {}) | number | undefined;
   adaptFontSize?: (string & {}) | number | undefined;
+  /**
+   * The `aspect-ratio` CSS property sets a preferred aspect-ratio for the box, which will be used in the calculation of auto sizes and some other layout functions.
+   *
+   * @see https://lynxjs.org/api/css/properties/aspect-ratio
+   */
   aspectRatio?: (string & {}) | number | undefined;
+  /**
+   * The `text-decoration` shorthand CSS property sets the appearance of decorative lines on text.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-decoration
+   */
   textDecoration?: (string & {}) | number | undefined;
+  /**
+   * The `text-shadow` CSS property adds shadows to text.
+   *
+   * @see https://lynxjs.org/api/css/properties/text-shadow
+   */
   textShadow?: (string & {}) | number | undefined;
   /**
    * The `background-image` CSS property sets one or more background images on an element.
@@ -333,5 +1139,10 @@ export interface Properties {
    * @see https://lynxjs.org/api/css/properties/background-image
    */
   backgroundImage?: 'none' | (string & {}) | undefined;
+  /**
+   * The `background-position` CSS property sets the initial position for each background image.
+   *
+   * @see https://lynxjs.org/api/css/properties/background-position
+   */
   backgroundPosition?: (string & {}) | number | undefined;
 }

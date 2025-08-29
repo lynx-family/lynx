@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "liyanbo, linxiaosong",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "`animation-duration` property specifies the length of time that an animation should take to complete one cycle.",
   "is_shorthand": false
 }

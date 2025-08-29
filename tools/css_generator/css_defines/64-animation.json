@@ -6,6 +6,6 @@
   "author": "liyanbo, linxiaosong",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The animation property is a shorthand property for animation-name, animation-duration, animation-timing-function, animation-delay, animation-iteration-count, animation-direction, animation-fill-mode, and animation-play-state.",
   "is_shorthand": true
 }

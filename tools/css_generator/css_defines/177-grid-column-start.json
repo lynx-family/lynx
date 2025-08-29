@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `grid-column-start` CSS property specifies a grid item's start position within the grid column by contributing a line, a span, or nothing (automatic) to its grid placement.",
   "compat_data": {
     "grid-column-start": {
       "__compat": {

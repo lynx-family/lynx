@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "yaoxiaopeng",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `color` CSS property sets the foreground `color value` of an element's text.",
   "is_shorthand": false
 }

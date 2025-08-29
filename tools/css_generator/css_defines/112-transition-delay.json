@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "liyanbo,linxiaosong",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The transition-delay CSS property specifies the duration to wait before starting a property's transition effect when its value changes.",
   "is_shorthand": false
 }

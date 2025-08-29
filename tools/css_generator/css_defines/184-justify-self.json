@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The CSS `justify-self` property sets the way a box is justified inside its alignment container along the appropriate axis.",
   "values": [
     {
       "value": "start",

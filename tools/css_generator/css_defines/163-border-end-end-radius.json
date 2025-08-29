@@ -6,6 +6,6 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `border-end-end-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.",
   "is_shorthand": false
 }

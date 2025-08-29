@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Sets the height of the padding area on the bottom of an element.",
   "compat_data": {
     "padding-bottom": {
       "__compat": {

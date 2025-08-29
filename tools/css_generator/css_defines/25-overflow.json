@@ -10,7 +10,7 @@
     "hidden",
     "visible"
   ],
-  "desc": "The `overflow` property specifies whether to clip the content when the content of an element is too big.",
+  "desc": "The overflow property specifies whether to clip the content when the content of an element is too big.",
   "is_shorthand": true,
   "formal_syntax": "<overflow-block>{1,2}"
 }

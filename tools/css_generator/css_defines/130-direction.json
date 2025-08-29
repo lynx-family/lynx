@@ -4,7 +4,7 @@
   "type": "enum",
   "default_value": "normal",
   "version": "1.0",
-  "desc": "lynx layout direction",
+  "desc": "The `direction` CSS property sets the direction of text.",
   "author": "wujintian, wangzhixuan.0821",
   "consumption_status": "layout-wanted",
   "values": [

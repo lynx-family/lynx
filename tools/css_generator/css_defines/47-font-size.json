@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "`font-size` CSS property sets the size of the font.",
   "is_shorthand": false
 }

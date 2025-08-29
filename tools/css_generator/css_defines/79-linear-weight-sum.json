@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Child element's weight sum in linear.",
   "compat_data": {
     "linear-weight-sum": {
       "__compat": {

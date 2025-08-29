@@ -4,7 +4,7 @@
   "type": "complex",
   "default_value": "stretch",
   "version": "1.0",
-  "desc": "",
+  "desc": "`align-items` property sets the `align-self` value on all direct children as a group.",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
   "values": [

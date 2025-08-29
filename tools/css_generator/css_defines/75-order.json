@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `order` CSS property sets the order to lay out an item in container.",
   "compat_data": {
     "order": {
       "__compat": {

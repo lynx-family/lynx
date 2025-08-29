@@ -6,6 +6,7 @@
   "version": "1.0",
   "author": "liyun,linyiyi",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": true
+  "desc": "The border-radius CSS property rounds the corners of an element's outer border edge.",
+  "is_shorthand": true,
+  "formal_syntax": "<length-percentage [0,∞]>{1,4} [ / <length-percentage [0,∞]>{1,4} ]?"
 }

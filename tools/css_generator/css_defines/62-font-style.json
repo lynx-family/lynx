@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "liyun",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "Set the font style.",
   "values": [
     {
       "value": "normal",

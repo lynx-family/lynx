@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Used to set the number of sibling elements in the relative-layout.",
   "compat_data": {
     "relative-id": {
       "__compat": {

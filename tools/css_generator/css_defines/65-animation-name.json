@@ -6,6 +6,6 @@
   "author": "liyanbo, linxiaosong",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "`animation-name` property specifies a list of animations to apply to an element.",
   "is_shorthand": false
 }

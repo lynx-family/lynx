@@ -5,7 +5,7 @@
   "default_value": "visible",
   "version": "1.0",
   "author": "wangheyang",
-  "desc": "",
+  "desc": "The visibility CSS property shows or hides an element without changing the layout of a document.",
   "consumption_status": "skip",
   "values": [
     {

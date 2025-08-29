@@ -5,7 +5,7 @@
   "default_value": "row",
   "version": "2.1",
   "author": "liting.src",
-  "desc": "",
+  "desc": "The `grid-auto-flow` CSS property controls how the auto-placement algorithm works, specifying exactly how auto-placed items get flowed into the grid.",
   "consumption_status": "layout-only",
   "values": [
     {

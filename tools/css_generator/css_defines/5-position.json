@@ -4,7 +4,7 @@
   "type": "enum",
   "default_value": "relative",
   "version": "1.0",
-  "desc": "",
+  "desc": "The `position` CSS property sets how an element is positioned in a document.",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
   "values": [
@@ -29,6 +29,7 @@
       "desc": ""
     }
   ],
+  "formal_syntax": "absolute | relative | fixed | sticky",
   "compat_data": {
     "position": {
       "__compat": {

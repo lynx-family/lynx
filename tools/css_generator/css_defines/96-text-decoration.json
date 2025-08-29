@@ -11,6 +11,6 @@
     "underline",
     "line-through"
   ],
-  "desc": "",
+  "desc": "The `text-decoration` shorthand CSS property sets the appearance of decorative lines on text.",
   "is_shorthand": true
 }

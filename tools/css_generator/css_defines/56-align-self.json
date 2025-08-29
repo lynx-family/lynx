@@ -4,7 +4,7 @@
   "type": "complex",
   "default_value": "stretch",
   "version": "1.0",
-  "desc": "",
+  "desc": "In flex and linear layout, `align-self` will align the elements in the current container on the cross axis.",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
   "values": [

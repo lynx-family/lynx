@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `line-height` CSS property sets the height of a line box.",
   "is_shorthand": false
 }

@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `text-overflow` CSS property sets how hidden overflow content is signaled to users.",
   "values": [
     {
       "value": "clip",

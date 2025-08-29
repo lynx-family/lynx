@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `background-repeat` CSS property sets how background images are repeated.",
   "values": [
     {
       "value": "no-repeat",

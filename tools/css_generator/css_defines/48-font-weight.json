@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `font-weight` CSS property sets the weight (or boldness) of the font.",
   "values": [
     {
       "value": "normal",

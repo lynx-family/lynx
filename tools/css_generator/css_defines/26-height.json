@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `height` CSS property specifies the height of an element.",
   "compat_data": {
     "height": {
       "__compat": {

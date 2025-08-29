@@ -6,6 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "Sets the bottom border color of an element.",
+  "is_shorthand": false,
+  "formal_syntax": "<color>"
 }

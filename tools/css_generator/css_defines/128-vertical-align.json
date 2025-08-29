@@ -16,6 +16,6 @@
     "bottom",
     "text-bottom"
   ],
-  "desc": "",
+  "desc": "The vertical-align property sets vertical alignment of inline element.",
   "is_shorthand": false
 }

@@ -23,6 +23,6 @@
     "transform",
     "all"
   ],
-  "desc": "",
+  "desc": "The transition-property CSS property sets the CSS properties to which a transition effect should be applied.",
   "is_shorthand": false
 }

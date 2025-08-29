@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "zhangqinghua",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `font-family` CSS property specifies a prioritized list of one or more font family names and/or generic family names for the selected element.",
   "is_shorthand": false
 }

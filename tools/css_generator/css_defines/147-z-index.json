@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "unknow",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The z-index CSS property sets the z-order of an element and its descendants or flex items.",
   "is_shorthand": false
 }

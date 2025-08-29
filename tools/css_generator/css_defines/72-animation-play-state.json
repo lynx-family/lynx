@@ -4,7 +4,7 @@
   "type": "complex",
   "default_value": "running",
   "version": "1.0",
-  "desc": "",
+  "desc": "`animation-play-state` property specifies whether an animation is running or paused.",
   "author": "liyanbo, linxiaosong",
   "consumption_status": "skip",
   "values": [

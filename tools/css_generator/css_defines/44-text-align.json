@@ -5,7 +5,7 @@
   "default_value": "start",
   "version": "1.0",
   "author": "tangruiwen,liting.src",
-  "desc": "",
+  "desc": "The `text-align` CSS property sets the horizontal alignment of the inline-level content inside a block element.",
   "consumption_status": "skip",
   "values": [
     {

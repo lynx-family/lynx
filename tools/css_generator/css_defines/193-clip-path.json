@@ -6,6 +6,6 @@
   "version": "2.9",
   "author": "renzhongyue",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `clip-path` CSS property creates a clipping region that sets what part of an element should be shown.",
   "is_shorthand": false
 }

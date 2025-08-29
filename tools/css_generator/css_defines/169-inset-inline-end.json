@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `inset-inline-end` CSS property defines the logical inline end inset of an element, which maps to a physical offset depending on the element's directionality.",
   "compat_data": {
     "inset-inline-end": {
       "__compat": {

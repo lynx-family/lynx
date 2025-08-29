@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `grid-template-columns` CSS property defines track sizing functions of the grid columns.",
   "compat_data": {
     "grid-template-columns": {
       "__compat": {

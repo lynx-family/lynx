@@ -13,6 +13,6 @@
     "bottom",
     "center"
   ],
-  "desc": "",
+  "desc": "The transform-origin CSS property sets the origin for an element's transformations.",
   "is_shorthand": false
 }

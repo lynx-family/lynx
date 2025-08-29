@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `background-clip` CSS property sets whether an element's background extends underneath its border box, padding box, or content box.",
   "values": [
     {
       "value": "border-box",

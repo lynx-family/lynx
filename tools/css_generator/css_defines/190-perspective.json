@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "wujintian",
   "consumption_status": "layout-wanted",
-  "desc": "",
+  "desc": "The perspective CSS property determines the distance between the z=0 plane and the user in order to give a 3D-positioned element some perspective.",
   "values": [
     {
       "value": "number",

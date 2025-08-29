@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `width` CSS property specifies the width of an element.",
   "compat_data": {
     "width": {
       "__compat": {

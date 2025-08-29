@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `grid-auto-rows` CSS property specifies the size of an implicitly-created grid row track or pattern of tracks.",
   "compat_data": {
     "grid-auto-rows": {
       "__compat": {

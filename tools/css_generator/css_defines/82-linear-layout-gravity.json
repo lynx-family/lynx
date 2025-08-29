@@ -5,7 +5,7 @@
   "default_value": "none",
   "version": "1.0",
   "author": "zhangmin",
-  "desc": "",
+  "desc": "The position of the child element in the linear container, perpendicular to the layout direction, is a property of the child element's layout, similar to `align-self` in flexible box layout.",
   "consumption_status": "layout-only",
   "values": [
     {

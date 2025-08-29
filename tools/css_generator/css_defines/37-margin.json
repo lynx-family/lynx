@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The margin CSS shorthand property sets the margin area on all four sides of an element.",
   "compat_data": {
     "margin": {
       "__compat": {

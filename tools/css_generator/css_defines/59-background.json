@@ -6,6 +6,6 @@
   "author": "linyiyi,tangruiwen",
   "version": "1.0",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `background` shorthand CSS property sets all background style properties at once, such as `background-clip`,`background-color`,`background-image`,`background-origin`,`background-position`,`background-repeat`,`background-size`.",
   "is_shorthand": true
 }

@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "yaoxiaopeng",
   "consumption_status": "layout-wanted",
-  "desc": "",
+  "desc": "A shorthand property for setting the width of all four borders of an element.",
   "is_shorthand": true
 }

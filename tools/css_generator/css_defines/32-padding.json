@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Sets the padding area on all four sides of an element at once.",
   "compat_data": {
     "padding": {
       "__compat": {

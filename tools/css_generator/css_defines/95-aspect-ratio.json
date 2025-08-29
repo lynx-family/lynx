@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `aspect-ratio` CSS property sets a preferred aspect-ratio for the box, which will be used in the calculation of auto sizes and some other layout functions.",
   "compat_data": {
     "aspect-ratio": {
       "__compat": {

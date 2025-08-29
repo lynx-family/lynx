@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `margin-inline-start` CSS property defines the logical inline start margin of an element.",
   "compat_data": {
     "margin-inline-start": {
       "__compat": {

@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "Contributes a grid span to the grid item's placement.",
   "compat_data": {
     "grid-column-span": {
       "__compat": {

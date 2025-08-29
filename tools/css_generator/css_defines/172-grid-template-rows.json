@@ -6,7 +6,7 @@
   "version": "2.1",
   "author": "liting.src",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `grid-template-rows` CSS property defines track sizing functions of the grid rows.",
   "compat_data": {
     "grid-template-rows": {
       "__compat": {

@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "liyun",
   "consumption_status": "layout-wanted",
-  "desc": "",
+  "desc": "A shorthand property for setting the left border styles of an element.",
   "is_shorthand": true
 }

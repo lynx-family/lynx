@@ -5,7 +5,7 @@
   "default_value": "auto",
   "version": "1.0",
   "author": "wangzhixuan",
-  "desc": "",
+  "desc": "The `box-sizing` property defines whether fixed sizes (such as `<length>`s and `<percentage>`s) are assigned to the content box or to the border box.",
   "consumption_status": "layout-only",
   "values": [
     {
@@ -24,6 +24,7 @@
       "desc": "lynx:border-box w3c:content-box"
     }
   ],
+  "formal_syntax": "border-box | content-box | auto",
   "compat_data": {
     "box-sizing": {
       "__compat": {

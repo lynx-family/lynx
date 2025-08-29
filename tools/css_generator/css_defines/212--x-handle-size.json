@@ -6,6 +6,6 @@
   "version": "3.1",
   "author": "zhouzhuangzhuang",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `-x-handle-size` property specifies the size of the floating marker when copying text, only valid in the selection pseudo-element.",
   "is_shorthand": false
 }

@@ -6,6 +6,7 @@
   "version": "1.0",
   "author": "yaoxiaopeng",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "The `background-color` CSS property sets the background color of an element.",
+  "is_shorthand": false,
+  "formal_syntax": "<color>"
 }

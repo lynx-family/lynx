@@ -6,6 +6,6 @@
   "version": "2.10",
   "author": "liumiao",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "`text-stroke-color` specifies the stroke color of characters of text.",
   "is_shorthand": false
 }

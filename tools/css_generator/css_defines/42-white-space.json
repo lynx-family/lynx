@@ -4,7 +4,7 @@
   "type": "enum",
   "default_value": "normal",
   "version": "1.0",
-  "desc": "",
+  "desc": "`white-space`CSS property sets how white space inside an element is handled.\u3002.",
   "author": "tangruiwen",
   "consumption_status": "skip",
   "values": [

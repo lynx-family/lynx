@@ -5,7 +5,7 @@
   "default_value": "stretch",
   "version": "1.0",
   "author": "wangzhixuan",
-  "desc": "",
+  "desc": "In flexible box layout, the `align-content` property defines how flex lines are aligned along the cross-axis.",
   "consumption_status": "layout-only",
   "values": [
     {

@@ -120,6 +120,9 @@ def main():
             final_types.add("(string & {})")
             final_types.add("number")
         else:
+            # Strip range specifiers like [0,∞] from inside type definitions
+            prop_syntax = re.sub(r"(<[\w-]+)\s*\[[^\]]+\](>)", r"\1\2", prop_syntax)
+
             # Handle syntax multipliers like {1,2}
             has_multiplier = re.search(r"\{[0-9,]+\}", prop_syntax)
             if has_multiplier:
@@ -130,8 +133,12 @@ def main():
             if has_hash_multiplier:
                 prop_syntax = prop_syntax[:-1].strip()
 
-            # Split syntax to handle cases like '<length-percentage> | auto'
-            syntax_parts = [part.strip() for part in prop_syntax.split("|")]
+            # More aggressive cleanup of the syntax string to isolate types and keywords.
+            # This will find all <type> definitions and also standalone keywords.
+            # We replace grammar symbols with spaces to help with splitting.
+            cleaned_syntax = re.sub(r"[[\]?|/]", " ", prop_syntax)
+            syntax_parts = re.findall(r"<[^>]+>|[\w\d.-]+", cleaned_syntax)
+
             resolved_syntax_parts = [
                 resolve_type(part, values_map, resolved_cache) for part in syntax_parts
             ]
@@ -141,7 +148,7 @@ def main():
                 for t in p.split("|"):
                     final_types.add(t.strip())
 
-            if has_multiplier or has_hash_multiplier:
+            if has_multiplier or has_hash_multiplier or '[' in original_syntax:
                 # For properties that can have multiple values (e.g., `overflow: hidden visible`),
                 # we also add a general string type to cover all combinations.
                 final_types.add("(string & {})")

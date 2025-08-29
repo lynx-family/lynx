@@ -6,7 +6,7 @@
   "version": "2.14",
   "author": "yuanzhiwen",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `gap` CSS shorthand property sets the gaps (gutters) between rows and columns in flexible box layout and grid layout.",
   "compat_data": {
     "gap": {
       "__compat": {

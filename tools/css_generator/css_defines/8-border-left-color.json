@@ -6,6 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
-  "is_shorthand": false
+  "desc": "Used to set the color of the left border.",
+  "is_shorthand": false,
+  "formal_syntax": "<color>"
 }

@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "To specify min height of a view.",
   "compat_data": {
     "min-height": {
       "__compat": {

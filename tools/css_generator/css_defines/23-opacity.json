@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "linxiaosong",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The opacity CSS property sets the opacity of an element.",
   "is_shorthand": false
 }

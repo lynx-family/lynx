@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `margin-inline-end` CSS property defines the logical inline end margin of an element.",
   "compat_data": {
     "margin-inline-end": {
       "__compat": {

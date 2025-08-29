@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "wangzhixuan",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `flex-wrap` CSS property sets whether flex items are forced onto one line or can wrap onto multiple lines.",
   "values": [
     {
       "value": "wrap",

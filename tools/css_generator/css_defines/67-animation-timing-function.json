@@ -16,6 +16,6 @@
     "square-bezier",
     "cubic-bezier"
   ],
-  "desc": "",
+  "desc": "`animation-timing-function` property specifies how an animation progresses through each cycle.",
   "is_shorthand": false
 }

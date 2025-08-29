@@ -6,6 +6,6 @@
   "version": "2.12",
   "author": "zhouzhuangzhuang",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `-x-auto-font-size` property sets whether to enable text adaptive font size adjustment, minimum text font size, maximum text font size, and font size adjustment granularity value.",
   "is_shorthand": false
 }

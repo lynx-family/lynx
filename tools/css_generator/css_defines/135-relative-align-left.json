@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "In relative-layout, specifies that the current element is aligned with the left edge of the parent or sibling element corresponding to `id`.",
   "compat_data": {
     "relative-align-left": {
       "__compat": {

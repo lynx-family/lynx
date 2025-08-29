@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "zhangmin",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The current element is to the left of the sibling element specified corresponding to `id` in relative-layout.",
   "compat_data": {
     "relative-left-of": {
       "__compat": {

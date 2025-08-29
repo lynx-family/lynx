@@ -6,7 +6,7 @@
   "version": "2.0",
   "author": "wangzhixuan.0821",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The current element is to the left/right of the sibling element corresponding to the specified `id` in relative-layout.",
   "compat_data": {
     "relative-inline-end-of": {
       "__compat": {

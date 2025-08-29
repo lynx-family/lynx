@@ -6,7 +6,7 @@
   "version": "1.0",
   "author": "tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `background-origin` CSS property sets the background's origin: from the border start, inside the border, or inside the padding.",
   "values": [
     {
       "value": "border-box",

@@ -6,7 +6,7 @@
   "version": "2.14",
   "author": "yuanzhiwen",
   "consumption_status": "layout-only",
-  "desc": "",
+  "desc": "The `column-gap`/`grid-column-gap` CSS property sets the size of the gap (gutter) between an element's columns in flexible box layout and grid layout.",
   "compat_data": {
     "column-gap": {
       "__compat": {

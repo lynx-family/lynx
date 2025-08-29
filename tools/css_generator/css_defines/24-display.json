@@ -5,7 +5,7 @@
   "default_value": "auto",
   "version": "1.0",
   "author": "wangzhixuan",
-  "desc": "",
+  "desc": "In Lynx, the `display` only determines the internal display type of the element (how to layout the child elements), and does not determine the external display type (whether the element is considered a block-level element or an inline-level element).",
   "consumption_status": "layout-only",
   "values": [
     {

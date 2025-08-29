@@ -6,6 +6,6 @@
   "version": "2.10",
   "author": "liumiao",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `text-stroke` CSS property specifies the width and color of strokes for text characters.",
   "is_shorthand": false
 }

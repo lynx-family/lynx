@@ -22,6 +22,6 @@
     "scaleX",
     "scaleY"
   ],
-  "desc": "",
+  "desc": "The transform CSS property lets you rotate, scale, skew, or translate an element.",
   "is_shorthand": false
 }

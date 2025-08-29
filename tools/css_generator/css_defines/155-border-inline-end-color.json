@@ -6,6 +6,6 @@
   "version": "2.0",
   "author": "liting.src",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `border-inline-end-color` CSS property defines the color of the logical inline-end border of an element.",
   "is_shorthand": false
 }

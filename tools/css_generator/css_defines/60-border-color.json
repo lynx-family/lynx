@@ -6,6 +6,6 @@
   "version": "1.0",
   "author": "linyiyi,tangruiwen",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `border-color` shorthand CSS property sets the color (`border-top-color`, `border-right-color`, `border-bottom-color`, `border-left-color`) of an element's border.",
   "is_shorthand": true
 }

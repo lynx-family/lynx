@@ -6,6 +6,6 @@
   "version": "2.0",
   "author": "zhangqinghua",
   "consumption_status": "skip",
-  "desc": "",
+  "desc": "The `mask-image` CSS property sets the image that is used as mask layer for an element.",
   "is_shorthand": false
 }
