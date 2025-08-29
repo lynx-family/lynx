@@ -315,11 +315,13 @@ void TextLayoutAndroid::AppendImageProps(ImageElement* image_element,
             length.NumericLength().GetPercentagePart() / 100.f));
         props->AddProp(
             static_cast<int>(starlight::PlatformLengthUnit::PERCENTAGE));
-      }
-      if (length.NumericLength().ContainsFixedValue() ||
-          !length.NumericLength().ContainsPercentage()) {
+      } else if (length.NumericLength().ContainsFixedValue()) {
         props->AddProp(
             static_cast<float>(length.NumericLength().GetFixedPart()));
+        props->AddProp(static_cast<int>(starlight::PlatformLengthUnit::NUMBER));
+      } else {
+        // fallback: emit zero number
+        props->AddProp(0.f);
         props->AddProp(static_cast<int>(starlight::PlatformLengthUnit::NUMBER));
       }
     };
