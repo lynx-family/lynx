@@ -24,7 +24,7 @@ std::unique_ptr<TimingFunction> TimingFunction::MakeTimingFunction(
 }
 
 std::unique_ptr<TimingFunction> TimingFunction::MakeTimingFunction(
-    starlight::TimingFunctionData& timing_function_data) {
+    const starlight::TimingFunctionData& timing_function_data) {
   std::unique_ptr<TimingFunction> timing;
   auto type = timing_function_data.timing_func;
   if (type == starlight::TimingFunctionType::kLinear) {

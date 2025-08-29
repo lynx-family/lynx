@@ -38,7 +38,7 @@ class TimingFunction {
       const starlight::AnimationData* animation_data);
 
   static std::unique_ptr<TimingFunction> MakeTimingFunction(
-      starlight::TimingFunctionData& timing_function_data);
+      const starlight::TimingFunctionData& timing_function_data);
 
  protected:
   TimingFunction();
