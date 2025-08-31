@@ -18,6 +18,8 @@ class ScopedDXGIKeyedMutex {
 
   ~ScopedDXGIKeyedMutex();
 
+  bool Valid() const;
+
   BASE_DISALLOW_COPY_AND_ASSIGN(ScopedDXGIKeyedMutex);
 
  private:

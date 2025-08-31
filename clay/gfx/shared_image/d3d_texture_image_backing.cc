@@ -45,6 +45,8 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 }
 #endif  // __FORCE_DEDICATED_GPU
 
+extern "C" void (*gReportDeviceLost)();
+
 namespace clay {
 
 namespace {
@@ -53,13 +55,13 @@ class D3DTextureFactory {
  public:
   class ScopedDevice {
    public:
-    ScopedDevice(std::mutex& m, ID3D11Device* device)
+    ScopedDevice(std::recursive_mutex& m, ID3D11Device* device)
         : lock_(m), device_(device) {}
 
     ID3D11Device* GetDevice() const { return device_; }
 
    private:
-    std::lock_guard<std::mutex> lock_;
+    std::lock_guard<std::recursive_mutex> lock_;
     ID3D11Device* device_;
   };
   static D3DTextureFactory& Instance();
@@ -71,6 +73,7 @@ class D3DTextureFactory {
   }
 
   bool IsSupported() const { return d3d11_device_ != nullptr; }
+  bool ReinitializeD3DDevice();
 
  private:
   D3DTextureFactory();
@@ -78,7 +81,7 @@ class D3DTextureFactory {
 
   fml::RefPtr<fml::NativeLibrary> d3d11_;
   fml::RefPtr<fml::NativeLibrary> dxgi_;
-  std::mutex mutex_;
+  std::recursive_mutex mutex_;
   Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device_;
 
   friend class fml::NoDestructor<D3DTextureFactory>;
@@ -96,9 +99,15 @@ D3DTextureFactory::D3DTextureFactory() {
 }
 
 bool D3DTextureFactory::InitializeD3DDevice() {
-  d3d11_ = fml::NativeLibrary::Create("d3d11.dll");
-  dxgi_ = fml::NativeLibrary::Create("dxgi.dll");
+  if (!d3d11_) {
+    d3d11_ = fml::NativeLibrary::Create("d3d11.dll");
+  }
 
+  if (!dxgi_) {
+    dxgi_ = fml::NativeLibrary::Create("dxgi.dll");
+  }
+
+  FML_LOG(ERROR) << "initialize D3D Device.";
   if (!d3d11_ || !dxgi_) {
     FML_LOG(ERROR) << "Could not load D3D11 or DXGI library.";
     return false;
@@ -114,7 +123,12 @@ bool D3DTextureFactory::InitializeD3DDevice() {
   return true;
 }
 
-bool CreateD3DTextureSharedHandle(ID3D11Device* device,
+bool D3DTextureFactory::ReinitializeD3DDevice() {
+  d3d11_device_.Reset();
+  return InitializeD3DDevice();
+}
+
+bool CreateD3DTextureSharedHandle(ID3D11Device** device_ptr,
                                   SharedImageBacking::PixelFormat pixel_format,
                                   skity::Vec2 size,
                                   ID3D11Texture2D** out_texture,
@@ -146,8 +160,10 @@ bool CreateD3DTextureSharedHandle(ID3D11Device* device,
           D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX};
 
   Microsoft::WRL::ComPtr<ID3D11Texture2D> d3d11_texture;
-  if (FAILED(device->CreateTexture2D(&desc, nullptr, &d3d11_texture))) {
-    FML_LOG(ERROR) << "Could not create D3D texture2D.";
+  ID3D11Device* device = *device_ptr;
+  HRESULT result = device->CreateTexture2D(&desc, nullptr, &d3d11_texture);
+  if (FAILED(result)) {
+    FML_LOG(ERROR) << "Could not create D3D texture2D. result:" << result;
     return false;
   }
 
@@ -175,6 +191,52 @@ bool CreateD3DTextureSharedHandle(ID3D11Device* device,
   }
 
   return false;
+}
+
+bool isDeviceLostError(ID3D11Device* device) {
+  FML_DCHECK(device);
+  HRESULT reason = device->GetDeviceRemovedReason();
+  switch (reason) {
+    case DXGI_ERROR_DEVICE_HUNG:
+    case DXGI_ERROR_DEVICE_REMOVED:
+    case DXGI_ERROR_DEVICE_RESET:
+    case DXGI_ERROR_DRIVER_INTERNAL_ERROR:
+    case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool TryCreateD3DTextureSharedHandle(
+    ID3D11Device** device_ptr, SharedImageBacking::PixelFormat pixel_format,
+    skity::Vec2 size, ID3D11Texture2D** out_texture, HANDLE* out_handle,
+    bool* is_nt_handle) {
+  bool ret = CreateD3DTextureSharedHandle(
+      device_ptr, pixel_format, size, out_texture, out_handle, is_nt_handle);
+  if (!ret) {
+    ID3D11Device* device = *device_ptr;
+    if (isDeviceLostError(device)) {
+      // Device lost occurred, rendering environment is unrecoverable. Reporting
+      // device lost event.
+      if (gReportDeviceLost != nullptr) {
+        gReportDeviceLost();
+        return false;
+      }
+      if (!D3DTextureFactory::Instance().ReinitializeD3DDevice()) {
+        FML_LOG(ERROR) << "Failed to reinitialize D3D device.";
+        return false;
+      }
+
+      D3DTextureFactory::ScopedDevice scoped_device =
+          D3DTextureFactory::Instance().GetDeviceScoped();
+      device = scoped_device.GetDevice();
+      *device_ptr = device;
+    }
+    ret = CreateD3DTextureSharedHandle(device_ptr, pixel_format, size,
+                                       out_texture, out_handle, is_nt_handle);
+  }
+  return ret;
 }
 
 bool OpenD3DSharedHandle(ID3D11Device* device, HANDLE shared_handle,
@@ -214,15 +276,17 @@ D3DTextureImageBacking::D3DTextureImageBacking(
     owned_nt_handle_ = true;
     bool result =
         OpenD3DSharedHandle(d3d11_device, shared_handle_, &d3d11_texture_);
-    FML_CHECK(result);
   } else {
-    bool result = CreateD3DTextureSharedHandle(d3d11_device, pixel_format, size,
-                                               &d3d11_texture_, &shared_handle_,
-                                               &owned_nt_handle_);
-    FML_CHECK(result);
+    bool result = TryCreateD3DTextureSharedHandle(
+        &d3d11_device, pixel_format, size, &d3d11_texture_, &shared_handle_,
+        &owned_nt_handle_);
+    if (!result) {
+      FML_LOG(ERROR) << "Failed to TryCreateD3DTextureSharedHandle.";
+    }
   }
-  FML_CHECK(d3d11_texture_);
-  d3d11_texture_->GetDesc(&d3d11_texture_desc_);
+  if (d3d11_texture_) {
+    d3d11_texture_->GetDesc(&d3d11_texture_desc_);
+  }
   if (gfx_handle && size_.x == 0 && size_.y == 0) {
     size_.x = d3d11_texture_desc_.Width;
     size_.y = d3d11_texture_desc_.Height;
@@ -280,8 +344,6 @@ GraphicsMemoryHandle D3DTextureImageBacking::GetGFXHandle() const {
 fml::RefPtr<SharedImageRepresentation>
 D3DTextureImageBacking::CreateRepresentation(
     const ClaySharedImageRepresentationConfig* config) {
-  FML_CHECK(config->struct_size == sizeof(ClaySharedImageRepresentationConfig));
-
   switch (config->type) {
     case kClaySharedImageRepresentationTypeGL: {
       PFNEGLGETPROCADDRESSPROC eglGetProcAddressProc =
@@ -294,8 +356,6 @@ D3DTextureImageBacking::CreateRepresentation(
           fml::Ref(this), eglGetProcAddressProc);
     }
     case kClaySharedImageRepresentationTypeD3D:
-      FML_CHECK(config->d3d_config.struct_size ==
-                sizeof(ClaySharedImageD3DRepresentationConfig));
       return fml::MakeRefCounted<D3DImageRepresentation>(
           static_cast<ID3D11Device*>(config->d3d_config.device),
           fml::Ref(this));
@@ -357,6 +417,14 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
   D3DTextureFactory::ScopedDevice scoped_device =
       D3DTextureFactory::Instance().GetDeviceScoped();
   ID3D11Device* d3d11_device = scoped_device.GetDevice();
+  // Device lost occurred, rendering environment is unrecoverable. Reporting
+  // device lost event.
+  if (isDeviceLostError(d3d11_device)) {
+    if (gReportDeviceLost != nullptr) {
+      gReportDeviceLost();
+      return false;
+    }
+  }
   Microsoft::WRL::ComPtr<ID3D11DeviceContext> device_context;
   d3d11_device->GetImmediateContext(&device_context);
 
@@ -395,7 +463,12 @@ bool D3DTextureImageBacking::ReadbackToMemory(const SkPixmap* pixmaps,
       std::optional<ScopedDXGIKeyedMutex> scoped_keyed_mutex;
       if (keyed_mutex) {
         scoped_keyed_mutex.emplace(keyed_mutex);
+        FML_LOG(ERROR) << "Failed to init scoped_keyed_mutex";
+        if (!scoped_keyed_mutex->Valid()) {
+          return false;
+        }
       }
+
       device_context->CopyResource(staging_texture, d3d11_texture_.Get());
     }
 

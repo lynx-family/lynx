@@ -6,11 +6,13 @@
 
 #include "clay/fml/logging.h"
 
+extern "C" __declspec(dllexport) void (*gReportDeviceLost)() = nullptr;
+
 namespace clay {
 ScopedDXGIKeyedMutex::ScopedDXGIKeyedMutex(IDXGIKeyedMutex* keyed_mutex)
     : keyed_mutex_(keyed_mutex) {
   FML_DCHECK(keyed_mutex_);
-  HRESULT result = keyed_mutex_->AcquireSync(0, INFINITE);
+  HRESULT result = keyed_mutex_->AcquireSync(0, 2000);
   if (result != S_OK) {
     // Maybe failed or abandoned
     FML_LOG(ERROR) << "Failed to acquire keyed mutex, result: " << result;
@@ -25,4 +27,6 @@ ScopedDXGIKeyedMutex::~ScopedDXGIKeyedMutex() {
     }
   }
 }
+
+bool ScopedDXGIKeyedMutex::Valid() const { return keyed_mutex_ != nullptr; }
 }  // namespace clay
