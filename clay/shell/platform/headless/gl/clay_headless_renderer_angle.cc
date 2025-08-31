@@ -22,8 +22,8 @@ namespace clay {
 // and logs the error code.
 static void LogEglError(std::string message) {
   EGLint error = eglGetError();
-  FML_LOG(ERROR) << "EGL: " << message;
-  FML_LOG(ERROR) << "EGL: eglGetError returned " << error;
+  FML_LOG(ERROR) << "EGL:" << message
+                 << ", EGL: eglGetError returned: " << error;
 }
 
 std::unique_ptr<HeadlessAngleSurfaceManager>
@@ -88,7 +88,8 @@ bool HeadlessAngleSurfaceManager::TryInitializeD3D11Device() {
   d3d11_ = fml::NativeLibrary::Create("d3d11.dll");
 
   if (!d3d11_) {
-    FML_LOG(WARNING) << "Could not load D3D11 library.";
+    FML_LOG(ERROR) << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device, "
+                      "Could not load D3D11 library.";
     return false;
   }
 
@@ -103,15 +104,21 @@ bool HeadlessAngleSurfaceManager::TryInitializeD3D11Device() {
   egl_device_ = eglCreateDeviceANGLE(EGL_D3D11_DEVICE_ANGLE,
                                      resolved_device_.Get(), nullptr);
   if (!egl_device_) {
-    FML_LOG(WARNING) << "Could not create EGL device.";
+    LogEglError(
+        "HeadlessAngleSurfaceManager::TryInitializeD3D11Device, Could not "
+        "create EGL device.");
     return false;
   }
 
+  FML_LOG(ERROR) << "HeadlessAngleSurfaceManager::TryInitializeD3D11Device "
+                    "success.";
   return true;
 }
 
 bool HeadlessAngleSurfaceManager::Initialize() {
 #ifndef CLAY_FORCE_D3D9
+  FML_LOG(INFO)
+      << "HeadlessAngleSurfaceManager::Initialize, TryInitializeD3D11Device.";
   TryInitializeD3D11Device();
 #endif
 
@@ -222,6 +229,9 @@ bool HeadlessAngleSurfaceManager::Initialize() {
   if (egl_context_ == EGL_NO_CONTEXT) {
     LogEglError("Failed to create EGL context");
     return false;
+  } else {
+    FML_LOG(INFO) << "HeadlessAngleSurfaceManager::Initialize, "
+                     "eglCreateContext success.";
   }
 
   // We only ever create pbuffer surfaces for background resource loading

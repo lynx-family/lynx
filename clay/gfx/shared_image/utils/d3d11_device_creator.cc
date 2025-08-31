@@ -78,7 +78,8 @@ HRESULT CreateSafeD3D11Device(
                                   // adapter
         nullptr, 0, feature_levels, ARRAYSIZE(feature_levels),
         D3D11_SDK_VERSION, out_device, nullptr, out_context);
-    FML_LOG(INFO) << "Use high-performance discrete GPU for D3D11CreateDevice.";
+    FML_LOG(INFO) << "Use high-performance discrete GPU for D3D11CreateDevice."
+                  << std::hex << hr;
   }
 #endif
 
@@ -89,7 +90,8 @@ HRESULT CreateSafeD3D11Device(
         D3D_DRIVER_TYPE_HARDWARE,  // Standard hardware device
         nullptr, 0, feature_levels, ARRAYSIZE(feature_levels),
         D3D11_SDK_VERSION, out_device, nullptr, out_context);
-    FML_LOG(INFO) << "Use system default hardware for D3D11CreateDevice.";
+    FML_LOG(INFO) << "Use system default hardware for D3D11CreateDevice."
+                  << std::hex << hr;
   }
 
   return hr;
