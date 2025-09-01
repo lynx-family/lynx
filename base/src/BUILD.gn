@@ -2,12 +2,14 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../config.gni")
 import("../../oliver/oliver.gni")
 import("../../testing/test.gni")
+import("../include/base_public_headers.gni")
 import("base.gni")
 
-config("base_public") {
+config("base_public_config") {
   defines = []
   cflags = []
   if (!base_export_symbols) {
@@ -41,7 +43,35 @@ config("base_public") {
   }
 }
 
-config("base_log_public") {
+config("base_private_config") {
+  cflags = [
+    "-ffunction-sections",
+    "-fdata-sections",
+    "-fno-exceptions",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fno-short-enums",
+    "-fno-stack-protector",
+    "-fno-strict-aliasing",
+    "-Wextra",
+  ]
+  cflags_c = []
+  cflags_cc = [
+    "-fno-rtti",
+    "-std=c++17",
+    "-Wl,-ldl",
+    "-Wno-unused-command-line-argument",
+    "-Wno-unused-parameter",
+  ]
+  configs = []
+  if (is_debug) {
+    cflags_cc += [ "-g" ]
+  }
+
+  defines = []
+}
+
+config("base_log_public_config") {
   defines = []
   if (enable_lite && enable_lite_production) {
     defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
@@ -54,30 +84,19 @@ config("base_log_public") {
     # In release mode, logs with a priority higher than LOG_DEBUG will be output.
     defines += [ "LYNX_MIN_LOG_LEVEL=2" ]
   }
-}
-
-source_set("base_log_headers") {
-  public_configs = [
-    ":base_public",
-    ":base_log_public",
-  ]
-  sources = [
-    "../include/debug/lynx_assert.h",
-    "../include/debug/lynx_error.h",
-    "../include/log/alog_wrapper.h",
-    "../include/log/log_stream.h",
-    "../include/log/logging.h",
-  ]
-  if (!is_win) {
-    sources += [ "../include/debug/backtrace.h" ]
+  if (is_mac) {
+    configs = darwin_config
   }
 }
 
-source_set("base_log") {
-  public_configs = [
-    ":base_public",
-    ":base_log_public",
-  ]
+lynx_base_source_set("base_log_headers") {
+  public_configs = [ ":base_log_public_config" ]
+  sources = base_log_public_headers
+}
+
+lynx_base_source_set("base_log") {
+  public_configs = [ ":base_log_public_config" ]
+  public = base_log_public_headers
   public_deps = [ ":base_log_headers" ]
 
   sources = [
@@ -94,138 +113,53 @@ source_set("base_log") {
   deps = [ "../../third_party/rapidjson:rapidjson" ]
 }
 
-source_set("time_utils") {
-  sources = [
-    "../include/timer/time_utils.h",
-    "timer/time_utils.cc",
-  ]
-  public_configs = [ ":base_public" ]
+lynx_base_source_set("time_utils") {
+  public = time_utils_public_headers
+  sources = time_utils_public_headers + [ "timer/time_utils.cc" ]
 }
 
-source_set("base") {
+lynx_base_source_set("base") {
+  public = base_core_public_headers
   public_deps = [
     ":string_utils",
     ":time_utils",
     ":values",
   ]
-  public_configs = [ ":base_public" ]
 
-  sources = [
-    "../include/algorithm.h",
-    "../include/auto_create_optional.h",
-    "../include/auto_reset.h",
-    "../include/base_defines.h",
-    "../include/base_export.h",
-    "../include/boost/unordered.h",
-    "../include/cast_util.h",
-    "../include/closure.h",
-    "../include/compiler_specific.h",
-    "../include/concurrent_queue.h",
-    "../include/expected.h",
-    "../include/expected_internal.h",
-    "../include/file_utils.h",
-    "../include/flex_optional.h",
-    "../include/float_comparison.h",
-    "../include/fml/concurrent_message_loop.h",
-    "../include/fml/cpu_affinity.h",
-    "../include/fml/delayed_task.h",
-    "../include/fml/eintr_wrapper.h",
-    "../include/fml/fml_trace_event_def.h",
-    "../include/fml/macros.h",
-    "../include/fml/make_copyable.h",
-    "../include/fml/memory/ref_counted.h",
-    "../include/fml/memory/ref_counted_internal.h",
-    "../include/fml/memory/ref_ptr.h",
-    "../include/fml/memory/ref_ptr_internal.h",
-    "../include/fml/memory/task_runner_checker.h",
-    "../include/fml/memory/weak_ptr.h",
-    "../include/fml/memory/weak_ptr_internal.h",
-    "../include/fml/message_loop.h",
-    "../include/fml/message_loop_impl.h",
-    "../include/fml/message_loop_task_queues.h",
-    "../include/fml/platform/thread_config_setter.h",
-    "../include/fml/synchronization/atomic_object.h",
-    "../include/fml/synchronization/count_down_latch.h",
-    "../include/fml/synchronization/semaphore.h",
-    "../include/fml/synchronization/shared_mutex.h",
-    "../include/fml/synchronization/sync_switch.h",
-    "../include/fml/synchronization/waitable_event.h",
-    "../include/fml/task_queue_id.h",
-    "../include/fml/task_runner.h",
-    "../include/fml/task_source.h",
-    "../include/fml/task_source_grade.h",
-    "../include/fml/thread.h",
-    "../include/fml/time/time_delta.h",
-    "../include/fml/time/time_point.h",
-    "../include/fml/time/timer.h",
-    "../include/fml/time/timestamp_provider.h",
-    "../include/fml/unique_fd.h",
-    "../include/fml/unique_object.h",
-    "../include/fml/wakeable.h",
-    "../include/geometry/point.h",
-    "../include/geometry/rect.h",
-    "../include/geometry/size.h",
-    "../include/hybrid_map.h",
-    "../include/linked_hash_map.h",
-    "../include/lru_cache.h",
-    "../include/lynx_actor.h",
-    "../include/md5.h",
-    "../include/no_destructor.h",
-    "../include/path_utils.h",
-    "../include/position.h",
-    "../include/shared_vector.h",
-    "../include/sorted_for_each.h",
-    "../include/thread/base_semaphore.h",
-    "../include/thread/pthread_rw_lock_guard.h",
-    "../include/thread/timed_task.h",
-    "../include/to_underlying.h",
-    "../include/type_traits_addon.h",
-    "../include/vector.h",
-    "../include/vector2d.h",
-    "../include/vector_helper.h",
-    "../include/version_util.h",
-    "//build/build_config.h",
-    "file_utils.cc",
-    "fml/concurrent_message_loop.cc",
-    "fml/cpu_affinity.cc",
-    "fml/delayed_task.cc",
-    "fml/memory/task_runner_checker.cc",
-    "fml/memory/weak_ptr_internal.cc",
-    "fml/message_loop.cc",
-    "fml/message_loop_impl.cc",
-    "fml/message_loop_task_queues.cc",
-    "fml/synchronization/count_down_latch.cc",
-    "fml/synchronization/semaphore.cc",
-    "fml/synchronization/sync_switch.cc",
-    "fml/synchronization/waitable_event.cc",
-    "fml/task_runner.cc",
-    "fml/task_source.cc",
-    "fml/thread.cc",
-    "fml/thread_name_setter.h",
-    "fml/time/time_point.cc",
-    "fml/time/timer.cc",
-    "fml/unique_fd.cc",
-    "md5.cc",
-    "thread/timed_task.cc",
-    "vector.cc",
-  ]
+  sources = base_core_public_headers + [
+              "./fml/raster_thread_merger.cc",
+              "./fml/shared_thread_merger.cc",
+              "file_utils.cc",
+              "fml/concurrent_message_loop.cc",
+              "fml/cpu_affinity.cc",
+              "fml/delayed_task.cc",
+              "fml/memory/task_runner_checker.cc",
+              "fml/memory/weak_ptr_internal.cc",
+              "fml/message_loop.cc",
+              "fml/message_loop_impl.cc",
+              "fml/message_loop_task_queues.cc",
+              "fml/synchronization/count_down_latch.cc",
+              "fml/synchronization/semaphore.cc",
+              "fml/synchronization/sync_switch.cc",
+              "fml/synchronization/waitable_event.cc",
+              "fml/task_runner.cc",
+              "fml/task_source.cc",
+              "fml/thread.cc",
+              "fml/thread_name_setter.h",
+              "fml/time/time_point.cc",
+              "fml/time/timer.cc",
+              "fml/unique_fd.cc",
+              "md5.cc",
+              "thread/timed_task.cc",
+              "vector.cc",
+            ]
 
   if (is_android || is_linux) {
-    sources += [
-      "../include/fml/platform/linux/timerfd.h",
-      "fml/platform/linux/timerfd.cc",
-    ]
+    sources += [ "fml/platform/linux/timerfd.cc" ]
   }
 
   if (is_android) {
     sources += [
-      "../include/fml/platform/android/cpu_affinity.h",
-      "../include/fml/platform/android/message_loop_android.h",
-      "../include/fml/synchronization/shared_mutex_std.h",
-      "../include/platform/android/java_type.h",
-      "../include/platform/android/jni_convert_helper.h",
-      "../include/platform/android/jni_utils.h",
-      "../include/platform/android/scoped_java_ref.h",
       "fml/platform/android/cpu_affinity.cc",
       "fml/platform/android/thread_config_setter_android.cc",
       "fml/platform/posix/thread_name_setter_posix.cc",
@@ -245,11 +179,6 @@ source_set("base") {
     }
   } else if (is_harmony) {
     sources += [
-      "../include/fml/platform/harmony/message_loop_harmony.h",
-      "../include/fml/platform/linux/timerfd.h",
-      "../include/fml/synchronization/shared_mutex_std.h",
-      "../include/platform/harmony/harmony_vsync_manager.h",
-      "../include/platform/harmony/napi_util.h",
       "fml/platform/harmony/message_loop_harmony.cc",
       "fml/platform/linux/timerfd.cc",
       "fml/platform/posix/thread_name_setter_posix.cc",
@@ -259,31 +188,21 @@ source_set("base") {
     ]
   } else if (is_linux) {
     sources += [
-      "../include/fml/synchronization/shared_mutex_std.h",
       "fml/platform/posix/thread_name_setter_posix.cc",
       "fml/synchronization/shared_mutex_std.cc",
     ]
     if (!use_custom_message_loop) {
-      sources += [
-        "../include/fml/platform/linux/message_loop_linux.h",
-        "fml/platform/linux/message_loop_linux.cc",
-      ]
+      sources += [ "fml/platform/linux/message_loop_linux.cc" ]
     }
   } else if (is_apple) {
     sources += [
-      "../include/fml/platform/darwin/cf_utils.h",
-      "../include/fml/synchronization/shared_mutex_posix.h",
-      "../include/platform/darwin/type_utils.h",
       "fml/platform/darwin/thread_config_setter_darwin.mm",
       "fml/platform/darwin/thread_name_setter_darwin.cc",
       "fml/synchronization/shared_mutex_posix.cc",
     ]
 
     if (!use_custom_message_loop) {
-      sources += [
-        "../include/fml/platform/darwin/message_loop_darwin.h",
-        "fml/platform/darwin/message_loop_darwin.mm",
-      ]
+      sources += [ "fml/platform/darwin/message_loop_darwin.mm" ]
     }
 
     flutter_cflags_objc = [
@@ -297,11 +216,6 @@ source_set("base") {
     frameworks = [ "Foundation.framework" ]
   } else if (is_win) {
     sources += [
-      "../include/fml/platform/win/message_loop_win.h",
-      "../include/fml/platform/win/task_runner_win32.h",
-      "../include/fml/platform/win/task_runner_win32_window.h",
-      "../include/fml/synchronization/shared_mutex_std.h",
-      "../include/string/string_conversion_win.h",
       "fml/platform/win/message_loop_win.cc",
       "fml/platform/win/task_runner_win32.cc",
       "fml/platform/win/task_runner_win32_window.cc",
@@ -310,14 +224,6 @@ source_set("base") {
       "string/string_conversion_win.cc",
     ]
   }
-
-  sources += [
-    "../include/fml/hash_combine.h",
-    "../include/fml/raster_thread_merger.h",
-    "../include/fml/shared_thread_merger.h",
-    "./fml/raster_thread_merger.cc",
-    "./fml/shared_thread_merger.cc",
-  ]
 
   deps = [ ":datauri_utils" ]
 
@@ -398,59 +304,42 @@ if (enable_unittests) {
   }
 }
 
-source_set("string_utils") {
-  public_configs = [ ":base_public" ]
-  sources = [
-    "../include/string/string_number_convert.h",
-    "../include/string/string_utils.h",
-    "string/quickjs_dtoa.c",
-    "string/string_number_convert.cc",
-    "string/string_utils.cc",
-  ]
+lynx_base_source_set("string_utils") {
+  public = string_utils_public_headers
+  sources = string_utils_public_headers + [
+              "string/quickjs_dtoa.c",
+              "string/string_number_convert.cc",
+              "string/string_utils.cc",
+            ]
 }
 
 # TODO(chenyouhui): Merge 'values' into 'base_values' target
-source_set("base_values") {
-  sources = [
-    "../include/value/array.h",
-    "../include/value/base_value.h",
-    "../include/value/byte_array.h",
-    "../include/value/lynx_value_extended.h",
-    "../include/value/path_parser.h",
-    "../include/value/ref_counted_class.h",
-    "../include/value/ref_type.h",
-    "../include/value/table.h",
-    "value/base_value.cc",
-    "value/base_value_print.cc",
-    "value/byte_array.cc",
-    "value/path_parser.cc",
-    "value/table.cc",
-  ]
+lynx_base_source_set("base_values") {
+  public = base_values_public_headers
+  sources = base_values_public_headers + [
+              "value/base_value.cc",
+              "value/base_value_print.cc",
+              "value/byte_array.cc",
+              "value/path_parser.cc",
+              "value/table.cc",
+            ]
 
   public_deps = [ ":values" ]
 }
 
-source_set("base_values_extended") {
+lynx_base_source_set("base_values_extended") {
   sources = [ "value/lynx_value_extended_empty.cc" ]
 }
 
-source_set("values") {
-  public_configs = [ ":base_public" ]
+lynx_base_source_set("values") {
+  public = values_public_headers
 
-  sources = [
-    "../include/value/base_string.h",
-    "../include/value/lynx_api_types.h",
-    "../include/value/lynx_value_types.h",
-    "value/base_string.cc",
-  ]
+  sources = values_public_headers + [ "value/base_string.cc" ]
 }
 
-source_set("datauri_utils") {
-  public_configs = [ ":base_public" ]
-  sources = [
-    "../include/datauri_utils.h",
-    "datauri_utils.cc",
-  ]
+lynx_base_source_set("datauri_utils") {
+  public = datauri_utils_public_headers
+  sources = datauri_utils_public_headers + [ "datauri_utils.cc" ]
 
   public_deps = [ "../../third_party/modp_b64" ]
 }

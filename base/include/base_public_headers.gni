@@ -1,0 +1,201 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../src/base.gni")
+
+# base_log_public_headers begin
+base_log_public_headers_list = [
+  "debug/lynx_assert.h",
+  "debug/lynx_error.h",
+  "log/alog_wrapper.h",
+  "log/log_stream.h",
+  "log/logging.h",
+]
+if (!is_win) {
+  base_log_public_headers_list += [ "debug/backtrace.h" ]
+}
+base_log_public_headers = rebase_path(base_log_public_headers_list)
+
+# base_log_public_headers end
+
+# time_utils_public_headers begin
+time_utils_public_headers_list = [ "timer/time_utils.h" ]
+time_utils_public_headers = rebase_path(time_utils_public_headers_list)
+
+# time_utils_public_headers end
+
+# base_core_public_headers begin
+base_core_public_headers_list = [
+  "algorithm.h",
+  "auto_create_optional.h",
+  "auto_reset.h",
+  "base_defines.h",
+  "base_export.h",
+  "boost/unordered.h",
+  "cast_util.h",
+  "closure.h",
+  "compiler_specific.h",
+  "concurrent_queue.h",
+  "expected.h",
+  "expected_internal.h",
+  "file_utils.h",
+  "flex_optional.h",
+  "float_comparison.h",
+  "fml/concurrent_message_loop.h",
+  "fml/cpu_affinity.h",
+  "fml/delayed_task.h",
+  "fml/eintr_wrapper.h",
+  "fml/fml_trace_event_def.h",
+  "fml/macros.h",
+  "fml/make_copyable.h",
+  "fml/memory/ref_counted.h",
+  "fml/memory/ref_counted_internal.h",
+  "fml/memory/ref_ptr.h",
+  "fml/memory/ref_ptr_internal.h",
+  "fml/memory/task_runner_checker.h",
+  "fml/memory/weak_ptr.h",
+  "fml/memory/weak_ptr_internal.h",
+  "fml/message_loop.h",
+  "fml/message_loop_impl.h",
+  "fml/message_loop_task_queues.h",
+  "fml/platform/thread_config_setter.h",
+  "fml/synchronization/atomic_object.h",
+  "fml/synchronization/count_down_latch.h",
+  "fml/synchronization/semaphore.h",
+  "fml/synchronization/shared_mutex.h",
+  "fml/synchronization/sync_switch.h",
+  "fml/synchronization/waitable_event.h",
+  "fml/task_queue_id.h",
+  "fml/task_runner.h",
+  "fml/task_source.h",
+  "fml/task_source_grade.h",
+  "fml/thread.h",
+  "fml/time/time_delta.h",
+  "fml/time/time_point.h",
+  "fml/time/timer.h",
+  "fml/time/timestamp_provider.h",
+  "fml/unique_fd.h",
+  "fml/unique_object.h",
+  "fml/wakeable.h",
+  "geometry/point.h",
+  "geometry/rect.h",
+  "geometry/size.h",
+  "hybrid_map.h",
+  "linked_hash_map.h",
+  "lru_cache.h",
+  "lynx_actor.h",
+  "md5.h",
+  "no_destructor.h",
+  "path_utils.h",
+  "position.h",
+  "shared_vector.h",
+  "sorted_for_each.h",
+  "thread/base_semaphore.h",
+  "thread/pthread_rw_lock_guard.h",
+  "thread/timed_task.h",
+  "to_underlying.h",
+  "type_traits_addon.h",
+  "vector.h",
+  "vector2d.h",
+  "vector_helper.h",
+  "version_util.h",
+  "//build/build_config.h",
+  "fml/hash_combine.h",
+  "fml/raster_thread_merger.h",
+  "fml/shared_thread_merger.h",
+]
+if (is_android || is_linux) {
+  base_core_public_headers_list += [ "fml/platform/linux/timerfd.h" ]
+}
+if (is_android) {
+  base_core_public_headers_list += [
+    "fml/platform/android/cpu_affinity.h",
+    "fml/platform/android/message_loop_android.h",
+    "fml/synchronization/shared_mutex_std.h",
+    "platform/android/java_type.h",
+    "platform/android/jni_convert_helper.h",
+    "platform/android/jni_utils.h",
+    "platform/android/scoped_java_ref.h",
+  ]
+} else if (is_harmony) {
+  base_core_public_headers_list += [
+    "fml/platform/harmony/message_loop_harmony.h",
+    "fml/platform/linux/timerfd.h",
+    "fml/synchronization/shared_mutex_std.h",
+    "platform/harmony/harmony_vsync_manager.h",
+    "platform/harmony/napi_util.h",
+  ]
+} else if (is_linux) {
+  base_core_public_headers_list += [ "fml/synchronization/shared_mutex_std.h" ]
+  if (!use_custom_message_loop) {
+    base_core_public_headers_list +=
+        [ "fml/platform/linux/message_loop_linux.h" ]
+  }
+} else if (is_apple) {
+  base_core_public_headers_list += [
+    "fml/platform/darwin/cf_utils.h",
+    "fml/synchronization/shared_mutex_posix.h",
+    "platform/darwin/type_utils.h",
+  ]
+  if (!use_custom_message_loop) {
+    base_core_public_headers_list +=
+        [ "fml/platform/darwin/message_loop_darwin.h" ]
+  }
+} else if (is_win) {
+  base_core_public_headers_list += [
+    "fml/platform/win/message_loop_win.h",
+    "fml/platform/win/task_runner_win32.h",
+    "fml/platform/win/task_runner_win32_window.h",
+    "fml/synchronization/shared_mutex_std.h",
+    "string/string_conversion_win.h",
+  ]
+}
+base_core_public_headers = rebase_path(base_core_public_headers_list)
+
+# base_core_public_headers end
+
+# string_utils_public_headers begin
+string_utils_public_headers_list = [
+  "string/string_number_convert.h",
+  "string/string_utils.h",
+]
+string_utils_public_headers = rebase_path(string_utils_public_headers_list)
+
+# string_utils_public_headers end
+
+# base_values_public_headers begin
+base_values_public_headers_list = [
+  "value/array.h",
+  "value/base_value.h",
+  "value/byte_array.h",
+  "value/lynx_value_extended.h",
+  "value/path_parser.h",
+  "value/ref_counted_class.h",
+  "value/ref_type.h",
+  "value/table.h",
+]
+base_values_public_headers = rebase_path(base_values_public_headers_list)
+
+# base_values_public_headers end
+
+# values_public_headers begin
+values_public_headers_list = [
+  "value/base_string.h",
+  "value/lynx_api_types.h",
+  "value/lynx_value_types.h",
+]
+values_public_headers = rebase_path(values_public_headers_list)
+
+# values_public_headers end
+
+# datauri_utils_public_headers begin
+datauri_utils_public_headers_list = [ "datauri_utils.h" ]
+datauri_utils_public_headers = rebase_path(datauri_utils_public_headers_list)
+
+# datauri_utils_public_headers end
+
+base_public_headers = base_log_public_headers + time_utils_public_headers +
+                      base_core_public_headers + string_utils_public_headers +
+                      base_values_public_headers + values_public_headers +
+                      datauri_utils_public_headers

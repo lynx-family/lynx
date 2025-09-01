@@ -8,3 +8,40 @@ declare_args() {
   # Otherwise, no symbols from this library are exported.
   base_export_symbols = true
 }
+
+base_configs = rebase_path([ ":base_private_config" ])
+base_public_configs = rebase_path([ ":base_public_config" ])
+
+template("lynx_base_source_set") {
+  source_set(target_name) {
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                             "configs",
+                             "public_configs",
+                           ])
+
+    if (!defined(deps)) {
+      deps = []
+    }
+    if (!defined(cflags)) {
+      cflags = []
+    }
+
+    if (!defined(configs)) {
+      configs = []
+    }
+    if (defined(invoker.configs)) {
+      configs += invoker.configs
+    }
+
+    if (!defined(public_configs)) {
+      public_configs = []
+    }
+    if (defined(invoker.public_configs)) {
+      public_configs += invoker.public_configs
+    }
+    configs += base_configs
+    public_configs += base_public_configs
+  }
+}
