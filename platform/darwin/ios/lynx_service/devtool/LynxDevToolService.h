@@ -11,6 +11,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDevToolService : NSObject <LynxServiceDevToolProtocol>
 
+@property(nonatomic, readwrite) BOOL lynxDebugPresetValue;
+@property(nonatomic, readwrite) BOOL logBoxPresetValue;
+
 @end
 
 NS_ASSUME_NONNULL_END

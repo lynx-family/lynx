@@ -3117,6 +3117,8 @@ public protocol LynxServiceContainerProtocol-p : <NSObject> {
 }
 
 public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
+  public BOOL LynxServiceDevToolProtocol-p::lynxDebugPresetValue lynxDebugPresetValue;
+  public BOOL LynxServiceDevToolProtocol-p::logBoxPresetValue logBoxPresetValue;
   public id< LynxBaseInspectorOwner > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:debuggable:(LynxView *lynxView,[debuggable] BOOL debuggable);
   public id< LynxLogBoxProtocol > LynxServiceDevToolProtocol-p::createLogBoxWithLynxView:(LynxView *lynxView);
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolSetModuleClass();

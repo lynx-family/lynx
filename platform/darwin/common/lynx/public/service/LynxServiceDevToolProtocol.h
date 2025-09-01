@@ -21,6 +21,16 @@ NS_ASSUME_NONNULL_BEGIN
 
 @required
 
+// Preset boolean values indicating whether certain features are enabled by default.
+//
+// Note:
+// - Services are registered during `LynxEnv` initialization, so these values should only be set
+// after `LynxEnv` has been initialized.
+// - Setting `lynxDebugPresetValue` to `YES` does not initialize `LynxDevToolEnv`. If you need to
+// initialize `LynxDevToolEnv`, please call `[[LynxEnv sharedInstance] setLynxDebugEnabled: YES]`.
+@property(nonatomic, readwrite) BOOL lynxDebugPresetValue;
+@property(nonatomic, readwrite) BOOL logBoxPresetValue;
+
 - (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
                                                     debuggable:(BOOL)debuggable;
 
