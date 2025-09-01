@@ -23,7 +23,7 @@
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "devtool/embedder/core/debug_bridge_embedder.h"
 #include "devtool/embedder/core/env_embedder.h"
-#include "platform/harmony/lynx_devtool/src/main/cpp/lynx_devtool_set_module.h"
+#include "devtool/embedder/core/lynx_devtool_set_module.h"
 
 namespace lynx {
 namespace devtool {

@@ -21,8 +21,6 @@ devtool_source_set("cpp") {
     "harmony_session_handler.h",
     "inspector_owner_harmony.cc",
     "inspector_owner_harmony.h",
-    "lynx_devtool_set_module.cc",
-    "lynx_devtool_set_module.h",
   ]
 
   include_dirs = [ "../../../../../../third_party/debug_router/src/" ]

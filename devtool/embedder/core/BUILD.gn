@@ -26,6 +26,8 @@ devtool_source_set("lynx_devtool_embedder_core") {
     "inspector_owner_embedder.cc",
     "inspector_owner_embedder.h",
     "invoke_cdp_from_sdk_sender_embedder.h",
+    "lynx_devtool_set_module.cc",
+    "lynx_devtool_set_module.h",
     "page_reload_helper_embedder.cc",
     "page_reload_helper_embedder.h",
     "screen_cast_helper_embedder.cc",

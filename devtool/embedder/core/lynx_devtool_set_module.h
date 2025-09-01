@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef PLATFORM_HARMONY_LYNX_DEVTOOL_SRC_MAIN_CPP_LYNX_DEVTOOL_SET_MODULE_H_
-#define PLATFORM_HARMONY_LYNX_DEVTOOL_SRC_MAIN_CPP_LYNX_DEVTOOL_SET_MODULE_H_
+#ifndef DEVTOOL_EMBEDDER_CORE_LYNX_DEVTOOL_SET_MODULE_H_
+#define DEVTOOL_EMBEDDER_CORE_LYNX_DEVTOOL_SET_MODULE_H_
 
 #include <memory>
 #include <string>
@@ -79,4 +79,4 @@ class LynxDevToolSetModule : public piper::LynxNativeModule {
 }  // namespace devtool
 }  // namespace lynx
 
-#endif  // PLATFORM_HARMONY_LYNX_DEVTOOL_SRC_MAIN_CPP_LYNX_DEVTOOL_SET_MODULE_H_
+#endif  // DEVTOOL_EMBEDDER_CORE_LYNX_DEVTOOL_SET_MODULE_H_

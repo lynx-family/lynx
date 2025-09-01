@@ -20,9 +20,6 @@ namespace devtool {
 // the "Devtools".
 class DebuggerEmbedder {
  public:
-  static void SetDevtoolsEnabled(bool enabled);
-  static bool IsDevtoolsEnabled();
-
   static bool ConnectDevtools(
       const std::string& url,
       const std::unordered_map<std::string, std::string>& options);

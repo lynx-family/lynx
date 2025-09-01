@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "base/include/platform/harmony/napi_util.h"
-#include "platform/harmony/lynx_devtool/src/main/cpp/lynx_devtool_set_module.h"
 
 namespace lynx {
 namespace devtool {

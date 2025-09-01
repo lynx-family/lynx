@@ -267,6 +267,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   constexpr static const char* const kLynxEnableDomTree = "enable_dom_tree";
   constexpr static const char* const kLynxEnableQuickJS =
       "enable_quickjs_debug";
+  constexpr static const char* const kLynxEnableV8 = "enable_v8";
   constexpr static const char* const kLynxEnableLongPressMenu =
       "enable_long_press_menu";
   constexpr static const char* const kLynxEnableTableDeepCheck =
@@ -274,6 +275,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   constexpr static const char* const kLynxEnableLogBox = "enable_logbox";
   constexpr static const char* const kLynxEnablePiperMonitor =
       "enablePiperMonitor";
+  constexpr static const char* const kLynxEnableLaunchRecord =
+      "enable_launch_record";
 
   constexpr static const char* const kLocalEnvValueTrue = "1";
   constexpr static const char* const kLocalEnvValueFalse = "0";

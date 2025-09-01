@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "platform/harmony/lynx_devtool/src/main/cpp/lynx_devtool_set_module.h"
+#include "devtool/embedder/core/lynx_devtool_set_module.h"
 
 #include <string>
 #include <unordered_map>
@@ -11,7 +11,7 @@
 #include "core/public/pub_value.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/value_wrapper/value_impl_lepus.h"
-#include "platform/harmony/lynx_devtool/src/main/cpp/devtool_env_harmony.h"
+#include "devtool/embedder/core/env_embedder.h"
 
 namespace lynx {
 namespace devtool {
@@ -145,7 +145,7 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::SwitchLongPressMenu(
 
 std::unique_ptr<pub::Value> LynxDevToolSetModule::GetSwitch(
     const std::string &key) {
-  bool result = DevToolEnvHarmony::GetInstance().GetSwitch(key);
+  bool result = EnvEmbedder::GetSwitch(key);
   lepus::Value lepus_value = lepus::Value(result);
   return std::make_unique<PubLepusValue>(std::move(lepus_value));
 }
@@ -158,8 +158,7 @@ std::unique_ptr<pub::Value> LynxDevToolSetModule::SetSwitch(
   }
 
   bool switch_value = lepus_args.Array()->get(0).Bool();
-  DevToolEnvHarmony::GetInstance().SetSwitch(
-      key, switch_value, DevToolEnvHarmony::NeedPersistent(key));
+  EnvEmbedder::SetSwitch(key, switch_value);
   return std::unique_ptr<pub::Value>(nullptr);
 }
 
