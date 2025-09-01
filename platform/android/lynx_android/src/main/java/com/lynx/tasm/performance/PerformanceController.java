@@ -22,6 +22,7 @@ import com.lynx.tasm.LynxBooleanOption;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.TimingHandler;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.base.TraceEvent;
 import com.lynx.tasm.eventreport.LynxEventReporter;
 import com.lynx.tasm.performance.memory.IMemoryMonitor;
@@ -30,7 +31,6 @@ import com.lynx.tasm.performance.memory.MemoryRecord;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntry;
 import com.lynx.tasm.performance.performanceobserver.PerformanceEntryConverter;
 import com.lynx.tasm.performance.timing.ITimingCollector;
-import com.lynx.tasm.performance.timing.TimingUtil;
 import com.lynx.tasm.service.ILynxEventReporterService;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -45,6 +45,7 @@ import java.util.Map;
  */
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class PerformanceController implements IMemoryMonitor, ITimingCollector {
+  private static final String TAG = "PerformanceController";
   private static volatile boolean sIsNativeLibraryLoaded = false;
   private static volatile LynxBooleanOption sIsMemoryMonitorEnabled = LynxBooleanOption.UNSET;
   private static volatile long sMemoryAcquisitionDelaySec = -1;
@@ -203,7 +204,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     if (!mEnableController) {
       return;
     }
-    long usTimestamp = TimingUtil.currentTimeUs();
+    long usTimestamp = currentSystemTimeMicroseconds();
     makeTraceEventInstant(MARK_TIMING, key, usTimestamp, pipelineID);
     runOnReportThread(() -> {
       if (mNativePerformanceActorPtr == 0) {
@@ -229,7 +230,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     } else {
       mHostPlatformTiming = new JavaOnlyMap();
     }
-    long usTimestamp = TimingUtil.currentTimeUs();
+    long usTimestamp = currentSystemTimeMicroseconds();
     makeTraceEventInstants(MARK_HOST_PLATFORM_TIMING, key, usTimestamp);
     if (mHostPlatformTiming == null) {
     }
@@ -243,7 +244,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
         || mPendingPaintEndPipelineIds.isEmpty()) {
       return;
     }
-    long usTimestamp = TimingUtil.currentTimeUs();
+    long usTimestamp = currentSystemTimeMicroseconds();
     makeTraceEventInstants(MARK_TIMING, TIMING_KEY_PAINT_END, usTimestamp);
     JavaOnlyMap hostPlatformTiming = mHostPlatformTiming;
     mHostPlatformTiming = null;
@@ -372,6 +373,14 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     }
   }
 
+  public static long currentSystemTimeMicroseconds() {
+    if (isNativeLibraryLoaded()) {
+      return nativeCurrentSystemTimeMicroseconds();
+    }
+    LLog.e(TAG, "Failed to call currentSystemTimeMicroseconds to obtain the timestamp.");
+    return 0;
+  }
+
   // Native API
   private native void nativeAllocateMemory(
       long nativePtr, String category, long sizeBytes, String detailKey, String detailValue);
@@ -384,4 +393,6 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
   private native void nativeSetPaintEndTimingAndHostPlatformTiming(
       long nativePtr, long usTimestamp, JavaOnlyMap hostPlatformTiming, JavaOnlyArray pipelineIds);
   private static native boolean nativeIsMemoryMonitorEnabled();
+
+  private static native long nativeCurrentSystemTimeMicroseconds();
 }

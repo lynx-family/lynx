@@ -211,6 +211,10 @@ static jboolean IsMemoryMonitorEnabled(JNIEnv* env, jclass jcaller) {
   return lynx::tasm::performance::MemoryMonitor::Enable();
 }
 
+static jlong CurrentSystemTimeMicroseconds(JNIEnv* env, jclass jcaller) {
+  return lynx::base::CurrentSystemTimeMicroseconds();
+}
+
 namespace lynx {
 namespace jni {
 bool RegisterJNIForPerformanceController(JNIEnv* env) {
