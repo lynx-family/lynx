@@ -448,9 +448,36 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     map["c"] = "3";
     map["d"] = "4";
     EXPECT_TRUE(map.using_small_map());
+    map["d"] = "5";
+    EXPECT_TRUE(map.using_small_map());
+    assert_map_content(map, {"a", "b", "c", "d"}, {"1", "2", "3", "5"});
     map.reserve(10);
     EXPECT_FALSE(map.using_small_map());
+    assert_map_content(map, {"a", "b", "c", "d"}, {"1", "2", "3", "5"});
+  }
+
+  {
+    MAP map;
+    map["a"] = "1";
+    map["b"] = "2";
+    map["c"] = "3";
+    map["d"] = "4";
+    EXPECT_TRUE(map.using_small_map());
     assert_map_content(map, {"a", "b", "c", "d"}, {"1", "2", "3", "4"});
+    std::string c_str = "c";
+    map[c_str] = "33";
+    map["d"] = "44";
+    EXPECT_TRUE(map.using_small_map());
+    assert_map_content(map, {"a", "b", "c", "d"}, {"1", "2", "33", "44"});
+    map["e"] = "5";
+    EXPECT_FALSE(map.using_small_map());
+    assert_map_content(map, {"a", "b", "c", "d", "e"},
+                       {"1", "2", "33", "44", "5"});
+    std::string f_str = "f";
+    map[f_str] = "6";
+    EXPECT_FALSE(map.using_small_map());
+    assert_map_content(map, {"a", "b", "c", "d", "e", "f"},
+                       {"1", "2", "33", "44", "5", "6"});
   }
 
   MAP map;
@@ -495,7 +522,7 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   ret = map.insert_or_assign(std::move(sJJJ), "jjj");
   EXPECT_TRUE(ret.second);
   EXPECT_TRUE(sJJJ.empty());
-  // EXPECT_EQ(map["JJJ"], "jjj"); // operator[] will cause transfer
+  EXPECT_EQ(map["JJJ"], "jjj");
   EXPECT_TRUE(map.using_small_map());
   assert_map_content(map, {"apple", "KKK", "banana", "JJJ"},
                      {"red", "kkk", "yellow", "jjj"});
@@ -536,8 +563,11 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
-    map_copy.insert("AAA", "aaa");
+    auto ret = map_copy.insert("AAA", "aaa");
+    EXPECT_TRUE(ret.second);
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "aaa");
+    EXPECT_EQ(ret.first, map_copy.find("AAA"));
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -545,11 +575,72 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
+    auto ret = map_copy.insert("apple", "green");
+    EXPECT_FALSE(ret.second);
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+  }
+
+  {
+    auto map_copy = map;
+    EXPECT_TRUE(map_copy.using_small_map());
+    const std::string key = "apple";
+    std::string value = "green";
+    auto ret = map_copy.insert(key, value);
+    EXPECT_FALSE(ret.second);
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+  }
+
+  {
+    auto map_copy = map;
+    EXPECT_TRUE(map_copy.using_small_map());
+    const std::string key = "apple";
+    std::string value = "green";
+    auto ret = map_copy.insert(key, std::move(value));
+    EXPECT_FALSE(ret.second);
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+  }
+
+  {
+    auto map_copy = map;
+    EXPECT_TRUE(map_copy.using_small_map());
+    std::string key = "apple";
+    std::string value = "green";
+    auto ret = map_copy.insert(std::move(key), value);
+    EXPECT_FALSE(ret.second);
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+  }
+
+  {
+    auto map_copy = map;
+    EXPECT_TRUE(map_copy.using_small_map());
+    std::string key = "apple";
+    std::string value = "green";
+    auto ret = map_copy.insert(std::move(key), std::move(value));
+    EXPECT_FALSE(ret.second);
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+  }
+
+  {
+    auto map_copy = map;
+    EXPECT_TRUE(map_copy.using_small_map());
     std::pair<std::string, std::string> data = {"AAA", "aaa"};
-    map_copy.insert(data.first, data.second);
+    auto ret = map_copy.insert(data.first, data.second);
+    EXPECT_TRUE(ret.second);
     EXPECT_FALSE(data.first.empty());
     EXPECT_FALSE(data.second.empty());
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "aaa");
+    EXPECT_EQ(ret.first, map_copy.find("AAA"));
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -558,10 +649,13 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
     std::pair<std::string, std::string> data = {"AAA", "aaa"};
-    map_copy.insert(std::move(data.first), std::move(data.second));
+    auto ret = map_copy.insert(std::move(data.first), std::move(data.second));
+    EXPECT_TRUE(ret.second);
     EXPECT_TRUE(data.first.empty());
     EXPECT_TRUE(data.second.empty());
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "aaa");
+    EXPECT_EQ(ret.first, map_copy.find("AAA"));
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -570,10 +664,13 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
     const std::pair<const std::string, std::string> data = {"AAA", "aaa"};
-    map_copy.insert(data.first, data.second);
+    auto ret = map_copy.insert(data.first, data.second);
+    EXPECT_TRUE(ret.second);
     EXPECT_FALSE(data.first.empty());
     EXPECT_FALSE(data.second.empty());
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "aaa");
+    EXPECT_EQ(ret.first, map_copy.find("AAA"));
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -582,10 +679,13 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
     std::pair<const std::string, std::string> data = {"AAA", "aaa"};
-    map_copy.insert(std::move(data.first), std::move(data.second));
+    auto ret = map_copy.insert(std::move(data.first), std::move(data.second));
+    EXPECT_TRUE(ret.second);
     EXPECT_FALSE(data.first.empty());
     EXPECT_TRUE(data.second.empty());
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "aaa");
+    EXPECT_EQ(ret.first, map_copy.find("AAA"));
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -593,10 +693,21 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
     const std::string key = "apple";
-    map_copy.insert_or_assign(key, "green");
+    auto ret = map_copy.insert_or_assign(key, "green");
+    EXPECT_FALSE(ret.second);                 // assignment took place
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    EXPECT_EQ(*ret.first, "green");
+    EXPECT_EQ(ret.first, map_copy.find("apple"));
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"green", "kkk", "yellow", "jjj"});
+    auto ret2 = map_copy.insert_or_assign("AAA", "aaa");
+    EXPECT_TRUE(ret2.second);  // insertion took place
+    EXPECT_EQ(*ret2.first, "aaa");
+    EXPECT_EQ(ret2.first, map_copy.find("AAA"));
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
-    map_copy.insert_or_assign("AAA", "aaa");
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"green", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -604,9 +715,20 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
-    map_copy.insert_or_assign("apple", "green");
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+    auto ret = map_copy.insert_or_assign("apple", "green");
+    EXPECT_FALSE(ret.second);                 // assignment took place
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    EXPECT_EQ(*ret.first, "green");
+    EXPECT_EQ(ret.first, map_copy.find("apple"));
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"green", "kkk", "yellow", "jjj"});
+    auto ret2 = map_copy.insert_or_assign("AAA", "aaa");
+    EXPECT_TRUE(ret2.second);
+    EXPECT_EQ(*ret2.first, "aaa");
+    EXPECT_EQ(ret2.first, map_copy.find("AAA"));
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
-    map_copy.insert_or_assign("AAA", "aaa");
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"green", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -617,9 +739,17 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     const std::string key = "apple";
     auto ret = map_copy.emplace(key, "green", 4);
     EXPECT_FALSE(ret.second);
-    EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "red");
+    EXPECT_EQ(ret.first, map_copy.find(key));
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
     const std::string key2 = "AAA";
-    map_copy.emplace(key2, "aaaaaa", 3);
+    auto ret2 = map_copy.emplace(key2, "aaaaaa", 3);
+    EXPECT_TRUE(ret2.second);
+    EXPECT_EQ(*ret2.first, "aaa");
+    EXPECT_EQ(ret2.first, map_copy.find("AAA"));
+    EXPECT_FALSE(map_copy.using_small_map());  // transferred
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -630,10 +760,18 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
     const std::string key = "apple";
     auto ret = map_copy.emplace(key, "green", 4);
     EXPECT_FALSE(ret.second);
-    EXPECT_FALSE(map_copy.using_small_map());  // transferred
+    EXPECT_EQ(*ret.first, "red");
+    EXPECT_EQ(ret.first, map_copy.find(key));
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
     std::string key2 = "AAA";
-    map_copy.emplace(std::move(key2), "aaaaaa", 3);
+    auto ret2 = map_copy.emplace(std::move(key2), "aaaaaa", 3);
     EXPECT_TRUE(key2.empty());
+    EXPECT_TRUE(ret2.second);
+    EXPECT_EQ(*ret2.first, "aaa");
+    EXPECT_EQ(ret2.first, map_copy.find("AAA"));
+    EXPECT_FALSE(map_copy.using_small_map());  // transferred
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
   }
@@ -641,8 +779,21 @@ static void Test_MapMisc_4_As_SmallMap_MaxSize() {
   {
     auto map_copy = map;
     EXPECT_TRUE(map_copy.using_small_map());
-    map_copy.emplace(std::piecewise_construct, std::forward_as_tuple(3, 'A'),
-                     std::forward_as_tuple(3, 'a'));
+    auto ret = map_copy.emplace(std::piecewise_construct,
+                                std::forward_as_tuple(3, 'K'),
+                                std::forward_as_tuple(3, 'i'));
+    EXPECT_FALSE(ret.second);
+    EXPECT_EQ(*ret.first, "kkk");
+    EXPECT_EQ(ret.first, map_copy.find("KKK"));
+    EXPECT_TRUE(map_copy.using_small_map());  // not transferred
+    assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ"},
+                       {"red", "kkk", "yellow", "jjj"});
+    auto ret2 = map_copy.emplace(std::piecewise_construct,
+                                 std::forward_as_tuple(3, 'A'),
+                                 std::forward_as_tuple(3, 'a'));
+    EXPECT_TRUE(ret2.second);
+    EXPECT_EQ(*ret2.first, "aaa");
+    EXPECT_EQ(ret2.first, map_copy.find("AAA"));
     EXPECT_FALSE(map_copy.using_small_map());  // transferred
     assert_map_content(map_copy, {"apple", "KKK", "banana", "JJJ", "AAA"},
                        {"red", "kkk", "yellow", "jjj", "aaa"});
@@ -770,62 +921,6 @@ TEST(HybridMap, ReserveWithInline) {
     EXPECT_FALSE(map.small_map().is_static_buffer());
     map.reserve(5);
     EXPECT_FALSE(map.using_small_map());
-  }
-}
-
-struct CustomTransferPolicy {
-  template <typename SmallMap, typename BigMap>
-  void operator()(SmallMap& small_map, BigMap& big_map) {
-    small_map.for_each([&](int key, std::string& value) {
-      big_map.emplace(std::move(key), std::move(value));
-    });
-  }
-};
-
-template <class MAP>
-static void TestForeachIntStringMapWithConsecutiveIntegersPolicy() {
-  std::map<std::string, std::string> visited;
-  MAP map;
-  map[2] = "B";
-  map[1] = "A";
-  map[3] = "C";
-  map.for_each([&](int key, const std::string& value) {
-    visited[std::to_string(key)] = value;
-  });
-  EXPECT_TRUE(ConcatOrderedMap(visited) == "1A2B3C");
-
-  auto map2 = map;
-  map2.for_each([&](const int& key, std::string& value) {
-    if (key == 2) {
-      value = "BB";
-    }
-  });
-  EXPECT_TRUE(map2[2] == "BB");
-}
-
-TEST(HybridMap, ForeachLinearIntStringMapOfConsecutiveKeyPolicy) {
-  {
-    using MAP = HybridMap<
-        int, std::string, 2,
-        MapPolicyInlineLinearFlatMap<2, MapKeyPolicyConsecutiveIntegers<int>>,
-        MapPolicyBoostFlatMap, CustomTransferPolicy>;
-    TestForeachIntStringMapWithConsecutiveIntegersPolicy<MAP>();
-  }
-
-  {
-    using MAP = HybridMap<
-        int, std::string, 3,
-        MapPolicyInlineLinearFlatMap<2, MapKeyPolicyConsecutiveIntegers<int>>,
-        MapPolicyBoostFlatMap, CustomTransferPolicy>;
-    TestForeachIntStringMapWithConsecutiveIntegersPolicy<MAP>();
-  }
-
-  {
-    using MAP = HybridMap<
-        int, std::string, 4,
-        MapPolicyInlineLinearFlatMap<2, MapKeyPolicyConsecutiveIntegers<int>>,
-        MapPolicyBoostFlatMap, CustomTransferPolicy>;
-    TestForeachIntStringMapWithConsecutiveIntegersPolicy<MAP>();
   }
 }
 

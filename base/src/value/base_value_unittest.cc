@@ -334,6 +334,37 @@ TEST_F(BaseValueTest, Dictionary) {
   ASSERT_TRUE(dict->empty());
   ASSERT_TRUE(dict->size() == 0);
 
+  {
+    auto dict = lepus::Dictionary::Create();
+    for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+      dict->SetValue(String(std::to_string(i)), std::to_string(i));
+    }
+    ASSERT_TRUE(dict->using_small_map());
+    // Dictionary iterates and set value from self. No change and no transfer.
+    for (auto it = dict->begin(); it != dict->end(); it++) {
+      dict->SetValue(it->first, it->second);
+    }
+    ASSERT_TRUE(dict->using_small_map());
+    for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+      ASSERT_EQ(dict->GetValue(String(std::to_string(i))).StdString(),
+                std::to_string(i));
+    }
+    auto* value_ptr =
+        dict->SetValue(
+                String(std::to_string(lepus::Dictionary::kSmallMapMaximumSize)),
+                "asdf")
+            .get();
+    ASSERT_EQ(value_ptr,
+              dict->GetValue(String(std::to_string(
+                                 lepus::Dictionary::kSmallMapMaximumSize)))
+                  .get());
+    ASSERT_FALSE(dict->using_small_map());
+    for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
+      ASSERT_EQ(dict->GetValue(String(std::to_string(i))).StdString(),
+                std::to_string(i));
+    }
+  }
+
   std::unordered_set<std::string> keys;
   for (int i = 0; i < (int)lepus::Dictionary::kSmallMapMaximumSize; i++) {
     dict->SetValue(String(std::to_string(i)), std::to_string(i));
@@ -445,6 +476,12 @@ TEST_F(BaseValueTest, Dictionary) {
   dict5->EraseKey(
       String(std::to_string(lepus::Dictionary::kSmallMapMaximumSize)));
   ASSERT_TRUE(*dict3 == *dict5);
+  dict4->SetValue(String(std::to_string(1)), "1");
+  ASSERT_TRUE(dict4->using_small_map());
+  ASSERT_TRUE(*dict3 == *dict4);
+  dict4->SetValue(String(std::to_string(1)), "1111111");
+  ASSERT_TRUE(dict4->using_small_map());
+  ASSERT_FALSE(*dict3 == *dict4);
 
   // Overwrite values
   auto dict6 = lepus::Dictionary::Create();

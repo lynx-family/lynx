@@ -60,7 +60,8 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
   // relocatable type-trait of key value types.
   struct PlainBytesTransferPolicy {
     template <typename SmallMap, typename BigMap>
-    void operator()(SmallMap& small_map, BigMap& big_map) {
+    typename SmallMap::mapped_type* operator()(SmallMap& small_map,
+                                               BigMap& big_map) {
       static_assert(
           base::IsTriviallyRelocatable<typename BigMap::key_type, false>::value,
           "Requires `base::String` to be trivially relocatable.");
@@ -68,6 +69,7 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
                                                  false>::value,
                     "Requires `lepus::Value` to be trivially relocatable.");
 
+      typename SmallMap::mapped_type* last_value_ptr;
       small_map.for_each([&](const auto& key, auto& value) {
         // Treat big_map as a map containing plain bytes of key and value so
         // that we can do trivial copy and then ignores the destruction of
@@ -76,11 +78,15 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
             BigMapPolicy::plain_bytes_type<typename BigMap::key_type,
                                            typename BigMap::mapped_type>;
         using PlainBytesMappedType = typename PlainBytesBigMap::mapped_type;
-        auto& target_value = reinterpret_cast<PlainBytesMappedType&>(
-            big_map.try_emplace_plain_bytes_key(key).first->second);
+        last_value_ptr =
+            &big_map.try_emplace_plain_bytes_key(key).first->second;
+        auto& target_value =
+            reinterpret_cast<PlainBytesMappedType&>(*last_value_ptr);
         target_value = reinterpret_cast<const PlainBytesMappedType&>(value);
       });
+      // Force set small_map_ as empty to skip destruction of objects.
       std::decay_t<decltype(small_map)>::Unsafe::SetSize(small_map, 0);
+      return last_value_ptr;
     }
   };
 
@@ -155,6 +161,9 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
   using Map =
       base::HybridMap<base::String, Value, kSmallMapMaximumSize, SmallMapPolicy,
                       BigMapPolicy, PlainBytesTransferPolicy, IteratorPolicy>;
+
+  static_assert(Map::TransferPolicyReturnsPointer,
+                "Requires optimized transfer policy.");
 
   /// Use ValueWrapper as result of Dictionary's GetValue() method to
   /// reduce the chance that user cache pointer address of inner Value

@@ -83,7 +83,8 @@ struct MapPolicy {
 };
 
 /// The default logic of migrating data from small map to big map and destruct
-/// the small map afterwards.
+/// the small map afterwards. This transfer policy will not return pointer to
+/// the last transferred value.
 struct DefaultTransferPolicy {
   template <typename SmallMap, typename BigMap>
   void operator()(SmallMap& small_map, BigMap& big_map) {
@@ -209,9 +210,9 @@ struct DefaultIteratorPolicy {
  * type again.
  *
  * `TransferPolicy`: a callable object providing custom migration logic of data
- * from small map to big map. Two things need to be done: migrate data from the
- * small map to the big map, and deconstruct the small map object. If not
- * provided DefaultTransferPolicy would be used:
+ * from small map to big map. If not provided DefaultTransferPolicy would be
+ * used. If the `()` operator returns a pointer to mapped_type, it would be
+ * treated as the last inserted value which triggers map data transfer.
  */
 template <typename Key, typename T, size_t MaxSmallMapSize,
           typename SmallMapPolicy, typename BigMapPolicy,
@@ -229,7 +230,7 @@ class HybridMap {
                      typename big_map_type::key_type> &&
           std::is_same_v<typename small_map_type::mapped_type,
                          typename big_map_type::mapped_type>,
-      "Requires map types have the same internal defined value types.");
+      "Requires map types have identical internal defined value types.");
 
   using size_type = size_t;
   using key_type = typename small_map_type::key_type;        // Key
@@ -242,6 +243,13 @@ class HybridMap {
 
   using iterator = typename IteratorPolicy::iterator;
   using const_iterator = typename IteratorPolicy::const_iterator;
+
+  // If TransferPolicy returns pointer to last inserted value which caused
+  // map data transfer, we can use the returned pointer for optimization.
+  static constexpr auto TransferPolicyReturnsPointer =
+      std::is_same_v<std::remove_const_t<std::invoke_result_t<
+                         TransferPolicy, small_map_type&, big_map_type&>>,
+                     mapped_type*>;
 
  public:
   HybridMap() : using_small_map_(true), small_map_() {}
@@ -415,14 +423,53 @@ class HybridMap {
 
   size_t count(const Key& key) const { return contains(key) ? 1 : 0; }
 
-  template <class U>
-  T& operator[](U&& key) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
+  T& operator[](const Key& key) {
+    if (HYBRID_MAP_LIKELY(using_small_map_)) {
+      // [] will insert default constructed value and may trigger data transfer.
+      auto res = small_map_.try_emplace(key);
+      if (res.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            return *_transfer();
+          } else {
+            // Slow path, must find inserted value in big map again.
+            _transfer();
+            return big_map_.find(key)->second;
+          }
+        }
+      }
+      return res.first->second;
+    } else {
+      return big_map_[key];
     }
-    return HYBRID_MAP_LIKELY(using_small_map_)
-               ? small_map_[std::forward<U>(key)]
-               : big_map_[std::forward<U>(key)];
+  }
+
+  T& operator[](Key&& key) {
+    if (HYBRID_MAP_LIKELY(using_small_map_)) {
+      // [] will insert default constructed value and may trigger data transfer.
+      auto res = small_map_.try_emplace(std::move(key));
+      if (res.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            return *_transfer();
+          } else {
+            // Slow path, must find inserted value in big map again.
+            auto key_copy = res.first->first;
+            _transfer();
+            return big_map_.find(key_copy)->second;
+          }
+        }
+      }
+      return res.first->second;
+    } else {
+      return big_map_[std::move(key)];
+    }
   }
 
   T& at(const Key& key) {
@@ -440,32 +487,61 @@ class HybridMap {
   /// NOT cache the pointer if either small map or big map is not node based.
   template <class V>
   std::pair<T*, bool> insert_or_assign(const Key& key, V&& value) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
-    }
+    std::pair<T*, bool> result;
     if (HYBRID_MAP_LIKELY(using_small_map_)) {
       auto res = small_map_.insert_or_assign(key, std::forward<V>(value));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
+      if (result.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            result.first = _transfer();
+          } else {
+            // Slow path, must find inserted value in big map again.
+            _transfer();
+            result.first = &big_map_.find(key)->second;
+          }
+        }
+      }
     } else {
       auto res = big_map_.insert_or_assign(key, std::forward<V>(value));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
     }
+    return result;
   }
 
   template <class V>
   std::pair<T*, bool> insert_or_assign(Key&& key, V&& value) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
-    }
+    std::pair<T*, bool> result;
     if (HYBRID_MAP_LIKELY(using_small_map_)) {
       auto res =
           small_map_.insert_or_assign(std::move(key), std::forward<V>(value));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
+      if (result.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            result.first = _transfer();
+          } else {
+            // Slow path, must find inserted value in big map again. Must copy
+            // key beforehand becuase argument `key` is moved and `res` is
+            // invalid after transferring.
+            auto key_copy = res.first->first;
+            _transfer();
+            result.first = &big_map_.find(key_copy)->second;
+          }
+        }
+      }
     } else {
       auto res =
           big_map_.insert_or_assign(std::move(key), std::forward<V>(value));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
     }
+    return result;
   }
 
   template <class V>
@@ -480,32 +556,61 @@ class HybridMap {
 
   template <class... Args>
   std::pair<T*, bool> emplace(const Key& key, Args&&... args) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
-    }
+    std::pair<T*, bool> result;
     if (HYBRID_MAP_LIKELY(using_small_map_)) {
       auto res = small_map_.try_emplace(key, std::forward<Args>(args)...);
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
+      if (result.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            result.first = _transfer();
+          } else {
+            // Slow path, must find inserted value in big map again.
+            _transfer();
+            result.first = &big_map_.find(key)->second;
+          }
+        }
+      }
     } else {
       auto res = big_map_.try_emplace(key, std::forward<Args>(args)...);
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
     }
+    return result;
   }
 
   template <class... Args>
   std::pair<T*, bool> emplace(Key&& key, Args&&... args) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
-    }
+    std::pair<T*, bool> result;
     if (HYBRID_MAP_LIKELY(using_small_map_)) {
       auto res =
           small_map_.try_emplace(std::move(key), std::forward<Args>(args)...);
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
+      if (result.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            result.first = _transfer();
+          } else {
+            // Slow path, must find inserted value in big map again. Must copy
+            // key beforehand becuase argument `key` is moved and `res` is
+            // invalid after transferring.
+            auto key_copy = res.first->first;
+            _transfer();
+            result.first = &big_map_.find(key_copy)->second;
+          }
+        }
+      }
     } else {
       auto res =
           big_map_.try_emplace(std::move(key), std::forward<Args>(args)...);
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
     }
+    return result;
   }
 
   template <class U, class... Args>
@@ -517,18 +622,34 @@ class HybridMap {
   std::pair<T*, bool> emplace(std::piecewise_construct_t,
                               std::tuple<Args1...> args1,
                               std::tuple<Args2...> args2) {
-    if (HYBRID_MAP_UNLIKELY(_needs_transfer())) {
-      _transfer();
-    }
+    std::pair<T*, bool> result;
     if (HYBRID_MAP_LIKELY(using_small_map_)) {
       auto res = small_map_.emplace(std::piecewise_construct, std::move(args1),
                                     std::move(args2));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
+      if (result.second) {
+        // Insertion took place, may need to transfer data to big map.
+        if (HYBRID_MAP_UNLIKELY(small_map_.size() > MaxSmallMapSize)) {
+          if constexpr (TransferPolicyReturnsPointer) {
+            // Fast path, result of _transfer() is the last inserted value in
+            // big map.
+            result.first = _transfer();
+          } else {
+            // Slow path, must find inserted value in big map again. Must copy
+            // key beforehand becuase argument `key` is moved and `res` is
+            // invalid after transferring.
+            auto key_copy = res.first->first;
+            _transfer();
+            result.first = &big_map_.find(key_copy)->second;
+          }
+        }
+      }
     } else {
       auto res = big_map_.emplace(std::piecewise_construct, std::move(args1),
                                   std::move(args2));
-      return {&res.first->second, res.second};
+      result = {&res.first->second, res.second};
     }
+    return result;
   }
 
   /**
@@ -721,21 +842,25 @@ class HybridMap {
   }
 
  private:
-  HYBRID_MAP_INLINE bool _needs_transfer() const {
-    return HYBRID_MAP_LIKELY(using_small_map_) &&
-           HYBRID_MAP_UNLIKELY(small_map_.size() == MaxSmallMapSize);
-  }
-
-  void _transfer() {
+  std::conditional_t<TransferPolicyReturnsPointer, mapped_type*, void>
+  _transfer() {
     big_map_type temp_big_map;
     if constexpr (has_reserve_method_v<big_map_type>) {
       temp_big_map.reserve(small_map_.size() +
                            2);  // size+2 for coming insertion
     }
-    TransferPolicy()(small_map_, temp_big_map);
-    small_map_.~small_map_type();
-    new (&big_map_) big_map_type(std::move(temp_big_map));
-    using_small_map_ = false;
+    if constexpr (TransferPolicyReturnsPointer) {
+      auto last_pointer = TransferPolicy()(small_map_, temp_big_map);
+      small_map_.~small_map_type();
+      new (&big_map_) big_map_type(std::move(temp_big_map));
+      using_small_map_ = false;
+      return last_pointer;
+    } else {
+      TransferPolicy()(small_map_, temp_big_map);
+      small_map_.~small_map_type();
+      new (&big_map_) big_map_type(std::move(temp_big_map));
+      using_small_map_ = false;
+    }
   }
 
   void _transfer_reserve(size_t size) {
