@@ -84,8 +84,11 @@ void ParagraphBuilderHarmony::AddText(const char* text) {
   int32_t text_char16_count = u16text.length();
   std::string text_string;
   if (max_char16_count_ - char16_count_ < text_char16_count) {
-    auto u16text_splice = std::u16string_view(u16text).substr(
-        0, max_char16_count_ - char16_count_);
+    auto splice_count = max_char16_count_ - char16_count_;
+    if (base::IsLeadingSurrogate(u16text[splice_count - 1])) {
+      splice_count--;
+    }
+    auto u16text_splice = std::u16string_view(u16text).substr(0, splice_count);
     text_string = base::U16StringToU8(u16text_splice);
     text = text_string.data();
     text_char16_count = max_char16_count_ - char16_count_;
