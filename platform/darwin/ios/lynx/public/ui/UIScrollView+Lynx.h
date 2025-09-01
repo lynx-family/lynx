@@ -30,6 +30,12 @@ typedef double (^UIScrollViewLynxTimingFunction)(double input);
 @property(nonatomic, assign) BOOL scrollEnableFromLynx;
 
 /**
+ Let Lynx know if it is a vertical UIScrollView
+ @return vertical or not
+ */
+- (BOOL)vertical;
+
+/**
  Tell ths backend-UIScrollView of `<list>` if it is adjusting its `contentOffset` internally.
  Notice, the backend-UIScrollView of `<list>` should override this method.
  @param value if the `<list>` is adjusting its `contentOffset` internally

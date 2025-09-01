@@ -263,6 +263,11 @@
   return NO;
 }
 
+- (BOOL)vertical {
+  // workaround logic, override this function please
+  return self.contentSize.height > self.frame.size.height;
+}
+
 - (LynxCustomScroll *)lynxCustomScroll {
   return objc_getAssociatedObject(self, _cmd);
 }

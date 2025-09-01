@@ -649,6 +649,58 @@ public class LynxBaselineShiftLayoutManager : NSLayoutManager {
   public instancetype LynxBaselineShiftLayoutManager::initWithVerticalAlign:(LynxVerticalAlign verticalAlign);
 }
 
+public class LynxBaseScrollView : UIScrollView {
+  public id<LynxBaseScrollViewDelegate> LynxBaseScrollView::scrollDelegate scrollDelegate;
+  public BOOL LynxBaseScrollView::vertical vertical;
+  public BOOL LynxBaseScrollView::layoutFromEnd layoutFromEnd;
+  public BOOL LynxBaseScrollView::forbidReEntrant forbidReEntrant;
+  public NSInteger LynxBaseScrollView(Internal)::scrollState scrollState;
+  public NSInteger LynxBaseScrollView(Internal)::forwardsNestedScrollMode forwardsNestedScrollMode;
+  public NSInteger LynxBaseScrollView(Internal)::backwardsNestedScrollMode backwardsNestedScrollMode;
+  public CGPoint LynxBaseScrollView(Internal)::previousScrollOffset previousScrollOffset;
+  public instancetype LynxBaseScrollView::initWithVertical:layoutFromEnd:(BOOL vertical,[layoutFromEnd] BOOL layoutFromEnd);
+  public void LynxBaseScrollView::tryToUpdateScrollState:(LynxBaseScrollViewScrollState newState);
+  public void LynxBaseScrollView::updateProgrammaticallyScrollFinishedCallback:(LynxBaseScrollViewScrollFinishedCallback callback);
+  public void LynxBaseScrollView::autoScrollWithRate:interval:complete:(CGFloat rate,[interval] NSTimeInterval interval,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxBaseScrollView(Public)::enableScroll:(BOOL enable);
+  public BOOL LynxBaseScrollView(Public)::scrollEnabled();
+  public void LynxBaseScrollView(Public)::stopScrolling();
+  public LynxBaseScrollViewScrollState LynxBaseScrollView(Public)::currentScrollState();
+  public NSArray< UIScrollView< LynxNestedScrollProtocol > * > * LynxBaseScrollView(Nested)::generateNestedScrollChainWithHitTestTarget:(UIView *view);
+}
+
+public interface LynxBaseScrollView(Auto) {
+}
+
+public interface LynxBaseScrollView(Horizontal) {
+}
+
+public interface LynxBaseScrollView(Internal) {
+  public NSInteger LynxBaseScrollView(Internal)::scrollState scrollState;
+  public NSInteger LynxBaseScrollView(Internal)::forwardsNestedScrollMode forwardsNestedScrollMode;
+  public NSInteger LynxBaseScrollView(Internal)::backwardsNestedScrollMode backwardsNestedScrollMode;
+  public CGPoint LynxBaseScrollView(Internal)::previousScrollOffset previousScrollOffset;
+}
+
+public interface LynxBaseScrollView(Nested) {
+  public NSArray< UIScrollView< LynxNestedScrollProtocol > * > * LynxBaseScrollView(Nested)::generateNestedScrollChainWithHitTestTarget:(UIView *view);
+}
+
+public interface LynxBaseScrollView(Public) {
+  public void LynxBaseScrollView(Public)::enableScroll:(BOOL enable);
+  public BOOL LynxBaseScrollView(Public)::scrollEnabled();
+  public void LynxBaseScrollView(Public)::stopScrolling();
+  public LynxBaseScrollViewScrollState LynxBaseScrollView(Public)::currentScrollState();
+}
+
+public interface LynxBaseScrollView(Vertical) {
+}
+
+public protocol LynxBaseScrollViewDelegate-p : <UIScrollViewDelegate> {
+  public NSArray< UIScrollView * > * LynxBaseScrollViewDelegate-p::getHitTestChainForNestedScrollViews();
+  public void LynxBaseScrollViewDelegate-p::scrollStateChangedFrom:to:(LynxBaseScrollViewScrollState from,[to] LynxBaseScrollViewScrollState to);
+}
+
 public class LynxBaseTextShadowNode : LynxShadowNode {
   public LynxTextStyle* LynxBaseTextShadowNode::textStyle textStyle;
   public BOOL LynxBaseTextShadowNode::hasNonVirtualOffspring hasNonVirtualOffspring;
@@ -1923,6 +1975,20 @@ public protocol LynxHolder-p : <NSObject> {
   public void LynxHolder-p::hideLynxView:(nonnull LynxView *lynxView);
 }
 
+public protocol LynxHorizontalScrollProtocol-p : <NSObject> {
+  public CGFloat LynxHorizontalScrollProtocol-p::getScrollOffsetHorizontally();
+  public void LynxHorizontalScrollProtocol-p::setScrollContentSizeHorizontally:(CGFloat contentSize);
+  public void LynxHorizontalScrollProtocol-p::scrollByUnlimitedHorizontally:(CGFloat delta);
+  public void LynxHorizontalScrollProtocol-p::scrollByHorizontally:(CGFloat delta);
+  public void LynxHorizontalScrollProtocol-p::scrollToUnlimitedHorizontally:(CGFloat offset);
+  public void LynxHorizontalScrollProtocol-p::scrollToHorizontally:(CGFloat offset);
+  public void LynxHorizontalScrollProtocol-p::animatedScrollToHorizontally:complete:(CGFloat offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxHorizontalScrollProtocol-p::animatedScrollToUnlimitedHorizontally:complete:(CGFloat offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxHorizontalScrollProtocol-p::getScrollRangeHorizontally:(CGFloat(*)[2] range);
+  public BOOL LynxHorizontalScrollProtocol-p::canScrollForwardsHorizontally();
+  public BOOL LynxHorizontalScrollProtocol-p::canScrollBackwardsHorizontally();
+}
+
 public class LynxHostPlatformTiming : NSObject {
   public NSString* LynxHostPlatformTiming::hostPlatformType hostPlatformType;
   public instancetype LynxHostPlatformTiming::initWithDictionary:(NSDictionary *dictionary);
@@ -2669,6 +2735,17 @@ public class LynxNavigator : NSObject {
   public void LynxNavigator::didEnterBackground:(id< LynxHolder > lynxHolder);
 }
 
+public protocol LynxNestedScrollProtocol-p : <NSObject> {
+  public NestedScrollMode LynxNestedScrollProtocol-p::forwardsNestedScrollMode();
+  public NestedScrollMode LynxNestedScrollProtocol-p::backwardsNestedScrollMode();
+  public CGPoint LynxNestedScrollProtocol-p::previousScrollOffset();
+  public void LynxNestedScrollProtocol-p::setPreviousScrollOffset:(CGPoint offset);
+  public NSArray< UIScrollView< LynxNestedScrollProtocol > * > * LynxNestedScrollProtocol-p::getHitTestChainForNestedScrollViews();
+  public BOOL LynxNestedScrollProtocol-p::triggerLayoutForNestedScrollViews();
+  public void LynxNestedScrollProtocol-p::tryToHandleNestedScroll();
+  public void LynxNestedScrollProtocol-p::scrollOffsetUpdated:(UIScrollView *scrollView);
+}
+
 public protocol LynxNewGestureDelegate-p : <NSObject> {
   public void LynxNewGestureDelegate-p::setGestureDetectorState:state:(NSInteger gestureId,[state] LynxGestureState state);
   public void LynxNewGestureDelegate-p::consumeGesture:params:(NSInteger gestureId,[params] NSDictionary *params);
@@ -2986,6 +3063,20 @@ public protocol LynxScrollListener-p : <NSObject> {
   public void LynxScrollListener-p::scrollerDidEndDragging:willDecelerate:(nullable LynxScrollInfo *info,[willDecelerate] BOOL decelerate);
   public void LynxScrollListener-p::scrollerDidEndDecelerating:(nullable LynxScrollInfo *info);
   public void LynxScrollListener-p::scrollerDidEndScrollingAnimation:(nullable LynxScrollInfo *info);
+}
+
+public protocol LynxScrollProtocol-p : <NSObject> {
+  public CGPoint LynxScrollProtocol-p::getScrollOffset();
+  public void LynxScrollProtocol-p::setScrollContentSize:(CGSize contentSize);
+  public void LynxScrollProtocol-p::scrollByUnlimited:(CGPoint delta);
+  public void LynxScrollProtocol-p::scrollBy:(CGPoint delta);
+  public void LynxScrollProtocol-p::scrollToUnlimited:(CGPoint offset);
+  public void LynxScrollProtocol-p::scrollTo:(CGPoint offset);
+  public void LynxScrollProtocol-p::animatedScrollTo:complete:(CGPoint offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxScrollProtocol-p::animatedScrollToUnlimited:complete:(CGPoint offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxScrollProtocol-p::getScrollRange:(CGFloat(*)[4] range);
+  public BOOL LynxScrollProtocol-p::canScrollForwards();
+  public BOOL LynxScrollProtocol-p::canScrollBackwards();
 }
 
 public class LynxScrollView : UIScrollView, <UIGestureRecognizerDelegate> {
@@ -4774,6 +4865,20 @@ public class LynxVersionUtils : NSObject {
   public NSInteger LynxVersionUtils::compareLeft:withRight:(const NSString *left,[withRight] const NSString *right);
 }
 
+public protocol LynxVerticalScrollProtocol-p : <NSObject> {
+  public CGFloat LynxVerticalScrollProtocol-p::getScrollOffsetVertically();
+  public void LynxVerticalScrollProtocol-p::setScrollContentSizeVertically:(CGFloat contentSize);
+  public void LynxVerticalScrollProtocol-p::scrollByUnlimitedVertically:(CGFloat delta);
+  public void LynxVerticalScrollProtocol-p::scrollByVertically:(CGFloat delta);
+  public void LynxVerticalScrollProtocol-p::scrollToUnlimitedVertically:(CGFloat offset);
+  public void LynxVerticalScrollProtocol-p::scrollToVertically:(CGFloat offset);
+  public void LynxVerticalScrollProtocol-p::animatedScrollToVertically:complete:(CGFloat offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxVerticalScrollProtocol-p::animatedScrollToUnlimitedVertically:complete:(CGFloat offset,[complete] LynxBaseScrollViewScrollFinishedCallback complete);
+  public void LynxVerticalScrollProtocol-p::getScrollRangeVertically:(CGFloat(*)[2] range);
+  public BOOL LynxVerticalScrollProtocol-p::canScrollForwardsVertically();
+  public BOOL LynxVerticalScrollProtocol-p::canScrollBackwardsVertically();
+}
+
 public class LynxView : UIView, <LUIBodyView> {
   public NSString* LynxView::url url;
   public BOOL LynxView::enableAsyncDisplay enableAsyncDisplay;
@@ -5138,6 +5243,7 @@ public interface UIDevice(Lynx) {
 
 public interface UIScrollView(Lynx) {
   public BOOL UIScrollView(Lynx)::scrollEnableFromLynx scrollEnableFromLynx;
+  public BOOL UIScrollView(Lynx)::vertical();
   public void UIScrollView(Lynx)::setLynxListAdjustingContentOffset:(BOOL value);
   public BOOL UIScrollView(Lynx)::isLynxListAdjustingContentOffset();
   public CGPoint UIScrollView(Lynx)::targetContentOffset:withScrollingVelocity:withVisibleItems:getIndexFromView:getViewRectAtIndex:vertical:rtl:factor:offset:callback:(CGPoint proposedContentOffset,[withScrollingVelocity] CGPoint velocity,[withVisibleItems] NSArray< UIView * > *visibleItems,[getIndexFromView] UIScrollViewGetIndexFromView getIndexFromView,[getViewRectAtIndex] UIScrollViewGetViewRectAtIndex getViewRectAtIndex,[vertical] BOOL vertical,[rtl] BOOL rtl,[factor] CGFloat factor,[offset] CGFloat offset,[callback] UIScrollViewWillSnapToCallback callback);
@@ -6556,6 +6662,23 @@ public enum LynxPropStatus {
 
   typedef struct TransOffset TransOffset
   typedef void(^ LynxNodeReadyBlock) (LynxUI *)
+
+public enum NestedScrollMode {
+  NestedScrollModeSelfOnly
+  NestedScrollModeSelfFirst
+  NestedScrollModeParentFirst
+  NestedScrollModeParallel
+}
+
+
+public enum LynxBaseScrollViewScrollState {
+  LynxBaseScrollViewScrollStateIdle
+  LynxBaseScrollViewScrollStateDragging
+  LynxBaseScrollViewScrollStateAnimating
+  LynxBaseScrollViewScrollStateFling
+}
+
+  typedef void(^ LynxBaseScrollViewScrollFinishedCallback) (BOOL completed)
 
 public enum LynxBounceViewDirection {
   LynxBounceViewDirectionRight
