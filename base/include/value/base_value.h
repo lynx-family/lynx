@@ -424,7 +424,7 @@ class BASE_EXPORT Value {
   inline void* LEPUSCPointer() const {
     DCHECK(IsJSCPointer());
     void* ret;
-    lynx_value_get_external(env_, value_, &ret);
+    lynx_value_get_external_ext(env_, value_, &ret);
     return ret;
   }
 
@@ -437,7 +437,7 @@ class BASE_EXPORT Value {
   inline bool LEPUSBool() const {
     if (!IsJSBool()) return false;
     bool ret;
-    lynx_value_get_bool(env_, value_, &ret);
+    lynx_value_get_bool_ext(env_, value_, &ret);
     return ret;
   }
   inline bool IsJSString() const {
@@ -652,8 +652,8 @@ class BASE_EXPORT Value {
       LOGE("IterateExtendedValue but env or value is nil");
       return;
     }
-    lynx_value_iterate_value(env, val, LynxValueIteratorCallback,
-                             reinterpret_cast<void*>(pfunc), nullptr);
+    lynx_value_iterate_value_ext(env, val, LynxValueIteratorCallback,
+                                 reinterpret_cast<void*>(pfunc), nullptr);
   }
 
   /* The function is used for :
@@ -687,12 +687,12 @@ class BASE_EXPORT Value {
   bool SetPropertyToTableOrArray(const std::string& key, const Value& update);
   inline lynx_value DeepCopyExtendedValue() const {
     lynx_value ret;
-    lynx_value_deep_copy_value(env_, value_, &ret);
+    lynx_value_deep_copy_value_ext(env_, value_, &ret);
     return ret;
   }
   bool IsJSUninitialized() const {
     bool ret;
-    lynx_value_is_uninitialized(env_, value_, &ret);
+    lynx_value_is_uninitialized_ext(env_, value_, &ret);
     return ret;
   }
 

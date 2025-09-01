@@ -61,10 +61,10 @@ TEST_F(LynxValueLepusNGTest, LynxValueNull) {
 
   lynx_value l_val_null = ToLynxValue(val_null);
   lynx_value l_val_undefined = ToLynxValue(val_undefined);
-  status = lynx_value_typeof(env_, l_val_null, &type);
+  status = lynx_value_typeof_ext(env_, l_val_null, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_null);
-  status = lynx_value_typeof(env_, l_val_undefined, &type);
+  status = lynx_value_typeof_ext(env_, l_val_undefined, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_undefined);
 }
@@ -75,11 +75,11 @@ TEST_F(LynxValueLepusNGTest, LynxValueBool) {
 
   LEPUSValue val_bool = LEPUS_NewBool(ctx_, false);
   lynx_value l_val_bool = ToLynxValue(val_bool);
-  status = lynx_value_typeof(env_, l_val_bool, &type);
+  status = lynx_value_typeof_ext(env_, l_val_bool, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_bool);
   bool result;
-  status = lynx_value_get_bool(env_, l_val_bool, &result);
+  status = lynx_value_get_bool_ext(env_, l_val_bool, &result);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(!result);
   LEPUS_FreeValue(ctx_, val_bool);
@@ -91,30 +91,30 @@ TEST_F(LynxValueLepusNGTest, LynxValueNumber) {
 
   LEPUSValue val_int32 = LEPUS_NewInt32(ctx_, 1024);
   lynx_value l_val_int32 = ToLynxValue(val_int32);
-  status = lynx_value_typeof(env_, l_val_int32, &type);
+  status = lynx_value_typeof_ext(env_, l_val_int32, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_int32);
 
   int64_t num = (int64_t)INT32_MAX + 1;
   LEPUSValue val_int64 = LEPUS_NewInt64(ctx_, num);
   lynx_value l_val_int64 = ToLynxValue(val_int64);
-  status = lynx_value_typeof(env_, l_val_int64, &type);
+  status = lynx_value_typeof_ext(env_, l_val_int64, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_int64);
 
   LEPUSValue val_double = LEPUS_NewFloat64(ctx_, 3.14f);
   lynx_value l_val_double = ToLynxValue(val_double);
-  status = lynx_value_typeof(env_, l_val_double, &type);
+  status = lynx_value_typeof_ext(env_, l_val_double, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_double);
 
   double ret_number1;
-  status = lynx_value_get_number(env_, l_val_double, &ret_number1);
+  status = lynx_value_get_number_ext(env_, l_val_double, &ret_number1);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(ret_number1 - 3.14 < 0.001);
 
   double ret_number2;
-  status = lynx_value_get_number(env_, l_val_int32, &ret_number2);
+  status = lynx_value_get_number_ext(env_, l_val_int32, &ret_number2);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(ret_number2 - 1024 < 0.001);
 
@@ -128,17 +128,17 @@ TEST_F(LynxValueLepusNGTest, LynxValueString) {
   lynx_api_status status;
   LEPUSValue val_str = LEPUS_NewStringLen(ctx_, "test", 4);
   lynx_value l_val_str = ToLynxValue(val_str);
-  status = lynx_value_typeof(env_, l_val_str, &type);
+  status = lynx_value_typeof_ext(env_, l_val_str, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_string);
   void* str_ref;
-  status = lynx_value_get_string_ref(env_, l_val_str, &str_ref);
+  status = lynx_value_get_string_ref_ext(env_, l_val_str, &str_ref);
   ASSERT_TRUE(status == lynx_api_ok);
   auto* base_str = reinterpret_cast<base::RefCountedStringImpl*>(str_ref);
   ASSERT_TRUE(base_str->str() == "test");
 
   std::string str;
-  status = lynx_value_to_string_utf8(env_, l_val_str, &str);
+  status = lynx_value_to_string_utf8_ext(env_, l_val_str, &str);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(str == "test");
 
@@ -156,30 +156,30 @@ TEST_F(LynxValueLepusNGTest, LynxValueArray) {
   }
   LEPUSValue arr = LEPUS_NewArrayWithValue(ctx_, 10, values.data());
   lynx_value l_val_arr = ToLynxValue(arr);
-  status = lynx_value_typeof(env_, l_val_arr, &type);
+  status = lynx_value_typeof_ext(env_, l_val_arr, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_array);
 
   bool is_array;
-  status = lynx_value_is_array(env_, l_val_arr, &is_array);
+  status = lynx_value_is_array_ext(env_, l_val_arr, &is_array);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(is_array);
 
   uint32_t length1;
-  status = lynx_value_get_length(env_, l_val_arr, &length1);
+  status = lynx_value_get_length_ext(env_, l_val_arr, &length1);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(length1 == 10);
   uint32_t length2;
-  status = lynx_value_get_length(env_, l_val_arr, &length2);
+  status = lynx_value_get_length_ext(env_, l_val_arr, &length2);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(length2 == 10);
 
   lynx_value element5;
-  status = lynx_value_get_element(env_, l_val_arr, 5, &element5);
+  status = lynx_value_get_element_ext(env_, l_val_arr, 5, &element5);
   ASSERT_TRUE(status == lynx_api_ok);
 
   lynx_value l_val_int32 = ToLynxValue(LEPUS_NewInt32(ctx_, 1024));
-  status = lynx_value_set_element(env_, l_val_arr, 10, l_val_int32);
+  status = lynx_value_set_element_ext(env_, l_val_arr, 10, l_val_int32);
   ASSERT_TRUE(status == lynx_api_ok);
 
   LEPUS_FreeValue(ctx_, arr);
@@ -193,12 +193,12 @@ TEST_F(LynxValueLepusNGTest, LynxValueMemory) {
   lynx_value l_val_arr = ToLynxValue(val_arr);
   LEPUSRefCountHeader* p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
   ASSERT_TRUE(p->ref_count == 1);
-  status = lynx_value_set_element(env_, l_val_arr, 0, l_val_str);
+  status = lynx_value_set_element_ext(env_, l_val_arr, 0, l_val_str);
   ASSERT_TRUE(status == lynx_api_ok);
   p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
   ASSERT_TRUE(p->ref_count == 2);
   lynx_value result;
-  status = lynx_value_get_element(env_, l_val_arr, 0, &result);
+  status = lynx_value_get_element_ext(env_, l_val_arr, 0, &result);
   ASSERT_TRUE(status == lynx_api_ok);
   p = (LEPUSRefCountHeader*)LEPUS_VALUE_GET_PTR(val_str);
   ASSERT_TRUE(p->ref_count == 3);
@@ -230,40 +230,43 @@ TEST_F(LynxValueLepusNGTest, LynxValueMap) {
   LEPUSValue obj = LEPUS_NewObject(ctx_);
   LEPUS_SetPropertyStr(ctx_, obj, "key1", LEPUS_NewInt32(ctx_, 10));
   lynx_value l_val_map = ToLynxValue(obj);
-  status = lynx_value_typeof(env_, l_val_map, &type);
+  status = lynx_value_typeof_ext(env_, l_val_map, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_map);
 
   uint32_t length;
-  status = lynx_value_get_length(env_, l_val_map, &length);
+  status = lynx_value_get_length_ext(env_, l_val_map, &length);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(length == 1);
 
   bool has_property;
   status =
-      lynx_value_has_named_property(env_, l_val_map, "key1", &has_property);
+      lynx_value_has_named_property_ext(env_, l_val_map, "key1", &has_property);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(has_property);
 
   lynx_value property;
-  status = lynx_value_get_named_property(env_, l_val_map, "key1", &property);
+  status =
+      lynx_value_get_named_property_ext(env_, l_val_map, "key1", &property);
   ASSERT_TRUE(status == lynx_api_ok);
 
   lynx_value l_val_int32 = ToLynxValue(LEPUS_NewInt32(ctx_, 1024));
-  status = lynx_value_set_named_property(env_, l_val_map, "key2", l_val_int32);
+  status =
+      lynx_value_set_named_property_ext(env_, l_val_map, "key2", l_val_int32);
   ASSERT_TRUE(status == lynx_api_ok);
   uint32_t length1;
-  status = lynx_value_get_length(env_, l_val_map, &length1);
+  status = lynx_value_get_length_ext(env_, l_val_map, &length1);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(length1 == 2);
 
   lynx_value property1;
-  status = lynx_value_get_named_property(env_, l_val_map, "key2", &property1);
+  status =
+      lynx_value_get_named_property_ext(env_, l_val_map, "key2", &property1);
   ASSERT_TRUE(status == lynx_api_ok);
 
   bool has_property1;
-  status =
-      lynx_value_has_named_property(env_, l_val_map, "key2", &has_property1);
+  status = lynx_value_has_named_property_ext(env_, l_val_map, "key2",
+                                             &has_property1);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(has_property1);
 
@@ -279,17 +282,17 @@ TEST_F(LynxValueLepusNGTest, LynxValueRefCounted) {
   lynx_value l_val_arr = ToLynxValue(val);
 
   lynx_value_type type;
-  status = lynx_value_typeof(env_, l_val_arr, &type);
+  status = lynx_value_typeof_ext(env_, l_val_arr, &type);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(type == lynx_value_array);
 
   std::string str;
-  status = lynx_value_to_string_utf8(env_, l_val_arr, &str);
+  status = lynx_value_to_string_utf8_ext(env_, l_val_arr, &str);
   ASSERT_TRUE(status == lynx_api_ok);
   LOGI("str: " << str);
 
   bool is_arr;
-  status = lynx_value_is_array(env_, l_val_arr, &is_arr);
+  status = lynx_value_is_array_ext(env_, l_val_arr, &is_arr);
   ASSERT_TRUE(status == lynx_api_ok);
   ASSERT_TRUE(is_arr);
 

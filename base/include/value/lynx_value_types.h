@@ -68,6 +68,6 @@ typedef lynx_value (*lynx_value_function_callback)(
 typedef void (*lynx_value_iterator_callback)(lynx_api_env env, lynx_value key,
                                              lynx_value val, void* pfunc,
                                              void* raw_data);
-typedef void (*lynx_value_print_callback)(void* stream, const char* str);
+typedef void (*lynx_value_print_ext_callback)(void* stream, const char* str);
 
 #endif  // BASE_INCLUDE_VALUE_LYNX_VALUE_TYPES_H_

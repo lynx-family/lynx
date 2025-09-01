@@ -75,26 +75,26 @@ LEPUSContext* lynx_value_api_get_context_from_env(lynx_api_env env) {
   return nullptr;
 }
 
-lynx_api_status lynx_value_get_bool(lynx_api_env env, lynx_value value,
-                                    bool* result) {
+lynx_api_status lynx_value_get_bool_ext(lynx_api_env env, lynx_value value,
+                                        bool* result) {
   *result = LEPUS_VALUE_GET_BOOL(WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_double(lynx_api_env env, lynx_value value,
-                                      double* result) {
+lynx_api_status lynx_value_get_double_ext(lynx_api_env env, lynx_value value,
+                                          double* result) {
   *result = LEPUS_VALUE_GET_FLOAT64(WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_int32(lynx_api_env env, lynx_value value,
-                                     int32_t* result) {
+lynx_api_status lynx_value_get_int32_ext(lynx_api_env env, lynx_value value,
+                                         int32_t* result) {
   *result = LEPUS_VALUE_GET_INT(WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_int64(lynx_api_env env, lynx_value value,
-                                     int64_t* result) {
+lynx_api_status lynx_value_get_int64_ext(lynx_api_env env, lynx_value value,
+                                         int64_t* result) {
   auto js_value = WrapJSValue(value);
   if (LEPUS_VALUE_IS_BIG_INT(js_value)) {
     int ret = LEPUS_ToInt64(env->ctx->ctx, result, js_value);
@@ -113,8 +113,8 @@ lynx_api_status lynx_value_get_int64(lynx_api_env env, lynx_value value,
   return lynx_api_int64_expected;
 }
 
-lynx_api_status lynx_value_is_integer(lynx_api_env env, lynx_value value,
-                                      bool* result) {
+lynx_api_status lynx_value_is_integer_ext(lynx_api_env env, lynx_value value,
+                                          bool* result) {
   LEPUSValue temp_val = WrapJSValue(value);
   if (LEPUS_IsInteger(temp_val)) {
     *result = true;
@@ -132,8 +132,8 @@ lynx_api_status lynx_value_is_integer(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_integer(lynx_api_env env, lynx_value value,
-                                       int64_t* result) {
+lynx_api_status lynx_value_get_integer_ext(lynx_api_env env, lynx_value value,
+                                           int64_t* result) {
   LEPUSValue temp_val = WrapJSValue(value);
   if (LEPUS_VALUE_GET_NORM_TAG(temp_val) == LEPUS_TAG_INT) {
     *result = LEPUS_VALUE_GET_INT(temp_val);
@@ -150,8 +150,8 @@ lynx_api_status lynx_value_get_integer(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_number(lynx_api_env env, lynx_value value,
-                                      double* result) {
+lynx_api_status lynx_value_get_number_ext(lynx_api_env env, lynx_value value,
+                                          double* result) {
   auto js_value = WrapJSValue(value);
   if (LEPUS_VALUE_IS_INT(js_value)) {
     *result = LEPUS_VALUE_GET_INT(js_value);
@@ -163,8 +163,8 @@ lynx_api_status lynx_value_get_number(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_string_ref(lynx_api_env env, lynx_value value,
-                                          void** result) {
+lynx_api_status lynx_value_get_string_ref_ext(lynx_api_env env,
+                                              lynx_value value, void** result) {
   auto val = WrapJSValue(value);
   auto* ctx = env->ctx->ctx;
   void* cache = LEPUS_IsGCMode(ctx) ? LEPUS_GetStringCache_GC(val)
@@ -180,28 +180,28 @@ lynx_api_status lynx_value_get_string_ref(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_external(lynx_api_env env, lynx_value value,
-                                        void** result) {
+lynx_api_status lynx_value_get_external_ext(lynx_api_env env, lynx_value value,
+                                            void** result) {
   *result = LEPUS_VALUE_GET_CPOINTER(WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_length(lynx_api_env env, lynx_value value,
-                                      uint32_t* result) {
+lynx_api_status lynx_value_get_length_ext(lynx_api_env env, lynx_value value,
+                                          uint32_t* result) {
   *result = (uint32_t)LEPUS_GetLength(env->ctx->ctx, WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_is_array(lynx_api_env env, lynx_value value,
-                                    bool* result) {
+lynx_api_status lynx_value_is_array_ext(lynx_api_env env, lynx_value value,
+                                        bool* result) {
   LEPUSValue js_value = WrapJSValue(value);
   *result = LEPUS_IsArray(env->ctx->ctx, js_value) ||
             LEPUS_GetLepusRefTag(js_value) == lynx::lepus::Value_Array;
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_set_element(lynx_api_env env, lynx_value object,
-                                       uint32_t index, lynx_value value) {
+lynx_api_status lynx_value_set_element_ext(lynx_api_env env, lynx_value object,
+                                           uint32_t index, lynx_value value) {
   LEPUSValue js_value;
   auto* ctx = env->ctx->ctx;
   if (value.type == lynx_value_extended) {
@@ -218,8 +218,8 @@ lynx_api_status lynx_value_set_element(lynx_api_env env, lynx_value object,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_get_element(lynx_api_env env, lynx_value object,
-                                       uint32_t index, lynx_value* result) {
+lynx_api_status lynx_value_get_element_ext(lynx_api_env env, lynx_value object,
+                                           uint32_t index, lynx_value* result) {
   LEPUSValue val =
       LEPUS_GetPropertyUint32(env->ctx->ctx, WrapJSValue(object), index);
   if (LEPUS_IsLepusRef(val)) {
@@ -232,18 +232,18 @@ lynx_api_status lynx_value_get_element(lynx_api_env env, lynx_value object,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_is_map(lynx_api_env env, lynx_value value,
-                                  bool* result) {
+lynx_api_status lynx_value_is_map_ext(lynx_api_env env, lynx_value value,
+                                      bool* result) {
   LEPUSValue js_value = WrapJSValue(value);
   *result = LEPUS_IsObject(js_value) ||
             (LEPUS_GetLepusRefTag(js_value) == lynx::lepus::Value_Table);
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_set_named_property(lynx_api_env env,
-                                              lynx_value object,
-                                              const char* utf8name,
-                                              lynx_value value) {
+lynx_api_status lynx_value_set_named_property_ext(lynx_api_env env,
+                                                  lynx_value object,
+                                                  const char* utf8name,
+                                                  lynx_value value) {
   LEPUSValue js_value;
   auto* ctx = env->ctx->ctx;
   if (value.type == lynx_value_extended) {
@@ -259,10 +259,10 @@ lynx_api_status lynx_value_set_named_property(lynx_api_env env,
   }
   return lynx_api_ok;
 }
-lynx_api_status lynx_value_has_named_property(lynx_api_env env,
-                                              lynx_value object,
-                                              const char* utf8name,
-                                              bool* result) {
+lynx_api_status lynx_value_has_named_property_ext(lynx_api_env env,
+                                                  lynx_value object,
+                                                  const char* utf8name,
+                                                  bool* result) {
   auto* ctx = env->ctx->ctx;
   HandleScope func_scope(ctx);
   LEPUSAtom atom = LEPUS_NewAtom(ctx, utf8name);
@@ -272,10 +272,10 @@ lynx_api_status lynx_value_has_named_property(lynx_api_env env,
   *result = !!ret;
   return lynx_api_ok;
 }
-lynx_api_status lynx_value_get_named_property(lynx_api_env env,
-                                              lynx_value object,
-                                              const char* utf8name,
-                                              lynx_value* result) {
+lynx_api_status lynx_value_get_named_property_ext(lynx_api_env env,
+                                                  lynx_value object,
+                                                  const char* utf8name,
+                                                  lynx_value* result) {
   LEPUSValue val =
       LEPUS_GetPropertyStr(env->ctx->ctx, WrapJSValue(object), utf8name);
   if (LEPUS_IsLepusRef(val)) {
@@ -288,14 +288,14 @@ lynx_api_status lynx_value_get_named_property(lynx_api_env env,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_is_function(lynx_api_env env, lynx_value value,
-                                       bool* result) {
+lynx_api_status lynx_value_is_function_ext(lynx_api_env env, lynx_value value,
+                                           bool* result) {
   *result = LEPUS_IsFunction(env->ctx->ctx, WrapJSValue(value));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_to_string_utf8(lynx_api_env env, lynx_value value,
-                                          void* result) {
+lynx_api_status lynx_value_to_string_utf8_ext(lynx_api_env env,
+                                              lynx_value value, void* result) {
   LEPUSValue val = WrapJSValue(value);
   if (LEPUS_IsUndefined(val)) {
     (*reinterpret_cast<std::string*>(result)) = "";
@@ -324,8 +324,8 @@ lynx_api_status lynx_value_to_string_utf8(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_typeof(lynx_api_env env, lynx_value value,
-                                  lynx_value_type* result) {
+lynx_api_status lynx_value_typeof_ext(lynx_api_env env, lynx_value value,
+                                      lynx_value_type* result) {
   if (value.type != lynx_value_extended) {
     return lynx_api_invalid_arg;
   }
@@ -392,7 +392,7 @@ lynx_api_status lynx_value_typeof(lynx_api_env env, lynx_value value,
         }
       } else {
         *result = lynx_value_null;
-        LOGE("lynx_value_typeof: unkown jsvalue type  " << value.tag);
+        LOGE("lynx_value_typeof_ext: unkown jsvalue type  " << value.tag);
       }
   }
   return lynx_api_ok;
@@ -413,9 +413,9 @@ static void iterator_callback(LEPUSContext* ctx, LEPUSValue key,
   }
 }
 
-lynx_api_status lynx_value_iterate_value(lynx_api_env env, lynx_value object,
-                                         lynx_value_iterator_callback callback,
-                                         void* pfunc, void* raw_data) {
+lynx_api_status lynx_value_iterate_value_ext(
+    lynx_api_env env, lynx_value object, lynx_value_iterator_callback callback,
+    void* pfunc, void* raw_data) {
   iterator_raw_data data = {.env = env, .pfunc = pfunc, .raw_data = raw_data};
   LEPUS_IterateObject(env->ctx->ctx, WrapJSValue(object), iterator_callback,
                       reinterpret_cast<void*>(callback), &data);
@@ -423,23 +423,23 @@ lynx_api_status lynx_value_iterate_value(lynx_api_env env, lynx_value object,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_equals(lynx_api_env env, lynx_value lhs,
-                                  lynx_value rhs, bool* result) {
+lynx_api_status lynx_value_equals_ext(lynx_api_env env, lynx_value lhs,
+                                      lynx_value rhs, bool* result) {
   *result = LEPUS_VALUE_GET_BOOL(
       LEPUS_DeepEqual(env->ctx->ctx, WrapJSValue(lhs), WrapJSValue(rhs)));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_deep_copy_value(lynx_api_env env, lynx_value src,
-                                           lynx_value* result) {
+lynx_api_status lynx_value_deep_copy_value_ext(lynx_api_env env, lynx_value src,
+                                               lynx_value* result) {
   LEPUSValue dst = LEPUS_DeepCopy(env->ctx->ctx, WrapJSValue(src));
   *result = MakeLynxValue(dst);
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_print(lynx_api_env env, lynx_value value,
-                                 void* stream,
-                                 lynx_value_print_callback callback) {
+lynx_api_status lynx_value_print_ext(lynx_api_env env, lynx_value value,
+                                     void* stream,
+                                     lynx_value_print_ext_callback callback) {
   // TODO(frendy): implement with callback
   LEPUSValue val = WrapJSValue(value);
   std::ostream& s = *(reinterpret_cast<std::ostream*>(stream));
@@ -447,8 +447,8 @@ lynx_api_status lynx_value_print(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_add_reference(lynx_api_env env, lynx_value value,
-                                         lynx_value_ref* result) {
+lynx_api_status lynx_value_add_reference_ext(lynx_api_env env, lynx_value value,
+                                             lynx_value_ref* result) {
   LEPUSValue val = WrapJSValue(value);
   if (!LEPUS_IsGCMode(env->ctx->ctx)) {
     LEPUS_DupValueRT(env->ctx->rt, val);
@@ -465,9 +465,9 @@ lynx_api_status lynx_value_add_reference(lynx_api_env env, lynx_value value,
   }
   return lynx_api_ok;
 }
-lynx_api_status lynx_value_add_reference_weak(lynx_api_env env,
-                                              lynx_value value,
-                                              lynx_value_ref* result) {
+lynx_api_status lynx_value_add_reference_weak_ext(lynx_api_env env,
+                                                  lynx_value value,
+                                                  lynx_value_ref* result) {
   LEPUSValue val = WrapJSValue(value);
   if (!LEPUS_IsGCMode(env->ctx->ctx)) {
     LEPUS_DupValueRT(env->ctx->rt, val);
@@ -482,9 +482,10 @@ lynx_api_status lynx_value_add_reference_weak(lynx_api_env env,
   }
   return lynx_api_ok;
 }
-lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
-                                          lynx_value_ref src_ref,
-                                          lynx_value_ref* result) {
+lynx_api_status lynx_value_move_reference_ext(lynx_api_env env,
+                                              lynx_value src_val,
+                                              lynx_value_ref src_ref,
+                                              lynx_value_ref* result) {
   if (!LEPUS_IsGCMode(env->ctx->ctx)) {
     *result = nullptr;
   } else {
@@ -507,8 +508,9 @@ lynx_api_status lynx_value_move_reference(lynx_api_env env, lynx_value src_val,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_remove_reference(lynx_api_env env, lynx_value value,
-                                            lynx_value_ref ref) {
+lynx_api_status lynx_value_remove_reference_ext(lynx_api_env env,
+                                                lynx_value value,
+                                                lynx_value_ref ref) {
   if (env->ctx == nullptr) {
     // There are some case that LEPUSValue is released in JS Thread.
     return lynx_api_ok;
@@ -527,14 +529,14 @@ lynx_api_status lynx_value_remove_reference(lynx_api_env env, lynx_value value,
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_has_ref_count(lynx_api_env env, lynx_value val,
-                                         bool* result) {
+lynx_api_status lynx_value_has_ref_count_ext(lynx_api_env env, lynx_value val,
+                                             bool* result) {
   *result = LEPUS_VALUE_HAS_REF_COUNT(WrapJSValue(val));
   return lynx_api_ok;
 }
 
-lynx_api_status lynx_value_is_uninitialized(lynx_api_env env, lynx_value val,
-                                            bool* result) {
+lynx_api_status lynx_value_is_uninitialized_ext(lynx_api_env env,
+                                                lynx_value val, bool* result) {
   *result = LEPUS_VALUE_IS_UNINITIALIZED(WrapJSValue(val));
   return lynx_api_ok;
 }

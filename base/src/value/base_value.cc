@@ -46,7 +46,7 @@ void Value::CopyWeakValue(const Value& value) {
     if (value_.type != lynx_value_extended) {
       value_ref_ = nullptr;
     }
-    lynx_value_add_reference_weak(env_, value.value_, &value_ref_);
+    lynx_value_add_reference_weak_ext(env_, value.value_, &value_ref_);
   }
   value_ = value.value_;
 }
@@ -55,8 +55,8 @@ Value::Value(Value&& value) noexcept {
   if (value.IsJSValue()) {
     env_ = value.env_;
     value_ref_ = nullptr;
-    lynx_value_move_reference(env_, value.value_, value.value_ref_,
-                              &value_ref_);
+    lynx_value_move_reference_ext(env_, value.value_, value.value_ref_,
+                                  &value_ref_);
     value_ = value.value_;
     value.value_ref_ = nullptr;
     value.env_ = nullptr;
@@ -206,14 +206,14 @@ Value::Value(lynx_api_env env, int64_t val, int32_t tag) : env_(env) {
   value_.type = lynx_value_extended;
   value_.tag = tag;
   value_ref_ = nullptr;
-  lynx_value_add_reference(env_, value_, &value_ref_);
+  lynx_value_add_reference_ext(env_, value_, &value_ref_);
 }
 
 Value::Value(lynx_api_env env, const lynx_value& value)
     : value_(value), env_(env) {
   if (value.type == lynx_value_extended && env) {
     value_ref_ = nullptr;
-    lynx_value_add_reference(env_, value_, &value_ref_);
+    lynx_value_add_reference_ext(env_, value_, &value_ref_);
   } else if (!env) {
     DupValue();
   }
@@ -223,7 +223,7 @@ Value::Value(lynx_api_env env, lynx_value&& value)
     : value_(std::move(value)), env_(env) {
   if (value.type == lynx_value_extended && env) {
     value_ref_ = nullptr;
-    lynx_value_move_reference(env_, value_, nullptr, &value_ref_);
+    lynx_value_move_reference_ext(env_, value_, nullptr, &value_ref_);
   }
 }
 
@@ -290,7 +290,7 @@ const std::string& Value::StdString() const {
                : base::RefCountedStringImpl::Unsafe::kFalseString().str();
   } else if (IsJSString()) {
     void* str_ref;
-    lynx_value_get_string_ref(env_, value_, &str_ref);
+    lynx_value_get_string_ref_ext(env_, value_, &str_ref);
     return reinterpret_cast<base::RefCountedStringImpl*>(str_ref)->str();
   } else if (IsJSBool()) {
     return LEPUSBool()
@@ -312,7 +312,7 @@ base::String Value::String() const& {
                      &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
     void* str_ref;
-    lynx_value_get_string_ref(env_, value_, &str_ref);
+    lynx_value_get_string_ref_ext(env_, value_, &str_ref);
     return base::String::Unsafe::ConstructWeakRefStringFromRawRef(
         reinterpret_cast<base::RefCountedStringImpl*>(str_ref));
   } else if (IsJSBool()) {
@@ -337,7 +337,7 @@ base::String Value::String() && {
                      &base::RefCountedStringImpl::Unsafe::kFalseString());
   } else if (IsJSString()) {
     void* str_ref;
-    lynx_value_get_string_ref(env_, value_, &str_ref);
+    lynx_value_get_string_ref_ext(env_, value_, &str_ref);
     return base::String::Unsafe::ConstructStringFromRawRef(
         reinterpret_cast<base::RefCountedStringImpl*>(str_ref));
   } else if (IsJSBool()) {
@@ -536,7 +536,7 @@ int Value::GetLength() const {
   }
   if (IsJSValue()) {
     uint32_t len;
-    lynx_value_get_length(env_, value_, &len);
+    lynx_value_get_length_ext(env_, value_, &len);
     return len;
   }
 
@@ -562,7 +562,8 @@ bool Value::IsEqual(const Value& value) const { return (*this == value); }
 
 bool Value::SetProperty(uint32_t idx, const Value& val) {
   if (IsJSArray()) {
-    return lynx_value_set_element(env_, value_, idx, val.value_) == lynx_api_ok;
+    return lynx_value_set_element_ext(env_, value_, idx, val.value_) ==
+           lynx_api_ok;
   }
 
   if (IsArray() && value_.val_ptr != nullptr) {
@@ -573,7 +574,8 @@ bool Value::SetProperty(uint32_t idx, const Value& val) {
 
 bool Value::SetProperty(uint32_t idx, Value&& val) {
   if (IsJSArray()) {
-    return lynx_value_set_element(env_, value_, idx, val.value_) == lynx_api_ok;
+    return lynx_value_set_element_ext(env_, value_, idx, val.value_) ==
+           lynx_api_ok;
   }
 
   if (IsArray() && value_.val_ptr != nullptr) {
@@ -585,8 +587,8 @@ bool Value::SetProperty(uint32_t idx, Value&& val) {
 
 bool Value::SetProperty(const base::String& key, const Value& val) {
   if (IsJSTable()) {
-    return lynx_value_set_named_property(env_, value_, key.c_str(),
-                                         val.value_) == lynx_api_ok;
+    return lynx_value_set_named_property_ext(env_, value_, key.c_str(),
+                                             val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -597,8 +599,8 @@ bool Value::SetProperty(const base::String& key, const Value& val) {
 
 bool Value::SetProperty(base::String&& key, const Value& val) {
   if (IsJSTable()) {
-    return lynx_value_set_named_property(env_, value_, key.c_str(),
-                                         val.value_) == lynx_api_ok;
+    return lynx_value_set_named_property_ext(env_, value_, key.c_str(),
+                                             val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -611,8 +613,8 @@ bool Value::SetProperty(base::String&& key, const Value& val) {
 
 bool Value::SetProperty(base::String&& key, Value&& val) {
   if (IsJSTable()) {
-    return lynx_value_set_named_property(env_, value_, key.c_str(),
-                                         val.value_) == lynx_api_ok;
+    return lynx_value_set_named_property_ext(env_, value_, key.c_str(),
+                                             val.value_) == lynx_api_ok;
   }
 
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -626,7 +628,7 @@ bool Value::SetProperty(base::String&& key, Value&& val) {
 Value Value::GetProperty(uint32_t idx) const {
   if (IsJSArray()) {
     lynx_value result;
-    lynx_value_get_element(env_, value_, idx, &result);
+    lynx_value_get_element_ext(env_, value_, idx, &result);
     return Value(env_, std::move(result));
   }
 
@@ -654,7 +656,7 @@ Value Value::GetProperty(uint32_t idx) const {
 Value Value::GetProperty(const base::String& key) const {
   if (IsJSTable()) {
     lynx_value result;
-    lynx_value_get_named_property(env_, value_, key.c_str(), &result);
+    lynx_value_get_named_property_ext(env_, value_, key.c_str(), &result);
     return Value(env_, std::move(result));
   }
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -666,7 +668,7 @@ Value Value::GetProperty(const base::String& key) const {
 bool Value::Contains(const base::String& key) const {
   if (IsJSTable()) {
     bool ret;
-    lynx_value_has_named_property(env_, value_, key.c_str(), &ret);
+    lynx_value_has_named_property_ext(env_, value_, key.c_str(), &ret);
     return ret;
   }
   if (IsTable() && value_.val_ptr != nullptr) {
@@ -924,7 +926,7 @@ bool operator==(const Value& left, const Value& right) {
   // process JSValue type
   if (left.IsJSValue() && right.IsJSValue()) {
     bool ret;
-    lynx_value_equals(left.env_, left.value_, right.value_, &ret);
+    lynx_value_equals_ext(left.env_, left.value_, right.value_, &ret);
     return ret;
   } else if (right.IsJSValue()) {
     return Value::IsLepusValueEqualToExtendedValue(right.env_, left,
@@ -1005,7 +1007,7 @@ bool Value::MarkConst() const {
     case lynx_value_extended:
       // JSValue
       bool ret;
-      lynx_value_has_ref_count(env_, value_, &ret);
+      lynx_value_has_ref_count_ext(env_, value_, &ret);
       if (ret) {
         return false;
       }
@@ -1026,7 +1028,7 @@ void Value::Copy(const Value& value) {
     if (value_.type != lynx_value_extended) {
       value_ref_ = nullptr;
     }
-    lynx_value_add_reference(value.env_, value.value_, &value_ref_);
+    lynx_value_add_reference_ext(value.env_, value.value_, &value_ref_);
   }
   value_ = value.value_;
 }
@@ -1038,7 +1040,7 @@ void Value::DupValue() const {
 
 void Value::FreeValue() {
   if (IsJSValue()) {
-    lynx_value_remove_reference(env_, value_, value_ref_);
+    lynx_value_remove_reference_ext(env_, value_, value_ref_);
     value_ref_ = nullptr;
     return;
   }
@@ -1048,7 +1050,7 @@ void Value::FreeValue() {
 }
 void Value::ResetValueRef() {
   if (IsJSValue()) {
-    lynx_value_remove_reference(env_, value_, value_ref_);
+    lynx_value_remove_reference_ext(env_, value_, value_ref_);
     value_ref_ = nullptr;
   }
 }
@@ -1091,35 +1093,35 @@ int64_t Value::Int64() const {
 bool Value::IsJSArray() const {
   if (unlikely(!IsJSValue())) return false;
   bool ret;
-  lynx_value_is_array(env_, value_, &ret);
+  lynx_value_is_array_ext(env_, value_, &ret);
   return ret;
 }
 
 bool Value::IsJSTable() const {
   if (unlikely(!IsJSValue())) return false;
   bool ret;
-  lynx_value_is_map(env_, value_, &ret);
+  lynx_value_is_map_ext(env_, value_, &ret);
   return ret;
 }
 
 bool Value::IsJSInteger() const {
   if (!IsJSValue()) return false;
   bool ret;
-  lynx_value_is_integer(env_, value_, &ret);
+  lynx_value_is_integer_ext(env_, value_, &ret);
   return ret;
 }
 
 bool Value::IsJSFunction() const {
   if (!IsJSValue()) return false;
   bool ret;
-  lynx_value_is_function(env_, value_, &ret);
+  lynx_value_is_function_ext(env_, value_, &ret);
   return ret;
 }
 
 int Value::GetJSLength() const {
   if (!IsJSValue()) return 0;
   uint32_t len;
-  lynx_value_get_length(env_, value_, &len);
+  lynx_value_get_length_ext(env_, value_, &len);
   return static_cast<int>(len);
 }
 
@@ -1134,7 +1136,7 @@ bool Value::IsJSFalse() const {
 int64_t Value::JSInteger() const {
   if (!IsJSValue()) return false;
   int64_t ret;
-  lynx_value_get_integer(env_, value_, &ret);
+  lynx_value_get_integer_ext(env_, value_, &ret);
   return ret;
 }
 
@@ -1148,7 +1150,7 @@ std::string Value::ToString() const {
     return "";
   }
   std::string str;
-  lynx_value_to_string_utf8(env_, value_, &str);
+  lynx_value_to_string_utf8_ext(env_, value_, &str);
   return str;
 }
 
@@ -1171,7 +1173,7 @@ double Value::LEPUSNumber() const {
   DCHECK(IsJSNumber());
   if (unlikely(!IsJSValue())) return 0;
   double ret;
-  lynx_value_get_number(env_, value_, &ret);
+  lynx_value_get_number_ext(env_, value_, &ret);
   return ret;
 }
 
@@ -1296,7 +1298,7 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
     }
   }
   lynx_value_type type;
-  lynx_value_typeof(env, val, &type);
+  lynx_value_typeof_ext(env, val, &type);
   switch (type) {
     case lynx_value_null:
       return lepus::Value();
@@ -1305,27 +1307,27 @@ Value Value::ToLepusValue(lynx_api_env env, const lynx_value& val,
     }
     case lynx_value_bool: {
       bool ret;
-      lynx_value_get_bool(env, val, &ret);
+      lynx_value_get_bool_ext(env, val, &ret);
       return lepus::Value(ret);
     }
     case lynx_value_double: {
       double ret;
-      lynx_value_get_double(env, val, &ret);
+      lynx_value_get_double_ext(env, val, &ret);
       return lepus::Value(ret);
     }
     case lynx_value_int32: {
       int32_t ret;
-      lynx_value_get_int32(env, val, &ret);
+      lynx_value_get_int32_ext(env, val, &ret);
       return lepus::Value(ret);
     }
     case lynx_value_int64: {
       int64_t ret;
-      lynx_value_get_int64(env, val, &ret);
+      lynx_value_get_int64_ext(env, val, &ret);
       return lepus::Value(ret);
     }
     case lynx_value_string: {
       void* str;
-      lynx_value_get_string_ref(env, val, &str);
+      lynx_value_get_string_ref_ext(env, val, &str);
       auto* base_str = reinterpret_cast<base::RefCountedStringImpl*>(str);
       return lepus::Value(
           base::String::Unsafe::ConstructWeakRefStringFromRawRef(base_str));
@@ -1368,7 +1370,7 @@ Value Value::ToLepusMap(lynx_api_env env, const lynx_value& val, int32_t flag) {
       [&map, flag](lynx_api_env env, const lynx_value& key,
                    const lynx_value& value) {
         std::string str;
-        lynx_value_to_string_utf8(env, key, &str);
+        lynx_value_to_string_utf8_ext(env, key, &str);
         Dictionary::Unsafe::SetValueUniqueKey(*map, std::move(str),
                                               ToLepusValue(env, value, flag));
       };
@@ -1380,7 +1382,7 @@ bool Value::IsLepusValueEqualToExtendedValue(lynx_api_env env,
                                              const lepus::Value& src,
                                              const lynx_value& dst) {
   lynx_value_type type;
-  lynx_value_typeof(env, dst, &type);
+  lynx_value_typeof_ext(env, dst, &type);
   if (type == lynx_value_array) {
     if (!src.IsArray()) return false;
     return IsLepusArrayEqualToExtendedArray(env, src.Array().get(), dst);
@@ -1398,13 +1400,13 @@ bool Value::IsLepusArrayEqualToExtendedArray(lynx_api_env env,
                                              lepus::CArray* src,
                                              const lynx_value& dst) {
   uint32_t len;
-  lynx_value_get_length(env, dst, &len);
+  lynx_value_get_length_ext(env, dst, &len);
   if (src->size() != static_cast<size_t>(len)) {
     return false;
   }
   for (uint32_t i = 0; i < src->size(); i++) {
     lynx_value val;
-    lynx_api_status status = lynx_value_get_element(env, dst, i, &val);
+    lynx_api_status status = lynx_value_get_element_ext(env, dst, i, &val);
     if (status != lynx_api_ok) return false;
     lepus::Value dst_element(env, std::move(val));
     if (src->get(i) != dst_element) return false;
@@ -1416,7 +1418,7 @@ bool Value::IsLepusDictEqualToExtendedDict(lynx_api_env env,
                                            lepus::Dictionary* src,
                                            const lynx_value& dst) {
   uint32_t len;
-  lynx_value_get_length(env, dst, &len);
+  lynx_value_get_length_ext(env, dst, &len);
   if (src->size() != static_cast<size_t>(len)) {
     return false;
   }
@@ -1424,7 +1426,7 @@ bool Value::IsLepusDictEqualToExtendedDict(lynx_api_env env,
   src->for_each([&](const auto& key, Value& value) {
     lynx_value val;
     lynx_api_status status =
-        lynx_value_get_named_property(env, dst, key.c_str(), &val);
+        lynx_value_get_named_property_ext(env, dst, key.c_str(), &val);
     if (status != lynx_api_ok) {
       result = false;
       return true;  // stop

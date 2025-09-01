@@ -30,7 +30,7 @@ void Value::Print() const {
 void Value::PrintValue(std::ostream& output, bool ignore_other, bool pretty,
                        bool sort_map_key) const {
   if (IsJSValue()) {
-    lynx_value_print(env_, value_, &output, nullptr);
+    lynx_value_print_ext(env_, value_, &output, nullptr);
     return;
   }
   int64_t i64;
