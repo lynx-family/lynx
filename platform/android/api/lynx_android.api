@@ -7377,6 +7377,7 @@ public interface com::lynx::tasm::behavior::PatchFinishListener {
 public class com::lynx::tasm::performance::PerformanceController : com.lynx.tasm.performance.memory.IMemoryMonitor, com.lynx.tasm.performance.timing.ITimingCollector {
   public static boolean com.lynx.tasm.performance.PerformanceController.isMemoryMonitorEnabled();
   public static long com.lynx.tasm.performance.PerformanceController.getMemoryAcquisitionDelaySec();
+  public static long com.lynx.tasm.performance.PerformanceController.currentSystemTimeMicroseconds();
   public void com.lynx.tasm.performance.PerformanceController.setPerformanceObserver(IPerformanceObserver observer);
   public boolean com.lynx.tasm.performance.PerformanceController.isEnableController();
   public void com.lynx.tasm.performance.PerformanceController.setEnableController(boolean enableController);
@@ -9098,10 +9099,6 @@ public class com::lynx::tasm::performance::TimingOption :  {
   public com.lynx.tasm.performance.TimingOption.TimingOption(String pipelineOrigin);
   public void com.lynx.tasm.performance.TimingOption.setTiming(String key, long msTimingStamp);
   public JavaOnlyMap com.lynx.tasm.performance.TimingOption.toJavaOnlyMap();
-}
-
-public class com::lynx::tasm::performance::timing::TimingUtil :  {
-  public static long com.lynx.tasm.performance.timing.TimingUtil.currentTimeUs();
 }
 
 public class com::lynx::tasm::behavior::TouchEventDispatcher :  {
