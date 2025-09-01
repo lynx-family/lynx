@@ -53,6 +53,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable, readonly) NSDictionary* keyframesDict;
 @property(nonatomic, nullable) NSDictionary* contextDict;
 @property(nonatomic) LynxGlobalObserver* observer;
+@property(nonatomic, readonly) BOOL enableTextGradientOpt;
 
 // generic resource fetcher
 @property(nonatomic, strong, nullable) id<LynxGenericResourceFetcher> genericResourceFetcher;

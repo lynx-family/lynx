@@ -739,3 +739,12 @@ enableHarmonyVisibleAreaChangeForExposure:
   defaultValue: false
   valueType: bool
   author: 'rAY-ooo'
+enableTextGradientOpt:
+  description: Enable text gradient optimization for iOS.
+  defaultValue: TernaryBool::UNDEFINE_VALUE
+  valueType: TernaryBool
+  readSettings: false
+  settingsEnv: external
+  syncTo: platform
+  author: 'zhongyr'
+  readNative: true

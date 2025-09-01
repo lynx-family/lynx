@@ -45,6 +45,11 @@
                                                    forKey:@"disable_opt_push_style_to_bundle"
                                              defaultValue:NO];
 
+    _enableTextGradientOpt =
+        [LynxRecorderURLAnalyzer getQueryBooleanParameter:baseURL
+                                                   forKey:@"lynx_text_gradient_opt"
+                                             defaultValue:NO];
+
     NSString* threadModeStr = [LynxRecorderURLAnalyzer getQueryStringParameter:baseURL
                                                                         forKey:@"thread_mode"];
     if (threadModeStr != nil) {

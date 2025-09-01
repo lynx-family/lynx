@@ -5,6 +5,9 @@
 #import <CoreText/CoreText.h>
 #import <Lynx/LynxTextLayoutManager.h>
 #import <Lynx/LynxTextStyle.h>
+#import <Lynx/LynxTraceEvent.h>
+#import <Lynx/LynxTraceEventDef.h>
+#import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxUIUnitUtils.h>
 
@@ -101,6 +104,36 @@
     CGPoint adjustOffset = _overflowOffset;
     CGSize maskImageSize =
         CGSizeMake(size.width + adjustOffset.x * 2, size.height + adjustOffset.y * 2);
+    if (_isGradientOpt) {
+      LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"showCGGlyphsOpt");
+
+      CGContextSaveGState(graphicsContext);
+
+      // 2. Set the text drawing mode to kCGTextClip.
+      // This means that the subsequent text drawing operations will define a clipping area, rather
+      // than actually drawing pixels. Therefore, NSForegroundColorAttributeName in attributes will
+      // be ignored.
+      CGContextSetTextDrawingMode(graphicsContext, kCGTextClip);
+
+      // 3. Apply the font and text matrix, then "draw" the glyphs to create the clipping path.
+      // Note: This step does not draw anything on the screen, it only defines the clipping area in
+      // the context.
+      CGContextSetTextMatrix(graphicsContext, textMatrix);
+      // Core Graphics requires a CGFontRef, which we can get from a UIFont.
+      CGFontRef cgFont = CTFontCopyGraphicsFont((__bridge CTFontRef)font, NULL);
+      CGContextSetFont(graphicsContext, cgFont);
+      CGContextSetFontSize(graphicsContext, font.pointSize);
+
+      CGContextShowGlyphsAtPositions(graphicsContext, glyphs, positions, glyphCount);
+
+      CGFontRelease(cgFont);
+      CGContextTranslateCTM(graphicsContext, _overflowOffset.x, _overflowOffset.y);
+      [gradient draw:graphicsContext withRect:CGRectMake(0, 0, size.width, size.height)];
+      CGContextRestoreGState(graphicsContext);
+      LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
+      return;
+    }
+    LYNX_TRACE_SECTION(LYNX_TRACE_CATEGORY_WRAPPER, @"showCGGlyphsLegacy");
 
     UIImage *image = [LynxUI
         imageWithActionBlock:^(CGContextRef _Nonnull context) {
@@ -133,6 +166,7 @@
         [image CGImage]);
     [gradient draw:graphicsContext withRect:CGRectMake(0, 0, size.width, size.height)];
     CGContextRestoreGState(graphicsContext);
+    LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   } else {
     [super showCGGlyphs:glyphs
               positions:positions

@@ -139,4 +139,10 @@
   return _config->GetTrailNewImage() == lynx::tasm::TernaryBool::TRUE_VALUE;
 }
 
+- (BOOL)enableTextGradientOpt {
+  return _config->GetEnableTextGradientOpt() == lynx::tasm::TernaryBool::UNDEFINE_VALUE
+             ? [[LynxEnv sharedInstance] enableTextGradientOpt]
+             : _config->GetEnableTextGradientOpt() == lynx::tasm::TernaryBool::TRUE_VALUE;
+}
+
 @end

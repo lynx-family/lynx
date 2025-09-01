@@ -848,6 +848,7 @@
 
 - (void)drawRect:(CGRect)bounds padding:(UIEdgeInsets)padding border:(UIEdgeInsets)border {
   if ([_layoutManager isKindOfClass:[LynxTextLayoutManager class]]) {
+    ((LynxTextLayoutManager *)_layoutManager).isGradientOpt = _isGradientOpt;
     NSRange glyphRange = [_layoutManager glyphRangeForTextContainer:_textContainer];
     CGRect textBoundingRect = [_layoutManager boundingRectForGlyphRange:glyphRange
                                                         inTextContainer:_textContainer];

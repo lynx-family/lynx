@@ -10,4 +10,5 @@
 @property(nonatomic, assign) NSInteger glyphCount;
 @property(nonatomic, assign) CGPoint preEndPosition;
 @property(nonatomic, assign) NSRange preDrawableRange;
+@property(nonatomic, assign) bool isGradientOpt;
 @end

@@ -755,6 +755,14 @@ class LynxConfigDecoder final {
       page_config->SetEnableHarmonyVisibleAreaChangeForExposure(
           doc[config::kEnableHarmonyVisibleAreaChangeForExposure].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableTextGradientOpt) &&
+        doc[config::kEnableTextGradientOpt].IsBool()) {
+      page_config->SetEnableTextGradientOpt(
+          doc[config::kEnableTextGradientOpt].GetBool()
+              ? TernaryBool::TRUE_VALUE
+              : TernaryBool::FALSE_VALUE);
+    }
   };
 };
 }  // namespace tasm

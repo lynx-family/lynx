@@ -38,6 +38,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) NSInteger ellipsisCount;
 
 @property(nonatomic, copy) void (^layoutTruncationBlock)(NSMutableAttributedString *);
+@property(nonatomic, assign) bool isGradientOpt;
 
 /**
  Returns the computed size of the renderer given the constrained size and other parameters.

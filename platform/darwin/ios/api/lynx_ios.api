@@ -170,6 +170,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::trailUseNewImage();
   public NSUInteger LUIConfig-p::logBoxImageSizeWarningThreshold();
   public bool LUIConfig-p::enableTextLayoutCache();
+  public bool LUIConfig-p::enableTextGradientOpt();
 }
 
 public class LUIConfigAdapter : NSObject, <LUIConfig> {
@@ -1297,6 +1298,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
   public BOOL LynxEnv::enableTextStorageDeallocFix();
+  public BOOL LynxEnv::enableTextGradientOpt();
   public int LynxEnv::memoryAcquisitionDelaySec();
   public int LynxEnv::memoryReportIntervalSec();
   public NSDictionary< NSString *, NSString * > * LynxEnv::cppEnvDebugDescription();
@@ -3543,6 +3545,7 @@ public class LynxTextLayoutManager : NSLayoutManager {
   public NSInteger LynxTextLayoutManager::glyphCount glyphCount;
   public CGPoint LynxTextLayoutManager::preEndPosition preEndPosition;
   public NSRange LynxTextLayoutManager::preDrawableRange preDrawableRange;
+  public bool LynxTextLayoutManager::isGradientOpt isGradientOpt;
 }
 
 public class LynxTextOverflowLayer : CALayer {
@@ -3562,6 +3565,7 @@ public class LynxTextRenderer : NSObject {
   public CGFloat LynxTextRenderer::baseline baseline;
   public NSInteger LynxTextRenderer::ellipsisCount ellipsisCount;
   public void(^ LynxTextRenderer::layoutTruncationBlock) (NSMutableAttributedString *) layoutTruncationBlock;
+  public bool LynxTextRenderer::isGradientOpt isGradientOpt;
   public instancetype LynxTextRenderer::initWithAttributedString:layoutSpec:(NSAttributedString *attrStr,[layoutSpec] LynxLayoutSpec *spec);
   public CGSize LynxTextRenderer::size();
   public CGSize LynxTextRenderer::textsize();
@@ -4121,6 +4125,7 @@ public class LynxUIContext : NSObject {
   public NSDictionary* LynxUIContext::keyframesDict keyframesDict;
   public NSDictionary* LynxUIContext::contextDict contextDict;
   public LynxGlobalObserver* LynxUIContext::observer observer;
+  public BOOL LynxUIContext::enableTextGradientOpt enableTextGradientOpt;
   public id<LynxGenericResourceFetcher> LynxUIContext::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxUIContext::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
@@ -5722,6 +5727,7 @@ public enum LynxEnvKey {
   LynxEnvEnableJSGroupThreadByDefault
   LynxEnvEnableTextLayoutCache
   LynxEnvEnableForceMemoryMonitorOnOom
+  LynxEnvEnableTextGradientOpt
   LynxEnvKeyEndMark
 }
 

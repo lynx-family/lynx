@@ -30,4 +30,5 @@
 - (bool)trailUseNewImage;
 - (NSUInteger)logBoxImageSizeWarningThreshold;
 - (bool)enableTextLayoutCache;
+- (bool)enableTextGradientOpt;
 @end

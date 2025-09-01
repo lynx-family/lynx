@@ -801,6 +801,9 @@ static const int kVirtual = 1 << 2;
     if ([[self replayConfig] disableOptPushStyleToBundle]) {
       [nativeConfig setObject:@NO forKey:@"enableOptPushStyleToBundle"];
     }
+    if ([[self replayConfig] enableTextGradientOpt]) {
+      [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
+    }
     [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
                                 forKey:@"platform_config"];
     loadMeta.binaryData = _source;
@@ -868,6 +871,9 @@ static const int kVirtual = 1 << 2;
     NSMutableDictionary* nativeConfig = [NSMutableDictionary new];
     if ([[self replayConfig] disableOptPushStyleToBundle]) {
       [nativeConfig setObject:@NO forKey:@"enableOptPushStyleToBundle"];
+    }
+    if ([[self replayConfig] enableTextGradientOpt]) {
+      [nativeConfig setObject:@YES forKey:@"enableTextGradientOpt"];
     }
     [loadMeta.lynxViewConfig setObject:[self convertNSDictToJsonString:nativeConfig]
                                 forKey:@"platform_config"];

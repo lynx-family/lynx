@@ -44,6 +44,7 @@
   LynxCALayerDelegate *_delegate;
   BOOL _isHasSubSpan;
   BOOL _isDirty;
+  BOOL _textGradientOptExperiment;
 }
 
 #if LYNX_LAZY_LOAD
@@ -76,6 +77,7 @@ LYNX_PROPS_GROUP_DECLARE(
     self.overflow = OVERFLOW_XY_VAL;
     self.view.clipsToBounds = NO;
   }
+  _textGradientOptExperiment = context.enableTextGradientOpt;
 }
 
 - (LynxTextView *)createView {
@@ -170,6 +172,8 @@ LYNX_PROPS_GROUP_DECLARE(
     _isHasSubSpan = false;
     _isDirty = true;
     _renderer = value;
+    // TODO: remove this config after experiment on stability.
+    _renderer.isGradientOpt = _textGradientOptExperiment;
 
     if (self.useDefaultAccessibilityLabel) {
       self.view.accessibilityLabel = _renderer.attrStr.string;

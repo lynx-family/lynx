@@ -500,6 +500,15 @@
   return enableTextStorageDeallocFix;
 }
 
+- (BOOL)enableTextGradientOpt {
+  static dispatch_once_t onceToken;
+  static BOOL enableTextGradientOpt = NO;
+  dispatch_once(&onceToken, ^{
+    enableTextGradientOpt = [self boolFromExternalEnv:LynxEnvEnableTextGradientOpt defaultValue:NO];
+  });
+  return enableTextGradientOpt;
+}
+
 - (int)memoryAcquisitionDelaySec {
   static dispatch_once_t onceToken;
   static int delaySecond = 0;
@@ -629,6 +638,7 @@
     @(LynxEnvEnableJSGroupThreadByDefault) : @"enable_multi_js_thread_by_default",
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",
+    @(LynxEnvEnableTextGradientOpt) : @"lynx_text_gradient_opt",
   };
   NSString *keyString = envKeyBinding[@(key)];
   NSAssert(keyString.length > 0, @"LynxEnv key string should not be nill.");
