@@ -1,11 +1,11 @@
 # CHANGELOG
-## 3.5.4
+## 3.5.5
 - Add the `pointer-events` CSS property.
 
-## 3.5.3
+## 3.5.4
 - Add `event-through-active-regions`, `enable-exposure-ui-clip` properties.
 
-## 3.5.2
+## 3.5.3
 - Add `harmony-scroll-edge-effect` property for scroll container.
 
 ## 3.5.2
