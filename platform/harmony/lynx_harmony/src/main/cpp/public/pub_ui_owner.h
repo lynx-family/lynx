@@ -48,6 +48,15 @@ class LYNX_EXPORT PubUIOwner {
   int GetUINodeByPosition(float x, float y) const;
   std::string GetTag(int sign) const;
   int32_t GetTagInfo(const std::string& tag) const;
+  void UpdateContentOffsetForListContainer(int32_t container_id,
+                                           float content_size, float delta_x,
+                                           float delta_y,
+                                           bool is_init_scroll_offset,
+                                           bool from_layout);
+  void UpdateScrollInfo(int32_t container_id, bool smooth,
+                        float estimated_offset, bool scrolling);
+  void InsertListItemPaintingNode(int list_sign, int child_sign);
+  void RemoveListItemPaintingNode(int list_sign, int child_sign);
 
  private:
   std::shared_ptr<UIOwner> ui_owner_;
