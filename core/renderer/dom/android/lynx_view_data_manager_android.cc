@@ -56,29 +56,7 @@ void UpdateData(JNIEnv* env, jclass jcaller, jlong nativePtr, jobject data,
       lynx::tasm::LepusDecoder decoder;
       lepus_value value = decoder.DecodeMessage(message_data, len);
       auto baseValue = reinterpret_cast<lynx::lepus::Value*>(nativePtr);
-      if (value.IsTable()) {
-        lynx::lepus::Dictionary* dict = value.Table().get();
-        baseValue->Table()->reserve(dict->size());
-        for (const auto& [outer_key, outer_value] : *dict) {
-          if (outer_value.IsTable()) {
-            lynx::lepus::Value old_value =
-                baseValue->Table().get()->GetValue(outer_key);
-            if (old_value.IsTable()) {
-              if (old_value.Table()->IsConst()) {
-                old_value = lynx::lepus::Value::Clone(old_value);
-              }
-              // merge Table.
-              lynx::lepus::Dictionary* table = outer_value.Table().get();
-              for (const auto& [key, value] : *table) {
-                old_value.Table()->SetValue(key, value);
-              }
-              baseValue->Table()->SetValue(outer_key, old_value);
-              continue;
-            }
-          }
-          baseValue->Table().get()->SetValue(outer_key, outer_value);
-        }
-      }
+      lynx::tasm::LynxViewDataManager::UpdateData(*baseValue, value);
     }
   }
 }

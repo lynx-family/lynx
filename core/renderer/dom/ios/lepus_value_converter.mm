@@ -125,7 +125,7 @@ static NSArray *convertQjsArrayToNSArray(const lepus::Value &value) {
       }
     });
   };
-  return [nsArray copy];
+  return nsArray;
 }
 
 static NSDictionary *convertQjsTableToNSDictionary(const lepus::Value &value) {
@@ -139,7 +139,7 @@ static NSDictionary *convertQjsTableToNSDictionary(const lepus::Value &value) {
       }
     });
   }
-  return [nsDict copy];
+  return nsDict;
 }
 
 }  // namespace tasm

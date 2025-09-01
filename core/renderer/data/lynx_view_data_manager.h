@@ -5,8 +5,6 @@
 #ifndef CORE_RENDERER_DATA_LYNX_VIEW_DATA_MANAGER_H_
 #define CORE_RENDERER_DATA_LYNX_VIEW_DATA_MANAGER_H_
 
-#include "third_party/rapidjson/document.h"
-
 namespace lynx {
 namespace lepus {
 class Value;
@@ -17,7 +15,7 @@ class LynxViewDataManager {
  public:
   static lepus::Value* ParseData(const char* data);
   static void ReleaseData(lepus::Value* obj);
-  static bool UpdateData(lepus::Value* target, lepus::Value* value);
+  static void UpdateData(lepus::Value& dest, const lepus::Value& src);
 };
 
 }  // namespace tasm

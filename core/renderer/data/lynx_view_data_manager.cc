@@ -24,21 +24,34 @@ lepus::Value* LynxViewDataManager::ParseData(const char* data) {
   return value;
 }
 
-bool LynxViewDataManager::UpdateData(lepus::Value* target,
-                                     lepus::Value* value) {
-  if (!target->IsTable()) {
-    target->SetTable(lepus::Dictionary::Create());
+void LynxViewDataManager::UpdateData(lepus::Value& dest,
+                                     const lepus::Value& src) {
+  if (src.IsTable()) {
+    auto src_dict = src.Table();
+    auto dest_dict = dest.Table();
+    dest_dict->reserve(src_dict->size());
+    for (const auto& [src_key, src_value] : *src_dict) {
+      if (src_value.IsTable()) {
+        lynx::lepus::Value old_value = dest_dict->GetValue(src_key);
+        if (old_value.IsTable()) {
+          if (old_value.Table()->IsConst()) {
+            old_value = lynx::lepus::Value::Clone(old_value);
+            dest_dict->SetValue(src_key, old_value);
+          }
+          // Merge table.
+          auto target_table = old_value.Table();
+          auto table = src_value.Table();
+          if (target_table.get() != table.get()) {
+            for (const auto& [key, value] : *table) {
+              target_table->SetValue(key, value);
+            }
+          }
+          continue;
+        }
+      }
+      dest_dict->SetValue(src_key, src_value);
+    }
   }
-  auto data_dict = target->Table();
-
-  if (!value->IsTable()) {
-    return false;
-  }
-  auto dict = value->Table();
-  for (auto iter = dict->begin(); iter != dict->end(); ++iter) {
-    data_dict->SetValue(iter->first, dict->GetValue(iter->first));
-  }
-  return true;
 }
 
 void LynxViewDataManager::ReleaseData(lepus::Value* obj) {

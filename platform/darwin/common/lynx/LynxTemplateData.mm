@@ -129,8 +129,9 @@ lepus_value RecursiveLynxConvertToLepusValue(id data, NSMutableSet* allObjects,
     dict->reserve([data count]);
     [data enumerateKeysAndObjectsUsingBlock:^(NSString* _Nonnull key, id _Nonnull value,
                                               BOOL* _Nonnull stop) {
-      dict->SetValue([key UTF8String],
-                     RecursiveLynxConvertToLepusValue(value, allObjects, useBoolLiterals));
+      lynx::lepus::Dictionary::Unsafe::SetValueUniqueKey(
+          *dict, [key UTF8String],
+          RecursiveLynxConvertToLepusValue(value, allObjects, useBoolLiterals));
     }];
     [allObjects removeObject:data];
     return lepus_value(std::move(dict));
@@ -188,27 +189,7 @@ lynx::lepus::Value* LynxGetLepusValueFromTemplateData(LynxTemplateData* data) {
   if (value_.IsTable() && value_.Table()->IsConst()) {
     value_ = lynx::lepus::Value::Clone(value_);
   }
-  if (inputValue.IsTable()) {
-    auto dict = inputValue.Table();
-    value_.Table()->reserve(dict->size());
-    for (auto iter = dict->begin(); iter != dict->end(); iter++) {
-      if (iter->second.IsTable()) {
-        lynx::lepus::Value oldValue = value_.GetProperty(iter->first);
-        if (oldValue.IsTable()) {
-          if (oldValue.Table()->IsConst()) {
-            oldValue = lynx::lepus::Value::Clone(oldValue);
-            value_.SetProperty(iter->first, oldValue);
-          }
-          lynx::lepus::Dictionary* table = iter->second.Table().get();
-          for (auto it = table->begin(); it != table->end(); it++) {
-            oldValue.SetProperty(it->first, it->second);
-          }
-          continue;
-        }
-      }
-      value_.SetProperty(iter->first, iter->second);
-    }
-  }
+  LynxViewDataManager::UpdateData(value_, inputValue);
 }
 
 - (instancetype)initWithJson:(NSString*)json {
