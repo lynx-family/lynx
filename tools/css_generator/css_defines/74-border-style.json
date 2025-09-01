@@ -19,5 +19,6 @@
     "none"
   ],
   "desc": "Used to set the styles of all four borders.",
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "<line-style>{1,4}"
 }

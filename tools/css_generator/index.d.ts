@@ -116,27 +116,35 @@ export interface Properties {
   /**
    * The border-left-style CSS property sets the line style of an element's left `border`.
    *
+   * **Syntax**: `<line-style>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-left-style
    */
-  borderLeftStyle?: (string & {}) | number | undefined;
+  borderLeftStyle?: 'dashed' | 'dotted' | 'double' | 'groove' | 'hidden' | 'inset' | 'none' | 'outset' | 'ridge' | 'solid' | undefined;
   /**
    * The border-right-style CSS property sets the line style of an element's right `border`.
    *
+   * **Syntax**: `<line-style>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-right-style
    */
-  borderRightStyle?: (string & {}) | number | undefined;
+  borderRightStyle?: 'dashed' | 'dotted' | 'double' | 'groove' | 'hidden' | 'inset' | 'none' | 'outset' | 'ridge' | 'solid' | undefined;
   /**
    * The `border-top-style` CSS property sets the line style of an element's top `border`.
    *
+   * **Syntax**: `<line-style>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-top-style
    */
-  borderTopStyle?: (string & {}) | number | undefined;
+  borderTopStyle?: 'dashed' | 'dotted' | 'double' | 'groove' | 'hidden' | 'inset' | 'none' | 'outset' | 'ridge' | 'solid' | undefined;
   /**
    * Sets the style type of the bottom border of an element.
    *
+   * **Syntax**: `<line-style>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-bottom-style
    */
-  borderBottomStyle?: (string & {}) | number | undefined;
+  borderBottomStyle?: 'dashed' | 'dotted' | 'double' | 'groove' | 'hidden' | 'inset' | 'none' | 'outset' | 'ridge' | 'solid' | undefined;
   implicitAnimation?: (string & {}) | number | undefined;
   /**
    * The border-radius CSS property rounds the corners of an element's outer border edge.
@@ -952,9 +960,11 @@ export interface Properties {
   /**
    * The `border-color` shorthand CSS property sets the color (`border-top-color`, `border-right-color`, `border-bottom-color`, `border-left-color`) of an element's border.
    *
+   * **Syntax**: `<color>{1,4}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-color
    */
-  borderColor?: (string & {}) | number | undefined;
+  borderColor?: 'transparent' | (string & {}) | undefined;
   /**
    * The `font-family` CSS property specifies a prioritized list of one or more font family names and/or generic family names for the selected element.
    *
@@ -1039,9 +1049,11 @@ export interface Properties {
   /**
    * Used to set the styles of all four borders.
    *
+   * **Syntax**: `<line-style>{1,4}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-style
    */
-  borderStyle?: (string & {}) | number | undefined;
+  borderStyle?: 'dashed' | 'dotted' | 'double' | 'groove' | 'hidden' | 'inset' | 'none' | 'outset' | 'ridge' | 'solid' | (string & {}) | undefined;
   /**
    * The `order` CSS property sets the order to lay out an item in container.
    *

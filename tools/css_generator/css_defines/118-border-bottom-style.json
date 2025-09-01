@@ -19,5 +19,6 @@
     "none"
   ],
   "desc": "Sets the style type of the bottom border of an element.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<line-style>"
 }

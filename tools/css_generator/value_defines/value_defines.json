@@ -20,6 +20,7 @@
         "<color>": "<hex-color> | <color-function> | <named-color> | transparent",
         "<color-function>": "<rgb()> | <rgba()> | <hsl()> | <hsla()>",
         "<hex-color>": "string",
-        "<named-color>": "string"
+        "<named-color>": "string",
+        "<line-style>": "none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset"
     }
 }

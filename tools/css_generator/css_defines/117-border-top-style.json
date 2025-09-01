@@ -19,5 +19,6 @@
     "none"
   ],
   "desc": "The `border-top-style` CSS property sets the line style of an element's top `border`.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<line-style>"
 }
