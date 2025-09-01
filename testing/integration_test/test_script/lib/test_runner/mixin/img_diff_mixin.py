@@ -67,8 +67,9 @@ class ImageDiffMixin:
         else:
             return None
 
-    def _crop_and_resize_img(self, name):
-        image = cv2.imread(name)
+    def _crop_and_resize_img(self, name, dir):
+        image_path = os.path.join(dir, name)
+        image = cv2.imread(image_path)
         if name not in self.img_config:
             return
         img_config = self.img_config[name]
@@ -78,11 +79,11 @@ class ImageDiffMixin:
                          int(img_config.x_min * img_config.width_scale):int(img_config.x_max * img_config.width_scale)]
         res_img = cv2.resize(crop_img, (int(img_config.resize_width * img_config.width_scale), int(img_config.resize_height * img_config.height_scale)),
                              interpolation=cv2.INTER_CUBIC)
-        ret = cv2.imwrite(os.path.join(img_config.out_dir, name), res_img)
+        ret = cv2.imwrite(image_path, res_img)
         if ret:
-            print("The screenshot has been successfully saved on %s" % os.path.join(img_config.out_dir, name))
+            print("The screenshot has been successfully saved on %s" % image_path)
         else:
-            raise RuntimeError("Screenshot save failed: " + img_config.out_dir)
+            raise RuntimeError("Screenshot save failed: " + image_path)
 
     def img_pre_process(self, name):
         '''Before comparing images, preprocess the images by resizing, converting colors, and other operations.
@@ -91,29 +92,28 @@ class ImageDiffMixin:
         '''
         pass
 
-    def diff_img(self, name, mismatch_threshold=0.01):
+    def diff_img(self, name, dir, mismatch_threshold=0.01):
         self.img_pre_process(name)
-        self._crop_and_resize_img(name)
-        self._inner_diff_img(name, mismatch_threshold, self.current_case)
+        self._crop_and_resize_img(name, dir)
+        self._inner_diff_img(name, dir, mismatch_threshold, self.current_case)
 
-    def _inner_diff_img(self, name, mismatch_threshold, current_case):
+    def _inner_diff_img(self, name, dir, mismatch_threshold, current_case):
         baseline_image_path = os.path.join(settings.PROJECT_ROOT, 'resources', self.platform, name)
         if not os.path.exists(baseline_image_path):
-            baseline_image_path = os.path.join(settings.PROJECT_ROOT, 'resources', self.platform, 'testbench', name)
-        if not os.path.exists(baseline_image_path):
-            self.log_record("screenshot", EnumLogLevel.INFO, attachments={"test_img": name, "case_name": current_case.name}, has_error=True)
+            self.log_record("screenshot", EnumLogLevel.INFO, attachments={"test_img": os.path.join(dir, name), "case_name": current_case.name}, has_error=True)
             err_message = 'No local baseline image found for comparison %s, Please prepare the images in the %s directory.' \
                           % (baseline_image_path, os.path.join('resources', self.platform))
             raise RuntimeError(err_message)
-        timestamp = int(time.time())        
 
-        test_img_path = name
         baseline_img = cv2.imread(baseline_image_path)
         baseline_img = cv2.cvtColor(baseline_img, cv2.COLOR_BGR2GRAY)
         height, width = baseline_img.shape
+        test_img_path = os.path.join(dir, name)
         test_img = cv2.imread(test_img_path)
-        new_test_img_path = str(timestamp) + '--' + test_img_path.replace(".png", '_test.png')
+        new_test_img_path = os.path.join(dir, name.replace(".png", '_test.png'))
         cv2.imwrite(new_test_img_path, test_img)
+        # remove the original test image to avoid redundant files in the screenshots folder.
+        os.remove(test_img_path)
         test_img = cv2.cvtColor(test_img, cv2.COLOR_BGR2GRAY)
         test_height, test_width = test_img.shape
         if height != test_height or width != test_width:
@@ -121,7 +121,7 @@ class ImageDiffMixin:
             raise RuntimeError("User case [ {} ]: Image comparison failed, image size inconsistent, baseline_height: {}, test_height: {}, baseline_width: {}, test_width: {}".format(name, height, test_height, width, test_width))
 
         absdiff = cv2.absdiff(baseline_img, test_img)
-        mismatch_path = str(timestamp) + '--' + test_img_path.replace(".png", '_diff.png')
+        mismatch_path = os.path.join(dir, name.replace(".png", '_diff.png'))
         test_grey_in_rgb_channel_img = cv2.cvtColor(test_img, cv2.COLOR_GRAY2BGR)
         mask = absdiff > int(0.1 * 255)
         # (B, G, R)
@@ -131,4 +131,4 @@ class ImageDiffMixin:
         mismatch_rate = numpy.sum(mask) / (height * width)
         self.log_record(name + " Mismatch rate:" + str(mismatch_rate * 100) + "%", EnumLogLevel.INFO, attachments={"test_img": new_test_img_path, "baseline_img": baseline_image_path, "img_diff": mismatch_path, "case_name": current_case.name}, has_error=(mismatch_rate > mismatch_threshold))
         if mismatch_rate > mismatch_threshold:
-            raise RuntimeError('User case [ {} ]: Image comparison fail! Mismatch rate: {}'.format( name, str(mismatch_rate)))
+            raise RuntimeError('Image comparison fail! Mismatch rate: {}'.format( str(mismatch_rate)))

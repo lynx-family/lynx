@@ -6,11 +6,9 @@
 import time
 from lynx_e2e.api.lynx_view import LynxView
 
-from lib.common import utils
-
 config = {
     "type": "custom",
-    "path": "automation/event"
+    "path": "automation/event/main"
 }
 
 

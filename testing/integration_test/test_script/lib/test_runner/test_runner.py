@@ -133,6 +133,7 @@ class TestRunner:
         self._test.start_step(f'--------{"Execute" if is_first_test else "Retry"} test, there are %s test cases-------' % len(case_list))
         for case in self._cases:
             if case.name not in case_list and case not in case_list:
+                self._test.log_info('skip case: ' + case.name)
                 continue
             self._test.add_test_result(case.name, case.attr['fail_retry_time'])
             if case.attr['restart_before_exec']:
@@ -188,7 +189,7 @@ class TestRunner:
                     'traceback': traceback.format_exc(),
                 })
                 self._test.log_record('Case [%s] failed: %s\n%s' % (case.name, str(e), traceback.format_exc()), level=EnumLogLevel.WARNING)
-                if self._test.app.is_app_crashed() == False:
+                if self._test.app.is_app_crashed() == True:
                     self._test.log_record("Case %s meets app crash, raise error!" % case.name, EnumLogLevel.WARNING)
                     break
         return self._test

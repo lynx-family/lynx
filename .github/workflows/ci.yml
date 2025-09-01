@@ -462,9 +462,37 @@ jobs:
           else
             echo "Test execution failed, collecting logs..."
             pushd $GITHUB_WORKSPACE/lynx/
-            cat appium.log
+            if [ -f "appium.log" ]; then
+              cat appium.log
+            else
+              echo "Warning: appium.log file not found"
+            fi
             popd
           fi
+      - name: Collect Generated Resource Files
+        if: always()
+        run: |
+          TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
+          if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
+            echo "Test execution succeeded."
+          else
+            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+            if [ -d "screenshots" ]; then
+              zip -r screenshots.zip ./screenshots/
+              echo "Successfully created screenshots.zip"
+              echo "ZIP_RESOURCES=success" >> $GITHUB_OUTPUT
+            else
+              echo "Warning: screenshot directory not found"
+            fi
+          fi
+        id: collect_resource
+      - name: Upload Generated Resource Files
+        if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: android-e2e-resources
+          path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'
 
   android-integeration-test:
     needs: [android-sdk-release]
@@ -751,6 +779,34 @@ jobs:
           else
             echo "Test execution failed, collecting logs..."
             pushd $GITHUB_WORKSPACE/lynx/
-            cat appium.log
+            if [ -f "appium.log" ]; then
+              cat appium.log
+            else
+              echo "Warning: appium.log file not found"
+            fi
             popd
           fi
+      - name: Collect Generated Resource Files
+        if: always()
+        run: |
+          TASK_STATUS="${{ steps.run_test.outputs.TASK_STATUS }}"
+          if [ -n "$TASK_STATUS" ] && [ "$TASK_STATUS" = "success" ]; then
+            echo "Test execution succeeded."
+          else
+            pushd $GITHUB_WORKSPACE/lynx/testing/integration_test/test_script
+            if [ -d "screenshots" ]; then
+              zip -r screenshots.zip ./screenshots/
+              echo "Successfully created screenshots.zip"
+              echo "ZIP_RESOURCES=success" >> $GITHUB_OUTPUT
+            else
+              echo "Warning: screenshot directory not found"
+            fi
+          fi
+        id: collect_resource
+      - name: Upload Generated Resource Files
+        if: always() && steps.collect_resource.outputs.ZIP_RESOURCES == 'success'
+        uses: lynx-infra/upload-artifact@332ec52e99f7cbf1fbbdc9bcc09280d49147d092
+        continue-on-error: true
+        with:
+          name: ios-e2e-resources
+          path: '${{ github.workspace }}/lynx/testing/integration_test/test_script/screenshots.zip'

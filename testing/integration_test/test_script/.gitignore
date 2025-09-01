@@ -6,3 +6,4 @@ venv
 __pycache__
 ./*.log
 !resources/**
+screenshots

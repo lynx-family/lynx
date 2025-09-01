@@ -3,6 +3,7 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 from lynx_e2e.api.testcase import TestCase
 
 from .app import LynxApp
@@ -32,16 +33,16 @@ class LynxTest(LogRecordMixin, ImageDiffMixin, ResultMixin, TestCase):
         self.log_cache = LogCache()
         super().pre_test()
 
-    def crop_image_in_lynxview(self, device, view_rect, name, out_dir=""):
+    def crop_image_in_lynxview(self, view_rect, name, dir=""):
         from lynx_e2e.api.lynx_view import LynxView
 
         lynxview = self.app.get_lynxview('lynxview', LynxView)
-        lynxview.screenshot(name)
+        lynxview.screenshot(os.path.join(dir, name))
         lynx_rect = lynxview.rect
         img_config = ImageConfig(
             x_min=view_rect.left - lynx_rect.left, x_max=view_rect.right - lynx_rect.left,
             y_min=view_rect.top - lynx_rect.top, y_max=view_rect.bottom - lynx_rect.top,
-            resize_width=view_rect.width, resize_height=view_rect.height, out_dir=out_dir, width_scale=1, height_scale=1
+            resize_width=view_rect.width, resize_height=view_rect.height, out_dir=dir, width_scale=1, height_scale=1
         )
         self.add_img_config(name, img_config)
 

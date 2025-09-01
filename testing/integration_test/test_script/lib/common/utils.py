@@ -3,15 +3,16 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import threading
 import queue
 
 from urllib.parse import urlparse, urlunparse, parse_qsl
+from lynx_e2e.api.config import settings
 from lynx_e2e.api.exception import StopRunningCase
 from lynx_e2e.api.logger import EnumLogLevel
 from lynx_e2e.api.lynx_view import LynxView
 from lynx_e2e.api.lynx_element import LynxElement
-from lynx_e2e.api.upath import UPath, lynx_test_tag_
 
 
 def get_lynx_view(test):
@@ -23,10 +24,11 @@ def get_lynx_element(test, lynx_test_tag) -> LynxElement:
 
 def take_screenshot_check(test, name_prefix, suffix, rect):
     current_case = test.current_case
+    screenshot_dir = os.path.join(settings.PROJECT_ROOT, "screenshots", test.platform)
+    os.makedirs(screenshot_dir, exist_ok=True)
     image_name = f'{current_case.image_prefix}{name_prefix}{suffix}.png'
-    test.crop_image_in_lynxview(device=test.device,
-                                view_rect=rect, name=image_name)
-    test.diff_img(name=image_name)
+    test.crop_image_in_lynxview(view_rect=rect, name=image_name, dir=screenshot_dir)
+    test.diff_img(name=image_name, dir=screenshot_dir)
 
 def wait_for_equal(test, message, obj, prop_name, expected, timeout=10):
     """wait for a specified value and execution would stop if failed
@@ -49,9 +51,9 @@ def wait_for_equal(test, message, obj, prop_name, expected, timeout=10):
         current_case = test.current_case
         image_name = f'{current_case.image_prefix}{current_case.name}_error_record.png'
         lynxview = test.app.get_lynxview('lynxview', LynxView)
-        test.crop_image_in_lynxview(device=test.device,
-                                view_rect=lynxview.rect, name=image_name)
-        test.log_record("error_record", EnumLogLevel.INFO, attachments={"error_img": image_name}, has_error=True)
+        image_path = os.path.join(settings.PROJECT_ROOT, "screenshots", test.platform, image_name)
+        lynxview.screenshot(image_path)
+        test.log_record("error_record", EnumLogLevel.INFO, attachments={"error_img": image_path}, has_error=True)
         raise StopRunningCase(message)
 
 def _run_with_timeout(timeout, func):
