@@ -46,6 +46,10 @@ public class ExplorerApplication extends Application {
     LynxServiceCenter.inst().registerService(LynxLogService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxHttpService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
+
+    // set devtool preset values
+    LynxDevToolService.getINSTANCE().setLynxDebugPresetValue(true);
+    LynxDevToolService.getINSTANCE().setLogBoxPresetValue(true);
   }
 
   // merge it into InitProcessor later.

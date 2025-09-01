@@ -97,7 +97,6 @@ public class LynxEnv {
   protected ThemeResourceProvider mThemeResourceProvider;
   protected BehaviorBundle mViewManagerBundle;
   protected final AtomicBoolean hasInit = new AtomicBoolean(false);
-  protected boolean mLynxDebugEnabled = false;
   /**
    * mDevToolComponentAttach: indicates whether DevTool Component is attached to
    * the host.
@@ -232,7 +231,6 @@ public class LynxEnv {
     // The DevTool needs to be initialized as early as possible because LLog requires the state of
     // the DevTool to determine whether to output logs to the console.
     initDevtoolComponentAttachSwitch();
-    mLynxDebugEnabled = mDevToolComponentAttach;
 
     if (hasInit.get()) {
       LLog.w(TAG, "LynxEnv is already initialized");
@@ -739,10 +737,12 @@ public class LynxEnv {
   // Because this method used by LLog.
   //------------warning----------------
   public boolean isLynxDebugEnabled() {
-    // Return true only if the DevTool Component is attached and mLynxDebugEnabled
-    // is true. It
-    // avoids unnecessary reflection calls.
-    return mDevToolComponentAttach && mLynxDebugEnabled;
+    // Return true only if the DevTool Component is attached and the `lynxDebugPresetValue` is true.
+    // It avoids unnecessary reflection calls.
+    ILynxDevToolService devtoolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    return mDevToolComponentAttach
+        && (devtoolService != null && devtoolService.getLynxDebugPresetValue());
   }
 
   // Provided for hosts that load the DevTool component after initializing
@@ -761,7 +761,11 @@ public class LynxEnv {
 
   public void enableLynxDebug(boolean enableLynxDebug) {
     LLog.i(TAG, enableLynxDebug ? "enable lynx debug" : "disable lynx debug");
-    mLynxDebugEnabled = enableLynxDebug;
+    ILynxDevToolService devtoolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    if (devtoolService != null) {
+      devtoolService.setLynxDebugPresetValue(enableLynxDebug);
+    }
     initDevtoolEnv();
   }
 
@@ -817,8 +821,15 @@ public class LynxEnv {
     return isLogBoxEnabled();
   }
 
+  // Returns true only if all the following conditions are met:
+  // 1. The DevTool component is attached.
+  // 2. The environment flag 'SP_KEY_ENABLE_LOGBOX' is true (defaults to true if not set).
+  // 3. The `logBoxPresetValue` is true (this value can be changed via LynxDevToolService).
   public boolean isLogBoxEnabled() {
-    return isDevtoolComponentAttach() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true);
+    ILynxDevToolService devToolService =
+        LynxServiceCenter.inst().getService(ILynxDevToolService.class);
+    return isDevtoolComponentAttach() && getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_LOGBOX, true)
+        && (devToolService != null && devToolService.getLogBoxPresetValue());
   }
 
   /**

@@ -53,4 +53,16 @@ public interface ILynxDevToolService extends IServiceProvider {
   void devtoolEnvInit(Context ctx);
 
   boolean isDevtoolAttached();
+
+  // Preset boolean values indicating whether certain features are enabled by default.
+  //
+  // Note:
+  // - These methods can be called before `LynxEnv` initialization.
+  // - Calling `setLynxDebugPresetValue(true)` does not initialize `LynxDevToolEnv`. If `LynxEnv`
+  // has already been initialized and you need to initialize `LynxDevToolEnv`, please call
+  // `LynxEnv.inst().enableLynxDebug(true)`.
+  boolean getLynxDebugPresetValue();
+  void setLynxDebugPresetValue(boolean value);
+  boolean getLogBoxPresetValue();
+  void setLogBoxPresetValue(boolean value);
 }
