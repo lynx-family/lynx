@@ -14,6 +14,7 @@ import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxGroup;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.ThreadStrategyForRendering;
+import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.Behavior;
 import com.lynx.tasm.behavior.BehaviorRegistry;
 import com.lynx.tasm.behavior.BuiltInUIRegistry;
@@ -42,6 +43,8 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected boolean hasPresetMeasureSpec = false;
 
   static Float defaultDensity = null;
+
+  private final static String TAG = "LynxBaseConfigurator";
 
   /**
    * enable async hydration of ssr.
@@ -464,6 +467,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
    * @return
    */
   public T setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode) {
+    LLog.i(TAG, "setEmbeddedMode:" + embeddedMode);
     this.embeddedMode = embeddedMode;
     if ((embeddedMode & EmbeddedMode.EMBEDDED_MODE_BASE) > 0) {
       behaviorRegistry.setBuiltInBehaviors(BuiltInUIRegistry.getInstance().getBuiltInUIBehaviors());

@@ -258,6 +258,7 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
    * @param embeddedMode switch, normally set from LynxViewBuilder
    */
   public void setEmbeddedMode(@EmbeddedMode.Mode int embeddedMode) {
+    LLog.i(TAG, "setEmbeddedMode:" + embeddedMode);
     this.embeddedMode = embeddedMode;
   }
 

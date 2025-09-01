@@ -1625,9 +1625,9 @@ public class LynxTemplateRender
       this.initLynxEngineWithLoadMeta(metaData);
       boolean enableDumpElementTree = metaData.enableDumpElementTree();
       LLog.i(TAG,
-          "LoadMeta with bundle, pre-painting: " + isPrePainting
-              + " ,pre-painting with draw:" + (LynxLoadMode.PRE_PAINTING_DRAW == loadMode)
-              + " enableDumpElementTree: " + enableDumpElementTree);
+          "LoadMeta with bundle, pre-painting: " + isPrePainting + " ,pre-painting with draw:"
+              + (LynxLoadMode.PRE_PAINTING_DRAW == loadMode) + " ,enableDumpElementTree: "
+              + enableDumpElementTree + " ,embedded_mode:" + mEmbeddedMode);
       loadTemplateBundle(bundle, metaData.url, metaData.initialData, isPrePainting,
           metaData.loadOptions, new TASMCallback(), timingOption);
     } else if (metaData.isByteBufferValid()) {

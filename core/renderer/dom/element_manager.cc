@@ -1579,6 +1579,8 @@ void ElementManager::ClearExtremeParsedStyles() {
 void ElementManager::SetPageOptions(const PageOptions &options) {
   page_options_ = options;
 
+  LOGI("ElementManager::SetPageOptions embedded_mode:"
+       << page_options_.GetEmbeddedMode());
   enable_layout_in_element_mode_ =
       ((page_options_.GetEmbeddedMode() & EmbeddedMode::LAYOUT_IN_ELEMENT) > 0);
 }
