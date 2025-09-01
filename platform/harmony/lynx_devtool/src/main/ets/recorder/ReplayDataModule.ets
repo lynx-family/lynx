@@ -63,6 +63,8 @@ export default class LynxRecorderReplayDataModule extends LynxModule {
   }
 
   private getJsbIgnoredInfo() {
+    if (!LynxRecorderReplayDataModule.config || !LynxRecorderReplayDataModule.config['jsbIgnoredInfo'])
+      return '[]';
     let ignoreInfo: string[] = LynxRecorderReplayDataModule.config['jsbIgnoredInfo'];
     return JSON.stringify(ignoreInfo);
   }
