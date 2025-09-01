@@ -951,6 +951,9 @@ public class LynxRecorderActionManager {
   }
 
   private boolean enableJSRuntime() {
+    if (mThreadStrategyData == null) {
+      return true;
+    }
     boolean enableJSRuntime = true;
     if (mThreadStrategyData.has("enableJSRuntime")) {
       try {
@@ -1118,7 +1121,58 @@ public class LynxRecorderActionManager {
     return templateInitData;
   }
 
+  private LynxView buildFakeLynxView() {
+    if (mLynxView == null) {
+      try {
+        LynxViewBuilder builder = new LynxViewBuilder();
+        builder.setEnableJSRuntime(enableJSRuntime());
+        builder.setEnableAirStrictMode(enableAir());
+        builder.setPresetMeasuredSpec(0, 0);
+        addExtraComponent(builder);
+        builder.registerModule(
+            "LynxRecorderReplayDataModule", LynxRecorderReplayDataModule.class, mDataProvider);
+        builder.registerModule("LynxRecorderOpenUrlModule", LynxRecorderOpenUrlModule.class);
+        if (BuildConfig.enable_frozen_mode) {
+          builder.setThreadStrategyForRendering(ThreadStrategyForRendering.ALL_ON_UI);
+        } else {
+          builder.setThreadStrategyForRendering(getThreadStrategy(mThreadMode, 0));
+        }
+
+        LynxRecorderSourceProvider provider = new LynxRecorderSourceProvider();
+        if (mConfig != null && mConfig.has("urlRedirect")) {
+          provider.setUrlRedirect(mConfig.getJSONObject("urlRedirect"));
+        }
+        builder.setResourceProvider(LynxProviderRegistry.LYNX_PROVIDER_TYPE_EXTERNAL_JS, provider);
+        builder.setDynamicComponentFetcher(mDynamicFetcher);
+        if (mRawFontScale != -1) {
+          builder.setFontScale(mRawFontScale);
+        }
+        if (!mForbidTimeFreeze) {
+          mPreloadScripts.add(replayTimeEnvJScript());
+        }
+        onLynxViewWillBuild(this, builder);
+        mLynxView = builder.build(mContext);
+        mLynxView.getLynxContext().setLynxView(mLynxView);
+        mViewClient = new TestBenchLynxViewClient();
+        mLynxView.addLynxViewClient(mViewClient);
+        mThreadStrategyData = null;
+        onLynxViewDidBuild(mLynxView, mIntent, mContext, mViewGroup);
+        mLynxView.getBaseInspectorOwner().setDebugInfoInterceptor(mLynxDebugInfoRecorderDelegate);
+      } catch (JSONException e) {
+        e.printStackTrace();
+      }
+    }
+    return mLynxView;
+  }
+
+  private void avoidLynxViewBeingNull() {
+    if (mLynxView == null) {
+      mLynxView = buildFakeLynxView();
+    }
+  }
+
   private void loadTemplate(JSONObject params) {
+    avoidLynxViewBeingNull();
     try {
       String url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
       if (mGlobalPropsCache != null) {
@@ -1245,6 +1299,7 @@ public class LynxRecorderActionManager {
   }
 
   private void loadTemplateBundle(JSONObject params) {
+    avoidLynxViewBeingNull();
     try {
       String url = LynxRecorderEnv.getInstance().lynxRecorderUrlPrefix;
       if (mGlobalPropsCache != null) {
