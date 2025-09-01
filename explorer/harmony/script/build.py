@@ -168,10 +168,13 @@ def run_package_hap(args):
     check_call(cmd, shell=True, cwd=HARMONY_DIR)
 
 def delete_gitignore_file():
-    gitignore_path = os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'src', 'main', 'ets', 'tasm', 'gen', '.gitignore')
-    if os.path.exists(gitignore_path):
-        os.remove(gitignore_path)
-
+    gitignore_paths = [
+        os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_harmony', 'src', 'main', 'ets', 'tasm', 'gen', '.gitignore'),
+        os.path.join(LYNX_DIR, 'platform', 'harmony', 'lynx_devtool', 'src', 'main', 'resources', 'rawfile', '.gitignore')
+    ]    
+    for gitignore_path in gitignore_paths:
+        if os.path.exists(gitignore_path):
+            os.remove(gitignore_path)
 
 def main(argv):
     parser = argparse.ArgumentParser()
