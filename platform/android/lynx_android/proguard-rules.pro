@@ -62,7 +62,7 @@
 
 # in case R8 compiler may remove mLoader in bytecode.
 # as mLoader is not used in java and passed as a WeakRef in JNI.
--keepclassmembers class com.lynx.tasm.LynxTemplateRenderer {
+-keepclassmembers class com.lynx.tasm.LynxTemplateRender {
     private com.lynx.tasm.core.resource.LynxResourceLoader mLoader;
     private com.lynx.tasm.core.resource.LynxResourceLoader mResourceLoader;
 }
