@@ -154,12 +154,18 @@
       LLogInfo(@"PageReloadHelper: reload with stored template");
       binary = _binary;
     }
+    LynxTemplateBundle* bundle = nil;
+    if (_initWithBundle && ![_url hasPrefix:@"http"]) {
+      LLogInfo(@"PageReloadHelper: reload with stored bundle");
+      bundle = _bundle;
+    }
+
     if (binary) {
       [_lynxView loadTemplate:binary withURL:_url initData:_initData];
-    } else if (_initWithBundle && _bundle) {
+    } else if (_initWithBundle && bundle) {
 #if OS_IOS
       LLogInfo(@"PageReloadHelper: reload with template bundle");
-      [_lynxView loadTemplateBundle:_bundle withURL:_url initData:_initData];
+      [_lynxView loadTemplateBundle:bundle withURL:_url initData:_initData];
 #endif
     } else {
       LLogInfo(@"PageReloadHelper: reload with url");

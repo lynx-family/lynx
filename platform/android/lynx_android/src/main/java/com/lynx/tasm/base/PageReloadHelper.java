@@ -188,7 +188,13 @@ public class PageReloadHelper {
       }
       url = mUrl;
     } else if (mInitWithBundle) {
-      templateBundle = mInitBundleData.mTemplateBundle;
+      if (TextUtils.isEmpty(mUrl) || !mUrl.startsWith("http")) {
+        if (templateBundle == null) {
+          templateBundle = mInitBundleData.mTemplateBundle;
+          LLog.w(TAG,
+              "Reloading lynx view with the old template bundle data, the code changes may not take effect.");
+        }
+      }
       url = mUrl;
     } else {
       String currentUrl = mInitUrlData.mInitUrl;

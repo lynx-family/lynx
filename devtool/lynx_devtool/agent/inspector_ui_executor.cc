@@ -92,7 +92,8 @@ void InspectorUIExecutor::PageReload(bool ignore_cache,
                                      int32_t template_size) {
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
-  devtool_platform_facade_->PageReload(ignore_cache);
+  devtool_platform_facade_->PageReload(ignore_cache, std::move(template_binary),
+                                       from_template_fragments, template_size);
 }
 
 void InspectorUIExecutor::StartScreencast(
