@@ -3206,14 +3206,14 @@ void TemplateAssembler::InvokeAirCallback(int64_t id,
 
 void TemplateAssembler::DumpElementTree(
     const std::shared_ptr<TemplateEntry>& card) {
-  auto template_bundle = card->GetCompleteTemplateBundle();
+  auto* template_bundle = card->GetCompleteTemplateBundle();
   auto& element_manager = page_proxy_.element_manager();
   if (template_bundle && element_manager) {
     auto page_node = lepus::Value(TreeResolver::CloneElementRecursively(
         element_manager->GetPageElement(), true));
     ElementBundle element_bundle = ElementBundle(std::move(page_node));
     template_bundle->SetElementBundle(std::move(element_bundle));
-    delegate_.OnTemplateBundleReady(std::move(*template_bundle));
+    delegate_.OnTemplateBundleReady(*template_bundle);
     page_proxy_.element_manager()->SetEnableDumpElementTree(false);
   }
 }
