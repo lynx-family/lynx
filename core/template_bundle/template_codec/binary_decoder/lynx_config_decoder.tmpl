@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -38,11 +39,13 @@ class LynxConfigDecoder final {
       {% for version_override in config.version_overrides %}
       } else if (lynx::tasm::Config::IsHigherOrEqual(target_sdk_version, {{ version_override["minSDKVersion"] }})) {
         page_config->{{ config.setter_func_name}}({{ version_override["value"] }});
-      }
       {% endfor %}
-      {% else %}
-      }
       {% endif %}
+      {% if config.read_settings %}
+      } else {
+        page_config->{{ config.setter_func_name}}(LynxEnv::GetInstance().{{ config.upper_camel_case_name }}());
+      {% endif %}
+      }
     {% endif %}
 
     {% endfor %}

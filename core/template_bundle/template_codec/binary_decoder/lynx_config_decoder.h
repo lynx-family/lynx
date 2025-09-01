@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 
+#include "core/template_bundle/template_codec/binary_decoder/lynx_config_constant_auto_gen.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
@@ -698,6 +699,8 @@ class LynxConfigDecoder final {
     if (doc.HasMember(config::kEnableFixedNew) &&
         doc[config::kEnableFixedNew].IsBool()) {
       page_config->SetEnableFixedNew(doc[config::kEnableFixedNew].GetBool());
+    } else {
+      page_config->SetEnableFixedNew(LynxEnv::GetInstance().EnableFixedNew());
     }
 
     if (doc.HasMember(config::kEnableCSSInheritance) &&
@@ -736,6 +739,9 @@ class LynxConfigDecoder final {
         doc[config::kEnableNewIntersectionObserver].IsBool()) {
       page_config->SetEnableNewIntersectionObserver(
           doc[config::kEnableNewIntersectionObserver].GetBool());
+    } else {
+      page_config->SetEnableNewIntersectionObserver(
+          LynxEnv::GetInstance().EnableNewIntersectionObserver());
     }
 
     if (doc.HasMember(config::kIncludeFontPadding) &&
@@ -748,6 +754,9 @@ class LynxConfigDecoder final {
         doc[config::kEnableMultiTouch].IsBool()) {
       page_config->SetEnableMultiTouch(
           doc[config::kEnableMultiTouch].GetBool());
+    } else {
+      page_config->SetEnableMultiTouch(
+          LynxEnv::GetInstance().EnableMultiTouch());
     }
 
     if (doc.HasMember(config::kEnableHarmonyVisibleAreaChangeForExposure) &&
