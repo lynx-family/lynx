@@ -26,12 +26,12 @@ def install_sdk_component(sdk_path, sdk_manager, component, version):
     return -1
   return 0
 
-def main():
+def install_android_sdk(root_path):
   sdk_path = os.getenv("ANDROID_HOME")
   if not sdk_path:
     print("Error: Please configure the ANDROID_HOME environment variable first.")
     return -1
-  buildtools_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'buildtools')
+  buildtools_dir = os.path.join(root_path, 'buildtools')
   if not os.path.exists(buildtools_dir):
     print("Error: buildtools directory not found. Please run `tools/hab sync . -f` first.")
     return -1
@@ -54,6 +54,10 @@ def main():
 
   print("\n====> SUCCESS!!! <====\nAndroid environment setup completed.")
   print("Now you can run `cd explorer/android` and `./gradlew :LynxExplorer:assembleNoAsanDebug` to build LynxExplorer APP.")
+
+def main():
+  root_path = os.path.join(os.path.dirname(__file__), '..', '..')
+  install_android_sdk(root_path)
 
 if __name__ == "__main__":
   sys.exit(main())
