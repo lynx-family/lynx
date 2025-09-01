@@ -34,7 +34,7 @@ class LynxEnvironment {
     }
     LLog.initLynxLog();
     if (!this.performanceEnable) {
-      this.tracingDirPath = context.filesDir;
+      this.setTracingDirPath(context.filesDir);
     }
     this.tryInitLynxDebug();
     lynx.initGlobalEnv(context.resourceManager);
@@ -101,9 +101,6 @@ class LynxEnvironment {
       } else {
         this.setDefaultAppInfo();
       }
-      if (!this.performanceEnable) {
-        this.setTracingDirPath(this.getTracingDirPath());
-      }
     }
   }
 
@@ -142,6 +139,7 @@ class LynxEnvironment {
   }
 
   public setTracingDirPath(tracingDirPath: string) {
+    this.tracingDirPath = tracingDirPath;
     lynx.setTracingDirPath(tracingDirPath);
   }
 
