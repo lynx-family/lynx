@@ -45,16 +45,14 @@ void PropBundleMock::SetProps(const char* key, double value) {
   SetProps(key, val);
 }
 void PropBundleMock::SetProps(const char* key, const pub::Value& value) {
-  auto value_impl = reinterpret_cast<const pub::ValueImplLepus*>(&value);
-  if (value_impl != nullptr) {
-    props_[std::string(key)] = value_impl->backend_value();
-  }
+  props_[std::string(key)] =
+      lynx::pub::ValueUtils::ConvertValueToLepusValue(value);
 }
 
 void PropBundleMock::SetProps(const pub::Value& value) {
   value.ForeachMap([&](const pub::Value& k, const pub::Value& v) {
-    auto value_impl = reinterpret_cast<const pub::ValueImplLepus*>(&v);
-    props_[k.str().c_str()] = value_impl->backend_value();
+    props_[k.str().c_str()] =
+        lynx::pub::ValueUtils::ConvertValueToLepusValue(v);
   });
 }
 
