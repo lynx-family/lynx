@@ -5,7 +5,7 @@ on:
     branches:
       - develop
     paths:
-      - 'js_libraries/type-element-api/package.json'
+      - 'js_libraries/type-element-api/*'
   workflow_dispatch:
 
 jobs:
@@ -21,7 +21,7 @@ jobs:
           fetch-depth: 1 # latest 1 commit
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
       - name: Setup Package Managers
         run: |
@@ -61,7 +61,7 @@ jobs:
           fetch-depth: 1 # latest 1 commit
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
       - name: Setup Package Managers
         run: |
