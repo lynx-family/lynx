@@ -7,6 +7,9 @@
 @implementation DemoMediaResourceFetcher
 
 - (NSString *)shouldRedirectUrl:(LynxResourceRequest *)request {
+  if ([request.url hasPrefix:@"local://"]) {
+    return [NSString stringWithFormat:@"Resource/%@", [request.url substringFromIndex:8]];
+  }
   return request.url;
 }
 

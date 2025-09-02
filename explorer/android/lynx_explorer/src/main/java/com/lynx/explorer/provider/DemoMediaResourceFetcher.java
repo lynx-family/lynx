@@ -9,6 +9,9 @@ import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 public class DemoMediaResourceFetcher extends LynxMediaResourceFetcher {
   @Override
   public String shouldRedirectUrl(LynxResourceRequest request) {
+    if (request.getUrl().startsWith("local://")) {
+      return "asset:///" + request.getUrl().substring(8);
+    }
     // in example just return input path.
     return request.getUrl();
   }

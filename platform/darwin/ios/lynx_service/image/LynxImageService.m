@@ -108,6 +108,7 @@
   _imageUI = lynxImage;
   NSString* urlStr = requestUrl.url.absoluteString;
   BOOL isBase64 = [urlStr hasPrefix:@"data:image"];
+  BOOL isLocal = [urlStr hasPrefix:@"local://"];
   __weak typeof(self) weakSelf = self;
   BOOL shouldSkipRedirection = NO;
   if ([contextInfo objectForKey:LynxImageSkipRedirection]) {
@@ -127,7 +128,14 @@
     LLog(@"[lynx]originalURL %@, resolvedURL %@", requestUrl.url.absoluteURL, urlStr);
     LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
   }
-  if (isBase64 || [urlStr isEqualToString:requestUrl.url.absoluteString]) {
+  if ([urlStr hasPrefix:@"Resource/"]) {
+    NSString* imagePath =
+        [[NSBundle mainBundle] pathForResource:[urlStr stringByDeletingPathExtension]
+                                        ofType:[urlStr pathExtension]];
+    if (imagePath) {
+      requestUrl.redirectedURL = [NSURL fileURLWithPath:imagePath];
+    }
+  } else if (isBase64 || [urlStr isEqualToString:requestUrl.url.absoluteString]) {
     requestUrl.redirectedURL = requestUrl.url;
   } else {
     requestUrl.redirectedURL = [NSURL URLWithString:urlStr];

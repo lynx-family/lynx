@@ -6,7 +6,9 @@ import { LynxMediaResourceFetcher, LynxOptionalBool, LynxResourceRequest } from 
 
 export class ExampleMediaResourceFetcher extends LynxMediaResourceFetcher {
   shouldRedirectUrl(request: LynxResourceRequest): string {
-    // just return the input url;
+    if (request.url.startsWith('local://')) {
+      return 'resource://rawfile/' + request.url.slice(8);
+    }
     return request.url;
   }
 
