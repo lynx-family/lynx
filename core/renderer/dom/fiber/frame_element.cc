@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include "base/include/log/logging.h"
+
 namespace lynx {
 namespace tasm {
 
@@ -53,9 +55,12 @@ bool FrameElement::DidBundleLoaded(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FRAME_ELEMENT_DID_BUNDLED_LOADED, "src",
               src);
   if (src_ != src) {
+    LOGE("bundle loaded with wrong src:" << src << " expect:" << src_);
     return false;
   }
   PostBundle(bundle);
+  // TODO(yangguangzhao.solace): remove this when unified pipeline is ready
+  painting_context()->Flush();
   return true;
 }
 
