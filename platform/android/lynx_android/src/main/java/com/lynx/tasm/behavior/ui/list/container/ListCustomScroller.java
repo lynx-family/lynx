@@ -120,6 +120,9 @@ public class ListCustomScroller {
   public final int getCurrX() {
     return mScrollerX.mCurrentPosition;
   }
+  public final int getPreviousX() {
+    return mScrollerX.mPreviousPosition;
+  }
 
   /**
    * Returns the current Y offset in the scroll.
@@ -128,6 +131,9 @@ public class ListCustomScroller {
    */
   public final int getCurrY() {
     return mScrollerY.mCurrentPosition;
+  }
+  public final int getPreviousY() {
+    return mScrollerY.mPreviousPosition;
   }
 
   //  /**
@@ -484,6 +490,7 @@ public class ListCustomScroller {
 
     // Current position
     private int mCurrentPosition;
+    private int mPreviousPosition;
 
     // Final position
     private int mFinal;
@@ -594,6 +601,7 @@ public class ListCustomScroller {
     }
 
     void updateScroll(float q) {
+      mPreviousPosition = mCurrentPosition;
       mCurrentPosition = mStart + Math.round(q * (mFinal - mStart));
     }
 
@@ -626,7 +634,7 @@ public class ListCustomScroller {
     void startScroll(int start, int distance, int duration) {
       mFinished = false;
 
-      mCurrentPosition = mStart = start;
+      mCurrentPosition = mPreviousPosition = mStart = start;
       mFinal = start + distance;
 
       mStartTime = AnimationUtils.currentAnimationTimeMillis();
@@ -660,7 +668,7 @@ public class ListCustomScroller {
 
     boolean springback(int start, int min, int max) {
       mFinished = true;
-
+      mPreviousPosition = mCurrentPosition;
       mCurrentPosition = mStart = mFinal = start;
       mVelocity = 0;
 
@@ -680,6 +688,7 @@ public class ListCustomScroller {
       // mStartTime has been set
       mFinished = false;
       mState = CUBIC;
+      mPreviousPosition = mCurrentPosition;
       mCurrentPosition = mStart = start;
       mFinal = end;
       final int delta = start - end;
@@ -696,7 +705,7 @@ public class ListCustomScroller {
       mCurrVelocity = mVelocity = velocity;
       mDuration = mSplineDuration = 0;
       mStartTime = AnimationUtils.currentAnimationTimeMillis();
-      mCurrentPosition = mStart = start;
+      mCurrentPosition = mPreviousPosition = mStart = start;
 
       if (start > max || start < min) {
         startAfterEdge(start, min, max, velocity);
@@ -775,6 +784,7 @@ public class ListCustomScroller {
       final float totalDuration =
           (float) Math.sqrt(2.0 * (distanceToApex + distanceToEdge) / Math.abs(mDeceleration));
       mStartTime -= (int) (1000.0f * (totalDuration - durationToApex));
+      mPreviousPosition = mCurrentPosition;
       mCurrentPosition = mStart = end;
       mVelocity = (int) (-mDeceleration * totalDuration);
     }
@@ -844,6 +854,7 @@ public class ListCustomScroller {
           // Duration from start to null velocity
           if (mDuration < mSplineDuration) {
             // If the animation was clamped, we reached the edge
+            mPreviousPosition = mCurrentPosition;
             mCurrentPosition = mStart = mFinal;
             // TODO Better compute speed when edge was reached
             mVelocity = (int) mCurrVelocity;
@@ -921,7 +932,7 @@ public class ListCustomScroller {
           break;
         }
       }
-
+      mPreviousPosition = mCurrentPosition;
       mCurrentPosition = mStart + (int) Math.round(distance);
 
       return true;
