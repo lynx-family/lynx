@@ -3617,6 +3617,212 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwnerNG {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwnerNG.downloadResource(String url, LynxResourceCallback< byte[]> callback);
 }
 
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollView : com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested, com.lynx.tasm.behavior.ui.IDrawChildHook.IDrawChildHookBinding {
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.bindDrawChildHook(IDrawChildHook hook);
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.LynxBaseScrollView(@NonNull Context context);
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.LynxBaseScrollView(@NonNull Context context, @Nullable AttributeSet attrs);
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.LynxBaseScrollView( @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setForwardNestedScrollMode(int mode);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setBackwardNestedScrollMode(int mode);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setVertical(boolean vertical);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setLayoutFromEnd(boolean layoutFromEnd);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.isLayoutFromEnd();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.autoScrollWithRate(int rate, boolean autoStop, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setHeader(View view);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollView.setFooter(View view);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewAuto {
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.getScrollOffset();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.setScrollContentSize(int[] contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.scrollByUnlimited(int[] delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.scrollBy(int[] delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.scrollToUnlimited(int[] offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.scrollTo(int[] offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.animatedScrollTo(int[] offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.animatedScrollToUnlimited(int[] offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.getScrollRange();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.canScrollForwards();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewAuto.canScrollBackwards();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewDragging : com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling, com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal {
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.isBouncingForwards(int scrollOffset, int[] scrollRange);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.isBouncingBackwards(int scrollOffset, int[] scrollRange);
+  public View com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.getView();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.isVertical();
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.dispatchScroll(int deltaX, int deltaY, int type, MotionEvent event, @Nullable int[] offsetInWindow);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.getFlingRange(boolean isVertical);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.startNestedScroll(int axes, int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.stopNestedScroll(int type);
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.LynxBaseScrollViewDragging( @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.onInterceptTouchEvent(MotionEvent event);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging.onTouchEvent(MotionEvent event);
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewDragging::LynxBaseScrollViewDraggingScrollInfo :  {
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewHorizontal {
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.getScrollOffsetHorizontally();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.setScrollContentSizeHorizontally(int contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.scrollByUnlimitedHorizontally(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.scrollByHorizontally(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.scrollToUnlimitedHorizontally(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.scrollToHorizontally(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.animatedScrollToHorizontally(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.animatedScrollToUnlimitedHorizontally(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.getScrollRangeHorizontally();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.canScrollForwardsHorizontally();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewHorizontal.canScrollBackwardsHorizontally();
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewInternal {
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.isBouncingForwards(int scrollOffset, int[] scrollRange);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.isBouncingBackwards(int scrollOffset, int[] scrollRange);
+  public View com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.getView();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.getScrollY();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.getScrollX();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.isVertical();
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.dispatchScroll(int deltaX, int deltaY, int type, MotionEvent event, @Nullable int[] offsetInWindow);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.getFlingRange(boolean isVertical);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.startNestedScroll(@ViewCompat.ScrollAxis int axes, @ViewCompat.NestedScrollType int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.stopNestedScroll(int type);
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewInternal.getNestedScrollAxes();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewNested : com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewDragging, com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNestedInternal {
+  public final LynxNestedScrollingChildHelper com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.mNestedScrollingChildHelper mNestedScrollingChildHelper;
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.LynxBaseScrollViewNested( @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.setNestedScrollingEnabled(boolean enabled);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.isNestedScrollingEnabled();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.hasNestedScrollingParent(int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.hasNestedScrollingParent();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.startNestedScroll(int axes, int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.startNestedScroll(int axes);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.stopNestedScroll(int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.stopNestedScroll();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow, int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int[] offsetInWindow);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow, int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedPreScroll(int dx, int dy, int[] consumed, int[] offsetInWindow);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedPreFling(float velocityX, float velocityY);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchNestedFling(float velocityX, float velocityY, boolean consumed);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onStartNestedScroll( @NonNull View child, @NonNull View target, int axes, int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onStartNestedScroll(View child, View target, int axes);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedScrollAccepted( @NonNull View child, @NonNull View target, int axes, int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedScrollAccepted(View child, View target, int axes);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onStopNestedScroll(@NonNull View target, int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onStopNestedScroll(View child);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedPreScroll( @NonNull View target, int dx, int dy, @NonNull int[] consumed, int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedPreScroll(View target, int dx, int dy, int[] consumed);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedScroll(@NonNull View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedScroll(View target, int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedPreFling(View target, float velocityX, float velocityY);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.onNestedFling(View target, float velocityX, float velocityY, boolean consumed);
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.getNestedScrollAxes();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.canScrollHorizontally(int direction);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.canScrollVertically(int direction);
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.getForwardNestedScrollMode();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.getBackwardNestedScrollMode();
+  public LynxBaseScrollViewNestedInternal com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.getNestedScrollingParentForType(int type);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNested.dispatchScroll(int deltaX, int deltaY, int type, MotionEvent event, @Nullable int[] offsetInWindow);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewNestedInternal {
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNestedInternal.getForwardNestedScrollMode();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNestedInternal.getBackwardNestedScrollMode();
+  public LynxBaseScrollViewNestedInternal com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewNestedInternal.getNestedScrollingParentForType(int type);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewPublic {
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.enableScroll(boolean enable);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.scrollEnabled();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.stopScrolling();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.currentScrollState();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.enableBounces(boolean enableBounces);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic.bounces();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScroller : Runnable {
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.NESTED_SCROLL_MODE_SELF_ONLY NESTED_SCROLL_MODE_SELF_ONLY;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.NESTED_SCROLL_MODE_SELF_FIRST NESTED_SCROLL_MODE_SELF_FIRST;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.NESTED_SCROLL_MODE_PARENT_FIRST NESTED_SCROLL_MODE_PARENT_FIRST;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.NESTED_SCROLL_MODE_PARALLEL NESTED_SCROLL_MODE_PARALLEL;
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.LynxBaseScrollViewScroller(Context context);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.stopAutoScroll();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.tryBouncesBack(LynxBaseScrollViewNestedInternal view, boolean isVertical, @Nullable ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.autoScrollTo(int rate, boolean autoStop, @Nullable ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.animatedScrollTo(int offsetX, int offsetY, @Nullable ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.fling(int velocityX, int velocityY, @Nullable ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.stopAnimating(boolean completed);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.run();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScrolling : FrameLayout, com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewPublic {
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.SCROLL_STATE_IDLE SCROLL_STATE_IDLE;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.SCROLL_STATE_DRAGGING SCROLL_STATE_DRAGGING;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.SCROLL_STATE_ANIMATING SCROLL_STATE_ANIMATING;
+  public final int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.SCROLL_STATE_FLING SCROLL_STATE_FLING;
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.mIsVertical mIsVertical;
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.mWidth mWidth;
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.mHeight mHeight;
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.LynxBaseScrollViewScrolling( @NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.enableScroll(boolean enable);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollEnabled();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.stopScrolling();
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollOffset();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.setScrollContentSize(int[] contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByUnlimited(int[] delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollBy(int[] delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToUnlimited(int[] offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollTo(int[] offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollTo(int[] offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollToUnlimited(int[] offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollRange();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollForwards();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollBackwards();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollOffsetHorizontally();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.setScrollContentSizeHorizontally(int contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByUnlimitedHorizontally(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByHorizontally(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToUnlimitedHorizontally(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToHorizontally(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollToHorizontally(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollToUnlimitedHorizontally(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollRangeHorizontally();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollForwardsHorizontally();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollBackwardsHorizontally();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollOffsetVertically();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.setScrollContentSizeVertically(int contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByUnlimitedVertically(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollByVertically(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToUnlimitedVertically(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.scrollToVertically(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollToVertically(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.animatedScrollToUnlimitedVertically(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.getScrollRangeVertically();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollForwardsVertically();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.canScrollBackwardsVertically();
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.currentScrollState();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.enableBounces(boolean enableBounces);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.bounces();
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewVertical {
+  public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.getScrollOffsetVertically();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.setScrollContentSizeVertically(int contentSize);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.scrollByUnlimitedVertically(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.scrollByVertically(int delta);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.scrollToUnlimitedVertically(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.scrollToVertically(int offset);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.animatedScrollToVertically(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.animatedScrollToUnlimitedVertically(int offset, LynxBaseScrollViewScroller.ScrollFinishedCallback callback);
+  public int[] com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.getScrollRangeVertically();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.canScrollForwardsVertically();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewVertical.canScrollBackwardsVertically();
+}
+
 public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.behavior.ui.UIParent, com.lynx.tasm.behavior.event.EventTarget, com.lynx.tasm.behavior.PropertiesDispatcher, Cloneable, com.lynx.tasm.gesture.LynxNewGestureDelegate {
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAccessibilityExclusiveFocus(boolean value);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setAccessibilityValue(String value);
@@ -5355,6 +5561,27 @@ public class com::lynx::tasm::navigator::LynxNavigator :  {
   public LynxCardManager com.lynx.tasm.navigator.LynxNavigator.getCurrentCardManager();
   public void com.lynx.tasm.navigator.LynxNavigator.onEnterForeground(LynxHolder lynxHolder);
   public void com.lynx.tasm.navigator.LynxNavigator.onEnterBackground(LynxHolder lynxHolder);
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::base::LynxNestedScrollingChildHelper :  {
+  public com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.LynxNestedScrollingChildHelper(@NonNull View view);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.setNestedScrollingEnabled(boolean enabled);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.isNestedScrollingEnabled();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.hasNestedScrollingParent();
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.hasNestedScrollingParent(int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.startNestedScroll(@ViewCompat.ScrollAxis int axes);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.startNestedScroll( @ViewCompat.ScrollAxis int axes, @ViewCompat.NestedScrollType int type);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.stopNestedScroll();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.stopNestedScroll(@ViewCompat.NestedScrollType int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, @Nullable int[] offsetInWindow);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedScroll(int dxConsumed, int dyConsumed, int dxUnconsumed, int dyUnconsumed, @Nullable int[] offsetInWindow, @ViewCompat.NestedScrollType int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedPreScroll(int dx, int dy, @Nullable int[] consumed, @Nullable int[] offsetInWindow);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedPreScroll(int dx, int dy, @Nullable int[] consumed, @Nullable int[] offsetInWindow, @ViewCompat.NestedScrollType int type);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedFling(float velocityX, float velocityY, boolean consumed);
+  public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.dispatchNestedPreFling(float velocityX, float velocityY);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.onDetachedFromWindow();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.onStopNestedScroll(@NonNull View child);
+  public ViewParent com.lynx.tasm.behavior.ui.scroll.base.LynxNestedScrollingChildHelper.getNestedScrollingParentForType(int type);
 }
 
 public interface com::lynx::tasm::gesture::LynxNewGestureDelegate {
@@ -8343,6 +8570,15 @@ public class com::lynx::devtoolwrapper::ScreenshotMode :  {
 public class com::lynx::tasm::behavior::ui::list::ScrollContainerDrawHelper :  {
   public void com.lynx.tasm.behavior.ui.list.ScrollContainerDrawHelper.setUiBound(Rect bound);
   public Path com.lynx.tasm.behavior.ui.list.ScrollContainerDrawHelper.getClipPath(@NonNull final View scroller);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScrolling::ScrollDelegate {
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.ScrollDelegate.onScrollStateChanged(int from, int to);
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.ScrollDelegate.scrollViewDidScroll(LynxBaseScrollViewScrolling scrollView);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScroller::ScrollFinishedCallback {
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScroller.ScrollFinishedCallback.finished(boolean completed);
 }
 
 public class com::lynx::tasm::LynxViewClient::ScrollInfo :  {
