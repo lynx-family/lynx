@@ -33,7 +33,10 @@ void InspectorOwnerEmbedder::Init(
 
   platform_embedder_ = std::make_shared<DevtoolPlatformEmbedder>();
   platform_embedder_->Init(proxy, weak_self_.lock());
+  InitDevToolNGDelegate();
+}
 
+void InspectorOwnerEmbedder::InitDevToolNGDelegate() {
   devtoolng_delegate_ = std::make_shared<DevToolNGDelegateEmbedder>();
 }
 
