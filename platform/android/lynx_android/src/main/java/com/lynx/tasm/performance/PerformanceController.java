@@ -318,14 +318,7 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
       observer.onPerformanceEvent(entry);
     }
 
-    if (mEventReporterService == null) {
-      ILynxEventReporterService reporter =
-          LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
-      if (reporter != null) {
-        mEventReporterService = new WeakReference<>(reporter);
-      }
-    }
-    ILynxEventReporterService reporter = mEventReporterService.get();
+    ILynxEventReporterService reporter = getEventReporterService();
     if (reporter != null) {
       int instanceId = entryMap.getInt("instanceId", -1);
       if (instanceId != -1) {
@@ -379,6 +372,18 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     }
     LLog.e(TAG, "Failed to call currentSystemTimeMicroseconds to obtain the timestamp.");
     return 0;
+  }
+
+  private ILynxEventReporterService getEventReporterService() {
+    if (mEventReporterService != null) {
+      return mEventReporterService.get();
+    }
+    ILynxEventReporterService reporter =
+        LynxServiceCenter.inst().getService(ILynxEventReporterService.class);
+    if (reporter != null) {
+      mEventReporterService = new WeakReference<>(reporter);
+    }
+    return reporter;
   }
 
   // Native API
