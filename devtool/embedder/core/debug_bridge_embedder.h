@@ -12,14 +12,13 @@
 
 #include "base/include/no_destructor.h"
 #include "devtool/embedder/core/debug_state_listener_embedder.h"
+#include "devtool/embedder/core/inspector_owner_embedder.h"
 #include "third_party/debug_router/src/debug_router/common/debug_router_global_handler.h"
 
 namespace lynx {
 namespace devtool {
 
 using DevtoolsOpenCardCallback = std::function<void(const std::string&)>;
-
-class InspectorOwnerEmbedder;
 
 using DevtoolAgentDispatcher = InspectorOwnerEmbedder;
 
@@ -52,6 +51,7 @@ class DebugBridgeEmbedder
   void EnableDebugging(const std::string& schema);
 
   std::shared_ptr<DebugStateListenerEmbedder> debug_state_listener_;
+  std::shared_ptr<DevtoolAgentDispatcher> agent_dispatcher_;
   DevtoolsOpenCardCallback open_card_callback_;
 };
 

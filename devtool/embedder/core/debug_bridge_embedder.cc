@@ -23,10 +23,12 @@ DebugBridgeEmbedder& DebugBridgeEmbedder::GetInstance() {
 
 DebugBridgeEmbedder::DebugBridgeEmbedder() : open_card_callback_(nullptr) {
   debug_state_listener_ = std::make_shared<DebugStateListenerEmbedder>();
+  agent_dispatcher_ = std::make_shared<DevtoolAgentDispatcher>();
   Init();
 }
 
 void DebugBridgeEmbedder::Init() {
+  agent_dispatcher_->InitDevToolNGDelegate();
   DebugRouter::GetInstance().AddGlobalHandler(this);
   DebugRouter::GetInstance().AddStateListener(debug_state_listener_);
 }
