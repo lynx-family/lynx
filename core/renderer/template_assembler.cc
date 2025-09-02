@@ -1222,8 +1222,12 @@ void TemplateAssembler::DidFetchBundle(
   auto request = std::move(callback_info.request);
   if (callback_info.Success() && callback_info.bundle) {
     if (callback_info.bundle->IsCard()) {
-      element_manager_delegate_.DidFrameBundleLoaded(
-          callback_info.component_url, std::move(*callback_info.bundle));
+      auto pipeline_option = std::make_shared<PipelineOptions>();
+      {
+        PipelineScope pipeline_scope(this, pipeline_option);
+        element_manager_delegate_.DidFrameBundleLoaded(
+            callback_info.component_url, std::move(*callback_info.bundle));
+      }
     } else {
       InsertLynxTemplateBundle(callback_info.component_url,
                                std::move(*callback_info.bundle));
