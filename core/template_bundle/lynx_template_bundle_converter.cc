@@ -7,7 +7,9 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "core/renderer/utils/value_utils.h"
 #include "core/runtime/vm/lepus/quick_context.h"
 #include "third_party/rapidjson/document.h"
 #include "third_party/rapidjson/stringbuffer.h"
@@ -63,6 +65,31 @@ void SerializeMTSBundle(
   }
 }
 
+void SerializeCustomSections(const lepus::Value &custom_sections,
+                             rapidjson::Document &document) {
+  auto &allocator = document.GetAllocator();
+  ForEachLepusValue(
+      custom_sections, [&allocator, &document](const lepus::Value &key,
+                                               const lepus::Value &value) {
+        auto key_rapid = rapidjson::Value(key.String().c_str(), allocator);
+        if (value.IsString()) {
+          auto value_str = value.String().c_str();
+          document.AddMember(key_rapid, rapidjson::Value(value_str, allocator),
+                             allocator);
+        } else if (value.IsByteArray()) {
+          auto byte_array = value.ByteArray();
+          auto *ptr = byte_array->GetPtr();
+          rapidjson::Value lepus_code(rapidjson::kArrayType);
+          std::vector<uint8_t> binary =
+              std::vector<uint8_t>(ptr, ptr + byte_array->GetLength());
+          for (const auto &element : binary) {
+            lepus_code.PushBack(element, allocator);
+          }
+          document.AddMember(key_rapid, lepus_code, allocator);
+        }
+      });
+}
+
 std::string
 LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
     LynxTemplateBundle &template_bundle) {
@@ -106,6 +133,14 @@ LynxTemplateBundleConverter::ConvertTemplateBundleToSerializedString(
   SerializeBTSBundle(template_bundle.GetJsBundle(), bts_document);
   main_document.AddMember("background-thread-script",
                           rapidjson::Value(bts_document, allocator), allocator);
+
+  // custom-sections
+  rapidjson::Document custom_sections(&allocator);
+  custom_sections.SetObject();
+  SerializeCustomSections(template_bundle.custom_sections_, custom_sections);
+  main_document.AddMember("custom-sections",
+                          rapidjson::Value(custom_sections, allocator),
+                          allocator);
 
   // cast to string;
   rapidjson::StringBuffer buffer;
