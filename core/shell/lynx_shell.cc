@@ -508,6 +508,7 @@ void LynxShell::SetEnableUIFlush(bool enable_ui_flush) {
   if (is_destroyed_) {
     return;
   }
+  LOGI("LynxShell SetEnableUIFlush:" << enable_ui_flush);
   ui_operation_queue_->SetEnableFlush(enable_ui_flush);
   SetAnimationsPending(!enable_ui_flush);
 }
