@@ -4,6 +4,7 @@
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../../tools/gn_tools/podspec_target_template.gni")
+import("../../src/base.gni")
 
 podspec_target("lynx_base_podspec") {
   global_variables =
@@ -45,7 +46,13 @@ podspec_target("lynx_base_podspec") {
   deps = [ ":Framework" ]
 }
 
-base_darwin_public_headers = []
+base_darwin_public_headers = [
+  "service/LynxBaseService.h",
+  "service/LynxBaseServiceLogProtocol.h",
+  "service/LynxBaseServiceProtocol.h",
+  "service/LynxBaseServiceTraceProtocol.h",
+  "LynxBaseEnv.h",
+]
 
 subspec_target("Framework") {
   # The following flags are added just to keep it consistent with the original podspec.
@@ -85,8 +92,8 @@ subspec_target("Framework") {
     "-Werror",
   ]
   public_header_files = base_darwin_public_headers
-  sources = base_darwin_public_headers
   deps = [
+    ":base",
     "../../../third_party/modp_b64",
     "../../../third_party/rapidjson:rapidjson",
     "../../src:base",
@@ -99,4 +106,12 @@ subspec_target("Framework") {
   ]
   frameworks = []
   libraries = [ "stdc++" ]
+}
+
+lynx_base_source_set("base") {
+  public = base_darwin_public_headers
+  sources = base_darwin_public_headers + [
+              "LynxBaseEnv.mm",
+              "service/LynxBaseService.m",
+            ]
 }

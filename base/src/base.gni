@@ -1,3 +1,5 @@
+import("//${lynx_dir}/build_overrides/darwin.gni")
+
 declare_args() {
   # Whether to use a custom message loop.
   # If false, the platform’s default implementation will be used.
@@ -43,5 +45,8 @@ template("lynx_base_source_set") {
     }
     configs += base_configs
     public_configs += base_public_configs
+    if (is_apple) {
+      configs += darwin_config
+    }
   }
 }

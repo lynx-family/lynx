@@ -3,3 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 export { LynxBaseEnv } from './LynxBaseEnv'
+
+export { LynxBaseServiceCenter, LynxBaseServiceType } from './service/LynxBaseServiceCenter'
+
+export { ILynxBaseLogService, LogOutputChannelType } from './service/ILynxBaseLogService'
+
+export { ILynxBaseTraceService } from './service/ILynxBaseTraceService'
