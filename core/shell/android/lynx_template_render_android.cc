@@ -134,6 +134,8 @@ std::shared_ptr<lynx::tasm::PipelineOptions> ProcessLoadTemplateTimingOption(
   pipeline_options->need_timestamps = true;
   pipeline_options->render_for_recreate_engine =
       options & lynx::tasm::PipelineOptions::kRenderForRecreateEngine;
+  pipeline_options->enable_dump_element_tree =
+      options & lynx::tasm::PipelineOptions::kDumpElement;
   reinterpret_cast<LynxShell*>(ptr)->OnPipelineStart(
       pipeline_options->pipeline_id, pipeline_origin, pipeline_start_timestamp);
 
