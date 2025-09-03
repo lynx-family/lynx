@@ -913,13 +913,18 @@ void TemplateAssembler::LoadTemplateInternal(
   LOGE("lynx_plugin: load original lynx so");
 #endif
   // Trace LoadTemplate
-  TRACE_EVENT(
-      LYNX_TRACE_CATEGORY_VITALS, LYNX_LOAD_TEMPLATE,
-      [&url, instance_id = instance_id_](lynx::perfetto::EventContext ctx) {
-        ctx.event()->add_debug_annotations("url", url);
-        ctx.event()->add_debug_annotations(INSTANCE_ID,
-                                           std::to_string(instance_id));
-      });
+  TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, LYNX_LOAD_TEMPLATE,
+              [&url, instance_id = instance_id_,
+               &pipeline_options](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("url", url);
+                ctx.event()->add_debug_annotations(INSTANCE_ID,
+                                                   std::to_string(instance_id));
+                ctx.event()->add_debug_annotations(
+                    PIPELINE_ID, pipeline_options->pipeline_id);
+                // Add an additional `flow_id` parameter to link the
+                // corresponding `paintEnd` trace event.
+                ctx.event()->add_flow_ids(TRACE_FLOW_ID());
+              });
 
 #if ENABLE_TRACE_SYSTRACE
   // This trace event is used for developer to get url info using systrace which
@@ -3274,14 +3279,34 @@ void TemplateAssembler::CallLepusMethod(const std::string& method_name,
                                         lepus::Value args,
                                         const piper::ApiCallBack& callback,
                                         uint64_t trace_flow_id) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CALL_LEPUS_METHOD,
-              [&](perfetto::EventContext ctx) {
-                ctx.event()->add_flow_ids(callback.trace_flow_id());
-                ctx.event()->add_terminating_flow_ids(trace_flow_id);
-                auto* debug = ctx.event()->add_debug_annotations();
-                debug->set_name("methodName");
-                debug->set_string_value(method_name);
-              });
+  TRACE_EVENT(
+      LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CALL_LEPUS_METHOD,
+      [&](perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(callback.trace_flow_id());
+        ctx.event()->add_terminating_flow_ids(trace_flow_id);
+
+        // Add an additional `flow_id` parameter to link the corresponding
+        // `paintEnd` trace event.
+        ctx.event()->add_flow_ids(TRACE_FLOW_ID());
+        ctx.event()->add_debug_annotations("methodName", method_name);
+
+        if (!args.IsObject()) {
+          return;
+        }
+        const auto& patch_options =
+            args.GetProperty(BASE_STATIC_STRING(kPatchOptions));
+        if (!patch_options.IsObject()) {
+          return;
+        }
+        const auto& pipeline_options =
+            patch_options.GetProperty(BASE_STATIC_STRING(kPipelineOptions));
+        if (pipeline_options.IsObject()) {
+          std::string pipeline_id =
+              pipeline_options.GetProperty(BASE_STATIC_STRING(kPipelineID))
+                  .StdString();
+          ctx.event()->add_debug_annotations(PIPELINE_ID, pipeline_id);
+        }
+      });
 
   Scope scope(this);
   LOGI("TemplateAssembler::CallLepusMethod. this:"
