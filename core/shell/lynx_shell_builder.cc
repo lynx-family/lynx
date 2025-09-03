@@ -176,7 +176,17 @@ LynxShellBuilder& LynxShellBuilder::SetForceLayoutOnBackgroundThread(
 }
 
 LynxShell* LynxShellBuilder::build() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_BUILDER_BUILD);
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_BUILDER_BUILD,
+              [&](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_debug_annotations("thread_strategy",
+                                                   std::to_string(strategy_));
+                ctx.event()->add_debug_annotations(
+                    "js_group_thread_name",
+                    shell_option_.js_group_thread_name_);
+                ctx.event()->add_debug_annotations(
+                    "enable_js_group_thread",
+                    std::to_string(shell_option_.enable_js_group_thread_));
+              });
 
   // for auto concurrency, force using MULTI_THREADS by default.
   if (this->shell_option_.enable_auto_concurrency_) {

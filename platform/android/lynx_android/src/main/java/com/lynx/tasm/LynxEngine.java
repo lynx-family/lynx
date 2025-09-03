@@ -65,7 +65,7 @@ class LynxEngine {
   }
 
   public void setThreadStrategy(ThreadStrategyForRendering threadStrategy) {
-    this.mThreadStrategy = mThreadStrategy;
+    this.mThreadStrategy = threadStrategy;
   }
 
   public TemplateBundle getTemplateBundle() {

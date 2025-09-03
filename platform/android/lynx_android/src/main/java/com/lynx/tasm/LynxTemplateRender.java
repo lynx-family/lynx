@@ -1780,7 +1780,7 @@ public class LynxTemplateRender
         tryReuseLynxEngineFromPool();
         if (mLynxEngineRef == null) {
           fallbackNewEngine(false);
-          renderTemplateBundle(mTemplateBundle, data, mUrl);
+          renderTemplateBundle(mTemplateBundle, mTemplateData, mUrl);
           onTraceEventEnd(TraceEventDef.TEMPLATE_RENDER_UPDATE_META_DATE);
           return;
         } else {
