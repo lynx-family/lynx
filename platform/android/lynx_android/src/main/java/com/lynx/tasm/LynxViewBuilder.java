@@ -564,6 +564,14 @@ public class LynxViewBuilder
   }
 
   @Override
+  public boolean isEnableMTSModule() {
+    if (lynxViewGroup != null) {
+      return lynxViewGroup.isEnableMTSModule();
+    }
+    return this.enableMTSModule;
+  }
+
+  @Override
   public LynxBooleanOption isEnableGenericResourceFetcher() {
     if (lynxViewGroup != null) {
       return lynxViewGroup.isEnableGenericResourceFetcher();

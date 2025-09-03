@@ -77,6 +77,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   private IUIRendererCreator uiRendererCreator;
   private int embeddedMode = EmbeddedMode.UNSET;
   private boolean hasPresetMeasureSpec = false;
+  private boolean enableMTSModule;
   private ILynxLogicExecutor logicExecutor;
   private Context mContext;
   private CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -98,7 +99,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
       boolean enableVSyncAlignedMessageLoop, boolean enableJSRuntime, boolean enableAirStrictMode,
       boolean debuggable, int presetWidthMeasureSpec, int presetHeightMeasureSpec, float fontScale,
       boolean enablePreUpdateData, IUIRendererCreator uiRendererCreator, int embeddedMode,
-      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor) {
+      boolean hasPresetMeasureSpec, ILynxLogicExecutor logicExecutor, boolean enableMTSModule) {
     this.mContext = context;
     this.url = url;
     this.templateBundle = bundle;
@@ -130,6 +131,7 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
     this.embeddedMode = embeddedMode;
     this.hasPresetMeasureSpec = hasPresetMeasureSpec;
     this.logicExecutor = logicExecutor;
+    this.enableMTSModule = enableMTSModule;
 
     init();
   }
@@ -278,6 +280,11 @@ class LynxViewGroup implements ILynxViewGroup, ILynxViewRuntimeCacheManager {
   @Override
   public int getEmbeddedMode() {
     return this.embeddedMode;
+  }
+
+  @Override
+  public boolean isEnableMTSModule() {
+    return this.enableMTSModule;
   }
 
   @Override

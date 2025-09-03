@@ -145,6 +145,8 @@ public interface ILynxViewConfigProvider {
 
   int getEmbeddedMode();
 
+  boolean isEnableMTSModule();
+
   /* resource fetcher related */
 
   /**

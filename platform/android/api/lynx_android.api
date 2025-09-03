@@ -2418,6 +2418,7 @@ public interface com::lynx::tasm::group::ILynxViewConfigProvider {
   public boolean com.lynx.tasm.group.ILynxViewConfigProvider.isEnablePreUpdateData();
   public IUIRendererCreator com.lynx.tasm.group.ILynxViewConfigProvider.getUIRendererCreator();
   public int com.lynx.tasm.group.ILynxViewConfigProvider.getEmbeddedMode();
+  public boolean com.lynx.tasm.group.ILynxViewConfigProvider.isEnableMTSModule();
   public LynxBooleanOption com.lynx.tasm.group.ILynxViewConfigProvider.isEnableGenericResourceFetcher();
   public LynxGenericResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxGenericResourceFetcher();
   public LynxMediaResourceFetcher com.lynx.tasm.group.ILynxViewConfigProvider.getLynxMediaResourceFetcher();
@@ -6623,6 +6624,7 @@ public class com::lynx::tasm::LynxViewBuilder : LynxBaseConfigurator< LynxViewBu
   public boolean com.lynx.tasm.LynxViewBuilder.isEnablePreUpdateData();
   public IUIRendererCreator com.lynx.tasm.LynxViewBuilder.getUIRendererCreator();
   public int com.lynx.tasm.LynxViewBuilder.getEmbeddedMode();
+  public boolean com.lynx.tasm.LynxViewBuilder.isEnableMTSModule();
   public LynxBooleanOption com.lynx.tasm.LynxViewBuilder.isEnableGenericResourceFetcher();
   public LynxGenericResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxGenericResourceFetcher();
   public LynxMediaResourceFetcher com.lynx.tasm.LynxViewBuilder.getLynxMediaResourceFetcher();

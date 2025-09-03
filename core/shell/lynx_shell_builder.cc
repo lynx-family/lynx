@@ -404,6 +404,9 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
   if (this->loader_ != nullptr) {
     tasm->SetLazyBundleLoader(this->loader_);
   }
+  if (this->native_module_manager_ != nullptr) {
+    tasm->CreateModuleManager(std::move(this->native_module_manager_));
+  }
 
   if (this->white_board_ == nullptr) {
     this->white_board_ = std::make_shared<tasm::WhiteBoard>();
@@ -424,6 +427,12 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
 LynxShellBuilder& LynxShellBuilder::SetTasmPlatformInvoker(
     std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker) {
   this->tasm_platform_invoker_ = std::move(tasm_platform_invoker);
+  return *this;
+}
+
+LynxShellBuilder& LynxShellBuilder::SetNativeModuleManager(
+    std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager) {
+  this->native_module_manager_ = std::move(native_module_manager);
   return *this;
 }
 

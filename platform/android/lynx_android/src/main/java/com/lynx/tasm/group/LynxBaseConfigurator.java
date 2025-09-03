@@ -76,6 +76,7 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
   protected IUIRendererCreator uiRendererCreator;
 
   protected int embeddedMode = EmbeddedMode.UNSET;
+  protected boolean enableMTSModule = false;
 
   public LynxBaseConfigurator() {
     LynxEnv.inst().lazyInitIfNeeded();
@@ -472,6 +473,11 @@ public class LynxBaseConfigurator<T extends LynxBaseConfigurator<T>> {
 
   public T setResourceProvider(String key, LynxResourceProvider provider) {
     lynxRuntimeOptions.setResourceProviders(key, provider);
+    return (T) this;
+  }
+
+  public T setEnableMTSModule(boolean enable) {
+    enableMTSModule = enable;
     return (T) this;
   }
 }

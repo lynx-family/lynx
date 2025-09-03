@@ -249,7 +249,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
              jboolean use_invoke_ui_method, jboolean long_task_monitor_disabled,
              jboolean force_layout_on_background_thread,
              jboolean enable_unified_pipeline, jint embedded_mode,
-             jlong engine_wrapper_ptr) {
+             jlong engine_wrapper_ptr, jobject module_factory) {
   auto* ui_delegate =
       reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
 
@@ -269,6 +269,15 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
   auto loader = std::make_shared<lynx::tasm::LazyBundleLoader>(
       std::make_shared<lynx::shell::LynxResourceLoaderAndroid>(
           env, platform_loader));
+
+  std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager;
+  if (module_factory != nullptr) {
+    native_module_manager =
+        std::make_unique<lynx::pub::LynxNativeModuleManager>();
+    native_module_manager->SetPlatformModuleFactory(
+        std::make_shared<lynx::piper::ModuleFactoryAndroid>(env,
+                                                            module_factory));
+  }
   lynx::shell::ShellOption shell_option;
   shell_option.enable_multi_tasm_thread_ = enable_multi_async_thread;
   shell_option.enable_multi_layout_thread_ = enable_multi_async_thread;
@@ -308,6 +317,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
           .SetEnableLayoutOnly(enable_layout_only)
           .SetWhiteBoard(white_board)
           .SetLazyBundleLoader(loader)
+          .SetNativeModuleManager(std::move(native_module_manager))
           .SetEnableUnifiedPipeline(enable_unified_pipeline)
           .SetTasmLocale(JNIConvertHelper::ConvertToString(env, locale))
           .SetEnablePreUpdateData(enable_pre_update_data)

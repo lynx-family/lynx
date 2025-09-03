@@ -98,6 +98,10 @@ class LynxShellBuilder {
 
   LynxShellBuilder& SetEnableUnifiedPipeline(bool enable_unified_pipeline);
 
+  LynxShellBuilder& SetNativeModuleManager(
+      std::unique_ptr<lynx::pub::LynxNativeModuleManager>
+          native_module_factory);
+
   LynxShell* build();
 
  private:
@@ -158,6 +162,8 @@ class LynxShellBuilder {
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
 
   bool force_layout_on_background_thread_{false};
+
+  std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager_;
 };
 
 }  // namespace shell
