@@ -711,6 +711,9 @@ extern NSString* const kDefaultComponentID;
       if (nil != [props objectForKey:@"transition"]) {
         [ui setTransition:props[@"transition"]];
       }
+      if (nil != [props objectForKey:@"pointer-events"]) {
+        [ui setPointerEvents:[props[@"pointer-events"] intValue]];
+      }
     }
     for (NSString* key in props) {
       [LynxPropsProcessor updateProp:props[key] withKey:key forUI:ui];
@@ -721,6 +724,9 @@ extern NSString* const kDefaultComponentID;
       }
       if (nil != [props objectForKey:@"transition"]) {
         [ui setTransition:props[@"transition"]];
+      }
+      if (nil != [props objectForKey:@"pointer-events"]) {
+        [ui setPointerEvents:[props[@"pointer-events"] intValue]];
       }
     }
     [ui animationPropsDidUpdate];

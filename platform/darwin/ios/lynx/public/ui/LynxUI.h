@@ -235,6 +235,7 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 
 - (void)setAnimation:(NSArray*)value;
 - (void)setTransition:(NSArray*)value;
+- (void)setPointerEvents:(NSInteger)value;
 
 - (void)sendLayoutChangeEvent;
 

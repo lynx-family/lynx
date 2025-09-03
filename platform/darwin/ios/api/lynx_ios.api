@@ -1504,6 +1504,7 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
   public BOOL LynxEventTarget-p::consumeSlideEvent:(CGFloat angle);
   public BOOL LynxEventTarget-p::blockNativeEvent:(UIGestureRecognizer *gestureRecognizer);
   public BOOL LynxEventTarget-p::eventThrough();
+  public enum LynxPointerEventsValue LynxEventTarget-p::pointerEvents();
   public BOOL LynxEventTarget-p::enableTouchPseudoPropagation();
   public void LynxEventTarget-p::onPseudoStatusFrom:changedTo:(int32_t preStatus,[changedTo] int32_t currentStatus);
   public BOOL LynxEventTarget-p::dispatchTouch:touches:withEvent:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
@@ -3938,6 +3939,7 @@ public class LynxUI : <__covariant V UIView> {
   public void LynxUI::removeAnimationForReuse();
   public void LynxUI::setAnimation:(NSArray *value);
   public void LynxUI::setTransition:(NSArray *value);
+  public void LynxUI::setPointerEvents:(NSInteger value);
   public void LynxUI::sendLayoutChangeEvent();
   public CALayer * LynxUI::topLayer();
   public CALayer * LynxUI::bottomLayer();
@@ -5347,6 +5349,11 @@ public enum LynxXPlaceholderFontStyleType {
   LynxXPlaceholderFontStyleOblique
 }
 
+public enum LynxPointerEventsType {
+  LynxPointerEventsAuto
+  LynxPointerEventsNone
+}
+
 
   typedef NSString *(^ LynxBacktraceFunction) (NSString *message, NSUInteger skippedDepth)
   public LYNX_EXTERN void LynxSetBacktraceFunction(LynxBacktraceFunction backtraceFunction);
@@ -5682,6 +5689,12 @@ public enum LynxEventPropStatus {
   kLynxEventPropEnable
   kLynxEventPropDisable
   kLynxEventPropUndefined
+}
+
+public enum LynxPointerEventsValue {
+  kLynxPointerEventsValueAuto
+  kLynxPointerEventsValueNone
+  kLynxPointerEventsValueUnset
 }
 
 

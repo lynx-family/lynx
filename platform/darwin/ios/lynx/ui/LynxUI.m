@@ -123,6 +123,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   double _touchSlop;
   BOOL _onResponseChain;
   enum LynxEventPropStatus _eventThrough;
+  enum LynxPointerEventsValue _pointerEvents;
   enum LynxPropStatus _enableExposureUIMargin;
   NSDictionary<NSString*, LynxEventSpec*>* _eventSet;
   NSDictionary<NSNumber*, LynxBaseGestureHandler*>* _gestureHandlers;
@@ -178,6 +179,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _ignoreFocus = kLynxEventPropUndefined;
   _eventThrough = kLynxEventPropUndefined;
   _enableExposureUIClip = kLynxEventPropUndefined;
+  _pointerEvents = kLynxPointerEventsValueUnset;
   // touch slop's default value is 8 the same as Android.
   _touchSlop = 8;
   _onResponseChain = NO;
@@ -2820,6 +2822,20 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   return NO;
 }
 
+- (enum LynxPointerEventsValue)pointerEvents {
+  LYNX_ASSERT_ON_MAIN_THREAD;
+
+  if (_pointerEvents != kLynxPointerEventsValueUnset) {
+    return _pointerEvents;
+  }
+
+  id<LynxEventTarget> parent = [self parentTarget];
+  if (parent != nil) {
+    return [parent pointerEvents];
+  }
+  return kLynxPointerEventsValueAuto;
+}
+
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {
   LYNX_ASSERT_ON_MAIN_THREAD;
 
@@ -3198,6 +3214,12 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   [_transitionAnimationManager assembleTransitions:value];
 }
 
+- (void)setPointerEvents:(NSInteger)value {
+  if (value >= kLynxPointerEventsValueAuto && value < kLynxPointerEventsValueUnset) {
+    _pointerEvents = (enum LynxPointerEventsValue)value;
+  }
+}
+
 - (void)sendLayoutChangeEvent {
   NSString* layoutChangeFunctionName = @"layoutchange";
   if ([self eventSet] && [[self eventSet] valueForKey:layoutChangeFunctionName]) {
@@ -3247,7 +3269,9 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 }
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
+  CGPoint originPoint = point;
   LynxUI* guard = nil;
+  NSMutableArray* siblingTargets = [NSMutableArray new];
   // this is parent response to translate Point coordinate
   if ([self hasCustomLayout]) {
     guard = [self hitTest:point withEvent:event onUIWithCustomLayout:self];
@@ -3270,6 +3294,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       }
 
       if (contain) {
+        [siblingTargets addObject:child];
         if (child.isOnResponseChain) {
           guard = child;
           childPoint = targetPoint;
@@ -3287,11 +3312,27 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       point = [guard getHitTestPoint:point];
     }
   }
-  if (guard == nil) {
-    // no new result
-    return self;
+
+  id<LynxEventTarget> target = guard ? [guard hitTest:point withEvent:event] : self;
+  if (!target || [target pointerEvents] == kLynxPointerEventsValueNone) {
+    target = nil;
+    for (LynxUI* sibling in [siblingTargets reverseObjectEnumerator]) {
+      if (sibling == guard) {
+        continue;
+      }
+      CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
+      CALayer* childLayer = sibling.view.layer.presentationLayer ?: sibling.view.layer.modelLayer;
+      CGPoint siblingPoint = [parentLayer convertPoint:originPoint toLayer:childLayer];
+      if (!_context.enableEventRefactor) {
+        siblingPoint = [sibling getHitTestPoint:originPoint];
+      }
+      target = [sibling hitTest:siblingPoint withEvent:event];
+      if (target) {
+        break;
+      }
+    }
   }
-  return [guard hitTest:point withEvent:event];
+  return target;
 }
 
 - (BOOL)containsPoint:(CGPoint)point inHitTestFrame:(CGRect)frame {

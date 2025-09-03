@@ -15,6 +15,13 @@ enum LynxEventPropStatus {
   kLynxEventPropUndefined,
 };
 
+enum LynxPointerEventsValue {
+  kLynxPointerEventsValueAuto,
+  kLynxPointerEventsValueNone,
+  // add new type before kLynxPointerEventsValueUnset
+  kLynxPointerEventsValueUnset,
+};
+
 @protocol LynxEventTarget <LynxEventTargetBase>
 
 - (NSInteger)signature;
@@ -40,6 +47,8 @@ enum LynxEventPropStatus {
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer;
 
 - (BOOL)eventThrough;
+
+- (enum LynxPointerEventsValue)pointerEvents;
 
 - (BOOL)enableTouchPseudoPropagation;
 

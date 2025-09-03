@@ -1,6 +1,6 @@
 [
     {
-        "count": 224
+        "count": 225
     },
     {
         "id": 1,
@@ -897,5 +897,9 @@
     {
         "id": 224,
         "name": "-x-placeholder-font-style"
+    },
+    {
+        "id": 225,
+        "name": "pointer-events"
     }
 ]
