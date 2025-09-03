@@ -119,7 +119,7 @@
   return NO;
 }
 
-- (BOOL)eventThrough {
+- (BOOL)eventThrough:(CGPoint)point {
   // If _eventThrough == Enable, return true. If _eventThrough == Disable, return false.
   // If _eventThrough == Undefined && parent not nil, return parent._eventThrough.
   if (_eventThrough == kLynxEventPropEnable) {
@@ -130,7 +130,7 @@
 
   id<LynxEventTarget> parent = [self parentTarget];
   if (parent != nil) {
-    return [parent eventThrough];
+    return [parent eventThrough:point];
   }
   return false;
 }

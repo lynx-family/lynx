@@ -1555,7 +1555,7 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
   public BOOL LynxEventTarget-p::ignoreFocus();
   public BOOL LynxEventTarget-p::consumeSlideEvent:(CGFloat angle);
   public BOOL LynxEventTarget-p::blockNativeEvent:(UIGestureRecognizer *gestureRecognizer);
-  public BOOL LynxEventTarget-p::eventThrough();
+  public BOOL LynxEventTarget-p::eventThrough:(CGPoint point);
   public BOOL LynxEventTarget-p::enableTouchPseudoPropagation();
   public void LynxEventTarget-p::onPseudoStatusFrom:changedTo:(int32_t preStatus,[changedTo] int32_t currentStatus);
   public BOOL LynxEventTarget-p::dispatchTouch:touches:withEvent:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[withEvent] UIEvent *event);

@@ -115,6 +115,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   BOOL _blockNativeEvent;
   // block native event at some areas of this element
   NSArray<NSArray<LynxSizeValue*>*>* _blockNativeEventAreas;
+  // specifiy the active regions of the event-through attribute.
+  NSArray<NSArray<LynxSizeValue*>*>* _eventThroughActiveRegions;
   // Default value is false. When setting _simultaneousTouch as true and clicking to the ui or its
   // sub ui, the lynx touch gestures will not fail.
   BOOL _enableSimultaneousTouch;
@@ -173,6 +175,7 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   _angleArray = nil;
   _blockNativeEvent = NO;
   _blockNativeEventAreas = nil;
+  _eventThroughActiveRegions = nil;
   _enableSimultaneousTouch = NO;
   _enableTouchPseudoPropagation = YES;
   _ignoreFocus = kLynxEventPropUndefined;
@@ -1423,6 +1426,7 @@ LYNX_PROPS_GROUP_DECLARE(
     LYNX_PROP_DECLARE("consume-slide-event", setConsumeSlideEvent, NSArray*),
     LYNX_PROP_DECLARE("block-native-event", setBlockNativeEvent, BOOL),
     LYNX_PROP_DECLARE("block-native-event-areas", setBlockNativeEventAreas, NSArray*),
+    LYNX_PROP_DECLARE("event-through-active-regions", setEventThroughActiveRegions, NSArray*),
     LYNX_PROP_DECLARE("ios-enable-simultaneous-touch", setEnableSimultaneousTouch, BOOL),
     LYNX_PROP_DECLARE("enable-touch-pseudo-propagation", setEnableTouchPseudoPropagation, BOOL),
     LYNX_PROP_DECLARE("event-through", setEventThrough, BOOL),
@@ -2759,6 +2763,40 @@ LYNX_PROP_DEFINE("block-native-event-areas", setBlockNativeEventAreas, NSArray*)
   }
 }
 
+LYNX_PROP_DEFINE("event-through-active-regions", setEventThroughActiveRegions, NSArray*) {
+  if (requestReset) {
+    value = nil;
+  }
+  _eventThroughActiveRegions = nil;
+  if (![value isKindOfClass:[NSArray class]]) {
+    LLogWarn(@"event-through-active-regions: type err: %@", value);
+    return;
+  }
+  // Supports two types: `30px` and `50%`
+  NSMutableArray<NSArray<LynxSizeValue*>*>* eventThroughActiveRegions = [NSMutableArray array];
+  [value enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
+    if ([obj isKindOfClass:[NSArray class]] && [(NSArray*)obj count] == 4) {
+      NSArray* area = obj;
+      LynxSizeValue* x = [LynxSizeValue sizeValueFromCSSString:area[0]];
+      LynxSizeValue* y = [LynxSizeValue sizeValueFromCSSString:area[1]];
+      LynxSizeValue* w = [LynxSizeValue sizeValueFromCSSString:area[2]];
+      LynxSizeValue* h = [LynxSizeValue sizeValueFromCSSString:area[3]];
+      if (x && y && w && h) {
+        [eventThroughActiveRegions addObject:@[ x, y, w, h ]];
+      } else {
+        LLogWarn(@"event-through-active-regions: %luth type err", (unsigned long)idx);
+      }
+    } else {
+      LLogWarn(@"event-through-active-regions: %luth type err, size != 4", (unsigned long)idx);
+    }
+  }];
+  if ([eventThroughActiveRegions count] > 0) {
+    _eventThroughActiveRegions = [eventThroughActiveRegions copy];
+  } else {
+    LLogWarn(@"event-through-active-regions: empty regions");
+  }
+}
+
 // Temp setting for 2022 Spring Festival activities. Remove this later, and solve the similar
 // problems by implementing flexible handling of conflicts between Lynx gestures and Native gestures
 // in the future.
@@ -2798,26 +2836,53 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   _eventThrough = value ? kLynxEventPropEnable : kLynxEventPropDisable;
 }
 
-- (BOOL)eventThrough {
+- (BOOL)eventThrough:(CGPoint)point {
   LYNX_ASSERT_ON_MAIN_THREAD;
 
   // If _eventThrough == Enable, return YES. If _eventThrough == Disable, return NO.
   // If _eventThrough == Undefined && parent not nil, return parent.eventThrough.
+  BOOL isEventThrough = NO;
   if (_eventThrough == kLynxEventPropEnable) {
-    return YES;
+    isEventThrough = YES;
   } else if (_eventThrough == kLynxEventPropDisable) {
-    return NO;
+    isEventThrough = NO;
+  } else {
+    id<LynxEventTarget> parent = [self parentTarget];
+    if (parent != nil) {
+      // when parent is root ui, return false.
+      if ([parent isKindOfClass:[LynxRootUI class]]) {
+        isEventThrough = NO;
+      }
+      CGPoint targetPoint = point;
+      if ([parent isKindOfClass:[LynxUI class]]) {
+        targetPoint = [self.view convertPoint:point toView:((LynxUI*)parent).view];
+      }
+      isEventThrough = [parent eventThrough:targetPoint];
+    }
   }
 
-  id<LynxEventTarget> parent = [self parentTarget];
-  if (parent != nil) {
-    // when parent is root ui, return false.
-    if ([parent isKindOfClass:[LynxRootUI class]]) {
-      return NO;
-    }
-    return [parent eventThrough];
+  if (!_eventThroughActiveRegions) {
+    return isEventThrough;
   }
-  return NO;
+
+  CGSize size = self.view.bounds.size;
+  __block BOOL isHitEventThroughActiveRegions = NO;
+  [_eventThroughActiveRegions enumerateObjectsUsingBlock:^(NSArray<LynxSizeValue*>* _Nonnull obj,
+                                                           NSUInteger idx, BOOL* _Nonnull stop) {
+    if ([obj count] == 4) {
+      CGFloat left = [obj[0] convertToDevicePtWithFullSize:size.width];
+      CGFloat top = [obj[1] convertToDevicePtWithFullSize:size.height];
+      CGFloat right = left + [obj[2] convertToDevicePtWithFullSize:size.width];
+      CGFloat bottom = top + [obj[3] convertToDevicePtWithFullSize:size.height];
+      isHitEventThroughActiveRegions =
+          point.x >= left && point.x < right && point.y >= top && point.y < bottom;
+      if (isHitEventThroughActiveRegions) {
+        LLogInfo(@"hit the event through active regions!");
+        *stop = YES;
+      }
+    }
+  }];
+  return isHitEventThroughActiveRegions ? isEventThrough : !isEventThrough;
 }
 
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer {

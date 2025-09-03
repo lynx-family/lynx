@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.3
+- Add `event-through-active-regions`, `enable-exposure-ui-clip` properties.
+
 ## 3.5.2
 - Add `harmony-scroll-edge-effect` property for scroll container.
 

@@ -364,7 +364,11 @@
                                        andPoint:point
                                        andEvent:event];
     // If target eventThrough, return nil to let event through LynxView.
-    if ([touchTarget eventThrough]) {
+    CGPoint targetPoint = point;
+    if ([touchTarget isKindOfClass:[LynxUI class]]) {
+      targetPoint = [self convertPoint:point toView:((LynxUI*)touchTarget).view];
+    }
+    if ([touchTarget eventThrough:targetPoint]) {
       return nil;
     } else {
       return view;

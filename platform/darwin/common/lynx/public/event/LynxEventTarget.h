@@ -39,7 +39,7 @@ enum LynxEventPropStatus {
 
 - (BOOL)blockNativeEvent:(UIGestureRecognizer*)gestureRecognizer;
 
-- (BOOL)eventThrough;
+- (BOOL)eventThrough:(CGPoint)point;
 
 - (BOOL)enableTouchPseudoPropagation;
 

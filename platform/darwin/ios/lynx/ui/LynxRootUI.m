@@ -103,8 +103,8 @@
                                                     userInfo:dict];
 }
 
-- (BOOL)eventThrough {
-  BOOL res = [super eventThrough];
+- (BOOL)eventThrough:(CGPoint)point {
+  BOOL res = [super eventThrough:point];
   if (!res) {
     res |= self.context.enableEventThrough;
   }

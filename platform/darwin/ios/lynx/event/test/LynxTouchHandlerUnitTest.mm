@@ -77,7 +77,7 @@
   return NO;
 }
 
-- (BOOL)eventThrough {
+- (BOOL)eventThrough:(CGPoint)point {
   return NO;
 }
 
@@ -153,9 +153,37 @@
   [rootUI insertChild:parentUI atIndex:0];
   LynxUIView* childUI = [[LynxUIView alloc] initWithView:[UIView new]];
   [parentUI insertChild:childUI atIndex:0];
-  XCTAssertFalse([childUI eventThrough]);
+  XCTAssertFalse([childUI eventThrough:CGPointZero]);
   [LynxPropsProcessor updateProp:@YES withKey:@"event-through" forUI:parentUI];
-  XCTAssertTrue([childUI eventThrough]);
+  XCTAssertTrue([childUI eventThrough:CGPointZero]);
+}
+
+- (void)testEventThroughActiveRegions {
+  LynxRootUI* rootUI = [[LynxRootUI alloc]
+      initWithLynxView:(LynxView*)[[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)]];
+  LynxUIView* parentUI =
+      [[LynxUIView alloc] initWithView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)]];
+  [rootUI insertChild:parentUI atIndex:0];
+  LynxUIView* childUI =
+      [[LynxUIView alloc] initWithView:[[UIView alloc] initWithFrame:CGRectMake(0, 0, 300, 300)]];
+  [parentUI insertChild:childUI atIndex:0];
+
+  XCTAssertFalse([childUI eventThrough:CGPointZero]);
+  [LynxPropsProcessor updateProp:@[ @[ @"0px", @"0px", @"300px", @"150px" ] ]
+                         withKey:@"event-through-active-regions"
+                           forUI:childUI];
+  XCTAssertFalse([childUI eventThrough:CGPointMake(150, 50)]);
+  XCTAssertTrue([childUI eventThrough:CGPointMake(150, 200)]);
+
+  [LynxPropsProcessor updateProp:@YES withKey:@"event-through" forUI:parentUI];
+  XCTAssertTrue([childUI eventThrough:CGPointMake(150, 50)]);
+  XCTAssertFalse([childUI eventThrough:CGPointMake(150, 200)]);
+
+  [LynxPropsProcessor updateProp:@[ @[ @"0px", @"150px", @"300px", @"150px" ] ]
+                         withKey:@"event-through-active-regions"
+                           forUI:parentUI];
+  XCTAssertFalse([childUI eventThrough:CGPointMake(150, 50)]);
+  XCTAssertFalse([childUI eventThrough:CGPointMake(150, 200)]);
 }
 
 - (void)testIgnoreFocus {
