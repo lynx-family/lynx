@@ -49,9 +49,11 @@ class DevToolPlatformFacadeMock : public lynx::devtool::DevToolPlatformFacade {
     return devtool::DevToolStatus::NO_DEBUG_INFO_FOUND_BY_URL;
   }
 
-  void PageReload(bool ignore_cache, std::string template_binary = "",
+  void PageReload(bool ignore_cache, const std::string& template_binary = "",
+                  const std::string& reload_url = "",
                   bool from_template_fragments = false,
                   int32_t template_size = 0) override {}
+
   void Navigate(const std::string& url) override {}
 
   lynx::lepus::Value* GetLepusValueFromTemplateData() override;

@@ -87,13 +87,15 @@ void InspectorUIExecutor::ScrollIntoView(int node_id) {
 }
 
 void InspectorUIExecutor::PageReload(bool ignore_cache,
-                                     std::string template_binary,
+                                     const std::string& template_binary,
+                                     const std::string& reload_url,
                                      bool from_template_fragments,
                                      int32_t template_size) {
   CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
                             "devtool_platform_facade_ is null");
-  devtool_platform_facade_->PageReload(ignore_cache, std::move(template_binary),
-                                       from_template_fragments, template_size);
+  devtool_platform_facade_->PageReload(ignore_cache, template_binary,
+                                       reload_url, from_template_fragments,
+                                       template_size);
 }
 
 void InspectorUIExecutor::StartScreencast(
@@ -225,14 +227,16 @@ void InspectorUIExecutor::PageReload(
   std::string template_bin = "";
   bool from_template_fragments = false;
   int32_t template_size = 0;
+  std::string reload_url = "";
   if (!params.empty()) {
     ignore_cache = params["ignoreCache"].asBool();
     template_bin = params["pageData"].asString();
     from_template_fragments = params["fromPageDataFragments"].asBool();
     template_size = params["pageDataLength"].asInt();
+    reload_url = params["url"].asString();
   }
 
-  PageReload(ignore_cache, std::move(template_bin), from_template_fragments,
+  PageReload(ignore_cache, template_bin, reload_url, from_template_fragments,
              template_size);
   response["result"] = content;
   response["id"] = message["id"].asInt64();

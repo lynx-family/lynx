@@ -53,7 +53,8 @@ class DevToolPlatformAndroid : public DevToolPlatformFacade {
 
   void Destroy();
 
-  void PageReload(bool ignore_cache, std::string template_bin = "",
+  void PageReload(bool ignore_cache, const std::string& template_binary = "",
+                  const std::string& reload_url = "",
                   bool from_template_fragments = false,
                   int32_t template_size = 0) override;
   void Navigate(const std::string& url) override;

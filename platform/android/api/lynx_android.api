@@ -3598,7 +3598,7 @@ public interface com::lynx::devtoolwrapper::LynxBaseInspectorOwner {
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onTemplateAssemblerCreated(long ptr);
   public long com.lynx.devtoolwrapper.LynxBaseInspectorOwner.onBackgroundRuntimeCreated(String groupName);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache);
-  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
+  public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize, String reloadUrl);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.navigate(String url);
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.stopCasting();
   public void com.lynx.devtoolwrapper.LynxBaseInspectorOwner.continueCasting();
@@ -7666,6 +7666,8 @@ public class com::lynx::tasm::base::PageReloadHelper :  {
   public void com.lynx.tasm.base.PageReloadHelper.loadFromBundle(TemplateBundle bundle, TemplateData templateData, String baseUrl);
   public void com.lynx.tasm.base.PageReloadHelper.reload(boolean ignoreCache);
   public void com.lynx.tasm.base.PageReloadHelper.reload(boolean ignoreCache, String templateBin, boolean loadFromFragments, int templateSize);
+  public void com.lynx.tasm.base.PageReloadHelper.reloadWithUrl(boolean ignoreCache, String reloadUrl);
+  public void com.lynx.tasm.base.PageReloadHelper.reload(boolean ignoreCache, String templateBin, boolean loadFromFragments, int templateSize, String reloadUrl);
   public void com.lynx.tasm.base.PageReloadHelper.onReceiveTemplateFragment(String fragment, boolean isLastFragment);
   public void com.lynx.tasm.base.PageReloadHelper.navigate(String url);
   public String com.lynx.tasm.base.PageReloadHelper.getURL();

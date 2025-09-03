@@ -144,6 +144,28 @@ public class PageReloadHelper {
 
   public void reload(
       boolean ignoreCache, String templateBin, boolean loadFromFragments, int templateSize) {
+    reload(ignoreCache, templateBin, loadFromFragments, templateSize, null);
+  }
+
+  public void reloadWithUrl(boolean ignoreCache, String reloadUrl) {
+    LLog.i(TAG, "reloadWithUrl passed by Page.reload CDP msg:" + reloadUrl);
+    mUrl = reloadUrl;
+    if (ignoreCache) {
+      clearCache();
+    }
+    LynxView lynxView = mLynxView.get();
+    if (lynxView == null || TextUtils.isEmpty(reloadUrl)) {
+      return;
+    }
+    lynxView.renderTemplateUrl(reloadUrl, mInitTemplateData);
+  }
+
+  public void reload(boolean ignoreCache, String templateBin, boolean loadFromFragments,
+      int templateSize, String reloadUrl) {
+    if (reloadUrl != null && reloadUrl.startsWith("http")) {
+      reloadWithUrl(ignoreCache, reloadUrl);
+      return;
+    }
     if (!TextUtils.isEmpty(templateBin)) {
       LLog.i(TAG, "reload with single template binary transferred by usb");
       byte[] templateBytes = null;

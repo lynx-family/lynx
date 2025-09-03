@@ -29,7 +29,9 @@ class PageReloadHelperEmbedder {
 
   std::string GetURL();
 
-  void Reload(bool ignore_cache);
+  void Reload(bool ignore_cache, const std::string& template_binary = "",
+              const std::string& reload_url = "",
+              bool from_template_fragments = false, int32_t template_size = 0);
   void Navigate(const std::string& url);
 
   std::shared_ptr<tasm::TemplateData> GetTemplateData();

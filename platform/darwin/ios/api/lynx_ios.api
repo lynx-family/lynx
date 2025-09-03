@@ -643,7 +643,7 @@ public protocol LynxBaseInspectorOwnerNG-p : <LynxBaseInspectorOwner> {
   public void LynxBaseInspectorOwnerNG-p::sendMessage:(nonnull CustomizedMessage *message);
   public void LynxBaseInspectorOwnerNG-p::subscribeMessage:withHandler:(nonnull NSString *type,[withHandler] nonnull id< MessageHandler > handler);
   public void LynxBaseInspectorOwnerNG-p::unsubscribeMessage:(nonnull NSString *type);
-  public void LynxBaseInspectorOwnerNG-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
+  public void LynxBaseInspectorOwnerNG-p::reloadLynxView:withTemplate:fromFragments:withSize:withReloadUrl:(BOOL ignoreCache,[withTemplate] nullable NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[withReloadUrl] nullable NSString *reload_url);
 }
 
 public class LynxBaselineShiftLayoutManager : NSLayoutManager {
@@ -2793,6 +2793,7 @@ public protocol LynxPageReloadHelperProto-p : <NSObject> {
   public LynxTemplateData * LynxPageReloadHelperProto-p::getTemplateData();
   public void LynxPageReloadHelperProto-p::reloadLynxView:(BOOL ignoreCache);
   public void LynxPageReloadHelperProto-p::reloadLynxView:withTemplate:fromFragments:withSize:(BOOL ignoreCache,[withTemplate] NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size);
+  public void LynxPageReloadHelperProto-p::reloadLynxView:withTemplate:fromFragments:withSize:withReloadUrl:(BOOL ignoreCache,[withTemplate] NSString *templateBin,[fromFragments] BOOL fromFragments,[withSize] int32_t size,[withReloadUrl] NSString *reload_url);
   public void LynxPageReloadHelperProto-p::onReceiveTemplateFragment:withEof:(NSString *fragment,[withEof] BOOL eof);
   public void LynxPageReloadHelperProto-p::navigateLynxView:(nonnull NSString *url);
   public void LynxPageReloadHelperProto-p::setTextLable:(NSInteger label);

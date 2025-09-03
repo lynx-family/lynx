@@ -117,6 +117,22 @@
           withTemplate:(NSString*)templateBin
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size {
+  [self reloadLynxView:ignoreCache
+          withTemplate:templateBin
+         fromFragments:fromFragments
+              withSize:size
+         withReloadUrl:@""];
+}
+
+- (void)reloadLynxView:(BOOL)ignoreCache
+          withTemplate:(NSString*)templateBin
+         fromFragments:(BOOL)fromFragments
+              withSize:(int32_t)size
+         withReloadUrl:reload_url {
+  if ([reload_url hasPrefix:@"http"]) {
+    [self reloadLynxView:ignoreCache withReloadUrl:reload_url];
+    return;
+  }
   if (templateBin && templateBin.length > 0) {
     LLogInfo(@"PageReloadHelper: reload with single template binary transferred by usb");
     NSData* binary = [[NSData alloc] initWithBase64EncodedString:templateBin options:0];
@@ -171,6 +187,23 @@
       LLogInfo(@"PageReloadHelper: reload with url");
       [_lynxView loadTemplateFromURL:_url initData:_initData];
     }
+  }
+}
+
+- (void)reloadLynxView:(BOOL)ignoreCache withReloadUrl:(NSString*)reload_url {
+  if (ignoreCache) {
+#if OS_IOS
+    [[LynxTextRendererCache cache] clearCache];
+#endif
+  }
+
+  if (_initData) {
+    _initData = [_initData deepClone];
+  }
+
+  if (_lynxView) {
+    LLogInfo(@"PageReloadHelper: reload with specified url");
+    [_lynxView loadTemplateFromURL:reload_url initData:_initData];
   }
 }
 

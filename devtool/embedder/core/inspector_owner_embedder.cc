@@ -83,11 +83,6 @@ void InspectorOwnerEmbedder::AttachDebugBridge(const std::string& url) {
   }
 }
 
-void InspectorOwnerEmbedder::Reload(bool ignore_cache) {
-  CHECK_NULL_AND_LOG_RETURN(platform_embedder_, "platform_embedder_ is null");
-  platform_embedder_->Reload(ignore_cache);
-}
-
 void InspectorOwnerEmbedder::StopCasting() {
   CHECK_NULL_AND_LOG_RETURN(platform_embedder_, "platform_embedder_ is null");
   platform_embedder_->StopCasting();

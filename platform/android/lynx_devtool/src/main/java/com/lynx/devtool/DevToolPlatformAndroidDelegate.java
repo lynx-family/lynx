@@ -266,15 +266,16 @@ public class DevToolPlatformAndroidDelegate {
   }
 
   @CalledByNative
-  void pageReload(
-      boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize) {
+  void pageReload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
+      int templateSize, String reloadUrl) {
     if (mReloadHelper != null) {
       LynxView lynxView = mLynxView.get();
       if (lynxView != null) {
         Toast.makeText(lynxView.getContext(), "Start to download & reload...", Toast.LENGTH_SHORT)
             .show();
       }
-      mReloadHelper.reload(ignoreCache, templateBin, fromTemplateFragments, templateSize);
+      mReloadHelper.reload(
+          ignoreCache, templateBin, fromTemplateFragments, templateSize, reloadUrl);
     }
   }
 

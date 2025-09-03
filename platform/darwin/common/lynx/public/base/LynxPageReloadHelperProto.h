@@ -79,6 +79,19 @@ NS_ASSUME_NONNULL_BEGIN
          fromFragments:(BOOL)fromFragments
               withSize:(int32_t)size;
 /**
+ * Reload partial template data
+ * @param templateBin template data
+ * @param fromFragments to be updated fragments
+ * @param size fragment counts
+ * @param reload_url reload with url
+ */
+
+- (void)reloadLynxView:(BOOL)ignoreCache
+          withTemplate:(NSString *)templateBin
+         fromFragments:(BOOL)fromFragments
+              withSize:(int32_t)size
+         withReloadUrl:(NSString *)reload_url;
+/**
  * Notify that page receives new template fragment
  * @param fragment new template fragment
  */

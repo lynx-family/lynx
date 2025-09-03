@@ -233,18 +233,19 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
 
   @CalledByNative
   public void reload(boolean ignoreCache) {
-    reload(ignoreCache, null, false, 0);
+    reload(ignoreCache, null, false, 0, "");
   }
 
-  public void reload(
-      boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize) {
+  public void reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
+      int templateSize, String reloadUrl) {
     if (mReloadHelper != null) {
       LynxView lynxView = getLynxView();
       if (lynxView != null) {
         Toast.makeText(lynxView.getContext(), "Start to download & reload...", Toast.LENGTH_SHORT)
             .show();
       }
-      mReloadHelper.reload(ignoreCache, templateBin, fromTemplateFragments, templateSize);
+      mReloadHelper.reload(
+          ignoreCache, templateBin, fromTemplateFragments, templateSize, reloadUrl);
     }
   }
 

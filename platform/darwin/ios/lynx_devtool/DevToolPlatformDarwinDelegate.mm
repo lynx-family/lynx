@@ -217,8 +217,9 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
     }
   }
 
-  void PageReload(bool ignore_cache, std::string template_binary = "",
-                  bool from_template_fragments = false, int32_t template_size = 0) override {
+  void PageReload(bool ignore_cache, const std::string& template_binary,
+                  const std::string& reload_url, bool from_template_fragments = false,
+                  int32_t template_size = 0) override {
     __strong typeof(_darwin) darwin = _darwin;
     if (darwin != nil) {
       NSString* nsBinary = nil;
@@ -226,10 +227,15 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
         nsBinary = [NSString stringWithCString:template_binary.c_str()
                                       encoding:NSUTF8StringEncoding];
       }
+      NSString* nsReloadUrl = nil;
+      if (!reload_url.empty()) {
+        nsReloadUrl = [NSString stringWithCString:reload_url.c_str() encoding:NSUTF8StringEncoding];
+      }
       [darwin reloadLynxView:ignore_cache
                 withTemplate:nsBinary
                fromFragments:from_template_fragments
-                    withSize:template_size];
+                    withSize:template_size
+               withReloadUrl:nsReloadUrl];
     }
   }
 
@@ -584,12 +590,14 @@ class DevToolPlatformDarwin : public DevToolPlatformFacade {
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(NSString*)templateBin
          fromFragments:(BOOL)fromFragments
-              withSize:(int32_t)size {
+              withSize:(int32_t)size
+         withReloadUrl:(NSString*)reload_url {
   [DevToolToast showToast:@"Start to download & reload..."];
   [_reloadHelper reloadLynxView:ignoreCache
                    withTemplate:templateBin
                   fromFragments:fromFragments
-                       withSize:size];
+                       withSize:size
+                  withReloadUrl:reload_url];
 }
 
 - (void)sendConsoleEvent:(NSString*)message

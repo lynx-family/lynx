@@ -158,12 +158,14 @@
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(NSString*)templateBin
          fromFragments:(BOOL)fromFragments
-              withSize:(int32_t)size {
+              withSize:(int32_t)size
+         withReloadUrl:reload_url {
   [DevToolToast showToast:@"Start to download & reload..."];
   [_reloadHelper reloadLynxView:ignoreCache
                    withTemplate:templateBin
                   fromFragments:fromFragments
-                       withSize:size];
+                       withSize:size
+                  withReloadUrl:reload_url];
 }
 
 - (void)onReceiveTemplateFragment:(NSString*)data withEof:(BOOL)eof {

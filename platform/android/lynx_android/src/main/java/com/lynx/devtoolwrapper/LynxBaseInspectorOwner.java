@@ -24,8 +24,8 @@ public interface LynxBaseInspectorOwner {
 
   long onBackgroundRuntimeCreated(String groupName);
   void reload(boolean ignoreCache);
-  void reload(
-      boolean ignoreCache, String templateBin, boolean fromTemplateFragments, int templateSize);
+  void reload(boolean ignoreCache, String templateBin, boolean fromTemplateFragments,
+      int templateSize, String reloadUrl);
   void navigate(String url);
   void stopCasting();
   void continueCasting();

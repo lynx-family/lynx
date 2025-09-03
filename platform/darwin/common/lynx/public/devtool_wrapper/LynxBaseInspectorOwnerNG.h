@@ -46,6 +46,7 @@
 - (void)reloadLynxView:(BOOL)ignoreCache
           withTemplate:(nullable NSString *)templateBin
          fromFragments:(BOOL)fromFragments
-              withSize:(int32_t)size;
+              withSize:(int32_t)size
+         withReloadUrl:(nullable NSString *)reload_url;
 
 @end
