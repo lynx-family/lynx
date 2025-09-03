@@ -26,14 +26,6 @@ import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.LynxDevToolUtils;
 import com.lynx.jsbridge.LynxModule;
 import com.lynx.jsbridge.LynxModuleFactory;
-import com.lynx.tasm.IDynamicHandler;
-import com.lynx.tasm.INativeLibraryLoader;
-import com.lynx.tasm.LynxEnvKey;
-import com.lynx.tasm.LynxEnvLazyInitializer;
-import com.lynx.tasm.LynxError;
-import com.lynx.tasm.LynxSubErrorCode;
-import com.lynx.tasm.LynxViewClient;
-import com.lynx.tasm.LynxViewClientGroup;
 import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.GlobalRefQueue;
 import com.lynx.tasm.base.JNINamespace;
@@ -61,6 +53,7 @@ import com.lynx.tasm.provider.ThemeResourceProvider;
 import com.lynx.tasm.service.ILynxDevToolService;
 import com.lynx.tasm.service.ILynxExtensionService;
 import com.lynx.tasm.service.ILynxImageService;
+import com.lynx.tasm.service.ILynxImageServiceExtension;
 import com.lynx.tasm.service.ILynxSystemInvokeService;
 import com.lynx.tasm.service.ILynxTrailService;
 import com.lynx.tasm.service.LynxServiceCenter;
@@ -231,7 +224,8 @@ public class LynxEnv {
   public synchronized void init(Application context, INativeLibraryLoader nativeLibraryLoader,
       AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle,
       @Nullable IDynamicHandler dynamicHandler) {
-    initLynxServiceCenter();
+    // ensure services are initialized (the host may not call it)
+    LynxServiceCenter.inst().initialize(context);
 
     // init Lynx Base
     initBase(nativeLibraryLoader);
@@ -271,9 +265,6 @@ public class LynxEnv {
 
     // init ModuleFactory
     getModuleFactory().setContext(context);
-
-    // init lynx trail service
-    initLynxTrailService(context);
 
     // Calling sequence:
     // initDevtoolEnv() > loadNativeLibraries() > syncDevtoolComponentAttachSwitch()
@@ -342,10 +333,10 @@ public class LynxEnv {
     }
 
     ILynxImageService imageService = LynxServiceCenter.inst().getService(ILynxImageService.class);
-    if (imageService != null) {
-      imageService.onLynxEnvSetup();
+    if (imageService instanceof ILynxImageServiceExtension) {
+      ((ILynxImageServiceExtension) imageService).onLynxEnvSetup();
     } else {
-      LLog.w(TAG, "LynxEnv failed to get LynxImageService");
+      LLog.w(TAG, "LynxEnv failed to get ILynxImageServiceExtension");
     }
 
     // vsyncMonitor related
@@ -1399,17 +1390,6 @@ public class LynxEnv {
   private void initEnableRecycleRenderDataListWhileReload() {
     mEnableRecycleRenderDataListWhileReload =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD, false);
-  }
-
-  protected void initLynxTrailService(Context context) {
-    ILynxTrailService service = LynxServiceCenter.inst().getService(ILynxTrailService.class);
-    if (service != null) {
-      service.initialize(context);
-    }
-  }
-
-  private void initLynxServiceCenter() {
-    LynxServiceCenter.inst().initialize();
   }
 
   private void initBase(INativeLibraryLoader nativeLibraryLoader) {

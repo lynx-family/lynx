@@ -27,6 +27,7 @@ import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.ILynxTrailServiceExtension;
 import com.lynx.tasm.service.LynxServiceCenter;
 import java.util.HashMap;
 import java.util.List;
@@ -614,8 +615,8 @@ public class LynxViewBuilder
   public LynxView build(@NonNull Context context) {
     TraceEvent.beginSection(TraceEventDef.LYNXVIEW_BUILDER_BUILD);
     ILynxTrailService trailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);
-    if (trailService != null) {
-      trailService.parseLynxViewBuilder(this);
+    if (trailService instanceof ILynxTrailServiceExtension) {
+      ((ILynxTrailServiceExtension) trailService).parseLynxViewBuilder(this);
     }
 
     LynxView lynxView = new LynxView(context, this);

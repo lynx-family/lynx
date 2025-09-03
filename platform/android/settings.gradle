@@ -33,3 +33,6 @@ include ':LynxXElement'
 project(":LynxXElement").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement')
 include ':LynxXElement:Input'
 project(":LynxXElement:Input").projectDir = new File(rootProject.projectDir, './lynx_xelement/lynx_xelement_input')
+
+include ':ServiceAPI'
+project(':ServiceAPI').projectDir = new File(rootProject.projectDir, './service_api')

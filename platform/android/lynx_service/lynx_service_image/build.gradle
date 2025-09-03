@@ -47,4 +47,5 @@ dependencies {
     compileOnly 'com.facebook.fresco:animated-base:2.3.0'
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxAndroid')
+    implementation project(':ServiceAPI')
 }

@@ -45,4 +45,5 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxBase')
+    implementation project(':ServiceAPI')
 }

@@ -59,7 +59,6 @@ import com.lynx.tasm.behavior.shadow.MeasureMode;
 import com.lynx.tasm.behavior.shadow.ViewLayoutTick;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.behavior.ui.LynxUI;
-import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIGroup;
 import com.lynx.tasm.common.LepusBuffer;
@@ -83,6 +82,7 @@ import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
 import com.lynx.tasm.service.ILynxExtensionService;
 import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.ILynxTrailServiceExtension;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.service.security.ILynxSecurityService;
 import com.lynx.tasm.service.security.SecurityResult;
@@ -289,8 +289,8 @@ public class LynxTemplateRender
   private void init(@Nullable Context context, UIBodyView bodyView, LynxViewBuilder builder) {
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_INIT);
     ILynxTrailService trailService = LynxServiceCenter.inst().getService(ILynxTrailService.class);
-    if (trailService != null) {
-      trailService.parseLynxViewBuilder(builder);
+    if (trailService instanceof ILynxTrailServiceExtension) {
+      ((ILynxTrailServiceExtension) trailService).parseLynxViewBuilder(builder);
     }
 
     mInitStart = System.currentTimeMillis();

@@ -4,7 +4,6 @@
 
 package com.lynx.tasm.image.model;
 
-import android.graphics.drawable.Drawable;
 import androidx.annotation.Nullable;
 import com.lynx.tasm.image.ImageContent;
 import org.json.JSONObject;

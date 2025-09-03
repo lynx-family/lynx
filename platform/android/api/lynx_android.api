@@ -2213,19 +2213,22 @@ public interface com::lynx::tasm::service::ILynxImageService {
   public boolean com.lynx.tasm.service.ILynxImageService.resumeAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.pauseAnimation(@NonNull Drawable animatable);
   public boolean com.lynx.tasm.service.ILynxImageService.stopAnimation(@NonNull Drawable animatable);
-  public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
-  public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener);
+  public void com.lynx.tasm.service.ILynxImageService.prefetchImage( @NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params);
+  public void com.lynx.tasm.service.ILynxImageService.prefetchImage(@NonNull String uri, @Nullable Object callerContext, @Nullable Map< String, Object > params, @Nullable ImageLoadListener loadListener);
   public void com.lynx.tasm.service.ILynxImageService.decodeImage(@NonNull ImageRequestInfo imageRequestInfo, @NonNull ImageLoadListener listener);
   public void com.lynx.tasm.service.ILynxImageService.releaseImage(@NonNull ImageRequestInfo imageRequestInfo);
   public void com.lynx.tasm.service.ILynxImageService.releaseAnimDrawable(@NonNull Drawable drawable);
   public boolean com.lynx.tasm.service.ILynxImageService.canParseUrl(@NonNull String url);
-  public BackgroundLayerDrawable com.lynx.tasm.service.ILynxImageService.createBackgroundImageDrawable( @NonNull Context context, @NonNull String url);
-  public void com.lynx.tasm.service.ILynxImageService.onLynxEnvSetup();
   public void com.lynx.tasm.service.ILynxImageService.setCustomImageDecoder(@NonNull Object builder);
   public Object com.lynx.tasm.service.ILynxImageService.getImageSRPostProcessor();
   public void com.lynx.tasm.service.ILynxImageService.setImageSRSize(@NonNull Object request, @NonNull View view);
   public void com.lynx.tasm.service.ILynxImageService.setImageCacheChoice(@NonNull String cacheChoice, @NonNull Object builder);
   public void com.lynx.tasm.service.ILynxImageService.setImagePlaceHolderHash(@NonNull Object hierarchy, @NonNull Object request, @NonNull Object scaleType, @NonNull String hash, @Nullable String metaData, int width, int height, int radius, int iterations, boolean isPreView);
+}
+
+public interface com::lynx::tasm::service::ILynxImageServiceExtension {
+  public BackgroundLayerDrawable com.lynx.tasm.service.ILynxImageServiceExtension.createBackgroundImageDrawable( @NonNull Context context, @NonNull String url);
+  public void com.lynx.tasm.service.ILynxImageServiceExtension.onLynxEnvSetup();
 }
 
 public interface com::lynx::jsbridge::jsi::ILynxJSIObject {
@@ -2345,11 +2348,13 @@ public interface com::lynx::tasm::service::ILynxSystemInvokeService {
 
 public interface com::lynx::tasm::service::ILynxTrailService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxTrailService.getServiceClass();
-  public void com.lynx.tasm.service.ILynxTrailService.initialize(Context context);
   public String com.lynx.tasm.service.ILynxTrailService.stringValueForTrailKey(@NonNull String key);
   public Object com.lynx.tasm.service.ILynxTrailService.objectValueForTrailKey(@NonNull String key);
   public Map< String, Object > com.lynx.tasm.service.ILynxTrailService.getAllValues();
-  public void com.lynx.tasm.service.ILynxTrailService.parseLynxViewBuilder(@NonNull LynxViewBuilder builder);
+}
+
+public interface com::lynx::tasm::service::ILynxTrailServiceExtension {
+  public void com.lynx.tasm.service.ILynxTrailServiceExtension.parseLynxViewBuilder(@NonNull LynxViewBuilder builder);
 }
 
 public interface com::lynx::tasm::behavior::ILynxUIRenderer {
@@ -2539,6 +2544,7 @@ public interface com::lynx::tasm::image::model::ImageLoadListener {
 }
 
 public class com::lynx::tasm::image::model::ImageRequestInfo :  {
+  public com.lynx.tasm.image.model.ImageRequestInfo.ImageRequestInfo(ImageRequestInfoBuilder builder);
   public String com.lynx.tasm.image.model.ImageRequestInfo.getUrl();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getResizeWidth();
   public int com.lynx.tasm.image.model.ImageRequestInfo.getResizeHeight();
@@ -2758,8 +2764,12 @@ public interface com::lynx::tasm::behavior::ui::scroll::IScrollSticky {
   public void com.lynx.tasm.behavior.ui.scroll.IScrollSticky.setEnableSticky();
 }
 
+public interface com::lynx::tasm::service::IServiceExtension {
+}
+
 public interface com::lynx::tasm::service::IServiceProvider {
   public Class<? extends IServiceProvider > com.lynx.tasm.service.IServiceProvider.getServiceClass();
+  public default void com.lynx.tasm.service.IServiceProvider.onInitialize(Context context);
 }
 
 public interface com::lynx::tasm::EventEmitter::ITestTapTrack {
@@ -5943,12 +5953,11 @@ public class com::lynx::tasm::event::LynxScrollEvent : com.lynx.tasm.event.LynxD
   public static LynxScrollEvent com.lynx.tasm.event.LynxScrollEvent.createScrollEvent(int tag, String type);
 }
 
-public class com::lynx::tasm::service::LynxServiceCenter : com.lynx.tasm.service.LynxLazyInitializer {
+public class com::lynx::tasm::service::LynxServiceCenter :  {
   public static LynxServiceCenter com.lynx.tasm.service.LynxServiceCenter.inst();
-  public void com.lynx.tasm.service.LynxServiceCenter.registerService(@NonNull IServiceProvider instance);
-  public void com.lynx.tasm.service.LynxServiceCenter.registerService(Class<? extends IServiceProvider > clazz, @NonNull IServiceProvider instance);
   public void com.lynx.tasm.service.LynxServiceCenter.unregisterService(Class<? extends IServiceProvider > clazz);
   public void com.lynx.tasm.service.LynxServiceCenter.unregisterAllService();
+  public void com.lynx.tasm.service.LynxServiceCenter.initialize(Application context);
 }
 
 public enum com::lynx::tasm::service::LynxResourceServiceRequestParams::LynxServiceScene {
@@ -9639,7 +9648,6 @@ public class com::lynx::tasm::base::trace::TraceEventDef :  {
   public final String com.lynx.tasm.base.trace.TraceEventDef.NINE_PATCH_HELPER_DRAW_WITH_CAP_INSETS NINE_PATCH_HELPER_DRAW_WITH_CAP_INSETS;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FETCHER_WRAPPER_USE_RESOURCE_SERVICE FETCHER_WRAPPER_USE_RESOURCE_SERVICE;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FETCHER_WRAPPER_USE_LAZY_BUNDLE_FETCHER FETCHER_WRAPPER_USE_LAZY_BUNDLE_FETCHER;
-  public final String com.lynx.tasm.base.trace.TraceEventDef.LYNX_SERVICE_CENTER_INIT LYNX_SERVICE_CENTER_INIT;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_START FLUENCY_TRACER_START;
   public final String com.lynx.tasm.base.trace.TraceEventDef.FLUENCY_TRACER_STOP FLUENCY_TRACER_STOP;
   public final String com.lynx.tasm.base.trace.TraceEventDef.INSTANCE_ID INSTANCE_ID;

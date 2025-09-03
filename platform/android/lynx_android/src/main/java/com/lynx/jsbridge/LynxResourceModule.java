@@ -27,6 +27,7 @@ import com.lynx.tasm.image.model.ImageRequestInfo;
 import com.lynx.tasm.service.ILynxImageService;
 import com.lynx.tasm.service.ILynxResourceService;
 import com.lynx.tasm.service.LynxServiceCenter;
+import java.util.Map;
 import org.json.JSONObject;
 
 public class LynxResourceModule extends LynxContextModule {
@@ -136,8 +137,8 @@ public class LynxResourceModule extends LynxContextModule {
       }
       return;
     }
-    mImagePrefetchHelper.prefetchImage(
-        uri, mLynxContext.getFrescoCallerContext(), params, new ImageLoadListener() {
+    mImagePrefetchHelper.prefetchImage(uri, mLynxContext.getFrescoCallerContext(),
+        (Map<String, Object>) params, new ImageLoadListener() {
           private void invokeCallback(int code, String msg) {
             if (callback != null) {
               JavaOnlyMap result = new JavaOnlyMap();
@@ -241,7 +242,8 @@ public class LynxResourceModule extends LynxContextModule {
           msg = "Image prefetch helper do not exist!";
           break;
         }
-        mImagePrefetchHelper.prefetchImage(uri, mLynxContext.getFrescoCallerContext(), params);
+        mImagePrefetchHelper.prefetchImage(
+            uri, mLynxContext.getFrescoCallerContext(), (Map<String, Object>) params);
         break;
       }
       case AUDIO_TYPE:

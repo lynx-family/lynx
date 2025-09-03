@@ -1,11 +1,10 @@
-// Copyright 2024 The Lynx Authors. All rights reserved.
+// Copyright 2025 The Lynx Authors. All rights reserved.
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
-apply plugin: 'kotlin-kapt'
-apply from: '../../publish.gradle'
+apply from: '../publish.gradle'
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -13,8 +12,6 @@ android {
     defaultConfig {
         minSdkVersion 16
         targetSdkVersion 32
-        versionCode 1
-        versionName "1.0"
         missingDimensionStrategy 'lynx', 'noasan'
     }
 
@@ -33,23 +30,13 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
-
-    sourceSets {
-        main {
-            assets.srcDirs = ['src/main/assets']
-            java.srcDirs = ['src/main/java']
-        }
+  
+    kotlinOptions {
+        // @see https://www.zacsweers.dev/jvmdefault-more-useful/
+        freeCompilerArgs += '-Xjvm-default=all'
     }
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
-    compileOnly "androidx.annotation:annotation:1.0.0"
-    compileOnly project(':LynxAndroid')
-    compileOnly project(':LynxBase')
-    compileOnly project(':LynxDevtool')
-    implementation project(':ServiceAPI')
-    compileOnly "com.google.auto.service:auto-service:1.0-rc5"
-    kapt "com.google.auto.service:auto-service:1.0-rc5"
+  implementation 'androidx.annotation:annotation:1.0.0'
 }

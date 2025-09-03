@@ -20,11 +20,10 @@ import android.view.View;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import com.lynx.react.bridge.ReadableMap;
-import com.lynx.tasm.behavior.ui.background.BackgroundLayerDrawable;
 import com.lynx.tasm.image.model.AnimationListener;
 import com.lynx.tasm.image.model.ImageLoadListener;
 import com.lynx.tasm.image.model.ImageRequestInfo;
+import java.util.Map;
 
 /**
  * Interface defining the Lynx image service with methods for image loading,
@@ -39,6 +38,7 @@ public interface ILynxImageService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxImageService.class;
   }
+
   /**
    * Image loading implementation that returns either a BitmapDrawable or an AnimDrawable based on
    * the imageRequest.
@@ -92,7 +92,7 @@ public interface ILynxImageService extends IServiceProvider {
    * @param params Additional parameters for prefetching (optional).
    */
   void prefetchImage(
-      @NonNull String uri, @Nullable Object callerContext, @Nullable ReadableMap params);
+      @NonNull String uri, @Nullable Object callerContext, @Nullable Map<String, Object> params);
 
   /**
    * Prefetches an image from a URI for faster subsequent loading.
@@ -103,7 +103,7 @@ public interface ILynxImageService extends IServiceProvider {
    * @param loadListener Listener for image loading callbacks (optional).
    */
   void prefetchImage(@NonNull String uri, @Nullable Object callerContext,
-      @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener);
+      @Nullable Map<String, Object> params, @Nullable ImageLoadListener loadListener);
 
   /**
    * Retrieve Bitmap of input requestInfo;
@@ -133,24 +133,6 @@ public interface ILynxImageService extends IServiceProvider {
    * @param url The URL of the image to parse.
    */
   boolean canParseUrl(@NonNull String url);
-
-  /**
-   * The implementation of background-image: url
-   * now provides a default {@link com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable}
-   * implementation.
-   *
-   * @param context The Android context.
-   * @param url The URL of the background image.
-   * @return A BackgroundLayerDrawable representing the background image.
-   */
-  @Nullable
-  BackgroundLayerDrawable createBackgroundImageDrawable(
-      @NonNull Context context, @NonNull String url);
-
-  /**
-   * notify onLynxEnvSetup
-   */
-  void onLynxEnvSetup();
 
   /**
    * Deprecated and does not require implementation.

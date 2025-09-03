@@ -54,7 +54,7 @@ public class ImageRequestInfo {
   // Notice!!!: This config is only used in decodeImage method.
   private boolean mEnablePremultiplied = true;
 
-  ImageRequestInfo(ImageRequestInfoBuilder builder) {
+  public ImageRequestInfo(ImageRequestInfoBuilder builder) {
     mUrl = builder.getUrl();
     mResizeWidth = builder.getResizeWidth();
     mEnableAsyncRequest = builder.isEnableAsyncRequest();

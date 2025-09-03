@@ -31,12 +31,10 @@ import com.facebook.imagepipeline.common.ImageDecodeOptionsBuilder;
 import com.facebook.imagepipeline.common.Priority;
 import com.facebook.imagepipeline.common.ResizeOptions;
 import com.facebook.imagepipeline.core.ImagePipeline;
-import com.facebook.imagepipeline.datasource.BaseBitmapDataSubscriber;
 import com.facebook.imagepipeline.image.CloseableImage;
 import com.facebook.imagepipeline.image.CloseableStaticBitmap;
 import com.facebook.imagepipeline.request.ImageRequest;
 import com.facebook.imagepipeline.request.ImageRequestBuilder;
-import com.lynx.react.bridge.ReadableMap;
 import com.lynx.service.image.decoder.LoopCountModifyingBackend;
 import com.lynx.service.image.utils.ImageUtils;
 import com.lynx.tasm.LynxEnv;
@@ -51,20 +49,19 @@ import com.lynx.tasm.behavior.ui.image.BackgroundImageDrawable;
 import com.lynx.tasm.behavior.ui.image.FlattenUIImage;
 import com.lynx.tasm.behavior.ui.image.InlineImageShadowNode;
 import com.lynx.tasm.behavior.ui.image.UIImage;
+import com.lynx.tasm.image.*;
 import com.lynx.tasm.image.AutoSizeImage;
-import com.lynx.tasm.image.ImageContent;
 import com.lynx.tasm.image.ImageErrorCodeUtils;
-import com.lynx.tasm.image.model.AnimationListener;
-import com.lynx.tasm.image.model.ImageInfo;
-import com.lynx.tasm.image.model.ImageLoadListener;
-import com.lynx.tasm.image.model.ImageRequestInfo;
-import com.lynx.tasm.service.ILynxImageService;
+import com.lynx.tasm.image.model.*;
+import com.lynx.tasm.service.*;
+import com.lynx.tasm.service.ILynxImageServiceExtension;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Keep
-public class LynxImageService implements ILynxImageService {
+public class LynxImageService implements ILynxImageService, ILynxImageServiceExtension {
   public static final String PRIORITY_KEY = "priority";
   public static final String PRIORITY_LOW = "low";
   public static final String PRIORITY_MEDIUM = "medium";
@@ -329,15 +326,17 @@ public class LynxImageService implements ILynxImageService {
     }
   }
 
+  @Override
   public void prefetchImage(
-      @NonNull String uri, Object callerContext, @Nullable ReadableMap params) {
+      @NonNull String uri, Object callerContext, @Nullable Map<String, Object> params) {
     prefetchImage(uri, callerContext, params, null);
   }
 
+  @Override
   public void prefetchImage(@NonNull String uri, @Nullable Object callerContext,
-      @Nullable ReadableMap params, @Nullable ImageLoadListener loadListener) {
-    String priorityString = (params == null ? null : params.getString(PRIORITY_KEY, null));
-    String cacheString = (params == null ? null : params.getString(CACHE_TARGET_KEY, null));
+      @Nullable Map<String, Object> params, @Nullable ImageLoadListener loadListener) {
+    String priorityString = (params == null ? null : (String) params.get(PRIORITY_KEY));
+    String cacheString = (params == null ? null : (String) params.get(CACHE_TARGET_KEY));
     Uri imageUri = Uri.parse(uri);
     if (imageUri.getScheme() == null) {
       return;

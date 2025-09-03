@@ -46,4 +46,5 @@ dependencies {
     compileOnly "com.squareup.okhttp3:okhttp:4.9.0"
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxAndroid')
+    implementation project(':ServiceAPI')
 }

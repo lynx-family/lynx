@@ -8,17 +8,15 @@ import android.content.Context;
 import androidx.annotation.NonNull;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.service.ILynxTrailService;
+import com.lynx.tasm.service.ILynxTrailServiceExtension;
 import java.util.Map;
 
-public class MockLynxTrailService implements ILynxTrailService {
+public class MockLynxTrailService implements ILynxTrailServiceExtension, ILynxTrailService {
   private final Map<String, Object> mTrailMap;
 
   public MockLynxTrailService(Map<String, Object> map) {
     mTrailMap = map;
   }
-
-  @Override
-  public void initialize(Context context) {}
 
   @Override
   public String stringValueForTrailKey(@NonNull String key) {

@@ -3,10 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.service;
 
-import android.content.Context;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
-import com.lynx.tasm.LynxViewBuilder;
 import java.util.Map;
 
 @Keep
@@ -18,12 +16,6 @@ public interface ILynxTrailService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxTrailService.class;
   }
-
-  /**
-   * Initialize service with context
-   * @param context
-   */
-  void initialize(Context context);
 
   /**
    * Get string value for key from experiment
@@ -44,10 +36,4 @@ public interface ILynxTrailService extends IServiceProvider {
    * Get all values for key from experiment.
    */
   Map<String, Object> getAllValues();
-
-  /**
-   * Parse lynx view builder
-   * @param builder
-   */
-  void parseLynxViewBuilder(@NonNull LynxViewBuilder builder);
 }

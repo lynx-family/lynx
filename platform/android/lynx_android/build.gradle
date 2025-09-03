@@ -341,4 +341,5 @@ dependencies {
     extractJNI 'org.lynxsdk.lynx:v8so:11.1.277.4'
 
     api project(':LynxJSSDK')
+    api project(':ServiceAPI')
 }

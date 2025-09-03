@@ -11,6 +11,7 @@ path:
 android:
   metadata_path:
     - platform/android/lynx_android/src/main
+    - platform/android/service_api/src/main
   doc_path:
     - README.md
     - platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxView.java

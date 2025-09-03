@@ -16,6 +16,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.ui.LynxBaseUI;
 import com.lynx.tasm.service.ILynxImageService;
+import com.lynx.tasm.service.ILynxImageServiceExtension;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.utils.PixelUtils;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ public abstract class LayerManager implements Drawable.Callback {
   protected boolean mEnableBitmapGradient = false;
 
   private ILynxImageService mImageService = null;
+  private ILynxImageServiceExtension mLynxImageService = null;
 
   public LayerManager(LynxContext context, Drawable drawable, float curFontSize) {
     mContext = context;
@@ -50,6 +52,9 @@ public abstract class LayerManager implements Drawable.Callback {
     mImageRepeatList = new ArrayList<>();
     mImageSizeList = new ArrayList<>();
     mImageService = LynxServiceCenter.inst().getService(ILynxImageService.class);
+    mLynxImageService = mImageService instanceof ILynxImageServiceExtension
+        ? (ILynxImageServiceExtension) mImageService
+        : null;
   }
 
   /*
@@ -323,12 +328,12 @@ public abstract class LayerManager implements Drawable.Callback {
       int type = (int) bgImage.getLong(i);
       if (type == StyleConstants.BACKGROUND_IMAGE_URL) {
         i++;
-        if (mImageService == null || mContext.isEmbeddedModeOn()) {
+        if (mLynxImageService == null || mContext.isEmbeddedModeOn()) {
           // do not support url image for embedded mode
           continue;
         }
         BackgroundLayerDrawable layer =
-            mImageService.createBackgroundImageDrawable(mContext, bgImage.getString(i));
+            mLynxImageService.createBackgroundImageDrawable(mContext, bgImage.getString(i));
         if (layer == null) {
           continue;
         }
