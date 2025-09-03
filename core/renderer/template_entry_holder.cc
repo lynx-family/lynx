@@ -79,8 +79,13 @@ void TemplateEntryHolder::InsertLynxTemplateBundle(
    */
   if (template_entries_.find(url) == template_entries_.end()) {
     TryPostJSBundle(url, bundle);
-    preload_template_bundles_.try_emplace(url, std::move(bundle));
+    preload_template_bundles_.try_emplace(url, bundle);
   }
+
+  // TODO: It's reasonable that using component_loader as bundle_manager
+  // so we need to insert pre registered bundle into bundle manager.
+  // refactoring it later!
+  component_loader_->InsertTemplateBundle(url, std::move(bundle));
 }
 
 void TemplateEntryHolder::TryPostJSBundle(const std::string& url,
