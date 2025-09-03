@@ -230,7 +230,9 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
   }
 
   if (skip_redirection_) {
-    LoadImageResource(url, &UIFlattenImage::HandleImageSrcResponse);
+    LoadImageResource(url,
+                      is_src ? &UIFlattenImage::HandleImageSrcResponse
+                             : &UIFlattenImage::HandleImagePlaceholderResponse);
     return;
   }
 
@@ -244,7 +246,9 @@ void UIFlattenImage::LoadImageFromURL(bool is_src) {
     // local resource
     SetImageAttribute(url, !is_base64, is_src);
   } else {
-    LoadImageResource(url, &UIFlattenImage::HandleImageSrcResponse);
+    LoadImageResource(url,
+                      is_src ? &UIFlattenImage::HandleImageSrcResponse
+                             : &UIFlattenImage::HandleImagePlaceholderResponse);
   }
 }
 
