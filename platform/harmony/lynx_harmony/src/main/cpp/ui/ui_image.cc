@@ -257,7 +257,9 @@ void UIImage::LoadImageFromURL(bool placeholder) {
   }
 
   if (skip_redirection_) {
-    LoadImageResource(url, &UIImage::HandleImageSrcResponse);
+    LoadImageResource(url, placeholder
+                               ? &UIImage::HandleImagePlaceholderResponse
+                               : &UIImage::HandleImageSrcResponse);
     return;
   }
 
@@ -274,7 +276,9 @@ void UIImage::LoadImageFromURL(bool placeholder) {
       SetImageSrcAttribute(redirect_url, false);
     }
   } else {
-    LoadImageResource(url, &UIImage::HandleImageSrcResponse);
+    LoadImageResource(url, placeholder
+                               ? &UIImage::HandleImagePlaceholderResponse
+                               : &UIImage::HandleImageSrcResponse);
   }
 }
 
