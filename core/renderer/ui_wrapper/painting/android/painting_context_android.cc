@@ -1170,6 +1170,9 @@ void PaintingContextAndroid::EnqueueHighPriorityUIOperation(
 }
 
 void PaintingContextAndroid::BeforeFlush() {
+  if (enable_context_free_) {
+    return;
+  }
   // Pop all scheduled AsyncCreateUI tasks and initialize iterable container
   {
     EnqueueHighPriorityUIOperation([impl = impl_] {
