@@ -118,6 +118,7 @@ static constexpr const char kPipelineOptions[] = "pipelineOptions";
 static constexpr const char kPipelineID[] = "pipelineID";
 static constexpr const char kPipelineOrigin[] = "pipelineOrigin";
 static constexpr const char kPipelineNeedTimestamps[] = "needTimestamps";
+static constexpr const char kPatchOptions[] = "patchOptions";
 
 // Constant string for worklet
 static constexpr const char* kWorklet = "worklet";

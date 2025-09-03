@@ -122,6 +122,11 @@ void RadonPage::UpdateComponentData(
                                            : component->path().c_str());
                   ctx.event()->add_debug_annotations(
                       "Keys", ConcatenateTableKeys(table));
+                  ctx.event()->add_debug_annotations(
+                      PIPELINE_ID, pipeline_options->pipeline_id);
+                  // Add an additional `flow_id` parameter to link the
+                  // corresponding `paintEnd` trace event.
+                  ctx.event()->add_flow_ids(TRACE_FLOW_ID());
                 });
     DispatchOption dispatch_option(page_proxy_);
     component->UpdateRadonComponent(
@@ -227,6 +232,11 @@ bool RadonPage::UpdatePage(const lepus::Value &table,
       [&](lynx::perfetto::EventContext ctx) {
         ctx.event()->add_debug_annotations("componentName", "RootComponent");
         ctx.event()->add_debug_annotations("Keys", ConcatenateTableKeys(table));
+        ctx.event()->add_debug_annotations(PIPELINE_ID,
+                                           pipeline_options->pipeline_id);
+        // Add an additional `flow_id` parameter to link the corresponding
+        // `paintEnd` trace event.
+        ctx.event()->add_flow_ids(TRACE_FLOW_ID());
       });
   auto *timing = tasm::timing::LongTaskMonitor::Instance()->GetTopTimingPtr();
   if (timing != nullptr) {
