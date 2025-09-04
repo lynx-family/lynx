@@ -196,12 +196,12 @@ class LynxEnvironment {
     this.defaultDensityEnabled = enabled;
   }
 
-  public getDefaultDensityEnabled() {
-    return this.defaultDensityEnabled;
-  }
-
   public getDisplayInfo() {
     return this.displayInfo;
+  }
+
+  public getDensity(): number {
+    return this.defaultDensityEnabled ? vp2px(1) : this.displayInfo.densityPixels;
   }
 
   public updateDisplayInfo(width: number, height: number, densityPixels?: number, densityDPI?: number,

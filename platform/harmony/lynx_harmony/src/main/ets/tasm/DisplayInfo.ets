@@ -77,4 +77,8 @@ export class DisplayInfo {
   get viewportHeight() {
     return this._viewportHeight;
   }
+
+  clone(): DisplayInfo {
+    return new DisplayInfo(this);
+  }
 }

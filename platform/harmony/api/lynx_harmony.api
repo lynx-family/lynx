@@ -197,8 +197,8 @@ export const LynxEnv: LynxEnvironment {
   public getLynxVersion(): string;
   public setPerformanceEnable(isOpen: boolean): void;
   public setDefaultDensityEnabled(enabled: boolean): void;
-  public getDefaultDensityEnabled(): void;
   public getDisplayInfo(): void;
+  public getDensity(): number;
   public updateDisplayInfo(width: number, height: number, densityPixels: number, densityDPI: number, refreshRate: number): void;
 }
 

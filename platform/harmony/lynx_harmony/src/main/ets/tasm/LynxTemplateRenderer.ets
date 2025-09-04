@@ -31,6 +31,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
   private destroyed = false;
+  private displayInfo = LynxEnv.getDisplayInfo().clone();
 
   constructor(clients: LynxViewClient[], uiDelegate: number[], providers: (LynxResourceProvider | undefined)[],
     isHostRenderer: boolean, threadMode: ThreadStrategyForRendering,
@@ -44,10 +45,8 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
     this.threadMode = threadMode;
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(backgroundRuntimeOptions);
     this.perfController = perfController;
-    const displayInfo = LynxEnv.getDisplayInfo();
-    this.nativeAttach(uiDelegate, this.providers, displayInfo.screenWidth, displayInfo.screenHeight,
-      LynxEnv.getDefaultDensityEnabled() ? vp2px(1) : displayInfo.densityPixels,
-      isHostRenderer, this.perfController.native, this.threadMode,
+    this.nativeAttach(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
+      LynxEnv.getDensity(), isHostRenderer, this.perfController.native, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
       this.backgroundRuntimeOptions.enableJSGroupThread(),
@@ -152,14 +151,14 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   initScreenMetrics() {
-    const displayInfo = LynxEnv.getDisplayInfo();
-    super.updateScreenMetrics(displayInfo.screenWidth, displayInfo.screenHeight,
-      LynxEnv.getDefaultDensityEnabled() ? vp2px(1) : displayInfo.densityPixels);
+    super.updateScreenMetrics(this.displayInfo.screenWidth, this.displayInfo.screenHeight, LynxEnv.getDensity());
   }
 
   override updateScreenMetrics(width: number, height: number) {
-    super.updateScreenMetrics(width, height,
-      LynxEnv.getDefaultDensityEnabled() ? vp2px(1) : LynxEnv.getDisplayInfo().densityPixels);
+    if (width != this.displayInfo.screenWidth || height != this.displayInfo.screenHeight) {
+      this.displayInfo.updateDisplayInfo(width, height);
+      super.updateScreenMetrics(width, height, LynxEnv.getDensity());
+    }
   }
 
   setEnableBytecode(enable: boolean, sourceUrl: string) {
