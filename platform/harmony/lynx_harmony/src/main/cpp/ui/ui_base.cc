@@ -901,28 +901,35 @@ void UIBase::SetBoxShadow(const lepus::Value& value) {
 
 void UIBase::SetFilter(const lepus::Value& value) {
   if (value.IsNil()) {
-    NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
+    NodeManager::Instance().ResetAttribute(node_, NODE_SATURATION);
     NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
+    NodeManager::Instance().ResetAttribute(node_, NODE_BLEND_MODE);
     return;
   }
+
   const auto& val_array = value.Array();
   const starlight::FilterType type =
       static_cast<starlight::FilterType>(value.Array()->get(0).Number());
   double amount = 0;
   switch (type) {
     case starlight::FilterType::kNone:
-      NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
+      NodeManager::Instance().ResetAttribute(node_, NODE_SATURATION);
       NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
+      NodeManager::Instance().ResetAttribute(node_, NODE_BLEND_MODE);
       break;
     case starlight::FilterType::kGrayscale:
       amount = val_array->get(1).Number();
       NodeManager::Instance().ResetAttribute(node_, NODE_BLUR);
       NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_GRAY_SCALE, amount);
+          node_, NODE_BLEND_MODE, static_cast<int>(ARKUI_BLEND_MODE_SRC_ATOP),
+          static_cast<int>(BLEND_APPLY_TYPE_OFFSCREEN));
+      NodeManager::Instance().SetAttributeWithNumberValue(
+          node_, NODE_SATURATION, amount);
       break;
     case starlight::FilterType::kBlur:
       amount = val_array->get(1).Number();
-      NodeManager::Instance().ResetAttribute(node_, NODE_GRAY_SCALE);
+      NodeManager::Instance().ResetAttribute(node_, NODE_SATURATION);
+      NodeManager::Instance().ResetAttribute(node_, NODE_BLEND_MODE);
       NodeManager::Instance().SetAttributeWithNumberValue(
           node_, NODE_BLUR, amount * context_->ScaledDensity());
       break;
