@@ -222,7 +222,7 @@ class FiberElement : public Element,
   virtual void SetKeyframesByNamesInner(
       fml::RefPtr<PropBundle> keyframes_data) override;
 
-  virtual bool NeedFastFlushPath(
+  virtual bool NeedFullFlushPath(
       const std::pair<CSSPropertyID, tasm::CSSValue>& style) override;
 
   const StyleMap& GetParsedStylesMap() const { return parsed_styles_map_; }

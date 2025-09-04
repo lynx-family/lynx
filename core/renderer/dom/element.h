@@ -614,7 +614,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   // Whether list uses platform component.
   virtual bool DisableListPlatformImplementation() const { return false; }
 
-  virtual bool NeedFastFlushPath(
+  virtual bool NeedFullFlushPath(
       const std::pair<CSSPropertyID, tasm::CSSValue>& style) = 0;
 
   virtual bool is_view() const { return false; }

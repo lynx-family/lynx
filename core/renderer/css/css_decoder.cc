@@ -1688,6 +1688,8 @@ std::string CSSDecoder::ToAnimationPropertyType(
       return "offset-distance";
     case starlight::AnimationPropertyType::kBoxShadow:
       return "box-shadow";
+    case starlight::AnimationPropertyType::kBackgroundPosition:
+      return "background-position";
   }
 }
 

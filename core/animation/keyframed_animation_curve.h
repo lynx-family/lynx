@@ -237,6 +237,43 @@ class KeyframedFilterAnimationCurve : public FilterAnimationCurve {
   tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
 };
 
+//====BackgroundPosition keyframe ====
+class BackgroundPositionKeyframe : public Keyframe {
+ public:
+  static tasm::CSSValue GetBackgroundPositionKeyframeValue(
+      BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
+      tasm::Element* element);
+
+  static std::unique_ptr<BackgroundPositionKeyframe> Create(
+      fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function);
+  ~BackgroundPositionKeyframe() override = default;
+
+  void SetBackgroundPosition(const tasm::CSSValue& background_position) {
+    background_position_ = background_position;
+  }
+
+  tasm::CSSValue GetBackgroundPosition() const { return background_position_; }
+
+  bool SetValue(
+      const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
+      tasm::Element* element) override;
+
+  BackgroundPositionKeyframe(fml::TimeDelta time,
+                             std::unique_ptr<TimingFunction> timing_function);
+
+ private:
+  tasm::CSSValue background_position_;
+};
+
+class KeyframedBackgroundPositionAnimationCurve
+    : public BackgroundPositionAnimationCurve {
+ public:
+  static std::unique_ptr<KeyframedBackgroundPositionAnimationCurve> Create();
+  ~KeyframedBackgroundPositionAnimationCurve() override = default;
+
+  tasm::CSSValue GetValue(fml::TimeDelta& t) const override;
+};
+
 }  // namespace animation
 }  // namespace lynx
 #endif  // CORE_ANIMATION_KEYFRAMED_ANIMATION_CURVE_H_

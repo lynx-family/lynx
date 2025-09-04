@@ -264,6 +264,7 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"width", TokenType::WIDTH},
       {"height", TokenType::HEIGHT},
       {"background-color", TokenType::BACKGROUND_COLOR},
+      {"background-position", TokenType::BACKGROUND_POSITION},
       {"color", TokenType::COLOR},
       {"visibility", TokenType::VISIBILITY},
       {"transform", TokenType::TRANSFORM},

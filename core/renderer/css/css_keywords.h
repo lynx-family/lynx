@@ -343,6 +343,7 @@ enum class TokenType {
   MARGIN,               // margin
   FILTER,               // filter
   OFFSET_DISTANCE,      // offset-distance
+  BACKGROUND_POSITION,  // background-position
   /* transition end*/
 
   /* timing function begin */

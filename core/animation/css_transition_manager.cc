@@ -110,6 +110,8 @@ const char* ConvertAnimationPropertyTypeToString(
       return "offset-distance";
     case starlight::AnimationPropertyType::kBoxShadow:
       return "box-shadow";
+    case starlight::AnimationPropertyType::kBackgroundPosition:
+      return "background-position";
     default:
       return "";
   }
@@ -365,6 +367,12 @@ bool CSSTransitionManager::IsValueValid(starlight::AnimationPropertyType type,
       return true;
     }
     case starlight::AnimationPropertyType::kFilter: {
+      if (!value.IsArray() && !value.IsVariable()) {
+        return false;
+      }
+      return true;
+    }
+    case starlight::AnimationPropertyType::kBackgroundPosition: {
       if (!value.IsArray() && !value.IsVariable()) {
         return false;
       }

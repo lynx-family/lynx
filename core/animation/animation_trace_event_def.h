@@ -46,6 +46,9 @@ static constexpr const char* const KEYFRAME_FILTER_ANIMATION_CURVE_GET_VALUE =
 static constexpr const char* const
     KEYFRAME_TRANSFORM_ANIMATION_CURVE_GET_VALUE =
         "KeyframedTransformAnimationCurve::GetValue";
+static constexpr const char* const
+    KEYFRAME_BACKGROUND_POSITION_ANIMATION_CURVE_GET_VALUE =
+        "KeyframedBackgroundPositionAnimationCurve::GetValue";
 static constexpr const char* const ELEMENT_ANIMATE =
     "RendererFunction::ElementAnimate";
 

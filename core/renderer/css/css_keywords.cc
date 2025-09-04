@@ -1,5 +1,5 @@
 /* C++ code produced by gperf version 3.3 */
-/* Command-line: gperf -D -t --output-file css_keywords.cc css_keywords.tmpl  */
+/* Command-line: gperf -D -t css_keywords.tmpl  */
 /* Computed positions: -k'1-4,6-8,12-13,$' */
 
 #if !(                                                                         \
@@ -215,7 +215,7 @@ inline unsigned int CSSKeywordsHash::hash(const char *str, size_t len) {
 const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
                                                         size_t len) {
   enum {
-    TOTAL_KEYWORDS = 309,
+    TOTAL_KEYWORDS = 310,
     MIN_WORD_LENGTH = 1,
     MAX_WORD_LENGTH = 20,
     MIN_HASH_VALUE = 2,
@@ -238,13 +238,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"all", TokenType::ALL},
 #line 240 "css_keywords.tmpl"
       {"teal", TokenType::TEAL},
-#line 329 "css_keywords.tmpl"
+#line 330 "css_keywords.tmpl"
       {"on", TokenType::ON},
 #line 27 "css_keywords.tmpl"
       {"none", TokenType::NONE},
 #line 239 "css_keywords.tmpl"
       {"tan", TokenType::TAN},
-#line 318 "css_keywords.tmpl"
+#line 319 "css_keywords.tmpl"
       {"alternate", TokenType::ALTERNATE},
 #line 250 "css_keywords.tmpl"
       {"rotate", TokenType::ROTATE},
@@ -272,7 +272,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"linen", TokenType::LINEN},
 #line 88 "css_keywords.tmpl"
       {"normal", TokenType::NORMAL},
-#line 308 "css_keywords.tmpl"
+#line 309 "css_keywords.tmpl"
       {"ease", TokenType::EASE},
 #line 37 "css_keywords.tmpl"
       {"em", TokenType::EM},
@@ -286,7 +286,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"totop", TokenType::TOTOP},
 #line 36 "css_keywords.tmpl"
       {"rem", TokenType::REM},
-#line 304 "css_keywords.tmpl"
+#line 305 "css_keywords.tmpl"
       {"linear", TokenType::LINEAR},
 #line 79 "css_keywords.tmpl"
       {"groove", TokenType::GROOVE},
@@ -304,7 +304,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"limegreen", TokenType::LIMEGREEN},
 #line 81 "css_keywords.tmpl"
       {"inset", TokenType::INSET},
-#line 316 "css_keywords.tmpl"
+#line 317 "css_keywords.tmpl"
       {"s", TokenType::SECOND},
 #line 212 "css_keywords.tmpl"
       {"palegreen", TokenType::PALEGREEN},
@@ -314,7 +314,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"solid", TokenType::SOLID},
 #line 230 "css_keywords.tmpl"
       {"sienna", TokenType::SIENNA},
-#line 305 "css_keywords.tmpl"
+#line 306 "css_keywords.tmpl"
       {"ease-in", TokenType::EASE_IN},
 #line 229 "css_keywords.tmpl"
       {"seashell", TokenType::SEASHELL},
@@ -330,7 +330,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"transparent", TokenType::TRANSPARENT},
 #line 300 "css_keywords.tmpl"
       {"margin", TokenType::MARGIN},
-#line 315 "css_keywords.tmpl"
+#line 316 "css_keywords.tmpl"
       {"ms", TokenType::MILLISECOND},
 #line 200 "css_keywords.tmpl"
       {"mintcream", TokenType::MINTCREAM},
@@ -352,11 +352,11 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"auto", TokenType::AUTO},
 #line 214 "css_keywords.tmpl"
       {"palevioletred", TokenType::PALEVIOLETRED},
-#line 311 "css_keywords.tmpl"
+#line 312 "css_keywords.tmpl"
       {"step-end", TokenType::STEP_END},
 #line 26 "css_keywords.tmpl"
       {"url", TokenType::URL},
-#line 326 "css_keywords.tmpl"
+#line 327 "css_keywords.tmpl"
       {"true", TokenType::TOKEN_TRUE},
 #line 192 "css_keywords.tmpl"
       {"mediumorchid", TokenType::MEDIUMORCHID},
@@ -374,7 +374,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"tobottom", TokenType::TOBOTTOM},
 #line 25 "css_keywords.tmpl"
       {"hsla", TokenType::HSLA},
-#line 314 "css_keywords.tmpl"
+#line 315 "css_keywords.tmpl"
       {"steps", TokenType::STEPS},
 #line 190 "css_keywords.tmpl"
       {"mediumaquamarine", TokenType::MEDIUMAQUAMARINE},
@@ -386,7 +386,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"round", TokenType::ROUND},
 #line 105 "css_keywords.tmpl"
       {"aqua", TokenType::AQUA},
-#line 310 "css_keywords.tmpl"
+#line 311 "css_keywords.tmpl"
       {"step-start", TokenType::STEP_START},
 #line 74 "css_keywords.tmpl"
       {"hidden", TokenType::HIDDEN},
@@ -396,7 +396,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"mistyrose", TokenType::MISTYROSE},
 #line 82 "css_keywords.tmpl"
       {"outset", TokenType::OUTSET},
-#line 306 "css_keywords.tmpl"
+#line 307 "css_keywords.tmpl"
       {"ease-out", TokenType::EASE_OUT},
 #line 23 "css_keywords.tmpl"
       {"rgba", TokenType::RGBA},
@@ -476,7 +476,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"contain", TokenType::CONTAIN},
 #line 179 "css_keywords.tmpl"
       {"lightseagreen", TokenType::LIGHTSEAGREEN},
-#line 324 "css_keywords.tmpl"
+#line 325 "css_keywords.tmpl"
       {"paused", TokenType::PAUSED},
 #line 113 "css_keywords.tmpl"
       {"blueviolet", TokenType::BLUEVIOLET},
@@ -490,11 +490,11 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"steelblue", TokenType::STEELBLUE},
 #line 197 "css_keywords.tmpl"
       {"mediumturquoise", TokenType::MEDIUMTURQUOISE},
-#line 325 "css_keywords.tmpl"
+#line 326 "css_keywords.tmpl"
       {"running", TokenType::RUNNING},
 #line 233 "css_keywords.tmpl"
       {"slateblue", TokenType::SLATEBLUE},
-#line 328 "css_keywords.tmpl"
+#line 329 "css_keywords.tmpl"
       {"fr", TokenType::FR},
 #line 131 "css_keywords.tmpl"
       {"darkmagenta", TokenType::DARKMAGENTA},
@@ -512,15 +512,15 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"crimson", TokenType::CRIMSON},
 #line 193 "css_keywords.tmpl"
       {"mediumpurple", TokenType::MEDIUMPURPLE},
-#line 327 "css_keywords.tmpl"
+#line 328 "css_keywords.tmpl"
       {"false", TokenType::TOKEN_FALSE},
-#line 322 "css_keywords.tmpl"
+#line 323 "css_keywords.tmpl"
       {"both", TokenType::BOTH},
 #line 237 "css_keywords.tmpl"
       {"springgreen", TokenType::SPRINGGREEN},
 #line 53 "css_keywords.tmpl"
       {"no-repeat", TokenType::NO_REPEAT},
-#line 309 "css_keywords.tmpl"
+#line 310 "css_keywords.tmpl"
       {"ease-in-out", TokenType::EASE_IN_OUT},
 #line 274 "css_keywords.tmpl"
       {"transform", TokenType::TRANSFORM},
@@ -546,7 +546,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"margin-right", TokenType::MARGIN_RIGHT},
 #line 210 "css_keywords.tmpl"
       {"orchid", TokenType::ORCHID},
-#line 319 "css_keywords.tmpl"
+#line 320 "css_keywords.tmpl"
       {"alternate-reverse", TokenType::ALTERNATE_REVERSE},
 #line 150 "css_keywords.tmpl"
       {"forestgreen", TokenType::FORESTGREEN},
@@ -560,7 +560,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"violet", TokenType::VIOLET},
 #line 84 "css_keywords.tmpl"
       {"line-through", TokenType::LINE_THROUGH},
-#line 323 "css_keywords.tmpl"
+#line 324 "css_keywords.tmpl"
       {"infinite", TokenType::INFINITE},
 #line 166 "css_keywords.tmpl"
       {"lavender", TokenType::LAVENDER},
@@ -576,7 +576,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"lemonchiffon", TokenType::LEMONCHIFFON},
 #line 279 "css_keywords.tmpl"
       {"min-height", TokenType::MIN_HEIGHT},
-#line 317 "css_keywords.tmpl"
+#line 318 "css_keywords.tmpl"
       {"reverse", TokenType::REVERSE},
 #line 61 "css_keywords.tmpl"
       {"radial-gradient", TokenType::RADIAL_GRADIENT},
@@ -664,7 +664,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"vh", TokenType::VH},
 #line 130 "css_keywords.tmpl"
       {"darkkhaki", TokenType::DARKKHAKI},
-#line 307 "css_keywords.tmpl"
+#line 308 "css_keywords.tmpl"
       {"ease-in-ease-out", TokenType::EASE_IN_EASE_OUT},
 #line 202 "css_keywords.tmpl"
       {"moccasin", TokenType::MOCCASIN},
@@ -684,13 +684,13 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"rotatey", TokenType::ROTATE_Y},
 #line 48 "css_keywords.tmpl"
       {"cover", TokenType::COVER},
-#line 312 "css_keywords.tmpl"
+#line 313 "css_keywords.tmpl"
       {"square-bezier", TokenType::SQUARE_BEZIER},
 #line 104 "css_keywords.tmpl"
       {"antiquewhite", TokenType::ANTIQUEWHITE},
 #line 98 "css_keywords.tmpl"
       {"grayscale", TokenType::GRAYSCALE},
-#line 321 "css_keywords.tmpl"
+#line 322 "css_keywords.tmpl"
       {"backwards", TokenType::BACKWARDS},
 #line 220 "css_keywords.tmpl"
       {"powderblue", TokenType::POWDERBLUE},
@@ -740,6 +740,8 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"lightskyblue", TokenType::LIGHTSKYBLUE},
 #line 281 "css_keywords.tmpl"
       {"border-right-width", TokenType::BORDER_RIGHT_WIDTH},
+#line 303 "css_keywords.tmpl"
+      {"background-position", TokenType::BACKGROUND_POSITION},
 #line 232 "css_keywords.tmpl"
       {"skyblue", TokenType::SKYBLUE},
 #line 158 "css_keywords.tmpl"
@@ -764,7 +766,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"darkslategray", TokenType::DARKSLATEGRAY},
 #line 149 "css_keywords.tmpl"
       {"floralwhite", TokenType::FLORALWHITE},
-#line 330 "css_keywords.tmpl"
+#line 331 "css_keywords.tmpl"
       {"off", TokenType::OFF},
 #line 129 "css_keywords.tmpl"
       {"darkgrey", TokenType::DARKGREY},
@@ -772,7 +774,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"darkgray", TokenType::DARKGRAY},
 #line 57 "css_keywords.tmpl"
       {"padding-box", TokenType::PADDING_BOX},
-#line 320 "css_keywords.tmpl"
+#line 321 "css_keywords.tmpl"
       {"forwards", TokenType::FORWARDS},
 #line 261 "css_keywords.tmpl"
       {"scaley", TokenType::SCALE_Y},
@@ -780,7 +782,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"max-width", TokenType::MAX_WIDTH},
 #line 251 "css_keywords.tmpl"
       {"rotatex", TokenType::ROTATE_X},
-#line 303 "css_keywords.tmpl"
+#line 304 "css_keywords.tmpl"
       {"offset-distance", TokenType::OFFSET_DISTANCE},
 #line 273 "css_keywords.tmpl"
       {"visibility", TokenType::VISIBILITY},
@@ -794,7 +796,7 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       {"matrix", TokenType::MATRIX},
 #line 58 "css_keywords.tmpl"
       {"content-box", TokenType::CONTENT_BOX},
-#line 313 "css_keywords.tmpl"
+#line 314 "css_keywords.tmpl"
       {"cubic-bezier", TokenType::CUBIC_BEZIER},
 #line 203 "css_keywords.tmpl"
       {"navajowhite", TokenType::NAVAJOWHITE},
@@ -914,54 +916,54 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       249, -1,  250, -1,  -1,  -1,  -1,  251, -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  252, -1,  -1,  -1,  -1,  -1,
       253, -1,  -1,  -1,  -1,  -1,  -1,  254, -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  255, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  256, -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  257, -1,  -1,  258, -1,  259, -1,  -1,  -1,  260, -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  261, -1,  262, -1,  -1,  -1,  263, -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  264, 265, -1,  -1,  -1,  -1,  266, 267, -1,  -1,  268, 269, -1,
-      -1,  -1,  -1,  270, -1,  -1,  -1,  -1,  -1,  271, -1,  272, -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  255, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  256,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  257, -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  258, -1,  -1,  259, -1,  260, -1,  -1,  -1,  261, -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  262, -1,  263, -1,  -1,  -1,  264, -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  265, 266, -1,  -1,  -1,  -1,  267, 268, -1,  -1,  269, 270, -1,
+      -1,  -1,  -1,  271, -1,  -1,  -1,  -1,  -1,  272, -1,  273, -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  273, 274, -1,  -1,
-      -1,  -1,  275, -1,  276, 277, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  278, -1,  -1,  279, 280, -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  281, -1,  -1,  -1,  -1,  -1,  -1,  -1,  282,
-      283, 284, -1,  -1,  -1,  -1,  285, -1,  -1,  -1,  -1,  -1,  286, 287, -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  288, -1,
-      -1,  289, -1,  290, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  291, -1,  -1,  292, 293, -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  294, -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  295, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  296, -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  297, -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  274, 275, -1,  -1,
+      -1,  -1,  276, -1,  277, 278, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  279, -1,  -1,  280, 281, -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  282, -1,  -1,  -1,  -1,  -1,  -1,  -1,  283,
+      284, 285, -1,  -1,  -1,  -1,  286, -1,  -1,  -1,  -1,  -1,  287, 288, -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  289, -1,
+      -1,  290, -1,  291, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  292, -1,  -1,  293, 294, -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  295, -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  296, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  297, -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  298, -1,  -1,  -1,  299, -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  300, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  298, -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  301, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  302, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  299, -1,  -1,  -1,  300, -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  301, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  303, -1,  -1,  -1,  -1,  -1,  -1,  -1,  304, -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  305, -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  302, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  303, -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  304, -1,  -1,  -1,  -1,  -1,  -1,  -1,  305, -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  306, -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  307, -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
       -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  308};
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  308, -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
+      -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  309};
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH) {
     unsigned int key = hash(str, len);
@@ -976,9 +978,9 @@ const struct TokenValue *CSSKeywordsHash::GetTokenValue(const char *str,
       }
     }
   }
-  return static_cast<struct TokenValue *>(nullptr);
+  return nullptr;
 }
-#line 331 "css_keywords.tmpl"
+#line 332 "css_keywords.tmpl"
 
 const struct TokenValue *GetTokenValue(const char *str, unsigned len) {
   return CSSKeywordsHash::GetTokenValue(str, len);

@@ -114,6 +114,12 @@ bool CSSKeyframeManager::InitCurveAndModelAndKeyframe(
     }
     keyframe = TransformKeyframe::Create(fml::TimeDelta::FromSecondsF(offset),
                                          std::move(timing_function));
+  } else if (type == AnimationCurve::CurveType::BACKGROUND_POSITION) {
+    if (!has_model) {
+      new_curve = KeyframedBackgroundPositionAnimationCurve::Create();
+    }
+    keyframe = BackgroundPositionKeyframe::Create(
+        fml::TimeDelta::FromSecondsF(offset), std::move(timing_function));
   } else {
     return false;
   }

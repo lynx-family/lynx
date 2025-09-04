@@ -264,12 +264,13 @@ FiberElement::GetParentInheritedProperty() {
   return real_parent->GetInheritedProperty();
 }
 
-bool FiberElement::NeedFastFlushPath(
+bool FiberElement::NeedFullFlushPath(
     const std::pair<CSSPropertyID, tasm::CSSValue> &style) {
   return style.second.IsEmpty() || LayoutProperty::IsLayoutOnly(style.first) ||
          LayoutProperty::IsLayoutWanted(style.first) ||
          starlight::CSSStyleUtils::IsLayoutRelatedTransform(style) ||
-         style.first == kPropertyIDColor || style.first == kPropertyIDFilter;
+         style.first == kPropertyIDColor || style.first == kPropertyIDFilter ||
+         style.first == kPropertyIDBackgroundPosition;
 }
 
 void FiberElement::SetKeyframesByNamesInner(fml::RefPtr<PropBundle> bundle) {

@@ -148,7 +148,7 @@ class RadonElement : public Element {
   virtual void ResetTransitionStylesInAdvanceInternal(
       CSSPropertyID css_id) override;
 
-  virtual bool NeedFastFlushPath(
+  virtual bool NeedFullFlushPath(
       const std::pair<CSSPropertyID, tasm::CSSValue>& style) override;
 
   bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,

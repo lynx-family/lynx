@@ -643,5 +643,153 @@ tasm::CSSValue KeyframedFilterAnimationCurve::GetValue(
 
 //====== FilterValueAnimator end =======
 
+//====== BackgroundPositionAnimator begin =======
+
+BackgroundPositionKeyframe::BackgroundPositionKeyframe(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function)
+    : Keyframe(time, std::move(timing_function)) {}
+
+tasm::CSSValue BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
+    BackgroundPositionKeyframe* keyframe, tasm::CSSPropertyID id,
+    tasm::Element* element) {
+  if (keyframe && !keyframe->IsEmpty()) {
+    return keyframe->GetBackgroundPosition();
+  }
+  return tasm::CSSValue::Empty();
+}
+
+std::unique_ptr<BackgroundPositionKeyframe> BackgroundPositionKeyframe::Create(
+    fml::TimeDelta time, std::unique_ptr<TimingFunction> timing_function) {
+  return std::make_unique<BackgroundPositionKeyframe>(
+      time, std::move(timing_function));
+}
+
+bool BackgroundPositionKeyframe::SetValue(
+    const std::pair<tasm::CSSPropertyID, tasm::CSSValue>& css_value_pair,
+    tasm::Element* element) {
+  auto keyframe_background_position_value =
+      HandleCSSVariableValueIfNeed(css_value_pair, element);
+  if (!keyframe_background_position_value.IsArray()) {
+    return false;
+  }
+  background_position_ = keyframe_background_position_value;
+  is_empty_ = false;
+  return true;
+}
+
+std::unique_ptr<KeyframedBackgroundPositionAnimationCurve>
+KeyframedBackgroundPositionAnimationCurve::Create() {
+  return std::make_unique<KeyframedBackgroundPositionAnimationCurve>();
+}
+
+static std::pair<uint32_t, double> ProcessPositionValue(uint32_t position_type,
+                                                        double position_value,
+                                                        bool is_x_axis) {
+  if (position_type ==
+      static_cast<uint32_t>(starlight::BackgroundPositionType::kCenter)) {
+    return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 50.0};
+  }
+
+  if (is_x_axis) {
+    if (position_type ==
+        static_cast<uint32_t>(starlight::BackgroundPositionType::kLeft)) {
+      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 0.0};
+    }
+    if (position_type ==
+        static_cast<uint32_t>(starlight::BackgroundPositionType::kRight)) {
+      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 100.0};
+    }
+  } else {
+    if (position_type ==
+        static_cast<uint32_t>(starlight::BackgroundPositionType::kTop)) {
+      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 0.0};
+    }
+    if (position_type ==
+        static_cast<uint32_t>(starlight::BackgroundPositionType::kBottom)) {
+      return {static_cast<uint32_t>(tasm::CSSValuePattern::PERCENT), 100.0};
+    }
+  }
+
+  return {position_type, position_value};
+}
+
+tasm::CSSValue KeyframedBackgroundPositionAnimationCurve::GetValue(
+    fml::TimeDelta& t) const {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY,
+              KEYFRAME_BACKGROUND_POSITION_ANIMATION_CURVE_GET_VALUE,
+              [](lynx::perfetto::EventContext ctx) {
+                auto* curveTypeInfo = ctx.event()->add_debug_annotations();
+                curveTypeInfo->set_name("curveType");
+                curveTypeInfo->set_string_value("BackgroundPositionAnimation");
+              });
+
+  t = TransformedAnimationTime(keyframes_, timing_function_, scaled_duration(),
+                               t);
+  size_t i = GetActiveKeyframe(keyframes_, scaled_duration(), t);
+  double progress =
+      TransformedKeyframeProgress(keyframes_, scaled_duration(), t, i);
+
+  BackgroundPositionKeyframe* keyframe =
+      static_cast<BackgroundPositionKeyframe*>(keyframes_[i].get());
+  BackgroundPositionKeyframe* keyframe_next =
+      static_cast<BackgroundPositionKeyframe*>(keyframes_[i + 1].get());
+
+  tasm::CSSValue start_background_position =
+      BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
+          keyframe, tasm::kPropertyIDBackgroundPosition, element_);
+  tasm::CSSValue end_background_position =
+      BackgroundPositionKeyframe::GetBackgroundPositionKeyframeValue(
+          keyframe_next, tasm::kPropertyIDBackgroundPosition, element_);
+
+  if (start_background_position == tasm::CSSValue::Empty() ||
+      end_background_position == tasm::CSSValue::Empty()) {
+    return start_background_position;
+  }
+
+  auto start_background_position_arr =
+      start_background_position.GetValue().Array()->get(0).Array();
+  auto end_background_position_arr =
+      end_background_position.GetValue().Array()->get(0).Array();
+
+  auto [start_x_type, start_x_value] = ProcessPositionValue(
+      static_cast<uint32_t>(start_background_position_arr->get(0).Number()),
+      start_background_position_arr->get(1).Double(), true);
+
+  auto [end_x_type, end_x_value] = ProcessPositionValue(
+      static_cast<uint32_t>(end_background_position_arr->get(0).Number()),
+      end_background_position_arr->get(1).Double(), true);
+
+  auto [start_y_type, start_y_value] = ProcessPositionValue(
+      static_cast<uint32_t>(start_background_position_arr->get(2).Number()),
+      start_background_position_arr->get(3).Double(), false);
+
+  auto [end_y_type, end_y_value] = ProcessPositionValue(
+      static_cast<uint32_t>(end_background_position_arr->get(2).Number()),
+      end_background_position_arr->get(3).Double(), false);
+
+  if (start_x_type != end_x_type || start_y_type != end_y_type) {
+    return start_background_position;
+  }
+
+  double result_x_value =
+      start_x_value + (end_x_value - start_x_value) * progress;
+  double result_y_value =
+      start_y_value + (end_y_value - start_y_value) * progress;
+
+  auto inner_array = lepus::CArray::Create();
+  inner_array->emplace_back(start_x_type);
+  inner_array->emplace_back(result_x_value);
+  inner_array->emplace_back(start_y_type);
+  inner_array->emplace_back(result_y_value);
+
+  auto inner_lepus_value = lepus::Value(std::move(inner_array));
+  auto outer_array = lepus::CArray::Create();
+  outer_array->emplace_back(std::move(inner_lepus_value));
+  auto outer_lepus_value = lepus::Value(std::move(outer_array));
+
+  return tasm::CSSValue(std::move(outer_lepus_value),
+                        tasm::CSSValuePattern::ARRAY);
+}
+
 }  // namespace animation
 }  // namespace lynx

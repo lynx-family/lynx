@@ -1497,7 +1497,7 @@ bool Element::FlushAnimatedStyle() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_FLUSH_ANIMATED_STYLE);
   bool has_layout_style = false;
   for (const auto& style : *final_animator_map_) {
-    if (NeedFastFlushPath(style)) {
+    if (NeedFullFlushPath(style)) {
       has_layout_style = true;
       break;
     }
@@ -1529,7 +1529,7 @@ bool Element::FlushAnimatedStyle() {
 
 void Element::FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value) {
   auto style = std::make_pair(id, std::move(value));
-  const bool has_layout_style = NeedFastFlushPath(style);
+  const bool has_layout_style = NeedFullFlushPath(style);
   auto bundle = MakeBundleForAnimation(has_layout_style);
   if (has_layout_style || !has_painting_node_) {
     FlushAnimatedStyleInternal(id, style.second);
