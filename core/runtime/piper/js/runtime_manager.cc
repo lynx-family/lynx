@@ -143,32 +143,7 @@ std::shared_ptr<piper::VMInstance> VMInstancePool::DoCreateVMInstance(
 
 }  // namespace
 
-void TrigMemInfoEvent(void* ctx, const char* mem_info, int size) {
-  std::string info(mem_info);
-  for (int i = 0; i < size; i++) {
-    tasm::report::EventTracker::OnEvent(
-        [i, info = std::move(info)](tasm::report::MoveOnlyEvent& event) {
-          rapidjson::Document doc;
-          doc.Parse(info);
-          if (doc.HasParseError() || !doc.IsObject()) {
-            return;
-          }
-          const rapidjson::Value& item = doc["gc_info"][i];
-          if (item.IsNull()) {
-            return;
-          }
-          event.SetName("lynxsdk_gc_timing_info");
-          for (rapidjson::Value::ConstMemberIterator it = item.MemberBegin();
-               it != item.MemberEnd(); ++it) {
-            if (it->value.IsNumber()) {
-              event.SetProps(it->name.GetString(), it->value.GetUint64());
-            } else if (it->value.IsString()) {
-              event.SetProps(it->name.GetString(), it->value.GetString());
-            }
-          }
-        });
-  }
-}
+void TrigMemInfoEvent(void* ctx, const char* mem_info, int size) {}
 
 RuntimeManager::RuntimeManager() {
   piper::VMInstance::SetReportFunction(TrigMemInfoEvent);
