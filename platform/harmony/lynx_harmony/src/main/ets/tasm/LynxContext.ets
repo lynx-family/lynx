@@ -253,7 +253,7 @@ export class LynxContext implements IContext {
   }
 
   public getDensity(): number {
-    return LynxEnv.getDefaultDensityEnabled() ? vp2px(1) : LynxEnv.getDisplayInfo().densityPixels;
+    return LynxEnv.getDensity();
   }
 
   public getRectangleById(id: string) {
