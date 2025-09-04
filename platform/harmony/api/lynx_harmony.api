@@ -692,6 +692,7 @@ export class LynxGroup {
   public static SINGLE_GROUP: string; = "-1"
   public preloadJSPaths: string[]; = []
   public enableDynamicV8: boolean; = false
+  public enableHarmonyJSVM: boolean; = false
   public enableJSGroupThread: boolean; = false
 }
 

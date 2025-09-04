@@ -202,10 +202,11 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
         // force_use_lightweight_js_engine param for MakeRuntime to control the
         // runtime type.
         if (vm->GetRuntimeType() == piper::JSRuntimeType::v8 ||
-            vm->GetRuntimeType() == piper::JSRuntimeType::jsc) {
+            vm->GetRuntimeType() == piper::JSRuntimeType::jsc ||
+            vm->GetRuntimeType() == piper::JSRuntimeType::jsvm) {
           if (force_use_lightweight_js_engine) {
             LOGI(
-                "use shared jscontext with v8 or jsc, change "
+                "use shared jscontext with v8, jsc or jsvm, change "
                 "force_use_lightweight_js_engine to false");
             force_use_lightweight_js_engine = false;
           } else {
@@ -214,7 +215,8 @@ std::shared_ptr<piper::Runtime> RuntimeManager::CreateJSRuntime(
         } else {
           if (!force_use_lightweight_js_engine) {
             LOGI(
-                "use shared jscontext with none-v8 and none-jsc, change "
+                "use shared jscontext with none-v8, none-jsc and none-jsvm, "
+                "change "
                 "force_use_lightweight_js_engine to true");
             force_use_lightweight_js_engine = true;
           } else {
@@ -464,7 +466,8 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
 
 #if OS_HARMONY
 #if JS_ENGINE_TYPE != 3
-  if (tasm::LynxEnv::GetInstance().EnableJSVMRuntime() &&
+  if ((!force_use_lightweight_js_engine ||
+       tasm::LynxEnv::GetInstance().EnableJSVMRuntime()) &&
       piper::IsJSVMRuntimeAvailable()) {
 #endif  // JS_ENGINE_TYPE != 3
 #if ENABLE_NAPI_BINDING

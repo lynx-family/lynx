@@ -18,7 +18,7 @@ export class LynxBackgroundRuntimeOptions {
   }
 
   useQuickJSEngine(): boolean {
-    return this.lynxGroup ? !this.lynxGroup.enableDynamicV8 : true;
+    return this.lynxGroup ? (!this.lynxGroup.enableDynamicV8 && !this.lynxGroup.enableHarmonyJSVM) : true;
   }
 
   getGroupID(): string {
