@@ -57,7 +57,10 @@ class TextAttributes {
   base::flex_optional<base::InlineVector<float, 6>> auto_font_size_preset_sizes;
   NLength text_indent{DefaultLayoutStyle::SL_DEFAULT_ZEROLENGTH()};
   base::String font_family;
+
+  bool clone_text_gradient = false;
   base::flex_optional<lepus::Value> text_gradient;
+
   float vertical_align_length{DefaultComputedStyle::DEFAULT_FLOAT};
   float font_size;
   float computed_line_height{DefaultComputedStyle::DEFAULT_LINE_HEIGHT};

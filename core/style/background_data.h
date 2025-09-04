@@ -21,7 +21,9 @@ namespace starlight {
 struct BackgroundData {
   struct BackgroundImageData {
     uint32_t image_count{DefaultComputedStyle::DEFAULT_LONG};
+    bool clone_image = false;
     lepus::Value image;
+
     base::InlineVector<NLength, 1> position;
     base::InlineVector<NLength, 1> size;
     base::InlineVector<BackgroundRepeatType, 1> repeat;

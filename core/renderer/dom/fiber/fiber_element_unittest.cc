@@ -14109,6 +14109,67 @@ TEST_P(FiberElementTest, FontSizeResetTest) {
               manager->GetLynxEnvConfig().PageDefaultFontSize());
 }
 
+TEST_P(FiberElementTest, TestBackgroundToLepus) {
+  // styles for fiber_element
+  //  constructor css fragment
+  StyleMap index_attributes;
+  CSSParserConfigs configs;
+  auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+  CSSParserTokenMap index_tokens_map;
+  // class .test
+  {
+    auto id = CSSPropertyID::kPropertyIDBackground;
+    auto impl = lepus::Value(
+        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
+        "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".background";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    index_tokens_map.insert(std::make_pair(key, tokens));
+  }
+
+  // class .test01
+  {
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+    auto id = CSSPropertyID::kPropertyIDMask;
+    auto impl = lepus::Value(
+        "radial-gradient(71.43% 62.3% at 46.43% 36.43%, rgba(18, 229, 229, 0) "
+        "15%, rgba(239, 155, 255, 0.3) 56.35%, #ff6448 100%)");
+    tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+    std::string key = ".mask";
+    auto& sheets = tokens->sheets();
+    auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+    sheets.emplace_back(shared_css_sheet);
+    index_tokens_map.insert(std::make_pair(key, tokens));
+  }
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap fontfaces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, index_tokens_map, keyframes, fontfaces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  for (int i = 0; i <= 10000; ++i) {
+    auto view = manager->CreateFiberView();
+    view->parent_component_element_ = page.get();
+    view->SetClass("background");
+    view->SetClass("mask");
+    page->InsertNode(view);
+  }
+
+  page->FlushActionsAsRoot();
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

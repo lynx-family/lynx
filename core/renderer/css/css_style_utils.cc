@@ -1564,6 +1564,9 @@ void CSSStyleUtils::ComputeRadialGradient(
   // Convert the CSS value to platform value
   if (shape_arr->get(1).Number() ==
       static_cast<uint32_t>(starlight::RadialGradientSizeType::kLength)) {
+    while (shape_arr->size() > 10) {
+      shape_arr->pop_back();
+    }
     // Ignore the result of to length
     CSSStyleUtils::AddLengthToArray(
         shape_arr, CSSStyleUtils::ToLength(

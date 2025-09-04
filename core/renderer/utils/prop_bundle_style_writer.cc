@@ -181,18 +181,31 @@ void PropBundleStyleWriter::WriteLineSpacing(
   }
 }
 
+// When the color is a gradient, it needs to be computed before being passed to
+// the rendering layer. This function handles this computation and sets the
+// color property in the PropBundle.
 void PropBundleStyleWriter::WriteColor(PropBundle* bundle,
                                        starlight::ComputedCSSStyle* style) {
   auto& text_attr = style->GetTextAttributes();
   if (text_attr.has_value()) {
+    // The text_gradient is an array where the first element is the gradient
+    // type and the second element is the gradient data.
     if (text_attr->text_gradient.has_value() &&
         text_attr->text_gradient->IsArray()) {
-      auto gradient_array_ref = text_attr->text_gradient->Array();
-      if (gradient_array_ref->size() > 1 &&
-          gradient_array_ref->get(0).Number() ==
+      // For radial gradients, compute the gradient data before setting the
+      // property.
+      if (text_attr->text_gradient->Array()->size() > 1 &&
+          text_attr->text_gradient->Array()->get(0).Number() ==
               static_cast<uint32_t>(
                   starlight::BackgroundImageType::kRadialGradient)) {
-        auto& gradient_data = gradient_array_ref->get(1);
+        // Clone the gradient data to avoid modifying the original data during
+        // computation.
+        if (!text_attr->clone_text_gradient) {
+          text_attr->text_gradient = base::make_flex_optional(
+              lepus::Value::Clone(*(text_attr->text_gradient)));
+          text_attr->clone_text_gradient = true;
+        }
+        auto& gradient_data = text_attr->text_gradient->Array()->get(1);
         starlight::CSSStyleUtils::ComputeRadialGradient(
             gradient_data, style->length_context_, style->parser_configs_);
       }

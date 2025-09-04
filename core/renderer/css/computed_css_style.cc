@@ -240,6 +240,7 @@ bool SetBackgroundOrMaskImage(base::flex_optional<BackgroundData>& data,
       }
     }
     image_data->image = value.GetValue();
+    image_data->clone_image = false;
   }
   return old_value != image_data->image;
 }
@@ -426,24 +427,53 @@ lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskClipToLepus(
 }
 
 lepus::Value ComputedCSSStyleUtilsMethod::BackgroundOrMaskImageToLepus(
-    const base::flex_optional<BackgroundData>& data,
+    base::flex_optional<BackgroundData>& data,
     const tasm::CssMeasureContext& context,
     const tasm::CSSParserConfigs& configs) {
   if (data && data->image_data && data->image_data->image.IsArray()) {
-    auto array = data->image_data->image.Array();
-    for (size_t i = 0; i < array->size(); i++) {
-      const auto& img = array->get(i);
-      if (!img.IsNumber()) {
-        continue;
+    std::vector<size_t> indexs;
+    {
+      auto array = data->image_data->image.Array();
+      // TODO(renzhongyue): optimize the background's parse logic later, wuch
+      // that we can avoid clone data here.
+
+      // The BackgroundData->data->image is an array where image type and image
+      // data are stored alternately. This code specifically handles
+      // radial-gradient data. First, find the indices of all radial-gradient
+      // types.
+      for (size_t i = 0; i < array->size(); i++) {
+        const auto& img = array->get(i);
+        if (!img.IsNumber()) {
+          continue;
+        }
+        if (img.Number() ==
+            static_cast<uint32_t>(
+                starlight::BackgroundImageType::kRadialGradient)) {
+          indexs.emplace_back(i);
+        }
       }
-      if (img.Number() ==
-          static_cast<uint32_t>(
-              starlight::BackgroundImageType::kRadialGradient)) {
-        // Radial gradient data: [shape_arr, color_array, position_array]
-        const auto& gradient_data = array->get(i + 1);
+    }
+
+    if (!indexs.empty()) {
+      // Clone the image data to avoid modifying the original data during
+      // computation.
+      if (!data->image_data->clone_image) {
+        data->image_data->clone_image = true;
+        data->image_data->image = lepus::Value::Clone(data->image_data->image);
+      }
+      auto new_array = data->image_data->image.Array();
+      // For each radial-gradient type, the next element in the array is the
+      // gradient data. Use `ComputeRadialGradient` to process the gradient
+      // data.
+      for (auto index : indexs) {
+        if (index + 1 >= new_array->size()) {
+          continue;
+        }
+        const auto& gradient_data = new_array->get(index + 1);
         CSSStyleUtils::ComputeRadialGradient(gradient_data, context, configs);
       }
     }
+
     return data->image_data->image;
   } else {
     return lepus::Value{lepus::CArray::Create()};
@@ -2169,6 +2199,7 @@ bool ComputedCSSStyle::SetColor(const tasm::CSSValue& value, const bool reset) {
     } else {
       text_attributes_->color = DefaultColor::DEFAULT_TEXT_COLOR;
       text_attributes_->text_gradient = value.GetValue();
+      text_attributes_->clone_text_gradient = false;
     }
   }
   return old_value_color != text_attributes_->color ||

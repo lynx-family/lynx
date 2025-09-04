@@ -62,7 +62,7 @@ class ComputedCSSStyleUtilsMethod {
   static lepus::Value BackgroundOrMaskClipToLepus(
       const base::flex_optional<starlight::BackgroundData>& data);
   static lepus::Value BackgroundOrMaskImageToLepus(
-      const base::flex_optional<BackgroundData>& data,
+      base::flex_optional<BackgroundData>& data,
       const tasm::CssMeasureContext& context,
       const tasm::CSSParserConfigs& configs);
   static lepus::Value BackgroundOrMaskOriginToLepus(
