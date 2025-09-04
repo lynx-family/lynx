@@ -1597,22 +1597,36 @@ LYNX_UI_METHOD(getVisibleCells) {
 
 - (id<LynxEventTarget>)findHitTargetInStickyItems:(CGPoint)point withEvent:(UIEvent *)event {
   __block id<LynxEventTarget> hitTarget;
-  [_stickyTopItems enumerateKeysAndObjectsUsingBlock:^(NSNumber *_Nonnull key, LynxUI *_Nonnull obj,
-                                                       BOOL *_Nonnull stop) {
-    CGPoint pointInCell = [obj.view convertPoint:point fromView:self.view];
-    if ([obj containsPoint:pointInCell inHitTestFrame:obj.view.bounds]) {
-      hitTarget = [obj hitTest:pointInCell withEvent:event];
-      if (hitTarget) {
-        *stop = YES;
-      }
+  if (self.updateStickyForDiff) {
+    hitTarget = [self findHitTargetInStickyItemDict:self.stickyTopListItemDict
+                                            atPoint:point
+                                          withEvent:event];
+    if (hitTarget) {
+      return hitTarget;
     }
-  }];
-  // early return if stickyTop contains hitPoint
-  if (hitTarget) {
-    return hitTarget;
+    hitTarget = [self findHitTargetInStickyItemDict:self.stickyBottomListItemDict
+                                            atPoint:point
+                                          withEvent:event];
+  } else {
+    hitTarget = [self findHitTargetInStickyItemDict:self.stickyTopItems
+                                            atPoint:point
+                                          withEvent:event];
+    if (hitTarget) {
+      return hitTarget;
+    }
+    hitTarget = [self findHitTargetInStickyItemDict:self.stickyBottomItems
+                                            atPoint:point
+                                          withEvent:event];
   }
-  [_stickyBottomItems enumerateKeysAndObjectsUsingBlock:^(
-                          NSNumber *_Nonnull key, LynxUI *_Nonnull obj, BOOL *_Nonnull stop) {
+  return hitTarget;
+}
+
+- (id<LynxEventTarget>)findHitTargetInStickyItemDict:(NSDictionary *)stickyItemDict
+                                             atPoint:(CGPoint)point
+                                           withEvent:(UIEvent *)event {
+  __block id<LynxEventTarget> hitTarget;
+  [stickyItemDict enumerateKeysAndObjectsUsingBlock:^(id _Nonnull key, LynxUI *_Nonnull obj,
+                                                      BOOL *_Nonnull stop) {
     CGPoint pointInCell = [obj.view convertPoint:point fromView:self.view];
     if ([obj containsPoint:pointInCell inHitTestFrame:obj.view.bounds]) {
       hitTarget = [obj hitTest:pointInCell withEvent:event];
