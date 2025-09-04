@@ -25,9 +25,7 @@ class LynxLepusModule : public piper::LynxNativeModule::Delegate,
   LynxLepusModule(
       const std::string& name,
       const std::shared_ptr<lynx::piper::LynxNativeModule>& native_module) {
-    auto factory = native_module ? native_module->GetValueFactory() : nullptr;
-    value_factory_ = factory ? std::move(factory)
-                             : std::make_shared<pub::PubValueFactoryDefault>();
+    value_factory_ = std::make_shared<pub::PubValueFactoryDefault>();
     native_module_ = native_module;
     name_ = name;
   }
