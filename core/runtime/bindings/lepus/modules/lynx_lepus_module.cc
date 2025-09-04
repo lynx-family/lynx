@@ -23,28 +23,15 @@ Value LynxLepusModule::InvokeMethod(const std::string& method_name,
          << "LynxLepusModule::InvokeMethod: NativeModule is null");
     return Value();
   }
+
   auto args_array = value_factory_->CreateArray();
   piper::CallbackMap callback_map;
   for (size_t i = 0; i < count; i++) {
-    const lynx::lepus::Value* arg = &args[i];
-    if (arg->IsBool()) {
-      args_array->PushBoolToArray(arg->Bool());
-    } else if (arg->IsNumber()) {
-      args_array->PushDoubleToArray(arg->Number());
-    } else if (arg->IsNil() || arg->IsUndefined()) {
-      args_array->PushNullToArray();
-    } else if (arg->IsString()) {
-      args_array->PushStringToArray(arg->String().str());
-      ;
-    } else if (arg->IsObject()) {
-      // TODO: support object & delete push null
-      args_array->PushNullToArray();
-    } else if (arg->IsArray()) {
-      // TODO: support array & delete push null
-      args_array->PushNullToArray();
-    } else if (arg->IsClosure()) {
-      // TODO: support function & delete push null
-      args_array->PushNullToArray();
+    if (args->IsClosure()) {
+      // TODO(zhangqun.29) support closure data type & delete this
+      args_array->PushValueToArray(pub::ValueImplLepus(lepus::Value()));
+    } else {
+      args_array->PushValueToArray(pub::ValueImplLepus(args[i]));
     }
   }
   // really invoke method
