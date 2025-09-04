@@ -19,22 +19,28 @@
 namespace lynx {
 namespace piper {
 static constexpr int kMinMajorVersion = 5;
-static constexpr int kMinSeniorVersion = 1;
+static constexpr int kMinSeniorVersion = 0;
+static constexpr int kMinFeatureVersion = 5;
+static constexpr int kMinBuildVersion = 165;
 static constexpr const char kJSVMLibraryPath[] = "/system/lib64/ndk/libjsvm.so";
+static constexpr int kMinAPIVersion = 17;
 
 class DeviceInfo {
  public:
-  explicit DeviceInfo() { Parse(std::string(OH_GetDisplayVersion())); }
+  explicit DeviceInfo() { Parse(std::string(OH_GetOSFullName())); }
   int MajorVersion() const { return major_version_; }
   int SeniorVersion() const { return senior_version_; }
+  int FeatureVersion() const { return feature_version_; }
+  int BuildVersion() const { return build_version_; }
 
  private:
   void Parse(const std::string& input) {
-    size_t open_paren = input.find(' ');
-    size_t close_paren = input.find('(');
+    size_t hyphen_pos = input.find('-');
+    if (hyphen_pos == std::string::npos) {
+      return;
+    }
 
-    std::string version_part =
-        input.substr(open_paren + 1, close_paren - open_paren - 1);
+    std::string version_part = input.substr(hyphen_pos + 1);
 
     std::vector<std::string> num_parts = SplitString(version_part, '.');
     if (num_parts.size() != 4) {
@@ -100,11 +106,32 @@ class DynamicLoader {
   }
 
   bool IsJsvmAvailable() {
+    int api_version = OH_GetSdkApiVersion();
+    if (api_version < kMinAPIVersion) {
+      LOGE("api_version: " << api_version << " < " << kMinAPIVersion);
+      return false;
+    }
+
     LOGI("majorVersion: " << device_info_.MajorVersion() << " seniorVersion: "
-                          << device_info_.SeniorVersion());
-    return device_info_.MajorVersion() > kMinMajorVersion ||
-           (device_info_.MajorVersion() == kMinMajorVersion &&
-            device_info_.SeniorVersion() >= kMinSeniorVersion);
+                          << device_info_.SeniorVersion() << " featureVersion: "
+                          << device_info_.FeatureVersion()
+                          << " buildVersion: " << device_info_.BuildVersion());
+    int major_version = device_info_.MajorVersion();
+    if (major_version != kMinMajorVersion) {
+      return major_version > kMinMajorVersion;
+    }
+
+    int senior_version = device_info_.SeniorVersion();
+    if (senior_version != kMinSeniorVersion) {
+      return senior_version > kMinSeniorVersion;
+    }
+
+    int feature_version = device_info_.FeatureVersion();
+    if (feature_version != kMinFeatureVersion) {
+      return feature_version > kMinFeatureVersion;
+    }
+
+    return device_info_.BuildVersion() >= kMinBuildVersion;
   }
 
   static DynamicLoader* GetInstance() {

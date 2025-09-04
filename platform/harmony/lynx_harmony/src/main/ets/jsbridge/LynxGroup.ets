@@ -6,7 +6,11 @@ export class LynxGroup {
   public static SINGLE_GROUP: string = "-1";
   private static sNextID: number = 0;
   public preloadJSPaths: string[] = [];
+  // On HarmonyOS, we recommend using the system's built-in JSVM engine.
+  // Therefore, enableDynamicV8 and enableHarmonyJSVM have the same effect, and
+  // the HarmonyOS JSVM will ultimately be used as the JS Runtime.
   public enableDynamicV8: boolean = false;
+  public enableHarmonyJSVM: boolean = false;
   public enableJSGroupThread: boolean = false;
   private id: string;
 
@@ -25,6 +29,7 @@ export class LynxGroup {
       group = new LynxGroup(false, other.id);
       group.preloadJSPaths = other.preloadJSPaths;
       group.enableDynamicV8 = other.enableDynamicV8;
+      group.enableHarmonyJSVM = other.enableHarmonyJSVM;
       group.enableJSGroupThread = other.enableJSGroupThread;
     }
     return group;
