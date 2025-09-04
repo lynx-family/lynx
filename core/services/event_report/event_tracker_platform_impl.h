@@ -67,6 +67,14 @@ class EventTrackerPlatformImpl {
   /// mapped by instance id.
   /// @param instance_id The unique id of template instance.
   static void ClearCache(int32_t instance_id);
+
+  /// Async Get GenericInfo by instance_id
+  /// @param instance_id The unique id of template instance.
+  static void GetAllGenericInfosInReportThread(
+      int32_t instance_id,
+      const std::function<void(std::unique_ptr<pub::Value> entry)>&
+          on_get_generic_infos_cb);
+
   // Get Task Runner of report thread.
   static fml::RefPtr<fml::TaskRunner> GetReportTaskRunner() {
     static base::NoDestructor<fml::Thread> event_report_thread_t_(

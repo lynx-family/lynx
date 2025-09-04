@@ -10,7 +10,11 @@ event_report_shared_sources = [ "event_tracker.h" ]
 if (is_oliver_ssr) {
   event_report_shared_sources += [ "event_tracker_nodejs.cc" ]
 } else {
-  event_report_shared_sources += [ "event_tracker.cc" ]
+  event_report_shared_sources += [
+    "event_tracker.cc",
+    "generic_info_storage.cc",
+    "generic_info_storage.h",
+  ]
 }
 
 if (!is_oliver_ssr && !is_oliver_node_lynx && !enable_unittests) {

@@ -90,6 +90,10 @@ void EventTrackerPlatformImpl::ClearCache(int32_t instance_id) {
   [LynxEventReporter clearCacheForInstanceId:instance_id];
 }
 
+void EventTrackerPlatformImpl::GetAllGenericInfosInReportThread(
+    int32_t instance_id,
+    const std::function<void(std::unique_ptr<pub::Value> entry)>& on_get_generic_infos_cb) {}
+
 }  // namespace report
 }  // namespace tasm
 }  // namespace lynx
