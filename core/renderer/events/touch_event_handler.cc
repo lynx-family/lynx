@@ -1150,6 +1150,16 @@ bool TouchEventHandler::HandleEventInternal(
             << id);
         continue;
       }
+
+      if ((cur_target->is_fiber_element() &&
+           static_cast<FiberElement *>(cur_target)->IsDetached())) {
+        LOGI(
+            "TouchEventHandler::HandleEventInternal global bind current target "
+            "is detached, id is "
+            << id);
+        continue;
+      }
+
       const auto &set = cur_target->GlobalBindTarget();
       if (!set.has_value() || set->empty()) {
         // if set is empty, means the target is all other elements
