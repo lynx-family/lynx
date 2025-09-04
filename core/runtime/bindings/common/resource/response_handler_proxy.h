@@ -17,7 +17,8 @@
 namespace lynx {
 namespace runtime {
 
-class ResponseHandlerProxy {
+class ResponseHandlerProxy
+    : std::enable_shared_from_this<ResponseHandlerProxy> {
  public:
   class Delegate {
    public:
@@ -54,11 +55,15 @@ class ResponseHandlerProxy {
   virtual void AddResourceListener(
       base::MoveOnlyClosure<void, tasm::BundleResourceInfo> closure) {
     promise_->AddCallback(
-        [this, &closure](tasm::BundleResourceInfo bundle_info) {
-          delegate_.InvokeResponsePromiseCallback(
-              [bundle_info, closure = std::move(closure)]() {
-                closure(bundle_info);
-              });
+        [weak_self = weak_from_this(), closure = std::move(closure)](
+            tasm::BundleResourceInfo bundle_info) mutable {
+          auto self = weak_self.lock();
+          if (self) {
+            self->delegate_.InvokeResponsePromiseCallback(
+                [bundle_info, closure = std::move(closure)]() {
+                  closure(bundle_info);
+                });
+          }
         });
   };
 
