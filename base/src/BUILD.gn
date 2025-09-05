@@ -9,6 +9,17 @@ import("../../testing/test.gni")
 import("../include/base_public_headers.gni")
 import("base.gni")
 
+group("base_group") {
+  public_deps = [
+    ":base",
+    ":base_log",
+    ":datauri_utils",
+    ":string_utils",
+    ":time_utils",
+    ":values",
+  ]
+}
+
 config("base_public_config") {
   defines = []
   cflags = []
@@ -106,6 +117,22 @@ lynx_base_source_set("base_log") {
     "log/log_stream.cc",
     "log/logging.cc",
   ]
+  if (is_android) {
+    # TODO(yongjie): enable logging_android.cc when lynx depends on LynxBase.
+    # sources += [ "log/logging_android.cc" ]
+  } else if (is_apple) {
+    # TODO(yongjie): enable logging_darwin.mm when lynx depends on LynxBase.
+    # sources += [ "log/logging_darwin.mm" ]
+  } else if (is_harmony) {
+    sources += [
+      "log/logging_harmony.cc",
+      "log/logging_harmony.h",
+    ]
+  } else if (is_win) {
+    sources += [ "log/logging_base.cc" ]
+  } else if (is_linux) {
+    sources += [ "log/logging_base.cc" ]
+  }
   if (!is_win) {
     # Windows do not overwrite this file
     sources += [ "debug/backtrace.cc" ]

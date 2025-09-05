@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "base/include/log/logging_darwin.h"
-#import <Lynx/LynxService.h>             // nogncheck
-#import <Lynx/LynxServiceLogProtocol.h>  // nogncheck
+#import <LynxBase/LynxBaseService.h>             // nogncheck
+#import <LynxBase/LynxBaseServiceLogProtocol.h>  // nogncheck
 #include "base/include/log/alog_wrapper.h"
 
 namespace lynx {
@@ -13,7 +13,7 @@ namespace logging {
 namespace {
 
 alog_write_func_ptr GetAlogWriteFuncAddr() {
-  id service = LynxService(LynxServiceLogProtocol);
+  id service = LynxBaseService(LynxBaseServiceLogProtocol);
   if (service) {
     return (alog_write_func_ptr)[service getWriteFunction];
   }

@@ -31,10 +31,30 @@ cmake_target("LynxBase") {
   target_type = "shared_library"
   output_name = "lynxbase"
 
-  deps = [ "../../src:base" ]
+  deps = [
+    ":base_jni_files",
+    "../../src:base_group",
+  ]
+
+  sources = [
+    # TODO(yongjie): remove logging_android.cc when lynx depends on LynxBase.
+    "../../src/log/logging_android.cc",
+  ]
 
   configs = [
     ":base_android_private_config",
     "../../../platform/android:16kb_page",
   ]
+}
+
+group("base_jni_files") {
+  exec_script("../../../tools/build_jni/generate_and_register_jni_files.py",
+              [
+                "-root",
+                rebase_path("../../../"),
+                "-path",
+                rebase_path("./src/main/jni/jni_configs.yml"),
+                "--use-base-jni-header",
+              ])
+  public_deps = [ "src/main/jni:build" ]
 }

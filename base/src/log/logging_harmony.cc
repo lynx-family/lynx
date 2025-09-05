@@ -2,16 +2,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/base/harmony/logging_harmony.h"
+#include "base/src/log/logging_harmony.h"
 
-#include <hilog/log.h>
+// #include <hilog/log.h>
 
 #include <memory>
 #include <string>
 
 #include "base/include/log/alog_wrapper.h"
 #include "base/include/platform/harmony/napi_util.h"
-#include "core/renderer/utils/lynx_env.h"
 
 namespace lynx {
 namespace base {
@@ -22,29 +21,30 @@ static alog_write_func_ptr s_alog_write = nullptr;
 
 alog_write_func_ptr GetLynxLogWriteFunction() { return s_alog_write; }
 
-const unsigned int LOG_PRINT_DOMAIN = 0xFF00;
+// const unsigned int LOG_PRINT_DOMAIN = 0xFF00;
 void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
-  LogLevel priority = LogLevel::LOG_DEBUG;
-  switch (msg->severity()) {
-    case logging::LOG_VERBOSE:
-    case logging::LOG_DEBUG:
-      priority = LogLevel::LOG_DEBUG;
-      break;
-    case logging::LOG_INFO:
-      priority = LogLevel::LOG_INFO;
-      break;
-    case logging::LOG_WARNING:
-      priority = LogLevel::LOG_WARN;
-      break;
-    case logging::LOG_ERROR:
-      priority = LogLevel::LOG_ERROR;
-      break;
-    case logging::LOG_FATAL:
-      priority = LogLevel::LOG_FATAL;
-      break;
-  }
-  OH_LOG_Print(LOG_APP, priority, LOG_PRINT_DOMAIN, tag, "%{public}s",
-               msg->stream().c_str());
+  // TODO(yongjie): enable this when lynx base standalone.
+  // LogLevel priority = LogLevel::LOG_DEBUG;
+  // switch (msg->severity()) {
+  //   case logging::LOG_VERBOSE:
+  //   case logging::LOG_DEBUG:
+  //     priority = LogLevel::LOG_DEBUG;
+  //     break;
+  //   case logging::LOG_INFO:
+  //     priority = LogLevel::LOG_INFO;
+  //     break;
+  //   case logging::LOG_WARNING:
+  //     priority = LogLevel::LOG_WARN;
+  //     break;
+  //   case logging::LOG_ERROR:
+  //     priority = LogLevel::LOG_ERROR;
+  //     break;
+  //   case logging::LOG_FATAL:
+  //     priority = LogLevel::LOG_FATAL;
+  //     break;
+  // }
+  // OH_LOG_Print(LOG_APP, priority, LOG_PRINT_DOMAIN, tag, "%{public}s",
+  //              msg->stream().c_str());
 }
 
 }  // namespace
@@ -77,8 +77,9 @@ napi_value LynxLog::NativeInitLynxLog(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+  bool print_logs_to_all_channels = NapiUtil::ConvertToBoolean(env, args[0]);
   InitLynxLogging(GetLynxLogWriteFunction, PrintLogMessageByLogDelegate,
-                  tasm::LynxEnv::GetInstance().IsDevToolEnabled());
+                  print_logs_to_all_channels);
   return nullptr;
 }
 

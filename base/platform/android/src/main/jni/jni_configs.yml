@@ -1,0 +1,21 @@
+# jni register file configs.
+jni_register_configs:
+  output_path: base/platform/android/src/main/jni/gen/lynx_base_so_load.cc
+  namespaces:
+    - lynxbase
+  custom_headers:
+    - base/include/platform/android/jni_utils.h
+  special_cases:
+    - header: base/include/fml/platform/android/message_loop_android.h
+      method: lynx::fml::MessageLoopAndroid::Register(env);
+# gn file configs.
+gn_configs:
+  output_path: base/platform/android/src/main/jni/BUILD.gn
+  template_name: lynx_base_source_set
+  custom_headers:
+    - base/src/base.gni
+# jni files configs.
+jni_class_configs:
+  output_dir: base/platform/android/src/main/jni/gen
+  jni_classes:
+    - java: base/platform/android/src/main/java/com/lynx/base/log/LynxLog.java

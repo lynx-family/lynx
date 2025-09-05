@@ -7,7 +7,6 @@ import BuildProfile from '../../../../BuildProfile';
 import lynx from 'liblynx.so';
 import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
 import { ILynxLogService } from '../tasm/service/ILynxLogService';
-
 const DOMAIN = 0xff00;
 
 export enum LogLevel {
@@ -29,15 +28,14 @@ export class LLog {
     lynx.nativeUseSysLog(LLog.mUseSysLog);
   }
 
-  static initLynxLog(): void {
-    LLog.mService = LynxServiceCenter.getService<ILynxLogService>(LynxServiceType.Log);
+  static initLynxLog(isPrintLogToAllChannel: boolean): void {
     if (LLog.mService) {
       if (LLog.mService.isLogOutputByPlatform()) {
         LLog.useSysLog(true);
       }
       lynx.nativeInitLynxLogWriteFunction(LLog.mService.getDefaultWriteFunction());
     }
-    lynx.nativeInitLynxLog();
+    lynx.nativeInitLynxLog(isPrintLogToAllChannel);
   }
 
   static setMinimumLoggingLevel(level: LogLevel): void {

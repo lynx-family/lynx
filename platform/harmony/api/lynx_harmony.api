@@ -634,7 +634,7 @@ export enum TraceCategory {
 
 export class LLog {
   static useSysLog(useSysLog: boolean): void;
-  static initLynxLog(): void;
+  static initLynxLog(isPrintLogToAllChannel: boolean): void;
   static setMinimumLoggingLevel(level: LogLevel): void;
   static v(tag: string, message: string): void;
   static d(tag: string, message: string): void;
