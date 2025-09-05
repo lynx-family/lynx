@@ -431,6 +431,8 @@ void Renderer::RegisterNGBuiltinForFiber(lepus::Context* context) {
       {kCFunctionStopPropagation, &RendererFunctions::FiberStopPropagation},
       {kCFunctionStopImmediatePropagation,
        &RendererFunctions::FiberStopImmediatePropagation},
+      {kCFunctionGetComputedStyleByKey,
+       &RendererFunctions::FiberGetComputedStyleByKey},
       /* Element API END */
   };
   lepus::RegisterNGCFunction(context, funcs, sizeof(funcs) / sizeof(funcs[0]));

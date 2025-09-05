@@ -240,6 +240,7 @@ static const char* kCFunctionQueryComponent = "__QueryComponent";
 static const char* kCFunctionSetLepusInitData = "__SetLepusInitData";
 static const char* kCFunctionGetDiffData = "__GetDiffData";
 static const char* kCFunctionInvokeUIMethod = "__InvokeUIMethod";
+static const char* kCFunctionGetComputedStyleByKey = "__GetComputedStyleByKey";
 
 // air strict mode
 // Element SetAttribute

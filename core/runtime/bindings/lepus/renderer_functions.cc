@@ -3741,6 +3741,21 @@ RENDERER_FUNCTION_CC(FiberGetComputedStyles) {
   RETURN_UNDEFINED();
 }
 
+RENDERER_FUNCTION_CC(FiberGetComputedStyleByKey) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_GET_COMPUTED_STYLE_BY_KEY);
+  CHECK_ARGC_EQ(FiberGetComputedStyleByKey, 2);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
+                                        FiberGetComputedStyleByKey);
+  CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg1, 1, String,
+                                        FiberGetComputedStyleByKey);
+
+  auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
+  auto name = arg1->String();
+
+  auto value = element->GetComputedStyleByKey(name);
+  RETURN(value);
+}
+
 // This function accepts four parameters, the 0th is the element, the 1st is the
 // event name, the 2nd is the event type, and the 3rd is the event function.
 // When func is undefined, delete the corresponding event; when it is string,

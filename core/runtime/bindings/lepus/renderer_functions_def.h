@@ -218,5 +218,6 @@
   V(AddListenerForResponse)           \
   V(FetchBundle)                      \
   V(GetModule)                        \
-  V(InvokeModuleMethod)
+  V(InvokeModuleMethod)               \
+  V(FiberGetComputedStyleByKey)
 #endif  // CORE_RUNTIME_BINDINGS_LEPUS_RENDERER_FUNCTIONS_DEF_H_

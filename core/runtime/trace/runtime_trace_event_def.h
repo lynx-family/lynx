@@ -401,6 +401,8 @@ inline constexpr const char* const FIBER_CREATE_SCOPE = "FiberCreateScope";
 inline constexpr const char* const FIBER_GET_SCOPE = "FiberGetScope";
 inline constexpr const char* const FIBER_CLEAN_UP = "FiberCleanUp";
 inline constexpr const char* const FIBER_ON_CLEAN_UP = "FiberOnCleanUp";
+inline constexpr const char* const FIBER_GET_COMPUTED_STYLE_BY_KEY =
+    "FiberGetComputedStyleByKey";
 inline constexpr const char* const
     ELEMENT_CONTEXT_DELEGATE_FLUSH_ENQUEUED_TASKS =
         "ElementContextDelegate::FlushEnqueuedTasks";
