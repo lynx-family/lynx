@@ -358,6 +358,8 @@ class InterfaceInfoCollector(object):
             'AsyncCreated' in extended_attributes,
             'data_container':
             'DataContainer' in extended_attributes,
+            'shared_impl':
+            'SharedImpl' in extended_attributes,
         })
         merge_dict_recursively(self.interfaces_info[definition.name],
                                interface_info)

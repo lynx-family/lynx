@@ -237,14 +237,6 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 (cpp_path, cpp_text),
             ]
         generates_remote = self.hardcoded_includes.get(template_context['component'], {}).get('has_remote', False)
-        if generates_remote:
-            template_context['remote_class'] = 'Remote' + name
-            remote_cpp_template_filename = 'remote_command_buffer.cc.tmpl'
-            remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
-            _, remote_cpp_text = self.render_templates(
-                include_paths, remote_cpp_template, remote_cpp_template, template_context,
-                template_context['component'])
-            out.append((remote_cpp_path, remote_cpp_text))
 
         remote_js_outdir = self.hardcoded_includes.get(template_context['component'], {}).get('remote_js_outdir', '')
         template_context['remote_ids_filename'] = 'remote' + NameStyleConverter(template_context['component'] + 'Ids').to_upper_camel_case()
@@ -252,19 +244,26 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
             if js_class['shared_impl']:
                 continue
             class_name = js_class['type_name']
-            parent_name = js_class['parent']
+            current_parent = parent_name = js_class['parent']
             ancestors = []
-            while parent_name:
-                ancestors.append(parent_name)
-                parent_name = self.info_provider.interfaces_info.get(parent_name, {}).get('parent', '')
+            shared_impl_ancestors = []
+            while current_parent:
+                parent_info = self.info_provider.interfaces_info.get(current_parent, {})
+                ancestors.append(current_parent)
+                if parent_info.get('shared_impl', False):
+                    shared_impl_ancestors.append(current_parent)
+                current_parent = parent_info.get('parent', '')
+            js_class.update({'ancestors': ancestors})
+
             class_context = {
                 'interface_name': class_name,
+                'parent_name': parent_name,
                 'ancestors': ancestors,
                 # For methods we need to keep the shared base impl to have consistent index with native side.
                 'methods': list(filter(
-                lambda method: method['class_name'] == class_name or method['class_name'] in ancestors, template_context['methods'])),
+                lambda method: method['class_name'] == class_name or method['class_name'] in shared_impl_ancestors, template_context['methods'])),
                 'remote_methods': list(filter(
-                lambda method: method['class_name'] == class_name or method['class_name'] in ancestors, template_context['remote_methods'])),
+                lambda method: method['class_name'] == class_name or method['class_name'] in shared_impl_ancestors, template_context['remote_methods'])),
                 # For constants just use the inherited for simplicity.
                 'constants': list(filter(lambda constant: constant['class_name'] == class_name, template_context['constants'])),
                 'overloads_child_only': js_class['overloads_child_only'],
@@ -288,6 +287,14 @@ class CodeGeneratorNapi(CodeGeneratorNapiBase):
                 out.append((remote_js_path, remote_js_text))
 
         if generates_remote:
+            template_context['remote_class'] = 'Remote' + name
+            remote_cpp_template_filename = 'remote_command_buffer.cc.tmpl'
+            remote_cpp_template = self.jinja_env.get_template(remote_cpp_template_filename)
+            _, remote_cpp_text = self.render_templates(
+                include_paths, remote_cpp_template, remote_cpp_template, template_context,
+                template_context['component'])
+            out.append((remote_cpp_path, remote_cpp_text))
+
             remote_js_template = self.jinja_env.get_template('remote_ids.js.tmpl')
             remote_js_path = self.js_output_path(template_context['remote_ids_filename'], remote_js_outdir)
             remote_js_text = render_template(remote_js_template, template_context)

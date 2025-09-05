@@ -17,6 +17,9 @@ namespace binding {
 
 Napi::Value ToNAPI(Value&& value, Napi::Env env);
 
+// Convenience function for returning values.
+Napi::Value ToNAPI(Napi::Value value, Napi::Env env);
+
 }  // namespace binding
 }  // namespace lynx
 

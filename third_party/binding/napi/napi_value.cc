@@ -168,5 +168,10 @@ Napi::Value ToNAPI(Value&& value, Napi::Env env) {
   }
 }
 
+Napi::Value ToNAPI(Napi::Value value, Napi::Env env) {
+  BINDING_DCHECK(value.Env() == env);
+  return value;
+}
+
 }  // namespace binding
 }  // namespace lynx
