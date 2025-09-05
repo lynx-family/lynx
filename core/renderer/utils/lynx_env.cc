@@ -431,11 +431,15 @@ bool LynxEnv::EnableNewIntersectionObserver() {
 }
 
 bool LynxEnv::EnableAnimationVsyncOnUIThread() {
-  return GetBoolEnv(Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD, false);
+  static bool enable_animation_vsync_on_ui_thread =
+      GetBoolEnv(Key::ENABLE_ANIMATION_VSYNC_ON_UI_THREAD, false);
+  return enable_animation_vsync_on_ui_thread;
 }
 
 bool LynxEnv::EnableAnimationInfoReport() {
-  return GetBoolEnv(Key::ENABLE_ANIMATION_INFO_REPORT, true);
+  static bool enable_animation_info_report =
+      GetBoolEnv(Key::ENABLE_ANIMATION_INFO_REPORT, true);
+  return enable_animation_info_report;
 }
 
 bool LynxEnv::EnableBatchLayoutTaskWithSyncLayout() {
@@ -476,11 +480,15 @@ bool LynxEnv::FixFontSizeOverrideDirectionChangeBug() {
 }
 
 bool LynxEnv::EnableNewAnimatorOnPatchFinishOpt() {
-  return GetBoolEnv(Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT, true);
+  static bool enable_new_animator_on_patch_finish_opt =
+      GetBoolEnv(Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT, true);
+  return enable_new_animator_on_patch_finish_opt;
 }
 
 bool LynxEnv::FixRadonTransitionPropertyRemoveBug() {
-  return GetBoolEnv(Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG, true);
+  static bool fix_radon_transition_property_remove_bug =
+      GetBoolEnv(Key::FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG, true);
+  return fix_radon_transition_property_remove_bug;
 }
 
 bool LynxEnv::EnableGlobalFontCollection() {
