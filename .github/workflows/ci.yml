@@ -330,11 +330,6 @@ jobs:
           pnpm install appium@2.11.2 -w
           pnpm install appium-espresso-driver@4.0.0 -w
           popd
-      - name: Install libpulse0
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpulse0
-          sudo apt-get install -y libxkbfile1
       - name: Setup Java SDK
         uses: actions/setup-java@v3
         with:
