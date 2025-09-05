@@ -489,17 +489,6 @@
   return enableTextContainerOpt;
 }
 
-// TODO(linxs): to be deleted after sufficient verification
-- (BOOL)enableTextStorageDeallocFix {
-  static dispatch_once_t onceToken;
-  static BOOL enableTextStorageDeallocFix = YES;
-  dispatch_once(&onceToken, ^{
-    enableTextStorageDeallocFix = [self boolFromExternalEnv:LynxEnvEnableTextStorageDeallocFix
-                                               defaultValue:YES];
-  });
-  return enableTextStorageDeallocFix;
-}
-
 - (BOOL)enableTextGradientOpt {
   static dispatch_once_t onceToken;
   static BOOL enableTextGradientOpt = NO;
@@ -634,7 +623,6 @@
     @(LynxEnvCachesExpirationDurationInDays) : @"caches_expiration_duration_in_days",
     @(LynxEnvCachesCleanupUntrackedFiles) : @"caches_cleanup_untracked_files",
     @(LynxEnvEnableTextContainerOpt) : @"enable_text_container_opt",
-    @(LynxEnvEnableTextStorageDeallocFix) : @"enable_text_storage_dealloc_fix",
     @(LynxEnvEnableJSGroupThreadByDefault) : @"enable_multi_js_thread_by_default",
     @(LynxEnvEnableTextLayoutCache) : @"enable_text_layout_cache",
     @(LynxEnvEnableForceMemoryMonitorOnOom) : @"enable_force_memory_monitor_on_oom",

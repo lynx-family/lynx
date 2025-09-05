@@ -78,10 +78,8 @@
 }
 
 - (void)dealloc {
-  if ([LynxEnv.sharedInstance enableTextStorageDeallocFix]) {
-    for (NSLayoutManager *manager in [_textStorage layoutManagers]) {
-      [_textStorage removeLayoutManager:manager];
-    }
+  for (NSLayoutManager *manager in [_textStorage layoutManagers]) {
+    [_textStorage removeLayoutManager:manager];
   }
 }
 

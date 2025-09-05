@@ -1297,7 +1297,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableImageAsyncLayout();
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
-  public BOOL LynxEnv::enableTextStorageDeallocFix();
   public BOOL LynxEnv::enableTextGradientOpt();
   public int LynxEnv::memoryAcquisitionDelaySec();
   public int LynxEnv::memoryReportIntervalSec();
@@ -5725,7 +5724,6 @@ public enum LynxEnvKey {
   LynxEnvCachesExpirationDurationInDays
   LynxEnvCachesCleanupUntrackedFiles
   LynxEnvEnableTextContainerOpt
-  LynxEnvEnableTextStorageDeallocFix
   LynxEnvEnableJSGroupThreadByDefault
   LynxEnvEnableTextLayoutCache
   LynxEnvEnableForceMemoryMonitorOnOom

@@ -139,8 +139,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)enableTextContainerOpt;
 
-- (BOOL)enableTextStorageDeallocFix;
-
 - (BOOL)enableTextGradientOpt;
 
 - (int)memoryAcquisitionDelaySec;

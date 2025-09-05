@@ -55,7 +55,6 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvCachesExpirationDurationInDays,
   LynxEnvCachesCleanupUntrackedFiles,
   LynxEnvEnableTextContainerOpt,
-  LynxEnvEnableTextStorageDeallocFix,
   LynxEnvEnableJSGroupThreadByDefault,
   LynxEnvEnableTextLayoutCache,
   LynxEnvEnableForceMemoryMonitorOnOom,
