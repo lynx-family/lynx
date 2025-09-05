@@ -4212,5 +4212,10 @@ lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
   return lepus::Value(std::move(array));
 }
 
+lepus::Value FiberElement::GetComputedStyleByKey(const base::String &key) {
+  // TODO: add retrieve computed style by key impl in later MRs
+  return lepus::Value("unsupported css property");
+}
+
 }  // namespace tasm
 }  // namespace lynx

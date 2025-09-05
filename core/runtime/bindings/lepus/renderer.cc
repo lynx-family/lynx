@@ -569,7 +569,8 @@ void Renderer::RegisterBuiltinForFiber(lepus::Context* context) {
                                      &FiberStopImmediatePropagation);
   /* 115 */ lepus::RegisterCFunction(context, kCFunctionInvokeUIMethod,
                                      &InvokeUIMethod);
+  /* 116 */ lepus::RegisterCFunction(context, kCFunctionGetComputedStyleByKey,
+                                     &FiberGetComputedStyleByKey);
 }
-
 }  // namespace tasm
 }  // namespace lynx

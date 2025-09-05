@@ -950,6 +950,8 @@ class FiberElement : public Element,
                                    bool is_global = false) override;
   void SetMeasureFunc(std::unique_ptr<MeasureFunc> measure_func);
 
+  lepus::Value GetComputedStyleByKey(const base::String& key);
+
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
@@ -1120,7 +1122,7 @@ class FiberElement : public Element,
   std::unique_ptr<CSSFragmentDecorator> style_sheet_;
 
   uint32_t dirty_{0};
-  uint32_t wrapper_element_count_{false};
+  uint32_t wrapper_element_count_{0};
 
   int32_t css_id_{kInvalidCssId};
 
