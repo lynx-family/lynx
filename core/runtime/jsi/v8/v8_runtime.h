@@ -41,15 +41,15 @@ class V8Runtime : public Runtime {
   // StartupData createDefaultStartupData() override;
 
   std::shared_ptr<const PreparedJavaScript> prepareJavaScript(
-      const std::shared_ptr<const Buffer>& buffer,
-      std::string sourceURL) override;
+      const std::shared_ptr<const Buffer>& buffer, std::string source_url,
+      int start_line_offset = 0) override;
 
   base::expected<Value, JSINativeException> evaluatePreparedJavaScript(
       const std::shared_ptr<const PreparedJavaScript>& js) override;
 
   base::expected<Value, JSINativeException> evaluateJavaScript(
       const std::shared_ptr<const Buffer>& buffer,
-      const std::string& sourceURL) override;
+      const std::string& source_url, int start_line_offset = 0) override;
 
   base::expected<Value, JSINativeException> evaluateJavaScriptBytecode(
       const std::shared_ptr<const Buffer>& buffer,

@@ -37,14 +37,12 @@ class FileBuffer : public Buffer {
 class SourceJavaScriptPreparation final : public piper::PreparedJavaScript,
                                           public piper::Buffer {
   std::shared_ptr<const piper::Buffer> buf_;
-  std::string sourceURL_;
 
  public:
   SourceJavaScriptPreparation(std::shared_ptr<const piper::Buffer> buf,
-                              std::string sourceURL)
-      : buf_(std::move(buf)), sourceURL_(std::move(sourceURL)) {}
-
-  const std::string& sourceURL() const { return sourceURL_; }
+                              std::string source_url, int start_line_offset)
+      : piper::PreparedJavaScript(std::move(source_url), start_line_offset),
+        buf_(std::move(buf)) {}
 
   std::shared_ptr<const piper::Buffer> buffer() const { return buf_; }
 
@@ -55,17 +53,15 @@ class SourceJavaScriptPreparation final : public piper::PreparedJavaScript,
 class QuickjsJavaScriptPreparation final : public piper::PreparedJavaScript {
   std::shared_ptr<const piper::Buffer> buf_;
   std::shared_ptr<const piper::Buffer> bin_;
-  std::string source_url_;
 
  public:
   QuickjsJavaScriptPreparation(std::shared_ptr<const piper::Buffer> buf,
                                std::shared_ptr<const piper::Buffer> bin,
-                               std::string source_url)
-      : buf_(std::move(buf)),
-        bin_(std::move(bin)),
-        source_url_(std::move(source_url)) {}
+                               std::string source_url, int start_line_offset)
+      : piper::PreparedJavaScript(std::move(source_url), start_line_offset),
+        buf_(std::move(buf)),
+        bin_(std::move(bin)) {}
 
-  const std::string& SourceUrl() const { return source_url_; }
   std::shared_ptr<const piper::Buffer> Source() const { return buf_; }
   std::shared_ptr<const piper::Buffer> Bytecode() const { return bin_; }
 };

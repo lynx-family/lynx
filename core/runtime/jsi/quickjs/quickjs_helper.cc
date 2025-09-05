@@ -228,8 +228,9 @@ std::string QuickjsHelper::getErrorMessage(LEPUSContext *ctx,
 
 base::expected<Value, JSINativeException> QuickjsHelper::evalBuf(
     QuickjsRuntime *rt, LEPUSContext *ctx, const char *buf, size_t buf_len,
-    const char *filename, int eval_flags) {
-  LEPUSValue val = LEPUS_Eval(ctx, buf, buf_len, filename, eval_flags);
+    const char *filename, int eval_flags, int start_line_offset) {
+  LEPUSValue val =
+      LEPUS_Eval2(ctx, buf, buf_len, filename, eval_flags, start_line_offset);
   auto maybe_error = QuickjsException::TryCatch(*rt, val);
   if (maybe_error.has_value()) {
     LOGE("evalBuf failed:" << filename);

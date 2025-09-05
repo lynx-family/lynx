@@ -86,10 +86,14 @@ using BytecodeGetter =
 /// ** This is an experimental API that is subject to change. **
 class PreparedJavaScript {
  protected:
-  PreparedJavaScript() = default;
+  explicit PreparedJavaScript(const std::string& source_url,
+                              int start_line_offset)
+      : source_url(source_url), start_line_offset(start_line_offset){};
 
  public:
   LYNX_EXPORT virtual ~PreparedJavaScript() = 0;
+  const std::string source_url;
+  const int start_line_offset = 0;
 };
 
 class Runtime;
@@ -313,8 +317,8 @@ class LYNX_EXPORT Runtime {
   /// call a global function than using the JSI APIs to read the function
   /// property from the global object and then calling it explicitly.
   virtual base::expected<Value, JSINativeException> evaluateJavaScript(
-      const std::shared_ptr<const Buffer>& buffer,
-      const std::string& sourceURL) = 0;
+      const std::shared_ptr<const Buffer>& buffer, const std::string& sourceURL,
+      int start_line_offset = 0) = 0;
 
   virtual base::expected<Value, JSINativeException> evaluateJavaScriptBytecode(
       const std::shared_ptr<const Buffer>& buffer,
@@ -332,7 +336,8 @@ class LYNX_EXPORT Runtime {
   /// As with evaluateJavaScript(), using JavaScript code should be avoided
   /// when the JSI API is sufficient.
   virtual std::shared_ptr<const PreparedJavaScript> prepareJavaScript(
-      const std::shared_ptr<const Buffer>& buffer, std::string source_url) = 0;
+      const std::shared_ptr<const Buffer>& buffer, std::string source_url,
+      int start_line_offset = 0) = 0;
 
   /// Evaluates a PreparedJavaScript. If evaluation causes an error, a
   /// JSIException will be thrown.

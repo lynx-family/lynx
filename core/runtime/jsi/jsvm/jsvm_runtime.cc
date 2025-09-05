@@ -81,9 +81,10 @@ std::shared_ptr<JSIContext> JSVMRuntime::createContext(
 std::shared_ptr<JSIContext> JSVMRuntime::getSharedContext() { return context_; }
 
 std::shared_ptr<const PreparedJavaScript> JSVMRuntime::prepareJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, std::string sourceURL) {
+    const std::shared_ptr<const Buffer>& buffer, std::string source_url,
+    int start_line_offset) {
   return std::make_shared<piper::SourceJavaScriptPreparation>(
-      buffer, std::move(sourceURL));
+      buffer, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException>
@@ -91,12 +92,14 @@ JSVMRuntime::evaluatePreparedJavaScript(
     const std::shared_ptr<const PreparedJavaScript>& js) {
   const SourceJavaScriptPreparation* source =
       static_cast<const SourceJavaScriptPreparation*>(js.get());
-  return evaluateJavaScript(source->buffer(), source->sourceURL());
+  return evaluateJavaScript(source->buffer(), source->source_url,
+                            source->start_line_offset);
 }
 
 base::expected<Value, JSINativeException> JSVMRuntime::evaluateJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, const std::string& sourceURL) {
-  LOGI("JSVMRuntime::evaluateJavaScript start url=" << sourceURL);
+    const std::shared_ptr<const Buffer>& buffer, const std::string& source_url,
+    int start_line_offset) {
+  LOGI("JSVMRuntime::evaluateJavaScript start url=" << source_url);
   JSVM_Env env = getEnv();
   HandleScopeWrapper scope(env);
 
@@ -106,11 +109,18 @@ base::expected<Value, JSINativeException> JSVMRuntime::evaluateJavaScript(
                     buffer->size(), &js_source),
                    Value::undefined());
 
+  JSVM_ScriptOrigin origin{
+      .sourceMapUrl = "",
+      .resourceName = source_url.c_str(),
+      .resourceLineOffset = static_cast<size_t>(start_line_offset),
+      .resourceColumnOffset = 0,
+  };
   bool cacheRejected = true;
   JSVM_Script script = nullptr;
-  JSVM_CALL_RETURN(OH_JSVM_CompileScript,
-                   (env, js_source, nullptr, 0, true, &cacheRejected, &script),
-                   Value::undefined());
+  JSVM_CALL_RETURN(
+      OH_JSVM_CompileScriptWithOrigin,
+      (env, js_source, nullptr, 0, true, &cacheRejected, &origin, &script),
+      Value::undefined());
 
   JSVM_Value result = nullptr;
   JSVM_CALL_RETURN(OH_JSVM_RunScript, (env, script, &result),

@@ -47,15 +47,15 @@ class QuickjsRuntime : public Runtime, public JSIObserver {
 
   base::expected<Value, JSINativeException> evaluateJavaScript(
       const std::shared_ptr<const Buffer> &buffer,
-      const std::string &source_url) override;
+      const std::string &source_url, int start_line_offset = 0) override;
 
   base::expected<Value, JSINativeException> evaluateJavaScriptBytecode(
       const std::shared_ptr<const Buffer> &buffer,
       const std::string &source_url) override;
 
   std::shared_ptr<const PreparedJavaScript> prepareJavaScript(
-      const std::shared_ptr<const Buffer> &buffer,
-      std::string source_url) override;
+      const std::shared_ptr<const Buffer> &buffer, std::string source_url,
+      int start_line_offset = 0) override;
 
   base::expected<Value, JSINativeException> evaluatePreparedJavaScript(
       const std::shared_ptr<const PreparedJavaScript> &js) override;

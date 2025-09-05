@@ -157,8 +157,8 @@ void QuickjsRuntime::OnRuntimeGC(
 }
 
 base::expected<Value, JSINativeException> QuickjsRuntime::evaluateJavaScript(
-    const std::shared_ptr<const Buffer> &buffer,
-    const std::string &source_url) {
+    const std::shared_ptr<const Buffer> &buffer, const std::string &source_url,
+    int start_line_offset) {
   LOGI("QuickjsRuntime::evaluateJavaScript: " << source_url);
   std::string filename = AddPrefixToUrlIfNeeded(source_url);
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_JAVA_SCRIPT, "source_url",
@@ -166,7 +166,7 @@ base::expected<Value, JSINativeException> QuickjsRuntime::evaluateJavaScript(
   auto eval_res = QuickjsHelper::evalBuf(
       this, context_->getContext(),
       reinterpret_cast<const char *>(buffer->data()), buffer->size(),
-      filename.c_str(), LEPUS_EVAL_TYPE_GLOBAL);
+      filename.c_str(), LEPUS_EVAL_TYPE_GLOBAL, start_line_offset);
   if (!eval_res.has_value()) {
     LOGE("QuickjsRuntime::evaluateJavaScript failed:"
          << eval_res.error().ToString());
@@ -198,7 +198,8 @@ QuickjsRuntime::evaluateJavaScriptBytecode(
 }
 
 std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
-    const std::shared_ptr<const Buffer> &buffer, std::string source_url) {
+    const std::shared_ptr<const Buffer> &buffer, std::string source_url,
+    int start_line_offset) {
   std::shared_ptr<Buffer> cache;
 #if !defined(LYNX_UNIT_TEST) || !LYNX_UNIT_TEST || \
     defined(QUICKJS_CACHE_UNITTEST)
@@ -219,8 +220,8 @@ std::shared_ptr<const PreparedJavaScript> QuickjsRuntime::prepareJavaScript(
       cache ? cache::JsScriptType::LOCAL_BINARY : cache::JsScriptType::SOURCE,
       base::CurrentTimeMilliseconds() - cost_start, error_code);
 #endif
-  return std::make_shared<QuickjsJavaScriptPreparation>(buffer, cache,
-                                                        std::move(source_url));
+  return std::make_shared<QuickjsJavaScriptPreparation>(
+      buffer, cache, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException>
@@ -237,11 +238,11 @@ QuickjsRuntime::evaluatePreparedJavaScript(
   const QuickjsJavaScriptPreparation *preparation =
       static_cast<const QuickjsJavaScriptPreparation *>(js.get());
   LOGI("QuickjsRuntime::evaluatePreparedJavaScript start: "
-       << preparation->SourceUrl());
+       << preparation->source_url);
 
   base::expected<Value, JSINativeException> eval_res;
   if (const auto bytecode = preparation->Bytecode()) {
-    eval_res = evaluateJavaScriptBytecode(bytecode, preparation->SourceUrl());
+    eval_res = evaluateJavaScriptBytecode(bytecode, preparation->source_url);
     if (eval_res.has_value()) {
       return eval_res;
     }
@@ -251,7 +252,7 @@ QuickjsRuntime::evaluatePreparedJavaScript(
     if (enable_user_bytecode_ && source) {
       std::vector<std::unique_ptr<cache::CacheGenerator>> generators;
       generators.push_back(std::make_unique<cache::QuickjsCacheGenerator>(
-          preparation->SourceUrl(), source));
+          preparation->source_url, source));
       cache::JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
           bytecode_source_url_, std::move(generators), true);
     }
@@ -259,7 +260,8 @@ QuickjsRuntime::evaluatePreparedJavaScript(
   }
 
   if (const auto source = preparation->Source()) {
-    eval_res = evaluateJavaScript(source, preparation->SourceUrl());
+    eval_res = evaluateJavaScript(source, preparation->source_url,
+                                  preparation->start_line_offset);
   }
   if (!eval_res.has_value()) {
     LOGE("QuickjsRuntime::evaluatePreparedJavaScript failed:"
@@ -1006,7 +1008,7 @@ QuickjsRuntime::PrepareJavaScriptBytecode(
   }
   auto cache = provider.value().GetRawBytecode();
   return std::make_shared<QuickjsJavaScriptPreparation>(
-      nullptr, std::move(cache), std::move(source_url));
+      nullptr, std::move(cache), std::move(source_url), 0);
 }
 
 }  // namespace piper

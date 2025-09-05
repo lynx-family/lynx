@@ -1235,6 +1235,20 @@ TEST_P(JSITest, PreparedJavaScriptSourceTest) {
   rt.SetEnableUserBytecode(false);
 }
 
+TEST_P(JSITest, JavaScriptSourceLineOffsetTest) {
+  // This script will throw an error on line 3
+  std::string script = "\n\nthrow new Error('line offset test');";
+  int line_offset = 100;
+  auto ret = rt.evaluateJavaScript(std::make_unique<StringBuffer>(script),
+                                   "/line-offset-test.js", line_offset);
+
+  EXPECT_FALSE(ret.has_value());
+  // The line number in error message should be 103 (3 + 100)
+  EXPECT_NE(
+      std::string::npos,
+      ret.error().stack().find("/line-offset-test.js:" + std::to_string(103)));
+}
+
 // TODO(wangqingyu): no-exception
 // TEST_P(JSITest, PreparedJavaScriptURLInBacktrace) {
 //   std::string sourceURL = "//PreparedJavaScriptURLInBacktrace/Test/URL";

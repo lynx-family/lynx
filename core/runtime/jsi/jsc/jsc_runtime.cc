@@ -85,9 +85,10 @@ std::shared_ptr<JSIContext> JSCRuntime::createContext(
 std::shared_ptr<JSIContext> JSCRuntime::getSharedContext() { return ctx_; }
 
 std::shared_ptr<const PreparedJavaScript> JSCRuntime::prepareJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, std::string sourceURL) {
-  return std::make_shared<SourceJavaScriptPreparation>(buffer,
-                                                       std::move(sourceURL));
+    const std::shared_ptr<const Buffer>& buffer, std::string source_url,
+    int start_line_offset) {
+  return std::make_shared<SourceJavaScriptPreparation>(
+      buffer, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException>
@@ -99,22 +100,25 @@ JSCRuntime::evaluatePreparedJavaScript(
       "preparedJavaScript must be a SourceJavaScriptPreparation");
   auto sourceJs =
       std::static_pointer_cast<const SourceJavaScriptPreparation>(js);
-  return evaluateJavaScript(sourceJs, sourceJs->sourceURL());
+  return evaluateJavaScript(sourceJs, sourceJs->source_url,
+                            sourceJs->start_line_offset);
 }
 
 base::expected<Value, JSINativeException> JSCRuntime::evaluateJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, const std::string& sourceURL) {
+    const std::shared_ptr<const Buffer>& buffer, const std::string& source_url,
+    int start_line_offset) {
   std::string tmp(reinterpret_cast<const char*>(buffer->data()),
                   buffer->size());
   JSStringRef sourceRef = JSStringCreateWithUTF8CString(tmp.c_str());
   JSStringRef sourceURLRef = nullptr;
-  if (!sourceURL.empty()) {
+  if (!source_url.empty()) {
     sourceURLRef = JSStringCreateWithUTF8CString(
-        AddPrefixToUrlIfNeeded(sourceURL).c_str());
+        AddPrefixToUrlIfNeeded(source_url).c_str());
   }
   JSValueRef exc = nullptr;
-  JSValueRef res = JSEvaluateScript(ctx_->getContext(), sourceRef, nullptr,
-                                    sourceURLRef, 0, &exc);
+  JSValueRef res = JSEvaluateScript(
+      ctx_->getContext(), sourceRef, nullptr, sourceURLRef,
+      start_line_offset + 1 /** The value is one-based **/, &exc);
   JSStringRelease(sourceRef);
   if (sourceURLRef) {
     JSStringRelease(sourceURLRef);

@@ -93,22 +93,25 @@ std::shared_ptr<JSIContext> V8Runtime::createContext(
 std::shared_ptr<JSIContext> V8Runtime::getSharedContext() { return context_; }
 
 std::shared_ptr<const PreparedJavaScript> V8Runtime::prepareJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, std::string sourceURL) {
+    const std::shared_ptr<const Buffer>& buffer, std::string source_url,
+    int start_line_offset) {
   return std::make_shared<piper::SourceJavaScriptPreparation>(
-      buffer, std::move(sourceURL));
+      buffer, std::move(source_url), start_line_offset);
 }
 
 base::expected<Value, JSINativeException> V8Runtime::evaluatePreparedJavaScript(
     const std::shared_ptr<const PreparedJavaScript>& js) {
   const SourceJavaScriptPreparation* source =
       static_cast<const SourceJavaScriptPreparation*>(js.get());
-  return evaluateJavaScript(source->buffer(), source->sourceURL());
+  return evaluateJavaScript(source->buffer(), source->source_url,
+                            source->start_line_offset);
 }
 
 // TODO(zhenziqi): refactor this method
 base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
-    const std::shared_ptr<const Buffer>& buffer, const std::string& sourceURL) {
-  LOGI("V8Runtime::evaluateJavaScript start url=" << sourceURL);
+    const std::shared_ptr<const Buffer>& buffer, const std::string& source_url,
+    int start_line_offset) {
+  LOGI("V8Runtime::evaluateJavaScript start url=" << source_url);
   v8::Isolate* isolate_ = getIsolate();
   v8::Local<v8::Context> context = getContext();
   v8::TryCatch tc(isolate_);
@@ -116,13 +119,14 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
       isolate_, reinterpret_cast<const char*>(buffer->data()),
       v8::NewStringType::kNormal, static_cast<int>(buffer->size()));
 
-  std::string origin_url = AddPrefixToUrlIfNeeded(sourceURL);
+  std::string origin_url = AddPrefixToUrlIfNeeded(source_url);
 
   TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, EVALUATE_PREPARED_JAVA_SCRIPT, "url",
                       origin_url, "runtime_id", getRuntimeId());
 #if V8_MAJOR_VERSION >= 9
   auto origin = std::make_unique<v8::ScriptOrigin>(
-      isolate_, V8Helper::ConvertToV8String(isolate_, origin_url));
+      isolate_, V8Helper::ConvertToV8String(isolate_, origin_url),
+      start_line_offset);
 #else
   auto origin = std::make_unique<v8::ScriptOrigin>(
       V8Helper::ConvertToV8String(isolate_, origin_url));
@@ -134,7 +138,7 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
     auto generator =
         std::make_unique<cache::V8CacheGenerator>(origin_url, buffer);
     auto cache =
-        cache::TryGetCacheV8(sourceURL, bytecode_source_url_, getRuntimeId(),
+        cache::TryGetCacheV8(source_url, bytecode_source_url_, getRuntimeId(),
                              buffer, std::move(generator));
     if (cache) {
       auto* cached_data =
@@ -147,7 +151,7 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
       if (cached_data->rejected) {
         // regenerate cache file
         cache::RequestCacheGenerationV8(
-            sourceURL, bytecode_source_url_, buffer,
+            source_url, bytecode_source_url_, buffer,
             std::make_unique<cache::V8CacheGenerator>(origin_url, buffer),
             true);
       }
