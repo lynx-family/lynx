@@ -19,7 +19,6 @@ namespace logging {
 namespace {
 
 static alog_write_func_ptr s_alog_write = nullptr;
-static bool s_use_sys_log = false;
 
 alog_write_func_ptr GetLynxLogWriteFunction() { return s_alog_write; }
 
@@ -78,9 +77,8 @@ napi_value LynxLog::NativeInitLynxLog(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  InitLynxLogging(
-      GetLynxLogWriteFunction, PrintLogMessageByLogDelegate,
-      tasm::LynxEnv::GetInstance().IsDevToolEnabled() || s_use_sys_log);
+  InitLynxLogging(GetLynxLogWriteFunction, PrintLogMessageByLogDelegate,
+                  tasm::LynxEnv::GetInstance().IsDevToolEnabled());
   return nullptr;
 }
 
@@ -88,7 +86,12 @@ napi_value LynxLog::NativeUseSysLog(napi_env env, napi_callback_info info) {
   size_t argc = 1;
   napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  s_use_sys_log = NapiUtil::ConvertToBoolean(env, args[0]);
+  bool s_use_sys_log = NapiUtil::ConvertToBoolean(env, args[0]);
+  if (s_use_sys_log) {
+    EnableLogOutputByPlatform();
+  } else {
+    DisableLogOutputByPlatform();
+  }
   return nullptr;
 }
 
