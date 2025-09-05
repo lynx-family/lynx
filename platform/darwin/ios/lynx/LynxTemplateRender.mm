@@ -196,6 +196,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                       screenSize:(CGSize)screenSize {
   _enableGenericResourceFetcher =
       [self checkEnableGenericResourceFetcher:builder.enableGenericResourceFetcher];
+  LOGI("enableGenericResourceFetcher: " << _enableGenericResourceFetcher);
   _originLynxViewConfig = builder.lynxViewConfig;
   _enableAirStrictMode = builder.enableAirStrictMode;
   // enable js default yes
