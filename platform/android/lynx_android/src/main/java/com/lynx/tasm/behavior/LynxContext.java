@@ -46,8 +46,6 @@ import com.lynx.tasm.image.model.LynxImageFetcher;
 import com.lynx.tasm.loader.LynxFontFaceLoader;
 import com.lynx.tasm.performance.PerformanceController;
 import com.lynx.tasm.provider.LynxProviderRegistry;
-import com.lynx.tasm.provider.LynxResourceFetcher;
-import com.lynx.tasm.provider.LynxResourceServiceProvider;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.media.LynxMediaResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
@@ -1013,14 +1011,17 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
    * correctly.
    */
   public void setHasCustomGenericFetcher(boolean hasCustomGenericFetcher) {
+    LLog.i(TAG, "setHasCustomGenericFetcher: " + hasCustomGenericFetcher);
     this.hasCustomGenericFetcher = hasCustomGenericFetcher;
   }
 
   public void setHasCustomMediaFetcher(boolean hasCustomMediaFetcher) {
+    LLog.i(TAG, "setHasCustomMediaFetcher: " + hasCustomMediaFetcher);
     this.hasCustomMediaFetcher = hasCustomMediaFetcher;
   }
 
   public void setHasCustomTemplateFetcher(boolean hasCustomTemplateFetcher) {
+    LLog.i(TAG, "setHasCustomTemplateFetcher: " + hasCustomTemplateFetcher);
     this.hasCustomTemplateFetcher = hasCustomTemplateFetcher;
   }
 

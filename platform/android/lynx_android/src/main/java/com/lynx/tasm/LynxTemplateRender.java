@@ -813,6 +813,8 @@ public class LynxTemplateRender
       layoutTick = new ChoreographerLayoutTick();
     }
 
+    LLog.i(TAG,
+        "mEnableGenericResourceFetcher: " + mEnableGenericResourceFetcher + " render: " + this);
     if (mEnableGenericResourceFetcher) {
       mLynxContext.setGenericResourceFetcher(
           mLynxViewConfigProvider.getLynxGenericResourceFetcher());

@@ -125,6 +125,21 @@ NSString *const kDefaultComponentID = @"-1";
   return [_extentionModules valueForKey:key];
 }
 
+- (void)setHasCustomGenericFetcher:(BOOL)hasCustomGenericFetcher {
+  _LogI(@"setHasCustomGenericFetcher: %d", hasCustomGenericFetcher);
+  _hasCustomGenericFetcher = hasCustomGenericFetcher;
+}
+
+- (void)setHasCustomMediaFetcher:(BOOL)hasCustomMediaFetcher {
+  _LogI(@"setHasCustomMediaFetcher: %d", hasCustomMediaFetcher);
+  _hasCustomMediaFetcher = hasCustomMediaFetcher;
+}
+
+- (void)setHasCustomTemplateFetcher:(BOOL)hasCustomTemplateFetcher {
+  _LogI(@"setHasCustomImageFetcher: %d", hasCustomTemplateFetcher);
+  _hasCustomTemplateFetcher = hasCustomTemplateFetcher;
+}
+
 - (void)addKeyboardEventObserver:(id)observer {
 #if TARGET_OS_IPHONE
   [_keyboardEventDispatcher addKeyboardEventObserver:observer];
