@@ -49,6 +49,7 @@ namespace tasm {
 // methods, at which point all ##nameToLepus methods of ComputedCSSStyle can be
 // deleted, and this forward declaration. will also be removed.
 class PropBundleStyleWriter;
+class PseudoElement;
 }  // namespace tasm
 
 namespace starlight {
@@ -140,7 +141,7 @@ class ComputedCSSStyle {
     return default_overflow_visible_ ? OverflowType::kVisible
                                      : OverflowType::kHidden;
   }
-  lepus_value GetValue(tasm::CSSPropertyID id);
+
   bool InheritValue(tasm::CSSPropertyID id, const ComputedCSSStyle& from);
 
   bool HasAnimation() const { return animation_data_.has_value(); }
@@ -579,6 +580,9 @@ class ComputedCSSStyle {
   // Write methods, at which point all ##nameToLepus methods of ComputedCSSStyle
   // can be deleted, and this friend class will also be removed.
   friend class tasm::PropBundleStyleWriter;
+  // TODO(songshourui.null): Ditto,  remove this when all the ##nameToLepus
+  // methods are deleted.
+  friend class tasm::PseudoElement;
 };  // ComputedCSSStyle
 
 }  // namespace starlight

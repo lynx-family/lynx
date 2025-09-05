@@ -51,7 +51,7 @@ class ListContainerImpl : public ListContainer::Delegate {
       fml::RefPtr<lepus::Dictionary>& list_container_info) override;
   void AddEvent(const base::String& name) override;
   void ClearEvents() override;
-  void ResolveListAxisGap(CSSPropertyID id, const lepus::Value& value) override;
+  void ResolveListAxisGap(CSSPropertyID id, float gap) override;
   int GetDataCount() const;
   ItemHolder* GetItemHolderForIndex(int index);
   void FlushPatching();

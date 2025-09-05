@@ -141,27 +141,20 @@ TEST_F(PseudoElementTest, FontSizeUnit) {
       kPropertyIDFontSize,
       tasm::CSSValue(lepus::Value(2), CSSValuePattern::EM));
   pseudo_element.UpdateStyleMap(new_style_map);
-  EXPECT_NEAR(
-      pseudo_element.ComputedCSSStyle()->GetValue(kPropertyIDFontSize).Double(),
-      28.f, kEpsilon);
+  EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 28.f, kEpsilon);
 
   pseudo_element.SetFontSize(30.f, 14.f);
-  EXPECT_NEAR(
-      pseudo_element.ComputedCSSStyle()->GetValue(kPropertyIDFontSize).Double(),
-      60.f, kEpsilon);
+  EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 60.f, kEpsilon);
 
   new_style_map.clear();
   new_style_map.insert_or_assign(
       kPropertyIDFontSize,
       tasm::CSSValue(lepus::Value(3), CSSValuePattern::REM));
   pseudo_element.UpdateStyleMap(new_style_map);
-  EXPECT_NEAR(
-      pseudo_element.ComputedCSSStyle()->GetValue(kPropertyIDFontSize).Double(),
-      42.f, kEpsilon);
+  EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 42.f, kEpsilon);
   pseudo_element.SetFontSize(30.f, 50.f);
-  EXPECT_NEAR(
-      pseudo_element.ComputedCSSStyle()->GetValue(kPropertyIDFontSize).Double(),
-      150.f, kEpsilon);
+  EXPECT_NEAR(pseudo_element.ComputedCSSStyle()->GetFontSize(), 150.f,
+              kEpsilon);
 }
 
 }  // namespace testing

@@ -628,21 +628,16 @@ void ListContainerImpl::ClearEvents() {
   }
 }
 
-void ListContainerImpl::ResolveListAxisGap(CSSPropertyID id,
-                                           const lepus::Value& value) {
+void ListContainerImpl::ResolveListAxisGap(CSSPropertyID id, float gap) {
   if (!list_layout_manager_ || !element_) {
     return;
   }
-  float gap = 0.f;
-  if (CSSPropertyID::kPropertyIDListMainAxisGap == id && value.IsNumber()) {
-    gap = static_cast<float>(value.Number());
+  if (CSSPropertyID::kPropertyIDListMainAxisGap == id) {
     if (base::FloatsNotEqual(gap, list_layout_manager_->main_axis_gap())) {
       list_layout_manager_->SetMainAxisGap(gap);
       element_->MarkLayoutDirty();
     }
-  } else if (CSSPropertyID::kPropertyIDListCrossAxisGap == id &&
-             value.IsNumber()) {
-    gap = static_cast<float>(value.Number());
+  } else if (CSSPropertyID::kPropertyIDListCrossAxisGap == id) {
     if (base::FloatsNotEqual(gap, list_layout_manager_->cross_axis_gap())) {
       list_layout_manager_->SetCrossAxisGap(gap);
       element_->MarkLayoutDirty();

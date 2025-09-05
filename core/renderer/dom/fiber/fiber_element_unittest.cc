@@ -3588,21 +3588,21 @@ TEST_P(FiberElementTest, FiberElementDirectionCase) {
 
   page->FlushActionsAsRoot();
 
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kLtr);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kLtr)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kCenter)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kCenter);
 
   text_element0->RemoveAllClass();
   page->FlushActionsAsRoot();
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kLtr);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kLtr)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kLeft)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kLeft);
 }
 
 TEST_P(FiberElementTest, FiberElementDirectionCase01) {
@@ -3684,30 +3684,30 @@ TEST_P(FiberElementTest, FiberElementDirectionCase01) {
 
   page->FlushActionsAsRoot();
 
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kLtr);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kLtr)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kCenter)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kCenter);
 
   text_element0->RemoveAllClass();
   page->FlushActionsAsRoot();
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kLtr);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kLtr)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kLeft)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kLeft);
 
   root->SetClass("root-rtl");
   page->FlushActionsAsRoot();
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kRtl);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kRtl)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kRight)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kRight);
 }
 
 TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
@@ -3799,12 +3799,12 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
   root->InsertNode(text_element0);
 
   page->FlushActionsAsRoot();
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kRtl);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kRtl)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kCenter)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kCenter);
   EXPECT_TRUE(text_element0->computed_css_style()
                   ->layout_computed_style_.surround_data_.border_data_
                   ->radius_x_bottom_left ==
@@ -3841,12 +3841,12 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
   root->SetClass("root-ltr");
   page->FlushActionsAsRoot();
 
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kLtr);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kLtr)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kCenter)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kCenter);
   EXPECT_TRUE(text_element0->computed_css_style()
                   ->layout_computed_style_.surround_data_.border_data_
                   ->radius_x_bottom_right ==
@@ -3883,12 +3883,12 @@ TEST_P(FiberElementTest, FiberElementDirectionCase_logicalCSSProperty) {
   root->SetClass("root-rtl");
   page->FlushActionsAsRoot();
 
+  EXPECT_TRUE(text_element0->computed_css_style()
+                  ->GetLayoutComputedStyle()
+                  ->direction_ == starlight::DirectionType::kRtl);
   EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDDirection) ==
-      lepus::Value(static_cast<int32_t>(starlight::DirectionType::kRtl)));
-  EXPECT_TRUE(
-      text_element0->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kCenter)));
+      text_element0->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kCenter);
   EXPECT_TRUE(text_element0->computed_css_style()
                   ->layout_computed_style_.surround_data_.border_data_
                   ->radius_x_bottom_left ==
@@ -4158,8 +4158,8 @@ TEST_P(FiberElementTest, FiberElementDirectionCase04) {
   page->FlushActionsAsRoot();
 
   EXPECT_TRUE(
-      extended_element->computed_css_style()->GetValue(kPropertyIDTextAlign) ==
-      lepus::Value(static_cast<int32_t>(starlight::TextAlignType::kRight)));
+      extended_element->computed_css_style()->GetTextAttributes()->text_align ==
+      starlight::TextAlignType::kRight);
 }
 
 TEST_P(FiberElementTest, RequireFlush) {

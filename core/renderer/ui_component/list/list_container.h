@@ -41,8 +41,7 @@ class ListContainer {
         fml::RefPtr<lepus::Dictionary>& list_container_info) = 0;
     virtual void AddEvent(const base::String& name) = 0;
     virtual void ClearEvents() = 0;
-    virtual void ResolveListAxisGap(CSSPropertyID id,
-                                    const lepus::Value& value) = 0;
+    virtual void ResolveListAxisGap(CSSPropertyID id, float gap) = 0;
     virtual void PropsUpdateFinish() = 0;
     virtual void OnAttachToElementManager(ElementManager* manager) = 0;
     virtual void OnListItemLayoutUpdated(Element* component) = 0;

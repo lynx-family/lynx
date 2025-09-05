@@ -6,6 +6,7 @@
 
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/dom/fiber/fiber_element.h"
+#include "core/renderer/utils/prop_bundle_style_writer.h"
 
 namespace lynx {
 namespace tasm {
@@ -111,8 +112,42 @@ void PseudoElement::SetPseudoStylesInternal(
     const std::unordered_map<CSSPropertyID, const char*>& map) {
   auto style_name = map.find(id);
   if (style_name != map.end()) {
-    holder_element_->UpdateAttrMap(style_name->second,
-                                   platform_css_style_->GetValue(id));
+    switch (id) {
+      case kPropertyIDBackgroundColor:
+        holder_element_->UpdateAttrMap(
+            style_name->second, platform_css_style_->BackgroundColorToLepus());
+        break;
+      case kPropertyIDXHandleColor:
+        holder_element_->UpdateAttrMap(
+            style_name->second, platform_css_style_->XHandleColorToLepus());
+        break;
+      case kPropertyIDXHandleSize:
+        holder_element_->UpdateAttrMap(
+            style_name->second, platform_css_style_->XHandleSizeToLepus());
+        break;
+      case kPropertyIDColor:
+        holder_element_->UpdateAttrMap(style_name->second,
+                                       platform_css_style_->ColorToLepus());
+        break;
+      case kPropertyIDFontSize:
+        holder_element_->UpdateAttrMap(style_name->second,
+                                       platform_css_style_->FontSizeToLepus());
+        break;
+      case kPropertyIDFontFamily:
+        holder_element_->UpdateAttrMap(
+            style_name->second, platform_css_style_->FontFamilyToLepus());
+        break;
+      case kPropertyIDFontWeight:
+        holder_element_->UpdateAttrMap(
+            style_name->second, platform_css_style_->FontWeightToLepus());
+        break;
+      case kPropertyIDFontStyle:
+        holder_element_->UpdateAttrMap(style_name->second,
+                                       platform_css_style_->FontSizeToLepus());
+        break;
+      default:
+        break;
+    }
     holder_element_->MarkAttrDirtyForPseudoElement();
   }
 }

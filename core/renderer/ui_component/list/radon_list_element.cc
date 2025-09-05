@@ -135,11 +135,23 @@ bool RadonListElement::ResolveStyleValue(CSSPropertyID id,
                                          const tasm::CSSValue& value,
                                          bool force_update) {
   bool ret = RadonElement::ResolveStyleValue(id, value, force_update);
-  if (list_container_delegate() &&
-      (CSSPropertyID::kPropertyIDListMainAxisGap == id ||
-       CSSPropertyID::kPropertyIDListCrossAxisGap == id)) {
-    lepus::Value axis_gap_value = computed_css_style()->GetValue(id);
-    list_container_delegate()->ResolveListAxisGap(id, axis_gap_value);
+  if (list_container_delegate()) {
+    switch (id) {
+      case CSSPropertyID::kPropertyIDListMainAxisGap:
+        list_container_delegate()->ResolveListAxisGap(
+            id, computed_css_style()
+                    ->GetLayoutComputedStyle()
+                    ->GetListMainAxisGap());
+        break;
+      case CSSPropertyID::kPropertyIDListCrossAxisGap:
+        list_container_delegate()->ResolveListAxisGap(
+            id, computed_css_style()
+                    ->GetLayoutComputedStyle()
+                    ->GetListCrossAxisGap());
+        break;
+      default:
+        break;
+    }
   }
   return ret;
 }

@@ -676,19 +676,6 @@ void ComputedCSSStyle::ResetOverflow() {
   overflow_y_ = overflow;
 }
 
-lepus_value ComputedCSSStyle::GetValue(tasm::CSSPropertyID id) {
-  const auto* getterFuncMap = GetterFuncMap();
-  if (id > tasm::CSSPropertyID::kPropertyStart &&
-      id < tasm::CSSPropertyID::kPropertyEnd) {
-    if (StyleGetterFunc func = getterFuncMap[id]) {
-      return (this->*func)();
-    }
-  }
-  LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_GETTER,
-              "GetValue can't find style getter id:%d", id);
-  return lepus::Value();
-}
-
 bool ComputedCSSStyle::InheritValue(tasm::CSSPropertyID id,
                                     const ComputedCSSStyle& from) {
   const auto& inheritFuncMap = InheritFuncMap();

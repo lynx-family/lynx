@@ -16,8 +16,7 @@ class PropBundleStyleWriter {
 
  public:
   static void PushStyleToBundle(PropBundle* bundle, CSSPropertyID id,
-                                starlight::ComputedCSSStyle* style,
-                                bool use_specific_writer);
+                                starlight::ComputedCSSStyle* style);
 
  private:
 #define DECLARE_STYLE_WRITER(name)            \
@@ -25,9 +24,6 @@ class PropBundleStyleWriter {
                           starlight::ComputedCSSStyle* style);
   FOREACH_PLATFORM_PROPERTY(DECLARE_STYLE_WRITER);
 #undef DECLARE_STYLE_WRITER
-
-  static void DefaultWriterFunc(PropBundle* bundle, CSSPropertyID id,
-                                starlight::ComputedCSSStyle* style);
 
   static const std::array<WriterFunc, kPropertyEnd>& GetWriter();
 };

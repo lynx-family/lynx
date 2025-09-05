@@ -12,6 +12,7 @@
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
+#include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -419,10 +420,8 @@ void ElementContainer::TransitionToNativeView(
   element_->set_is_layout_only(false);
 
   // Push painting related props into prop_bundle.
-  prop_bundle->SetPropsByID(
-      kPropertyIDOverflow,
-      pub::ValueImplLepus(
-          element()->computed_css_style()->GetValue(kPropertyIDOverflow)));
+  PropBundleStyleWriter::PushStyleToBundle(
+      prop_bundle.get(), kPropertyIDOverflow, element()->computed_css_style());
 
   element_->painting_context()->CreatePaintingNode(
       element_->impl_id(), element_->GetPlatformNodeTag().str(), prop_bundle,

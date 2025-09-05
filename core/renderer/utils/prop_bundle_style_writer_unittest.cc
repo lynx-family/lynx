@@ -45,13 +45,13 @@ TEST_F(PropBundleStyleWriterTest, TestWriterImpl) {
 #undef CALL_STYLE_WRITER
 }
 
-#define TEST_SPECIFIC_STYLE_WRITER(name)                         \
-  PropBundleStyleWriter::Write##name(&new_bundle_, &style_);     \
-  PropBundleStyleWriter::DefaultWriterFunc(                      \
-      &old_bundle_, CSSPropertyID::kPropertyID##name, &style_);  \
-  EXPECT_EQ(new_bundle_.props_[CSSProperty::GetPropertyNameCStr( \
-                CSSPropertyID::kPropertyID##name)],              \
-            old_bundle_.props_[CSSProperty::GetPropertyNameCStr( \
+#define TEST_SPECIFIC_STYLE_WRITER(name)                                 \
+  PropBundleStyleWriter::Write##name(&new_bundle_, &style_);             \
+  old_bundle_.SetPropsByID(CSSPropertyID::kPropertyID##name,             \
+                           pub::ValueImplLepus(style_.name##ToLepus())); \
+  EXPECT_EQ(new_bundle_.props_[CSSProperty::GetPropertyNameCStr(         \
+                CSSPropertyID::kPropertyID##name)],                      \
+            old_bundle_.props_[CSSProperty::GetPropertyNameCStr(         \
                 CSSPropertyID::kPropertyID##name)]);
 
 TEST_F(PropBundleStyleWriterTest, TestWriteOpacity) {

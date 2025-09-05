@@ -39,8 +39,7 @@ class ListContainerDefault : public ListContainer::Delegate {
       fml::RefPtr<lepus::Dictionary>& list_container_info) override {}
   void AddEvent(const base::String& name) override {}
   void ClearEvents() override {}
-  void ResolveListAxisGap(CSSPropertyID id,
-                          const lepus::Value& value) override {}
+  void ResolveListAxisGap(CSSPropertyID id, float gap) override {}
   void PropsUpdateFinish() override {}
   void OnAttachToElementManager(ElementManager* manager) override {}
   void OnListItemLayoutUpdated(Element* component) override {}

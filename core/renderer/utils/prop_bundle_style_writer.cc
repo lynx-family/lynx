@@ -25,16 +25,11 @@ namespace tasm {
 // corresponding writer here.
 
 void PropBundleStyleWriter::PushStyleToBundle(
-    PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style,
-    bool use_specific_writer) {
+    PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style) {
   if (id > kPropertyStart && id < kPropertyEnd) {
     if (void (*const writer)(PropBundle*, starlight::ComputedCSSStyle*) =
             GetWriter()[id]) {
-      if (use_specific_writer) {
-        (*writer)(bundle, style);
-      } else {
-        DefaultWriterFunc(bundle, id, style);
-      }
+      (*writer)(bundle, style);
       return;
     }
   }
@@ -937,38 +932,5 @@ PropBundleStyleWriter::GetWriter() {
   return kSpecificWriter;
 }
 
-void PropBundleStyleWriter::DefaultWriterFunc(
-    PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style) {
-  switch (const lepus_value style_value = style->GetValue(id);
-          style_value.Type()) {
-    case lepus::Value_Int32:
-    case lepus::Value_Int64:
-      bundle->SetPropsByID(id, static_cast<int>(style_value.Number()));
-      break;
-    case lepus::Value_UInt32:
-    case lepus::Value_UInt64:
-      bundle->SetPropsByID(id, static_cast<unsigned int>(style_value.Number()));
-      break;
-    case lepus::Value_Double:
-      bundle->SetPropsByID(id, style_value.Number());
-      break;
-    case lepus::Value_Bool:
-      bundle->SetPropsByID(id, style_value.Bool());
-      break;
-    case lepus::Value_String:
-      bundle->SetPropsByID(id, style_value.CString());
-      break;
-    case lepus::Value_Array:
-    case lepus::Value_Table:
-      bundle->SetPropsByID(id, pub::ValueImplLepus(style_value));
-      break;
-    case lepus::Value_Nil:
-      bundle->SetNullPropsByID(id);
-      break;
-    default:
-      LynxWarning(false, error::E_CSS, "ResolveStyleValue");
-      break;
-  }
-}
 }  // namespace tasm
 }  // namespace lynx

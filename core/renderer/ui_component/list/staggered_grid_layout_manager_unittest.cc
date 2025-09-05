@@ -149,10 +149,9 @@ class StaggeredGridLayoutManagerTest : public ::testing::Test {
     list_container_->ResolveAttribute(list::kScrollOrientation,
                                       lepus::Value(scroll_orientation));
     list_container_->ResolveListAxisGap(
-        CSSPropertyID::kPropertyIDListMainAxisGap, lepus::Value(main_axis_gap));
+        CSSPropertyID::kPropertyIDListMainAxisGap, main_axis_gap);
     list_container_->ResolveListAxisGap(
-        CSSPropertyID::kPropertyIDListCrossAxisGap,
-        lepus::Value(cross_axis_gap));
+        CSSPropertyID::kPropertyIDListCrossAxisGap, cross_axis_gap);
     if (scroll_orientation == "vertical") {
       list_element_ref_->height_ = list_main_size;
       list_element_ref_->width_ = list_cross_size;

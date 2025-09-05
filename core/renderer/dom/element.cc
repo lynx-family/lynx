@@ -925,10 +925,8 @@ void Element::ResetPropBundle() {
 
 void Element::PushToBundle(CSSPropertyID id) {
   PreparePropBundleIfNeed();
-  PropBundleStyleWriter::PushStyleToBundle(
-      prop_bundle_.get(), id, computed_css_style(),
-      element_manager_ ? element_manager_->GetEnableOptPushStyleToBundle()
-                       : true);
+  PropBundleStyleWriter::PushStyleToBundle(prop_bundle_.get(), id,
+                                           computed_css_style());
 }
 
 void Element::ResolveStyle(StyleMap& new_styles,
@@ -1554,24 +1552,19 @@ bool Element::WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
   if (!computed_css_style()->SetValue(id, value)) {
     return false;
   }
-  const char* property_name = CSSProperty::GetPropertyName(id).c_str();
-  auto style_value = computed_css_style()->GetValue(id);
+
   switch (id) {
     case kPropertyIDTransform:
-      bundle->SetProps(property_name, pub::ValueImplLepus(style_value));
-      return true;
     case kPropertyIDColor:
     case kPropertyIDBackgroundColor:
     case kPropertyIDBorderLeftColor:
     case kPropertyIDBorderRightColor:
     case kPropertyIDBorderTopColor:
     case kPropertyIDBorderBottomColor:
-      bundle->SetProps(property_name,
-                       static_cast<unsigned int>(style_value.Number()));
-      return true;
     case kPropertyIDOpacity:
     case kPropertyIDOffsetDistance:
-      bundle->SetProps(property_name, style_value.Number());
+      PropBundleStyleWriter::PushStyleToBundle(bundle.get(), id,
+                                               computed_css_style());
       return true;
     default:
       LOGE("[animation] unsupported animation value type for css:" << id);
@@ -1634,13 +1627,21 @@ CSSKeyframesToken* Element::GetCSSKeyframesToken(
 
 void Element::ResolveAndFlushKeyframes() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_RESOLVE_AND_FLUSH_KEYFRAMES);
-  lepus_value animation_names =
-      computed_css_style()->GetValue(kPropertyIDAnimationName);
+
+  auto animation_data = computed_css_style()->animation_data();
+  auto animation_names = lepus::CArray::Create();
+  for (auto data : animation_data) {
+    if (data.name.empty()) {
+      continue;
+    }
+    animation_names->emplace_back(data.name);
+  }
+
   CSSFragment* css_fragment = GetRelatedCSSFragment();
-  if (!animation_names.IsNil() && css_fragment &&
+  if (animation_names->size() != 0 && css_fragment &&
       !css_fragment->GetKeyframesRuleMap().empty()) {
-    SetKeyframesByNames(animation_names, css_fragment->GetKeyframesRuleMap(),
-                        false);
+    SetKeyframesByNames(lepus::Value(animation_names),
+                        css_fragment->GetKeyframesRuleMap(), false);
   }
 }
 
