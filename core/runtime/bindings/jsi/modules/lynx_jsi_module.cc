@@ -140,7 +140,6 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
             pub::ValueUtils::ConvertPiperToArrayBuffer(*rt, o, length), length);
       } else if (o.isFunction(*rt)) {
         uint64_t callback_flow_id = TRACE_FLOW_ID();
-
         // FIXME: The trace below is still utilized by some
         // platforms. Once NativeModule timing is implemented on these
         // platforms, we can proceed to remove the macro and trace event.
@@ -155,6 +154,18 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
             });
 #endif
         auto function = o.getFunction(*rt);
+        // HostFunction is not allowed to be used as a module parameter
+        if (function.isHostFunction(*rt)) {
+          constexpr static const char* kHostFunctionError =
+              "NativeModule: HostFunction is not allowed to be used as a "
+              "module "
+              "parameter";
+          delegate_->OnErrorOccurred(
+              base::LynxError(error::E_NATIVE_MODULES_COMMON_WRONG_PARAM_TYPE,
+                              kHostFunctionError));
+          return base::unexpected(
+              BUILD_JSI_NATIVE_EXCEPTION(kHostFunctionError));
+        }
         auto callback_id =
             delegate_->RegisterJSCallbackFunction(std::move(function));
         auto callback =
@@ -177,6 +188,16 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
         if (ret) {
           args_array->PushBigIntToArray(r);
           continue;
+        }
+        // HostObject is not allowed to be used as a module parameter
+        if (o.isHostObject(*rt)) {
+          constexpr static const char* kHostObjectError =
+              "NativeModule: HostObject is not allowed to be used as a module "
+              "parameter";
+          delegate_->OnErrorOccurred(
+              base::LynxError(error::E_NATIVE_MODULES_COMMON_WRONG_PARAM_TYPE,
+                              kHostObjectError));
+          return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(kHostObjectError));
         }
         auto dict = pub::ValueUtils::ConvertPiperObjectToPubValue(
             *rt, o, value_factory_);
