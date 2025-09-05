@@ -11,14 +11,13 @@
 
 #include "base/include/log/alog_wrapper.h"
 #include "base/include/log/logging.h"
-#include "core/base/android/jni_helper.h"
-#include "core/renderer/utils/lynx_env.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LLog_jni.h"
-#include "platform/android/lynx_android/src/main/jni/gen/LLog_register_jni.h"
+#include "base/include/platform/android/jni_convert_helper.h"
+#include "base/platform/android/src/main/jni/gen/LynxLog_jni.h"
+#include "base/platform/android/src/main/jni/gen/LynxLog_register_jni.h"
 
 namespace lynx {
 namespace jni {
-bool RegisterJNIForLLog(JNIEnv* env) { return RegisterNativesImpl(env); }
+bool RegisterJNIForLynxLog(JNIEnv* env) { return RegisterNativesImpl(env); }
 }  // namespace jni
 }  // namespace lynx
 
@@ -47,30 +46,29 @@ void PrintLogMessageByLogDelegate(LogMessage* msg, const char* tag) {
   if (api_level < __ANDROID_API_M__) {  // Build.VERSION_CODES.M
     base::android::ScopedLocalJavaRef<jbyteArray> jni_byte_msg =
         android::JNIConvertHelper::ConvertToJNIByteArray(env, c_msg);
-    Java_LLog_logByte(env, msg->severity(), lynx_tag.Get(), jni_byte_msg.Get(),
-                      msg->source(), msg->runtimeId(), msg->ChannelType(),
-                      msg->messageStart());
+    Java_LynxLog_logByte(env, msg->severity(), lynx_tag.Get(),
+                         jni_byte_msg.Get(), msg->source(), msg->runtimeId(),
+                         msg->ChannelType(), msg->messageStart());
   } else {
     base::android::ScopedLocalJavaRef<jstring> jni_msg =
         android::JNIConvertHelper::ConvertToJNIStringUTF(env, c_msg);
-    Java_LLog_log(env, msg->severity(), lynx_tag.Get(), jni_msg.Get(),
-                  msg->source(), msg->runtimeId(), msg->ChannelType(),
-                  msg->messageStart());
+    Java_LynxLog_log(env, msg->severity(), lynx_tag.Get(), jni_msg.Get(),
+                     msg->source(), msg->runtimeId(), msg->ChannelType(),
+                     msg->messageStart());
   }
 }
 }  // namespace
 
-void InitLynxLog() {
-  InitLynxLogging(InitAlog, PrintLogMessageByLogDelegate,
-                  tasm::LynxEnv::GetInstance().IsDevToolEnabled());
+void InitLynxLog(bool is_all_channels) {
+  InitLynxLogging(InitAlog, PrintLogMessageByLogDelegate, is_all_channels);
 }
-
 }  // namespace logging
 }  // namespace base
 }  // namespace lynx
 
-void InitLynxLoggingNative(JNIEnv* env, jclass jcaller) {
-  lynx::base::logging::InitLynxLog();
+void InitLynxLoggingNative(JNIEnv* env, jclass jcaller,
+                           jboolean is_all_channels) {
+  lynx::base::logging::InitLynxLog(is_all_channels ? true : false);
 }
 
 void SetNativeMinLogLevel(JNIEnv* env, jclass jcaller, jint level) {

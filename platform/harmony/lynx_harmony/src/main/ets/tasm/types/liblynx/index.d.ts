@@ -12,7 +12,7 @@ export const nativeInitLynxLogWriteFunction: (logWriteFunctionAddress: number) =
 
 export const nativeUseSysLog: (open: boolean) => void;
 
-export const nativeInitLynxLog: () => void;
+export const nativeInitLynxLog: (isPrintLogToAllChannel: boolean) => void;
 
 export const nativeInternalLog: (level: number, tag: string, message: string) => void;
 

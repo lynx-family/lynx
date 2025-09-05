@@ -2,23 +2,18 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxEnv.h>
-#import <Lynx/LynxLog.h>
-#import <Lynx/LynxTraceEvent.h>
-#import <Lynx/LynxTraceEventDef.h>
+#import <LynxBase/LynxLog.h>
 #include <map>
 
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging_darwin.h"
-#include "base/trace/native/trace_event.h"
-#include "core/base/lynx_trace_categories.h"
 
 #define LOCKED(...)             \
   @synchronized(gDelegateDic) { \
     __VA_ARGS__;                \
   }
 
-@implementation LynxLogObserver
+@implementation LynxLogDelegate
 
 - (instancetype)initWithLogFunction:(LynxLogFunction)logFunction
                         minLogLevel:(LynxLogLevel)minLogLevel {
@@ -124,9 +119,8 @@ void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
 }  // namespace base
 }  // namespace lynx
 
-void InitLynxLog(bool enable_devtools) {
-  lynx::base::logging::InitLynxLoggingNative(
-      enable_devtools);  // tasm::LynxEnv::GetInstance().IsDevtoolEnabled());
+void InitLynxLog(bool print_logs_to_all_channels) {
+  lynx::base::logging::InitLynxLoggingNative(print_logs_to_all_channels);
 }
 
 NSInteger AddLoggingDelegate(LynxLogDelegate *delegate) {
@@ -159,22 +153,6 @@ void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
 
 LynxLogLevel GetMinimumLoggingLevel(void) { return gLogMinLevel; }
 
-NSInteger LynxAddLogObserver(LynxLogFunction logFunction, LynxLogLevel minLogLevel) {
-  LynxLogDelegate *delegate = [[LynxLogDelegate alloc] initWithLogFunction:logFunction
-                                                               minLogLevel:minLogLevel];
-  return AddLoggingDelegate(delegate);
-}
-
-NSInteger LynxAddLogObserverByModel(LynxLogObserver *observer) {
-  return AddLoggingDelegate(observer);
-}
-
-LynxLogObserver *LynxGetLogObserver(NSInteger observerId) { return GetLoggingDelegate(observerId); }
-
-void LynxRemoveLogObserver(NSInteger observerId) { RemoveLoggingDelegate(observerId); }
-
-NSArray<LynxLogObserver *> *LynxGetLogObservers() { LOCKED(return [gDelegateDic allValues]); }
-
 NSInteger LynxSetLogFunction(LynxLogFunction logFunction) {
   LynxLogDelegate *delegate = [[LynxLogDelegate alloc] initWithLogFunction:logFunction
                                                                minLogLevel:LynxLogLevelInfo];
@@ -190,28 +168,11 @@ LynxLogFunction LynxGetLogFunction(void) {
   return delegate.logFunction;
 }
 
-void LynxSetMinLogLevel(LynxLogLevel minLogLevel) {
-  LynxLogDelegate *delegate = GetLoggingDelegate(gDefaultDelegateId);
-  if (delegate) {
-    delegate.minLogLevel = minLogLevel;
-  }
-  SetMinimumLoggingLevel(minLogLevel);
-}
-
-LynxLogLevel LynxGetMinLogLevel(void) {
-  LynxLogDelegate *delegate = GetLoggingDelegate(gDefaultDelegateId);
-  if (delegate) {
-    return delegate.minLogLevel;
-  }
-  return LynxLogLevelInfo;
-}
-
 LynxLogFunction LynxDefaultLogFunction = ^(LynxLogLevel level, NSString *message) {
   NSLog(@"%s/lynx: %@", lynx::base::logging::kLynxLogLevels[level], message);
 };
 
 void _LynxLogInternal(const char *file, int32_t line, LynxLogLevel level, NSString *format, ...) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_LOG_INTERNAL);
   @autoreleasepool {
     va_list args;
     va_start(args, format);

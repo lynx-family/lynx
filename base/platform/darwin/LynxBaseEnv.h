@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)sharedInstance;
 
-- (bool)initialize;
+- (bool)initialize:(bool)print_logs_to_all_channels;
 
 @end
 
