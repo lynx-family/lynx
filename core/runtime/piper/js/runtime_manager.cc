@@ -49,14 +49,14 @@ extern void RegisterJSVMRuntimeProxyFactory(
 #include "core/runtime/profile/v8/v8_runtime_profiler.h"
 #endif
 
-#if defined(OS_WIN)
+#if defined(OS_WIN) || defined(OS_OSX)
 #if ENABLE_NAPI_BINDING
 #include "core/runtime/bindings/napi/napi_runtime_proxy_v8.h"
 
 extern void RegisterV8RuntimeProxyFactory(
     lynx::piper::NapiRuntimeProxyV8Factory*);
 #endif  // ENABLE_NAPI_BINDING
-#endif  // OS_WIN
+#endif  // OS_WIN || OS_OSX
 
 namespace lynx {
 namespace runtime {
@@ -415,6 +415,11 @@ std::shared_ptr<piper::Runtime> RuntimeManager::MakeRuntime(
   }
 #endif  // defined(OS_IOS)
 #if JS_ENGINE_TYPE == 0
+#if ENABLE_NAPI_BINDING
+  static piper::NapiRuntimeProxyV8FactoryImpl factory;
+  LOGI("Setting napi proxy factory: " << &factory);
+  RegisterV8RuntimeProxyFactory(&factory);
+#endif
   return piper::makeV8Runtime();
 #elif JS_ENGINE_TYPE == 1
   LOGI("make JSC runtime");

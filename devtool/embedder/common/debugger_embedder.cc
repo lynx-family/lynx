@@ -24,7 +24,7 @@ void DebuggerEmbedder::SetDevtoolsEnabled(bool enabled) {
         "enable_devtool_for_debuggable_view", enabled);
     lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv(
         "devtool_component_attach", enabled);
-#if OS_WIN && JS_ENGINE_TYPE == 0
+#if (OS_WIN || OS_OSX) && JS_ENGINE_TYPE == 0
     lynx::tasm::LynxEnv::GetInstance().SetBoolLocalEnv("enable_v8", true);
 #endif
   }

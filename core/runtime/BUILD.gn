@@ -111,7 +111,7 @@ lynx_core_source_set("runtime") {
     "profile/quickjs:quickjs_profile",
   ]
 
-  if (is_android || is_ios || is_win || enable_unittests) {
+  if (is_android || is_ios || is_win || is_mac || enable_unittests) {
     deps += [ "profile/v8:v8_profile" ]
   }
 
