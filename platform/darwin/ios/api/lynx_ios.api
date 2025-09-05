@@ -1247,7 +1247,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::lynxDebugEnabled lynxDebugEnabled;
   public BOOL LynxEnv::devtoolComponentAttach devtoolComponentAttach;
   public BOOL LynxEnv::devtoolEnabled devtoolEnabled;
-  public BOOL LynxEnv::devtoolEnabledForDebuggableView devtoolEnabledForDebuggableView;
   public BOOL LynxEnv::logBoxEnabled logBoxEnabled;
   public BOOL LynxEnv::highlightTouchEnabled highlightTouchEnabled;
   public BOOL LynxEnv::automationEnabled automationEnabled;

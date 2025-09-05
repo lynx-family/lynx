@@ -69,15 +69,11 @@ public class LynxDevtool {
       if (LynxEnv.inst().isLynxDebugEnabled()) {
         LLog.i(TAG,
             "devtoolEnabled:" + LynxEnv.inst().isDevtoolEnabled() + ", logBoxEnabled:"
-                + LynxEnv.inst().isLogBoxEnabled() + ", enable_devtool_for_debuggable_view:"
-                + LynxEnv.inst().isDevtoolEnabledForDebuggableView()
-                + ", debuggable:" + debuggable);
+                + LynxEnv.inst().isLogBoxEnabled() + ", debuggable:" + debuggable);
 
         sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
 
-        if ((LynxEnv.inst().isDevtoolEnabled()
-                || (LynxEnv.inst().isDevtoolEnabledForDebuggableView() && debuggable))
-            && sDevToolService != null) {
+        if (LynxEnv.inst().isDevtoolEnabled() && sDevToolService != null) {
           mOwner = sDevToolService.createInspectorOwner(view);
           if (mOwner != null) {
             LLog.i(TAG, "owner init");

@@ -132,7 +132,7 @@ public class LynxDevtoolGlobalHelper {
       return false;
     }
 
-    if (!LynxEnv.inst().isDevtoolEnabled() && !LynxEnv.inst().isDevtoolEnabledForDebuggableView()) {
+    if (!LynxEnv.inst().isDevtoolEnabled()) {
       if (mContext != null) {
         Toast.makeText(mContext, "DevTool not enabled, turn on the switch!", Toast.LENGTH_SHORT)
             .show();

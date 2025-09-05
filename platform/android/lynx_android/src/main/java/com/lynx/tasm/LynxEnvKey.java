@@ -65,8 +65,6 @@ public enum LynxEnvKey {
   public static final String KEY_DEVTOOL_COMPONENT_ATTACH =
       DEVTOOL_COMPONENT_ATTACH.getDescription();
   public static final String SP_KEY_ENABLE_DEVTOOL = "enable_devtool";
-  public static final String SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW =
-      "enable_devtool_for_debuggable_view";
   public static final String SP_KEY_ENABLE_LOGBOX = "enable_logbox";
   public static final String SP_KEY_ENABLE_HIGHLIGHT_TOUCH = "enable_highlight_touch";
   @Deprecated public static final String SP_KEY_SHOW_DEVTOOL_BADGE = "show_devtool_badge";

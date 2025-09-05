@@ -25,7 +25,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   enum class Key : uint64_t {
     ENABLE_DEVTOOL = 0,
     DEVTOOL_COMPONENT_ATTACH,
-    ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW,
     ENABLE_LOGBOX,
     ENABLE_QUICKJS_CACHE,
     ANDROID_DISABLE_QUICKJS_CODE_CACHE,
@@ -129,8 +128,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
         env_key_to_string_map({
             {Key::ENABLE_DEVTOOL, "enable_devtool"},
             {Key::DEVTOOL_COMPONENT_ATTACH, kLynxDevToolComponentAttach},
-            {Key::ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW,
-             "enable_devtool_for_debuggable_view"},
             {Key::ENABLE_LOGBOX, kLynxEnableLogBox},
             {Key::ENABLE_QUICKJS_CACHE, "enable_quickjs_cache"},
             {Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE,
@@ -326,7 +323,6 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
 
   bool IsDevToolComponentAttach();
   bool IsDevToolEnabled();
-  bool IsDevToolEnabledForDebuggableView();
   bool IsLogBoxEnabled();
   bool IsQuickjsCacheEnabled();
   bool IsDisableTracingGC();

@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		18A582DD5FD441F6CBB475FB /* Pods_LynxExplorer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */; };
 		2B06C8442D34FF7D008D40DD /* LynxExplorerInput.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B06C8432D34FF7D008D40DD /* LynxExplorerInput.m */; };
 		2B2AA43D2CA14AC200DB0C3E /* TasmDispatcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B2AA43C2CA14AC200DB0C3E /* TasmDispatcher.m */; };
 		2B382D772D17B86300C67770 /* LynxInitProcessor.m in Sources */ = {isa = PBXBuildFile; fileRef = 2B382D762D17B86300C67770 /* LynxInitProcessor.m */; };
@@ -29,7 +28,8 @@
 		2B948FBA2C2DA16A00535C96 /* Resource in Resources */ = {isa = PBXBuildFile; fileRef = 2B948FB92C2DA16A00535C96 /* Resource */; };
 		2BB78AD32D1D18FA00060E1C /* LynxSettingManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 2BB78AD22D1D18FA00060E1C /* LynxSettingManager.m */; };
 		2BEA8AEA2E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.m in Sources */ = {isa = PBXBuildFile; fileRef = 2BEA8AE92E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.m */; };
-		A23CCB95FBE20D42B3997A39 /* libPods-LynxExplorerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */; };
+		3C1716A69B901BE5AF95539F /* Pods_LynxExplorer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6BED900D37D8CFD1708EBC6 /* Pods_LynxExplorer.framework */; };
+		64AD22F36DB16D6B5F292E3D /* libPods-LynxExplorerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7384C4E252E8DD57186959D3 /* libPods-LynxExplorerTests.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,8 +43,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LynxExplorerTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		1947794F0D6535DEB6832F46 /* Pods-LynxExplorerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorerTests.release.xcconfig"; path = "Target Support Files/Pods-LynxExplorerTests/Pods-LynxExplorerTests.release.xcconfig"; sourceTree = "<group>"; };
+		09FBF9430A4A4FECCD76B1BD /* Pods-LynxExplorer.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.release.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.release.xcconfig"; sourceTree = "<group>"; };
 		2B06C8422D34FF7D008D40DD /* LynxExplorerInput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LynxExplorerInput.h; sourceTree = "<group>"; };
 		2B06C8432D34FF7D008D40DD /* LynxExplorerInput.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LynxExplorerInput.m; sourceTree = "<group>"; };
 		2B2AA43B2CA14AC200DB0C3E /* TasmDispatcher.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TasmDispatcher.h; sourceTree = "<group>"; };
@@ -83,10 +82,11 @@
 		2BB78AD22D1D18FA00060E1C /* LynxSettingManager.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = LynxSettingManager.m; sourceTree = "<group>"; };
 		2BEA8AE82E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LynxRecorderDefaultActionCallback.h; sourceTree = "<group>"; };
 		2BEA8AE92E0002C9001BCB2C /* LynxRecorderDefaultActionCallback.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LynxRecorderDefaultActionCallback.m; sourceTree = "<group>"; };
-		461E327EC254B23C9BB10F60 /* Pods-LynxExplorer.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.debug.xcconfig"; sourceTree = "<group>"; };
-		4CC9E3EB55E7D31B79118F01 /* Pods-LynxExplorerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorerTests.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorerTests/Pods-LynxExplorerTests.debug.xcconfig"; sourceTree = "<group>"; };
-		53A63837146418FF38D8D252 /* Pods-LynxExplorer.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.release.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.release.xcconfig"; sourceTree = "<group>"; };
-		EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LynxExplorer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		49785F63CFDFA5599DBB48E3 /* Pods-LynxExplorerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorerTests.release.xcconfig"; path = "Target Support Files/Pods-LynxExplorerTests/Pods-LynxExplorerTests.release.xcconfig"; sourceTree = "<group>"; };
+		7384C4E252E8DD57186959D3 /* libPods-LynxExplorerTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-LynxExplorerTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8718BC732CA05213327935FD /* Pods-LynxExplorer.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorer.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer.debug.xcconfig"; sourceTree = "<group>"; };
+		A6BED900D37D8CFD1708EBC6 /* Pods_LynxExplorer.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_LynxExplorer.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		B9CEC88FED7CC489F0AB4061 /* Pods-LynxExplorerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-LynxExplorerTests.debug.xcconfig"; path = "Target Support Files/Pods-LynxExplorerTests/Pods-LynxExplorerTests.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,7 +94,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A23CCB95FBE20D42B3997A39 /* libPods-LynxExplorerTests.a in Frameworks */,
+				64AD22F36DB16D6B5F292E3D /* libPods-LynxExplorerTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,7 +103,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2B45A78F2E12870D00EA5D14 /* AVFoundation.framework in Frameworks */,
-				18A582DD5FD441F6CBB475FB /* Pods_LynxExplorer.framework in Frameworks */,
+				3C1716A69B901BE5AF95539F /* Pods_LynxExplorer.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -113,10 +113,10 @@
 		00E4BAD064BBA6BEF5495D94 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				461E327EC254B23C9BB10F60 /* Pods-LynxExplorer.debug.xcconfig */,
-				53A63837146418FF38D8D252 /* Pods-LynxExplorer.release.xcconfig */,
-				4CC9E3EB55E7D31B79118F01 /* Pods-LynxExplorerTests.debug.xcconfig */,
-				1947794F0D6535DEB6832F46 /* Pods-LynxExplorerTests.release.xcconfig */,
+				8718BC732CA05213327935FD /* Pods-LynxExplorer.debug.xcconfig */,
+				09FBF9430A4A4FECCD76B1BD /* Pods-LynxExplorer.release.xcconfig */,
+				B9CEC88FED7CC489F0AB4061 /* Pods-LynxExplorerTests.debug.xcconfig */,
+				49785F63CFDFA5599DBB48E3 /* Pods-LynxExplorerTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -250,8 +250,8 @@
 			isa = PBXGroup;
 			children = (
 				2B45A78E2E12870D00EA5D14 /* AVFoundation.framework */,
-				EC5EF18233EB06BDEB0D28F9 /* Pods_LynxExplorer.framework */,
-				011C744AFEFCED61B507153A /* libPods-LynxExplorerTests.a */,
+				A6BED900D37D8CFD1708EBC6 /* Pods_LynxExplorer.framework */,
+				7384C4E252E8DD57186959D3 /* libPods-LynxExplorerTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -263,7 +263,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2B736B912D096F8A000A35F6 /* Build configuration list for PBXNativeTarget "LynxExplorerTests" */;
 			buildPhases = (
-				0B19A8A38ECA9E7A55B75325 /* [CP] Check Pods Manifest.lock */,
+				EAB7496BD9045164BB19BF96 /* [CP] Check Pods Manifest.lock */,
 				2B736B852D096F8A000A35F6 /* Sources */,
 				2B736B862D096F8A000A35F6 /* Frameworks */,
 				2B736B872D096F8A000A35F6 /* Resources */,
@@ -282,11 +282,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2B948FB62C2D9FDC00535C96 /* Build configuration list for PBXNativeTarget "LynxExplorer" */;
 			buildPhases = (
-				707EF32CE13AB7F8E4C4E4FD /* [CP] Check Pods Manifest.lock */,
+				84FE45D52D9A5A96B52CD50D /* [CP] Check Pods Manifest.lock */,
 				2B948F992C2D9FD900535C96 /* Sources */,
 				2B948F9A2C2D9FD900535C96 /* Frameworks */,
 				2B948F9B2C2D9FD900535C96 /* Resources */,
-				2C2C91A7A96FE3505F11051A /* [CP] Copy Pods Resources */,
+				73DA73A22EC37E9459E6095B /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -356,29 +356,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		0B19A8A38ECA9E7A55B75325 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-LynxExplorerTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		2C2C91A7A96FE3505F11051A /* [CP] Copy Pods Resources */ = {
+		73DA73A22EC37E9459E6095B /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -399,7 +377,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-LynxExplorer/Pods-LynxExplorer-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		707EF32CE13AB7F8E4C4E4FD /* [CP] Check Pods Manifest.lock */ = {
+		84FE45D52D9A5A96B52CD50D /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -415,6 +393,28 @@
 			);
 			outputPaths = (
 				"$(DERIVED_FILE_DIR)/Pods-LynxExplorer-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		EAB7496BD9045164BB19BF96 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-LynxExplorerTests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -486,7 +486,7 @@
 /* Begin XCBuildConfiguration section */
 		2B736B8F2D096F8A000A35F6 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4CC9E3EB55E7D31B79118F01 /* Pods-LynxExplorerTests.debug.xcconfig */;
+			baseConfigurationReference = B9CEC88FED7CC489F0AB4061 /* Pods-LynxExplorerTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
@@ -511,7 +511,7 @@
 		};
 		2B736B902D096F8A000A35F6 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1947794F0D6535DEB6832F46 /* Pods-LynxExplorerTests.release.xcconfig */;
+			baseConfigurationReference = 49785F63CFDFA5599DBB48E3 /* Pods-LynxExplorerTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++17";
@@ -652,7 +652,7 @@
 		};
 		2B948FB72C2D9FDC00535C96 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 461E327EC254B23C9BB10F60 /* Pods-LynxExplorer.debug.xcconfig */;
+			baseConfigurationReference = 8718BC732CA05213327935FD /* Pods-LynxExplorer.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -661,7 +661,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4J3M24M8P4;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LynxExplorer/Info.plist;
@@ -686,7 +686,7 @@
 		};
 		2B948FB82C2D9FDC00535C96 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 53A63837146418FF38D8D252 /* Pods-LynxExplorer.release.xcconfig */;
+			baseConfigurationReference = 09FBF9430A4A4FECCD76B1BD /* Pods-LynxExplorer.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -695,7 +695,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 4J3M24M8P4;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LynxExplorer/Info.plist;

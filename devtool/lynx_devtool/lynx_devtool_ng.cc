@@ -52,13 +52,6 @@ LynxDevToolNG::LynxDevToolNG()
     if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
         lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
       RegisterGlobalDomainAgents(global_dispatcher);
-    } else if (lynx::tasm::LynxEnv::GetInstance()
-                   .IsDevToolEnabledForDebuggableView()) {
-      std::unordered_set<std::string> activated_domains =
-          lynx::tasm::LynxEnv::GetInstance().GetActivatedCDPDomains();
-      for (const auto& domain : activated_domains) {
-        RegisterGlobalDomainAgents(global_dispatcher, domain);
-      }
     }
 
     global_dispatcher.RegisterMessageHandler(
@@ -73,13 +66,6 @@ LynxDevToolNG::LynxDevToolNG()
   if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
       lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
     RegisterInstanceDomainAgents();
-  } else if (lynx::tasm::LynxEnv::GetInstance()
-                 .IsDevToolEnabledForDebuggableView()) {
-    std::unordered_set<std::string> activated_domains =
-        lynx::tasm::LynxEnv::GetInstance().GetActivatedCDPDomains();
-    for (const auto& domain : activated_domains) {
-      RegisterInstanceDomainAgents(domain);
-    }
   }
 }
 
