@@ -4,6 +4,8 @@
 
 #include "base/platform/windows/lynx_base_env.h"
 
+#include "base/include/log/logging_base.h"
+
 namespace lynx {
 namespace base {
 
@@ -13,7 +15,7 @@ LynxBaseEnv* LynxBaseEnv::Instance() {
 }
 
 void LynxBaseEnv::Init(bool is_print_log_to_all_channel) {
-  // TODO(yongjie): do something here.
+  lynx::InitLynxBaseLog(is_print_log_to_all_channel);
 }
 }  // namespace base
 }  // namespace lynx

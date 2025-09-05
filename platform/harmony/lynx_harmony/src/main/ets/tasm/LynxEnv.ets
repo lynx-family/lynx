@@ -32,7 +32,7 @@ class LynxEnvironment {
     if (this.initialized) {
       return;
     }
-    LLog.initLynxLog();
+    LLog.initLynxLog(this.isLynxDebugEnabled());
     if (!this.performanceEnable) {
       this.setTracingDirPath(context.filesDir);
     }

@@ -8,7 +8,7 @@ shared_library("lynx_base") {
   sources = [ "src/cpp/entry.cc" ]
   output_name = "lynxbase"
 
-  deps = [ "../../src/:base" ]
+  deps = [ "../../src/:base_group" ]
   cflags = []
   libs = [
     "ace_napi.z",

@@ -47,9 +47,12 @@ podspec_target("lynx_base_podspec") {
 }
 
 base_darwin_public_headers = [
+  # TODO(yongjie): enable log/LynxLog.h when lynx base standalone.
+  # "log/LynxLog.h",
   "service/LynxBaseService.h",
   "service/LynxBaseServiceLogProtocol.h",
   "service/LynxBaseServiceProtocol.h",
+  "LynxBaseDefines.h",
   "service/LynxBaseServiceTraceProtocol.h",
   "LynxBaseEnv.h",
 ]
@@ -106,12 +109,19 @@ subspec_target("Framework") {
   ]
   frameworks = []
   libraries = [ "stdc++" ]
+  sources = [
+    # TODO(yongjie): remove logging_darwin.mm when lynx depends on LynxBase.
+    "../../src/log/logging_darwin.mm",
+  ]
 }
 
 lynx_base_source_set("base") {
   public = base_darwin_public_headers
   sources = base_darwin_public_headers + [
               "LynxBaseEnv.mm",
+
+              # TODO(yongjie): enable log/LynxLog.mm when lynx base standalone.
+              # "log/LynxLog.mm",
               "service/LynxBaseService.m",
             ]
 }

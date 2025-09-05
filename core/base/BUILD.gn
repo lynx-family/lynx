@@ -41,8 +41,9 @@ if (is_android) {
     "android/java_value.h",
     "android/jni_helper.cc",
     "android/jni_helper.h",
+
+    # TODO(yongjie): move to logging_android.cc when lynx depends on LynxBase.
     "android/logging_android.cc",
-    "android/logging_android.h",
     "android/lynx_android_blur.cc",
     "android/lynx_error_android.cc",
     "android/lynx_error_android.h",
@@ -66,8 +67,6 @@ if (is_android) {
     "harmony/harmony_napi_env_holder.cc",
     "harmony/harmony_napi_env_holder.h",
     "harmony/harmony_trace_event_def.h",
-    "harmony/logging_harmony.cc",
-    "harmony/logging_harmony.h",
     "harmony/napi_convert_helper.cc",
     "harmony/napi_convert_helper.h",
     "harmony/props_constant.h",
@@ -78,7 +77,7 @@ if (is_android) {
 } else if (is_apple) {
   if (!enable_unittests && !is_oliver_node_lynx && !is_oliver_tasm) {
     base_shared_sources += [
-      "darwin/logging_darwin.h",
+      # TODO(yongjie): move to logging_darwin.mm when lynx depends on LynxBase.
       "darwin/logging_darwin.mm",
       "darwin/lynx_env_darwin.h",
       "darwin/lynx_env_darwin.mm",

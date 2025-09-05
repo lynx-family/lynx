@@ -5,6 +5,7 @@ package com.lynx.base;
 
 import android.util.Log;
 import com.lynx.base.IBaseNativeLibraryLoader;
+import com.lynx.base.log.LynxLog;
 
 public class LynxBaseEnv {
   private static LynxBaseEnv sInstance;
@@ -27,11 +28,12 @@ public class LynxBaseEnv {
     return mIsNativeLibraryLoaded;
   }
 
-  public boolean init(IBaseNativeLibraryLoader nativeLibraryLoader) {
+  public boolean init(
+      IBaseNativeLibraryLoader nativeLibraryLoader, boolean isPrintLogsToAllChannels) {
     if (!mIsNativeLibraryLoaded) {
       mIsNativeLibraryLoaded = loadNativeTraceLibrary(nativeLibraryLoader);
     }
-    // TODO(yongjie): do something here.
+    LynxLog.initLynxLog(isPrintLogsToAllChannels);
     return true;
   }
 

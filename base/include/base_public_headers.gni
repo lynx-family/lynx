@@ -15,6 +15,13 @@ base_log_public_headers_list = [
 if (!is_win) {
   base_log_public_headers_list += [ "debug/backtrace.h" ]
 }
+if (is_apple) {
+  base_log_public_headers_list += [ "log/logging_darwin.h" ]
+} else if (is_win) {
+  base_log_public_headers_list += [ "log/logging_base.h" ]
+} else if (is_linux) {
+  base_log_public_headers_list += [ "log/logging_base.h" ]
+}
 base_log_public_headers = rebase_path(base_log_public_headers_list)
 
 # base_log_public_headers end

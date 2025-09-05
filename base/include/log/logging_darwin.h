@@ -2,8 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_BASE_DARWIN_LOGGING_DARWIN_H_
-#define CORE_BASE_DARWIN_LOGGING_DARWIN_H_
+#ifndef BASE_INCLUDE_LOG_LOGGING_DARWIN_H_
+#define BASE_INCLUDE_LOG_LOGGING_DARWIN_H_
 
 #include "base/include/log/logging.h"
 
@@ -13,7 +13,7 @@ namespace logging {
 
 constexpr const char* kLynxLogLevels[] = {"V", "D", "I", "W", "E", "F"};
 
-void InitLynxLoggingNative(bool enable_devtools);
+void InitLynxLoggingNative(bool print_logs_to_all_channels);
 
 void SetLynxLogMinLevel(int min_level);
 
@@ -26,4 +26,4 @@ void PrintLogMessageByLogDelegate(LogMessage* msg, const char* tag);
 }  // namespace base
 }  // namespace lynx
 
-#endif  // CORE_BASE_DARWIN_LOGGING_DARWIN_H_
+#endif  // BASE_INCLUDE_LOG_LOGGING_DARWIN_H_
