@@ -72,8 +72,7 @@ typedef LynxInspectorOwner DevToolAgentDispatcher;
 }
 
 - (BOOL)enable:(NSURL *)url withOptions:(NSDictionary *)options {
-  if (!LynxEnv.sharedInstance.devtoolEnabled &&
-      !LynxEnv.sharedInstance.devtoolEnabledForDebuggableView) {
+  if (!LynxEnv.sharedInstance.devtoolEnabled) {
     [DevToolToast showToast:@"DevTool not enabled, turn on the switch!"];
     return NO;
   }

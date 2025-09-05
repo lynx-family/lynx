@@ -7,7 +7,6 @@ export class LynxEnvKey {
   static readonly KEY_LYNX_DEBUG_ENABLED: string = 'lynx_debug_enabled';
   static readonly KEY_DEVTOOL_COMPONENT_ATTACH: string = 'devtool_component_attach';
   static readonly SP_KEY_ENABLE_DEVTOOL: string = 'enable_devtool';
-  static readonly SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW: string = 'enable_devtool_for_debuggable_view';
   static readonly SP_KEY_ENABLE_LOGBOX: string = 'enable_logbox';
   /** @deprecated */
   static readonly SP_KEY_SHOW_DEVTOOL_BADGE: string = 'show_devtool_badge';

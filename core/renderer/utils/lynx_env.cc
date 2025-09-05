@@ -211,11 +211,6 @@ bool LynxEnv::IsDevToolEnabled() {
   return GetBoolEnv(Key::ENABLE_DEVTOOL, false, EnvType::LOCAL);
 }
 
-bool LynxEnv::IsDevToolEnabledForDebuggableView() {
-  return GetBoolEnv(Key::ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW, false,
-                    EnvType::LOCAL);
-}
-
 bool LynxEnv::IsLogBoxEnabled() {
   return IsDevToolComponentAttach() &&
          GetBoolEnv(Key::ENABLE_LOGBOX, true, EnvType::LOCAL);
@@ -251,7 +246,7 @@ bool LynxEnv::IsPiperMonitorEnabled() {
 }
 
 bool LynxEnv::IsDomTreeEnabled() {
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView()) &&
+  return IsDevToolEnabled() &&
          GetBoolEnv(Key::ENABLE_DOM_TREE, true, EnvType::LOCAL);
 }
 

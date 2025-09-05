@@ -9,17 +9,14 @@ namespace tasm {
 
 long LynxEnv::GetV8Enabled() {
 #if OS_ANDROID
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView())
-             ? GetLongEnv(Key::ENABLE_V8, 2, EnvType::LOCAL)
-             : 0;
+  return IsDevToolEnabled() ? GetLongEnv(Key::ENABLE_V8, 2, EnvType::LOCAL) : 0;
 #else
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView()) &&
-         GetLongEnv(Key::ENABLE_V8, 0, EnvType::LOCAL);
+  return IsDevToolEnabled() && GetLongEnv(Key::ENABLE_V8, 0, EnvType::LOCAL);
 #endif
 }
 
 bool LynxEnv::IsQuickjsDebugEnabled() {
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView()) &&
+  return IsDevToolEnabled() &&
          GetBoolEnv(Key::ENABLE_QUICKJS_DEBUG, true, EnvType::LOCAL);
 }
 

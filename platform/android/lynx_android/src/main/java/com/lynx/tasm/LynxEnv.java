@@ -806,17 +806,6 @@ public class LynxEnv {
     setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL, enableDevTool);
   }
 
-  // if true, user can debug lynx view which is debuggable
-  public boolean isDevtoolEnabledForDebuggableView() {
-    return getDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW, false);
-  }
-
-  public void enableDevtoolForDebuggableView(boolean enable) {
-    LLog.i(TAG,
-        enable ? "Turn on devtool for debuggable view" : "Turn off devtool for debuggable view");
-    setDevtoolEnv(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW, enable);
-  }
-
   /**
    * @Deprecated
    * Please use isLogBoxEnabled() instead.

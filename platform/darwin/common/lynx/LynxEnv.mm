@@ -196,14 +196,6 @@
   return [self getDevtoolEnv:SP_KEY_ENABLE_DEVTOOL withDefaultValue:NO];
 }
 
-- (void)setDevtoolEnabledForDebuggableView:(BOOL)enable {
-  [self setDevtoolEnv:enable forKey:SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW];
-}
-
-- (BOOL)devtoolEnabledForDebuggableView {
-  return [self getDevtoolEnv:SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW withDefaultValue:NO];
-}
-
 - (BOOL)getEnableRadonCompatible
     __attribute__((deprecated("Radon diff mode can't be close after lynx 2.3."))) {
   return true;

@@ -1247,7 +1247,6 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::lynxDebugEnabled lynxDebugEnabled;
   public BOOL LynxEnv::devtoolComponentAttach devtoolComponentAttach;
   public BOOL LynxEnv::devtoolEnabled devtoolEnabled;
-  public BOOL LynxEnv::devtoolEnabledForDebuggableView devtoolEnabledForDebuggableView;
   public BOOL LynxEnv::logBoxEnabled logBoxEnabled;
   public BOOL LynxEnv::highlightTouchEnabled highlightTouchEnabled;
   public BOOL LynxEnv::automationEnabled automationEnabled;
@@ -5737,7 +5736,6 @@ public enum LynxEnvKey {
   public NSString* const KEY_LYNX_DEBUG KEY_LYNX_DEBUG;
   public NSString* const KEY_DEVTOOL_COMPONENT_ATTACH KEY_DEVTOOL_COMPONENT_ATTACH;
   public NSString* const SP_KEY_ENABLE_DEVTOOL SP_KEY_ENABLE_DEVTOOL;
-  public NSString* const SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW;
   public NSString* const SP_KEY_ENABLE_LOGBOX SP_KEY_ENABLE_LOGBOX;
   public NSString* const SP_KEY_ENABLE_HIGHLIGHT_TOUCH SP_KEY_ENABLE_HIGHLIGHT_TOUCH;
   public NSString* const SP_KEY_ENABLE_LAUNCH_RECORD SP_KEY_ENABLE_LAUNCH_RECORD;

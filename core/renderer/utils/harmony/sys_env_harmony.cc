@@ -12,12 +12,11 @@ namespace lynx {
 namespace tasm {
 
 long LynxEnv::GetV8Enabled() {
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView()) &&
-         GetLongEnv(Key::ENABLE_V8, 0, EnvType::LOCAL);
+  return IsDevToolEnabled() && GetLongEnv(Key::ENABLE_V8, 0, EnvType::LOCAL);
 }
 
 bool LynxEnv::IsQuickjsDebugEnabled() {
-  return (IsDevToolEnabled() || IsDevToolEnabledForDebuggableView()) &&
+  return IsDevToolEnabled() &&
          GetBoolEnv(Key::ENABLE_QUICKJS_DEBUG, true, EnvType::LOCAL);
 }
 

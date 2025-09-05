@@ -135,8 +135,6 @@ public class LynxDevtoolEnv {
             new ArrayList<Object>(Arrays.asList(true, true, true)));
         put(LynxEnvKey.SP_KEY_ENABLE_LONG_PRESS_MENU,
             new ArrayList<Object>(Arrays.asList(true, false, true)));
-        put(LynxEnvKey.SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW,
-            new ArrayList<Object>(Arrays.asList(false, true, false)));
         put(LynxEnvKey.SP_KEY_DEVTOOL_CONNECTED,
             new ArrayList<Object>(Arrays.asList(false, true, false)));
         put(LynxEnvKey.SP_KEY_ENABLE_PREVIEW_SCREEN_SHOT,

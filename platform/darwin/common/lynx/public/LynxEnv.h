@@ -44,7 +44,6 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @property(nonatomic, readonly) BOOL devtoolComponentAttach;
 @property(nonatomic, readwrite) BOOL devtoolEnabled;
-@property(nonatomic, readwrite) BOOL devtoolEnabledForDebuggableView;
 @property(nonatomic, readwrite) BOOL redBoxEnabled
     __attribute__((deprecated("Please use logBoxEnabled to instead")));
 @property(nonatomic, readwrite) BOOL logBoxEnabled;

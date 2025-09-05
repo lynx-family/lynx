@@ -13,8 +13,6 @@ static NSString *const SP_KEY_ENABLE_AUTOMATION = @"enable_automation";
 static NSString *const KEY_LYNX_DEBUG = @"enable_lynx_debug";
 static NSString *const KEY_DEVTOOL_COMPONENT_ATTACH = @"devtool_component_attach";
 static NSString *const SP_KEY_ENABLE_DEVTOOL = @"enable_devtool";
-static NSString *const SP_KEY_ENABLE_DEVTOOL_FOR_DEBUGGABLE_VIEW =
-    @"enable_devtool_for_debuggable_view";
 static NSString *const SP_KEY_ENABLE_LOGBOX = @"enable_logbox";
 static NSString *const SP_KEY_ENABLE_HIGHLIGHT_TOUCH = @"enable_highlight_touch";
 static NSString *const SP_KEY_ENABLE_LAUNCH_RECORD = @"enable_launch_record";
