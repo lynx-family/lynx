@@ -29,6 +29,8 @@ void Animation::Play() {
   if (state_ == State::kPlay) {
     return;
   }
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_PLAY);
+  LOGI("Lynx Animation start, name is: " << name_.str());
   // Since `DoFrame` may reads and modifies state_, the change of state_ must be
   // completed before DoFrame is executed.
   State temp_state = state_;
@@ -61,13 +63,18 @@ void Animation::Play() {
 }
 
 void Animation::Pause() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_PAUSE);
+  LOGI("Lynx Animation pause, name is: " << name_.str());
   if (state_ == State::kPause) {
     return;
   }
   state_ = State::kPause;
 }
 
-void Animation::Stop() { state_ = State::kStop; }
+void Animation::Stop() {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_STOP);
+  state_ = State::kStop;
+}
 
 void Animation::Destroy(bool need_clear_effect) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ANIMATION_DESTORY);
@@ -77,7 +84,7 @@ void Animation::Destroy(bool need_clear_effect) {
   }
   if (state_ == State::kPlay || state_ == State::kPause) {
     SendCancelEvent();
-    LOGI("Animation cancel, name is: " << name_.str());
+    LOGI("Lynx Animation cancel, name is: " << name_.str());
   }
   state_ = State::kStop;
   if (animation_delegate_) {

@@ -94,11 +94,11 @@ void KeyframeEffect::TickKeyframeModel(fml::TimePoint monotonic_time) {
   if (animation_) {
     if (should_send_start_event) {
       animation_->SendStartEvent();
-      LOGI("Animation start, name is: " << animation_->name().str());
+      LOGI("Lynx Animation play, name is: " << animation_->name().str());
     }
     if (should_send_end_event) {
       animation_->SendEndEvent();
-      LOGI("Animation end, name is: " << animation_->name().str());
+      LOGI("Lynx Animation end, name is: " << animation_->name().str());
     }
   }
 }

@@ -6,7 +6,14 @@
 #define CORE_ANIMATION_ANIMATION_TRACE_EVENT_DEF_H_
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
+static constexpr const char* const ANIMATION_PLAY = "Animation::Play";
+
+static constexpr const char* const ANIMATION_PAUSE = "Animation::Pause";
+
+static constexpr const char* const ANIMATION_STOP = "Animation::Stop";
+
 static constexpr const char* const ANIMATION_DESTORY = "Animation::Destroy";
+
 static constexpr const char* const ANIMATION_REQUEST_NEXT_FRAME =
     "Animation::RequestNextFrame";
 static constexpr const char* const ANIMATION_DOFRAME = "Animation::DoFrame";
