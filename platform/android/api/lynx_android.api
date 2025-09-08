@@ -2126,7 +2126,7 @@ public interface com::lynx::tasm::base::ILogDelegate {
 
 public interface com::lynx::tasm::service::ILynxDevToolService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxDevToolService.getServiceClass();
-  public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view);
+  public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   public ILynxLogBox com.lynx.tasm.service.ILynxDevToolService.createLogBox(@NonNull LynxDevtool devtool);
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolSetModuleClass();
   public Class<? extends com.lynx.jsbridge.LynxModule > com.lynx.tasm.service.ILynxDevToolService.getDevToolWebSocketModuleClass();

@@ -14,8 +14,8 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/LynxDevToolNGDelegate_jni.h"
 #include "platform/android/lynx_devtool/src/main/jni/gen/LynxDevToolNGDelegate_register_jni.h"
 
-jlong CreateLynxDevToolNG(JNIEnv* env, jobject jcaller) {
-  auto* ptr = new lynx::devtool::LynxDevToolNG();
+jlong CreateLynxDevToolNG(JNIEnv* env, jobject jcaller, jboolean debuggable) {
+  auto* ptr = new lynx::devtool::LynxDevToolNG(static_cast<bool>(debuggable));
   auto sp_ptr = new std::shared_ptr<lynx::devtool::LynxDevToolNG>(ptr);
   return reinterpret_cast<jlong>(sp_ptr);
 }

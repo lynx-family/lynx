@@ -42,8 +42,9 @@ static constexpr char kTypeSetStopAtEntry[] = "SetStopAtEntry";
 static constexpr char kTypeGetFetchDebugInfo[] = "GetFetchDebugInfo";
 static constexpr char kTypeSetFetchDebugInfo[] = "SetFetchDebugInfo";
 
-LynxDevToolNG::LynxDevToolNG()
-    : devtool_mediator_(std::make_shared<LynxDevToolMediator>()) {
+LynxDevToolNG::LynxDevToolNG(bool debuggable)
+    : devtool_mediator_(std::make_shared<LynxDevToolMediator>()),
+      debuggable_(debuggable) {
   static std::once_flag flag;
   std::call_once(flag, [] {
     auto& global_dispatcher =
@@ -66,6 +67,12 @@ LynxDevToolNG::LynxDevToolNG()
   if (lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
       lynx::tasm::LynxEnv::GetInstance().IsDebugModeEnabled()) {
     RegisterInstanceDomainAgents();
+  } else if (debuggable) {
+    std::unordered_set<std::string> activated_domains =
+        lynx::tasm::LynxEnv::GetInstance().GetActivatedCDPDomains();
+    for (const auto& domain : activated_domains) {
+      RegisterInstanceDomainAgents(domain);
+    }
   }
 }
 

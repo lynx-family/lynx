@@ -72,11 +72,11 @@ class DevToolMessageHandlerIos : public DevToolMessageHandler {
   std::shared_ptr<lynx::devtool::LynxDevToolNG> devtool_ng_;
 }
 
-- (instancetype)init {
+- (instancetype)initWithDebuggable:(BOOL)debuggable {
   self = [super init];
   if (self) {
     session_id_ = 0;
-    devtool_ng_ = std::make_shared<lynx::devtool::LynxDevToolNG>();
+    devtool_ng_ = std::make_shared<lynx::devtool::LynxDevToolNG>(static_cast<bool>(debuggable));
   }
   return self;
 }

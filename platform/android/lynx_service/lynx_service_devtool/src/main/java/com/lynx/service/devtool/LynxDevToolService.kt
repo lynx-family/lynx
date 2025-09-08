@@ -42,9 +42,9 @@ class LynxDevToolService : ILynxDevToolService {
     }
 
 
-    override fun createInspectorOwner(view: LynxView?): LynxBaseInspectorOwnerNG? {
+    override fun createInspectorOwner(view: LynxView?, debuggable: Boolean): LynxBaseInspectorOwnerNG? {
         try {
-            return LynxInspectorOwner(view)
+            return LynxInspectorOwner(view, debuggable)
         } catch (e: ClassNotFoundException) {
             LLog.e(TAG, "createInspectorOwner failed, ${e.message}")
             return null

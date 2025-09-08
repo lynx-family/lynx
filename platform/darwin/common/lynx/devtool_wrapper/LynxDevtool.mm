@@ -31,19 +31,21 @@
 
   LynxPageReloadHelper *_reloader;
   id<LynxViewStateListener> _lynxViewStateListener;
+  BOOL _debuggable;
 }
 
 - (nonnull instancetype)initWithLynxView:(LynxView *)view debuggable:(BOOL)debuggable {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, DEVTOOL_INIT_WITH_LYNX_VIEW);
   _lynxView = view;
+  _debuggable = debuggable;
 
   if (LynxEnv.sharedInstance.lynxDebugEnabled) {
     id<LynxServiceDevToolProtocol> devtoolService = LynxService(LynxServiceDevToolProtocol);
     if (!devtoolService) {
       _LogW(@"LynxServiceDevToolProtocol instance not found");
     }
-    if (LynxEnv.sharedInstance.devtoolEnabled && devtoolService) {
-      _owner = [devtoolService createInspectorOwnerWithLynxView:view];
+    if ((LynxEnv.sharedInstance.devtoolEnabled || debuggable) && devtoolService) {
+      _owner = [devtoolService createInspectorOwnerWithLynxView:view debuggable:debuggable];
     } else {
       _owner = nil;
     }

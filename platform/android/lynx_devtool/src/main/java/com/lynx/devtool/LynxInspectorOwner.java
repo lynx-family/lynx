@@ -87,12 +87,12 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
   private TemplateData cachedGlobalProps = null;
   private TemplateData cachedTemplateData = TemplateData.fromMap(new HashMap<>());
 
-  public LynxInspectorOwner() {
-    init();
+  public LynxInspectorOwner(boolean debuggable) {
+    init(debuggable);
   }
 
-  public LynxInspectorOwner(LynxView lynxView) {
-    init();
+  public LynxInspectorOwner(LynxView lynxView, boolean debuggable) {
+    init(debuggable);
 
     // Base Data
     mLynxView = new WeakReference<>(lynxView);
@@ -131,11 +131,11 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
     }
   }
 
-  public void init() {
+  public void init(boolean debuggable) {
     if (!LynxEnv.inst().isDevLibraryLoaded()) {
       LynxDevtoolEnv.inst().loadNativeDevtoolLibrary();
     }
-    mLynxDevToolNG = new LynxDevToolNGDelegate();
+    mLynxDevToolNG = new LynxDevToolNGDelegate(debuggable);
   }
 
   public void attachLynxUIOwnerToAgent(LynxUIOwner uiOwner) {

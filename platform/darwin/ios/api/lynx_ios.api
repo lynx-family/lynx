@@ -3012,7 +3012,7 @@ public protocol LynxServiceContainerProtocol-p : <NSObject> {
 }
 
 public protocol LynxServiceDevToolProtocol-p : <LynxServiceProtocol> {
-  public id< LynxBaseInspectorOwner > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:(LynxView *lynxView);
+  public id< LynxBaseInspectorOwner > LynxServiceDevToolProtocol-p::createInspectorOwnerWithLynxView:debuggable:(LynxView *lynxView,[debuggable] BOOL debuggable);
   public id< LynxLogBoxProtocol > LynxServiceDevToolProtocol-p::createLogBoxWithLynxView:(LynxView *lynxView);
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolSetModuleClass();
   public Class< LynxContextModule > LynxServiceDevToolProtocol-p::devtoolWebSocketModuleClass();

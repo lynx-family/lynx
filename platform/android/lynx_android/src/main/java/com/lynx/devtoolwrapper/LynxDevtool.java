@@ -49,6 +49,7 @@ public class LynxDevtool {
   private WeakReference<LynxView> mView = null;
   private WeakReference<LynxTemplateRender> mRender = null;
   private ILynxViewStateListener mStateListener;
+  private boolean mDebuggable = false;
 
   public LynxDevtool(LynxView view, LynxTemplateRender render, boolean debuggable) {
     init(view, render, debuggable, render.getLynxContext().getContext());
@@ -66,6 +67,7 @@ public class LynxDevtool {
 
       mView = new WeakReference<>(view);
       mRender = new WeakReference<>(render);
+      mDebuggable = debuggable;
       if (LynxEnv.inst().isLynxDebugEnabled()) {
         LLog.i(TAG,
             "devtoolEnabled:" + LynxEnv.inst().isDevtoolEnabled() + ", logBoxEnabled:"
@@ -73,8 +75,8 @@ public class LynxDevtool {
 
         sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
 
-        if (LynxEnv.inst().isDevtoolEnabled() && sDevToolService != null) {
-          mOwner = sDevToolService.createInspectorOwner(view);
+        if ((LynxEnv.inst().isDevtoolEnabled() || debuggable) && sDevToolService != null) {
+          mOwner = sDevToolService.createInspectorOwner(view, debuggable);
           if (mOwner != null) {
             LLog.i(TAG, "owner init");
           }

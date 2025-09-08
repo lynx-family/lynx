@@ -28,7 +28,7 @@ public interface ILynxDevToolService extends IServiceProvider {
   default Class<? extends IServiceProvider> getServiceClass() {
     return ILynxDevToolService.class;
   }
-  LynxBaseInspectorOwnerNG createInspectorOwner(@Nullable LynxView view);
+  LynxBaseInspectorOwnerNG createInspectorOwner(@Nullable LynxView view, boolean debuggable);
   ILynxLogBox createLogBox(@NonNull LynxDevtool devtool);
   Class<? extends com.lynx.jsbridge.LynxModule> getDevToolSetModuleClass();
   Class<? extends com.lynx.jsbridge.LynxModule> getDevToolWebSocketModuleClass();

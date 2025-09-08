@@ -18,7 +18,7 @@ namespace devtool {
 class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
                       public std::enable_shared_from_this<LynxDevToolNG> {
  public:
-  LynxDevToolNG();
+  explicit LynxDevToolNG(bool debuggable);
   ~LynxDevToolNG() override;
 
   int32_t Attach(const std::string& url) override;
@@ -45,6 +45,7 @@ class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
   std::shared_ptr<LynxDevToolMediator> devtool_mediator_;
   int32_t session_id_ = -1;
   int32_t instance_id_ = -1;
+  bool debuggable_ = false;
 
  private:
   void UpdateSessionInfo();
