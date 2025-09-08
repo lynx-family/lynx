@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include "base/include/flex_optional.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "core/base/lynx_export.h"
@@ -49,6 +50,13 @@ enum class CSSFunctionType : uint8_t {
   DEFAULT = 0,
   REPEAT = 1,
   MINMAX = 2,
+};
+
+struct VarReference {
+  std::string_view name;
+  size_t start;
+  size_t end;
+  base::flex_optional<std::string_view> fallback;
 };
 
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
@@ -192,6 +200,12 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     type_ = CSSValueType::DEFAULT;
   }
 
+  void SetVarReferences(
+      std::unique_ptr<base::InlineVector<VarReference, 1>> var_references) {
+    var_references_ = std::move(var_references);
+    type_ = CSSValueType::VARIABLE;
+  }
+
   bool IsVariable() const { return type_ == CSSValueType::VARIABLE; }
   bool IsString() const { return pattern_ == CSSValuePattern::STRING; }
   bool IsNumber() const { return pattern_ == CSSValuePattern::NUMBER; }
@@ -233,6 +247,7 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
   mutable lepus::Value value_;
   mutable base::String default_value_;
   mutable std::unique_ptr<lepus::Value> default_value_map_opt_;
+  mutable std::unique_ptr<base::InlineVector<VarReference, 1>> var_references_;
   mutable CSSValuePattern pattern_;
   mutable CSSValueType type_;
 };

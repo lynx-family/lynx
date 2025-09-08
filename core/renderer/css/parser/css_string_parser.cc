@@ -12,7 +12,9 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include "base/include/float_comparison.h"
 #include "base/include/string/string_number_convert.h"
@@ -2938,6 +2940,64 @@ CSSValue CSSStringParser::ParseGrayscale() {
 
 bool CSSStringParser::ConsumeGrayscale(Token &token) {
   return NumberOrPercentValue(token);
+}
+
+bool CSSStringParser::ParseVarReference(VarReference &ref) {
+  // Parse variable name - should be the first argument
+  Advance();
+  SkipWhitespaceToken();
+  if (current_token_.IsIdent()) {
+    ref.name = std::string_view(current_token_.start, current_token_.length);
+    Advance();
+  } else {
+    return false;  // Invalid variable name
+  }
+  // Check for fallback value after comma
+  if (Consume(TokenType::COMMA)) {
+    // Collect everything until the closing parenthesis as fallback
+    const char *fallback_start = current_token_.start;
+    while (!Check(TokenType::TOKEN_EOF)) {
+      Advance();
+    }
+    ref.fallback = std::string_view(
+        fallback_start,
+        (current_token_.start + current_token_.length) - fallback_start);
+  }
+  return Check(TokenType::TOKEN_EOF);
+}
+
+CSSValue CSSStringParser::ParseVariable() {
+  Advance();
+
+  // Create a CSSValue to store the result
+  CSSValue result(
+      lepus::Value(base::String(scanner_.content(), scanner_.Length())));
+  result.SetType(CSSValueType::VARIABLE);
+
+  auto references = std::make_unique<base::InlineVector<VarReference, 1>>();
+  Token token;
+
+  while (!Check(TokenType::TOKEN_EOF)) {
+    // Look for var() function calls
+    if (ConsumeAndSave(TokenType::VAR, token)) {
+      VarReference ref;
+      // Record the position of 'var(' in the original string
+      ref.start = token.start - scanner_.content() - /*var(*/ 4;
+      ref.end = ref.start + token.length + /*var()*/ 5;
+      CSSStringParser args_parser_{token.start, token.length,
+                                   this->parser_configs_};
+
+      if (args_parser_.ParseVarReference(ref)) {
+        // Add reference to the vector
+        references->push_back(std::move(ref));
+      }
+    }
+    Advance();
+  }
+
+  result.SetVarReferences(std::move(references));
+
+  return result;
 }
 
 CSSValue CSSStringParser::ParseBlur() {
