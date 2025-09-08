@@ -47,6 +47,7 @@ dependencies {
     implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxAndroid')
+    compileOnly project(':LynxBase')
     compileOnly project(':LynxDevtool')
     compileOnly "com.google.auto.service:auto-service:1.0-rc5"
     kapt "com.google.auto.service:auto-service:1.0-rc5"

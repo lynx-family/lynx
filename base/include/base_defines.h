@@ -16,4 +16,14 @@
 #define BASE_NEVER_INLINE __attribute__((noinline))
 #endif
 
+#ifdef __cplusplus
+#define BASE_EXTERN_C extern "C"
+#define BASE_EXTERN_C_BEGIN BASE_EXTERN_C {
+#define BASE_EXTERN_C_END }
+#else
+#define BASE_EXTERN_C
+#define BASE_EXTERN_C_BEGIN
+#define BASE_EXTERN_C_END
+#endif
+
 #endif  // BASE_INCLUDE_BASE_DEFINES_H_

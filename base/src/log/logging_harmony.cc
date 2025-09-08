@@ -4,7 +4,7 @@
 
 #include "base/src/log/logging_harmony.h"
 
-// #include <hilog/log.h>
+#include <hilog/log.h>
 
 #include <memory>
 #include <string>
@@ -21,30 +21,29 @@ static alog_write_func_ptr s_alog_write = nullptr;
 
 alog_write_func_ptr GetLynxLogWriteFunction() { return s_alog_write; }
 
-// const unsigned int LOG_PRINT_DOMAIN = 0xFF00;
+const unsigned int LOG_PRINT_DOMAIN = 0xFF00;
 void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
-  // TODO(yongjie): enable this when lynx base standalone.
-  // LogLevel priority = LogLevel::LOG_DEBUG;
-  // switch (msg->severity()) {
-  //   case logging::LOG_VERBOSE:
-  //   case logging::LOG_DEBUG:
-  //     priority = LogLevel::LOG_DEBUG;
-  //     break;
-  //   case logging::LOG_INFO:
-  //     priority = LogLevel::LOG_INFO;
-  //     break;
-  //   case logging::LOG_WARNING:
-  //     priority = LogLevel::LOG_WARN;
-  //     break;
-  //   case logging::LOG_ERROR:
-  //     priority = LogLevel::LOG_ERROR;
-  //     break;
-  //   case logging::LOG_FATAL:
-  //     priority = LogLevel::LOG_FATAL;
-  //     break;
-  // }
-  // OH_LOG_Print(LOG_APP, priority, LOG_PRINT_DOMAIN, tag, "%{public}s",
-  //              msg->stream().c_str());
+  LogLevel priority = LogLevel::LOG_DEBUG;
+  switch (msg->severity()) {
+    case logging::LOG_VERBOSE:
+    case logging::LOG_DEBUG:
+      priority = LogLevel::LOG_DEBUG;
+      break;
+    case logging::LOG_INFO:
+      priority = LogLevel::LOG_INFO;
+      break;
+    case logging::LOG_WARNING:
+      priority = LogLevel::LOG_WARN;
+      break;
+    case logging::LOG_ERROR:
+      priority = LogLevel::LOG_ERROR;
+      break;
+    case logging::LOG_FATAL:
+      priority = LogLevel::LOG_FATAL;
+      break;
+  }
+  OH_LOG_Print(LOG_APP, priority, LOG_PRINT_DOMAIN, tag, "%{public}s",
+               msg->stream().c_str());
 }
 
 }  // namespace

@@ -42,7 +42,6 @@ unittest_set("pipeline_test_testset") {
   deps = [
     ":pipeline",
     "../:tasm",
-    "../../../base/src:base_log",
     "../../public",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:dom",

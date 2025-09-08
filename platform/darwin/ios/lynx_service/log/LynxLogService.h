@@ -4,10 +4,11 @@
 
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceLogProtocol.h>
+#import <LynxBase/LynxBaseServiceLogProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxLogService : NSObject <LynxServiceLogProtocol>
+@interface LynxLogService : NSObject <LynxServiceLogProtocol, LynxBaseServiceLogProtocol>
 
 @end
 

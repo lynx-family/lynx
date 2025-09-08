@@ -15,7 +15,6 @@ source_set("v8_debug") {
   sources = v8_debug_source
   deps = [
     "../:inspector_const",
-    "../../../base/src:base",
     "../../../base/src:base_log_headers",
     "../../fundamentals/js_inspect:js_inspect_interface",
   ]

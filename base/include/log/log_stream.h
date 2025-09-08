@@ -158,7 +158,7 @@ class BASE_EXPORT LogStream {
 
   LogStream& operator<<(const char&);
 
-  BASE_EXPORT LogStream& operator<<(const char*);
+  LogStream& operator<<(const char*);
   LogStream& operator<<(const unsigned char* value) {
     return operator<<(reinterpret_cast<const char*>(value));
   }

@@ -28,6 +28,7 @@ android {
 
         packagingOptions {
             exclude 'lib/*/libc++_shared.so'
+            exclude 'lib/*/liblynxbase.so'
         }
 
     }
@@ -191,4 +192,5 @@ task configGnCompileParas {
 
 dependencies {
     compileOnly 'androidx.annotation:annotation:1.0.0'
+    implementation project(':LynxBase')
 }

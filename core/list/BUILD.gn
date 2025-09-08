@@ -40,7 +40,6 @@ list_container_shared_sources = [
 lynx_core_source_set("list_container") {
   sources = list_container_shared_sources
   public_deps = [
-    "../../base:base",
     "../build:build",
     "../renderer/trace:renderer_trace",
   ]

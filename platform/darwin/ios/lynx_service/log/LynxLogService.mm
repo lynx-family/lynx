@@ -33,6 +33,14 @@ namespace logging {
   return DEFAULT_LYNX_SERVICE;
 }
 
++ (NSUInteger)getServiceType {
+  return kLynxBaseServiceLog;
+}
+
++ (NSString *)getServiceBizID {
+  return DEFAULT_LYNX_BASE_SERVICE;
+}
+
 - (void *)getWriteFunction {
   return (void *)lynx::base::logging::logWrite;
 }

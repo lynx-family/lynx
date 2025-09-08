@@ -13,22 +13,22 @@
 #define BASE_INTERNAL_TRACE_EVENT_UID(name) \
   BASE_INTERNAL_TRACE_EVENT_UID2(name, __LINE__)
 
-#define BASE_TRACE_EVENT(category, name)                        \
-  struct BASE_INTERNAL_TRACE_EVENT_UID(ScopedEvent) {           \
-    struct BaseEventFinalizer {                                 \
-      BaseEventFinalizer(...) {}                                \
-      ~BaseEventFinalizer() { BASE_TRACE_EVENT_END(category); } \
-    } base_finalizer;                                           \
-  } BASE_INTERNAL_TRACE_EVENT_UID(scoped_event) {               \
-    [&]() {                                                     \
-      BASE_TRACE_EVENT_BEGIN(category, name);                   \
-      return 0;                                                 \
-    }()                                                         \
+#define BASE_TRACE_EVENT(category, name)                              \
+  struct BASE_INTERNAL_TRACE_EVENT_UID(ScopedEvent) {                 \
+    struct BaseEventFinalizer {                                       \
+      BaseEventFinalizer(...) {}                                      \
+      ~BaseEventFinalizer() { BASE_TRACE_EVENT_END(category, name); } \
+    } base_finalizer;                                                 \
+  } BASE_INTERNAL_TRACE_EVENT_UID(scoped_event) {                     \
+    [&]() {                                                           \
+      BASE_TRACE_EVENT_BEGIN(category, name);                         \
+      return 0;                                                       \
+    }()                                                               \
   }
 
 #define BASE_TRACE_EVENT_BEGIN(category, name) \
   lynx::base::trace::TraceEventBegin(category, name)
-#define BASE_TRACE_EVENT_END(category) \
-  lynx::base::trace::TraceEventEnd(category)
+#define BASE_TRACE_EVENT_END(category, name) \
+  lynx::base::trace::TraceEventEnd(category, name)
 
 #endif  // BASE_SRC_BASE_TRACE_TRACE_EVENT_H_

@@ -18,11 +18,11 @@ void TraceEventBegin(const char* category, const char* name) {
   }
   trace_backend(category, name, BaseTraceEventType::TYPE_SLICE_BEGIN);
 }
-void TraceEventEnd(const char* category) {
+void TraceEventEnd(const char* category, const char* name) {
   if (trace_backend == nullptr) {
     return;
   }
-  trace_backend(category, nullptr, BaseTraceEventType::TYPE_SLICE_END);
+  trace_backend(category, name, BaseTraceEventType::TYPE_SLICE_END);
 }
 
 void SetTraceBackend(trace_backend_ptr backend) {

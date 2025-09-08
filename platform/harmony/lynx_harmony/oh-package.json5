@@ -7,6 +7,7 @@
   "version": "@param:dependencies.lynx_version",
   "dependencies": {
     "liblynx.so": "file:./src/main/ets/tasm/types/liblynx",
+    "@lynx/lynx_base": "@param:dependencies.lynx_version",
   },
   "repository": "https://github.com/lynx-family/lynx",
   "author": "lynx",

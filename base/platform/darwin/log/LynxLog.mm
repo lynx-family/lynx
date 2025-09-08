@@ -5,6 +5,8 @@
 #import <LynxBase/LynxLog.h>
 #include <map>
 
+#import <LynxBase/LynxBaseService.h>             // nogncheck
+#import <LynxBase/LynxBaseServiceLogProtocol.h>  // nogncheck
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging_darwin.h"
 #include "base/src/base_trace/base_trace_event_def.h"
@@ -62,16 +64,12 @@ void SetJSLogsFromExternalChannels(bool isOpen) { gIsJSLogsFromExternalChannelsO
 namespace lynx {
 namespace base {
 namespace logging {
-namespace {
-NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegateDic allValues]); }
-}  // namespace
 
 bool IsExternalChannel(lynx::base::logging::LogChannel channelType) {
   return gIsJSLogsFromExternalChannelsOpen &&
          channelType == lynx::base::logging::LOG_CHANNEL_LYNX_EXTERNAL;
 }
 
-// Implementation of this function in the <base/include/log/logging_darwin.h> file.
 void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
   LynxLogLevel level = (LynxLogLevel)msg->severity();
   NSString *message = gDebugLoggingDelegate.shouldFormatMessage
@@ -84,7 +82,7 @@ void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
   NSArray<LynxLogDelegate *> *delegates = GetLoggingDelegates();
   for (LynxLogDelegate *delegate in delegates) {
     LynxLogFunction logFunction = delegate.logFunction;
-    if (logFunction == nil || level < delegate.minLogLevel ||
+    if (logFunction == nil || level < gLogMinLevel ||
         (delegate.acceptRuntimeId >= 0 && delegate.acceptRuntimeId != msg->runtimeId())) {
       continue;
     }
@@ -122,7 +120,13 @@ void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
 }  // namespace lynx
 
 void InitLynxLog(bool print_logs_to_all_channels) {
-  lynx::base::logging::InitLynxLoggingNative(print_logs_to_all_channels);
+  id service = LynxBaseService(LynxBaseServiceLogProtocol);
+  void *log_address = nullptr;
+  if (service) {
+    log_address = (void *)[service getWriteFunction];
+  }
+  lynx::base::logging::InitLynxLoggingNative(
+      log_address, lynx::base::logging::PrintLogMessageByLogDelegate, print_logs_to_all_channels);
 }
 
 NSInteger AddLoggingDelegate(LynxLogDelegate *delegate) {
@@ -138,6 +142,8 @@ LynxLogDelegate *GetLoggingDelegate(NSInteger delegateId) {
 void RemoveLoggingDelegate(NSInteger delegateId) {
   LOCKED([gDelegateDic removeObjectForKey:@(delegateId)]);
 }
+
+NSArray<LynxLogDelegate *> *GetLoggingDelegates(void) { LOCKED(return [gDelegateDic allValues]); }
 
 void SetMinimumLoggingLevel(LynxLogLevel minLogLevel) {
   [[maybe_unused]] static constexpr const char *kLogLevelName[] = {

@@ -20,6 +20,8 @@ import androidx.annotation.RestrictTo;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.lynx.BuildConfig;
+import com.lynx.base.IBaseNativeLibraryLoader;
+import com.lynx.base.LynxBaseEnv;
 import com.lynx.config.LynxLiteConfigs;
 import com.lynx.devtoolwrapper.LynxDevToolUtils;
 import com.lynx.jsbridge.LynxModule;
@@ -230,6 +232,10 @@ public class LynxEnv {
       AbsTemplateProvider templateProvider, BehaviorBundle behaviorBundle,
       @Nullable IDynamicHandler dynamicHandler) {
     initLynxServiceCenter();
+
+    // init Lynx Base
+    initBase(nativeLibraryLoader);
+
     // The DevTool needs to be initialized as early as possible because LLog requires the state of
     // the DevTool to determine whether to output logs to the console.
     initDevtoolComponentAttachSwitch();
@@ -302,8 +308,6 @@ public class LynxEnv {
 
     // init Trace
     initTrace(mContext);
-
-    LLog.initLynxLog();
 
     // settings update
     postUpdateSettings();
@@ -1406,6 +1410,19 @@ public class LynxEnv {
 
   private void initLynxServiceCenter() {
     LynxServiceCenter.inst().initialize();
+  }
+
+  private void initBase(INativeLibraryLoader nativeLibraryLoader) {
+    IBaseNativeLibraryLoader baseNativeLibraryLoader = null;
+    if (nativeLibraryLoader != null) {
+      baseNativeLibraryLoader = new IBaseNativeLibraryLoader() {
+        @Override
+        public void loadLibrary(String libName) throws UnsatisfiedLinkError {
+          nativeLibraryLoader.loadLibrary(libName);
+        }
+      };
+    }
+    LynxBaseEnv.inst().init(baseNativeLibraryLoader, isDevtoolEnabled());
   }
 
   public void initNativeUIThread() {

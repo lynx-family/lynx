@@ -12,9 +12,6 @@ response_promise_shared_sources = [
 
 lynx_core_source_set("promise") {
   sources = response_promise_shared_sources
-
-  deps = [ "../../../../../base/src:base_log" ]
-
   public_deps = []
 }
 

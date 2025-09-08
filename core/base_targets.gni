@@ -19,6 +19,7 @@ lynx_android_public_config =
     rebase_path("../platform/android/lynx_android:lynx_android_public_config")
 lynx_unit_test_config = rebase_path("../testing:lynx_unit_test_config")
 find_node_headers = rebase_path(":find_node_headers")
+lynx_base_config = rebase_path("../base/src:base_public_config")
 
 template("lynx_core_source_set") {
   source_set(target_name) {
@@ -49,6 +50,7 @@ template("lynx_core_source_set") {
     public_configs += [
       "//${lynx_dir}/core:lynx_public_config",
       quickjs_public_config,
+      lynx_base_config,
     ]
 
     if (enable_unittests) {

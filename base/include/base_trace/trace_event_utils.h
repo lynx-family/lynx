@@ -24,7 +24,7 @@ using trace_backend_ptr = void (*)(const char* category, const char* name,
                                    BaseTraceEventType phase);
 BASE_EXPORT void SetTraceBackend(trace_backend_ptr backend);
 void TraceEventBegin(const char* category, const char* name);
-void TraceEventEnd(const char* category);
+void TraceEventEnd(const char* category, const char* name);
 }  // namespace trace
 }  // namespace base
 }  // namespace lynx
