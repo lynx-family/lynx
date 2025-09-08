@@ -108,6 +108,8 @@ class Context {
 
   virtual void UpdateGCTiming(bool is_start){};
 
+  virtual void TriggerVmGC(){};
+
   bool UpdateTopLevelVariable(const std::string& name, const Value& val);
   virtual bool UpdateTopLevelVariableByPath(base::Vector<std::string>& path,
                                             const Value& val) = 0;

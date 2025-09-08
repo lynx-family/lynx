@@ -18,6 +18,7 @@
 #include "core/runtime/piper/js/runtime_constant.h"
 #include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_actor_specialization.h"
 #include "core/shell/runtime_mediator.h"
@@ -357,6 +358,18 @@ void TasmMediator::OnJSSourcePrepared(
                                 bundle_module_mode, url, pipeline_options,
                                 trace_flow_id);
   });
+
+  if ((tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle() & (1u << 1)) > 0) {
+    // mask value 1 << 1 for bts
+    // TODO(yuyang.1024), remove settings after online experiment
+    WatchDog::TaskConfig gc_task =
+        WatchDog::TaskConfig{.idle_task = [runtime = runtime_actor_]() {
+          if (auto impl = runtime->Impl(); impl != nullptr) {
+            impl->TriggerVmGC();
+          }
+        }};
+    WatchDog::RunOnActorThreadIdle(std::move(gc_task), runtime_actor_);
+  }
 }
 
 void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
