@@ -13,14 +13,14 @@ namespace logging {
 
 constexpr const char* kLynxLogLevels[] = {"V", "D", "I", "W", "E", "F"};
 
-void InitLynxLoggingNative(bool print_logs_to_all_channels);
+void InitLynxLoggingNative(void* log_address,
+                           PlatformLogCallBack platform_log_channel,
+                           bool print_logs_to_all_channels);
 
 void SetLynxLogMinLevel(int min_level);
 
 void InternalLogNative(const char* file, int32_t line, int level,
                        const char* message);
-
-void PrintLogMessageByLogDelegate(LogMessage* msg, const char* tag);
 
 }  // namespace logging
 }  // namespace base

@@ -6,8 +6,6 @@ jni_register_configs:
   namespaces:
     - lynx
   special_cases:
-    - header: base/include/fml/platform/android/message_loop_android.h
-      method: lynx::fml::MessageLoopAndroid::Register(env);
     - header: core/runtime/bindings/jsi/modules/android/lynx_promise_impl.h
       method: lynx::piper::LynxPromiseImpl::RegisterJNI(env);
     - header: core/runtime/common/utils.h
@@ -57,7 +55,6 @@ jni_class_configs:
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/HttpRequest.java
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/HttpResponse.java
     # - java: platform/android/lynx_android/src/main/java/com/lynx/jsbridge/network/LynxHttpRunner.java
-    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/base/LLog.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/core/resource/LynxResourceLoader.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/core/JSProxy.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/core/LynxEngineProxy.java

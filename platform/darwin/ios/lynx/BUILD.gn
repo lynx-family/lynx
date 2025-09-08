@@ -98,7 +98,10 @@ subspec_target("Framework") {
   if (!use_flatten_deps) {
     dependency = Framework_deps
   } else {
-    dependency = [ "Lynx/ReleaseResource" ]
+    dependency = [
+      "Lynx/ReleaseResource",
+      "LynxBase/Framework",
+    ]
   }
 }
 
@@ -636,7 +639,10 @@ subspec_target("Native") {
   } else {
     header_mappings_dir = "."
     deps = native_podspec_deps
-    dependency = [ "Lynx/Trace" ]
+    dependency = [
+      "Lynx/Trace",
+      "LynxBase/Framework",
+    ]
   }
 }
 
@@ -680,13 +686,13 @@ subspec_target("animation_utils") {
 
 subspec_target("base") {
   deps = [
-    "../../../../base/src:base_log",
-    "../../../../base/src:base_log_headers",
+    "../../../../base/src:base_values",
     "../../../../core/base",
     "../../../../core/base:json_utils",
     "../../../../core/base:observer",
     "../../../../core/build:build",
   ]
+  dependency = [ "LynxBase/Framework" ]
 }
 
 subspec_target("basic_animation") {
@@ -696,16 +702,6 @@ subspec_target("basic_animation") {
 subspec_target("lynx_basic_animator") {
   deps =
       [ "../../../../core/animation/lynx_basic_animator:lynx_basic_animator" ]
-}
-
-subspec_target("fml") {
-  deps = [
-    "../../../../base/src:base",
-    "../../../../base/src:base_values",
-    "../../../../base/src:string_utils",
-    "../../../../base/src:time_utils",
-    "../../../../base/src:values",
-  ]
 }
 
 subspec_target("lepus") {

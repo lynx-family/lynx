@@ -82,6 +82,7 @@ subspec_target("Log") {
     "log/LynxLogService.mm",
   ]
   dependency = lynx_dependency
+  dependency += lynxbase_dependency
 }
 
 subspec_target("Devtool") {

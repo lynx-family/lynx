@@ -9,6 +9,7 @@ gn_check_target_name_script =
 gtest_main = rebase_path("utils:gtest_main")
 gtest_custom_init = rebase_path("utils:gtest_custom_init")
 gmock_main = rebase_path("utils:gmock_main")
+base_static = rebase_path("../base/src:base_static")
 template("unittest_exec") {
   check_target_name = exec_script(gn_check_target_name_script,
                                   [
@@ -31,6 +32,7 @@ template("unittest_exec") {
     } else {
       deps = [ gtest_main ]
     }
+    deps += [ base_static ]
     if (!defined(support_custom_init) || !support_custom_init) {
       deps += [ gtest_custom_init ]
     }
@@ -72,6 +74,7 @@ template("unittest_set") {
         "//third_party/googletest:gtest",
       ]
     }
+    deps += [ base_static ]
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
@@ -104,6 +107,7 @@ template("mocktest_set") {
     } else {
       deps = [ "//third_party/googletest:gmock" ]
     }
+    deps += [ base_static ]
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
@@ -135,6 +139,7 @@ template("mocktest_exec") {
     } else {
       deps = [ gmock_main ]
     }
+    deps += [ base_static ]
     if (!defined(support_custom_init) || !support_custom_init) {
       deps += [ gtest_custom_init ]
     }
@@ -163,6 +168,7 @@ template("benchmark_set") {
     } else {
       deps = [ "//third_party/benchmark:benchmark" ]
     }
+    deps += [ base_static ]
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }
@@ -189,6 +195,7 @@ template("benchmark_test") {
     } else {
       deps = [ "//third_party/benchmark:benchmark_main" ]
     }
+    deps += [ base_static ]
     if (defined(invoker.configs)) {
       configs += invoker.configs
     }

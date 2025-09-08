@@ -635,7 +635,7 @@ export enum TraceCategory {
 
 export class LLog {
   static useSysLog(useSysLog: boolean): void;
-  static initLynxLog(isPrintLogToAllChannel: boolean): void;
+  static initLynxLog(): void;
   static setMinimumLoggingLevel(level: LogLevel): void;
   static v(tag: string, message: string): void;
   static d(tag: string, message: string): void;
@@ -1032,7 +1032,7 @@ export class LynxDevToolService implements ILynxDevToolService {
   static instance: any; = new LynxDevToolService()
 }
 
-export class LynxLogService implements ILynxLogService {
+export class LynxLogService implements ILynxBaseLogService {
   logByPlatform(level: number, tag: string, message: string): void;
   isLogOutputByPlatform(): boolean;
   getDefaultWriteFunction(): number;
@@ -1046,7 +1046,6 @@ export enum LynxServiceType {
   Http
   Security
   Extension
-  Log
   DevTool
 }
 
@@ -1080,17 +1079,6 @@ export enum LynxTasmType {
 
 export interface ILynxHttpService {
   request(request: LynxHttpRequest, callback: (resp: LynxHttpResponse) => void): void;
-}
-
-export interface ILynxLogService {
-  logByPlatform(level: number, tag: string, message: string): void;
-  isLogOutputByPlatform(): boolean;
-  getDefaultWriteFunction(): number;
-}
-
-export enum LogOutputChannelType {
-  Native
-  Platform
 }
 
 export interface ILynxExtensionService {

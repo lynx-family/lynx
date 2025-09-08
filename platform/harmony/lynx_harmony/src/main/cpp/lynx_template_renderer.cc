@@ -29,6 +29,7 @@
 #include "core/shell/lynx_shell_builder.h"
 #include "core/shell/module_delegate_impl.h"
 #include "core/shell/perf_controller_proxy_impl.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/base/base_trace_backend.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/font/system_font_manager.h"
 
 #if ENABLE_TESTBENCH_REPLAY
@@ -556,6 +557,8 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_set_named_property(env, exports, export_class.c_str(), cons);
 
   NAPI_CREATE_FUNCTION(env, exports, "initGlobalEnv", InitGlobalEnv);
+  NAPI_CREATE_FUNCTION(env, exports, "getBaseTraceBackend",
+                       GetBaseTraceBackend);
   NAPI_CREATE_FUNCTION(env, exports, "setTracingDirPath", SetTracingDirPath);
   NAPI_CREATE_FUNCTION(env, exports, "traceEventBegin", TraceEventBegin);
   NAPI_CREATE_FUNCTION(env, exports, "traceEventEnd", TraceEventEnd);
@@ -565,6 +568,14 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   NAPI_CREATE_FUNCTION(env, exports, "setCacheDirPath", SetCacheDirPath);
 
   return exports;
+}
+
+napi_value LynxTemplateRenderer::GetBaseTraceBackend(napi_env env,
+                                                     napi_callback_info info) {
+  napi_value result;
+  napi_create_int64(env, reinterpret_cast<int64_t>(lynx::base::BaseTraceEvent),
+                    &result);
+  return result;
 }
 
 napi_value LynxTemplateRenderer::GetAllJsSource(napi_env env,

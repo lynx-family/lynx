@@ -14,14 +14,14 @@
 namespace lynx {
 namespace base {
 // This method should not be used except in unsatisfied scenarios.
-uint64_t CurrentSystemTimeMilliseconds();
+BASE_EXPORT uint64_t CurrentSystemTimeMilliseconds();
 // This method should not be used except in unsatisfied scenarios.
-uint64_t CurrentSystemTimeMicroseconds();
-uint64_t CurrentTimeMicroseconds();
-uint64_t CurrentTimeMilliseconds();
-uint64_t CurrentThreadCPUTimeMicroseconds();
+BASE_EXPORT uint64_t CurrentSystemTimeMicroseconds();
+BASE_EXPORT uint64_t CurrentTimeMicroseconds();
+BASE_EXPORT uint64_t CurrentTimeMilliseconds();
+BASE_EXPORT uint64_t CurrentThreadCPUTimeMicroseconds();
 #if !defined(OS_WIN)
-timespec ToTimeSpecFromNow(uint64_t interval_time);
+BASE_EXPORT timespec ToTimeSpecFromNow(uint64_t interval_time);
 #endif
 }  // namespace base
 }  // namespace lynx

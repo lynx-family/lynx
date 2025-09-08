@@ -27,11 +27,7 @@ lynx_core_source_set("reporter") {
     "js_error_reporter.cc",
     "js_error_reporter.h",
   ]
-  deps = [
-    "../../../base/src:base_log",
-    "../../../base/src:string_utils",
-    "../../../third_party/rapidjson",
-  ]
+  deps = [ "../../../third_party/rapidjson" ]
 }
 
 unittest_set("utils_unittests_testset") {

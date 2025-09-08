@@ -62,7 +62,6 @@ native_podspec_deps = rebase_path([
                                     ":animation_utils",
                                     ":base",
                                     ":basic_animation",
-                                    ":fml",
                                     ":lepus",
                                     ":lynx_basic_animator",
                                     ":parser",

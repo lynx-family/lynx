@@ -28,6 +28,7 @@ cmake_target("LynxTrace") {
 
   deps = [
     ":trace_jni_files",
+    "../../platform/android:LynxBase",
     "../native:trace",
   ]
 

@@ -80,6 +80,10 @@ podspec_target("devtool_podspec") {
       "-fno-rtti",
     ]
     pod_target_xcconfig = {
+      HEADER_SEARCH_PATHS = [
+        "//PODS_ROOT/LynxBase/lynx",
+        "//PODS_ROOT/LynxBase",
+      ]
       GCC_PREPROCESSOR_DEFINITIONS = [
         "OS_IOS=1",
         "HOST_OSTYPE=HOST_IOS",
@@ -173,6 +177,7 @@ subspec_target("Framework") {
       ":ThirdParty",
     ]
     dependency += lynx_dependency
+    dependency += lynxbase_dependency
     dependency += basedevtool_dependency
     dependency += [
       "SocketRocket",

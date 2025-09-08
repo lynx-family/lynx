@@ -8,15 +8,7 @@ import type { NodeContent } from '@ohos.arkui.node';
 
 export const initGlobalEnv: (resourceManager: Object) => void;
 
-export const nativeInitLynxLogWriteFunction: (logWriteFunctionAddress: number) => void;
-
-export const nativeUseSysLog: (open: boolean) => void;
-
-export const nativeInitLynxLog: (isPrintLogToAllChannel: boolean) => void;
-
-export const nativeInternalLog: (level: number, tag: string, message: string) => void;
-
-export const nativeSetMinLogLevel: (level: number) => void;
+export const getBaseTraceBackend: () => number;
 
 export const setTracingDirPath: (tracingDirPath: string) => void;
 

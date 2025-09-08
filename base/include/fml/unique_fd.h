@@ -8,6 +8,7 @@
 #ifndef BASE_INCLUDE_FML_UNIQUE_FD_H_
 #define BASE_INCLUDE_FML_UNIQUE_FD_H_
 
+#include "base/include/base_export.h"
 #include "base/include/fml/unique_object.h"
 #include "build/build_config.h"
 
@@ -80,13 +81,13 @@ struct UniqueFDTraits {
 
 namespace os_unix {
 
-struct UniqueFDTraits {
+struct BASE_EXPORT UniqueFDTraits {
   static int InvalidValue() { return -1; }
   static bool IsValid(int value) { return value >= 0; }
   static void Free(int fd);
 };
 
-struct UniqueDirTraits {
+struct BASE_EXPORT UniqueDirTraits {
   static DIR* InvalidValue() { return nullptr; }
   static bool IsValid(DIR* value) { return value != nullptr; }
   static void Free(DIR* dir);

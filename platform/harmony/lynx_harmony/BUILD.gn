@@ -24,6 +24,7 @@ target(lynx_harmony_type, "lynx_harmony") {
 
   public_deps = [
     ":native",
+    "../../../base/platform/harmony:lynx_base",
     "../../../base/trace/native:trace",
     "../../../core:lynx_native",
     "../../../core/runtime/bindings/napi:napi_binding_quickjs",

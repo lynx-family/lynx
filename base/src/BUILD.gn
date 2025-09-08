@@ -9,9 +9,18 @@ import("../../testing/test.gni")
 import("../include/base_public_headers.gni")
 import("base.gni")
 
+static_library("base_static") {
+  sources = [
+    "../platform/windows/lynx_base_env.cc",
+    "../platform/windows/lynx_base_env.h",
+  ]
+  deps = [ ":base_group" ]
+  configs += [ ":base_private_config" ]
+}
+
 group("base_group") {
   public_deps = [
-    ":base",
+    ":base_core",
     ":base_log",
     ":base_trace",
     ":datauri_utils",
@@ -19,6 +28,21 @@ group("base_group") {
     ":time_utils",
     ":values",
   ]
+}
+
+group("base_for_oliver") {
+  public_deps = [
+    ":base_log",
+    ":base_values",
+    ":string_utils",
+    ":time_utils",
+  ]
+  if (is_oliver_ssr) {
+    public_deps += [
+      ":base_core",
+      ":base_trace",
+    ]
+  }
 }
 
 config("base_public_config") {
@@ -54,6 +78,10 @@ config("base_public_config") {
       "lynx_EXPORTS",
     ]
   }
+  if (enable_unittests) {
+    defines += [ "BASE_NO_EXPORT" ]
+  }
+  configs = [ ":base_log_public_config" ]
 }
 
 config("base_private_config") {
@@ -67,6 +95,7 @@ config("base_private_config") {
     "-fno-stack-protector",
     "-fno-strict-aliasing",
     "-Wextra",
+    "-Wno-unused-parameter",
   ]
   cflags_c = []
   cflags_cc = [
@@ -74,7 +103,6 @@ config("base_private_config") {
     "-std=c++17",
     "-Wl,-ldl",
     "-Wno-unused-command-line-argument",
-    "-Wno-unused-parameter",
   ]
   configs = []
   if (is_debug) {
@@ -109,6 +137,10 @@ lynx_base_source_set("base_log_headers") {
 
 lynx_base_source_set("base_log") {
   public_configs = [ ":base_log_public_config" ]
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = base_log_public_headers
   public_deps = [ ":base_log_headers" ]
 
@@ -119,11 +151,9 @@ lynx_base_source_set("base_log") {
     "log/logging.cc",
   ]
   if (is_android) {
-    # TODO(yongjie): enable logging_android.cc when lynx depends on LynxBase.
-    # sources += [ "log/logging_android.cc" ]
+    sources += [ "log/logging_android.cc" ]
   } else if (is_apple) {
-    # TODO(yongjie): enable logging_darwin.mm when lynx depends on LynxBase.
-    # sources += [ "log/logging_darwin.mm" ]
+    sources += [ "log/logging_darwin.mm" ]
   } else if (is_harmony) {
     sources += [
       "log/logging_harmony.cc",
@@ -143,6 +173,10 @@ lynx_base_source_set("base_log") {
 }
 
 lynx_base_source_set("time_utils") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = time_utils_public_headers
   sources = time_utils_public_headers + [ "timer/time_utils.cc" ]
 }
@@ -165,7 +199,11 @@ lynx_base_source_set("base_trace") {
   }
 }
 
-lynx_base_source_set("base") {
+lynx_base_source_set("base_core") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = base_core_public_headers
   public_deps = [
     ":string_utils",
@@ -343,7 +381,7 @@ if (enable_unittests) {
       sources += [ "fml/platform/darwin/cf_utils_unittests.mm" ]
     }
     deps = [
-      ":base",
+      ":base_core",
       ":base_log",
       ":base_values",
       "//third_party/googletest:gtest",
@@ -352,6 +390,10 @@ if (enable_unittests) {
 }
 
 lynx_base_source_set("string_utils") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = string_utils_public_headers
   sources = string_utils_public_headers + [
               "string/quickjs_dtoa.c",
@@ -379,12 +421,20 @@ lynx_base_source_set("base_values_extended") {
 }
 
 lynx_base_source_set("values") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = values_public_headers
 
   sources = values_public_headers + [ "value/base_string.cc" ]
 }
 
 lynx_base_source_set("datauri_utils") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
   public = datauri_utils_public_headers
   sources = datauri_utils_public_headers + [ "datauri_utils.cc" ]
 

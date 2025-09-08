@@ -22,6 +22,7 @@ android {
 
         packagingOptions {
             exclude 'lib/*/libdebugrouter.so'
+            exclude 'lib/*/liblynxbase.so'
         }
     }
 
@@ -98,6 +99,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     compileOnly 'androidx.annotation:annotation:1.0.0'
     implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
+    implementation project(':LynxBase')
 }
 
 // Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.

@@ -191,7 +191,6 @@ group("lynx_core_native") {
 
 group("lynx_native") {
   deps = [
-    "../base/src:base",
     "../third_party/modp_b64",
     "../third_party/rapidjson",
     "animation",
