@@ -434,8 +434,12 @@ void UIFlattenImage::UpdateCapInsets(const lepus::Value& value) {
 }
 
 void UIFlattenImage::UpdateCapInsetScale(const lepus::Value& value) {
-  const auto& value_str = value.StdString();
-  base::StringToFloat(value_str, cap_inset_scale_);
+  if (value.IsNumber()) {
+    cap_inset_scale_ = static_cast<float>(value.Number());
+  } else if (value.IsString()) {
+    const auto& value_str = value.StdString();
+    base::StringToFloat(value_str, cap_inset_scale_);
+  }
 }
 
 void UIFlattenImage::UpdateSkipRedirection(const lepus::Value& value) {
