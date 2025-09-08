@@ -1356,9 +1356,6 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   @RestrictTo(RestrictTo.Scope.LIBRARY)
   public void setInPreLoad(boolean preload) {
     mInPreLoad = preload;
-    if (mUIBody != null && mUIBody.getBodyView() != null) {
-      mUIBody.getBodyView().SetShouldInterceptRequestLayout(preload);
-    }
     if (mEventEmitter != null) {
       mEventEmitter.setInPreLoad(preload);
     }

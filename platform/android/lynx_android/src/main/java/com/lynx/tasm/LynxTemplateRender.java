@@ -1493,6 +1493,9 @@ public class LynxTemplateRender
     }
 
     if (metaData.getLoadMode() == LynxLoadMode.PRE_PAINTING) {
+      if (mBodyView != null) {
+        mBodyView.setShouldInterceptRequestLayout(true);
+      }
       mLynxContext.setInPreLoad(true);
     }
 
@@ -1823,6 +1826,9 @@ public class LynxTemplateRender
 
     if (context.isInPreLoad()) {
       LLog.i(TAG, "updateData after pre load, url:" + mUrl);
+      if (mBodyView != null) {
+        mBodyView.setShouldInterceptRequestLayout(false);
+      }
       context.setInPreLoad(false);
     }
 
@@ -1919,6 +1925,9 @@ public class LynxTemplateRender
     }
     if (context.isInPreLoad()) {
       LLog.i(TAG, "updateData after pre load, url:" + mUrl);
+      if (mBodyView != null) {
+        mBodyView.setShouldInterceptRequestLayout(false);
+      }
       context.setInPreLoad(false);
     }
     if (prepareUpdateData(data)) {

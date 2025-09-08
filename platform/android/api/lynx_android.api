@@ -9518,7 +9518,7 @@ public class com::lynx::tasm::behavior::ui::UIBody::UIBodyView : FrameLayout, co
   public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setChildrenDrawingOrderEnabled(boolean enabled);
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.dispatchHoverEvent(MotionEvent event);
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.requestSendAccessibilityEvent(View child, android.view.accessibility.AccessibilityEvent event);
-  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.SetShouldInterceptRequestLayout(boolean intercept);
+  public void com.lynx.tasm.behavior.ui.UIBody.UIBodyView.setShouldInterceptRequestLayout(boolean intercept);
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.HasPendingRequestLayout();
   public LynxBooleanOption com.lynx.tasm.behavior.ui.UIBody.UIBodyView.getLongTaskMonitorEnabled();
   public boolean com.lynx.tasm.behavior.ui.UIBody.UIBodyView.isAccessibilityDisabled();
