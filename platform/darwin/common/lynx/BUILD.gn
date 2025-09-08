@@ -42,6 +42,8 @@ common_lynx_shared_sources = [
   "LynxViewClientV2.mm",
   "TemplateRenderCallbackProtocol.h",
   "base/LynxBacktrace.mm",
+  "base/LynxBaseTraceService.h",
+  "base/LynxBaseTraceService.mm",
   "base/LynxCallStackUtil.h",
   "base/LynxCallStackUtil.mm",
   "base/LynxComponent.m",

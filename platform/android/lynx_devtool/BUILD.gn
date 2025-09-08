@@ -16,6 +16,7 @@ cmake_target("lynxdevtool") {
   output_name = "lynxdevtool"
   deps = [
     ":lynxdevtool_lib",
+    "../../../base/platform/android:LynxBase",
     "../../../base/trace/android:LynxTrace",
     "../../../devtool/base_devtool/android/base_devtool:base_devtool",
     "../lynx_android:lynx_android",
@@ -148,8 +149,8 @@ devtool_source_set("lynx_base_for_devtool") {
     "../../../core/base/android/callstack_util_android.h",
   ]
   if (is_android) {
-    public_configs = [ "../../../base/src:base_public_config" ]
-    public_deps = [ "../../../base/src:base" ]
+    public_configs = []
+    public_deps = []
     deps += [ "../../../core/build:build" ]
   }
 

@@ -10,7 +10,6 @@
 #define PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_LYNX_NAPI_EXPORT_H_
 
 #include "base/include/fml/platform/harmony/message_loop_harmony.h"
-#include "base/src/log/logging_harmony.h"
 #include "base/trace/native/platform/harmony/trace_controller_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
 #include "core/renderer/utils/harmony/lynx_trail_hub_impl_harmony.h"
@@ -23,7 +22,6 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
 
 void LynxNapiInit(napi_env env, napi_value exports) {
-  lynx::base::logging::LynxLog::Init(env, exports);
   lynx::harmony::LynxTemplateRenderer::Init(env, exports);
   lynx::tasm::PropBundleHarmony::Init(env);
   lynx::tasm::report::harmony::Init(env, exports);

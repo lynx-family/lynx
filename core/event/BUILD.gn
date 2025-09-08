@@ -27,8 +27,6 @@ event_shared_sources = [
 
 lynx_core_source_set("event") {
   sources = event_shared_sources
-
-  public_deps = [ "../../base" ]
 }
 
 unittest_set("event_testset") {

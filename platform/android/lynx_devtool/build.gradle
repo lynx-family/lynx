@@ -248,6 +248,7 @@ dependencies {
 
     implementation project(':LynxAndroid')
     implementation project(':LynxTrace')
+    implementation project(':LynxBase')
 
     implementation "com.google.code.gson:gson:2.8.5"
     implementation('androidx.appcompat:appcompat:1.0.0')

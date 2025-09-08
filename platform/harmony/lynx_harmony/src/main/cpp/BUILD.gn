@@ -7,6 +7,8 @@ import("../../../../../../core/base_targets.gni")
 
 lynx_core_source_set("cpp") {
   sources = [
+    "base/base_trace_backend.cc",
+    "base/base_trace_backend.h",
     "event/custom_event.h",
     "event/event_dispatcher.cc",
     "event/event_dispatcher.h",
@@ -216,10 +218,7 @@ lynx_core_source_set("cpp") {
     "ui/utils/ui_observer_callback.h",
   ]
 
-  deps = [
-    "../../../../../../base/src:base",
-    "../../../../../../base/src:datauri_utils",
-  ]
+  deps = [ "../../../../../../base/src:base_values" ]
 
   configs = [ ":harmony_public_config" ]
   libs = [

@@ -5,9 +5,6 @@ jni_register_configs:
     - core/base/android/android_jni.h
   namespaces:
     - lynx_devtool
-  special_cases:
-    - header: base/include/fml/platform/android/message_loop_android.h
-      method: lynx::fml::MessageLoopAndroid::Register(env);
 # gn file configs.
 gn_configs:
   output_path: platform/android/lynx_devtool/src/main/jni/BUILD.gn

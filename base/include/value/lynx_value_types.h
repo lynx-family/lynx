@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "lynx_api_types.h"
+#include "base/include/value/lynx_api_types.h"
 
 typedef struct LYNX_VALUE_OPAQUE_STRUCT(value_ref) * lynx_value_ref;
 

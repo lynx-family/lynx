@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "base/include/base_export.h"
 #include "base/include/closure.h"
 #include "base/include/fml/thread.h"
 
@@ -24,7 +25,7 @@ namespace fml {
 
 class ConcurrentTaskRunner;
 
-class ConcurrentMessageLoop
+class BASE_EXPORT ConcurrentMessageLoop
     : public std::enable_shared_from_this<ConcurrentMessageLoop> {
  public:
   static std::shared_ptr<ConcurrentMessageLoop> Create(

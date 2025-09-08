@@ -41,9 +41,6 @@ if (is_android) {
     "android/java_value.h",
     "android/jni_helper.cc",
     "android/jni_helper.h",
-
-    # TODO(yongjie): move to logging_android.cc when lynx depends on LynxBase.
-    "android/logging_android.cc",
     "android/lynx_android_blur.cc",
     "android/lynx_error_android.cc",
     "android/lynx_error_android.h",
@@ -77,8 +74,6 @@ if (is_android) {
 } else if (is_apple) {
   if (!enable_unittests && !is_oliver_node_lynx && !is_oliver_tasm) {
     base_shared_sources += [
-      # TODO(yongjie): move to logging_darwin.mm when lynx depends on LynxBase.
-      "darwin/logging_darwin.mm",
       "darwin/lynx_env_darwin.h",
       "darwin/lynx_env_darwin.mm",
       "darwin/lynx_trail_hub_impl_darwin.h",
@@ -129,7 +124,6 @@ lynx_core_source_set("base") {
   sources = []
   deps = []
   public_deps = [ "../build:build" ]
-  public_configs = []
   if (is_oliver_ssr) {
     not_needed(base_shared_sources)
     sources += [
@@ -139,15 +133,10 @@ lynx_core_source_set("base") {
     deps += [
       ":json_utils",
       ":observer",
-      "../../base/src:base_log",
     ]
   } else {
     sources += base_shared_sources
-    public_deps += [
-      "../../base/src:base",
-      "../../base/src:base_log",
-      "../../base/trace/native:trace_public_headers",
-    ]
+    public_deps += [ "../../base/trace/native:trace_public_headers" ]
     if (is_android) {
       deps += [ "../../third_party/rapidjson:rapidjson" ]
     }

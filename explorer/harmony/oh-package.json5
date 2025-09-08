@@ -21,7 +21,7 @@
   "overrides": {
     "@ohos/imageknife": "3.2.6",
     "@lynx/lynx": "file:../../platform/harmony/lynx_harmony",
-    "@lynx/lynx_base": "file:../../platform/harmony/lynx_harmony",
+    "@lynx/lynx_base": "file:../../base/platform/harmony",
     "@lynx/lynx_devtool": "file:../../platform/harmony/lynx_devtool",
     "@lynx/lynx_devtool_service": "file:../../platform/harmony/lynx_services/lynx_devtool_service",
     "@lynx/lynx_log_service": "file:../../platform/harmony/lynx_services/lynx_log_service",

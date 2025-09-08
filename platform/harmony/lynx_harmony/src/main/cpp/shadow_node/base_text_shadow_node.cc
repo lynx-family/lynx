@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/include/string/quickjs_dtoa.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "core/base/harmony/props_constant.h"
@@ -22,8 +23,6 @@
 namespace lynx {
 namespace tasm {
 namespace harmony {
-
-extern "C" void js_dtoa(char* buf, double val);
 
 BaseTextShadowNode::BaseTextShadowNode(int sign, const std::string& tag)
     : ShadowNode(sign, tag) {}

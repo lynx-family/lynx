@@ -19,7 +19,7 @@
 namespace lynx {
 namespace base {
 namespace android {
-class JNIConvertHelper {
+class BASE_EXPORT JNIConvertHelper {
  public:
   static lynx::base::android::ScopedLocalJavaRef<jstring> ConvertToJNIStringUTF(
       JNIEnv* env, const std::string& value);

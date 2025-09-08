@@ -33,7 +33,6 @@ lynx_core_source_set("recorder") {
   sources = recorder_shared_sources
 
   deps = [
-    "../../../base/src:base",
     "../../../base/src:base_log_headers",
     "../../../third_party/modp_b64:modp_b64",
     "../../../third_party/rapidjson:rapidjson",

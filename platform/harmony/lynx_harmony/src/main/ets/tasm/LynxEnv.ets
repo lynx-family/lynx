@@ -8,6 +8,8 @@ import deviceInfo from '@ohos.deviceInfo';
 import lynx, { EmbedderPlatform } from 'liblynx.so';
 import BuildProfile from '../../../../BuildProfile';
 import { LLog } from '../base/LLog';
+import { LynxBaseEnv, LynxBaseServiceCenter, LynxBaseServiceType } from '@lynx/lynx_base';
+import { LynxBaseTraceService } from '../base/LynxBaseTraceService';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
 import { LynxEnvKey } from './LynxEnvKey';
 import { LynxInfoReporterHelper } from './eventreport/LynxInfoReporterHelper';
@@ -32,7 +34,7 @@ class LynxEnvironment {
     if (this.initialized) {
       return;
     }
-    LLog.initLynxLog(this.isLynxDebugEnabled());
+    this.initLynxBaseEnv();
     if (!this.performanceEnable) {
       this.setTracingDirPath(context.filesDir);
     }
@@ -50,6 +52,11 @@ class LynxEnvironment {
     this.updateAppInfo(appInfo);
     this.appInfo = appInfo;
     LynxDebugger.setAppInfo(Array.from(appInfo.keys()), Array.from(appInfo.values()));
+  }
+
+  private initLynxBaseEnv() {
+    LynxBaseServiceCenter.registerService(LynxBaseServiceType.Trace, LynxBaseTraceService.instance);
+    LynxBaseEnv.initialize(this.isDevtoolEnabled());
   }
 
   private setDefaultAppInfo() {

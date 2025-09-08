@@ -12,22 +12,26 @@
 #import <Lynx/LynxError.h>
 #import <Lynx/LynxLazyRegister.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
-#import <Lynx/LynxLog.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxSubErrorCode.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxTraceEventWrapper.h>
 #import <Lynx/LynxViewClient.h>
+#import <LynxBase/LynxLog.h>
 #import "LynxEnv+Internal.h"
 #if ENABLE_TRACE_PERFETTO
 #import <Lynx/LynxTraceController.h>
 #endif
 #import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseTraceService.h>
 #import <Lynx/LynxDevToolUtils.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
+#import <Lynx/LynxServiceLogProtocol.h>
+#import <LynxBase/LynxBaseEnv.h>
+#import <LynxBase/LynxBaseService.h>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"
@@ -90,8 +94,8 @@
     _recordEnable = NO;
     _highlightTouchEnabled = NO;
     [LynxLazyRegister loadLynxInitTask];
+    [self initLynxBase];
     lynx::tasm::LynxEnvDarwin::initNativeUIThread();
-    InitLynxLog(lynx::tasm::LynxEnv::GetInstance().IsDevToolEnabled());
 #if OS_IOS
     lynx::tasm::Config::InitializeVersion([[UIDevice currentDevice].systemVersion UTF8String]);
 #endif
@@ -99,6 +103,15 @@
   }
   _LogI(@"LynxEnv: init success");
   return self;
+}
+
+- (void)initLynxBase {
+  id<LynxServiceProtocol> BaseLogService = LynxService(LynxServiceLogProtocol);
+  if (BaseLogService) {
+    RegisterLynxBaseService(BaseLogService.class);
+  }
+  RegisterLynxBaseService(LynxBaseTraceService.class);
+  [[LynxBaseEnv sharedInstance] initialize:[self devtoolEnabled]];
 }
 
 - (void)initLynxTrace {

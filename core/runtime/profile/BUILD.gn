@@ -13,10 +13,7 @@ profile_public_header = [
 source_set("profile_public_header") {
   sources = profile_public_header
 
-  public_deps = [
-    "../../../base/src:base",
-    "../../../base/trace/native:trace_public_headers",
-  ]
+  public_deps = [ "../../../base/trace/native:trace_public_headers" ]
 }
 
 lynx_core_source_set("profile") {
@@ -26,19 +23,13 @@ lynx_core_source_set("profile") {
     "runtime_profiler_manager.cc",
   ]
 
-  public_deps = [
-    "../../../base/src:base",
-    "../../../base/src:base_log",
-    "../../../base/trace/native:trace_public_headers",
-  ]
+  public_deps = [ "../../../base/trace/native:trace_public_headers" ]
 }
 
 unittest_set("profile_testset") {
   sources = [ "runtime_profiler_unittest.cc" ]
   public_deps = [
     ":profile",
-    "../../../base/src:base",
-    "../../../base/src:base_log",
     "../../../base/trace/native:trace",
   ]
 }

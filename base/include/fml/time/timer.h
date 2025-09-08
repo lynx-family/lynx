@@ -8,6 +8,7 @@
 #include <functional>
 #include <utility>
 
+#include "base/include/base_export.h"
 #include "base/include/fml/memory/weak_ptr.h"
 #include "base/include/fml/task_runner.h"
 #include "base/include/fml/time/time_delta.h"
@@ -21,7 +22,7 @@ namespace fml {
 // So here provide a simple repeating / oneshot cancalable timer for caret
 // twinkling or swiper autoplay and so on.
 // NOTE: The actual time delay may giant than expected, and it won't be fixed.
-class Timer {
+class BASE_EXPORT Timer {
  public:
   // Task runner should be same with calling thread.
   Timer(fml::RefPtr<fml::TaskRunner> task_runner, bool repeat)
@@ -72,7 +73,7 @@ class RepeatingTimer : public Timer {
       : Timer(task_runner, true) {}
 };
 
-class OneshotTimer : public Timer {
+class BASE_EXPORT OneshotTimer : public Timer {
  public:
   explicit OneshotTimer(fml::RefPtr<fml::TaskRunner> task_runner)
       : Timer(task_runner, false) {}

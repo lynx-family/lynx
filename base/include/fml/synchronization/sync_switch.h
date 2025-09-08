@@ -20,7 +20,7 @@ namespace fml {
 ///
 /// Execution and setting the switch is exclusive, i.e. only one will happen
 /// at a time.
-class SyncSwitch {
+class BASE_EXPORT SyncSwitch {
  public:
   /// Represents the 2 code paths available when calling |SyncSwitch::Execute|.
   struct Handlers {
