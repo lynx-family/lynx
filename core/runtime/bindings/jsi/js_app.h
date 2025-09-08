@@ -213,7 +213,8 @@ class App : public std::enable_shared_from_this<App> {
                                     const std::string& bundle_name);
 
   base::expected<Value, JSINativeException> LoadCustomSectionScript(
-      const std::string& key, const std::string& bundle_name);
+      const std::string& key, const std::string& bundle_name,
+      bool use_module_wrapper);
 
   void FetchBundle(
       const std::string& bundle_url,

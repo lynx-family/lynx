@@ -20,7 +20,7 @@ import {
   MessageEventType,
   LoadScript,
 } from './interface';
-import { BaseApp, BundleInitReturnObj, NativeApp } from '../app';
+import { BaseApp, NativeApp } from '../app';
 import { TextInfo, TextMetrics } from '../modules/nativeModules';
 import nativeGlobal from '../common/nativeGlobal';
 import Element from '../modules/element';
@@ -28,7 +28,6 @@ import { LynxErrorLevel } from '../modules/report';
 import { createEventSource } from '../modules/fetch';
 import Performance from '../modules/performance';
 import SelectorQuery from '../modules/selectorQuery/SelectorQuery';
-import { KeyframeEffectV2 } from '../modules/animation/effect';
 import { AnimationV2 } from '../modules/animation/animationV2';
 import { DEFAULT_ENTRY } from '../common/constants';
 
@@ -72,6 +71,7 @@ export class Lynx {
       const cache = {};
       this.requireModule.cache = cache;
       this.requireModuleAsync.cache = cache;
+      this.loadScript.cache = {};
       this.__globalProps = this.getNativeLynx().__globalProps || {};
       this.__presetData = this.getNativeLynx().__presetData || {};
       this._switches = {};
@@ -495,7 +495,7 @@ export class Lynx {
 
   loadScript = <LoadScript>(<T>(
     url: string,
-    options?: { bundleName?: string }
+    options?: { bundleName?: string; useModuleWrapper?: boolean }
   ): T => {
     const { bundleName = DEFAULT_ENTRY } = options;
     const cacheKey = bundleName + ':' + url;

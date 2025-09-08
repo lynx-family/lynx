@@ -78,6 +78,23 @@ inline tasm::PageOptions GetPageOptions(std::weak_ptr<App> native_app) {
 // default resource loader timeout is 5 seconds.
 constexpr long DEFAULT_RESOURCE_TIMEOUT = 5;
 
+void AddModuleWrapForJsContent(std::string& js_content) {
+  static constexpr char PREFIX[] =
+      "(function(require, module, exports, setTimeout, setInterval, "
+      "clearInterval, clearTimeout, NativeModules, console, "
+      "nativeAppId, LynxJSBI, lynx, requestAnimationFrame, "
+      "cancelAnimationFrame, fetch, window, document, "
+      "frames, self, location, navigator, localStorage, history, Caches, "
+      "screen, alert, confirm, prompt, XMLHttpRequest, WebSocket, "
+      "webkit, Reporter, print, global){\n";
+
+  static constexpr char SUFFIX[] = "\n});";
+
+  js_content.reserve(js_content.size() + sizeof(PREFIX) + sizeof(SUFFIX));
+  js_content.insert(0, PREFIX);
+  js_content.append(SUFFIX);
+}
+
 }  // namespace
 
 #if ENABLE_TRACE_PERFETTO
@@ -2894,7 +2911,7 @@ base::expected<Value, JSINativeException> App::loadScript(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_LOAD_SCRIPT, "url", url, "entry",
               entry_name);
 
-  LOGI("loadscript:" << url);
+  LOGI("loadScript:" << url);
 
   auto rt = rt_.lock();
   if (rt) {
@@ -2950,7 +2967,7 @@ base::expected<Value, JSINativeException> App::loadScript(
       TRACE_EVENT(LYNX_TRACE_CATEGORY, APP_PREPARE_ANB_EVAL_SCRIPT,
                   "isSourceCode", content.IsSourceCode(), "isByteCode",
                   content.IsByteCode(), "size", content.GetBuffer()->size());
-      // after this line, 'throwing_source' becomes a empty string
+
       auto prep =
           rt->prepareJavaScript(std::move(content).GetBuffer(), source_url);
       auto ret = rt->evaluatePreparedJavaScript(prep);
@@ -3659,7 +3676,8 @@ lepus::Value App::GetCustomSectionSync(const std::string& key,
 }
 
 base::expected<Value, JSINativeException> App::LoadCustomSectionScript(
-    const std::string& key, const std::string& bundle_name) {
+    const std::string& key, const std::string& bundle_name,
+    bool use_module_wrapper) {
   auto rt = rt_.lock();
   if (!rt) {
     return piper::Value::undefined();
@@ -3680,7 +3698,10 @@ base::expected<Value, JSINativeException> App::LoadCustomSectionScript(
         " scriptType: " + std::to_string(maybe_script.Type());
     return base::unexpected(BUILD_JSI_NATIVE_EXCEPTION(error_msg));
   } else {
-    const auto source_code = maybe_script.StdString();
+    std::string source_code = maybe_script.StdString();
+    if (use_module_wrapper) {
+      AddModuleWrapForJsContent(source_code);
+    }
     const auto buffer =
         std::make_shared<piper::StringBuffer>(std::move(source_code));
     auto prep = rt->prepareJavaScript(buffer, key);

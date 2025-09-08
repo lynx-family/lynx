@@ -431,14 +431,21 @@ piper::Value LynxProxy::LoadScript(Runtime &rt) {
         }
         auto key = args[0].getString(rt).utf8(rt);
         std::string bundle_name = LEPUS_DEFAULT_CONTEXT_NAME;
+        bool use_module_wrapper = false;
         if (count > 1 && args[1].isObject()) {
           auto maybe_bundle_name = args[1].getObject(rt).getProperty(
               rt, piper::PropNameID::forAscii(rt, "bundleName"));
           if (maybe_bundle_name && maybe_bundle_name->isString()) {
             bundle_name = maybe_bundle_name->getString(rt).utf8(rt);
           }
+          auto maybe_use_module_wrapper = args[1].getObject(rt).getProperty(
+              rt, piper::PropNameID::forAscii(rt, "useModuleWrapper"));
+          if (maybe_use_module_wrapper && maybe_use_module_wrapper->isBool()) {
+            use_module_wrapper = maybe_use_module_wrapper->getBool();
+          }
         }
-        return native_app->LoadCustomSectionScript(key, bundle_name);
+        return native_app->LoadCustomSectionScript(key, bundle_name,
+                                                   use_module_wrapper);
       });
 }
 

@@ -442,7 +442,7 @@ export abstract class BaseApp<
    * @static
    * The LynxGroup level cache for loadScript
    */
-  static _$loadScriptCache: Record<string, BundleInitReturnObj> = {};
+  static _$loadScriptCache: Record<string, BundleInitReturnObj | Function> = {};
 
   /**
    * @internal
@@ -542,7 +542,7 @@ export abstract class BaseApp<
     const cache = tryGetLoadScriptCache(cacheKey);
     if (cache) {
       // cache hit
-      return this._$executeInit<T>(cache, {
+      return this._$executeInit<T>(cache as BundleInitReturnObj, {
         path,
         entryName,
       });
@@ -580,7 +580,10 @@ export abstract class BaseApp<
     if (cache) {
       // cache hit
       try {
-        return callback(null, this._$executeInit(cache, { path }));
+        return callback(
+          null,
+          this._$executeInit(cache as BundleInitReturnObj, { path })
+        );
       } catch (e) {
         callback(e);
       }
@@ -714,28 +717,64 @@ export abstract class BaseApp<
     };
   }
 
-  loadScript<T>(url: string, options?: { bundleName?: string }): T {
+  loadScript<T>(
+    url: string,
+    options?: { bundleName?: string; useModuleWrapper?: boolean }
+  ): T {
+    const { bundleName = DEFAULT_ENTRY, useModuleWrapper = false } = options;
     const cacheKey = getLoadScriptCacheKey(
       url,
-      options?.bundleName,
+      bundleName,
       this.params.srcName
     );
-    let exports = tryGetLoadScriptCache(cacheKey);
+    let exports: BundleInitReturnObj | object = tryGetLoadScriptCache(cacheKey);
     if (NODE_ENV === 'development' || !exports) {
       let maybeExports = this.lynx.getNativeLynx().loadScript(url, options);
       if (maybeExports && typeof (maybeExports as any).init === 'function') {
         exports = maybeExports as BundleInitReturnObj;
+      } else if (
+        useModuleWrapper &&
+        maybeExports &&
+        typeof maybeExports === 'function'
+      ) {
+        exports = maybeExports;
       } else {
         return maybeExports as T;
       }
     }
 
-    return this._$executeInit<T>(exports, {
-      path: url,
-      entryName: options?.bundleName,
-      shouldCacheFactory: false,
-      cacheKey: cacheKey,
-    });
+    if (useModuleWrapper) {
+      const module = { exports: {} };
+      let that = this;
+      const inRequireCopy = inRequire.call(that, url);
+      const args = [
+        inRequireCopy,
+        module,
+        module.exports,
+        that.setTimeout,
+        that.setInterval,
+        that.clearInterval,
+        that.clearTimeout,
+        that.NativeModules,
+        that.sharedConsole,
+        that.nativeAppId,
+        LynxJSBI,
+        that.lynx,
+        that.requestAnimationFrame,
+        that.cancelAnimationFrame,
+        that.lynx.fetch,
+      ];
+      (exports as Function).apply(module.exports, args);
+      addLoadScriptCache(cacheKey, exports as Function);
+      return module.exports as T;
+    } else {
+      return this._$executeInit<T>(exports as BundleInitReturnObj, {
+        path: url,
+        entryName: options?.bundleName,
+        shouldCacheFactory: false,
+        cacheKey: cacheKey,
+      });
+    }
   }
 
   /**
@@ -1042,7 +1081,7 @@ function getLoadScriptCacheKey(
 
 function tryGetLoadScriptCache(
   cacheKey: string | undefined
-): BundleInitReturnObj | undefined {
+): BundleInitReturnObj | undefined | Function {
   if (!cacheKey) {
     return undefined;
   }
@@ -1051,7 +1090,7 @@ function tryGetLoadScriptCache(
 
 function addLoadScriptCache(
   cacheKey: string | undefined,
-  exports: BundleInitReturnObj | undefined
+  exports: BundleInitReturnObj | undefined | Function
 ) {
   if (!cacheKey || !exports) {
     return;

@@ -61,6 +61,7 @@ class StringBuffer : public Buffer {
   const uint8_t* data() const override {
     return reinterpret_cast<const uint8_t*>(s_.data());
   }
+  std::string& GetString() { return s_; }
 
  private:
   std::string s_;
