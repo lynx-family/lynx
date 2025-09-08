@@ -190,6 +190,8 @@ class CSSStringParser final {
   /// [ [ <url> [ <x> <y> ]? , ]* [ auto | default | none | ... ] ]
   CSSValue ParseCursor();
 
+  CSSValue ParseVariable();
+
   inline void SetIsLegacyParser(bool is_legacy) { legacy_parser_ = is_legacy; }
 
   /// for image related only composed with url
@@ -252,6 +254,7 @@ class CSSStringParser final {
   bool ParseFontVariationSettings(fml::RefPtr<lepus::CArray>& arr);
   bool ParseFontFeatureSettings(fml::RefPtr<lepus::CArray>& arr);
   bool ConsumeOpenTypeTag(fml::RefPtr<lepus::CArray>& arr);
+  bool HasMetVarToken() const { return scanner_.HasMetVarToken(); }
 
   const char* content() const { return scanner_.content(); }
 
@@ -472,6 +475,7 @@ class CSSStringParser final {
   bool LengthOrPercentageValue(Token& token);
   bool ConsumeGrayscale(Token& token);
   bool ConsumeBlur(Token& token);
+  bool ParseVarReference(VarReference& ref);
   CSSValue ParseGrayscale();
   CSSValue ParseBlur();
   CSSValue FilterGrayscaleValue(const Token& function_token);

@@ -140,6 +140,7 @@ enum class TokenType {
   STEPS,          // steps
 
   GRAYSCALE,  // grayscale(10%)
+  VAR,
   /* function end */
 
   /* color begin, the order is associated with CSSColor */

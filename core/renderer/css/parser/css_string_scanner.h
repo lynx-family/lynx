@@ -62,6 +62,8 @@ class Scanner final {
   char PeekNextNext() const;
   void SkipWhiteSpace();
   const char* content() const { return content_; }
+  size_t Length() const { return content_length_; }
+  bool HasMetVarToken() const { return met_var_; }
 
  private:
   static bool IsWhitespace(char c);
@@ -69,6 +71,7 @@ class Scanner final {
   static bool IsAlpha(char c);
   static bool IsNamed(char c);
   static bool ToLower(const char* src, unsigned length, char* dst);
+  bool IsIdentStart(char c);
   Token IdentLikeToken();
   Token FunctionExpression(TokenType type);
 
@@ -76,6 +79,7 @@ class Scanner final {
   uint32_t content_length_;
   uint32_t start_{0};
   uint32_t current_{0};
+  bool met_var_{false};
 };
 
 }  // namespace tasm
