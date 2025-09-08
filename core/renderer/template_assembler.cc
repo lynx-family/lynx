@@ -2392,15 +2392,15 @@ void TemplateAssembler::OnScreenMetricsSet(float width, float height) {
 
   auto width_res = result.GetProperty(kWidth_str);
   auto height_res = result.GetProperty(kHeight_str);
-  if (width_res.IsNumber() && height_res.IsNumber()) {
+  if (width_res.IsNumber() && height_res.IsNumber() &&
+      !std::isnan(width_res.Number()) && !std::isnan(height_res.Number())) {
     width = width_res.Number() /
             client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
     height = height_res.Number() /
              client->GetLynxEnvConfig().PhysicalPixelsPerLayoutUnit();
   } else {
-    LOGE(
-        "getScreenMetricsOverride should return table with width and height "
-        "fields as numbers!!");
+    LOGE("getScreenMetricsOverride return invalid width or height. width: "
+         << width_res << ", height: " << height_res);
   }
 
   if (EnableEventReporter()) {
