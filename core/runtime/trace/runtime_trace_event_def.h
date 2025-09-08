@@ -361,6 +361,8 @@ inline constexpr const char* const FIBER_UPDATE_LIST_CALLBACKS =
 inline constexpr const char* const FIBER_SET_CSS_ID = "FiberSetCSSId";
 inline constexpr const char* const FIBER_FLUSH_ELEMENT_TREE =
     "FiberFlushElementTree";
+inline constexpr const char* const FIBER_FLUSH_ELEMENT_TREE_END =
+    "FiberFlushElementTreeEnd";
 inline constexpr const char* const FIBER_ON_LIFECYCLE_EVENT =
     "FiberOnLifecycleEvent";
 inline constexpr const char* const FIBER_ELEMENT_FROM_BINARY =

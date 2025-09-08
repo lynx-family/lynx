@@ -4812,6 +4812,14 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
       self->GetDelegate().OnDataUpdated();
     }
   }
+  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, FIBER_FLUSH_ELEMENT_TREE_END,
+                      [&current_option](perfetto::EventContext ctx) {
+                        // Add an additional `flow_id` parameter to link the
+                        // corresponding `paintEnd` trace event.
+                        ctx.event()->add_flow_ids(TRACE_FLOW_ID());
+                        ctx.event()->add_debug_annotations(
+                            PIPELINE_ID, current_option->pipeline_id);
+                      });
   RETURN_UNDEFINED();
 }
 
