@@ -10,13 +10,14 @@
 
 #include <set>
 
+#include "base/include/base_export.h"
 #include "base/include/fml/message_loop.h"
 #include "base/include/fml/task_runner.h"
 
 namespace lynx {
 namespace fml {
 
-class TaskRunnerChecker final {
+class BASE_EXPORT TaskRunnerChecker final {
  public:
   TaskRunnerChecker();
 

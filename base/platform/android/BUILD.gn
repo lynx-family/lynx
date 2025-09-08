@@ -35,11 +35,6 @@ cmake_target("LynxBase") {
     "../../src:base_group",
   ]
 
-  sources = [
-    # TODO(yongjie): remove logging_android.cc when lynx depends on LynxBase.
-    "../../src/log/logging_android.cc",
-  ]
-
   configs = [
     ":base_android_private_config",
     "../../../platform/android:16kb_page",

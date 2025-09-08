@@ -6,12 +6,12 @@ package com.lynx.service.log
 
 import android.util.Log
 import androidx.annotation.Keep
-import com.lynx.tasm.service.ILynxLogService
-import com.lynx.tasm.service.ILynxLogService.LogOutputChannelType
-import com.lynx.tasm.base.LLog
+import com.lynx.base.service.ILynxBaseLogService
+import com.lynx.base.service.ILynxBaseLogService.LogOutputChannelType
+import com.lynx.base.log.LynxLog
 
 @Keep
-object LynxLogService : ILynxLogService {
+object LynxLogService : ILynxBaseLogService {
   private var logOutputChannel: LogOutputChannelType = LogOutputChannelType.Platform
 
   // By default, lynx logs are consumed on the platform layer.
@@ -21,11 +21,11 @@ object LynxLogService : ILynxLogService {
     msg: String,
   ) {
     when (level) {
-      LLog.VERBOSE -> Log.v(tag, msg)
-      LLog.DEBUG -> Log.d(tag, msg)
-      LLog.INFO -> Log.i(tag, msg)
-      LLog.WARN -> Log.w(tag, msg)
-      LLog.ERROR -> Log.e(tag, msg)
+      LynxLog.VERBOSE -> Log.v(tag, msg)
+      LynxLog.DEBUG -> Log.d(tag, msg)
+      LynxLog.INFO -> Log.i(tag, msg)
+      LynxLog.WARN -> Log.w(tag, msg)
+      LynxLog.ERROR -> Log.e(tag, msg)
       else -> Log.i(tag, msg)
     }
   }

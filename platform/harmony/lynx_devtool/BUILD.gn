@@ -30,8 +30,6 @@ devtool_source_set("lynx_devtool_lib") {
   ]
 
   deps += [
-    "../../../base/src:base",
-
     # devtool doesn't contain implementation of log, only deps on base_log_headers here
     "../../../base/src:base_log_headers",
     "../../../devtool/base_devtool/common:base_devtool_common_sources",
@@ -53,6 +51,7 @@ target(lynx_devtool_type, "lynx_devtool") {
 
   deps = [
     ":lynx_devtool_lib",
+    "../../../base/platform/harmony:lynx_base",
     "../lynx_harmony",
   ]
 

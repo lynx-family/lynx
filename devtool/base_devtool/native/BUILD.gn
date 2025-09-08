@@ -7,11 +7,6 @@ import("base_devtool.gni")
 group("base_devtool_lib") {
   # core
   deps = [ ":base_devtool" ]
-
-  # add others
-  if (is_android && !enable_unittests) {
-    deps += [ "../../../base/src:string_utils" ]
-  }
 }
 
 group("base_devtool_without_jni_lib") {
@@ -108,11 +103,7 @@ base_devtool_source_set("base_devtool") {
   ]
 
   if (!defined(deps)) {
-    deps = [
-      "../../../base/src:base",
-      "../../../base/src:base_log",
-      "//third_party/zlib",
-    ]
+    deps = [ "//third_party/zlib" ]
   }
 
   if (!defined(include_dirs)) {

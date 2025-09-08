@@ -54,7 +54,7 @@ public class abstract com::lynx::tasm::behavior::ui::text::AbsInlineImageSpan : 
   public static void com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan.possiblyHandleInlineImageRequestResult(Spanned spanned);
 }
 
-public class abstract com::lynx::tasm::base::AbsLogDelegate : com.lynx.tasm.base.ILogDelegate {
+public class abstract com::lynx::tasm::base::AbsLogDelegate :  {
   public final int com.lynx.tasm.base.AbsLogDelegate.TYPE_OVERRIDE TYPE_OVERRIDE;
   public final int com.lynx.tasm.base.AbsLogDelegate.TYPE_INC TYPE_INC;
   public int com.lynx.tasm.base.AbsLogDelegate.mMinimumLoggingLevel mMinimumLoggingLevel;
@@ -788,6 +788,16 @@ public class com::lynx::tasm::behavior::shadow::text::BaselineShiftCalculator : 
   public float com.lynx.tasm.behavior.shadow.text.BaselineShiftCalculator.calcBaselineShiftAscender(int verticalAlign, float verticalAlignValue, float ascender, float descender);
   public float com.lynx.tasm.behavior.shadow.text.BaselineShiftCalculator.getMaxFontDescent();
   public float com.lynx.tasm.behavior.shadow.text.BaselineShiftCalculator.getMaxFontAscent();
+}
+
+public class com::lynx::tasm::base::BaseLogDelegate : AbsBaseLogDelegate {
+  public static BaseLogDelegate com.lynx.tasm.base.BaseLogDelegate.inst();
+  public void com.lynx.tasm.base.BaseLogDelegate.setDelegate(AbsLogDelegate delegate);
+  public void com.lynx.tasm.base.BaseLogDelegate.v(String tag, String msg);
+  public void com.lynx.tasm.base.BaseLogDelegate.d(String tag, String msg);
+  public void com.lynx.tasm.base.BaseLogDelegate.i(String tag, String msg);
+  public void com.lynx.tasm.base.BaseLogDelegate.w(String tag, String msg);
+  public void com.lynx.tasm.base.BaseLogDelegate.e(String tag, String msg);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::BaseTextShadowNode : com.lynx.tasm.behavior.shadow.ShadowNode {
@@ -2128,21 +2138,6 @@ public interface com::lynx::tasm::IListNodeInfoFetcher {
   public void com.lynx.tasm.IListNodeInfoFetcher.scrollStopped(int containerSign);
 }
 
-public interface com::lynx::tasm::base::ILogDelegate {
-  public int com.lynx.tasm.base.ILogDelegate.type();
-  public void com.lynx.tasm.base.ILogDelegate.setMinimumLoggingLevel(int level);
-  public int com.lynx.tasm.base.ILogDelegate.getMinimumLoggingLevel();
-  public boolean com.lynx.tasm.base.ILogDelegate.isLoggable(int level);
-  public boolean com.lynx.tasm.base.ILogDelegate.isLoggable(LogSource source, int level);
-  public void com.lynx.tasm.base.ILogDelegate.v(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.d(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.i(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.w(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.e(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.k(String tag, String msg);
-  public void com.lynx.tasm.base.ILogDelegate.log(int priority, String tag, String msg);
-}
-
 public interface com::lynx::tasm::service::ILynxDevToolService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxDevToolService.getServiceClass();
   public LynxBaseInspectorOwnerNG com.lynx.tasm.service.ILynxDevToolService.createInspectorOwner(@Nullable LynxView view, boolean debuggable);
@@ -2250,15 +2245,6 @@ public interface com::lynx::devtoolwrapper::ILynxLogBox {
 public interface com::lynx::tasm::ILynxLogicExecutor {
   public void com.lynx.tasm.ILynxLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.ILynxLogicExecutor.destroy();
-}
-
-public interface com::lynx::tasm::service::ILynxLogService {
-  public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxLogService.getServiceClass();
-  public void com.lynx.tasm.service.ILynxLogService.logByPlatform(int level, String tag, String msg);
-  public boolean com.lynx.tasm.service.ILynxLogService.isLogOutputByPlatform();
-  public long com.lynx.tasm.service.ILynxLogService.getDefaultWriteFunction();
-  public void com.lynx.tasm.service.ILynxLogService.switchLogToSystem(boolean enableSystemLog);
-  public boolean com.lynx.tasm.service.ILynxLogService.getLogToSystemStatus();
 }
 
 public interface com::lynx::tasm::service::ILynxMemoryMonitorService {
@@ -3356,22 +3342,12 @@ public enum com::lynx::devtoolwrapper::LogBoxLogLevel {
   public com.lynx.devtoolwrapper.LogBoxLogLevel.LogBoxLogLevel(String value);
 }
 
-public enum com::lynx::tasm::base::LLog::LogChannel {
-  public com.lynx.tasm.base.LLog.LogChannel.INTERNAL INTERNAL;
-  public com.lynx.tasm.base.LLog.LogChannel.EXTERNAL EXTERNAL;
-}
-
 public class com::lynx::tasm::LynxTemplateRender::LogLynxViewClient : com.lynx.tasm.LynxViewClient {
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onPageStart(String url);
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onLoadSuccess();
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onFirstScreen();
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onPageUpdate();
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onDataUpdated();
-}
-
-public enum com::lynx::tasm::service::ILynxLogService::LogOutputChannelType {
-  public com.lynx.tasm.service.ILynxLogService.LogOutputChannelType.Native Native;
-  public com.lynx.tasm.service.ILynxLogService.LogOutputChannelType.Platform Platform;
 }
 
 public enum com::lynx::tasm::base::LogSource {

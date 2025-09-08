@@ -35,7 +35,4 @@ lynx_core_source_set("public") {
     "ui_operation_queue_interface.h",
     "vsync_observer_interface.h",
   ]
-
-  # Don't add other dependencies here!
-  deps = [ "../../base/src:base" ]
 }

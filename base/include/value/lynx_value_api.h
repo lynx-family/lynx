@@ -9,7 +9,7 @@
 extern "C" {
 #endif
 
-#include "lynx_value_types.h"
+#include "base/include/value/lynx_value_types.h"
 
 #ifdef _WIN32
 #ifdef lynx_EXPORTS

@@ -15,6 +15,8 @@
 #include <variant>
 #include <vector>
 
+#include "base/include/base_export.h"
+
 namespace lynx {
 namespace base {
 
@@ -63,7 +65,7 @@ struct NapiAsyncContext {
   std::vector<napi_ref> args;
 };
 
-class NapiUtil {
+class BASE_EXPORT NapiUtil {
  public:
   static int32_t ConvertToInt32(napi_env env, napi_value obj);
   static uint32_t ConvertToUInt32(napi_env env, napi_value obj);

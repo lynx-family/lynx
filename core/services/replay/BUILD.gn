@@ -39,7 +39,6 @@ lynx_core_source_set("replay") {
   }
 
   deps = [
-    "../../../base/src:base",
     "../../../third_party/modp_b64:modp_b64",
     "../../../third_party/rapidjson:rapidjson",
     "../../renderer/dom:dom",

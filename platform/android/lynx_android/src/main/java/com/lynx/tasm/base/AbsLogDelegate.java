@@ -5,7 +5,7 @@ package com.lynx.tasm.base;
 
 import android.util.Log;
 
-public abstract class AbsLogDelegate implements ILogDelegate {
+public abstract class AbsLogDelegate {
   public final static int TYPE_OVERRIDE = 1; // type override for log implementation
   public final static int TYPE_INC = 2; // type increment for log implementation
   public int mMinimumLoggingLevel = Log.INFO;

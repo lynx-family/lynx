@@ -46,8 +46,7 @@ podspec_target("lynx_base_podspec") {
 }
 
 base_darwin_public_headers = [
-  # TODO(yongjie): enable log/LynxLog.h when lynx base standalone.
-  # "log/LynxLog.h",
+  "log/LynxLog.h",
   "LynxBaseEnv.h",
   "LynxBaseDefines.h",
   "service/LynxBaseService.h",
@@ -75,12 +74,6 @@ subspec_target("Framework") {
       "//lynx",
       "//",
     ]
-
-    # TODO(yongjie): delete Lynx Pod header paths later.
-    HEADER_SEARCH_PATHS += [
-      "//PODS_ROOT/Lynx/lynx",
-      "//PODS_ROOT/Lynx",
-    ]
     OTHER_CPLUSPLUSFLAGS = "-std=gnu++17"
   }
   if (!is_debug) {
@@ -99,7 +92,7 @@ subspec_target("Framework") {
     ":base",
     "../../../third_party/modp_b64",
     "../../../third_party/rapidjson:rapidjson",
-    "../../src:base",
+    "../../src:base_core",
     "../../src:base_log",
     "../../src:base_log_headers",
     "../../src:base_trace",
@@ -110,20 +103,21 @@ subspec_target("Framework") {
   ]
   frameworks = []
   libraries = [ "stdc++" ]
-  sources = [
-    # TODO(yongjie): remove logging_darwin.mm when lynx depends on LynxBase.
-    "../../src/log/logging_darwin.mm",
-  ]
 }
 
 lynx_base_source_set("base") {
   public = base_darwin_public_headers
   sources = base_darwin_public_headers + [
               "LynxBaseEnv.mm",
-
-              # TODO(yongjie): enable log/LynxLog.mm when lynx base standalone.
-              # "log/LynxLog.mm",
+              "log/LynxLog.mm",
               "service/LynxBaseService.m",
               "trace/LynxBaseTrace.mm",
             ]
+}
+
+group("base_for_macos") {
+  public_deps = [
+    ":base",
+    "../../src:base_group",
+  ]
 }

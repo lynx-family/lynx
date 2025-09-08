@@ -182,10 +182,7 @@ if (build_lynx_lepus_node) {
     }
 
     deps = [
-      "../../base/src:base_log",
-      "../../base/src:base_values",
-      "../../base/src:string_utils",
-      "../../base/src:time_utils",
+      "../../base/src:base_for_oliver",
       "../../core:find_node_headers",
       "../../core/base:json_utils",
       "../../core/base:observer",

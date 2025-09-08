@@ -716,6 +716,9 @@ public class LynxBaseTextShadowNode : LynxShadowNode {
   public void LynxBaseTextShadowNode::markStyleDirty();
 }
 
+public class LynxBaseTraceService : NSObject, <LynxBaseServiceTraceProtocol> {
+}
+
 public class LynxBasicShape : NSObject {
   public UIBezierPath * LynxBasicShape::pathWithFrameSize:(CGSize frameSize);
 }
@@ -2596,15 +2599,6 @@ public protocol LynxLogBoxProtocol-p : <NSObject> {
   public void LynxLogBoxProtocol-p::attachLynxView:(nonnull LynxView *lynxView);
   public void LynxLogBoxProtocol-p::onLynxViewReload();
   public void LynxLogBoxProtocol-p::destroy();
-}
-
-public class LynxLogObserver : NSObject {
-  public LynxLogFunction LynxLogObserver::logFunction logFunction;
-  public LynxLogLevel LynxLogObserver::minLogLevel minLogLevel;
-  public BOOL LynxLogObserver::shouldFormatMessage shouldFormatMessage;
-  public LynxLogSource LynxLogObserver::acceptSource acceptSource;
-  public NSInteger LynxLogObserver::acceptRuntimeId acceptRuntimeId;
-  public instancetype LynxLogObserver::initWithLogFunction:minLogLevel:(LynxLogFunction logFunction,[minLogLevel] LynxLogLevel minLogLevel);
 }
 
 public class LynxLongPressGestureHandler : LynxBaseGestureHandler {
@@ -5738,30 +5732,7 @@ public enum LynxBasicShapeType {
 
   public NS_ASSUME_NONNULL_BEGIN typedef void(^ LoadedBlock) (NSData *_Nullable data, NSError *_Nullable error) LoadedBlock;
 
-public enum LynxLogLevel {
-  LynxLogLevelReport
-  LynxLogLevelVerbose
-  LynxLogLevelDebug
-  LynxLogLevelInfo
-  LynxLogLevelWarning
-  LynxLogLevelError
-  LynxLogLevelFatal
-}
-
-  typedef void(^ LynxLogFunction) (LynxLogLevel level, NSString *message)
-  typedef LynxLogObserver LynxLogDelegate
-  public LynxLogFunction LynxDefaultLogFunction LynxDefaultLogFunction;
-  public typedef NS_OPTIONS(NSInteger, LynxLogSource);
-  public LYNX_EXTERN void InitLynxLog(bool enable_devtools);
-  public LYNX_EXTERN void SetDebugLoggingDelegate(LynxLogDelegate *delegate);
-  public LYNX_EXTERN NSInteger AddLoggingDelegate(LynxLogDelegate *delegate);
-  public LYNX_EXTERN LynxLogDelegate * GetLoggingDelegate(NSInteger delegateId);
-  public LYNX_EXTERN void RemoveLoggingDelegate(NSInteger delegateId);
-  public LYNX_EXTERN void SetMinimumLoggingLevel(LynxLogLevel minLogLevel);
-  public LYNX_EXTERN void SetJSLogsFromExternalChannels(bool isOpen);
-  public LYNX_EXTERN LynxLogLevel GetMinimumLoggingLevel(void);
-  public LYNX_EXTERN NSInteger LynxSetLogFunction(LynxLogFunction logFunction);
-  public LYNX_EXTERN LynxLogFunction LynxGetLogFunction(void);
+  typedef LynxLogDelegate LynxLogObserver
   public LYNX_EXTERN NSInteger LynxAddLogObserver(LynxLogFunction logFunction, LynxLogLevel minLogLevel);
   public LYNX_EXTERN NSInteger LynxAddLogObserverByModel(LynxLogObserver *observer);
   public LYNX_EXTERN LynxLogObserver * LynxGetLogObserver(NSInteger observerId);
@@ -5769,11 +5740,6 @@ public enum LynxLogLevel {
   public LYNX_EXTERN NSArray< LynxLogObserver * > * LynxGetLogObservers(void);
   public LYNX_EXTERN void LynxSetMinLogLevel(LynxLogLevel minLogLevel) __attribute__((deprecated("Use SetMinimumLoggingLevel instead.")));
   public LYNX_EXTERN LynxLogLevel LynxGetMinLogLevel(void);
-  public LYNX_EXTERN void _LynxLogInternal(const char *, int32_t, LynxLogLevel, NSString *,...) NS_FORMAT_FUNCTION(4;
-  public LYNX_EXTERN void LYNX_EXTERN const char * _GetLastPath(const char *filename, int32_t length);
-  public LYNX_EXTERN void _LynxErrorInfoInternal(NSInteger, NSString *,...);
-  public LYNX_EXTERN void _LynxErrorWarningInternal(bool, NSInteger, NSString *,...);
-  public LYNX_EXTERN void _LynxErrorFatalInternal(bool, NSInteger, NSString *,...);
 
   public const int kLynxPerformanceIsSrrHydrateIndex kLynxPerformanceIsSrrHydrateIndex;
 

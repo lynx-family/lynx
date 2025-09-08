@@ -12,6 +12,7 @@
 #include <iosfwd>
 #include <limits>
 
+#include "base/include/base_export.h"
 #include "base/include/fml/time/time_delta.h"
 
 namespace lynx {
@@ -23,7 +24,7 @@ namespace fml {
 // WARNING: This class should not be serialized across reboots, or across
 // devices: the reference point is only stable for a given device between
 // reboots.
-class TimePoint {
+class BASE_EXPORT TimePoint {
  public:
   // Default TimePoint with internal value 0 (epoch).
   constexpr TimePoint() = default;

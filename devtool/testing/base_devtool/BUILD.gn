@@ -12,10 +12,7 @@ unittest_set("devtool_base_devtool_testset") {
     "base_devtool_unittest.cc",
   ]
 
-  deps = [
-    "../../../base/src:base",
-    "../../base_devtool/native:base_devtool",
-  ]
+  deps = [ "../../base_devtool/native:base_devtool" ]
 
   include_dirs = [
     "//third_party/googletest/googletest/include",

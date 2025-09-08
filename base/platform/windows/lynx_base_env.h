@@ -14,6 +14,7 @@ class LynxBaseEnv {
   static LynxBaseEnv* Instance();
 
   void Init(bool is_print_log_to_all_channel);
+  void OnlyInitBaseTrace();
 };
 }  // namespace base
 }  // namespace lynx

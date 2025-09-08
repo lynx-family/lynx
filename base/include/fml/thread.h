@@ -23,7 +23,7 @@
 namespace lynx {
 namespace fml {
 
-class Thread {
+class BASE_EXPORT Thread {
  public:
   /// Valid values for priority of Thread.
   enum class ThreadPriority : int {
