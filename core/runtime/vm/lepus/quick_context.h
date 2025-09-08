@@ -55,6 +55,7 @@ class QuickContext : private LEPUSRuntimeData,
   virtual void Initialize() override;
   virtual bool Execute() override;
 
+  virtual void TriggerVmGC() override;
   virtual void UpdateGCTiming(bool is_start) override;
 
   virtual long GetParamsSize() override;

@@ -82,6 +82,11 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<piper::LynxModuleManager>& GetModuleManager() {
     return module_manager_;
   }
+  void TriggerVmGC() {
+    if (js_runtime_) {
+      js_runtime_->RequestGC();
+    }
+  }
 
  protected:
   std::shared_ptr<JSIExceptionHandler> exception_handler_;

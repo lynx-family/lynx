@@ -313,6 +313,8 @@ class LynxEngine {
   void UnsubscribeClientSessionStorage(const std::string& key,
                                        double callback_id);
 
+  void TriggerVmGC() { tasm_->TriggerVmGC(); }
+
  private:
   std::unique_ptr<tasm::TemplateAssembler> tasm_;
   std::unique_ptr<Delegate> delegate_;

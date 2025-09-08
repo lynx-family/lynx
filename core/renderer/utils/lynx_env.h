@@ -120,6 +120,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     // in 3.6)
     FIX_RADON_TRANSITION_PROPERTY_REMOVE_BUG,
     ENABLE_GLOBAL_FONT_COLLECTION,
+    ENABLE_GC_ONCE_ON_IDLE,
     // Please add new enum values above
     END_MARK,  // Keep this as the last enum value, and do not use
   };
@@ -253,6 +254,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
              "fix_radon_transition_property_remove_bug"},
             {Key::ENABLE_GLOBAL_FONT_COLLECTION,
              "enable_global_font_collection"},
+            {Key::ENABLE_GC_ONCE_ON_IDLE, "enable_gc_once_on_idle"},
         });
     auto it = (*env_key_to_string_map).find(key);
     DCHECK(it != (*env_key_to_string_map).end());
@@ -391,6 +393,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool EnableEventHandleRefactor();
   bool FixRadonTransitionPropertyRemoveBug();
   bool EnableGlobalFontCollection();
+  uint32_t EnableGCOnceOnIdle();
 
   LynxEnv(const LynxEnv&) = delete;
   LynxEnv& operator=(const LynxEnv&) = delete;

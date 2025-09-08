@@ -231,6 +231,13 @@ TemplateAssembler::~TemplateAssembler() {
   LOGI("TemplateAssembler::Release url:" << url_ << " this:" << this);
 };
 
+void TemplateAssembler::TriggerVmGC() {
+  if (page_config_->GetEnableLepusNG()) {
+    auto vm = FindEntry(tasm::DEFAULT_ENTRY_NAME)->GetVm();
+    vm->TriggerVmGC();
+  }
+}
+
 void TemplateAssembler::UpdateGlobalProps(
     const lepus::Value& data, bool need_render,
     std::shared_ptr<PipelineOptions>& pipeline_options) {
