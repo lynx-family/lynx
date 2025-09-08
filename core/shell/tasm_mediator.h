@@ -17,6 +17,7 @@
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/services/performance/performance_controller.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/lynx_card_cache_data_manager.h"
 #include "core/shell/lynx_engine.h"
 #include "core/shell/native_facade.h"
@@ -293,6 +294,8 @@ class TasmMediator : public LynxEngine::Delegate {
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
 
   tasm::PageOptions page_options_;
+
+  WatchDog watch_dog_;
 };
 
 }  // namespace shell

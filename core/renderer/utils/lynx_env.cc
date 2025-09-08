@@ -506,5 +506,11 @@ bool LynxEnv::EnableGlobalFontCollection() {
   return enable_global_font_collection;
 }
 
+bool LynxEnv::EnableGCOnceOnIdle() {
+  static bool cached_enable_gc_once_on_idle =
+      GetBoolEnv(Key::ENABLE_GC_ONCE_ON_IDLE, false);
+  return cached_enable_gc_once_on_idle;
+}
+
 }  // namespace tasm
 }  // namespace lynx

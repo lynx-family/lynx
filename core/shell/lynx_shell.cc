@@ -458,6 +458,14 @@ void LynxShell::LoadTemplate(
       });
     }
   });
+
+  if (tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle()) {
+    WatchDog::TaskConfig gc_task =
+        WatchDog::TaskConfig{.idle_task = [engine = engine_actor_]() {
+          engine->Impl()->TriggerVmGC();
+        }};
+    watch_dog_.RunOnActorThreadIdle(std::move(gc_task), engine_actor_);
+  }
 }
 
 void LynxShell::LoadTemplateBundle(

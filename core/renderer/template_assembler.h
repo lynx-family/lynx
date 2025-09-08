@@ -327,6 +327,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void OnRuntimeGC(
       std::unordered_map<std::string, std::string> mem_info) override;
 
+  void TriggerVmGC();
+
   fml::RefPtr<fml::TaskRunner> GetLepusTimedTaskRunner() override;
 
   void UpdateGlobalProps(const lepus::Value& data, bool need_render,

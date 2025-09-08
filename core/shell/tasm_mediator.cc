@@ -357,6 +357,14 @@ void TasmMediator::OnJSSourcePrepared(
                                 bundle_module_mode, url, pipeline_options,
                                 trace_flow_id);
   });
+
+  if (tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle()) {
+    WatchDog::TaskConfig gc_task =
+        WatchDog::TaskConfig{.idle_task = [runtime = runtime_actor_]() {
+          runtime->Impl()->TriggerVmGC();
+        }};
+    watch_dog_.RunOnActorThreadIdle(std::move(gc_task), runtime_actor_);
+  }
 }
 
 void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {

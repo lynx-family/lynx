@@ -30,6 +30,7 @@
 #include "core/services/performance/performance_mediator.h"
 #include "core/services/timing_handler/timing_handler.h"
 #include "core/services/timing_handler/timing_mediator.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/dynamic_ui_operation_queue.h"
 #include "core/shell/engine_thread_switch.h"
 #include "core/shell/layout_mediator.h"
@@ -375,6 +376,8 @@ class LynxShell {
 
   std::shared_ptr<LynxActor<tasm::performance::PerformanceController>>
       perf_controller_actor_;  // on Reporter runner
+
+  WatchDog watch_dog_;
 
   base::TaskRunnerManufactor runners_;
 
