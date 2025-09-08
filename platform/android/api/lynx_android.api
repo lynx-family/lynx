@@ -7342,7 +7342,10 @@ public class com::lynx::tasm::behavior::ui::list::container::NestedScrollContain
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setIsVertical(boolean isVertical);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setCustomScrollHook(CustomScrollHook customScrollHook);
   public CustomScrollHook com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.getCustomScrollHook();
-  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setOnScrollStateChangeListener(OnScrollStateChangeListener listener);
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.addOnScrollStateChangeListener(OnScrollStateChangeListener listener);
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.removeOnScrollStateChangeListener(OnScrollStateChangeListener listener);
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.addOnScrollListener(NestedScrollContainerView.OnScrollListener listener);
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.removeOnScrollListener(NestedScrollContainerView.OnScrollListener listener);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setMaxFlingDistanceRatio(float ratio);
   public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.setEnableScroll(boolean enableScroll);
   public boolean com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.canScrollHorizontally(int direction);
@@ -7463,6 +7466,10 @@ public interface com::lynx::tasm::behavior::ui::swiper::ViewPager::OnPageScrollL
 
 public interface com::lynx::tasm::TemplateBundle::OnReleaseCallback {
   public void com.lynx.tasm.TemplateBundle.OnReleaseCallback.onRelease();
+}
+
+public interface com::lynx::tasm::behavior::ui::list::container::NestedScrollContainerView::OnScrollListener {
+  public void com.lynx.tasm.behavior.ui.list.container.NestedScrollContainerView.OnScrollListener.onScrollChange(int scrollX, int scrollY, int oldScrollX, int oldScrollY);
 }
 
 public interface com::lynx::tasm::behavior::ui::scroll::AndroidScrollView::OnScrollListener {

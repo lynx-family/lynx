@@ -26,10 +26,6 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
   LynxListScrollStateScrollAnimation = 4,
 };
 
-@interface LynxListContainerComponentWrapper : UIView
-@property(nonatomic, weak) LynxUIComponent *holdingUI;
-@end
-
 @implementation LynxListContainerComponentWrapper
 
 - (void)addListItemView:(UIView *)listItemView
@@ -139,8 +135,6 @@ typedef NS_ENUM(NSInteger, LynxListScrollState) {
     NSMutableDictionary<NSString *, LynxUIComponent *> *stickyBottomListItemDict;
 @property(nonatomic, weak) LynxUI *prevStickyStartItem;
 @property(nonatomic, weak) LynxUI *prevStickyEndItem;
-@property(nonatomic, assign) CGFloat pagingAlignFactor;
-@property(nonatomic, assign) CGFloat pagingAlignOffset;
 @property(nonatomic, assign) BOOL enableRecycleStickyItem;
 @property(nonatomic, assign) BOOL enableFadeInAnimation;
 @property(nonatomic, assign) BOOL enableBatchRender;
@@ -454,6 +448,7 @@ LYNX_REGISTER_UI("list-container")
 
                        }];
     }
+    [self.delegate insertListComponent:component wrapper:wrapper];
   }
   if (self.enableListSticky) {
     if (self.updateStickyForDiff) {
@@ -511,6 +506,7 @@ LYNX_REGISTER_UI("list-container")
   if (component.view.superview.superview == self.view) {
     [component.view.superview removeFromSuperview];
     [component.view removeFromSuperview];
+    [self.delegate removeListComponent:component];
   }
 }
 
@@ -1132,6 +1128,36 @@ LYNX_UI_METHOD(scrollToPosition) {
     alignTo = 2;
   }
 
+  if (smooth) {
+    self.scrollToCallback = callback;
+  }
+
+  // Tell ListElement that we want scroll to some position
+  [self scrollToPosition:position offset:offset align:(int)alignTo smooth:smooth];
+
+  auto listNodeInfoFetcher = self.context.fetcher;
+
+  if (!listNodeInfoFetcher) {
+    if (callback) {
+      callback(kUIMethodUnknown, @"List has been destroyed");
+    }
+  } else {
+    if (!smooth) {
+      // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll
+      // on Most_On_Tasm
+      callback(kUIMethodSuccess, nil);
+    }
+  }
+}
+
+- (void)scrollToPosition:(NSInteger)position
+                  offset:(float)offset
+                   align:(int)align
+                  smooth:(BOOL)smooth {
+  if (position < 0 || (NSUInteger)position >= self.itemKeys.count) {
+    return;
+  }
+
   // Stop the current scroll
   self.isInScrollToPosition = YES;
   [self.view setContentOffset:self.view.contentOffset animated:NO];
@@ -1141,24 +1167,11 @@ LYNX_UI_METHOD(scrollToPosition) {
 
   auto listNodeInfoFetcher = self.context.fetcher;
   if (listNodeInfoFetcher) {
-    if (smooth) {
-      self.scrollToCallback = callback;
-    }
     [listNodeInfoFetcher scrollToPosition:static_cast<int32_t>(self.sign)
                                  position:(int)position
                                    offset:offset
-                                    align:(int)alignTo
+                                    align:align
                                    smooth:smooth];
-
-    if (!smooth) {
-      // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll
-      // on Most_On_Tasm
-      callback(kUIMethodSuccess, nil);
-    }
-  } else {
-    if (callback) {
-      callback(kUIMethodUnknown, @"List has been destroyed");
-    }
   }
 }
 
@@ -1554,45 +1567,57 @@ LYNX_UI_METHOD(getVisibleCells) {
           (minX <= offsetMaxX && maxX >= offsetMaxX) || (minX >= offsetMinX && maxX <= offsetMaxX));
 }
 
-- (NSArray<NSDictionary *> *)visibleCellsInfo {
-  NSMutableArray<NSDictionary *> *attachedCells = [NSMutableArray array];
+- (NSArray<LynxListContainerComponentWrapper *> *)visibleCells {
+  NSMutableArray<LynxListContainerComponentWrapper *> *attachedCells = [NSMutableArray array];
   [self.view.subviews
       enumerateObjectsUsingBlock:^(__kindof LynxListContainerComponentWrapper *_Nonnull obj,
                                    NSUInteger idx, BOOL *_Nonnull stop) {
         if ([obj isKindOfClass:LynxListContainerComponentWrapper.class]) {
           if (self.verticalOrientation ? [self isVisibleCellVertical:obj]
                                        : [self isVisibleCellHorizontal:obj]) {
-            CGFloat cellTop = obj.frame.origin.y - self.view.contentOffset.y;
-            CGFloat cellLeft = obj.frame.origin.x - self.view.contentOffset.x;
-            [attachedCells addObject:@{
-              @"id" : (obj.holdingUI.idSelector ?: @"unknown"),
-              @"position" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
-              @"index" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
-              @"itemKey" : obj.holdingUI.itemKey ?: @"",
-              @"top" : @(cellTop),
-              @"bottom" : @(cellTop + obj.frame.size.height),
-              @"left" : @(cellLeft),
-              @"right" : @(cellLeft + obj.frame.size.width),
-            }];
+            [attachedCells addObject:obj];
           }
         }
       }];
 
-  [attachedCells sortUsingComparator:^NSComparisonResult(NSDictionary *_Nonnull lhs,
-                                                         NSDictionary *_Nonnull rhs) {
-    NSInteger lhsPosition = [lhs[@"position"] integerValue];
-    NSInteger rhsPosition = [rhs[@"position"] integerValue];
+  [attachedCells
+      sortUsingComparator:^NSComparisonResult(LynxListContainerComponentWrapper *_Nonnull lhs,
+                                              LynxListContainerComponentWrapper *_Nonnull rhs) {
+        NSInteger lhsPosition = [self getIndexFromItemKey:lhs.holdingUI.itemKey];
+        NSInteger rhsPosition = [self getIndexFromItemKey:rhs.holdingUI.itemKey];
 
-    if (lhsPosition < rhsPosition) {
-      return NSOrderedAscending;
-    }
+        if (lhsPosition < rhsPosition) {
+          return NSOrderedAscending;
+        }
 
-    if (lhsPosition > rhsPosition) {
-      return NSOrderedDescending;
-    }
+        if (lhsPosition > rhsPosition) {
+          return NSOrderedDescending;
+        }
 
-    return NSOrderedSame;
-  }];
+        return NSOrderedSame;
+      }];
+
+  return attachedCells;
+}
+
+- (NSArray<NSDictionary *> *)visibleCellsInfo {
+  NSMutableArray<NSDictionary *> *attachedCells = [NSMutableArray array];
+  [self.visibleCells
+      enumerateObjectsUsingBlock:^(__kindof LynxListContainerComponentWrapper *_Nonnull obj,
+                                   NSUInteger idx, BOOL *_Nonnull stop) {
+        CGFloat cellTop = obj.frame.origin.y - self.view.contentOffset.y;
+        CGFloat cellLeft = obj.frame.origin.x - self.view.contentOffset.x;
+        [attachedCells addObject:@{
+          @"id" : (obj.holdingUI.idSelector ?: @"unknown"),
+          @"position" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
+          @"index" : @([self getIndexFromItemKey:obj.holdingUI.itemKey]),
+          @"itemKey" : obj.holdingUI.itemKey ?: @"",
+          @"top" : @(cellTop),
+          @"bottom" : @(cellTop + obj.frame.size.height),
+          @"left" : @(cellLeft),
+          @"right" : @(cellLeft + obj.frame.size.width),
+        }];
+      }];
 
   return attachedCells;
 }
