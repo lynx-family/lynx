@@ -36,7 +36,7 @@ static LynxInitProcessor *_instance = nil;
   [globalConfig registerModule:ExplorerModule.class];
 
   // prepare global config
-  [[LynxEnv sharedInstance] prepareConfig:globalConfig];
+  [env prepareConfig:globalConfig];
 }
 
 - (void)setupLynxService {
