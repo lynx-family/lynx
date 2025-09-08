@@ -91,6 +91,7 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"calc", TokenType::CALC},
       {"env", TokenType::ENV},
       {"grayscale", TokenType::GRAYSCALE},
+      {"var", TokenType::VAR},
       {"blur", TokenType::BLUR},
       {"fit-content", TokenType::FIT_CONTENT},
       {"transparent", TokenType::TRANSPARENT},
@@ -318,7 +319,8 @@ TEST(CSSKeywords, TokenTypeCheck) {
       {"paused", TokenType::PAUSED},
       {"running", TokenType::RUNNING},
       {"true", TokenType::TOKEN_TRUE},
-      {"false", TokenType::TOKEN_FALSE}};
+      {"false", TokenType::TOKEN_FALSE},
+  };
 
   EXPECT_EQ(static_cast<int>(TokenType::TOKEN_FALSE) -
                 static_cast<int>(TokenType::UNKNOWN),

@@ -24,7 +24,7 @@ Token Scanner::ScanToken() {
     return Whitespace();
   }
 
-  if (IsAlpha(c)) {
+  if (IsIdentStart(c)) {
     return IdentLikeToken();
   }
   // [<Number>] <dot> <Number>
@@ -96,6 +96,17 @@ bool Scanner::Match(char expected) {
   return true;
 }
 
+bool Scanner::IsIdentStart(char c) {
+  if (IsAlpha(c)) {
+    return true;
+  } else if (c == '-') {
+    if (IsAlpha(Peek()) || Peek() == '-' || Peek() == '_' || Peek() == '\0') {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool Scanner::IsWhitespace(char c) {
   return c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f';
 }
@@ -156,7 +167,10 @@ Token Scanner::FunctionExpression(TokenType type) {
   Advance();
   // TODO(renzhongyue): all function type token should begin with the char next
   // to '('
-  if (TokenType::BLUR <= type && type <= TokenType::GRAYSCALE) {
+  if (TokenType::BLUR <= type && type <= TokenType::VAR) {
+    if (TokenType::VAR == type) {
+      met_var_ = true;
+    }
     return Token{type, content_ + args_start + 1, current_ - args_start - 2};
   }
   return MakeToken(type);
@@ -235,7 +249,7 @@ Token Scanner::IdentLikeToken() {
   ToLower(content_ + start_, len, s);
   auto* it = GetTokenValue(s, len);
   if (it != nullptr /* got token keywords */) {
-    if (TokenType::CALC <= it->type && it->type <= TokenType::GRAYSCALE) {
+    if (TokenType::CALC <= it->type && it->type <= TokenType::VAR) {
       // maybe function
       return FunctionExpression(it->type);
     }
