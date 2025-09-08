@@ -656,7 +656,7 @@ public class UIBody extends UIGroup<UIBodyView> {
     }
 
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    public void SetShouldInterceptRequestLayout(boolean intercept) {
+    public void setShouldInterceptRequestLayout(boolean intercept) {
       mInterceptRequestLayout = intercept;
     }
 
