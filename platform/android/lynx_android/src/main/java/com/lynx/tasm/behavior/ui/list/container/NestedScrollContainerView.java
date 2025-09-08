@@ -16,7 +16,6 @@ import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.animation.Interpolator;
 import android.widget.FrameLayout;
-import android.widget.OverScroller;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.view.NestedScrollingChild2;
@@ -26,6 +25,7 @@ import androidx.core.view.NestedScrollingParentHelper;
 import androidx.core.view.ViewCompat;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.ui.list.LynxSnapHelper;
+import java.util.ArrayList;
 
 public class NestedScrollContainerView
     extends FrameLayout implements NestedScrollingParent2, NestedScrollingChild2 {
@@ -69,7 +69,11 @@ public class NestedScrollContainerView
   private final int[] mTargetScrollOffset = new int[2];
   private VelocityTracker mVelocityTracker;
   protected ScrollHelper mScrollHelper;
-  private OnScrollStateChangeListener mOnScrollStateChangeListener;
+  private ArrayList<OnScrollStateChangeListener> mOnScrollStateChangeListeners =
+      new ArrayList<OnScrollStateChangeListener>();
+
+  protected ArrayList<OnScrollListener> mOnScrollListeners = new ArrayList<OnScrollListener>();
+
   private final NestedScrollingParentHelper mParentHelper;
   private final NestedScrollingChildHelper mChildHelper;
   private float mMaxFlingDistanceRatio = -1;
@@ -88,6 +92,18 @@ public class NestedScrollContainerView
      * @param state New scroll state.
      */
     void onScrollStateChange(NestedScrollContainerView scrollView, int state);
+  }
+
+  public interface OnScrollListener {
+    /**
+     * Called when the scroll position of a view changes.
+     *
+     * @param scrollX Current horizontal scroll origin.
+     * @param scrollY Current vertical scroll origin.
+     * @param oldScrollX Previous horizontal scroll origin.
+     * @param oldScrollY Previous vertical scroll origin.
+     */
+    void onScrollChange(int scrollX, int scrollY, int oldScrollX, int oldScrollY);
   }
 
   /**
@@ -569,6 +585,11 @@ public class NestedScrollContainerView
       if (mSnapHelper == null) {
         return false;
       }
+
+      if (mScrollState == SCROLL_STATE_IDLE) {
+        return false;
+      }
+
       setScrollState(SCROLL_STATE_FLING);
       mCustomScrollHook = null;
       mLastScrollX = getScrollX();
@@ -791,13 +812,33 @@ public class NestedScrollContainerView
   }
 
   private void dispatchOnScrollStateChanged(int state) {
-    if (mOnScrollStateChangeListener != null) {
-      mOnScrollStateChangeListener.onScrollStateChange(this, state);
+    for (OnScrollStateChangeListener listener : mOnScrollStateChangeListeners) {
+      listener.onScrollStateChange(this, state);
     }
   }
 
-  public void setOnScrollStateChangeListener(OnScrollStateChangeListener listener) {
-    mOnScrollStateChangeListener = listener;
+  public void addOnScrollStateChangeListener(OnScrollStateChangeListener listener) {
+    mOnScrollStateChangeListeners.add(listener);
+  }
+
+  public void removeOnScrollStateChangeListener(OnScrollStateChangeListener listener) {
+    mOnScrollStateChangeListeners.remove(listener);
+  }
+
+  public void addOnScrollListener(NestedScrollContainerView.OnScrollListener listener) {
+    mOnScrollListeners.add(listener);
+  }
+
+  public void removeOnScrollListener(NestedScrollContainerView.OnScrollListener listener) {
+    mOnScrollListeners.remove(listener);
+  }
+
+  protected void clearOnScrollListeners() {
+    mOnScrollListeners.clear();
+  }
+
+  protected void clearOnScrollStateChangeListeners() {
+    mOnScrollStateChangeListeners.clear();
   }
 
   public void setMaxFlingDistanceRatio(float ratio) {

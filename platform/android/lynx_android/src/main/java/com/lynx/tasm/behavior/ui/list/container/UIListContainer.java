@@ -153,7 +153,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   @Override
   protected ListContainerView createView(Context context) {
     final ListContainerView listContainerView = new ListContainerView(context, this);
-    listContainerView.setOnScrollStateChangeListener(this);
+    listContainerView.addOnScrollStateChangeListener(this);
     LLog.i(TAG, "create UIListContainer: " + this + ", " + listContainerView);
     return listContainerView;
   }
