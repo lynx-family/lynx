@@ -10,6 +10,7 @@ cmake_target("base_devtool") {
   output_name = "basedevtool"
   deps = [
     ":base_devtool_jni_files",
+    "../../../../base/platform/android:LynxBase",
     "../../native:base_devtool_lib",
   ]
   libs = [

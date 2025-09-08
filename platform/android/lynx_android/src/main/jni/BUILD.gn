@@ -38,8 +38,6 @@ lynx_core_source_set("build") {
     "gen/JavaOnlyArray_register_jni.h",
     "gen/JavaOnlyMap_jni.h",
     "gen/JavaOnlyMap_register_jni.h",
-    "gen/LLog_jni.h",
-    "gen/LLog_register_jni.h",
     "gen/LayoutContext_jni.h",
     "gen/LayoutContext_register_jni.h",
     "gen/LayoutNodeManager_jni.h",

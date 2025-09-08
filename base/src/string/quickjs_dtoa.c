@@ -22,6 +22,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#include "base/include/string/quickjs_dtoa.h"
+
 #include <assert.h>
 #include <fenv.h>
 #include <inttypes.h>
@@ -197,6 +199,6 @@ static void js_dtoa1(char* buf, double d, int radix, int n_digits, int flags) {
   }
 }
 
-extern void js_dtoa(char* buf, double val) {
+void js_dtoa(char* buf, double val) {
   js_dtoa1(buf, val, 10, 0, JS_DTOA_VAR_FORMAT);
 }

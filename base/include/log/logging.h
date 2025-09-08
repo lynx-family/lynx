@@ -33,9 +33,9 @@ BASE_EXPORT int GetMinLogLevel();
 BASE_EXPORT void PrintLogToLynxLogging(int level, const char* tag,
                                        const char* message);
 
-BASE_EXPORT bool HasInitedLynxLogWriteFunction();
-BASE_EXPORT void EnableLogOutputByPlatform();
-BASE_EXPORT void DisableLogOutputByPlatform();
+bool HasInitedLynxLogWriteFunction();
+void EnableLogOutputByPlatform();
+void DisableLogOutputByPlatform();
 
 #define LYNX_LOG_LEVEL_VERBOSE 0
 #define LYNX_LOG_LEVEL_DEBUG 1

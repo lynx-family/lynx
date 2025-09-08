@@ -139,10 +139,7 @@ source_set("starlight") {
   } else {
     not_needed(starlight_event_sources)
   }
-  public_deps = [
-    "../../../base/src:base",
-    "../../../base/src:base_log",
-  ]
+  public_deps = []
 
   public_configs = [ ":starlight_public_config" ]
   configs += [ ":starlight_private_config" ]

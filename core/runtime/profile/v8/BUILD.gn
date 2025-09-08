@@ -22,7 +22,6 @@ unittest_set("v8_profile_testset") {
   sources = [ "v8_runtime_profiler_unittest.cc" ]
   public_deps = [
     ":v8_profile",
-    "../../../../base/src:base",
     "../../../../base/trace/native:trace",
     "../../../../third_party/rapidjson:rapidjson",
     "../../profile",

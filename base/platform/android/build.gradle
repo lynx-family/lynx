@@ -60,6 +60,18 @@ android {
                 }
             }
         }
+        dev {
+            dimension "lynx"
+            matchingFallbacks = ["noasan"]
+            externalNativeBuild {
+                cmake {
+                    cppFlags '-Wl,-ldl',
+                            '-Wno-unused-command-line-argument'
+                    arguments '-DANDROID_STL='+getCppLib(),
+                            '-DFLAVOR_NAME=dev'
+                }
+            }
+        }
     }
 
     buildTypes {

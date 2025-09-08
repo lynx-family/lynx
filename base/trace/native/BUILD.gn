@@ -57,9 +57,6 @@ config("trace_private_config") {
   }
 
   defines = []
-
-  # TODO(yongjie): enable log in trace.
-  defines += [ "LYNX_MIN_LOG_LEVEL=5" ]
 }
 
 # trace_public_headers & trace_shared_sources
@@ -128,16 +125,9 @@ trace_shared_sources += platform_shared_sources + hook_systrace_shared_sources
 # trace_public_headers & trace_shared_sources end
 
 source_set("trace") {
-  # TODO(tangyongjie): Currently, when GN is converted to podspec, public will be converted
-  # to public_header_files, which will be enabled later to distinguish the meaning of the two.
-  # public = trace_public_headers
   sources = trace_shared_sources
 
-  public_deps = [
-    "../../src:base",
-    # TODO(yongjie): enable log in trace.
-    # "../../src:base_log",
-  ]
+  public_deps = []
 
   if ((is_android || is_harmony) && enable_trace == "perfetto") {
     public_deps += [ "//third_party/xhook:xhook" ]
@@ -155,7 +145,10 @@ source_set("trace") {
   }
 
   public_configs = [ ":trace_public_config" ]
-  configs += [ ":trace_private_config" ]
+  configs += [
+    ":trace_private_config",
+    "../../src:base_public_config",
+  ]
 }
 
 source_set("trace_public_headers") {

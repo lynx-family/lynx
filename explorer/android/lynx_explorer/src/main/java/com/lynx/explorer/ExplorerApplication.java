@@ -8,6 +8,7 @@ import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.imagepipeline.core.ImagePipelineConfig;
 import com.facebook.imagepipeline.memory.PoolConfig;
 import com.facebook.imagepipeline.memory.PoolFactory;
+import com.lynx.base.service.LynxBaseServiceCenter;
 import com.lynx.devtool.recorder.LynxRecorderPageManager;
 import com.lynx.explorer.modules.LynxModuleAdapter;
 import com.lynx.explorer.provider.DemoTemplateProvider;
@@ -19,7 +20,6 @@ import com.lynx.service.log.LynxLogService;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.service.ILynxHttpService;
 import com.lynx.tasm.service.ILynxImageService;
-import com.lynx.tasm.service.ILynxLogService;
 import com.lynx.tasm.service.LynxServiceCenter;
 
 public class ExplorerApplication extends Application {
@@ -42,8 +42,8 @@ public class ExplorerApplication extends Application {
   }
 
   private void initLynxService() {
+    LynxBaseServiceCenter.inst().registerService(LynxLogService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxImageService.getInstance());
-    LynxServiceCenter.inst().registerService(LynxLogService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxHttpService.INSTANCE);
     LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
 

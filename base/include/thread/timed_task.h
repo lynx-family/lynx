@@ -17,7 +17,7 @@ namespace lynx {
 namespace base {
 
 // not thread safe, need ensure lifecycle on one thread forever.
-class TimedTaskManager {
+class BASE_EXPORT TimedTaskManager {
  public:
   explicit TimedTaskManager(bool need_stop_all_tasks_when_exit = true,
                             fml::RefPtr<fml::TaskRunner> runner = nullptr);

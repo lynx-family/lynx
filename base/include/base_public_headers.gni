@@ -170,6 +170,7 @@ base_core_public_headers = rebase_path(base_core_public_headers_list)
 
 # string_utils_public_headers begin
 string_utils_public_headers_list = [
+  "string/quickjs_dtoa.h",
   "string/string_number_convert.h",
   "string/string_utils.h",
 ]

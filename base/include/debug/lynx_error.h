@@ -42,30 +42,30 @@ static constexpr const char* kLynxErrorSuggestionRefOfficialSite =
 enum class LynxErrorLevel : int32_t { Fatal = 0, Error, Warn };
 
 // Store the error into ErrorStorage
-bool StoreError(int32_t error_code, std::string error_msg,
-                std::string fix_suggestion,
-                LynxErrorLevel level = LynxErrorLevel::Error);
+BASE_EXPORT bool StoreError(int32_t error_code, std::string error_msg,
+                            std::string fix_suggestion,
+                            LynxErrorLevel level = LynxErrorLevel::Error);
 // Store the error into ErrorStorage if expression is not satisfied.
-bool StoreErrorIfNot(bool expression, int32_t error_code, std::string error_msg,
-                     std::string fix_suggestion,
-                     LynxErrorLevel level = LynxErrorLevel::Error);
+BASE_EXPORT bool StoreErrorIfNot(bool expression, int32_t error_code,
+                                 std::string error_msg,
+                                 std::string fix_suggestion,
+                                 LynxErrorLevel level = LynxErrorLevel::Error);
 
-struct LynxError {
-  BASE_EXPORT LynxError(int error_code, const char* format, ...);
-  BASE_EXPORT LynxError(int error_code, std::string error_msg,
-                        std::string fix_suggestion, LynxErrorLevel level,
-                        bool is_logbox_only = false);
+struct BASE_EXPORT LynxError {
+  LynxError(int error_code, const char* format, ...);
+  LynxError(int error_code, std::string error_msg, std::string fix_suggestion,
+            LynxErrorLevel level, bool is_logbox_only = false);
 
   LynxError(int error_code, std::string error_message)
       : LynxError(error_code, error_message, "", LynxErrorLevel::Error) {}
 
-  BASE_EXPORT LynxError(LynxError&& other) = default;
-  BASE_EXPORT LynxError& operator=(LynxError&& other) = default;
+  LynxError(LynxError&& other) = default;
+  LynxError& operator=(LynxError&& other) = default;
 
   LynxError(const LynxError& other) = delete;
   LynxError& operator=(const LynxError& other) = delete;
 
-  BASE_EXPORT void AddCallStack(const std::string& stack);
+  void AddCallStack(const std::string& stack);
   void AddContextInfo(const std::string& key, const std::string& value);
 
   static std::string GetLevelString(int32_t level);
@@ -86,9 +86,9 @@ struct LynxError {
   bool should_abort_ = false;
 };
 
-class ErrorStorage {
+class BASE_EXPORT ErrorStorage {
  public:
-  BASE_EXPORT static ErrorStorage& GetInstance();
+  static ErrorStorage& GetInstance();
 
   template <typename... T>
   bool SetError(T&&... args) {

@@ -5,6 +5,7 @@
 #ifndef BASE_INCLUDE_FML_MEMORY_WEAK_PTR_INTERNAL_H_
 #define BASE_INCLUDE_FML_MEMORY_WEAK_PTR_INTERNAL_H_
 
+#include "base/include/base_export.h"
 #include "base/include/fml/macros.h"
 #include "base/include/fml/memory/ref_counted.h"
 
@@ -20,7 +21,7 @@ namespace internal {
 // This class in not thread-safe, though references may be released on any
 // thread (allowing weak pointers to be destroyed/reset/reassigned on any
 // thread).
-class WeakPtrFlag : public fml::RefCountedThreadSafe<WeakPtrFlag> {
+class BASE_EXPORT WeakPtrFlag : public fml::RefCountedThreadSafe<WeakPtrFlag> {
  public:
   WeakPtrFlag();
 

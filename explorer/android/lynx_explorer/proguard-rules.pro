@@ -23,3 +23,7 @@
 -keepclasseswithmembers class * {
     @com.lynx.trace.CalledByNative <methods>;
 }
+
+-keepclasseswithmembers class * {
+    @com.lynx.base.CalledByNative <methods>;
+}

@@ -23,5 +23,4 @@ if (!is_android) {
 
 lynx_core_source_set("fsp_tracing") {
   sources = fsp_tracing_shared_sources
-  deps = [ "../../../base/src:base" ]
 }

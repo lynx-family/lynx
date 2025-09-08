@@ -7,7 +7,8 @@
 #include <native_vsync/native_vsync.h>
 
 #include "base/include/log/logging.h"
-#include "base/trace/native/trace_event.h"
+#include "base/src/base_trace/base_trace_event_def.h"
+#include "base/src/base_trace/trace_event.h"
 
 // temporarily workaround to compile without logging
 #undef LOGE
@@ -48,7 +49,8 @@ void HarmonyVsyncManager::RequestVSync(const VSyncCallback& callback) {
   }
   if (!requested) {
     OH_NativeVSync* handle = vsync_handle_;
-    TRACE_EVENT(LYNX_TRACE_CATEGORY, "HarmonyVsyncManager::RequestVSync");
+    BASE_TRACE_EVENT(LYNX_BASE_TRACE_CATEGORY,
+                     "HarmonyVsyncManager::RequestVSync");
     int32_t ret = 0;
     if (0 != (ret = OH_NativeVSync_RequestFrame(handle, &OnVsyncFromHarmony,
                                                 this))) {

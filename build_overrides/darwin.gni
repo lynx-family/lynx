@@ -10,6 +10,10 @@ lynx_dependency = [ [
       "Lynx",
       "$lynx_version",
     ] ]
+lynxbase_dependency = [ [
+      "LynxBase",
+      "$lynx_version",
+    ] ]
 lynxdevtool_dependency = [ [
       "LynxDevtool",
       "$lynx_version",
@@ -43,6 +47,7 @@ Framework_deps = [
   "Lynx/LazyLoad",
   "Lynx/Native",
   "Lynx/Trace",
+  "LynxBase/Framework",
 ]
 
 PRIMJS_includes = [
@@ -58,6 +63,8 @@ PRIMJS_includes = [
 
 Native_includes = rebase_path([
                                 "//",
+                                "//PODS_ROOT/LynxBase/lynx",
+                                "//PODS_ROOT/LynxBase",
                                 "//TARGET_BUILD_DIR/Lynx/gen/Lynx",
                                 "../core",
                                 "//lynx",
@@ -74,6 +81,8 @@ Devtool_Native_includes = rebase_path([
                                         "//lynx",
                                         "//TARGET_BUILD_DIR/Devtool/gen/Lynx",
                                         "../devtool/lynx_devtool",
+                                        "//PODS_ROOT/LynxBase/lynx",
+                                        "//PODS_ROOT/LynxBase",
                                       ]) + PRIMJS_includes
 
 PrimJS_Qjs_Dep = [

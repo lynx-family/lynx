@@ -98,8 +98,6 @@ static const char* const LYNX_RESOURCE_SERVICE_FETCHER_FETCH_RESOURCE =
 static const char* const DYNAMIC_COMPONENT_FETCHER_LOAD_COMPONENT =
     "DynamicComponentFetcher::loadDynamicComponent";
 
-static const char* const LYNX_LOG_INTERNAL = "_LynxLogInternal";
-
 static const char* const DEVTOOL_INIT_WITH_LYNX_VIEW = "LynxDevtool::initWithLynxView";
 static const char* const DEVTOOL_ON_LOAD_FROM_LOCAL_FILE = "LynxDevtool::onLoadFromLocalFile";
 static const char* const DEVTOOL_ON_LOAD_FROM_URL = "LynxDevtool::onLoadFromURL";

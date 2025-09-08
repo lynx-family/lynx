@@ -3,11 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 import hilog from '@ohos.hilog';
-import { ILynxLogService, LogLevel, LogOutputChannelType } from '@lynx/lynx';
+import { ILynxBaseLogService, LynxBaseLogLevel, LogOutputChannelType } from '@lynx/lynx_base';
 
 const DOMAIN = 0xff00;
 
-export class LynxLogService implements ILynxLogService {
+export class LynxLogService implements ILynxBaseLogService {
   private static format: string = '%{public}s';
   static instance = new LynxLogService();
   static logOutputChannel: LogOutputChannelType = LogOutputChannelType.Platform
@@ -17,17 +17,17 @@ export class LynxLogService implements ILynxLogService {
 
   logByPlatform(level: number, tag: string, message: string): void {
     switch (level) {
-      case LogLevel.VERBOSE:
-      case LogLevel.DEBUG:
+      case LynxBaseLogLevel.VERBOSE:
+      case LynxBaseLogLevel.DEBUG:
         hilog.debug(DOMAIN, tag, LynxLogService.format, message);
         break;
-      case LogLevel.INFO:
+      case LynxBaseLogLevel.INFO:
         hilog.info(DOMAIN, tag, LynxLogService.format, message);
         break;
-      case LogLevel.WARN:
+      case LynxBaseLogLevel.WARN:
         hilog.warn(DOMAIN, tag, LynxLogService.format, message);
         break;
-      case LogLevel.ERROR:
+      case LynxBaseLogLevel.ERROR:
         hilog.error(DOMAIN, tag, LynxLogService.format, message);
         break;
       default:

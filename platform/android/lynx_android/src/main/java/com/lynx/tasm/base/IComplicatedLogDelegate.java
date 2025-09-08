@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.tasm.base;
 
-public interface IComplicatedLogDelegate extends ILogDelegate {
+public interface IComplicatedLogDelegate {
   boolean getShouldFormatMessage();
   boolean isComplicatedLogLoggable(int level, LogSource source, Long runtimeId);
 }
