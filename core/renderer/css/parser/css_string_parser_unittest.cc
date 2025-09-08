@@ -806,6 +806,115 @@ TEST(CSSStringParser, valid_grayscale_value) {
   }
 }
 
+TEST(CSSStringParser, parse_variable_positions) {
+  CSSParserConfigs configs;
+  // single var without fallback
+  {
+    std::string raw = "var(--bg-color)";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+
+    // var_references_ is private; test file exposes private members via
+    // #define private public trick at top of this test file.
+    auto& refs = *(result.var_references_);
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    // start should point to the 'v' of "var(" which is index 0
+    EXPECT_EQ(ref.start, static_cast<size_t>(0));
+    // end should point to the index after the closing ')'
+    EXPECT_EQ(ref.end, static_cast<size_t>(raw.size()));
+    EXPECT_EQ(std::string(ref.name), "--bg-color");
+    EXPECT_FALSE(ref.fallback.has_value());
+  }
+
+  // var with fallback
+  {
+    std::string raw = "prefix var(--a, fallback) suffix";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+
+    auto& refs = *result.var_references_;
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    // locate the var occurrence in the raw string to compute expected start
+    size_t idx = raw.find("var(");
+    EXPECT_NE(idx, std::string::npos);
+    EXPECT_EQ(ref.start, idx);
+    EXPECT_EQ(ref.end, idx + std::string("var(--a, fallback)").size());
+    EXPECT_EQ(std::string(ref.name), "--a");
+    ASSERT_TRUE(ref.fallback.has_value());
+    EXPECT_EQ(std::string(ref.fallback.value()), " fallback");
+  }
+}
+
+TEST(CSSStringParser, parse_variable_multiple_and_malformed) {
+  CSSParserConfigs configs;
+
+  // multiple var occurrences
+  {
+    std::string raw = "foo var(--a) middle var(--b, fallback) end";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+    ASSERT_TRUE(result.var_references_ != nullptr);
+
+    auto& refs = *result.var_references_;
+    ASSERT_EQ(refs.size(), 2u);
+
+    size_t first_idx = raw.find("var(");
+    size_t second_idx = raw.find("var(", first_idx + 1);
+
+    EXPECT_EQ(refs[0].start, first_idx);
+    EXPECT_EQ(refs[0].end, first_idx + std::string("var(--a)").size());
+    EXPECT_EQ(std::string(refs[0].name), "--a");
+    EXPECT_FALSE(refs[0].fallback.has_value());
+
+    EXPECT_EQ(refs[1].start, second_idx);
+    EXPECT_EQ(refs[1].end,
+              second_idx + std::string("var(--b, fallback)").size());
+    EXPECT_EQ(std::string(refs[1].name), "--b");
+    ASSERT_TRUE(refs[1].fallback.has_value());
+    EXPECT_EQ(std::string(refs[1].fallback.value()), " fallback");
+  }
+
+  // malformed var (missing closing parenthesis) should not produce references
+  {
+    std::string raw = "start var(--bad end";  // missing ')'
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+    // No valid references should be attached
+    EXPECT_TRUE(result.var_references_ == nullptr ||
+                result.var_references_->empty());
+  }
+}
+
+TEST(CSSStringParser, parse_variable_nested_fallback) {
+  CSSParserConfigs configs;
+  std::string raw = "var(--a, var(--b))";
+  CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                         configs};
+  CSSValue result = parser.ParseVariable();
+  EXPECT_TRUE(result.IsVariable());
+  ASSERT_TRUE(result.var_references_ != nullptr);
+
+  auto& refs = *result.var_references_;
+  ASSERT_EQ(refs.size(), 1u);
+  EXPECT_EQ(std::string(refs[0].name), "--a");
+  ASSERT_TRUE(refs[0].fallback.has_value());
+  // fallback should include the nested var text
+  EXPECT_NE(std::string(refs[0].fallback.value()).find("var(--b)"),
+            std::string::npos);
+}
+
 TEST(CSSStringParser, invalid_grayscale) {
   const char* invalid_grayscale_str[] = {
       "ab%", "50,5%" /* should have only one value*/, "50.5 percent", nullptr};
