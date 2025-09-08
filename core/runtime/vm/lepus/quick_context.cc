@@ -230,6 +230,7 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
   // leak checker later;
   if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
     EnableRuntimeLeakCheck(true);
+    PushContextValidTid();
   }
   LEPUSLepusRefCallbacks callbacks = Context::GetLepusRefCall();
   RegisterLepusRefCallbacks(runtime_, &callbacks);

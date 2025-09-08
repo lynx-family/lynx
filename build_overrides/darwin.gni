@@ -78,7 +78,7 @@ Devtool_Native_includes = rebase_path([
 
 PrimJS_Qjs_Dep = [
   "PrimJS/quickjs",
-  "2.14.0-rc.1",
+  "2.15.0-rc.1",
 ]
 Lepus_deps = [ PrimJS_Qjs_Dep ]
 
