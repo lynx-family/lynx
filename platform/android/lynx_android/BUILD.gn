@@ -80,6 +80,7 @@ group("lynx_android_lib") {
     "../../../core/services/ssr:ssr",
     "../../../core/services/timing_handler:timing_handler",
     "../../../core/services/timing_handler:timing_handler_delegate",
+    "../../../core/services/watch_dog:watch_dog",
     "../../../core/shared_data:shared_data",
     "../../../core/value_wrapper:value_wrapper",
     "../../../third_party/rapidjson:rapidjson",

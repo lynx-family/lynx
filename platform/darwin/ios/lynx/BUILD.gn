@@ -775,6 +775,7 @@ subspec_target("tasm") {
         "../../../../core/services/timing_handler:timing_handler",
         "../../../../core/services/timing_handler:timing_handler_delegate",
         "../../../../core/services/trace:service_trace",
+        "../../../../core/services/watch_dog:watch_dog",
         "../../../../core/shared_data",
         "../../../../core/shared_data:white_board",
         "../../../../core/shell",

@@ -21,6 +21,7 @@
 #include "core/services/feature_count/global_feature_counter.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/timing_handler/timing_constants_deprecated.h"
+#include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_engine_wrapper.h"
 #include "core/shell/lynx_runtime_actor_holder.h"
@@ -458,6 +459,18 @@ void LynxShell::LoadTemplate(
       });
     }
   });
+
+  if ((tasm::LynxEnv::GetInstance().EnableGCOnceOnIdle() & (1u << 0)) > 0) {
+    // mask value 1 << 0 for mts
+    // TODO(yuyang.1024), remove settings after online experiment
+    WatchDog::TaskConfig gc_task =
+        WatchDog::TaskConfig{.idle_task = [engine = engine_actor_]() {
+          if (auto impl = engine->Impl(); impl != nullptr) {
+            impl->TriggerVmGC();
+          }
+        }};
+    WatchDog::RunOnActorThreadIdle(std::move(gc_task), engine_actor_);
+  }
 }
 
 void LynxShell::LoadTemplateBundle(

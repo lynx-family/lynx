@@ -184,6 +184,12 @@ class LynxRuntime final {
 
   void OnRuntimeActorCreate();
 
+  void TriggerVmGC() {
+    if (js_executor_) {
+      js_executor_->TriggerVmGC();
+    }
+  }
+
  private:
   enum class State {
     kNotStarted,       // only LynxRuntime created
