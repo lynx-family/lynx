@@ -2388,6 +2388,10 @@ public protocol LynxListCellContentProducer-p : <NSObject> {
   public id< LynxListCell > LynxListCellContentProducer-p::cell:forKey:(id< LynxListCell > cell,[forKey] NSString *itemKey);
 }
 
+public class LynxListContainerComponentWrapper : UIView {
+  public LynxUIComponent* LynxListContainerComponentWrapper::holdingUI holdingUI;
+}
+
 public protocol LynxListEventsProtocol-p : <NSObject> {
   public NSInteger LynxListEventsProtocol-p::totalItemsCount();
   public NSArray< id< LynxListCell > > * LynxListEventsProtocol-p::attachedCells();
@@ -4421,10 +4425,21 @@ public class LynxUIListContainer : LynxUIScroller, <LynxUIComponentLayoutObserve
   public CGFloat LynxUIListContainer::targetContentSize targetContentSize;
   public NSMutableDictionary* LynxUIListContainer::listNativeStateCache listNativeStateCache;
   public NSMutableDictionary<NSString *, NSMutableSet<NSString *> *>* LynxUIListContainer::initialFlushPropCache initialFlushPropCache;
+  public CGFloat LynxUIListContainer::pagingAlignFactor pagingAlignFactor;
+  public CGFloat LynxUIListContainer::pagingAlignOffset pagingAlignOffset;
+  public id<LynxUIListContainerDelegate> LynxUIListContainer::delegate delegate;
   public void LynxUIListContainer::updateScrollInfoWithEstimatedOffset:smooth:scrolling:(CGFloat estimatedOffset,[smooth] BOOL smooth,[scrolling] BOOL scrolling);
-  public void LynxUIListContainer::insertListComponent:(LynxUIComponent *component);
-  public void LynxUIListContainer::removeListComponent:(LynxUIComponent *component);
+  public void LynxUIListContainer::insertListComponent:(LynxUIComponent *_Nonnull component);
+  public void LynxUIListContainer::removeListComponent:(LynxUIComponent *_Nonnull component);
   public void LynxUIListContainer::detachedFromWindow();
+  public NSInteger LynxUIListContainer::getIndexFromItemKey:(NSString *_Nullable itemKey);
+  public void LynxUIListContainer::scrollToPosition:offset:align:smooth:(NSInteger position,[offset] float offset,[align] int align,[smooth] BOOL smooth);
+  public NSArray< LynxListContainerComponentWrapper * > *_Nullable LynxUIListContainer::visibleCells();
+}
+
+public protocol LynxUIListContainerDelegate-p : <UIViewNSObject> {
+  public void LynxUIListContainerDelegate-p::insertListComponent:wrapper:(LynxUIComponent *_Nonnull component,[wrapper] LynxListContainerComponentWrapper *_Nullable wrapper);
+  public void LynxUIListContainerDelegate-p::removeListComponent:(LynxUIComponent *_Nonnull component);
 }
 
 public class LynxUIListDataSource : NSObject {

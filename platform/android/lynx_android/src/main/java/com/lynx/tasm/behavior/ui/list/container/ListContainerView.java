@@ -255,8 +255,14 @@ public class ListContainerView
       mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(l) : l;
       listNodeInfoFetcher.scrollByListContainer(
           mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
+
       mUiListContainer.updateStickyStarts();
       mUiListContainer.updateStickyEnds();
+
+      for (OnScrollListener listener : mOnScrollListeners) {
+        listener.onScrollChange(
+            mPreviousOffsetX, t, mUiListContainer.isRtl() ? contentOffsetXRTL(oldl) : oldl, oldt);
+      }
     }
   }
 
@@ -279,7 +285,8 @@ public class ListContainerView
     mDrawChildHook = null;
     mUiListContainer = null;
     mCustomLinearLayout = null;
-    setOnScrollStateChangeListener(null);
+    clearOnScrollListeners();
+    clearOnScrollStateChangeListeners();
     TraceEvent.endSection(TraceEventDef.LIST_CONTAINER_VIEW_DESTORY);
   }
 
