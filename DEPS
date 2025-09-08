@@ -243,7 +243,7 @@ deps = {
     "third_party/quickjs/src": {
         "type": "git",
         "url": "https://github.com/lynx-family/primjs.git",
-        "commit": "b6338cf6378afaaa628d4f1977934d87e30e9ee6",
+        "commit": "6b1253bf7f69f7988202be0f0e09e5d5787c5150",
         "ignore_in_git": True,
     },
     "third_party/debug_router/src": {

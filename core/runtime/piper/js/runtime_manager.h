@@ -69,7 +69,6 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   typedef std::vector<std::shared_ptr<NoneSharedJSContextWrapper>>
       None_Shared_Context_List;
 
-  RuntimeManager();
   ~RuntimeManager() override;
 
   bool IsSingleJSContext(const std::string& group_id);
@@ -95,6 +94,7 @@ class LYNX_EXPORT_FOR_DEVTOOL RuntimeManager
   }
 
  private:
+  RuntimeManager() = default;
   std::shared_ptr<piper::Runtime> CreateRuntime(
       const std::string& group_id,
       std::shared_ptr<piper::JSIExceptionHandler> exception_handler,

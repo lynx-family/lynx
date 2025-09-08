@@ -38,7 +38,6 @@ namespace {
 }
 }  // namespace
 
-report_func CacheGenerator::trig_mem_info_event_ = nullptr;
 QuickjsCacheGenerator::QuickjsCacheGenerator(
     std::string source_url, std::shared_ptr<const Buffer> src_buffer)
     : CacheGenerator(std::move(source_url), std::move(src_buffer)) {}
@@ -76,11 +75,6 @@ bool QuickjsCacheGenerator::GenerateCacheImpl(
     LEPUS_SetRuntimeInfo(rt, "Lynx_JS_RC");
   } else {
     LEPUS_SetRuntimeInfo(rt, "Lynx_JS");
-  }
-  if (trig_mem_info_event_) {
-    RegisterGCInfoCallback(
-        rt, reinterpret_cast<void (*)(LEPUSContext *, const char *, int)>(
-                trig_mem_info_event_));
   }
   LEPUSContext *ctx = LEPUS_NewContext(rt);
   if (!ctx) {
