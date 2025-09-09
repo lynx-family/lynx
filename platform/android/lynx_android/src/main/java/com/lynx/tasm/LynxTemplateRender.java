@@ -1031,14 +1031,14 @@ public class LynxTemplateRender
   }
 
   public void ssrHydrateUrl(@NonNull String hydrateUrl, final Map<String, Object> data) {
-    if (mSSRHelper != null) {
+    if (mSSRHelper != null && mSSRHelper.isHydratePending()) {
       mSSRHelper.onHydrateStart();
     }
     renderTemplateUrl(hydrateUrl, data);
   }
 
   public void ssrHydrateUrl(@NonNull String hydrateUrl, final TemplateData data) {
-    if (mSSRHelper != null) {
+    if (mSSRHelper != null && mSSRHelper.isHydratePending()) {
       mSSRHelper.onHydrateStart();
     }
     renderTemplateUrl(hydrateUrl, data);
@@ -1266,7 +1266,7 @@ public class LynxTemplateRender
 
   public void ssrHydrateWithBaseUrl(
       @NonNull byte[] template, final Map<String, Object> data, @NonNull String hydrateUrl) {
-    if (mSSRHelper != null) {
+    if (mSSRHelper != null && mSSRHelper.isHydratePending()) {
       mSSRHelper.onHydrateStart();
     }
     renderTemplateWithBaseUrl(template, data, hydrateUrl);
@@ -1274,7 +1274,7 @@ public class LynxTemplateRender
 
   public void ssrHydrateWithBaseUrl(
       @NonNull byte[] template, final TemplateData data, @NonNull String hydrateUrl) {
-    if (mSSRHelper != null) {
+    if (mSSRHelper != null && mSSRHelper.isHydratePending()) {
       mSSRHelper.onHydrateStart();
     }
     renderTemplateWithBaseUrl(template, data, hydrateUrl);
@@ -1498,7 +1498,8 @@ public class LynxTemplateRender
       return;
     }
 
-    if (mSSRHelper != null && metaData.getLoadMode() == LynxLoadMode.HYDRATE_SSR) {
+    if (mSSRHelper != null && mSSRHelper.isHydratePending()
+        && metaData.getLoadMode() == LynxLoadMode.HYDRATE_SSR) {
       mSSRHelper.onHydrateStart();
     }
 
