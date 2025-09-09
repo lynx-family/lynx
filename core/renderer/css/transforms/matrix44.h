@@ -6,13 +6,13 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_ANIMATION_TRANSFORMS_MATRIX44_H_
-#define CORE_ANIMATION_TRANSFORMS_MATRIX44_H_
+#ifndef CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
+#define CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
 
 #include <array>
 
 #include "base/include/log/logging.h"
-#include "core/animation/transforms/quaternion.h"
+#include "core/renderer/css/transforms/quaternion.h"
 
 namespace lynx {
 namespace transforms {
@@ -76,9 +76,23 @@ class Matrix44 {
    */
   inline bool isIdentity() const { return kIdentity_Mask == this->getType(); }
 
+  /**
+   *  Return true if the matrix is flat transform.
+   */
+  inline bool IsFlat() const {
+    return fMat[2][0] == 0 && fMat[2][1] == 0 && fMat[2][2] == 1 &&
+           fMat[2][3] == 0 && fMat[0][2] == 0 && fMat[1][2] == 0 &&
+           fMat[3][2] == 0;
+  }
+
   inline bool HasPerspective() const {
     return this->getType() & kPerspective_Mask;
   }
+
+  /**
+   *  Return true if the matrix is 2d transform.
+   */
+  inline bool Is2dTransform() const { return IsFlat() && !HasPerspective(); }
 
   /**
    *  Return true if the matrix only contains scale or translate or is identity.
@@ -179,4 +193,4 @@ class Matrix44 {
 }  // namespace transforms
 }  // namespace lynx
 
-#endif  // CORE_ANIMATION_TRANSFORMS_MATRIX44_H_
+#endif  // CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_

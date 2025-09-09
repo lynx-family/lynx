@@ -58,7 +58,6 @@ lynx_core_source_set("tasm") {
     public_deps += [
       "../animation/basic_animation:basic_animation",
       "../animation/lynx_basic_animator:lynx_basic_animator",
-      "../animation/transforms",
       "../resource",
       "../runtime",
       "../shared_data",

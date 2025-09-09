@@ -197,7 +197,6 @@ group("lynx_native") {
     "animation",
     "animation/basic_animation",
     "animation/lynx_basic_animator:lynx_basic_animator",
-    "animation/transforms",
     "animation/utils:animation_utils",
     "base",
     "build:build",

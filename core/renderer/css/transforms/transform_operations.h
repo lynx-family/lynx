@@ -6,15 +6,15 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef CORE_ANIMATION_TRANSFORMS_TRANSFORM_OPERATIONS_H_
-#define CORE_ANIMATION_TRANSFORMS_TRANSFORM_OPERATIONS_H_
+#ifndef CORE_RENDERER_CSS_TRANSFORMS_TRANSFORM_OPERATIONS_H_
+#define CORE_RENDERER_CSS_TRANSFORMS_TRANSFORM_OPERATIONS_H_
 
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "core/animation/transforms/transform_operation.h"
 #include "core/renderer/css/css_value.h"
+#include "core/renderer/css/transforms/transform_operation.h"
 #include "core/style/transform_raw_data.h"
 
 namespace lynx {
@@ -40,6 +40,9 @@ class TransformOperations {
   TransformOperations(tasm::Element* element);
   // construct TransformOperations with transform raw data
   TransformOperations(tasm::Element* element, const tasm::CSSValue& raw_data);
+  TransformOperations(
+      tasm::Element* element,
+      base::InlineVector<starlight::TransformRawData, 1> transform_raw_data);
   TransformOperations(const TransformOperations& other);
   ~TransformOperations();
 
@@ -113,4 +116,4 @@ class TransformOperations {
 }  // namespace transforms
 }  // namespace lynx
 
-#endif  // CORE_ANIMATION_TRANSFORMS_TRANSFORM_OPERATIONS_H_
+#endif  // CORE_RENDERER_CSS_TRANSFORMS_TRANSFORM_OPERATIONS_H_

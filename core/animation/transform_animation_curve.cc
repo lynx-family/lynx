@@ -14,7 +14,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/animation/animation_trace_event_def.h"
 #include "core/animation/keyframed_animation_curve.h"
-#include "core/animation/transforms/transform_operations.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
 

@@ -30,6 +30,11 @@ lynx_core_source_set("css") {
     "../trace:renderer_trace",
   ]
 
+  deps = [
+    "../../renderer/dom:dom_headers",
+    "../../renderer/starlight:starlight",
+  ]
+
   if (enable_unittests) {
     public_deps += [
       ":css_parser",
@@ -53,11 +58,14 @@ lynx_core_source_set("css_parser") {
 }
 
 unittest_set("css_test_testset") {
+  check_includes = false
+  testonly = true
   public_deps = [ ":css" ]
 
   deps = [
     "../:tasm",
     "../../../third_party/rapidjson:rapidjson",
+    "../../renderer:tasm_group",
     "../../runtime/bindings/lepus",
     "../../shell/testing:mock_tasm_delegate_testset",
     "../dom:renderer_dom",
@@ -79,6 +87,9 @@ unittest_set("css_test_testset") {
     "css_utils_unittest.cc",
     "css_variable_handler_unittest.cc",
     "shared_css_fragment_unittest.cc",
+    "transforms/quaternion_unittest.cc",
+    "transforms/transform_operation_unittest.cc",
+    "transforms/transform_operations_unittest.cc",
     "unit_handler_unittest.cc",
   ]
 }
@@ -106,6 +117,7 @@ unittest_set("css_ng_testset") {
 }
 
 unittest_exec("css_test_exec") {
+  testonly = true
   sources = []
   deps = [
     ":css_ng_testset",

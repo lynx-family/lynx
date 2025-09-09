@@ -15,9 +15,9 @@
 
 #include "base/include/fml/time/time_delta.h"
 #include "core/animation/animation_curve.h"
-#include "core/animation/transforms/transform_operations.h"
 #include "core/animation/utils/timing_function.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/starlight/types/nlength.h"
 
 namespace lynx {

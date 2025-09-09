@@ -6,17 +6,17 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "core/animation/transforms/transform_operations.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 
 #include <cmath>
 
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
-#include "core/animation/transforms/decomposed_transform.h"
-#include "core/animation/transforms/matrix44.h"
-#include "core/animation/transforms/transform_operation.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/css/parser/transform_handler.h"
+#include "core/renderer/css/transforms/decomposed_transform.h"
+#include "core/renderer/css/transforms/matrix44.h"
+#include "core/renderer/css/transforms/transform_operation.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/element_manager.h"
