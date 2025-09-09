@@ -10,6 +10,7 @@
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxEventTargetBase.h>
 #import <Lynx/LynxKeyframeManager.h>
+#import <Lynx/LynxNestedScrollHelper.h>
 #import <Lynx/LynxNewGestureDelegate.h>
 #import <Lynx/LynxUIContext.h>
 #import <Lynx/LynxUITarget.h>
@@ -132,6 +133,9 @@ typedef void (^LynxNodeReadyBlock)(LynxUI*);
 @property(nonatomic, readwrite) BOOL enableNewTransformOrigin;
 
 @property(nonatomic, strong) NSString* a11yID;
+
+@property(nonatomic, weak) LynxUI* parentScroll;
+@property(nonatomic, weak) LynxUI* childScroll;
 
 @property(nonatomic, assign) BOOL hasTranslateDiff;
 
