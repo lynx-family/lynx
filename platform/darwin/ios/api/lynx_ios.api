@@ -1471,6 +1471,7 @@ public class LynxEventHandler : NSObject {
   public LynxGestureArenaManager* _Nullable LynxEventHandler::gestureArenaManager gestureArenaManager;
   public BOOL LynxEventHandler::enableSimultaneousTap enableSimultaneousTap;
   public BOOL LynxEventHandler::disableEndEditing disableEndEditing;
+  public LynxNestedScrollHelper* LynxEventHandler::nestedScrollHelper nestedScrollHelper;
   public instancetype LynxEventHandler::initWithRootView:(UIView *rootView);
   public instancetype LynxEventHandler::initWithRootView:withRootUI:(UIView *rootView,[withRootUI] nullable LynxUI *rootUI);
   public void LynxEventHandler::attachContainerView:(UIView *rootView);
@@ -2735,6 +2736,12 @@ public class LynxNavigator : NSObject {
   public void LynxNavigator::didEnterBackground:(id< LynxHolder > lynxHolder);
 }
 
+public class LynxNestedScrollHelper : NSObject, <UIScrollViewDelegate> {
+  public instancetype LynxNestedScrollHelper::initWithEventHandler:(LynxEventHandler *eventHandler);
+  public void LynxNestedScrollHelper::resetScrollTargetChain();
+  public void LynxNestedScrollHelper::generateScrollTargetChain();
+}
+
 public protocol LynxNestedScrollProtocol-p : <NSObject> {
   public NestedScrollMode LynxNestedScrollProtocol-p::forwardsNestedScrollMode();
   public NestedScrollMode LynxNestedScrollProtocol-p::backwardsNestedScrollMode();
@@ -3949,6 +3956,8 @@ public class LynxUI : <__covariant V UIView> {
   public LynxDirectionType LynxUI::directionType directionType;
   public BOOL LynxUI::enableNewTransformOrigin enableNewTransformOrigin;
   public NSString* LynxUI::a11yID a11yID;
+  public LynxUI* LynxUI::parentScroll parentScroll;
+  public LynxUI* LynxUI::childScroll childScroll;
   public BOOL LynxUI::hasTranslateDiff hasTranslateDiff;
   public NSMutableDictionary* LynxUI()::lynxProps lynxProps;
   public BOOL LynxUI()::isFirstAnimatedReady isFirstAnimatedReady;
@@ -6626,6 +6635,14 @@ public enum LynxListScrollPosition {
   public LynxBasicShape *_Nullable LBSCreateBasicShapeFromArray(NSArray< NSNumber * > *array);
   public CGPathRef LBSCreatePathFromBasicShape(LynxBasicShape *shape, CGSize viewport);
   public LynxBasicShape *_Nullable LBSCreateBasicShapeFromPathData(NSString *data);
+
+public enum LynxNestedScrollMode {
+  LynxNestedScrollModeSelfOnly
+  LynxNestedScrollModeSelfFirst
+  LynxNestedScrollModeParentFirst
+  LynxNestedScrollModeParallel
+}
+
 
 public enum LynxGestureState {
   LynxGestureStateActive

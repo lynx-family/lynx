@@ -105,6 +105,7 @@ public_shared_sources = [
   "shadow_node/text/LynxTextShadowNode.h",
   "ui/LynxBasicShape.h",
   "ui/LynxLayer.h",
+  "ui/LynxNestedScrollHelper.h",
   "ui/LynxNewGestureDelegate.h",
   "ui/LynxRootUI.h",
   "ui/LynxScrollEventManager.h",

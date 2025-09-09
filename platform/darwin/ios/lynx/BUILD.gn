@@ -251,6 +251,7 @@ subspec_target("lynx") {
     "ui/LynxLRUMap.h",
     "ui/LynxLRUMap.m",
     "ui/LynxLayer.m",
+    "ui/LynxNestedScrollHelper.m",
     "ui/LynxOffsetCalculator.h",
     "ui/LynxOffsetCalculator.mm",
     "ui/LynxRootUI.m",
