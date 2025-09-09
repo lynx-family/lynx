@@ -90,4 +90,22 @@ public class TextShadowNodeTest {
     Assert.assertEquals(
         Typeface.BOLD_ITALIC, textShadowNode.getTextAttributes().getTypefaceStyle());
   }
+
+  @Test
+  public void testHandleHeightOverflowByLineCount() {
+    RawTextShadowNode rawTextShadowNode = new RawTextShadowNode();
+    JavaOnlyMap map = new JavaOnlyMap();
+    map.put("text", "This is a test text.This is a test text.This is a test text.");
+    rawTextShadowNode.setText(new DynamicFromMap(map, "text"));
+    textShadowNode.addChildAt(rawTextShadowNode, 0);
+
+    textShadowNode.setLineHeight(30.1f);
+    textShadowNode.setTextMaxLine("2");
+    textShadowNode.setTextOverflow(StyleConstants.TEXTOVERFLOW_ELLIPSIS);
+    textShadowNode.onLayoutBefore();
+    LayoutNode layoutNode = mock(LayoutNode.class);
+    textShadowNode.measure(layoutNode, 300.f, MeasureMode.EXACTLY, 60.2f, MeasureMode.EXACTLY);
+    Layout layout = textShadowNode.getTextRenderer().getTextLayout();
+    Assert.assertEquals(layout.getLineCount(), 2);
+  }
 }

@@ -380,12 +380,24 @@ public class TextRenderer {
     if (textContext.mEllipsizedMode == MODE_NONE) {
       return;
     }
-    if (mKey.heightMode == MeasureMode.UNDEFINED || mTextLayout.getHeight() <= mKey.height
+
+    float lineHeight = mKey.getAttributes().getLineHeight();
+    int lineCount = mTextLayout.getLineCount();
+    int layoutHeight = mTextLayout.getHeight();
+
+    double lineHeightFloatError = MeasureUtils.isUndefined(lineHeight)
+        ? 0f
+        : (Math.ceil(lineHeight) - lineHeight) * lineCount;
+
+    double heightAdjustment = Math.max(lineHeightFloatError, 0f);
+    int maxHeight = (int) Math.ceil(mKey.height + heightAdjustment);
+
+    if (mKey.heightMode == MeasureMode.UNDEFINED || layoutHeight <= maxHeight
         || textContext.mShouldBeSingleLine) {
       return;
     }
     int lineIdx;
-    for (lineIdx = mTextLayout.getLineCount() - 1; lineIdx > 0; --lineIdx) {
+    for (lineIdx = lineCount - 1; lineIdx > 0; --lineIdx) {
       if (mTextLayout.getLineBottom(lineIdx) <= mKey.height) {
         break;
       }
