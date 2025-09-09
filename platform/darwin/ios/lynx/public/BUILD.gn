@@ -162,6 +162,8 @@ public_shared_sources = [
   "ui/scroll_view/LynxBounceView.h",
   "ui/scroll_view/LynxImpressionView.h",
   "ui/scroll_view/LynxScrollView.h",
+  "ui/scroll_view/LynxUIScrollView.h",
+  "ui/scroll_view/LynxUIScrollViewInternal.h",
   "ui/scroll_view/LynxUIScroller.h",
   "ui/scroll_view/UIScrollView+Nested.h",
   "ui/scroll_view/base/LynxBaseScrollView+Auto.h",

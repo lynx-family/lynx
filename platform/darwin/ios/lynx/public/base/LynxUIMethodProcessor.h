@@ -22,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
   -(void)method : (NSDictionary*)params withResult        \
       : (LynxUIMethodCallbackBlock)callback LYNX_DYNAMIC
 
+#define LYNX_UI_METHOD_CALL_SUPER(method) \
+  LYNX_UI_METHOD(method) { [super method:params withResult:callback]; }
+
 enum LynxUIMethodErrorCode {
   kUIMethodSuccess = 0,
   kUIMethodUnknown,

@@ -24,6 +24,7 @@
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
+#import "LynxBaseScrollView+Nested.h"
 #import "LynxFeatureCounter.h"
 #import "LynxTemplateRender+Internal.h"
 #import "LynxUIRendererProtocol.h"
@@ -349,15 +350,23 @@
   _LogI(@"LynxView %p: hitTest with point.x: %f, point.y: %f", self, point.x, point.y);
 
   if ([_templateRender.lynxUIRenderer needHandleHitTest]) {
-    return [_templateRender.lynxUIRenderer hitTest:point withEvent:event];
+    UIView* target = [_templateRender.lynxUIRenderer hitTest:point withEvent:event];
+    self.nestedScrollViewsChain =
+        [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:target];
+    return target;
   }
 
   if (self.isChildLynxPage) {
-    return [super hitTest:point withEvent:event];
+    UIView* target = [super hitTest:point withEvent:event];
+    self.nestedScrollViewsChain =
+        [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:target];
+    return target;
   } else {
     id<LynxEventTarget> touchTarget = nil;
     RUN_RENDER_SAFELY(touchTarget = [_templateRender hitTestInEventHandler:point withEvent:event];);
     UIView* view = [super hitTest:point withEvent:event];
+    self.nestedScrollViewsChain =
+        [LynxBaseScrollView generateNestedScrollChainWithHitTestTarget:view];
     [_templateRender.lynxUIRenderer handleFocus:touchTarget
                                          onView:view
                                   withContainer:self

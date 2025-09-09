@@ -4798,6 +4798,16 @@ public class LynxUIScrollerUnitTestUtils : LynxUIUnitTestUtils {
   public void LynxUIScrollerUnitTestUtils::mockChildren:context:scrollY:size:(NSInteger count,[context] LynxUIMockContext *context,[scrollY] BOOL enableScrollY,[size] CGSize size);
 }
 
+public class LynxUIScrollView : LynxUIScrollViewInternal {
+}
+
+public class LynxUIScrollViewInternal : LynxUI, <LynxBaseScrollView> {
+  public void LynxUIScrollViewInternal::scrollTo:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
+  public void LynxUIScrollViewInternal::scrollBy:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
+  public void LynxUIScrollViewInternal::autoScroll:withResult:(NSDictionary *params,[withResult] LynxUIMethodCallbackBlock callback);
+  public void LynxUIScrollViewInternal::scrollInto:isSmooth:type:(LynxUI *value,[isSmooth] BOOL isSmooth,[type] NSString *type);
+}
+
 public protocol LynxUITarget-p : <NSObject> {
   public void LynxUITarget-p::targetOnScreen();
   public void LynxUITarget-p::freeMemoryCache();
@@ -4913,6 +4923,7 @@ public class LynxView : UIView, <LUIBodyView> {
   public id<LynxScrollListener> LynxView::scrollListener scrollListener;
   public id<LynxListLayoutProtocol> LynxView::customizedListLayout customizedListLayout;
   public id<LynxBaseInspectorOwner> LynxView::baseInspectorOwner baseInspectorOwner;
+  public NSArray<UIScrollView*>* LynxView::nestedScrollViewsChain nestedScrollViewsChain;
   public BOOL LynxView::catchAllException catchAllException;
   public NSString* LynxView(Identify)::containerID containerID;
   public NSString* LynxView(Identify)::namescope namescope;
