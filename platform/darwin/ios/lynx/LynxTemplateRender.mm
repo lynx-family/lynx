@@ -458,7 +458,8 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     return;
   }
 
-  if (_lynxSSRHelper && meta.loadMode == LynxLoadModeHydrateSSR) {
+  if (_lynxSSRHelper && [_lynxSSRHelper isHydratePending] &&
+      meta.loadMode == LynxLoadModeHydrateSSR) {
     [_lynxSSRHelper onHydrateStart];
   }
 
@@ -1023,7 +1024,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)ssrHydrate:(nonnull NSData*)tem
            withURL:(nonnull NSString*)url
           initData:(nullable LynxTemplateData*)data {
-  if (_lynxSSRHelper) {
+  if (_lynxSSRHelper && [_lynxSSRHelper isHydratePending]) {
     [_lynxSSRHelper onHydrateStart];
   }
 
@@ -1031,7 +1032,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 }
 
 - (void)ssrHydrateFromURL:(NSString*)url initData:(nullable LynxTemplateData*)data {
-  if (_lynxSSRHelper) {
+  if (_lynxSSRHelper && [_lynxSSRHelper isHydratePending]) {
     [_lynxSSRHelper onHydrateStart];
   }
 
