@@ -3352,7 +3352,6 @@ void TemplateAssembler::RequestLayout(
   TRACE_EVENT(LYNX_TRACE_CATEGORY, "TemplateAssembler::RequestLayout");
   if (page_proxy()->element_manager()->IsLayoutInElementModeOn()) {
     page_proxy()->element_manager()->RequestLayout(pipeline_options);
-    GetCurrentPipelineContext()->RequestFlushUIOperation();
     return;
   }
 

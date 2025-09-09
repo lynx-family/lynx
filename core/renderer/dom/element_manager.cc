@@ -405,6 +405,12 @@ void ElementManager::RequestLayout(
     layout_node_manager_->DestroyPlatformLayoutNodes();
   }
 
+  auto *current_context =
+      element_manager_delegate_->GetCurrentPipelineContext();
+  if (current_context) {
+    current_context->RequestFlushUIOperation();
+  }
+
   PipelineLayoutData layout_data;
   if (has_viewport_ready_ && root()->is_page()) {
     if (options->need_timestamps) {
