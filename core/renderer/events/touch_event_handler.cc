@@ -926,7 +926,7 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
 
   // store touches in params
   auto changed_touches = lepus::CArray::Create();
-  auto touches_with_deleted = lepus::CArray::Create();
+  auto touches_with_deleted = lepus::Value::Clone(current_touches_);
   const float layouts_unit_per_px =
       current_target->element_manager()->GetLynxEnvConfig().LayoutsUnitPerPx();
   for (const auto &ui_events : *(params.Table())) {
@@ -972,7 +972,6 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
               identifier) {
             ui_in_current_touches = true;
             if (handler == EVENT_TOUCH_END) {
-              touches_with_deleted->set(j, touch_value);
               touches->Erase(static_cast<uint32_t>(j));
               break;
             }
@@ -994,12 +993,7 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
   // if not using clone, in further process, current_touches_ will be turned to
   // readonly.
   if (enable_multi_touch_params_compatible && handler == EVENT_TOUCH_END) {
-    if (touches_with_deleted->size() != 0) {
-      touches_with_deleted->push_back(lepus::Value::Clone(current_touches_));
-      dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
-    } else {
-      dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
-    }
+    dict.get()->SetValue(kTouches, std::move(touches_with_deleted));
   } else {
     dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
   }
