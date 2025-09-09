@@ -62,6 +62,13 @@
 
 @implementation LynxUIInput
 
+- (instancetype)init {
+  if (self = [super init]) {
+    self.inputParagraphStyle.lineBreakMode = NSLineBreakByTruncatingTail;
+  }
+  return self;
+}
+
 - (UITextField *)createView {
   UITextField* textField = [[LynxTextFieldLite alloc] init];
   textField.autoresizesSubviews = NO;
