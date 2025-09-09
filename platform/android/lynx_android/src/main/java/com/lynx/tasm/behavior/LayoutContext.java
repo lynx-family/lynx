@@ -8,6 +8,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.mapbuffer.ReadableMapBuffer;
 import com.lynx.tasm.base.CalledByNative;
+import com.lynx.tasm.behavior.ui.PropBundle;
 
 public abstract class LayoutContext {
   private long mNativePtr = 0;
@@ -18,8 +19,8 @@ public abstract class LayoutContext {
    * @return true when the ShadowNode is virtual, otherwise false
    */
   @CalledByNative
-  public abstract int createNode(int signature, String tagName, ReadableMap props,
-      ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean allowInline);
+  public abstract int createNode(int signature, String tagName, PropBundle bundle,
+      ReadableMapBuffer initialStyles, boolean allowInline);
 
   @CalledByNative
   public abstract void removeNode(int parentSignature, int childSignature, int index);
@@ -39,8 +40,7 @@ public abstract class LayoutContext {
   public abstract void dispatchOnLayout(int sign, int left, int top, int width, int height);
 
   @CalledByNative
-  public abstract void updateProps(
-      int signature, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListeners);
+  public abstract void updateProps(int signature, PropBundle bundle, ReadableMapBuffer styles);
 
   @CalledByNative public abstract void setFontFaces(ReadableMap props);
 

@@ -3026,14 +3026,14 @@ public interface com::lynx::tasm::animation::AnimationConstant::LayoutAnimationT
 }
 
 public class abstract com::lynx::tasm::behavior::LayoutContext :  {
-  public abstract int com.lynx.tasm.behavior.LayoutContext.createNode(int signature, String tagName, ReadableMap props, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean allowInline);
+  public abstract int com.lynx.tasm.behavior.LayoutContext.createNode(int signature, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles, boolean allowInline);
   public abstract void com.lynx.tasm.behavior.LayoutContext.removeNode(int parentSignature, int childSignature, int index);
   public abstract void com.lynx.tasm.behavior.LayoutContext.insertNode(int parentSignature, int childSignature, int index);
   public abstract void com.lynx.tasm.behavior.LayoutContext.moveNode(int parentSignature, int childSignature, int fromIndex, int toIndex);
   public abstract void com.lynx.tasm.behavior.LayoutContext.destroyNodes(int[] signatures);
   public abstract void com.lynx.tasm.behavior.LayoutContext.dispatchOnLayoutBefore(int rootSignature);
   public abstract void com.lynx.tasm.behavior.LayoutContext.dispatchOnLayout(int sign, int left, int top, int width, int height);
-  public abstract void com.lynx.tasm.behavior.LayoutContext.updateProps(int signature, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListeners);
+  public abstract void com.lynx.tasm.behavior.LayoutContext.updateProps(int signature, PropBundle bundle, ReadableMapBuffer styles);
   public abstract void com.lynx.tasm.behavior.LayoutContext.setFontFaces(ReadableMap props);
   public abstract Object com.lynx.tasm.behavior.LayoutContext.getExtraBundle(int signature);
   public abstract void com.lynx.tasm.behavior.LayoutContext.attachLayoutNodeManager(long nativeLayoutNodeManagerPtr);
@@ -7608,17 +7608,17 @@ public class com::lynx::tasm::behavior::PaintingContext : com.lynx.tasm.behavior
   public long com.lynx.tasm.behavior.PaintingContext.getNativePaintingContextPtr();
   public void com.lynx.tasm.behavior.PaintingContext.rebuildViewTree();
   public void com.lynx.tasm.behavior.PaintingContext.updateLayout(int sign, float x, float y, float width, float height, float paddingLeft, float paddingTop, float paddingRight, float paddingBottom, float marginLeft, float marginTop, float marginRight, float marginBottom, float borderLeftWidth, float borderTopWidth, float borderRightWidth, float borderBottomWidth, float[] bounds, float[] sticky, float maxHeight, int nodeIndex);
-  public void com.lynx.tasm.behavior.PaintingContext.updateProps(int sign, boolean tendToFlatten, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListeners, ReadableArray gestureDetectors);
-  public Object com.lynx.tasm.behavior.PaintingContext.createNode(final int sign, String tagName, final ReadableMap initialProps, final ReadableMapBuffer initialStyles, final ReadableArray eventListeners, final boolean isFlatten, int nodeIndex, final ReadableArray gestureDetectors);
-  public void com.lynx.tasm.behavior.PaintingContext.createPaintingNodeSync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
+  public void com.lynx.tasm.behavior.PaintingContext.updateProps(int sign, boolean tendToFlatten, PropBundle bundle, ReadableMapBuffer styles);
+  public Object com.lynx.tasm.behavior.PaintingContext.createNode(final int sign, String tagName, final PropBundle bundle, ReadableMapBuffer initialStyles, final boolean isFlatten, int nodeIndex);
+  public void com.lynx.tasm.behavior.PaintingContext.createPaintingNodeSync(int sign, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex);
   public Future< Runnable > com.lynx.tasm.behavior.PaintingContext.createNodeAsync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
-  public Object com.lynx.tasm.behavior.PaintingContext.createPaintingNodeAsync(int sign, String tagName, ReadableMap initialProps, ReadableMapBuffer initialStyles, ReadableArray eventListeners, boolean isFlatten, int nodeIndex, ReadableArray gestureDetectors);
+  public Object com.lynx.tasm.behavior.PaintingContext.createPaintingNodeAsync(int sign, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles, boolean isFlatten, int nodeIndex);
   public void com.lynx.tasm.behavior.PaintingContext.setNeedMarkPaintEndTiming(String pipelineId);
   public void com.lynx.tasm.behavior.PaintingContext.insertNode(int parentSign, int childSign, int index);
   public void com.lynx.tasm.behavior.PaintingContext.removeNode(int parentSign, int childSign);
   public void com.lynx.tasm.behavior.PaintingContext.destroyNode(int parentSign, int childSign);
   public void com.lynx.tasm.behavior.PaintingContext.updateFlattenStatus(int sign, boolean flatten);
-  public void com.lynx.tasm.behavior.PaintingContext.setKeyframes(ReadableMap props);
+  public void com.lynx.tasm.behavior.PaintingContext.setKeyframes(PropBundle bundle);
   public void com.lynx.tasm.behavior.PaintingContext.SetGestureDetectorState(int sign, int gestureId, int state);
   public void com.lynx.tasm.behavior.PaintingContext.consumeGesture(int sign, int gestureId, ReadableMap params);
   public void com.lynx.tasm.behavior.PaintingContext.validate(int sign);
@@ -7828,6 +7828,12 @@ public class com::lynx::jsbridge::PromiseImpl : com.lynx.jsbridge.Promise {
   public void com.lynx.jsbridge.PromiseImpl.resolve(Object value);
   public void com.lynx.jsbridge.PromiseImpl.reject(String message);
   public void com.lynx.jsbridge.PromiseImpl.reject(String code, String message);
+}
+
+public class com::lynx::tasm::behavior::ui::PropBundle :  {
+  public ReadableMap com.lynx.tasm.behavior.ui.PropBundle.getProps();
+  public ReadableArray com.lynx.tasm.behavior.ui.PropBundle.getEventHandlers();
+  public ReadableArray com.lynx.tasm.behavior.ui.PropBundle.getGestures();
 }
 
 public interface com::lynx::tasm::behavior::PropertiesDispatcher {
@@ -8678,6 +8684,7 @@ public class com::lynx::tasm::behavior::shadow::ShadowNode : com.lynx.tasm.behav
 public class com::lynx::tasm::behavior::ShadowNodeOwner : com.lynx.tasm.behavior.LayoutContext {
   public com.lynx.tasm.behavior.ShadowNodeOwner.ShadowNodeOwner(LynxContext context, BehaviorRegistry behaviorRegistry, LayoutTick layoutTick);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.detachNativePtr();
+  public int com.lynx.tasm.behavior.ShadowNodeOwner.createNode(int signature, String tagName, PropBundle bundle, ReadableMapBuffer styles, boolean allowInline);
   public int com.lynx.tasm.behavior.ShadowNodeOwner.createNode(int signature, String tagName, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListener, boolean allowInline);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.removeNode(int parentSignature, int childSignature, int index);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.insertNode(int parentSignature, int childSignature, int index);
@@ -8685,6 +8692,7 @@ public class com::lynx::tasm::behavior::ShadowNodeOwner : com.lynx.tasm.behavior
   public void com.lynx.tasm.behavior.ShadowNodeOwner.destroyNodes(int[] signatures);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.dispatchOnLayoutBefore(int signature);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.dispatchOnLayout(int sign, int left, int top, int width, int height);
+  public void com.lynx.tasm.behavior.ShadowNodeOwner.updateProps(int signature, PropBundle bundle, ReadableMapBuffer styles);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.updateProps(int signature, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListeners);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.setFontFaces(ReadableMap props);
   public Object com.lynx.tasm.behavior.ShadowNodeOwner.getExtraBundle(int signature);

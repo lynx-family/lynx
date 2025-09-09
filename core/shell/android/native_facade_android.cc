@@ -242,9 +242,7 @@ void NativeFacadeAndroid::InvokeUIMethod(const tasm::LynxGetUIResult& ui_result,
   lynx::tasm::LynxGetUIResultAndroid result_android(ui_result);
   Java_NativeFacade_InvokeUIMethod(
       env, jni_object_.Get(), result_android.jni_object(), method_string.Get(),
-      static_cast<tasm::PropBundleAndroid*>(params.get())
-          ->jni_map()
-          ->jni_object(),
+      static_cast<tasm::PropBundleAndroid*>(params.get())->GetProps().Get(),
       callback.id());
 }
 

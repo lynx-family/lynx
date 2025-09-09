@@ -333,12 +333,11 @@ void PaintingContextAndroidRef::MarkUIOperationQueueFlushForRecreateEngine(
 
 void PaintingContextAndroid::SetKeyframes(
     fml::RefPtr<PropBundle> keyframes_data) {
-  PropBundleAndroid* pda =
-      static_cast<PropBundleAndroid*>(keyframes_data.get());
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedGlobalJavaRef<jobject> props_ref{
-      env, pda->jni_map()->jni_object()};
-  Enqueue([impl = impl_, props_ref = std::move(props_ref)]() {
+  if (keyframes_data == nullptr) {
+    return;
+  }
+
+  Enqueue([impl = impl_, keyframes_data]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_SET_KEYFRAME_TASK);
 
     base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
@@ -346,8 +345,14 @@ void PaintingContextAndroid::SetKeyframes(
       return;
     }
 
+    PropBundleAndroid* pda =
+        static_cast<PropBundleAndroid*>(keyframes_data.get());
+    if (pda == nullptr) {
+      return;
+    }
+
     JNIEnv* env = base::android::AttachCurrentThread();
-    Java_PaintingContext_setKeyframes(env, local_ref.Get(), props_ref.Get());
+    Java_PaintingContext_setKeyframes(env, local_ref.Get(), pda->jni_object());
   });
 }
 
@@ -408,22 +413,6 @@ void PaintingContextAndroid::InvokeNativeRunnable(
   lynx::base::android::CheckException(env);
 }
 
-std::tuple<PropBundleAndroid*, jobject, jobject, jobject>
-PaintingContextAndroid::GetArgsForCreatePaintingNode(
-    const fml::RefPtr<PropBundle>& painting_data) {
-  PropBundleAndroid* pda = static_cast<PropBundleAndroid*>(painting_data.get());
-  const auto props_object =
-      pda->jni_map() ? pda->jni_map()->jni_object() : nullptr;
-  const auto listeners_object = pda->jni_event_handler_map()
-                                    ? pda->jni_event_handler_map()->jni_object()
-                                    : nullptr;
-  const auto gestures_object =
-      pda->jni_gesture_detector_map()
-          ? pda->jni_gesture_detector_map()->jni_object()
-          : nullptr;
-  return std::make_tuple(pda, props_object, listeners_object, gestures_object);
-}
-
 void PaintingContextAndroid::CreatePaintingNode(
     int id, const std::string& tag,
     const fml::RefPtr<PropBundle>& painting_data, bool flatten,
@@ -435,12 +424,8 @@ void PaintingContextAndroid::CreatePaintingNode(
     if (local_ref.IsNull()) {
       return;
     }
-    PropBundleAndroid* pda;
-    jobject props_object;
-    jobject listeners_object;
-    jobject gestures_object;
-    std::tie(pda, props_object, listeners_object, gestures_object) =
-        GetArgsForCreatePaintingNode(painting_data);
+    PropBundleAndroid* pda =
+        static_cast<PropBundleAndroid*>(painting_data.get());
     const auto tag_ref = base::android::JNIConvertHelper::ConvertToJNIStringUTF(
         env, tag.c_str());
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_ENQUEUE_CREATE_VIEW);
@@ -452,9 +437,8 @@ void PaintingContextAndroid::CreatePaintingNode(
     // can merge initialStyles and initialProps.
     base::android::ScopedGlobalJavaRef<jobject> task_ref =
         Java_PaintingContext_createNode(
-            env, local_ref.Get(), id, tag_ref.Get(), props_object,
-            pda->GetStyleMapBuffer().Get(), listeners_object, flatten,
-            node_index, gestures_object);
+            env, local_ref.Get(), id, tag_ref.Get(), pda->jni_object(),
+            pda->GetStyleMapBuffer().Get(), flatten, node_index);
     if (lynx::base::android::HasJNIException()) {
       base::ErrorStorage::GetInstance().AddCustomInfoToError(
           {{"node_index", std::to_string(node_index)}});
@@ -472,31 +456,26 @@ void PaintingContextAndroid::CreatePaintingNode(
 
   // Sync create
   if (!create_node_async) {
-    Enqueue([this, impl = impl_, id, tag, painting_data, flatten,
-             node_index]() mutable {
-      JNIEnv* env = base::android::AttachCurrentThread();
-      base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
-      if (local_ref.IsNull()) {
-        return;
-      }
-      PropBundleAndroid* pda;
-      jobject props_object;
-      jobject listeners_object;
-      jobject gestures_object;
-      std::tie(pda, props_object, listeners_object, gestures_object) =
-          GetArgsForCreatePaintingNode(painting_data);
-      const auto tag_ref =
-          base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
-                                                                 tag.c_str());
-      Java_PaintingContext_createPaintingNodeSync(
-          env, local_ref.Get(), id, tag_ref.Get(), props_object,
-          pda->GetStyleMapBuffer().Get(), listeners_object, flatten, node_index,
-          gestures_object);
-      if (lynx::base::android::HasJNIException()) {
-        base::ErrorStorage::GetInstance().AddCustomInfoToError(
-            {{"node_index", std::to_string(node_index)}});
-      }
-    });
+    Enqueue(
+        [impl = impl_, id, tag, painting_data, flatten, node_index]() mutable {
+          JNIEnv* env = base::android::AttachCurrentThread();
+          base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
+          if (local_ref.IsNull()) {
+            return;
+          }
+          PropBundleAndroid* pda =
+              static_cast<PropBundleAndroid*>(painting_data.get());
+          const auto tag_ref =
+              base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+                  env, tag.c_str());
+          Java_PaintingContext_createPaintingNodeSync(
+              env, local_ref.Get(), id, tag_ref.Get(), pda->jni_object(),
+              pda->GetStyleMapBuffer().Get(), flatten, node_index);
+          if (lynx::base::android::HasJNIException()) {
+            base::ErrorStorage::GetInstance().AddCustomInfoToError(
+                {{"node_index", std::to_string(node_index)}});
+          }
+        });
     return;
   }
 
@@ -507,27 +486,22 @@ void PaintingContextAndroid::CreatePaintingNode(
 
   auto create_node_async_task = fml::MakeRefCounted<
       base::OnceTask<base::android::ScopedGlobalJavaRef<jobject>>>(
-      [this, impl = impl_, id, tag, painting_data = painting_data, flatten,
+      [impl = impl_, id, tag, painting_data = painting_data, flatten,
        node_index, promise = std::move(promise)]() mutable {
         base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
         if (local_ref.IsNull()) {
           return;
         }
         JNIEnv* env = base::android::AttachCurrentThread();
-        PropBundleAndroid* pda;
-        jobject props_object;
-        jobject listeners_object;
-        jobject gestures_object;
-        std::tie(pda, props_object, listeners_object, gestures_object) =
-            GetArgsForCreatePaintingNode(painting_data);
+        PropBundleAndroid* pda =
+            static_cast<PropBundleAndroid*>(painting_data.get());
         const auto tag_ref =
             base::android::JNIConvertHelper::ConvertToJNIStringUTF(env,
                                                                    tag.c_str());
         promise.set_value(base::android::ScopedGlobalJavaRef<jobject>(
             env, Java_PaintingContext_createPaintingNodeAsync(
-                     env, local_ref.Get(), id, tag_ref.Get(), props_object,
-                     pda->GetStyleMapBuffer().Get(), listeners_object, flatten,
-                     node_index, gestures_object)
+                     env, local_ref.Get(), id, tag_ref.Get(), pda->jni_object(),
+                     pda->GetStyleMapBuffer().Get(), flatten, node_index)
                      .Get()));
 
         // Set painting_data to null to release the Java GlobalRef immediately
@@ -687,34 +661,8 @@ void PaintingContextAndroid::UpdateLayout(
 void PaintingContextAndroid::UpdatePaintingNode(
     int id, bool tend_to_flatten,
     const fml::RefPtr<PropBundle>& painting_data) {
-  PropBundleAndroid* pda = static_cast<PropBundleAndroid*>(painting_data.get());
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedGlobalJavaRef<jobject> props_ref(
-      env, pda->jni_map()->jni_object());
-  base::android::ScopedGlobalJavaRef<jobject> listeners_ref(
-      env, pda->jni_event_handler_map()
-               ? pda->jni_event_handler_map()->jni_object()
-               : nullptr);
-
-  base::android::ScopedGlobalJavaRef<jobject> gestures_ref(
-      env, pda->jni_gesture_detector_map()
-               ? pda->jni_gesture_detector_map()->jni_object()
-               : nullptr);
-
-  // we now split props into attributes & styles.
-  // if using mapBuffer, css styles parts in stored in styles, otherwise
-  // styles is null and css styles info & attribute info is stored in
-  // attributes.
-  // TODO(@nihao.royal): after attribute is converted into integer format, we
-  // can merge attributes and styles.
-  base::android::ScopedGlobalJavaRef<jobject> styles_ref(
-      env, pda->GetStyleMapBuffer().Get());
-
   TRACE_EVENT(LYNX_TRACE_CATEGORY, CATALYZER_UPDATE_PAINTING_NODE);
-  Enqueue([impl = impl_, id, tend_to_flatten, props_ref = std::move(props_ref),
-           listeners_ref = std::move(listeners_ref),
-           gestures_ref = std::move(gestures_ref),
-           styles_ref = std::move(styles_ref)]() {
+  Enqueue([impl = impl_, id, tend_to_flatten, painting_data]() {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, UI_OPERATION_QUEUE_UPDATE_PAINTING_NODE);
 
     base::android::ScopedLocalJavaRef<jobject> local_ref(*impl);
@@ -722,10 +670,18 @@ void PaintingContextAndroid::UpdatePaintingNode(
       return;
     }
 
+    PropBundleAndroid* pda =
+        static_cast<PropBundleAndroid*>(painting_data.get());
     JNIEnv* env = base::android::AttachCurrentThread();
+    // we now split props into attributes & styles.
+    // if using mapBuffer, css styles parts in stored in styles, otherwise
+    // styles is null and css styles info & attribute info is stored in
+    // attributes.
+    // TODO(@nihao.royal): after attribute is converted into integer format, we
+    // can merge attributes and styles.
     Java_PaintingContext_updateProps(env, local_ref.Get(), id, tend_to_flatten,
-                                     props_ref.Get(), styles_ref.Get(),
-                                     listeners_ref.Get(), gestures_ref.Get());
+                                     pda->jni_object(),
+                                     pda->GetStyleMapBuffer().Get());
   });
 }
 
