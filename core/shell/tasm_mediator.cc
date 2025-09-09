@@ -375,7 +375,7 @@ void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
       [callback = std::move(callback), enqueue_info](auto& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
         TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskNotifyJSUpdatePageData,
+            LYNX_TRACE_CATEGORY, kJSTaskCallJSApiCallback,
             [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
               ctx.event()->add_flow_ids(flow_id);
             });
@@ -400,7 +400,7 @@ void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
                             persist, enqueue_info](auto& runtime) mutable {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
     TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskNotifyJSUpdatePageData,
+        LYNX_TRACE_CATEGORY, kJSTaskCallJSApiCallbackWithValue,
         [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
           ctx.event()->add_flow_ids(flow_id);
         });
@@ -771,7 +771,7 @@ void TasmMediator::OnGlobalPropsUpdated(const lepus::Value& props) {
       [props = lepus::Value::ShallowCopy(props), enqueue_info](auto& runtime) {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
         TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskDispatchMessageEvent,
+            LYNX_TRACE_CATEGORY, kJSTaskOnGlobalPropsUpdated,
             [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
               ctx.event()->add_flow_ids(flow_id);
             });
