@@ -339,7 +339,7 @@ void LynxShell::AttachRuntime() {
                               enqueue_info](auto& runtime) mutable {
       runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
       TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskInitRuntime,
+          LYNX_TRACE_CATEGORY, kJSTaskAttachRuntime,
           [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
             ctx.event()->add_flow_ids(flow_id);
           });
@@ -1170,7 +1170,7 @@ void LynxShell::SetPageOptions(const tasm::PageOptions& page_options) {
     runtime_actor_->Act([page_options, enqueue_info](auto& runtime) {
       runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
       TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskCallJSFunction,
+          LYNX_TRACE_CATEGORY, kJSTaskSetPageOptions,
           [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
             ctx.event()->add_flow_ids(flow_id);
           });
@@ -1300,7 +1300,7 @@ void LynxShell::OnRuntimeCreate() {
     runtime_actor_->Act([enqueue_info](auto& runtime) {
       runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
       TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskCallJSFunction,
+          LYNX_TRACE_CATEGORY, kJSTaskOnRuntimeCreate,
           [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
             ctx.event()->add_flow_ids(flow_id);
           });

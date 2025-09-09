@@ -53,7 +53,7 @@ void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,
       [module_name, method_name, code, enqueue_info](auto& runtime) {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
         TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskCallJSCallback,
+            LYNX_TRACE_CATEGORY, kJSTaskOnMethodInvoked,
             [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
               ctx.event()->add_flow_ids(flow_id);
             });
