@@ -3416,6 +3416,14 @@ void TemplateAssembler::RunPixelPipeline() {
     // Execute Layout Job.
     // Maybe Happened On Layout Thread. Trigger layout by engine here;
     RequestLayout(pipeline_option);
+
+    // In sync layout, requestLayout will eventually trigger onLayoutAfter
+    // to reset current_pipeline_context to nullptr.
+    // In async layout cases, onLayoutAfter will be triggered asynchronous
+    // so we need to reset current_pipeline_context here.
+    if (pipeline_context_manager_->GetCurrentPipelineContext() != nullptr) {
+      pipeline_context_manager_->ResetCurrentPipelineContext();
+    }
   } else {
     PipelineLayoutData layout_data{
         .layout_triggered = false,
