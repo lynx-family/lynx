@@ -604,6 +604,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
     return pipeline_context_manager_->GetCurrentPipelineContext();
   }
 
+  PipelineContext* GetPipelineContextByVersion(const PipelineVersion& version) {
+    return pipeline_context_manager_->GetPipelineContextByVersion(version);
+  }
+
   PipelineContext* CreateAndUpdateCurrentPipelineContext(
       const std::shared_ptr<PipelineOptions>& pipeline_options,
       bool is_major_updated = false) {
@@ -1012,7 +1016,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   // Called by ElementManager
   ElementManagerDelegateImpl element_manager_delegate_{this};
 
-  // Manage the lifecycle of all pilepine contexts in current lynx engine.
+  // Manage the lifecycle of all pipeline contexts in current lynx engine.
   std::unique_ptr<PipelineContextManager> pipeline_context_manager_{nullptr};
   // Manage all LepusModules
   std::unique_ptr<lepus::LynxLepusModuleManager> lepus_module_manager_{nullptr};

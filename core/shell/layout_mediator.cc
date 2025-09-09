@@ -125,7 +125,10 @@ void LayoutMediator::OnLayoutAfter(
                         page_options = page_options_](auto &engine) mutable {
       options->has_layout = has_layout;
       auto tasm = engine->GetTasm();
-      auto *pipeline_context = tasm->GetCurrentPipelineContext();
+      tasm::PipelineContext *pipeline_context = nullptr;
+      if (options->version) {
+        pipeline_context = tasm->GetPipelineContextByVersion(*options->version);
+      }
       HandlePendingLayoutTask(queue, catalyzer, options, page_options, nullptr,
                               pipeline_context);
 
