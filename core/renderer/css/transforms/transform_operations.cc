@@ -18,11 +18,11 @@
 // relation with CSSKeyframeManager
 #include "base/include/vector.h"
 #include "core/animation/css_keyframe_manager.h"  // nogncheck
-#include "core/animation/transforms/decomposed_transform.h"
-#include "core/animation/transforms/matrix44.h"
-#include "core/animation/transforms/transform_operation.h"
-#include "core/animation/transforms/transform_operations.h"
 #include "core/renderer/css/css_style_utils.h"
+#include "core/renderer/css/transforms/decomposed_transform.h"
+#include "core/renderer/css/transforms/matrix44.h"
+#include "core/renderer/css/transforms/transform_operation.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element_manager.h"
 
 namespace lynx {
@@ -178,6 +178,13 @@ TransformOperations::TransformOperations(tasm::Element* element,
     return;
   }
   InitializeTransformOperations(*this, *transform_data);
+}
+
+TransformOperations::TransformOperations(
+    tasm::Element* element,
+    base::InlineVector<starlight::TransformRawData, 1> transform_raw_data)
+    : element_(element) {
+  InitializeTransformOperations(*this, transform_raw_data);
 }
 
 TransformOperations::TransformOperations(const TransformOperations& other) {

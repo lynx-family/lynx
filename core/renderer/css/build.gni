@@ -197,6 +197,16 @@ lynx_css_runtime_sources = [
   "css_style_utils.h",
   "measure_context.cc",
   "measure_context.h",
+  "transforms/decomposed_transform.cc",
+  "transforms/decomposed_transform.h",
+  "transforms/matrix44.cc",
+  "transforms/matrix44.h",
+  "transforms/quaternion.cc",
+  "transforms/quaternion.h",
+  "transforms/transform_operation.cc",
+  "transforms/transform_operation.h",
+  "transforms/transform_operations.cc",
+  "transforms/transform_operations.h",
 ]
 lynx_css_runtime_sources_path =
     get_path_info(lynx_css_runtime_sources, "abspath")

@@ -815,10 +815,6 @@ subspec_target("rapidjson") {
   deps = [ "../../../../third_party/rapidjson" ]
 }
 
-subspec_target("transforms") {
-  deps = [ "../../../../core/animation/transforms" ]
-}
-
 subspec_target("ReleaseResource") {
   resource_bundles = [ ":LynxResources" ]
 }
