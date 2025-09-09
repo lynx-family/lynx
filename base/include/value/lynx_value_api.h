@@ -153,6 +153,12 @@ LYNX_VALUE_EXPORT lynx_api_status lynx_value_get_element(lynx_api_env env,
                                                          lynx_value object,
                                                          uint32_t index,
                                                          lynx_value* result);
+// This API checks if the object passed in has the named property.
+// Returns lynx_api_ok if the API succeeded.
+LYNX_VALUE_EXPORT lynx_api_status lynx_value_has_property(lynx_api_env env,
+                                                          lynx_value object,
+                                                          const char* utf8name,
+                                                          bool* result);
 // Read the map keys from lynx_value. lynx_api_map_expected is returned
 // if the types do not match.
 // Returns lynx_api_ok if the API succeeded.

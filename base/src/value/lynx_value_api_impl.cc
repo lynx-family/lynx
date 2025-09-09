@@ -189,6 +189,17 @@ lynx_api_status lynx_value_get_element(lynx_api_env env, lynx_value object,
   return lynx_api_ok;
 }
 
+lynx_api_status lynx_value_has_property(lynx_api_env env, lynx_value object,
+                                        const char* utf8name, bool* result) {
+  if (unlikely(object.type != lynx_value_map || object.val_ptr == nullptr)) {
+    return lynx_api_map_expected;
+  }
+  auto* map = reinterpret_cast<lynx::lepus::Dictionary*>(object.val_ptr);
+  auto key = lynx::base::String(utf8name);
+  *result = map->Contains(key);
+  return lynx_api_ok;
+}
+
 lynx_api_status lynx_value_get_property_names(lynx_api_env env,
                                               lynx_value object,
                                               lynx_value* result) {
