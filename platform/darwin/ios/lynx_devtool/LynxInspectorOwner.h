@@ -18,8 +18,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxInspectorOwner : NSObject <LynxBaseInspectorOwnerNG>
 
-- (instancetype)init;
-- (nonnull instancetype)initWithLynxView:(nullable LynxView *)view;
+- (instancetype)initWithDebuggable:(BOOL)debuggable;
+- (nonnull instancetype)initWithLynxView:(nullable LynxView *)view debuggable:(BOOL)debuggable;
 - (void)setReloadHelper:(nullable LynxPageReloadHelper *)reloadHelper;
 - (void)setDebugInfoInterceptor:(nonnull id<LynxDebugInfoRecorderProtocol>)debugInfoRecorder;
 - (void)call:(NSString *_Nonnull)function withParam:(NSString *_Nullable)params;

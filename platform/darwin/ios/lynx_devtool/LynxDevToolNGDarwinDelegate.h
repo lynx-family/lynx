@@ -11,7 +11,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface LynxDevToolNGDarwinDelegate : NSObject
-- (instancetype)init;
+- (instancetype)initWithDebuggable:(BOOL)debuggable;
 
 - (int)getSessionId;
 

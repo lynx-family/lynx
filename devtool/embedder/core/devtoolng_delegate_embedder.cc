@@ -9,7 +9,8 @@
 namespace lynx {
 namespace devtool {
 
-DevToolNGDelegateEmbedder::DevToolNGDelegateEmbedder() : session_id_(0) {}
+DevToolNGDelegateEmbedder::DevToolNGDelegateEmbedder()
+    : LynxDevToolNG(true), session_id_(0) {}
 
 void DevToolNGDelegateEmbedder::SetDevtoolPlatformAbility(
     const std::shared_ptr<devtool::DevToolPlatformFacade>& platform_ptr) {

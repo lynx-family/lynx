@@ -21,7 +21,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @required
 
-- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView;
+- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
+                                                    debuggable:(BOOL)debuggable;
 
 - (id<LynxLogBoxProtocol>)createLogBoxWithLynxView:(LynxView *)lynxView;
 

@@ -54,7 +54,11 @@ public class LynxGlobalDebugBridge
     private static final LynxGlobalDebugBridge INSTANCE = new LynxGlobalDebugBridge();
   }
 
-  private static class DevToolAgentDispatcher extends LynxInspectorOwner {}
+  private static class DevToolAgentDispatcher extends LynxInspectorOwner {
+    public DevToolAgentDispatcher() {
+      super(null, true); // Global debug bridge always operates in debuggable mode
+    }
+  }
 
   private LynxGlobalDebugBridge() {
     mAgentDispatcher = new DevToolAgentDispatcher();
