@@ -29,7 +29,10 @@ import com.lynx.tasm.behavior.StyleConstants;
 import com.lynx.tasm.behavior.shadow.MeasureUtils;
 import com.lynx.tasm.behavior.ui.ShadowData;
 import com.lynx.tasm.behavior.ui.background.BackgroundGradientLayer;
+import com.lynx.tasm.utils.FloatUtils;
 import com.lynx.tasm.utils.PixelUtils;
+import java.util.Arrays;
+import java.util.Objects;
 
 @SuppressWarnings("unused")
 public class TextAttributes {
@@ -171,23 +174,26 @@ public class TextAttributes {
         && this.fontColorEquals(attr.mFontColor) && mTextAlign == attr.mTextAlign
         && mTextVerticalAlign == attr.mTextVerticalAlign && mFontWeight == attr.mFontWeight
         && mFontStyle == attr.mFontStyle && mWhiteSpace == attr.mWhiteSpace
-        && mTextOverflow == attr.mTextOverflow && mLineHeight == attr.mLineHeight
-        && mLetterSpacing == attr.mLetterSpacing && mLineSpacing == attr.mLineSpacing
-        && mFontSize == attr.mFontSize && mTextIndent == attr.mTextIndent
-        && mBaselineShift == attr.mBaselineShift && mHasImageSpan == attr.mHasImageSpan
-        && mIsBoringSpan == attr.mIsBoringSpan && mHasInlineViewSpan == attr.mHasInlineViewSpan
-        && mIncludePadding == attr.mIncludePadding
-        && TextUtils.equals(mFontFamily, attr.mFontFamily) && mTextShadow == attr.mTextShadow
-        && mTextDecoration == attr.mTextDecoration && mDirection == attr.mDirection
-        && mTextDecorationColor == attr.mTextDecorationColor
+        && mTextOverflow == attr.mTextOverflow
+        && FloatUtils.floatsEqual(mLineHeight, attr.mLineHeight)
+        && FloatUtils.floatsEqual(mLetterSpacing, attr.mLetterSpacing)
+        && FloatUtils.floatsEqual(mLineSpacing, attr.mLineSpacing)
+        && FloatUtils.floatsEqual(mFontSize, attr.mFontSize)
+        && Objects.equals(mTextIndent, attr.mTextIndent) && mBaselineShift == attr.mBaselineShift
+        && mHasImageSpan == attr.mHasImageSpan && mIsBoringSpan == attr.mIsBoringSpan
+        && mHasInlineViewSpan == attr.mHasInlineViewSpan && mIncludePadding == attr.mIncludePadding
+        && TextUtils.equals(mFontFamily, attr.mFontFamily)
+        && Objects.equals(mTextShadow, attr.mTextShadow) && mTextDecoration == attr.mTextDecoration
+        && mDirection == attr.mDirection && mTextDecorationColor == attr.mTextDecorationColor
         && mTextDecorationStyle == attr.mTextDecorationStyle
-        && mTextStrokeColor == attr.mTextStrokeColor && mTextStrokeWidth == attr.mTextStrokeWidth
+        && mTextStrokeColor == attr.mTextStrokeColor
+        && FloatUtils.floatsEqual(mTextStrokeWidth, attr.mTextStrokeWidth)
         && mFirstCharacterRTLState == attr.mFirstCharacterRTLState
         && mIsAutoFontSize == attr.mIsAutoFontSize
-        && mAutoFontSizeMinSize == attr.mAutoFontSizeMinSize
-        && mAutoFontSizeMaxSize == attr.mAutoFontSizeMaxSize
-        && mAutoFontSizeStepGranularity == attr.mAutoFontSizeStepGranularity
-        && mAutoFontSizePresetSizes == attr.mAutoFontSizePresetSizes
+        && FloatUtils.floatsEqual(mAutoFontSizeMinSize, attr.mAutoFontSizeMinSize)
+        && FloatUtils.floatsEqual(mAutoFontSizeMaxSize, attr.mAutoFontSizeMaxSize)
+        && FloatUtils.floatsEqual(mAutoFontSizeStepGranularity, attr.mAutoFontSizeStepGranularity)
+        && Arrays.equals(mAutoFontSizePresetSizes, attr.mAutoFontSizePresetSizes)
         && mTextSingleLineVerticalAlign == attr.mTextSingleLineVerticalAlign
         && mHasValidTypeface == attr.mHasValidTypeface && mHyphen == attr.mHyphen
         && mFontOpticalSizing == attr.mFontOpticalSizing
@@ -233,7 +239,7 @@ public class TextAttributes {
     result = result * prime
         + (mAutoFontSizePresetSizes == null ? 0 : mAutoFontSizePresetSizes.hashCode());
     result = result * prime + mTextSingleLineVerticalAlign;
-    result = result & prime + (mHasValidTypeface ? 1 : 0);
+    result = result * prime + (mHasValidTypeface ? 1 : 0);
     result = result * prime + (mHyphen ? 1 : 0);
     result =
         result * prime + (mFontVariationSettings == null ? 0 : mFontVariationSettings.hashCode());

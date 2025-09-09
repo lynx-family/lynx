@@ -70,6 +70,7 @@ import com.lynx.tasm.behavior.ui.background.BackgroundRadialGradientLayer;
 import com.lynx.tasm.behavior.ui.text.AbsInlineImageSpan;
 import com.lynx.tasm.behavior.utils.UnicodeFontUtils;
 import com.lynx.tasm.featurecount.LynxFeatureCounter;
+import com.lynx.tasm.utils.FloatUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -259,14 +260,11 @@ public class BaseTextShadowNode extends ShadowNode {
    */
   @LynxProp(name = PropsConstants.FONT_SIZE, defaultFloat = MeasureUtils.UNDEFINED)
   public void setFontSize(float fontSize) {
-    if (fontSize != MeasureUtils.UNDEFINED) {
-      fontSize = (float) Math.round(fontSize);
-    }
     if (mEnableFontScaling && mContext != null) {
       fontSize = fontSize * mContext.getFontScale();
     }
-    if (mTextAttributes.mFontSize != (int) fontSize) {
-      mTextAttributes.mFontSize = (int) fontSize;
+    if (!FloatUtils.floatsEqual(mTextAttributes.mFontSize, fontSize)) {
+      mTextAttributes.mFontSize = fontSize;
     }
     markDirty();
   }

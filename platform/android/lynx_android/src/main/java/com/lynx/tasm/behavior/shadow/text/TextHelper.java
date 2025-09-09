@@ -634,10 +634,11 @@ public class TextHelper {
   }
 
   public static double getTextWidth(String text, String fontSize, @Nullable String fontFamily) {
-    int textFontSize = Math.round(UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14)));
-    if (textFontSize == 0) {
+    float textFontSize = UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14));
+    if (textFontSize <= 0) {
       return 0;
     }
+
     Paint paint = newTextPaint(textFontSize, fontFamily);
     float result = paint.measureText(text);
     float width = PixelUtils.pxToDip(result);
@@ -646,11 +647,11 @@ public class TextHelper {
 
   public static String getFirstLineText(
       String text, String fontSize, @Nullable String fontFamily, String maxWidth) {
-    int textFontSize = Math.round(UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14)));
+    float textFontSize = UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14));
     float maxMeasureWidth = TextUtils.isEmpty(maxWidth)
         ? 0
         : UnitUtils.toPx(maxWidth, 0, 0, 0, 0, PixelUtils.dipToPx(0));
-    if (textFontSize == 0 || maxMeasureWidth < 1) {
+    if (textFontSize <= 0 || maxMeasureWidth < 1) {
       return "";
     }
     CharSequence textSpan = text;
@@ -691,14 +692,14 @@ public class TextHelper {
   public static JavaOnlyMap getTextInfo(String text, String fontSize, @Nullable String fontFamily,
       @Nullable String maxWidth, int maxLine) {
     float width = 0.f;
-    int textFontSize = Math.round(UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14)));
+    float textFontSize = UnitUtils.toPx(fontSize, 0, 0, 0, 0, PixelUtils.dipToPx(14));
     int maxMeasureLine = maxLine;
     float maxMeasureWidth = TextUtils.isEmpty(maxWidth)
         ? 0
         : UnitUtils.toPx(maxWidth, 0, 0, 0, 0, PixelUtils.dipToPx(0));
 
     JavaOnlyMap resultMap = new JavaOnlyMap();
-    if (text.isEmpty() || textFontSize == 0 || (maxLine > 1 && maxMeasureWidth < 1)) {
+    if (text.isEmpty() || textFontSize <= 0 || (maxLine > 1 && maxMeasureWidth < 1)) {
       // if no valid fontSize or maxWidth set, just return width
       resultMap.putDouble("width", width);
       return resultMap;

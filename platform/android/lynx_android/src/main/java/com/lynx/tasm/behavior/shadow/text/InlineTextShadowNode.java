@@ -104,7 +104,7 @@ public class InlineTextShadowNode extends BaseTextShadowNode {
           new SetSpanOperation(start, end, new LynxTextBackgroundSpan(start, end, mBackground)));
     }
 
-    if (getTextAttributes().mFontSize != MeasureUtils.UNDEFINED) {
+    if (!MeasureUtils.isUndefined(getTextAttributes().mFontSize)) {
       ops.add(new SetSpanOperation(
           start, end, new AbsoluteSizeSpan(Math.round(getTextAttributes().mFontSize))));
     }
