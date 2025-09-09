@@ -71,36 +71,38 @@
   LynxTemplateData* _templateData;
 }
 
-- (instancetype)init {
+- (instancetype)initWithDebuggable:(BOOL)debuggable {
   self = [super init];
   // LynxDevToolNGDarwinDelegate
-  _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] init];
+  _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] initWithDebuggable:debuggable];
   return self;
 }
 
-- (nonnull instancetype)initWithLynxView:(nullable LynxView*)view {
-  _lynxView = view;
-  _isDebugging = NO;
+- (nonnull instancetype)initWithLynxView:(nullable LynxView*)view debuggable:(BOOL)debuggable {
+  self = [super init];
+  if (self) {
+    _lynxView = view;
+    _isDebugging = NO;
 
-  // DevMenu
-  _devMenu = [[LynxDevMenu alloc] initWithInspectorOwner:self];
+    // DevMenu
+    _devMenu = [[LynxDevMenu alloc] initWithInspectorOwner:self];
 
-  // PageReload
-  _reloadHelper = nil;
+    // PageReload
+    _reloadHelper = nil;
 
-  // DevToolPlatformDarwinDelegate
-  _platform = [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:_lynxView];
+    // DevToolPlatformDarwinDelegate
+    _platform = [[DevToolPlatformDarwinDelegate alloc] initWithLynxView:_lynxView];
 
-  // LynxDevToolNGDarwinDelegate
-  _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] init];
+    // LynxDevToolNGDarwinDelegate
+    _devtoolNG = [[LynxDevToolNGDarwinDelegate alloc] initWithDebuggable:debuggable];
 
-  // init template data
-  _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
+    // init template data
+    _templateData = [[LynxTemplateData alloc] initWithDictionary:@{}];
 
 #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
-  [[LynxFrameViewTrace shareInstance] attachView:view];
+    [[LynxFrameViewTrace shareInstance] attachView:view];
 #endif
-
+  }
   return self;
 }
 

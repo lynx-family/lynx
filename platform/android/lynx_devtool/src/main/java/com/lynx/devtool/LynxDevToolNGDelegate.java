@@ -17,8 +17,8 @@ public class LynxDevToolNGDelegate {
   private final AtomicBoolean mHasDestroy = new AtomicBoolean(false);
   private final Object mDevToolLock = new Object();
 
-  public LynxDevToolNGDelegate() {
-    mLynxDevToolNGPtr = nativeCreateLynxDevToolNG();
+  public LynxDevToolNGDelegate(boolean debuggable) {
+    mLynxDevToolNGPtr = nativeCreateLynxDevToolNG(debuggable);
   }
 
   public int getSessionId() {
@@ -29,7 +29,7 @@ public class LynxDevToolNGDelegate {
     return mSessionId != 0;
   }
 
-  private native long nativeCreateLynxDevToolNG();
+  private native long nativeCreateLynxDevToolNG(boolean debuggable);
 
   public void sendMessageToDebugPlatform(@NonNull String type, @NonNull String msg) {
     if (mHasDestroy.get()) {

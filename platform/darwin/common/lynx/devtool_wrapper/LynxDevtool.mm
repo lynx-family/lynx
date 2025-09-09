@@ -42,8 +42,8 @@
     if (!devtoolService) {
       _LogW(@"LynxServiceDevToolProtocol instance not found");
     }
-    if (LynxEnv.sharedInstance.devtoolEnabled && devtoolService) {
-      _owner = [devtoolService createInspectorOwnerWithLynxView:view];
+    if ((LynxEnv.sharedInstance.devtoolEnabled || debuggable) && devtoolService) {
+      _owner = [devtoolService createInspectorOwnerWithLynxView:view debuggable:debuggable];
     } else {
       _owner = nil;
     }

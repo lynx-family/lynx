@@ -73,8 +73,8 @@ public class LynxDevtool {
 
         sDevToolService = LynxServiceCenter.inst().getService(ILynxDevToolService.class);
 
-        if (LynxEnv.inst().isDevtoolEnabled() && sDevToolService != null) {
-          mOwner = sDevToolService.createInspectorOwner(view);
+        if ((LynxEnv.inst().isDevtoolEnabled() || debuggable) && sDevToolService != null) {
+          mOwner = sDevToolService.createInspectorOwner(view, debuggable);
           if (mOwner != null) {
             LLog.i(TAG, "owner init");
           }

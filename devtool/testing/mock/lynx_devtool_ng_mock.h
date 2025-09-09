@@ -14,7 +14,7 @@ namespace lynx {
 namespace testing {
 class LynxDevToolNGMock : public lynx::devtool::LynxDevToolNG {
  public:
-  LynxDevToolNGMock() = default;
+  LynxDevToolNGMock() : LynxDevToolNG(true) {}
   ~LynxDevToolNGMock() override = default;
 
   int32_t Attach(const std::string& url) override;

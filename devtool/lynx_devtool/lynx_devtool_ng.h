@@ -18,7 +18,7 @@ namespace devtool {
 class LynxDevToolNG : public lynx::devtool::AbstractDevTool,
                       public std::enable_shared_from_this<LynxDevToolNG> {
  public:
-  LynxDevToolNG();
+  explicit LynxDevToolNG(bool debuggable);
   ~LynxDevToolNG() override;
 
   int32_t Attach(const std::string& url) override;

@@ -4,26 +4,29 @@
 
 #import <Lynx/LynxService.h>
 #import <LynxService/LynxDevToolService.h>
+#import <objc/message.h>
 
 @LynxServiceRegister(LynxDevToolService) @implementation LynxDevToolService
 
 #pragma mark - LynxServiceDevToolProtocol
 
-- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView {
+- (id<LynxBaseInspectorOwner>)createInspectorOwnerWithLynxView:(LynxView *)lynxView
+                                                    debuggable:(BOOL)debuggable {
   Class inspectorOwnerClass = NSClassFromString(@"LynxInspectorOwner");
   if (!inspectorOwnerClass) {
     return nil;
   }
 
-  SEL initSelector = NSSelectorFromString(@"initWithLynxView:");
-  if (![inspectorOwnerClass instancesRespondToSelector:initSelector]) {
+  SEL initSelector = NSSelectorFromString(@"initWithLynxView:debuggable:");
+  id allocated = [inspectorOwnerClass alloc];
+
+  if (![allocated respondsToSelector:initSelector]) {
     return nil;
   }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-  return [[inspectorOwnerClass alloc] performSelector:initSelector withObject:lynxView];
-#pragma clang diagnostic pop
+  id (*InitFunc)(id, SEL, id, BOOL) = (id(*)(id, SEL, id, BOOL))objc_msgSend;
+  id instance = InitFunc(allocated, initSelector, lynxView, debuggable);
+  return instance;
 }
 
 - (id<LynxLogBoxProtocol>)createLogBoxWithLynxView:(LynxView *)lynxView {
