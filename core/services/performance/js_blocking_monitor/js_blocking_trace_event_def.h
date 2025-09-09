@@ -12,7 +12,9 @@ inline constexpr const char* const kJSTaskEnqueue = "JSTaskEnqueue";
 inline constexpr const char* const kJSTaskCallJSFunction =
     "JSTask::CallJSFunction";
 inline constexpr const char* const kJSTaskCallJSApiCallbackWithValue =
-    "JSTask::JSApiCallbackWithValue";
+    "JSTask::CallJSApiCallbackWithValue";
+inline constexpr const char* const kJSTaskCallJSApiCallback =
+    "JSTask::CallJSApiCallback";
 inline constexpr const char* const kJSTaskCallJSIntersectionObserver =
     "JSTask::CallJSIntersectionObserver";
 inline constexpr const char* const kJSTaskEvaluateScript =
