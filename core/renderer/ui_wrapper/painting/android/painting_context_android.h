@@ -202,8 +202,7 @@ class PaintingContextAndroid : public PaintingCtxPlatformImpl {
   void InvokeNativeRunnable(
       const base::android::ScopedGlobalJavaRef<jobject>& runnable_ref,
       JNIEnv* env);
-  std::tuple<PropBundleAndroid*, jobject, jobject, jobject>
-  GetArgsForCreatePaintingNode(const fml::RefPtr<PropBundle>& painting_data);
+
   static_assert(static_cast<size_t>(IntValueIndex::SIZE) == 19,
                 "size has changed, make sure stay in sync with platform");
 

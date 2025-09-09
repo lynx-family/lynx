@@ -81,16 +81,12 @@ int LayoutContextAndroid::CreateLayoutNode(int id, const std::string& tag,
     // TODO(@nihao.royal): after attribute is converted into integer format, we
     // can merge attributes and styles.
     result = Java_LayoutContext_createNode(
-        env, local_ref.Get(), id, tag_ref.Get(), pda->jni_map()->jni_object(),
-        pda->GetStyleMapBuffer().Get(),
-        pda->jni_event_handler_map()
-            ? pda->jni_event_handler_map()->jni_object()
-            : nullptr,
-        is_parent_inline_container);
+        env, local_ref.Get(), id, tag_ref.Get(), pda->jni_object(),
+        pda->GetStyleMapBuffer().Get(), is_parent_inline_container);
   } else {
     result = Java_LayoutContext_createNode(env, local_ref.Get(), id,
                                            tag_ref.Get(), nullptr, nullptr,
-                                           nullptr, is_parent_inline_container);
+                                           is_parent_inline_container);
   }
   if (base::android::HasJNIException()) {
     lynx::base::ErrorStorage::GetInstance().AddCustomInfoToError(
@@ -143,11 +139,8 @@ void LayoutContextAndroid::UpdateLayoutNode(int id, PropBundle* painting_data) {
   // attributes.
   // TODO(@nihao.royal): after attribute is converted into integer format, we
   // can merge attributes and styles.
-  Java_LayoutContext_updateProps(
-      env, local_ref.Get(), id, pda->jni_map()->jni_object(),
-      pda->GetStyleMapBuffer().Get(),
-      pda->jni_event_handler_map() ? pda->jni_event_handler_map()->jni_object()
-                                   : nullptr);
+  Java_LayoutContext_updateProps(env, local_ref.Get(), id, pda->jni_object(),
+                                 pda->GetStyleMapBuffer().Get());
 }
 
 void LayoutContextAndroid::OnLayoutBefore(int id) {
