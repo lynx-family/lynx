@@ -39,6 +39,7 @@ jni_class_configs:
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/LayoutNodeManager.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/PlatformExtraBundleHolder.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/shadow/LayoutNode.java
+    - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/behavior/ui/PropBundle.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/LynxWhiteBoard.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/NativeFacade.java
     - java: platform/android/lynx_android/src/main/java/com/lynx/tasm/NativeFacadeReporter.java

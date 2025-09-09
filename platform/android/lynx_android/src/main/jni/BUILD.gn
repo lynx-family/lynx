@@ -102,6 +102,8 @@ lynx_core_source_set("build") {
     "gen/PlatformExtraBundleHolder_register_jni.h",
     "gen/PlatformRendererContext_jni.h",
     "gen/PlatformRendererContext_register_jni.h",
+    "gen/PropBundle_jni.h",
+    "gen/PropBundle_register_jni.h",
     "gen/ReadableCompactArrayBuffer_jni.h",
     "gen/ReadableCompactArrayBuffer_register_jni.h",
     "gen/ReadableMapBuffer_jni.h",

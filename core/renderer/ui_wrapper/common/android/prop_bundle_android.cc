@@ -6,6 +6,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/include/platform/android/jni_convert_helper.h"
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/base/js_constants.h"
@@ -13,68 +14,180 @@
 #include "core/renderer/events/gesture.h"
 #include "core/renderer/tasm/react/android/mapbuffer/readable_map_buffer.h"
 #include "core/renderer/utils/value_utils.h"
+#include "platform/android/lynx_android/src/main/jni/gen/PropBundle_jni.h"
+#include "platform/android/lynx_android/src/main/jni/gen/PropBundle_register_jni.h"
+
+namespace lynx {
+namespace jni {
+bool RegisterJNIForPropBundle(JNIEnv* env) { return RegisterNativesImpl(env); }
+}  // namespace jni
+}  // namespace lynx
 
 namespace lynx {
 namespace tasm {
 
 PropBundleAndroid::PropBundleAndroid(bool use_map_buffer)
-    : jni_map_(new base::android::JavaOnlyMap),
-      jni_event_handler_map_(nullptr),
-      use_map_buffer_(use_map_buffer) {}
+    : use_map_buffer_(use_map_buffer) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  jni_object_ = std::make_shared<base::android::ScopedGlobalJavaRef<jobject>>(
+      env, Java_PropBundle_createPropBundle(env).Get());
+}
 
 PropBundleAndroid::PropBundleAndroid(
-    const std::shared_ptr<base::android::JavaOnlyMap>& jni_map,
-    const std::shared_ptr<base::android::JavaOnlyArray>& jni_event_handler_map)
-    : jni_map_(jni_map), jni_event_handler_map_(jni_event_handler_map) {}
+    const std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>>&
+        jni_object)
+    : jni_object_(jni_object) {}
 
 void PropBundleAndroid::SetNullProps(const char* key) {
-  CopyIfConst();
-  jni_map_->PushNull(key);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putNull(env, jni_object_->Get(), jni_key.Get());
 }
 
 void PropBundleAndroid::SetProps(const char* key, uint value) {
-  CopyIfConst();
-  jni_map_->PushInt(key, value);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putInt(env, jni_object_->Get(), jni_key.Get(), value);
 }
 
 void PropBundleAndroid::SetProps(const char* key, int value) {
-  CopyIfConst();
-  jni_map_->PushInt(key, value);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putInt(env, jni_object_->Get(), jni_key.Get(), value);
 }
 
 void PropBundleAndroid::SetProps(const char* key, const char* value) {
-  CopyIfConst();
-  jni_map_->PushString(key, value);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  base::android::ScopedLocalJavaRef<jstring> jni_value =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, value);
+  Java_PropBundle_putString(env, jni_object_->Get(), jni_key.Get(),
+                            jni_value.Get());
 }
 
 void PropBundleAndroid::SetProps(const char* key, bool value) {
-  CopyIfConst();
-  jni_map_->PushBoolean(key, value);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+
+  Java_PropBundle_putBool(env, jni_object_->Get(), jni_key.Get(), value);
 }
 
 void PropBundleAndroid::SetProps(const char* key, double value) {
-  CopyIfConst();
-  jni_map_->PushDouble(key, value);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putDouble(env, jni_object_->Get(), jni_key.Get(), value);
+}
+
+void PropBundleAndroid::SetProps(const char* key, int64_t value) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putLong(env, jni_object_->Get(), jni_key.Get(), value);
+}
+
+void PropBundleAndroid::SetProps(const char* key, uint64_t value) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putLong(env, jni_object_->Get(), jni_key.Get(), value);
+}
+
+void PropBundleAndroid::SetProps(const char* key,
+                                 base::android::JavaOnlyArray* value) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putArray(env, jni_object_->Get(), jni_key.Get(),
+                           value->jni_object());
+}
+
+void PropBundleAndroid::SetProps(const char* key,
+                                 base::android::JavaOnlyMap* value) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  Java_PropBundle_putMap(env, jni_object_->Get(), jni_key.Get(),
+                         value->jni_object());
 }
 
 void PropBundleAndroid::SetProps(const char* key, const pub::Value& value) {
-  CopyIfConst();
-  AssembleMap(jni_map_.get(), key, value);
+  if (value.IsNil()) {
+    SetNullProps(key);
+  } else if (value.IsString()) {
+    SetProps(key, value.str().c_str());
+  } else if (value.IsInt32()) {
+    SetProps(key, value.Int32());
+  } else if (value.IsInt64()) {
+    SetProps(key, value.Int64());
+  } else if (value.IsUInt32()) {
+    SetProps(key, value.UInt32());
+  } else if (value.IsUInt64()) {
+    SetProps(key, value.UInt64());
+  } else if (value.IsNumber()) {
+    SetProps(key, value.Number());
+  } else if (value.IsArray()) {
+    auto jni_array = std::make_unique<base::android::JavaOnlyArray>();
+    value.ForeachArray(
+        [jni_array_ptr = jni_array.get()](int64_t index, const pub::Value& v) {
+          AssembleArray(jni_array_ptr, v);
+        });
+    SetProps(key, jni_array.get());
+  } else if (value.IsMap()) {
+    auto jni_map = std::make_unique<base::android::JavaOnlyMap>();
+    value.ForeachMap([jni_map_ptr = jni_map.get()](const pub::Value& k,
+                                                   const pub::Value& v) {
+      AssembleMap(jni_map_ptr, k.str().c_str(), v);
+    });
+    SetProps(key, jni_map.get());
+  } else if (value.IsBool()) {
+    SetProps(key, value.Bool());
+  } else if (value.IsUndefined()) {
+    // TODO(songshourui): handle undefined value later
+  } else {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    CopyIfConst(env);
+    base::android::JavaOnlyMap map(env, GetProps());
+    AssembleMap(&map, key, value);
+  }
 }
 
 void PropBundleAndroid::SetProps(const pub::Value& value) {
-  CopyIfConst();
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
   auto prev_value_vector =
       pub::ScopedCircleChecker::InitVectorIfNecessary(value);
-  value.ForeachMap([jni_map_ptr = jni_map_.get(), &prev_value_vector](
-                       const pub::Value& k, const pub::Value& v) {
-    AssembleMap(jni_map_ptr, k.str().c_str(), v, prev_value_vector.get(), 1,
-                false);
+  value.ForeachMap([this](const pub::Value& k, const pub::Value& v) {
+    SetProps(k.str().c_str(), v);
   });
 }
 
 bool PropBundleAndroid::Contains(const char* key) const {
-  return jni_map_->Contains(key);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  base::android::ScopedLocalJavaRef<jstring> jni_key =
+      base::android::JNIConvertHelper::ConvertToJNIStringUTF(env, key);
+  return Java_PropBundle_contains(env, jni_object_->Get(), jni_key.Get());
 }
 
 // styles
@@ -143,10 +256,9 @@ void PropBundleAndroid::SetPropsByID(CSSPropertyID id,
 }
 
 void PropBundleAndroid::SetEventHandler(const pub::Value& event) {
-  CopyIfConst();
-  if (!jni_event_handler_map_) {
-    jni_event_handler_map_ = std::make_unique<base::android::JavaOnlyArray>();
-  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
   constexpr const static char* kName = "name";
   constexpr const static char* kType = "type";
   constexpr const static char* kFunction = "function";
@@ -168,7 +280,9 @@ void PropBundleAndroid::SetEventHandler(const pub::Value& event) {
   } else {
     jni_map->PushString(kLepusType, type.c_str());
   }
-  jni_event_handler_map_->PushMap(jni_map.get());
+
+  Java_PropBundle_putEventHandler(env, jni_object_->Get(),
+                                  jni_map->jni_object());
 }
 
 /**
@@ -177,11 +291,9 @@ void PropBundleAndroid::SetEventHandler(const pub::Value& event) {
  * @param detector The gesture detector object to be set.
  */
 void PropBundleAndroid::SetGestureDetector(const GestureDetector& detector) {
+  JNIEnv* env = base::android::AttachCurrentThread();
+
   // If the map for event handlers does not exist yet, create a new one.
-  if (!jni_gesture_detector_map_) {
-    jni_gesture_detector_map_ =
-        std::make_unique<base::android::JavaOnlyArray>();
-  }
 
   // Constants for keys used in the map.
   constexpr const static char* kId = "id";
@@ -243,19 +355,28 @@ void PropBundleAndroid::SetGestureDetector(const GestureDetector& detector) {
   jni_map->PushMap(kRelationMap, std::move(jni_relation_map.get()));
 
   // Add the gesture detector map to the event handler map.
-  jni_gesture_detector_map_->PushMap(std::move(jni_map.get()));
+  Java_PropBundle_putGesture(env, jni_object_->Get(), jni_map->jni_object());
 }
 
 void PropBundleAndroid::SetPropsByID(CSSPropertyID id, const uint8_t* data,
                                      size_t size) {
   if (!use_map_buffer_) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    CopyIfConst(env);
+
     const auto& property_name = CSSProperty::GetPropertyName(id);
 
     auto jni_array = std::make_unique<base::android::JavaOnlyArray>();
     for (size_t i = 0; i < size; ++i) {
       jni_array->PushInt(data[i]);
     }
-    jni_map_->PushArray(property_name.c_str(), jni_array.get());
+
+    base::android::ScopedLocalJavaRef<jstring> jni_key =
+        base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+            env, property_name.c_str());
+
+    Java_PropBundle_putArray(env, jni_object_->Get(), jni_key.Get(),
+                             jni_array->jni_object());
   } else {
     base::android::MapBufferBuilder buffer_builder{};
     for (size_t i = 0; i < size; ++i) {
@@ -268,13 +389,21 @@ void PropBundleAndroid::SetPropsByID(CSSPropertyID id, const uint8_t* data,
 void PropBundleAndroid::SetPropsByID(CSSPropertyID id, const uint32_t* data,
                                      size_t size) {
   if (!use_map_buffer_) {
+    JNIEnv* env = base::android::AttachCurrentThread();
+    CopyIfConst(env);
+
     const auto& property_name = CSSProperty::GetPropertyName(id);
 
     auto jni_array = std::make_unique<base::android::JavaOnlyArray>();
     for (size_t i = 0; i < size; ++i) {
       jni_array->PushInt(data[i]);
     }
-    jni_map_->PushArray(property_name.c_str(), jni_array.get());
+
+    base::android::ScopedLocalJavaRef<jstring> jni_key =
+        base::android::JNIConvertHelper::ConvertToJNIStringUTF(
+            env, property_name.c_str());
+    Java_PropBundle_putArray(env, jni_object_->Get(), jni_key.Get(),
+                             jni_array->jni_object());
   } else {
     base::android::MapBufferBuilder buffer_builder{};
     for (size_t i = 0; i < size; ++i) {
@@ -285,10 +414,10 @@ void PropBundleAndroid::SetPropsByID(CSSPropertyID id, const uint32_t* data,
 }
 
 void PropBundleAndroid::ResetEventHandler() {
-  CopyIfConst();
-  if (jni_event_handler_map_) {
-    jni_event_handler_map_->Clear();
-  }
+  JNIEnv* env = base::android::AttachCurrentThread();
+  CopyIfConst(env);
+
+  Java_PropBundle_resetEventHandler(env, jni_object_->Get());
 }
 
 // TODO(songshourui.null): add unit test for this function when JNI method call
@@ -457,8 +586,7 @@ void PropBundleAndroid::AssembleMapBuffer(
 // When a real write operation is performed on the prop bundle on Android, the
 // JNI map inside will be modified.
 fml::RefPtr<PropBundle> PropBundleAndroid::ShallowCopy() {
-  auto prop_bundle =
-      fml::MakeRefCounted<PropBundleAndroid>(jni_map_, jni_event_handler_map_);
+  auto prop_bundle = fml::MakeRefCounted<PropBundleAndroid>(jni_object_);
   MarkConst();
   prop_bundle->MarkConst();
   return prop_bundle;
@@ -467,12 +595,10 @@ fml::RefPtr<PropBundle> PropBundleAndroid::ShallowCopy() {
 // This function is used to check whether it is necessary to copy the contents
 // of the prop bundle before writing to it. If the prop bundle is const, then a
 // copy of the JNI map in the prop bundle will be performed.
-void PropBundleAndroid::CopyIfConst() {
-  if (is_const_ && jni_map_) {
-    jni_map_ = jni_map_->ShallowCopy();
-  }
-  if (is_const_ && jni_event_handler_map_) {
-    jni_event_handler_map_ = jni_event_handler_map_->ShallowCopy();
+void PropBundleAndroid::CopyIfConst(JNIEnv* env) {
+  if (is_const_ && jni_object_) {
+    jni_object_ = std::make_shared<base::android::ScopedGlobalJavaRef<jobject>>(
+        env, Java_PropBundle_shallowCopy(env, jni_object_->Get()).Get());
   }
   is_const_ = false;
 }
@@ -526,6 +652,23 @@ void PropArrayAndroid::AddProp(bool value) {
 
 void PropArrayAndroid::AddProp(double value) {
   ui_operation_batch_builder_->putDouble(value);
+}
+
+lynx::base::android::ScopedLocalJavaRef<jobject> PropBundleAndroid::GetProps() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_PropBundle_getProps(env, jni_object_->Get());
+}
+
+lynx::base::android::ScopedLocalJavaRef<jobject>
+PropBundleAndroid::GetEventHandlers() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_PropBundle_getEventHandlers(env, jni_object_->Get());
+}
+
+lynx::base::android::ScopedLocalJavaRef<jobject>
+PropBundleAndroid::GetGestures() {
+  JNIEnv* env = base::android::AttachCurrentThread();
+  return Java_PropBundle_getGestures(env, jni_object_->Get());
 }
 
 }  // namespace tasm

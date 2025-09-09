@@ -26,9 +26,15 @@ class PropBundleCreatorAndroid : public PropBundleCreator {
 
 class PropBundleAndroid : public PropBundle {
  public:
-  PropBundleAndroid(const std::shared_ptr<base::android::JavaOnlyMap>& jni_map,
-                    const std::shared_ptr<base::android::JavaOnlyArray>&
-                        jni_event_handler_map);
+  PropBundleAndroid(
+      const std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>>&
+          jni_object);
+
+  jobject jni_object() { return jni_object_->Get(); }
+
+  lynx::base::android::ScopedLocalJavaRef<jobject> GetProps();
+  lynx::base::android::ScopedLocalJavaRef<jobject> GetEventHandlers();
+  lynx::base::android::ScopedLocalJavaRef<jobject> GetGestures();
 
   void SetNullProps(const char* key) override;
   void SetProps(const char* key, uint value) override;
@@ -38,6 +44,11 @@ class PropBundleAndroid : public PropBundle {
   void SetProps(const char* key, double value) override;
   void SetProps(const char* key, const pub::Value& value) override;
   void SetProps(const pub::Value& value) override;
+
+  void SetProps(const char* key, int64_t value);
+  void SetProps(const char* key, uint64_t value);
+  void SetProps(const char* key, base::android::JavaOnlyArray* value);
+  void SetProps(const char* key, base::android::JavaOnlyMap* value);
 
   bool Contains(const char* key) const override;
 
@@ -57,20 +68,12 @@ class PropBundleAndroid : public PropBundle {
   fml::RefPtr<PropBundle> ShallowCopy() override;
 
   void SetEventHandler(const pub::Value& event) override;
-  void SetGestureDetector(const GestureDetector& detector) override;
   void ResetEventHandler() override;
-  inline base::android::JavaOnlyMap* jni_map() const { return jni_map_.get(); }
+
+  void SetGestureDetector(const GestureDetector& detector) override;
 
   // Acquire Styled `ReadableMapBuffer` if `enable_map_buffer_` enabled.
   base::android::ScopedLocalJavaRef<jobject> GetStyleMapBuffer();
-
-  inline base::android::JavaOnlyArray* jni_event_handler_map() const {
-    return jni_event_handler_map_.get();
-  }
-
-  inline base::android::JavaOnlyArray* jni_gesture_detector_map() const {
-    return jni_gesture_detector_map_.get();
-  }
 
   static void AssembleArray(
       base::android::JavaOnlyArray* array, const pub::Value& value,
@@ -88,13 +91,12 @@ class PropBundleAndroid : public PropBundle {
  private:
   PropBundleAndroid(bool use_map_buffer = false);
   friend class PropBundleCreatorAndroid;
-  void CopyIfConst();
+
+  void CopyIfConst(JNIEnv* env);
   void MarkConst() { is_const_ = true; }
 
  private:
-  std::shared_ptr<base::android::JavaOnlyMap> jni_map_;
-  std::shared_ptr<base::android::JavaOnlyArray> jni_event_handler_map_;
-  std::unique_ptr<base::android::JavaOnlyArray> jni_gesture_detector_map_;
+  std::shared_ptr<base::android::ScopedGlobalJavaRef<jobject>> jni_object_;
 
   base::android::MapBufferBuilder style_buffer_builder_{};
   std::unique_ptr<base::android::MapBuffer> style_map_buffer_{nullptr};
