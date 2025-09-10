@@ -337,7 +337,7 @@ TEST(CSSStringParser, length_valid_and_value) {
                                "fit-content(calc(10% - 0.5em))"};
   int len = sizeof(valid_value) / sizeof(char*);
 #define make_a_length(value, pattern) \
-  (CSSValue){lepus::Value(value), lynx::tasm::CSSValuePattern::pattern}
+  CSSValue(lepus::Value(value), lynx::tasm::CSSValuePattern::pattern)
   CSSValue lengths[] = {
       make_a_length(static_cast<int>(starlight::LengthValueType::kAuto), ENUM),
       make_a_length("max-content", INTRINSIC),
@@ -760,8 +760,8 @@ TEST(CSSStringParser, valid_blur_value) {
   };
   constexpr int value_len = sizeof(valid_blur) / sizeof(char*);
   const CSSValue valid_values[] = {
-      (CSSValue){lepus::Value(10), CSSValuePattern::PX},
-      (CSSValue){lepus::Value(1.5), CSSValuePattern::RPX}};
+      CSSValue(lepus::Value(10), CSSValuePattern::PX),
+      CSSValue(lepus::Value(1.5), CSSValuePattern::RPX)};
   for (int i = 0; i < value_len; i++) {
     CSSStringParser parser{valid_blur[i],
                            static_cast<uint32_t>(strlen(valid_blur[i])),
@@ -787,11 +787,11 @@ TEST(CSSStringParser, valid_grayscale_value) {
   constexpr const char* valid_grayscale_str[] = {"0" /* 0 doesn't need unit*/,
                                                  "50%", "100%", "0.5", ".5"};
   CSSValue grayscale_values[] = {
-      (CSSValue){lepus::Value(0), CSSValuePattern::PERCENT},
-      (CSSValue){lepus::Value(50), CSSValuePattern::PERCENT},
-      (CSSValue){lepus::Value(100), CSSValuePattern::PERCENT},
-      (CSSValue){lepus::Value(50), CSSValuePattern::PERCENT},
-      (CSSValue){lepus::Value(50), CSSValuePattern::PERCENT}};
+      CSSValue(lepus::Value(0), CSSValuePattern::PERCENT),
+      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT),
+      CSSValue(lepus::Value(100), CSSValuePattern::PERCENT),
+      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT),
+      CSSValue(lepus::Value(50), CSSValuePattern::PERCENT)};
   constexpr int num_str = sizeof(valid_grayscale_str) / sizeof(char*);
   for (int i = 0; i < num_str; i++) {
     CSSStringParser parser{
@@ -826,8 +826,8 @@ TEST(CSSStringParser, parse_variable_positions) {
     EXPECT_EQ(ref.start, static_cast<size_t>(0));
     // end should point to the index after the closing ')'
     EXPECT_EQ(ref.end, static_cast<size_t>(raw.size()));
-    EXPECT_EQ(std::string(ref.name), "--bg-color");
-    EXPECT_FALSE(ref.fallback.has_value());
+    EXPECT_EQ(ref.Name(raw), "--bg-color");
+    EXPECT_TRUE(ref.fallback.empty());
   }
 
   // var with fallback
@@ -847,9 +847,9 @@ TEST(CSSStringParser, parse_variable_positions) {
     EXPECT_NE(idx, std::string::npos);
     EXPECT_EQ(ref.start, idx);
     EXPECT_EQ(ref.end, idx + std::string("var(--a, fallback)").size());
-    EXPECT_EQ(std::string(ref.name), "--a");
-    ASSERT_TRUE(ref.fallback.has_value());
-    EXPECT_EQ(std::string(ref.fallback.value()), " fallback");
+    EXPECT_EQ(ref.Name(raw), "--a");
+    ASSERT_TRUE(!ref.fallback.empty());
+    EXPECT_EQ(ref.fallback.str(), " fallback");
   }
 }
 
@@ -873,15 +873,15 @@ TEST(CSSStringParser, parse_variable_multiple_and_malformed) {
 
     EXPECT_EQ(refs[0].start, first_idx);
     EXPECT_EQ(refs[0].end, first_idx + std::string("var(--a)").size());
-    EXPECT_EQ(std::string(refs[0].name), "--a");
-    EXPECT_FALSE(refs[0].fallback.has_value());
+    EXPECT_EQ(refs[0].Name(result.value_.StdString()), "--a");
+    EXPECT_TRUE(refs[0].fallback.empty());
 
     EXPECT_EQ(refs[1].start, second_idx);
     EXPECT_EQ(refs[1].end,
               second_idx + std::string("var(--b, fallback)").size());
-    EXPECT_EQ(std::string(refs[1].name), "--b");
-    ASSERT_TRUE(refs[1].fallback.has_value());
-    EXPECT_EQ(std::string(refs[1].fallback.value()), " fallback");
+    EXPECT_EQ(refs[1].Name(result.value_.StdString()), "--b");
+    ASSERT_FALSE(refs[1].fallback.empty());
+    EXPECT_EQ(refs[1].fallback.str(), " fallback");
   }
 
   // malformed var (missing closing parenthesis) should not produce references
@@ -908,11 +908,71 @@ TEST(CSSStringParser, parse_variable_nested_fallback) {
 
   auto& refs = *result.var_references_;
   ASSERT_EQ(refs.size(), 1u);
-  EXPECT_EQ(std::string(refs[0].name), "--a");
-  ASSERT_TRUE(refs[0].fallback.has_value());
+  EXPECT_EQ(refs[0].Name(result.value_.StdString()), "--a");
+  ASSERT_FALSE(refs[0].fallback.empty());
   // fallback should include the nested var text
-  EXPECT_NE(std::string(refs[0].fallback.value()).find("var(--b)"),
-            std::string::npos);
+  EXPECT_NE(refs[0].fallback.str().find("var(--b)"), std::string::npos);
+}
+
+TEST(CSSStringParser, parse_variable_with_leading_whitespaces) {
+  CSSParserConfigs configs;
+
+  // Test variable with leading whitespaces in name
+  {
+    std::string raw = "var(  --bg-color  )";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+
+    auto& refs = *result.var_references_;
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    // start should point to the 'v' of "var(" which is index 0
+    EXPECT_EQ(ref.start, static_cast<size_t>(0));
+    // end should point to the index after the closing ')'
+    EXPECT_EQ(ref.end, static_cast<size_t>(raw.size()));
+    // Name should return the variable name without leading/tailing whitespaces
+    EXPECT_EQ(ref.Name(raw), "--bg-color");
+    EXPECT_TRUE(ref.fallback.empty());
+  }
+
+  // Test variable with leading whitespaces and fallback
+  {
+    std::string raw = "var(  --spacing  ,  10px  )";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+
+    auto& refs = *result.var_references_;
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    // Name should return the variable name without leading/tailing whitespaces
+    EXPECT_EQ(ref.Name(raw), "--spacing");
+    ASSERT_FALSE(ref.fallback.empty());
+    // Fallback should preserve its whitespaces
+    EXPECT_EQ(ref.fallback.str(), "  10px  ");
+  }
+
+  // Test variable with tabs and mixed whitespaces
+  {
+    std::string raw = "var(\t  --main-color\t  )";
+    CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
+                           configs};
+    CSSValue result = parser.ParseVariable();
+    EXPECT_TRUE(result.IsVariable());
+
+    auto& refs = *result.var_references_;
+    ASSERT_EQ(refs.size(), 1u);
+    auto& ref = refs[0];
+
+    // Name should return the variable name without leading/tailing whitespaces
+    EXPECT_EQ(ref.Name(raw), "--main-color");
+    EXPECT_TRUE(ref.fallback.empty());
+  }
 }
 
 TEST(CSSStringParser, invalid_grayscale) {

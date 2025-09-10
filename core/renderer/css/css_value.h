@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #include "base/include/flex_optional.h"
@@ -53,11 +55,19 @@ enum class CSSFunctionType : uint8_t {
 };
 
 struct VarReference {
-  std::string_view name;
+  size_t name_start;
+  size_t name_end;
   size_t start;
   size_t end;
-  base::flex_optional<std::string_view> fallback;
+  // TODO(zhongyr): maybe the fallback should be CSSValue, because the
+  // fallback can be a variable reference as well.
+  base::String fallback;
+  std::string_view Name(const std::string& raw_value) const;
 };
+
+class CSSValue;
+
+using CustomPropertiesMap = base::LinearFlatMap<base::String, CSSValue>;
 
 class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
  public:
@@ -108,6 +118,10 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       default_value_map_opt_ =
           std::make_unique<lepus::Value>(*other.default_value_map_opt_);
     }
+    if (other.var_references_) {
+      var_references_ = std::make_unique<base::InlineVector<VarReference, 1>>(
+          *other.var_references_);
+    }
   }
 
   CSSValue& operator=(const CSSValue& other) {
@@ -121,6 +135,12 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
           std::make_unique<lepus::Value>(*other.default_value_map_opt_);
     } else {
       this->default_value_map_opt_ = nullptr;
+    }
+    if (other.var_references_) {
+      var_references_ = std::make_unique<base::InlineVector<VarReference, 1>>(
+          *other.var_references_);
+    } else {
+      var_references_ = nullptr;
     }
     this->pattern_ = other.pattern_;
     this->type_ = other.type_;
@@ -243,7 +263,19 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return !(left == right);
   }
 
+  static std::string Substitution(const CSSValue& css_value,
+                                  const CustomPropertiesMap& variable_map,
+                                  int max_depth = 10);
+
  private:
+  class CycleDetector;
+  static std::string Substitution(const CSSValue& css_value,
+                                  const CustomPropertiesMap& variable_map,
+                                  const CycleDetector& detector,
+                                  int max_depth = 10);
+  static std::string ResolveVariable(
+      const std::string& var_name, const CustomPropertiesMap& custom_properties,
+      const CycleDetector& detector, int max_depth = 10);
   mutable lepus::Value value_;
   mutable base::String default_value_;
   mutable std::unique_ptr<lepus::Value> default_value_map_opt_;
