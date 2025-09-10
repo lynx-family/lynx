@@ -3810,6 +3810,7 @@ public class com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewScro
   public int com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.currentScrollState();
   public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.enableBounces(boolean enableBounces);
   public boolean com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.bounces();
+  public void com.lynx.tasm.behavior.ui.scroll.base.LynxBaseScrollViewScrolling.setScrollDelegate(ScrollDelegate delegate);
 }
 
 public interface com::lynx::tasm::behavior::ui::scroll::base::LynxBaseScrollViewVertical {
@@ -6638,6 +6639,55 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
 
 public class com::lynx::tasm::behavior::LynxUIRendererCreator : com.lynx.tasm.IUIRendererCreator {
   public ILynxUIRenderer com.lynx.tasm.behavior.LynxUIRendererCreator.createLynxUIRender();
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollView : com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal {
+  public com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.LynxUIScrollView(LynxContext context);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setScrollOrientation(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setEnableScroll(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setBounces(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setForwardsNestedScroll(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setBackwardsNestedScroll(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setInitialScrollIndex(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setInitialScrollOffset(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setLowerThreshold(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setUpperThreshold(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.setScrollEventThrottle(float value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.scrollTo(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.scrollBy(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollView.autoScroll(ReadableMap params, Callback callback);
+}
+
+public class com::lynx::tasm::behavior::ui::scroll::LynxUIScrollViewInternal : com::lynx::tasm::behavior::ui::view::UISimpleView< LynxBaseScrollView >, LynxBaseScrollView.ScrollDelegate {
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.onScrollStateChanged(int from, int to);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.scrollViewDidScroll(LynxBaseScrollViewScrolling scrollView);
+  public com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.LynxUIScrollViewInternal(LynxContext context);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.destroy();
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setScrollOrientation(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setEnableScroll(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setBounces(boolean value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setForwardsNestedScroll(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setBackwardsNestedScroll(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setInitialScrollIndex(int value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setInitialScrollOffset(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setLowerThreshold(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setUpperThreshold(String value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.setScrollEventThrottle(float value);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.scrollTo(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.scrollBy(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.autoScroll(ReadableMap params, Callback callback);
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.onNodeReady();
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.onLayoutUpdated();
+  public boolean com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.isScrollable();
+  public boolean com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.isScrollContainer();
+  public int com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.getScrollX();
+  public int com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.getScrollY();
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.measure();
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.scrollInto(LynxBaseUI node, boolean isSmooth, String type);
+}
+
+public interface com::lynx::tasm::behavior::ui::scroll::LynxUIScrollViewInternal::LynxUIScrollViewInternalNodeReadyBlock {
+  public void com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal.LynxUIScrollViewInternalNodeReadyBlock.invoke(LynxUIScrollViewInternal ui);
 }
 
 public interface com::lynx::tasm::behavior::utils::LynxUISetter {

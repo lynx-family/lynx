@@ -352,7 +352,7 @@ public class LynxBaseScrollViewScrolling extends FrameLayout implements LynxBase
     }
   }
 
-  protected void setScrollDelegate(ScrollDelegate delegate) {
+  public void setScrollDelegate(ScrollDelegate delegate) {
     mScrollDelegate = delegate;
   }
 
