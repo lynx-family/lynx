@@ -189,6 +189,17 @@ lynx_api_status lynx_value_get_element(lynx_api_env env, lynx_value object,
   return lynx_api_ok;
 }
 
+lynx_api_status lynx_value_has_property(lynx_api_env env, lynx_value object,
+                                        const char* utf8name, bool* result) {
+  if (unlikely(object.type != lynx_value_map || object.val_ptr == nullptr)) {
+    return lynx_api_map_expected;
+  }
+  auto* map = reinterpret_cast<lynx::lepus::Dictionary*>(object.val_ptr);
+  auto key = lynx::base::String(utf8name);
+  *result = map->Contains(key);
+  return lynx_api_ok;
+}
+
 lynx_api_status lynx_value_get_property_names(lynx_api_env env,
                                               lynx_value object,
                                               lynx_value* result) {
@@ -229,6 +240,34 @@ lynx_api_status lynx_value_get_named_property(lynx_api_env env,
   auto key = lynx::base::String(utf8name);
   map->GetValue(key).value().DupValue();
   *result = map->GetValue(key).value().value();
+  return lynx_api_ok;
+}
+
+lynx_api_status lynx_value_iterate_value(lynx_api_env env, lynx_value object,
+                                         lynx_value_iterator_callback callback,
+                                         void* pfunc, void* raw_data) {
+  if (object.val_ptr == nullptr) {
+    return lynx_api_invalid_arg;
+  }
+  if (object.type == lynx_value_map) {
+    auto* map = reinterpret_cast<lynx::lepus::Dictionary*>(object.val_ptr);
+    map->for_each([&](const auto& key, lynx::lepus::Value& value) {
+      auto* ptr = lynx::base::String::Unsafe::GetStringRawRef(key);
+      lynx_value k;
+      k.val_ptr = reinterpret_cast<lynx_value_ptr>(ptr);
+      k.type = lynx_value_string;
+      value.DupValue();
+      callback(env, k, value.value(), pfunc, raw_data);
+    });
+  } else if (object.type == lynx_value_array) {
+    auto* array = reinterpret_cast<lynx::lepus::CArray*>(object.val_ptr);
+    for (std::size_t i = 0; i < array->size(); ++i) {
+      lynx_value k{.val_uint32 = static_cast<uint32_t>(i),
+                   .type = lynx_value_uint32};
+      array->get(i).DupValue();
+      callback(env, k, array->get(i).value(), pfunc, raw_data);
+    }
+  }
   return lynx_api_ok;
 }
 

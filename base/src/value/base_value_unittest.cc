@@ -522,6 +522,20 @@ TEST_F(BaseValueTest, Dictionary) {
   ASSERT_FALSE(dict8->Contains("c"));
 }
 
+static inline void TestLynxValueIteratorCallback(lynx_api_env env,
+                                                 lynx_value key,
+                                                 lynx_value value, void* pfunc,
+                                                 void* raw_data) {
+  reinterpret_cast<lepus::ExtendedValueIteratorCallback*>(pfunc)->operator()(
+      env, key, value);
+}
+
+static inline void TestIterateLynxValue(
+    const lynx_value& val, lepus::ExtendedValueIteratorCallback* pfunc) {
+  lynx_value_iterate_value(nullptr, val, TestLynxValueIteratorCallback,
+                           reinterpret_cast<void*>(pfunc), nullptr);
+}
+
 TEST_F(BaseValueTest, LynxValueAPI) {
   lynx_api_env env = nullptr;
   lynx_value string_value;
@@ -580,7 +594,29 @@ TEST_F(BaseValueTest, LynxValueAPI) {
   lynx_value_get_named_property(env, map_value, "v3", &v3_ret);
   lynx_value_remove_reference(env, v3, nullptr);
   lynx_value_remove_reference(env, v3_ret, nullptr);
+  int a = 0, b = 0;
+  lepus::ExtendedValueIteratorCallback callback_wrap =
+      [&a, &b](lynx_api_env env, const lynx_value& key,
+               const lynx_value& value) {
+        auto* k_ptr =
+            reinterpret_cast<lynx::base::RefCountedStringImpl*>(key.val_ptr);
+        auto str = k_ptr->str();
+        if (str == "v1" || str == "v2" || str == "v3") {
+          a++;
+        }
+        if (value.type == lynx_value_int32 || value.type == lynx_value_double ||
+            value.type == lynx_value_string) {
+          b++;
+        }
+        lynx_value_remove_reference(env, value, nullptr);
+      };
+  TestIterateLynxValue(map_value, &callback_wrap);
+  EXPECT_EQ(a, 3);
+  EXPECT_EQ(b, 3);
   ASSERT_TRUE(v3_ptr->HasOneRef());
+  bool has_property;
+  lynx_value_has_property(env, map_value, "v1", &has_property);
+  ASSERT_TRUE(has_property);
   lynx_value_remove_reference(env, map_value, nullptr);
 
   lynx_value array_value;
