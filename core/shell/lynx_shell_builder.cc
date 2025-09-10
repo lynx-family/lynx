@@ -345,6 +345,11 @@ LynxShell* LynxShellBuilder::build() {
                                   shell->perf_controller_actor_,
                                   element_manager->node_manager(),
                                   element_manager->catalyzer());
+
+    if (native_module_manager_ != nullptr) {
+      native_module_manager_->SetEngineActor(shell->engine_actor_);
+      tasm->CreateModuleManager(std::move(native_module_manager_));
+    }
     // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest
     shell->engine_actor_->ActLite([](auto& engine) { engine->Init(); });
 
@@ -413,9 +418,6 @@ std::unique_ptr<lynx::shell::LynxEngine> LynxShellBuilder::CreateLynxEngine(
   tasm->SetEnableLayoutOnly(this->enable_layout_only_);
   if (this->loader_ != nullptr) {
     tasm->SetLazyBundleLoader(this->loader_);
-  }
-  if (this->native_module_manager_ != nullptr) {
-    tasm->CreateModuleManager(std::move(this->native_module_manager_));
   }
 
   if (this->white_board_ == nullptr) {

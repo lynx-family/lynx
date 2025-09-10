@@ -201,7 +201,8 @@ class LynxEngine {
 
   void InvokeLepusCallback(const int32_t callback_id,
                            const std::string& entry_name,
-                           const lepus::Value& data);
+                           const lepus::Value& data,
+                           bool from_mts_module = false);
 
   void InvokeLepusComponentCallback(const int64_t callback_id,
                                     const std::string& entry_name,

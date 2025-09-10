@@ -50,16 +50,22 @@ static jmethodID ctor;
 
 void ModuleCallbackAndroid::Invoke(
     lynx::base::android::ScopedGlobalJavaRef<jobject> args) {
-  callback_->SetCustomArgsConverter(
-      [args = std::move(args), converter = std::move(custom_args_converter_)](
-          Runtime* runtime,
-          ModuleCallback* callback) mutable -> std::unique_ptr<pub::Value> {
-        if (converter) {
-          return converter(runtime, callback, args);
-        }
-        auto pub_array = std::make_shared<base::android::JavaOnlyArray>(args);
-        return std::make_unique<pub::ValueImplAndroid>(std::move(pub_array));
-      });
+  if (callback_->GetType() == LynxModuleCallback::Type::JSI) {
+    std::static_pointer_cast<ModuleCallback>(callback_)->SetCustomArgsConverter(
+        [args = std::move(args), converter = std::move(custom_args_converter_)](
+            Runtime* runtime,
+            ModuleCallback* callback) mutable -> std::unique_ptr<pub::Value> {
+          if (converter) {
+            return converter(runtime, callback, args);
+          }
+          auto pub_array = std::make_shared<base::android::JavaOnlyArray>(args);
+          return std::make_unique<pub::ValueImplAndroid>(std::move(pub_array));
+        });
+  } else {
+    auto pub_array = std::make_shared<base::android::JavaOnlyArray>(args);
+    callback_->SetArgs(
+        std::make_unique<pub::ValueImplAndroid>(std::move(pub_array)));
+  }
   std::shared_ptr<lynx::piper::LynxModuleAndroid> callback_invoker =
       callback_invoker_.lock();
   if (callback_invoker != nullptr) {
@@ -72,7 +78,7 @@ void ModuleCallbackAndroid::Invoke(
 }
 
 ModuleCallbackAndroid::CallbackPair ModuleCallbackAndroid::CreateCallbackImpl(
-    std::shared_ptr<ModuleCallback> callback,
+    std::shared_ptr<LynxModuleCallback> callback,
     std::shared_ptr<LynxModuleAndroid> invoker) {
   std::shared_ptr<ModuleCallbackAndroid> callback_android =
       std::make_shared<ModuleCallbackAndroid>(invoker, std::move(callback));

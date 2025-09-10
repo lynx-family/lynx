@@ -11,6 +11,14 @@
 namespace lynx {
 namespace lepus {
 
+LynxLepusModuleManager::LynxLepusModuleManager(
+    pub::LynxNativeModuleManager&& native_module_manager)
+    : pub::LynxNativeModuleManager(std::move(native_module_manager)) {
+  execute_delegate_ = std::make_shared<LepusModuleDelegate>();
+  execute_delegate_->SetEngineActor(
+      pub::LynxNativeModuleManager::GetEngineActor());
+}
+
 Value LynxLepusModuleManager::GetModule(Context* context,
                                         const std::string& name) {
   // find module from cache
@@ -26,7 +34,8 @@ Value LynxLepusModuleManager::GetModule(Context* context,
   if (native_module) {
     fml::RefPtr<LynxLepusModule> lynx_lepus_module =
         fml::MakeRefCounted<LynxLepusModule>(name, native_module);
-    // native_module->SetDelegate(lynx_jsi_module);
+    lynx_lepus_module->SetExecuteDelegate(execute_delegate_);
+    native_module->SetDelegate(execute_delegate_);
     itr = module_map_.emplace(name, lynx_lepus_module).first;
     return itr->second->ToLepusValue(context);
   }

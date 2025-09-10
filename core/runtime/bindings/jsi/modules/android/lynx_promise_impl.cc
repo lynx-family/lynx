@@ -32,11 +32,13 @@ LynxPromiseImpl::LynxPromiseImpl(
 }
 
 std::shared_ptr<ModuleCallback> LynxPromiseImpl::GetReject() {
-  return rejectCallback_->GetCallback();
+  return std::static_pointer_cast<ModuleCallback>(
+      rejectCallback_->GetCallback());
 }
 
 std::shared_ptr<ModuleCallback> LynxPromiseImpl::GetResolve() {
-  return resolveCallback_->GetCallback();
+  return std::static_pointer_cast<ModuleCallback>(
+      resolveCallback_->GetCallback());
 }
 
 jobject LynxPromiseImpl::GetJniObject() { return jni_object_.Get(); }

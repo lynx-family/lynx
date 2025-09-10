@@ -509,9 +509,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
   void SendAirComponentEvent(const std::string& event_name,
                              const int component_id, const lepus::Value& params,
                              const std::string& param_name);
-  // air-runtime methods
-  void InvokeAirCallback(int64_t id, const std::string& entry_name,
-                         const lepus::Value& data);
+  void InvokeCacheLepusCallback(int64_t id, const std::string& entry_name,
+                                const std::vector<lepus::Value>& data);
 
   SignalContext* GetSignalContext() { return &signal_context_; }
 

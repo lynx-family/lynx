@@ -13,6 +13,14 @@
 #include "core/runtime/bindings/jsi/modules/module_delegate.h"
 
 namespace lynx {
+namespace shell {
+template <typename T>
+class LynxActor;
+class LynxEngine;
+}  // namespace shell
+namespace runtime {
+class LynxRuntime;
+}
 namespace pub {
 
 // LynxNativeModuleManager manages all registered NativeModuleFactory instances.
@@ -55,6 +63,7 @@ class LynxNativeModuleManager {
       std::shared_ptr<piper::NativeModuleFactory> module_factory);
 
   // Set delegate for module manager.
+  // TODO(zhangqun.29): delete this!! & use native module delegate
   virtual void SetModuleDelegate(
       std::shared_ptr<piper::ModuleDelegate> delegate) {
     delegate_ = delegate;
@@ -72,6 +81,14 @@ class LynxNativeModuleManager {
 
   virtual ManagerType Type() { return ManagerType::NATIVE; };
 
+  void SetEngineActor(
+      const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &engine_actor);
+
+ protected:
+  const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &GetEngineActor() {
+    return engine_actor_;
+  }
+
  private:
   // Managed by LynxNativeModuleManager
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
@@ -80,7 +97,11 @@ class LynxNativeModuleManager {
   // When re-attaching in standalone mode, it needs to support modification, so
   // it needs to be accessed by the platform, so it is placed independently.
   std::shared_ptr<piper::NativeModuleFactory> platform_module_factory_;
+  // TODO(zhangqun.29): delete this!! & use native module delegate
   std::shared_ptr<piper::ModuleDelegate> delegate_;
+
+  // use to create delegate
+  std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
 };
 }  // namespace pub
 

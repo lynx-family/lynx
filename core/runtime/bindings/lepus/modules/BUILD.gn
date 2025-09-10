@@ -6,6 +6,8 @@ import("../../../../../testing/test.gni")
 import("../../../../Lynx.gni")
 
 lepus_module_shared_sources = [
+  "lepus_module_callback.cc",
+  "lepus_module_callback.h",
   "lynx_lepus_module.cc",
   "lynx_lepus_module.h",
   "lynx_lepus_module_manager.cc",

@@ -781,7 +781,8 @@ RENDERER_FUNCTION_CC(InvokeModuleMethod) {
     param_count = argc - 1;
   }
   if (param_count > -1) {
-    return runtime_module->InvokeMethod(method_name, param_start, param_count);
+    return runtime_module->InvokeMethod(LEPUS_CONTEXT(), method_name,
+                                        param_start, param_count);
   }
   RETURN_UNDEFINED();
 }

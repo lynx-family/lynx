@@ -36,6 +36,10 @@ piper::NativeModuleFactory *
 LynxNativeModuleManager::GetPlatformModuleFactory() {
   return platform_module_factory_.get();
 }
+void LynxNativeModuleManager::SetEngineActor(
+    const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &engine_actor) {
+  engine_actor_ = engine_actor;
+}
 
 }  // namespace pub
 }  // namespace lynx

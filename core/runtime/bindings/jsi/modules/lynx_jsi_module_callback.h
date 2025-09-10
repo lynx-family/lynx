@@ -83,6 +83,8 @@ class ModuleCallback : public LynxModuleCallback {
 
   std::vector<base::LynxError>& GetErrorsRef() { return errors_; };
 
+  Type GetType() const override { return Type::JSI; }
+
 #if ENABLE_TESTBENCH_RECORDER
   void SetRecordID(int64_t record_id);
 #endif

@@ -155,7 +155,6 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
   }
   return std::move(invoke_result.value());
 }
-
 void LynxModuleAndroid::buildMap(
     JNIEnv* env, lynx::base::android::ScopedLocalJavaRef<jobject>& descriptions,
     NativeModuleMethods& methods,
@@ -350,17 +349,17 @@ LynxModuleAndroid::CreateLynxNativePromise(
 }
 // handle promise  & callback
 void LynxModuleAndroid::InvokeCallback(
-    const std::shared_ptr<ModuleCallback>& callback,
+    const std::shared_ptr<LynxModuleCallback>& callback,
     std::weak_ptr<LynxPromiseImpl> promise) {
   LOGV("NativeModule: InvokeCallback, put callback: "
        << " id: "
-       << (callback ? std::to_string(callback->callback_id())
+       << (callback ? std::to_string(callback->CallbackId())
                     : std::string{"(no id due to callback is nullptr)"})
        << " to JSThread");
   auto lock_delegate = delegate_.lock();
   if (!lock_delegate) {
     LOGR("NativeModule: LynxModuleCallback Has Been Destroyed. id:"
-         << callback->callback_id());
+         << callback->CallbackId());
     return;
   }
   std::shared_ptr<LynxPromiseImpl> lock_promise = promise.lock();
@@ -393,9 +392,8 @@ LynxModuleAndroid::CreateLynxModuleCallback(
     const std::shared_ptr<LynxModuleCallback>& base_callback) {
   uint64_t callback_id = base_callback->CallbackId();
   ModuleCallbackAndroid::CallbackPair callback_pair =
-      ModuleCallbackAndroid::CreateCallbackImpl(
-          std::static_pointer_cast<ModuleCallback>(base_callback),
-          shared_from_this());
+      ModuleCallbackAndroid::CreateCallbackImpl(base_callback,
+                                                shared_from_this());
   // cache callback
   callbackHolders_[callback_id] = std::move(callback_pair.first);
   return std::move(callback_pair.second);

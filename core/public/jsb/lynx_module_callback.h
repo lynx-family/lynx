@@ -15,6 +15,12 @@ namespace piper {
 
 class LynxModuleCallback {
  public:
+  enum class Type {
+    NATIVE,
+    JSI,
+    LEPUS,
+    NAPI,
+  };
   explicit LynxModuleCallback(int64_t callback_id)
       : callback_id_(callback_id) {}
 
@@ -25,6 +31,7 @@ class LynxModuleCallback {
   void SetCallbackFlowId(uint64_t flow_id) { callback_flow_id_ = flow_id; }
   uint64_t CallbackFlowId() const { return callback_flow_id_; }
   uint64_t CallbackId() const { return callback_id_; }
+  virtual Type GetType() const { return Type::NATIVE; }
 
  protected:
   const int64_t callback_id_;

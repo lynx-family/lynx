@@ -502,11 +502,27 @@ void LynxEngine::TriggerWorkletFunction(std::string component_id,
       std::move(method_name), std::move(args), std::move(callback));
 }
 
+// TODO(zhangqun.29): Merge the calls of three scenes
 void LynxEngine::InvokeLepusCallback(const int32_t callback_id,
                                      const std::string& entry_name,
-                                     const lepus::Value& data) {
+                                     const lepus::Value& data,
+                                     bool from_mts_module) {
   if (tasm_->page_proxy()->element_manager()->IsAirModeFiberEnabled()) {
-    tasm_->InvokeAirCallback(callback_id, entry_name, data);
+    tasm_->InvokeCacheLepusCallback(callback_id, entry_name,
+                                    std::vector<lepus::Value>{data});
+    return;
+  }
+  if (from_mts_module) {
+    std::vector<lepus::Value> params_vec;
+    if (data.IsArrayOrJSArray()) {
+      size_t size = data.Array()->size();
+      for (size_t i = 0; i < size; ++i) {
+        params_vec.push_back(data.GetProperty(static_cast<int>(i)));
+      }
+    } else {
+      params_vec.push_back(data);
+    }
+    tasm_->InvokeCacheLepusCallback(callback_id, entry_name, params_vec);
     return;
   }
   tasm_->InvokeLepusCallback(callback_id, entry_name, data);

@@ -46,7 +46,7 @@ class LynxModuleAndroid
   const base::android::ScopedGlobalJavaRef<jobject> CreateLynxModuleCallback(
       const std::shared_ptr<LynxModuleCallback> &base_callback);
   // use delegate invoke Callback
-  void InvokeCallback(const std::shared_ptr<ModuleCallback> &callback,
+  void InvokeCallback(const std::shared_ptr<LynxModuleCallback> &callback,
                       std::weak_ptr<LynxPromiseImpl> promise);
   // for timing api & native promise
   // TODO(zhangqun.29) We will remove this method after remove native promise

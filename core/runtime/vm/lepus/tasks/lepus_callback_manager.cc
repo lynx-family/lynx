@@ -17,6 +17,10 @@ LepusCallbackManager::FuncTask::FuncTask(lepus::Context* context,
 void LepusCallbackManager::FuncTask::Execute(const lepus::Value& args) {
   context_->CallClosure(*closure_, args);
 }
+void LepusCallbackManager::FuncTask::Execute(
+    const std::vector<lepus::Value>& args) {
+  context_->CallClosureArgs(*closure_, args);
+}
 
 int64_t LepusCallbackManager::CacheTask(
     lepus::Context* context, std::unique_ptr<lepus::Value> callback_closure) {
@@ -27,6 +31,16 @@ int64_t LepusCallbackManager::CacheTask(
 }
 
 void LepusCallbackManager::InvokeTask(int64_t id, const lepus::Value& data) {
+  auto iter = task_map_.find(id);
+  if (iter != task_map_.end()) {
+    auto task = std::move(iter->second);
+    task_map_.erase(iter);
+    task->Execute(data);
+  }
+}
+
+void LepusCallbackManager::InvokeTask(int64_t id,
+                                      const std::vector<lepus::Value>& data) {
   auto iter = task_map_.find(id);
   if (iter != task_map_.end()) {
     auto task = std::move(iter->second);

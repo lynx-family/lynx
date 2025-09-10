@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "core/runtime/bindings/common/modules/lynx_native_module_manager.h"
+#include "core/runtime/bindings/lepus/modules/lepus_module_callback.h"
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
 #include "core/runtime/vm/lepus/context.h"
 
@@ -21,14 +22,13 @@ namespace lepus {
 // LynxLepusModuleManager is a further encapsulation of LynxNativeModuleManager.
 // It binds to PrimJS through PrimJS API (Lepus & LepusNG). It has two
 // functions:
-// 1. Connecting PrimJS and NativeModules (implemented on Android and iOS)
-// 2. Data conversion, converting LepusValue to PubValue
+// 1. Connecting PrimJS and NativeModules (implemented on Android and iOS).
+// 2. Data conversion, converting LepusValue to PubValue.
 class LynxLepusModuleManager : public pub::LynxNativeModuleManager {
  public:
   explicit LynxLepusModuleManager() = default;
   explicit LynxLepusModuleManager(
-      pub::LynxNativeModuleManager&& native_module_manager)
-      : pub::LynxNativeModuleManager(std::move(native_module_manager)) {}
+      pub::LynxNativeModuleManager&& native_module_manager);
   virtual ~LynxLepusModuleManager();
 
   // Manager Type
@@ -41,6 +41,7 @@ class LynxLepusModuleManager : public pub::LynxNativeModuleManager {
  private:
   // Module cache
   std::unordered_map<std::string, fml::RefPtr<LynxLepusModule>> module_map_;
+  std::shared_ptr<LepusModuleDelegate> execute_delegate_;
 };
 }  // namespace lepus
 }  // namespace lynx

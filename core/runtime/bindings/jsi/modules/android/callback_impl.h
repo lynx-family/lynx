@@ -30,7 +30,7 @@ class ModuleCallbackAndroid {
       lynx::base::android::ScopedGlobalJavaRef<jobject> args)>;
 
   ModuleCallbackAndroid(std::weak_ptr<LynxModuleAndroid> callback_invoker,
-                        std::shared_ptr<ModuleCallback> callback)
+                        std::shared_ptr<LynxModuleCallback> callback)
       : callback_invoker_(std::move(callback_invoker)),
         callback_(std::move(callback)) {}
   ~ModuleCallbackAndroid() = default;
@@ -40,17 +40,17 @@ class ModuleCallbackAndroid {
     custom_args_converter_ = std::move(converter);
   }
 
-  std::shared_ptr<ModuleCallback> GetCallback() { return callback_; }
+  std::shared_ptr<LynxModuleCallback> GetCallback() { return callback_; }
 
   static CallbackPair CreateCallbackImpl(
-      std::shared_ptr<ModuleCallback> callback,
+      std::shared_ptr<LynxModuleCallback> callback,
       std::shared_ptr<LynxModuleAndroid> invoker);
 
   std::weak_ptr<LynxPromiseImpl> promise;
 
  private:
   std::weak_ptr<LynxModuleAndroid> callback_invoker_;
-  std::shared_ptr<ModuleCallback> callback_;
+  std::shared_ptr<LynxModuleCallback> callback_;
   CallbackArgsConverter custom_args_converter_;
 };
 }  // namespace piper

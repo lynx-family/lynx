@@ -5,31 +5,47 @@
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
 
 #include "core/runtime/bindings/common/event/runtime_constants.h"
+#include "core/runtime/bindings/lepus/modules/lepus_module_callback.h"
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module_manager.h"
 #include "core/runtime/vm/lepus/jsvalue_helper.h"
 #include "core/runtime/vm/lepus/quick_context.h"
+#include "core/runtime/vm/lepus/tasks/lepus_callback_manager.h"
 #include "core/runtime/vm/lepus/vm_context.h"
 
 namespace lynx {
 namespace lepus {
 
-Value LynxLepusModule::InvokeMethod(const std::string& method_name,
+Value LynxLepusModule::InvokeMethod(Context* context,
+                                    const std::string& method_name,
                                     const lepus::Value* args, size_t count) {
   LOGI("NativeModules"
        << "LynxLepusModule::InvokeMethod: method_name: " << method_name.c_str()
        << " count: " << count);
   if (native_module_ == nullptr) {
-    LOGE("NativeModules"
-         << "LynxLepusModule::InvokeMethod: NativeModule is null");
+    constexpr const static char* error_msg =
+        "NativeModules: LynxLepusModule::InvokeMethod: NativeModule is null";
+    execute_delegate_->OnErrorOccurred(
+        name_, method_name,
+        base::LynxError(error::E_NATIVE_MODULES_COMMON_MODULE_NOT_FOUND,
+                        error_msg));
     return Value();
   }
 
   auto args_array = value_factory_->CreateArray();
   piper::CallbackMap callback_map;
   for (size_t i = 0; i < count; i++) {
-    if (args->IsClosure()) {
-      // TODO(zhangqun.29) support closure data type & delete this
-      args_array->PushValueToArray(pub::ValueImplLepus(lepus::Value()));
+    if (args[i].IsJSFunction() || args[i].IsClosure()) {
+      std::unique_ptr<lepus::Value> callback_closure =
+          std::make_unique<lepus::Value>(args[i]);
+      auto callback_id = context->GetCallbackManager()->CacheTask(
+          context, std::move(callback_closure));
+      auto callback = std::make_shared<LepusModuleCallback>(callback_id);
+      // callback->SetModuleName(name_);
+      // callback->SetMethodName(method_name);
+      // callback->SetCallbackFlowId(callback_flow_id);
+      // callback->SetFirstArg(first_arg_str);
+      callback_map.emplace(static_cast<int>(i), std::move(callback));
+      args_array->PushInt64ToArray(callback_id);
     } else {
       args_array->PushValueToArray(pub::ValueImplLepus(args[i]));
     }
@@ -42,11 +58,10 @@ Value LynxLepusModule::InvokeMethod(const std::string& method_name,
         pub::ValueUtils::ConvertValueToLepusValue(*(ret.value().get()));
     return result;
   } else {
-    LOGE("NativeModules"
-         << "LynxLepusModule::InvokeMethod: InvokeMethod failed , module_name: "
-         << name_ << " method_name: " << method_name
-         << "error: " << ret.error());
-    // TODO: Support OnErrorOccurred
+    std::string error =
+        "LynxLepusModule::InvokeMethod: InvokeMethod failed , module_name: " +
+        name_ + " method_name: " + method_name + "error: " + ret.error();
+    LOGE("NativeModules" << error);
     return Value();
   }
   return Value();
@@ -82,5 +97,6 @@ LynxLepusModule* LynxLepusModule::ToRuntimeValue(const Value& lepus_value) {
           .get();
   return runtime_module;
 }
+
 }  // namespace lepus
 }  // namespace lynx

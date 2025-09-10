@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <unordered_map>
+#include <vector>
 
 #include "base/include/thread/timed_task.h"
 #include "base/include/value/base_value.h"
@@ -22,6 +23,7 @@ class LepusCallbackManager {
   int64_t CacheTask(lepus::Context* context,
                     std::unique_ptr<lepus::Value> callback_closure);
   void InvokeTask(int64_t id, const lepus::Value& data);
+  void InvokeTask(int64_t id, const std::vector<lepus::Value>& data);
   // timed task methods:setTime , setInterval , clear and invoke
   // The return type depends on TimedTaskManager。
   uint32_t SetTimeOut(lepus::Context* context,
@@ -39,6 +41,7 @@ class LepusCallbackManager {
    public:
     FuncTask(lepus::Context* context, std::unique_ptr<lepus::Value> closure);
     void Execute(const lepus::Value& args);
+    void Execute(const std::vector<lepus::Value>& args);
 
    private:
     // real closure callBack , operate by Execute method

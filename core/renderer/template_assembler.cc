@@ -3264,9 +3264,9 @@ lepus::Value TemplateAssembler::TriggerLepusClosure(
 void TemplateAssembler::SendAirPageEvent(const std::string& event,
                                          const lepus::Value& value) {}
 
-void TemplateAssembler::InvokeAirCallback(int64_t id,
-                                          const std::string& entry_name,
-                                          const lepus::Value& data) {
+void TemplateAssembler::InvokeCacheLepusCallback(
+    int64_t id, const std::string& entry_name,
+    const std::vector<lepus::Value>& data) {
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
   auto callback_manager = card->GetVm()->GetCallbackManager();
   callback_manager->InvokeTask(id, data);
