@@ -11,14 +11,35 @@ public class TimingOption {
   public final String pipelineOrigin;
   public final HashMap<String, Long> timingInfo;
 
+  /**
+   * Creates a TimingOption instance with initial timing measurements.
+   * This factory method initializes a TimingOption with the current system time
+   * for both pipeline start and the specified start timing type.
+   *
+   * @param pipelineOrigin The origin identifier for the pipeline
+   * @param startTimingType The specific timing type to mark as started
+   * @return A new TimingOption instance with initial timing data
+   */
+  public static TimingOption createTimingOption(String pipelineOrigin, String startTimingType) {
+    TimingOption timingOption = new TimingOption(pipelineOrigin);
+    long currentTimeMillis = PerformanceController.currentSystemTimeMicroseconds();
+    timingOption.setTiming(TimingConstants.PIPELINE_START, currentTimeMillis);
+    timingOption.setTiming(startTimingType, currentTimeMillis);
+    return timingOption;
+  }
+
   public TimingOption(String pipelineOrigin) {
     this.pipelineOrigin = pipelineOrigin;
     this.timingInfo = new HashMap<>();
   }
 
-  public void setTiming(String key, long msTimingStamp) {
-    // convert ms to us
-    this.timingInfo.put(key, msTimingStamp * 1000);
+  public void setTiming(String key, long usTimingStamp) {
+    this.timingInfo.put(key, usTimingStamp);
+  }
+
+  public void markTiming(String key) {
+    long currentTimeMillis = PerformanceController.currentSystemTimeMicroseconds();
+    this.timingInfo.put(key, currentTimeMillis);
   }
 
   public JavaOnlyMap toJavaOnlyMap() {

@@ -9392,8 +9392,10 @@ public class com::lynx::tasm::TimingHandler :  {
 public class com::lynx::tasm::performance::TimingOption :  {
   public final String com.lynx.tasm.performance.TimingOption.pipelineOrigin pipelineOrigin;
   public final HashMap<String, Long> com.lynx.tasm.performance.TimingOption.timingInfo timingInfo;
+  public static TimingOption com.lynx.tasm.performance.TimingOption.createTimingOption(String pipelineOrigin, String startTimingType);
   public com.lynx.tasm.performance.TimingOption.TimingOption(String pipelineOrigin);
-  public void com.lynx.tasm.performance.TimingOption.setTiming(String key, long msTimingStamp);
+  public void com.lynx.tasm.performance.TimingOption.setTiming(String key, long usTimingStamp);
+  public void com.lynx.tasm.performance.TimingOption.markTiming(String key);
   public JavaOnlyMap com.lynx.tasm.performance.TimingOption.toJavaOnlyMap();
 }
 
