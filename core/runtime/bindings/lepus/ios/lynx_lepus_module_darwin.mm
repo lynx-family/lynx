@@ -246,22 +246,26 @@ NSDictionary* GetMethodDetailParams(const std::string& js_method_name, const lep
   return [resolvedDict copy];
 }
 
-static const auto& GetSortedParamsKey() {
+static const auto& GetSortedParamsKey(bool async) {
   constexpr const static char kEventDetail[] = "methodDetail";
   constexpr const static char kEventCallbackId[] = "callbackId";
+  constexpr const static char kEventComponentId[] = "componentId";
   constexpr const static char kEventEntryName[] = "tasmEntryName";
-  static const std::vector<base::String> sortedParamsKey = {BASE_STATIC_STRING(kEventEntryName),
-                                                            BASE_STATIC_STRING(kEventCallbackId),
-                                                            BASE_STATIC_STRING(kEventDetail)};
-  return sortedParamsKey;
+  static const std::vector<base::String> syncSortedParamsKey = {
+      BASE_STATIC_STRING(kEventEntryName), BASE_STATIC_STRING(kEventComponentId),
+      BASE_STATIC_STRING(kEventDetail)};
+  static const std::vector<base::String> asyncSortedParamsKey = {
+      BASE_STATIC_STRING(kEventEntryName), BASE_STATIC_STRING(kEventCallbackId),
+      BASE_STATIC_STRING(kEventDetail)};
+  return async ? asyncSortedParamsKey : syncSortedParamsKey;
 }
 
 NSDictionary* GetMethodDetailParamsForAir(const std::string& js_method_name,
-                                          const lepus::Value& args) {
+                                          const lepus::Value& args, bool async) {
   NSMutableDictionary* resolvedDict = [NSMutableDictionary dictionary];
   [resolvedDict setValue:[NSString stringWithUTF8String:js_method_name.c_str()]
                   forKey:kLepusObjcLepusMethodKey];
-  return GetMethodDetailParams(js_method_name, args, GetSortedParamsKey());
+  return GetMethodDetailParams(js_method_name, args, GetSortedParamsKey(async));
 }
 
 NSInvocation* PrepareMethodInv(id<LynxModule> instance, Class aClass,
@@ -414,8 +418,8 @@ void TriggerLepusMethodAsync(const std::string& _js_method_name, const lepus::Va
   // only when fromPiper is true, LynxSDK can handle custom methods defined by developers.
   NSDictionary* resolvedParams =
       [render_ enableAirStrictMode] && !args.GetProperty(BASE_STATIC_STRING(kFromPiper)).IsTrue()
-          ? GetMethodDetailParamsForAir(js_method_name, args)
-          : GetMethodDetailParams(js_method_name, args, GetSortedParamsKey());
+          ? GetMethodDetailParamsForAir(js_method_name, args, true)
+          : GetMethodDetailParams(js_method_name, args, GetSortedParamsKey(true));
   bool not_switch_thread = args.GetProperty(BASE_STATIC_STRING(kUseAirThreadKey)).IsFalse() ||
                            args.GetProperty(BASE_STATIC_STRING(kLepusUseUIThreadKey)).IsTrue();
   LynxModuleWrapper* wrapper = modulesClasses_[[resolvedParams objectForKey:kLepusObjcModuleKey]];
@@ -449,8 +453,8 @@ lepus::Value TriggerLepusMethod(const std::string& js_method_name, const lepus::
   NSMutableDictionary<NSString*, id>* modulesClasses_ = [render getLepusModulesClasses];
   NSDictionary* resolvedParams =
       [render enableAirStrictMode]
-          ? GetMethodDetailParamsForAir(js_method_name, args)
-          : GetMethodDetailParams(js_method_name, args, GetSortedParamsKey());
+          ? GetMethodDetailParamsForAir(js_method_name, args, false)
+          : GetMethodDetailParams(js_method_name, args, GetSortedParamsKey(false));
 
   if ([resolvedParams objectForKey:kLepusObjcArrayKey] == nil) {
     return lepus::Value();
