@@ -305,8 +305,6 @@ const char* LEPUSValueHelper::GetType(LEPUSContext* ctx,
   switch (LEPUS_VALUE_GET_TAG(val)) {
     case LEPUS_TAG_BIG_INT:
       return "LEPUS_BIG_INT";
-    case LEPUS_TAG_BIG_FLOAT:
-      return "LEPUS_BIG_FLOAT";
     case LEPUS_TAG_SYMBOL:
       return "LEPUS_TAG_SYMBOL";
     case LEPUS_TAG_STRING:
