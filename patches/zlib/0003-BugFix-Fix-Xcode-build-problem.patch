@@ -1,0 +1,26 @@
+From 07e3e0b619f47edb3218876ba7cbc8f97f48ead1 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Wed, 10 Sep 2025 15:07:26 +0800
+Subject: [PATCH] [BugFix] Fix Xcode build problem.
+
+Xcode 16.3 defines TARGET_OS_MAC, it was not defined in prior versions. zutil.h conditionally defines fdopen as NULL when this macro is defined, resulting a build problem.
+---
+ zutil.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/zutil.h b/zutil.h
+index 6980a5f..81b9a9b 100644
+--- a/zutil.h
++++ b/zutil.h
+@@ -152,7 +152,7 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
+ #  endif
+ #endif
+ 
+-#if defined(MACOS) || defined(TARGET_OS_MAC)
++#if defined(MACOS)
+ #  define OS_CODE  7
+ #  ifndef Z_SOLO
+ #    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
+-- 
+2.49.0
+

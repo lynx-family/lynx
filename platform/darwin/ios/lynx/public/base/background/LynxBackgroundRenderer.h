@@ -121,7 +121,7 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
   const int sides = 4;
   LynxCornerInsetPoints insetCorners =
       LynxCalculateCornerInsetPoints(borderInsets, cornerInsets, size);
-  const CGPoint points[sides][4] = {
+  const CGPoint points[4][4] = {
       {CGPointZero, insetCorners.topLeft, insetCorners.bottomLeft,
        (CGPoint){0, size.height}},                                                           // left
       {CGPointZero, insetCorners.topLeft, insetCorners.topRight, (CGPoint){size.width, 0}},  // top
@@ -138,10 +138,10 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
           (CGPoint){size.width, size.height},
       }  // bottom
   };
-  const CGFloat insets[sides] = {borderInsets.left, borderInsets.top, borderInsets.right,
-                                 borderInsets.bottom};
-  CGColorRef colors[sides] = {borderColors.left, borderColors.top, borderColors.right,
-                              borderColors.bottom};
+  const CGFloat insets[4] = {borderInsets.left, borderInsets.top, borderInsets.right,
+                             borderInsets.bottom};
+  CGColorRef colors[4] = {borderColors.left, borderColors.top, borderColors.right,
+                          borderColors.bottom};
 
   if (hasCornerRadii && LynxBorderInsetsNotLargeThan(borderInsets, 1.1f)) {
     // use stroke mode
