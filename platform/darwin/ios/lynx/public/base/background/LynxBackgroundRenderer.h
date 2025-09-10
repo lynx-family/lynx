@@ -118,10 +118,11 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
     return;
   }
 
-  const int sides = 4;
+// use macro define to avoid gnu-folding-constant error
+#define sidesCount (4)
   LynxCornerInsetPoints insetCorners =
       LynxCalculateCornerInsetPoints(borderInsets, cornerInsets, size);
-  const CGPoint points[sides][4] = {
+  const CGPoint points[sidesCount][4] = {
       {CGPointZero, insetCorners.topLeft, insetCorners.bottomLeft,
        (CGPoint){0, size.height}},                                                           // left
       {CGPointZero, insetCorners.topLeft, insetCorners.topRight, (CGPoint){size.width, 0}},  // top
@@ -137,11 +138,12 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
           insetCorners.bottomRight,
           (CGPoint){size.width, size.height},
       }  // bottom
+
   };
-  const CGFloat insets[sides] = {borderInsets.left, borderInsets.top, borderInsets.right,
-                                 borderInsets.bottom};
-  CGColorRef colors[sides] = {borderColors.left, borderColors.top, borderColors.right,
-                              borderColors.bottom};
+  const CGFloat insets[sidesCount] = {borderInsets.left, borderInsets.top, borderInsets.right,
+                                      borderInsets.bottom};
+  CGColorRef colors[sidesCount] = {borderColors.left, borderColors.top, borderColors.right,
+                                   borderColors.bottom};
 
   if (hasCornerRadii && LynxBorderInsetsNotLargeThan(borderInsets, 1.1f)) {
     // use stroke mode
@@ -150,7 +152,7 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
     CGPathRef centerPathForStroke =
         LynxPathCreateWithRoundedRect(UIEdgeInsetsInsetRect(rect, centerInsets),
                                       LynxGetCornerInsets(rect, cornerRadii, centerInsets));
-    for (int i = 0; i < sides; ++i) {
+    for (int i = 0; i < sidesCount; ++i) {
       if (insets[i] <= 0) continue;
       CGContextSaveGState(ctx);
       CGContextSetAllowsAntialiasing(ctx, true);
@@ -173,7 +175,7 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
     }
 
     CGColorRef currentColor = NULL;
-    for (int i = 0; i < sides; ++i) {
+    for (int i = 0; i < sidesCount; ++i) {
       if (i > 0 && !CGColorEqualToColor(currentColor, colors[i])) {
         CGContextSetFillColorWithColor(ctx, currentColor);
         CGContextFillPath(ctx);
@@ -194,6 +196,8 @@ static inline void LynxDrawSolidInsetOrOutsetBorder(
     CGColorRelease(borderColors.bottom);
     CGColorRelease(borderColors.left);
   }
+
+#undef sidesCount
 }
 
 static inline void LynxStrokeDashedOrDottedBorderLine(CGContextRef ctx, bool isDotted,
