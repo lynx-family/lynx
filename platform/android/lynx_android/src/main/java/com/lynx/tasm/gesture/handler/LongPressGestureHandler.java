@@ -13,6 +13,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.utils.PixelUtils;
 
@@ -80,7 +81,8 @@ public class LongPressGestureHandler extends BaseGestureHandler {
 
   @Override
   protected void onHandle(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent,
-      float flingDeltaX, float flingDeltaY) {
+      float flingDeltaX, float flingDeltaY, boolean handleBySimultaneous,
+      @Nullable GestureExtraBundle extraBundle) {
     mLynxTouchEvent = lynxTouchEvent;
     // If the event is empty, it means the finger not touches the screen
     if (event == null) {
@@ -158,7 +160,8 @@ public class LongPressGestureHandler extends BaseGestureHandler {
   }
 
   @Override
-  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event) {
+  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event,
+      @Nullable GestureExtraBundle extraBundle) {
     // empty implementation, because long press gesture is not continuous gesture
   }
 

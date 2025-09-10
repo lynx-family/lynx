@@ -12,6 +12,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -67,6 +68,11 @@ public class FlingGestureHandlerTest {
       @Override
       public int getSign() {
         return 0;
+      }
+
+      @Override
+      public int getScrollContainerDirection() {
+        return GestureConstants.DIRECTION_UNDETERMINED;
       }
 
       @Override

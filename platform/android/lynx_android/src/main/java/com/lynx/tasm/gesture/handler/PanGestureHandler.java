@@ -11,6 +11,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.utils.PixelUtils;
 import java.util.HashMap;
@@ -74,8 +75,11 @@ public class PanGestureHandler extends BaseGestureHandler {
 
   @Override
   protected void onHandle(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent,
-      float flingDeltaX, float flingDeltaY) {
-    mLastTouchEvent = lynxTouchEvent;
+      float flingDeltaX, float flingDeltaY, boolean handleBySimultaneous,
+      @Nullable GestureExtraBundle extraBundle) {
+    if (lynxTouchEvent != null) {
+      mLastTouchEvent = lynxTouchEvent;
+    }
     // If the event is empty, it means the finger not touches the screen
     if (event == null) {
       ignore();
@@ -105,7 +109,7 @@ public class PanGestureHandler extends BaseGestureHandler {
           activate();
         }
         if (mStatus == GestureConstants.LYNX_STATE_ACTIVE) {
-          onUpdate(mLastX, mLastY, lynxTouchEvent);
+          onUpdate(mLastX, mLastY, lynxTouchEvent, extraBundle);
         } else if (mStatus >= GestureConstants.LYNX_STATE_FAIL) {
           onEnd(mLastX, mLastY, lynxTouchEvent);
         }
@@ -170,7 +174,8 @@ public class PanGestureHandler extends BaseGestureHandler {
   }
 
   @Override
-  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event) {
+  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event,
+      @Nullable GestureExtraBundle extraBundle) {
     if (!isOnUpdateEnable()) {
       return;
     }

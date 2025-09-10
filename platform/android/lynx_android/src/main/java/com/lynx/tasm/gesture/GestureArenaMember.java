@@ -51,6 +51,12 @@ public interface GestureArenaMember {
   int getMemberScrollX();
 
   /**
+   * get scroll container direction
+   * @return 1 —— vertical  -1 —— horizontal 0 —— not scroll container
+   */
+  int getScrollContainerDirection();
+
+  /**
    * get current scroller container is at border edge or not
    * @param isStart if it is at start or end
    * @return true —— at border edge, false —— not at border edge

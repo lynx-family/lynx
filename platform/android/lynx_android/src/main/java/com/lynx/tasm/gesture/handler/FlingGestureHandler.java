@@ -11,6 +11,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import java.util.HashMap;
 
@@ -53,7 +54,8 @@ public class FlingGestureHandler extends BaseGestureHandler {
 
   @Override
   protected void onHandle(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent,
-      float flingDeltaX, float flingDeltaY) {
+      float flingDeltaX, float flingDeltaY, boolean handleBySimultaneous,
+      @Nullable GestureExtraBundle extraBundle) {
     if (mGestureArenaMember != null) {
       mGestureArenaMember.onInvalidate();
     }
@@ -93,7 +95,7 @@ public class FlingGestureHandler extends BaseGestureHandler {
       return;
     }
 
-    onUpdate(flingDeltaX, flingDeltaY, null);
+    onUpdate(flingDeltaX, flingDeltaY, null, extraBundle);
   }
 
   protected HashMap<String, Object> getEventParamsInActive(float deltaX, float deltaY) {
@@ -136,7 +138,8 @@ public class FlingGestureHandler extends BaseGestureHandler {
   }
 
   @Override
-  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event) {
+  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event,
+      @Nullable GestureExtraBundle extraBundle) {
     if (!isOnUpdateEnable()) {
       return;
     }

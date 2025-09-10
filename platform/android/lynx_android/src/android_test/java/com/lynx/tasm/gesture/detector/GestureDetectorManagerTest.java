@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -197,6 +198,11 @@ public class GestureDetectorManagerTest {
     @Override
     public int getGestureArenaMemberId() {
       return 0;
+    }
+
+    @Override
+    public int getScrollContainerDirection() {
+      return GestureConstants.DIRECTION_UNDETERMINED;
     }
 
     @Override

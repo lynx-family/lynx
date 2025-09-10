@@ -16,6 +16,7 @@ import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.detector.GestureDetectorManager;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -61,6 +62,11 @@ public class GestureHandlerTriggerTest {
     @Override
     public int getGestureArenaMemberId() {
       return 0;
+    }
+
+    @Override
+    public int getScrollContainerDirection() {
+      return GestureConstants.DIRECTION_UNDETERMINED;
     }
 
     @Override
@@ -220,7 +226,7 @@ public class GestureHandlerTriggerTest {
 
       // Iterate through each gesture handler associated with the winner and handle the event.
       for (BaseGestureHandler handler : gestureHandler.values()) {
-        handler.handleMotionEvent(null, null, 1, 1);
+        handler.handleMotionEvent(null, null, 1, 1, false, null);
       }
 
       GestureArenaMember result2 =
@@ -238,7 +244,7 @@ public class GestureHandlerTriggerTest {
       // Iterate through each gesture handler associated with the winner and handle the event.
       for (BaseGestureHandler handler : gestureHandler3.values()) {
         handler.handleMotionEvent(MotionEvent.obtain(100, 1, MotionEvent.ACTION_DOWN, 1, 1, 0),
-            new LynxTouchEvent(1, ""), 1, 1);
+            new LynxTouchEvent(1, ""), 1, 1, false, null);
       }
 
       GestureArenaMember result3 =
