@@ -32,6 +32,7 @@ public enum LynxEnvKey {
   ENABLE_IMAGE_ASYNC_REDIRECT_ON_CREATE("enable_image_async_redirect_create"),
   ENABLE_IMAGE_ASYNC_REQUEST("enable_image_async_request"),
   ENABLE_IMAGE_REQUEST_OPTIMIZE("enable_image_request_optimize"),
+  ENABLE_FLATTEN_IMAGE_FLICKER_FIX("enable_flatten_image_flicker_fix"),
   ENABLE_GENERIC_RESOURCE_FETCHER("enable_generic_resource_fetcher"),
   ENABLE_TEXT_BORING_LAYOUT("enable_text_boring_layout"),
   ENABLE_REFRESH_RATE_OPT("enable_refresh_rate_opt"),

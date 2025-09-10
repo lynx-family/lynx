@@ -166,6 +166,8 @@ public class LynxEnv {
 
   protected boolean mEnableImageRequestOptimize = true;
 
+  protected boolean mEnableFlattenImageFlickerFix = false;
+
   protected boolean mEnableImageEventReport = false;
 
   protected boolean mEnableImageAsyncLayout = false;
@@ -1250,6 +1252,10 @@ public class LynxEnv {
     return mEnableImageRequestOptimize;
   }
 
+  public boolean enableFlattenImageFlickerFix() {
+    return mEnableFlattenImageFlickerFix;
+  }
+
   protected void initImageExperimentSettings() {
     mDisableImagePostProcessor =
         getBooleanFromExternalEnv(LynxEnvKey.DISABLE_POST_PROCESSOR, false);
@@ -1266,6 +1272,8 @@ public class LynxEnv {
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_ASYNC_LAYOUT, false);
     mEnableImageRequestOptimize =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_REQUEST_OPTIMIZE, true);
+    mEnableFlattenImageFlickerFix =
+        getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FLATTEN_IMAGE_FLICKER_FIX, true);
   }
 
   /**
