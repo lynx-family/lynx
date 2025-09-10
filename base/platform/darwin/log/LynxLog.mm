@@ -7,6 +7,8 @@
 
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging_darwin.h"
+#include "base/src/base_trace/base_trace_event_def.h"
+#include "base/src/base_trace/trace_event.h"
 
 #define LOCKED(...)             \
   @synchronized(gDelegateDic) { \
@@ -173,6 +175,7 @@ LynxLogFunction LynxDefaultLogFunction = ^(LynxLogLevel level, NSString *message
 };
 
 void _LynxLogInternal(const char *file, int32_t line, LynxLogLevel level, NSString *format, ...) {
+  BASE_TRACE_EVENT(LYNX_BASE_TRACE_CATEGORY, LYNX_BASE_LOG_INTERNAL);
   @autoreleasepool {
     va_list args;
     va_start(args, format);

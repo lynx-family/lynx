@@ -5,6 +5,7 @@ package com.lynx.base;
 
 import android.util.Log;
 import com.lynx.base.IBaseNativeLibraryLoader;
+import com.lynx.base.LynxBaseTrace;
 import com.lynx.base.log.LynxLog;
 
 public class LynxBaseEnv {
@@ -34,6 +35,7 @@ public class LynxBaseEnv {
       mIsNativeLibraryLoaded = loadNativeTraceLibrary(nativeLibraryLoader);
     }
     LynxLog.initLynxLog(isPrintLogsToAllChannels);
+    LynxBaseTrace.init();
     return true;
   }
 

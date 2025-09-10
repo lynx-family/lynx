@@ -4,11 +4,13 @@
 
 #include <napi/native_api.h>
 
+#include "base/src/base_trace/trace_harmony.h"
 #include "base/src/log/logging_harmony.h"
 
 EXTERN_C_START static napi_value InitLynxBase(napi_env env,
                                               napi_value exports) {
   lynx::base::logging::LynxLog::Init(env, exports);
+  lynx::base::trace::LynxBaseTrace::Init(env, exports);
   return exports;
 }
 

@@ -32,6 +32,12 @@ time_utils_public_headers = rebase_path(time_utils_public_headers_list)
 
 # time_utils_public_headers end
 
+# base_trace_public_headers begin
+base_trace_public_headers_list = [ "base_trace/trace_event_utils.h" ]
+base_trace_public_headers = rebase_path(base_trace_public_headers_list)
+
+# base_trace_public_headers end
+
 # base_core_public_headers begin
 base_core_public_headers_list = [
   "algorithm.h",

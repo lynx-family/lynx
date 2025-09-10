@@ -13,6 +13,7 @@ group("base_group") {
   public_deps = [
     ":base",
     ":base_log",
+    ":base_trace",
     ":datauri_utils",
     ":string_utils",
     ":time_utils",
@@ -144,6 +145,24 @@ lynx_base_source_set("base_log") {
 lynx_base_source_set("time_utils") {
   public = time_utils_public_headers
   sources = time_utils_public_headers + [ "timer/time_utils.cc" ]
+}
+
+lynx_base_source_set("base_trace") {
+  visibility = [
+    ":*",
+    "../platform/darwin:*",
+  ]
+  public = base_trace_public_headers
+  sources = base_trace_public_headers + [
+              "base_trace/base_trace_event_def.h",
+              "base_trace/trace_event.h",
+              "base_trace/trace_event_utils.cc",
+            ]
+  if (is_android) {
+    sources += [ "base_trace/trace_android.cc" ]
+  } else if (is_harmony) {
+    sources += [ "base_trace/trace_harmony.cc" ]
+  }
 }
 
 lynx_base_source_set("base") {

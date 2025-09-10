@@ -5,6 +5,7 @@
 #import <LynxBase/LynxBaseEnv.h>
 // TODO(yongjie): enable this when lynx base standalone.
 // #import <LynxBase/LynxLog.h>
+#import <LynxBase/LynxBaseTrace.h>
 
 @implementation LynxBaseEnv
 
@@ -21,6 +22,7 @@
 - (bool)initialize:(bool)print_logs_to_all_channels {
   // TODO(yongjie): enable this when lynx base standalone.
   // InitLynxLog(print_logs_to_all_channels);
+  InitLynxBaseTrace();
   return true;
 }
 
