@@ -11,6 +11,7 @@ import com.lynx.react.bridge.ReadableMap;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import java.util.HashMap;
 
@@ -63,8 +64,21 @@ public class DefaultGestureHandler extends BaseGestureHandler {
 
   @Override
   protected void onHandle(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent,
-      float flingDeltaX, float flingDeltaY) {
+      float flingDeltaX, float flingDeltaY, boolean handleBySimultaneous,
+      @Nullable GestureExtraBundle extraBundle) {
     mLastTouchEvent = lynxTouchEvent;
+
+    if (handleBySimultaneous && extraBundle != null) {
+      if (extraBundle.isConsumedGesture()) {
+        if (mGestureArenaMember != null) {
+          mGestureArenaMember.onGestureScrollBy(
+              extraBundle.getSimultaneousDeltaX(), extraBundle.getSimultaneousDeltaY());
+          mGestureArenaMember.onInvalidate();
+        }
+      }
+      return;
+    }
+
     if (mStatus >= GestureConstants.LYNX_STATE_FAIL) {
       onEnd(mLastX, mLastY, mLastTouchEvent);
       return;
@@ -82,20 +96,42 @@ public class DefaultGestureHandler extends BaseGestureHandler {
         case MotionEvent.ACTION_MOVE:
           float deltaX = mLastX - event.getX();
           float deltaY = mLastY - event.getY();
+
+          if (deltaX == 0 && deltaY == 0) {
+            break;
+          }
+          if (extraBundle != null
+              && extraBundle.getGestureDirection() == GestureConstants.DIRECTION_UNDETERMINED) {
+            extraBundle.setGestureDirection(Math.abs(deltaX) > Math.abs(deltaY)
+                    ? GestureConstants.DIRECTION_HORIZONTAL
+                    : GestureConstants.DIRECTION_VERTICAL);
+          }
+          if (extraBundle != null
+              && extraBundle.getGestureDirection() != GestureConstants.DIRECTION_UNDETERMINED) {
+            if (extraBundle.getGestureDirection() == GestureConstants.DIRECTION_HORIZONTAL) {
+              deltaY = 0;
+            } else {
+              deltaX = 0;
+            }
+          }
+
           if (mStatus == GestureConstants.LYNX_STATE_INIT) {
             onBegin(mLastX, mLastY, lynxTouchEvent);
             if (mStatus <= GestureConstants.LYNX_STATE_BEGIN) {
               activate();
             }
           } else {
-            if (shouldFail(deltaX, deltaY)) {
+            if (shouldFail(deltaX, deltaY, extraBundle)) {
               // consume last delta to arrive start or end
-              onUpdate(deltaX, deltaY, lynxTouchEvent);
+              if (mGestureArenaMember != null && !mGestureArenaMember.isAtBorder(true)
+                  && !mGestureArenaMember.isAtBorder(false)) {
+                onUpdate(deltaX, deltaY, lynxTouchEvent, extraBundle);
+              }
               fail();
               onEnd(mLastX, mLastY, lynxTouchEvent);
             } else {
               activate();
-              onUpdate(deltaX, deltaY, lynxTouchEvent);
+              onUpdate(deltaX, deltaY, lynxTouchEvent, extraBundle);
             }
           }
           mLastX = event.getX();
@@ -123,8 +159,21 @@ public class DefaultGestureHandler extends BaseGestureHandler {
         return;
       }
 
-      if (shouldFail(flingDeltaX, flingDeltaY)) {
-        onUpdate(flingDeltaX, flingDeltaY, null);
+      if (extraBundle != null
+          && extraBundle.getGestureDirection() != GestureConstants.DIRECTION_UNDETERMINED) {
+        if (extraBundle.getGestureDirection() == GestureConstants.DIRECTION_HORIZONTAL) {
+          flingDeltaY = 0;
+        } else {
+          flingDeltaX = 0;
+        }
+      }
+
+      if (shouldFail(flingDeltaX, flingDeltaY, extraBundle)) {
+        // consume last delta to arrive start or end
+        if (mGestureArenaMember != null && !mGestureArenaMember.isAtBorder(true)
+            && !mGestureArenaMember.isAtBorder(false)) {
+          onUpdate(flingDeltaX, flingDeltaY, null, extraBundle);
+        }
         fail();
         onEnd(flingDeltaX, flingDeltaY, null);
       } else {
@@ -133,9 +182,8 @@ public class DefaultGestureHandler extends BaseGestureHandler {
           if (mStatus <= GestureConstants.LYNX_STATE_BEGIN) {
             activate();
           }
-          return;
         }
-        onUpdate(flingDeltaX, flingDeltaY, null);
+        onUpdate(flingDeltaX, flingDeltaY, null, extraBundle);
       }
       if (mGestureArenaMember != null) {
         mGestureArenaMember.onInvalidate();
@@ -143,7 +191,19 @@ public class DefaultGestureHandler extends BaseGestureHandler {
     }
   }
 
-  private boolean shouldFail(float deltaX, float deltaY) {
+  private boolean shouldFail(float deltaX, float deltaY, @Nullable GestureExtraBundle extraBundle) {
+    if (extraBundle != null) {
+      if (extraBundle.getGestureDirection() == GestureConstants.DIRECTION_HORIZONTAL
+          && mGestureArenaMember.getScrollContainerDirection()
+              != GestureConstants.DIRECTION_HORIZONTAL) {
+        return true;
+      }
+      if (extraBundle.getGestureDirection() == GestureConstants.DIRECTION_VERTICAL
+          && mGestureArenaMember.getScrollContainerDirection()
+              != GestureConstants.DIRECTION_VERTICAL) {
+        return true;
+      }
+    }
     return !mGestureArenaMember.canConsumeGesture(deltaX, deltaY);
   }
 
@@ -203,9 +263,16 @@ public class DefaultGestureHandler extends BaseGestureHandler {
   }
 
   @Override
-  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event) {
+  protected void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event,
+      @Nullable GestureExtraBundle extraBundle) {
     if (mGestureArenaMember != null) {
       mGestureArenaMember.onGestureScrollBy(deltaX, deltaY);
+    }
+
+    if (extraBundle != null) {
+      extraBundle.setConsumedGesture(true);
+      extraBundle.setSimultaneousDeltaX(deltaX);
+      extraBundle.setSimultaneousDeltaY(deltaY);
     }
 
     if (Math.abs((int) deltaX) > mTapSlop || Math.abs((int) deltaY) > mTapSlop) {

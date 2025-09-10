@@ -15,6 +15,7 @@ import com.lynx.tasm.behavior.ui.utils.LynxUIHelper;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetectorManager;
 import java.util.*;
 
@@ -62,6 +63,9 @@ public class GestureHandlerTrigger {
 
   private final GestureDetectorManager mGestureDetectorManager;
 
+  // current gesture extra bundle, reset when touch down
+  private GestureExtraBundle mCurrentGestureExtraBundle;
+
   /**
    * Constructs a GestureHandlerTrigger instance.
    *
@@ -84,6 +88,7 @@ public class GestureHandlerTrigger {
     updateLastWinner(mWinner);
     updateSimultaneousWinner(mWinner);
     resetGestureHandlerAndSimultaneous(mWinner);
+    mCurrentGestureExtraBundle = new GestureExtraBundle();
   }
 
   /**
@@ -388,7 +393,8 @@ public class GestureHandlerTrigger {
    */
   private void dispatchMotionEventOnCurrentWinner(@Nullable MotionEvent event,
       @Nullable GestureArenaMember member, @Nullable LynxTouchEvent lynxTouchEvent, float deltaX,
-      float deltaY) {
+      float deltaY, boolean handleBySimultaneous,
+      @Nullable GestureExtraBundle currentGestureExtraBundle) {
     // If there is no current member, return early as there are no gesture handlers to dispatch the
     // event to.
     if (member == null) {
@@ -405,7 +411,8 @@ public class GestureHandlerTrigger {
 
     // Iterate through each gesture handler associated with the winner and handle the event.
     for (BaseGestureHandler handler : gestureHandler.values()) {
-      handler.handleMotionEvent(event, lynxTouchEvent, deltaX, deltaY);
+      handler.handleMotionEvent(
+          event, lynxTouchEvent, deltaX, deltaY, handleBySimultaneous, currentGestureExtraBundle);
     }
   }
 
@@ -542,11 +549,14 @@ public class GestureHandlerTrigger {
       return;
     }
 
-    dispatchMotionEventOnCurrentWinner(motionEvent, winner, lynxTouchEvent, x, y);
+    dispatchMotionEventOnCurrentWinner(
+        motionEvent, winner, lynxTouchEvent, x, y, false, mCurrentGestureExtraBundle);
     if (mSimultaneousWinners != null) {
       for (GestureArenaMember member : mSimultaneousWinners) {
-        dispatchMotionEventOnCurrentWinner(motionEvent, member, lynxTouchEvent, x, y);
+        dispatchMotionEventOnCurrentWinner(
+            motionEvent, member, lynxTouchEvent, x, y, true, mCurrentGestureExtraBundle);
       }
+      mCurrentGestureExtraBundle.reset();
     }
     if (competeChainCandidates != null) {
       mWinner = reCompeteByGestures(competeChainCandidates, mWinner);

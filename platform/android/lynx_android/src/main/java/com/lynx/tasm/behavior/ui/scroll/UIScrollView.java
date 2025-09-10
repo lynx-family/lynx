@@ -48,6 +48,7 @@ import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import com.lynx.tasm.utils.UnitUtils;
@@ -785,6 +786,12 @@ public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
   @Override
   public int getMemberScrollX() {
     return getScrollX();
+  }
+
+  @Override
+  public int getScrollContainerDirection() {
+    return mView.isHorizontal ? GestureConstants.DIRECTION_HORIZONTAL
+                              : GestureConstants.DIRECTION_VERTICAL;
   }
 
   @Override

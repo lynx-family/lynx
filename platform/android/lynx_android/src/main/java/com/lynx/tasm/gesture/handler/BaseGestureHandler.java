@@ -12,6 +12,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxCustomEvent;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
+import com.lynx.tasm.gesture.common.GestureExtraBundle;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import java.util.HashMap;
 import java.util.List;
@@ -136,8 +137,9 @@ public abstract class BaseGestureHandler {
   protected abstract void handleConfigMap(@Nullable ReadableMap config);
 
   public void handleMotionEvent(@Nullable MotionEvent event,
-      @Nullable LynxTouchEvent lynxTouchEvent, float deltaX, float deltaY) {
-    onHandle(event, lynxTouchEvent, deltaX, deltaY);
+      @Nullable LynxTouchEvent lynxTouchEvent, float deltaX, float deltaY,
+      boolean handleBySimultaneous, @Nullable GestureExtraBundle extraBundle) {
+    onHandle(event, lynxTouchEvent, deltaX, deltaY, handleBySimultaneous, extraBundle);
   }
 
   /**
@@ -145,7 +147,8 @@ public abstract class BaseGestureHandler {
    * @param event The origin MotionEvent
    */
   protected abstract void onHandle(@Nullable MotionEvent event,
-      @Nullable LynxTouchEvent lynxTouchEvent, float flingDeltaX, float flingDeltaY);
+      @Nullable LynxTouchEvent lynxTouchEvent, float flingDeltaX, float flingDeltaY,
+      boolean handleBySimultaneous, @Nullable GestureExtraBundle extraBundle);
 
   /**
    * Checks if the current gesture is called end.
@@ -361,7 +364,8 @@ public abstract class BaseGestureHandler {
    * @param deltaY The delta value on the Y-axis.
    * @param event The touch event associated with the update.
    */
-  protected abstract void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event);
+  protected abstract void onUpdate(float deltaX, float deltaY, @Nullable LynxTouchEvent event,
+      @Nullable GestureExtraBundle extraBundle);
 
   /**
    * Called when the gesture is recognized by the handler and it transitions to the active state.

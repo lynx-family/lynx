@@ -44,4 +44,9 @@ public class GestureConstants {
   static final int MIN_SCROLL = Integer.MIN_VALUE;
   static final int MAX_SCROLL = Integer.MAX_VALUE;
   static final int FLING_SPEED_THRESHOLD = 300;
+
+  // scroll container direction
+  public static final int DIRECTION_HORIZONTAL = -1;
+  public static final int DIRECTION_VERTICAL = 1;
+  public static final int DIRECTION_UNDETERMINED = 0;
 }

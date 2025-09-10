@@ -13,6 +13,7 @@ import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,6 +73,11 @@ public class NativeGestureHandlerTest {
       }
 
       @Override
+      public int getScrollContainerDirection() {
+        return GestureConstants.DIRECTION_UNDETERMINED;
+      }
+
+      @Override
       public int getGestureArenaMemberId() {
         return 0;
       }
@@ -127,20 +133,20 @@ public class NativeGestureHandlerTest {
   @Test
   public void testOnHandle() {
     MotionEvent motionEvent = MotionEvent.obtain(100, 100, MotionEvent.ACTION_DOWN, 200, 200, 0);
-    mHandler.onHandle(motionEvent, null, 200, 300);
+    mHandler.onHandle(motionEvent, null, 200, 300, false, null);
     Assert.assertEquals(mHandler.getGestureStatus(), GestureConstants.LYNX_STATE_BEGIN);
     MotionEvent motionEvent2 = MotionEvent.obtain(100, 200, MotionEvent.ACTION_MOVE, 300, 300, 0);
-    mHandler.onHandle(motionEvent2, null, 200, 300);
+    mHandler.onHandle(motionEvent2, null, 200, 300, false, null);
     Assert.assertEquals(mHandler.getGestureStatus(), GestureConstants.LYNX_STATE_ACTIVE);
     MotionEvent motionEvent3 = MotionEvent.obtain(100, 200, MotionEvent.ACTION_UP, 300, 300, 0);
-    mHandler.onHandle(motionEvent3, null, 200, 300);
+    mHandler.onHandle(motionEvent3, null, 200, 300, false, null);
     Assert.assertEquals(mHandler.getGestureStatus(), GestureConstants.LYNX_STATE_FAIL);
   }
 
   @Test
   public void testEvents() {
     mHandler.onBegin(100, 100, null);
-    mHandler.onUpdate(200, 200, null);
+    mHandler.onUpdate(200, 200, null, null);
     mHandler.onStart(300, 300, null);
     mHandler.onEnd(400, 400, null);
   }

@@ -17,6 +17,7 @@ import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.detector.GestureDetectorManager;
 import com.lynx.tasm.gesture.handler.*;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.testing.base.TestingUtils;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -57,6 +58,11 @@ public class GestureArenaManagerTest {
     @Override
     public boolean isAtBorder(boolean isStart) {
       return false;
+    }
+
+    @Override
+    public int getScrollContainerDirection() {
+      return GestureConstants.DIRECTION_UNDETERMINED;
     }
 
     @Override

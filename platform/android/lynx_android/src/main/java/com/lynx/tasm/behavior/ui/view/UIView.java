@@ -16,9 +16,9 @@ import com.lynx.tasm.behavior.ui.utils.MaskDrawable;
 import com.lynx.tasm.event.LynxImpressionEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.LynxNewGestureDelegate;
-import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -156,6 +156,11 @@ public class UIView
   public int getMemberScrollX() {
     // always zero if it's not a scrolling container
     return 0;
+  }
+
+  @Override
+  public int getScrollContainerDirection() {
+    return GestureConstants.DIRECTION_UNDETERMINED;
   }
 
   @Override

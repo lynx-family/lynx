@@ -50,6 +50,7 @@ import com.lynx.tasm.event.LynxScrollEvent;
 import com.lynx.tasm.gesture.GestureArenaMember;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.UIThreadUtils;
 import java.util.ArrayList;
@@ -1396,6 +1397,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       return 0;
     }
     return mView.getScrollX();
+  }
+
+  @Override
+  public int getScrollContainerDirection() {
+    return mIsVertical ? GestureConstants.DIRECTION_VERTICAL
+                       : GestureConstants.DIRECTION_HORIZONTAL;
   }
 
   @Override

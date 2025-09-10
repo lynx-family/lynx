@@ -758,7 +758,7 @@ public class com::lynx::tasm::behavior::ui::background::BackgroundSize :  {
 
 public class abstract com::lynx::tasm::gesture::handler::BaseGestureHandler :  {
   public com.lynx.tasm.gesture.handler.BaseGestureHandler.BaseGestureHandler(int sign, LynxContext lynxContext, @NonNull GestureDetector gestureDetector, @NonNull GestureArenaMember gestureArenaMember);
-  public void com.lynx.tasm.gesture.handler.BaseGestureHandler.handleMotionEvent(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent, float deltaX, float deltaY);
+  public void com.lynx.tasm.gesture.handler.BaseGestureHandler.handleMotionEvent(@Nullable MotionEvent event, @Nullable LynxTouchEvent lynxTouchEvent, float deltaX, float deltaY, boolean handleBySimultaneous, @Nullable GestureExtraBundle extraBundle);
   public void com.lynx.tasm.gesture.handler.BaseGestureHandler.activate();
   public void com.lynx.tasm.gesture.handler.BaseGestureHandler.reset();
   public void com.lynx.tasm.gesture.handler.BaseGestureHandler.fail();
@@ -1855,6 +1855,7 @@ public interface com::lynx::tasm::gesture::GestureArenaMember {
   public int com.lynx.tasm.gesture.GestureArenaMember.getSign();
   public int com.lynx.tasm.gesture.GestureArenaMember.getGestureArenaMemberId();
   public int com.lynx.tasm.gesture.GestureArenaMember.getMemberScrollX();
+  public int com.lynx.tasm.gesture.GestureArenaMember.getScrollContainerDirection();
   public boolean com.lynx.tasm.gesture.GestureArenaMember.isAtBorder(boolean isStart);
   public int com.lynx.tasm.gesture.GestureArenaMember.getMemberScrollY();
   public void com.lynx.tasm.gesture.GestureArenaMember.onInvalidate();
@@ -1882,6 +1883,9 @@ public class com::lynx::tasm::gesture::handler::GestureConstants :  {
   public final int com.lynx.tasm.gesture.handler.GestureConstants.LYNX_STATE_FAIL LYNX_STATE_FAIL;
   public final int com.lynx.tasm.gesture.handler.GestureConstants.LYNX_STATE_END LYNX_STATE_END;
   public final int com.lynx.tasm.gesture.handler.GestureConstants.LYNX_STATE_UNDETERMINED LYNX_STATE_UNDETERMINED;
+  public final int com.lynx.tasm.gesture.handler.GestureConstants.DIRECTION_HORIZONTAL DIRECTION_HORIZONTAL;
+  public final int com.lynx.tasm.gesture.handler.GestureConstants.DIRECTION_VERTICAL DIRECTION_VERTICAL;
+  public final int com.lynx.tasm.gesture.handler.GestureConstants.DIRECTION_UNDETERMINED DIRECTION_UNDETERMINED;
 }
 
 public class com::lynx::tasm::gesture::detector::GestureDetector :  {
@@ -1913,6 +1917,18 @@ public class com::lynx::tasm::gesture::detector::GestureDetectorManager :  {
   public LinkedList< GestureArenaMember > com.lynx.tasm.gesture.detector.GestureDetectorManager.convertResponseChainToCompeteChain(LinkedList< GestureArenaMember > responseList);
   public Pair< HashSet< GestureArenaMember >, HashSet< Integer > > com.lynx.tasm.gesture.detector.GestureDetectorManager.handleSimultaneousWinner(GestureArenaMember current);
   public void com.lynx.tasm.gesture.detector.GestureDetectorManager.onDestroy();
+}
+
+public class com::lynx::tasm::gesture::common::GestureExtraBundle :  {
+  public int com.lynx.tasm.gesture.common.GestureExtraBundle.getGestureDirection();
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setGestureDirection(int gestureDirection);
+  public float com.lynx.tasm.gesture.common.GestureExtraBundle.getSimultaneousDeltaX();
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setSimultaneousDeltaX(float simultaneousDeltaX);
+  public float com.lynx.tasm.gesture.common.GestureExtraBundle.getSimultaneousDeltaY();
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setSimultaneousDeltaY(float simultaneousDeltaY);
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.reset();
+  public boolean com.lynx.tasm.gesture.common.GestureExtraBundle.isConsumedGesture();
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setConsumedGesture(boolean consumedGesture);
 }
 
 public class com::lynx::tasm::gesture::handler::GestureHandlerTrigger :  {
@@ -9922,6 +9938,7 @@ public class com::lynx::tasm::behavior::ui::list::UIList : com.lynx.tasm.behavio
   public boolean com.lynx.tasm.behavior.ui.list.UIList.initialPropsFlushed(String initialPropKey, String cacheKey);
   public void com.lynx.tasm.behavior.ui.list.UIList.setInitialPropsHasFlushed(String initialPropKey, String cacheKey);
   public int com.lynx.tasm.behavior.ui.list.UIList.getMemberScrollX();
+  public int com.lynx.tasm.behavior.ui.list.UIList.getScrollContainerDirection();
   public int com.lynx.tasm.behavior.ui.list.UIList.getMemberScrollY();
   public boolean com.lynx.tasm.behavior.ui.list.UIList.isVertical();
   public void com.lynx.tasm.behavior.ui.list.UIList.setAndroidIgnoreAttachForBinding(boolean value);
@@ -10095,6 +10112,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onGestureScrollBy(float x, float y);
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.canConsumeGesture(float deltaX, float deltaY);
   public int com.lynx.tasm.behavior.ui.list.container.UIListContainer.getMemberScrollX();
+  public int com.lynx.tasm.behavior.ui.list.container.UIListContainer.getScrollContainerDirection();
   public int com.lynx.tasm.behavior.ui.list.container.UIListContainer.getMemberScrollY();
   public boolean com.lynx.tasm.behavior.ui.list.container.UIListContainer.isAtBorder(boolean isStart);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.onInvalidate();
@@ -10172,6 +10190,7 @@ public class com::lynx::tasm::behavior::ui::scroll::UIScrollView : com.lynx.tasm
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.scrollInto(LynxBaseUI node, boolean isSmooth, String block, String inline, int bottomInset);
   public void com.lynx.tasm.behavior.ui.scroll.UIScrollView.setEvents(Map< String, EventsListener > events);
   public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getMemberScrollX();
+  public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getScrollContainerDirection();
   public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getMemberScrollY();
   public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getScrollX();
   public int com.lynx.tasm.behavior.ui.scroll.UIScrollView.getScrollY();
@@ -10303,6 +10322,7 @@ public class com::lynx::tasm::behavior::ui::text::UIText : com::lynx::tasm::beha
   public void com.lynx.tasm.behavior.ui.text.UIText.onGestureScrollBy(float deltaX, float deltaY);
   public boolean com.lynx.tasm.behavior.ui.text.UIText.canConsumeGesture(float deltaX, float deltaY);
   public int com.lynx.tasm.behavior.ui.text.UIText.getMemberScrollX();
+  public int com.lynx.tasm.behavior.ui.text.UIText.getScrollContainerDirection();
   public boolean com.lynx.tasm.behavior.ui.text.UIText.isAtBorder(boolean isStart);
   public int com.lynx.tasm.behavior.ui.text.UIText.getMemberScrollY();
   public void com.lynx.tasm.behavior.ui.text.UIText.onInvalidate();
@@ -10336,6 +10356,7 @@ public class com::lynx::tasm::behavior::ui::view::UIView : com.lynx.tasm.behavio
   public void com.lynx.tasm.behavior.ui.view.UIView.onGestureScrollBy(float deltaX, float deltaY);
   public boolean com.lynx.tasm.behavior.ui.view.UIView.canConsumeGesture(float deltaX, float deltaY);
   public int com.lynx.tasm.behavior.ui.view.UIView.getMemberScrollX();
+  public int com.lynx.tasm.behavior.ui.view.UIView.getScrollContainerDirection();
   public boolean com.lynx.tasm.behavior.ui.view.UIView.isAtBorder(boolean isStart);
   public int com.lynx.tasm.behavior.ui.view.UIView.getMemberScrollY();
   public void com.lynx.tasm.behavior.ui.view.UIView.onInvalidate();
