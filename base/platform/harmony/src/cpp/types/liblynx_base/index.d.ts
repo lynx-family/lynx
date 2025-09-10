@@ -11,3 +11,5 @@ export const nativeUseSysLog: (open: boolean) => void;
 export const nativeInternalLog: (level: number, tag: string, message: string) => void;
 
 export const nativeSetMinLogLevel: (level: number) => void;
+
+export const nativeInitLynxBaseTrace: (address: number) => void;

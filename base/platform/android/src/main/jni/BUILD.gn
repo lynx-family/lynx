@@ -8,6 +8,8 @@ import("../../../../../src/base.gni")
 
 lynx_base_source_set("build") {
   sources = [
+    "gen/LynxBaseTrace_jni.h",
+    "gen/LynxBaseTrace_register_jni.h",
     "gen/LynxLog_jni.h",
     "gen/LynxLog_register_jni.h",
     "gen/lynx_base_so_load.cc",

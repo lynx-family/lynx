@@ -3,16 +3,21 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxLog } from './log/LynxLog';
+import { LynxBaseTrace } from './LynxBaseTrace';
 
 const TAG = 'LynxBaseEnv';
+
 class LynxBaseEnvironment {
   private initialized = false;
+
   public initialize(printLogsToAllChannels: boolean) {
     if (this.initialized) {
       return;
     }
     LynxLog.initLynxLog(printLogsToAllChannels);
+    LynxBaseTrace.initLynxBaseTrace();
     this.initialized = true;
   }
 }
+
 export const LynxBaseEnv = new LynxBaseEnvironment();

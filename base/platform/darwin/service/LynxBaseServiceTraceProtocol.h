@@ -10,17 +10,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-typedef NS_ENUM(NSInteger, TraceEventType) {
-  kTypeUnspecified,
-  kTypeSliceBegin,
-  kTypeSliceEnd,
-  kTypeInstant,
-  kTypeCounter,
-};
-
 @protocol LynxBaseServiceTraceProtocol <LynxBaseServiceProtocol>
 
-- (void)trace:(const char*)category name:(const char*)name phase:(TraceEventType)phase;
+- (void *)getDefaultTraceFunction;
 
 @end
 

@@ -1,0 +1,50 @@
+// Copyright 2025 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+package com.lynx.base;
+
+import com.lynx.base.LynxBaseEnv;
+import com.lynx.base.log.LynxLog;
+import com.lynx.base.service.ILynxBaseTraceService;
+import com.lynx.base.service.LynxBaseServiceCenter;
+
+public class LynxBaseTrace {
+  private static final String TAG = "LynxBaseTrace";
+  private static boolean sIsNativeLibLoad = false;
+
+  public static void init() {
+    try {
+      if (!sIsNativeLibLoad) {
+        sIsNativeLibLoad = LynxBaseEnv.inst().isNativeLibraryLoaded();
+      }
+      if (sIsNativeLibLoad) {
+        initNativeBaseTrace();
+      }
+    } catch (ArrayIndexOutOfBoundsException error) {
+      LynxLog.e("lynx", "init LynxBaseTrace exception [ " + error.getMessage() + " ]");
+    }
+  }
+
+  private static boolean initNativeBaseTrace() {
+    long address = 0;
+    ILynxBaseTraceService service =
+        LynxBaseServiceCenter.inst().getService(ILynxBaseTraceService.class);
+    if (service == null) {
+      nativeInitBaseTrace(0);
+      LynxLog.i(TAG, "LynxBaseTrace init successfully by itself.");
+      return true;
+    }
+    address = service.getDefaultTraceFunction();
+    if (address != 0) {
+      nativeInitBaseTrace(address);
+      LynxLog.i(TAG,
+          "LynxBaseTrace init successfully by custom LynxBaseTraceService. function native address is "
+              + address);
+      return true;
+    }
+    LynxLog.i(TAG, "failed to init LynxBaseTrace dependency");
+    return false;
+  }
+
+  private static native void nativeInitBaseTrace(long addr);
+}

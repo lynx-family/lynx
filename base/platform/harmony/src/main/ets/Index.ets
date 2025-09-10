@@ -6,6 +6,8 @@ export { LynxBaseEnv } from './LynxBaseEnv'
 
 export { LynxLog, LynxBaseLogLevel } from './log/LynxLog'
 
+export { LynxBaseTrace } from './LynxBaseTrace'
+
 export { LynxBaseServiceCenter, LynxBaseServiceType } from './service/LynxBaseServiceCenter'
 
 export { ILynxBaseLogService, LogOutputChannelType } from './service/ILynxBaseLogService'

@@ -19,3 +19,4 @@ jni_class_configs:
   output_dir: base/platform/android/src/main/jni/gen
   jni_classes:
     - java: base/platform/android/src/main/java/com/lynx/base/log/LynxLog.java
+    - java: base/platform/android/src/main/java/com/lynx/base/LynxBaseTrace.java
