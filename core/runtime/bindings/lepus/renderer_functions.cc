@@ -5856,11 +5856,11 @@ RENDERER_FUNCTION_CC(TriggerLepusBridgeSync) {
   BASE_STATIC_STRING_DECL(kLepusMethod, "lepusMethod");
   BASE_STATIC_STRING_DECL(kEventDetail, "methodDetail");
   BASE_STATIC_STRING_DECL(kEventEntryName, "tasmEntryName");
-  BASE_STATIC_STRING_DECL(kEventCallbackId, "callbackId");
+  BASE_STATIC_STRING_DECL(kEventComponentId, "componentId");
   auto dictionary = lepus::Dictionary::Create();
   dictionary->SetValue(kEventDetail, *arg0);
   dictionary->SetValue(kEventEntryName, LEPUS_CONTEXT()->name());
-  dictionary->SetValue(kEventCallbackId, -1);
+  dictionary->SetValue(kEventComponentId, -1);
   lepus::Value param(std::move(dictionary));
   const auto& function_name = arg0->GetProperty(kLepusMethod).StdString();
   auto tasm = GET_TASM_POINTER();
