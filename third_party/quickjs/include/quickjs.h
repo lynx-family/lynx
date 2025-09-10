@@ -122,7 +122,7 @@ typedef struct LEPUSRefCountHeader {
   int ref_count;
 } LEPUSRefCountHeader;
 
-#if defined(__aarch64__) && !defined(OS_WIN) && !defined(CONFIG_BIGNUM) && \
+#if defined(__aarch64__) && !defined(OS_WIN) && \
     !DISABLE_NANBOX
 
 static const int64_t LEPUS_FLOAT64_NAN_BITS = 0x7ff8000000000000;
@@ -177,7 +177,6 @@ static const int64_t LEPUS_TAG_LEPUS_REF =
     LEPUS_REF_TAG; /* Primjs add for lepus */
 static const int64_t LEPUS_TAG_LEPUS_CPOINTER = LEPUS_CPOINTER_TAG;
 static const int64_t LEPUS_TAG_BIG_INT = LEPUS_BIG_INT_TAG;
-static const int64_t LEPUS_TAG_BIG_FLOAT = -9;
 static const int64_t LEPUS_TAG_SYMBOL = SYMBOL_TAG;
 static const int64_t LEPUS_TAG_STRING = STRING_TAG;
 static const int64_t LEPUS_TAG_MODULE = MODULE_TAG;
@@ -367,11 +366,10 @@ inline LEPUS_BOOL LEPUS_VALUE_IS_NAN(LEPUSValue v) {
 
 enum {
   /* all tags with a reference count are negative */
-  LEPUS_TAG_FIRST = -12,            /* first negative tag */
-  LEPUS_TAG_SEPARABLE_STRING = -12, /* separable string tag */
-  LEPUS_TAG_LEPUS_REF = -11,        /* Primjs add for lepus */
-  LEPUS_TAG_BIG_INT = -10,
-  LEPUS_TAG_BIG_FLOAT = -9,
+  LEPUS_TAG_FIRST = -11,            /* first negative tag */
+  LEPUS_TAG_SEPARABLE_STRING = -11, /* separable string tag */
+  LEPUS_TAG_LEPUS_REF = -10,        /* Primjs add for lepus */
+  LEPUS_TAG_BIG_INT = -9,
   LEPUS_TAG_SYMBOL = -8,
   LEPUS_TAG_STRING = -7,
   /* shape, async_function, var_ref is not need for PrimJs */
@@ -888,7 +886,7 @@ int LEPUS_IsRegisteredClass(LEPUSRuntime *rt, LEPUSClassID class_id);
 
 static lepus_force_inline LEPUSValue LEPUS_NewBool(LEPUSContext *ctx,
                                                    LEPUS_BOOL val) {
-#if defined(__aarch64__) && !defined(OS_WIN) && !defined(CONFIG_BIGNUM) && \
+#if defined(__aarch64__) && !defined(OS_WIN) && \
     !DISABLE_NANBOX
   return LEPUS_MKVAL(LEPUS_TAG_BOOL, val != 0);
 #else
@@ -912,37 +910,32 @@ LEPUSValue LEPUS_NewBigUint64(LEPUSContext *ctx, uint64_t v);
 
 static lepus_force_inline LEPUSValue LEPUS_NewFloat64(LEPUSContext *ctx,
                                                       double d) {
-  LEPUSValue v;
   int32_t val;
   union {
     double d;
     uint64_t u;
   } u, t;
-  u.d = d;
-  val = (int32_t)d;
-  t.d = val;
-  /* -0 cannot be represented as integer, so we compare the bit
-      representation */
-  if (u.u == t.u) {
-    v = LEPUS_MKVAL(LEPUS_TAG_INT, val);
-  } else {
-    v = __JS_NewFloat64(ctx, d);
+  if (d >= INT32_MIN && d <= INT32_MAX) {
+    u.d = d;
+    val = (int32_t)d;
+    t.d = val;
+    /* -0 cannot be represented as integer, so we compare the bit
+        representation */
+    if (u.u == t.u) return LEPUS_MKVAL(LEPUS_TAG_INT, val);
   }
-  return v;
+  return __JS_NewFloat64(ctx, d);
 }
 
 LEPUS_BOOL LEPUS_IsNumber(LEPUSValueConst v);
 
 static inline LEPUS_BOOL LEPUS_IsInteger(LEPUSValueConst v) {
-  return LEPUS_VALUE_IS_INT(v) || LEPUS_VALUE_IS_BIG_INT(v);
+  return LEPUS_VALUE_IS_INT(v);
 }
 
-#ifdef CONFIG_BIGNUM
-static inline LEPUS_BOOL LEPUS_IsBigFloat(LEPUSValueConst v) {
-  int tag = LEPUS_VALUE_GET_TAG(v);
-  return tag == LEPUS_TAG_BIG_FLOAT;
+static inline LEPUS_BOOL LEPUS_IsBigInt(LEPUSValueConst v) {
+  auto tag = LEPUS_VALUE_GET_TAG(v);
+  return tag == LEPUS_TAG_BIG_INT;
 }
-#endif
 
 static inline LEPUS_BOOL LEPUS_IsBool(LEPUSValueConst v) {
   return LEPUS_VALUE_IS_BOOL(v);
@@ -1228,8 +1221,6 @@ static inline void *LEPUS_GetLepusRefPoint(LEPUSValue val) {
   return pref->p;
 }
 
-// #define CONFIG_BIGNUM
-// #endif
 // <Primjs end>
 int LEPUS_IsInstanceOf(LEPUSContext *ctx, LEPUSValueConst val,
                        LEPUSValueConst obj);
