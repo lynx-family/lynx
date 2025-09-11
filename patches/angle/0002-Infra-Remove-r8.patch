@@ -1,0 +1,795 @@
+From 02195436538367098b2f1e0a7739e5cda0e19040 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Wed, 10 Sep 2025 15:25:35 +0800
+Subject: [PATCH] [Infra] Remove r8
+
+Remove r8 to pass tpp check.
+
+Signed-off-by: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+---
+ third_party/r8/BUILD.gn                    |  15 --
+ third_party/r8/DIR_METADATA                |   4 -
+ third_party/r8/LICENSE                     |  27 ---
+ third_party/r8/OWNERS                      |   3 -
+ third_party/r8/README.chromium             |  97 --------
+ third_party/r8/backported_methods.txt      | 162 --------------
+ third_party/r8/cipd.yaml                   |  11 -
+ third_party/r8/custom_d8.jar               | Bin 7224 -> 0 bytes
+ third_party/r8/desugar_jdk_libs.json       | 249 ---------------------
+ third_party/r8/playground/.gitignore       |   3 -
+ third_party/r8/playground/Playground.java  |  16 --
+ third_party/r8/playground/build.sh         |  19 --
+ third_party/r8/playground/playground.pgcfg |   9 -
+ 13 files changed, 615 deletions(-)
+ delete mode 100644 third_party/r8/BUILD.gn
+ delete mode 100644 third_party/r8/DIR_METADATA
+ delete mode 100644 third_party/r8/LICENSE
+ delete mode 100644 third_party/r8/OWNERS
+ delete mode 100644 third_party/r8/README.chromium
+ delete mode 100644 third_party/r8/backported_methods.txt
+ delete mode 100644 third_party/r8/cipd.yaml
+ delete mode 100644 third_party/r8/custom_d8.jar
+ delete mode 100644 third_party/r8/desugar_jdk_libs.json
+ delete mode 100644 third_party/r8/playground/.gitignore
+ delete mode 100644 third_party/r8/playground/Playground.java
+ delete mode 100755 third_party/r8/playground/build.sh
+ delete mode 100644 third_party/r8/playground/playground.pgcfg
+
+diff --git a/third_party/r8/BUILD.gn b/third_party/r8/BUILD.gn
+deleted file mode 100644
+index d184c4b9f..000000000
+--- a/third_party/r8/BUILD.gn
++++ /dev/null
+@@ -1,15 +0,0 @@
+-# Copyright 2021 The Chromium Authors. All rights reserved.
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+-import("//build/config/android/rules.gni")
+-
+-# The output jar for this target is copied and checked-in to minimize the number
+-# of edges in the build graph. This is a class that rarely changes.
+-java_library("custom_d8_java") {
+-  sources = [ "java/src/org/chromium/build/CustomD8.java" ]
+-
+-  # Avoid using java_prebuilt() to ensure all uses go through the checked-in
+-  # version.
+-  input_jars_paths = [ "//third_party/r8/lib/r8.jar" ]
+-}
+diff --git a/third_party/r8/DIR_METADATA b/third_party/r8/DIR_METADATA
+deleted file mode 100644
+index 9f086481e..000000000
+--- a/third_party/r8/DIR_METADATA
++++ /dev/null
+@@ -1,4 +0,0 @@
+-monorail: {
+-  component: "Build"
+-}
+-team_email: "build@chromium.org"
+diff --git a/third_party/r8/LICENSE b/third_party/r8/LICENSE
+deleted file mode 100644
+index 54a7709f6..000000000
+--- a/third_party/r8/LICENSE
++++ /dev/null
+@@ -1,27 +0,0 @@
+-Copyright (c) 2016, the R8 project authors.
+-All rights reserved.
+-
+-Redistribution and use in source and binary forms, with or without
+-modification, are permitted provided that the following conditions are met:
+-
+-* Redistributions of source code must retain the above copyright notice, this
+-  list of conditions and the following disclaimer.
+-
+-* Redistributions in binary form must reproduce the above copyright notice,
+-  this list of conditions and the following disclaimer in the documentation
+-  and/or other materials provided with the distribution.
+-
+-* Neither the name of Google Inc. nor the names of its
+-  contributors may be used to endorse or promote products derived from
+-  this software without specific prior written permission.
+-
+-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+\ No newline at end of file
+diff --git a/third_party/r8/OWNERS b/third_party/r8/OWNERS
+deleted file mode 100644
+index cb00e5e16..000000000
+--- a/third_party/r8/OWNERS
++++ /dev/null
+@@ -1,3 +0,0 @@
+-smaier@chromium.org
+-agrieve@chromium.org
+-wnwen@chromium.org
+diff --git a/third_party/r8/README.chromium b/third_party/r8/README.chromium
+deleted file mode 100644
+index 12c75cdd5..000000000
+--- a/third_party/r8/README.chromium
++++ /dev/null
+@@ -1,97 +0,0 @@
+-Name: R8
+-URL: https://r8.googlesource.com/r8
+-Version: 3.0.33
+-License: BSD 3-Clause
+-License File: NOT_SHIPPED
+-Security Critical: no
+-
+-Description:
+-lib/r8.jar
+- - Contains R8 (proguard replacement) as well as D8 (dexer).
+-3pp
+- - Contains code for 3pp-linux-amd64-packager to package and upload new versions of r8.
+-desugar_jdk_libs.json
+- - Configuration for Java library desugaring.
+- - Taken from
+-   //third_party/android_deps/libs/com_android_tools_desugar_jdk_libs_configuration/
+-   inside the jar file, in META-INF/desugar/d8/desugar.json. License is also BSD
+-   3-Clause (the r8 version).
+-
+-R8 is a proguard-like optimizer that also has the ability to dex.
+-
+-Local Modifications:
+-* Refer to commit descriptions within "3pp/patches" directory.
+-* Added "playground" directory for quick "how does this optimize" tests.
+-* Removed references to ConcurrentHashMap and TimeZone#getTimeZone in desugar_jdk_libs.json.
+-* Added "java/src/org/chromium/build/CustomD8.java", custom_d8.jar, and BUILD.gn.
+-  * Used in "build/android/gyp/dex.py" to enable desugar dependencies.
+-
+-Update Instructions:
+-* For the custom d8 jar:
+-  * This is required only when CustomD8.java changes.
+-  * Uncomment the flag --skip-custom-d8 in internal_rules.gni to avoid depending
+-    on the previously built custom_d8.jar.
+-autoninja -C out/Debug third_party/r8:custom_d8_java
+-cp out/Debug/obj/third_party/r8/custom_d8_java.javac.jar third_party/r8/custom_d8.jar
+-
+-* For a new version of r8:
+-  * Find the latest successful run of the build bot:
+-    * https://ci.chromium.org/p/chromium/builders/ci/3pp-linux-amd64-packager
+-    * The bot autoruns every 6 hours. Ping a trooper to trigger it if you need it sooner.
+-      * https://luci-scheduler.appspot.com/jobs/chromium/3pp-linux-amd64-packager
+-  * Go to its log page and look under:
+-    * Expand "building chromium/third_party/r8" to see the CIPD instance ID.
+-  * Copy this instance ID to the r8 entry in //DEPS.
+-  * Update this file with the new version string and submit.
+-
+-* If patching fails:
+-git clone https://r8.googlesource.com/r8
+-cd r8
+-  * Find latest tag:
+-git fetch origin --tags
+-git tag -l  # Often unnecessary as output from the fetch includes recent tags.
+-git checkout $TAG  # e.g. 3.0.25-dev, whichever tag failed patching.
+-  * Apply patches:
+-git checkout -b my_branch
+-git am $CHROMIUM_SRC/third_party/r8/patches/*.patch
+-  * Fix patch conflicts.
+-  * Save new patches. Change number if expecting more or fewer patches:
+-git format-patch -3 -o $CHROMIUM_SRC/third_party/r8/3pp/patches
+-  * Submit these fixed patches and the bot will automatically retry.
+-
+-* Local development (see above for setting up the r8 repo):
+-  * Build
+-tools/gradle.py r8
+-  * Shrink (improves r8/d8 launch time):
+-java -jar build/libs/r8.jar --debug --classfile --output r8.jar \
+-    --lib $CHROMIUM_SRC/third_party/jdk/current --pg-conf src/main/keep.txt \
+-    --no-minification --no-desugaring build/libs/r8.jar
+-mv $CHROMIUM_SRC/third_party/r8/lib/r8.jar{,.bak}
+-cp r8.jar $CHROMIUM_SRC/third_party/r8/lib/r8.jar
+-
+-* Update backported methods list:
+-cd $CHROMIUM_SRC
+-java -cp third_party/r8/lib/r8.jar com.android.tools.r8.BackportedMethodList --min-api 16 > third_party/r8/backported_methods.txt
+-
+-* Update instructions for desugar_jdk_libs.json:
+-unzip -p third_party/android_deps/libs/com_android_tools_desugar_jdk_libs_configuration/*.jar META-INF/desugar/d8/desugar.json > third_party/r8/desugar_jdk_libs.json
+-  * Remove all mentions of ConcurrentHashMap and TimeZone#getTimeZone and remove trailing commas.
+-  * Update //build/config/android/internal_rules.gni to point at the new .jar files:
+-    * desugar_jdk_libs-1.1.1.jar
+-    * desugar_jdk_libs_configuration-1.1.1.jar
+-
+-How to file bugs against R8:
+-* Copy & paste the failing ninja command (starts with proguard.py), and add --dump-inputs.
+-  * This also works for dex.py, it produces d8inputs.zip
+-* File bug at go/r8bug
+-* Things to include (use discretion if some are not relevant):
+-  * src revision bug reproduces at
+-  * Repro steps (gn gen & autoninja commands)
+-    * Prefer enable_chrome_android_internal=false
+-  * The r8inputs.zip from --dump-inputs
+-  * Any relevant dexdump analysis
+-
+-How to submit CLs to R8:
+-* Request to be added to their allowlist in order to upload CLs.
+-* After CLs are submitted, check the bots for build breakage.
+-  * https://ci.chromium.org/p/r8/g/main_all/console
+diff --git a/third_party/r8/backported_methods.txt b/third_party/r8/backported_methods.txt
+deleted file mode 100644
+index 51bd70d3f..000000000
+--- a/third_party/r8/backported_methods.txt
++++ /dev/null
+@@ -1,162 +0,0 @@
+-java/lang/Boolean#compare(ZZ)I
+-java/lang/Boolean#hashCode(Z)I
+-java/lang/Boolean#logicalAnd(ZZ)Z
+-java/lang/Boolean#logicalOr(ZZ)Z
+-java/lang/Boolean#logicalXor(ZZ)Z
+-java/lang/Byte#compare(BB)I
+-java/lang/Byte#compareUnsigned(BB)I
+-java/lang/Byte#hashCode(B)I
+-java/lang/Byte#toUnsignedInt(B)I
+-java/lang/Byte#toUnsignedLong(B)J
+-java/lang/CharSequence#compare(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)I
+-java/lang/Character#compare(CC)I
+-java/lang/Character#hashCode(C)I
+-java/lang/Character#toString(I)Ljava/lang/String;
+-java/lang/Double#hashCode(D)I
+-java/lang/Double#isFinite(D)Z
+-java/lang/Double#max(DD)D
+-java/lang/Double#min(DD)D
+-java/lang/Double#sum(DD)D
+-java/lang/Float#hashCode(F)I
+-java/lang/Float#isFinite(F)Z
+-java/lang/Float#max(FF)F
+-java/lang/Float#min(FF)F
+-java/lang/Float#sum(FF)F
+-java/lang/Integer#compare(II)I
+-java/lang/Integer#compareUnsigned(II)I
+-java/lang/Integer#divideUnsigned(II)I
+-java/lang/Integer#hashCode(I)I
+-java/lang/Integer#max(II)I
+-java/lang/Integer#min(II)I
+-java/lang/Integer#parseUnsignedInt(Ljava/lang/String;)I
+-java/lang/Integer#parseUnsignedInt(Ljava/lang/String;I)I
+-java/lang/Integer#remainderUnsigned(II)I
+-java/lang/Integer#sum(II)I
+-java/lang/Integer#toUnsignedLong(I)J
+-java/lang/Integer#toUnsignedString(I)Ljava/lang/String;
+-java/lang/Integer#toUnsignedString(II)Ljava/lang/String;
+-java/lang/Long#compare(JJ)I
+-java/lang/Long#compareUnsigned(JJ)I
+-java/lang/Long#divideUnsigned(JJ)J
+-java/lang/Long#hashCode(J)I
+-java/lang/Long#max(JJ)J
+-java/lang/Long#min(JJ)J
+-java/lang/Long#parseUnsignedLong(Ljava/lang/String;)J
+-java/lang/Long#parseUnsignedLong(Ljava/lang/String;I)J
+-java/lang/Long#remainderUnsigned(JJ)J
+-java/lang/Long#sum(JJ)J
+-java/lang/Long#toUnsignedString(J)Ljava/lang/String;
+-java/lang/Long#toUnsignedString(JI)Ljava/lang/String;
+-java/lang/Math#addExact(II)I
+-java/lang/Math#addExact(JJ)J
+-java/lang/Math#decrementExact(I)I
+-java/lang/Math#decrementExact(J)J
+-java/lang/Math#floorDiv(II)I
+-java/lang/Math#floorDiv(JI)J
+-java/lang/Math#floorDiv(JJ)J
+-java/lang/Math#floorMod(II)I
+-java/lang/Math#floorMod(JI)I
+-java/lang/Math#floorMod(JJ)J
+-java/lang/Math#incrementExact(I)I
+-java/lang/Math#incrementExact(J)J
+-java/lang/Math#multiplyExact(II)I
+-java/lang/Math#multiplyExact(JI)J
+-java/lang/Math#multiplyExact(JJ)J
+-java/lang/Math#multiplyFull(II)J
+-java/lang/Math#multiplyHigh(JJ)J
+-java/lang/Math#negateExact(I)I
+-java/lang/Math#negateExact(J)J
+-java/lang/Math#nextDown(D)D
+-java/lang/Math#nextDown(F)F
+-java/lang/Math#subtractExact(II)I
+-java/lang/Math#subtractExact(JJ)J
+-java/lang/Math#toIntExact(J)I
+-java/lang/Short#compare(SS)I
+-java/lang/Short#compareUnsigned(SS)I
+-java/lang/Short#hashCode(S)I
+-java/lang/Short#toUnsignedInt(S)I
+-java/lang/Short#toUnsignedLong(S)J
+-java/lang/StrictMath#addExact(II)I
+-java/lang/StrictMath#addExact(JJ)J
+-java/lang/StrictMath#floorDiv(II)I
+-java/lang/StrictMath#floorDiv(JI)J
+-java/lang/StrictMath#floorDiv(JJ)J
+-java/lang/StrictMath#floorMod(II)I
+-java/lang/StrictMath#floorMod(JI)I
+-java/lang/StrictMath#floorMod(JJ)J
+-java/lang/StrictMath#multiplyExact(II)I
+-java/lang/StrictMath#multiplyExact(JI)J
+-java/lang/StrictMath#multiplyExact(JJ)J
+-java/lang/StrictMath#multiplyFull(II)J
+-java/lang/StrictMath#multiplyHigh(JJ)J
+-java/lang/StrictMath#nextDown(D)D
+-java/lang/StrictMath#nextDown(F)F
+-java/lang/StrictMath#subtractExact(II)I
+-java/lang/StrictMath#subtractExact(JJ)J
+-java/lang/StrictMath#toIntExact(J)I
+-java/lang/String#isBlank()Z
+-java/lang/String#join(Ljava/lang/CharSequence;Ljava/lang/Iterable;)Ljava/lang/String;
+-java/lang/String#join(Ljava/lang/CharSequence;[Ljava/lang/CharSequence;)Ljava/lang/String;
+-java/lang/String#repeat(I)Ljava/lang/String;
+-java/lang/String#strip()Ljava/lang/String;
+-java/lang/String#stripLeading()Ljava/lang/String;
+-java/lang/String#stripTrailing()Ljava/lang/String;
+-java/util/Collections#emptyEnumeration()Ljava/util/Enumeration;
+-java/util/Collections#emptyIterator()Ljava/util/Iterator;
+-java/util/Collections#emptyListIterator()Ljava/util/ListIterator;
+-java/util/List#copyOf(Ljava/util/Collection;)Ljava/util/List;
+-java/util/List#of()Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/List;
+-java/util/List#of([Ljava/lang/Object;)Ljava/util/List;
+-java/util/Map#copyOf(Ljava/util/Map;)Ljava/util/Map;
+-java/util/Map#entry(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map$Entry;
+-java/util/Map#of()Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Map;
+-java/util/Map#ofEntries([Ljava/util/Map$Entry;)Ljava/util/Map;
+-java/util/Objects#checkFromIndexSize(III)I
+-java/util/Objects#checkFromToIndex(III)I
+-java/util/Objects#checkIndex(II)I
+-java/util/Objects#compare(Ljava/lang/Object;Ljava/lang/Object;Ljava/util/Comparator;)I
+-java/util/Objects#deepEquals(Ljava/lang/Object;Ljava/lang/Object;)Z
+-java/util/Objects#equals(Ljava/lang/Object;Ljava/lang/Object;)Z
+-java/util/Objects#hash([Ljava/lang/Object;)I
+-java/util/Objects#hashCode(Ljava/lang/Object;)I
+-java/util/Objects#isNull(Ljava/lang/Object;)Z
+-java/util/Objects#nonNull(Ljava/lang/Object;)Z
+-java/util/Objects#requireNonNull(Ljava/lang/Object;)Ljava/lang/Object;
+-java/util/Objects#requireNonNull(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Object;
+-java/util/Objects#requireNonNullElse(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;
+-java/util/Objects#requireNonNullElseGet(Ljava/lang/Object;Ljava/util/function/Supplier;)Ljava/lang/Object;
+-java/util/Objects#toString(Ljava/lang/Object;)Ljava/lang/String;
+-java/util/Objects#toString(Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;
+-java/util/Set#copyOf(Ljava/util/Collection;)Ljava/util/Set;
+-java/util/Set#of()Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/util/Set;
+-java/util/Set#of([Ljava/lang/Object;)Ljava/util/Set;
+diff --git a/third_party/r8/cipd.yaml b/third_party/r8/cipd.yaml
+deleted file mode 100644
+index c18b8933d..000000000
+--- a/third_party/r8/cipd.yaml
++++ /dev/null
+@@ -1,11 +0,0 @@
+-# Copyright 2018 The Chromium Authors. All rights reserved.
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+-# To create CIPD package run the following command.
+-# cipd create --pkg-def cipd.yaml
+-package: chromium/third_party/r8
+-description: >
+-  R8 is a proguard-like optimizer that also has the option to dex.
+-data:
+-  - file: lib/r8.jar
+diff --git a/third_party/r8/custom_d8.jar b/third_party/r8/custom_d8.jar
+deleted file mode 100644
+index 99a9106378d5a1c10ecca3d0270a6cc506841d1a..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 7224
+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
+
+diff --git a/third_party/r8/desugar_jdk_libs.json b/third_party/r8/desugar_jdk_libs.json
+deleted file mode 100644
+index f02099a7f..000000000
+--- a/third_party/r8/desugar_jdk_libs.json
++++ /dev/null
+@@ -1,249 +0,0 @@
+-{
+-  "configuration_format_version": 3,
+-  "group_id" : "com.tools.android",
+-  "artifact_id" : "desugar_jdk_libs",
+-  "version": "1.1.1",
+-  "required_compilation_api_level": 26,
+-  "synthesized_library_classes_package_prefix": "j$.",
+-  "support_all_callbacks_from_library": true,
+-  "common_flags": [
+-    {
+-      "api_level_below_or_equal": 25,
+-      "wrapper_conversion": [
+-        "java.time.Clock"
+-      ]
+-    },
+-    {
+-      "api_level_below_or_equal": 23,
+-      "wrapper_conversion": [
+-        "java.util.PrimitiveIterator$OfDouble",
+-        "java.util.PrimitiveIterator$OfInt",
+-        "java.util.PrimitiveIterator$OfLong",
+-        "java.util.Spliterator",
+-        "java.util.Spliterator$OfDouble",
+-        "java.util.Spliterator$OfInt",
+-        "java.util.Spliterator$OfLong",
+-        "java.util.Spliterator$OfPrimitive",
+-        "java.util.function.BiConsumer",
+-        "java.util.function.BiFunction",
+-        "java.util.function.BiPredicate",
+-        "java.util.function.BinaryOperator",
+-        "java.util.function.Consumer",
+-        "java.util.function.DoubleBinaryOperator",
+-        "java.util.function.DoubleConsumer",
+-        "java.util.function.DoubleFunction",
+-        "java.util.function.DoublePredicate",
+-        "java.util.function.DoubleToIntFunction",
+-        "java.util.function.DoubleToLongFunction",
+-        "java.util.function.DoubleUnaryOperator",
+-        "java.util.function.Function",
+-        "java.util.function.IntBinaryOperator",
+-        "java.util.function.IntConsumer",
+-        "java.util.function.IntFunction",
+-        "java.util.function.IntPredicate",
+-        "java.util.function.IntToDoubleFunction",
+-        "java.util.function.IntToLongFunction",
+-        "java.util.function.IntUnaryOperator",
+-        "java.util.function.LongBinaryOperator",
+-        "java.util.function.LongConsumer",
+-        "java.util.function.LongFunction",
+-        "java.util.function.LongPredicate",
+-        "java.util.function.LongToDoubleFunction",
+-        "java.util.function.LongToIntFunction",
+-        "java.util.function.LongUnaryOperator",
+-        "java.util.function.ObjDoubleConsumer",
+-        "java.util.function.ObjIntConsumer",
+-        "java.util.function.ObjLongConsumer",
+-        "java.util.function.Predicate",
+-        "java.util.function.Supplier",
+-        "java.util.function.ToDoubleFunction",
+-        "java.util.function.ToIntFunction",
+-        "java.util.function.ToLongFunction",
+-        "java.util.function.UnaryOperator",
+-        "java.util.stream.BaseStream",
+-        "java.util.stream.Collector",
+-        "java.util.stream.DoubleStream",
+-        "java.util.stream.IntStream",
+-        "java.util.stream.LongStream",
+-        "java.util.stream.Stream"
+-      ]
+-    }
+-  ],
+-  "library_flags": [
+-    {
+-      "api_level_below_or_equal": 25,
+-      "rewrite_prefix": {
+-        "j$.time.": "java.time.",
+-        "java.time.": "j$.time.",
+-        "java.util.Desugar": "j$.util.Desugar"
+-      },
+-      "backport": {
+-        "java.lang.Double8": "java.lang.Double",
+-        "java.lang.Integer8": "java.lang.Integer",
+-        "java.lang.Long8": "java.lang.Long",
+-        "java.lang.Math8": "java.lang.Math"
+-      },
+-      "retarget_lib_member": {
+-        "java.util.Date#toInstant": "java.util.DesugarDate",
+-        "java.util.GregorianCalendar#toZonedDateTime": "java.util.DesugarGregorianCalendar",
+-        "java.util.TimeZone#toZoneId": "java.util.DesugarTimeZone"
+-      },
+-      "custom_conversion": {
+-        "java.time.ZonedDateTime": "java.time.TimeConversions",
+-        "java.time.LocalDate": "java.time.TimeConversions",
+-        "java.time.Duration": "java.time.TimeConversions",
+-        "java.time.ZoneId": "java.time.TimeConversions",
+-        "java.time.MonthDay": "java.time.TimeConversions",
+-        "java.time.Instant": "java.time.TimeConversions"
+-      }
+-    },
+-    {
+-      "api_level_below_or_equal": 23,
+-      "rewrite_prefix": {
+-        "j$.util.Optional": "java.util.Optional",
+-        "j$.util.LongSummaryStatistics": "java.util.LongSummaryStatistics",
+-        "j$.util.IntSummaryStatistics": "java.util.IntSummaryStatistics",
+-        "j$.util.DoubleSummaryStatistics": "java.util.DoubleSummaryStatistics",
+-        "java.util.stream.": "j$.util.stream.",
+-        "java.util.function.": "j$.util.function.",
+-        "java.util.Comparators": "j$.util.Comparators",
+-        "java.util.DoubleSummaryStatistics": "j$.util.DoubleSummaryStatistics",
+-        "java.util.IntSummaryStatistics": "j$.util.IntSummaryStatistics",
+-        "java.util.LongSummaryStatistics": "j$.util.LongSummaryStatistics",
+-        "java.util.Objects": "j$.util.Objects",
+-        "java.util.Optional": "j$.util.Optional",
+-        "java.util.PrimitiveIterator": "j$.util.PrimitiveIterator",
+-        "java.util.SortedSet$1": "j$.util.SortedSet$1",
+-        "java.util.Spliterator": "j$.util.Spliterator",
+-        "java.util.StringJoiner": "j$.util.StringJoiner",
+-        "java.util.Tripwire": "j$.util.Tripwire",
+-        "java.util.concurrent.DesugarUnsafe": "j$.util.concurrent.DesugarUnsafe",
+-        "java.util.concurrent.ThreadLocalRandom": "j$.util.concurrent.ThreadLocalRandom",
+-        "java.util.concurrent.atomic.DesugarAtomic": "j$.util.concurrent.atomic.DesugarAtomic"
+-      },
+-      "retarget_lib_member": {
+-        "java.util.Arrays#stream": "java.util.DesugarArrays",
+-        "java.util.Arrays#spliterator": "java.util.DesugarArrays",
+-        "java.util.LinkedHashSet#spliterator": "java.util.DesugarLinkedHashSet"
+-      },
+-      "dont_rewrite": [
+-        "java.util.Iterator#remove"
+-      ],
+-      "emulate_interface": {
+-        "java.lang.Iterable": "j$.lang.Iterable",
+-        "java.util.Map$Entry": "j$.util.Map$Entry",
+-        "java.util.Collection": "j$.util.Collection",
+-        "java.util.Map": "j$.util.Map",
+-        "java.util.Iterator": "j$.util.Iterator",
+-        "java.util.Comparator": "j$.util.Comparator",
+-        "java.util.List": "j$.util.List",
+-        "java.util.SortedSet": "j$.util.SortedSet",
+-        "java.util.Set": "j$.util.Set",
+-        "java.util.concurrent.ConcurrentMap": "j$.util.concurrent.ConcurrentMap"
+-      },
+-      "custom_conversion": {
+-        "java.util.Optional": "java.util.OptionalConversions",
+-        "java.util.OptionalDouble": "java.util.OptionalConversions",
+-        "java.util.OptionalInt": "java.util.OptionalConversions",
+-        "java.util.OptionalLong": "java.util.OptionalConversions",
+-        "java.util.LongSummaryStatistics": "java.util.LongSummaryStatisticsConversions",
+-        "java.util.IntSummaryStatistics": "java.util.IntSummaryStatisticsConversions",
+-        "java.util.DoubleSummaryStatistics": "java.util.DoubleSummaryStatisticsConversions"
+-      }
+-    }
+-  ],
+-  "program_flags": [
+-    {
+-      "api_level_below_or_equal": 25,
+-      "rewrite_prefix": {
+-        "java.time.": "j$.time.",
+-        "java.util.Desugar": "j$.util.Desugar"
+-      },
+-      "retarget_lib_member": {
+-        "java.util.Calendar#toInstant": "java.util.DesugarCalendar",
+-        "java.util.Date#from": "java.util.DesugarDate",
+-        "java.util.Date#toInstant": "java.util.DesugarDate",
+-        "java.util.GregorianCalendar#from": "java.util.DesugarGregorianCalendar",
+-        "java.util.GregorianCalendar#toZonedDateTime": "java.util.DesugarGregorianCalendar",
+-        "java.util.TimeZone#toZoneId": "java.util.DesugarTimeZone"
+-      },
+-      "custom_conversion": {
+-        "java.time.ZonedDateTime": "java.time.TimeConversions",
+-        "java.time.LocalDate": "java.time.TimeConversions",
+-        "java.time.Duration": "java.time.TimeConversions",
+-        "java.time.ZoneId": "java.time.TimeConversions",
+-        "java.time.MonthDay": "java.time.TimeConversions",
+-        "java.time.Instant": "java.time.TimeConversions"
+-      }
+-    },
+-    {
+-      "api_level_below_or_equal": 23,
+-      "rewrite_prefix": {
+-        "java.util.stream.": "j$.util.stream.",
+-        "java.util.function.": "j$.util.function.",
+-        "java.util.DoubleSummaryStatistics": "j$.util.DoubleSummaryStatistics",
+-        "java.util.IntSummaryStatistics": "j$.util.IntSummaryStatistics",
+-        "java.util.LongSummaryStatistics": "j$.util.LongSummaryStatistics",
+-        "java.util.Optional": "j$.util.Optional",
+-        "java.util.PrimitiveIterator": "j$.util.PrimitiveIterator",
+-        "java.util.Spliterator": "j$.util.Spliterator",
+-        "java.util.StringJoiner": "j$.util.StringJoiner",
+-        "java.util.concurrent.ThreadLocalRandom": "j$.util.concurrent.ThreadLocalRandom",
+-        "java.util.concurrent.atomic.DesugarAtomic": "j$.util.concurrent.atomic.DesugarAtomic"
+-      },
+-      "retarget_lib_member": {
+-        "java.util.Arrays#stream": "java.util.DesugarArrays",
+-        "java.util.Arrays#spliterator": "java.util.DesugarArrays",
+-        "java.util.LinkedHashSet#spliterator": "java.util.DesugarLinkedHashSet",
+-        "java.util.concurrent.atomic.AtomicInteger#getAndUpdate": "java.util.concurrent.atomic.DesugarAtomicInteger",
+-        "java.util.concurrent.atomic.AtomicInteger#updateAndGet": "java.util.concurrent.atomic.DesugarAtomicInteger",
+-        "java.util.concurrent.atomic.AtomicInteger#getAndAccumulate": "java.util.concurrent.atomic.DesugarAtomicInteger",
+-        "java.util.concurrent.atomic.AtomicInteger#accumulateAndGet": "java.util.concurrent.atomic.DesugarAtomicInteger",
+-        "java.util.concurrent.atomic.AtomicLong#getAndUpdate": "java.util.concurrent.atomic.DesugarAtomicLong",
+-        "java.util.concurrent.atomic.AtomicLong#updateAndGet": "java.util.concurrent.atomic.DesugarAtomicLong",
+-        "java.util.concurrent.atomic.AtomicLong#getAndAccumulate": "java.util.concurrent.atomic.DesugarAtomicLong",
+-        "java.util.concurrent.atomic.AtomicLong#accumulateAndGet": "java.util.concurrent.atomic.DesugarAtomicLong",
+-        "java.util.concurrent.atomic.AtomicReference#getAndUpdate": "java.util.concurrent.atomic.DesugarAtomicReference",
+-        "java.util.concurrent.atomic.AtomicReference#updateAndGet": "java.util.concurrent.atomic.DesugarAtomicReference",
+-        "java.util.concurrent.atomic.AtomicReference#getAndAccumulate": "java.util.concurrent.atomic.DesugarAtomicReference",
+-        "java.util.concurrent.atomic.AtomicReference#accumulateAndGet": "java.util.concurrent.atomic.DesugarAtomicReference",
+-        "java.util.Collections#synchronizedMap": "java.util.DesugarCollections",
+-        "java.util.Collections#synchronizedSortedMap": "java.util.DesugarCollections"
+-      },
+-      "dont_rewrite": [
+-        "java.util.Iterator#remove"
+-      ],
+-      "emulate_interface": {
+-        "java.lang.Iterable": "j$.lang.Iterable",
+-        "java.util.Map$Entry": "j$.util.Map$Entry",
+-        "java.util.Collection": "j$.util.Collection",
+-        "java.util.Map": "j$.util.Map",
+-        "java.util.Iterator": "j$.util.Iterator",
+-        "java.util.Comparator": "j$.util.Comparator",
+-        "java.util.List": "j$.util.List",
+-        "java.util.SortedSet": "j$.util.SortedSet",
+-        "java.util.Set": "j$.util.Set",
+-        "java.util.concurrent.ConcurrentMap": "j$.util.concurrent.ConcurrentMap"
+-      },
+-      "custom_conversion": {
+-        "java.util.Optional": "java.util.OptionalConversions",
+-        "java.util.OptionalDouble": "java.util.OptionalConversions",
+-        "java.util.OptionalInt": "java.util.OptionalConversions",
+-        "java.util.OptionalLong": "java.util.OptionalConversions",
+-        "java.util.LongSummaryStatistics": "java.util.LongSummaryStatisticsConversions",
+-        "java.util.IntSummaryStatistics": "java.util.IntSummaryStatisticsConversions",
+-        "java.util.DoubleSummaryStatistics": "java.util.DoubleSummaryStatisticsConversions"
+-      }
+-    }
+-  ],
+-  "shrinker_config": [
+-    "-keepclassmembers enum * { public static **[] values(); public static ** valueOf(java.lang.String); public static final !synthetic <fields>; }",
+-    "-keeppackagenames j$",
+-    "-keepclassmembers class j$.util.IntSummaryStatistics { long count; long sum; int min; int max; }",
+-    "-keepclassmembers class j$.util.LongSummaryStatistics { long count; long sum; long min; long max; }",
+-    "-keepclassmembers class j$.util.DoubleSummaryStatistics { long count; double sum; double min; double max; }",
+-    "-keepattributes Signature",
+-    "-keepattributes EnclosingMethod",
+-    "-keepattributes InnerClasses"
+-  ]
+-}
+diff --git a/third_party/r8/playground/.gitignore b/third_party/r8/playground/.gitignore
+deleted file mode 100644
+index 7a72c282e..000000000
+--- a/third_party/r8/playground/.gitignore
++++ /dev/null
+@@ -1,3 +0,0 @@
+-*.class
+-*.dex
+-dexdump.txt
+diff --git a/third_party/r8/playground/Playground.java b/third_party/r8/playground/Playground.java
+deleted file mode 100644
+index 88dd6f7ee..000000000
+--- a/third_party/r8/playground/Playground.java
++++ /dev/null
+@@ -1,16 +0,0 @@
+-// Copyright 2020 The Chromium Authors. All rights reserved.
+-// Use of this source code is governed by a BSD-style license that can be
+-// found in the LICENSE file.
+-
+-/**
+- * Add a snippet of code here that you want to test the optimization of.
+- */
+-public class Playground
+-{
+-    public static void main(String[] args)
+-    {
+-        System.out.println("Your test here");
+-    }
+-
+-    private static native boolean ensureSideEffects();
+-}
+diff --git a/third_party/r8/playground/build.sh b/third_party/r8/playground/build.sh
+deleted file mode 100755
+index e9688c455..000000000
+--- a/third_party/r8/playground/build.sh
++++ /dev/null
+@@ -1,19 +0,0 @@
+-#!/bin/bash
+-# Copyright 2020 The Chromium Authors. All rights reserved.
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+-# Usage:
+-# Make edits to *.java and *.pgcfg
+-# Then run: ./build.sh | less
+-
+-
+-# Finds any version of dexdump available
+-dexdumps=( ../../android_sdk/public/build-tools/*/dexdump )
+-DEXDUMP=${dexdumps[0]}
+-
+-rm -f *.class
+-javac *.java && \
+-java -cp ../lib/r8.jar com.android.tools.r8.R8 *.class --output . --lib ../../jdk/current --no-minification --pg-conf playground.pgcfg && \
+-$DEXDUMP -d classes.dex > dexdump.txt
+-echo 'dexdump.txt updated.'
+diff --git a/third_party/r8/playground/playground.pgcfg b/third_party/r8/playground/playground.pgcfg
+deleted file mode 100644
+index e26f90873..000000000
+--- a/third_party/r8/playground/playground.pgcfg
++++ /dev/null
+@@ -1,9 +0,0 @@
+-# Copyright 2020 The Chromium Authors. All rights reserved.
+-# Use of this source code is governed by a BSD-style license that can be
+-# found in the LICENSE file.
+-
+--allowaccessmodification
+-
+--keep,allowoptimization class Playground {
+-  void main(...);
+-}
+-- 
+2.49.0
+

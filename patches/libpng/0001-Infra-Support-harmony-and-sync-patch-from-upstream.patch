@@ -1,0 +1,120 @@
+From 27a3cade8f244bcf617a6dd83dfd4b37ab133570 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 11 Sep 2025 19:10:28 +0800
+Subject: [PATCH] [Infra] Support harmony and sync patch from upstream.
+
+---
+ BUILD.gn   | 12 ++++++++----
+ pngpriv.h  |  4 ++--
+ pngread.c  |  7 ++-----
+ pngrutil.c |  4 ++--
+ 4 files changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 5cc27330f..49b47ac68 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -30,7 +30,7 @@ source_set("libpng") {
+     "pngwutil.c",
+   ]
+ 
+-  if ((is_android || is_linux || is_fuchsia || is_ios) &&
++  if ((is_android || is_linux || is_fuchsia || is_ios || is_mac || is_tvos || is_harmony) &&
+        (current_cpu == "arm" || current_cpu == "arm64")) {
+     sources += [
+       "arm/arm_init.c",
+@@ -44,7 +44,11 @@ source_set("libpng") {
+     cflags_c += [ "-Wno-sign-compare" ]
+   }
+ 
+-  deps = [
+-    "//third_party/zlib",
+-  ]
++  if (defined(use_system_zlib) && use_system_zlib) {
++    libs = [ "z" ]
++  } else {
++    deps = [
++      "//third_party/zlib",
++    ]
++  }
+ }
+diff --git a/pngpriv.h b/pngpriv.h
+index 583c26f9b..43b00b1c8 100644
+--- a/pngpriv.h
++++ b/pngpriv.h
+@@ -43,6 +43,7 @@
+ /* Standard library headers not required by png.h: */
+ #  include <stdlib.h>
+ #  include <string.h>
++#  include <stdint.h>
+ #endif
+ 
+ #define PNGLIB_BUILD /*libpng is being built, not used*/
+@@ -603,8 +604,7 @@
+ /* This implicitly assumes alignment is always to a power of 2. */
+ #ifdef png_alignof
+ #  define png_isaligned(ptr, type)\
+-   (((type)((const char*)ptr-(const char*)0) & \
+-   (type)(png_alignof(type)-1)) == 0)
++   ((((uintptr_t)ptr) & (png_alignof(type)-1)) == 0)
+ #else
+ #  define png_isaligned(ptr, type) 0
+ #endif
+diff --git a/pngread.c b/pngread.c
+index 8fa7d9f16..96996ced5 100644
+--- a/pngread.c
++++ b/pngread.c
+@@ -3452,7 +3452,6 @@ png_image_read_background(png_voidp argument)
+ 
+             for (pass = 0; pass < passes; ++pass)
+             {
+-               png_bytep row = png_voidcast(png_bytep, display->first_row);
+                unsigned int     startx, stepx, stepy;
+                png_uint_32      y;
+ 
+@@ -3557,8 +3556,6 @@ png_image_read_background(png_voidp argument)
+ 
+                         inrow += 2; /* gray and alpha channel */
+                      }
+-
+-                     row += display->row_bytes;
+                   }
+                }
+             }
+@@ -3765,13 +3762,13 @@ png_image_read_direct(png_voidp argument)
+          mode = PNG_ALPHA_PNG;
+          output_gamma = PNG_DEFAULT_sRGB;
+       }
+-      
++
+       if ((change & PNG_FORMAT_FLAG_ASSOCIATED_ALPHA) != 0)
+       {
+          mode = PNG_ALPHA_OPTIMIZED;
+          change &= ~PNG_FORMAT_FLAG_ASSOCIATED_ALPHA;
+       }
+-      
++
+       /* If 'do_local_background' is set check for the presence of gamma
+        * correction; this is part of the work-round for the libpng bug
+        * described above.
+diff --git a/pngrutil.c b/pngrutil.c
+index d5fa08c39..fecbb4f90 100644
+--- a/pngrutil.c
++++ b/pngrutil.c
+@@ -4621,11 +4621,11 @@ defined(PNG_USER_TRANSFORM_PTR_SUPPORTED)
+        */
+       {
+          png_bytep temp = png_ptr->big_row_buf + 32;
+-         int extra = (int)((temp - (png_bytep)0) & 0x0f);
++         int extra = (int)(((uintptr_t)temp) & 0x0f);
+          png_ptr->row_buf = temp - extra - 1/*filter byte*/;
+ 
+          temp = png_ptr->big_prev_row + 32;
+-         extra = (int)((temp - (png_bytep)0) & 0x0f);
++         extra = (int)(((uintptr_t)temp) & 0x0f);
+          png_ptr->prev_row = temp - extra - 1/*filter byte*/;
+       }
+ 
+-- 
+2.49.0
+
