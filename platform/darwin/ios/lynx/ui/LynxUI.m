@@ -2852,12 +2852,13 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
       // when parent is root ui, return false.
       if ([parent isKindOfClass:[LynxRootUI class]]) {
         isEventThrough = NO;
+      } else {
+        CGPoint targetPoint = point;
+        if ([parent isKindOfClass:[LynxUI class]]) {
+          targetPoint = [self.view convertPoint:point toView:((LynxUI*)parent).view];
+        }
+        isEventThrough = [parent eventThrough:targetPoint];
       }
-      CGPoint targetPoint = point;
-      if ([parent isKindOfClass:[LynxUI class]]) {
-        targetPoint = [self.view convertPoint:point toView:((LynxUI*)parent).view];
-      }
-      isEventThrough = [parent eventThrough:targetPoint];
     }
   }
 

@@ -101,7 +101,9 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"hit-slop", &UIBase::SetHitSlop},
     {"ignore-focus", &UIBase::SetIgnoreFocus},
     {"event-through", &UIBase::SetEventThrough},
+    {"event-through-active-regions", &UIBase::SetEventThroughActiveRegions},
     {"block-native-event", &UIBase::SetBlockNativeEvent},
+    {"block-native-event-areas", &UIBase::SetBlockNativeEventAreas},
     {"consume-slide-event", &UIBase::SetConsumeSlideEvent},
     {"enable-touch-pseudo-propagation",
      &UIBase::SetEnableTouchPseudoPropagation},
@@ -953,7 +955,7 @@ void UIBase::SetNativeInteractionEnabled(const lepus::Value& value) {
 void UIBase::SetHitSlop(const lepus::Value& value) {
   float slop = 0;
   if (value.IsString()) {
-    slop = ToVPFromUnitValue(value.StdString());
+    slop = ToVPFromUnitValue(value.StdString()).GetValue(0);
     if (base::FloatsNotEqual(slop, -hit_slop_left_) ||
         base::FloatsNotEqual(slop, hit_slop_right_) ||
         base::FloatsNotEqual(slop, -hit_slop_top_) ||
@@ -968,17 +970,20 @@ void UIBase::SetHitSlop(const lepus::Value& value) {
     return;
   }
   tasm::ForEachLepusValue(value, [this](const auto& key, const auto& val) {
-    auto slop = ToVPFromUnitValue(val.StdString());
     if (key.StdString() == "left") {
+      float slop = ToVPFromUnitValue(val.StdString()).GetValue(width_);
       hit_slop_left_ =
           base::FloatsNotEqual(slop, hit_slop_left_) ? slop : hit_slop_left_;
     } else if (key.StdString() == "right") {
+      float slop = ToVPFromUnitValue(val.StdString()).GetValue(width_);
       hit_slop_right_ =
           base::FloatsNotEqual(slop, hit_slop_right_) ? slop : hit_slop_right_;
     } else if (key.StdString() == "top") {
+      float slop = ToVPFromUnitValue(val.StdString()).GetValue(height_);
       hit_slop_top_ =
           base::FloatsNotEqual(slop, hit_slop_top_) ? slop : hit_slop_top_;
     } else if (key.StdString() == "bottom") {
+      float slop = ToVPFromUnitValue(val.StdString()).GetValue(height_);
       hit_slop_bottom_ = base::FloatsNotEqual(slop, hit_slop_bottom_)
                              ? slop
                              : hit_slop_bottom_;
@@ -1008,10 +1013,41 @@ void UIBase::SetEventThrough(const lepus::Value& value) {
   }
 }
 
+void UIBase::ParseRegionArray(
+    const lepus::Value& value,
+    std::vector<std::vector<PlatformLength>>& regions) {
+  regions.clear();
+  if (!value.IsArrayOrJSArray()) {
+    return;
+  }
+
+  tasm::ForEachLepusValue(
+      value, [this, &regions](const auto& index, const auto& region) {
+        if (region.IsArrayOrJSArray() && region.GetLength() == 4) {
+          std::vector<PlatformLength> region_vec(4);
+          tasm::ForEachLepusValue(
+              region, [this, &region_vec](const auto& index, const auto& str) {
+                auto size_str = str.StdString();
+                int idx = index.Number();
+                region_vec[idx] = ToVPFromUnitValue(size_str);
+              });
+          regions.push_back(region_vec);
+        }
+      });
+}
+
+void UIBase::SetEventThroughActiveRegions(const lepus::Value& value) {
+  ParseRegionArray(value, event_through_active_regions_);
+}
+
 void UIBase::SetBlockNativeEvent(const lepus::Value& value) {
   if (value.IsBool()) {
     block_native_event_ = value.Bool();
   }
+}
+
+void UIBase::SetBlockNativeEventAreas(const lepus::Value& value) {
+  ParseRegionArray(value, block_native_event_areas_);
 }
 
 void UIBase::SetConsumeSlideEvent(const lepus::Value& value) {
@@ -1201,11 +1237,17 @@ void UIBase::SetExposureScene(const lepus::Value& value) {
   }
 }
 
-float UIBase::ToVPFromUnitValue(const std::string& value) {
+PlatformLength UIBase::ToVPFromUnitValue(const std::string& value) {
+  if (!value.empty() && value.rfind("%") == value.size() - 1) {
+    return PlatformLength(std::stof(value.substr(0, value.size() - 1)) / 100.f,
+                          PlatformLengthType::kPercentage);
+  }
   float screen_size[2] = {0.f};
   context_->ScreenSize(screen_size);
-  return LynxUnitUtils::ToVPFromUnitValue(value, screen_size[0],
-                                          context_->DevicePixelRatio());
+  return PlatformLength(
+      LynxUnitUtils::ToVPFromUnitValue(value, screen_size[0],
+                                       context_->DevicePixelRatio()),
+      PlatformLengthType::kNumber);
 }
 
 void UIBase::SetExposureScreenMarginLeft(const lepus::Value& value) {
@@ -1213,7 +1255,7 @@ void UIBase::SetExposureScreenMarginLeft(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(width_);
   }
   exposure_screen_margin_left_ = num;
   new_exposure_props_["exposure-screen-margin-left"] = value;
@@ -1224,7 +1266,7 @@ void UIBase::SetExposureScreenMarginRight(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(width_);
   }
   exposure_screen_margin_right_ = num;
   new_exposure_props_["exposure-screen-margin-right"] = value;
@@ -1235,7 +1277,7 @@ void UIBase::SetExposureScreenMarginTop(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(height_);
   }
   exposure_screen_margin_top_ = num;
   new_exposure_props_["exposure-screen-margin-top"] = value;
@@ -1246,7 +1288,7 @@ void UIBase::SetExposureScreenMarginBottom(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(height_);
   }
   exposure_screen_margin_bottom_ = num;
   new_exposure_props_["exposure-screen-margin-bottom"] = value;
@@ -1257,7 +1299,7 @@ void UIBase::SetExposureUIMarginLeft(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(width_);
   }
   exposure_ui_margin_left_ = num;
   new_exposure_props_["exposure-ui-margin-left"] = value;
@@ -1268,7 +1310,7 @@ void UIBase::SetExposureUIMarginRight(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(width_);
   }
   exposure_ui_margin_right_ = num;
   new_exposure_props_["exposure-ui-margin-right"] = value;
@@ -1279,7 +1321,7 @@ void UIBase::SetExposureUIMarginTop(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(height_);
   }
   exposure_ui_margin_top_ = num;
   new_exposure_props_["exposure-ui-margin-top"] = value;
@@ -1290,7 +1332,7 @@ void UIBase::SetExposureUIMarginBottom(const lepus::Value& value) {
   if (value.IsNumber()) {
     num = value.Number();
   } else if (value.IsString()) {
-    num = ToVPFromUnitValue(value.StdString());
+    num = ToVPFromUnitValue(value.StdString()).GetValue(height_);
   }
   exposure_ui_margin_bottom_ = num;
   new_exposure_props_["exposure-ui-margin-bottom"] = value;
@@ -2028,23 +2070,75 @@ void UIBase::GetPointInTarget(float res[2], EventTarget* parent_target,
       res, static_cast<UIBase*>(parent_target), this, point);
 }
 
-bool UIBase::BlockNativeEvent() { return block_native_event_; }
-
-bool UIBase::EventThrough() {
-  if (event_through_ == LynxEventPropStatus::kEnable) {
+bool UIBase::BlockNativeEvent(float point[2]) {
+  if (block_native_event_) {
     return true;
-  } else if (event_through_ == LynxEventPropStatus::kDisable) {
+  }
+  if (block_native_event_areas_.empty()) {
     return false;
   }
 
-  EventTarget* parent = this->ParentTarget();
-  while (parent) {
-    if (parent == context_->Root()) {
-      return false;
+  bool is_hit_block_native_event_areas = false;
+  for (const auto& area : block_native_event_areas_) {
+    float x = area[0].GetValue(width_);
+    float y = area[1].GetValue(height_);
+    float w = area[2].GetValue(width_);
+    float h = area[3].GetValue(height_);
+    is_hit_block_native_event_areas =
+        base::FloatsLargerOrEqual(point[0], x) &&
+        base::FloatsLargerOrEqual(x + w, point[0]) &&
+        base::FloatsLargerOrEqual(point[1], y) &&
+        base::FloatsLargerOrEqual(y + h, point[1]);
+    if (is_hit_block_native_event_areas) {
+      break;
     }
-    return parent->EventThrough();
   }
-  return false;
+  return is_hit_block_native_event_areas;
+}
+
+bool UIBase::EventThrough(float point[2]) {
+  bool is_event_through = false;
+  if (event_through_ == LynxEventPropStatus::kEnable) {
+    is_event_through = true;
+  } else if (event_through_ == LynxEventPropStatus::kDisable) {
+    is_event_through = false;
+  } else {
+    EventTarget* parent = this->ParentTarget();
+    if (parent) {
+      if (parent == context_->Root()) {
+        is_event_through = false;
+      } else {
+        float target_point[2] = {point[0], point[1]};
+        if (parent->HasUI()) {
+          LynxUIHelper::ConvertPointFromDescendantToAncestor(
+              target_point, this, static_cast<UIBase*>(parent), point);
+        }
+        is_event_through = parent->EventThrough(target_point);
+      }
+    }
+  }
+
+  if (event_through_active_regions_.empty()) {
+    return is_event_through;
+  }
+
+  bool is_hit_event_through_active_regions = false;
+  for (const auto& region : event_through_active_regions_) {
+    float x = region[0].GetValue(width_);
+    float y = region[1].GetValue(height_);
+    float w = region[2].GetValue(width_);
+    float h = region[3].GetValue(height_);
+    is_hit_event_through_active_regions =
+        base::FloatsLargerOrEqual(point[0], x) &&
+        base::FloatsLargerOrEqual(x + w, point[0]) &&
+        base::FloatsLargerOrEqual(point[1], y) &&
+        base::FloatsLargerOrEqual(y + h, point[1]);
+    if (is_hit_event_through_active_regions) {
+      break;
+    }
+  }
+  return is_hit_event_through_active_regions ? is_event_through
+                                             : !is_event_through;
 }
 
 bool UIBase::IgnoreFocus() {

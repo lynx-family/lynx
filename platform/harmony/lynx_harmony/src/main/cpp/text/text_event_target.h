@@ -44,8 +44,8 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override{};
-  bool BlockNativeEvent() override;
-  bool EventThrough() override;
+  bool BlockNativeEvent(float point[2]) override;
+  bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
   ConsumeSlideDirection ConsumeSlideEvent() override;
   EventTarget* HitTest(float point[2]) override;

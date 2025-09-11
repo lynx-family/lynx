@@ -257,6 +257,15 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
       first_active_target_ = best_hittest_target->WeakTarget();
+      UIBase* root = root_target_.expired()
+                         ? nullptr
+                         : static_cast<UIBase*>(root_target_.lock().get());
+      UIBase* target_ui =
+          best_hittest_target->HasUI()
+              ? static_cast<UIBase*>(best_hittest_target)
+              : static_cast<UIBase*>(best_hittest_target->FirstUITarget());
+      LynxUIHelper::ConvertPointFromAncestorToDescendant(
+          first_finger_down_point_, root, target_ui, page_point);
     }
     active_target_finger_map_.insert_or_assign(
         OH_ArkUI_PointerEvent_GetPointerId(event, i),
@@ -354,6 +363,8 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+      first_finger_down_point_[0] = 0;
+      first_finger_down_point_[1] = 0;
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -369,6 +380,8 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+      first_finger_down_point_[0] = 0;
+      first_finger_down_point_[1] = 0;
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -783,7 +796,7 @@ bool EventDispatcher::EventThrough() {
   if (first_active_target_.expired()) {
     return false;
   }
-  return first_active_target_.lock()->EventThrough();
+  return first_active_target_.lock()->EventThrough(first_finger_down_point_);
 }
 
 bool EventDispatcher::ShouldInterceptGesture() {
@@ -807,7 +820,7 @@ bool EventDispatcher::ShouldBlockNativeEvent() {
 
   auto target = first_active_target_.lock().get();
   while (target != nullptr && target->ParentTarget() != target) {
-    if (target->BlockNativeEvent()) {
+    if (target->BlockNativeEvent(first_finger_down_point_)) {
       return true;
     }
     target = target->ParentTarget();
@@ -859,7 +872,14 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
   if (active_target == nullptr) {
     return false;
   }
-  return !active_target->EventThrough();
+  float target_point[2] = {point[0], point[1]};
+  UIBase* target_ui =
+      active_target->HasUI()
+          ? static_cast<UIBase*>(active_target)
+          : static_cast<UIBase*>(active_target->FirstUITarget());
+  LynxUIHelper::ConvertPointFromAncestorToDescendant(target_point, root,
+                                                     target_ui, point);
+  return !active_target->EventThrough(target_point);
 }
 
 }  // namespace harmony

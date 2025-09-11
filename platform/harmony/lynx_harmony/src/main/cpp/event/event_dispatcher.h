@@ -161,6 +161,7 @@ class EventDispatcher {
   unsigned int tap_slop_{5};
   bool has_touch_pseudo_{false};
   int32_t long_press_duration_{500};
+  float first_finger_down_point_[2]{0.f};
   ArkUI_GestureRecognizer* long_press_gesture_{nullptr};
   ArkUI_GestureRecognizer* tap_gesture_{nullptr};
   ArkUI_GestureRecognizer* block_outer_pan_gesture_{nullptr};

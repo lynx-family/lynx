@@ -138,7 +138,7 @@ UIIntersectionObserver::UIIntersectionObserver(
       ui_owner_(ui_owner),
       intersection_observer_id_(intersection_observer_id),
       js_component_id_(js_component_id) {
-  if (options.IsTable() || options.IsJSTable()) {
+  if (options.IsObject()) {
     float initial_intersection_ratio = 0.f;
     std::vector<float> intersection_ratio_thresholds;
     tasm::ForEachLepusValue(

@@ -295,7 +295,8 @@ void LynxUIScrollViewInternal::SetInitialScrollOffset(
     first_render_block_array_->push_back(
         new base::MoveOnlyClosure<void, LynxUIScrollViewInternal*>(
             [value](LynxUIScrollViewInternal* ui) {
-              float offset = ui->ToVPFromUnitValue(value.StdString());
+              float offset =
+                  ui->ToVPFromUnitValue(value.StdString()).GetValue(0);
               float content_offset[2] = {offset, offset};
               FormatOffset(content_offset, ui, false);
               ui->scroll_view_->ScrollTo(content_offset);
@@ -303,10 +304,10 @@ void LynxUIScrollViewInternal::SetInitialScrollOffset(
   }
 }
 void LynxUIScrollViewInternal::SetUpperThreshold(const lepus::Value& value) {
-  upper_threshold_ = ToVPFromUnitValue(value.StdString());
+  upper_threshold_ = ToVPFromUnitValue(value.StdString()).GetValue(0);
 }
 void LynxUIScrollViewInternal::SetLowerThreshold(const lepus::Value& value) {
-  lower_threshold_ = ToVPFromUnitValue(value.StdString());
+  lower_threshold_ = ToVPFromUnitValue(value.StdString()).GetValue(0);
 }
 void LynxUIScrollViewInternal::SetScrollEventThreshold(
     const lepus::Value& value) {
@@ -321,7 +322,8 @@ void LynxUIScrollViewInternal::UIScrollTo(
   bool animated = true;
   int index = 0;
   if (params->Contains("offset")) {
-    offset = ToVPFromUnitValue(params->GetValue("offset").StdString());
+    offset =
+        ToVPFromUnitValue(params->GetValue("offset").StdString()).GetValue(0);
   }
   if (params->Contains("index")) {
     index = static_cast<int32_t>(params->GetValue("index").Number());
@@ -355,7 +357,8 @@ void LynxUIScrollViewInternal::UIScrollBy(
   const auto& params = args.Table();
   float offset = 0.f;
   if (params->Contains("offset")) {
-    offset = ToVPFromUnitValue(params->GetValue("offset").StdString());
+    offset =
+        ToVPFromUnitValue(params->GetValue("offset").StdString()).GetValue(0);
   }
   float delta[2] = {offset, offset};
   scroll_view_->ScrollBy(delta);
@@ -373,7 +376,8 @@ void LynxUIScrollViewInternal::UIAutoScroll(
   if (start) {
     float rate = 0.f;
     if (params->Contains("rate")) {
-      rate = ToVPFromUnitValue(params->GetValue("rate").StdString());
+      rate =
+          ToVPFromUnitValue(params->GetValue("rate").StdString()).GetValue(0);
     }
     rate = rate / 60.0f;
     if (abs(rate) <= 1.0 / context_->DevicePixelRatio()) {

@@ -95,7 +95,7 @@ class LYNX_EXPORT
   void RemoveFromParent();
   void RequestLayout();
   void Invalidate();
-  float ToVPFromUnitValue(const std::string& value);
+  PlatformLength ToVPFromUnitValue(const std::string& value);
   virtual void SetEvents(const std::vector<lepus::Value>& events);
   virtual void InvokeMethod(
       const std::string& method, const lepus::Value& args,
@@ -184,8 +184,8 @@ class LYNX_EXPORT
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override;
-  bool BlockNativeEvent() override;
-  bool EventThrough() override;
+  bool BlockNativeEvent(float point[2]) override;
+  bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
   ConsumeSlideDirection ConsumeSlideEvent() override;
   bool TouchPseudoPropagation() override;
@@ -246,6 +246,8 @@ class LYNX_EXPORT
   bool need_clip_{false};
   std::unique_ptr<NativeNodeContent> node_content_{nullptr};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
+  std::vector<std::vector<PlatformLength>> event_through_active_regions_;
+  std::vector<std::vector<PlatformLength>> block_native_event_areas_;
   /** Used to control whether the viewport clipping of this node is considered
    * during exposure detection.  */
   LynxEventPropStatus enable_exposure_ui_clip_{LynxEventPropStatus::kUndefined};
@@ -327,7 +329,9 @@ class LYNX_EXPORT
   void SetHitSlop(const lepus::Value& value);
   void SetIgnoreFocus(const lepus::Value& value);
   void SetEventThrough(const lepus::Value& value);
+  void SetEventThroughActiveRegions(const lepus::Value& value);
   void SetBlockNativeEvent(const lepus::Value& value);
+  void SetBlockNativeEventAreas(const lepus::Value& value);
   void SetConsumeSlideEvent(const lepus::Value& value);
   void SetEnableTouchPseudoPropagation(const lepus::Value& value);
   void TransformFromViewToRootView(UIBase* ui, std::pair<float, float>& point);
@@ -364,6 +368,8 @@ class LYNX_EXPORT
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   void ApplyOverflowClipPath(float clip_width, float clip_height);
   void ApplyOverflowClipRectangle(float clip_width, float clip_height);
+  void ParseRegionArray(const lepus::Value& value,
+                        std::vector<std::vector<PlatformLength>>& regions);
 
   int sign_;
   using PropSetter = void (UIBase::*)(const lepus::Value& value);

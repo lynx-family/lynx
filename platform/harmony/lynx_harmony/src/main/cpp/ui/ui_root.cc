@@ -165,8 +165,8 @@ void UIRoot::OnNodeReady() {
   }
 }
 
-bool UIRoot::EventThrough() {
-  bool res = UIBase::EventThrough();
+bool UIRoot::EventThrough(float point[2]) {
+  bool res = UIBase::EventThrough(point);
   if (!res) {
     res |= context_->EnableEventThrough();
   }

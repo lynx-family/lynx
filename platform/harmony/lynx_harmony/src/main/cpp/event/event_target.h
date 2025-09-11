@@ -67,9 +67,9 @@ class EventTarget {
 
   virtual PseudoStatus GetPseudoStatus() = 0;
 
-  virtual bool BlockNativeEvent() = 0;
+  virtual bool BlockNativeEvent(float point[2]) = 0;
 
-  virtual bool EventThrough() = 0;
+  virtual bool EventThrough(float point[2]) = 0;
 
   virtual bool IgnoreFocus() = 0;
 

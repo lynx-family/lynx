@@ -16,9 +16,9 @@ EventTarget* TextEventTarget::ParentTarget() { return parent_; }
 
 void TextEventTarget::SetParent(EventTarget* parent) { parent_ = parent; }
 
-bool TextEventTarget::BlockNativeEvent() { return false; }
+bool TextEventTarget::BlockNativeEvent(float point[2]) { return false; }
 
-bool TextEventTarget::EventThrough() {
+bool TextEventTarget::EventThrough(float point[2]) {
   if (event_through_ == LynxEventPropStatus::kEnable) {
     return true;
   } else if (event_through_ == LynxEventPropStatus::kDisable) {
@@ -30,7 +30,7 @@ bool TextEventTarget::EventThrough() {
     if (!parent->ParentTarget()) {
       return false;
     }
-    return parent->EventThrough();
+    return parent->EventThrough(point);
   }
   return false;
 }
