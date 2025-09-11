@@ -97,7 +97,7 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     compileOnly 'androidx.annotation:annotation:1.0.0'
-    implementation 'org.lynxsdk.lynx:debug-router:0.0.15'
+    implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
 }
 
 // Configure the compilation parameters in gn to generate the corresponding CMakeLists.txt files.

@@ -44,7 +44,7 @@ android {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'org.lynxsdk.lynx:debug-router:0.0.15'
+    implementation 'org.lynxsdk.lynx:debug-router:0.0.18'
     compileOnly "androidx.annotation:annotation:1.0.0"
     compileOnly project(':LynxAndroid')
     compileOnly project(':LynxDevtool')
