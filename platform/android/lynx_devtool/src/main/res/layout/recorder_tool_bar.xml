@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="?attr/actionBarSize"
+    android:paddingLeft="8dp"
+    android:paddingRight="8dp">
+
+    <ImageView
+        android:id="@+id/iv_icon_left"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_recorder"
+        android:layout_alignParentLeft="true"  
+        android:layout_centerVertical="true" /> 
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/recorder"
+        android:textSize="25sp"
+        android:textColor="#000000"
+        android:textStyle="bold | italic"
+        android:layout_toRightOf="@id/iv_icon_left" 
+        android:layout_centerVertical="true"     
+        android:layout_marginLeft="5dp"/>        
+
+    <ImageView
+        android:id="@+id/action_refresh"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_action_refresh"
+        android:padding="4dp"
+        android:layout_alignParentRight="true" 
+        android:layout_centerVertical="true"  
+        android:background="?attr/selectableItemBackgroundBorderless" /> 
+
+</RelativeLayout>
+

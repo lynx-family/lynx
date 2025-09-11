@@ -3,29 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/colorPrimaryDark"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        >
-        <ImageView
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:src="@drawable/ic_recorder"
-            android:padding="8dp"
-            android:layout_gravity="left"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="50dp"
-            android:text="@string/recorder"
-            android:textSize="22sp"
-            android:textColor="#000000"
-            android:gravity="center"
-            android:textStyle="bold|italic"
-            android:layout_marginBottom="5dp"/>
-    </androidx.appcompat.widget.Toolbar>
+    <include layout="@layout/recorder_tool_bar"/>
     <RelativeLayout
         android:id="@+id/container"
         android:layout_width="wrap_content"

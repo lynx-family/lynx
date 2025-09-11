@@ -13,13 +13,13 @@ import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.Lifecycle;
@@ -68,23 +68,15 @@ public class LynxRecorderActivity
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
     } else {
       setContentView(R.layout.recorder_activity);
-      ActionBar actionBar = getSupportActionBar();
-      Toolbar toolbar = findViewById(R.id.toolbar);
-      if (actionBar == null) {
-        setSupportActionBar(toolbar);
-        actionBar = getSupportActionBar();
-        if (actionBar != null) {
-          actionBar.setDisplayShowTitleEnabled(false);
+      findViewById(R.id.action_refresh).setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          mActionManager.load();
+          if (mLynxView != null) {
+            mLynxView.onEnterForeground();
+          }
         }
-      } else {
-        ViewGroup parent = (ViewGroup) toolbar.getParent();
-        if (parent != null) {
-          parent.removeView(toolbar);
-        }
-        actionBar.setDisplayShowTitleEnabled(false);
-        actionBar.setCustomView(R.layout.recorder_toolbar_content);
-        actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
-      }
+      });
     }
     if (queryMap.getBoolean("landscape", false)) {
       setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -155,23 +147,6 @@ public class LynxRecorderActivity
     if (mLynxView != null) {
       mLynxView.onEnterBackground();
     }
-  }
-
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
-    getMenuInflater().inflate(R.menu.testbench_menu, menu);
-    return true;
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    if (item.getItemId() == R.id.action_refresh) {
-      mActionManager.load();
-      if (mLynxView != null) {
-        mLynxView.onEnterForeground();
-      }
-    }
-    return super.onOptionsItemSelected(item);
   }
 
   @Override
