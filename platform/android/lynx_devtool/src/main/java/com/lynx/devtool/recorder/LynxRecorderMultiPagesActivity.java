@@ -11,10 +11,10 @@ import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.RelativeLayout;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import com.example.lynxdevtool.R;
@@ -50,14 +50,14 @@ public class LynxRecorderMultiPagesActivity
       getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
     } else {
       setContentView(R.layout.recorder_multi_pages_activity);
-      Toolbar toolbar = findViewById(R.id.toolbar);
-      if (toolbar != null) {
-        setSupportActionBar(toolbar);
-        ActionBar actionBar = getSupportActionBar();
-        if (actionBar != null) {
-          actionBar.setDisplayShowTitleEnabled(false);
+      findViewById(R.id.action_refresh).setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+          for (LynxRecorderView view : mPageInstances) {
+            view.reload();
+          }
         }
-      }
+      });
     }
     if (queryMap.getBoolean("landscape", false)) {
       setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -113,22 +113,6 @@ public class LynxRecorderMultiPagesActivity
     super.onResume();
     LynxDevtoolGlobalHelper helper = LynxDevtoolGlobalHelper.getInstance();
     helper.setContext(getApplicationContext());
-  }
-
-  @Override
-  public boolean onCreateOptionsMenu(Menu menu) {
-    getMenuInflater().inflate(R.menu.testbench_menu, menu);
-    return true;
-  }
-
-  @Override
-  public boolean onOptionsItemSelected(MenuItem item) {
-    if (item.getItemId() == R.id.action_refresh) {
-      for (LynxRecorderView view : mPageInstances) {
-        view.reload();
-      }
-    }
-    return super.onOptionsItemSelected(item);
   }
 
   @Override
