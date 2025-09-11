@@ -377,6 +377,24 @@ LYNX_REGISTER_UI("image")
   }
 }
 
+- (BOOL)needSyncDisplay {
+  if (![self enableAsyncDisplay]) {
+    return YES;
+  }
+  if ([LynxUIImage isAnimatedImage:self.image]) {
+    return YES;
+  }
+  // for auto-size image
+  if (self.autoSize && (self.frame.size.width <= 0 || self.frame.size.height <= 0)) {
+    return YES;
+  }
+  //  When an image has neither padding nor irregular corner radii, use UIView's corner radius
+  //  directly, this delivers better performance.
+  return UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
+         UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero) &&
+         ![self.backgroundManager hasDifferentBorderRadius];
+}
+
 - (bool)updateLayerMaskOnFrameChangedInner:(BOOL)needAsyncDisplay URL:(LynxURL*)requestUrl {
   // we do not need to run super, as overflow is not used for image,
   // border-radius will be processed by itself
@@ -385,11 +403,7 @@ LYNX_REGISTER_UI("image")
   }
   if (needAsyncDisplay) {
     if (self.image != nil) {
-      BOOL isAnimatedImage = [LynxUIImage isAnimatedImage:self.image];
-      if (isAnimatedImage ||
-          (UIEdgeInsetsEqualToEdgeInsets(self.backgroundManager.borderWidth, UIEdgeInsetsZero) &&
-           UIEdgeInsetsEqualToEdgeInsets(self.padding, UIEdgeInsetsZero) &&
-           ![self.backgroundManager hasDifferentBorderRadius])) {
+      if ([self needSyncDisplay]) {
         [self onImageReady:_image withRequest:requestUrl];
       } else {
         __weak typeof(self) weakSelf = self;
