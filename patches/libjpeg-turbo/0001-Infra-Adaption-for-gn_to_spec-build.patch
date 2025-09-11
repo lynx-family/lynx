@@ -1,0 +1,754 @@
+From 7bb5693a466c0884c780f31af359ee78be996fea Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 11 Sep 2025 16:58:27 +0800
+Subject: [PATCH] [Infra] Adaption for gn_to_spec build.
+
+---
+ BUILD.gn                                      | 65 +++++++++++++++----
+ jccolext.c => jccolext.h                      |  0
+ jccolor.c                                     | 14 ++--
+ jcparam.c                                     |  2 +-
+ jdcol565.c => jdcol565.h                      |  2 +-
+ jdcolext.c => jdcolext.h                      |  2 +-
+ jdcolor.c                                     | 18 ++---
+ jdhuff.c                                      |  2 +-
+ jdmerge.c                                     | 18 ++---
+ jdmrg565.c => jdmrg565.h                      |  0
+ jdmrgext.c => jdmrgext.h                      |  2 +-
+ jstdhuff.c => jstdhuff.h                      |  2 +-
+ ...{jccolext-altivec.c => jccolext-altivec.h} |  0
+ simd/jccolor-altivec.c                        | 14 ++--
+ simd/jcgray-altivec.c                         | 14 ++--
+ ...{jcgryext-altivec.c => jcgryext-altivec.h} |  0
+ ...{jdcolext-altivec.c => jdcolext-altivec.h} |  0
+ simd/jdcolor-altivec.c                        | 14 ++--
+ simd/jdmerge-altivec.c                        | 14 ++--
+ ...{jdmrgext-altivec.c => jdmrgext-altivec.h} |  0
+ 20 files changed, 113 insertions(+), 70 deletions(-)
+ rename jccolext.c => jccolext.h (100%)
+ rename jdcol565.c => jdcol565.h (99%)
+ rename jdcolext.c => jdcolext.h (99%)
+ rename jdmrg565.c => jdmrg565.h (100%)
+ rename jdmrgext.c => jdmrgext.h (99%)
+ rename jstdhuff.c => jstdhuff.h (99%)
+ rename simd/{jccolext-altivec.c => jccolext-altivec.h} (100%)
+ rename simd/{jcgryext-altivec.c => jcgryext-altivec.h} (100%)
+ rename simd/{jdcolext-altivec.c => jdcolext-altivec.h} (100%)
+ rename simd/{jdmrgext-altivec.c => jdmrgext-altivec.h} (100%)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 3e9ced00..1ba6ed9c 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -140,13 +140,11 @@ static_library("libjpeg") {
+     "jccolor.c",
+     "jcdctmgr.c",
+     "jchuff.c",
+-    "jchuff.h",
+     "jcinit.c",
+     "jcmainct.c",
+     "jcmarker.c",
+     "jcmaster.c",
+     "jcomapi.c",
+-    "jconfig.h",
+     "jcparam.c",
+     "jcphuff.c",
+     "jcprepct.c",
+@@ -157,10 +155,8 @@ static_library("libjpeg") {
+     "jdatasrc.c",
+     "jdcoefct.c",
+     "jdcolor.c",
+-    "jdct.h",
+     "jddctmgr.c",
+     "jdhuff.c",
+-    "jdhuff.h",
+     "jdinput.c",
+     "jdmainct.c",
+     "jdmarker.c",
+@@ -170,7 +166,6 @@ static_library("libjpeg") {
+     "jdpostct.c",
+     "jdsample.c",
+     "jerror.c",
+-    "jerror.h",
+     "jfdctflt.c",
+     "jfdctfst.c",
+     "jfdctint.c",
+@@ -178,17 +173,11 @@ static_library("libjpeg") {
+     "jidctfst.c",
+     "jidctint.c",
+     "jidctred.c",
+-    "jinclude.h",
+     "jmemmgr.c",
+     "jmemnobs.c",
+-    "jmemsys.h",
+-    "jmorecfg.h",
+-    "jpegint.h",
+-    "jpeglib.h",
+     "jquant1.c",
+     "jquant2.c",
+     "jutils.c",
+-    "jversion.h",
+   ]
+ 
+   defines = [
+@@ -204,3 +193,57 @@ static_library("libjpeg") {
+     ":simd",
+   ]
+ }
++
++static_library("turbojpeg") {
++
++  sources = [
++    "jctrans.c",
++    "jdatadst-tj.c",
++    "jdatasrc-tj.c",
++    "jdtrans.c",
++    "transupp.c",
++    "turbojpeg.c",
++  ]
++
++  public_deps = [
++    ":libjpeg",
++  ]
++}
++
++static_library("turbojpeg_headers") {
++  sources = [
++    "bmp.h",
++    "cderror.h",
++    "cdjpeg.h",
++    "jchuff.h",
++    "jconfig.h",
++    "jconfigint.h",
++    "jdcoefct.h",
++    "jdct.h",
++    "jdhuff.h",
++    "jdmainct.h",
++    "jdmaster.h",
++    "jdsample.h",
++    "jerror.h",
++    "jinclude.h",
++    "jmemsys.h",
++    "jmorecfg.h",
++    "jpeg_nbits_table.h",
++    "jpegcomp.h",
++    "jpegint.h",
++    "jpeglib.h",
++    "jsimd.h",
++    "jsimddct.h",
++    "jversion.h",
++    "tjutil.h",
++    "transupp.h",
++    "turbojpeg.h",
++    "wrppm.h",
++    "jccolext.h",
++    "jdcol565.h",
++    "jdmrgext.h",
++    "jdcolext.h",
++    "jstdhuff.h",
++    "jdmrg565.h"
++  ]
++}
+diff --git a/jccolext.c b/jccolext.h
+similarity index 100%
+rename from jccolext.c
+rename to jccolext.h
+diff --git a/jccolor.c b/jccolor.c
+index b973d101..8bb31378 100644
+--- a/jccolor.c
++++ b/jccolor.c
+@@ -87,7 +87,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ 
+ /* Include inline routines for colorspace extensions */
+ 
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -100,7 +100,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extrgb_ycc_convert_internal
+ #define rgb_gray_convert_internal extrgb_gray_convert_internal
+ #define rgb_rgb_convert_internal extrgb_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -116,7 +116,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extrgbx_ycc_convert_internal
+ #define rgb_gray_convert_internal extrgbx_gray_convert_internal
+ #define rgb_rgb_convert_internal extrgbx_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -132,7 +132,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extbgr_ycc_convert_internal
+ #define rgb_gray_convert_internal extbgr_gray_convert_internal
+ #define rgb_rgb_convert_internal extbgr_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -148,7 +148,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extbgrx_ycc_convert_internal
+ #define rgb_gray_convert_internal extbgrx_gray_convert_internal
+ #define rgb_rgb_convert_internal extbgrx_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -164,7 +164,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extxbgr_ycc_convert_internal
+ #define rgb_gray_convert_internal extxbgr_gray_convert_internal
+ #define rgb_rgb_convert_internal extxbgr_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -180,7 +180,7 @@ typedef my_color_converter *my_cconvert_ptr;
+ #define rgb_ycc_convert_internal extxrgb_ycc_convert_internal
+ #define rgb_gray_convert_internal extxrgb_gray_convert_internal
+ #define rgb_rgb_convert_internal extxrgb_rgb_convert_internal
+-#include "jccolext.c"
++#include "jccolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+diff --git a/jcparam.c b/jcparam.c
+index 18b2d487..00dbff71 100644
+--- a/jcparam.c
++++ b/jcparam.c
+@@ -17,7 +17,7 @@
+ #define JPEG_INTERNALS
+ #include "jinclude.h"
+ #include "jpeglib.h"
+-#include "jstdhuff.c"
++#include "jstdhuff.h"
+ 
+ 
+ /*
+diff --git a/jdcol565.c b/jdcol565.h
+similarity index 99%
+rename from jdcol565.c
+rename to jdcol565.h
+index 349fce4a..ab7c624c 100644
+--- a/jdcol565.c
++++ b/jdcol565.h
+@@ -1,5 +1,5 @@
+ /*
+- * jdcol565.c
++ * jdcol565.h
+  *
+  * This file was part of the Independent JPEG Group's software:
+  * Copyright (C) 1991-1997, Thomas G. Lane.
+diff --git a/jdcolext.c b/jdcolext.h
+similarity index 99%
+rename from jdcolext.c
+rename to jdcolext.h
+index 59b676cc..f07f4f52 100644
+--- a/jdcolext.c
++++ b/jdcolext.h
+@@ -1,5 +1,5 @@
+ /*
+- * jdcolext.c
++ * jdcolext.h
+  *
+  * This file was part of the Independent JPEG Group's software:
+  * Copyright (C) 1991-1997, Thomas G. Lane.
+diff --git a/jdcolor.c b/jdcolor.c
+index ab8fa249..b9d69a98 100644
+--- a/jdcolor.c
++++ b/jdcolor.c
+@@ -92,7 +92,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ 
+ /* Include inline routines for colorspace extensions */
+ 
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -105,7 +105,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extrgb_convert_internal
+ #define gray_rgb_convert_internal gray_extrgb_convert_internal
+ #define rgb_rgb_convert_internal rgb_extrgb_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -122,7 +122,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extrgbx_convert_internal
+ #define gray_rgb_convert_internal gray_extrgbx_convert_internal
+ #define rgb_rgb_convert_internal rgb_extrgbx_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -139,7 +139,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extbgr_convert_internal
+ #define gray_rgb_convert_internal gray_extbgr_convert_internal
+ #define rgb_rgb_convert_internal rgb_extbgr_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -156,7 +156,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extbgrx_convert_internal
+ #define gray_rgb_convert_internal gray_extbgrx_convert_internal
+ #define rgb_rgb_convert_internal rgb_extbgrx_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -174,7 +174,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extxbgr_convert_internal
+ #define gray_rgb_convert_internal gray_extxbgr_convert_internal
+ #define rgb_rgb_convert_internal rgb_extxbgr_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -192,7 +192,7 @@ typedef my_color_deconverter *my_cconvert_ptr;
+ #define ycc_rgb_convert_internal ycc_extxrgb_convert_internal
+ #define gray_rgb_convert_internal gray_extxrgb_convert_internal
+ #define rgb_rgb_convert_internal rgb_extxrgb_convert_internal
+-#include "jdcolext.c"
++#include "jdcolext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -632,7 +632,7 @@ static INLINE boolean is_big_endian(void)
+ #define rgb_rgb565D_convert_internal rgb_rgb565D_convert_le
+ #define gray_rgb565_convert_internal gray_rgb565_convert_le
+ #define gray_rgb565D_convert_internal gray_rgb565D_convert_le
+-#include "jdcol565.c"
++#include "jdcol565.h"
+ #undef PACK_SHORT_565
+ #undef PACK_TWO_PIXELS
+ #undef ycc_rgb565_convert_internal
+@@ -650,7 +650,7 @@ static INLINE boolean is_big_endian(void)
+ #define rgb_rgb565D_convert_internal rgb_rgb565D_convert_be
+ #define gray_rgb565_convert_internal gray_rgb565_convert_be
+ #define gray_rgb565D_convert_internal gray_rgb565D_convert_be
+-#include "jdcol565.c"
++#include "jdcol565.h"
+ #undef PACK_SHORT_565
+ #undef PACK_TWO_PIXELS
+ #undef ycc_rgb565_convert_internal
+diff --git a/jdhuff.c b/jdhuff.c
+index 3c6fdaf1..e21c9891 100644
+--- a/jdhuff.c
++++ b/jdhuff.c
+@@ -22,7 +22,7 @@
+ #include "jpeglib.h"
+ #include "jdhuff.h"             /* Declarations shared with jdphuff.c */
+ #include "jpegcomp.h"
+-#include "jstdhuff.c"
++#include "jstdhuff.h"
+ 
+ 
+ /*
+diff --git a/jdmerge.c b/jdmerge.c
+index 6276dd09..98124faf 100644
+--- a/jdmerge.c
++++ b/jdmerge.c
+@@ -82,7 +82,7 @@ typedef my_upsampler *my_upsample_ptr;
+ 
+ /* Include inline routines for colorspace extensions */
+ 
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -94,7 +94,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_RGB_PIXELSIZE
+ #define h2v1_merged_upsample_internal extrgb_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extrgb_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -109,7 +109,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_RGBX_PIXELSIZE
+ #define h2v1_merged_upsample_internal extrgbx_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extrgbx_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -124,7 +124,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_BGR_PIXELSIZE
+ #define h2v1_merged_upsample_internal extbgr_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extbgr_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -139,7 +139,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_BGRX_PIXELSIZE
+ #define h2v1_merged_upsample_internal extbgrx_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extbgrx_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -155,7 +155,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_XBGR_PIXELSIZE
+ #define h2v1_merged_upsample_internal extxbgr_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extxbgr_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -171,7 +171,7 @@ typedef my_upsampler *my_upsample_ptr;
+ #define RGB_PIXELSIZE EXT_XRGB_PIXELSIZE
+ #define h2v1_merged_upsample_internal extxrgb_h2v1_merged_upsample_internal
+ #define h2v2_merged_upsample_internal extxrgb_h2v2_merged_upsample_internal
+-#include "jdmrgext.c"
++#include "jdmrgext.h"
+ #undef RGB_RED
+ #undef RGB_GREEN
+ #undef RGB_BLUE
+@@ -474,7 +474,7 @@ static const JLONG dither_matrix[4] = {
+ #define h2v1_merged_upsample_565D_internal h2v1_merged_upsample_565D_le
+ #define h2v2_merged_upsample_565_internal h2v2_merged_upsample_565_le
+ #define h2v2_merged_upsample_565D_internal h2v2_merged_upsample_565D_le
+-#include "jdmrg565.c"
++#include "jdmrg565.h"
+ #undef PACK_SHORT_565
+ #undef PACK_TWO_PIXELS
+ #undef WRITE_TWO_PIXELS
+@@ -490,7 +490,7 @@ static const JLONG dither_matrix[4] = {
+ #define h2v1_merged_upsample_565D_internal h2v1_merged_upsample_565D_be
+ #define h2v2_merged_upsample_565_internal h2v2_merged_upsample_565_be
+ #define h2v2_merged_upsample_565D_internal h2v2_merged_upsample_565D_be
+-#include "jdmrg565.c"
++#include "jdmrg565.h"
+ #undef PACK_SHORT_565
+ #undef PACK_TWO_PIXELS
+ #undef WRITE_TWO_PIXELS
+diff --git a/jdmrg565.c b/jdmrg565.h
+similarity index 100%
+rename from jdmrg565.c
+rename to jdmrg565.h
+diff --git a/jdmrgext.c b/jdmrgext.h
+similarity index 99%
+rename from jdmrgext.c
+rename to jdmrgext.h
+index 9d7d2af2..3f5b1dad 100644
+--- a/jdmrgext.c
++++ b/jdmrgext.h
+@@ -1,5 +1,5 @@
+ /*
+- * jdmrgext.c
++ * jdmrgext.h
+  *
+  * This file was part of the Independent JPEG Group's software:
+  * Copyright (C) 1994-1996, Thomas G. Lane.
+diff --git a/jstdhuff.c b/jstdhuff.h
+similarity index 99%
+rename from jstdhuff.c
+rename to jstdhuff.h
+index e202e8e7..709af51a 100644
+--- a/jstdhuff.c
++++ b/jstdhuff.h
+@@ -1,5 +1,5 @@
+ /*
+- * jstdhuff.c
++ * jstdhuff.h
+  *
+  * This file was part of the Independent JPEG Group's software:
+  * Copyright (C) 1991-1998, Thomas G. Lane.
+diff --git a/simd/jccolext-altivec.c b/simd/jccolext-altivec.h
+similarity index 100%
+rename from simd/jccolext-altivec.c
+rename to simd/jccolext-altivec.h
+diff --git a/simd/jccolor-altivec.c b/simd/jccolor-altivec.c
+index ec473320..b8726316 100644
+--- a/simd/jccolor-altivec.c
++++ b/simd/jccolor-altivec.c
+@@ -44,12 +44,12 @@
+ #define RGBG_INDEX1 {12,13,15,16,18,19,21,22,14,13,17,16,20,19,23,22}
+ #define RGBG_INDEX2 {8,9,11,12,14,15,17,18,10,9,13,12,16,15,19,18}
+ #define RGBG_INDEX3 {4,5,7,8,10,11,13,14,6,5,9,8,12,11,15,14}
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ 
+ #define RGB_PIXELSIZE EXT_RGB_PIXELSIZE
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extrgb_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX0
+ #undef RGBG_INDEX1
+@@ -60,7 +60,7 @@
+ #define RGB_PIXELSIZE EXT_RGBX_PIXELSIZE
+ #define RGBG_INDEX {0,1,4,5,8,9,12,13,2,1,6,5,10,9,14,13}
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extrgbx_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_ycc_convert_altivec
+@@ -71,7 +71,7 @@
+ #define RGBG_INDEX2 {10,9,13,12,16,15,19,18,8,9,11,12,14,15,17,18}
+ #define RGBG_INDEX3 {6,5,9,8,12,11,15,14,4,5,7,8,10,11,13,14}
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extbgr_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX0
+ #undef RGBG_INDEX1
+@@ -82,7 +82,7 @@
+ #define RGB_PIXELSIZE EXT_BGRX_PIXELSIZE
+ #define RGBG_INDEX {2,1,6,5,10,9,14,13,0,1,4,5,8,9,12,13}
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extbgrx_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_ycc_convert_altivec
+@@ -90,7 +90,7 @@
+ #define RGB_PIXELSIZE EXT_XBGR_PIXELSIZE
+ #define RGBG_INDEX {3,2,7,6,11,10,15,14,1,2,5,6,9,10,13,14}
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extxbgr_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_ycc_convert_altivec
+@@ -98,7 +98,7 @@
+ #define RGB_PIXELSIZE EXT_XRGB_PIXELSIZE
+ #define RGBG_INDEX {1,2,5,6,9,10,13,14,3,2,7,6,11,10,15,14}
+ #define jsimd_rgb_ycc_convert_altivec jsimd_extxrgb_ycc_convert_altivec
+-#include "jccolext-altivec.c"
++#include "jccolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_ycc_convert_altivec
+diff --git a/simd/jcgray-altivec.c b/simd/jcgray-altivec.c
+index 684df5ef..72d7132b 100644
+--- a/simd/jcgray-altivec.c
++++ b/simd/jcgray-altivec.c
+@@ -39,12 +39,12 @@
+ #define RGBG_INDEX1 {12,13,15,16,18,19,21,22,14,13,17,16,20,19,23,22}
+ #define RGBG_INDEX2 {8,9,11,12,14,15,17,18,10,9,13,12,16,15,19,18}
+ #define RGBG_INDEX3 {4,5,7,8,10,11,13,14,6,5,9,8,12,11,15,14}
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ 
+ #define RGB_PIXELSIZE EXT_RGB_PIXELSIZE
+ #define jsimd_rgb_gray_convert_altivec jsimd_extrgb_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX0
+ #undef RGBG_INDEX1
+@@ -55,7 +55,7 @@
+ #define RGB_PIXELSIZE EXT_RGBX_PIXELSIZE
+ #define RGBG_INDEX {0,1,4,5,8,9,12,13,2,1,6,5,10,9,14,13}
+ #define jsimd_rgb_gray_convert_altivec jsimd_extrgbx_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_gray_convert_altivec
+@@ -66,7 +66,7 @@
+ #define RGBG_INDEX2 {10,9,13,12,16,15,19,18,8,9,11,12,14,15,17,18}
+ #define RGBG_INDEX3 {6,5,9,8,12,11,15,14,4,5,7,8,10,11,13,14}
+ #define jsimd_rgb_gray_convert_altivec jsimd_extbgr_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX0
+ #undef RGBG_INDEX1
+@@ -77,7 +77,7 @@
+ #define RGB_PIXELSIZE EXT_BGRX_PIXELSIZE
+ #define RGBG_INDEX {2,1,6,5,10,9,14,13,0,1,4,5,8,9,12,13}
+ #define jsimd_rgb_gray_convert_altivec jsimd_extbgrx_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_gray_convert_altivec
+@@ -85,7 +85,7 @@
+ #define RGB_PIXELSIZE EXT_XBGR_PIXELSIZE
+ #define RGBG_INDEX {3,2,7,6,11,10,15,14,1,2,5,6,9,10,13,14}
+ #define jsimd_rgb_gray_convert_altivec jsimd_extxbgr_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_gray_convert_altivec
+@@ -93,7 +93,7 @@
+ #define RGB_PIXELSIZE EXT_XRGB_PIXELSIZE
+ #define RGBG_INDEX {1,2,5,6,9,10,13,14,3,2,7,6,11,10,15,14}
+ #define jsimd_rgb_gray_convert_altivec jsimd_extxrgb_gray_convert_altivec
+-#include "jcgryext-altivec.c"
++#include "jcgryext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGBG_INDEX
+ #undef jsimd_rgb_gray_convert_altivec
+diff --git a/simd/jcgryext-altivec.c b/simd/jcgryext-altivec.h
+similarity index 100%
+rename from simd/jcgryext-altivec.c
+rename to simd/jcgryext-altivec.h
+diff --git a/simd/jdcolext-altivec.c b/simd/jdcolext-altivec.h
+similarity index 100%
+rename from simd/jdcolext-altivec.c
+rename to simd/jdcolext-altivec.h
+diff --git a/simd/jdcolor-altivec.c b/simd/jdcolor-altivec.c
+index 0dc4c427..160ce96d 100644
+--- a/simd/jdcolor-altivec.c
++++ b/simd/jdcolor-altivec.c
+@@ -39,12 +39,12 @@
+ #define RGB_INDEX0 {0,1,8,2,3,10,4,5,12,6,7,14,16,17,24,18}
+ #define RGB_INDEX1 {3,10,4,5,12,6,7,14,16,17,24,18,19,26,20,21}
+ #define RGB_INDEX2 {12,6,7,14,16,17,24,18,19,26,20,21,28,22,23,30}
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ 
+ #define RGB_PIXELSIZE EXT_RGB_PIXELSIZE
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extrgb_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX0
+ #undef RGB_INDEX1
+@@ -54,7 +54,7 @@
+ #define RGB_PIXELSIZE EXT_RGBX_PIXELSIZE
+ #define RGB_INDEX {0,1,8,9,2,3,10,11,4,5,12,13,6,7,14,15}
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extrgbx_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_ycc_rgb_convert_altivec
+@@ -64,7 +64,7 @@
+ #define RGB_INDEX1 {3,2,12,5,4,14,7,6,24,17,16,26,19,18,28,21}
+ #define RGB_INDEX2 {4,14,7,6,24,17,16,26,19,18,28,21,20,30,23,22}
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extbgr_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX0
+ #undef RGB_INDEX1
+@@ -74,7 +74,7 @@
+ #define RGB_PIXELSIZE EXT_BGRX_PIXELSIZE
+ #define RGB_INDEX {8,1,0,9,10,3,2,11,12,5,4,13,14,7,6,15}
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extbgrx_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_ycc_rgb_convert_altivec
+@@ -82,7 +82,7 @@
+ #define RGB_PIXELSIZE EXT_XBGR_PIXELSIZE
+ #define RGB_INDEX {9,8,1,0,11,10,3,2,13,12,5,4,15,14,7,6}
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extxbgr_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_ycc_rgb_convert_altivec
+@@ -90,7 +90,7 @@
+ #define RGB_PIXELSIZE EXT_XRGB_PIXELSIZE
+ #define RGB_INDEX {9,0,1,8,11,2,3,10,13,4,5,12,15,6,7,14}
+ #define jsimd_ycc_rgb_convert_altivec jsimd_ycc_extxrgb_convert_altivec
+-#include "jdcolext-altivec.c"
++#include "jdcolext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_ycc_rgb_convert_altivec
+diff --git a/simd/jdmerge-altivec.c b/simd/jdmerge-altivec.c
+index 6a35f201..c874288e 100644
+--- a/simd/jdmerge-altivec.c
++++ b/simd/jdmerge-altivec.c
+@@ -39,13 +39,13 @@
+ #define RGB_INDEX0 {0,1,8,2,3,10,4,5,12,6,7,14,16,17,24,18}
+ #define RGB_INDEX1 {3,10,4,5,12,6,7,14,16,17,24,18,19,26,20,21}
+ #define RGB_INDEX2 {12,6,7,14,16,17,24,18,19,26,20,21,28,22,23,30}
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ 
+ #define RGB_PIXELSIZE EXT_RGB_PIXELSIZE
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extrgb_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extrgb_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX0
+ #undef RGB_INDEX1
+@@ -57,7 +57,7 @@
+ #define RGB_INDEX {0,1,8,9,2,3,10,11,4,5,12,13,6,7,14,15}
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extrgbx_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extrgbx_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_h2v1_merged_upsample_altivec
+@@ -69,7 +69,7 @@
+ #define RGB_INDEX2 {4,14,7,6,24,17,16,26,19,18,28,21,20,30,23,22}
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extbgr_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extbgr_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX0
+ #undef RGB_INDEX1
+@@ -81,7 +81,7 @@
+ #define RGB_INDEX {8,1,0,9,10,3,2,11,12,5,4,13,14,7,6,15}
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extbgrx_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extbgrx_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_h2v1_merged_upsample_altivec
+@@ -91,7 +91,7 @@
+ #define RGB_INDEX {9,8,1,0,11,10,3,2,13,12,5,4,15,14,7,6}
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extxbgr_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extxbgr_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_h2v1_merged_upsample_altivec
+@@ -101,7 +101,7 @@
+ #define RGB_INDEX {9,0,1,8,11,2,3,10,13,4,5,12,15,6,7,14}
+ #define jsimd_h2v1_merged_upsample_altivec jsimd_h2v1_extxrgb_merged_upsample_altivec
+ #define jsimd_h2v2_merged_upsample_altivec jsimd_h2v2_extxrgb_merged_upsample_altivec
+-#include "jdmrgext-altivec.c"
++#include "jdmrgext-altivec.h"
+ #undef RGB_PIXELSIZE
+ #undef RGB_INDEX
+ #undef jsimd_h2v1_merged_upsample_altivec
+diff --git a/simd/jdmrgext-altivec.c b/simd/jdmrgext-altivec.h
+similarity index 100%
+rename from simd/jdmrgext-altivec.c
+rename to simd/jdmrgext-altivec.h
+-- 
+2.49.0
+

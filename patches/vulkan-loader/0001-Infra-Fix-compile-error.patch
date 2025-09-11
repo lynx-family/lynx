@@ -1,0 +1,37 @@
+From 065961930a8a76d9725710e06f65fc42483a2f06 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Fri, 19 Sep 2025 09:44:08 +0800
+Subject: [PATCH] [Infra] Fix compile error.
+
+1. Fix error for redifinition of typedef PFN_GetPhysicalDeviceProcAddr;
+2. Fix error for no newline at end of file.
+---
+ BUILD.gn | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 875375516..0743c55b9 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -88,6 +88,18 @@ config("vulkan_loader_config") {
+       "LOADER_ENABLE_LINUX_SORT",
+     ]
+   }
++  if (is_mac) {
++    cflags = ["-Wno-typedef-redefinition"]
++  }
++  if (defined(cflags)) {
++    cflags += [
++      "-Wno-newline-eof",
++    ]
++  } else {
++    cflags = [
++      "-Wno-newline-eof",
++    ]
++  }
+ }
+ 
+ if (!is_android) {
+-- 
+2.49.0
+
