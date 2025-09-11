@@ -1,0 +1,522 @@
+From d2982cdd9c3b83b755d13c8d9fb290ea32fa25e9 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Fri, 19 Sep 2025 15:54:54 +0800
+Subject: [PATCH] [Feature] Support system icu.
+
+---
+ BUILD.gn               |   8 +-
+ android/system_icu.cpp | 416 +++++++++++++++++++++++++++++++++++++++++
+ config.gni             |   3 +
+ sources.gni            |   9 +
+ 4 files changed, 435 insertions(+), 1 deletion(-)
+ create mode 100644 android/system_icu.cpp
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 5814a585..a4c74d1e 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -64,6 +64,10 @@ config("icu_config") {
+   if (is_win) {
+     defines += [ "UCHAR_TYPE=wchar_t" ]
+   }
++
++  if (use_system_icu) {
++    defines += [ "USE_SYSTEM_ICU=1" ]
++  }
+ }
+ 
+ # Config used only by ICU code.
+@@ -276,7 +280,9 @@ template("generate_icuuc") {
+     public = icuuc_public
+ 
+     defines = [ "U_COMMON_IMPLEMENTATION" ]
+-    deps = [ ":icudata" ]
++    if (!use_system_icu) {
++      deps = [ ":icudata" ]
++    }
+ 
+     if (icu_use_data_file) {
+       sources += [ "source/stubdata/stubdata.cpp" ]
+diff --git a/android/system_icu.cpp b/android/system_icu.cpp
+new file mode 100644
+index 00000000..0a652f81
+--- /dev/null
++++ b/android/system_icu.cpp
+@@ -0,0 +1,416 @@
++#include <android/log.h>
++#include <dirent.h>
++#include <dlfcn.h>
++#include <fcntl.h>
++#include <stdlib.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/system_properties.h>
++
++#include "unicode/ubidi.h"
++#include "unicode/ubrk.h"
++#include "unicode/uscript.h"
++#include "unicode/ustring.h"
++#include "unicode/utypes.h"
++
++static struct Funcs {
++  const char *(*u_errorName_)(UErrorCode code);
++  UBool (*u_iscntrl_)(UChar32 c);
++  UBool (*u_isspace_)(UChar32 c);
++  UBool (*u_isWhitespace_)(UChar32 c);
++  int32_t (*u_getIntPropertyValue_)(UChar32 c, UProperty which);
++  UBool (*u_hasBinaryProperty_)(UChar32 c, UProperty which);
++  int32_t (*u_strToUpper_)(UChar *dest, int32_t destCapacity, const UChar *src,
++                           int32_t srcLength, const char *locale,
++                           UErrorCode *pErrorCode);
++  UText *(*utext_openUTF8_)(UText *ut, const char *s, int64_t length,
++                            UErrorCode *status);
++  UText *(*utext_openUChars_)(UText *ut, const UChar *s, int64_t length,
++                              UErrorCode *status);
++  UText *(*utext_close_)(UText *ut);
++  UBreakIterator *(*ubrk_open_)(UBreakIteratorType type, const char *locale,
++                                const UChar *text, int32_t textLength,
++                                UErrorCode *status);
++  UBreakIterator *(*ubrk_safeClone_)(const UBreakIterator *bi,
++                                     void *stackBuffer, int32_t *pBufferSize,
++                                     UErrorCode *status);
++  UBreakIterator *(*ubrk_clone_)(const UBreakIterator *bi, UErrorCode *status);
++  int32_t (*ubrk_current_)(const UBreakIterator *bi);
++  int32_t (*ubrk_first_)(UBreakIterator *bi);
++  int32_t (*ubrk_next_)(UBreakIterator *bi);
++  int32_t (*ubrk_following_)(UBreakIterator *bi, int32_t offset);
++  int32_t (*ubrk_preceding_)(UBreakIterator *bi, int32_t offset);
++  int32_t (*ubrk_getRuleStatus_)(UBreakIterator *bi);
++  void (*ubrk_close_)(UBreakIterator *bi);
++  void (*ubrk_setUText_)(UBreakIterator *bi, UText *text, UErrorCode *status);
++  void (*ubrk_setText_)(UBreakIterator *bi, const UChar *text,
++                        int32_t textLength, UErrorCode *status);
++  UScriptCode (*uscript_getScript_)(UChar32 codepoint, UErrorCode *err);
++  const char *(*uloc_getDefault_)(void);
++  void (*ubidi_close_)(UBiDi *pBiDi);
++  UBiDiDirection (*ubidi_getDirection_)(const UBiDi *pBiDi);
++  int32_t (*ubidi_getLength_)(const UBiDi *pBiDi);
++  UBiDiLevel (*ubidi_getLevelAt_)(const UBiDi *pBiDi, int32_t charIndex);
++  UBiDi *(*ubidi_openSized_)(int32_t maxLength, int32_t maxRunCount,
++                             UErrorCode *pErrorCode);
++  void (*ubidi_reorderVisual_)(const UBiDiLevel *levels, int32_t length,
++                               int32_t *indexMap);
++  void (*ubidi_setPara_)(UBiDi *pBiDi, const UChar *text, int32_t length,
++                         UBiDiLevel paraLevel, UBiDiLevel *embeddingLevels,
++                         UErrorCode *pErrorCode);
++  void (*udata_setCommonData_)(const void *data, UErrorCode *pErrorCode);
++} icuuc_functions;
++
++static const char *icuuc_names[] = {"u_errorName",
++                                    "u_iscntrl",
++                                    "u_isspace",
++                                    "u_isWhitespace",
++                                    "u_getIntPropertyValue",
++                                    "u_hasBinaryProperty",
++                                    "u_strToUpper",
++                                    "utext_openUTF8",
++                                    "utext_openUChars",
++                                    "utext_close",
++                                    "ubrk_open",
++                                    "ubrk_safeClone",
++                                    "ubrk_clone",
++                                    "ubrk_current",
++                                    "ubrk_first",
++                                    "ubrk_next",
++                                    "ubrk_following",
++                                    "ubrk_preceding",
++                                    "ubrk_getRuleStatus",
++                                    "ubrk_close",
++                                    "ubrk_setUText",
++                                    "ubrk_setText",
++                                    "uscript_getScript",
++                                    "uloc_getDefault",
++                                    "ubidi_close",
++                                    "ubidi_getDirection",
++                                    "ubidi_getLength",
++                                    "ubidi_getLevelAt",
++                                    "ubidi_openSized",
++                                    "ubidi_reorderVisual",
++                                    "ubidi_setPara",
++                                    "udata_setCommonData"};
++
++U_CAPI const char *U_EXPORT2 u_errorName(UErrorCode code) {
++  return icuuc_functions.u_errorName_(code);
++}
++
++U_CAPI UBool U_EXPORT2 u_iscntrl(UChar32 c) {
++  return icuuc_functions.u_iscntrl_(c);
++}
++
++U_CAPI UBool U_EXPORT2 u_isspace(UChar32 c) {
++  return icuuc_functions.u_isspace_(c);
++}
++
++U_CAPI UBool U_EXPORT2 u_isWhitespace(UChar32 c) {
++  return icuuc_functions.u_isWhitespace_(c);
++}
++
++U_CAPI int32_t U_EXPORT2 u_getIntPropertyValue(UChar32 c, UProperty which) {
++  return icuuc_functions.u_getIntPropertyValue_(c, which);
++}
++
++U_CAPI UBool U_EXPORT2 u_hasBinaryProperty(UChar32 c, UProperty which) {
++  return icuuc_functions.u_hasBinaryProperty_(c, which);
++}
++
++U_CAPI int32_t U_EXPORT2 u_strToUpper(UChar *dest, int32_t destCapacity,
++                                      const UChar *src, int32_t srcLength,
++                                      const char *locale,
++                                      UErrorCode *pErrorCode) {
++  return icuuc_functions.u_strToUpper_(dest, destCapacity, src, srcLength,
++                                       locale, pErrorCode);
++}
++
++U_CAPI UText *U_EXPORT2 utext_openUTF8(UText *ut, const char *s, int64_t length,
++                                       UErrorCode *status) {
++  return icuuc_functions.utext_openUTF8_(ut, s, length, status);
++}
++
++U_CAPI UText *U_EXPORT2 utext_openUChars(UText *ut, const UChar *s,
++                                         int64_t length, UErrorCode *status) {
++  return icuuc_functions.utext_openUChars_(ut, s, length, status);
++}
++
++U_CAPI UText *U_EXPORT2 utext_close(UText *ut) {
++  return icuuc_functions.utext_close_(ut);
++}
++
++U_CAPI UBreakIterator *U_EXPORT2 ubrk_open(UBreakIteratorType type,
++                                           const char *locale,
++                                           const UChar *text,
++                                           int32_t textLength,
++                                           UErrorCode *status) {
++  return icuuc_functions.ubrk_open_(type, locale, text, textLength, status);
++}
++
++// ubrk_clone added as draft in ICU69 and Android API 31 (first ICU NDK).
++// ubrk_safeClone deprecated in ICU69 and not exposed by Android.
++U_CAPI UBreakIterator *U_EXPORT2 ubrk_safeClone(const UBreakIterator *bi,
++                                                void *stackBuffer,
++                                                int32_t *pBufferSize,
++                                                UErrorCode *status) {
++  if (icuuc_functions.ubrk_safeClone_) {
++    return icuuc_functions.ubrk_safeClone_(bi, stackBuffer, pBufferSize,
++                                           status);
++  }
++  if (!icuuc_functions.ubrk_clone_) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to find system icu");
++    return nullptr;
++  }
++  return icuuc_functions.ubrk_clone_(bi, status);
++}
++
++U_CAPI UBreakIterator *U_EXPORT2 ubrk_clone(const UBreakIterator *bi,
++                                            UErrorCode *status) {
++  if (icuuc_functions.ubrk_clone_) {
++    return icuuc_functions.ubrk_clone_(bi, status);
++  }
++  if (!icuuc_functions.ubrk_safeClone_) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to find system icu");
++    return nullptr;
++  }
++  return icuuc_functions.ubrk_safeClone_(bi, nullptr, nullptr, status);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_current(const UBreakIterator *bi) {
++  return icuuc_functions.ubrk_current_(bi);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_first(UBreakIterator *bi) {
++  return icuuc_functions.ubrk_first_(bi);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_next(UBreakIterator *bi) {
++  return icuuc_functions.ubrk_next_(bi);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_following(UBreakIterator *bi, int32_t offset) {
++  return icuuc_functions.ubrk_following_(bi, offset);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_preceding(UBreakIterator *bi, int32_t offset) {
++  return icuuc_functions.ubrk_preceding_(bi, offset);
++}
++
++U_CAPI int32_t U_EXPORT2 ubrk_getRuleStatus(UBreakIterator *bi) {
++  return icuuc_functions.ubrk_getRuleStatus_(bi);
++}
++
++U_CAPI void U_EXPORT2 ubrk_close(UBreakIterator *bi) {
++  icuuc_functions.ubrk_close_(bi);
++}
++
++U_CAPI void U_EXPORT2 ubrk_setUText(UBreakIterator *bi, UText *text,
++                                    UErrorCode *status) {
++  icuuc_functions.ubrk_setUText_(bi, text, status);
++}
++
++U_CAPI void U_EXPORT2 ubrk_setText(UBreakIterator *bi, const UChar *text,
++                                   int32_t textLength, UErrorCode *status) {
++  icuuc_functions.ubrk_setText_(bi, text, textLength, status);
++}
++
++U_CAPI UScriptCode U_EXPORT2 uscript_getScript(UChar32 codepoint,
++                                               UErrorCode *err) {
++  return icuuc_functions.uscript_getScript_(codepoint, err);
++}
++
++U_CAPI const char *U_EXPORT2 uloc_getDefault(void) {
++  return icuuc_functions.uloc_getDefault_();
++}
++
++U_CAPI void U_EXPORT2 ubidi_close(UBiDi *pBiDi) {
++  icuuc_functions.ubidi_close_(pBiDi);
++}
++
++U_CAPI UBiDiDirection U_EXPORT2 ubidi_getDirection(const UBiDi *pBiDi) {
++  return icuuc_functions.ubidi_getDirection_(pBiDi);
++}
++
++U_CAPI int32_t U_EXPORT2 ubidi_getLength(const UBiDi *pBiDi) {
++  return icuuc_functions.ubidi_getLength_(pBiDi);
++}
++
++U_CAPI UBiDiLevel U_EXPORT2 ubidi_getLevelAt(const UBiDi *pBiDi,
++                                             int32_t charIndex) {
++  return icuuc_functions.ubidi_getLevelAt_(pBiDi, charIndex);
++}
++
++U_CAPI UBiDi *U_EXPORT2 ubidi_openSized(int32_t maxLength, int32_t maxRunCount,
++                                        UErrorCode *pErrorCode) {
++  return icuuc_functions.ubidi_openSized_(maxLength, maxRunCount, pErrorCode);
++}
++
++U_CAPI void U_EXPORT2 ubidi_reorderVisual(const UBiDiLevel *levels,
++                                          int32_t length, int32_t *indexMap) {
++  icuuc_functions.ubidi_reorderVisual_(levels, length, indexMap);
++}
++
++U_CAPI void U_EXPORT2 ubidi_setPara(UBiDi *pBiDi, const UChar *text,
++                                    int32_t length, UBiDiLevel paraLevel,
++                                    UBiDiLevel *embeddingLevels,
++                                    UErrorCode *pErrorCode) {
++  icuuc_functions.ubidi_setPara_(pBiDi, text, length, paraLevel,
++                                 embeddingLevels, pErrorCode);
++}
++U_CAPI void U_EXPORT2 udata_setCommonData(const void *data,
++                                          UErrorCode *pErrorCode) {
++  if (!icuuc_functions.udata_setCommonData_) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to find system icu");
++    return;
++  }
++  icuuc_functions.udata_setCommonData_(data, pErrorCode);
++}
++
++static bool __verify_icu() {
++  static const UChar strToExam[] = {0x4e16, 0x754c, ',',   0x4f60,
++                                    0x597d, 0xff01, 0x0000};
++  UErrorCode status = U_ZERO_ERROR;
++  auto brk = ubrk_open(UBRK_WORD, "zh_CN", strToExam, -1, &status);
++  if (U_FAILURE(status)) {
++    return false;
++  }
++  int32_t first = ubrk_first(brk);
++  int32_t second = ubrk_next(brk);
++  int32_t third = ubrk_next(brk);
++  int32_t fourth = ubrk_next(brk);
++  ubrk_close(brk);
++  return first == 0 && second == 2 && third == 3 && fourth == 5;
++}
++
++static void *g_libicu_handle = nullptr;
++
++// Allowed icu4c version numbers are in the range [44, 999].
++// Gingerbread's icu4c 4.4 is the minimum supported ICU version.
++static constexpr auto ICUDATA_VERSION_MIN_LENGTH = 2;
++static constexpr auto ICUDATA_VERSION_MAX_LENGTH = 3;
++static constexpr auto ICUDATA_VERSION_MIN = 44;
++static int g_icudata_version_num;
++static char g_icudata_version[ICUDATA_VERSION_MAX_LENGTH + 1];
++
++static int __icu_dat_file_filter(const dirent *dirp) {
++  const char *name = dirp->d_name;
++  // Is the name the right length to match 'icudt(\d\d\d)l.dat'?
++  const size_t len = strlen(name);
++  if (len < 10 + ICUDATA_VERSION_MIN_LENGTH ||
++      len > 10 + ICUDATA_VERSION_MAX_LENGTH)
++    return 0;
++  return !strncmp(name, "icudt", 5) && !strncmp(&name[len - 5], "l.dat", 5);
++}
++
++static bool __find_icu() {
++  dirent **namelist = nullptr;
++  int n =
++      scandir("/system/usr/icu", &namelist, &__icu_dat_file_filter, alphasort);
++  int max_version = -1;
++  while (n--) {
++    // We prefer the latest version available.
++    int version = atoi(&namelist[n]->d_name[strlen("icudt")]);
++    if (version != 0 && version > max_version) max_version = version;
++    free(namelist[n]);
++  }
++  free(namelist);
++  if (max_version < ICUDATA_VERSION_MIN) {
++    return false;
++  }
++  g_icudata_version_num = max_version;
++  snprintf(g_icudata_version, sizeof(g_icudata_version), "_%d", max_version);
++  return true;
++}
++
++static void __resolve_libicuuc(void *(*dlopen2)(const char *, int),
++                               void *(*dlsym2)(void *, const char *)) {
++  if (!__find_icu()) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to find system icu");
++    return;
++  }
++
++  const char *filename = "libicuuc.so";
++  auto resolve = dlsym;
++
++  g_libicu_handle = dlopen(filename, RTLD_LOCAL);
++  if (!g_libicu_handle) {
++    g_libicu_handle = dlopen2(filename, RTLD_LOCAL);
++    if (!g_libicu_handle) {
++      __android_log_print(ANDROID_LOG_FATAL, "icu", "couldn't open %s: %s",
++                          filename, dlerror());
++      return;
++    }
++    resolve = dlsym2;
++  }
++  for (size_t i = 0; i < sizeof(icuuc_names) / sizeof(icuuc_names[0]); i++) {
++    auto name = icuuc_names[i];
++    std::string full_name = std::string(name) + g_icudata_version;
++    void *sym = resolve(g_libicu_handle, full_name.c_str());
++    if (!sym && strcmp(name, "ubrk_safeClone") && strcmp(name, "ubrk_clone")) {
++      __android_log_print(ANDROID_LOG_FATAL, "icu", "couldn't find %s", name);
++      return;
++    }
++    ((void **)&icuuc_functions)[i] = sym;
++  }
++
++  if (__verify_icu()) {
++    return;
++  }
++
++  char path[64];
++  sprintf(path, "/system/usr/icu/icudt%dl.dat", g_icudata_version_num);
++  int fd = open(path, O_RDONLY);
++  if (fd < 0) {
++    __android_log_print(ANDROID_LOG_FATAL, "icu", "couldn't find %s", path);
++    return;
++  }
++
++  struct stat sb;
++  fstat(fd, &sb);
++  void *data = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
++  UErrorCode status = U_ZERO_ERROR;
++  udata_setCommonData(data, &status);
++
++  if (!__verify_icu()) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to init");
++  }
++}
++
++static bool __try_libicu() {
++  const char *filename = "libicu.so";
++  g_libicu_handle = dlopen(filename, RTLD_LOCAL);
++  if (!g_libicu_handle) {
++    __android_log_print(ANDROID_LOG_ERROR, "icu", "couldn't open %s: %s",
++                        filename, dlerror());
++    return false;
++  }
++  for (size_t i = 0; i < sizeof(icuuc_names) / sizeof(icuuc_names[0]); i++) {
++    auto name = icuuc_names[i];
++    void *sym = dlsym(g_libicu_handle, name);
++    if (!sym && strcmp(name, "ubrk_safeClone") && strcmp(name, "ubrk_clone") &&
++        strcmp(name, "udata_setCommonData")) {
++      __android_log_print(ANDROID_LOG_ERROR, "icu", "couldn't find %s", name);
++      return false;
++    }
++    ((void **)&icuuc_functions)[i] = sym;
++  }
++  return __verify_icu();
++}
++
++extern "C" void init_system_icu(void *(*dlopen2)(const char *, int),
++                                void *(*dlsym2)(void *, const char *)) {
++  char sdk_version_string[PROP_VALUE_MAX];
++  if (!__system_property_get("ro.build.version.sdk", sdk_version_string)) {
++    __android_log_write(ANDROID_LOG_FATAL, "icu", "Failed to get SDK version");
++    return;
++  }
++
++  int api_level = atoi(sdk_version_string);
++  if (api_level >= 31 && __try_libicu()) {  // Android 12+
++    return;
++  }
++
++  // Android 11-
++  __resolve_libicuuc(dlopen2, dlsym2);
++}
+diff --git a/config.gni b/config.gni
+index 5bb6e4e6..c0de5958 100644
+--- a/config.gni
++++ b/config.gni
+@@ -10,6 +10,9 @@ declare_args() {
+   # If true, compile icu into a standalone static library. Currently this is
+   # only useful on Chrome OS.
+   icu_disable_thin_archive = false
++
++    # Whether use system icu
++  use_system_icu = false
+ }
+ 
+ # Set to true if icu is being built from the Fuchsia tree.
+diff --git a/sources.gni b/sources.gni
+index 9af6b477..0822e77e 100644
+--- a/sources.gni
++++ b/sources.gni
+@@ -1,9 +1,13 @@
+ # Copyright 2020 The Chromium Authors. All rights reserved.
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
++import("//third_party/icu/config.gni")
+ 
+ # find  source/i18n -maxdepth 1  ! -type d  | egrep  '\.(c|cpp|h)$' |\
+ # sort | sed 's/^\(.*\)$/  "\1",/'
++if (is_android && use_system_icu) {
++  icu18n_sources = [ "android/system_icu.cpp" ]
++} else {
+ icu18n_sources = [
+   # I18N_SRC_START
+   "source/i18n/alphaindex.cpp",
+@@ -424,6 +428,7 @@ icu18n_sources = [
+   "source/i18n/ztrans.h",
+   # I18N_SRC_END
+ ]
++}
+ 
+ # ls source/i18n/unicode/*h | sort | sed 's/^\(.*\)$/  "\1",/'
+ icu18n_public = [
+@@ -522,6 +527,9 @@ icu18n_public = [
+ 
+ # find  source/common -maxdepth 1  ! -type d  | egrep  '\.(c|cpp|h)$' |\
+ # sort | sed 's/^\(.*\)$/  "\1",/'
++if (is_android && use_system_icu) {
++  icuuc_sources = []
++} else {
+ icuuc_sources = [
+   # COMMON_SRC_START
+   "source/common/appendable.cpp",
+@@ -836,6 +844,7 @@ icuuc_sources = [
+   "source/common/wintz.h",
+   # COMMON_SRC_END
+ ]
++}
+ 
+ # ls  source/common/unicode/*h | sort | sed 's/^\(.*\)$/  "\1",/'
+ icuuc_public = [
+-- 
+2.49.0
+

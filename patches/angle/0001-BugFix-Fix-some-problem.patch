@@ -1,0 +1,201 @@
+From fb5ef627fa5e4982fbcbbec8899decf262a694a6 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Thu, 11 Sep 2025 19:39:05 +0800
+Subject: [PATCH] [BugFix] Fix some problem.
+
+1. Fix problem that windows create and destory repeat caused angle reset the state;
+2. Protect gActiveCompilers with a global mutex;
+3. Fix problem when view destory Renderer11::finish call crash.
+---
+ BUILD.gn                                       |  3 +++
+ gni/angle.gni                                  | 10 +++++-----
+ src/libANGLE/Compiler.cpp                      | 15 +++++++++++++--
+ src/libANGLE/Display.h                         |  2 --
+ .../renderer/d3d/VertexDataManager.cpp         |  4 ++++
+ src/libANGLE/renderer/d3d/d3d11/Renderer11.cpp | 18 ++++++++++++------
+ .../renderer/d3d/d3d11/StateManager11.cpp      |  6 +++---
+ 7 files changed, 40 insertions(+), 18 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index efaf090339..e3d0b192ca 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -900,6 +900,9 @@ config("libANGLE_config") {
+   if (angle_enable_perf_counter_output) {
+     defines += [ "ANGLE_ENABLE_PERF_COUNTER_OUTPUT=1" ]
+   }
++  if (!is_android) {
++    defines += [ "ANGLE_PLATFORM_EXPORT=" ]
++  }
+ }
+ 
+ angle_source_set("libANGLE_headers") {
+diff --git a/gni/angle.gni b/gni/angle.gni
+index b8086660a1..68bbef9ded 100644
+--- a/gni/angle.gni
++++ b/gni/angle.gni
+@@ -54,7 +54,7 @@ if (angle_has_build) {
+     import("//build/config/win/visual_studio_version.gni")
+   }
+ 
+-  if (is_castos || ozone_platform_headless) {
++  if (is_castos || ozone_platform_headless || is_linux) {
+     angle_vulkan_display_mode = "headless"
+   }
+ 
+@@ -255,13 +255,13 @@ declare_args() {
+   angle_wayland_dir = "$angle_root/third_party/wayland"
+ 
+   angle_vulkan_headers_dir =
+-      "$angle_root/third_party/vulkan-deps/vulkan-headers/src"
++      "//third_party/vulkan-deps/vulkan-headers/src"
+   angle_vulkan_loader_dir =
+-      "$angle_root/third_party/vulkan-deps/vulkan-loader/src"
++      "//third_party/vulkan-deps/vulkan-loader/src"
+   angle_vulkan_tools_dir =
+-      "$angle_root/third_party/vulkan-deps/vulkan-tools/src"
++      "//third_party/vulkan-deps/vulkan-tools/src"
+   angle_vulkan_validation_layers_dir =
+-      "$angle_root/third_party/vulkan-deps/vulkan-validation-layers/src"
++      "//third_party/vulkan-deps/vulkan-validation-layers/src"
+ 
+   angle_build_vulkan_system_info = angle_has_build && !angle_is_winuwp
+ 
+diff --git a/src/libANGLE/Compiler.cpp b/src/libANGLE/Compiler.cpp
+index f0f9617034..e196798434 100644
+--- a/src/libANGLE/Compiler.cpp
++++ b/src/libANGLE/Compiler.cpp
+@@ -15,6 +15,8 @@
+ #include "libANGLE/renderer/CompilerImpl.h"
+ #include "libANGLE/renderer/GLImplFactory.h"
+ 
++#include <mutex>
++
+ namespace gl
+ {
+ 
+@@ -24,6 +26,15 @@ namespace
+ // To know when to call sh::Initialize and sh::Finalize.
+ size_t gActiveCompilers = 0;
+ 
++std::mutex &GetGlobalMutex()
++{
++    // On the heap so that no destructor runs on application exit.
++    static std::mutex *globalMutex = nullptr;
++    static std::once_flag once;
++    std::call_once(once, []() { globalMutex = new std::mutex(); });
++    return *globalMutex;
++}
++
+ }  // anonymous namespace
+ 
+ Compiler::Compiler(rx::GLImplFactory *implFactory, const State &state, egl::Display *display)
+@@ -37,7 +48,7 @@ Compiler::Compiler(rx::GLImplFactory *implFactory, const State &state, egl::Disp
+            state.getClientMajorVersion() == 3 || state.getClientMajorVersion() == 4);
+ 
+     {
+-        std::lock_guard<std::mutex> lock(display->getDisplayGlobalMutex());
++        std::lock_guard<std::mutex> lock(GetGlobalMutex());
+         if (gActiveCompilers == 0)
+         {
+             sh::Initialize();
+@@ -257,7 +268,7 @@ Compiler::~Compiler() = default;
+ 
+ void Compiler::onDestroy(const Context *context)
+ {
+-    std::lock_guard<std::mutex> lock(context->getDisplay()->getDisplayGlobalMutex());
++    std::lock_guard<std::mutex> lock(GetGlobalMutex());
+     for (auto &pool : mPools)
+     {
+         for (ShCompilerInstance &instance : pool)
+diff --git a/src/libANGLE/Display.h b/src/libANGLE/Display.h
+index da00026e7b..719a1551d3 100644
+--- a/src/libANGLE/Display.h
++++ b/src/libANGLE/Display.h
+@@ -312,7 +312,6 @@ class Display final : public LabeledObject,
+     egl::Error handleGPUSwitch();
+     egl::Error forceGPUSwitch(EGLint gpuIDHigh, EGLint gpuIDLow);
+ 
+-    std::mutex &getDisplayGlobalMutex() { return mDisplayGlobalMutex; }
+     std::mutex &getProgramCacheMutex() { return mProgramCacheMutex; }
+ 
+     gl::MemoryShaderCache *getMemoryShaderCache() { return &mMemoryShaderCache; }
+@@ -415,7 +414,6 @@ class Display final : public LabeledObject,
+     std::vector<angle::ScratchBuffer> mScratchBuffers;
+     std::vector<angle::ScratchBuffer> mZeroFilledBuffers;
+ 
+-    std::mutex mDisplayGlobalMutex;
+     std::mutex mProgramCacheMutex;
+ 
+     bool mTerminatedByApi;
+diff --git a/src/libANGLE/renderer/d3d/VertexDataManager.cpp b/src/libANGLE/renderer/d3d/VertexDataManager.cpp
+index 6b989c9e80..2734d1aab6 100644
+--- a/src/libANGLE/renderer/d3d/VertexDataManager.cpp
++++ b/src/libANGLE/renderer/d3d/VertexDataManager.cpp
+@@ -559,6 +559,10 @@ angle::Result VertexDataManager::storeDynamicAttrib(const gl::Context *context,
+         sourceData = static_cast<const uint8_t *>(attrib.pointer);
+     }
+ 
++    if(!sourceData) {
++        return angle::Result::Stop;
++    }
++
+     unsigned int streamOffset = 0;
+ 
+     translated->storage = nullptr;
+diff --git a/src/libANGLE/renderer/d3d/d3d11/Renderer11.cpp b/src/libANGLE/renderer/d3d/d3d11/Renderer11.cpp
+index c277b9dfe6..3b10922529 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/Renderer11.cpp
++++ b/src/libANGLE/renderer/d3d/d3d11/Renderer11.cpp
+@@ -1379,6 +1379,11 @@ angle::Result Renderer11::flush(Context11 *context11)
+ 
+ angle::Result Renderer11::finish(Context11 *context11)
+ {
++    if (!mDeviceContext)
++    {
++        return angle::Result::Stop;
++    }
++    
+     if (!mSyncQuery.valid())
+     {
+         D3D11_QUERY_DESC queryDesc;
+@@ -1436,12 +1441,13 @@ bool Renderer11::isValidNativeWindow(EGLNativeWindowType window) const
+ #endif
+ 
+ #ifdef ANGLE_ENABLE_D3D11_COMPOSITOR_NATIVE_WINDOW
+-    static_assert(sizeof(ABI::Windows::UI::Composition::SpriteVisual *) == sizeof(HWND),
+-                  "Pointer size must match Window Handle size");
+-    if (CompositorNativeWindow11::IsValidNativeWindow(window))
+-    {
+-        return true;
+-    }
++    // TODO: fix crash
++    // static_assert(sizeof(ABI::Windows::UI::Composition::SpriteVisual *) == sizeof(HWND),
++    //               "Pointer size must match Window Handle size");
++    // if (CompositorNativeWindow11::IsValidNativeWindow(window))
++    // {
++    //     return true;
++    // }
+ #endif
+ 
+     return false;
+diff --git a/src/libANGLE/renderer/d3d/d3d11/StateManager11.cpp b/src/libANGLE/renderer/d3d/d3d11/StateManager11.cpp
+index 194c89d1c7..1ad514ea1f 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/StateManager11.cpp
++++ b/src/libANGLE/renderer/d3d/d3d11/StateManager11.cpp
+@@ -1800,9 +1800,9 @@ angle::Result StateManager11::onMakeCurrent(const gl::Context *context)
+     }
+ 
+     // Reset the cache objects.
+-    mProgramD3D    = nullptr;
+-    mVertexArray11 = nullptr;
+-    mFramebuffer11 = nullptr;
++    // mProgramD3D    = nullptr;
++    // mVertexArray11 = nullptr;
++    // mFramebuffer11 = nullptr;
+ 
+     return angle::Result::Continue;
+ }
+-- 
+2.49.0
+

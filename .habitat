@@ -3,6 +3,9 @@ solutions = [
     {
         'name': '.',
         'deps_file': 'DEPS',
-        'url': ''
+        'url': '',
+        'target_deps_files': {
+            'clay': 'DEPS.clay',
+        },
     }
 ]

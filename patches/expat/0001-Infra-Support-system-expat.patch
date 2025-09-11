@@ -1,0 +1,49 @@
+From d8f4d37fe12495299d2c4dbbaa35d637c0c9cbb8 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Fri, 12 Sep 2025 11:46:55 +0800
+Subject: [PATCH] [Infra] Support system expat.
+
+---
+ BUILD.gn | 21 ++++-----------------
+ 1 file changed, 4 insertions(+), 17 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index a2c2d0c..eac1ab6 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -2,14 +2,11 @@
+ # Use of this source code is governed by a BSD-style license that can be
+ # found in the LICENSE file.
+ 
+-import("//build/config/chromecast_build.gni")
+-import("//testing/libfuzzer/fuzzer_test.gni")
++declare_args() {
++  use_system_expat = is_linux
++}
+ 
+-# On Linux, we implicitly already depend on expat via fontconfig;
+-# let's not pull it in twice.
+-# Chromecast doesn't ship expat as a system library.
+-# Libfuzzer and AFL need to build library from sources.
+-if (is_linux && !is_chromecast && !use_libfuzzer && !use_afl) {
++if (use_system_expat) {
+   config("expat_config") {
+     libs = [ "expat" ]
+   }
+@@ -41,13 +38,3 @@ if (is_linux && !is_chromecast && !use_libfuzzer && !use_afl) {
+     }
+   }
+ }
+-
+-fuzzer_test("expat_xml_parse_fuzzer") {
+-  sources = [
+-    "fuzz/expat_xml_parse_fuzzer.cc",
+-  ]
+-  deps = [
+-    ":expat",
+-  ]
+-  dict = "//testing/libfuzzer/fuzzers/dicts/xml.dict"
+-}
+-- 
+2.49.0
+
