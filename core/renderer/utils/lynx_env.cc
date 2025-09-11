@@ -331,16 +331,19 @@ int64_t LynxEnv::GetV8HeapSize() {
 }
 
 std::optional<std::string> LynxEnv::GetExternalEnv(Key key) {
-  std::lock_guard<std::recursive_mutex> lock(external_env_mutex_);
-  auto env_it = external_env_map_.find(key);
-  if (env_it != external_env_map_.end()) {
-    return env_it->second;
+  {
+    std::lock_guard lock(external_env_mutex_);
+    auto env_it = external_env_map_.find(key);
+    if (env_it != external_env_map_.end()) {
+      return env_it->second;
+    }
   }
 
   const std::string& key_string = GetEnvKeyString(key);
   std::optional<std::string> string_value =
       LynxTrailHub::GetInstance().GetStringForTrailKey(key_string);
   if (string_value.has_value()) {
+    std::lock_guard lock(external_env_mutex_);
     external_env_map_.emplace(key, *string_value);
   }
   return string_value;
