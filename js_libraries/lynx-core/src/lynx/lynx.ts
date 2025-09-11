@@ -408,7 +408,7 @@ export class Lynx {
 
   fetch = (input: RequestInfo, init?: RequestInit): Promise<Response> => {
     return new this.Promise((resolve, reject) => {
-      const request = new (this.getApp()._RequestClass)(input, init);
+      const request = new nativeGlobal.Request(input, init);
       const signal = request.signal;
       if (signal.aborted) {
         return reject(signal.reason);
@@ -436,7 +436,7 @@ export class Lynx {
           try {
             const streamingBodyReceiver = new (this.getApp()._ReadableStreamClass)();
 
-            const resp = new (this.getApp()._ResponseClass)(
+            const resp = new nativeGlobal.Response(
               useStreaming ? streamingBodyReceiver : response.body,
               response
             );

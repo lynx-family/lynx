@@ -5,8 +5,18 @@ interface StreamDelegate {
   onEnd(): void;
   onError(error: string): void;
 }
+/**
+ * Serves as a stable type identifier across different Promise constructor environments
+ *
+ * This class is used to ensure type recognition works when same-class instances come from
+ * different Promise constructor environments (e.g. different lynx instances)
+ */
+export abstract class LynxReadableStream {}
+
 export function createReadableStreamClass(Promise: PromiseConstructor): any {
-  return class ReadableStream implements StreamDelegate {
+  return class ReadableStream
+    extends LynxReadableStream
+    implements StreamDelegate {
     private __eventCenter: EventEmitter;
     private __dataReceived: ArrayBuffer[];
     private __done: boolean;
@@ -14,6 +24,7 @@ export function createReadableStreamClass(Promise: PromiseConstructor): any {
     private __locked: boolean;
     private __error: Error;
     constructor() {
+      super();
       this.__dataReceived = [];
       this.__done = false;
       this.__cancelled = false;

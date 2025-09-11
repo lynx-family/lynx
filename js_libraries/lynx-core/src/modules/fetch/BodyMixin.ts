@@ -4,9 +4,10 @@
 
 import { TextDecoder } from './TextDecoder';
 import { TextEncoder } from './TextEncoder';
+import { LynxReadableStream } from './ReadableStream';
 export class BodyMixin {
   _arrayBuffer: ArrayBuffer;
-  _bodyStream: ReadableStream;
+  _bodyStream: LynxReadableStream;
   _bodyUsed: boolean;
 
   constructor() {
@@ -49,8 +50,7 @@ export class BodyMixin {
       } else if (body) {
         this._arrayBuffer = new TextEncoder().encode(body.toString()).buffer;
       }
-
-      if (globalThis.ReadableStream && body instanceof ReadableStream) {
+      if (body instanceof LynxReadableStream) {
         this._bodyStream = body;
       }
     }
