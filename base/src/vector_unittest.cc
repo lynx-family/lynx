@@ -5479,7 +5479,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<std::string, std::string> map(std::move(source_array));
+    LinearFlatMap<std::string, std::string, void> map(std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -5490,7 +5490,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     InlineVector<std::pair<std::string, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<std::string, std::string> map(std::move(source_array));
+    LinearFlatMap<std::string, std::string, void> map(std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -5500,7 +5500,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 2> map(
+    InlineLinearFlatMap<std::string, std::string, 2, void> map(
         std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5511,7 +5511,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 5> map(
+    InlineLinearFlatMap<std::string, std::string, 5, void> map(
         std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5522,7 +5522,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     InlineVector<std::pair<std::string, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 5> map(
+    InlineLinearFlatMap<std::string, std::string, 5, void> map(
         std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5533,7 +5533,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<std::string, std::string> map;
+    LinearFlatMap<std::string, std::string, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5545,7 +5545,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     InlineVector<std::pair<std::string, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<std::string, std::string> map;
+    LinearFlatMap<std::string, std::string, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5556,7 +5556,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 2> map;
+    InlineLinearFlatMap<std::string, std::string, 2, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5567,7 +5567,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     Vector<std::pair<std::string, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 5> map;
+    InlineLinearFlatMap<std::string, std::string, 5, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5578,7 +5578,7 @@ TEST(LinearMap, FromSourceArray) {
   {
     InlineVector<std::pair<std::string, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<std::string, std::string, 5> map;
+    InlineLinearFlatMap<std::string, std::string, 5, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -5590,7 +5590,7 @@ TEST(LinearMap, FromSourceArray) {
 TEST(LinearSet, FromSourceArray) {
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    LinearFlatSet<std::string> set(std::move(source_array));
+    LinearFlatSet<std::string, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -5600,7 +5600,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     InlineVector<std::string, 5> source_array{"z", "a", "e"};
-    LinearFlatSet<std::string> set(std::move(source_array));
+    LinearFlatSet<std::string, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -5609,7 +5609,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 2> set(std::move(source_array));
+    InlineLinearFlatSet<std::string, 2, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -5618,7 +5618,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 5> set(std::move(source_array));
+    InlineLinearFlatSet<std::string, 5, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -5627,7 +5627,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     InlineVector<std::string, 5> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 5> set(std::move(source_array));
+    InlineLinearFlatSet<std::string, 5, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -5636,7 +5636,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    LinearFlatSet<std::string> set;
+    LinearFlatSet<std::string, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -5647,7 +5647,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     InlineVector<std::string, 5> source_array{"z", "a", "e"};
-    LinearFlatSet<std::string> set;
+    LinearFlatSet<std::string, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -5657,7 +5657,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 2> set;
+    InlineLinearFlatSet<std::string, 2, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -5667,7 +5667,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     Vector<std::string> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 5> set;
+    InlineLinearFlatSet<std::string, 5, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -5677,7 +5677,7 @@ TEST(LinearSet, FromSourceArray) {
 
   {
     InlineVector<std::string, 5> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<std::string, 5> set;
+    InlineLinearFlatSet<std::string, 5, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -6988,7 +6988,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<String, std::string> map(std::move(source_array));
+    LinearFlatMap<String, std::string, void> map(std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -6999,7 +6999,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     InlineVector<std::pair<String, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<String, std::string> map(std::move(source_array));
+    LinearFlatMap<String, std::string, void> map(std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -7009,7 +7009,8 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 2> map(std::move(source_array));
+    InlineLinearFlatMap<String, std::string, 2, void> map(
+        std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -7019,7 +7020,8 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 5> map(std::move(source_array));
+    InlineLinearFlatMap<String, std::string, 5, void> map(
+        std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -7029,7 +7031,8 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     InlineVector<std::pair<String, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 5> map(std::move(source_array));
+    InlineLinearFlatMap<String, std::string, 5, void> map(
+        std::move(source_array));
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
     EXPECT_EQ(map["a"], "A");
@@ -7039,7 +7042,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<String, std::string> map;
+    LinearFlatMap<String, std::string, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -7051,7 +7054,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     InlineVector<std::pair<String, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    LinearFlatMap<String, std::string> map;
+    LinearFlatMap<String, std::string, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -7062,7 +7065,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 2> map;
+    InlineLinearFlatMap<String, std::string, 2, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -7073,7 +7076,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     Vector<std::pair<String, std::string>> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 5> map;
+    InlineLinearFlatMap<String, std::string, 5, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -7084,7 +7087,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
   {
     InlineVector<std::pair<String, std::string>, 5> source_array{
         {"z", "Z"}, {"a", "A"}, {"e", "E"}};
-    InlineLinearFlatMap<String, std::string, 5> map;
+    InlineLinearFlatMap<String, std::string, 5, void> map;
     map = std::move(source_array);
     EXPECT_EQ(map.size(), 3);
     EXPECT_EQ(map["z"], "Z");
@@ -7096,7 +7099,7 @@ TEST(LinearMap, FromSourceArrayBaseStringKey) {
 TEST(LinearSet, FromSourceArrayBaseStringKey) {
   {
     Vector<String> source_array{"z", "a", "e"};
-    LinearFlatSet<String> set(std::move(source_array));
+    LinearFlatSet<String, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -7106,7 +7109,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     InlineVector<String, 5> source_array{"z", "a", "e"};
-    LinearFlatSet<String> set(std::move(source_array));
+    LinearFlatSet<String, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -7115,7 +7118,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     Vector<String> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 2> set(std::move(source_array));
+    InlineLinearFlatSet<String, 2, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -7124,7 +7127,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     Vector<String> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 5> set(std::move(source_array));
+    InlineLinearFlatSet<String, 5, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -7133,7 +7136,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     InlineVector<String, 5> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 5> set(std::move(source_array));
+    InlineLinearFlatSet<String, 5, void> set(std::move(source_array));
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
     EXPECT_TRUE(set.contains("a"));
@@ -7142,7 +7145,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     Vector<String> source_array{"z", "a", "e"};
-    LinearFlatSet<String> set;
+    LinearFlatSet<String, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -7153,7 +7156,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     InlineVector<String, 5> source_array{"z", "a", "e"};
-    LinearFlatSet<String> set;
+    LinearFlatSet<String, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -7163,7 +7166,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     Vector<String> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 2> set;
+    InlineLinearFlatSet<String, 2, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -7173,7 +7176,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     Vector<String> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 5> set;
+    InlineLinearFlatSet<String, 5, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));
@@ -7183,7 +7186,7 @@ TEST(LinearSet, FromSourceArrayBaseStringKey) {
 
   {
     InlineVector<String, 5> source_array{"z", "a", "e"};
-    InlineLinearFlatSet<String, 5> set;
+    InlineLinearFlatSet<String, 5, void> set;
     set = std::move(source_array);
     EXPECT_EQ(set.size(), 3);
     EXPECT_TRUE(set.contains("z"));

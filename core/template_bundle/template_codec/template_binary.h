@@ -126,7 +126,7 @@ struct DynamicComponentRoute {
 
 typedef Range CSSRange;
 struct CSSRoute {
-  base::OrderedFlatMap<int, CSSRange> fragment_ranges;
+  base::LinearFlatMap<int, CSSRange> fragment_ranges;
 };
 
 struct StyleObjectRoute {

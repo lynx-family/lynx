@@ -242,7 +242,7 @@ class String {
 
   // A callable comparer of two Strings if their hash values are known to be
   // equal. Only compares string content.
-  struct EqualWhenHashEqual {
+  struct equal_when_hash_equal {
     bool operator()(const String& x, const String& y) const {
       return x.str() == y.str();
     }

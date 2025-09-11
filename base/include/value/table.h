@@ -35,8 +35,6 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
   // Stores up-to 12 elements in small map.
   static constexpr size_t kSmallMapMaximumSize = 12;
 
-  using Hasher = std::hash<base::String>;
-  using EqualPred = std::equal_to<base::String>;
   using MapValueType = std::pair<const base::String, Value>;
 
   // Use LinearFlatMap as small map type of final hybrid map.
@@ -44,12 +42,15 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
   // 2. Custom key policy which enables hash quick find instead of plain linear
   // find and use `base::String::EqualWhenHashEqual` as comparer when two
   // `base::String` objects are known to have the same hash values.
-  using SmallMapPolicy = base::InlineFlatMapPolicy<
-      base::InlineLinearFlatMap, kInlineStorageSize,
-      base::KeyPolicy<base::String, Hasher, EqualPred,
-                      base::String::EqualWhenHashEqual>>;
+  using SmallMapPolicy =
+      base::InlineFlatMapPolicy<base::InlineLinearFlatMap, kInlineStorageSize>;
   using SmallMapType =
       typename SmallMapPolicy::template type<base::String, Value>;
+
+  static_assert(
+      std::is_same_v<typename base::String::equal_when_hash_equal,
+                     typename SmallMapType::key_policy::equal_when_hash_equal>,
+      "Should use `base::String::equal_when_hash_equal` for best performance.");
 
   // Use boost::unordered_flat_map as big map type of final hybrid map.
   using BigMapPolicy =

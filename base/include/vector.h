@@ -1155,7 +1155,7 @@ struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
   struct always_false : std::false_type {};
 
   void _reallocate(size_t value) {
-    if constexpr (is_trivial) {
+    if constexpr (is_trivial || is_trivially_relocatable) {
       ReallocateTrivial(this, sizeof(T), value);
     } else {
       _reallocate_nontrivial(value);
@@ -1166,7 +1166,7 @@ struct Vector : protected VectorTemplateless<ExtraBytesPerElement>,
     if (BASE_VECTOR_UNLIKELY(size() == capacity())) {
       // _grow_if_need is inlined at caller side. Although we can call
       // _reallocate(0) but implement standalone for binary size optimization.
-      if constexpr (is_trivial) {
+      if constexpr (is_trivial || is_trivially_relocatable) {
         ReallocateTrivial(this, sizeof(T));
       } else {
         _reallocate_nontrivial();
@@ -1570,8 +1570,70 @@ struct MapStatisticsBase<false> {
                   [[maybe_unused]] size_t find_of_count) const {}
 };
 
+#define BASE_VECTOR_HAS_MEMBER_OF_NAME(N)                                      \
+  template <typename T, typename = void>                                       \
+  struct has_##N##_member : std::false_type {};                                \
+  template <typename T>                                                        \
+  struct has_##N##_member<T, std::void_t<decltype(T::N)>> : std::true_type {}; \
+  template <typename T>                                                        \
+  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
+
+#define BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(N)                                \
+  template <typename T, typename = void>                                      \
+  struct has_##N##_member : std::false_type {};                               \
+  template <typename T>                                                       \
+  struct has_##N##_member<T, std::void_t<typename T::N>> : std::true_type {}; \
+  template <typename T>                                                       \
+  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
+
+BASE_VECTOR_HAS_MEMBER_OF_NAME(use_hash);
+BASE_VECTOR_HAS_MEMBER_OF_NAME(consecutive_key);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(hash);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal);
+BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal_when_hash_equal);
+
+#undef BASE_VECTOR_HAS_MEMBER_OF_NAME
+#undef BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME
+
 // Only stores 32bit hash value for SIMD/NEON instructions.
 using KeyPolicyReducedHashValueType = uint32_t;
+
+template <class K, class Hash = std::hash<K>>
+struct ReducedHash {
+  using Type = KeyPolicyReducedHashValueType;
+  using OriginalHash = Hash;
+
+  static constexpr auto ByReinterpret =
+      (sizeof(K) <= sizeof(Type)) &&
+      (std::is_enum_v<K> || std::is_integral_v<K>);
+
+  Type operator()(K v) const {
+    if constexpr (sizeof(K) <= sizeof(Type)) {
+      // Reinterpret K with unsigned zero extend when K is integer type or enum
+      // type and fits into Type.
+      if constexpr (std::is_enum_v<K>) {
+        using EnumIntType = std::underlying_type_t<K>;
+        using UnsignedEnumIntType = std::make_unsigned_t<EnumIntType>;
+        UnsignedEnumIntType num_value = static_cast<UnsignedEnumIntType>(v);
+        return static_cast<Type>(num_value);
+      } else if constexpr (std::is_integral_v<K>) {
+        using UnsignedIntType = std::make_unsigned_t<K>;
+        UnsignedIntType num_value = static_cast<UnsignedIntType>(v);
+        return static_cast<Type>(num_value);
+      }
+    }
+    // Calculate original hash value and reduce.
+    return static_cast<Type>(OriginalHash()(v));
+  }
+
+  // If K can be directly reinterpreted as uint32_t, EqualWhenHashEqual always
+  // returns true.
+  struct AlwaysEqualWhenHashEqual {
+    bool operator()([[maybe_unused]] K x, [[maybe_unused]] K y) const {
+      return true;
+    }
+  };
+};
 
 /**
  * The KeyPolicy type is used to speed up key lookups. For example, you can
@@ -1603,6 +1665,47 @@ struct KeyPolicy {
 };
 
 /**
+ * This policy enables KeyPolicy for LinearFlatMap by default, which means using
+ * hash for search optimization. If the K type contains the
+ * `equal_when_hash_equal` structure, it will be used as an optimized method to
+ * determine whether two K objects are completely equal when their hashes are
+ * already equal. If K can be directly reinterpreted as uint32_t, use
+ * ReducedHash.
+ */
+template <class K>
+struct ReducedHashKeyPolicy {
+ public:
+  static constexpr auto use_hash = true;
+
+  using hash = ReducedHash<K, std::hash<K>>;
+  using equal = std::equal_to<K>;
+
+ private:
+  template <typename AnyType>
+  struct type_identity {
+    using type = AnyType;
+  };
+
+  template <bool Explicit>
+  struct EqualWhenHashEqualHelper {
+    static auto select() {
+      if constexpr (Explicit) {
+        return type_identity<typename K::equal_when_hash_equal>{};
+      } else if constexpr (hash::ByReinterpret) {
+        return type_identity<typename hash::AlwaysEqualWhenHashEqual>{};
+      } else {
+        return type_identity<equal>{};
+      }
+    }
+  };
+
+ public:
+  using equal_when_hash_equal =
+      typename decltype(EqualWhenHashEqualHelper<
+                        has_equal_when_hash_equal_member_v<K>>::select())::type;
+};
+
+/**
  * This is a key policy for map and to optimize key of integer types.
  * By default, the map stores `std::pair<K, V>`, and the data can be accessed
  * through `it->first` and `it->second` during iteration. When
@@ -1617,50 +1720,17 @@ struct KeyPolicy {
  */
 template <class K>
 struct MapKeyPolicyConsecutiveIntegers {
-  static_assert(Vector<K>::is_trivial && sizeof(K) <= 4,
+  static_assert(ReducedHash<K>::ByReinterpret,
                 "Using MapKeyPolicyConsecutiveIntegers, the key type K must be "
-                "trivial and fit into 32 bits.");
+                "integer or enum which fit into 32 bits.");
 
   static constexpr auto use_hash = true;
   static constexpr auto consecutive_key = true;
 
-  using hash = struct _ {
-    KeyPolicyReducedHashValueType operator()(K k) const noexcept {
-      return static_cast<KeyPolicyReducedHashValueType>(k);
-    }
-  };
-
+  using hash = ReducedHash<K>;
   using equal = std::equal_to<K>;
-  using equal_when_hash_equal = struct __ {
-    bool operator()([[maybe_unused]] K x, [[maybe_unused]] K y) const {
-      return true;
-    }
-  };
+  using equal_when_hash_equal = typename hash::AlwaysEqualWhenHashEqual;
 };
-
-#define BASE_VECTOR_HAS_MEMBER_OF_NAME(N)                                      \
-  template <typename T, typename = void>                                       \
-  struct has_##N##_member : std::false_type {};                                \
-  template <typename T>                                                        \
-  struct has_##N##_member<T, std::void_t<decltype(T::N)>> : std::true_type {}; \
-  template <typename T>                                                        \
-  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
-
-#define BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(N)                                \
-  template <typename T, typename = void>                                      \
-  struct has_##N##_member : std::false_type {};                               \
-  template <typename T>                                                       \
-  struct has_##N##_member<T, std::void_t<typename T::N>> : std::true_type {}; \
-  template <typename T>                                                       \
-  inline constexpr bool has_##N##_member_v = has_##N##_member<T>::value
-
-BASE_VECTOR_HAS_MEMBER_OF_NAME(use_hash);
-BASE_VECTOR_HAS_MEMBER_OF_NAME(consecutive_key);
-BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(hash);
-BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal);
-BASE_VECTOR_HAS_TYPE_MEMBER_OF_NAME(equal_when_hash_equal);
-
-#undef BASE_VECTOR_HAS_MEMBER_OF_NAME
 
 /**
  * @brief Base storage type for binary-search array and linear search array.
@@ -3764,16 +3834,16 @@ using OrderedFlatSet = BinarySearchSet<K, 0, Compare, false>;
 template <class K, size_t N, class Compare = std::less<K>>
 using InlineOrderedFlatSet = BinarySearchSet<K, N, Compare, false>;
 
-template <class K, class T, class KeyPolicy = void>
+template <class K, class T, class KeyPolicy = ReducedHashKeyPolicy<K>>
 using LinearFlatMap = LinearSearchMap<K, T, KeyPolicy, 0, false>;
 
-template <class K, class T, size_t N, class KeyPolicy = void>
+template <class K, class T, size_t N, class KeyPolicy = ReducedHashKeyPolicy<K>>
 using InlineLinearFlatMap = LinearSearchMap<K, T, KeyPolicy, N, false>;
 
-template <class K, class KeyPolicy = void>
+template <class K, class KeyPolicy = ReducedHashKeyPolicy<K>>
 using LinearFlatSet = LinearSearchSet<K, KeyPolicy, 0, false>;
 
-template <class K, size_t N, class KeyPolicy = void>
+template <class K, size_t N, class KeyPolicy = ReducedHashKeyPolicy<K>>
 using InlineLinearFlatSet = LinearSearchSet<K, KeyPolicy, N, false>;
 
 // As HybridMap's policy template argument for inlined flat map types.
