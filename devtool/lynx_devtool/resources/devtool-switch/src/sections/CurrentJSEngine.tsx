@@ -23,6 +23,8 @@ export function CurrentJSEngine() {
     } else {
       if (currentPlatform === 'Android') {
         return '\nenable_v8: V8, \nother: PrimJS';
+      } else if (currentPlatform === 'Harmony') {
+        return 'JSVM';
       } else {
         return 'JSC';
       }

@@ -6,6 +6,7 @@
   "QuickJS debug": "PrimJS Debugging",
   "QuickJS debug desc iOS": "Enables JS debugging with the PrimJS engine. \nWhen disabled, the production environment (the JSC engine) is used and JS debugging is not supported. \n(Note: The JS engine type differs between debugging and production environments, so it is recommended to test with the JSC engine as well.)\nRequires an app restart after toggling.",
   "QuickJS debug desc Android": "Only effective when 'Enable V8 Engine' is set to 'Off' or 'AlignWithProd'. Enables JS debugging with the PrimJS engine.\nRequires an app restart after toggling.",
+  "QuickJS debug desc Harmony": "Enables JS debugging with the PrimJS engine. When disabled, the production environment (JSVM engine) is used.\nRequires an app restart after toggling.",
   "QuickJS cache": "PrimJS Cache",
   "QuickJS cache desc": "Enables JS caching. Only effective when JS debugging is disabled on Android.",
   "Longpress": "Long Press to Open Debug Menu",

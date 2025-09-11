@@ -58,6 +58,8 @@ function QuickJSDebug() {
       description={
         currentPlatform === 'Android'
           ? i18n.t('QuickJS debug desc Android')
+          : currentPlatform === 'Harmony'
+          ? i18n.t('QuickJS debug desc Harmony')
           : i18n.t('QuickJS debug desc iOS')
       }
       on={enable}
