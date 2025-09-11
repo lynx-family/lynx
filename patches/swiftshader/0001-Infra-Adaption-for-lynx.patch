@@ -1,0 +1,62 @@
+From 978d400b673e05bb91bda76dfb54d0d8c2144364 Mon Sep 17 00:00:00 2001
+From: zsy-jason <186247581+zsy-jason@users.noreply.github.com>
+Date: Fri, 19 Sep 2025 11:43:57 +0800
+Subject: [PATCH] [Infra] Adaption for lynx.
+
+---
+ BUILD.gn               | 8 ++++++++
+ src/Device/Blitter.cpp | 7 +++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index da23872ce..490c56e1f 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -50,6 +50,10 @@ config("swiftshader_config") {
+     if (!is_debug) {
+       cflags += [ "-Os" ]
+     }
++
++    if (is_linux) {
++      defines += [ "OS_LINUX=1"]
++    }
+   }
+ 
+   if (build_with_chromium) {
+@@ -70,6 +74,10 @@ config("swiftshader_config") {
+       }
+     }
+   }
++
++  cflags += [
++    "-Wno-newline-eof",
++  ]
+ }
+ 
+ group("swiftshader") {
+diff --git a/src/Device/Blitter.cpp b/src/Device/Blitter.cpp
+index 2a04a3c36..2c5e5d6db 100644
+--- a/src/Device/Blitter.cpp
++++ b/src/Device/Blitter.cpp
+@@ -263,11 +263,18 @@ bool Blitter::fastClear(const void *clearValue, vk::Format clearFormat, vk::Imag
+ 		int rowPitchBytes = dest->rowPitchBytes(aspect, subres.mipLevel);
+ 		int slicePitchBytes = dest->slicePitchBytes(aspect, subres.mipLevel);
+ 		VkExtent3D extent = dest->getMipLevelExtent(aspect, subres.mipLevel);
++#if OS_LINUX
++		{
++			area.extent.width = extent.width;
++			area.extent.height = extent.height;
++		}
++#else
+ 		if(!renderArea)
+ 		{
+ 			area.extent.width = extent.width;
+ 			area.extent.height = extent.height;
+ 		}
++#endif
+ 		if(dest->is3DSlice())
+ 		{
+ 			extent.depth = 1;  // The 3D image is instead interpreted as a 2D image with layers
+-- 
+2.49.0
+
