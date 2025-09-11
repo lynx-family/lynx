@@ -146,6 +146,7 @@ static constexpr const char kScrollX[] = "scroll-x";
 static constexpr const char kScrollY[] = "scroll-y";
 static constexpr const char kScrollXReverse[] = "scroll-x-reverse";
 static constexpr const char kScrollYReverse[] = "scroll-y-reverse";
+static constexpr const char kScrollNewArch[] = "scroll-view-new-arch";
 static constexpr const char kScrollOrientation[] = "scroll-orientation";
 static constexpr const char kVerticalOrientation[] = "vertical-orientation";
 static constexpr const char kHorizontal[] = "horizontal";

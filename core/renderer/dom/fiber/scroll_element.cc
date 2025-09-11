@@ -60,6 +60,8 @@ void ScrollElement::SetAttributeInternal(const base::String& key,
         CSSValue::MakeEnum(static_cast<int>(
             starlight::LinearOrientationType::kVerticalReverse)));
     HandleLayoutNodeAttributeUpdate();
+  } else if (key.IsEquals(kScrollNewArch) && value_str == kTrue) {
+    platform_node_tag_ = BASE_STATIC_STRING(kScrollNewArch);
   }
 }
 
