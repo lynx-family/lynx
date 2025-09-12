@@ -36,10 +36,12 @@
 }
 
 - (void)onHandle:(NSString *const)touchType
-         touches:(NSSet<UITouch *> *)touches
-           event:(UIEvent *_Nullable)event
-      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-      flingPoint:(CGPoint)flingPoint {
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
   if (event != nil && (touchType == LynxEventTouchStart || touchType == LynxEventTouchMove)) {
     // If the event is not empty, it means the finger on the screen, no need to handle fling gesture
     [self ignore];

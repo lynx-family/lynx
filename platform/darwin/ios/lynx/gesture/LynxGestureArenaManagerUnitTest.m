@@ -78,6 +78,10 @@
   return 1.0;
 }
 
+- (int)getScrollContainerDirection {
+  return DIRECTION_UNDETERMINED;
+}
+
 - (void)onGestureScrollBy:(CGPoint)delta {
 }
 

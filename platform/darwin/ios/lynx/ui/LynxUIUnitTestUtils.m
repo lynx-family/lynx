@@ -32,9 +32,17 @@
   _event = nil;
 }
 
+- (void)dispatchEvent:(LynxEventDetail *)event {
+}
+
 @end
 
 @implementation LynxUIMockContext
+
+- (LynxEventEmitter *)eventEmitter {
+  return self.mockEventEmitter;
+}
+
 @end
 
 @implementation LynxUIUnitTestUtils

@@ -81,7 +81,8 @@
             point:CGPointZero
           touches:nil
             event:nil
-       touchEvent:nil];
+       touchEvent:nil
+      extraBundle:nil];
   [handler end:LynxGestureHandlerOptionFling
            point:CGPointZero
          touches:nil
@@ -93,18 +94,22 @@
   LynxTouchEvent *touchEvent = [[LynxTouchEvent alloc] init];
   CGPoint flingPoint = CGPointMake(100.0, 200.0);
   [handler onHandle:LynxEventTouchStart
-            touches:touches
-              event:event
-         touchEvent:touchEvent
-         flingPoint:CGPointZero];
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:false
+               extraBundle:nil];
   XCTAssertEqual(handler.status, LYNX_STATE_UNDETERMINED);
   [handler reset];
 
   [handler onHandle:LynxEventTouchMove
-            touches:nil
-              event:nil
-         touchEvent:nil
-         flingPoint:CGPointMake(100.0, 200.0)];
+                   touches:nil
+                     event:nil
+                touchEvent:nil
+                flingPoint:CGPointMake(100.0, 200.0)
+      handleBySimultaneous:false
+               extraBundle:nil];
   XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
 
 #pragma clang diagnostic pop
@@ -132,6 +137,10 @@
 
 - (CGFloat)getMemberScrollY {
   return 0;
+}
+
+- (int)getScrollContainerDirection {
+  return DIRECTION_UNDETERMINED;
 }
 
 - (void)onGestureScrollBy:(CGPoint)delta {

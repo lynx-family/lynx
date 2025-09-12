@@ -8,6 +8,7 @@
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxGestureExtraBundle.h>
 #import <Lynx/LynxTouchEvent.h>
 #import "LynxGestureArenaManager.h"
 #import "LynxGestureDetectorManager.h"
@@ -30,6 +31,7 @@
 @property(nonatomic, weak) id<LynxGestureArenaMember> lastFlingWinner;
 @property(nonatomic, strong) NSSet<id<LynxGestureArenaMember>> *simultaneousWinners;
 @property(nonatomic, strong) NSSet<NSNumber *> *simultaneousGestureIds;
+@property(nonatomic, strong) LynxGestureExtraBundle *extraBundle;
 
 @property(nonatomic, assign) NSInteger lastFlingTargetId;
 // record duplicated member when use continuesWith, such as A -> B -> A -> C
@@ -47,6 +49,7 @@
     _gestureArenaManager = arenaManager;
     _velocityTrackers = [NSPointerArray weakObjectsPointerArray];
     _eventHandlers = [NSPointerArray weakObjectsPointerArray];
+    _extraBundle = [LynxGestureExtraBundle alloc];
   }
   return self;
 }
@@ -99,6 +102,7 @@
   _winner = winner;
   _lastWinner = winner;
   [self updateSimultaneousWinner:winner];
+  _extraBundle = [LynxGestureExtraBundle alloc];
 }
 
 - (void)updateSimultaneousWinner:(id<LynxGestureArenaMember>)winner {
@@ -381,7 +385,9 @@
                                  event:(UIEvent *_Nullable)event
                                 member:(id<LynxGestureArenaMember> _Nullable)member
                             touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-                            flingPoint:(CGPoint)flingPoint {
+                            flingPoint:(CGPoint)flingPoint
+                  handleBySimultaneous:(BOOL)handleBySimultaneous
+                           extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
   // If there is no current member, return early as there are no gesture handlers to dispatch the
   // event to.
   if (!member) {
@@ -397,10 +403,12 @@
 
   for (LynxBaseGestureHandler *handler in [gestureHandlers allValues]) {
     [handler handleUIEvent:touchType
-                   touches:touches
-                     event:event
-                touchEvent:touchEvent
-                flingPoint:flingPoint];
+                     touches:touches
+                       event:event
+                  touchEvent:touchEvent
+                  flingPoint:flingPoint
+        handleBySimultaneous:handleBySimultaneous
+                 extraBundle:extraBundle];
   }
 }
 
@@ -473,7 +481,9 @@
                                  event:event
                                 member:winner
                             touchEvent:touchEvent
-                            flingPoint:delta];
+                            flingPoint:delta
+                  handleBySimultaneous:false
+                           extraBundle:_extraBundle];
 
   if (self.simultaneousWinners) {
     for (id<LynxGestureArenaMember> member in self.simultaneousWinners) {
@@ -482,8 +492,11 @@
                                      event:event
                                     member:member
                                 touchEvent:touchEvent
-                                flingPoint:delta];
+                                flingPoint:delta
+                      handleBySimultaneous:true
+                               extraBundle:_extraBundle];
     }
+    [_extraBundle reset];
   }
 
   if (competeChainCandidates) {

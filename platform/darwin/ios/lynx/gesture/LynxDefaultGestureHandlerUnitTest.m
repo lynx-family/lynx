@@ -13,6 +13,21 @@
 #import "LynxGestureHandlerTrigger.h"
 #import "LynxUIUnitTestUtils.h"
 
+typedef struct {
+  CGFloat x;
+  CGFloat y;
+} MockTouchLocation;
+
+@interface MockTouch : UITouch
+@property(nonatomic, assign) MockTouchLocation mockLocation;
+@end
+
+@implementation MockTouch
+- (CGPoint)locationInView:(UIView *)view {
+  return CGPointMake(self.mockLocation.x, self.mockLocation.y);
+}
+@end
+
 @interface LynxDefaultGestureHandlerUnitTest : XCTestCase
 
 @end
@@ -82,32 +97,51 @@
             point:CGPointZero
           touches:nil
             event:nil
-       touchEvent:nil];
+       touchEvent:nil
+      extraBundle:nil];
   [handler end:LynxGestureHandlerOptionDefault
            point:CGPointZero
          touches:nil
            event:nil
       touchEvent:nil];
   NSSet<UITouch *> *touches = [NSSet setWithObject:[[UITouch alloc] init]];
+  MockTouch *touchStart = [[MockTouch alloc] init];
+  touchStart.mockLocation = (MockTouchLocation){0, 0};  // 初始位置
+  NSSet<UITouch *> *touchesStart = [NSSet setWithObject:touchStart];
+
+  MockTouch *touchMove = [[MockTouch alloc] init];
+  touchMove.mockLocation = (MockTouchLocation){10, 10};  // 移动后的位置
+  NSSet<UITouch *> *touchesMove = [NSSet setWithObject:touchMove];
+
   UIEvent *event = [[UIEvent alloc] init];
   LynxTouchEvent *touchEvent = [[LynxTouchEvent alloc] init];
   CGPoint flingPoint = CGPointMake(100.0, 200.0);
   [handler onHandle:LynxEventTouchStart
-            touches:touches
-              event:event
-         touchEvent:touchEvent
-         flingPoint:CGPointZero];
+                   touches:touchesStart
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointZero
+      handleBySimultaneous:NO
+               extraBundle:nil];
   XCTAssertEqual(handler.status, LYNX_STATE_BEGIN);
   [handler onHandle:LynxEventTouchMove
-            touches:touches
-              event:event
-         touchEvent:touchEvent
-         flingPoint:CGPointZero];
+                   touches:touchesMove
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:CGPointMake(10, 10)
+      handleBySimultaneous:NO
+               extraBundle:nil];
   XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
 
   [handler reset];
 
-  [handler onHandle:nil touches:nil event:nil touchEvent:nil flingPoint:CGPointMake(100.0, 200.0)];
+  [handler onHandle:nil
+                   touches:nil
+                     event:nil
+                touchEvent:nil
+                flingPoint:CGPointMake(100.0, 200.0)
+      handleBySimultaneous:false
+               extraBundle:nil];
   XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
 
 #pragma clang diagnostic pop
@@ -135,6 +169,10 @@
 
 - (CGFloat)getMemberScrollY {
   return 0;
+}
+
+- (int)getScrollContainerDirection {
+  return DIRECTION_UNDETERMINED;
 }
 
 - (void)onGestureScrollBy:(CGPoint)delta {

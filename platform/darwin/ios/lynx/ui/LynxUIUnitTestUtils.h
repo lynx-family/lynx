@@ -22,6 +22,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic) LynxUIContext *mockUIContext;
 @property(nonatomic) LynxEventEmitterUnitTestHelper *mockEventEmitter;
 @property(nonatomic) LynxView *rootView;
+
+- (LynxEventEmitter *)eventEmitter;
+
 @end
 
 @interface LynxUIUnitTestUtils : NSObject
