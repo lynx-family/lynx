@@ -25,6 +25,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableMapKeySetIterator;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.PageConfig;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
@@ -111,7 +112,7 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
   private LynxAccessibilityDelegate mDelegate = null;
 
   private LynxAccessibilityHelper mHelper = null;
-  private boolean mIsEmbeddedModeOn = false;
+  private boolean mIsLazyInit = false;
 
   public LynxAccessibilityWrapper(UIBody uiBody) {
     if (uiBody == null || uiBody.getBodyView() == null) {
@@ -121,11 +122,11 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
     mWeakHostUI = new WeakReference<>(uiBody);
     LynxContext lynxContext = uiBody.getLynxContext();
     if (lynxContext != null) {
-      mIsEmbeddedModeOn = lynxContext.isEmbeddedModeOn();
+      mIsLazyInit = lynxContext.isEmbeddedModeOn() || LynxEnv.inst().enableLazyInitA11y();
       mAccessibilityManager = (AccessibilityManager) uiBody.getLynxContext().getSystemService(
           Service.ACCESSIBILITY_SERVICE);
     }
-    if (mIsEmbeddedModeOn) {
+    if (mIsLazyInit) {
       // Note: if embedded mode is on, we only construct a11y state helper to monitor system a11y
       // state.
       mStateHelper = new LynxAccessibilityStateHelper(mAccessibilityManager, this);
@@ -149,7 +150,7 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
     mConfigEnableAccessibilityElement = config.getEnableAccessibilityElement();
     mConfigEnableOverlap = config.getEnableOverlapForAccessibilityElement();
     mConfigEnableA11yIDMutationObserver = config.getEnableA11yIDMutationObserver();
-    if (mIsEmbeddedModeOn) {
+    if (mIsLazyInit) {
       // If embedded mode is on, we only create a11y delegate if system accessibility is enabled and
       // touch exploration is enabled.
       createAccessibilityDelegateForLynxViewIfNeeded();
@@ -479,7 +480,7 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
   @Override
   public void onAccessibilityEnable(boolean enable) {
     mAccessibilityEnable = enable;
-    if (mIsEmbeddedModeOn) {
+    if (mIsLazyInit) {
       createAccessibilityDelegateForLynxViewIfNeeded();
     }
   }
@@ -487,7 +488,7 @@ public class LynxAccessibilityWrapper implements LynxAccessibilityStateHelper.On
   @Override
   public void onTouchExplorationEnable(boolean enable) {
     mTouchExplorationEnable = enable;
-    if (mIsEmbeddedModeOn) {
+    if (mIsLazyInit) {
       createAccessibilityDelegateForLynxViewIfNeeded();
     }
   }
