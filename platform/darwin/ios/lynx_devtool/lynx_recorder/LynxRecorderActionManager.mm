@@ -752,7 +752,85 @@ static const int kVirtual = 1 << 2;
   return jsonString;
 }
 
+- (LynxView*)buildFakeLynxView {
+  CGFloat preferredLayoutHeight = 0.0f;
+  CGFloat preferredLayoutWidth = 0.0f;
+  CGFloat preferredMaxLayoutHeight = 0.0f;
+  CGFloat preferredMaxLayoutWidth = 0.0f;
+
+  LynxViewSizeMode widthMode = [self getViewSizeMode:0];
+  LynxViewSizeMode heightMode = [self getViewSizeMode:1];
+  LynxView* lynxView = [[LynxView alloc] initWithBuilderBlock:^(LynxViewBuilder* builder) {
+    builder.config = [[LynxConfig alloc] initWithProvider:LynxConfig.globalConfig.templateProvider];
+    [builder.config registerModule:[LynxRecorderReplayDataModule class] param:self.dataProvider];
+    [builder.config registerModule:[LynxRecorderOpenUrlModule class]];
+    [builder setFrame:CGRectMake(self->_origin.x, self->_origin.y, self->_screenSize.width,
+                                 self->_screenSize.height)];
+    NSInteger schema_thread_strategy = [self.replayConfig thread_mode];
+    [builder
+        setThreadStrategyForRender:
+            [self getThreadStrategy:(int32_t)schema_thread_strategy
+                testBenchThreadStrategy:[self->_threadStrategyData[@"threadStrategy"] intValue]]];
+    if ([self->_threadStrategyData valueForKey:@"enableJSRuntime"]) {
+      BOOL enableJSRuntime = ![_replayConfig enableAirStrictMode];
+      [builder setEnableJSRuntime:enableJSRuntime];
+      [builder setEnableAirStrictMode:!enableJSRuntime];
+    }
+
+    builder.fetcher = self->_dynamicComponentFetcher;
+
+    NSMutableArray* preloadJSPaths = [[NSMutableArray alloc] init];
+    if (![self.replayConfig forbidTimeFreeze]) {
+      [preloadJSPaths addObject:[self replayTimeEnvJScript]];
+    }
+    NSString* groupName = @"ark";
+    if (self->_lynxGroup == nil) {
+      LynxGroupOption* groupOption = [[LynxGroupOption alloc] init];
+      groupOption.preloadJSPaths = preloadJSPaths;
+      self->_lynxGroup = [[LynxGroup alloc] initWithName:groupName withLynxGroupOption:groupOption];
+    }
+    builder.group = self->_lynxGroup;
+    if (self->_rawFontScaleValue != -1) {
+      builder.fontScale = self->_rawFontScaleValue;
+    }
+    // provide a change to register module or resource provider
+    for (id<LynxRecorderActionCallback> callback in self.actionCallbacks) {
+      [callback onLynxViewWillBuild:self builder:builder];
+    }
+  }];
+
+  lynxView.layoutWidthMode = widthMode;
+  lynxView.layoutHeightMode = heightMode;
+  lynxView.preferredLayoutWidth = preferredLayoutWidth;
+  lynxView.preferredLayoutHeight = preferredLayoutHeight;
+  lynxView.preferredMaxLayoutHeight = preferredMaxLayoutHeight;
+  lynxView.preferredMaxLayoutWidth = preferredMaxLayoutWidth;
+  [_parentUI addSubview:lynxView];
+  _threadStrategyData = nil;
+  _client = [[LynxRecorderViewClient alloc] init];
+  _client.manager = self;
+  [lynxView.getLifecycleDispatcher addLifecycleClient:_client];
+  [lynxView setResourceFetcher:_client];
+  [lynxView addObserver:self
+             forKeyPath:@"frame"
+                options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld
+                context:nil];
+  [lynxView.baseInspectorOwner setDebugInfoInterceptor:self.lynxDebugInfoRecorderDelegate];
+  // provide a change to register module or resource provider
+  for (id<LynxRecorderActionCallback> callback in self.actionCallbacks) {
+    [callback onLynxViewDidBuild:lynxView];
+  }
+  return lynxView;
+}
+
+- (void)avoidLynxViewBeingNull {
+  if (_lynxView == nil) {
+    _lynxView = [self buildFakeLynxView];
+  }
+}
+
 - (void)loadTemplate:(NSDictionary*)params {
+  [self avoidLynxViewBeingNull];
   NSString* url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
   if (_globalPropsCache) {
     [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
@@ -830,6 +908,7 @@ static const int kVirtual = 1 << 2;
 }
 
 - (void)loadTemplateBundle:(NSDictionary*)params {
+  [self avoidLynxViewBeingNull];
   NSString* url = [[LynxRecorderEnv sharedInstance] lynxRecorderUrlPrefix];
   if (_globalPropsCache) {
     [_lynxView updateGlobalPropsWithTemplateData:[[LynxTemplateData alloc]
