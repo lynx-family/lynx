@@ -702,6 +702,14 @@ export interface Properties {
   XPlaceholderFontWeight?: (string & {}) | number | undefined;
   XPlaceholderFontStyle?: (string & {}) | number | undefined;
   /**
+   * Specify whether the node can be the best responder for touch testing.
+   *
+   * **Syntax**: `auto | none`
+   *
+   * @see https://lynxjs.org/api/css/properties/pointer-events
+   */
+  pointerEvents?: 'auto' | 'none' | undefined;
+  /**
    * The opacity CSS property sets the opacity of an element.
    *
    * @see https://lynxjs.org/api/css/properties/opacity

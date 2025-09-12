@@ -610,6 +610,8 @@ public interface com::lynx::tasm::behavior::AutoGenStyleConstants {
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_NORMAL XPLACEHOLDERFONTSTYLE_NORMAL;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_ITALIC XPLACEHOLDERFONTSTYLE_ITALIC;
   public final int com.lynx.tasm.behavior.AutoGenStyleConstants.XPLACEHOLDERFONTSTYLE_OBLIQUE XPLACEHOLDERFONTSTYLE_OBLIQUE;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_AUTO POINTEREVENTS_AUTO;
+  public final int com.lynx.tasm.behavior.AutoGenStyleConstants.POINTEREVENTS_NONE POINTEREVENTS_NONE;
 }
 
 public class com::lynx::tasm::image::AutoSizeImage : com.lynx.tasm.behavior.shadow.ShadowNode, com.lynx.tasm.behavior.shadow.MeasureFunc {

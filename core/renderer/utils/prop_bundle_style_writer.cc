@@ -919,6 +919,12 @@ void PropBundleStyleWriter::WriteFontOpticalSizing(
   }
 }
 
+void PropBundleStyleWriter::WritePointerEvents(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  bundle->SetPropsByID(CSSPropertyID::kPropertyIDPointerEvents,
+                       static_cast<uint32_t>(style->GetPointerEvents()));
+}
+
 const std::array<PropBundleStyleWriter::WriterFunc, kPropertyEnd>&
 PropBundleStyleWriter::GetWriter() {
   static constexpr std::array<WriterFunc, kPropertyEnd> kSpecificWriter = [] {

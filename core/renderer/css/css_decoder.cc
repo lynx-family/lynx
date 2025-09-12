@@ -272,6 +272,8 @@ std::string CSSDecoder::CSSValueEnumToString(
       //      break;
       //    case lynx::tasm::kPropertyIDBackgroundClip:
       //      break;
+    case lynx::tasm::kPropertyIDPointerEvents:
+      return ToPointerEventsType(value.GetEnum<PointerEventsType>());
     default:
       LynxWarning(false, error::E_CSS_UNSUPPORTED_VALUE,
                   "lynx css decoder no such enum for css_id: %s",

@@ -81,6 +81,10 @@
   return NO;
 }
 
+- (enum LynxPointerEventsValue)pointerEvents {
+  return kLynxPointerEventsValueAuto;
+}
+
 - (BOOL)enableTouchPseudoPropagation {
   return YES;
 }
@@ -195,6 +199,17 @@
   XCTAssertFalse([childUI ignoreFocus]);
   [LynxPropsProcessor updateProp:@YES withKey:@"ignore-focus" forUI:parentUI];
   XCTAssertTrue([childUI ignoreFocus]);
+}
+
+- (void)testPointerEvents {
+  LynxRootUI* rootUI = [[LynxRootUI alloc] initWithLynxView:(LynxView*)[UIView new]];
+  LynxUIView* parentUI = [[LynxUIView alloc] initWithView:[UIView new]];
+  [rootUI insertChild:parentUI atIndex:0];
+  LynxUIView* childUI = [[LynxUIView alloc] initWithView:[UIView new]];
+  [parentUI insertChild:childUI atIndex:0];
+  XCTAssertTrue([childUI pointerEvents] == kLynxPointerEventsValueAuto);
+  [LynxPropsProcessor updateProp:@1 withKey:@"pointer-events" forUI:parentUI];
+  XCTAssertTrue([childUI pointerEvents] == kLynxPointerEventsValueNone);
 }
 
 - (NSInteger)getGestureArenaMemberId {

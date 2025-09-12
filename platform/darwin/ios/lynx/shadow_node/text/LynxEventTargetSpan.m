@@ -10,6 +10,7 @@
   enum LynxEventPropStatus _ignoreFocus;
   BOOL _enableTouchPseudoPropagation;
   enum LynxEventPropStatus _eventThrough;
+  enum LynxPointerEventsValue _pointerEvents;
   NSDictionary* _dataset;
   CGRect _frame;
   __weak id<LynxEventTarget> _parent;
@@ -22,6 +23,7 @@
   if (self) {
     _ignoreFocus = node.ignoreFocus;
     _eventThrough = node.eventThrough;
+    _pointerEvents = node.pointerEvents;
     _dataset = node.dataset;
     _enableTouchPseudoPropagation = node.enableTouchPseudoPropagation;
     _sign = node.sign;
@@ -133,6 +135,18 @@
     return [parent eventThrough:point];
   }
   return false;
+}
+
+- (enum LynxPointerEventsValue)pointerEvents {
+  if (_pointerEvents != kLynxPointerEventsValueUnset) {
+    return _pointerEvents;
+  }
+
+  id<LynxEventTarget> parent = [self parentTarget];
+  if (parent != nil) {
+    return [parent pointerEvents];
+  }
+  return kLynxPointerEventsValueAuto;
 }
 
 - (BOOL)enableTouchPseudoPropagation {

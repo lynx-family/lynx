@@ -4167,5 +4167,17 @@ lepus_value ComputedCSSStyle::FontOpticalSizingToLepus() {
   }
 }
 
+bool ComputedCSSStyle::SetPointerEvents(const tasm::CSSValue& value,
+                                        const bool reset) {
+  bool flush = CSSStyleUtils::ComputeEnumStyle<PointerEventsType>(
+      value, reset, pointer_events_, PointerEventsType::kAuto,
+      "pointer-events must be an enum!", parser_configs_);
+  return pointer_events_ == PointerEventsType::kAuto ? true : flush;
+}
+
+lepus_value ComputedCSSStyle::PointerEventsToLepus() {
+  return lepus_value(static_cast<int>(pointer_events_));
+}
+
 }  // namespace starlight
 }  // namespace lynx

@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.4
+- Add the `pointer-events` CSS property.
+
 ## 3.5.3
 - Add `event-through-active-regions`, `enable-exposure-ui-clip` properties.
 

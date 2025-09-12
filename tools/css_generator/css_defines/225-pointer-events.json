@@ -1,0 +1,24 @@
+{
+  "name": "pointer-events",
+  "id": 225,
+  "type": "enum",
+  "default_value": "auto",
+  "version": "3.5",
+  "author": "hexionghui",
+  "consumption_status": "skip",
+  "desc": "Specify whether the node can be the best responder for touch testing.",
+  "values": [
+    {
+      "value": "auto",
+      "version": "3.5",
+      "desc": "The node can be the best responder for touch testing."
+    },
+    {
+      "value": "none",
+      "version": "3.5",
+      "desc": "The node cannot be the best responder for touch testing."
+    }
+  ],
+  "formal_syntax": "auto | none",
+  "is_shorthand": false
+}

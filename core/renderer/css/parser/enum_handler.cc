@@ -570,6 +570,20 @@ static bool ToXPlaceholderFontStyleType(std::string_view str, int& result) {
   return true;
 }
 
+using starlight::PointerEventsType;
+static bool ToPointerEventsType(std::string_view str, int& result) {
+  PointerEventsType type = PointerEventsType::kAuto;
+  if (str == "auto") {
+    type = PointerEventsType::kAuto;
+  } else if (str == "none") {
+    type = PointerEventsType::kNone;
+  } else {
+    return false;
+  }
+  result = static_cast<int>(type);
+  return true;
+}
+
 // AUTO INSERT END, DON'T CHANGE IT!
 
 using starlight::FlexAlignType;
@@ -767,6 +781,9 @@ HANDLER_IMPL() {
     case kPropertyIDXPlaceholderFontStyle:
       success = ToXPlaceholderFontStyleType(str, result);
       break;
+    case kPropertyIDPointerEvents:
+      success = ToPointerEventsType(str, result);
+      break;
     // AUTO INSERT END, DON'T CHANGE IT!
     case kPropertyIDLinearDirection:
       success = ToLinearOrientationType(str, result);
@@ -827,6 +844,7 @@ HANDLER_REGISTER_IMPL() {
   array[kPropertyIDFontOpticalSizing] = &Handle;
   array[kPropertyIDXPlaceholderFontWeight] = &Handle;
   array[kPropertyIDXPlaceholderFontStyle] = &Handle;
+  array[kPropertyIDPointerEvents] = &Handle;
   // AUTO INSERT END, DON'T CHANGE IT!
   array[kPropertyIDLinearDirection] = &Handle;
   array[kPropertyIDAlignItems] = &Handle;

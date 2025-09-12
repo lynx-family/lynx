@@ -15,6 +15,7 @@
   BOOL _needsDisplay;
   __weak id<LynxShadowNodeDelegate> _delegate;
   NSRunLoop *_currentLayoutLooper;
+  enum LynxPointerEventsValue _pointerEvents;
 }
 
 LYNX_NOT_IMPLEMENTED(-(instancetype)init)
@@ -29,6 +30,7 @@ LYNX_PROPS_GROUP_DECLARE(LYNX_PROP_DECLARE("event-through", setEventThrough, BOO
     _ignoreFocus = kLynxEventPropUndefined;
     _enableTouchPseudoPropagation = YES;
     _eventThrough = kLynxEventPropUndefined;
+    _pointerEvents = kLynxPointerEventsValueUnset;
     _currentLayoutLooper = [NSRunLoop currentRunLoop];
   }
   return self;
@@ -133,6 +135,18 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   _eventThrough = value ? kLynxEventPropEnable : kLynxEventPropDisable;
 }
 
+LYNX_PROP_DEFINE("pointer-events", setPointerEvents, NSInteger) {
+  // If requestReset, the _pointerEvents will be Undefined.
+  enum LynxPointerEventsValue res = kLynxPointerEventsValueUnset;
+  if (requestReset) {
+    _pointerEvents = res;
+    return;
+  }
+  if (value >= kLynxPointerEventsValueAuto && value < kLynxPointerEventsValueUnset) {
+    _pointerEvents = (enum LynxPointerEventsValue)value;
+  }
+}
+
 LYNX_PROP_SETTER("vertical-align", setVerticalAlign, NSArray *) {
   // be compatible with old pages
   if (!_uiOwner.uiContext.enableTextRefactor) {
@@ -179,6 +193,10 @@ LYNX_PROP_SETTER("dataset", setDataset, NSDictionary *) {
 
 - (BOOL)supportInlineView {
   return NO;
+}
+
+- (enum LynxPointerEventsValue)pointerEvents {
+  return _pointerEvents;
 }
 
 @end

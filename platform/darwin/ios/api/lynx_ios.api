@@ -1555,6 +1555,7 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
   public BOOL LynxEventTarget-p::consumeSlideEvent:(CGFloat angle);
   public BOOL LynxEventTarget-p::blockNativeEvent:(UIGestureRecognizer *gestureRecognizer);
   public BOOL LynxEventTarget-p::eventThrough:(CGPoint point);
+  public enum LynxPointerEventsValue LynxEventTarget-p::pointerEvents();
   public BOOL LynxEventTarget-p::enableTouchPseudoPropagation();
   public void LynxEventTarget-p::onPseudoStatusFrom:changedTo:(int32_t preStatus,[changedTo] int32_t currentStatus);
   public BOOL LynxEventTarget-p::dispatchTouch:touches:withEvent:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[withEvent] UIEvent *event);
@@ -3276,6 +3277,7 @@ public class LynxShadowNode : LynxLayoutNode, <LynxShadowNode> {
   public void LynxShadowNode::setVerticalAlignOnShadowNode:value:(BOOL requestReset,[value] NSArray *value);
   public BOOL LynxShadowNode::isVirtual();
   public BOOL LynxShadowNode::supportInlineView();
+  public enum LynxPointerEventsValue LynxShadowNode::pointerEvents();
   public void LynxShadowNode(VirtualAnchor)::adjustUIHierarchyWhileInsertNode:atIndex:(LynxShadowNode *child, [atIndex] NSInteger index);
   public void LynxShadowNode(VirtualAnchor)::adjustUIHierarchyWhileRemoveNode:atIndex:(LynxShadowNode *child, [atIndex] NSInteger index);
   public NSInteger LynxShadowNode(VirtualAnchor)::mapToUIIndexWithChild:(LynxShadowNode *child);
@@ -5478,6 +5480,11 @@ public enum LynxXPlaceholderFontStyleType {
   LynxXPlaceholderFontStyleOblique
 }
 
+public enum LynxPointerEventsType {
+  LynxPointerEventsAuto
+  LynxPointerEventsNone
+}
+
 
   typedef NSString *(^ LynxBacktraceFunction) (NSString *message, NSUInteger skippedDepth)
   public LYNX_EXTERN void LynxSetBacktraceFunction(LynxBacktraceFunction backtraceFunction);
@@ -5813,6 +5820,12 @@ public enum LynxEventPropStatus {
   kLynxEventPropEnable
   kLynxEventPropDisable
   kLynxEventPropUndefined
+}
+
+public enum LynxPointerEventsValue {
+  kLynxPointerEventsValueAuto
+  kLynxPointerEventsValueNone
+  kLynxPointerEventsValueUnset
 }
 
 
