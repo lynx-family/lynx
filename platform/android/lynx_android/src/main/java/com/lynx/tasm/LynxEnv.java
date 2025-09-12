@@ -195,6 +195,8 @@ public class LynxEnv {
 
   private boolean mForceDisableQuickJsCache = false;
 
+  private boolean mEnableLazyInitA11y = true;
+
   private boolean mEnableTextLayoutCache = true;
   private boolean mEnableRecycleRenderDataListWhileReload = false;
 
@@ -323,6 +325,7 @@ public class LynxEnv {
     initEnableTextBoringLayout();
     initEnableRefreshRateOpt();
     initEnableCheckAccessFromNonUiThread();
+    initEnableLazyInitA11y();
     initEnableTextLayoutCache();
     initEnableRecycleRenderDataListWhileReload();
 
@@ -1340,6 +1343,10 @@ public class LynxEnv {
     return this.mEnableTextLayoutCache;
   }
 
+  public boolean enableLazyInitA11y() {
+    return this.mEnableLazyInitA11y;
+  }
+
   protected void initEnableGenericResourceFetcher() {
     mEnableGenericResourceFetcher =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_GENERIC_RESOURCE_FETCHER, false);
@@ -1360,6 +1367,10 @@ public class LynxEnv {
 
   protected void initEnableTextLayoutCache() {
     mEnableTextLayoutCache = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_TEXT_LAYOUT_CACHE, true);
+  }
+
+  protected void initEnableLazyInitA11y() {
+    mEnableLazyInitA11y = getBooleanFromExternalEnv(LynxEnvKey.ENABLE_LAZY_INIT_A11Y, true);
   }
 
   /**

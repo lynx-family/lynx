@@ -4738,6 +4738,7 @@ public class com::lynx::tasm::LynxEnv :  {
   public boolean com.lynx.tasm.LynxEnv.enableFreshRateOpt();
   public boolean com.lynx.tasm.LynxEnv.enableCheckAccessFromNonUIThread();
   public boolean com.lynx.tasm.LynxEnv.enableTextLayoutCache();
+  public boolean com.lynx.tasm.LynxEnv.enableLazyInitA11y();
   public void com.lynx.tasm.LynxEnv.initNativeUIThread();
   public boolean com.lynx.tasm.LynxEnv.tryToLoadV8Bridge(boolean unused);
   public void com.lynx.tasm.LynxEnv.forceDisableQuickJsCache();
@@ -4777,6 +4778,7 @@ public enum com::lynx::tasm::LynxEnvKey {
   public com.lynx.tasm.LynxEnvKey.ENABLE_REFRESH_RATE_OPT ENABLE_REFRESH_RATE_OPT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_MULTI_JS_THREAD_BY_DEFAULT ENABLE_MULTI_JS_THREAD_BY_DEFAULT;
   public com.lynx.tasm.LynxEnvKey.ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD ENABLE_RECYCLE_RENDER_DATA_LIST_WHILE_RELOAD;
+  public com.lynx.tasm.LynxEnvKey.ENABLE_LAZY_INIT_A11Y ENABLE_LAZY_INIT_A11Y;
   public com.lynx.tasm.LynxEnvKey.ENABLE_TEXT_LAYOUT_CACHE ENABLE_TEXT_LAYOUT_CACHE;
   public com.lynx.tasm.LynxEnvKey.ENABLE_MEMORY_MONITOR ENABLE_MEMORY_MONITOR;
   public com.lynx.tasm.LynxEnvKey.MEMORY_ACQUISITION_DELAY_SEC MEMORY_ACQUISITION_DELAY_SEC;
