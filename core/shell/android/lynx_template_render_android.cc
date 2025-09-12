@@ -427,24 +427,26 @@ void InitRuntime(JNIEnv* env, jclass jcaller, jlong ptr,
                                    ui_delegate_ptr](auto& actor) {
     native_module_manager->SetModuleDelegate(
         std::make_shared<lynx::shell::ModuleDelegateImpl>(actor));
-    if (ui_delegate_ptr != 0) {
-      auto ui_delegate =
-          reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
-      auto runtime_proxy = std::make_shared<lynx::shell::LynxRuntimeProxyImpl>(
-          shell->GetRuntimeActor());
-      auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
-          shell->GetEngineActor());
-      auto perf_controller_proxy =
-          std::make_shared<lynx::shell::PerfControllerProxyImpl>(
-              shell->GetPerfControllerActor());
-      ui_delegate->OnLynxCreate(
-          std::move(engine_proxy), std::move(runtime_proxy),
-          std::move(perf_controller_proxy), nullptr, nullptr, nullptr);
-    }
   };
   shell->InitRuntime(group_id, loader, native_module_manager,
                      std::move(on_runtime_actor_created), std::move(paths),
                      runtime_flag, source_url);
+}
+
+void OnLynxEngineCreated(JNIEnv* env, jclass jcaller, jlong ptr,
+                         jlong uiDelegatePtr) {
+  auto shell = reinterpret_cast<LynxShell*>(ptr);
+  auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>(uiDelegatePtr);
+  auto runtime_proxy = std::make_shared<lynx::shell::LynxRuntimeProxyImpl>(
+      shell->GetRuntimeActor());
+  auto engine_proxy = std::make_shared<lynx::shell::LynxEngineProxyImpl>(
+      shell->GetEngineActor());
+  auto perf_controller_proxy =
+      std::make_shared<lynx::shell::PerfControllerProxyImpl>(
+          shell->GetPerfControllerActor());
+  ui_delegate->OnLynxCreate(std::move(engine_proxy), std::move(runtime_proxy),
+                            std::move(perf_controller_proxy), nullptr, nullptr,
+                            nullptr);
 }
 
 void StartRuntime(JNIEnv* env, jclass jcaller, jlong ptr, jlong lifecycle) {

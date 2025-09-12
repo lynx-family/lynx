@@ -956,6 +956,7 @@ public class LynxTemplateRender
     if (mFontScale != 1.0f) {
       nativeSetFontScale(mNativePtr, mNativeLifecycle, mFontScale);
     }
+    nativeOnLynxEngineCreated(mNativePtr, lynxUIRenderer().getUIDelegatePtr());
 
     TraceEvent.endSection(TraceEventDef.TEMPLATE_RENDER_CREATE_TASM);
   }
@@ -4105,6 +4106,7 @@ public class LynxTemplateRender
       LynxModuleFactory moduleFactory, String groupId, String[] preloadJSPaths,
       String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
 
+  private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
   private static native void nativeStartRuntime(long ptr, long lifecycle);
 
   private static native void nativeProcessRender(long ptr, long lifecycle);
