@@ -11,7 +11,7 @@ export interface TraceOption {
    * 
    * Note: If `flowIds` is set, this parameter will be ignored.
    */
-  flowId?: number;
+  flowId?: number | undefined;
 
   /**
    * An optional unique identifier for tracing multiple event flows.
