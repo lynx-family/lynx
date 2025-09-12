@@ -47,6 +47,7 @@ JSVMRuntime::~JSVMRuntime() {
   host_object_template_ = nullptr;
   JSVM_CALL(OH_JSVM_DeleteReference, (getEnv(), host_function_template_));
   host_function_template_ = nullptr;
+  *is_runtime_destroyed_ = true;
   context_->Release();
   context_.reset();
   LOGI("LYNX free jsvm context");
