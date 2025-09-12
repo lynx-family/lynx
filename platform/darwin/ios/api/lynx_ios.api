@@ -5076,6 +5076,7 @@ public class LynxViewBuilder : NSObject {
   public BOOL LynxViewBuilder::enableMultiAsyncThread enableMultiAsyncThread;
   public BOOL LynxViewBuilder::enableVSyncAlignedMessageLoop enableVSyncAlignedMessageLoop;
   public BOOL LynxViewBuilder::enableAsyncHydration enableAsyncHydration;
+  public BOOL LynxViewBuilder::enableMTSModule enableMTSModule;
   public CGRect LynxViewBuilder::frame frame;
   public id<LynxDynamicComponentFetcher> LynxViewBuilder::fetcher fetcher;
   public CGFloat LynxViewBuilder::fontScale fontScale;

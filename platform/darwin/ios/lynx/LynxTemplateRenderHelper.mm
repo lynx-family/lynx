@@ -97,6 +97,14 @@
       std::make_shared<lynx::shell::LynxResourceLoaderDarwin>(
           nil, _fetcher, self, templateResourceFetcher, genericResourceFetcher));
 
+  // Main Thread Modules
+  std::unique_ptr<lynx::pub::LynxNativeModuleManager> mts_native_module_manager = nullptr;
+  if (_enableMTSModule) {
+    auto mts_module_factory = [self setUpMainThreadModuleFactory];
+    mts_native_module_manager = std::make_unique<lynx::pub::LynxNativeModuleManager>();
+    mts_native_module_manager->SetPlatformModuleFactory(mts_module_factory);
+  }
+
   // Build shell
   auto ui_delegate = reinterpret_cast<lynx::tasm::UIDelegate*>([_lynxUIRenderer uiDelegate]);
   std::unique_ptr<lynx::tasm::PaintingCtxPlatformImpl> painting_context;
@@ -127,6 +135,7 @@
           .SetEnableLayoutOnly(_enableLayoutOnly)
           .SetWhiteBoard(_runtimeOptions.group ? _runtimeOptions.group.whiteBoard : nullptr)
           .SetLazyBundleLoader(loader)
+          .SetNativeModuleManager(std::move(mts_native_module_manager))
           .SetEnableUnifiedPipeline(_enableUnifiedPipeline)
           .SetTasmLocale(std::string([[[LynxEnv sharedInstance] locale] UTF8String]))
           .SetEnablePreUpdateData(_enablePreUpdateData)
@@ -260,6 +269,31 @@
   [LynxService(LynxServiceExtensionProtocol) onLynxViewSetup:_context
                                                        group:_runtimeOptions.group
                                                       config:_config];
+}
+
+- (std::shared_ptr<lynx::piper::ModuleFactoryDarwin>)setUpMainThreadModuleFactory {
+  std::shared_ptr<lynx::piper::ModuleFactoryDarwin> module_factory =
+      std::make_shared<lynx::piper::ModuleFactoryDarwin>();
+  // setup user modules
+  if (_config) {
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_MANAGER_ADD_WRAPPERS);
+    module_factory->addWrappers(_config.moduleFactoryPtr->moduleWrappers());
+  }
+  // setup user global modules
+  LynxConfig* globalConfig = [LynxEnv sharedInstance].config;
+  if (_config != globalConfig && globalConfig) {
+    module_factory->parent = globalConfig.moduleFactoryPtr;
+  }
+  module_factory->context = _context;
+  module_factory->lynxModuleExtraData_ = _lynxModuleExtraData;
+  if (_extra == nil) {
+    _extra = [[NSMutableDictionary alloc] init];
+  }
+  [_extra addEntriesFromDictionary:[module_factory->extraWrappers() copy]];
+  // setup lynx internal modules
+  [self setUpBuiltModuleWithFactory:module_factory.get()];
+  main_thread_module_factory_ = module_factory;
+  return module_factory;
 }
 
 - (std::shared_ptr<lynx::pub::LynxNativeModuleManager>)setUpModuleManager {

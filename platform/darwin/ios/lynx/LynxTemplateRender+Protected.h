@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableUnifiedPipeline;
   BOOL _enableReuseEngine;
   BOOL _isEngineInitFromReusePool;
+  BOOL _enableMTSModule;
 
   LynxConfig* _config;
   LynxContext* _context;
@@ -82,6 +83,7 @@ NS_ASSUME_NONNULL_BEGIN
   std::unique_ptr<lynx::shell::LynxShell> shell_;
   std::shared_ptr<lynx::tasm::PageConfig> pageConfig_;
   std::weak_ptr<lynx::piper::ModuleFactoryDarwin> module_factory_;
+  std::weak_ptr<lynx::piper::ModuleFactoryDarwin> main_thread_module_factory_;
   id<LynxUIRendererProtocol> _lynxUIRenderer;
   // property
   NSMutableDictionary* _extra;

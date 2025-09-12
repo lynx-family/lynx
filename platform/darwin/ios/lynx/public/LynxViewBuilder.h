@@ -42,6 +42,7 @@ static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 @property(nonatomic, assign) BOOL enableVSyncAlignedMessageLoop;
 // Run the hydration process in a async thread.
 @property(nonatomic, assign) BOOL enableAsyncHydration;
+@property(nonatomic, assign) BOOL enableMTSModule;
 @property(nonatomic, assign) CGRect frame;
 @property(nonatomic, nullable) id<LynxDynamicComponentFetcher> fetcher;
 @property(nonatomic, assign) CGFloat fontScale;
