@@ -51,10 +51,12 @@
 }
 
 - (void)onHandle:(NSString *const)touchType
-         touches:(NSSet<UITouch *> *)touches
-           event:(UIEvent *_Nullable)event
-      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-      flingPoint:(CGPoint)flingPoint {
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
   _lastTouchEvent = touchEvent;
   CGPoint touchPoint = [[touches anyObject] locationInView:nil];
 

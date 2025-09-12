@@ -7,6 +7,7 @@
 #import <Lynx/LynxFlingGestureHandler.h>
 #import <Lynx/LynxGestureArenaMember.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxGestureExtraBundle.h>
 #import <Lynx/LynxGestureHandlerTrigger.h>
 #import <Lynx/LynxLongPressGestureHandler.h>
 #import <Lynx/LynxPanGestureHandler.h>
@@ -163,12 +164,13 @@
 }
 
 - (void)update:(NSUInteger)typeMask
-         point:(CGPoint)point
-       touches:(NSSet<UITouch *> *_Nullable)touches
-         event:(UIEvent *_Nullable)event
-    touchEvent:(LynxTouchEvent *)touchEvent {
+          point:(CGPoint)point
+        touches:(NSSet<UITouch *> *_Nullable)touches
+          event:(UIEvent *_Nullable)event
+     touchEvent:(LynxTouchEvent *)touchEvent
+    extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
   if ([self isGestureTypeMatched:typeMask]) {
-    [self onUpdate:point touchEvent:touchEvent];
+    [self onUpdate:point touchEvent:touchEvent extraBundle:extraBundle];
   }
 }
 
@@ -186,25 +188,35 @@
 }
 
 - (void)handleUIEvent:(NSString *const)touchType
-              touches:(NSSet<UITouch *> *)touches
-                event:(UIEvent *_Nullable)event
-           touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-           flingPoint:(CGPoint)flingPoint {
-  [self onHandle:touchType touches:touches event:event touchEvent:touchEvent flingPoint:flingPoint];
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
+  [self onHandle:touchType
+                   touches:touches
+                     event:event
+                touchEvent:touchEvent
+                flingPoint:flingPoint
+      handleBySimultaneous:handleSimultaneous
+               extraBundle:extraBundle];
 }
 
 - (void)onHandle:(NSString *const)touchType
-         touches:(NSSet<UITouch *> *)touches
-           event:(UIEvent *_Nullable)event
-      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-      flingPoint:(CGPoint)flingPoint {
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
 }
 
-- (bool)isEnd {
+- (BOOL)isEnd {
   return _status == LYNX_STATE_END;
 }
 
-- (bool)isActive {
+- (BOOL)isActive {
   return _status == LYNX_STATE_ACTIVE;
 }
 
@@ -218,7 +230,9 @@
 - (void)onStart:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent {
 }
 
-- (void)onUpdate:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent {
+- (void)onUpdate:(CGPoint)point
+      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+     extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle {
 }
 
 - (void)onEnd:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent {

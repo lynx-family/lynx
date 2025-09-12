@@ -4014,6 +4014,10 @@ LYNX_PROP_DEFINE("accessibility-exclusive-focus", setAccessibilityExclusiveFocus
   return 0.0;
 }
 
+- (int)getScrollContainerDirection {
+  return DIRECTION_UNDETERMINED;
+}
+
 - (void)onGestureScrollBy:(CGPoint)delta {
 }
 

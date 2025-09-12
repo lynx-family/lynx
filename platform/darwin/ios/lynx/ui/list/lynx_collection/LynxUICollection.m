@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxCollectionDataSource.h>
 #import <Lynx/LynxCollectionInvalidationContext.h>
 #import <Lynx/LynxCollectionViewCell.h>
@@ -711,6 +712,11 @@ static const CGFloat SCROLL_BY_EPSILON = 0.1f;
 
 - (CGFloat)getMemberScrollY {
   return self.view.contentOffset.y;
+}
+
+- (int)getScrollContainerDirection {
+  return self.layoutOrientation == LynxListLayoutOrientationHorizontal ? DIRECTION_HORIZONTAL
+                                                                       : DIRECTION_VERTICAL;
 }
 
 #pragma mark - Helper

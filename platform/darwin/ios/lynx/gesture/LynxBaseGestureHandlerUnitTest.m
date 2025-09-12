@@ -156,7 +156,7 @@
   [handler onTouchesUp:nil];
   [handler onTouchesCancel:nil];
   [handler begin:0 point:CGPointZero touches:nil event:nil touchEvent:nil];
-  [handler update:0 point:CGPointZero touches:nil event:nil touchEvent:nil];
+  [handler update:0 point:CGPointZero touches:nil event:nil touchEvent:nil extraBundle:nil];
   [handler end:0 point:CGPointZero touches:nil event:nil touchEvent:nil];
 #pragma clang diagnostic pop
 }
@@ -183,6 +183,10 @@
 
 - (CGFloat)getMemberScrollY {
   return 0;
+}
+
+- (int)getScrollContainerDirection {
+  return DIRECTION_UNDETERMINED;
 }
 
 - (void)onGestureScrollBy:(CGPoint)delta {

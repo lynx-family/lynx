@@ -537,20 +537,20 @@ public class LynxBaseGestureHandler : NSObject {
   public void LynxBaseGestureHandler::ignore();
   public void LynxBaseGestureHandler::begin();
   public void LynxBaseGestureHandler::begin:point:touches:event:touchEvent:(NSUInteger typeMask,[point] CGPoint point,[touches] NSSet< UITouch * > *_Nullable touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
-  public void LynxBaseGestureHandler::update:point:touches:event:touchEvent:(NSUInteger typeMask,[point] CGPoint point,[touches] NSSet< UITouch * > *_Nullable touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
+  public void LynxBaseGestureHandler::update:point:touches:event:touchEvent:extraBundle:(NSUInteger typeMask,[point] CGPoint point,[touches] NSSet< UITouch * > *_Nullable touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[extraBundle] LynxGestureExtraBundle *_Nullable extraBundle);
   public void LynxBaseGestureHandler::end:point:touches:event:touchEvent:(NSUInteger typeMask,[point] CGPoint point,[touches] NSSet< UITouch * > *_Nullable touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
   public void LynxBaseGestureHandler::onBegin:touchEvent:(CGPoint point,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
-  public void LynxBaseGestureHandler::onUpdate:touchEvent:(CGPoint point,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
+  public void LynxBaseGestureHandler::onUpdate:touchEvent:extraBundle:(CGPoint point,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[extraBundle] LynxGestureExtraBundle *_Nullable extraBundle);
   public void LynxBaseGestureHandler::onStart:touchEvent:(CGPoint point,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
   public void LynxBaseGestureHandler::onEnd:touchEvent:(CGPoint point,[touchEvent] LynxTouchEvent *_Nullable touchEvent);
   public BOOL LynxBaseGestureHandler::onBeginEnabled();
   public BOOL LynxBaseGestureHandler::onUpdateEnabled();
   public BOOL LynxBaseGestureHandler::onStartEnabled();
   public BOOL LynxBaseGestureHandler::onEndEnabled();
-  public void LynxBaseGestureHandler::handleUIEvent:touches:event:touchEvent:flingPoint:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[flingPoint] CGPoint flingPoint);
-  public void LynxBaseGestureHandler::onHandle:touches:event:touchEvent:flingPoint:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[flingPoint] CGPoint flingPoint);
-  public bool LynxBaseGestureHandler::isEnd();
-  public bool LynxBaseGestureHandler::isActive();
+  public void LynxBaseGestureHandler::handleUIEvent:touches:event:touchEvent:flingPoint:handleBySimultaneous:extraBundle:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[flingPoint] CGPoint flingPoint,[handleBySimultaneous] BOOL handleSimultaneous,[extraBundle] LynxGestureExtraBundle *_Nullable extraBundle);
+  public void LynxBaseGestureHandler::onHandle:touches:event:touchEvent:flingPoint:handleBySimultaneous:extraBundle:(NSString *const touchType,[touches] NSSet< UITouch * > *touches,[event] UIEvent *_Nullable event,[touchEvent] LynxTouchEvent *_Nullable touchEvent,[flingPoint] CGPoint flingPoint,[handleBySimultaneous] BOOL handleSimultaneous,[extraBundle] LynxGestureExtraBundle *_Nullable extraBundle);
+  public BOOL LynxBaseGestureHandler::isEnd();
+  public BOOL LynxBaseGestureHandler::isActive();
   public int LynxBaseGestureHandler::status();
   public void LynxBaseGestureHandler::onTouchesDown:(LynxTouchEvent *touchEvent);
   public void LynxBaseGestureHandler::onTouchesMove:(LynxTouchEvent *touchEvent);
@@ -1613,6 +1613,7 @@ public protocol LynxGestureArenaMember-p : <LynxEventTarget> {
   public NSInteger LynxGestureArenaMember-p::getGestureArenaMemberId();
   public CGFloat LynxGestureArenaMember-p::getMemberScrollX();
   public CGFloat LynxGestureArenaMember-p::getMemberScrollY();
+  public int LynxGestureArenaMember-p::getScrollContainerDirection();
   public NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > * LynxGestureArenaMember-p::getGestureDetectorMap();
   public NSDictionary< NSNumber *, LynxBaseGestureHandler * > * LynxGestureArenaMember-p::getGestureHandlers();
 }
@@ -1642,6 +1643,14 @@ public class LynxGestureDetectorManager : NSObject {
   public nullable NSDictionary< NSString *, NSSet * > * LynxGestureDetectorManager::handleSimultaneousWinner:(id< LynxGestureArenaMember > current);
   public void LynxGestureDetectorManager::registerGestureDetector:detector:(NSInteger memberId,[detector] LynxGestureDetectorDarwin *gestureDetector);
   public void LynxGestureDetectorManager::unregisterGestureDetector:detector:(NSInteger memberId,[detector] LynxGestureDetectorDarwin *gestureDetector);
+}
+
+public class LynxGestureExtraBundle : NSObject {
+  public NSInteger LynxGestureExtraBundle::gestureDirection gestureDirection;
+  public CGFloat LynxGestureExtraBundle::simultaneousDeltaX simultaneousDeltaX;
+  public CGFloat LynxGestureExtraBundle::simultaneousDeltaY simultaneousDeltaY;
+  public BOOL LynxGestureExtraBundle::isNeedConsumedSimultaneousGesture isNeedConsumedSimultaneousGesture;
+  public void LynxGestureExtraBundle::resetSimultaneousDelta();
 }
 
 public class LynxGestureFlingTrigger : NSObject {
@@ -4114,6 +4123,7 @@ public class LynxUIMockContext : NSObject {
   public LynxUIContext* LynxUIMockContext::mockUIContext mockUIContext;
   public LynxEventEmitterUnitTestHelper* LynxUIMockContext::mockEventEmitter mockEventEmitter;
   public LynxView* LynxUIMockContext::rootView rootView;
+  public LynxEventEmitter * LynxUIMockContext::eventEmitter();
 }
 
 public class LynxUIObservationTarget : NSObject {
@@ -5347,6 +5357,9 @@ public interface UIViewController(LynxHeroTransition) {
   public NSString* const _Nonnull ON_START ON_START;
   public NSString* const _Nonnull ON_UPDATE ON_UPDATE;
   public NSString* const _Nonnull ON_END ON_END;
+  public const int DIRECTION_UNDETERMINED DIRECTION_UNDETERMINED;
+  public const int DIRECTION_VERTICAL DIRECTION_VERTICAL;
+  public const int DIRECTION_HORIZONTAL DIRECTION_HORIZONTAL;
   public NS_ASSUME_NONNULL_BEGIN typedef NS_OPTIONS(NSInteger, LynxGestureHandlerOption);
 
   public NS_ASSUME_NONNULL_BEGIN typedef NS_ENUM(NSUInteger, LynxGestureTypeDarwin);

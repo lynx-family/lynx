@@ -50,6 +50,12 @@
 - (CGFloat)getMemberScrollY;
 
 /**
+ * get scroll container direction
+ * @return 1 —— vertical  -1 —— horizontal 0 —— not scroll container
+ */
+- (int)getScrollContainerDirection;
+
+/**
  Retrieve  the map of gesture detectors associated with the member.
  @return The map of gesture detectors, or null if not available.
  */

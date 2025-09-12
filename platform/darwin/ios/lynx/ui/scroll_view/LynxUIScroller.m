@@ -2,6 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxLayoutStyle.h>
 #import <Lynx/LynxPropsProcessor.h>
@@ -1704,6 +1705,10 @@ LYNX_UI_METHOD(autoScroll) {
 
 - (CGFloat)getMemberScrollY {
   return self.view.contentOffset.y;
+}
+
+- (int)getScrollContainerDirection {
+  return _enableScrollY ? DIRECTION_VERTICAL : DIRECTION_HORIZONTAL;
 }
 
 - (NSArray<NSNumber *> *)scrollBy:(CGFloat)deltaX deltaY:(CGFloat)deltaY {

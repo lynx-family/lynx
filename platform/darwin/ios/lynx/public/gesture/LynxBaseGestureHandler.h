@@ -27,10 +27,16 @@ static NSString *const _Nonnull ON_START = @"onStart";
 static NSString *const _Nonnull ON_UPDATE = @"onUpdate";
 static NSString *const _Nonnull ON_END = @"onEnd";
 
+// scroll container direction
+static const int DIRECTION_UNDETERMINED = 0;
+static const int DIRECTION_VERTICAL = 1;
+static const int DIRECTION_HORIZONTAL = -1;
+
 @protocol LynxGestureArenaMember;
 @class LynxUIContext;
 @class LynxGestureDetectorDarwin;
 @class LynxTouchEvent;
+@class LynxGestureExtraBundle;
 
 @interface LynxBaseGestureHandler : NSObject
 
@@ -133,10 +139,11 @@ static NSString *const _Nonnull ON_END = @"onEnd";
  @param event The UIEvent to dispatch.
  */
 - (void)update:(NSUInteger)typeMask
-         point:(CGPoint)point
-       touches:(NSSet<UITouch *> *_Nullable)touches
-         event:(UIEvent *_Nullable)event
-    touchEvent:(LynxTouchEvent *_Nullable)touchEvent;
+          point:(CGPoint)point
+        touches:(NSSet<UITouch *> *_Nullable)touches
+          event:(UIEvent *_Nullable)event
+     touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+    extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle;
 
 /**
  End the gesture with the given type mask, end coordinates, and touch event.
@@ -161,7 +168,9 @@ static NSString *const _Nonnull ON_END = @"onEnd";
  @param point The coordinate at the beginning of the gesture.
  @param touchEvent The touchEvent of lynx to dispatch.
  */
-- (void)onUpdate:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent;
+- (void)onUpdate:(CGPoint)point
+      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+     extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle;
 
 /**
  Called when the gesture is started with the given delta values.
@@ -186,23 +195,27 @@ static NSString *const _Nonnull ON_END = @"onEnd";
 - (BOOL)onEndEnabled;
 
 - (void)handleUIEvent:(NSString *const)touchType
-              touches:(NSSet<UITouch *> *)touches
-                event:(UIEvent *_Nullable)event
-           touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-           flingPoint:(CGPoint)flingPoint;
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle;
 
 /**
     handle ui event and determine whether active or not
    */
 - (void)onHandle:(NSString *const)touchType
-         touches:(NSSet<UITouch *> *)touches
-           event:(UIEvent *_Nullable)event
-      touchEvent:(LynxTouchEvent *_Nullable)touchEvent
-      flingPoint:(CGPoint)flingPoint;
+                 touches:(NSSet<UITouch *> *)touches
+                   event:(UIEvent *_Nullable)event
+              touchEvent:(LynxTouchEvent *_Nullable)touchEvent
+              flingPoint:(CGPoint)flingPoint
+    handleBySimultaneous:(BOOL)handleSimultaneous
+             extraBundle:(LynxGestureExtraBundle *_Nullable)extraBundle;
 
-- (bool)isEnd;
+- (BOOL)isEnd;
 
-- (bool)isActive;
+- (BOOL)isActive;
 
 /**
  return the status of gesture
