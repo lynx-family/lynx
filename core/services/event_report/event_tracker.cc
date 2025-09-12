@@ -107,6 +107,19 @@ void EventTracker::UpdateGenericInfo(
       });
 }
 
+void EventTracker::UpdateGenericInfo(
+    int32_t instance_id,
+    std::unordered_map<std::string, std::string>&& prop_map) {
+  if (instance_id < 0) {
+    return;
+  }
+  EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [instance_id, map = std::move(prop_map)]() mutable {
+        EventTrackerPlatformImpl::UpdateGenericInfo(instance_id,
+                                                    std::move(map));
+      });
+}
+
 void EventTracker::UpdateGenericInfo(int32_t instance_id, std::string key,
                                      std::string value) {
   // the unique id of template instance.
@@ -215,6 +228,15 @@ void EventTracker::Flush(int32_t instance_id) {
         });
   }
 }
+
+void EventTracker::GetAllGenericInfosInReportThread(
+    int32_t instance_id,
+    const std::function<void(std::unique_ptr<pub::Value> entry)>&
+        on_get_generic_infos_cb) {
+  EventTrackerPlatformImpl::GetAllGenericInfosInReportThread(
+      instance_id, on_get_generic_infos_cb);
+}
+
 }  // namespace report
 }  // namespace tasm
 }  // namespace lynx
