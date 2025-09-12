@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.7
+- The `flowIds` parameter in the Trace API supports passing an undefined value.
+
 ## 3.5.5
 - Add the `pointer-events` CSS property.
 
