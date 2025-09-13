@@ -3,13 +3,19 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxResourceRequest } from './LynxResourceRequest';
-import { AsyncCallback } from '@ohos.base';
+import { AsyncCallback, BusinessError } from '@ohos.base';
 import { LynxResourceProvider } from './LynxResourceProvider';
+import { LynxServiceCenter, LynxServiceType } from '../tasm/service/LynxServiceCenter';
+import { ILynxSecurityService, LynxTasmType, SecurityResult } from '../tasm/service/ILynxSecurityService';
+import { LLog } from '../base/LLog';
+import { LynxSubErrorCode } from '../tasm/gen/LynxSubErrorCode';
 
 export interface TemplateProviderResult {
   binary?: ArrayBuffer;
   // TODO(nihao.royal): support returning TemplateBundle
 }
+
+const TAG = 'LynxTemplateResourceFetcher';
 
 /**
  * `LynxTemplateResourceFetcher` is defined inside LynxEngine and
@@ -37,4 +43,26 @@ export abstract class LynxTemplateResourceFetcher implements LynxResourceProvide
    * @param callback response with the requiring SSR data.
    */
   abstract fetchSSRData(request: LynxResourceRequest, callback: AsyncCallback<ArrayBuffer>);
+
+  public fetchTemplateAndVerify(request: LynxResourceRequest,
+    callback: AsyncCallback<TemplateProviderResult>) {
+    let fetchCallback: AsyncCallback<TemplateProviderResult> =
+      (fetchError: BusinessError, fetchResult: TemplateProviderResult) => {
+        if (fetchResult.binary) {
+          let securityService = LynxServiceCenter.getService<ILynxSecurityService>(LynxServiceType.Security);
+          let securityResult: SecurityResult = { verified: true };
+          if (securityService != undefined) {
+            securityResult =
+              securityService.verifyTASM(fetchResult.binary, request.url, LynxTasmType.TYPE_DYNAMIC_COMPONENT,
+                undefined);
+          }
+          if (!securityResult.verified) {
+            LLog.e(TAG, `verify template failed, errMsg: ${securityResult?.errMsg}`);
+            fetchError.code = LynxSubErrorCode.E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE;
+          }
+        }
+        callback(fetchError, fetchResult);
+      }
+    this.fetchTemplate(request, fetchCallback);
+  }
 }

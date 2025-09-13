@@ -16,6 +16,7 @@
 #include "base/include/timer/time_utils.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
+#include "core/build/gen/lynx_sub_error_code.h"
 #include "core/resource/lynx_info_reporter_helper_harmony.h"
 
 namespace {
@@ -203,8 +204,8 @@ void LynxResourceLoaderHarmony::LoadResource(
       napi_create_function(env, "callback", 9,
                            CallbackHandler::HandleTemplateRequestCallback,
                            callback_handler, &call_args[1]);
-      status = base::NapiUtil::InvokeJsMethod(env, resource_fetcher,
-                                              "fetchTemplate", 2, call_args);
+      status = base::NapiUtil::InvokeJsMethod(
+          env, resource_fetcher, "fetchTemplateAndVerify", 2, call_args);
     } else {
       napi_create_function(env, "callback", 9,
                            CallbackHandler::HandleRequestCallback,
@@ -479,8 +480,18 @@ LynxResourceLoaderHarmony::CallbackHandler::HandleTemplateRequestCallback(
   pub::LynxResourceResponse response;
   response.timing = std::move(callback_handler->timing_);
   if (error_type == napi_valuetype::napi_object) {
-    response.err_code = -1;
-    response.err_msg = "error response";
+    napi_value code_value;
+    napi_get_named_property(env, argv[0], "code", &code_value);
+    int32_t err_code = base::NapiUtil::ConvertToInt32(env, code_value);
+    if (err_code == lynx::error::E_APP_BUNDLE_VERIFY_INVALID_SIGNATURE) {
+      response.err_code = err_code;
+      response.err_msg = "verify template bundle failed";
+
+    } else {
+      response.err_code = -1;
+      response.err_msg = "error response";
+    }
+
     response.timing.response_trigger_callback = base::CurrentTimeMicroseconds();
     callback_handler->callback_(response);
   } else {
