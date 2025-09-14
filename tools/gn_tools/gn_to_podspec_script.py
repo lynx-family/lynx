@@ -164,7 +164,14 @@ class SubspecTarget:
   def format_root_path(self, paths):
     if len(paths) <= 0:
       return paths
-    return sorted([path.replace('//', '') for path in paths])
+    path_list = []
+    secondary_path = 'build/secondary/'
+    for path in paths:
+      path = path.replace('//', '')
+      if path.startswith(secondary_path):
+        path = path.replace(secondary_path, '')
+      path_list.append(path)
+    return sorted(path_list)
 
   def string_to_int(self, version_str):
     version_int = re.findall(r'\d+', version_str)
