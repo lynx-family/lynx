@@ -9,9 +9,11 @@
 #include <string>
 
 #include "base/include/base_export.h"
+#include "base/include/fml/macros.h"
 #include "base/include/log/alog_wrapper.h"
 #include "base/include/log/log_stream.h"
 #include "base/include/path_utils.h"
+#include "build/build_config.h"
 
 namespace lynx {
 namespace base {
@@ -72,6 +74,15 @@ using LogChannel = int32_t;
 constexpr LogChannel LOG_CHANNEL_LYNX_INTERNAL = 0;
 constexpr LogChannel LOG_CHANNEL_LYNX_EXTERNAL = 1;
 
+class NullLogStream {
+ public:
+  NullLogStream() {}
+  template <typename T>
+  NullLogStream& operator<<(T) {
+    return *this;
+  }
+};
+
 // This class is used to explicitly ignore values in the conditional
 // logging macros.  This avoids compiler warnings like "value computed
 // is not used" and "statement has no effect".
@@ -81,6 +92,7 @@ class LogMessageVoidify {
   // This has to be an operator with a precedence lower than << but
   // higher than ?:
   void operator&(LogStream&) {}
+  void operator&(const NullLogStream&) {}
 };
 
 #ifdef __FILE_NAME__
@@ -186,6 +198,18 @@ class LogMessageVoidify {
 #define LOGF(msg)
 #endif
 
+#ifndef NDEBUG
+#define DLOGI(msg) LOGI(msg)
+#define DLOGW(msg) LOGW(msg)
+#define DLOGE(msg) LOGE(msg)
+#define DLOGF(msg) LOGF(msg)
+#else
+#define DLOGI(msg)
+#define DLOGW(msg)
+#define DLOGE(msg)
+#define DLOGF(msg)
+#endif
+
 #define JSLOG(severity, runtime_id, channel_type) \
   LAZY_STREAM(JS_LOG_STREAM(severity, JS, runtime_id, channel_type), true)
 
@@ -203,16 +227,39 @@ class LogMessageVoidify {
 #define DCHECK(condition) CHECK(condition)
 #else
 // for release, do nothing
-#define DCHECK(condition)                                                \
-  true || (condition) ? (void)0                                          \
-                      : lynx::base::logging::LogMessageVoidify() &       \
-                            lynx::base::logging::LogMessage(             \
-                                "", 0, lynx::base::logging::LOG_VERBOSE) \
-                                .stream()
+#define DCHECK(condition)                                          \
+  true || (condition) ? (void)0                                    \
+                      : lynx::base::logging::LogMessageVoidify() & \
+                            lynx::base::logging::NullLogStream()
 #endif
 #endif
 
-#define NOTREACHED() LOGF("Abort here!!!")
+// Add a compiler-specific hint for unreachable code.
+#if defined(__clang__) || defined(__GNUC__)
+#define LYNX_BUILTIN_UNREACHABLE __builtin_unreachable()
+#elif defined(_MSC_VER)
+#define LYNX_BUILTIN_UNREACHABLE __assume(false)
+#else
+#define LYNX_BUILTIN_UNREACHABLE
+#endif
+
+// The LOGF macro will ensure the message is logged and the program terminates.
+// The LYNX_BUILTIN_UNREACHABLE provides a hint to the compiler for static
+// analysis, satisfying the check for non-void functions.
+#define NOTREACHED()                                 \
+  do {                                               \
+    LOGF("Reached unreachable code. Abort here!!!"); \
+    LYNX_BUILTIN_UNREACHABLE;                        \
+  } while (false);
+
+#ifndef NDEBUG
+#define UNIMPLEMENTED()                                      \
+  DLOGE("Unimplemented detail in " << __FUNCTION__ << " of " \
+                                   << __LOG_FILE_NAME__)
+#else
+#define UNIMPLEMENTED()
+#endif
+
 #define DCHECK_EQ(v1, v2) DCHECK((v1) == (v2))
 
 class BASE_EXPORT LogMessage {
