@@ -23,15 +23,6 @@ using namespace lynx::tasm;       // NOLINT
 
 namespace {
 // remove
-std::string NumberToString(double number) {
-  auto ret = std::to_string(number);
-  ret = ret.erase(ret.find_last_not_of('0') + 1, std::string::npos);
-  if (ret.back() == '.') {
-    ret.pop_back();
-  }
-  return ret;
-}
-
 std::string NumberToRGBAColorString(double number) {
   auto color = static_cast<unsigned int>(number);
   std::stringstream stream;
@@ -61,11 +52,20 @@ std::string NumberToLineHeightString(double number) {
   if (number > 10E19) {
     return "normal";
   } else {
-    return NumberToString(number);
+    return CSSDecoder::NumberToString(number);
   }
 }
 
 }  // namespace
+
+std::string CSSDecoder::NumberToString(double number) {
+  auto ret = std::to_string(number);
+  ret = ret.erase(ret.find_last_not_of('0') + 1, std::string::npos);
+  if (ret.back() == '.') {
+    ret.pop_back();
+  }
+  return ret;
+}
 
 std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
                                          const lynx::tasm::CSSValue &value,
@@ -77,23 +77,23 @@ std::string CSSDecoder::CSSValueToString(const CSSPropertyID id,
   } else if (value.IsNumber()) {
     return CSSValueNumberToString(id, value);
   } else if (value.IsPx()) {
-    return NumberToString(value.AsNumber()) + std::string("px");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("px");
   } else if (value.IsRpx()) {
-    return NumberToString(value.AsNumber()) + std::string("rpx");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("rpx");
   } else if (value.IsPPx()) {
-    return NumberToString(value.AsNumber()) + std::string("ppx");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("ppx");
   } else if (value.IsRem()) {
-    return NumberToString(value.AsNumber()) + std::string("rem");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("rem");
   } else if (value.IsEm()) {
-    return NumberToString(value.AsNumber()) + std::string("em");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("em");
   } else if (value.IsVh()) {
-    return NumberToString(value.AsNumber()) + std::string("vh");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("vh");
   } else if (value.IsVw()) {
-    return NumberToString(value.AsNumber()) + std::string("vw");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("vw");
   } else if (value.IsPercent()) {
-    return NumberToString(value.AsNumber()) + std::string("%");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("%");
   } else if (value.IsSp()) {
-    return NumberToString(value.AsNumber()) + std::string("sp");
+    return CSSDecoder::NumberToString(value.AsNumber()) + std::string("sp");
   } else if (value.IsCalc()) {
     return value.AsString();
   } else if (value.IsIntrinsic()) {
@@ -300,7 +300,7 @@ std::string CSSDecoder::CSSValueNumberToString(
     case lynx::tasm::kPropertyIDLineHeight:
       return NumberToLineHeightString(value.AsNumber());
     default:
-      return NumberToString(value.AsNumber());
+      return CSSDecoder::NumberToString(value.AsNumber());
   }
 }
 
@@ -1116,7 +1116,7 @@ std::string GradientColorStopToString(const lynx::lepus::CArray *colors,
 
     if (pos->size() > 0) {
       res += " ";
-      res += NumberToString(pos->get(i).Number());
+      res += CSSDecoder::NumberToString(pos->get(i).Number());
       res += "%";
     }
 
@@ -1148,7 +1148,7 @@ std::string BackgroundLinearGradientToString(const lynx::lepus::Value &value) {
 
   std::string res = "linear-gradient(";
   // parse angle
-  res += NumberToString(angle.Number());
+  res += CSSDecoder::NumberToString(angle.Number());
   res += "deg ,";
 
   res += GradientColorStopToString(colors.Array().get(), pos.Array().get());

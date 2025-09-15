@@ -67,6 +67,8 @@ class CSSDecoder : public AutoGenCSSDecoder {
 
   static std::string ToJustifyType(lynx::starlight::JustifyType type);
   static std::string ToGridAutoFlowType(lynx::starlight::GridAutoFlowType type);
+
+  static std::string NumberToString(double number);
 };
 
 }  // namespace tasm

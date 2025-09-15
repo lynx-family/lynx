@@ -193,6 +193,8 @@ lynx_css_core_sources_path = get_path_info(lynx_css_core_sources, "abspath")
 lynx_css_runtime_sources = [
   "computed_css_style.cc",
   "computed_css_style.h",
+  "computed_css_style_css_text_helper.cc",
+  "computed_css_style_css_text_helper.h",
   "css_style_utils.cc",
   "css_style_utils.h",
   "measure_context.cc",

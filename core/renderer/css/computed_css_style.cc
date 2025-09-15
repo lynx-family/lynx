@@ -16,6 +16,7 @@
 #include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_debug_msg.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/starlight/layout/box_info.h"

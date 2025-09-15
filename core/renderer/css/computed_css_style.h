@@ -49,7 +49,9 @@ namespace tasm {
 // methods, at which point all ##nameToLepus methods of ComputedCSSStyle can be
 // deleted, and this forward declaration. will also be removed.
 class PropBundleStyleWriter;
+class ComputedCSSStyleCssTextHelper;
 class PseudoElement;
+class Element;
 }  // namespace tasm
 
 namespace starlight {
@@ -354,6 +356,7 @@ class ComputedCSSStyle {
   static float SAFE_AREA_INSET_RIGHT_;
 
  private:
+  friend class tasm::ComputedCSSStyleCssTextHelper;
   using StyleFunc = bool (ComputedCSSStyle::*)(const tasm::CSSValue&,
                                                const bool reset);
   using StyleGetterFunc = lepus_value (ComputedCSSStyle::*)();
@@ -556,7 +559,7 @@ class ComputedCSSStyle {
 
 #define GETTER_STYLE_STRING(name) lepus_value name##ToLepus();
   FOREACH_PLATFORM_PROPERTY(GETTER_STYLE_STRING)
-#undef GET_WITH_STRING
+#undef GETTER_STYLE_STRING
 
 // style inherit.
 #define FOREACH_PLATFORM_COMPLEX_INHERITABLE_PROPERTY(V) \

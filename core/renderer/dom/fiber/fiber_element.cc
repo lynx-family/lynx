@@ -19,6 +19,7 @@
 #include "base/include/value/base_string.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
@@ -4213,8 +4214,14 @@ lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
 }
 
 lepus::Value FiberElement::GetComputedStyleByKey(const base::String &key) {
-  // TODO: add retrieve computed style by key impl in later MRs
-  return lepus::Value("unsupported css property");
+  auto property_id = CSSProperty::GetPropertyID(key);
+  if (property_id == tasm::CSSPropertyID::kPropertyEnd) {
+    return lepus::Value("");
+  }
+
+  return lepus::Value(
+      ComputedCSSStyleCssTextHelper().GetComputedStyleByPropertyID(
+          property_id, computed_css_style(), layout_result()));
 }
 
 }  // namespace tasm

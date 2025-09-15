@@ -33,6 +33,7 @@
 #include "core/renderer/dom/style_resolver.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
+#include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/ui_wrapper/layout/layout_node.h"
 #include "core/renderer/ui_wrapper/painting/catalyzer.h"
 #include "core/renderer/ui_wrapper/painting/painting_context.h"
@@ -376,6 +377,8 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   void FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value);
   virtual void FlushAnimatedStyleInternal(tasm::CSSPropertyID,
                                           const tasm::CSSValue&) = 0;
+
+  starlight::LayoutResultForRendering layout_result();
 
   float width() { return width_; }
   float height() { return height_; }

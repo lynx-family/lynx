@@ -14170,6 +14170,13 @@ TEST_P(FiberElementTest, TestBackgroundToLepus) {
   page->FlushActionsAsRoot();
 }
 
+TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
+  auto page = manager->CreateFiberPage("page", 11);
+  page->computed_css_style()->opacity_ = 0.900000f;
+  EXPECT_TRUE(page->GetComputedStyleByKey("opacity").IsString());
+  EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 

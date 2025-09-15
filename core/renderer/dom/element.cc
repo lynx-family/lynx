@@ -30,6 +30,7 @@
 #include "core/renderer/page_proxy.h"
 #include "core/renderer/starlight/style/css_type.h"
 #include "core/renderer/starlight/style/default_layout_style.h"
+#include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
 #include "core/renderer/utils/prop_bundle_style_writer.h"
@@ -1809,6 +1810,13 @@ bool Element::GetEnableMultiTouchParamsCompatible() {
 
 float Element::GetLayoutsUnitPerPx() {
   return element_manager_->GetLynxEnvConfig().LayoutsUnitPerPx();
+}
+
+starlight::LayoutResultForRendering Element::layout_result() {
+  auto layout_result = starlight::LayoutResultForRendering();
+  layout_result.size_ = FloatSize(width(), height());
+  layout_result.offset_ = starlight::FloatPoint(left(), top());
+  return layout_result;
 }
 
 }  // namespace tasm
