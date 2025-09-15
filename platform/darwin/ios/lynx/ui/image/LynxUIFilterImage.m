@@ -89,6 +89,12 @@ LYNX_REGISTER_UI("filter-image")
   if (!url) {
     return nil;
   }
+  if ([url hasPrefix:@"data:image"]) {
+    // If the URL type is base64, detailed statistics are not performed to avoid memory and CPU
+    // consumption caused by excessively large URLs.If the URL type is base64, detailed statistics
+    // are not performed to avoid memory and CPU consumption caused by excessively large URLs.
+    return nil;
+  }
   return @{url : [NSString stringWithFormat:@"%f", [self memoryUsageKB]]};
 }
 
