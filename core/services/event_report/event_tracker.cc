@@ -107,6 +107,19 @@ void EventTracker::UpdateGenericInfo(
       });
 }
 
+void EventTracker::UpdateGenericInfo(
+    int32_t instance_id,
+    std::unordered_map<std::string, std::string>&& prop_map) {
+  if (instance_id < 0) {
+    return;
+  }
+  EventTrackerPlatformImpl::GetReportTaskRunner()->PostTask(
+      [instance_id, map = std::move(prop_map)]() mutable {
+        EventTrackerPlatformImpl::UpdateGenericInfo(instance_id,
+                                                    std::move(map));
+      });
+}
+
 void EventTracker::UpdateGenericInfo(int32_t instance_id, std::string key,
                                      std::string value) {
   // the unique id of template instance.

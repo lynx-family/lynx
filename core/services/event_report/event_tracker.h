@@ -13,11 +13,19 @@
 
 #include "base/include/closure.h"
 #include "core/base/lynx_export.h"
+#include "core/public/pub_value.h"
 #include "core/template_bundle/template_codec/binary_decoder/page_config.h"
 
 namespace lynx {
 namespace tasm {
 namespace report {
+
+constexpr const static char* kPropURL = "url";
+// The last thread strategy this lynxView is using, will be updated when the
+// lynxView is init.
+constexpr const static char* kPropThreadMode = "thread_mode";
+// Enable SSR.
+constexpr const static char* kPropEnableSSR = "enable_ssr";
 
 // Instance ID is used to identify a LynxShell runtime environment. It can be
 // used in event reporting to associate events with common parameter
@@ -176,6 +184,13 @@ class EventTracker {
   /// @param prop_map The property map
   static void UpdateGenericInfo(
       int32_t instance_id, std::unordered_map<std::string, float>&& prop_map);
+
+  /// Update the generic info of template instance by a pair of size.
+  /// @param instance_id The unique id of template instance.
+  /// @param prop_map The property map
+  static void UpdateGenericInfo(
+      int32_t instance_id,
+      std::unordered_map<std::string, std::string>&& prop_map);
 
  private:
   static EventTracker* Instance();
