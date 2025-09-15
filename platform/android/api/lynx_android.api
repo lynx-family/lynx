@@ -10145,7 +10145,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.invalidate();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.destroy();
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.updateContentSizeAndOffset(float contentSize, float deltaX, float deltaY);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPagingAlignment(ReadableMap map);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setPagingAlignment(ReadableMap params);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.willSnapTo(int position, int currentOffsetX, int currentOffsetY, int targetOffsetX, int targetOffsetY);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setMaxFlingDistanceRatio(Dynamic value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableScroll(boolean value);
@@ -10154,7 +10154,7 @@ public class com::lynx::tasm::behavior::ui::list::container::UIListContainer : c
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setScrollOrientation(String scrollOrientation);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableNestedScroll(boolean nestedScroll);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setBatchRenderStrategy(int batchRenderStrategy);
-  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setDiffInfo(ReadableMap map);
+  public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setDiffInfo(ReadableMap listContainerInfo);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableListSticky(boolean value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setStickyOffset(Dynamic value);
   public void com.lynx.tasm.behavior.ui.list.container.UIListContainer.setEnableFadeInAnimation(boolean value);
