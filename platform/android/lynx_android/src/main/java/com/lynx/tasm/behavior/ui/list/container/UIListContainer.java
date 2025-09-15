@@ -495,95 +495,90 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @LynxProp(name = "item-snap")
-  public void setPagingAlignment(ReadableMap map) {
-    if (map instanceof JavaOnlyMap) {
-      JavaOnlyMap params = (JavaOnlyMap) map;
-      if (params.size() != 0) {
-        double factor = map.getDouble("factor");
-        if (factor < 0 || factor > 1) {
-          getLynxContext().handleLynxError(new LynxError(
-              LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
-              "The factor should be constrained to the range of [0,1].", LynxError.LEVEL_WARN));
-          factor = 0;
-        }
-        int offset = map.getInt("offset", 0);
-
-        // The logic here is copied form the SnapHelper provided by Android.
-        // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
-        double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
-
-        mView.mSnapHelper = new LynxSnapHelper(
-            factor, offset, snapAlignmentMillisecondsPerPx, new LynxSnapHelper.LynxSnapHooks() {
-              @Override
-              public int getScrollX() {
-                return getView().getScrollX();
-              }
-
-              @Override
-              public int getScrollY() {
-                return getView().getScrollY();
-              }
-
-              @Override
-              public int getScrollHeight() {
-                return getView().getHeight();
-              }
-
-              @Override
-              public int getScrollWidth() {
-                return getView().getWidth();
-              }
-
-              @Override
-              public int getChildrenCount() {
-                return getView().getLinearLayout().getChildCount();
-              }
-
-              @Override
-              public int getVirtualChildrenCount() {
-                return mItemKeys.size();
-              }
-
-              @Override
-              public View getChildAtIndex(int index) {
-                return getView().getLinearLayout().getChildAt(index);
-              }
-
-              @Override
-              public View getViewAtPosition(int position) {
-                String itemKey = (String) mItemKeys.get(position);
-                for (int i = 0; i < mView.getLinearLayout().getChildCount(); i++) {
-                  View view = mView.getLinearLayout().getChildAt(i);
-                  if (itemKey.equals(
-                          ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey())) {
-                    return view;
-                  }
-                }
-                return null;
-              }
-
-              @Override
-              public int getIndexFromView(View view) {
-                if (view instanceof ComponentView
-                    && ((ComponentView) view).getDrawChildHook() instanceof UIComponent) {
-                  String itemKey =
-                      ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey();
-                  if (mItemKeys.contains(itemKey)) {
-                    return mItemKeys.indexOf(itemKey);
-                  }
-                }
-                return -1;
-              }
-
-              @Override
-              public void willSnapTo(int position, int currentOffsetX, int currentOffsetY,
-                  int targetOffsetX, int targetOffsetY) {
-                UIListContainer.this.willSnapTo(
-                    position, currentOffsetX, currentOffsetY, targetOffsetX, targetOffsetY);
-              }
-            });
-        return;
+  public void setPagingAlignment(ReadableMap params) {
+    if (params != null && params.size() > 0) {
+      double factor = params.getDouble("factor");
+      if (factor < 0 || factor > 1) {
+        getLynxContext().handleLynxError(
+            new LynxError(LynxSubErrorCode.E_COMPONENT_LIST_INVALID_PROPS_ARG, "item-snap invalid!",
+                "The factor should be constrained to the range of [0,1].", LynxError.LEVEL_WARN));
+        factor = 0;
       }
+      int offset = params.getInt("offset", 0);
+      // The logic here is copied form the SnapHelper provided by Android.
+      // TODO: Speed up the snap. In the future, the easing-curve should be able to be customized.
+      double snapAlignmentMillisecondsPerPx = 50f / mContext.getScreenMetrics().densityDpi;
+      mView.mSnapHelper = new LynxSnapHelper(
+          factor, offset, snapAlignmentMillisecondsPerPx, new LynxSnapHelper.LynxSnapHooks() {
+            @Override
+            public int getScrollX() {
+              return getView().getScrollX();
+            }
+
+            @Override
+            public int getScrollY() {
+              return getView().getScrollY();
+            }
+
+            @Override
+            public int getScrollHeight() {
+              return getView().getHeight();
+            }
+
+            @Override
+            public int getScrollWidth() {
+              return getView().getWidth();
+            }
+
+            @Override
+            public int getChildrenCount() {
+              return getView().getLinearLayout().getChildCount();
+            }
+
+            @Override
+            public int getVirtualChildrenCount() {
+              return mItemKeys.size();
+            }
+
+            @Override
+            public View getChildAtIndex(int index) {
+              return getView().getLinearLayout().getChildAt(index);
+            }
+
+            @Override
+            public View getViewAtPosition(int position) {
+              String itemKey = (String) mItemKeys.get(position);
+              for (int i = 0; i < mView.getLinearLayout().getChildCount(); i++) {
+                View view = mView.getLinearLayout().getChildAt(i);
+                if (itemKey.equals(
+                        ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey())) {
+                  return view;
+                }
+              }
+              return null;
+            }
+
+            @Override
+            public int getIndexFromView(View view) {
+              if (view instanceof ComponentView
+                  && ((ComponentView) view).getDrawChildHook() instanceof UIComponent) {
+                String itemKey =
+                    ((UIComponent) ((ComponentView) view).getDrawChildHook()).getItemKey();
+                if (mItemKeys.contains(itemKey)) {
+                  return mItemKeys.indexOf(itemKey);
+                }
+              }
+              return -1;
+            }
+
+            @Override
+            public void willSnapTo(int position, int currentOffsetX, int currentOffsetY,
+                int targetOffsetX, int targetOffsetY) {
+              UIListContainer.this.willSnapTo(
+                  position, currentOffsetX, currentOffsetY, targetOffsetX, targetOffsetY);
+            }
+          });
+      return;
     }
     mView.mSnapHelper = null;
   }
@@ -649,25 +644,22 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   }
 
   @LynxProp(name = "list-container-info")
-  public void setDiffInfo(ReadableMap map) {
-    if (map instanceof JavaOnlyMap) {
-      JavaOnlyMap listDiffInfo = (JavaOnlyMap) map;
-
-      ReadableArray tempStickyTopIndexes = listDiffInfo.getArray("stickyStart");
-      if (tempStickyTopIndexes instanceof JavaOnlyArray) {
-        mStickyTopIndexes = ((JavaOnlyArray) tempStickyTopIndexes);
+  public void setDiffInfo(ReadableMap listContainerInfo) {
+    if (listContainerInfo != null) {
+      ReadableArray tempStickyStartIndexes = listContainerInfo.getArray("stickyStart");
+      if (tempStickyStartIndexes != null) {
+        // Note: Here we should copy from ReadableArray to JavaOnlyArray for adapting other
+        // framework.
+        mStickyTopIndexes = JavaOnlyArray.shallowCopy(tempStickyStartIndexes);
       }
-
-      ReadableArray tempStickyBottomIndexes = listDiffInfo.getArray("stickyEnd");
-      if (tempStickyBottomIndexes instanceof JavaOnlyArray) {
-        mStickyBottomIndexes = ((JavaOnlyArray) tempStickyBottomIndexes);
+      ReadableArray tempStickyEndIndexes = listContainerInfo.getArray("stickyEnd");
+      if (tempStickyEndIndexes != null) {
+        mStickyBottomIndexes = JavaOnlyArray.shallowCopy(tempStickyEndIndexes);
       }
-
-      ReadableArray tempItemKeys = listDiffInfo.getArray("itemkeys");
-      if (tempItemKeys instanceof JavaOnlyArray) {
-        mItemKeys = ((JavaOnlyArray) tempItemKeys);
+      ReadableArray tempItemKeys = listContainerInfo.getArray("itemkeys");
+      if (tempItemKeys != null) {
+        mItemKeys = JavaOnlyArray.shallowCopy(tempItemKeys);
       }
-
       // update mItemKeyMap
       final int itemCount = mItemKeys.size();
       mItemKeyMap.clear();
