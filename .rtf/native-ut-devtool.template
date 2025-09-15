@@ -5,6 +5,7 @@
 builder({
     "default" :{
         "args": [
+            f"use_sccache={options.get_str('use_sccache', 'false')}",
             "enable_lepusng_worklet=true",
             "enable_unittests=true",
             "enable_napi_binding=true",
