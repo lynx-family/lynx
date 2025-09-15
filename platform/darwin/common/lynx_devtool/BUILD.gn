@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../../../devtool/lynx_devtool/devtool.gni")
-import("../../../../tools/gn_tools/podspec_target_template.gni")
 
 config("public_config") {
   include_dirs = [

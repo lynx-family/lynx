@@ -26,7 +26,7 @@ set(${action_foreach_target}__output
 
 add_custom_command(OUTPUT ${${action_foreach_target}__output}
   COMMAND ${CMAKE_COMMAND} -E make_directory "${ROOT_PATH}/out/gn_cmake_test/gen/action_foreach/files/to/dir"
-  COMMAND python3 "${ROOT_PATH}/lynx/tools/gn_tools/action_foreach_files.py"
+  COMMAND python3 "${ROOT_PATH}/build/util/action_foreach_files.py"
     "--script"
     "${ROOT_PATH}/lynx/tools/gn_tools/action_foreach_test.py"
     "--arguments"
@@ -108,7 +108,7 @@ set(${copy_target}__output
 
 add_custom_command(OUTPUT ${${copy_target}__output}
   COMMAND ${CMAKE_COMMAND} -E make_directory "${ROOT_PATH}/out/gn_cmake_test/gen/lynx/tools/gn_tools/test"
-  COMMAND python3 "${ROOT_PATH}/lynx/tools/gn_tools/copy_files.py"
+  COMMAND python3 "${ROOT_PATH}/build/util/copy_files.py"
     "--sources"
     "${ROOT_PATH}/lynx/tools/gn_tools/test/copy/dirs/to/dir/sources1"
     "${ROOT_PATH}/lynx/tools/gn_tools/test/copy/dirs/to/dir/sources2"
@@ -139,7 +139,7 @@ set(${copy_target}__output
 
 add_custom_command(OUTPUT ${${copy_target}__output}
   COMMAND ${CMAKE_COMMAND} -E make_directory "${ROOT_PATH}/out/gn_cmake_test/gen/copy/file/to/file"
-  COMMAND python3 "${ROOT_PATH}/lynx/tools/gn_tools/copy_files.py"
+  COMMAND python3 "${ROOT_PATH}/build/util/copy_files.py"
     "--sources"
     "${ROOT_PATH}/lynx/tools/gn_tools/test/copy/file/to/file/sources.cc"
     "--destinations"
@@ -169,7 +169,7 @@ set(${copy_target}__output
 
 add_custom_command(OUTPUT ${${copy_target}__output}
   COMMAND ${CMAKE_COMMAND} -E make_directory "${ROOT_PATH}/out/gn_cmake_test/gen/copy/files/to/dir"
-  COMMAND python3 "${ROOT_PATH}/lynx/tools/gn_tools/copy_files.py"
+  COMMAND python3 "${ROOT_PATH}/build/util/copy_files.py"
     "--sources"
     "${ROOT_PATH}/lynx/tools/gn_tools/test/copy/files/to/dir/sources1.cc"
     "${ROOT_PATH}/lynx/tools/gn_tools/test/copy/files/to/dir/sources2.cc"

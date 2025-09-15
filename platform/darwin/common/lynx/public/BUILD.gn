@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../../../../config.gni")
-import("../../../../../tools/gn_tools/podspec_target_template.gni")
 import("sources_list.gni")
 
 subspec_target("Public") {

@@ -6,7 +6,6 @@ assert(is_apple)
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../../../core/Lynx.gni")
-import("../../../../tools/gn_tools/podspec_target_template.gni")
 
 # common_lynx_shared_sources
 common_lynx_shared_sources = [

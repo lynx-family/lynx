@@ -5,8 +5,6 @@
 
 # This gn script is used to test tools of gn_to_cmake_script and gn_to_podspec_script.
 
-import("../cmake_target_template.gni")
-import("../podspec_target_template.gni")
 import("test.gni")
 
 group("gn_tools_test") {

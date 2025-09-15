@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
-import("../../../../tools/gn_tools/podspec_target_template.gni")
 
 podspec_target("BaseDevtool_podspec") {
   output_name = "BaseDevtool.podspec"

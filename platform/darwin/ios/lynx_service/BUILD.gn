@@ -5,7 +5,6 @@
 
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../../../config.gni")
-import("../../../../tools/gn_tools/podspec_target_template.gni")
 
 group("LynxService") {
   deps = [ ":LynxService_podspec" ]

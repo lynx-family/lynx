@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../../../platform/android/Android.gni")
-import("../../../../tools/gn_tools/cmake_target_template.gni")
 
 cmake_target("base_devtool") {
   cmake_version = "3.4.1"

@@ -9,7 +9,6 @@ if (is_android) {
 } else {
   import("../../../Lynx.gni")
 }
-import("../../../../tools/gn_tools/cmake_target_template.gni")
 
 if (is_android) {
   config("private_config") {

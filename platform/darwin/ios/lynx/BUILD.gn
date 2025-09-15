@@ -5,7 +5,6 @@
 import("//${lynx_dir}/build_overrides/darwin.gni")
 import("//${lynx_dir}/build_overrides/resource_file.gni")
 import("../../../../core/Lynx.gni")
-import("../../../../tools/gn_tools/podspec_target_template.gni")
 import("Podspecs.gni")
 
 assert(is_ios)

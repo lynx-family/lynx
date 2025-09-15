@@ -3,7 +3,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import("../../../devtool/lynx_devtool/devtool.gni")
-import("../../../tools/gn_tools/cmake_target_template.gni")
 import("../Android.gni")
 import("lynx_devtool.gni")
 

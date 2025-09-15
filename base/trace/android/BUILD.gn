@@ -4,7 +4,6 @@
 
 import("//build/toolchain/clang.gni")
 import("../../../config.gni")
-import("../../../tools/gn_tools/cmake_target_template.gni")
 
 assert(is_android)
 

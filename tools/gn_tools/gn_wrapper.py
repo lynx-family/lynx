@@ -37,14 +37,12 @@ def main():
   
   if file_type == "cmake":
     cmd.append('--ide=json')
-    gn_to_cmake_script_path = os.path.join(current_dir, "gn_to_cmake_script.py")
-    cmd.append(f'--json-ide-script={gn_to_cmake_script_path}')
+    cmd.append(f'--json-ide-script=//build/util/gn_to_cmake_script.py')
     if cmake_target:
       cmd.append(f"--json-ide-script-args={cmake_target}")
   elif file_type == "podspec":
     cmd.append('--ide=json')
-    gn_to_podspec_script_path = os.path.join(current_dir, "gn_to_podspec_script.py")
-    cmd.append(f'--json-ide-script={gn_to_podspec_script_path}')
+    cmd.append(f'--json-ide-script=//build/util/gn_to_podspec_script.py')
     if podspec_target:
       cmd.append(f"--json-ide-script-args={podspec_target}")
   else:

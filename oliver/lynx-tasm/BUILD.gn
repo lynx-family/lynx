@@ -15,7 +15,6 @@ import("../../core/runtime/jscache/quickjs/quickjs_cache.gni")
 import("../../core/runtime/jsi/quickjs/build.gni")
 import("../../core/runtime/vm/lepus/build.gni")
 import("../../core/runtime/vm/lepus/build.gni")
-import("../../tools/gn_tools/cmake_target_template.gni")
 import("../oliver.gni")
 
 group("LepusCmdExe") {
