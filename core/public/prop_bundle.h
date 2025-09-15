@@ -56,6 +56,8 @@ class PropBundle : public fml::RefCountedThreadSafeStorage {
   virtual void SetPropsByID(CSSPropertyID id, const uint32_t* data,
                             size_t size) = 0;
 
+  virtual void ResetPropBundle(){};
+
   template <typename T>
   void SetPropsByID(CSSPropertyID id, const base::Vector<T>& value) {
     SetPropsByIDInner(id, value);

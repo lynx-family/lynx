@@ -64,6 +64,7 @@ class PropBundleAndroid : public PropBundle {
                     size_t size) override;
   void SetPropsByID(CSSPropertyID id, const uint32_t* data,
                     size_t size) override;
+  void ResetPropBundle() override;
 
   fml::RefPtr<PropBundle> ShallowCopy() override;
 

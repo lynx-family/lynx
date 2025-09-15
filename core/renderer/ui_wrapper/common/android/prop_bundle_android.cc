@@ -413,6 +413,8 @@ void PropBundleAndroid::SetPropsByID(CSSPropertyID id, const uint32_t* data,
   }
 }
 
+void PropBundleAndroid::ResetPropBundle() { jni_object_->Reset(); }
+
 void PropBundleAndroid::ResetEventHandler() {
   JNIEnv* env = base::android::AttachCurrentThread();
   CopyIfConst(env);

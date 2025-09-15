@@ -918,6 +918,7 @@ void Element::PreparePropBundleIfNeed() {
 
 void Element::ResetPropBundle() {
   if (prop_bundle_) {
+    prop_bundle_->ResetPropBundle();
     pre_prop_bundle_ = prop_bundle_;
     prop_bundle_ = nullptr;
   }

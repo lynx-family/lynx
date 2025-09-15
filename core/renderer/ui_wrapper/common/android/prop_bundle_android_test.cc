@@ -286,6 +286,11 @@ TEST_P(PropBundleAndroidTest, SetEventHandlerAndGetTest) {
             0);
 }
 
+TEST_P(PropBundleAndroidTest, ResetPropBundleTest) {
+  prop_bundle_android_->ResetPropBundle();
+  EXPECT_EQ(prop_bundle_android_->jni_object_, nullptr);
+}
+
 INSTANTIATE_TEST_SUITE_P(PropBundleAndroidTestModule, PropBundleAndroidTest,
                          ::testing::ValuesIn(prop_bundle_test_params));
 
