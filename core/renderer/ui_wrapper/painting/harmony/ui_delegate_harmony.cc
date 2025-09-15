@@ -79,6 +79,7 @@ void UIDelegateHarmony::OnPageConfigDecoded(
     lynx_context->SetEnableEventThrough(config->GetEnableEventThrough());
     lynx_context->SetEnableHarmonyVisibleAreaChangeForExposure(
         config->GetEnableHarmonyVisibleAreaChangeForExposure());
+    lynx_context->SetEnableMultiTouch(config->GetEnableMultiTouch());
   }
 }
 

@@ -667,6 +667,10 @@ void UIOwner::OnGestureRecognizedWithSign(int sign) {
   event_dispatcher_->OnGestureRecognizedWithSign(sign);
 }
 
+void UIOwner::SetEnableMultiTouch(bool enable_multi_touch) {
+  event_dispatcher_->SetEnableMultiTouch(enable_multi_touch);
+}
+
 void UIOwner::SetTapSlop(const std::string& tap_slop) {
   event_dispatcher_->SetTapSlop(tap_slop);
 }

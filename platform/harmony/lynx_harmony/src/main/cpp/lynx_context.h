@@ -93,6 +93,8 @@ class LynxContext {
 
   ArkUI_ContextHandle ArkUIContext() const { return ark_ui_context_; }
 
+  void SetEnableMultiTouch(bool enable_multi_touch);
+
   void SetTapSlop(const std::string& tap_slop);
 
   void SetHasTouchPseudo(bool has_touch_pseudo);

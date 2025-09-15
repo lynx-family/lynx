@@ -90,6 +90,13 @@ LynxContext::~LynxContext() {
   LOGD("~LynxContext");
 }
 
+void LynxContext::SetEnableMultiTouch(bool enable_multi_touch) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->SetEnableMultiTouch(enable_multi_touch);
+}
+
 void LynxContext::SetTapSlop(const std::string& tap_slop) {
   if (!ui_owner_) {
     return;

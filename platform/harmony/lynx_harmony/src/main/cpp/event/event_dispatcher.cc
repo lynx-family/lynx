@@ -506,6 +506,10 @@ void EventDispatcher::AddTargetTouchMap(lepus::Value& target_touch_map,
   }
 }
 
+void EventDispatcher::SetEnableMultiTouch(bool enable_multi_touch) {
+  enable_multi_touch_ = enable_multi_touch;
+}
+
 void EventDispatcher::SetTapSlop(const std::string& tap_slop) {
   if (tap_gesture_) {
     return;
@@ -566,7 +570,10 @@ void EventDispatcher::HandleTouchDown(const ArkUI_UIInputEvent* event) {
   }
   auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetTouchMap(target_touch_map, event);
-  DispatchMultiTouchEvent(TouchEvent::START, target_touch_map, event);
+  if (enable_multi_touch_) {
+    DispatchMultiTouchEvent(TouchEvent::START, target_touch_map, event);
+  }
+  DispatchSingleTouchEvent(TouchEvent::START, event);
   OnTouchDown(event);
 }
 
@@ -577,13 +584,19 @@ void EventDispatcher::HandleTouchMove(const ArkUI_UIInputEvent* event) {
   }
   auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetTouchMap(target_touch_map, event);
-  DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map, event);
+  if (enable_multi_touch_) {
+    DispatchMultiTouchEvent(TouchEvent::MOVE, target_touch_map, event);
+  }
+  DispatchSingleTouchEvent(TouchEvent::MOVE, event);
 }
 
 void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
   auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetTouchMap(target_touch_map, event);
-  DispatchMultiTouchEvent(TouchEvent::UP, target_touch_map, event);
+  if (enable_multi_touch_) {
+    DispatchMultiTouchEvent(TouchEvent::UP, target_touch_map, event);
+  }
+  DispatchSingleTouchEvent(TouchEvent::UP, event);
   OnTouchUp(event);
   ResetTouchEnv(event);
 }
@@ -591,7 +604,10 @@ void EventDispatcher::HandleTouchUp(const ArkUI_UIInputEvent* event) {
 void EventDispatcher::HandleTouchCancel(const ArkUI_UIInputEvent* event) {
   auto target_touch_map = lepus::Value(lepus::Dictionary::Create());
   AddTargetTouchMap(target_touch_map, event);
-  DispatchMultiTouchEvent(TouchEvent::CANCEL, target_touch_map, event);
+  if (enable_multi_touch_) {
+    DispatchMultiTouchEvent(TouchEvent::CANCEL, target_touch_map, event);
+  }
+  DispatchSingleTouchEvent(TouchEvent::CANCEL, event);
   OnTouchCancel(event);
   ResetTouchEnv(event);
 }
@@ -741,16 +757,13 @@ void EventDispatcher::DispatchSingleTouchEvent(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
   touch_event.SetTimeStamp(time_stamp);
-  float scaled_density = ui_owner_->Context()->ScaledDensity();
-  float page_point[2] = {
-      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scaled_density,
-      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scaled_density};
+  float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, 0),
+                         OH_ArkUI_PointerEvent_GetYByIndex(event, 0)};
   GetPagePoint(page_point, page_point);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
-  float client_point[2] = {
-      OH_ArkUI_PointerEvent_GetWindowXByIndex(event, 0) / scaled_density,
-      OH_ArkUI_PointerEvent_GetWindowYByIndex(event, 0) / scaled_density};
+  float client_point[2] = {OH_ArkUI_PointerEvent_GetWindowXByIndex(event, 0),
+                           OH_ArkUI_PointerEvent_GetWindowYByIndex(event, 0)};
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);

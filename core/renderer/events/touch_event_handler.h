@@ -294,6 +294,7 @@ class TouchEventHandler {
   std::string version_;
 
   lepus::Value current_touches_;
+  bool need_erase_touches_{false};
 
   // for new gesture in fiber
   lepus::Value gesture_manager_;

@@ -54,6 +54,8 @@ class EventDispatcher {
 
   ~EventDispatcher();
 
+  void SetEnableMultiTouch(bool enable_multi_touch);
+
   void SetTapSlop(const std::string& tap_slop);
 
   void SetHasTouchPseudo(bool has_touch_pseudo) {
@@ -158,6 +160,7 @@ class EventDispatcher {
   bool first_touch_outside_{false};
   bool from_overlay_{false};
   long long time_stamp_{0};
+  bool enable_multi_touch_{false};
   unsigned int tap_slop_{5};
   bool has_touch_pseudo_{false};
   int32_t long_press_duration_{500};
