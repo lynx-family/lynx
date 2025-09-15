@@ -16,6 +16,18 @@ EventTarget* TextEventTarget::ParentTarget() { return parent_; }
 
 void TextEventTarget::SetParent(EventTarget* parent) { parent_ = parent; }
 
+LynxPointerEventsValue TextEventTarget::PointerEvents() {
+  if (pointer_events_ != LynxPointerEventsValue::kUnset) {
+    return pointer_events_;
+  }
+
+  EventTarget* parent = this->ParentTarget();
+  if (parent) {
+    return parent->PointerEvents();
+  }
+  return LynxPointerEventsValue::kAuto;
+}
+
 bool TextEventTarget::BlockNativeEvent(float point[2]) { return false; }
 
 bool TextEventTarget::EventThrough(float point[2]) {

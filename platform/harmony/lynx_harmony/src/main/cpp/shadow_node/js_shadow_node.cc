@@ -203,7 +203,8 @@ napi_value JSShadowNode::Constructor(napi_env env, napi_callback_info info) {
 
 JSShadowNode::~JSShadowNode() = default;
 
-void JSShadowNode::OnPropsUpdate(const char* attr, const lepus::Value& value) {}
+void JSShadowNode::OnPropsUpdate(const std::string& name,
+                                 const lepus::Value& value) {}
 
 napi_value JSShadowNode::Init(napi_env env, napi_value exports) {
 #define DECLARE_NAPI_FUNCTION(name, func) \

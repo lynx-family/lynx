@@ -21,6 +21,13 @@ enum class LynxEventPropStatus {
   kEnable,
 };
 
+enum class LynxPointerEventsValue {
+  kAuto,
+  kNone,
+  // add new type before kUnset
+  kUnset,
+};
+
 enum class ConsumeSlideDirection {
   kNone,
   kHorizontal,
@@ -66,6 +73,8 @@ class EventTarget {
                                      PseudoStatus current_status) = 0;
 
   virtual PseudoStatus GetPseudoStatus() = 0;
+
+  virtual LynxPointerEventsValue PointerEvents() = 0;
 
   virtual bool BlockNativeEvent(float point[2]) = 0;
 

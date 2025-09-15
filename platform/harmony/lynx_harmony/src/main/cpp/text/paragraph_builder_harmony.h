@@ -55,7 +55,8 @@ class ParagraphBuilderHarmony {
   void PopTextStyle();
 
   void PushTextEventTarget(int32_t sign, LynxEventPropStatus event_through,
-                           LynxEventPropStatus ignore_focus);
+                           LynxEventPropStatus ignore_focus,
+                           LynxPointerEventsValue pointer_events);
   void PopTextEventTarget();
 
   fml::RefPtr<ParagraphHarmony> CreateParagraph(

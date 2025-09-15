@@ -24,7 +24,8 @@ class ParagraphBuilderHarmony;
 class BaseTextShadowNode : public ShadowNode, public ParagraphContent {
  public:
   BaseTextShadowNode(int sign, const std::string& tag);
-  void OnPropsUpdate(char const* attr, lepus::Value const& value) override;
+  void OnPropsUpdate(const std::string& name,
+                     const lepus::Value& value) override;
   ~BaseTextShadowNode() override = default;
   virtual bool IsRawText() const { return false; }
   virtual bool IsInlineTruncation() const { return false; }

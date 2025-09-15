@@ -44,7 +44,8 @@ class JSShadowNode : public ShadowNode, public CustomMeasureFunc {
                        MeasureMode height_mode, bool final_measure) override;
   void Align() override;
   void UpdateProps(PropBundleHarmony* props) override;
-  void OnPropsUpdate(const char* attr, const lepus::Value& value) override;
+  void OnPropsUpdate(const std::string& name,
+                     const lepus::Value& value) override;
   static napi_value Init(napi_env env, napi_value exports);
   napi_value GetJSObject() const override;
   bool HasJSObject() const override { return true; }

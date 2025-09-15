@@ -16,6 +16,12 @@ namespace lynx {
 namespace tasm {
 namespace harmony {
 
+std::unordered_map<std::string, ShadowNode::PropSetter>
+    ShadowNode::prop_setters_ = {
+        {"ignore-focus", &ShadowNode::SetIgnoreFocus},
+        {"event-through", &ShadowNode::SetEventThrough},
+        {"pointer-events", &ShadowNode::SetPointerEvents}};
+
 MeasureFuncHarmony::MeasureFuncHarmony(CustomMeasureFunc* custom_measure_func)
     : custom_measure_func_(custom_measure_func) {}
 
@@ -144,7 +150,7 @@ void ShadowNode::UpdateProps(PropBundleHarmony* props) {
   auto& prop_map = pda->GetProps();
   std::for_each(prop_map.begin(), prop_map.end(),
                 [this](std::pair<std::string, lepus::Value> const& entry) {
-                  this->OnPropsUpdate(entry.first.c_str(), entry.second);
+                  this->OnPropsUpdate(entry.first, entry.second);
                 });
   const auto& events = pda->GetEvents();
   if (events) {
@@ -152,16 +158,41 @@ void ShadowNode::UpdateProps(PropBundleHarmony* props) {
   }
 }
 
-void ShadowNode::OnPropsUpdate(char const* attr, lepus::Value const& value) {
-  if (base::StringEqual(attr, harmony::kEventThrough)) {
-    if (value.IsBool()) {
-      event_through_ = value.Bool() ? LynxEventPropStatus::kEnable
-                                    : LynxEventPropStatus::kDisable;
+void ShadowNode::OnPropsUpdate(const std::string& name,
+                               const lepus::Value& value) {
+  if (auto it = prop_setters_.find(name); it != prop_setters_.end()) {
+    PropSetter setter = it->second;
+    (this->*setter)(value);
+  }
+}
+
+void ShadowNode::SetPointerEvents(const lepus::Value& value) {
+  if (value.IsNumber()) {
+    int int_value = value.Number();
+    if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
+        int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
+      pointer_events_ = static_cast<LynxPointerEventsValue>(int_value);
     }
-  } else if (base::StringEqual(attr, kIgnoreFocus)) {
-    if (value.IsBool()) {
-      ignore_focus_ = value.Bool() ? LynxEventPropStatus::kEnable
-                                   : LynxEventPropStatus::kDisable;
+  }
+}
+
+void ShadowNode::SetIgnoreFocus(const lepus::Value& value) {
+  if (value.IsBool()) {
+    ignore_focus_ = value.Bool() ? LynxEventPropStatus::kEnable
+                                 : LynxEventPropStatus::kDisable;
+  }
+}
+
+void ShadowNode::SetEventThrough(const lepus::Value& value) {
+  if (value.IsBool()) {
+    event_through_ = value.Bool() ? LynxEventPropStatus::kEnable
+                                  : LynxEventPropStatus::kDisable;
+  } else if (value.IsString()) {
+    auto bool_str = value.StdString();
+    if (bool_str == "true") {
+      event_through_ = LynxEventPropStatus::kEnable;
+    } else if (bool_str == "false") {
+      event_through_ = LynxEventPropStatus::kDisable;
     }
   }
 }

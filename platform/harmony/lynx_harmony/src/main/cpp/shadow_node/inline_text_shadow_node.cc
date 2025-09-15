@@ -15,7 +15,8 @@ void InlineTextShadowNode::UpdateProps(PropBundleHarmony* props) {
 
 void InlineTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
                                              float width, float height) {
-  builder.PushTextEventTarget(Signature(), event_through_, ignore_focus_);
+  builder.PushTextEventTarget(Signature(), event_through_, ignore_focus_,
+                              pointer_events_);
   BaseTextShadowNode::AppendToParagraph(builder, width, height);
   builder.PopTextEventTarget();
 }

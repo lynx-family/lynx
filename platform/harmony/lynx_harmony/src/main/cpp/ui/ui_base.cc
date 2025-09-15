@@ -96,6 +96,7 @@ std::unordered_map<std::string, UIBase::PropSetter> UIBase::prop_setters_ = {
     {"background-image", &UIBase::SetBackgroundImage},
     {"background-position", &UIBase::SetBackgroundPosition},
     {"box-shadow", &UIBase::SetBoxShadow},
+    {"pointer-events", &UIBase::SetPointerEvents},
     {"user-interaction-enabled", &UIBase::SetUserInteractionEnabled},
     {"native-interaction-enabled", &UIBase::SetNativeInteractionEnabled},
     {"hit-slop", &UIBase::SetHitSlop},
@@ -931,6 +932,28 @@ void UIBase::SetFilter(const lepus::Value& value) {
   }
 }
 
+void UIBase::SetPointerEvents(const lepus::Value& value) {
+  if (value.IsNumber()) {
+    int int_value = value.Number();
+    if (int_value >= static_cast<int>(LynxPointerEventsValue::kAuto) &&
+        int_value < static_cast<int>(LynxPointerEventsValue::kUnset)) {
+      pointer_events_ = static_cast<LynxPointerEventsValue>(int_value);
+    }
+  }
+}
+
+LynxPointerEventsValue UIBase::PointerEvents() {
+  if (pointer_events_ != LynxPointerEventsValue::kUnset) {
+    return pointer_events_;
+  }
+
+  EventTarget* parent = this->ParentTarget();
+  if (parent) {
+    return parent->PointerEvents();
+  }
+  return LynxPointerEventsValue::kAuto;
+}
+
 void UIBase::SetUserInteractionEnabled(const lepus::Value& value) {
   if (value.IsBool()) {
     user_interaction_enabled_ = value.Bool();
@@ -1002,8 +1025,7 @@ void UIBase::SetEventThrough(const lepus::Value& value) {
   if (value.IsBool()) {
     event_through_ = value.Bool() ? LynxEventPropStatus::kEnable
                                   : LynxEventPropStatus::kDisable;
-  }
-  if (value.IsString()) {
+  } else if (value.IsString()) {
     auto bool_str = value.StdString();
     if (bool_str == "true") {
       event_through_ = LynxEventPropStatus::kEnable;
@@ -1740,9 +1762,11 @@ bool UIBase::ShouldHitTest() {
 bool UIBase::IsOnResponseChain() { return false; }
 
 EventTarget* UIBase::HitTest(float point[2]) {
+  float origin_point[2]{point[0], point[1]};
   EventTarget* target = nullptr;
   float target_point[] = {point[0], point[1]};
   float child_point[2] = {0};
+  std::vector<EventTarget*> sibling_targets;
   for (int i = children_.size() - 1; i >= 0; --i) {
     UIBase* ui = children_[i];
     if (!ui->ShouldHitTest()) {
@@ -1751,6 +1775,7 @@ EventTarget* UIBase::HitTest(float point[2]) {
 
     ui->GetPointInTarget(child_point, this, point);
     if (ui->ContainsPoint(child_point)) {
+      sibling_targets.push_back(ui);
       if (ui->IsOnResponseChain()) {
         target = ui;
         target_point[0] = child_point[0];
@@ -1767,10 +1792,23 @@ EventTarget* UIBase::HitTest(float point[2]) {
     }
   }
 
-  if (target == nullptr) {
-    return this;
+  EventTarget* best_hittest_target =
+      target ? target->HitTest(target_point) : this;
+  if (!best_hittest_target ||
+      best_hittest_target->PointerEvents() == LynxPointerEventsValue::kNone) {
+    best_hittest_target = nullptr;
+    for (auto it = sibling_targets.rbegin(); it != sibling_targets.rend();
+         ++it) {
+      if (*it == target) {
+        continue;
+      }
+      best_hittest_target = (*it)->HitTest(origin_point);
+      if (best_hittest_target) {
+        break;
+      }
+    }
   }
-  return target->HitTest(target_point);
+  return best_hittest_target;
 }
 
 float UIBase::OffsetXForCalcPosition() {

@@ -336,8 +336,9 @@ fml::RefPtr<fml::RefCountedThreadSafeStorage> TextShadowNode::getExtraBundle() {
   return paragraph_;
 }
 
-void TextShadowNode::OnPropsUpdate(const char* attr,
+void TextShadowNode::OnPropsUpdate(const std::string& name,
                                    const lepus::Value& value) {
+  char const* attr = name.c_str();
   PrepareTextProps();
   if (base::StringEqual(attr, kTextMaxLine)) {
     int32_t line = -1;
@@ -377,7 +378,7 @@ void TextShadowNode::OnPropsUpdate(const char* attr,
     }
     paragraph_style_->SetTextIndent(text_props_->text_indent);
   } else {
-    BaseTextShadowNode::OnPropsUpdate(attr, value);
+    BaseTextShadowNode::OnPropsUpdate(name, value);
   }
   MarkDirty();
 }

@@ -23,7 +23,8 @@ class InputShadowNode : public BaseTextShadowNode, public CustomMeasureFunc {
   static ShadowNode* Make(int sign, const std::string& tag) {
     return new InputShadowNode(sign, tag);
   }
-  void OnPropsUpdate(char const* attr, lepus::Value const& value) override;
+  void OnPropsUpdate(const std::string& name,
+                     lepus::Value const& value) override;
   LayoutResult Measure(float width, MeasureMode width_mode, float height,
                        MeasureMode height_mode, bool final_measure) override;
   void Align() override;

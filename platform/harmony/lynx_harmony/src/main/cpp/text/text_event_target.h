@@ -21,12 +21,15 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
  public:
   explicit TextEventTarget(int32_t sign)
       : TextEventTarget(0, 0, sign, LynxEventPropStatus::kUndefined,
-                        LynxEventPropStatus::kUndefined) {}
+                        LynxEventPropStatus::kUndefined,
+                        LynxPointerEventsValue::kUnset) {}
   TextEventTarget(size_t start, size_t end, int32_t sign,
                   LynxEventPropStatus event_through,
-                  LynxEventPropStatus ignore_focus)
+                  LynxEventPropStatus ignore_focus,
+                  LynxPointerEventsValue pointer_events)
       : event_through_(event_through),
         ignore_focus_(ignore_focus),
+        pointer_events_(pointer_events),
         start_(start),
         end_(end),
         sign_(sign) {}
@@ -44,6 +47,7 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override{};
+  LynxPointerEventsValue PointerEvents() override;
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
@@ -69,6 +73,7 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   EventTarget* parent_;
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
+  LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
 
   struct Rect {
     float left{0.f};

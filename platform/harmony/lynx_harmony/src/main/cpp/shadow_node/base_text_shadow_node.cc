@@ -36,8 +36,9 @@ void BaseTextShadowNode::OnContextReady() {
   style_.SetFontSize(context_->DefaultFontSize() * ScaleDensity());
 }
 
-void BaseTextShadowNode::OnPropsUpdate(char const* attr,
-                                       lepus::Value const& value) {
+void BaseTextShadowNode::OnPropsUpdate(const std::string& name,
+                                       const lepus::Value& value) {
+  char const* attr = name.c_str();
   PrepareTextProps();
   if (base::StringEqual(attr, kColor)) {
     SetColor(value);
@@ -109,7 +110,7 @@ void BaseTextShadowNode::OnPropsUpdate(char const* attr,
       text_ = value.Bool() ? "true" : "false";
     }
   } else {
-    ShadowNode::OnPropsUpdate(attr, value);
+    ShadowNode::OnPropsUpdate(name, value);
   }
   MarkDirty();
 }

@@ -42,7 +42,8 @@ class TextShadowNode final : public BaseTextShadowNode,
 
   void OnAppendToParagraph(ParagraphBuilderHarmony& builder, float width,
                            float height) override;
-  void OnPropsUpdate(char const* attr, lepus::Value const& value) override;
+  void OnPropsUpdate(const std::string& name,
+                     const lepus::Value& value) override;
 
  private:
   void HandleWhiteSpace();

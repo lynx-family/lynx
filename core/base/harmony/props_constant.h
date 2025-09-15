@@ -31,6 +31,7 @@ static constexpr const char* kTextStrokeColor = "text-stroke-color";
 static constexpr const char* kTextShadow = "text-shadow";
 static constexpr const char* kEventThrough = "event-through";
 static constexpr const char* kIgnoreFocus = "ignore-focus";
+static constexpr const char* kPointerEvents = "pointer-events";
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

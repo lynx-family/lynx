@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "base/include/fml/memory/ref_counted.h"
@@ -62,7 +63,8 @@ class ShadowNode : public fml::RefCountedThreadSafeStorage {
   virtual fml::RefPtr<fml::RefCountedThreadSafeStorage> getExtraBundle() {
     return nullptr;
   }
-  virtual void OnPropsUpdate(char const* attr, lepus::Value const& value);
+  virtual void OnPropsUpdate(const std::string& name,
+                             const lepus::Value& value);
   void AdoptSlNode();
   void SetParent(ShadowNode* parent) { parent_ = parent; }
   const std::vector<ShadowNode*>& GetChildren() const { return children_; }
@@ -116,13 +118,20 @@ class ShadowNode : public fml::RefCountedThreadSafeStorage {
   void SetCustomMeasureFunc(CustomMeasureFunc* measure_func);
   LynxContext* context_{nullptr};
   std::vector<std::string> events_;
+  LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   void ReleaseSelf() const override;
 
  private:
+  void SetPointerEvents(const lepus::Value& value);
+  void SetIgnoreFocus(const lepus::Value& value);
+  void SetEventThrough(const lepus::Value& value);
+
   const ShadowNode* FindNonVirtualNode() const;
   void SetEvent(const std::vector<lepus::Value>& events);
+  using PropSetter = void (ShadowNode::*)(const lepus::Value& value);
+  static std::unordered_map<std::string, PropSetter> prop_setters_;
   int32_t sign_;
   std::string tag_;
   std::vector<ShadowNode*> children_;

@@ -184,6 +184,7 @@ class LYNX_EXPORT
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override;
+  LynxPointerEventsValue PointerEvents() override;
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
@@ -245,6 +246,7 @@ class LYNX_EXPORT
   OverflowValue overflow_ = {false, false};
   bool need_clip_{false};
   std::unique_ptr<NativeNodeContent> node_content_{nullptr};
+  LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   std::vector<std::vector<PlatformLength>> event_through_active_regions_;
   std::vector<std::vector<PlatformLength>> block_native_event_areas_;
@@ -324,6 +326,7 @@ class LYNX_EXPORT
       const lepus::Value& args,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
 
+  void SetPointerEvents(const lepus::Value& value);
   void SetUserInteractionEnabled(const lepus::Value& value);
   void SetNativeInteractionEnabled(const lepus::Value& value);
   void SetHitSlop(const lepus::Value& value);

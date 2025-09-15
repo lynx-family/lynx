@@ -54,11 +54,11 @@ void ParagraphBuilderHarmony::PopTextStyle() {
 
 void ParagraphBuilderHarmony::PushTextEventTarget(
     int32_t sign, LynxEventPropStatus event_through,
-    LynxEventPropStatus ignore_focus) {
+    LynxEventPropStatus ignore_focus, LynxPointerEventsValue pointer_events) {
   cur_event_target_start_ = char16_count_;
   auto target = std::make_shared<TextEventTarget>(
       cur_event_target_start_, cur_event_target_start_ + 1, sign, event_through,
-      ignore_focus);
+      ignore_focus, pointer_events);
   if (event_target_stack_.empty()) {
     event_roots_.emplace_back(target);
     event_target_stack_.push(target.get());

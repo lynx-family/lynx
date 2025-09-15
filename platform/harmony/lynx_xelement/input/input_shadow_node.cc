@@ -28,7 +28,7 @@ InputShadowNode::InputShadowNode(int sign, const std::string& tag)
   SetCustomMeasureFunc(this);
 }
 
-void InputShadowNode::OnPropsUpdate(char const* attr,
+void InputShadowNode::OnPropsUpdate(const std::string& name,
                                     lepus::Value const& value) {}
 
 LayoutResult InputShadowNode::Measure(float width, MeasureMode width_mode,
