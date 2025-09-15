@@ -25,6 +25,13 @@ TextElement::TextElement(ElementManager* manager, const base::String& tag)
   }
   SetDefaultOverflow(element_manager_->GetDefaultTextOverflow() &&
                      !EnableLayoutInElementMode());
+
+  if (Config::DefaultFontScale() != manager->GetLynxEnvConfig().FontScale() &&
+      EnableLayoutInElementMode()) {
+    // if fontScale is 1.0f, force to process fontSize
+    // FIXME(linxs): maybe there is a better way to set FontSize bit
+    property_bits_.Set(kPropertyIDFontSize);
+  }
   element_manager_->IncreaseTextElementCount();
 }
 

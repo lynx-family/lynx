@@ -279,7 +279,10 @@ TEST_P(TextElementTest, TestResolveStyleValue) {
   EXPECT_EQ(text->computed_css_style()->GetTextAttributes()->color, 4278190080);
 }
 
-TEST_P(TextElementTest, DISABLED_TestMeasureCase0) {
+TEST_P(TextElementTest, TestMeasureCase0) {
+  if (enable_parallel_element_flush) {
+    GTEST_SKIP();
+  }
   auto config = std::make_shared<PageConfig>();
   config->SetEnableFiberArch(true);
   manager->SetConfig(config);
@@ -387,6 +390,55 @@ TEST_P(TextElementTest, DISABLED_TestMeasureCase0) {
   //'测试' is 'testing', used for test the word's lenght in Chinese
   EXPECT_TRUE(std::get<std::string>(inline_mock_text_prop_array[11]) ==
               "text-content-inline-测试");
+}
+
+TEST_P(TextElementTest, LayoutInElementFontScale) {
+  if (enable_parallel_element_flush) {
+    GTEST_SKIP();
+  }
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  manager->SetConfig(config);
+  manager->enable_layout_in_element_mode_ = true;
+  manager->OnUpdateViewport(720, 1, 1080, 1, true);
+
+  float mFontScale = 3.0f;
+  // set font-scale:3
+  manager->UpdateFontScale(mFontScale);
+
+  auto page = manager->CreateFiberPage("page", 11);
+
+  auto text = manager->CreateFiberText("text");
+
+  auto raw_text = manager->CreateFiberRawText();
+  auto content = lepus::Value("text-content");
+  raw_text->SetText(content);
+
+  page->InsertNode(text);
+  text->InsertNode(raw_text);
+
+  auto options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(options, page.get());
+
+  auto painting_context =
+      static_cast<FiberMockPaintingContext*>(page->painting_context()->impl());
+  painting_context->Flush();
+
+  auto* mock_text_layout =
+      static_cast<TextLayoutMock*>((painting_context->text_layout_impl_).get());
+
+  auto& mock_text_prop_array =
+      mock_text_layout->text_layout_results_.at(text->impl_id()).get()->props_;
+
+  // check prop array
+  // color
+  EXPECT_TRUE(std::get<int>(mock_text_prop_array[0]) == kTextPropFontSize);
+  EXPECT_TRUE(std::get<double>(mock_text_prop_array[1]) ==
+              manager->GetLynxEnvConfig().DefaultFontSize() * mFontScale);
+
+  // text string
+  EXPECT_TRUE(std::get<int>(mock_text_prop_array[2]) == kPropTextString);
+  EXPECT_TRUE(std::get<std::string>(mock_text_prop_array[3]) == "text-content");
 }
 
 INSTANTIATE_TEST_SUITE_P(TextElementTestModule, TextElementTest,
