@@ -3536,20 +3536,20 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
       page_proxy()->element_manager()->painting_context()->Flush();
       current_pipeline_context->ResetFlushUIOperationRequested();
     }
-  }
 
-  // TODO(@zhouzhitao): Move this to Pipeline Lifecycle Observer if provided;
-  if (page_proxy()->element_manager()->EnableFiberElementMemoryReport()) {
-    page_proxy()->element_manager()->UpdateElementMemoryUsage(
-        page_proxy()->element_manager()->CalcTotalMemoryUsageDiff());
-  }
+    // TODO(@zhouzhitao): Move this to Pipeline Lifecycle Observer if provided;
+    if (page_proxy()->element_manager()->EnableFiberElementMemoryReport()) {
+      page_proxy()->element_manager()->UpdateElementMemoryUsage(
+          page_proxy()->element_manager()->CalcTotalMemoryUsageDiff());
+    }
 
-  // TODO(@limeng.amer): Move this to Pipeline Lifecycle Observer if provided;
-  if (tasm::performance::MemoryMonitor::Enable()) {
-    auto* node_manager = page_proxy()->element_manager()->node_manager();
-    int32_t count = static_cast<int32_t>(node_manager->NodeCount());
-    int64_t mem_size_bytes = node_manager->GetTotalMemoryUsage();
-    delegate_.ReportElementMemoryInfo(mem_size_bytes, count);
+    // TODO(@limeng.amer): Move this to Pipeline Lifecycle Observer if provided;
+    if (tasm::performance::MemoryMonitor::Enable()) {
+      auto* node_manager = page_proxy()->element_manager()->node_manager();
+      int32_t count = static_cast<int32_t>(node_manager->NodeCount());
+      int64_t mem_size_bytes = node_manager->GetTotalMemoryUsage();
+      delegate_.ReportElementMemoryInfo(mem_size_bytes, count);
+    }
   }
 
   current_pipeline_context->AdvanceLifecycleTo(LifecycleState::kStopped);
