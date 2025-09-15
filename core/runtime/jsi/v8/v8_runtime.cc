@@ -39,7 +39,7 @@ namespace cache {
 extern std::shared_ptr<Buffer> TryGetCacheV8(
     const std::string& source_url, const std::string& template_url,
     int64_t runtime_id, const std::shared_ptr<const Buffer>& buffer,
-    std::unique_ptr<CacheGenerator> cache_generator);
+    std::unique_ptr<CacheGenerator> cache_generator, bool debuggable = false);
 
 extern void RequestCacheGenerationV8(
     const std::string& source_url, const std::string& template_url,

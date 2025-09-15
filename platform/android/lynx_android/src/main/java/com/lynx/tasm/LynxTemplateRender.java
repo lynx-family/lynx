@@ -861,7 +861,8 @@ public class LynxTemplateRender
         tasmPlatformInvoker, whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
         lynxUIRenderer.useInvokeUIMethod(), mLongTaskMonitorEnabled == LynxBooleanOption.FALSE,
         mForceLayoutOnBackgroundThread, mLynxViewConfigProvider.isEnableUnifiedPipeline(),
-        mEmbeddedMode, mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
+        mEmbeddedMode, mLynxViewBuilder.isDebuggable(),
+        mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
         mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
 
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
@@ -3675,7 +3676,8 @@ public class LynxTemplateRender
     final int runtimeFlags = LynxBackgroundRuntimeOptions.calcRuntimeFlags(
         forceReloadJSCore, useQuickJSEngine, enablePendingJsTask, enableUserBytecode, null, null);
     nativeInitRuntime(mNativePtr, resourceLoader, moduleFactory, getGroupID(), getPreloadJSPath(),
-        bytecodeSourceUrl, runtimeFlags, lynxUIRenderer.getUIDelegatePtr());
+        bytecodeSourceUrl, runtimeFlags, lynxUIRenderer.getUIDelegatePtr(),
+        mLynxViewConfigProvider.isDebuggable());
     String jsGroupThreadName = getJSGroupThreadNameIfNeed();
     WeakReference<LynxContext> weakContext = mNativeFacade.getLynxContext();
     if (mNativeFacade.getEnableJSRuntime()) {
@@ -4088,7 +4090,8 @@ public class LynxTemplateRender
       boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
       Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
       boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
-      boolean enableUnifiedPipeline, int embeddedMode, long enginePtr, Object moduleFactory);
+      boolean enableUnifiedPipeline, int embeddedMode, boolean debuggable, long enginePtr,
+      Object moduleFactory);
 
   private static native void nativeDestroy(long ptr);
 
@@ -4104,7 +4107,7 @@ public class LynxTemplateRender
 
   private static native void nativeInitRuntime(long ptr, LynxResourceLoader resourceLoader,
       LynxModuleFactory moduleFactory, String groupId, String[] preloadJSPaths,
-      String bytecodeSourceUrl, int runtimeFlags, long uiDelegate);
+      String bytecodeSourceUrl, int runtimeFlags, long uiDelegate, boolean debuggable);
 
   private static native void nativeOnLynxEngineCreated(long ptr, long uiDelegatePtr);
   private static native void nativeStartRuntime(long ptr, long lifecycle);

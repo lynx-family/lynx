@@ -263,7 +263,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   TemplateAssembler(Delegate& delegate, std::unique_ptr<ElementManager> client,
                     LayoutScheduler& layout_scheduler, int32_t instance_id,
-                    bool enable_unified_pipeline = false);
+                    bool enable_unified_pipeline = false,
+                    bool debuggable = false);
   ~TemplateAssembler() override;
 
   void LoadTemplate(const std::string& url, std::vector<uint8_t> source,
@@ -797,6 +798,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
+  bool debuggable() const { return debuggable_; }
+
  private:
   void ExecuteOnLayoutReadyHooks();
   void EnsureOnLayoutReadyHooksFinish();
@@ -1033,6 +1036,7 @@ class TemplateAssembler final : public TemplateEntryHolder,
   bool is_loading_template_;
   bool enable_pre_update_data_{false};
   bool pre_painting_{false};
+  bool debuggable_{false};
 };
 }  // namespace tasm
 }  // namespace lynx

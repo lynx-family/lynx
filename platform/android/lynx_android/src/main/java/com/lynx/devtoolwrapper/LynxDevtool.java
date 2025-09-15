@@ -54,7 +54,7 @@ public class LynxDevtool {
     init(view, render, debuggable, render.getLynxContext().getContext());
   }
 
-  public LynxDevtool(boolean debuggable, Context context) {
+  public LynxDevtool(Context context, boolean debuggable) {
     init(null, null, debuggable, context);
   }
 

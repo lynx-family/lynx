@@ -51,7 +51,7 @@ namespace tasm {
 
 ElementManager::ElementManager(
     std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
-    Delegate *delegate, const LynxEnvConfig &lynx_env_config,
+    Delegate *delegate, const LynxEnvConfig &lynx_env_config, bool debuggable,
     int32_t instance_id,
     const std::shared_ptr<base::VSyncMonitor> &vsync_monitor,
     std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl> platform_layout_context)
@@ -72,7 +72,8 @@ ElementManager::ElementManager(
       platform_computed_css_(std::make_unique<starlight::ComputedCSSStyle>(
           lynx_env_config.LayoutsUnitPerPx(),
           lynx_env_config.PhysicalPixelsPerLayoutUnit())) {
-  dom_tree_enabled_ = lynx::tasm::LynxEnv::GetInstance().IsDomTreeEnabled();
+  dom_tree_enabled_ =
+      lynx::tasm::LynxEnv::GetInstance().IsDomTreeEnabled(debuggable);
   platform_computed_css_->SetCSSParserConfigs(GetCSSParserConfigs());
   task_runner_ = std::make_shared<tasm::TasmWorkerTaskRunner>();
   enable_new_animator_fiber_ = LynxEnv::GetInstance().EnableNewAnimatorFiber();

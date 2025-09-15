@@ -142,10 +142,11 @@ void LynxRuntime::Init(
     const std::shared_ptr<lynx::pub::LynxNativeModuleManager>&
         native_module_manager,
     const std::shared_ptr<piper::InspectorRuntimeObserverNG>& runtime_observer,
-    std::vector<std::string> preload_js_paths) {
+    std::vector<std::string> preload_js_paths, bool debuggable) {
   LOGI("Init LynxRuntime group_id: " << group_id_ << " runtime_id: "
                                      << GetRuntimeId() << " this:" << this);
 
+  debuggable_ = debuggable;
   tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get());
   lifecycle_observer_->OnRuntimeInit(GetRuntimeId());
   // Create JSI ModuleManager
@@ -176,9 +177,9 @@ void LynxRuntime::Init(
       runtime_flags_ & LynxRuntimeFlags::FORCE_USE_LIGHT_WEIGHT_JS_ENGINE);
 
   if (runtime_flags_ & LynxRuntimeFlags::PENDING_CORE_JS_LOAD) {
-    InitPartRuntime(std::move(preload_js_paths));
+    InitPartRuntime(std::move(preload_js_paths), debuggable);
   } else {
-    InitFullRuntime(std::move(preload_js_paths));
+    InitFullRuntime(std::move(preload_js_paths), debuggable);
   }
   LOGI("js_runtime_type :" << static_cast<int32_t>(
                                   js_executor_->getJSRuntimeType())
@@ -194,7 +195,7 @@ void LynxRuntime::Init(
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS, CREATE_AND_LOAD_APP);
   app_ = js_executor_->createNativeAppInstance(
       GetRuntimeId(), delegate_.get(), std::make_unique<LynxApiHandler>(this),
-      page_options_);
+      page_options_, debuggable);
 #if ENABLE_TESTBENCH_RECORDER
   app_->SetRecordId(record_id_);
 #endif
@@ -206,24 +207,27 @@ void LynxRuntime::Init(
   }
 }
 
-void LynxRuntime::InitFullRuntime(std::vector<std::string> preload_js_paths) {
+void LynxRuntime::InitFullRuntime(std::vector<std::string> preload_js_paths,
+                                  bool debuggable) {
   std::vector<std::pair<std::string, std::string>> preload_js_sources;
   // read lynx_core.js
   ReadCoreJS(preload_js_sources);
   // read preload js
   ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
   // init jsvm runtime
-  InitExecutor(std::move(preload_js_sources));
+  InitExecutor(std::move(preload_js_sources), debuggable);
 }
 
-void LynxRuntime::InitPartRuntime(std::vector<std::string> preload_js_paths) {
+void LynxRuntime::InitPartRuntime(std::vector<std::string> preload_js_paths,
+                                  bool debuggable) {
   std::vector<std::pair<std::string, std::string>> preload_js_sources;
   ReadPreloadJSSource(std::move(preload_js_paths), preload_js_sources);
-  InitExecutor(std::move(preload_js_sources));
+  InitExecutor(std::move(preload_js_sources), debuggable);
 }
 
 void LynxRuntime::InitExecutor(
-    std::vector<std::pair<std::string, std::string>> preload_js_sources) {
+    std::vector<std::pair<std::string, std::string>> preload_js_sources,
+    bool debuggable) {
   tasm::TimingCollector::Instance()->Mark(tasm::timing::kLoadCoreStart);
   TRACE_EVENT_BEGIN(LYNX_TRACE_CATEGORY_VITALS, LYNX_JS_LOAD_CORE);
   // FIXME(wangboyong):invoke before decode...in fact in 1.4
@@ -235,7 +239,8 @@ void LynxRuntime::InitExecutor(
       bytecode_source_url_,
       [delegate_ptr = delegate_.get()](const std::string& url) {
         return delegate_ptr->LoadBytecode(url);
-      });
+      },
+      debuggable);
   js_executor_->SetObserver(delegate_.get());
 
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
@@ -659,7 +664,7 @@ void LynxRuntime::OnJSSourcePrepared(
       // If devtool is enabled, enable circular data check always.
       bool enable_circular_data_check =
           (bundle.enable_circular_data_check ||
-           tasm::LynxEnv::GetInstance().IsDevToolEnabled());
+           tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable_);
       js_runtime->SetCircularDataCheckFlag(enable_circular_data_check);
       LOGI("[LynxRuntime] circular data check flag: "
            << enable_circular_data_check);

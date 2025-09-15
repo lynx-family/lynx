@@ -71,10 +71,11 @@ class App : public std::enable_shared_from_this<App> {
       std::shared_ptr<JSIExceptionHandler> exception_handler,
       piper::Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const std::string& group_id, const tasm::PageOptions& page_options) {
+      const std::string& group_id, const tasm::PageOptions& page_options,
+      bool debuggable = false) {
     auto app = std::shared_ptr<App>(new App(
         rt_id, rt, delegate, exception_handler, std::move(nativeModuleProxy),
-        std::move(api_handler), group_id, page_options));
+        std::move(api_handler), group_id, page_options, debuggable));
     app->Init();
     return app;
   }
@@ -290,7 +291,8 @@ class App : public std::enable_shared_from_this<App> {
       std::shared_ptr<JSIExceptionHandler> exception_handler,
       piper::Object nativeModuleProxy,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const std::string& group_id, const tasm::PageOptions& page_options)
+      const std::string& group_id, const tasm::PageOptions& page_options,
+      bool debuggable = false)
       : app_guid_(std::to_string(rt_id)),
         rt_(rt),
         js_app_(),
@@ -307,7 +309,8 @@ class App : public std::enable_shared_from_this<App> {
             tasm::PackageInstanceBundleModuleMode::EVAL_REQUIRE_MODE),
         page_options_(page_options),
         animation_frame_handler_(
-            std::make_unique<runtime::AnimationFrameTaskHandler>()) {}
+            std::make_unique<runtime::AnimationFrameTaskHandler>()),
+        debuggable_(debuggable) {}
 
   void Init();
   std::optional<Value> SendPageEvent(const std::string& page_name,
@@ -376,6 +379,7 @@ class App : public std::enable_shared_from_this<App> {
   std::unique_ptr<runtime::AnimationFrameTaskHandler> animation_frame_handler_;
   bool has_paused_animation_frame_{false};
   lynx::tasm::FluencyTracer fluency_tracer_;
+  bool debuggable_;
 };
 
 }  // namespace piper

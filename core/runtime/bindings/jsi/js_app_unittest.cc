@@ -359,7 +359,7 @@ class AppTest : public JSITestBase {
 
     app = App::Create(0, runtime, &delegate_, exception_handler_,
                       std::move(nativeModuleProxy), nullptr, "-1",
-                      tasm::PageOptions());
+                      tasm::PageOptions(), false);
 
     app->setJsAppObj(Object::createFromHostObject(*runtime, mock_js_app_));
   }

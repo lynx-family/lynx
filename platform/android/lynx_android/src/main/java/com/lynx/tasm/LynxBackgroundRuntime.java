@@ -75,8 +75,8 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
    * @param options configuration for the runtime
    */
   @AnyThread
-  public LynxBackgroundRuntime(
-      @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options) {
+  public LynxBackgroundRuntime(@NonNull Context context,
+      @NonNull LynxBackgroundRuntimeOptions options, @NonNull boolean debuggable) {
     mRuntimeClients = new CopyOnWriteArrayList<>();
     mPlatformCallBackMap = new HashMap<>();
     if (!LynxEnv.inst().isNativeLibraryLoaded()) {
@@ -93,7 +93,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     mModuleFactory.addModuleParamWrapper(options.getWrappers());
 
     if (LynxEnv.inst().isLynxDebugEnabled()) {
-      initDevtool(context);
+      initDevtool(context, debuggable);
     }
 
     LynxGroup group = options.getLynxGroup();
@@ -376,8 +376,8 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     return mNativePtr;
   }
 
-  private void initDevtool(Context context) {
-    mDevTool = new LynxDevtool(true, context);
+  private void initDevtool(Context context, boolean debuggable) {
+    mDevTool = new LynxDevtool(context, debuggable);
 
     LynxGroup group = mOptions.getLynxGroup();
     String groupId = group != null ? group.getID() : LynxGroup.SINGNLE_GROUP;

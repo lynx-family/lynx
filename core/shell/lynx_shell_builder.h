@@ -102,6 +102,8 @@ class LynxShellBuilder {
       std::unique_ptr<lynx::pub::LynxNativeModuleManager>
           native_module_factory);
 
+  LynxShellBuilder& SetDebuggable(bool debuggable);
+
   LynxShell* build();
 
  private:
@@ -111,7 +113,8 @@ class LynxShellBuilder {
       const std::shared_ptr<LynxCardCacheDataManager>& card_cached_data_mgr,
       int32_t instance_id, LynxShell* shell,
       std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>
-          platform_layout_context);
+          platform_layout_context,
+      bool debuggable);
   void AttachLynxEngine(LynxShell* shell);
   //  void DetachLynxEngine()
 
@@ -162,6 +165,7 @@ class LynxShellBuilder {
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
 
   bool force_layout_on_background_thread_{false};
+  bool debuggable_{false};
 
   std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager_;
 };

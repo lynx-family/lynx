@@ -15,13 +15,13 @@ void FiberElementTest::SetUp() {
   vsync_monitor_->BindToCurrentThread();
   auto unique_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
-      lynx_env_config, tasm::report::kUnknownInstanceId, vsync_monitor_);
+      lynx_env_config, false, tasm::report::kUnknownInstanceId, vsync_monitor_);
   manager = unique_manager.get();
   platform_impl_ = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());
 
   tasm = std::make_shared<lynx::tasm::TemplateAssembler>(
-      tasm_mediator, std::move(unique_manager), tasm_mediator, 0);
+      tasm_mediator, std::move(unique_manager), tasm_mediator, 0, false, false);
 
   auto test_entry = std::make_shared<TemplateEntry>();
   tasm->template_entries_.insert({"test_entry", test_entry});

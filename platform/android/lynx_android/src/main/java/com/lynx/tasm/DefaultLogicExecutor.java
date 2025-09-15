@@ -46,14 +46,16 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
   private final WeakReference<TemplateBundle> mTemplateBundleRef;
   private final WeakReference<LynxBackgroundRuntimeOptions> mRuntimeOptionsRef;
   private final WeakReference<ILynxViewGroup> mLynxViewGroupRef;
+  private final boolean mDebuggable;
 
   public DefaultLogicExecutor(TemplateBundle bundle,
       LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context,
-      ILynxViewGroup lynxViewGroup) {
+      ILynxViewGroup lynxViewGroup, boolean debuggable) {
     mTemplateBundleRef = new WeakReference<>(bundle);
     mRuntimeOptionsRef = new WeakReference<>(backgroundRuntimeOptions);
     mContextRef = new WeakReference<>(context);
     mLynxViewGroupRef = new WeakReference<>(lynxViewGroup);
+    mDebuggable = debuggable;
   }
 
   private void initLynxBackgroundRuntimeIfNeeded() {
@@ -71,7 +73,7 @@ public class DefaultLogicExecutor implements ILynxLogicExecutor {
             return;
           }
           options.registerModule(LynxEmbeddedModule.NAME, LynxEmbeddedModule.class, viewGroup);
-          mRuntime = new LynxBackgroundRuntime(context, options);
+          mRuntime = new LynxBackgroundRuntime(context, options, mDebuggable);
           String url = LOGIC_JS_PATH;
           String bundleUrl = bundle.getUrl();
           if (bundleUrl != null) {

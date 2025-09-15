@@ -26,9 +26,9 @@ PipelineScopeTest::PipelineScopeTest() {
   delegate_ = std::make_unique<MockTasmDelegate>();
   auto manager =
       std::make_unique<ElementManager>(std::make_unique<MockPaintingContext>(),
-                                       delegate_.get(), lynx_env_config);
+                                       delegate_.get(), lynx_env_config, false);
   tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
-      *delegate_.get(), std::move(manager), *delegate_.get(), 0, true);
+      *delegate_.get(), std::move(manager), *delegate_.get(), 0, true, false);
 }
 
 TEST_F(PipelineScopeTest, TestPipelineContextConstructor01) {

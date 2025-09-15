@@ -62,11 +62,13 @@ runtime::RuntimeManager* JSExecutor::GetCurrentRuntimeManagerInstance() {
 void JSExecutor::loadPreJSBundle(
     std::vector<std::pair<std::string, std::string>>& js_pre_sources,
     bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
-    const std::string& bytecode_source_url, BytecodeGetter bytecode_getter) {
+    const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
+    bool debuggable) {
   js_runtime_ = runtimeManagerInstance()->CreateJSRuntime(
       group_id_, exception_handler_, js_pre_sources,
       force_use_light_weight_js_engine_, *this, rt_id, ensure_console,
-      enable_user_bytecode, bytecode_source_url, std::move(bytecode_getter));
+      enable_user_bytecode, bytecode_source_url, std::move(bytecode_getter),
+      debuggable);
 }
 
 void JSExecutor::SetObserver(JSIObserver* observer) {
@@ -84,7 +86,7 @@ void JSExecutor::invokeCallback(std::shared_ptr<piper::ModuleCallback> callback,
 std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
     int64_t rt_id, runtime::TemplateDelegate* delegate,
     std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-    const tasm::PageOptions& page_options) {
+    const tasm::PageOptions& page_options, bool debuggable) {
   Scope scope(*js_runtime_);
   piper::Object nativeModuleProxy = piper::Object::createFromHostObject(
       *js_runtime_, module_manager_.get()->bindingPtr);
@@ -106,7 +108,8 @@ std::shared_ptr<piper::App> JSExecutor::createNativeAppInstance(
 #endif
   return piper::App::Create(rt_id, js_runtime_, delegate, exception_handler_,
                             std::move(nativeModuleProxy),
-                            std::move(api_handler), group_id_, page_options);
+                            std::move(api_handler), group_id_, page_options,
+                            debuggable);
 }
 
 piper::JSRuntimeCreatedType JSExecutor::getJSRuntimeType() {

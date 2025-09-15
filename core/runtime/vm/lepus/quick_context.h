@@ -50,7 +50,8 @@ class QuickContext : private LEPUSRuntimeData,
                      public GCObserver {
  public:
   static QuickContext* Cast(Context* context);
-  QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0);
+  QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0,
+               bool debuggable = false);
   virtual ~QuickContext() override;
   virtual void Initialize() override;
   virtual bool Execute() override;

@@ -10103,7 +10103,8 @@ TEST_P(FiberElementTest, ElementBundleTest00) {
   EXPECT_TRUE(element_bundle_1.GetPageNode().IsRefCounted());
 
   auto test_entry_0 = std::make_shared<TemplateEntry>();
-  test_entry_0->InitWithTemplateBundle(tasm.get(), std::move(template_bundle));
+  test_entry_0->InitWithTemplateBundle(tasm.get(), std::move(template_bundle),
+                                       false);
   EXPECT_TRUE(
       test_entry_0->GetCompleteTemplateBundle()->GetContainsElementTree());
 

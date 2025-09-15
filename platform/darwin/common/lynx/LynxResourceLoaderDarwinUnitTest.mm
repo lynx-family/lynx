@@ -92,7 +92,8 @@
   // create a BackgroundRuntime and BackgroundRuntimeClient
   _onErrorExpectation = [self expectationWithDescription:@"onReceiveError"];
   LynxBackgroundRuntime* backgroundRuntime =
-      [[LynxBackgroundRuntime alloc] initWithOptions:[[LynxBackgroundRuntimeOptions alloc] init]];
+      [[LynxBackgroundRuntime alloc] initWithOptions:[[LynxBackgroundRuntimeOptions alloc] init]
+                                          debuggable:NO];
   MockLynxViewClient* client = [[MockLynxViewClient alloc] init:_onErrorExpectation];
   [backgroundRuntime addLifecycleClient:client];
 

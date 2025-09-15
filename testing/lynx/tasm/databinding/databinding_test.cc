@@ -201,11 +201,12 @@ void DataBindingShell::ResetTasm() {
   auto lynx_env_config = LynxEnvConfig(
       Utils::kWidth, Utils::kHeight, Utils::kDefaultLayoutsUnitPerPx,
       Utils::kDefaultPhysicalPixelsPerLayoutUnit);
-  auto manager =
-      std::make_unique<ElementManager>(std::make_unique<MockPaintingContext>(),
-                                       delegate_.get(), lynx_env_config);
+  auto manager = std::make_unique<ElementManager>(
+      std::make_unique<MockPaintingContext>(), delegate_.get(), lynx_env_config,
+      false, instance_id, nullptr, nullptr);
   auto tasm = std::make_unique<lynx::tasm::TemplateAssembler>(
-      *delegate_.get(), std::move(manager), *delegate_.get(), instance_id);
+      *delegate_.get(), std::move(manager), *delegate_.get(), instance_id,
+      false, false);
   tasm_ = tasm.get();
   engine_actor_ = std::make_shared<shell::LynxActor<shell::LynxEngine>>(
       std::make_unique<shell::LynxEngine>(std::move(tasm), nullptr, nullptr,

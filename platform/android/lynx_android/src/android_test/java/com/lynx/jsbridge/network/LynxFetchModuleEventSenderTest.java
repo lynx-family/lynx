@@ -45,9 +45,9 @@ public class LynxFetchModuleEventSenderTest {
     public String lastEventName;
     public JavaOnlyArray lastParams;
 
-    public MockLynxBackgroundRuntime(
-        @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options) {
-      super(context, options);
+    public MockLynxBackgroundRuntime(@NonNull Context context,
+        @NonNull LynxBackgroundRuntimeOptions options, @NonNull boolean debuggable) {
+      super(context, options, debuggable);
     }
 
     @Override
@@ -80,7 +80,7 @@ public class LynxFetchModuleEventSenderTest {
   @Test
   public void testSendGlobalEventWithRuntime() {
     MockLynxBackgroundRuntime mockRuntime =
-        new MockLynxBackgroundRuntime(context, new LynxBackgroundRuntimeOptions());
+        new MockLynxBackgroundRuntime(context, new LynxBackgroundRuntimeOptions(), false);
     sender.setWeakRuntime(mockRuntime);
 
     JavaOnlyArray params = new JavaOnlyArray();

@@ -245,8 +245,8 @@ bool LynxEnv::IsPiperMonitorEnabled() {
   return GetBoolEnv(Key::ENABLE_PIPER_MONITOR, false, EnvType::LOCAL);
 }
 
-bool LynxEnv::IsDomTreeEnabled() {
-  return IsDevToolEnabled() &&
+bool LynxEnv::IsDomTreeEnabled(bool debuggable) {
+  return (IsDevToolEnabled() || debuggable) &&
          GetBoolEnv(Key::ENABLE_DOM_TREE, true, EnvType::LOCAL);
 }
 

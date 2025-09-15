@@ -195,7 +195,8 @@ class Context {
 
   static std::shared_ptr<Context> CreateContext(bool use_lepusng = false,
                                                 bool disable_tracing_gc = false,
-                                                int runtime_mode = 0);
+                                                int runtime_mode = 0,
+                                                bool debuggable = false);
 
   // check context type
   bool IsVMContext() const { return type_ == VMContextType; }

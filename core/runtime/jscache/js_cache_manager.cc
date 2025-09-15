@@ -189,10 +189,10 @@ std::string JsCacheManager::MakePath(const std::string &filename) {
   return base::PathUtils::JoinPaths({GetCacheDir(), filename});
 }
 
-bool JsCacheManager::IsCacheEnabled() {
+bool JsCacheManager::IsCacheEnabled(bool debuggable) {
   // TODO(zhenziqi) consider rename `IsQuickjsCacheEnabled` later
   // as this switch should also control the cache of v8 in the future
-  return !tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+  return !(tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable) &&
          tasm::LynxEnv::GetInstance().IsQuickjsCacheEnabled() &&
          can_create_cache_;
 }
@@ -206,9 +206,9 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
     const std::string &source_url, const std::string &template_url,
     int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
     std::unique_ptr<CacheGenerator> cache_generator,
-    BytecodeGetter *bytecode_getter) {
+    BytecodeGetter *bytecode_getter, bool debuggable) {
   auto cost_start = base::CurrentTimeMilliseconds();
-  if (!IsCacheEnabledForTemplate(template_url)) {
+  if (!IsCacheEnabledForTemplate(template_url, debuggable)) {
     JsCacheTracker::OnGetBytecodeDisable(runtime_id, engine_type_, source_url,
                                          true, false);
     return nullptr;
@@ -754,9 +754,9 @@ JsFileIdentifier JsCacheManager::BuildIdentifier(
   return identifier;
 }
 
-bool JsCacheManager::IsCacheEnabledForTemplate(
-    const std::string &template_url) {
-  if (!IsCacheEnabled()) {
+bool JsCacheManager::IsCacheEnabledForTemplate(const std::string &template_url,
+                                               bool debuggable) {
+  if (!IsCacheEnabled(debuggable)) {
     LOGI("bytecode disabled by switch");
     return false;
   }
@@ -782,9 +782,10 @@ std::string JsCacheManager::GetBytecodeGenerateEngineVersion() {
 __attribute__((visibility("default"))) std::shared_ptr<Buffer> TryGetCacheV8(
     const std::string &source_url, const std::string &template_url,
     int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
-    std::unique_ptr<CacheGenerator> cache_generator) {
+    std::unique_ptr<CacheGenerator> cache_generator, bool debuggable) {
   return JsCacheManager::GetV8Instance().TryGetCache(
-      source_url, template_url, runtime_id, buffer, std::move(cache_generator));
+      source_url, template_url, runtime_id, buffer, std::move(cache_generator),
+      nullptr, debuggable);
 }
 
 // Use for v8

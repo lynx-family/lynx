@@ -3437,7 +3437,7 @@ void App::OnBTSConsoleEvent(const lepus::Value& args) {
       if (!level_func) {
         return;
       }
-      if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+      if (tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable_) {
         std::string msg_with_rid =
             "lepusRuntimeId:" + std::to_string(rt->getRuntimeId());
         piper::Value msg_with_rid_obj(

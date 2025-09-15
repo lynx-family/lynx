@@ -87,7 +87,7 @@ class JsCacheManager {
       const std::string &source_url, const std::string &template_url,
       int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
       std::unique_ptr<CacheGenerator> cache_generator,
-      BytecodeGetter *bytecode_getter = nullptr);
+      BytecodeGetter *bytecode_getter = nullptr, bool debuggable = false);
 
   /**
    * Request to generate a new cache file if it's not already existed. It's not
@@ -157,7 +157,7 @@ UNITTEST_PUBLIC:
    */
   std::string MakeFilename(const std::string &file_md5);
 
-  bool IsCacheEnabled();
+  bool IsCacheEnabled(bool debuggable = false);
   /**
    * Post a task into background thread. If the background thread is not
    * running, start a new background task.
@@ -257,7 +257,8 @@ UNITTEST_PUBLIC:
     cache_[source_url] = std::move(cache);
   }
 
-  bool IsCacheEnabledForTemplate(const std::string &source_url);
+  bool IsCacheEnabledForTemplate(const std::string &source_url,
+                                 bool debuggable = false);
 
   JsFileIdentifier BuildIdentifier(const std::string &source_url,
                                    const std::string &template_url);

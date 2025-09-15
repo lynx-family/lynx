@@ -64,7 +64,7 @@ class DefaultListAdapterTest : public ::testing::Test {
         ::testing::NiceMock<lynx::tasm::test::MockTasmDelegate>>();
     manager = std::make_unique<::testing::NiceMock<lynx::tasm::ElementManager>>(
         std::make_unique<MockPaintingContext>(), tasm_mediator.get(),
-        lynx_env_config);
+        lynx_env_config, false);
     auto config = std::make_shared<PageConfig>();
     config->SetEnableFiberArch(true);
     manager->SetConfig(config);

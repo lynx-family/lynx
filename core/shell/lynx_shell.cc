@@ -235,7 +235,7 @@ void LynxShell::InitRuntime(
         void(const std::shared_ptr<LynxActor<runtime::LynxRuntime>>&)>&
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
-    const std::string& code_cache_source_url) {
+    const std::string& code_cache_source_url, bool debuggable) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME);
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
@@ -300,8 +300,8 @@ void LynxShell::InitRuntime(
   start_js_runtime_task_ =
       [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer = runtime_observer_, vsync_monitor,
-       weak_js_bundle_holder = GetWeakJsBundleHolder(),
-       enqueue_info](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       weak_js_bundle_holder = GetWeakJsBundleHolder(), enqueue_info,
+       debuggable](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
         TRACE_EVENT(
             LYNX_TRACE_CATEGORY, kJSTaskInitRuntime,
@@ -311,7 +311,7 @@ void LynxShell::InitRuntime(
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(native_module_manager, runtime_observer,
-                      std::move(preload_js_paths));
+                      std::move(preload_js_paths), debuggable);
         runtime->SetJsBundleHolder(weak_js_bundle_holder);
       };
 

@@ -1349,7 +1349,7 @@ public class com::lynx::tasm::DefaultLogicExecutor : com.lynx.tasm.ILynxLogicExe
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD LIFECYCLE_EVENT_ON_LOAD;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DATA_CHANGED LIFECYCLE_EVENT_ON_DATA_CHANGED;
   public final String com.lynx.tasm.DefaultLogicExecutor.LIFECYCLE_EVENT_ON_DESTROY LIFECYCLE_EVENT_ON_DESTROY;
-  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup);
+  public com.lynx.tasm.DefaultLogicExecutor.DefaultLogicExecutor(TemplateBundle bundle, LynxBackgroundRuntimeOptions backgroundRuntimeOptions, Context context, ILynxViewGroup lynxViewGroup, boolean debuggable);
   public void com.lynx.tasm.DefaultLogicExecutor.onLynxEvent(LynxView lynxView, ReadableMap event);
   public void com.lynx.tasm.DefaultLogicExecutor.destroy();
 }
@@ -3507,7 +3507,7 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_DESTROYED STATE_DESTROYED;
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_ATTACHED STATE_ATTACHED;
   public final int com.lynx.tasm.LynxBackgroundRuntime.STATE_INVALID STATE_INVALID;
-  public com.lynx.tasm.LynxBackgroundRuntime.LynxBackgroundRuntime( @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options);
+  public com.lynx.tasm.LynxBackgroundRuntime.LynxBackgroundRuntime(@NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options, @NonNull boolean debuggable);
   public void com.lynx.tasm.LynxBackgroundRuntime.addLynxBackgroundRuntimeClient(LynxBackgroundRuntimeClient client);
   public void com.lynx.tasm.LynxBackgroundRuntime.removeLynxBackgroundRuntimeClient(LynxBackgroundRuntimeClient client);
   public void com.lynx.tasm.LynxBackgroundRuntime.evaluateJavaScript(String url, @NonNull String sources);
@@ -4475,7 +4475,7 @@ public class com::lynx::tasm::event::LynxDetailEvent : com.lynx.tasm.event.LynxC
 
 public class com::lynx::devtoolwrapper::LynxDevtool :  {
   public com.lynx.devtoolwrapper.LynxDevtool.LynxDevtool(LynxView view, LynxTemplateRender render, boolean debuggable);
-  public com.lynx.devtoolwrapper.LynxDevtool.LynxDevtool(boolean debuggable, Context context);
+  public com.lynx.devtoolwrapper.LynxDevtool.LynxDevtool(Context context, boolean debuggable);
   public void com.lynx.devtoolwrapper.LynxDevtool.attachContext(Context context);
   public void com.lynx.devtoolwrapper.LynxDevtool.destroy();
   public void com.lynx.devtoolwrapper.LynxDevtool.onLoadFromLocalFile(byte[] template, TemplateData templateData, String baseUrl);

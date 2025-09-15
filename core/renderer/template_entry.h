@@ -59,15 +59,17 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
 
   bool InitWithTemplateBundle(
       TemplateBinaryReader::PageConfigger* page_configger,
-      LynxTemplateBundle template_bundle);
+      LynxTemplateBundle template_bundle, bool debuggable = false);
 
   bool InitWithPageConfigger(
-      TemplateBinaryReader::PageConfigger* page_configger);
+      TemplateBinaryReader::PageConfigger* page_configger,
+      bool debuggable = false);
 
   bool ConstructContext(TemplateAssembler* assembler, bool is_lepusng_binary,
                         const lepus::ContextBundle& context_bundle,
                         bool use_context_pool = false,
-                        bool disable_tracing_gc = false);
+                        bool disable_tracing_gc = false,
+                        bool debuggable = false);
 
   ~TemplateEntry() override;
 
@@ -270,7 +272,8 @@ class TemplateEntry : public VmContextHolder, public CSSStyleSheetDelegate {
       TemplateBinaryReader::PageConfigger* configger) const;
 
   bool InitLepusContext(TemplateAssembler* tasm,
-                        const std::shared_ptr<PageConfig>& page_config);
+                        const std::shared_ptr<PageConfig>& page_config,
+                        bool debuggable = false);
 
   std::string GenerateLepusJSFileName(const std::string& name);
 

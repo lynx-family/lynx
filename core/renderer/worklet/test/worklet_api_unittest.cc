@@ -55,13 +55,14 @@ class WorkletAPITest : public ::testing::Test {
     // Create Element Manager
     auto manager = std::make_unique<tasm::ElementManager>(
         std::make_unique<tasm::MockPaintingContext>(), delegate_.get(),
-        lynx_env_config);
+        lynx_env_config, false);
 
     manager_ = manager.get();
 
     // Init tasm
     tasm_ = std::make_unique<lynx::tasm::TemplateAssembler>(
-        *delegate_.get(), std::move(manager), *delegate_.get(), 0);
+        *delegate_.get(), std::move(manager), *delegate_.get(), 0, false,
+        false);
     ctx_->delegate_ = tasm_.get();
 
     // Create default entry and set it to tasm

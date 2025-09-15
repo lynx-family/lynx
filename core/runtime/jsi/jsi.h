@@ -1671,7 +1671,8 @@ class VMInstance {
 class HostGlobal {
  public:
   virtual void Init(std::shared_ptr<Runtime>& js_runtime_,
-                    std::shared_ptr<ConsoleMessagePostMan>& post_man) = 0;
+                    std::shared_ptr<ConsoleMessagePostMan>& post_man,
+                    bool debuggable = false) = 0;
   virtual void Release() = 0;
   virtual ~HostGlobal() { LOGE("~HostGlobal;"); }
 };

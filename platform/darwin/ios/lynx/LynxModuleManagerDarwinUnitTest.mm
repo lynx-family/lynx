@@ -84,7 +84,8 @@ class ModuleFactoryDarwinTester : public lynx::piper::ModuleFactoryDarwin {};
 - (void)testModuleManager {
   LynxBackgroundRuntimeOptions *options = [[LynxBackgroundRuntimeOptions alloc] init];
   [options registerModule:LynxModuleMockInstance.class param:[[NSObject new] init]];
-  LynxBackgroundRuntime *runtime = [[LynxBackgroundRuntime alloc] initWithOptions:options];
+  LynxBackgroundRuntime *runtime = [[LynxBackgroundRuntime alloc] initWithOptions:options
+                                                                       debuggable:NO];
   auto factory = [runtime moduleFactoryPtr].lock();
   XCTAssertNotEqual(factory, nullptr);
   std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =

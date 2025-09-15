@@ -200,7 +200,8 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
                                      std::unique_ptr<ElementManager> client,
                                      LayoutScheduler& layout_scheduler,
                                      int32_t instance_id,
-                                     bool enable_unified_pipeline)
+                                     bool enable_unified_pipeline,
+                                     bool debuggable)
     : page_proxy_(this, std::move(client), &delegate),
       target_sdk_version_("null"),
       delegate_(delegate),
@@ -216,7 +217,8 @@ TemplateAssembler::TemplateAssembler(Delegate& delegate,
       template_loaded_(false),
       has_load_page_(false),
       destroyed_(false),
-      is_loading_template_(false) {
+      is_loading_template_(false),
+      debuggable_(debuggable) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_ASSEMBLER_CONSTRUCTOR);
   pipeline_context_manager_->SetOnCreateHook(
       [this]() { EnsureOnLayoutReadyHooksFinish(); });
@@ -794,8 +796,8 @@ void TemplateAssembler::LoadTemplateBundle(
       url, template_data, pipeline_options,
       [this, template_bundle = std::move(template_bundle)](
           const std::shared_ptr<TemplateEntry>& card_entry) mutable {
-        return card_entry->InitWithTemplateBundle(this,
-                                                  std::move(template_bundle));
+        return card_entry->InitWithTemplateBundle(
+            this, std::move(template_bundle), debuggable_);
       });
   ClearCacheData();
 }
@@ -1317,11 +1319,11 @@ void TemplateAssembler::LoadComponentWithCallbackInfo(
          &callback_info](const std::shared_ptr<TemplateEntry>& entry) -> bool {
           component_loader_->StartRecordDecodeTime(url);
 
-          bool res =
-              callback_info.bundle
-                  ? entry->InitWithTemplateBundle(this, *callback_info.bundle)
-                  : this->FromBinary(entry, std::move(callback_info.data),
-                                     false);
+          bool res = callback_info.bundle
+                         ? entry->InitWithTemplateBundle(
+                               this, *callback_info.bundle, debuggable_)
+                         : this->FromBinary(
+                               entry, std::move(callback_info.data), false);
           if (!res) {
             return false;
           }
@@ -2539,7 +2541,8 @@ std::shared_ptr<TemplateEntry> TemplateAssembler::BuildTemplateEntryFromPreload(
             entry, url,
             [this, bundle = std::move(*preload_bundle)](
                 const std::shared_ptr<TemplateEntry>& entry) -> bool {
-              return entry->InitWithTemplateBundle(this, std::move(bundle));
+              return entry->InitWithTemplateBundle(this, std::move(bundle),
+                                                   debuggable_);
             })) {
       DidComponentLoaded(entry);
       return entry;

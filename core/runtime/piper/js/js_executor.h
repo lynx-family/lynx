@@ -50,7 +50,8 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   void loadPreJSBundle(
       std::vector<std::pair<std::string, std::string>>& js_pre_sources,
       bool ensure_console, int64_t rt_id, bool enable_user_bytecode,
-      const std::string& bytecode_source_url, BytecodeGetter bytecode_getter);
+      const std::string& bytecode_source_url, BytecodeGetter bytecode_getter,
+      bool debuggable);
 
   void SetObserver(JSIObserver* observer);
 
@@ -62,7 +63,7 @@ class LYNX_EXPORT_FOR_DEVTOOL JSExecutor {
   std::shared_ptr<piper::App> createNativeAppInstance(
       int64_t rt_id, runtime::TemplateDelegate*,
       std::unique_ptr<lynx::runtime::LynxApiHandler> api_handler,
-      const tasm::PageOptions& page_options);
+      const tasm::PageOptions& page_options, bool debuggable);
 
   piper::JSRuntimeCreatedType getJSRuntimeType();
 
