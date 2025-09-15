@@ -92,11 +92,15 @@ void TouchEventHandler::HandleEventOperations(TemplateAssembler *tasm,
                                               const EventOpsVector &ops) {
   bool stop_immediate_propagation = false;
   const EventOperation *stop_propagation_op = nullptr;
-  for (const auto &op : ops) {
+  for (size_t i = 0; i < ops.size(); ++i) {
+    const auto &op = ops[i];
     bool is_js_event = true;
     // js global event handler is nullptr
     if (op.handler_) {
       is_js_event = op.handler_->is_js_event();
+    }
+    if (context.event_name == EVENT_TOUCH_END && i == ops.size() - 1) {
+      need_erase_touches_ = true;
     }
     const lepus_value &params =
         context.get_event_params(op.target_, op.current_target_, is_js_event);
@@ -231,6 +235,7 @@ void TouchEventHandler::HandleTouchEvent(TemplateAssembler *tasm,
       }};
 
   if (info.is_multi_finger) {
+    need_erase_touches_ = false;
     for (auto events : *info.params.Table()) {
       int tag = std::stoi(events.first.str());
       const auto &chain = GenerateResponseChain(
@@ -909,7 +914,8 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
                            lepus::Value::Clone(current_touches_));
       dict.get()->SetValue(kTouches, lepus::Value::Clone(current_touches_));
     } else {
-      dict.get()->SetValue(kChangedTouches, current_touches_);
+      dict.get()->SetValue(kChangedTouches,
+                           lepus::Value::Clone(current_touches_));
       dict.get()->SetValue(kTouches, lepus::CArray::Create());
     }
     return lepus_value(std::move(dict));
@@ -971,7 +977,7 @@ lepus_value TouchEventHandler::GetTouchEventParam(const base::String &handler,
           if (touches->get(j).Table()->GetValue(kIdentifier).Number() ==
               identifier) {
             ui_in_current_touches = true;
-            if (handler == EVENT_TOUCH_END) {
+            if (handler == EVENT_TOUCH_END && need_erase_touches_) {
               touches->Erase(static_cast<uint32_t>(j));
               break;
             }
