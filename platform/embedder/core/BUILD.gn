@@ -1,0 +1,33 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+import("../../../oliver/oliver.gni")
+
+lynx_core_source_set("renderer") {
+  sources = [
+    "lynx_template_renderer.cc",
+    "lynx_template_renderer.h",
+    "native_facade_impl.cc",
+    "native_facade_impl.h",
+    "performance/generic_info_storage.cc",
+    "performance/generic_info_storage.h",
+    "performance/lynx_event_reporter.cc",
+    "performance/lynx_event_reporter.h",
+    "performance/performance_controller_impl.cc",
+    "performance/performance_controller_impl.h",
+    "tasm_platform_invoker_impl.cc",
+    "tasm_platform_invoker_impl.h",
+  ]
+
+  if (!enable_unittests && !is_oliver_node_lynx) {
+    if (is_win || is_mac) {
+      sources += [ "../../../core/services/event_report/embedder/event_tracker_platform_embedder_impl.cc" ]
+    }
+  }
+  deps = [ "../../../core:lynx_native" ]
+  if (enable_inspector) {
+    public_deps = [ "../lynx_devtool:lynx_devtool" ]
+  }
+}

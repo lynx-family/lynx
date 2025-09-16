@@ -1,0 +1,38 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../config.gni")
+import("../../../core/Lynx.gni")
+import("../../../devtool/lynx_devtool/devtool.gni")
+
+config("lynx_devtool_config") {
+  include_dirs = [ "../../../third_party/debug_router/src/" ]
+}
+
+devtool_source_set("lynx_devtool") {
+  sources = [
+    "devtool_env_embedder.cc",
+    "devtool_env_embedder.h",
+  ]
+  if (is_mac) {
+    sources += [ "SwitchPersist.mm" ]
+  } else if (is_win) {
+    sources += [ "switch_persist_win.cc" ]
+  } else {
+    sources += [ "switch_persist.cc" ]
+  }
+
+  deps = [
+    "../../../devtool/base_devtool/common:base_devtool_common_sources",
+    "../../../devtool/embedder/common:lynx_devtool_embedder_common",
+    "../../../devtool/embedder/core:lynx_devtool_embedder_core",
+    "../../../devtool/lynx_devtool:lynx_devtool_group",
+    "../../../devtool/lynx_devtool/js_debug",
+    "../../../devtool/lynx_devtool/tracing",
+    "../../../third_party/debug_router/src/debug_router/common:debug_router_source",
+    "../../../third_party/jsoncpp:jsoncpp",
+    "../../../third_party/modp_b64:modp_b64",
+  ]
+  public_configs = [ ":lynx_devtool_config" ]
+}
