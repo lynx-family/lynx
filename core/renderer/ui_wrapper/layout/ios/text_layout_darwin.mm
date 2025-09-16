@@ -217,8 +217,10 @@ void TextLayoutDarwin::ApplyTextStyle(TextElement* text_element, LynxTextStyle* 
               static_cast<float>(text_element->computed_css_style()->GetFontSize());
           break;
         case kPropertyIDColor:
-          textStyle.foregroundColor =
-              [LynxConverter toUIColor:@(static_cast<int>(text_attributes->color))];
+          textStyle.foregroundColor = [LynxConverter
+              toUIColor:@(static_cast<int>(text_attributes->color.has_value()
+                                               ? *text_attributes->color
+                                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR))];
           break;
         case kPropertyIDFontWeight:
           textStyle.fontWeight =

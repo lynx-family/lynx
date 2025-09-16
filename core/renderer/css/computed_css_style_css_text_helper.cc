@@ -41,7 +41,10 @@ base::String ComputedCSSStyleCssTextHelper::ColorCSSText(
         computed_css_style->text_attributes_->text_gradient->IsArray()) {
       return base::String();
     } else {
-      return Uint32ToRGBString(computed_css_style->text_attributes_->color);
+      return Uint32ToRGBString(
+          computed_css_style->text_attributes_->color.has_value()
+              ? *computed_css_style->text_attributes_->color
+              : starlight::DefaultColor::DEFAULT_TEXT_COLOR);
     }
   }
 

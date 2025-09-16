@@ -72,10 +72,10 @@ class TextAttributes {
   float auto_font_size_max_size{DefaultComputedStyle::DEFAULT_FLOAT};
   float auto_font_size_step_granularity{
       DefaultComputedStyle::DEFAULT_AUTO_FONT_SIZE_STEP_GRANULARITY};
-  uint32_t text_stroke_color{DefaultColor::DEFAULT_COLOR};
-  uint32_t color{DefaultColor::DEFAULT_TEXT_COLOR};
-  uint32_t decoration_color{DefaultColor::DEFAULT_TEXT_COLOR};
-  uint32_t text_decoration_color{DefaultColor::DEFAULT_COLOR};
+  base::flex_optional<uint32_t> text_stroke_color;
+  base::flex_optional<uint32_t> color;
+  base::flex_optional<uint32_t> decoration_color;
+  base::flex_optional<uint32_t> text_decoration_color;
   uint8_t text_decoration_style{
       DefaultComputedStyle::DEFAULT_TEXT_DECORATION_STYLE};
   // TODO(linxs) this type has changed.

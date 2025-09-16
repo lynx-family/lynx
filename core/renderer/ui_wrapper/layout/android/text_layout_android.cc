@@ -158,7 +158,10 @@ void TextLayoutAndroid::AppendTextProps(TextElement* element, size_t pos_start,
 
         case kPropertyIDColor:
           props->AddProp(kTextPropColor);
-          props->AddProp(static_cast<int>(text_attributes->color));
+          props->AddProp(static_cast<int>(
+              text_attributes->color.has_value()
+                  ? text_attributes->color.value()
+                  : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
           // FIXME(linxs): use another key to indicate color gradient
           break;
 
