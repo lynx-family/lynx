@@ -46,6 +46,8 @@ public class ExplorerApplication extends Application {
         ILynxImageService.class, LynxImageService.getInstance());
     LynxServiceCenter.inst().registerService(ILynxLogService.class, LynxLogService.INSTANCE);
     LynxServiceCenter.inst().registerService(ILynxHttpService.class, LynxHttpService.INSTANCE);
+    // debug environment need to register devtool service for debuging.
+    LynxServiceCenter.inst().registerService(LynxDevToolService.getINSTANCE());
   }
 
   // merge it into InitProcessor later.
