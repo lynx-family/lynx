@@ -207,7 +207,10 @@ void PropBundleStyleWriter::WriteColor(PropBundle* bundle,
       bundle->SetPropsByID(CSSPropertyID::kPropertyIDColor,
                            pub::ValueImplLepus(*text_attr->text_gradient));
     } else {
-      bundle->SetPropsByID(CSSPropertyID::kPropertyIDColor, text_attr->color);
+      bundle->SetPropsByID(CSSPropertyID::kPropertyIDColor,
+                           text_attr->color.has_value()
+                               ? *text_attr->color
+                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR);
     }
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDColor);
@@ -224,7 +227,9 @@ void PropBundleStyleWriter::WriteXPlaceholderColor(
                            pub::ValueImplLepus(*text_attr->text_gradient));
     } else {
       bundle->SetPropsByID(CSSPropertyID::kPropertyIDXPlaceholderColor,
-                           text_attr->color);
+                           text_attr->color.has_value()
+                               ? *text_attr->color
+                               : starlight::DefaultColor::DEFAULT_TEXT_COLOR);
     }
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDXPlaceholderColor);
@@ -786,7 +791,9 @@ void PropBundleStyleWriter::WriteTextDecorationColor(
 
   if (text_attributes) {
     bundle->SetPropsByID(CSSPropertyID::kPropertyIDTextDecorationColor,
-                         text_attributes->decoration_color);
+                         text_attributes->decoration_color.has_value()
+                             ? *text_attributes->decoration_color
+                             : starlight::DefaultColor::DEFAULT_TEXT_COLOR);
 
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDTextDecorationColor);
@@ -871,7 +878,10 @@ void PropBundleStyleWriter::WriteTextStrokeColor(
   if (text_attributes) {
     bundle->SetPropsByID(
         CSSPropertyID::kPropertyIDTextStrokeColor,
-        static_cast<uint32_t>(text_attributes->text_stroke_color));
+        static_cast<uint32_t>(
+            text_attributes->text_stroke_color.has_value()
+                ? *text_attributes->text_stroke_color
+                : starlight::DefaultColor::DEFAULT_TEXT_COLOR));
 
   } else {
     bundle->SetNullPropsByID(CSSPropertyID::kPropertyIDTextStrokeColor);
