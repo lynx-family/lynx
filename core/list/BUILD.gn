@@ -1,0 +1,47 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../Lynx.gni")
+
+list_container_shared_sources = [
+  "decoupled_adapter_helper.cc",
+  "decoupled_adapter_helper.h",
+  "decoupled_default_list_adapter.cc",
+  "decoupled_default_list_adapter.h",
+  "decoupled_grid_layout_manager.cc",
+  "decoupled_grid_layout_manager.h",
+  "decoupled_item_holder.cc",
+  "decoupled_item_holder.h",
+  "decoupled_linear_layout_manager.cc",
+  "decoupled_linear_layout_manager.h",
+  "decoupled_list_adapter.cc",
+  "decoupled_list_adapter.h",
+  "decoupled_list_anchor_manager.cc",
+  "decoupled_list_anchor_manager.h",
+  "decoupled_list_children_helper.cc",
+  "decoupled_list_children_helper.h",
+  "decoupled_list_container_impl.cc",
+  "decoupled_list_container_impl.h",
+  "decoupled_list_event_manager.cc",
+  "decoupled_list_event_manager.h",
+  "decoupled_list_layout_manager.cc",
+  "decoupled_list_layout_manager.h",
+  "decoupled_list_orientation_helper.cc",
+  "decoupled_list_orientation_helper.h",
+  "decoupled_list_types.h",
+  "decoupled_staggered_grid_layout_manager.cc",
+  "decoupled_staggered_grid_layout_manager.h",
+  "list_container_delegate.h",
+  "list_element_delegate.h",
+  "list_item_element_delegate.h",
+]
+
+lynx_core_source_set("list_container") {
+  sources = list_container_shared_sources
+  public_deps = [
+    "../../base:base",
+    "../build:build",
+    "../renderer/trace:renderer_trace",
+  ]
+}

@@ -713,6 +713,10 @@ subspec_target("lepus") {
   dependency = Lepus_deps
 }
 
+subspec_target("list_container") {
+  deps = [ "../../../../core/list:list_container" ]
+}
+
 subspec_target("parser") {
   deps = [ "../../../../core/parser" ]
 }
