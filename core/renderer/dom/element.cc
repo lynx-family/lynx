@@ -919,7 +919,13 @@ void Element::PreparePropBundleIfNeed() {
 
 void Element::ResetPropBundle() {
   if (prop_bundle_) {
+    // TODO(songshourui.null): Consider removing dependency on pre_prop_bundle_
+    // in unit tests, so that the ENABLE_UNITTESTS macro can be removed.
+#if ENABLE_UNITTESTS
+    // Stores the previous PropBundle for unit test verification after a reset.
     pre_prop_bundle_ = prop_bundle_;
+#endif
+
     prop_bundle_ = nullptr;
   }
 }

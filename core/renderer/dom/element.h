@@ -860,7 +860,8 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   Catalyzer* catalyzer_;
 
   fml::RefPtr<PropBundle> prop_bundle_;
-  // just for unit test now.
+
+  // Stores the previous PropBundle for unit test verification after a reset.
   fml::RefPtr<PropBundle> pre_prop_bundle_;
 
   // relevant to hierarchy
