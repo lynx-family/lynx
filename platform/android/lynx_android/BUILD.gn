@@ -31,9 +31,6 @@ cmake_target("lynx_android") {
     ":lynx_android_public_config",
     ":lynx_android_private_config",
   ]
-  if (!enable_lite) {
-    sub_cmake_target = [ "../../../core/runtime/jsi/v8:lynx_v8_bridge" ]
-  }
 }
 
 group("lynx_android_lib") {
