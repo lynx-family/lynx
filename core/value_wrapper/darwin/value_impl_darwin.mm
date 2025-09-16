@@ -436,15 +436,18 @@ id ValueUtilsDarwin::ConvertPubValueToOCValue(
     result = [NSNumber numberWithDouble:value.Double()];
   } else if (value.IsNumber()) {
     result = [NSNumber numberWithDouble:value.Number()];
-  } else if (value.IsMap()) {
-    ScopedCircleChecker scoped_circle_checker;
-    if (!scoped_circle_checker.CheckCircleOrCacheValue(prev_value_vector, value, depth)) {
-      result = ConvertPubValueToOCDictionary(value, prev_value_vector, depth + 1);
-    }
+    // Since Array also exists in the form of Object in JS, the return result of IsMap is still
+    // true. Here, must first determine whether it is an Array, and the judgment order cannot be
+    // changed!
   } else if (value.IsArray()) {
     ScopedCircleChecker scoped_circle_checker;
     if (!scoped_circle_checker.CheckCircleOrCacheValue(prev_value_vector, value, depth)) {
       result = ConvertPubValueToOCArray(value, prev_value_vector, depth + 1);
+    }
+  } else if (value.IsMap()) {
+    ScopedCircleChecker scoped_circle_checker;
+    if (!scoped_circle_checker.CheckCircleOrCacheValue(prev_value_vector, value, depth)) {
+      result = ConvertPubValueToOCDictionary(value, prev_value_vector, depth + 1);
     }
   } else if (value.IsArrayBuffer()) {
     result = [NSData dataWithBytes:value.ArrayBuffer() length:value.Length()];
