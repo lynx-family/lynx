@@ -190,7 +190,10 @@ def main(argv):
     parser.add_argument("--build_hap", action="store_true", default=False, help=" build hap")
     args = parser.parse_args()
 
-    print(f'start build with args {args} environ is {os.environ}')
+    envs = ['COMMANDLINE_TOOL_DIR', 'HARMONY_HOME', 'PATH']
+    env_info = {k: os.environ[k] for k in os.environ if k in envs}
+    print(f'start build with args {args}')
+    print(f'env info: {env_info}')
 
     if args.modules:
         if len(args.modules) == 1 and args.modules[0].lower() == "default":
