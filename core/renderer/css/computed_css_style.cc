@@ -2554,7 +2554,7 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
     return flags;
   };
   uint32_t old_flags = get_flags();
-  uint32_t old_color = text_attributes_->text_decoration_color;
+  auto old_color = text_attributes_->text_decoration_color;
 
   if (reset) {
     text_attributes_->underline_decoration =
@@ -2593,7 +2593,7 @@ bool ComputedCSSStyle::SetTextDecoration(const tasm::CSSValue& value,
     }
   }
   uint32_t new_flags = get_flags();
-  uint32_t new_color = text_attributes_->text_decoration_color;
+  auto new_color = text_attributes_->text_decoration_color;
   return (old_flags != new_flags) || (old_color != new_color);
 }
 
@@ -3190,7 +3190,9 @@ lepus_value ComputedCSSStyle::ColorToLepus() {
         text_attributes_->text_gradient->IsArray()) {
       return *text_attributes_->text_gradient;
     } else {
-      return lepus_value(text_attributes_->color);
+      return lepus_value(text_attributes_->color.has_value()
+                             ? *text_attributes_->color
+                             : DefaultColor::DEFAULT_TEXT_COLOR);
     }
   } else {
     return lepus_value();
@@ -3203,7 +3205,9 @@ lepus_value ComputedCSSStyle::XPlaceholderColorToLepus() {
         placeholder_text_attributes_->text_gradient->IsArray()) {
       return *placeholder_text_attributes_->text_gradient;
     } else {
-      return lepus_value(placeholder_text_attributes_->color);
+      return lepus_value(placeholder_text_attributes_->color.has_value()
+                             ? *placeholder_text_attributes_->color
+                             : DefaultColor::DEFAULT_TEXT_COLOR);
     }
   } else {
     return lepus_value();
@@ -3687,7 +3691,9 @@ lepus_value ComputedCSSStyle::TextDecorationToLepus() {
         static_cast<int32_t>(text_attributes_->text_decoration_style));
     // if not set the text-decoration-color, use the color as the default value
     array->emplace_back(
-        static_cast<int32_t>(text_attributes_->text_decoration_color));
+        static_cast<int32_t>(text_attributes_->text_decoration_color.has_value()
+                                 ? *text_attributes_->text_decoration_color
+                                 : DefaultColor::DEFAULT_TEXT_COLOR));
     return lepus_value{std::move(array)};
   } else {
     return lepus::Value{lepus::CArray::Create()};
@@ -3696,7 +3702,9 @@ lepus_value ComputedCSSStyle::TextDecorationToLepus() {
 
 lepus_value ComputedCSSStyle::TextDecorationColorToLepus() {
   if (text_attributes_) {
-    return lepus_value(text_attributes_->decoration_color);
+    return lepus_value(text_attributes_->decoration_color.has_value()
+                           ? *text_attributes_->decoration_color
+                           : DefaultColor::DEFAULT_TEXT_COLOR);
   } else {
     return lepus_value();
   }
@@ -3915,7 +3923,9 @@ lepus_value ComputedCSSStyle::TextStrokeToLepus() {
 
 lepus_value ComputedCSSStyle::TextStrokeColorToLepus() {
   if (text_attributes_) {
-    return lepus_value(text_attributes_->text_stroke_color);
+    return lepus_value(text_attributes_->text_stroke_color.has_value()
+                           ? *text_attributes_->text_stroke_color
+                           : DefaultColor::DEFAULT_TEXT_COLOR);
   } else {
     return lepus_value();
   }
