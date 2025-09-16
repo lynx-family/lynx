@@ -919,7 +919,11 @@ void Element::PreparePropBundleIfNeed() {
 
 void Element::ResetPropBundle() {
   if (prop_bundle_) {
+#if ENABLE_UNITTESTS
+    // Stores the previous PropBundle for unit test verification after a reset.
     pre_prop_bundle_ = prop_bundle_;
+#endif
+
     prop_bundle_ = nullptr;
   }
 }
