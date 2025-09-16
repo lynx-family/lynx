@@ -65,6 +65,7 @@ native_podspec_deps = rebase_path([
                                     ":fml",
                                     ":lepus",
                                     ":lynx_basic_animator",
+                                    ":list_container",
                                     ":parser",
                                     ":resource",
                                     ":starlight",
