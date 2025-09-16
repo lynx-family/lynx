@@ -79,3 +79,4 @@ runs:
         fi
       env:
         HABITAT_CONCURRENCY: ${{ inputs.concurrency }}
+        GIT_LFS_SKIP_SMUDGE: 1
