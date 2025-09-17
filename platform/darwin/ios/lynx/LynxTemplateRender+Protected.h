@@ -64,6 +64,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableReuseEngine;
   BOOL _isEngineInitFromReusePool;
   BOOL _enableMTSModule;
+  BOOL _isMemoryCollecting;
 
   LynxConfig* _config;
   LynxContext* _context;

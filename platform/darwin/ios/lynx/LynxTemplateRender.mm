@@ -105,6 +105,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_INIT_WITH_BUILDER_BLOCK);
   if (self = [super init]) {
     _initStartTiming = [[NSDate date] timeIntervalSince1970] * 1000 * 1000;
+    _isMemoryCollecting = NO;
 
     /// Builder
     LynxViewBuilder* builder = [self setUpBuilder];
@@ -2001,6 +2002,10 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   if (![LynxPerformanceController isMemoryMonitorEnabled]) {
     return;
   }
+  if (_isMemoryCollecting) {
+    return;
+  }
+  _isMemoryCollecting = YES;
   __weak __typeof(self) weakSelf = self;
   int delay = [[LynxEnv sharedInstance] memoryAcquisitionDelaySec];
   // Since resources are usually loaded asynchronously, such as images downloaded asynchronously
@@ -2012,6 +2017,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
                    if (!strongSelf) {
                      return;
                    }
+                   strongSelf->_isMemoryCollecting = NO;
                    NSDictionary<NSString*, LynxMemoryRecord*>* records =
                        [[strongSelf uiOwner] getMemoryUsage];
                    [[strongSelf performanceController] updateMemoryUsageWithRecords:records];
