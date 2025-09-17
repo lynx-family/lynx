@@ -26,10 +26,6 @@ inline constexpr const char* const kJSTaskAttachRuntime =
     "JSTask::AttachRuntime";
 inline constexpr const char* const kJSTaskCallJSCallback =
     "JSTask::CallJSCallback";
-inline constexpr const char* const kJSTaskOnMethodInvoked =
-    "JSTask::OnMethodInvoked";
-inline constexpr const char* const kJSTaskRunOnJSThread =
-    "JSTask::RunOnJSThread";
 inline constexpr const char* const kJSTaskNotifyJSUpdatePageData =
     "JSTask::NotifyJSUpdatePageData";
 inline constexpr const char* const kJSTaskOnCardConfigDataChanged =
@@ -48,8 +44,7 @@ inline constexpr const char* const kJSTaskOnComponentDecoded =
     "JSTask::OnComponentDecoded";
 inline constexpr const char* const kJSTaskSetPageOptions =
     "JSTask::SetPageOptions";
-inline constexpr const char* const kJSTaskOnRuntimeCreate =
-    "JSTask::OnRuntimeCreate";
+inline constexpr const char* const kTaskName = "task_name";
 
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 

@@ -50,13 +50,8 @@ int32_t JSBlockingMonitor::GetReportIntervalMs() {
 }
 
 JSTaskEnqueueRetInfo JSBlockingMonitor::MarkJSTaskEnqueue() {
-  uint64_t flow_id = TRACE_FLOW_ID();
   uint64_t time_now = GetNowTimeMs();
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY, kJSTaskEnqueue,
-                      [flow_id](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_flow_ids(flow_id);
-                      });
-  return JSTaskEnqueueRetInfo{flow_id, time_now};
+  return JSTaskEnqueueRetInfo{time_now};
 }
 
 void JSBlockingMonitor::AddBlockingTime(int64_t duration_ms) {
