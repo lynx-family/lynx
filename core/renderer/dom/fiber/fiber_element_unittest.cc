@@ -13,6 +13,7 @@
 
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
+#include "core/renderer/css/computed_css_style_css_text_helper.h"
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_decoder.h"
 #include "core/renderer/css/css_value.h"
@@ -14175,6 +14176,279 @@ TEST_P(FiberElementTest, TestGetComputedStyleByKey) {
   page->computed_css_style()->opacity_ = 0.900000f;
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").IsString());
   EXPECT_TRUE(page->GetComputedStyleByKey("opacity").StdString() == "0.9");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_translate) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translateX(50px)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() == "matrix(1, 0, 0, 1, 50, 0)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translateY(75px)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() == "matrix(1, 0, 0, 1, 0, 75)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translateZ(100px)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 100, 1)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translate(50px, 75px)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix(1, 0, 0, 1, 50, 75)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("translate3d(10px, 20px, 30px)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix3d(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 10, 20, 30, 1)");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_rotate) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("rotateX(45deg)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix3d(1, 0, 0, 0, 0, 0.707107, 0.707107, 0, 0, -0.707107, "
+              "0.707107, 0, 0, 0, 0, 1)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("rotateY(60deg)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix3d(0.5, 0, -0.866025, 0, 0, 1, 0, 0, 0.866025, 0, 0.5, 0, "
+              "0, 0, 0, 1)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("rotateZ(90deg)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() == "matrix(0, 1, -1, 0, 0, 0)");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_scale) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("scale(1.5)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix(1.5, 0, 0, 1.5, 0, 0)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("scaleX(1.2)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix(1.2, 0, 0, 1, 0, 0)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("scaleY(0.8)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix(1, 0, 0, 0.8, 0, 0)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("scale(1.2, 0.8)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix(1.2, 0, 0, 0.8, 0, 0)");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_skew) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("skewX(15deg)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  auto skew_value = lepus_transform_value.StdString();
+  EXPECT_TRUE(skew_value == "matrix(1, 0, 0.267949, 1, 0, 0)");
+
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("skewY(10deg)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  skew_value = lepus_transform_value.StdString();
+  EXPECT_TRUE(skew_value == "matrix(1, 0.176327, 0, 1, 0, 0)");
+}
+
+TEST_P(FiberElementTest, TestGetComputedStyleByKey_transform_raw_matrix) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(CSSPropertyID::kPropertyIDTransform,
+                 lepus::Value("matrix(1, 0, 0, 1, 0, 0)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() == "matrix(1, 0, 0, 1, 0, 0)");
+
+  view->SetStyle(
+      CSSPropertyID::kPropertyIDTransform,
+      lepus::Value(
+          "matrix3d(0.983578, 0.174418, 0.059386, 0, -0.222342, 0.811802, "
+          "-0.198322, 0, -0.015242, 0.22915, 1.25884, 0, 10, 20, 30, 1)"));
+  page->FlushActionsAsRoot();
+  lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  EXPECT_TRUE(lepus_transform_value.StdString() ==
+              "matrix3d(0.983578, 0.174418, 0.059386, 0, -0.222342, 0.811802, "
+              "-0.198322, 0, -0.015242, 0.22915, 1.25884, 0, 10, 20, 30, 1)");
+}
+
+TEST_P(FiberElementTest,
+       TestGetComputedStyleByKey_transform_multiple_functions) {
+  //  constructor css fragment
+  StyleMap indexAttributes;
+  CSSParserTokenMap indexTokensMap;
+
+  const std::vector<int32_t> dependent_ids;
+  CSSKeyframesTokenMap keyframes;
+  CSSFontFaceRuleMap font_faces;
+  auto indexFragment = std::make_shared<SharedCSSFragment>(
+      1, dependent_ids, indexTokensMap, keyframes, font_faces);
+
+  // parent
+  auto page = manager->CreateFiberPage("page", 11);
+  page->style_sheet_ =
+      std::make_unique<CSSFragmentDecorator>(indexFragment.get());
+
+  auto view = manager->CreateFiberView();
+  view->parent_component_element_ = page.get();
+  view->SetStyle(
+      CSSPropertyID::kPropertyIDTransform,
+      lepus::Value(
+          "translateX(10px) translateY(20px) translateZ(30px) rotateX(15deg) "
+          "rotateY(25deg) rotateZ(35deg) scale(1.2) scaleX(1.1) scaleY(0.9) "
+          "skewX(10deg) skewY(5deg)"));
+  page->InsertNode(view);
+
+  page->FlushActionsAsRoot();
+  auto lepus_transform_value = view->GetComputedStyleByKey("transform");
+  EXPECT_TRUE(lepus_transform_value.IsString());
+  auto matrix_value = lepus_transform_value.StdString();
+  EXPECT_TRUE(matrix_value ==
+              "matrix3d(0.945973, 0.931536, -0.207071, 0, -0.388628, 0.936588, "
+              "0.438571, 0, 0.422618, -0.23457, 0.875426, 0, 10, 20, 30, 1)");
 }
 
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,

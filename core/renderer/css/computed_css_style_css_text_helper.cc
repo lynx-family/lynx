@@ -9,6 +9,7 @@
 
 #include "core/renderer/css/computed_css_style.h"
 #include "core/renderer/css/css_decoder.h"
+#include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/starlight/types/nlength.h"
 
 namespace lynx {
@@ -98,8 +99,13 @@ base::String ComputedCSSStyleCssTextHelper::HeightCSSText(
 base::String ComputedCSSStyleCssTextHelper::TransformCSSText(
     starlight::ComputedCSSStyle* computed_css_style,
     starlight::LayoutResultForRendering ref_layout_result) {
-  // TODO: Add impl later
-  return base::String();
+  if (computed_css_style->transform_raw_) {
+    auto transform_operations = transforms::TransformOperations(
+        ref_layout_result, *(computed_css_style->transform_raw_));
+    return transform_operations.CssText();
+  } else {
+    return base::String();
+  }
 }
 
 base::String ComputedCSSStyleCssTextHelper::TransformOriginCSSText(

@@ -10,6 +10,7 @@
 #define CORE_RENDERER_CSS_TRANSFORMS_MATRIX44_H_
 
 #include <array>
+#include <string>
 
 #include "base/include/log/logging.h"
 #include "core/renderer/css/transforms/quaternion.h"
@@ -93,6 +94,10 @@ class Matrix44 {
    *  Return true if the matrix is 2d transform.
    */
   inline bool Is2dTransform() const { return IsFlat() && !HasPerspective(); }
+
+  std::string Get2DRepresentation() const;
+
+  std::string Get3DRepresentation() const;
 
   /**
    *  Return true if the matrix only contains scale or translate or is identity.

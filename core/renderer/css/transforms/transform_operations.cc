@@ -24,6 +24,7 @@
 #include "core/renderer/css/transforms/transform_operation.h"
 #include "core/renderer/css/transforms/transform_operations.h"
 #include "core/renderer/dom/element_manager.h"
+#include "core/renderer/starlight/types/layout_result.h"
 
 namespace lynx {
 namespace transforms {
@@ -181,9 +182,9 @@ TransformOperations::TransformOperations(tasm::Element* element,
 }
 
 TransformOperations::TransformOperations(
-    tasm::Element* element,
+    starlight::LayoutResultForRendering layout_result,
     base::InlineVector<starlight::TransformRawData, 1> transform_raw_data)
-    : element_(element) {
+    : element_(nullptr), element_layout_result_(layout_result) {
   InitializeTransformOperations(*this, transform_raw_data);
 }
 
@@ -205,6 +206,15 @@ Matrix44 TransformOperations::ApplyRemaining(size_t start) {
   Matrix44 to_return;
   for (size_t i = start; i < operations_.size(); i++) {
     to_return.preConcat(operations_[i].GetMatrix(element_));
+  }
+  return to_return;
+}
+
+Matrix44 TransformOperations::ApplyRemaining(
+    size_t start, starlight::LayoutResultForRendering layout_result) {
+  Matrix44 to_return;
+  for (size_t i = start; i < operations_.size(); i++) {
+    to_return.preConcat(operations_[i].GetMatrix(layout_result));
   }
   return to_return;
 }
@@ -489,6 +499,15 @@ tasm::CSSValue TransformOperations::ToTransformRawValue() {
     }
   }
   return tasm::CSSValue(std::move(items));
+}
+
+base::String TransformOperations::CssText() {
+  Matrix44 transform = ApplyRemaining(0, element_layout_result_);
+  if (transform.Is2dTransform()) {
+    return transform.Get2DRepresentation();
+  } else {
+    return transform.Get3DRepresentation();
+  }
 }
 
 }  // namespace transforms

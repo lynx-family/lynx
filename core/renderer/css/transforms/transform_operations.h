@@ -15,6 +15,7 @@
 
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/transforms/transform_operation.h"
+#include "core/renderer/starlight/types/layout_result.h"
 #include "core/style/transform_raw_data.h"
 
 namespace lynx {
@@ -41,7 +42,7 @@ class TransformOperations {
   // construct TransformOperations with transform raw data
   TransformOperations(tasm::Element* element, const tasm::CSSValue& raw_data);
   TransformOperations(
-      tasm::Element* element,
+      starlight::LayoutResultForRendering element_layout_result,
       base::InlineVector<starlight::TransformRawData, 1> transform_raw_data);
   TransformOperations(const TransformOperations& other);
   ~TransformOperations();
@@ -55,6 +56,11 @@ class TransformOperations {
   // Returns a transformation matrix representing the set of transform
   // operations from index |start| to the end of the list.
   Matrix44 ApplyRemaining(size_t start);
+
+  // Returns a transformation matrix representing the set of transform
+  // operations from index |start| to the end of the list.
+  Matrix44 ApplyRemaining(
+      size_t start, starlight::LayoutResultForRendering element_layout_result);
 
   // Given another set of transform operations and a progress in the range
   // [0, 1], returns a transformation matrix representing the intermediate
@@ -99,6 +105,8 @@ class TransformOperations {
 
   tasm::CSSValue ToTransformRawValue();
 
+  base::String CssText();
+
  private:
   bool BlendInternal(TransformOperations& from, float progress,
                      TransformOperations* result);
@@ -111,6 +119,7 @@ class TransformOperations {
   mutable std::unordered_map<size_t, std::unique_ptr<DecomposedTransform>>
       decomposed_transforms_;
   tasm::Element* element_{nullptr};
+  starlight::LayoutResultForRendering element_layout_result_{};
 };
 
 }  // namespace transforms

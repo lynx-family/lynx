@@ -23,6 +23,7 @@
 #include <string>
 
 #include "base/include/float_comparison.h"
+#include "core/renderer/css/css_decoder.h"
 
 namespace lynx {
 namespace transforms {
@@ -411,6 +412,29 @@ double Matrix44::invert4x4Matrix(const float in_matrix[16],
     }
   }
   return determinant;
+}
+
+std::string Matrix44::Get2DRepresentation() const {
+  return "matrix(" + tasm::CSSDecoder::NumberToString(fMat[0][0]) + ", " +
+         tasm::CSSDecoder::NumberToString(fMat[0][1]) + ", " +
+         tasm::CSSDecoder::NumberToString(fMat[1][0]) + ", " +
+         tasm::CSSDecoder::NumberToString(fMat[1][1]) + ", " +
+         tasm::CSSDecoder::NumberToString(fMat[3][0]) + ", " +
+         tasm::CSSDecoder::NumberToString(fMat[3][1]) + ")";
+}
+
+std::string Matrix44::Get3DRepresentation() const {
+  std::string res = "matrix3d(";
+  for (int col = 0; col < 4; ++col) {
+    for (int row = 0; row < 4; ++row) {
+      res = res + tasm::CSSDecoder::NumberToString(fMat[col][row]);
+      if (col != 3 || row != 3) {
+        res = res + ", ";
+      }
+    }
+  }
+  res = res + ")";
+  return res;
 }
 
 }  // namespace transforms

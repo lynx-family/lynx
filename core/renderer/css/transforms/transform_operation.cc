@@ -88,23 +88,30 @@ std::array<TransformOperation::LengthType, 2> GetTranslateLengthType(
 
 // Convert possible percentage or calc values to unit values
 std::array<float, 3> GetPercentOrCalcTranslateValue(
-    const TransformOperation* translate, tasm::Element* element) {
-  DCHECK(element);
+    const TransformOperation* translate,
+    starlight::LayoutResultForRendering element_layout_result) {
   if (IsOperationIdentity(translate)) {
     return std::array<float, 3>{0.0f, 0.0f, 0.0f};
   }
-  float x =
-      starlight::NLengthToLayoutUnit(translate->translate.value.x,
-                                     starlight::LayoutUnit(element->width()))
-          .ToFloat();
-  float y =
-      starlight::NLengthToLayoutUnit(translate->translate.value.y,
-                                     starlight::LayoutUnit(element->height()))
-          .ToFloat();
+  float x = starlight::NLengthToLayoutUnit(
+                translate->translate.value.x,
+                starlight::LayoutUnit(element_layout_result.size_.width_))
+                .ToFloat();
+  float y = starlight::NLengthToLayoutUnit(
+                translate->translate.value.y,
+                starlight::LayoutUnit(element_layout_result.size_.height_))
+                .ToFloat();
   float z = starlight::NLengthToLayoutUnit(translate->translate.value.z,
                                            starlight::LayoutUnit(0.0f))
                 .ToFloat();
   return std::array<float, 3>{x, y, z};
+};
+
+// Convert possible percentage or calc values to unit values
+std::array<float, 3> GetPercentOrCalcTranslateValue(
+    const TransformOperation* translate, tasm::Element* element) {
+  DCHECK(element);
+  return GetPercentOrCalcTranslateValue(translate, element->layout_result());
 };
 
 static float BlendValue(float from, float to, float progress) {
@@ -158,14 +165,17 @@ const Matrix44& TransformOperation::GetMatrix(tasm::Element* element) {
   return *matrix44;
 }
 
-void TransformOperation::Bake(tasm::Element* element) {
-  matrix44 = std::make_optional<Matrix44>();
+const Matrix44& TransformOperation::GetMatrix(
+    starlight::LayoutResultForRendering element_layout_result) {
+  if (matrix44) {
+    return *matrix44;
+  }
+  Bake(element_layout_result);
+  return *matrix44;
+}
+
+void TransformOperation::DoBakeNonTranslateOperation() {
   switch (type) {
-    case TransformOperation::Type::kTranslate: {
-      std::array<float, 3> arr = GetPercentOrCalcTranslateValue(this, element);
-      matrix44->preTranslate(arr[0], arr[1], arr[2]);
-      break;
-    }
     case TransformOperation::Type::kRotateX: {
       matrix44->setRotateAboutXAxis(rotate.degree);
       break;
@@ -193,6 +203,28 @@ void TransformOperation::Bake(tasm::Element* element) {
     default: {
       break;
     }
+  }
+}
+
+void TransformOperation::Bake(tasm::Element* element) {
+  matrix44 = std::make_optional<Matrix44>();
+  if (type == TransformOperation::Type::kTranslate) {
+    std::array<float, 3> arr = GetPercentOrCalcTranslateValue(this, element);
+    matrix44->preTranslate(arr[0], arr[1], arr[2]);
+  } else {
+    DoBakeNonTranslateOperation();
+  }
+}
+
+void TransformOperation::Bake(
+    starlight::LayoutResultForRendering element_layout_result) {
+  matrix44 = std::make_optional<Matrix44>();
+  if (type == TransformOperation::Type::kTranslate) {
+    std::array<float, 3> arr =
+        GetPercentOrCalcTranslateValue(this, element_layout_result);
+    matrix44->preTranslate(arr[0], arr[1], arr[2]);
+  } else {
+    DoBakeNonTranslateOperation();
   }
 }
 

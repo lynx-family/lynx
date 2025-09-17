@@ -15,6 +15,7 @@
 #include "core/renderer/css/css_value.h"
 #include "core/renderer/css/transforms/matrix44.h"
 #include "core/renderer/starlight/style/css_type.h"
+#include "core/renderer/starlight/types/layout_result.h"
 #include "core/renderer/starlight/types/nlength.h"
 
 namespace lynx {
@@ -48,6 +49,9 @@ struct TransformOperation {
   };
   const Matrix44& GetMatrix(tasm::Element* element);
 
+  const Matrix44& GetMatrix(
+      starlight::LayoutResultForRendering element_layout_result);
+
   bool NotifyElementSizeUpdated();
 
   bool NotifyUnitValuesUpdatedToAnimation(tasm::CSSValuePattern);
@@ -55,6 +59,8 @@ struct TransformOperation {
   // If you change the union value of TransformOperation, you should call Bake()
   // directly to make a new matrix!
   void Bake(tasm::Element* element);
+
+  void Bake(starlight::LayoutResultForRendering element_layout_result);
 
   bool IsIdentity() const;
   static TransformOperation BlendTransformOperations(
@@ -119,6 +125,8 @@ struct TransformOperation {
  private:
   // matrix44 is just a cache of intermediate results that are computed.
   std::optional<Matrix44> matrix44;
+
+  void DoBakeNonTranslateOperation();
 };
 }  // namespace transforms
 }  // namespace lynx
