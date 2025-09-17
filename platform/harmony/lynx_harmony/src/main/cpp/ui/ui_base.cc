@@ -2187,10 +2187,7 @@ bool UIBase::IgnoreFocus() {
   }
 
   EventTarget* parent = this->ParentTarget();
-  while (parent) {
-    if (!parent->ParentTarget()) {
-      return false;
-    }
+  if (parent) {
     return parent->IgnoreFocus();
   }
   return false;

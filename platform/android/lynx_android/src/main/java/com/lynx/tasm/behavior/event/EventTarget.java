@@ -73,7 +73,7 @@ public interface EventTarget extends EventTargetBase {
   // sent
   boolean dispatchEvent(LynxEventDetail event);
 
-  boolean eventThrough();
+  boolean eventThrough(float x, float y);
 
   EventTarget getParentLynxPageUI();
 

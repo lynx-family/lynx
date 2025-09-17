@@ -5,6 +5,8 @@
 #import <Lynx/LUIBodyView.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
+#import <Lynx/LynxSizeValue.h>
+#import <Lynx/LynxUI+Internal.h>
 #import <Lynx/LynxViewInternal.h>
 
 @implementation LynxRootUI {
@@ -104,11 +106,34 @@
 }
 
 - (BOOL)eventThrough:(CGPoint)point {
-  BOOL res = [super eventThrough:point];
-  if (!res) {
-    res |= self.context.enableEventThrough;
+  BOOL isEventThrough = [super eventThrough:point];
+  if (!isEventThrough) {
+    isEventThrough |= self.context.enableEventThrough;
   }
-  return res;
+
+  if (!self.eventThroughActiveRegions) {
+    return isEventThrough;
+  }
+
+  CGSize size = self.view.bounds.size;
+  __block BOOL isHitEventThroughActiveRegions = NO;
+  [self.eventThroughActiveRegions
+      enumerateObjectsUsingBlock:^(NSArray<LynxSizeValue *> *_Nonnull obj, NSUInteger idx,
+                                   BOOL *_Nonnull stop) {
+        if ([obj count] == 4) {
+          CGFloat left = [obj[0] convertToDevicePtWithFullSize:size.width];
+          CGFloat top = [obj[1] convertToDevicePtWithFullSize:size.height];
+          CGFloat right = left + [obj[2] convertToDevicePtWithFullSize:size.width];
+          CGFloat bottom = top + [obj[3] convertToDevicePtWithFullSize:size.height];
+          isHitEventThroughActiveRegions =
+              point.x >= left && point.x < right && point.y >= top && point.y < bottom;
+          if (isHitEventThroughActiveRegions) {
+            LLogInfo(@"hit the event through active regions!");
+            *stop = YES;
+          }
+        }
+      }];
+  return isHitEventThroughActiveRegions ? isEventThrough : !isEventThrough;
 }
 
 - (id<LynxEventTarget>)parentLynxPageUI {

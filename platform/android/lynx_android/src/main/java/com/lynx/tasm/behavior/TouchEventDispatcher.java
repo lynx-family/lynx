@@ -121,6 +121,7 @@ public class TouchEventDispatcher {
   private LynxTouchEvent mFirstLynxTouchEvent;
   private EventTarget mPreTarget;
   private String mPreTargetInlineCSSText;
+  private Point mFirstFingerDownPoint;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -132,6 +133,7 @@ public class TouchEventDispatcher {
     mActiveUIList = new LinkedList<>();
     mActiveClickList = new LinkedList<>();
     mDownPoint = new PointF(Float.MIN_VALUE, Float.MIN_VALUE);
+    mFirstFingerDownPoint = new LynxTouchEvent.Point();
     // In template_binary_reader.cc, if template's page config doesn't contain tapSlop, let
     // tapSlop's the default value be 50px. Otherwise, tapSlop's value is set by the FE developer.
     // Normally, TouchEventDispatcher's setTapSlop function will be called, and mTapSlop will be
@@ -321,7 +323,7 @@ public class TouchEventDispatcher {
     if (mActiveUI == null) {
       return false;
     }
-    return mActiveUI.eventThrough();
+    return mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY());
   }
 
   public void setTapSlop(float tapSlop) {
@@ -791,8 +793,16 @@ public class TouchEventDispatcher {
   }
 
   public boolean handleFirstTouchDown(MotionEvent ev, UIGroup rootUi) {
+    mFirstFingerDownPoint.setX(0);
+    mFirstFingerDownPoint.setY(0);
     mActiveUI = findUI(ev, 0, rootUi);
-    if (mActiveUI != null && mActiveUI.eventThrough()) {
+    LynxTouchEvent.Point pagePoint = new Point(ev.getX(), ev.getY());
+    mFirstFingerDownPoint = pagePoint;
+    if (mActiveUI instanceof LynxBaseUI) {
+      mFirstFingerDownPoint = convertToViewPoint(mActiveUI, pagePoint);
+    }
+    if (mActiveUI != null
+        && mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
       return false;
     }
     initTouchEnv(ev);
@@ -992,7 +1002,7 @@ public class TouchEventDispatcher {
       handleOtherTouchDown(ev, rootUi);
     } else {
       if (mActiveUI != null && !mActiveUIMap.isEmpty()) {
-        if (mActiveUI.eventThrough()) {
+        if (mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
           return false;
         }
         switch (ev.getActionMasked()) {
@@ -1022,7 +1032,8 @@ public class TouchEventDispatcher {
       }
     }
 
-    if (mActiveUI != null && mActiveUI.eventThrough()) {
+    if (mActiveUI != null
+        && mActiveUI.eventThrough(mFirstFingerDownPoint.getX(), mFirstFingerDownPoint.getY())) {
       return false;
     }
 

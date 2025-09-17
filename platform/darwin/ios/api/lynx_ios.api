@@ -3984,6 +3984,8 @@ public class LynxUI : <__covariant V UIView> {
   public CGFloat LynxUI()::hitSlopLeft hitSlopLeft;
   public CGFloat LynxUI()::hitSlopRight hitSlopRight;
   public int32_t LynxUI()::pseudoStatus pseudoStatus;
+  public enum LynxEventPropStatus LynxUI()::eventThrough eventThrough;
+  public NSArray<NSArray<LynxSizeValue *> *>* LynxUI()::eventThroughActiveRegions eventThroughActiveRegions;
   public BOOL LynxUI()::alignHeight alignHeight;
   public BOOL LynxUI()::alignWidth alignWidth;
   public uint32_t LynxUI()::nodeIndex nodeIndex;

@@ -16,6 +16,7 @@ typedef UIImage *_Nullable (^lynx_async_get_background_image_block_t)(void);
 FOUNDATION_EXPORT short const OVERFLOW_XY_VAL;
 FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 @class LynxGestureArenaManager;
+@class LynxSizeValue;
 
 @interface LynxUI () {
  @package
@@ -60,6 +61,9 @@ FOUNDATION_EXPORT short const OVERFLOW_HIDDEN_VAL;
 @property(nonatomic, readonly) CGFloat hitSlopRight;
 
 @property(nonatomic) int32_t pseudoStatus;
+
+@property(nonatomic) enum LynxEventPropStatus eventThrough;
+@property(nonatomic) NSArray<NSArray<LynxSizeValue *> *> *eventThroughActiveRegions;
 
 @property(nonatomic, assign, readonly) BOOL alignHeight;
 @property(nonatomic, assign, readonly) BOOL alignWidth;
