@@ -117,8 +117,6 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   BOOL _blockNativeEvent;
   // block native event at some areas of this element
   NSArray<NSArray<LynxSizeValue*>*>* _blockNativeEventAreas;
-  // specifiy the active regions of the event-through attribute.
-  NSArray<NSArray<LynxSizeValue*>*>* _eventThroughActiveRegions;
   // Default value is false. When setting _simultaneousTouch as true and clicking to the ui or its
   // sub ui, the lynx touch gestures will not fail.
   BOOL _enableSimultaneousTouch;
@@ -126,7 +124,6 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
   enum LynxEventPropStatus _ignoreFocus;
   double _touchSlop;
   BOOL _onResponseChain;
-  enum LynxEventPropStatus _eventThrough;
   enum LynxPointerEventsValue _pointerEvents;
   enum LynxPropStatus _enableExposureUIMargin;
   NSDictionary<NSString*, LynxEventSpec*>* _eventSet;
@@ -2785,16 +2782,16 @@ LYNX_PROP_DEFINE("event-through-active-regions", setEventThroughActiveRegions, N
     return;
   }
   // Supports two types: `30px` and `50%`
-  NSMutableArray<NSArray<LynxSizeValue*>*>* eventThroughActiveRegions = [NSMutableArray array];
+  NSMutableArray<NSArray<LynxSizeValue*>*>* regions = [NSMutableArray array];
   [value enumerateObjectsUsingBlock:^(id _Nonnull obj, NSUInteger idx, BOOL* _Nonnull stop) {
     if ([obj isKindOfClass:[NSArray class]] && [(NSArray*)obj count] == 4) {
-      NSArray* area = obj;
-      LynxSizeValue* x = [LynxSizeValue sizeValueFromCSSString:area[0]];
-      LynxSizeValue* y = [LynxSizeValue sizeValueFromCSSString:area[1]];
-      LynxSizeValue* w = [LynxSizeValue sizeValueFromCSSString:area[2]];
-      LynxSizeValue* h = [LynxSizeValue sizeValueFromCSSString:area[3]];
+      NSArray* region = obj;
+      LynxSizeValue* x = [LynxSizeValue sizeValueFromCSSString:region[0]];
+      LynxSizeValue* y = [LynxSizeValue sizeValueFromCSSString:region[1]];
+      LynxSizeValue* w = [LynxSizeValue sizeValueFromCSSString:region[2]];
+      LynxSizeValue* h = [LynxSizeValue sizeValueFromCSSString:region[3]];
       if (x && y && w && h) {
-        [eventThroughActiveRegions addObject:@[ x, y, w, h ]];
+        [regions addObject:@[ x, y, w, h ]];
       } else {
         LLogWarn(@"event-through-active-regions: %luth type err", (unsigned long)idx);
       }
@@ -2802,8 +2799,8 @@ LYNX_PROP_DEFINE("event-through-active-regions", setEventThroughActiveRegions, N
       LLogWarn(@"event-through-active-regions: %luth type err, size != 4", (unsigned long)idx);
     }
   }];
-  if ([eventThroughActiveRegions count] > 0) {
-    _eventThroughActiveRegions = [eventThroughActiveRegions copy];
+  if ([regions count] > 0) {
+    _eventThroughActiveRegions = [regions copy];
   } else {
     LLogWarn(@"event-through-active-regions: empty regions");
   }
@@ -2840,9 +2837,8 @@ LYNX_PROP_DEFINE("enable-touch-pseudo-propagation", setEnableTouchPseudoPropagat
 
 LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   // If requestReset, the _eventThrough will be Undefined.
-  enum LynxEventPropStatus res = kLynxEventPropUndefined;
   if (requestReset) {
-    _eventThrough = res;
+    _eventThrough = kLynxEventPropUndefined;
     return;
   }
   _eventThrough = value ? kLynxEventPropEnable : kLynxEventPropDisable;
@@ -2959,9 +2955,8 @@ LYNX_PROP_SETTER("a11y-id", setA11yID, NSString*) { self.a11yID = value; }
 
 LYNX_PROP_DEFINE("ignore-focus", setIgnoreFocus, BOOL) {
   // If requestReset, the _ignoreFocus will be Undefined.
-  enum LynxEventPropStatus res = kLynxEventPropUndefined;
   if (requestReset) {
-    _ignoreFocus = res;
+    _ignoreFocus = kLynxEventPropUndefined;
     return;
   }
   _ignoreFocus = value ? kLynxEventPropEnable : kLynxEventPropDisable;
@@ -3559,10 +3554,6 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
 
   id<LynxEventTarget> parent = [self parentTarget];
   if (parent != nil) {
-    // when parent is root ui, return false.
-    if ([parent isKindOfClass:[LynxRootUI class]]) {
-      return NO;
-    }
     return [parent ignoreFocus];
   }
   return NO;

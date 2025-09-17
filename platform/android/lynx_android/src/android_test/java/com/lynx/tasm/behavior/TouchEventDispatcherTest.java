@@ -181,8 +181,8 @@ public class TouchEventDispatcherTest {
     }
 
     @Override
-    public boolean eventThrough() {
-      return true;
+    public boolean eventThrough(float x, float y) {
+      return false;
     }
 
     @Override
@@ -365,12 +365,75 @@ public class TouchEventDispatcherTest {
     mRootUI.insertChild(parentUI, 0);
     UIView childUI = new UIView(mContext);
     parentUI.insertChild(childUI, 0);
-    assertFalse(childUI.eventThrough());
+    assertFalse(childUI.eventThrough(0, 0));
     JavaOnlyArray array = new JavaOnlyArray();
     array.pushBoolean(true);
     DynamicFromArray param = new DynamicFromArray(array, 0);
     parentUI.setEventThrough(param);
-    assertTrue(childUI.eventThrough());
+    assertTrue(childUI.eventThrough(0, 0));
+  }
+
+  @Test
+  public void testEventThroughActiveRegions() {
+    float density = mContext.getResources().getDisplayMetrics().density;
+    mRootUI.getView().setLeft(0);
+    mRootUI.getView().setRight(300);
+    mRootUI.getView().setTop(0);
+    mRootUI.getView().setBottom(300);
+    mRootUI.setWidth(300);
+    mRootUI.setHeight(300);
+    UIView parentUI = new UIView(mContext);
+    parentUI.getView().setLeft(0);
+    parentUI.getView().setRight(300);
+    parentUI.getView().setTop(0);
+    parentUI.getView().setBottom(300);
+    parentUI.setWidth(300);
+    parentUI.setHeight(300);
+    mRootUI.insertChild(parentUI, 0);
+    UIView childUI = new UIView(mContext);
+    childUI.getView().setLeft(0);
+    childUI.getView().setRight(300);
+    childUI.getView().setTop(0);
+    childUI.getView().setBottom(300);
+    childUI.setWidth(300);
+    childUI.setHeight(300);
+    parentUI.insertChild(childUI, 0);
+
+    assertFalse(childUI.eventThrough(0, 0));
+    JavaOnlyArray region = new JavaOnlyArray();
+    region.pushString("0px");
+    region.pushString("0px");
+    region.pushString("300px");
+    region.pushString("150px");
+    JavaOnlyArray regions = new JavaOnlyArray();
+    regions.pushArray(region);
+    JavaOnlyArray value = new JavaOnlyArray();
+    value.pushArray(regions);
+    DynamicFromArray regionsValue = new DynamicFromArray(value, 0);
+    childUI.setEventThroughActiveRegions(regionsValue);
+    assertFalse(childUI.eventThrough(150 * density, 50 * density));
+    assertTrue(childUI.eventThrough(150 * density, 200 * density));
+
+    JavaOnlyArray array = new JavaOnlyArray();
+    array.pushBoolean(true);
+    DynamicFromArray param = new DynamicFromArray(array, 0);
+    parentUI.setEventThrough(param);
+    assertTrue(childUI.eventThrough(150 * density, 50 * density));
+    assertFalse(childUI.eventThrough(150 * density, 200 * density));
+
+    JavaOnlyArray region1 = new JavaOnlyArray();
+    region1.pushString("0px");
+    region1.pushString("150px");
+    region1.pushString("300px");
+    region1.pushString("150px");
+    JavaOnlyArray regions1 = new JavaOnlyArray();
+    regions1.pushArray(region1);
+    JavaOnlyArray value1 = new JavaOnlyArray();
+    value1.pushArray(regions1);
+    DynamicFromArray regionsValue1 = new DynamicFromArray(value1, 0);
+    parentUI.setEventThroughActiveRegions(regionsValue1);
+    assertFalse(childUI.eventThrough(150 * density, 50 * density));
+    assertFalse(childUI.eventThrough(150 * density, 200 * density));
   }
 
   @Test

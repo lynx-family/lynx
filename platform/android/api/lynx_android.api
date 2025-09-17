@@ -1577,7 +1577,7 @@ public interface com::lynx::tasm::behavior::event::EventTarget {
   public boolean com.lynx.tasm.behavior.event.EventTarget.blockNativeEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.event.EventTarget.dispatchTouch(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.event.EventTarget.dispatchEvent(LynxEventDetail event);
-  public boolean com.lynx.tasm.behavior.event.EventTarget.eventThrough();
+  public boolean com.lynx.tasm.behavior.event.EventTarget.eventThrough(float x, float y);
   public EventTarget com.lynx.tasm.behavior.event.EventTarget.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.event.EventTarget.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.event.EventTarget.getChildrenLynxPageUI();
@@ -1632,7 +1632,7 @@ public class com::lynx::tasm::behavior::shadow::text::EventTargetSpan : Clickabl
   public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.blockNativeEvent(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.dispatchTouch(MotionEvent ev);
   public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.dispatchEvent(LynxEventDetail event);
-  public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.eventThrough();
+  public boolean com.lynx.tasm.behavior.shadow.text.EventTargetSpan.eventThrough(float x, float y);
   public EventTarget com.lynx.tasm.behavior.shadow.text.EventTargetSpan.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.shadow.text.EventTargetSpan.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.shadow.text.EventTargetSpan.getChildrenLynxPageUI();
@@ -3975,7 +3975,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.isOnResponseChain();
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.consumeSlideEvent(float angle);
   public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.blockNativeEvent(MotionEvent ev);
-  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.eventThrough();
+  public boolean com.lynx.tasm.behavior.ui.LynxBaseUI.eventThrough(float x, float y);
   public EventTarget com.lynx.tasm.behavior.ui.LynxBaseUI.getParentLynxPageUI();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setParentLynxPageUI(EventTarget parentLynxPageUI);
   public HashMap< String, EventTarget > com.lynx.tasm.behavior.ui.LynxBaseUI.getChildrenLynxPageUI();
@@ -4164,6 +4164,7 @@ public class abstract com::lynx::tasm::behavior::ui::LynxBaseUI : com.lynx.tasm.
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBlockNativeEvent(@Nullable boolean blockNativeEvent);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBlockNativeEventAreas(@Nullable Dynamic maybeBlockNativeEventAreas);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setEventThrough(@Nullable Dynamic eventThrough);
+  public void com.lynx.tasm.behavior.ui.LynxBaseUI.setEventThroughActiveRegions(@Nullable Dynamic value);
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setEnableTouchPseudoPropagation(@Nullable Dynamic enableTouchPseudoPropagation);
   public int com.lynx.tasm.behavior.ui.LynxBaseUI.getOverflow();
   public void com.lynx.tasm.behavior.ui.LynxBaseUI.setBorderStyle(int index, int borderStyle);
@@ -7847,7 +7848,9 @@ public class com::lynx::tasm::event::LynxTouchEvent::Point :  {
   public com.lynx.tasm.event.LynxTouchEvent.Point.Point();
   public com.lynx.tasm.event.LynxTouchEvent.Point.Point(float x, float y);
   public float com.lynx.tasm.event.LynxTouchEvent.Point.getX();
+  public void com.lynx.tasm.event.LynxTouchEvent.Point.setX(float x);
   public float com.lynx.tasm.event.LynxTouchEvent.Point.getY();
+  public void com.lynx.tasm.event.LynxTouchEvent.Point.setY(float y);
   public Point com.lynx.tasm.event.LynxTouchEvent.Point.convert(Rect fromRect, Rect toRect);
   public boolean com.lynx.tasm.event.LynxTouchEvent.Point.equals(Object o);
   public int com.lynx.tasm.event.LynxTouchEvent.Point.hashCode();
@@ -8296,6 +8299,7 @@ public class com::lynx::tasm::behavior::PropsConstants :  {
   public final String com.lynx.tasm.behavior.PropsConstants.ANDROID_EMOJI_COMPAT ANDROID_EMOJI_COMPAT;
   public final String com.lynx.tasm.behavior.PropsConstants.TRANSFORM_ORDER TRANSFORM_ORDER;
   public final String com.lynx.tasm.behavior.PropsConstants.EVENT_THROUGH EVENT_THROUGH;
+  public final String com.lynx.tasm.behavior.PropsConstants.EVENT_THROUGH_ACTIVE_REGIONS EVENT_THROUGH_ACTIVE_REGIONS;
   public final String com.lynx.tasm.behavior.PropsConstants.DISABLE_DEFAULT_RESIZE DISABLE_DEFAULT_RESIZE;
   public final String com.lynx.tasm.behavior.PropsConstants.DEFER_SRC_INVALIDATION DEFER_SRC_INVALIDATION;
   public final String com.lynx.tasm.behavior.PropsConstants.AUTO_PLAY AUTO_PLAY;
@@ -9789,7 +9793,7 @@ public class com::lynx::tasm::behavior::ui::UIBody : com.lynx.tasm.behavior.ui.U
   public void com.lynx.tasm.behavior.ui.UIBody.initialize();
   public void com.lynx.tasm.behavior.ui.UIBody.onPageConfigDecoded(PageConfig config);
   public void com.lynx.tasm.behavior.ui.UIBody.onLayoutUpdated();
-  public boolean com.lynx.tasm.behavior.ui.UIBody.eventThrough();
+  public boolean com.lynx.tasm.behavior.ui.UIBody.eventThrough(float x, float y);
   public void com.lynx.tasm.behavior.ui.UIBody.removeAll();
   public boolean com.lynx.tasm.behavior.ui.UIBody.enableNewAccessibility();
   public LynxAccessibilityWrapper com.lynx.tasm.behavior.ui.UIBody.getLynxAccessibilityWrapper();

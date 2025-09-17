@@ -247,6 +247,9 @@ class LYNX_EXPORT
   bool need_clip_{false};
   std::unique_ptr<NativeNodeContent> node_content_{nullptr};
   LynxPointerEventsValue pointer_events_{LynxPointerEventsValue::kUnset};
+  bool block_native_event_{false};
+  ConsumeSlideDirection consume_slide_event_{ConsumeSlideDirection::kNone};
+  LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
   LynxEventPropStatus event_through_{LynxEventPropStatus::kUndefined};
   std::vector<std::vector<PlatformLength>> event_through_active_regions_;
   std::vector<std::vector<PlatformLength>> block_native_event_areas_;
@@ -398,9 +401,6 @@ class LYNX_EXPORT
   float hit_slop_right_{0};
   float hit_slop_top_{0};
   float hit_slop_bottom_{0};
-  LynxEventPropStatus ignore_focus_{LynxEventPropStatus::kUndefined};
-  bool block_native_event_{false};
-  ConsumeSlideDirection consume_slide_event_{ConsumeSlideDirection::kNone};
   bool enable_touch_pseudo_propagation_{true};
   PseudoStatus pseudo_status_{PseudoStatus::kNone};
   const bool has_customized_layout_;

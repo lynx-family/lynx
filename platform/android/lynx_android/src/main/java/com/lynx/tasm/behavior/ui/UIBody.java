@@ -35,6 +35,7 @@ import com.lynx.tasm.behavior.ui.image.LynxImageManager;
 import com.lynx.tasm.core.LynxThreadPool;
 import com.lynx.tasm.performance.longtasktiming.LynxLongTaskMonitor;
 import com.lynx.tasm.performance.timing.ITimingCollector;
+import com.lynx.tasm.utils.SizeValue;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -325,17 +326,40 @@ public class UIBody extends UIGroup<UIBodyView> {
   }
 
   @Override
-  public boolean eventThrough() {
+  public boolean eventThrough(float x, float y) {
     // If <page event-through={true}/>, the res will be true.
     // Otherwise the res will be false, then check PageConfig enableEventThrough. If PageConfig
     // enableEventThrough == true, let the res be true. In other words, when
     // config.enableEventThrough == true or page.event-through == true, rootUI's eventThrough will
     // be true.
-    boolean res = super.eventThrough();
-    if (!res) {
-      res |= mContext.enableEventThrough();
+    boolean isEventThrough = super.eventThrough(x, y);
+    if (!isEventThrough) {
+      isEventThrough |= mContext.enableEventThrough();
     }
-    return res;
+
+    if (mEventThroughActiveRegions == null) {
+      return isEventThrough;
+    }
+
+    boolean isHitEventThroughActiveRegions = false;
+    float density = mContext.getResources().getDisplayMetrics().density;
+    float deviceX = x * density, deviceY = y * density;
+    for (int i = 0; i < this.mEventThroughActiveRegions.size(); ++i) {
+      ArrayList<SizeValue> region = this.mEventThroughActiveRegions.get(i);
+      if (region != null && region.size() == 4) {
+        float left = region.get(0).convertToDevicePx(getWidth());
+        float top = region.get(1).convertToDevicePx(getHeight());
+        float right = left + region.get(2).convertToDevicePx(getWidth());
+        float bottom = top + region.get(3).convertToDevicePx(getHeight());
+        isHitEventThroughActiveRegions =
+            deviceX >= left && deviceX < right && deviceY >= top && deviceY < bottom;
+        if (isHitEventThroughActiveRegions) {
+          LLog.i(TAG, "hit the event through active regions!");
+          break;
+        }
+      }
+    }
+    return isHitEventThroughActiveRegions ? isEventThrough : !isEventThrough;
   }
 
   @Override

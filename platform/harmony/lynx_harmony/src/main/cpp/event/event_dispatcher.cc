@@ -256,6 +256,8 @@ void EventDispatcher::InitTouchEnv(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
+      first_finger_down_point_[0] = 0;
+      first_finger_down_point_[1] = 0;
       first_active_target_ = best_hittest_target->WeakTarget();
       UIBase* root = root_target_.expired()
                          ? nullptr
@@ -363,8 +365,6 @@ void EventDispatcher::OnTouchUp(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
-      first_finger_down_point_[0] = 0;
-      first_finger_down_point_[1] = 0;
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;
@@ -380,8 +380,6 @@ void EventDispatcher::OnTouchCancel(const ArkUI_UIInputEvent* event) {
             UI_INPUT_EVENT_SOURCE_TYPE_MOUSE ||
         OH_ArkUI_UIInputEvent_GetSourceType(event) ==
             UI_INPUT_EVENT_SOURCE_TYPE_UNKNOWN) {
-      first_finger_down_point_[0] = 0;
-      first_finger_down_point_[1] = 0;
       UpdateFocusedTarget();
       DeactivatePseudoStatus(PseudoStatus::kAll);
       break;

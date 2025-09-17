@@ -153,10 +153,6 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
       return false;
     } else if (parent() != null) {
       EventTarget parent = parent();
-      // when parent is root ui, return false.
-      if (parent instanceof UIBody) {
-        return false;
-      }
       return parent.ignoreFocus();
     }
     return false;
@@ -233,7 +229,7 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
   }
 
   @Override
-  public boolean eventThrough() {
+  public boolean eventThrough(float x, float y) {
     if (mEventThrough == EventTarget.EnableStatus.Enable) {
       return true;
     } else if (mEventThrough == EventTarget.EnableStatus.Disable) {
@@ -242,7 +238,7 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
 
     EventTarget parent = parent();
     if (parent != null) {
-      return parent.eventThrough();
+      return parent.eventThrough(x, y);
     }
     return false;
   }

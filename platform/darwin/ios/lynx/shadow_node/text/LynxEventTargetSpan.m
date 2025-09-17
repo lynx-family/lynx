@@ -102,10 +102,6 @@
 
   id<LynxEventTarget> parent = [self parentTarget];
   if (parent != nil) {
-    // when parent is root ui, return false.
-    if ([parent isKindOfClass:[LynxRootUI class]]) {
-      return NO;
-    }
     return [parent ignoreFocus];
   }
   return NO;

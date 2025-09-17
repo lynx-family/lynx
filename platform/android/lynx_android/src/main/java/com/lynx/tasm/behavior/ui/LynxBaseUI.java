@@ -370,6 +370,8 @@ public abstract class LynxBaseUI
   private ArrayList<ArrayList<SizeValue>> mBlockNativeEventAreas = null;
   // default event through is undefined
   protected EnableStatus mEventThrough = EnableStatus.Undefined;
+  // specifiy the active regions of the event-through attribute.
+  protected ArrayList<ArrayList<SizeValue>> mEventThroughActiveRegions = null;
 
   protected int mFlattenChildrenCount = 0;
   private boolean mNeedSortChildren = false;
@@ -1721,6 +1723,44 @@ public abstract class LynxBaseUI
     } catch (Throwable e) {
       LLog.i(TAG, e.toString());
       mEventThrough = EnableStatus.Undefined;
+    }
+  }
+
+  @LynxProp(name = PropsConstants.EVENT_THROUGH_ACTIVE_REGIONS)
+  public void setEventThroughActiveRegions(@Nullable Dynamic value) {
+    this.mEventThroughActiveRegions = null;
+    if (value == null || value.getType() != ReadableType.Array || value.asArray() == null) {
+      LLog.w(TAG, "setEventThroughActiveRegions input type error");
+      return;
+    }
+    ReadableArray eventThroughActiveRegionsArray = value.asArray();
+    // Supports two types: `30px` and `50%`
+    ArrayList<ArrayList<SizeValue>> regions = new ArrayList<ArrayList<SizeValue>>();
+    for (int i = 0; i < eventThroughActiveRegionsArray.size(); ++i) {
+      ReadableArray region = eventThroughActiveRegionsArray.getArray(i);
+      if (region == null || region.size() != 4) {
+        LLog.w(TAG, "setEventThroughActiveRegions " + i + "th type error, size != 4");
+        continue;
+      }
+      SizeValue x = SizeValue.fromCSSString(region.getString(0));
+      SizeValue y = SizeValue.fromCSSString(region.getString(1));
+      SizeValue w = SizeValue.fromCSSString(region.getString(2));
+      SizeValue h = SizeValue.fromCSSString(region.getString(3));
+      if (x != null && y != null && w != null && h != null) {
+        ArrayList<SizeValue> rect = new ArrayList<SizeValue>();
+        rect.add(x);
+        rect.add(y);
+        rect.add(w);
+        rect.add(h);
+        regions.add(rect);
+      } else {
+        LLog.w(TAG, "setEventThroughActiveRegions " + i + "th type error");
+      }
+    }
+    if (regions.size() > 0) {
+      this.mEventThroughActiveRegions = regions;
+    } else {
+      LLog.w(TAG, "setEventThroughActiveRegions empty regions");
     }
   }
 
@@ -3168,10 +3208,6 @@ public abstract class LynxBaseUI
       return false;
     } else if (parent() != null) {
       EventTarget parent = parent();
-      // when parent is root ui, return false.
-      if (parent instanceof UIBody) {
-        return false;
-      }
       return parent.ignoreFocus();
     }
     return false;
@@ -3281,22 +3317,52 @@ public abstract class LynxBaseUI
   }
 
   @Override
-  public boolean eventThrough() {
+  public boolean eventThrough(float x, float y) {
     // If mEventThrough == Enable, return true. If mEventThrough == Disable, return false.
     // If mEventThrough == Undefined && parent not null, return parent.eventThrough()
+    boolean isEventThrough = false;
     if (mEventThrough == EnableStatus.Enable) {
-      return true;
+      isEventThrough = true;
     } else if (mEventThrough == EnableStatus.Disable) {
-      return false;
+      isEventThrough = false;
     } else if (parent() != null) {
       EventTarget parent = parent();
       // when parent is root ui, return false.
       if (parent instanceof UIBody) {
-        return false;
+        isEventThrough = false;
+      } else {
+        float targetX = x, targetY = y;
+        if (parent instanceof LynxBaseUI) {
+          LynxBaseUI ui = (LynxBaseUI) parent;
+          RectF viewRect = LynxUIHelper.convertRectFromUIToAnotherUI(
+              this, ui, new RectF(0, 0, ui.getWidth(), ui.getHeight()));
+          targetX -= viewRect.left;
+          targetY -= viewRect.top;
+        }
+        isEventThrough = parent.eventThrough(targetX, targetY);
       }
-      return parent.eventThrough();
     }
-    return false;
+
+    if (mEventThroughActiveRegions == null) {
+      return isEventThrough;
+    }
+
+    boolean isHitEventThroughActiveRegions = false;
+    for (int i = 0; i < this.mEventThroughActiveRegions.size(); ++i) {
+      ArrayList<SizeValue> region = this.mEventThroughActiveRegions.get(i);
+      if (region != null && region.size() == 4) {
+        float left = region.get(0).convertToDevicePx(mWidth);
+        float top = region.get(1).convertToDevicePx(mHeight);
+        float right = left + region.get(2).convertToDevicePx(mWidth);
+        float bottom = top + region.get(3).convertToDevicePx(mHeight);
+        isHitEventThroughActiveRegions = x >= left && x < right && y >= top && y < bottom;
+        if (isHitEventThroughActiveRegions) {
+          LLog.i(TAG, "hit the event through active regions!");
+          break;
+        }
+      }
+    }
+    return isHitEventThroughActiveRegions ? isEventThrough : !isEventThrough;
   }
 
   @Override

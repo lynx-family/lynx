@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/include/float_comparison.h"
 #include "base/trace/native/trace_event.h"
 #include "core/base/harmony/harmony_trace_event_def.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/base/node_manager.h"
@@ -166,11 +167,32 @@ void UIRoot::OnNodeReady() {
 }
 
 bool UIRoot::EventThrough(float point[2]) {
-  bool res = UIBase::EventThrough(point);
-  if (!res) {
-    res |= context_->EnableEventThrough();
+  bool is_event_through = UIBase::EventThrough(point);
+  if (!is_event_through) {
+    is_event_through |= context_->EnableEventThrough();
   }
-  return res;
+
+  if (event_through_active_regions_.empty()) {
+    return is_event_through;
+  }
+
+  bool is_hit_event_through_active_regions = false;
+  for (const auto& region : event_through_active_regions_) {
+    float x = region[0].GetValue(width_);
+    float y = region[1].GetValue(height_);
+    float w = region[2].GetValue(width_);
+    float h = region[3].GetValue(height_);
+    is_hit_event_through_active_regions =
+        base::FloatsLargerOrEqual(point[0], x) &&
+        base::FloatsLargerOrEqual(x + w, point[0]) &&
+        base::FloatsLargerOrEqual(point[1], y) &&
+        base::FloatsLargerOrEqual(y + h, point[1]);
+    if (is_hit_event_through_active_regions) {
+      break;
+    }
+  }
+  return is_hit_event_through_active_regions ? is_event_through
+                                             : !is_event_through;
 }
 
 void UIRoot::GetOffsetToScreen(float offset_screen[2]) {
