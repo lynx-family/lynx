@@ -108,6 +108,7 @@ class UIList : public BaseScrollContainer,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
   fml::RefPtr<lepus::CArray> GetVisibleCells() const;
   void SendScrollEndEvent();
+  float GetScrollRange();
 
  private:
   ArkUI_NodeHandle container_layout_{nullptr};

@@ -560,19 +560,38 @@ UIComponent* UIList::GetItemAtIndex(int32_t index) {
 
 std::pair<float, float> UIList::CalculateOffsets(UIComponent* item) {
   bool vertical = IsVerticalScrollView();
+  // Clamp scroll offset to scroll range to make sure that we never paas a litte
+  // bit larger value to Harmony scroll component.
   float offset_x =
       vertical
           ? 0
-          : item->left_ - (width_ - item->width_) * snap_factor_ + snap_offset_;
-  offset_x = std::round((offset_x * context_->ScaledDensity())) /
-             context_->ScaledDensity();
+          : std::clamp(item->left_ - (width_ - item->width_) * snap_factor_ +
+                           snap_offset_,
+                       0.f, GetScrollRange());
   float offset_y =
       vertical
-          ? item->top_ - (height_ - item->height_) * snap_factor_ + snap_offset_
+          ? std::clamp(item->top_ - (height_ - item->height_) * snap_factor_ +
+                           snap_offset_,
+                       0.f, GetScrollRange())
           : 0;
-  offset_y = std::round((offset_y * context_->ScaledDensity())) /
-             context_->ScaledDensity();
   return std::make_pair(offset_x, offset_y);
+}
+
+float UIList::GetScrollRange() {
+  ArkUI_IntSize list_size;
+  ArkUI_IntSize content_size;
+  // Get list size and content size in pixel.
+  OH_ArkUI_NodeUtils_GetLayoutSize(node_, &list_size);
+  OH_ArkUI_NodeUtils_GetLayoutSize(container_layout_, &content_size);
+  // Convert scroll range from pixel to VP, which is the consistent with Harmony
+  // scroll component.
+  if (IsVerticalScrollView()) {
+    return std::max(0, content_size.height - list_size.height) /
+           context_->ScaledDensity();
+  } else {
+    return std::max(0, content_size.width - list_size.width) /
+           context_->ScaledDensity();
+  }
 }
 
 std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
