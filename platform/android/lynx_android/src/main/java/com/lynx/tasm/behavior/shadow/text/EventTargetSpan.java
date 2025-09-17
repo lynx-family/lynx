@@ -35,17 +35,20 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
   private Map<String, EventsListener> mEvents;
   private EventTarget.EnableStatus mIgnoreFocus;
   private EventTarget.EnableStatus mEventThrough;
+  private EventTarget.PointerEventsValue mPointerEvents;
   private ReadableMap mDataset = new JavaOnlyMap();
   private Matrix mTransformMatrix = new Matrix();
   private boolean mEnableTouchPseudoPropagation;
 
   public EventTargetSpan(int sign, Map<String, EventsListener> events,
       EventTarget.EnableStatus ignoreFocus, boolean enableTouchPseudoPropagation,
-      EventTarget.EnableStatus eventThrough, ReadableMap dataset) {
+      EventTarget.EnableStatus eventThrough, EventTarget.PointerEventsValue pointerEvents,
+      ReadableMap dataset) {
     mSign = sign;
     mParent = null;
     mIgnoreFocus = ignoreFocus;
     mEventThrough = eventThrough;
+    mPointerEvents = pointerEvents;
     mDataset = dataset;
     mEnableTouchPseudoPropagation = enableTouchPseudoPropagation;
     if (events != null) {
@@ -241,6 +244,18 @@ public class EventTargetSpan extends ClickableSpan implements EventTarget {
       return parent.eventThrough(x, y);
     }
     return false;
+  }
+
+  @Override
+  public PointerEventsValue pointerEvents() {
+    if (mPointerEvents != PointerEventsValue.Unset) {
+      return mPointerEvents;
+    }
+    if (parent() != null) {
+      EventTarget parent = parent();
+      return parent.pointerEvents();
+    }
+    return PointerEventsValue.Auto;
   }
 
   @Override

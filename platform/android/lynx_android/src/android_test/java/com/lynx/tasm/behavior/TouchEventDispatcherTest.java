@@ -186,6 +186,11 @@ public class TouchEventDispatcherTest {
     }
 
     @Override
+    public PointerEventsValue pointerEvents() {
+      return PointerEventsValue.Auto;
+    }
+
+    @Override
     public EventTargetBase parentResponder() {
       return null;
     }
@@ -438,6 +443,20 @@ public class TouchEventDispatcherTest {
 
   @Test
   public void testIgnoreFocus() {
+    UIView parentUI = new UIView(mContext);
+    mRootUI.insertChild(parentUI, 0);
+    UIView childUI = new UIView(mContext);
+    parentUI.insertChild(childUI, 0);
+    assertFalse(childUI.ignoreFocus());
+    JavaOnlyArray array = new JavaOnlyArray();
+    array.pushBoolean(true);
+    DynamicFromArray param = new DynamicFromArray(array, 0);
+    parentUI.setIgnoreFocus(param);
+    assertTrue(childUI.ignoreFocus());
+  }
+
+  @Test
+  public void testPointerEvents() {
     UIView parentUI = new UIView(mContext);
     mRootUI.insertChild(parentUI, 0);
     UIView childUI = new UIView(mContext);

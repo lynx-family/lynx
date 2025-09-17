@@ -2896,9 +2896,8 @@ LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
 
 LYNX_PROP_DEFINE("pointer-events", setPointerEvents, NSInteger) {
   // If requestReset, the _pointerEvents will be Undefined.
-  enum LynxPointerEventsValue res = kLynxPointerEventsValueUnset;
   if (requestReset) {
-    _pointerEvents = res;
+    _pointerEvents = kLynxPointerEventsValueUnset;
     return;
   }
   if (value >= kLynxPointerEventsValueAuto && value < kLynxPointerEventsValueUnset) {
@@ -3394,7 +3393,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
   if (!target || [target pointerEvents] == kLynxPointerEventsValueNone) {
     target = nil;
     for (LynxUI* sibling in [siblingTargets reverseObjectEnumerator]) {
-      if (sibling == guard) {
+      if (!sibling || sibling == guard) {
         continue;
       }
       CALayer* parentLayer = self.view.layer.presentationLayer ?: self.view.layer.modelLayer;
@@ -3409,7 +3408,7 @@ LYNX_PROP_DEFINE("ios-background-shape-layer", setUseBackgroundShapeLayer, BOOL)
       }
     }
   }
-  return target;
+  return target ? target : self;
 }
 
 - (BOOL)containsPoint:(CGPoint)point inHitTestFrame:(CGRect)frame {

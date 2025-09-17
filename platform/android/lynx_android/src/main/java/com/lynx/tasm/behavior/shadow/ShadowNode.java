@@ -41,12 +41,14 @@ public class ShadowNode extends LayoutNode {
   protected Map<String, EventsListener> mEvents;
   protected EventTarget.EnableStatus mIgnoreFocus;
   protected EventTarget.EnableStatus mEventThrough;
+  protected EventTarget.PointerEventsValue mPointerEvents;
   protected ReadableMap mDataset = new JavaOnlyMap();
   protected boolean mEnableTouchPseudoPropagation;
 
   public ShadowNode() {
     mIgnoreFocus = EventTarget.EnableStatus.Undefined;
     mEventThrough = EventTarget.EnableStatus.Undefined;
+    mPointerEvents = EventTarget.PointerEventsValue.Unset;
     mEnableTouchPseudoPropagation = true;
   }
 
@@ -245,7 +247,7 @@ public class ShadowNode extends LayoutNode {
   }
 
   @LynxProp(name = PropsConstants.EVENT_THROUGH)
-  public void setEventThrough(Dynamic eventThrough) {
+  public void setEventThrough(@Nullable Dynamic eventThrough) {
     // If eventThrough is null or not boolean, the mEventThrough will be Undefined.
     if (eventThrough == null) {
       this.mEventThrough = EventTarget.EnableStatus.Undefined;
@@ -259,6 +261,14 @@ public class ShadowNode extends LayoutNode {
     }
   }
 
+  @LynxProp(name = PropsConstants.POINTER_EVENTS)
+  public void setPointerEvents(int pointerEvents) {
+    if (pointerEvents >= EventTarget.PointerEventsValue.Auto.ordinal()
+        && pointerEvents < EventTarget.PointerEventsValue.Unset.ordinal()) {
+      mPointerEvents = EventTarget.PointerEventsValue.values()[pointerEvents];
+    }
+  }
+
   @LynxProp(name = PropsConstants.DATASET)
   public void setDataset(@Nullable ReadableMap dataset) {
     mDataset = dataset;
@@ -267,12 +277,13 @@ public class ShadowNode extends LayoutNode {
   public boolean needGenerateEventTargetSpan() {
     return (this.mEvents != null && !this.mEvents.isEmpty())
         || this.mIgnoreFocus != EventTarget.EnableStatus.Undefined
-        || this.mEventThrough != EventTarget.EnableStatus.Undefined;
+        || this.mEventThrough != EventTarget.EnableStatus.Undefined
+        || this.mPointerEvents != EventTarget.PointerEventsValue.Unset;
   }
 
   public EventTargetSpan toEventTargetSpan() {
     return new EventTargetSpan(getSignature(), this.mEvents, this.mIgnoreFocus,
-        this.mEnableTouchPseudoPropagation, this.mEventThrough, this.mDataset);
+        this.mEnableTouchPseudoPropagation, this.mEventThrough, this.mPointerEvents, this.mDataset);
   }
 
   @LynxProp(name = PropsConstants.ENABLE_TOUCH_PSEUDO_PROPAGATION)

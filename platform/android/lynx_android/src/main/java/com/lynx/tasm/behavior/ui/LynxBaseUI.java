@@ -20,6 +20,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.text.TextUtils;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -372,6 +373,7 @@ public abstract class LynxBaseUI
   protected EnableStatus mEventThrough = EnableStatus.Undefined;
   // specifiy the active regions of the event-through attribute.
   protected ArrayList<ArrayList<SizeValue>> mEventThroughActiveRegions = null;
+  protected PointerEventsValue mPointerEvents = PointerEventsValue.Unset;
 
   protected int mFlattenChildrenCount = 0;
   private boolean mNeedSortChildren = false;
@@ -1656,18 +1658,27 @@ public abstract class LynxBaseUI
     }
     setOverflowWithMask(OVERFLOW_Y, value);
   }
+
+  @LynxProp(name = PropsConstants.POINTER_EVENTS)
+  public void setPointerEvents(int pointerEvents) {
+    if (pointerEvents >= PointerEventsValue.Auto.ordinal()
+        && pointerEvents < PointerEventsValue.Unset.ordinal()) {
+      mPointerEvents = PointerEventsValue.values()[pointerEvents];
+    }
+  }
+
   @LynxProp(name = PropsConstants.USER_INTERACTION_ENABLED, defaultBoolean = true)
-  public void setUserInteractionEnabled(@Nullable boolean userInteractionEnabled) {
+  public void setUserInteractionEnabled(boolean userInteractionEnabled) {
     this.userInteractionEnabled = userInteractionEnabled;
   }
 
   @LynxProp(name = PropsConstants.NATIVE_INTERACTION_ENABLED, defaultBoolean = false)
-  public void setNativeInteractionEnabled(@Nullable boolean nativeInteractionEnabled) {
+  public void setNativeInteractionEnabled(boolean nativeInteractionEnabled) {
     this.nativeInteractionEnabled = nativeInteractionEnabled;
   }
 
   @LynxProp(name = PropsConstants.BLOCK_NATIVE_EVENT, defaultBoolean = false)
-  public void setBlockNativeEvent(@Nullable boolean blockNativeEvent) {
+  public void setBlockNativeEvent(boolean blockNativeEvent) {
     this.mBlockNativeEvent = blockNativeEvent;
   }
 
@@ -3011,6 +3022,9 @@ public abstract class LynxBaseUI
   // on the response chain.
   @Override
   public EventTarget hitTest(float x, float y, boolean ignoreUserInteraction) {
+    Log.d("hxh-debug", "hitTest x: " + x + " y: " + y);
+    float originX = x, originY = y;
+    ArrayList<EventTarget> siblingTargets = new ArrayList<>();
     LynxBaseUI target = null;
 
     float child_x = x;
@@ -3050,6 +3064,7 @@ public abstract class LynxBaseUI
       }
 
       if (contain) {
+        siblingTargets.add(ui);
         if (ui.isOnResponseChain()) {
           target = ui;
           child_x = point[0];
@@ -3064,27 +3079,98 @@ public abstract class LynxBaseUI
       }
     }
 
+    EventTarget bestHitTarget = null;
     if (target == null) {
-      return this;
+      bestHitTarget = this;
+    } else {
+      bestHitTarget = performHitTestOnTarget(target, x, y, child_x, child_y, ignoreUserInteraction);
     }
 
+    if (bestHitTarget == null || bestHitTarget.pointerEvents() == PointerEventsValue.None) {
+      bestHitTarget =
+          findHitTargetInSiblings(siblingTargets, target, originX, originY, ignoreUserInteraction);
+    }
+    return bestHitTarget != null ? bestHitTarget : this;
+  }
+
+  private EventTarget performHitTestOnTarget(LynxBaseUI target, float x, float y, float child_x,
+      float child_y, boolean ignoreUserInteraction) {
     if (!target.isCustomHittest() && target.needCustomLayout() && target instanceof UIGroup) {
-      if (mContext.getEnableEventRefactor()) {
-        return ((UIGroup) target).findUIWithCustomLayout(child_x, child_y, (UIGroup) target);
-      }
-      return ((UIGroup) target)
-          .findUIWithCustomLayout(
-              x - target.getOriginLeft(), y - target.getOriginTop(), (UIGroup) target);
+      return performCustomLayoutHitTest((UIGroup) target, x, y, child_x, child_y);
+    } else {
+      return performStandardHitTest(target, x, y, child_x, child_y, ignoreUserInteraction);
     }
-    if (mContext.getEnableEventRefactor()) {
-      x = child_x;
-      y = child_y;
-      return target.hitTest(x, y, ignoreUserInteraction);
-    }
+  }
 
-    x = x + target.getScrollX() - target.getOriginLeft() - target.getTranslationX();
-    y = y + target.getScrollY() - target.getOriginTop() - target.getTranslationY();
-    return target.hitTest(x, y, ignoreUserInteraction);
+  private EventTarget performCustomLayoutHitTest(
+      UIGroup target, float x, float y, float child_x, float child_y) {
+    if (mContext.getEnableEventRefactor()) {
+      return target.findUIWithCustomLayout(child_x, child_y, target);
+    } else {
+      return target.findUIWithCustomLayout(
+          x - target.getOriginLeft(), y - target.getOriginTop(), target);
+    }
+  }
+
+  private EventTarget performStandardHitTest(LynxBaseUI target, float x, float y, float child_x,
+      float child_y, boolean ignoreUserInteraction) {
+    if (mContext.getEnableEventRefactor()) {
+      return target.hitTest(child_x, child_y, ignoreUserInteraction);
+    } else {
+      float adjustedX = x + target.getScrollX() - target.getOriginLeft() - target.getTranslationX();
+      float adjustedY = y + target.getScrollY() - target.getOriginTop() - target.getTranslationY();
+      return target.hitTest(adjustedX, adjustedY, ignoreUserInteraction);
+    }
+  }
+
+  private EventTarget findHitTargetInSiblings(List<EventTarget> siblingTargets,
+      EventTarget excludeTarget, float originX, float originY, boolean ignoreUserInteraction) {
+    for (int i = siblingTargets.size() - 1; i >= 0; i--) {
+      LynxBaseUI sibling = (LynxBaseUI) siblingTargets.get(i);
+      if (sibling == null || sibling == excludeTarget) {
+        continue;
+      }
+
+      EventTarget hitTarget =
+          performHitTestOnSibling(sibling, originX, originY, ignoreUserInteraction);
+      if (hitTarget != null) {
+        return hitTarget;
+      }
+    }
+    return null;
+  }
+
+  private EventTarget performHitTestOnSibling(
+      LynxBaseUI sibling, float originX, float originY, boolean ignoreUserInteraction) {
+    float[] adjustedPoint = calculateSiblingCoordinates(sibling, originX, originY);
+    float siblingX = adjustedPoint[0];
+    float siblingY = adjustedPoint[1];
+
+    if (!sibling.isCustomHittest() && sibling.needCustomLayout() && sibling instanceof UIGroup) {
+      return ((UIGroup) sibling).findUIWithCustomLayout(siblingX, siblingY, (UIGroup) sibling);
+    } else {
+      return sibling.hitTest(siblingX, siblingY, ignoreUserInteraction);
+    }
+  }
+
+  private float[] calculateSiblingCoordinates(LynxBaseUI sibling, float originX, float originY) {
+    float siblingX = originX;
+    float siblingY = originY;
+
+    if (mContext.getEnableEventRefactor()) {
+      float[] point = getTargetPoint(siblingX, siblingY, getScrollX(), getScrollY(),
+          sibling.getRectWithoutTransform(), sibling.getTransformMatrix());
+      return point;
+    } else {
+      if (!sibling.isCustomHittest() && sibling.needCustomLayout() && sibling instanceof UIGroup) {
+        siblingX -= sibling.getOriginLeft();
+        siblingY -= sibling.getOriginTop();
+      } else {
+        siblingX += sibling.getScrollX() - sibling.getOriginLeft() - sibling.getTranslationX();
+        siblingY += sibling.getScrollY() - sibling.getOriginTop() - sibling.getTranslationY();
+      }
+      return new float[] {siblingX, siblingY};
+    }
   }
 
   @Override
@@ -3363,6 +3449,19 @@ public abstract class LynxBaseUI
       }
     }
     return isHitEventThroughActiveRegions ? isEventThrough : !isEventThrough;
+  }
+
+  @Override
+  public PointerEventsValue pointerEvents() {
+    Log.d("hxh-debug", "pointerevents");
+    if (mPointerEvents != PointerEventsValue.Unset) {
+      return mPointerEvents;
+    }
+    if (parent() != null) {
+      EventTarget parent = parent();
+      return parent.pointerEvents();
+    }
+    return PointerEventsValue.Auto;
   }
 
   @Override

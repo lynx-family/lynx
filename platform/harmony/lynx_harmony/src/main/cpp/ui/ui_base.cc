@@ -1799,16 +1799,19 @@ EventTarget* UIBase::HitTest(float point[2]) {
     best_hittest_target = nullptr;
     for (auto it = sibling_targets.rbegin(); it != sibling_targets.rend();
          ++it) {
-      if (*it == target) {
+      EventTarget* sibling = *it;
+      if (!sibling || sibling == target) {
         continue;
       }
-      best_hittest_target = (*it)->HitTest(origin_point);
+      float sibling_point[] = {origin_point[0], origin_point[1]};
+      sibling->GetPointInTarget(sibling_point, this, origin_point);
+      best_hittest_target = sibling->HitTest(sibling_point);
       if (best_hittest_target) {
         break;
       }
     }
   }
-  return best_hittest_target;
+  return best_hittest_target ? best_hittest_target : this;
 }
 
 float UIBase::OffsetXForCalcPosition() {

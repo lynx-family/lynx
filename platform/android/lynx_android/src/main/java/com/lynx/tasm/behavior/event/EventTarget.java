@@ -15,6 +15,13 @@ import java.util.Map;
 public interface EventTarget extends EventTargetBase {
   public enum EnableStatus { Enable, Disable, Undefined }
 
+  public enum PointerEventsValue {
+    Auto,
+    None,
+    // add new type before kLynxPointerEventsValueUnset
+    Unset,
+  }
+
   int getSign();
 
   int getPseudoStatus();
@@ -74,6 +81,8 @@ public interface EventTarget extends EventTargetBase {
   boolean dispatchEvent(LynxEventDetail event);
 
   boolean eventThrough(float x, float y);
+
+  PointerEventsValue pointerEvents();
 
   EventTarget getParentLynxPageUI();
 

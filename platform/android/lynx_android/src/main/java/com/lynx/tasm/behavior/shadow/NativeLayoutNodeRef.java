@@ -71,8 +71,10 @@ public class NativeLayoutNodeRef extends ShadowNode {
   public static class InlineViewEventSpan extends EventTargetSpan {
     public InlineViewEventSpan(int sign, Map<String, EventsListener> events,
         EventTarget.EnableStatus ignoreFocus, boolean enableTouchPseudoPropagation,
-        EventTarget.EnableStatus eventThrough, ReadableMap dataset) {
-      super(sign, events, ignoreFocus, enableTouchPseudoPropagation, eventThrough, dataset);
+        EventTarget.EnableStatus eventThrough, EventTarget.PointerEventsValue pointerEvents,
+        ReadableMap dataset) {
+      super(sign, events, ignoreFocus, enableTouchPseudoPropagation, eventThrough, pointerEvents,
+          dataset);
     }
   }
 
@@ -86,7 +88,7 @@ public class NativeLayoutNodeRef extends ShadowNode {
   @Override
   public EventTargetSpan toEventTargetSpan() {
     return new InlineViewEventSpan(getSignature(), mEvents, mIgnoreFocus,
-        mEnableTouchPseudoPropagation, mEventThrough, mDataset);
+        mEnableTouchPseudoPropagation, mEventThrough, mPointerEvents, mDataset);
   }
 
   public NativeLayoutNodeSpan generateStyleSpan(

@@ -127,19 +127,17 @@ LYNX_PROP_SETTER("enable-touch-pseudo-propagation", setEnableTouchPseudoPropagat
 
 LYNX_PROP_DEFINE("event-through", setEventThrough, BOOL) {
   // If requestReset, the _eventThrough will be Undefined.
-  enum LynxEventPropStatus res = kLynxEventPropUndefined;
   if (requestReset) {
-    _eventThrough = res;
+    _eventThrough = kLynxEventPropUndefined;
     return;
   }
   _eventThrough = value ? kLynxEventPropEnable : kLynxEventPropDisable;
 }
 
-LYNX_PROP_DEFINE("pointer-events", setPointerEvents, NSInteger) {
+LYNX_PROP_SETTER("pointer-events", setPointerEvents, NSInteger) {
   // If requestReset, the _pointerEvents will be Undefined.
-  enum LynxPointerEventsValue res = kLynxPointerEventsValueUnset;
   if (requestReset) {
-    _pointerEvents = res;
+    _pointerEvents = kLynxPointerEventsValueUnset;
     return;
   }
   if (value >= kLynxPointerEventsValueAuto && value < kLynxPointerEventsValueUnset) {
