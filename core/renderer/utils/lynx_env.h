@@ -108,6 +108,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
     FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
     // FIXME(linxs): remove this config in the next version
     FIX_NEGATIVE_Z_INDEX_INSERT_BUG,
+    // FIXME(linxs): remove this config in the next version(remove in 3.6)
+    FIX_STACKING_CONTEXT_FLAG_BUG,
     ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
     ENABLE_EVENT_HANDLE_REFACTOR,
     // FIXME(wangyifei.20010605): remove this config in the next version(remove
@@ -235,6 +237,8 @@ class BASE_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::FIX_FONT_SIZE_OVERRIDE_DIRECTION_CHANGE_BUG,
              "fix_font_size_override_direction_change_bug"},
             {Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, "fix_negative_z_index_bug"},
+            {Key::FIX_STACKING_CONTEXT_FLAG_BUG,
+             "fix_stacking_context_flag_bug"},
             {Key::ENABLE_NEW_ANIMATOR_ON_PATCH_FINISH_OPT,
              "enable_new_animator_on_patch_finish_opt"},
             {Key::ENABLE_EVENT_HANDLE_REFACTOR, "enable_event_refactor"},
