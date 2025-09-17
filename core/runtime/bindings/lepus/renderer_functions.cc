@@ -4862,7 +4862,6 @@ RENDERER_FUNCTION_CC(FiberFlushElementTree) {
 }
 
 RENDERER_FUNCTION_CC(FiberOnLifecycleEvent) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ON_LIFECYCLE_EVENT);
   // parameter size = 1
   // [0] Array -> component event info
   CHECK_ARGC_GE(FiberOnLifecycleEvent, 1);

@@ -237,6 +237,8 @@ void TasmMediator::NotifyJSUpdatePageData() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_NOTIFY_JS_UPDATE_PAGE_DATA,
               [trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(trace_flow_id);
+                ctx.event()->add_debug_annotations(
+                    kTaskName, kJSTaskNotifyJSUpdatePageData);
               });
   // if there also has a "UpdateDataByJS" task pending in tasm thread, do
   // nothing,  "UpdateNativeData" will call "NotifyJSUpdatePageData" again
@@ -245,11 +247,6 @@ void TasmMediator::NotifyJSUpdatePageData() {
                             trace_flow_id,
                             enqueue_info](auto& runtime) mutable {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskNotifyJSUpdatePageData,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
     if (card_cached_data_mgr->GetTaskCount() <= 0) {
       runtime->NotifyJSUpdatePageData(trace_flow_id);
     }
@@ -260,15 +257,24 @@ void TasmMediator::OnCardConfigDataChanged(const lepus::Value& data) {
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_CARD_CONFIG_DATA_CHANGED,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(
+                    kTaskName, kJSTaskOnCardConfigDataChanged);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-  runtime_actor_->ActAsync([enqueue_info, safe_data = lepus_value::ShallowCopy(
-                                              data)](auto& runtime) {
+  runtime_actor_->ActAsync([enqueue_info,
+                            safe_data = lepus_value::ShallowCopy(data),
+                            flow_id](auto& runtime) {
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskOnCardConfigDataChanged,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_ON_CARD_CONFIG_DATA_CHANGED,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
     runtime->OnCardConfigDataChanged(safe_data);
     runtime->NotifyJSUpdateCardConfigData();
   });
@@ -349,11 +355,6 @@ void TasmMediator::OnJSSourcePrepared(
                             url, pipeline_options,
                             trace_flow_id](auto& runtime) mutable {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskOnJSSourcePrepared,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
     runtime->OnJSSourcePrepared(std::move(bundle), global_props, page_name, dsl,
                                 bundle_module_mode, url, pipeline_options,
                                 trace_flow_id);
@@ -382,16 +383,13 @@ void TasmMediator::CallJSApiCallback(piper::ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_MEDIATOR_CALL_JS_API_CALLBACK,
               [=](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(callback.trace_flow_id());
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskCallJSApiCallback);
               });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->ActAsync(
       [callback = std::move(callback), enqueue_info](auto& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskCallJSApiCallback,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
         runtime->CallJSApiCallback(std::move(callback));
       });
 }
@@ -406,17 +404,14 @@ void TasmMediator::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
               TASM_MEDIATOR_CALL_JS_API_CALLBACK_WITH_VALUE,
               [=](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_flow_ids(callback.trace_flow_id());
+                ctx.event()->add_debug_annotations(
+                    kTaskName, kJSTaskCallJSApiCallbackWithValue);
               });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->ActAsync([callback = std::move(callback),
                             safe_value = lepus_value::ShallowCopy(value),
                             persist, enqueue_info](auto& runtime) mutable {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskCallJSApiCallbackWithValue,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
     runtime->CallJSApiCallbackWithValue(std::move(callback), safe_value,
                                         persist);
   });
@@ -437,16 +432,24 @@ void TasmMediator::CallJSFunction(const std::string& module_id,
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_CALL_JS_FUNCTION,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskCallJSFunction);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->ActAsync([module_id, method_id,
                             safe_value = lepus_value::ShallowCopy(arguments),
-                            enqueue_info](auto& runtime) {
+                            enqueue_info, flow_id](auto& runtime) {
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskCallJSFunction,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_CALL_JS_FUNCTION,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
     runtime->CallJSFunction(module_id, method_id, safe_value);
   });
 }
@@ -457,15 +460,23 @@ void TasmMediator::OnJSAppReload(
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_JS_APP_RELOAD,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskOnJSAppReload);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->ActAsync([data = std::move(data), pipeline_options,
-                            enqueue_info](auto& runtime) mutable {
+                            enqueue_info, flow_id](auto& runtime) mutable {
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskOnJSAppReload,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_ON_JS_APP_RELOAD,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
     runtime->OnAppReload(std::move(data), pipeline_options);
   });
 }
@@ -476,6 +487,12 @@ void TasmMediator::OnLifecycleEvent(const lepus::Value& args) {
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
       std::make_unique<pub::ValueImplLepus>(args));
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_LIFE_CYCLE_EVENT,
+              [&event](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(event->TraceFlowId());
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskDispatchMessageEvent);
+              });
   DispatchMessageEvent(std::move(event));
 }
 
@@ -491,14 +508,22 @@ void TasmMediator::OnI18nResourceChanged(const std::string& msg) {
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_I18N_RESOURCE_CHANGED,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(
+                    kTaskName, kJSTaskOnI18nResourceChanged);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-  runtime_actor_->ActAsync([msg, enqueue_info](auto& runtime) {
+  runtime_actor_->ActAsync([msg, enqueue_info, flow_id](auto& runtime) {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskOnI18nResourceChanged,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_ON_I18N_RESOURCE_CHANGED,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
     runtime->I18nResourceChanged(msg);
   });
 }
@@ -507,17 +532,25 @@ void TasmMediator::OnComponentDecoded(tasm::TasmRuntimeBundle bundle) {
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_COMPONENT_DECODED,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskOnComponentDecoded);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-  runtime_actor_->ActAsync(
-      [bundle = std::move(bundle), enqueue_info](auto& runtime) mutable {
-        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskOnComponentDecoded,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
-        runtime->OnComponentDecoded(std::move(bundle));
-      });
+  runtime_actor_->ActAsync([bundle = std::move(bundle), enqueue_info,
+                            flow_id](auto& runtime) mutable {
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_ON_COMPONENT_DECODED,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
+    runtime->OnComponentDecoded(std::move(bundle));
+  });
 }
 
 fml::RefPtr<fml::TaskRunner> TasmMediator::GetLepusTimedTaskRunner() {
@@ -749,11 +782,6 @@ event::DispatchEventResult TasmMediator::DispatchMessageEvent(
       runtime_actor_->Act([message_event = std::move(copy_event),
                            enqueue_info](auto& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskDispatchMessageEvent,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
         runtime->OnReceiveMessageEvent(std::move(message_event));
       });
     }
@@ -772,17 +800,25 @@ void TasmMediator::OnGlobalPropsUpdated(const lepus::Value& props) {
   if (!runtime_actor_) {
     return;
   }
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, TASM_ON_GLOBAL_PROPS_UPDATED,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskOnGlobalPropsUpdated);
+              });
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-  runtime_actor_->Act(
-      [props = lepus::Value::ShallowCopy(props), enqueue_info](auto& runtime) {
-        runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskOnGlobalPropsUpdated,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
-        runtime->OnGlobalPropsUpdated(props);
-      });
+  runtime_actor_->Act([props = lepus::Value::ShallowCopy(props), enqueue_info,
+                       flow_id](auto& runtime) {
+    runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
+    (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                    // warning.
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_ON_GLOBAL_PROPS_UPDATED,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_terminating_flow_ids(flow_id);
+                });
+    runtime->OnGlobalPropsUpdated(props);
+  });
 }
 
 void TasmMediator::OnEventCapture(long target_id, bool is_catch,

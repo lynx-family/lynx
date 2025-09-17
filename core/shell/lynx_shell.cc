@@ -236,7 +236,13 @@ void LynxShell::InitRuntime(
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths, uint32_t runtime_flags,
     const std::string& code_cache_source_url) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME);
+  [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_INIT_RUNTIME,
+              [flow_id](lynx::perfetto::EventContext ctx) {
+                ctx.event()->add_flow_ids(flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskInitRuntime);
+              });
 #if ENABLE_TESTBENCH_RECORDER
   int64_t record_id = reinterpret_cast<int64_t>(this);
   engine_actor_->ActLite(
@@ -300,14 +306,15 @@ void LynxShell::InitRuntime(
   start_js_runtime_task_ =
       [native_module_manager, preload_js_paths = std::move(preload_js_paths),
        runtime_observer = runtime_observer_, vsync_monitor,
-       weak_js_bundle_holder = GetWeakJsBundleHolder(),
-       enqueue_info](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
+       weak_js_bundle_holder = GetWeakJsBundleHolder(), enqueue_info,
+       flow_id](std::unique_ptr<runtime::LynxRuntime>& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskInitRuntime,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
+        (void)flow_id;  // Explicitly reference `flow_id` to suppress the
+                        // compiler warning.
+        TRACE_EVENT(LYNX_TRACE_CATEGORY, INIT_RUNTIME,
+                    [flow_id](lynx::perfetto::EventContext ctx) {
+                      ctx.event()->add_terminating_flow_ids(flow_id);
+                    });
         vsync_monitor->BindToCurrentThread();
         vsync_monitor->Init();
         runtime->Init(native_module_manager, runtime_observer,
@@ -330,19 +337,29 @@ void LynxShell::AttachRuntime() {
   // timing_mediator_ will be handled inside RuntimeMediator::AttachToLynxShell
 
   if (runtime_actor_) {
+    [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_RUNTIME,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_flow_ids(flow_id);
+                  ctx.event()->add_debug_annotations(kTaskName,
+                                                     kJSTaskAttachRuntime);
+                });
+
     auto enqueue_info =
         tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
     runtime_actor_->ActAsync([facade_actor = facade_actor_,
                               engine_actor = engine_actor_,
                               card_cached_data_mgr = card_cached_data_mgr_,
                               weak_js_bundle_holder = GetWeakJsBundleHolder(),
-                              enqueue_info](auto& runtime) mutable {
+                              enqueue_info, flow_id](auto& runtime) mutable {
       runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskAttachRuntime,
-          [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-            ctx.event()->add_flow_ids(flow_id);
-          });
+      (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                      // warning.
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, ATTACH_RUNTIME,
+                  [flow_id](lynx::perfetto::EventContext ctx) {
+                    ctx.event()->add_terminating_flow_ids(flow_id);
+                  });
+
       runtime->TransitionToFullRuntime();
       runtime->SetJsBundleHolder(weak_js_bundle_holder);
       static_cast<RuntimeMediator*>(runtime->GetDelegate())
@@ -1179,15 +1196,24 @@ void LynxShell::SetPageOptions(const tasm::PageOptions& page_options) {
     }
   });
   if (runtime_actor_) {
+    [[maybe_unused]] uint64_t flow_id = TRACE_FLOW_ID();
+    TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_SET_PAGE_OPTIONS,
+                [flow_id](lynx::perfetto::EventContext ctx) {
+                  ctx.event()->add_flow_ids(flow_id);
+                  ctx.event()->add_debug_annotations(kTaskName,
+                                                     kJSTaskSetPageOptions);
+                });
+
     auto enqueue_info =
         tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-    runtime_actor_->Act([page_options, enqueue_info](auto& runtime) {
+    runtime_actor_->Act([page_options, enqueue_info, flow_id](auto& runtime) {
       runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskSetPageOptions,
-          [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-            ctx.event()->add_flow_ids(flow_id);
-          });
+      (void)flow_id;  // Explicitly reference `flow_id` to suppress the compiler
+                      // warning.
+      TRACE_EVENT(LYNX_TRACE_CATEGORY, SET_PAGE_OPTIONS,
+                  [flow_id](lynx::perfetto::EventContext ctx) {
+                    ctx.event()->add_terminating_flow_ids(flow_id);
+                  });
       runtime->SetPageOptions(page_options);
     });
   }
@@ -1218,11 +1244,6 @@ void LynxShell::DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
       runtime_actor_->Act([event = std::move(event),
                            enqueue_info](auto& runtime) mutable {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskDispatchMessageEvent,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
         runtime->OnReceiveMessageEvent(std::move(event));
       });
     }
@@ -1309,17 +1330,7 @@ void LynxShell::SetHierarchyObserver(
 
 void LynxShell::OnRuntimeCreate() {
   if (runtime_actor_) {
-    auto enqueue_info =
-        tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
-    runtime_actor_->Act([enqueue_info](auto& runtime) {
-      runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-      TRACE_EVENT(
-          LYNX_TRACE_CATEGORY, kJSTaskOnRuntimeCreate,
-          [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-            ctx.event()->add_flow_ids(flow_id);
-          });
-      runtime->OnRuntimeActorCreate();
-    });
+    runtime_actor_->Act([](auto& runtime) { runtime->OnRuntimeActorCreate(); });
   }
 }
 

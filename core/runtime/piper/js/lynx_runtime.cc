@@ -480,9 +480,9 @@ void LynxRuntime::CallJSApiCallback(piper::ApiCallBack callback) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_CALL_JS_API_CALLBACK,
               [&](lynx::perfetto::EventContext ctx) {
                 auto* debug = ctx.event()->add_debug_annotations();
-                debug->set_name("CallbackID");
+                debug->set_name(CALLBACK_ID);
                 debug->set_string_value(std::to_string(callback.id()));
-                ctx.event()->add_flow_ids(callback.trace_flow_id());
+                ctx.event()->add_terminating_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBack(std::move(callback));
 }
@@ -500,9 +500,9 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_CALL_JS_API_CALLBACK_WITH_VALUE,
               [&](lynx::perfetto::EventContext ctx) {
                 auto* debug = ctx.event()->add_debug_annotations();
-                debug->set_name("CallbackID");
+                debug->set_name(CALLBACK_ID);
                 debug->set_string_value(std::to_string(callback.id()));
-                ctx.event()->add_flow_ids(callback.trace_flow_id());
+                ctx.event()->add_terminating_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBackWithValue(std::move(callback), value, persist);
 }
@@ -519,8 +519,8 @@ void LynxRuntime::CallJSApiCallbackWithValue(piper::ApiCallBack callback,
   TRACE_EVENT(LYNX_TRACE_CATEGORY, RUNTIME_CALL_JS_API_CALLBACK_WITH_VALUE,
               [&](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations(
-                    "callback_id", std::to_string(callback.id()));
-                ctx.event()->add_flow_ids(callback.trace_flow_id());
+                    CALLBACK_ID, std::to_string(callback.id()));
+                ctx.event()->add_terminating_flow_ids(callback.trace_flow_id());
               });
   app_->InvokeApiCallBackWithValue(std::move(callback), std::move(value));
 }

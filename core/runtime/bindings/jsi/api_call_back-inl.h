@@ -25,11 +25,6 @@ template <typename... Args>
 inline void ApiCallBackManager::InvokeWithValuePersist(piper::Runtime *rt,
                                                        ApiCallBack callback,
                                                        Args &&...values) {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, API_CALLBACK_MANAGER_INVOKE_WITH_VALUE,
-              [&](lynx::perfetto::EventContext ctx) {
-                ctx.event()->add_terminating_flow_ids(callback.trace_flow_id());
-              });
-
   DCHECK(rt);
   auto iter = callback_map_.find(callback.id());
   if (iter == callback_map_.end()) {
