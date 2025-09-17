@@ -52,7 +52,9 @@ public interface GestureArenaMember {
 
   /**
    * get scroll container direction
-   * @return 1 —— vertical  -1 —— horizontal 0 —— not scroll container
+   * @see com.lynx.tasm.gesture.handler.GestureConstants
+   * @return GestureConstants.DIRECTION_VERTICAL —— vertical  GestureConstants.DIRECTION_HORIZONTAL
+   *     —— horizontal GestureConstants.DIRECTION_UNDETERMINED —— not scroll container
    */
   int getScrollContainerDirection();
 

@@ -12,15 +12,15 @@
     _gestureDirection = 0;
     _simultaneousDeltaX = 0;
     _simultaneousDeltaY = 0;
-    _isConsumedGesture = NO;
+    _isNeedConsumedSimultaneousGesture = NO;
   }
   return self;
 }
 
-- (void)reset {
+- (void)resetSimultaneousDelta {
   self.simultaneousDeltaX = 0;
   self.simultaneousDeltaY = 0;
-  self.isConsumedGesture = NO;
+  self.isNeedConsumedSimultaneousGesture = NO;
 }
 
 @end

@@ -556,7 +556,7 @@ public class GestureHandlerTrigger {
         dispatchMotionEventOnCurrentWinner(
             motionEvent, member, lynxTouchEvent, x, y, true, mCurrentGestureExtraBundle);
       }
-      mCurrentGestureExtraBundle.reset();
+      mCurrentGestureExtraBundle.resetSimultaneousDelta();
     }
     if (competeChainCandidates != null) {
       mWinner = reCompeteByGestures(competeChainCandidates, mWinner);

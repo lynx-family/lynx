@@ -61,7 +61,7 @@
   CGPoint touchPoint = [[touches anyObject] locationInView:nil];
 
   if (handleSimultaneous && extraBundle != nil) {
-    if (extraBundle.isConsumedGesture) {
+    if (extraBundle.isNeedConsumedSimultaneousGesture) {
       if (self.gestureMember != nil) {
         [self.gestureMember onGestureScrollBy:CGPointMake(extraBundle.simultaneousDeltaX,
                                                           extraBundle.simultaneousDeltaY)];
@@ -106,8 +106,8 @@
         }
       } else {
         if ([self shouldFail:deltaPoint extraBundle:extraBundle]) {
-          if (self.gestureMember != nil && (![self.gestureMember getGestureBorder:false] ||
-                                            ![self.gestureMember getGestureBorder:true])) {
+          if (self.gestureMember != nil && (![self.gestureMember getGestureBorder:NO] ||
+                                            ![self.gestureMember getGestureBorder:YES])) {
             // consume last delta to arrive start or end
             [self onUpdate:deltaPoint touchEvent:touchEvent extraBundle:extraBundle];
           }
@@ -143,8 +143,8 @@
     }
 
     if ([self shouldFail:flingPoint extraBundle:extraBundle]) {
-      if (self.gestureMember != nil && (![self.gestureMember getGestureBorder:false] ||
-                                        ![self.gestureMember getGestureBorder:true])) {
+      if (self.gestureMember != nil && (![self.gestureMember getGestureBorder:NO] ||
+                                        ![self.gestureMember getGestureBorder:YES])) {
         [self onUpdate:flingPoint touchEvent:nil extraBundle:extraBundle];
       }
       [self fail];
@@ -166,12 +166,12 @@
   if (extraBundle != nil) {
     if (extraBundle.gestureDirection == DIRECTION_HORIZONTAL &&
         self.gestureMember.getScrollContainerDirection != DIRECTION_HORIZONTAL) {
-      return true;
+      return YES;
     }
 
     if (extraBundle.gestureDirection == DIRECTION_VERTICAL &&
         self.gestureMember.getScrollContainerDirection != DIRECTION_VERTICAL) {
-      return true;
+      return YES;
     }
   }
   return ![self.gestureMember canConsumeGesture:point];
@@ -232,7 +232,7 @@
   [self.gestureMember onGestureScrollBy:point];
 
   if (extraBundle != nil) {
-    extraBundle.isConsumedGesture = true;
+    extraBundle.isNeedConsumedSimultaneousGesture = YES;
     extraBundle.simultaneousDeltaX = point.x;
     extraBundle.simultaneousDeltaY = point.y;
   }

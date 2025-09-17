@@ -83,9 +83,8 @@
           touches:nil
             event:nil
        touchEvent:nil
-      extraBundle:nil
+      extraBundle:nil];
 
-  ];
   [handler end:LynxGestureHandlerOptionTap point:CGPointZero touches:nil event:nil touchEvent:nil];
 
   [handler onHandle:nil

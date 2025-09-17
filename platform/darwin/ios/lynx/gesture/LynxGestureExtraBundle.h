@@ -15,9 +15,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) CGFloat simultaneousDeltaX;
 // The offset y that needs to be consumed by the simultaneous gesture
 @property(nonatomic, assign) CGFloat simultaneousDeltaY;
-@property(nonatomic, assign) BOOL isConsumedGesture;
-
-- (void)reset;
+@property(nonatomic, assign) BOOL isNeedConsumedSimultaneousGesture;
+// need consume simultaneous gesture or not
+- (void)resetSimultaneousDelta;
 
 @end
 

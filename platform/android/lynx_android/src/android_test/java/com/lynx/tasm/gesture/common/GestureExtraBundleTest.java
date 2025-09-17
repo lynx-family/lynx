@@ -30,8 +30,8 @@ public class GestureExtraBundleTest {
         gestureExtraBundle.getSimultaneousDeltaX(), 0.0f);
     assertEquals("Initial simultaneousDeltaY should be 0", 0,
         gestureExtraBundle.getSimultaneousDeltaY(), 0.0f);
-    assertFalse(
-        "Initial isConsumedGesture should be false", gestureExtraBundle.isConsumedGesture());
+    assertFalse("Initial isConsumedGesture should be false",
+        gestureExtraBundle.isNeedConsumedSimultaneousGesture());
   }
 
   @Test
@@ -61,13 +61,13 @@ public class GestureExtraBundleTest {
 
   @Test
   public void testConsumedGesture() {
-    gestureExtraBundle.setConsumedGesture(true);
-    assertTrue(
-        "isConsumedGesture should be true after setting", gestureExtraBundle.isConsumedGesture());
+    gestureExtraBundle.setNeedConsumedSimultaneousGesture(true);
+    assertTrue("isConsumedGesture should be true after setting",
+        gestureExtraBundle.isNeedConsumedSimultaneousGesture());
 
-    gestureExtraBundle.setConsumedGesture(false);
-    assertFalse(
-        "isConsumedGesture should be false after setting", gestureExtraBundle.isConsumedGesture());
+    gestureExtraBundle.setNeedConsumedSimultaneousGesture(false);
+    assertFalse("isConsumedGesture should be false after setting",
+        gestureExtraBundle.isNeedConsumedSimultaneousGesture());
   }
 
   @Test
@@ -75,9 +75,9 @@ public class GestureExtraBundleTest {
     gestureExtraBundle.setGestureDirection(1);
     gestureExtraBundle.setSimultaneousDeltaX(15.0f);
     gestureExtraBundle.setSimultaneousDeltaY(25.0f);
-    gestureExtraBundle.setConsumedGesture(true);
+    gestureExtraBundle.setNeedConsumedSimultaneousGesture(true);
 
-    gestureExtraBundle.reset();
+    gestureExtraBundle.resetSimultaneousDelta();
 
     // The reset method does not reset gestureDirection, which seems intentional.
     assertEquals(
@@ -86,7 +86,7 @@ public class GestureExtraBundleTest {
         gestureExtraBundle.getSimultaneousDeltaX(), 0.0f);
     assertEquals("simultaneousDeltaY should be reset to 0", 0,
         gestureExtraBundle.getSimultaneousDeltaY(), 0.0f);
-    assertFalse(
-        "isConsumedGesture should be reset to false", gestureExtraBundle.isConsumedGesture());
+    assertFalse("isConsumedGesture should be reset to false",
+        gestureExtraBundle.isNeedConsumedSimultaneousGesture());
   }
 }

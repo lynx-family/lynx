@@ -49,7 +49,7 @@
     _gestureArenaManager = arenaManager;
     _velocityTrackers = [NSPointerArray weakObjectsPointerArray];
     _eventHandlers = [NSPointerArray weakObjectsPointerArray];
-    _extraBundle = [LynxGestureExtraBundle alloc];
+    _extraBundle = [[LynxGestureExtraBundle alloc] init];
   }
   return self;
 }
@@ -102,7 +102,7 @@
   _winner = winner;
   _lastWinner = winner;
   [self updateSimultaneousWinner:winner];
-  _extraBundle = [LynxGestureExtraBundle alloc];
+  _extraBundle = [[LynxGestureExtraBundle alloc] init];
 }
 
 - (void)updateSimultaneousWinner:(id<LynxGestureArenaMember>)winner {
@@ -496,7 +496,7 @@
                       handleBySimultaneous:true
                                extraBundle:_extraBundle];
     }
-    [_extraBundle reset];
+    [_extraBundle resetSimultaneousDelta];
   }
 
   if (competeChainCandidates) {

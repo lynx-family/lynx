@@ -1928,9 +1928,9 @@ public class com::lynx::tasm::gesture::common::GestureExtraBundle :  {
   public void com.lynx.tasm.gesture.common.GestureExtraBundle.setSimultaneousDeltaX(float simultaneousDeltaX);
   public float com.lynx.tasm.gesture.common.GestureExtraBundle.getSimultaneousDeltaY();
   public void com.lynx.tasm.gesture.common.GestureExtraBundle.setSimultaneousDeltaY(float simultaneousDeltaY);
-  public void com.lynx.tasm.gesture.common.GestureExtraBundle.reset();
-  public boolean com.lynx.tasm.gesture.common.GestureExtraBundle.isConsumedGesture();
-  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setConsumedGesture(boolean consumedGesture);
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.resetSimultaneousDelta();
+  public boolean com.lynx.tasm.gesture.common.GestureExtraBundle.isNeedConsumedSimultaneousGesture();
+  public void com.lynx.tasm.gesture.common.GestureExtraBundle.setNeedConsumedSimultaneousGesture(boolean needConsumedSimultaneousGesture);
 }
 
 public class com::lynx::tasm::gesture::handler::GestureHandlerTrigger :  {

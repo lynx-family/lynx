@@ -14,7 +14,7 @@ public class GestureExtraBundle {
   private float simultaneousDeltaY =
       0; // The offset y that needs to be consumed by the simultaneous gesture
 
-  private boolean isConsumedGesture = false;
+  private boolean isNeedConsumedSimultaneousGesture = false;
 
   public int getGestureDirection() {
     return gestureDirection;
@@ -40,17 +40,17 @@ public class GestureExtraBundle {
     this.simultaneousDeltaY = simultaneousDeltaY;
   }
 
-  public void reset() {
+  public void resetSimultaneousDelta() {
     this.simultaneousDeltaX = 0;
     this.simultaneousDeltaY = 0;
-    this.isConsumedGesture = false;
+    this.isNeedConsumedSimultaneousGesture = false;
   }
 
-  public boolean isConsumedGesture() {
-    return isConsumedGesture;
+  public boolean isNeedConsumedSimultaneousGesture() {
+    return isNeedConsumedSimultaneousGesture;
   }
 
-  public void setConsumedGesture(boolean consumedGesture) {
-    isConsumedGesture = consumedGesture;
+  public void setNeedConsumedSimultaneousGesture(boolean needConsumedSimultaneousGesture) {
+    isNeedConsumedSimultaneousGesture = needConsumedSimultaneousGesture;
   }
 }

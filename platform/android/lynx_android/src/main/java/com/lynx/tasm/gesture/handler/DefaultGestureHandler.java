@@ -69,7 +69,7 @@ public class DefaultGestureHandler extends BaseGestureHandler {
     mLastTouchEvent = lynxTouchEvent;
 
     if (handleBySimultaneous && extraBundle != null) {
-      if (extraBundle.isConsumedGesture()) {
+      if (extraBundle.isNeedConsumedSimultaneousGesture()) {
         if (mGestureArenaMember != null) {
           mGestureArenaMember.onGestureScrollBy(
               extraBundle.getSimultaneousDeltaX(), extraBundle.getSimultaneousDeltaY());
@@ -192,7 +192,7 @@ public class DefaultGestureHandler extends BaseGestureHandler {
   }
 
   private boolean shouldFail(float deltaX, float deltaY, @Nullable GestureExtraBundle extraBundle) {
-    if (extraBundle != null) {
+    if (extraBundle != null && mGestureArenaMember != null) {
       if (extraBundle.getGestureDirection() == GestureConstants.DIRECTION_HORIZONTAL
           && mGestureArenaMember.getScrollContainerDirection()
               != GestureConstants.DIRECTION_HORIZONTAL) {
@@ -270,7 +270,7 @@ public class DefaultGestureHandler extends BaseGestureHandler {
     }
 
     if (extraBundle != null) {
-      extraBundle.setConsumedGesture(true);
+      extraBundle.setNeedConsumedSimultaneousGesture(true);
       extraBundle.setSimultaneousDeltaX(deltaX);
       extraBundle.setSimultaneousDeltaY(deltaY);
     }

@@ -1820,8 +1820,8 @@ public class LynxGestureExtraBundle : NSObject {
   public NSInteger LynxGestureExtraBundle::gestureDirection gestureDirection;
   public CGFloat LynxGestureExtraBundle::simultaneousDeltaX simultaneousDeltaX;
   public CGFloat LynxGestureExtraBundle::simultaneousDeltaY simultaneousDeltaY;
-  public BOOL LynxGestureExtraBundle::isConsumedGesture isConsumedGesture;
-  public void LynxGestureExtraBundle::reset();
+  public BOOL LynxGestureExtraBundle::isNeedConsumedSimultaneousGesture isNeedConsumedSimultaneousGesture;
+  public void LynxGestureExtraBundle::resetSimultaneousDelta();
 }
 
 public class LynxGestureFlingTrigger : NSObject {
