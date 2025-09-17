@@ -3544,7 +3544,11 @@ void TemplateAssembler::OnLayoutAfter(PipelineLayoutData& layout_data) {
     }
 
     // TODO(@limeng.amer): Move this to Pipeline Lifecycle Observer if provided;
-    if (tasm::performance::MemoryMonitor::Enable()) {
+    // Since OnPatchFinish can be called nestedly, memory collection only needs
+    // to
+    // be triggered once at the outermost call. Therefore, is_memory_collecting_
+    // is used here to avoid repeated triggers.
+    if (page_proxy()->element_manager()->ShouldCollectMemory()) {
       auto* node_manager = page_proxy()->element_manager()->node_manager();
       int32_t count = static_cast<int32_t>(node_manager->NodeCount());
       int64_t mem_size_bytes = node_manager->GetTotalMemoryUsage();

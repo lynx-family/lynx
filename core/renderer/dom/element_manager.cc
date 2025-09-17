@@ -1280,6 +1280,13 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
     return;
   }
 
+  // Since OnPatchFinish can be called nestedly, memory collection only needs to
+  // be triggered once at the outermost call. Therefore, is_memory_collecting_
+  // is used here to avoid repeated triggers.
+  bool should_collect_memory = ShouldCollectMemory();
+  if (should_collect_memory) {
+    is_memory_collecting_ = true;
+  }
   base::MoveOnlyClosure<void, bool> patch_finish_callback =
       [&option, self = this](bool has_patch) {
         if (has_patch) {
@@ -1301,11 +1308,13 @@ void ElementManager::OnPatchFinish(std::shared_ptr<PipelineOptions> &option,
   }
 
   // TODO(@limeng.amer): Move this to Pipeline Lifecycle Observer if provided;
-  if (!option->enable_unified_pixel_pipeline && delegate_ &&
-      tasm::performance::MemoryMonitor::Enable()) {
-    int32_t count = static_cast<int32_t>(node_manager()->NodeCount());
-    int64_t mem_size_bytes = node_manager()->GetTotalMemoryUsage();
-    delegate_->ReportElementMemoryInfo(mem_size_bytes, count);
+  if (should_collect_memory) {
+    if (!option->enable_unified_pixel_pipeline && delegate_) {
+      int32_t count = static_cast<int32_t>(node_manager()->NodeCount());
+      int64_t mem_size_bytes = node_manager()->GetTotalMemoryUsage();
+      delegate_->ReportElementMemoryInfo(mem_size_bytes, count);
+    }
+    is_memory_collecting_ = false;
   }
 }
 

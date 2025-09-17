@@ -1109,6 +1109,11 @@ class ElementManager : public ElementContextDelegate {
     return enable_fiber_element_memory_reporter_;
   }
 
+  inline bool ShouldCollectMemory() {
+    return (!is_memory_collecting_ &&
+            tasm::performance::MemoryMonitor::Enable());
+  }
+
   int32_t CalcTotalMemoryUsageDiff();
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
@@ -1237,6 +1242,7 @@ class ElementManager : public ElementContextDelegate {
   bool enable_fiber_element_memory_reporter_{false};
   bool enable_layout_in_element_mode_{false};
   bool has_viewport_ready_{false};
+  bool is_memory_collecting_{false};
 
   LynxEnvConfig lynx_env_config_;
   std::shared_ptr<PageConfig> config_;
