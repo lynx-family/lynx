@@ -10,13 +10,16 @@
 #include <memory>
 
 #include "devtool/embedder/core/inspector_owner_embedder.h"
+#include "platform/harmony/lynx_devtool/src/main/cpp/inspector_owner_embedder_harmony.h"
 
 namespace lynx {
 namespace devtool {
 
 class InspectorOwnerHarmony {
  public:
-  explicit InspectorOwnerHarmony(LynxDevToolProxy *proxy);
+  InspectorOwnerHarmony(napi_env env, napi_value js_ref,
+                        LynxDevToolProxy *proxy);
+  ~InspectorOwnerHarmony();
 
  public:
   static napi_value Init(napi_env env, napi_value exports);
@@ -25,9 +28,14 @@ class InspectorOwnerHarmony {
   static napi_value Constructor(napi_env env, napi_callback_info info);
   static napi_value Destroy(napi_env env, napi_callback_info info);
   static napi_value GetSessionId(napi_env env, napi_callback_info info);
+  static napi_value FlushConsoleMessages(napi_env env, napi_callback_info info);
+  static napi_value GetConsoleObject(napi_env env, napi_callback_info info);
 
  private:
-  std::shared_ptr<InspectorOwnerEmbedder> owner_;
+  std::shared_ptr<InspectorOwnerEmbedderHarmony> owner_;
+
+  napi_env env_;
+  napi_ref ref_;
 };
 
 }  // namespace devtool

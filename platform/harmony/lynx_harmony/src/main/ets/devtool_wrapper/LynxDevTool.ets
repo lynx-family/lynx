@@ -27,6 +27,10 @@ export class LynxDevTool {
       }
     }
   }
+  
+  public getBaseInspectorOwner() : LynxBaseInspectorOwner | null {
+    return this.owner;
+  }
 
   public onLoaded(lynxView: LynxView) {
     if (this.owner) {

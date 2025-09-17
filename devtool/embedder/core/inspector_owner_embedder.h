@@ -37,6 +37,14 @@ class InspectorOwnerEmbedder
   InspectorOwnerEmbedder();
   ~InspectorOwnerEmbedder() override;
 
+  void SetUITaskRunner(
+      const fml::RefPtr<fml::TaskRunner>& task_runner) override {
+    ui_task_runner_ = task_runner;
+  }
+  const fml::RefPtr<fml::TaskRunner>& GetUITaskRunner() {
+    return ui_task_runner_;
+  }
+
   void Init(devtool::LynxDevToolProxy* proxy,
             const std::shared_ptr<LynxInspectorOwner>& shared_self) override;
   void InitDevToolNGDelegate();
@@ -76,6 +84,12 @@ class InspectorOwnerEmbedder
       const std::string& cdp_msg,
       std::function<void(const std::string&)>&& callback) override;
 
+  void FlushConsoleMessages();
+  void GetConsoleObject(const std::string& object_id, bool need_stringify,
+                        int callback_id);
+  virtual void OnConsoleMessage(const std::string& message) {}
+  virtual void OnConsoleObject(const std::string& detail, int callback_id) {}
+
  private:
   void InitRecord();
 
@@ -88,6 +102,8 @@ class InspectorOwnerEmbedder
   std::shared_ptr<DevtoolPlatformEmbedder> platform_embedder_;
 
   std::weak_ptr<InspectorOwnerEmbedder> weak_self_;
+
+  fml::RefPtr<fml::TaskRunner> ui_task_runner_ = nullptr;
 };
 
 }  // namespace devtool

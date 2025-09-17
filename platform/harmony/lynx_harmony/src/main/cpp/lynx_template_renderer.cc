@@ -136,6 +136,7 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_, "createDevTool",
                                  1, param, nullptr);
   if (inspector_owner_ != nullptr) {
+    inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
     inspector_owner_->OnTemplateAssemblerCreated(
         reinterpret_cast<intptr_t>(shell_.get()));
   }

@@ -172,5 +172,17 @@ void InspectorOwnerEmbedder::OnShow() { ContinueCasting(); }
 
 void InspectorOwnerEmbedder::OnHide() { PauseCasting(); }
 
+void InspectorOwnerEmbedder::FlushConsoleMessages() {
+  CHECK_NULL_AND_LOG_RETURN(platform_embedder_, "platform_embedder_ is null");
+  platform_embedder_->FlushConsoleMessages();
+}
+
+void InspectorOwnerEmbedder::GetConsoleObject(const std::string& object_id,
+                                              bool need_stringify,
+                                              int callback_id) {
+  CHECK_NULL_AND_LOG_RETURN(platform_embedder_, "platform_embedder_ is null");
+  platform_embedder_->GetConsoleObject(object_id, need_stringify, callback_id);
+}
+
 }  // namespace devtool
 }  // namespace lynx

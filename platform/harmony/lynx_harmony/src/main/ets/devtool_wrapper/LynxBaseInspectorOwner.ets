@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 import { LynxView } from '../tasm/LynxView';
+import { LynxInspectorConsoleDelegate } from './LynxInspectorConsoleDelegate'
 
 type CDPResultCallback = (result: string) => void;
 
@@ -10,5 +11,9 @@ export interface LynxBaseInspectorOwner {
   onLoaded(lynxView: LynxView): void;
 
   destroy(lynxView: LynxView): void;
+  
+  setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
+  
+  getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
 }
 

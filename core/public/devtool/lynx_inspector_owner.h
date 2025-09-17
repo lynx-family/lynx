@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "base/include/fml/task_runner.h"
+
 namespace lynx {
 
 namespace tasm {
@@ -22,6 +24,8 @@ class LynxDevToolProxy;
 class LynxInspectorOwner {
  public:
   virtual ~LynxInspectorOwner() = default;
+  virtual void SetUITaskRunner(
+      const fml::RefPtr<fml::TaskRunner>& task_runner) {}
   virtual void Init(LynxDevToolProxy* proxy,
                     const std::shared_ptr<LynxInspectorOwner>& shared_self) = 0;
   // life cycle

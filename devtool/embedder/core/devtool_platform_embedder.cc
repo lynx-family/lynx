@@ -16,6 +16,7 @@
 #include "devtool/lynx_devtool/agent/inspector_util.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
 #include "devtool/lynx_devtool/element/element_inspector.h"
+#include "devtool/lynx_devtool/js_debug/js/inspector_java_script_debugger_impl.h"
 
 namespace lynx {
 
@@ -112,6 +113,18 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     auto embedder = weak_embedder_.lock();
     CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
     embedder->Navigate(url);
+  }
+
+  void OnConsoleMessage(const std::string& message) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->OnConsoleMessage(message);
+  }
+
+  void OnConsoleObject(const std::string& detail, int callback_id) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN(embedder, "embedder is null");
+    embedder->OnConsoleObject(detail, callback_id);
   }
 
  private:
@@ -231,6 +244,39 @@ std::vector<float> DevtoolPlatformEmbedder::GetTransformValue(
     int id, const std::vector<float>& pad_border_margin_layout) {
   CHECK_NULL_AND_LOG_RETURN_VALUE(proxy_, "proxy_ is null", {});
   return proxy_->GetTransformValue(id, pad_border_margin_layout);
+}
+
+void DevtoolPlatformEmbedder::FlushConsoleMessages() {
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade_ is null");
+  auto debugger = devtool_platform_facade_->GetJSDebugger().lock();
+  CHECK_NULL_AND_LOG_RETURN(debugger, "debugger is null");
+  debugger->FlushConsoleMessages();
+}
+
+void DevtoolPlatformEmbedder::GetConsoleObject(const std::string& object_id,
+                                               bool need_stringify,
+                                               int callback_id) {
+  CHECK_NULL_AND_LOG_RETURN(devtool_platform_facade_,
+                            "devtool_platform_facade_ is null");
+  auto debugger = devtool_platform_facade_->GetJSDebugger().lock();
+  CHECK_NULL_AND_LOG_RETURN(debugger, "debugger is null");
+  debugger->GetConsoleObject(object_id, need_stringify, callback_id);
+}
+
+void DevtoolPlatformEmbedder::OnConsoleMessage(const std::string& message) {
+  auto sp = weak_owner_.lock();
+  if (sp) {
+    sp->OnConsoleMessage(message);
+  }
+}
+
+void DevtoolPlatformEmbedder::OnConsoleObject(const std::string& detail,
+                                              int callback_id) {
+  auto sp = weak_owner_.lock();
+  if (sp) {
+    sp->OnConsoleObject(detail, callback_id);
+  }
 }
 
 }  // namespace devtool

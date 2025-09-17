@@ -19,6 +19,7 @@ import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
 import { TimingOption } from './performance/timing/TimingOption';
 import { TimingConstants } from './performance/timing/TimingConstants';
+import { LynxBaseInspectorOwner } from '../devtool_wrapper/LynxBaseInspectorOwner'
 
 const TAG = 'LynxContext'
 
@@ -283,5 +284,15 @@ export class LynxContext implements IContext {
 
   public getExtensionModule(): LynxExtensionModule | undefined {
     return this.extensionModule;
+  }
+
+  public getBaseInspectorOwner(): LynxBaseInspectorOwner | null {
+    if (this.renderer) {
+      const devTool = this.renderer.getDevTool();
+      if (devTool) {
+        return devTool.getBaseInspectorOwner();
+      }
+    }
+    return null;
   }
 }

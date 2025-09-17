@@ -123,6 +123,7 @@ export class LynxContext implements IContext {
   public getPageDataByKey(keys: string[]): void;
   public setExtensionModule(module: LynxExtensionModule): void;
   public getExtensionModule(): LynxExtensionModule | undefined;
+  public getBaseInspectorOwner(): LynxBaseInspectorOwner | null;
   screenMetrics(): LynxScreenMetrics;
 }
 
@@ -940,6 +941,8 @@ export class LynxDebugger {
 export interface LynxBaseInspectorOwner {
   onLoaded(lynxView: LynxView): void;
   destroy(lynxView: LynxView): void;
+  setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
+  getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
 }
 
 export interface ILogBox {
@@ -953,10 +956,18 @@ export type OnErrorCallback = (msg: string) => void {
 export type GetJSSourceCallback = () => Record<string, string> {
 }
 
+export interface LynxInspectorConsoleDelegate {
+  onConsoleMessage(msg: string): void;
+}
+
 export class LynxInspectorOwner implements LynxBaseInspectorOwner {
   constructor(embedderProxy: number[]);
   public onLoaded(lynxView: LynxView): void;
   public destroy(lynxView: LynxView): void;
+  public setLynxInspectorConsoleDelegate(delegate: LynxInspectorConsoleDelegate): void;
+  public getConsoleObject(objectId: string, needStringify: boolean, callback: (detail: string) => void): void;
+  public onConsoleMessage(msg: string): void;
+  public onConsoleObject(detail: string, callbackId: number): void;
 }
 
 export class LynxDebugBridge {

@@ -19,6 +19,8 @@ devtool_source_set("cpp") {
     "harmony_global_handler.h",
     "harmony_session_handler.cc",
     "harmony_session_handler.h",
+    "inspector_owner_embedder_harmony.cc",
+    "inspector_owner_embedder_harmony.h",
     "inspector_owner_harmony.cc",
     "inspector_owner_harmony.h",
   ]

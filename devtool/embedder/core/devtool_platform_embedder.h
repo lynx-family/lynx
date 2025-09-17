@@ -74,6 +74,12 @@ class DevtoolPlatformEmbedder
   std::vector<float> GetTransformValue(
       int id, const std::vector<float>& pad_border_margin_layout);
 
+  void FlushConsoleMessages();
+  void GetConsoleObject(const std::string& object_id, bool need_stringify,
+                        int callback_id);
+  void OnConsoleMessage(const std::string& message);
+  void OnConsoleObject(const std::string& detail, int callback_id);
+
  private:
   std::shared_ptr<lynx::devtool::DevToolPlatformFacade>
       devtool_platform_facade_;

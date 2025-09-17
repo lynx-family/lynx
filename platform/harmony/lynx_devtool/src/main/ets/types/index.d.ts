@@ -8,10 +8,12 @@ export class DebugBridgeHarmony {
 }
 
 export class InspectorOwnerHarmony {
-  constructor(embedderProxy: number[]);
+  constructor(owner: LynxInspectorOwner, embedderProxy: number[]);
 
   getSessionId: () => number;
   destroy: () => void;
+  flushConsoleMessages: () => void;
+  getConsoleObject: (objectId: string, needStringify: boolean, callbackId: number) => void;
 }
 
 export class LynxDevToolEnvHarmony {
