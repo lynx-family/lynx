@@ -93,6 +93,8 @@ ElementManager::ElementManager(
       LynxEnv::Key::FIX_NEGATIVE_Z_INDEX_INSERT_BUG, true);
   fix_fixed_z_index_switch_bug_ = LynxEnv::GetInstance().GetBoolEnv(
       LynxEnv::Key::FIX_FIXED_Z_INDEX_SWITCH_BUG, true);
+  fix_stacking_context_dirty_flag_ = LynxEnv::GetInstance().GetBoolEnv(
+      LynxEnv::Key::FIX_STACKING_CONTEXT_FLAG_BUG, true);
   enable_fiber_element_memory_reporter_ =
       LynxEnv::GetInstance().EnableFiberElementMemoryReport();
   if (platform_layout_context_) {

@@ -885,6 +885,59 @@ TEST_F(ElementContainerTest, OldFixedZIndexSwitchCase) {
               page_container);
 }
 
+TEST_F(ElementContainerTest, StackingContextDirtyChangeCase) {
+  auto config = std::make_shared<PageConfig>();
+  config->SetEnableFiberArch(true);
+  config->SetEnableZIndex(true);
+  manager->SetConfig(config);
+  auto page = manager->CreateFiberPage("page", 11);
+  manager->SetRoot(page.get());
+  manager->SetRootOnLayout(page->impl_id());
+  page->FlushProps();
+
+  // parent0 stackingContext
+  auto parent0_element = manager->CreateFiberView();
+  parent0_element->SetStyle(CSSPropertyID::kPropertyIDBackground,
+                            lepus::Value("red"));
+
+  page->InsertNode(parent0_element);
+
+  page->FlushActionsAsRoot();
+
+  auto pipeline_options = std::make_shared<PipelineOptions>();
+  manager->OnPatchFinish(pipeline_options);
+
+  EXPECT_FALSE(parent0_element->IsStackingContextNode());
+
+  // mock 'transition' or 'animation delay' to directly setComputeStyle which
+  // may affect the IsStackingContextNode()
+  CSSValue opacity_value =
+      tasm::CSSValue(lepus::Value(0.5), CSSValuePattern::NUMBER);
+  parent0_element->computed_css_style()->SetValue(
+      CSSPropertyID::kPropertyIDOpacity, opacity_value);
+  EXPECT_TRUE(parent0_element->IsStackingContextNode());
+
+  // inset z-index
+  auto element_0 = manager->CreateFiberView();
+  element_0->SetStyle(CSSPropertyID::kPropertyIDZIndex, lepus::Value(100));
+  parent0_element->InsertNode(element_0);
+
+  page->FlushActionsAsRoot();
+  manager->OnPatchFinish(pipeline_options);
+
+  EXPECT_TRUE(element_0->element_container()->parent() ==
+              parent0_element->element_container());
+
+  parent0_element->RemoveNode(element_0);
+  page->RemoveNode(parent0_element);
+  element_0 = nullptr;
+  parent0_element = nullptr;
+  page->FlushActionsAsRoot();
+  manager->OnPatchFinish(pipeline_options);
+
+  EXPECT_TRUE(page->element_container()->children().size() == 0);
+}
+
 }  // namespace testing
 }  // namespace tasm
 }  // namespace lynx

@@ -27,8 +27,13 @@ ElementContainer::ElementContainer(Element* element) : element_(element) {
 }
 
 ElementContainer::~ElementContainer() {
-  if (!element_->will_destroy() && was_stacking_context_) {
-    element_manager()->RemoveDirtyContext(this);
+  if (!element_->will_destroy()) {
+    if (element_manager()->FixStackingContextDirtyFlagBug() && dirty_) {
+      element_manager()->RemoveDirtyContext(this);
+    } else if (was_stacking_context_) {
+      // FIXME(linxs): to remove below code in next version!
+      element_manager()->RemoveDirtyContext(this);
+    }
   }
   // Remove self from parent's children.
   if (parent_) {
