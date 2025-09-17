@@ -255,6 +255,11 @@ jobs:
           python-version: '3.13'
       - name: Install Common Dependencies
         uses: ./lynx/.github/actions/common-deps
+      - name: Gradle Wrapper Cache
+        uses: lynx-infra/cache@5c6160a6a4c7fca80a2f3057bb9dfc9513fcb732
+        with:
+          path: ~/.gradle/wrapper/dists
+          key: gradle-${{ runner.os }}
       - name: Build Example App
         run: |
           source tools/envsetup.sh
