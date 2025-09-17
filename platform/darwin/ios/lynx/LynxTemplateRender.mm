@@ -22,6 +22,7 @@
 #import <Lynx/LynxTemplateRender.h>
 #import <Lynx/LynxTemplateRenderHelper.h>
 #import <Lynx/LynxTheme.h>
+#import <Lynx/LynxThreadManager.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
 #import <Lynx/LynxView.h>
@@ -410,11 +411,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   pageConfig_.reset();
   // ios block cannot capture std::unique_ptr, tricky...
   auto* shell = shell_.release();
-  // LynxView maybe release in main flow of TemplateAssembler,
-  // so need just release LynxShell delay, avoid crash
-  dispatch_async(dispatch_get_main_queue(), ^{
+  if ([LynxThreadManager isMainQueue]) {
     delete shell;
-  });
+  } else {
+    // LynxView maybe release in main flow of TemplateAssembler,
+    // so need just release LynxShell delay, avoid crash
+    dispatch_async(dispatch_get_main_queue(), ^{
+      delete shell;
+    });
+  }
 }
 
 #pragma mark - Runtime
