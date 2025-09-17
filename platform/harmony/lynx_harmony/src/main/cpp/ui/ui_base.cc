@@ -1563,7 +1563,7 @@ void UIBase::ScrollIntoView(
   bool find_scroll_view = false;
   UIBase* base = parent_;
   while (base) {
-    if (base->Tag() == "scroll-view") {
+    if (base->Tag() == "scroll-view" || base->Tag() == "scroll-view-new-arch") {
       find_scroll_view = true;
       base->ScrollIntoView(base::StringEqual(behavior, "smooth"), this, block,
                            inline_value);

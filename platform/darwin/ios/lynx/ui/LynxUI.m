@@ -37,6 +37,8 @@
 #import <Lynx/LynxUICollection.h>
 #import <Lynx/LynxUIListContainer.h>
 #import <Lynx/LynxUIMethodProcessor.h>
+#import <Lynx/LynxUIScrollView.h>
+#import <Lynx/LynxUIScrollViewInternal.h>
 #import <Lynx/LynxUIScroller.h>
 #import <Lynx/LynxUIUnitUtils.h>
 #import <Lynx/LynxUnitUtils.h>
@@ -358,7 +360,8 @@ static const CGFloat OFFSET_ROTATE_AUTO = -1024.f;
     return;
   }
   LynxUI* uiParent = (LynxUI*)self.parent;
-  if ([uiParent isKindOfClass:[LynxUIScroller class]]) {
+  if ([uiParent isKindOfClass:[LynxUIScroller class]] ||
+      [uiParent isKindOfClass:LynxUIScrollView.class]) {
     LynxUIScroller* parent = (LynxUIScroller*)uiParent;
     parent.enableSticky = YES;
     _sticky = info;
@@ -1261,6 +1264,12 @@ LYNX_UI_METHOD(scrollIntoView) {
                                       inlineType:inlineType];
       scrollFlag = true;
       break;
+    } else if ([uiParent isKindOfClass:LynxUIScrollViewInternal.class]) {
+      [((LynxUIScrollViewInternal*)uiParent)
+          scrollInto:self
+            isSmooth:isSmooth
+                type:((LynxUIScrollViewInternal*)uiParent).view.vertical ? blockType : inlineType];
+      scrollFlag = true;
     }
     uiParent = (LynxUI*)uiParent.parent;
   }

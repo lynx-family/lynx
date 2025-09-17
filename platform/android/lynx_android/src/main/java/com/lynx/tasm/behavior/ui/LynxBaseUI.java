@@ -51,6 +51,7 @@ import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityHelper;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
 import com.lynx.tasm.behavior.ui.scroll.AbsLynxUIScroll;
 import com.lynx.tasm.behavior.ui.scroll.IScrollSticky;
+import com.lynx.tasm.behavior.ui.scroll.LynxUIScrollViewInternal;
 import com.lynx.tasm.behavior.ui.utils.BorderStyle;
 import com.lynx.tasm.behavior.ui.utils.LynxBackground;
 import com.lynx.tasm.behavior.ui.utils.LynxMask;
@@ -1024,6 +1025,12 @@ public abstract class LynxBaseUI
     while (node != null && node instanceof LynxBaseUI) {
       if (node instanceof AbsLynxUIScroll) {
         ((AbsLynxUIScroll) node).scrollInto(this, isSmooth, block, inline);
+        scrollFlag = true;
+        break;
+      } else if (node instanceof LynxUIScrollViewInternal) {
+        ((LynxUIScrollViewInternal) node)
+            .scrollInto(this, isSmooth,
+                ((LynxUIScrollViewInternal) node).getView().isVertical() ? block : inline);
         scrollFlag = true;
         break;
       }
