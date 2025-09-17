@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
   BOOL _enableUnifiedPipeline;
   BOOL _enableReuseEngine;
   BOOL _isEngineInitFromReusePool;
+  BOOL _isMemoryCollecting;
 
   LynxConfig* _config;
   LynxContext* _context;

@@ -157,6 +157,7 @@ public class LynxTemplateRender
 
   private long mInitStart;
   private long mInitEnd;
+  private volatile boolean mIsMemoryCollecting = false;
 
   protected boolean mEnableBytecode = false;
   protected String mBytecodeSourceUrl;
@@ -2377,9 +2378,14 @@ public class LynxTemplateRender
   }
 
   private void updateMemoryUsage() {
+    if (mIsMemoryCollecting) {
+      return;
+    }
+
     if (!PerformanceController.isMemoryMonitorEnabled()) {
       return;
     }
+    mIsMemoryCollecting = true;
 
     WeakReference<LynxTemplateRender> weakThis = new WeakReference<>(this);
     long delayMs = PerformanceController.getMemoryAcquisitionDelaySec() * 1000;
@@ -2393,6 +2399,7 @@ public class LynxTemplateRender
         if (render == null) {
           return;
         }
+        render.mIsMemoryCollecting = false;
         PerformanceController perfController = render.mPerformanceController;
         if (perfController == null) {
           return;
