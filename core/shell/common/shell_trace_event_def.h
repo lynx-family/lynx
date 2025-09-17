@@ -30,10 +30,23 @@ inline constexpr const char* const LYNX_ENGINE_DESTRUCTOR =
  */
 inline constexpr const char* const RUNTIME_ACTOR_CALL_JS_FUNCTION =
     "CallJSFunction";
+inline constexpr const char* const CALL_JS_FUNCTION_PROXY =
+    "CallJSFunctionProxy";
+inline constexpr const char* const CALL_JS_INTERSECTION_OBSERVER_PROXY =
+    "CallJSIntersectionObserverProxy";
+inline constexpr const char* const CALL_JS_INTERSECTION_OBSERVER =
+    "CallJSIntersectionObserver";
+inline constexpr const char* const EVALUATE_SCRIPT_PROXY =
+    "EvaluateScriptProxy";
+inline constexpr const char* const EVALUATE_SCRIPT = "EvaluateScript";
+inline constexpr const char* const ADD_LIFE_CYCLE_LISTENER_PROXY =
+    "AddLifecycleListenerProxy";
+inline constexpr const char* const ADD_LIFE_CYCLE_LISTENER =
+    "AddLifecycleListener";
 
 /**
- * @trace_description: Batch update for component on Engine Thread(historically
- * known as "Tasm Thread").
+ * @trace_description: Batch update for component on Engine
+ * Thread(historically known as "Tasm Thread").
  */
 inline constexpr const char* const LYNX_BATCHED_UPDATE_DATA =
     "LynxBatchedUpdateData";
@@ -120,6 +133,13 @@ inline constexpr const char* const LYNX_SHELL_INIT_RUNTIME =
     "LynxShell::InitRuntime";
 inline constexpr const char* const LYNX_SHELL_START_JS_RUNTIME =
     "LynxShell::StartJsRuntime";
+inline constexpr const char* const INIT_RUNTIME = "InitRuntime";
+inline constexpr const char* const LYNX_SHELL_ATTACH_RUNTIME =
+    "LynxShell::AttachRuntime";
+inline constexpr const char* const ATTACH_RUNTIME = "AttachRuntime";
+inline constexpr const char* const LYNX_SHELL_SET_PAGE_OPTIONS =
+    "LynxShell::SetPageOptions";
+inline constexpr const char* const SET_PAGE_OPTIONS = "SetPageOptions";
 inline constexpr const char* const LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD =
     "LynxShell::AttachEngineToUIThread";
 inline constexpr const char* const LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD =
@@ -144,16 +164,50 @@ inline constexpr const char* const
 
 inline constexpr const char* const TIMING_BIND_PIPELINE_ID_WITH_TIMING_FLAG =
     "Timing::BindPipelineIDWithTimingFlag";
-
+/**
+ * @history_name{CallJSApiCallback}
+ */
 inline constexpr const char* const TASM_MEDIATOR_CALL_JS_API_CALLBACK =
-    "CallJSApiCallback";
+    "LynxEngine::CallJSApiCallback";
 inline constexpr const char* const TASM_MEDIATOR_NOTIFY_JS_UPDATE_PAGE_DATA =
     "NotifyJSUpdatePageData";
+/**
+ * @history_name{CallJSApiCallbackWithValue}
+ */
 inline constexpr const char* const
     TASM_MEDIATOR_CALL_JS_API_CALLBACK_WITH_VALUE =
-        "CallJSApiCallbackWithValue";
+        "LynxEngine::CallJSApiCallbackWithValue";
+/**
+ * @history_name{FiberOnLifecycleEvent}
+ */
+inline constexpr const char* const TASM_ON_LIFE_CYCLE_EVENT =
+    "LynxEngine::OnLifecycleEvent";
 inline constexpr const char* const TASM_MEDIATOR_CALL_ON_PAGE_CONFIG_DECODED =
     "OnPageConfigDecoded";
+inline constexpr const char* const TASM_ON_GLOBAL_PROPS_UPDATED =
+    "LynxEngine::OnGlobalPropsUpdated";
+inline constexpr const char* const RUNTIME_ON_GLOBAL_PROPS_UPDATED =
+    "LynxRuntime::OnGlobalPropsUpdated";
+inline constexpr const char* const TASM_ON_CARD_CONFIG_DATA_CHANGED =
+    "LynxEngine::OnCardConfigDataChanged";
+inline constexpr const char* const RUNTIME_ON_CARD_CONFIG_DATA_CHANGED =
+    "LynxRuntime::OnCardConfigDataChanged";
+inline constexpr const char* const TASM_CALL_JS_FUNCTION =
+    "LynxEngine::CallJSFunction";
+inline constexpr const char* const RUNTIME_CALL_JS_FUNCTION =
+    "LynxRuntime::CallJSFunction";
+inline constexpr const char* const TASM_ON_I18N_RESOURCE_CHANGED =
+    "LynxEngine::OnI18nResourceChanged";
+inline constexpr const char* const RUNTIME_ON_I18N_RESOURCE_CHANGED =
+    "LynxRuntime::OnI18nResourceChanged";
+inline constexpr const char* const TASM_ON_COMPONENT_DECODED =
+    "LynxEngine::OnComponentDecoded";
+inline constexpr const char* const RUNTIME_ON_COMPONENT_DECODED =
+    "LynxRuntime::OnComponentDecoded";
+inline constexpr const char* const TASM_ON_JS_APP_RELOAD =
+    "LynxEngine::OnJSAppReload";
+inline constexpr const char* const RUNTIME_ON_JS_APP_RELOAD =
+    "LynxRuntime::OnJSAppReload";
 
 inline constexpr const char* const TASM_OPERATION_QUEUE_ASYNC_FLUSH =
     "TASMOperationQueueAsync::Flush";
@@ -183,6 +237,7 @@ inline constexpr const char* const NATIVE_FACADE_DARWIN_ON_RUNTIME_READY =
     "NativeFacadeDarwin::OnRuntimeReady";
 inline constexpr const char* const EVALUATE_SCRIPT_STANDALONE =
     "EvaluateScriptStandalone";
+inline constexpr const char* const MODULE_ON_METHOD_INVOKE = "OnMethodInvoked";
 #endif  // #if ENABLE_TRACE_PERFETTO || ENABLE_TRACE_SYSTRACE
 
 #endif  // CORE_SHELL_COMMON_SHELL_TRACE_EVENT_DEF_H_

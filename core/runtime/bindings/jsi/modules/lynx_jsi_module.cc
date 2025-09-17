@@ -15,6 +15,7 @@
 #include "core/runtime/bindings/jsi/modules/module_interceptor.h"
 #include "core/runtime/jsi/jsi-inl.h"
 #include "core/runtime/trace/runtime_trace_event_def.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 #if ENABLE_TESTBENCH_RECORDER
 #include "core/services/recorder/native_module_recorder.h"
@@ -220,7 +221,6 @@ LynxJSIModule::invokeMethod(const MethodMetadata& method, Runtime* rt,
   timing_collector->EndPlatformMethodInvoke(invoke_facade_method_start);
   timing_collector->EndCallFunc(call_func_start);
   if (!invoke_info.has_error) {
-    TRACE_EVENT(LYNX_TRACE_CATEGORY_JSB, MODULE_ON_METHOD_INVOKE);
     delegate_->OnMethodInvoked(name_, method.name, error::E_SUCCESS);
   }
   return response;
@@ -230,11 +230,12 @@ void LynxJSIModule::InvokeCallback(
     const std::shared_ptr<LynxModuleCallback>& callback,
     base::MoveOnlyClosure<bool> invoke_pre_func) {
   auto module_callback = std::static_pointer_cast<ModuleCallback>(callback);
-  TRACE_EVENT_INSTANT(LYNX_TRACE_CATEGORY_JSB,
-                      NATIVE_MODULE_PLATFORM_CALLBACK_START,
-                      [&callback](lynx::perfetto::EventContext ctx) {
-                        ctx.event()->add_flow_ids(callback->CallbackFlowId());
-                      });
+  TRACE_EVENT_INSTANT(
+      LYNX_TRACE_CATEGORY_JSB, NATIVE_MODULE_PLATFORM_CALLBACK_START,
+      [&callback](lynx::perfetto::EventContext ctx) {
+        ctx.event()->add_flow_ids(callback->CallbackFlowId());
+        ctx.event()->add_debug_annotations(kTaskName, kJSTaskCallJSCallback);
+      });
   if (module_callback->timing_collector_) {
     module_callback->timing_collector_->CallbackThreadSwitchStart();
   }

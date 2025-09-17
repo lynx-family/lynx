@@ -30,8 +30,6 @@ inline constexpr const char* const CREATE_VIRTUAL_COMPONENT =
 inline constexpr const char* const RADON_DIFF_UPDATE_COMPONENT_INFO =
     "UpdateComponentInfo";
 
-inline constexpr const char* const API_CALLBACK_MANAGER_INVOKE_WITH_VALUE =
-    "ApiCallBackManager::InvokeWithValue";
 inline constexpr const char* const API_CALLBACK_MANAGER_CREATE_CALLBACK =
     "ApiCallBackManager::createCallbackImpl";
 
@@ -108,7 +106,6 @@ inline constexpr const char* const NATIVE_MODULE_CALLBACK =
 inline constexpr const char* const MODULE_INVOKE_CALLBACK = "InvokeCallback";
 inline constexpr const char* const CALL_PLATFORM_IMPLEMENTATION =
     "CallPlatformImplementation";
-inline constexpr const char* const MODULE_ON_METHOD_INVOKE = "OnMethodInvoked";
 /**
  * @history_name{JSBTiming::jsb_callback_thread_switch_start}
  */
@@ -143,10 +140,16 @@ inline constexpr const char* const CREATE_AND_LOAD_APP = "LynxCreateAndLoadApp";
 inline constexpr const char* const TIME_TO_INTERACTIVE = "TimeToInteractive";
 inline constexpr const char* const RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH =
     "RuntimeLifecycleObserver::OnRuntimeAttach";
+/**
+ * @history_name{CallJSApiCallback}
+ */
 inline constexpr const char* const RUNTIME_CALL_JS_API_CALLBACK =
-    "CallJSApiCallback";
+    "LynxRuntime::CallJSApiCallback";
+/**
+ * @history_name{CallJSApiCallbackWithValue}
+ */
 inline constexpr const char* const RUNTIME_CALL_JS_API_CALLBACK_WITH_VALUE =
-    "CallJSApiCallbackWithValue";
+    "LynxRuntime::CallJSApiCallbackWithValue";
 
 inline constexpr const char* const DESERIALIZE_FUNCTION = "DeserializeFunction";
 inline constexpr const char* const DESERIALIZE_GLOBAL = "DeserializeGlobal";
@@ -342,8 +345,6 @@ inline constexpr const char* const FIBER_FLUSH_ELEMENT_TREE =
     "FiberFlushElementTree";
 inline constexpr const char* const FIBER_FLUSH_ELEMENT_TREE_END =
     "FiberFlushElementTreeEnd";
-inline constexpr const char* const FIBER_ON_LIFECYCLE_EVENT =
-    "FiberOnLifecycleEvent";
 inline constexpr const char* const FIBER_ELEMENT_FROM_BINARY =
     "FiberElementFromBinary";
 inline constexpr const char* const FIBER_QUERY_COMPONENT =

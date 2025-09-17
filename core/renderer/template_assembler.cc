@@ -58,6 +58,7 @@
 #include "core/runtime/vm/lepus/vm_context.h"
 #include "core/services/event_report/event_tracker.h"
 #include "core/services/feature_count/global_feature_counter.h"
+#include "core/services/performance/js_blocking_monitor/js_blocking_monitor.h"
 #include "core/services/recorder/recorder_controller.h"
 #include "core/services/ssr/client/ssr_client_utils.h"
 #include "core/services/ssr/client/ssr_data_update_manager.h"
@@ -2684,6 +2685,8 @@ void TemplateAssembler::OnJSPrepared(
               [&url, trace_flow_id](lynx::perfetto::EventContext ctx) {
                 ctx.event()->add_debug_annotations("url", url);
                 ctx.event()->add_flow_ids(trace_flow_id);
+                ctx.event()->add_debug_annotations(kTaskName,
+                                                   kJSTaskOnJSSourcePrepared);
               });
   auto card = FindEntry(DEFAULT_ENTRY_NAME);
   delegate_.OnJSSourcePrepared(

@@ -20,5 +20,6 @@ static constexpr const char* const LYNX_TRACE_CATEGORY_JSB = "jsb";
 static constexpr const char* const LYNX_TRACE_CATEGORY_ATRACE = "system";
 static constexpr const char* const INSTANCE_ID = "instance_id";
 static constexpr const char* const PIPELINE_ID = "pipeline_id";
+static constexpr const char* const CALLBACK_ID = "callback_id";
 
 #endif  // CORE_BASE_LYNX_TRACE_CATEGORIES_H_

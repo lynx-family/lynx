@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/runtime_mediator.h"
 
 namespace lynx {
@@ -28,11 +29,6 @@ void ModuleDelegateImpl::CallJSCallback(
                        func = std::move(invoke_pre_func),
                        enqueue_info](auto& runtime) {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskCallJSCallback,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
     if (!func || func()) {
       runtime->CallJSCallback(callback, id_to_delete);
     }
@@ -48,15 +44,11 @@ void ModuleDelegateImpl::OnErrorOccurred(base::LynxError error) {
 void ModuleDelegateImpl::OnMethodInvoked(const std::string& module_name,
                                          const std::string& method_name,
                                          int32_t code) {
+  TRACE_EVENT(LYNX_TRACE_CATEGORY, MODULE_ON_METHOD_INVOKE);
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->Act(
       [module_name, method_name, code, enqueue_info](auto& runtime) {
         runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-        TRACE_EVENT(
-            LYNX_TRACE_CATEGORY, kJSTaskOnMethodInvoked,
-            [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-              ctx.event()->add_flow_ids(flow_id);
-            });
         runtime->OnModuleMethodInvoked(module_name, method_name, code);
       });
 }
@@ -109,11 +101,6 @@ void ModuleDelegateImpl::RunOnJSThread(base::closure func) {
   auto enqueue_info = tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();
   runtime_actor_->Act([func = std::move(func), enqueue_info](auto& runtime) {
     runtime->GetDelegate()->AddJSBlockingTime(enqueue_info.enqueue_time);
-    TRACE_EVENT(
-        LYNX_TRACE_CATEGORY, kJSTaskRunOnJSThread,
-        [flow_id = enqueue_info.flow_id](lynx::perfetto::EventContext ctx) {
-          ctx.event()->add_flow_ids(flow_id);
-        });
     func();
   });
 }

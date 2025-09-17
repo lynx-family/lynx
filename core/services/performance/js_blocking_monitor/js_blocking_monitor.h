@@ -20,7 +20,6 @@ static constexpr char kJSBlockingStageLoadBundle[] = "loadBundle";
 static constexpr char kJSBlockingStageTimer[] = "timer";
 
 struct JSTaskEnqueueRetInfo {
-  uint64_t flow_id;
   uint64_t enqueue_time;
 };
 
