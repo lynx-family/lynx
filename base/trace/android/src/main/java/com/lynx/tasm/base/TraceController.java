@@ -246,29 +246,33 @@ public class TraceController {
 
   public void init(Context context) {
     mContext = context;
-    mBroadcastReceiver = new TraceBroadcastReceiver();
-    IntentFilter filter = new TraceIntentFilter(mContext);
-    // Android 14 (API level 34) or higher must specify a flag to indicate
-    // whether or not the receiver should be exported to all other apps on the device
-    // using context-registered
-    // <p>
-    // https://developer.android.com/about/versions/14/behavior-changes-14#runtime-receivers-exported
-    // Todo(suguannan.906): replace 34 with Build.VERSION_CODES.UPSIDE_DOWN_CAKE
-    //  after upgrading compileSdkVerion to 34 or higher
-    if (Build.VERSION.SDK_INT >= 34 && context.getApplicationInfo().targetSdkVersion >= 34) {
-      // 0x4 means Context.RECEIVER_NOT_EXPORTED
+    if (TraceEvent.enableTrace()) {
+      mBroadcastReceiver = new TraceBroadcastReceiver();
+      IntentFilter filter = new TraceIntentFilter(mContext);
+      // Android 14 (API level 34) or higher must specify a flag to indicate
+      // whether or not the receiver should be exported to all other apps on the device
+      // using context-registered
       // <p>
-      // https://developer.android.com/reference/android/content/Context.html?hl=en#RECEIVER_EXPORTED
-      // Todo(suguannan.906): replace 0x4 to Context.RECEIVER_NOT_EXPORTED
+      // https://developer.android.com/about/versions/14/behavior-changes-14#runtime-receivers-exported
+      // Todo(suguannan.906): replace 34 with Build.VERSION_CODES.UPSIDE_DOWN_CAKE
       //  after upgrading compileSdkVerion to 34 or higher
-      mContext.registerReceiver(mBroadcastReceiver, filter, 0x4);
-    } else {
-      mContext.registerReceiver(mBroadcastReceiver, filter);
+      if (Build.VERSION.SDK_INT >= 34 && context.getApplicationInfo().targetSdkVersion >= 34) {
+        // 0x2 means Context.RECEIVER_EXPORTED
+        // <p>
+        // https://developer.android.com/reference/android/content/Context.html?hl=en#RECEIVER_EXPORTED
+        // Todo(suguannan.906): replace 0x2 to Context.RECEIVER_EXPORTED
+        //  after upgrading compileSdkVerion to 34 or higher
+        mContext.registerReceiver(mBroadcastReceiver, filter, 0x2);
+      } else {
+        mContext.registerReceiver(mBroadcastReceiver, filter);
+      }
     }
   }
 
   public void onTerminate() {
-    mContext.unregisterReceiver(mBroadcastReceiver);
+    if (TraceEvent.enableTrace()) {
+      mContext.unregisterReceiver(mBroadcastReceiver);
+    }
     mContext = null;
   }
 
