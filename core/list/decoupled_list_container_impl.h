@@ -60,8 +60,7 @@ class ListContainerImpl : public list::ContainerDelegate {
                                             float target_content_offset_y,
                                             bool is_init_scroll_offset,
                                             bool from_layout);
-  //  void UpdateScrollInfo(float estimated_offset, bool smooth, bool
-  //  scrolling);
+  void UpdateScrollInfo(float estimated_offset, bool smooth, bool scrolling);
   void StartInterceptListElementUpdated();
   void StopInterceptListElementUpdated();
   float RoundValueToPixelGrid(const float value);
@@ -81,7 +80,6 @@ class ListContainerImpl : public list::ContainerDelegate {
   ListLayoutManager* list_layout_manager() {
     return list_layout_manager_.get();
   }
-  bool need_layout_complete_info() const { return need_layout_complete_info_; }
   int layout_id() const { return layout_id_; }
   bool sticky_enabled() const { return sticky_enabled_; }
   bool recycle_sticky_item() const { return recycle_sticky_item_; }
@@ -97,7 +95,6 @@ class ListContainerImpl : public list::ContainerDelegate {
   }
   bool has_valid_diff() const { return has_valid_diff_; }
   bool enable_batch_render() const { return false; }
-  void RecordVisibleItemIfNeeded(bool is_layout_before);
   void ClearValidDiff() { has_valid_diff_ = false; }
   void MarkShouldFlushFinishLayout(bool has_layout) {
     should_flush_finish_layout_ |= has_layout;
@@ -132,7 +129,6 @@ class ListContainerImpl : public list::ContainerDelegate {
   std::unique_ptr<ListAdapter> list_adapter_;
   std::unique_ptr<ListChildrenHelper> list_children_helper_;
   std::unique_ptr<ListEventManager> list_event_manager_;
-  bool need_layout_complete_info_{false};
   bool need_recycle_all_item_holders_before_layout_{false};
   bool need_update_item_holders_{false};
   bool should_request_state_restore_{false};

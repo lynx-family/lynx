@@ -106,33 +106,27 @@ class ListAnchorManager {
                                       int finishing_binding_index);
   void AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info);
   //  void UpdateDiffAnchorReference();
-
-  int initial_scroll_index() const { return initial_scroll_index_; }
-
-  bool IsValidInitialScrollIndex();
+  bool IsValidInitialScrollIndex() const;
   void SetInitialScrollIndexStatus(list::InitialScrollIndexStatus status) {
     initial_scroll_index_status_ = status;
   }
+  int initial_scroll_index() const { return initial_scroll_index_; }
   list::InitialScrollIndexStatus initial_scroll_index_status() const {
     return initial_scroll_index_status_;
   }
-  //  void InitScrollToPositionParam(ItemHolder* item_holder, int index,
-  //                                 float offset, int align, bool smooth);
-  //  float CalculateTargetScrollingOffset(ItemHolder* item_holder);
-  //  void InvalidateScrollInfoPosition() {
-  //  scrolling_info_.InvalidatePosition(); } void ResetScrollInfo() {
-  //  scrolling_info_.Reset(); } bool IsValidSmoothScrollInfo() {
-  //    return scrolling_info_.scrolling_target_ != list::kInvalidIndex &&
-  //           scrolling_info_.scrolling_smooth_;
-  //  }
-  //  bool IsValidScrollTarget() {
-  //    return list_adapter_->GetItemHolderForIndex(
-  //        scrolling_info_.scrolling_target_);
-  //  }
+  void InitScrollToPositionParam(ItemHolder* item_holder, int index,
+                                 float offset, int align, bool smooth);
+  float CalculateTargetScrollingOffset(ItemHolder* item_holder);
+  void InvalidateScrollInfoPosition() { scrolling_info_.InvalidatePosition(); }
+  void ResetScrollInfo() { scrolling_info_.Reset(); }
+  bool IsValidSmoothScrollInfo() {
+    return scrolling_info_.scrolling_target_ != list::kInvalidIndex &&
+           scrolling_info_.scrolling_smooth_;
+  }
   void AdjustContentOffsetWithAnchor(AnchorInfo& anchor_info,
                                      float content_offset);
-  //  const ScrollingInfo& scrolling_info() const { return scrolling_info_; }
-  //
+  const ScrollingInfo& scrolling_info() const { return scrolling_info_; }
+
  private:
   void FindAnchor(AnchorInfo& anchor_info, bool from_begin,
                   int finishing_binding_index);

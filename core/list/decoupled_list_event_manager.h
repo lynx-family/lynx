@@ -51,14 +51,22 @@ class ListEventManager {
   void DetectScrollToThresholdAndSend(float distance, float original_offset,
                                       list::EventSource event_source);
 
+  void RecordVisibleItemIfNeeded(bool is_layout_before);
+
+  void RecordDiffResultIfNeeded();
+
+  void SetNeedLayoutCompleteInfo(bool need_layout_complete_info) {
+    need_layout_complete_info_ = need_layout_complete_info;
+  }
+
  private:
   void SendCustomScrollEvent(const std::string& event_name, float distance,
                              list::EventSource event_source);
-  //  std::unique_ptr<pub::Value> GenerateLayoutCompleteInfo() const;
-  std::unique_ptr<pub::Value> GenerateScrollInfo(
-      float deltaX, float deltaY, list::EventSource event_source) const;
-  std::unique_ptr<pub::Value> GenerateVisibleCellsInfo(float scroll_left,
-                                                       float scroll_top) const;
+  void CreateLayoutCompleteInfoIfNeeded();
+  std::unique_ptr<pub::Value> GenerateScrollInfo(float deltaX,
+                                                 float deltaY) const;
+  std::unique_ptr<pub::Value> GenerateVisibleCellsInfo(
+      float scroll_left, float scroll_top, bool for_scroll_info) const;
   std::unique_ptr<pub::Value> GenerateNodeExposureInfo(
       const ItemHolder* item_holder) const;
   void UpdatePreviousScrollState(bool is_lower, bool is_upper);
@@ -68,7 +76,9 @@ class ListEventManager {
  private:
   ListChildrenHelper* children_helper_{nullptr};
   ListContainerImpl* list_container_{nullptr};
+  std::unique_ptr<pub::Value> layout_complete_info_;
   bool need_visible_cell_{false};
+  bool need_layout_complete_info_{false};
   int scroll_event_throttle_ms_{200};
   int lower_threshold_item_count_{0};
   int upper_threshold_item_count_{0};

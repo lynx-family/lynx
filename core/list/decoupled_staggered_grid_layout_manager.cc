@@ -225,7 +225,7 @@ void StaggeredGridLayoutManager::OnLayoutAfter() {
   list_container_->StopInterceptListElementUpdated();
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
-  list_container_->RecordVisibleItemIfNeeded(false);
+  list_container_->list_event_manager()->RecordVisibleItemIfNeeded(false);
   list::EventSource event_source = list_container_->has_valid_diff()
                                        ? list::EventSource::kDiff
                                        : list::EventSource::kLayout;

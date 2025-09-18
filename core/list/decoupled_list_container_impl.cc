@@ -70,58 +70,6 @@ void ListContainerImpl::OnListItemLayoutUpdated(
   }
 }
 
-void ListContainerImpl::RecordVisibleItemIfNeeded(bool is_layout_before) {
-  //  if (!need_layout_complete_info_ || !layout_complete_info_) {
-  //    return;
-  //  }
-  //  layout_complete_info_->SetValue(BASE_STATIC_STRING(list::kEventUnit),
-  //                                  BASE_STATIC_STRING(list::kEventUnitPx));
-  //  layout_complete_info_->SetValue(
-  //      is_layout_before ? BASE_STATIC_STRING(list::kVisibleItemBeforeUpdate)
-  //                       : BASE_STATIC_STRING(list::kVisibleItemAfterUpdate),
-  //      GenerateVisibleItemInfo());
-}
-
-// fml::RefPtr<lepus::CArray> ListContainerImpl::GenerateVisibleItemInfo() const
-// {
-//   auto visible_item_info = lepus::CArray::Create();
-//   BASE_STATIC_STRING_DECL(kItemKey, "itemKey");
-//   BASE_STATIC_STRING_DECL(kIndex, "index");
-//   BASE_STATIC_STRING_DECL(kOriginX, "originX");
-//   BASE_STATIC_STRING_DECL(kOriginY, "originY");
-//   BASE_STATIC_STRING_DECL(kWidth, "width");
-//   BASE_STATIC_STRING_DECL(kHeight, "height");
-//   BASE_STATIC_STRING_DECL(kUpdated, "updated");
-//   BASE_STATIC_STRING_DECL(kIsBinding, "isBinding");
-//   const float layouts_unit_per_px = list_delegate_->GetLayoutsUnitPerPx();
-//   if (base::FloatsLarger(layouts_unit_per_px, 0.f)) {
-//     list_children_helper_->ForEachChild(
-//         list_children_helper_->on_screen_children(),
-//         [&, this, layouts_unit_per_px](ItemHolder* item_holder) {
-//           if (list_layout_manager_->ItemHolderVisibleInList(item_holder)) {
-//             auto item_info = lepus::Dictionary::Create();
-//             item_info->SetValue(kItemKey, item_holder->item_key());
-//             item_info->SetValue(kIndex, item_holder->index());
-//             item_info->SetValue(kOriginX,
-//                                 item_holder->left() / layouts_unit_per_px);
-//             item_info->SetValue(kOriginY,
-//                                 item_holder->top() / layouts_unit_per_px);
-//             item_info->SetValue(kWidth,
-//                                 item_holder->width() / layouts_unit_per_px);
-//             item_info->SetValue(kHeight,
-//                                 item_holder->height() / layouts_unit_per_px);
-//             item_info->SetValue(kUpdated,
-//                                 list_adapter_->IsUpdated(item_holder));
-//             item_info->SetValue(kIsBinding,
-//                                 list_adapter_->IsBinding(item_holder));
-//             visible_item_info->emplace_back(item_info);
-//           }
-//           return false;
-//         });
-//   }
-//   return visible_item_info;
-// }
-
 // Get count of data source.
 int ListContainerImpl::GetDataCount() const {
   return list_adapter_ ? list_adapter_->GetDataCount() : 0;
@@ -148,17 +96,13 @@ void ListContainerImpl::UpdateContentOffsetAndSizeToPlatform(
       content_size, delta_x, delta_y, is_init_scroll_offset, from_layout);
 }
 
-//// Update scroll info to platform view.
-// void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
-//                                          bool scrolling) {
-//   if (!element_ || !smooth) {
-//     return;
-//   }
-//
-//   element_->painting_context()->UpdateScrollInfo(element_->impl_id(), smooth,
-//                                                  estimated_offset,
-//                                                  scrolling);
-// }
+// Update scroll info to platform view.
+void ListContainerImpl::UpdateScrollInfo(float estimated_offset, bool smooth,
+                                         bool scrolling) {
+  if (smooth) {
+    list_delegate_->UpdateScrollInfo(estimated_offset, smooth, scrolling);
+  }
+}
 
 // This function should be called before any code that may trigger list's
 // OnListElementUpdated() to enable list avoid reacting to additional redundant
@@ -183,9 +127,9 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   float cross_axis_gap = list_layout_manager_->cross_axis_gap();
   float preload_buffer_count = list_layout_manager_->preload_buffer_count();
   float content_size = list_layout_manager_->content_size();
-  //  int initial_scroll_index = list_layout_manager_->GetInitialScrollIndex();
-  //  list::InitialScrollIndexStatus initial_scroll_status =
-  //      list_layout_manager_->GetInitialScrollIndexStatus();
+  int initial_scroll_index = list_layout_manager_->initial_scroll_index();
+  list::InitialScrollIndexStatus initial_scroll_status =
+      list_layout_manager_->initial_scroll_index_status();
   // Store the previous content_offset_ or the delta calculation may be
   // incorrect
   float content_offset = list_layout_manager_->content_offset();
@@ -198,8 +142,8 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           orientation);
-  //  list_layout_manager_->SetInitialScrollIndex(initial_scroll_index);
-  //  list_layout_manager_->SetInitialScrollStatus(initial_scroll_status);
+  list_layout_manager_->SetInitialScrollIndex(initial_scroll_index);
+  list_layout_manager_->SetInitialScrollStatus(initial_scroll_status);
   list_layout_manager_->SetSpanCount(span_count);
   list_layout_manager_->SetMainAxisGap(main_axis_gap);
   list_layout_manager_->SetCrossAxisGap(cross_axis_gap);
@@ -289,8 +233,8 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     should_set_props = false;
   } else if (key_str == list::kPropInitialScrollIndex && value.IsNumber()) {
     // initial-scroll-index
-    //    list_layout_manager_->SetInitialScrollIndex(
-    //        static_cast<int>(value.Number()));
+    list_layout_manager_->SetInitialScrollIndex(
+        static_cast<int>(value.Number()));
   } else if (key_str == list::kPropUpperThresholdItemCount &&
              value.IsNumber()) {
     // upper-threshold-item-count
@@ -309,8 +253,9 @@ bool ListContainerImpl::ResolveAttribute(const pub::Value& key,
     should_set_props = false;
   } else if (key_str == list::kPropNeedLayoutCompleteInfo && value.IsBool()) {
     // need-layout-complete-info
-    need_layout_complete_info_ = value.Bool();
+    list_event_manager_->SetNeedLayoutCompleteInfo(value.Bool());
   } else if (key_str == list::kPropLayoutId && value.IsNumber()) {
+    // layout-id
     layout_id_ = static_cast<int>(value.Number());
   } else if (key_str == list::kPropScrollEventThrottle && value.IsNumber()) {
     // scroll-event-throttle
@@ -396,13 +341,7 @@ void ListContainerImpl::PropsUpdateFinish() {
       need_recycle_all_item_holders_before_layout_ = true;
     }
   }
-  if (need_layout_complete_info_) {
-    //    if (!layout_complete_info_) {
-    //      layout_complete_info_ = lepus::Dictionary::Create();
-    //    }
-    //    layout_complete_info_->SetValue(BASE_STATIC_STRING(list::kDiffResult),
-    //        list_adapter_->list_adapter_helper()->GenerateDiffInfo());
-  }
+  list_event_manager_->RecordDiffResultIfNeeded();
   if (need_update_item_holders_) {
     list_adapter_->UpdateItemHolderToLatest(list_children_helper_.get());
     need_update_item_holders_ = false;
@@ -434,23 +373,16 @@ void ListContainerImpl::ScrollByPlatformContainer(float content_offset_x,
 
 void ListContainerImpl::ScrollToPosition(int index, float offset, int align,
                                          bool smooth) {
-  //  if (list_layout_manager_) {
-  //    list_layout_manager_->ScrollToPosition(index, offset, align, smooth);
-  //  }
+  if (list_layout_manager_) {
+    list_layout_manager_->ScrollToPosition(index, offset, align, smooth);
+  }
 }
 
 void ListContainerImpl::ScrollStopped() {
-  //  if (list_layout_manager_) {
-  //    list_layout_manager_->ScrollStopped();
-  //  }
+  if (list_layout_manager_) {
+    list_layout_manager_->ScrollStopped();
+  }
 }
-
-// void ListContainerImpl::UpdateListContainerDataSource(
-//     fml::RefPtr<lepus::Dictionary>& list_container_info) {
-//   if (list_adapter_) {
-//     list_adapter_->UpdateListContainerDataSource(list_container_info);
-//   }
-// }
 
 void ListContainerImpl::OnAttachedToElementManager() {
   physical_pixels_per_layout_unit_ =

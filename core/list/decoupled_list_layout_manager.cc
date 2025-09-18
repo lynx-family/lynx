@@ -144,50 +144,50 @@ void ListLayoutManager::ScrollByPlatformContainer(float content_offset_x,
       true);
 }
 
-//// Platform UI will invoke this function when scrollToPosition UI method is
-//// invoked and pass parameters to ListLayoutManager.
-// void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
-//                                          bool smooth) {
-//   ItemHolder* item_holder = nullptr;
-//   if (!list_container_ || !list_orientation_helper_ ||
-//       !(item_holder = list_container_->GetItemHolderForIndex(index)) ||
-//       !list_anchor_manager_) {
-//     return;
-//   }
-//   list_anchor_manager_->InitScrollToPositionParam(item_holder, index, offset,
-//                                                   align, smooth);
-//   DLIST_LOGI("[list_container=" << list_container_ << "] ScrollToPosition: "
-//                                 << item_holder << ", " << index << ", "
-//                                 << offset << ", " << align << ", " <<
-//                                 smooth);
-//   if (smooth) {
-//     float target_offset =
-//         list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
-//     list_container_->UpdateScrollInfo(target_offset, smooth, false);
-//   } else {
-//     // scroll to index by layout, by initial-scroll-index
-//     // is_non_smooth_scroll_ will block layout_complete event
-//     is_non_smooth_scroll_ = true;
-//     OnLayoutChildren();
-//     // Invalidate consumed index to avoid double calculation
-//     list_anchor_manager_->InvalidateScrollInfoPosition();
-//     float target_offset =
-//         list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
-//     // scroll to additional offset
-//     if (base::FloatsNotEqual(0, offset) ||
-//         align != static_cast<int>(list::ScrollingInfoAlignment::kTop)) {
-//       ScrollByInternal(target_offset, target_offset, false);
-//     }
-//     is_non_smooth_scroll_ = false;
-//   }
-// }
-//
-//// Platform UI will invoke this function when scrollToPosition UI method is
-//// finished to clear ListLayoutManager's related scrolling info.
-// void ListLayoutManager::ScrollStopped() {
-//   DLIST_LOGI("[list_container=" << list_container_ << "] ScrollStopped");
-//   list_anchor_manager_->ResetScrollInfo();
-// }
+// Platform UI will invoke this function when scrollToPosition UI method is
+// invoked and pass parameters to ListLayoutManager.
+void ListLayoutManager::ScrollToPosition(int index, float offset, int align,
+                                         bool smooth) {
+  ItemHolder* item_holder = nullptr;
+  if (!list_container_ || !list_orientation_helper_ ||
+      !(item_holder = list_container_->GetItemHolderForIndex(index)) ||
+      !list_anchor_manager_) {
+    return;
+  }
+  list_anchor_manager_->InitScrollToPositionParam(item_holder, index, offset,
+                                                  align, smooth);
+  DLIST_LOGI("[list_container=" << list_container_ << "] ScrollToPosition: "
+                                << item_holder << ", " << index << ", "
+                                << offset << ", " << align << ", " << smooth);
+  if (smooth) {
+    float target_offset =
+        list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
+    list_container_->list_delegate()->UpdateScrollInfo(target_offset, smooth,
+                                                       false);
+  } else {
+    // scroll to index by layout, by initial-scroll-index
+    // is_non_smooth_scroll_ will block layout_complete event
+    is_non_smooth_scroll_ = true;
+    OnLayoutChildren();
+    // Invalidate consumed index to avoid double calculation
+    list_anchor_manager_->InvalidateScrollInfoPosition();
+    float target_offset =
+        list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
+    // scroll to additional offset
+    if (base::FloatsNotEqual(0, offset) ||
+        align != static_cast<int>(list::ScrollingInfoAlignment::kTop)) {
+      ScrollByInternal(target_offset, target_offset, false);
+    }
+    is_non_smooth_scroll_ = false;
+  }
+}
+
+// Platform UI will invoke this function when scrollToPosition UI method is
+// finished to clear ListLayoutManager's related scrolling info.
+void ListLayoutManager::ScrollStopped() {
+  DLIST_LOGI("[list_container=" << list_container_ << "] ScrollStopped");
+  list_anchor_manager_->ResetScrollInfo();
+}
 
 // Determine whether the current ItemHolder needs to be recycled.
 bool ListLayoutManager::ShouldRecycleItemHolder(ItemHolder* item_holder) {
@@ -252,37 +252,38 @@ void ListLayoutManager::FlushContentSizeAndOffsetToPlatform(
             list::InitialScrollIndexStatus::kSet,
         is_non_smooth_scroll_ || from_layout);
   }
-  //  FlushScrollInfoToPlatformIfNeeded();
+  FlushScrollInfoToPlatformIfNeeded();
 }
 
-// void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
-//   if (list_container_ && list_anchor_manager_->IsValidSmoothScrollInfo()) {
-//     const ListAnchorManager::ScrollingInfo& scrolling_info =
-//         list_anchor_manager_->scrolling_info();
-//     ItemHolder* item_holder = list_container_->GetItemHolderForIndex(
-//         scrolling_info.scrolling_target_);
-//     if (item_holder) {
-//       if (item_holder != scrolling_info.item_holder_) {
-//         DLIST_LOGE(
-//             "FlushScrollInfoToPlatformIfNeeded: target item holder in "
-//             "scrolling_info_ is not exist: "
-//             << scrolling_info.item_holder_ << ", " << item_holder);
-//       }
-//       float target_offset =
-//           list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
-//       list_container_->UpdateScrollInfo(target_offset, true, true);
-//     } else {
-//       list_anchor_manager_->ResetScrollInfo();
-//     }
-//   }
-// }
+void ListLayoutManager::FlushScrollInfoToPlatformIfNeeded() {
+  if (list_container_ && list_anchor_manager_->IsValidSmoothScrollInfo()) {
+    const ListAnchorManager::ScrollingInfo& scrolling_info =
+        list_anchor_manager_->scrolling_info();
+    ItemHolder* item_holder = list_container_->GetItemHolderForIndex(
+        scrolling_info.scrolling_target_);
+    if (item_holder) {
+      if (item_holder != scrolling_info.item_holder_) {
+        DLIST_LOGE(
+            "FlushScrollInfoToPlatformIfNeeded: target item holder in "
+            "scrolling_info_ is not exist: "
+            << scrolling_info.item_holder_ << ", " << item_holder);
+      }
+      float target_offset =
+          list_anchor_manager_->CalculateTargetScrollingOffset(item_holder);
+      list_container_->list_delegate()->UpdateScrollInfo(target_offset, true,
+                                                         true);
+    } else {
+      list_anchor_manager_->ResetScrollInfo();
+    }
+  }
+}
 
 // Callback before layout.
 void ListLayoutManager::OnPrepareForLayoutChildren() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY,
               LIST_LAYOUT_MANAGER_PREPARE_FOR_LAYOUT_CHILDREN);
   SetListLayoutInfoToAllItemHolders();
-  list_container_->RecordVisibleItemIfNeeded(true);
+  list_container_->list_event_manager()->RecordVisibleItemIfNeeded(true);
 }
 
 void ListLayoutManager::SendLayoutCompleteEvent() {

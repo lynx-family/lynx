@@ -115,9 +115,6 @@ class LinearLayoutManager : public ListLayoutManager {
   void Fill(LayoutState& layout_state);
   bool HasMore(int current_index, float remaining) const;
   bool HasMore(const LayoutState& layout_state, int target_index) const;
-  //  ItemHolder* FindFirstIntersectItemHolder(float line) const;
-  //  bool IsItemHolderIntersectsWithLine(float line,
-  //                                      ItemHolder* item_holder) const;
   void UpdateScrollAnchorInfo(ListAnchorManager::AnchorInfo& anchor_info,
                               const ItemHolderSet& on_screen_children,
                               const float content_offset);

@@ -160,6 +160,8 @@ class ListAdapter : public AdapterHelper::Delegate {
 
   bool IsFullSpanAtIndex(int index) const;
 
+  std::unique_ptr<pub::Value> GenerateDiffResult() const;
+
   void Release() {
     list_container_ = nullptr;
     adapter_helper_ = nullptr;
@@ -203,6 +205,10 @@ class ListAdapter : public AdapterHelper::Delegate {
   void CheckSticky(ItemHolder* item_holder, int32_t index);
 
   void FlushListContainerInfo();
+
+  void GenerateDiffArray(const std::string& diff_key,
+                         const std::vector<int32_t>& diff_array,
+                         const std::unique_ptr<pub::Value>& diff_result) const;
 
  protected:
   ListContainerImpl* list_container_{nullptr};
