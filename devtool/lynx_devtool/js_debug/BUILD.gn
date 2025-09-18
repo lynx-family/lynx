@@ -114,17 +114,20 @@ devtool_source_set("devtool_lepus_debug_sources") {
     "../../../base/src:base_log_headers",
     "../recorder:recorder",
   ]
-  if (is_ios || is_android) {
+
+  if (!enable_unittests) {
     sources += [
       "lepus/manager/lepus_inspector_manager_impl.cc",
       "lepus/manager/lepus_inspector_manager_impl.h",
     ]
   }
+
+  public_configs = [ ":common_config" ]
 }
 
 devtool_source_set("devtool_lepus_debug") {
   deps = [ ":devtool_lepus_debug_sources" ]
-  if (is_ios || is_android) {
+  if (!enable_unittests) {
     deps += [ "../../js_inspect/lepus:lepus_debug" ]
   }
 }

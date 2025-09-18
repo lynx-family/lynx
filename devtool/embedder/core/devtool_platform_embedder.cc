@@ -129,6 +129,14 @@ class DevtoolPlatformImpl : public lynx::devtool::DevToolPlatformFacade {
     embedder->OnConsoleObject(detail, callback_id);
   }
 
+  std::string GetLepusDebugInfo(const std::string& url) override {
+    auto embedder = weak_embedder_.lock();
+    CHECK_NULL_AND_LOG_RETURN_VALUE(embedder, "embedder is null", "");
+    std::string debug_info;
+    embedder->GetLepusDebugInfo(url, debug_info);
+    return debug_info;
+  }
+
  private:
   std::weak_ptr<DevtoolPlatformEmbedder> weak_embedder_;
 };
@@ -145,6 +153,7 @@ void DevtoolPlatformEmbedder::Init(
       std::make_unique<ScreenCastHelperEmbedder>(proxy, shared_from_this());
   reload_helper_ = std::make_unique<PageReloadHelperEmbedder>(proxy);
   proxy_ = proxy;
+  debug_info_helper_ = std::make_unique<DebugInfoHelper>();
 }
 
 DevtoolPlatformEmbedder::~DevtoolPlatformEmbedder() {}
@@ -284,6 +293,12 @@ void DevtoolPlatformEmbedder::OnConsoleObject(const std::string& detail,
   if (sp) {
     sp->OnConsoleObject(detail, callback_id);
   }
+}
+
+void DevtoolPlatformEmbedder::GetLepusDebugInfo(const std::string& url,
+                                                std::string& debug_info) {
+  CHECK_NULL_AND_LOG_RETURN(debug_info_helper_, "debug_info_helper_ is null");
+  debug_info_helper_->GetLepusDebugInfo(url, debug_info);
 }
 
 }  // namespace devtool

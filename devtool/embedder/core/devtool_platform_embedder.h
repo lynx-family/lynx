@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "devtool/embedder/core/debug_info_helper.h"
 #include "devtool/lynx_devtool/agent/devtool_platform_facade.h"
 #include "devtool/lynx_devtool/base/screen_metadata.h"
 
@@ -82,6 +83,8 @@ class DevtoolPlatformEmbedder
   void OnConsoleMessage(const std::string& message);
   void OnConsoleObject(const std::string& detail, int callback_id);
 
+  void GetLepusDebugInfo(const std::string& url, std::string& debug_info);
+
  private:
   std::shared_ptr<lynx::devtool::DevToolPlatformFacade>
       devtool_platform_facade_;
@@ -89,6 +92,7 @@ class DevtoolPlatformEmbedder
   std::unique_ptr<PageReloadHelperEmbedder> reload_helper_;
   std::weak_ptr<InspectorOwnerEmbedder> weak_owner_;
   devtool::LynxDevToolProxy* proxy_ = nullptr;
+  std::unique_ptr<DebugInfoHelper> debug_info_helper_;
 };
 
 }  // namespace devtool

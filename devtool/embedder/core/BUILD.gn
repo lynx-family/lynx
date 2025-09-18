@@ -9,6 +9,8 @@ devtool_source_set("lynx_devtool_embedder_core") {
   sources = [
     "debug_bridge_embedder.cc",
     "debug_bridge_embedder.h",
+    "debug_info_helper.cc",
+    "debug_info_helper.h",
     "debug_state_listener_embedder.cc",
     "debug_state_listener_embedder.h",
     "devtool_message_handler_embedder.cc",
@@ -38,5 +40,10 @@ devtool_source_set("lynx_devtool_embedder_core") {
     "screenshot_timer_trigger_embedder.h",
   ]
 
-  include_dirs = [ "../../../third_party/debug_router/src/" ]
+  include_dirs = [
+    "../../../third_party/debug_router/src/",
+    "//third_party/boringssl/src/include",
+  ]
+
+  deps = [ "//third_party/httplib:httplib" ]
 }

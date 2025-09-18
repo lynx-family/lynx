@@ -35,21 +35,6 @@ deps = {
         "commit": "5c3769edadc5390f27ff74500b5a8fcb6f65306b",
         'condition': system == "linux"
     },
-    "third_party/boringssl":{
-        "type": "git",
-        "url": "https://github.com/dart-lang/boringssl_gen.git",
-        "commit": "7322fc15cc065d8d2957fccce6b62a509dc4d641",
-        "patches": [
-            os.path.join(root_dir, 'patches', 'boringssl', '*.patch')
-        ],
-        "ignore_in_git": True,
-    },
-    "third_party/boringssl/src":{
-        "type": "git",
-        "url": "https://boringssl.googlesource.com/boringssl.git",
-        "commit": "1607f54fed72c6589d560254626909a64124f091",
-        "require": ['third_party/boringssl']
-    },
     'third_party/expat': {
         'type': 'http',
         'url': 'https://chromium.googlesource.com/chromium/src/+archive/430307ef971c7bb91ac0b9f6ac80e511e6418c13/third_party/expat.tar.gz',

@@ -6,7 +6,7 @@
 
 #include "core/runtime/common/lynx_console_helper.h"
 #include "devtool/lynx_devtool/js_debug/lepus/inspector_lepus_debugger_impl.h"
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if !ENABLE_UNITTESTS
 #include "devtool/lynx_devtool/js_debug/lepus/manager/lepus_inspector_manager_impl.h"
 #endif
 
@@ -35,7 +35,7 @@ InspectorLepusObserverImpl::InspectorLepusObserverImpl(
 
 std::unique_ptr<lepus::LepusInspectorManager>
 InspectorLepusObserverImpl::CreateLepusInspectorManager() {
-#if defined(OS_ANDROID) || defined(OS_IOS)
+#if !ENABLE_UNITTESTS
   return std::make_unique<lepus::LepusInspectorManagerImpl>();
 #endif
   return nullptr;

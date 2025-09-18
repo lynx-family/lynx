@@ -252,6 +252,29 @@ deps = {
         'commit': '031a44bc1b1fffc6a001a1245dda41b977316062',
         "ignore_in_git": True,
     },
+    "third_party/boringssl":{
+        "type": "git",
+        "url": "https://github.com/dart-lang/boringssl_gen.git",
+        "commit": "7322fc15cc065d8d2957fccce6b62a509dc4d641",
+        "patches": [
+            os.path.join(root_dir, 'patches', 'boringssl', '*.patch')
+        ],
+        "ignore_in_git": True,
+    },
+    "third_party/boringssl/src":{
+        "type": "git",
+        "url": "https://boringssl.googlesource.com/boringssl.git",
+        "commit": "1607f54fed72c6589d560254626909a64124f091",
+        "require": ['third_party/boringssl'],
+        "ignore_in_git": True,
+    },
+    "third_party/httplib": {
+        'type': 'git',
+        'url': 'https://github.com/yhirose/cpp-httplib.git',
+        'commit': 'ea850cbfa74e2dff228c49bf94542ce5331d73b5',
+        'patches': os.path.join(root_dir, 'patches', 'httplib', '*.patch'),
+        "ignore_in_git": True,
+    },
     'buildtools/corepack/pnpm/7.33.6': {
         "type": "http",
         "url": "https://registry.npmjs.org/pnpm/-/pnpm-7.33.6.tgz",

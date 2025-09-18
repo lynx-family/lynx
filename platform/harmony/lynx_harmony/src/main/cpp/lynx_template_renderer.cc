@@ -274,6 +274,7 @@ void LynxTemplateRenderer::LoadTemplate(
     bool enable_recycle_template_bundle) {
   if (inspector_owner_ != nullptr) {
     inspector_owner_->OnLoadTemplate(url, source, template_data);
+    inspector_owner_->OnLoaded(url);
   }
   pipeline_options->enable_pre_painting = false;
   pipeline_options->enable_recycle_template_bundle =
@@ -400,9 +401,6 @@ void LynxTemplateRenderer::OnReloadTemplate(
 }
 
 void LynxTemplateRenderer::OnLoaded(const std::string& url) {
-  if (inspector_owner_ != nullptr) {
-    inspector_owner_->OnLoaded(url);
-  }
   base::NapiHandleScope scope(env_);
   napi_value param[1];
   napi_create_string_utf8(env_, url.c_str(), url.length(), &param[0]);

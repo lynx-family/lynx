@@ -1,0 +1,52 @@
+From 24b92d53ba510cefd9f40febf678118ba03aacf5 Mon Sep 17 00:00:00 2001
+From: Dango-2021 <191667655+Dango-2021@users.noreply.github.com>
+Date: Fri, 19 Sep 2025 17:08:46 +0800
+Subject: [PATCH] [Infra] Add BUILD.gn file for httplib.
+
+---
+ BUILD.gn | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+ create mode 100644 BUILD.gn
+
+diff --git a/BUILD.gn b/BUILD.gn
+new file mode 100644
+index 0000000..7852946
+--- /dev/null
++++ b/BUILD.gn
+@@ -0,0 +1,33 @@
++# Copyright 2025 The Lynx Authors. All rights reserved.
++# Licensed under the Apache License Version 2.0 that can be found in the
++# LICENSE file in the root directory of this source tree.
++
++config("httplib_config") {
++  defines = [
++    "CPPHTTPLIB_NO_EXCEPTIONS",
++    "CPPHTTPLIB_ZLIB_SUPPORT",
++    "CPPHTTPLIB_OPENSSL_SUPPORT",
++  ]
++
++  include_dirs = ["//third_party/boringssl/src/include"]
++}
++
++source_set("httplib") {
++  sources = [
++    "httplib.cc",
++    "httplib.h",
++  ]
++
++  public_deps = [
++    "//third_party/boringssl",
++    "//third_party/zlib",
++  ]
++
++  if (is_linux) {
++    libs = [ "anl" ]
++  } else if (is_mac) {
++    frameworks = [ "CFNetwork.framework" ]
++  }
++
++  public_configs = [ ":httplib_config" ]
++}
+-- 
+2.45.1
+
