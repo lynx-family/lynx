@@ -30,7 +30,7 @@ class ComputedCSSStyleCssTextHelper {
         return (this->*func)(computed_css_style, ref_layout_result);
       }
     }
-    return "";
+    return base::String();
   }
 
  private:
