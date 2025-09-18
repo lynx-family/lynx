@@ -48,6 +48,10 @@ open class LynxUIInput(context: LynxContext, params:Any?) : LynxUIBaseInput(cont
         }
         return editText
     }
+  
+    override fun customTextAlignSetting(align: Int) : Int {
+      return Gravity.CENTER_VERTICAL
+    }
 
     override fun afterPropsUpdated(props: StylesDiffMap?) {
         super.afterPropsUpdated(props)
