@@ -1,5 +1,8 @@
 # CHANGELOG
-## 3.5.7
+## 3.5.8
+- Update common typings on elements.
+
+## 3.5.6
 - The `flowIds` parameter in the Trace API supports passing an undefined value.
 
 ## 3.5.5
