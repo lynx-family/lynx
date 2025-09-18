@@ -43,8 +43,8 @@ class ListLayoutManager {
   void SetListAnchorManager(ListChildrenHelper* list_children_helper);
   void ScrollByPlatformContainer(float content_offset_x, float content_offset_y,
                                  float original_x, float original_y);
-  //  void ScrollToPosition(int index, float offset, int align, bool smooth);
-  //  void ScrollStopped();
+  void ScrollToPosition(int index, float offset, int align, bool smooth);
+  void ScrollStopped();
   float GetWidth() const;
   float GetHeight() const;
   float GetPaddingLeft() const;
@@ -64,28 +64,18 @@ class ListLayoutManager {
   void SetCrossAxisGap(float cross_axis_gap) {
     cross_axis_gap_ = cross_axis_gap;
   }
-  //  int GetInitialScrollIndex() const {
-  //    return list_anchor_manager_->initial_scroll_index();
-  //  }
-  //  list::InitialScrollIndexStatus GetInitialScrollIndexStatus() const {
-  //    return list_anchor_manager_->initial_scroll_index_status();
-  //  }
-  //  void SetInitialScrollStatus(list::InitialScrollIndexStatus status) {
-  //    list_anchor_manager_->SetInitialScrollIndexStatus(status);
-  //  }
-  //  void SetInitialScrollIndex(int initial_scroll_index) {
-  //    list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
-  //  }
-  //  void SetAnchorPriorityFromBegin(bool anchor_priority_from_begin) {
-  //    list_anchor_manager_->SetAnchorPriorityFromBegin(
-  //        anchor_priority_from_begin);
-  //  }
-  //  void SetAnchorAlignToBottom(bool anchor_align_to_bottom) {
-  //    list_anchor_manager_->SetAnchorAlignToBottom(anchor_align_to_bottom);
-  //  }
-  //  void SetAnchorVisibility(list::AnchorVisibility anchor_visibility) {
-  //    list_anchor_manager_->SetAnchorVisibility(anchor_visibility);
-  //  }
+  void SetInitialScrollIndex(int initial_scroll_index) {
+    list_anchor_manager_->SetInitialScrollIndex(initial_scroll_index);
+  }
+  void SetInitialScrollStatus(list::InitialScrollIndexStatus status) {
+    list_anchor_manager_->SetInitialScrollIndexStatus(status);
+  }
+  int initial_scroll_index() const {
+    return list_anchor_manager_->initial_scroll_index();
+  }
+  list::InitialScrollIndexStatus initial_scroll_index_status() const {
+    return list_anchor_manager_->initial_scroll_index_status();
+  }
   bool SetPreloadBufferCount(int count) {
     bool count_changed = false;
     if (count < 0) {
@@ -156,7 +146,6 @@ class ListLayoutManager {
   float ClampContentOffsetToEdge(float content_offset, float content_size);
   bool ValidPreloadBufferCount() const { return preload_buffer_count_ > 0; }
   void OnPrepareForLayoutChildren();
-  //  void SendAnchorDebugInfo(ListAnchorManager::AnchorInfo& anchor_info);
   void HandleLayoutOrScrollResult(bool is_layout);
 #if ENABLE_TRACE_PERFETTO
   virtual void UpdateTraceDebugInfo(TraceEvent* event) const;
@@ -165,7 +154,7 @@ class ListLayoutManager {
  private:
   bool UpdateStickyItemsInternal(int& layout_changed_position,
                                  float sticky_offset, int index);
-  //  void FlushScrollInfoToPlatformIfNeeded();
+  void FlushScrollInfoToPlatformIfNeeded();
   void SetListLayoutInfoToAllItemHolders();
 
  public:

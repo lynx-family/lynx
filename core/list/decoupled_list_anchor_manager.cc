@@ -49,14 +49,14 @@ void ListAnchorManager::RetrieveAnchorInfoBeforeLayout(
 void ListAnchorManager::AdjustAnchorInfoAfterLayout(AnchorInfo& anchor_info) {
   if (IsValidInitialScrollIndex()) {
     // initial-scroll-index
-    //      Use initial-scroll-index as anchor and fill a screen size area
+    // Use initial-scroll-index as anchor and fill a screen size area
     float start =
         list_orientation_helper_->GetDecoratedStart(anchor_info.item_holder_);
     list_layout_manager_->SetContentOffset(start, false);
     anchor_info.start_offset_ = start;
   } else if (scrolling_info_.IsValidNonSmoothScrollTarget()) {
     // un-smoothed scroll
-    //      Use target index as anchor and fill a screen size area
+    // Use target index as anchor and fill a screen size area
     float start =
         list_orientation_helper_->GetDecoratedStart(anchor_info.item_holder_);
     list_layout_manager_->SetContentOffset(start, false);
@@ -186,24 +186,24 @@ void ListAnchorManager::FindAnchor(AnchorInfo& anchor_info, bool from_end,
   }
 }
 
-// void ListAnchorManager::InitScrollToPositionParam(ItemHolder* item_holder,
-//                                                   int index, float offset,
-//                                                   int align, bool smooth) {
-//   scrolling_info_.scrolling_target_ = index;
-//   scrolling_info_.scrolling_offset_ = offset;
-//   scrolling_info_.scrolling_align_ = (list::ScrollingInfoAlignment)align;
-//   scrolling_info_.scrolling_smooth_ = smooth;
-//   scrolling_info_.item_holder_ = item_holder;
-// }
-//
-// float ListAnchorManager::CalculateTargetScrollingOffset(
-//     ItemHolder* item_holder) {
-//   return scrolling_info_.CalcScrollingOffset(
-//       list_orientation_helper_->GetMeasurement(),
-//       list_layout_manager_->content_size(),
-//       list_orientation_helper_->GetStart(item_holder),
-//       list_orientation_helper_->GetDecoratedMeasurement(item_holder));
-// }
+void ListAnchorManager::InitScrollToPositionParam(ItemHolder* item_holder,
+                                                  int index, float offset,
+                                                  int align, bool smooth) {
+  scrolling_info_.scrolling_target_ = index;
+  scrolling_info_.scrolling_offset_ = offset;
+  scrolling_info_.scrolling_align_ = (list::ScrollingInfoAlignment)align;
+  scrolling_info_.scrolling_smooth_ = smooth;
+  scrolling_info_.item_holder_ = item_holder;
+}
+
+float ListAnchorManager::CalculateTargetScrollingOffset(
+    ItemHolder* item_holder) {
+  return scrolling_info_.CalcScrollingOffset(
+      list_orientation_helper_->GetMeasurement(),
+      list_layout_manager_->content_size(),
+      list_orientation_helper_->GetStart(item_holder),
+      list_orientation_helper_->GetDecoratedMeasurement(item_holder));
+}
 
 void ListAnchorManager::AdjustAnchorAlignment(AnchorInfo& anchor_info) {
   switch (anchor_visibility_) {
@@ -281,7 +281,7 @@ void ListAnchorManager::AdjustAnchorAlignment(AnchorInfo& anchor_info) {
 //   });
 // }
 
-bool ListAnchorManager::IsValidInitialScrollIndex() {
+bool ListAnchorManager::IsValidInitialScrollIndex() const {
   return initial_scroll_index_ >= 0 &&
          initial_scroll_index_ < list_adapter_->GetDataCount() &&
          initial_scroll_index_status_ == list::InitialScrollIndexStatus::kSet;
@@ -293,29 +293,28 @@ void ListAnchorManager::MarkScrolledInitialScrollIndex() {
   }
 }
 
-//// Calculate scroll offset by alignment
-// float ListAnchorManager::ScrollingInfo::CalcScrollingOffset(
-//     float list_size, float list_content_size, float item_offset,
-//     float item_size) {
-//   float estimated_offset = 0;
-//   if (scrolling_align_ == list::ScrollingInfoAlignment::kTop) {
-//     estimated_offset = item_offset - scrolling_offset_;
-//   } else if (scrolling_align_ == list::ScrollingInfoAlignment::kMiddle) {
-//     estimated_offset =
-//         item_offset - (list_size - item_size) / 2.0 - scrolling_offset_;
-//   } else if (scrolling_align_ == list::ScrollingInfoAlignment::kBottom) {
-//     estimated_offset = item_offset - list_size + item_size -
-//     scrolling_offset_;
-//   }
-//   // Clamp estimated_offset to [0.f, max content offset].
-//   if (base::FloatsLargerOrEqual(0.f, estimated_offset) ||
-//       base::FloatsLargerOrEqual(list_size, list_content_size)) {
-//     estimated_offset = 0.f;
-//   } else if (estimated_offset > list_content_size - list_size) {
-//     estimated_offset = list_content_size - list_size;
-//   }
-//   return estimated_offset;
-// }
+// Calculate scroll offset by alignment
+float ListAnchorManager::ScrollingInfo::CalcScrollingOffset(
+    float list_size, float list_content_size, float item_offset,
+    float item_size) {
+  float estimated_offset = 0;
+  if (scrolling_align_ == list::ScrollingInfoAlignment::kTop) {
+    estimated_offset = item_offset - scrolling_offset_;
+  } else if (scrolling_align_ == list::ScrollingInfoAlignment::kMiddle) {
+    estimated_offset =
+        item_offset - (list_size - item_size) / 2.0 - scrolling_offset_;
+  } else if (scrolling_align_ == list::ScrollingInfoAlignment::kBottom) {
+    estimated_offset = item_offset - list_size + item_size - scrolling_offset_;
+  }
+  // Clamp estimated_offset to [0.f, max content offset].
+  if (base::FloatsLargerOrEqual(0.f, estimated_offset) ||
+      base::FloatsLargerOrEqual(list_size, list_content_size)) {
+    estimated_offset = 0.f;
+  } else if (estimated_offset > list_content_size - list_size) {
+    estimated_offset = list_content_size - list_size;
+  }
+  return estimated_offset;
+}
 
 }  // namespace list
 }  // namespace lynx

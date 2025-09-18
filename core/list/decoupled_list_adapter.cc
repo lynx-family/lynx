@@ -326,6 +326,40 @@ bool ListAdapter::IsFullSpanAtIndex(int index) const {
                          : false;
 }
 
+std::unique_ptr<pub::Value> ListAdapter::GenerateDiffResult() const {
+  std::unique_ptr<pub::Value> diff_result;
+  const auto& value_factory = list_container_->value_factory();
+  if (value_factory && (diff_result = value_factory->CreateMap())) {
+    GenerateDiffArray(list::kDiffResultInsertions,
+                      adapter_helper_->insertions(), diff_result);
+    GenerateDiffArray(list::kDiffResultRemovals, adapter_helper_->removals(),
+                      diff_result);
+    GenerateDiffArray(list::kDiffResultUpdateFrom,
+                      adapter_helper_->update_from(), diff_result);
+    GenerateDiffArray(list::kDiffResultUpdateTo, adapter_helper_->update_to(),
+                      diff_result);
+    GenerateDiffArray(list::kDiffResultMoveFrom, adapter_helper_->move_from(),
+                      diff_result);
+    GenerateDiffArray(list::kDiffResultMoveTo, adapter_helper_->move_to(),
+                      diff_result);
+  }
+  return diff_result;
+}
+
+void ListAdapter::GenerateDiffArray(
+    const std::string& diff_key, const std::vector<int32_t>& diff_array,
+    const std::unique_ptr<pub::Value>& diff_result) const {
+  std::unique_ptr<pub::Value> array_value;
+  const auto& value_factory = list_container_->value_factory();
+  if (value_factory && diff_result &&
+      (array_value = value_factory->CreateArray())) {
+    for (auto index : diff_array) {
+      array_value->PushInt32ToArray(index);
+    }
+    diff_result->PushValueToMap(diff_key, *array_value);
+  }
+}
+
 // Get estimated height for the specified index.
 float ListAdapter::GetEstimatedSizeForIndex(int index) {
   float estimated_size = list::kInvalidDimensionSize;

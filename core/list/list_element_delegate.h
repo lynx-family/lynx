@@ -58,6 +58,8 @@ class ElementDelegate {
   virtual void SendCustomEvent(const std::string& event_name,
                                const std::string& param_name,
                                std::unique_ptr<pub::Value> param) = 0;
+  virtual void UpdateScrollInfo(float estimated_offset, bool smooth,
+                                bool scrolling) = 0;
 };
 
 }  // namespace list

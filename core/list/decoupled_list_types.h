@@ -97,6 +97,18 @@ static constexpr const char* const kEventUnit = "eventUnit";
 static constexpr const char* const kEventUnitPx = "px";
 // event layout complete info
 static constexpr const char* const kLayoutInfoLayoutId = "layout-id";
+static constexpr const char* const kLayoutInfoScrollInfo = "scrollInfo";
+static constexpr const char* const kLayoutInfoDiffResult = "diffResult";
+static constexpr const char* const kLayoutInfoVisibleItemBeforeUpdate =
+    "visibleItemBeforeUpdate";
+static constexpr const char* const kLayoutInfoVisibleItemAfterUpdate =
+    "visibleItemAfterUpdate";
+static constexpr const char* const kDiffResultInsertions = "insertions";
+static constexpr const char* const kDiffResultRemovals = "removals";
+static constexpr const char* const kDiffResultUpdateFrom = "update_from";
+static constexpr const char* const kDiffResultUpdateTo = "update_to";
+static constexpr const char* const kDiffResultMoveFrom = "move_from";
+static constexpr const char* const kDiffResultMoveTo = "move_to";
 // event scroll info
 static constexpr const char* const kScrollInfoEventSource = "eventSource";
 static constexpr const char* const kScrollInfoAttachedCells = "attachedCells";
@@ -117,6 +129,12 @@ static constexpr const char* const kCellInfoTop = "top";
 static constexpr const char* const kCellInfoLeft = "left";
 static constexpr const char* const kCellInfoBottom = "bottom";
 static constexpr const char* const kCellInfoRight = "right";
+static constexpr const char* const kCellInfoOriginX = "originX";
+static constexpr const char* const kCellInfoOriginY = "originY";
+static constexpr const char* const kCellInfoWidth = "width";
+static constexpr const char* const kCellInfoHeight = "height";
+static constexpr const char* const kCellInfoIsBinding = "isBinding";
+static constexpr const char* const kCellInfoUpdated = "updated";
 
 // constant value
 static constexpr int kInvalidIndex = -1;

@@ -90,11 +90,10 @@ void LinearLayoutManager::OnLayoutChildrenInternal(
       layout_state.latest_updated_content_offset_, true);
   layout_state.latest_updated_content_offset_ = content_offset_;
 
-  //  // The previous AdjustOffsetWithAnchor was called twice(the second one is
-  //  // caused by sticky), so the scrolled value should be set only when both
-  //  of
-  //  // these calls have finished
-  //  list_anchor_manager_->MarkScrolledInitialScrollIndex();
+  // The previous AdjustOffsetWithAnchor was called twice(the second one is
+  // caused by sticky), so the scrolled value should be set only when both of
+  // these calls have finished
+  list_anchor_manager_->MarkScrolledInitialScrollIndex();
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY);
 
   // step 3. Handle Preload.
@@ -131,7 +130,7 @@ void LinearLayoutManager::OnLayoutAfter(LayoutState& layout_state) {
   list_container_->StopInterceptListElementUpdated();
   float scroll_delta = content_offset_ - last_content_offset_;
   last_content_offset_ = content_offset_;
-  list_container_->RecordVisibleItemIfNeeded(false);
+  list_container_->list_event_manager()->RecordVisibleItemIfNeeded(false);
   list::EventSource event_source = list_container_->has_valid_diff()
                                        ? list::EventSource::kDiff
                                        : list::EventSource::kLayout;
@@ -737,47 +736,6 @@ bool LinearLayoutManager::HasMore(const LayoutState& layout_state,
            next_bind_index >= target_index;
   }
 }
-
-//// Return first ItemHolder intersected with specified line.
-// ItemHolder* LinearLayoutManager::FindFirstIntersectItemHolder(
-//     float line) const {
-//   ItemHolder* intersect_item_holder = nullptr;
-//   // Find attached child first
-//   list_children_helper_->ForEachChild(
-//       list_children_helper_->attached_children(),
-//       [this, line, &intersect_item_holder](ItemHolder* item_holder) {
-//         if (IsItemHolderIntersectsWithLine(line, item_holder)) {
-//           intersect_item_holder = item_holder;
-//           return true;
-//         }
-//         return false;
-//       });
-//   if (intersect_item_holder) {
-//     return intersect_item_holder;
-//   }
-//   // Fallback logic. find all item_holder as backup logic
-//   list_children_helper_->ForEachChild(
-//       [this, line, &intersect_item_holder](ItemHolder* item_holder) {
-//         if (IsItemHolderIntersectsWithLine(line, item_holder)) {
-//           intersect_item_holder = item_holder;
-//           return true;
-//         }
-//         return false;
-//       });
-//   return intersect_item_holder;
-// }
-//
-// bool LinearLayoutManager::IsItemHolderIntersectsWithLine(
-//     float line, ItemHolder* item_holder) const {
-//   if (!item_holder || !list_orientation_helper_) {
-//     return false;
-//   }
-//   return base::FloatsLargerOrEqual(
-//              line, list_orientation_helper_->GetDecoratedStart(item_holder))
-//              &&
-//          base::FloatsLargerOrEqual(
-//              list_orientation_helper_->GetDecoratedEnd(item_holder), line);
-// }
 
 #if ENABLE_TRACE_PERFETTO
 void LinearLayoutManager::UpdateTraceDebugInfo(TraceEvent* event) const {

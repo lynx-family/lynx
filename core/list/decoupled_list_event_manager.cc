@@ -27,24 +27,53 @@ void ListEventManager::SendLayoutCompleteEvent() {
           list::kEventLayoutComplete)) {
     return;
   }
-  const auto& value_factory = list_container_->value_factory();
-  std::unique_ptr<pub::Value> layout_complete_info = value_factory->CreateMap();
-  if (layout_complete_info) {
+  CreateLayoutCompleteInfoIfNeeded();
+  if (layout_complete_info_) {
+    // Move and clear layout_complete_info_
+    std::unique_ptr<pub::Value> layout_complete_info =
+        std::move(layout_complete_info_);
     // push layout id
     layout_complete_info->PushInt32ToMap(list::kLayoutInfoLayoutId,
                                          list_container_->layout_id());
+    std::unique_ptr<pub::Value> scroll_info;
+    if (need_layout_complete_info_ &&
+        (scroll_info = GenerateScrollInfo(0.f, 0.f))) {
+      layout_complete_info->PushValueToMap(list::kLayoutInfoScrollInfo,
+                                           *scroll_info);
+    }
     list_container_->ResetLayoutID();
-    //    // push scroll info
-    //    if (list_container_->need_layout_complete_info()) {
-    //      auto scroll_info = GenerateScrollInfo(0.f, 0.f);
-    //      if (scroll_info) {
-    //        layout_complete_info->PushValueToMap(list::kScrollInfo,
-    //        *scroll_info);
-    //      }
-    //    }
     list_container_->list_delegate()->SendCustomEvent(
         list::kEventLayoutComplete, list::kEventParamDetail,
         std::move(layout_complete_info));
+  }
+}
+
+void ListEventManager::RecordVisibleItemIfNeeded(bool is_layout_before) {
+  if (!need_layout_complete_info_ || !list_container_->value_factory()) {
+    return;
+  }
+  CreateLayoutCompleteInfoIfNeeded();
+  if (layout_complete_info_) {
+    std::unique_ptr<pub::Value> visible_cells_info;
+    if ((visible_cells_info = GenerateVisibleCellsInfo(0.f, 0.f, false))) {
+      layout_complete_info_->PushValueToMap(
+          is_layout_before ? list::kLayoutInfoVisibleItemBeforeUpdate
+                           : list::kLayoutInfoVisibleItemAfterUpdate,
+          *visible_cells_info);
+    }
+  }
+}
+
+void ListEventManager::RecordDiffResultIfNeeded() {
+  if (!need_layout_complete_info_ || !list_container_->value_factory()) {
+    return;
+  }
+  CreateLayoutCompleteInfoIfNeeded();
+  std::unique_ptr<pub::Value> diff_result;
+  if (layout_complete_info_ &&
+      (diff_result = list_container_->list_adapter()->GenerateDiffResult())) {
+    layout_complete_info_->PushValueToMap(list::kLayoutInfoDiffResult,
+                                          *diff_result);
   }
 }
 
@@ -226,12 +255,13 @@ void ListEventManager::SendCustomScrollEvent(const std::string& event_name,
   float layouts_unit_per_px =
       list_container_->list_delegate()->GetLayoutsUnitPerPx();
   if (base::FloatsLarger(layouts_unit_per_px, 0.f)) {
-    std::unique_ptr<pub::Value> scroll_info =
-        GenerateScrollInfo(dx, dy, event_source);
+    std::unique_ptr<pub::Value> scroll_info = GenerateScrollInfo(dx, dy);
     if (scroll_info) {
+      scroll_info->PushInt32ToMap(list::kScrollInfoEventSource,
+                                  static_cast<int>(event_source));
       std::unique_ptr<pub::Value> visible_cells_info;
       if (need_visible_cell_ && (visible_cells_info = GenerateVisibleCellsInfo(
-                                     scroll_left, scroll_top))) {
+                                     scroll_left, scroll_top, true))) {
         scroll_info->PushValueToMap(list::kScrollInfoAttachedCells,
                                     *visible_cells_info);
       }
@@ -269,7 +299,7 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateNodeExposureInfo(
 }
 
 std::unique_ptr<pub::Value> ListEventManager::GenerateScrollInfo(
-    float deltaX, float deltaY, list::EventSource event_source) const {
+    float deltaX, float deltaY) const {
   std::unique_ptr<pub::Value> scroll_info;
   const auto& value_factory = list_container_->value_factory();
   if (value_factory) {
@@ -288,6 +318,7 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateScrollInfo(
           list_container_->list_delegate()->GetWidth() / layouts_unit_per_px;
       float list_height =
           list_container_->list_delegate()->GetHeight() / layouts_unit_per_px;
+
       scroll_info->PushDoubleToMap(list::kScrollInfoScrollLeft,
                                    is_vertical ? 0.f : content_offset);
       scroll_info->PushDoubleToMap(list::kScrollInfoScrollTop,
@@ -302,15 +333,41 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateScrollInfo(
                                    deltaX / layouts_unit_per_px);
       scroll_info->PushDoubleToMap(list::kScrollInfoDeltaY,
                                    deltaY / layouts_unit_per_px);
-      scroll_info->PushInt32ToMap(list::kScrollInfoEventSource,
-                                  static_cast<int>(event_source));
     }
   }
   return scroll_info;
 }
 
+/**
+ * For scroll event:
+ *   (1) left / top / right / bottom Relative to the list, in px
+ *   (2) position is legacy.
+ *   [{
+ *     "id": string,
+ *     "itemKey": string,
+ *     "index": number,
+ *     "position": number,
+ *     "left": number,
+ *     "top": number,
+ *     "right": number,
+ *     "bottom": number,
+ *   }]
+ *
+ * For layout complete info:
+ *   (1) originX and originY is the position of child node relative to the
+ * entire scroll area.
+ *   [{
+ *     "height": number;
+ *     "width": number;
+ *     "itemKey": string;
+ *     "isBinding": boolean;
+ *     "originX": number;
+ *     "originY": number;
+ *     "updated": boolean;
+ *    }]
+ */
 std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
-    float scroll_left, float scroll_top) const {
+    float scroll_left, float scroll_top, bool for_scroll_info) const {
   std::unique_ptr<pub::Value> visible_cells_info;
   const auto& value_factory = list_container_->value_factory();
   if (value_factory) {
@@ -322,33 +379,58 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
       children_helper_->ForEachChild(
           children_helper_->on_screen_children(),
           [list_adapter, layouts_unit_per_px, scroll_left, scroll_top,
-           &visible_cells_info, &value_factory](ItemHolder* item_holder) {
+           for_scroll_info, &visible_cells_info,
+           &value_factory](ItemHolder* item_holder) {
             ItemElementDelegate* list_item_delegate =
                 list_adapter->GetItemElementDelegate(item_holder);
             if (list_item_delegate) {
               auto item_info = value_factory->CreateMap();
               if (item_info) {
-                float left = item_holder->left() - scroll_left;
-                float top = item_holder->top() - scroll_top;
-                item_info->PushStringToMap(list::kCellInfoIdSelector,
-                                           list_item_delegate->GetIdSelector());
                 item_info->PushStringToMap(list::kCellInfoItemKey,
                                            item_holder->item_key());
                 item_info->PushInt32ToMap(list::kCellInfoIndex,
                                           item_holder->index());
-                item_info->PushDoubleToMap(list::kCellInfoTop,
-                                           top / layouts_unit_per_px);
-                item_info->PushDoubleToMap(
-                    list::kCellInfoBottom,
-                    (top + item_holder->height()) / layouts_unit_per_px);
-                item_info->PushDoubleToMap(list::kCellInfoLeft,
-                                           left / layouts_unit_per_px);
-                item_info->PushDoubleToMap(
-                    list::kCellInfoRight,
-                    (left + item_holder->width()) / layouts_unit_per_px);
-                // for legacy API
-                item_info->PushInt32ToMap(list::kCellInfoPosition,
-                                          item_holder->index());
+                float left = item_holder->left();
+                float top = item_holder->top();
+                if (for_scroll_info) {
+                  // scroll info
+                  item_info->PushStringToMap(
+                      list::kCellInfoIdSelector,
+                      list_item_delegate->GetIdSelector());
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoTop,
+                      (top - scroll_top) / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoBottom,
+                      (top + item_holder->height()) / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoLeft,
+                      (left - scroll_left) / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoRight,
+                      (left + item_holder->width()) / layouts_unit_per_px);
+                  // for legacy API
+                  item_info->PushInt32ToMap(list::kCellInfoPosition,
+                                            item_holder->index());
+                } else {
+                  // layout info
+                  item_info->PushDoubleToMap(list::kCellInfoOriginX,
+                                             left / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(list::kCellInfoOriginY,
+                                             top / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoWidth,
+                      item_holder->width() / layouts_unit_per_px);
+                  item_info->PushDoubleToMap(
+                      list::kCellInfoHeight,
+                      item_holder->height() / layouts_unit_per_px);
+                  item_info->PushBoolToMap(
+                      list::kCellInfoIsBinding,
+                      list_adapter->IsBinding(item_holder));
+                  item_info->PushBoolToMap(
+                      list::kCellInfoUpdated,
+                      list_adapter->IsUpdated(item_holder));
+                }
                 visible_cells_info->PushValueToArray(*item_info);
               }
             }
@@ -357,6 +439,12 @@ std::unique_ptr<pub::Value> ListEventManager::GenerateVisibleCellsInfo(
     }
   }
   return visible_cells_info;
+}
+
+void ListEventManager::CreateLayoutCompleteInfoIfNeeded() {
+  if (!layout_complete_info_) {
+    layout_complete_info_ = list_container_->value_factory()->CreateMap();
+  }
 }
 
 }  // namespace list
