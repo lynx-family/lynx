@@ -39,13 +39,13 @@ base::String ComputedCSSStyleCssTextHelper::ColorCSSText(
   if (computed_css_style->text_attributes_) {
     if (computed_css_style->text_attributes_->text_gradient.has_value() &&
         computed_css_style->text_attributes_->text_gradient->IsArray()) {
-      return "";
+      return base::String();
     } else {
       return Uint32ToRGBString(computed_css_style->text_attributes_->color);
     }
   }
 
-  return base::String("");
+  return base::String();
 }
 
 base::String ComputedCSSStyleCssTextHelper::BackgroundColorCSSText(
@@ -54,7 +54,7 @@ base::String ComputedCSSStyleCssTextHelper::BackgroundColorCSSText(
   if (computed_css_style->background_data_) {
     return Uint32ToRGBString(computed_css_style->background_data_->color);
   } else {
-    return "";
+    return base::String();
   }
 }
 
