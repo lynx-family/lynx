@@ -14,31 +14,69 @@
 
 namespace lynx {
 namespace piper {
-#define JSVM_CALL(name, params)                                 \
-  do {                                                          \
-    auto status = DynamicLoader::GetFuncTable() -> name params; \
-    if (status != JSVM_Status::JSVM_OK) {                       \
-      LOGE("jsvm call failed status:" << status);               \
-    }                                                           \
+#define LYNX_GET_FIRST_ARG(first, ...) first
+
+#define PRINT_EXCEPTION_INFO(jsvm_env)                                        \
+  bool isPending = false;                                                     \
+  DynamicLoader::GetFuncTable()->OH_JSVM_IsExceptionPending(jsvm_env,         \
+                                                            &isPending);      \
+  if (isPending) {                                                            \
+    JSVM_Value error;                                                         \
+    DynamicLoader::GetFuncTable()->OH_JSVM_GetAndClearLastException(jsvm_env, \
+                                                                    &error);  \
+    JSVM_Value stack;                                                         \
+    DynamicLoader::GetFuncTable()->OH_JSVM_GetNamedProperty(jsvm_env, error,  \
+                                                            "stack", &stack); \
+    char stack_str[256];                                                      \
+    DynamicLoader::GetFuncTable()->OH_JSVM_GetValueStringUtf8(                \
+        jsvm_env, stack, stack_str, 256, nullptr);                            \
+    LOGE("JSVM error stack: " << stack_str);                                  \
+    JSVM_Value message;                                                       \
+    DynamicLoader::GetFuncTable()->OH_JSVM_GetNamedProperty(                  \
+        jsvm_env, error, "message", &message);                                \
+    char message_str[256];                                                    \
+    DynamicLoader::GetFuncTable()->OH_JSVM_GetValueStringUtf8(                \
+        jsvm_env, message, message_str, 256, nullptr);                        \
+    LOGE("JSVM error message: " << message_str);                              \
+  }
+
+#define JSVM_CALL_NO_ENV(name, ...)                                     \
+  do {                                                                  \
+    auto status = (DynamicLoader::GetFuncTable()) -> name(__VA_ARGS__); \
+    if (status != JSVM_Status::JSVM_OK) {                               \
+      LOGE("jsvm call failed status:" << status);                       \
+    }                                                                   \
   } while (0)
 
-#define JSVM_CALL_RETURN(name, params, ret)                     \
-  do {                                                          \
-    auto status = DynamicLoader::GetFuncTable() -> name params; \
-    if (status != JSVM_Status::JSVM_OK) {                       \
-      LOGE("jsvm call failed status:" << status);               \
-      return ret;                                               \
-    }                                                           \
+#define JSVM_CALL(name, ...)                                            \
+  do {                                                                  \
+    auto status = (DynamicLoader::GetFuncTable()) -> name(__VA_ARGS__); \
+    if (status != JSVM_Status::JSVM_OK) {                               \
+      LOGE("jsvm call failed status:" << status);                       \
+      auto jsvm_env = LYNX_GET_FIRST_ARG(__VA_ARGS__);                  \
+      PRINT_EXCEPTION_INFO(jsvm_env);                                   \
+    }                                                                   \
+  } while (0)
+
+#define JSVM_CALL_RETURN(name, ret, ...)                                \
+  do {                                                                  \
+    auto status = (DynamicLoader::GetFuncTable()) -> name(__VA_ARGS__); \
+    if (status != JSVM_Status::JSVM_OK) {                               \
+      LOGE("jsvm call failed status:" << status);                       \
+      auto jsvm_env = LYNX_GET_FIRST_ARG(__VA_ARGS__);                  \
+      PRINT_EXCEPTION_INFO(jsvm_env);                                   \
+      return ret;                                                       \
+    }                                                                   \
   } while (0)
 
 class HandleScopeWrapper {
  public:
   explicit HandleScopeWrapper(JSVM_Env env) : env(env) {
-    JSVM_CALL(OH_JSVM_OpenHandleScope, (env, &handleScope));
+    JSVM_CALL(OH_JSVM_OpenHandleScope, env, &handleScope);
   }
 
   ~HandleScopeWrapper() {
-    JSVM_CALL(OH_JSVM_CloseHandleScope, (env, handleScope));
+    JSVM_CALL(OH_JSVM_CloseHandleScope, env, handleScope);
   }
 
   HandleScopeWrapper(const HandleScopeWrapper&) = delete;
