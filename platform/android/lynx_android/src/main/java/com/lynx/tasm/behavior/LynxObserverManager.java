@@ -328,6 +328,9 @@ public abstract class LynxObserverManager {
       mHandlerForLynxView.removeCallbacksAndMessages(null);
       mHandlerForLynxView = null;
     }
+    if (mViewTreeObserver == null || !mViewTreeObserver.isAlive()) {
+      mViewTreeObserver = getRootViewTreeObserver();
+    }
     if (mViewTreeObserver == null) {
       LLog.e(TAG, "LynxObserverManager remove listeners failed since observer is null");
       return;
