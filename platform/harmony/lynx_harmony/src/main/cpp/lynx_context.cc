@@ -308,6 +308,11 @@ void LynxContext::FindShadowNodeAndRunTask(
 
 void LynxContext::ScrollByListContainer(int32_t tag, float x, float y,
                                         float original_x, float original_y) {
+  if (delegate_ && delegate_->list_scroll_callback) {
+    delegate_->list_scroll_callback(tag, x, y, original_x, original_y,
+                                    delegate_->data);
+    return;
+  }
   if (!engine_proxy_) {
     return;
   }
@@ -316,6 +321,11 @@ void LynxContext::ScrollByListContainer(int32_t tag, float x, float y,
 
 void LynxContext::ScrollToPosition(int32_t tag, int index, float offset,
                                    int align, bool smooth) {
+  if (delegate_ && delegate_->list_scroll_to_position_callback) {
+    delegate_->list_scroll_to_position_callback(tag, index, offset, align,
+                                                smooth, delegate_->data);
+    return;
+  }
   if (!engine_proxy_) {
     return;
   }
@@ -323,6 +333,10 @@ void LynxContext::ScrollToPosition(int32_t tag, int index, float offset,
 }
 
 void LynxContext::ScrollStopped(int32_t tag) {
+  if (delegate_ && delegate_->list_scroll_stopped_callback) {
+    delegate_->list_scroll_stopped_callback(tag, delegate_->data);
+    return;
+  }
   if (!engine_proxy_) {
     return;
   }
