@@ -467,7 +467,7 @@ inline constexpr const char* const FIBER_ELEMENT_SET_STYLE =
 inline constexpr const char* const FIBER_ELEMENT_SET_ATTRIBUTE =
     "FiberElement::SetAttribute";
 inline constexpr const char* const FIBER_ELEMENT_SET_ID_SELECTOR =
-    "FiberElement::SetAttribute";
+    "FiberElement::SetIdSelector";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_KEYFRAME_PROPS_CHANGE =
     "FiberElement::HandleKeyframePropsChange";
 inline constexpr const char* const FIBER_ELEMENT_PREPARE_FOR_CRATE_OR_UPDATE =
