@@ -228,7 +228,8 @@ inline bool StringEqual(const char* a, const char* b) {
   return strncmp(a, b, la) == 0;
 }
 
-bool EqualsIgnoreCase(std::string_view left, std::string_view right);
+BASE_EXPORT bool EqualsIgnoreCase(std::string_view left,
+                                  std::string_view right);
 
 // Refer from
 // https://chromium.googlesource.com/v8/v8/+/master/src/inspector/v8-string-conversions.cc

@@ -38,8 +38,10 @@ export interface ImageProps extends StandardProps {
   /**
    * ARGB_8888: 32-bit memory per pixel, supports semi-transparent images
    * RGB_565: 16-bit memory per pixel, reduces memory usage but loses transparency
+   * Support PC platform since 3.5
    * @defaultValue "ARGB_8888"
    * @Android
+   * @PC
    * @since 1.4
    */
   'image-config'?: 'ARGB_8888' | 'RGB_565';
