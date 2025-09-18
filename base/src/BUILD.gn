@@ -366,7 +366,6 @@ if (enable_unittests) {
       "sorted_for_each_unittest.cc",
       "string/string_number_convert_unittest.cc",
       "string/string_utils_unittest.cc",
-      "string/utf_conv_unittests.cc",
       "thread/timed_task_unittest.cc",
       "timer/time_utils_unittest.cc",
       "to_underlying_unittest.cc",

@@ -202,21 +202,6 @@ BASE_EXPORT std::string U32StringToU8(std::u32string_view u32_string);
 std::u32string U16StringToU32(std::u16string_view u16_string);
 std::u16string U32StringToU16(std::u32string_view u32_string);
 
-// The following functions implementation is different from the above
-// implementation. It considers the LE/BE and has some special character
-// replacement. Auto judge LE or BE. Default to LE.
-BASE_EXPORT std::string Utf16ToUtf8(const char16_t* u16str, size_t length);
-inline std::string Utf16ToUtf8(const std::u16string& u16str) {
-  return Utf16ToUtf8(u16str.c_str(), u16str.length());
-}
-// Convert to utf16-le
-BASE_EXPORT std::u16string Utf8ToUtf16(const char* u8str, size_t length,
-                                       bool addbom, bool* ok);
-
-inline std::u16string Utf8ToUtf16(const std::string& str) {
-  return Utf8ToUtf16(str.c_str(), str.length(), false, nullptr);
-}
-
 BASE_EXPORT std::string FormatStringWithVaList(const char* format,
                                                va_list args);
 BASE_EXPORT std::string FormatString(const char* format, ...);
