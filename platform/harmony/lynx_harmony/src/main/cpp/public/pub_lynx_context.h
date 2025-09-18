@@ -46,6 +46,12 @@ struct LYNX_EXPORT PubLynxContextDelegate {
   float screen_width = 0.f;
   float screen_height = 0.f;
   float device_pixel_ratio = 1.f;
+  void (*list_scroll_callback)(int32_t tag, float x, float y, float original_x,
+                               float original_y, void* data) = nullptr;
+  void (*list_scroll_to_position_callback)(int32_t tag, int index, float offset,
+                                           int align, bool smooth,
+                                           void* data) = nullptr;
+  void (*list_scroll_stopped_callback)(int32_t tag, void* data) = nullptr;
 };
 
 class LYNX_EXPORT PubLynxContext {

@@ -121,6 +121,28 @@ int32_t PubUIOwner::GetTagInfo(const std::string& tag) const {
   return ui_owner_->GetTagInfo(tag);
 }
 
+void PubUIOwner::UpdateContentOffsetForListContainer(
+    int32_t container_id, float content_size, float delta_x, float delta_y,
+    bool is_init_scroll_offset, bool from_layout) {
+  ui_owner_->UpdateContentOffsetForListContainer(
+      container_id, content_size, delta_x, delta_y, is_init_scroll_offset,
+      from_layout);
+}
+
+void PubUIOwner::UpdateScrollInfo(int32_t container_id, bool smooth,
+                                  float estimated_offset, bool scrolling) {
+  ui_owner_->UpdateScrollInfo(container_id, smooth, estimated_offset,
+                              scrolling);
+}
+
+void PubUIOwner::InsertListItemPaintingNode(int list_sign, int child_sign) {
+  ui_owner_->InsertListItemPaintingNode(list_sign, child_sign);
+}
+
+void PubUIOwner::RemoveListItemPaintingNode(int list_sign, int child_sign) {
+  ui_owner_->RemoveListItemPaintingNode(list_sign, child_sign);
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx
