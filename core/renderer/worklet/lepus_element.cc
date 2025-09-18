@@ -52,9 +52,9 @@ const uint64_t kLepusEventProtoID =
 
 static_assert(
     kStopPropagationBit ==
-            static_cast<int>(tasm::EventResult::kStopPropagation) &&
+            static_cast<int>(tasm::EventResult::kStopPropagationBit) &&
         kStopImmediatePropagationBit ==
-            static_cast<int>(tasm::EventResult::kStopImmediatePropagation),
+            static_cast<int>(tasm::EventResult::kStopImmediatePropagationBit),
     "magic number mismatches");
 
 static LEPUSValue EventAPI_method(LEPUSContext* ctx, LEPUSValueConst this_val,

@@ -125,12 +125,14 @@ void TouchEventHandler::HandleEventOperations(TemplateAssembler *tasm,
             context, op.current_target_->ParentComponentIdString(),
             op.current_target_->ParentComponentEntryName(), tasm, op.handler_,
             params, op.current_target_->impl_id());
-        if (result == EventResult::kStopImmediatePropagation) {
+        if (static_cast<int>(result) &
+            static_cast<int>(EventResult::kStopImmediatePropagationBit)) {
           // If stopImmediatePropagation() is invoked during one such call, no
           // remaining listeners will be called, either on that element or any
           // other element.
           stop_immediate_propagation = true;
-        } else if (result == EventResult::kStopPropagation) {
+        } else if (static_cast<int>(result) &
+                   static_cast<int>(EventResult::kStopPropagationBit)) {
           // stopPropagation() prevents further propagation of the current event
           // in the capturing and bubbling phases.
           stop_propagation_op = &op;
@@ -1450,8 +1452,15 @@ EventResult TouchEventHandler::FireElementWorklet(
     // trigger worklet in fiber
     LOGI("Fire Fiber Element Worklet " << GetEventType(context.event_type)
                                        << ": " << context.event_name);
-    TriggerFiberElementWorklet(tasm, handler->lepus_object(), value, element_id,
-                               context.event_type, handler->lepus_context());
+    auto call_result_value = TriggerFiberElementWorklet(
+        tasm, handler->lepus_object(), value, element_id, context.event_type,
+        handler->lepus_context());
+
+    BASE_STATIC_STRING_DECL(kEventResult, "__EventReturnResult");
+    if (call_result_value.has_value() && call_result_value->IsObject()) {
+      result = static_cast<EventResult>(
+          call_result_value->GetProperty(kEventResult).Number());
+    }
   } else {
 #if ENABLE_LEPUSNG_WORKLET
     LOGI("FireLepusEvent " << GetEventType(context.event_type) << ": "
@@ -1824,12 +1833,14 @@ void TouchEventHandler::StartEventFire(TemplateAssembler *tasm, bool is_stop,
                 event_context, op.current_target_->ParentComponentIdString(),
                 op.current_target_->ParentComponentEntryName(), tasm,
                 op.handler_, params, op.current_target_->impl_id());
-            if (result == EventResult::kStopImmediatePropagation) {
+            if (static_cast<int>(result) &
+                static_cast<int>(EventResult::kStopImmediatePropagationBit)) {
               // If stopImmediatePropagation() is invoked during one such call,
               // no remaining listeners will be called, either on that element
               // or any other element.
               stop_immediate_propagation = true;
-            } else if (result == EventResult::kStopPropagation) {
+            } else if (static_cast<int>(result) &
+                       static_cast<int>(EventResult::kStopPropagationBit)) {
               // stopPropagation() prevents further propagation of the current
               // event in the capturing and bubbling phases. stop_propagation_op
               // = &op;
@@ -1867,6 +1878,16 @@ FindEventHandler TouchEventHandler::find_event_f_ =
   }
   return (it->second).get();
 };
+
+lepus::Value TouchEventHandler::StopPropagation(lepus::Context *ctx,
+                                                lepus::Value *argv, int argc,
+                                                lepus::Value &eventObj,
+                                                EventResult &magic) {
+  // StopPropagation is used to stop the event propagation in the current
+  // event handler.
+  DCHECK(eventObj.IsTable());
+  return lepus::Value();
+}
 
 GetEventHandlers TouchEventHandler::get_handlers_f_ =
     [](Element *cur_target, const std::string &event_name,

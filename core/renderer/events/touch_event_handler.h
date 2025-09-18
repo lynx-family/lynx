@@ -93,8 +93,8 @@ enum class EventType : unsigned int {
 
 enum class EventResult : int {
   kDefault = 0x0,
-  kStopPropagation = 0x1,
-  kStopImmediatePropagation = 0x2
+  kStopPropagationBit = 0x1,
+  kStopImmediatePropagationBit = 0x2
 };
 
 using ResponseChainVector = base::InlineVector<Element *, 16>;
@@ -301,6 +301,9 @@ class TouchEventHandler {
 
   std::unordered_map<int64_t, EventContext> event_queue_;
 
+  static lepus::Value StopPropagation(lepus::Context *ctx, lepus::Value *argv,
+                                      int argc, lepus::Value &eventObj,
+                                      EventResult &magic);
   static FindEventHandler find_event_f_;
   static GetEventHandlers get_handlers_f_;
   static PushGlobalBindOperation push_global_bind_operation_f_;
