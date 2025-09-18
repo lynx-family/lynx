@@ -203,6 +203,7 @@ void LynxTemplateRenderer::LoadTemplate(
   }
   if (inspector_owner_) {
     inspector_owner_->OnLoadTemplate(url, source, init_data);
+    inspector_owner_->OnLoaded(url);
   }
   std::shared_ptr<tasm::PipelineOptions> options = nullptr;
   if (!pipeline_options) {
@@ -381,9 +382,6 @@ void LynxTemplateRenderer::OnEnterBackground() { shell_->OnEnterBackground(); }
 void LynxTemplateRenderer::OnLoaded(const std::string& url) {
   for (auto* client : clients_) {
     client->OnLoaded(url);
-  }
-  if (inspector_owner_) {
-    inspector_owner_->OnLoaded(url);
   }
 }
 
