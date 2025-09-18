@@ -20,11 +20,8 @@ namespace shell {
 template <typename T>
 class LynxActor;
 class LynxEngine;
+class NativeFacade;
 }  // namespace shell
-
-namespace runtime {
-class LynxRuntime;
-}  // namespace runtime
 
 namespace lepus {
 
@@ -68,10 +65,9 @@ class LepusModuleDelegate : public piper::LynxNativeModule::Delegate {
   void RunOnJSThread(base::closure func) override{};
   // not supported yet.
   void RunOnPlatformThread(base::closure func) override{};
-  // not supported yet.
   void OnErrorOccurred(const std::string& module_name,
                        const std::string& method_name,
-                       base::LynxError error) override{};
+                       base::LynxError error) override;
 
   const std::shared_ptr<pub::PubValueFactory>& GetValueFactory() override {
     return value_factory_;
@@ -80,9 +76,14 @@ class LepusModuleDelegate : public piper::LynxNativeModule::Delegate {
   void SetEngineActor(
       const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& engine_actor);
 
+  void SetFacadeActor(
+      const std::shared_ptr<shell::LynxActor<shell::NativeFacade>>&
+          facade_actor);
+
  private:
   std::shared_ptr<pub::PubValueFactory> value_factory_;
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
+  std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor_;
 };
 }  // namespace lepus
 }  // namespace lynx

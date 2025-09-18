@@ -17,6 +17,8 @@ LynxLepusModuleManager::LynxLepusModuleManager(
   execute_delegate_ = std::make_shared<LepusModuleDelegate>();
   execute_delegate_->SetEngineActor(
       pub::LynxNativeModuleManager::GetEngineActor());
+  execute_delegate_->SetFacadeActor(
+      pub::LynxNativeModuleManager::GetFacadeActor());
 }
 
 Value LynxLepusModuleManager::GetModule(Context* context,

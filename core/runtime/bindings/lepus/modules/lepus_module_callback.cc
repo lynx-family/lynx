@@ -7,6 +7,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/runtime/piper/js/lynx_runtime.h"
 #include "core/shell/lynx_engine.h"
+#include "core/shell/native_facade.h"
 #include "core/value_wrapper/value_impl_lepus.h"
 
 namespace lynx {
@@ -50,6 +51,27 @@ void LepusModuleDelegate::SetEngineActor(
     const std::shared_ptr<shell::LynxActor<shell::LynxEngine>>& engine_actor) {
   if (engine_actor != nullptr) {
     engine_actor_ = engine_actor;
+  }
+}
+
+void LepusModuleDelegate::SetFacadeActor(
+    const std::shared_ptr<shell::LynxActor<shell::NativeFacade>>&
+        facade_actor) {
+  if (facade_actor != nullptr) {
+    facade_actor_ = facade_actor;
+  }
+}
+
+void LepusModuleDelegate::OnErrorOccurred(const std::string& module_name,
+                                          const std::string& method_name,
+                                          base::LynxError error) {
+  LOGE("NativeModules"
+       << "ErrorOccur, module_name: " << module_name << ", method_name: "
+       << method_name << ", error: " << error.error_message_);
+  if (facade_actor_ != nullptr) {
+    facade_actor_->Act([error = std::move(error)](auto& facade) {
+      facade->ReportError(std::move(error));
+    });
   }
 }
 }  // namespace lepus

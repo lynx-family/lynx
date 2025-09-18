@@ -348,6 +348,7 @@ LynxShell* LynxShellBuilder::build() {
 
     if (native_module_manager_ != nullptr) {
       native_module_manager_->SetEngineActor(shell->engine_actor_);
+      native_module_manager_->SetFacadeActor(shell->facade_actor_);
       tasm->CreateModuleManager(std::move(native_module_manager_));
     }
     // @note(tangyongjie): avoid crash when lynx_shell_builder_unittest

@@ -17,10 +17,9 @@ namespace shell {
 template <typename T>
 class LynxActor;
 class LynxEngine;
+class NativeFacade;
 }  // namespace shell
-namespace runtime {
-class LynxRuntime;
-}
+
 namespace pub {
 
 // LynxNativeModuleManager manages all registered NativeModuleFactory instances.
@@ -83,10 +82,17 @@ class LynxNativeModuleManager {
 
   void SetEngineActor(
       const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &engine_actor);
+  void SetFacadeActor(
+      const std::shared_ptr<shell::LynxActor<shell::NativeFacade>>
+          &facade_actor);
 
  protected:
   const std::shared_ptr<shell::LynxActor<shell::LynxEngine>> &GetEngineActor() {
     return engine_actor_;
+  }
+  const std::shared_ptr<shell::LynxActor<shell::NativeFacade>> &
+  GetFacadeActor() {
+    return facade_actor_;
   }
 
  private:
@@ -102,6 +108,7 @@ class LynxNativeModuleManager {
 
   // use to create delegate
   std::shared_ptr<shell::LynxActor<shell::LynxEngine>> engine_actor_;
+  std::shared_ptr<shell::LynxActor<shell::NativeFacade>> facade_actor_;
 };
 }  // namespace pub
 
