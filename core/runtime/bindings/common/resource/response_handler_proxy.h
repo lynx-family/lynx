@@ -40,7 +40,7 @@ class ResponseHandlerProxy
    * if promise get a std::nullopt, it will return with code
    * `LYNX_BUNDLE_RESOURCE_INFO_TIMEOUT`
    */
-  tasm::BundleResourceInfo WaitAndGetResource(long timeout) {
+  tasm::BundleResourceInfo WaitAndGetResource(double timeout) {
     auto result = promise_->Wait(timeout);
     if (result.has_value()) {
       return *result;

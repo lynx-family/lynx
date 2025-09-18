@@ -66,9 +66,9 @@ class ResponsePromise {
     callbacks_.emplace_back(std::move(callback));
   }
 
-  std::optional<T> Wait(long timeout) {
+  std::optional<T> Wait(double timeout) {
     LOGI("ResponsePromise: Wait " << timeout << " " << this);
-    if (future_.wait_for(std::chrono::seconds(timeout)) ==
+    if (future_.wait_for(std::chrono::duration<double>(timeout)) ==
         std::future_status::ready) {
       return future_.get();
     }

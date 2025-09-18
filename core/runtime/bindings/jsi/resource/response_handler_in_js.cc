@@ -57,7 +57,7 @@ Value ResponseHandlerInJS::WaitingForResponse(Runtime& rt) {
                 "ResponseHandler.wait's first param must be number."));
           }
 
-          long timeout = static_cast<long>(args[0].getNumber());
+          double timeout = args[0].getNumber();
           auto result = WaitAndGetResource(timeout);
           return ConvertBundleInfoToPiperValue(result);
         }
