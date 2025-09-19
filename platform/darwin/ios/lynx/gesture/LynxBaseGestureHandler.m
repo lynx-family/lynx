@@ -135,18 +135,34 @@
 
 - (void)activate {
   _status = LYNX_STATE_ACTIVE;
+  if (_gestureMember) {
+    [_gestureMember onPlatformGestureStatusChanged:_status];
+  }
 }
 
 - (void)fail {
-  _status = LYNX_STATE_FAIL;
+  if (_status == LYNX_STATE_BEGIN) {
+    _status = LYNX_STATE_CANCELLED;
+  } else {
+    _status = LYNX_STATE_FAIL;
+  }
+  if (_gestureMember) {
+    [_gestureMember onPlatformGestureStatusChanged:_status];
+  }
 }
 
 - (void)end {
   _status = LYNX_STATE_END;
+  if (_gestureMember) {
+    [_gestureMember onPlatformGestureStatusChanged:_status];
+  }
 }
 
 - (void)begin {
   _status = LYNX_STATE_BEGIN;
+  if (_gestureMember) {
+    [_gestureMember onPlatformGestureStatusChanged:_status];
+  }
 }
 
 - (void)ignore {

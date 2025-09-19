@@ -140,6 +140,9 @@
   return DIRECTION_UNDETERMINED;
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+}
+
 - (void)onGestureScrollBy:(CGPoint)delta {
 }
 

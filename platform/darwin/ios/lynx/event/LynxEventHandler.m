@@ -3,7 +3,9 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/DevToolLogLevel.h>
+#import <Lynx/LynxCustomGestureRecognizer.h>
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxGestureHandlerTrigger.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxRootUI.h>
 #import <Lynx/LynxTouchHandler.h>
@@ -114,6 +116,42 @@
     [self.eventHandler onGestureRecognizedByEventTarget:self.eventHandler.touchTarget];
   }
   return res;
+}
+
+@end
+
+#pragma mark - LynxCustomPlatformGestureRecognizerDelegate
+@interface LynxCustomPlatformGestureRecognizerDelegate : CustomGestureRecognizerDelegate
+
+@end
+
+@implementation LynxCustomPlatformGestureRecognizerDelegate
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
+    shouldRecognizeSimultaneouslyWithGestureRecognizer:
+        (UIGestureRecognizer*)otherGestureRecognizer {
+  // If custom platform gesture is active, prevent other gestures.
+  if ((gestureRecognizer == self.eventHandler.customPlatformGesture &&
+       self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged)) {
+    return NO;
+  }
+
+  // Allow simultaneous recognition by default in other cases.
+  return YES;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer*)gestureRecognizer
+    shouldBeRequiredToFailByGestureRecognizer:(UIGestureRecognizer*)otherGestureRecognizer {
+  if (gestureRecognizer == self.eventHandler.customPlatformGesture) {
+    // Only require other gestures to wait when CustomPlatformGesture is actively processing
+    if (self.eventHandler.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
+      return YES;  // Wait for CustomPlatformGesture to finish
+    }
+    // In other states (Possible, Began, Ended, Cancelled, Failed), don't block other gestures
+    return NO;
+  }
+
+  return NO;
 }
 
 @end
@@ -232,6 +270,8 @@
   CGPoint _longPressPoint;
   CustomGestureRecognizerDelegate* _tapDelegate;
   LongPressGestureRecognizerDelegate* _longPressDelegate;
+  LynxCustomPlatformGestureRecognizerDelegate* _customPlatformDelegate;
+  LynxCustomGestureRecognizer* _customPlatformGesture;
   UIPanGestureRecognizer* _panGestureRecognizer;
   PanGestureRecognizerDelegate* _panGestureDelegate;
   float range_;
@@ -243,6 +283,12 @@
   _touchRecognizer.target = nil;
   _touchRecognizer.preTarget = nil;
   _touchRecognizer.gestureArenaManager = nil;
+  if ([NSThread isMainThread] && _customPlatformGesture && _rootView) {
+    _customPlatformGesture.delegate = nil;
+    [_rootView removeGestureRecognizer:_customPlatformGesture];
+    _customPlatformGesture = nil;
+    _customPlatformDelegate = nil;
+  }
 }
 
 - (instancetype)initWithRootView:(UIView*)rootView {
@@ -260,10 +306,8 @@
     _longPressRecognizer =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self
                                                       action:@selector(dispatchLongPressEvent:)];
-
     _tapDelegate = [[TapGestureRecognizerDelegate alloc] initWithEventHandler:self];
     _longPressDelegate = [[LongPressGestureRecognizerDelegate alloc] initWithEventHandler:self];
-
     _tapRecognizer.delegate = _tapDelegate;
     _tapRecognizer.cancelsTouchesInView = YES;
     _longPressRecognizer.delegate = _longPressDelegate;
@@ -280,6 +324,10 @@
     _panGestureRecognizer = nil;
     _panGestureDelegate = nil;
 
+    // Default value is nil. if enablePlatformGesture config is true, init gesture and delegate
+    _customPlatformGesture = nil;
+    _customPlatformDelegate = nil;
+
     _longPressPoint = CGPointMake(-FLT_MAX, -FLT_MAX);
     range_ = 50;
     self.gestureRecognized = NO;
@@ -294,6 +342,9 @@
   [_rootView addGestureRecognizer:_tapRecognizer];
   [_rootView addGestureRecognizer:_longPressRecognizer];
   [_rootView addGestureRecognizer:_touchRecognizer];
+  if (_customPlatformGesture != nil) {
+    [_rootView addGestureRecognizer:_customPlatformGesture];
+  }
   if (_panGestureRecognizer != nil) {
     [_rootView addGestureRecognizer:_panGestureRecognizer];
   }
@@ -303,6 +354,9 @@
   [_rootView removeGestureRecognizer:_tapRecognizer];
   [_rootView removeGestureRecognizer:_longPressRecognizer];
   [_rootView removeGestureRecognizer:_touchRecognizer];
+  if (_customPlatformGesture != nil) {
+    [_rootView removeGestureRecognizer:_customPlatformGesture];
+  }
   if (_panGestureRecognizer != nil) {
     [_rootView removeGestureRecognizer:_panGestureRecognizer];
   }
@@ -339,6 +393,34 @@
     parent = parent.parentTarget;
   }
   return res;
+}
+
+- (void)handlePlatformGesture:(UIGestureRecognizer*)sender {
+  NSString* stateString = @"Unknown";
+  switch (sender.state) {
+    case UIGestureRecognizerStatePossible:
+      stateString = @"Possible";
+      break;
+    case UIGestureRecognizerStateBegan:
+      stateString = @"Began";
+      break;
+    case UIGestureRecognizerStateChanged:
+      stateString = @"Changed";
+      break;
+    case UIGestureRecognizerStateEnded:
+      stateString = @"Ended";
+      break;
+    case UIGestureRecognizerStateCancelled:
+      stateString = @"Cancelled";
+      break;
+    case UIGestureRecognizerStateFailed:
+      stateString = @"Failed";
+      break;
+    default:
+      break;
+  }
+  LLogInfo(@"Lynxview LynxEventHandler handlePlatformGesture %p: state=%@", self.rootView,
+           stateString);
 }
 
 - (void)dispatchTapEvent:(UITapGestureRecognizer*)sender {
@@ -503,6 +585,58 @@
   [_rootView addGestureRecognizer:_panGestureRecognizer];
 }
 
+- (void)setEnablePlatformGesture:(BOOL)enablePlatformGesture {
+  if (enablePlatformGesture) {
+    [self setUpPlatformGesture];
+  } else {
+    [self removePlatformGesture];
+  }
+}
+
+- (void)setUpPlatformGesture {
+  if (_customPlatformGesture && _customPlatformDelegate) {
+    return;
+  }
+  void (^work)(void) = ^{
+    if (self->_customPlatformGesture && self->_customPlatformDelegate) {
+      return;
+    }
+    self->_customPlatformGesture =
+        [[LynxCustomGestureRecognizer alloc] initWithTarget:self
+                                                     action:@selector(handlePlatformGesture:)];
+    self->_customPlatformDelegate =
+        [[LynxCustomPlatformGestureRecognizerDelegate alloc] initWithEventHandler:self];
+    self->_customPlatformGesture.delegate = self->_customPlatformDelegate;
+    self->_customPlatformGesture.cancelsTouchesInView = YES;
+    [self->_rootView addGestureRecognizer:self->_customPlatformGesture];
+  };
+  if ([NSThread isMainThread]) {
+    work();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), work);
+  }
+}
+
+- (void)removePlatformGesture {
+  if (!_customPlatformGesture && !_customPlatformDelegate) {
+    return;
+  }
+  void (^work)(void) = ^{
+    if (!self->_customPlatformGesture && !self->_customPlatformDelegate) {
+      return;
+    }
+    self->_customPlatformGesture.delegate = nil;
+    [self->_rootView removeGestureRecognizer:self->_customPlatformGesture];
+    self->_customPlatformGesture = nil;
+    self->_customPlatformDelegate = nil;
+  };
+  if ([NSThread isMainThread]) {
+    work();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), work);
+  }
+}
+
 - (BOOL)consumeSlideEvents:(CGFloat)angle {
   id<LynxEventTarget> target = _touchTarget;
   while (target != nil && target != target.parentTarget) {
@@ -595,6 +729,37 @@
   self.gestureRecognized = YES;
   if (_touchRecognizer != nil) {
     [_touchRecognizer onGestureRecognized];
+  }
+}
+
+- (void)onPlatformGestureStatusChanged:(int)status {
+  if (!self.customPlatformGesture) {
+    return;
+  }
+  void (^work)(void) = ^{
+    switch (status) {
+      case LYNX_STATE_BEGIN:
+        [self.customPlatformGesture beginGesture];
+        break;
+      case LYNX_STATE_ACTIVE:
+        [self.customPlatformGesture changeGesture];
+        break;
+      case LYNX_STATE_END:
+      case LYNX_STATE_CANCELLED:
+        if (self.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
+          [self.customPlatformGesture endGesture];
+        } else {
+          [self.customPlatformGesture failGesture];
+        }
+        break;
+      default:
+        break;
+    }
+  };
+  if ([NSThread isMainThread]) {
+    work();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), work);
   }
 }
 

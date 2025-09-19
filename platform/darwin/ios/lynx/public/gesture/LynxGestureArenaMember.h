@@ -56,6 +56,13 @@
 - (int)getScrollContainerDirection;
 
 /**
+ * platform gesture status need changed
+ * @see LynxGestureHandlerTrigger
+ * @param status 2 - LYNX_STATE_ACTIVE 3 - LYNX_STATE_FAIL 4 - LYNX_STATE_CANCELLED
+ */
+- (void)onPlatformGestureStatusChanged:(int)status;
+
+/**
  Retrieve  the map of gesture detectors associated with the member.
  @return The map of gesture detectors, or null if not available.
  */

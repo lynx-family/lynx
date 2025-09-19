@@ -64,6 +64,10 @@
   return _config->GetEnableNewGesture();
 }
 
+- (bool)enablePlatformGesture {
+  return _config->GetEnablePlatformGesture();
+}
+
 - (bool)enableNewImage {
   return _config->GetEnableNewImage();
 }

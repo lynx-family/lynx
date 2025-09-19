@@ -152,6 +152,9 @@
 - (void)onGestureScrollBy:(CGPoint)delta {
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+}
+
 - (BOOL)getGestureBorder:(BOOL)start {
   return NO;
 }

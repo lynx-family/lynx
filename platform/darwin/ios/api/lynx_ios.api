@@ -1168,6 +1168,14 @@ public class LynxCustomEvent : LynxEvent {
   public NSString * LynxCustomEvent::paramsName();
 }
 
+public class LynxCustomGestureRecognizer : UIGestureRecognizer {
+  public void LynxCustomGestureRecognizer::possibleGesture();
+  public void LynxCustomGestureRecognizer::beginGesture();
+  public void LynxCustomGestureRecognizer::changeGesture();
+  public void LynxCustomGestureRecognizer::endGesture();
+  public void LynxCustomGestureRecognizer::failGesture();
+}
+
 public protocol LynxCustomMeasureDelegate-p : <NSObjectNSObject> {
   public MeasureResult LynxCustomMeasureDelegate-p::measureWithMeasureParam:MeasureContext:(MeasureParam *param,[MeasureContext] nullable MeasureContext *context);
   public void LynxCustomMeasureDelegate-p::alignWithAlignParam:AlignContext:(AlignParam *param,[AlignContext] AlignContext *context);
@@ -1474,6 +1482,7 @@ public class LynxEventHandler : NSObject {
   public LynxTouchHandler* LynxEventHandler::touchRecognizer touchRecognizer;
   public UIGestureRecognizer* LynxEventHandler::tapRecognizer tapRecognizer;
   public UIGestureRecognizer* LynxEventHandler::longPressRecognizer longPressRecognizer;
+  public LynxCustomGestureRecognizer* LynxEventHandler::customPlatformGesture customPlatformGesture;
   public LynxGestureArenaManager* _Nullable LynxEventHandler::gestureArenaManager gestureArenaManager;
   public BOOL LynxEventHandler::enableSimultaneousTap enableSimultaneousTap;
   public BOOL LynxEventHandler::disableEndEditing disableEndEditing;
@@ -1482,6 +1491,7 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler::attachContainerView:(UIView *rootView);
   public void LynxEventHandler::updateUiOwner:eventEmitter:(nullable LynxUIOwner *owner,[eventEmitter] LynxEventEmitter *eventEmitter);
   public id< LynxEventTarget > LynxEventHandler::hitTest:withEvent:(CGPoint point,[withEvent] nullable UIEvent *event);
+  public void LynxEventHandler::onPlatformGestureStatusChanged:(int status);
   public void LynxEventHandler::handleFocus:onView:withContainer:andPoint:andEvent:(id< LynxEventTarget > target,[onView] UIView *view,[withContainer] UIView *container,[andPoint] CGPoint point,[andEvent] UIEvent *event);
   public void LynxEventHandler::onGestureRecognized();
   public void LynxEventHandler::onGestureRecognizedByEventTarget:(id< LynxEventTarget > ui);
@@ -1499,6 +1509,8 @@ public class LynxEventHandler : NSObject {
   public void LynxEventHandler()::setEnableSimultaneousTap:(BOOL enable);
   public void LynxEventHandler()::setDisableLongpressAfterScroll:(bool value);
   public void LynxEventHandler()::setTapSlop:(NSString *tapSlop);
+  public void LynxEventHandler()::setEnablePlatformGesture:(BOOL enablePlatformGesture);
+  public void LynxEventHandler()::removePlatformGesture();
   public void LynxEventHandler()::setLongPressDuration:(int32_t value);
   public void LynxEventHandler()::dispatchPanEvent:(UIPanGestureRecognizer *sender);
   public void LynxEventHandler()::needCheckConsumeSlideEvent();
@@ -1791,6 +1803,7 @@ public protocol LynxGestureArenaMember-p : <LynxEventTarget> {
   public CGFloat LynxGestureArenaMember-p::getMemberScrollX();
   public CGFloat LynxGestureArenaMember-p::getMemberScrollY();
   public int LynxGestureArenaMember-p::getScrollContainerDirection();
+  public void LynxGestureArenaMember-p::onPlatformGestureStatusChanged:(int status);
   public NSDictionary< NSNumber *, LynxGestureDetectorDarwin * > * LynxGestureArenaMember-p::getGestureDetectorMap();
   public NSDictionary< NSNumber *, LynxBaseGestureHandler * > * LynxGestureArenaMember-p::getGestureHandlers();
 }
@@ -4272,6 +4285,7 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext::updateScreenSize:(CGSize screenSize);
   public void LynxUIContext::onGestureRecognized();
   public void LynxUIContext::onGestureRecognizedByUI:(LynxUI *ui);
+  public void LynxUIContext::onPlatformGestureStatusChanged:(int status);
   public void LynxUIContext::onPropsChangedByUI:(LynxUI *ui);
   public BOOL LynxUIContext::isTouchMoving();
   public NSNumber * LynxUIContext::getLynxRuntimeId();
@@ -6243,6 +6257,7 @@ public enum LynxGestureFlingTriggerState {
   public const int LYNX_STATE_BEGIN LYNX_STATE_BEGIN;
   public const int LYNX_STATE_ACTIVE LYNX_STATE_ACTIVE;
   public const int LYNX_STATE_FAIL LYNX_STATE_FAIL;
+  public const int LYNX_STATE_CANCELLED LYNX_STATE_CANCELLED;
   public const int LYNX_STATE_END LYNX_STATE_END;
   public const int LYNX_STATE_UNDETERMINED LYNX_STATE_UNDETERMINED;
 

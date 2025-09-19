@@ -507,9 +507,14 @@ enableExposureUIMargin:
   defaultValue: false
   valueType: bool
 enableNewGesture:
-  description:
+  description: Enable gesture handler.
   defaultValue: false
   valueType: bool
+enablePlatformGesture:
+  description: Enable shadow platform gesture to handle gesture conflict.
+  defaultValue: false
+  valueType: bool
+  since: 3.6
 enableCheckLocalImage:
   description:
   defaultValue: true
