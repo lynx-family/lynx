@@ -21,6 +21,7 @@ namespace lynx {
 namespace fml {
 
 class MessageLoopImpl;
+class TaskRunnerDelegate;
 
 /// An interface over the ability to schedule tasks on a \p TaskRunner.
 class BasicTaskRunner {
@@ -94,6 +95,8 @@ class BASE_EXPORT TaskRunner : public fml::RefCountedThreadSafe<TaskRunner>,
 
   const fml::RefPtr<MessageLoopImpl>& GetLoop() const;
 
+  void SetDelegate(lynx::fml::TaskRunnerDelegate* delegate);
+
  protected:
   explicit TaskRunner(fml::RefPtr<MessageLoopImpl> loop,
                       bool is_aligned_with_vsync = false);
@@ -102,6 +105,7 @@ class BASE_EXPORT TaskRunner : public fml::RefCountedThreadSafe<TaskRunner>,
  private:
   TaskQueueId queue_id_;
   std::shared_ptr<bool> unbound_ = std::make_shared<bool>(false);
+  fml::TaskRunnerDelegate* delegate_ = nullptr;
 
   void BindOnCreate(fml::RefPtr<MessageLoopImpl> loop);
 

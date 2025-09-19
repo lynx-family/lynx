@@ -229,6 +229,20 @@ void UIThread::Init(void* platform_loop) {
   GetUIInitCV().notify_all();
 }
 
+void UIThread::InitTaskRunner(fml::TaskRunnerDelegate* task_runner_delegate) {
+  if (HasInit()) {
+    return;
+  }
+  if (task_runner_delegate) {
+    GetUITaskRunner() = fml::MakeRefCounted<fml::TaskRunner>(nullptr);
+    GetUITaskRunner()->SetDelegate(task_runner_delegate);
+    HasInit() = true;
+    GetUIInitCV().notify_all();
+  } else {
+    Init();
+  }
+}
+
 TaskRunnerManufactor::TaskRunnerManufactor(ThreadStrategyForRendering strategy,
                                            bool enable_multi_tasm_thread,
                                            bool enable_multi_layout_thread,

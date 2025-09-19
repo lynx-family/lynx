@@ -81,6 +81,7 @@ base_core_public_headers_list = [
   "fml/synchronization/waitable_event.h",
   "fml/task_queue_id.h",
   "fml/task_runner.h",
+  "fml/task_runner_delegate.h",
   "fml/task_source.h",
   "fml/task_source_grade.h",
   "fml/thread.h",

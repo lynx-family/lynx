@@ -85,6 +85,9 @@ declare_args() {
   # If true, symbols decorated with `LYNX_EXPORT` are exported.
   # Otherwise, no symbols from this library are exported.
   lynx_export_symbols = true
+
+  # Whether to enable headless engine with host compiling.
+  is_headless = false
 }
 
 declare_args() {
