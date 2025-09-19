@@ -18,27 +18,31 @@
 namespace fml {
 namespace {
 
+struct Integer : public EnableWeakFromThis<Integer> {
+  Integer(int data) : data(data) {}
+  bool operator==(const Integer& other) const { return data == other.data; }
+
+  int data;
+};
+
 TEST(WeakPtrTest, Basic) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr = factory.GetWeakPtr();
+  Integer data = 0;
+  auto ptr = data.WeakFromThis();
   EXPECT_EQ(&data, ptr.get());
 }
 
 TEST(WeakPtrTest, CopyConstruction) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr = factory.GetWeakPtr();
-  WeakPtr<int> ptr2(ptr);
+  Integer data = 0;
+  auto ptr = data.WeakFromThis();
+  auto ptr2(ptr);
   EXPECT_EQ(&data, ptr.get());
   EXPECT_EQ(&data, ptr2.get());
 }
 
 TEST(WeakPtrTest, MoveConstruction) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr = factory.GetWeakPtr();
-  WeakPtr<int> ptr2(std::move(ptr));
+  Integer data = 0;
+  auto ptr = data.WeakFromThis();
+  auto ptr2(std::move(ptr));
   // The clang linter flags the method called on the moved-from reference, but
   // this is testing the move implementation, so it is marked NOLINT.
   EXPECT_EQ(nullptr, ptr.get());  // NOLINT
@@ -46,10 +50,9 @@ TEST(WeakPtrTest, MoveConstruction) {
 }
 
 TEST(WeakPtrTest, CopyAssignment) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr = factory.GetWeakPtr();
-  WeakPtr<int> ptr2;
+  Integer data = 0;
+  auto ptr = data.WeakFromThis();
+  WeakPtr<Integer> ptr2;
   EXPECT_EQ(nullptr, ptr2.get());
   ptr2 = ptr;
   EXPECT_EQ(&data, ptr.get());
@@ -57,10 +60,9 @@ TEST(WeakPtrTest, CopyAssignment) {
 }
 
 TEST(WeakPtrTest, MoveAssignment) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr = factory.GetWeakPtr();
-  WeakPtr<int> ptr2;
+  Integer data = 0;
+  auto ptr = data.WeakFromThis();
+  WeakPtr<Integer> ptr2;
   EXPECT_EQ(nullptr, ptr2.get());
   ptr2 = std::move(ptr);
   // The clang linter flags the method called on the moved-from reference, but
@@ -70,35 +72,32 @@ TEST(WeakPtrTest, MoveAssignment) {
 }
 
 TEST(WeakPtrTest, Testable) {
-  int data = 0;
-  WeakPtrFactory<int> factory(&data);
-  WeakPtr<int> ptr;
+  Integer data = 0;
+  WeakPtr<Integer> ptr;
   EXPECT_EQ(nullptr, ptr.get());
   EXPECT_FALSE(ptr);
-  ptr = factory.GetWeakPtr();
+  ptr = data.WeakFromThis();
   EXPECT_EQ(&data, ptr.get());
   EXPECT_TRUE(ptr);
 }
 
 TEST(WeakPtrTest, OutOfScope) {
-  WeakPtr<int> ptr;
+  WeakPtr<Integer> ptr;
   EXPECT_EQ(nullptr, ptr.get());
   {
-    int data = 0;
-    WeakPtrFactory<int> factory(&data);
-    ptr = factory.GetWeakPtr();
+    Integer data = 0;
+    ptr = data.WeakFromThis();
   }
   EXPECT_EQ(nullptr, ptr.get());
 }
 
 TEST(WeakPtrTest, Multiple) {
-  WeakPtr<int> a;
-  WeakPtr<int> b;
+  WeakPtr<Integer> a;
+  WeakPtr<Integer> b;
   {
-    int data = 0;
-    WeakPtrFactory<int> factory(&data);
-    a = factory.GetWeakPtr();
-    b = factory.GetWeakPtr();
+    Integer data = 0;
+    a = data.WeakFromThis();
+    b = data.WeakFromThis();
     EXPECT_EQ(&data, a.get());
     EXPECT_EQ(&data, b.get());
   }
@@ -107,18 +106,17 @@ TEST(WeakPtrTest, Multiple) {
 }
 
 TEST(WeakPtrTest, MultipleStaged) {
-  WeakPtr<int> a;
+  WeakPtr<Integer> a;
   {
-    int data = 0;
-    WeakPtrFactory<int> factory(&data);
-    a = factory.GetWeakPtr();
-    { WeakPtr<int> b = factory.GetWeakPtr(); }
+    Integer data = 0;
+    a = data.WeakFromThis();
+    { auto b = data.WeakFromThis(); }
     EXPECT_NE(a.get(), nullptr);
   }
   EXPECT_EQ(nullptr, a.get());
 }
 
-struct Base {
+struct Base : public EnableWeakFromThis<Base> {
   double member = 0.;
 };
 struct Derived : public Base {};
@@ -126,8 +124,7 @@ struct Derived : public Base {};
 TEST(WeakPtrTest, Dereference) {
   Base data;
   data.member = 123456.;
-  WeakPtrFactory<Base> factory(&data);
-  WeakPtr<Base> ptr = factory.GetWeakPtr();
+  WeakPtr<Base> ptr = data.WeakFromThis();
   EXPECT_EQ(&data, ptr.get());
   EXPECT_EQ(data.member, (*ptr).member);
   EXPECT_EQ(data.member, ptr->member);
@@ -135,8 +132,7 @@ TEST(WeakPtrTest, Dereference) {
 
 TEST(WeakPtrTest, UpcastCopyConstruction) {
   Derived data;
-  WeakPtrFactory<Derived> factory(&data);
-  WeakPtr<Derived> ptr = factory.GetWeakPtr();
+  WeakPtr<Derived> ptr = data.WeakFromThis();
   WeakPtr<Base> ptr2(ptr);
   EXPECT_EQ(&data, ptr.get());
   EXPECT_EQ(&data, ptr2.get());
@@ -144,8 +140,7 @@ TEST(WeakPtrTest, UpcastCopyConstruction) {
 
 TEST(WeakPtrTest, UpcastMoveConstruction) {
   Derived data;
-  WeakPtrFactory<Derived> factory(&data);
-  WeakPtr<Derived> ptr = factory.GetWeakPtr();
+  WeakPtr<Derived> ptr = data.WeakFromThis();
   WeakPtr<Base> ptr2(std::move(ptr));
   // The clang linter flags the method called on the moved-from reference, but
   // this is testing the move implementation, so it is marked NOLINT.
@@ -155,8 +150,7 @@ TEST(WeakPtrTest, UpcastMoveConstruction) {
 
 TEST(WeakPtrTest, UpcastCopyAssignment) {
   Derived data;
-  WeakPtrFactory<Derived> factory(&data);
-  WeakPtr<Derived> ptr = factory.GetWeakPtr();
+  WeakPtr<Derived> ptr = data.WeakFromThis();
   WeakPtr<Base> ptr2;
   EXPECT_EQ(nullptr, ptr2.get());
   ptr2 = ptr;
@@ -166,8 +160,7 @@ TEST(WeakPtrTest, UpcastCopyAssignment) {
 
 TEST(WeakPtrTest, UpcastMoveAssignment) {
   Derived data;
-  WeakPtrFactory<Derived> factory(&data);
-  WeakPtr<Derived> ptr = factory.GetWeakPtr();
+  WeakPtr<Derived> ptr = data.WeakFromThis();
   WeakPtr<Base> ptr2;
   EXPECT_EQ(nullptr, ptr2.get());
   ptr2 = std::move(ptr);
@@ -196,14 +189,13 @@ TEST(WeakPtrTest, ShouldNotCrashIfRunningOnTheSameTaskRunner) {
   std::thread thread2([&loop2, &latch2, &term2, &loop2_task_finish_latch,
                        &loop2_task_start_latch]() {
     fml::MessageLoop::EnsureInitializedForCurrentThread();
-    int data = 0;
-    WeakPtrFactory<int> factory(&data);
+    Integer data = 0;
     loop2 = &fml::MessageLoop::GetCurrent();
 
     loop2->GetTaskRunner()->PostTask([&]() {
       latch2.Signal();
       loop2_task_start_latch.Wait();
-      WeakPtr<int> ptr = factory.GetWeakPtr();
+      auto ptr = data.WeakFromThis();
       EXPECT_EQ(*ptr, data);
       loop2_task_finish_latch.Signal();
     });

@@ -56,13 +56,13 @@ void ListContainerAnimationManager::OnLayoutChildren() {
     if (!animator_) {
       InitializeAnimator();
       animator_->RegisterCustomCallback(
-          [weak_ptr = weak_factory_.GetWeakPtr()](float progress) {
+          [weak_ptr = WeakFromThis()](float progress) {
             if (auto ptr = weak_ptr.get()) {
               ptr->DoAnimationFrame(progress);
             }
           });
       animator_->RegisterEventCallback(
-          [weak_ptr = weak_factory_.GetWeakPtr()]() {
+          [weak_ptr = WeakFromThis()]() {
             if (auto ptr = weak_ptr.get()) {
               ptr->EndAnimation();
             }

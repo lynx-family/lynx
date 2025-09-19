@@ -15,7 +15,8 @@
 
 namespace lynx {
 namespace tasm {
-class PipelineLifecycleObserver {
+class PipelineLifecycleObserver
+    : public fml::EnableWeakFromThis<PipelineLifecycleObserver> {
  public:
   class Data {
    public:
@@ -48,8 +49,6 @@ class PipelineLifecycleObserver {
 
  private:
   friend class PipelineContext;
-
-  fml::WeakPtrFactory<PipelineLifecycleObserver> weak_factory_{this};
 };
 }  // namespace tasm
 }  // namespace lynx

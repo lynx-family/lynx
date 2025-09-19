@@ -2,9 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This file provides weak pointers and weak pointer factories that work like
-// Chromium's |base::WeakPtr<T>| and |base::WeakPtrFactory<T>|.
-
 #ifndef BASE_INCLUDE_FML_MEMORY_WEAK_PTR_H_
 #define BASE_INCLUDE_FML_MEMORY_WEAK_PTR_H_
 
@@ -28,21 +25,24 @@ struct DebugTaskRunnerChecker {
 
 // Forward declaration, so |WeakPtr<T>| can friend it.
 template <typename T>
+class EnableWeakFromThis;
+
+template <typename T>
 class WeakPtrFactory;
 
 // Class for "weak pointers" that can be invalidated. Valid weak pointers
-// can only originate from a |WeakPtrFactory| (see below), though weak
+// can only originate from a |EnableWeakFromThis| (see below), though weak
 // pointers are copyable and movable.
 //
 // Weak pointers are not in general thread-safe. They may only be *used* on
 // threads which are belong to the same |TaskRunner|, namely the same thread as
-// the "originating" |WeakPtrFactory| (which can invalidate the weak pointers
-// that it generates).
+// the "originating" |EnableWeakFromThis| (which can invalidate the weak
+// pointers that it generates).
 //
 // However, weak pointers may be passed to other threads, reset on other
 // threads, or destroyed on other threads. They may also be reassigned on
 // other threads (in which case they should then only be used on the thread
-// corresponding to the new "originating" |WeakPtrFactory|).
+// corresponding to the new "originating" |EnableWeakFromThis|).
 template <typename T>
 class WeakPtr {
  public:
@@ -77,7 +77,7 @@ class WeakPtr {
   void reset() { flag_ = nullptr; }
 
   // The following methods should only be called on the same thread as the
-  // "originating" |WeakPtrFactory|.
+  // "originating" |EnableWeakFromThis|.
 
   explicit operator bool() const {
     CheckThreadSafety();
@@ -117,6 +117,7 @@ class WeakPtr {
  private:
   template <typename U>
   friend class WeakPtr;
+  friend class EnableWeakFromThis<T>;
   friend class WeakPtrFactory<T>;
 
   explicit WeakPtr(T* ptr, fml::RefPtr<fml::internal::WeakPtrFlag>&& flag,
@@ -128,29 +129,19 @@ class WeakPtr {
   DebugTaskRunnerChecker checker_;
 };
 
-// Class that produces (valid) |WeakPtr<T>|s. Typically, this is used as a
-// member variable of |T| (preferably the last one -- see below), and |T|'s
-// methods control how weak pointers to it are vended. This class is not
-// thread-safe, and should only be created, destroyed and used on threads that
-// are belong to the same |TaskRunner|
+// Class that works as base and produces (valid) |WeakPtr<T>|s.
+// This class is not thread-safe, and should only be created, destroyed and
+// used on threads that are belong to the same |TaskRunner|
 //
 // Example:
 //
-//  class Controller {
+//  class Controller : public EnableWeakFromThis<Controller> {
 //   public:
-//    Controller() : ..., weak_factory_(this) {}
+//    Controller() {}
 //    ...
 //
-//    void SpawnWorker() { Worker::StartNew(weak_factory_.GetWeakPtr()); }
+//    void SpawnWorker() { Worker::StartNew(WeakFromThis()); }
 //    void WorkComplete(const Result& result) { ... }
-//
-//   private:
-//    ...
-//
-//    // Member variables should appear before the |WeakPtrFactory|, to ensure
-//    // that any |WeakPtr|s to |Controller| are invalidated before its member
-//    // variables' destructors are executed.
-//    WeakPtrFactory<Controller> weak_factory_;
 //  };
 //
 //  class Worker {
@@ -170,6 +161,48 @@ class WeakPtr {
 //
 //    WeakPtr<Controller> controller_;
 //  };
+template <typename T>
+class EnableWeakFromThis {
+ public:
+#ifdef __OBJC__
+  static_assert(!base::is_objc_class<T*>::value,
+                "WeakPtr<T> is not supported for Objective-C class");
+#endif
+
+  EnableWeakFromThis() = default;
+
+  ~EnableWeakFromThis() {
+    CheckThreadSafety();
+    if (flag_) {
+      flag_->Invalidate();
+    }
+  }
+
+  // Gets a new weak pointer, which will be valid until this object is
+  // destroyed.
+  WeakPtr<T> WeakFromThis() const {
+    if (!flag_) {
+      flag_ = fml::MakeRefCounted<fml::internal::WeakPtrFlag>();
+    }
+    return WeakPtr<T>(static_cast<T*>(const_cast<EnableWeakFromThis*>(this)),
+                      flag_.Clone(), checker_);
+  }
+
+ private:
+  mutable fml::RefPtr<fml::internal::WeakPtrFlag> flag_;
+
+  void CheckThreadSafety() const {
+    FML_DCHECK_TASK_RUNNER_IS_CURRENT(checker_.checker);
+  }
+
+  DebugTaskRunnerChecker checker_;
+
+  BASE_DISALLOW_COPY_AND_ASSIGN(EnableWeakFromThis);
+};
+
+/// Deprecated!!!
+/// Use EnableWeakFromThis instead.
+/// TODO(yuyang), replace usage of WeakPtrFactory in other modules.
 template <typename T>
 class WeakPtrFactory {
  public:
@@ -213,6 +246,7 @@ class WeakPtrFactory {
 }  // namespace lynx
 
 namespace fml {
+using lynx::fml::EnableWeakFromThis;
 using lynx::fml::WeakPtr;
 using lynx::fml::WeakPtrFactory;
 }  // namespace fml

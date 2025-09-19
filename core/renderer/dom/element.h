@@ -107,7 +107,9 @@ struct BindEventCatch {
   int bubble_catch{0};
 };
 
-class Element : public lepus::RefCounted, public event::EventTarget {
+class Element : public lepus::RefCounted,
+                public fml::EnableWeakFromThis<Element>,
+                public event::EventTarget {
  public:
   Element(const base::String& tag, ElementManager* element_manager,
           uint32_t node_index = 0);
@@ -702,9 +704,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   EventTarget* GetParentTarget() override { return parent_; }
 
-  std::unordered_map<std::string, BindEventCatch>& GetBindEventCatchMap() {
-    return bind_event_catch_map_;
-  }
+  auto& GetBindEventCatchMap() { return bind_event_catch_map_; }
 
   bool IsEventCaptureCatch(const std::string& event) override;
 
@@ -716,9 +716,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   virtual float GetLayoutsUnitPerPx() override;
 
-  fml::WeakPtr<EventTarget> GetWeakTarget() override {
-    return weak_factory_.GetWeakPtr();
-  }
+  fml::WeakPtr<EventTarget> GetWeakTarget() override { return WeakFromThis(); }
 
   virtual std::string GetUniqueID() override {
     return std::to_string(impl_id());
@@ -898,8 +896,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   // Save the bind event information on the target, compatible with bind event
   // interception. eg. capture-bindtap, catchtap
-  std::unordered_map<std::string, BindEventCatch> bind_event_catch_map_;
-  fml::WeakPtrFactory<Element> weak_factory_{this};
+  base::LinearFlatMap<std::string, BindEventCatch> bind_event_catch_map_;
 
  private:
   fml::RefPtr<PropBundle> MakeBundleForAnimation(bool has_layout_style);

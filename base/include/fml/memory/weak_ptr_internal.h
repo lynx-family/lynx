@@ -23,17 +23,22 @@ namespace internal {
 // thread).
 class BASE_EXPORT WeakPtrFlag : public fml::RefCountedThreadSafe<WeakPtrFlag> {
  public:
-  WeakPtrFlag();
+  WeakPtrFlag() = default;
 
-  ~WeakPtrFlag();
+  ~WeakPtrFlag() {
+    // Should be invalidated before destruction.
+    LYNX_BASE_DCHECK(!is_valid());
+  }
 
-  bool is_valid() const { return is_valid_; }
+  bool is_valid() const { return __padding_chars__[0] == 0; }
 
-  void Invalidate();
+  void Invalidate() {
+    // Invalidation should happen exactly once.
+    LYNX_BASE_DCHECK(is_valid());
+    __padding_chars__[0] = 1;
+  }
 
  private:
-  bool is_valid_;
-
   BASE_DISALLOW_COPY_AND_ASSIGN(WeakPtrFlag);
 };
 

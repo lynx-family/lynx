@@ -32,7 +32,7 @@ void Timer::AbandonScheduledTasks() {
 
 void Timer::ScheduleNewTask() {
   task_runner_->PostDelayedTask(
-      [validator = validator_, self = weak_factory_.GetWeakPtr()]() {
+      [validator = validator_, self = WeakFromThis()]() {
         if (!self || !self->running_ || validator != self->validator_) {
           return;
         }

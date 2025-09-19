@@ -16,7 +16,9 @@
 namespace lynx {
 namespace tasm {
 class ListContainerImpl;
-class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
+class ListContainerAnimationManager
+    : public fml::EnableWeakFromThis<ListContainerAnimationManager>,
+      public ItemHolder::AnimationDelegate {
  public:
   explicit ListContainerAnimationManager(ListContainerImpl* container);
 
@@ -49,7 +51,6 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
       list::ListContainerAnimationType::kNone};
   std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;
   ListContainerImpl* list_container_impl_;
-  fml::WeakPtrFactory<ListContainerAnimationManager> weak_factory_{this};
 };
 }  // namespace tasm
 

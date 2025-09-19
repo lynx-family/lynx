@@ -97,7 +97,7 @@ bool DefaultListAdapter::BindItemHolder(ItemHolder* item_holder, int index,
   if (IsDirty(item_holder) || IsRecycled(item_holder)) {
     int64_t operation_id = GenerateOperationId();
     (*binding_item_holder_weak_map_)[operation_id] =
-        item_holder->GetSelfWeakPtr();
+        item_holder->WeakFromThis();
     // In ReactLynx 3.0, binding item_holder twice without enqueuing will result
     // in cloning of the old element. This MR aims to avoid this scenario by
     // mandating enqueuing before binding.

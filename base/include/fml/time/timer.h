@@ -22,7 +22,7 @@ namespace fml {
 // So here provide a simple repeating / oneshot cancalable timer for caret
 // twinkling or swiper autoplay and so on.
 // NOTE: The actual time delay may giant than expected, and it won't be fixed.
-class BASE_EXPORT Timer {
+class BASE_EXPORT Timer : public EnableWeakFromThis<Timer> {
  public:
   // Task runner should be same with calling thread.
   Timer(fml::RefPtr<fml::TaskRunner> task_runner, bool repeat)
@@ -63,8 +63,6 @@ class BASE_EXPORT Timer {
   // scheduled within one period of delay.
   uint64_t validator_ = 0;
   bool running_ = false;
-
-  fml::WeakPtrFactory<Timer> weak_factory_{this};
 };
 
 class RepeatingTimer : public Timer {

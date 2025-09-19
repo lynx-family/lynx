@@ -17,7 +17,7 @@ namespace tasm {
 class Element;
 class ListOrientationHelper;
 
-class ItemHolder {
+class ItemHolder : public fml::EnableWeakFromThis<ItemHolder> {
  public:
   class AnimationDelegate {
    public:
@@ -88,9 +88,6 @@ class ItemHolder {
   bool sticky_top() const { return sticky_top_; }
   bool sticky_bottom() const { return sticky_bottom_; }
   bool recyclable() const { return recyclable_; }
-  fml::WeakPtr<ItemHolder> GetSelfWeakPtr() {
-    return weak_factory_.GetWeakPtr();
-  }
 
   // Note: The comparator of ItemHolder should allow objects with the same
   // index but different addresses to exist and it should meet the
@@ -195,11 +192,6 @@ class ItemHolder {
   std::array<float, 4> paddings_{};
   std::array<float, 4> borders_{};
   std::array<float, 4> margins_{};
-
-  // Note: WeakPtrFactory must be the last member variable to ensure that
-  // WeakPtr is invalidated first during destruction and then other member
-  // variables are destroyed.
-  fml::WeakPtrFactory<ItemHolder> weak_factory_{this};
 
   friend class AnimationItemHolder;
 };

@@ -175,7 +175,7 @@ void PipelineContext::AddObserver(PipelineLifecycleObserver* observer) {
     LOGE("observer is nullptr");
     return;
   }
-  observers_.emplace_back(observer->weak_factory_.GetWeakPtr());
+  observers_.emplace_back(observer->WeakFromThis());
 }
 
 void PipelineContext::RemoveObserver(PipelineLifecycleObserver* observer) {
