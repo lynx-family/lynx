@@ -23,6 +23,14 @@ class ScrollElement : public FiberElement {
         new ScrollElement(*this, clone_resolved_props));
   }
 
+  virtual const base::String& GetPlatformNodeTag() const override {
+    if (platform_node_tag_.IsEqual(kScrollNewArch)) {
+      return platform_node_tag_;
+    } else {
+      return tag_;
+    }
+  }
+
   bool is_scroll_view() const override { return true; }
 
  protected:
@@ -35,6 +43,7 @@ class ScrollElement : public FiberElement {
 
  private:
   void HandleLayoutNodeAttributeUpdate();
+  base::String platform_node_tag_{BASE_STATIC_STRING(kElementScrollViewTag)};
 };
 
 }  // namespace tasm
