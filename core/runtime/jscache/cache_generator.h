@@ -22,15 +22,11 @@ class CacheGenerator {
   virtual ~CacheGenerator() = default;
 
   virtual std::shared_ptr<Buffer> GenerateCache() = 0;
-  static void SetReportFunction(report_func func) {
-    trig_mem_info_event_ = func;
-  }
 
   const std::string SourceUrl() { return source_url_; }
   std::shared_ptr<const Buffer>& SrcBuffer() { return src_buffer_; }
 
  protected:
-  static report_func trig_mem_info_event_;
   std::string source_url_;
   std::shared_ptr<const Buffer> src_buffer_;
 };

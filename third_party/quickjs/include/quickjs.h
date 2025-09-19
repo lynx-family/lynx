@@ -1009,18 +1009,14 @@ char *LEPUS_GetGCTimingInfo(LEPUSContext *ctx, bool is_start);
 void LEPUS_PushHandle(LEPUSContext *ctx, void *ptr, int type);
 void LEPUS_ResetHandle(LEPUSContext *ctx, void *ptr, int type);
 
-#ifdef ENABLE_CHECK_TOOLS
 void CheckObjectCtx(LEPUSContext *ctx, LEPUSValue obj);
 void CheckObjectRt(LEPUSRuntime *rt, LEPUSValue obj);
-#endif
 
 static inline LEPUSValue LEPUS_DupValue(LEPUSContext *ctx, LEPUSValueConst v) {
   if (LEPUS_VALUE_HAS_REF_COUNT(v)) {
     LEPUSRefCountHeader *p = (LEPUSRefCountHeader *)LEPUS_VALUE_GET_PTR(v);
     p->ref_count++;
-#ifdef ENABLE_CHECK_TOOLS
     CheckObjectCtx(ctx, v);
-#endif
   }
   return (LEPUSValue)v;
 }
@@ -1041,9 +1037,7 @@ static inline LEPUSValue LEPUS_DupValueRT(LEPUSRuntime *rt, LEPUSValueConst v) {
   if (LEPUS_VALUE_HAS_REF_COUNT(v)) {
     LEPUSRefCountHeader *p = (LEPUSRefCountHeader *)LEPUS_VALUE_GET_PTR(v);
     p->ref_count++;
-#ifdef ENABLE_CHECK_TOOLS
     CheckObjectRt(rt, v);
-#endif
   }
   return (LEPUSValue)v;
 }
@@ -1151,8 +1145,11 @@ LEPUSValue LEPUS_CallConstructor(LEPUSContext *ctx, LEPUSValueConst func_obj,
 LEPUSValue LEPUS_CallConstructor2(LEPUSContext *ctx, LEPUSValueConst func_obj,
                                   LEPUSValueConst new_target, int argc,
                                   LEPUSValueConst *argv);
-LEPUSValue LEPUS_Eval(LEPUSContext *ctx, const char *input, size_t input_len,
-                      const char *filename, int eval_flags);
+#define LEPUS_Eval(ctx, input, input_len, filename, eval_flags) \
+  LEPUS_Eval2(ctx, input, input_len, filename, eval_flags, 0)
+LEPUSValue LEPUS_Eval2(LEPUSContext *ctx, const char *input, size_t input_len,
+                       const char *filename, int eval_flags,
+                       int start_line_number);
 #define LEPUS_EVAL_BINARY_LOAD_ONLY (1 << 0) /* only load the module */
 LEPUSValue LEPUS_EvalBinary(LEPUSContext *ctx, const uint8_t *buf,
                             size_t buf_len, int flags);

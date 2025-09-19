@@ -44,8 +44,6 @@ std::string kindToString(const Value& v, Runtime* rt = nullptr) {
 
 }  // namespace
 
-report_func VMInstance::trig_mem_info_event_ = nullptr;
-
 PreparedJavaScript::~PreparedJavaScript() = default;
 
 Value HostObject::get(Runtime*, const PropNameID&) { return Value(); }
