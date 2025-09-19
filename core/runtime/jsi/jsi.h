@@ -1652,20 +1652,12 @@ class JSIExceptionHandler {
   virtual void Destroy() {}
 };
 
-typedef void (*report_func)(void* ctx, const char*, int);
-
 class VMInstance {
   // VMInstance createVM(StartupData data);
   // static VMInstance createVM();
  public:
   virtual ~VMInstance() = default;
   virtual JSRuntimeType GetRuntimeType() = 0;
-  static void SetReportFunction(report_func func) {
-    trig_mem_info_event_ = func;
-  }
-
- protected:
-  static report_func trig_mem_info_event_;
 };
 
 class HostGlobal {

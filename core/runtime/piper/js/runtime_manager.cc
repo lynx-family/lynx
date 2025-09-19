@@ -13,7 +13,6 @@
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/renderer/tasm/config.h"
 #include "core/runtime/bindings/jsi/global.h"
-#include "core/runtime/jscache/cache_generator.h"
 #include "core/runtime/jsi/jsi.h"
 #include "core/runtime/piper/js/js_executor.h"
 
@@ -142,13 +141,6 @@ std::shared_ptr<piper::VMInstance> VMInstancePool::DoCreateVMInstance(
 #endif  // JS_ENGINE_TYPE
 
 }  // namespace
-
-void TrigMemInfoEvent(void* ctx, const char* mem_info, int size) {}
-
-RuntimeManager::RuntimeManager() {
-  piper::VMInstance::SetReportFunction(TrigMemInfoEvent);
-  piper::cache::CacheGenerator::SetReportFunction(TrigMemInfoEvent);
-}
 
 RuntimeManager* RuntimeManager::Instance() {
   static thread_local RuntimeManager instance_;
