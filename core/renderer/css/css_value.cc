@@ -118,40 +118,50 @@ bool CSSValue::AsBool() const { return value_.Bool(); }
 
 std::string CSSValue::ResolveVariable(
     const std::string& var_name, const CustomPropertiesMap& custom_properties,
-    const CycleDetector& detector, int max_depth) {
+    const CycleDetector& detector, int max_depth, ConsumeCustomNameFunc func) {
   if (max_depth <= 0) {
     return "";
   }
 
   auto value = custom_properties.find(var_name);
   if (value == custom_properties.end()) {
+    if (func) {
+      func(var_name, "");
+    }
     return "";
   }
 
   const CSSValue& css_value = value->second;
   // If it's a simple string value (no variables), return it directly
   if (!css_value.IsVariable()) {
-    return css_value.AsString();
+    auto css_value_str = css_value.AsString();
+    if (func) {
+      func(var_name, css_value_str);
+    }
+    return css_value_str;
   }
 
+  if (func) {
+    func(var_name, css_value.GetValue().String());
+  }
   return CSSValue::Substitution(css_value, custom_properties, detector,
-                                max_depth - 1);
-  ;
+                                max_depth - 1, std::move(func));
 }
 
 std::string CSSValue::Substitution(const CSSValue& css_value,
                                    const CustomPropertiesMap& custom_properties,
-                                   int max_depth) {
+                                   int max_depth, ConsumeCustomNameFunc func) {
   // Build cycle detector for all variables (optimized for performance)
   CycleDetector detector(custom_properties);
 
-  return Substitution(css_value, custom_properties, detector, max_depth);
+  return Substitution(css_value, custom_properties, detector, max_depth,
+                      std::move(func));
 }
 
 std::string CSSValue::Substitution(const CSSValue& css_value,
                                    const CustomPropertiesMap& custom_properties,
-                                   const CycleDetector& detector,
-                                   int max_depth) {
+                                   const CycleDetector& detector, int max_depth,
+                                   ConsumeCustomNameFunc func) {
   if (!css_value.IsVariable() || !css_value.var_references_) {
     return css_value.AsString();
   }
@@ -181,8 +191,8 @@ std::string CSSValue::Substitution(const CSSValue& css_value,
     auto var_it = custom_properties.find(dep_name);
     if (var_it != custom_properties.end() && !detector.IsInCycle(dep_name)) {
       // Variable exists and is not in a cycle - resolve it normally
-      std::string resolved_value =
-          ResolveVariable(dep_name, custom_properties, detector, max_depth);
+      std::string resolved_value = ResolveVariable(
+          dep_name, custom_properties, detector, max_depth, std::move(func));
 
       if (!resolved_value.empty()) {
         result.append(std::move(resolved_value));

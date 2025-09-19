@@ -6,12 +6,17 @@
 #include <unordered_map>
 #include <utility>
 
+#include "base/include/log/logging.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/css_value.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
 namespace tasm {
+
+static constexpr int32_t kMaxDepth = 10;
 
 bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
                                             AttributeHolder* holder,
@@ -29,6 +34,24 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
     if (css_value.IsVariable()) {
       const auto& value_expr = css_value.GetValue();
       if (value_expr.IsString()) {
+        if (css_value.NeedsVariableResolution()) {
+          CSSValue::ConsumeCustomNameFunc func =
+              [holder, self = this](const base::String& key,
+                                    const base::String& value) {
+                if (self->enable_fiber_arch_) {
+                  // In FiberArch, relating node with it's related css variables
+                  // for optimization.
+                  holder->AddCSSVariableRelated(key, value);
+                }
+              };
+          auto property =
+              CSSValue::Substitution(css_value, holder->GetCustomProperties(),
+                                     kMaxDepth, std::move(func));
+          UnitHandler::Process(id, lepus::Value(std::move(property)), style_map,
+                               configs);
+          continue;
+        }
+
         const auto& default_value_map_opt = css_value.GetDefaultValueMapOpt();
         auto property = GetCSSVariableByRule(
             value_expr.StdString(), holder, css_value.GetDefaultValue(),

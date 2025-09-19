@@ -7,7 +7,10 @@
 #include <algorithm>
 
 #include "base/include/no_destructor.h"
+#include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
+#include "core/renderer/css/css_value.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/selector/matching/attribute_selector_matching.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -26,6 +29,12 @@ const CSSVariableMap&
 AttributeHolder::CSSVariableBundle::DefaultEmptyCSSVariableMap() {
   static base::NoDestructor<CSSVariableMap> kEmptyCSSVariableMap;
   return *kEmptyCSSVariableMap.get();
+}
+
+const CSSValueMap&
+AttributeHolder::CSSVariableBundle::DefaultEmptyCSSValueMap() {
+  static base::NoDestructor<CSSValueMap> kEmptyCSSValueMap;
+  return *kEmptyCSSValueMap.get();
 }
 
 const GestureMap& AttributeHolder::DefaultEmptyGestureMap() {
@@ -129,9 +138,19 @@ bool AttributeHolder::ContainsSelector(const std::string& selector) const {
 }
 
 void AttributeHolder::UpdateCSSVariableFromSetProperty(
-    const base::String& key, const base::String& value) {
-  css_variables_->css_variables_from_js_[key] = value;
-  OnStyleChange();
+    const base::String& key, const base::String& value, bool on_style_change) {
+  CSSValue css_value;
+  if (CSSStringParser::IsVariable(value.c_str(), value.length())) {
+    CSSStringParser parser(value.c_str(), value.length(),
+                           element_->element_manager()->GetCSSParserConfigs());
+    css_value = parser.ParseVariable();
+  } else {
+    css_value.SetValue(lepus::Value(value));
+  }
+  css_variables_->css_variables_from_js_[key] = css_value;
+  if (on_style_change) {
+    OnStyleChange();
+  }
 }
 
 void AttributeHolder::MergeWithCSSVariables(
@@ -143,16 +162,16 @@ void AttributeHolder::MergeWithCSSVariables(
       css_variable_updated = lepus::Value::Clone(css_variable_updated);
     }
     auto& css_variable_updated_table = *css_variable_updated.Table();
-    for (auto& pair : css_variable_updated_table) {
-      auto it = css_variables_->css_variables_from_js_.find(pair.first);
-      if (it != css_variables_->css_variables_from_js_.end()) {
-        pair.second.SetString(it->second);
+    for (auto& [key, value] : css_variable_updated_table) {
+      if (auto it = css_variables_->css_variables_from_js_.find(key);
+          it != css_variables_->css_variables_from_js_.end()) {
+        value.SetString(it->second.GetValue().String());
         continue;
       }
 
-      it = css_variables_->css_variables_.find(pair.first);
-      if (it != css_variables_->css_variables_.end()) {
-        pair.second.SetString(it->second);
+      if (auto it = css_variables_->css_variables_.find(key);
+          it != css_variables_->css_variables_.end()) {
+        value.SetString(it->second);
       }
     }
   }
@@ -163,18 +182,41 @@ base::String AttributeHolder::GetCSSVariableValue(
   const AttributeHolder* base = this;
   while (base != nullptr) {
     if (base->css_variables_.has_value()) {
-      auto it = base->css_variables_->css_variables_from_js_.find(key);
-      if (it != base->css_variables_->css_variables_from_js_.end()) {
-        return it->second;
+      if (auto it = base->css_variables_->css_variables_from_js_.find(key);
+          it != base->css_variables_->css_variables_from_js_.end()) {
+        return it->second.GetValue().String();
       }
-      it = base->css_variables_->css_variables_.find(key);
-      if (it != base->css_variables_->css_variables_.end()) {
+      if (auto it = base->css_variables_->css_variables_.find(key);
+          it != base->css_variables_->css_variables_.end()) {
         return it->second;
       }
     }
     base = static_cast<AttributeHolder*>(base->HolderParent());
   }
   return base::String();
+}
+
+const CSSValueMap& AttributeHolder::GetCustomProperties() {
+  if (css_variables_.has_value() &&
+      !css_variables_->custom_properties_.empty()) {
+    return css_variables_->custom_properties_;
+  }
+  if (HolderParent()) {
+    css_variables_->custom_properties_ =
+        static_cast<AttributeHolder*>(HolderParent())->GetCustomProperties();
+  }
+  for (const auto& [key, value] : css_variables_->css_variables_) {
+    if (CSSStringParser::IsVariable(value.c_str(), value.length())) {
+      CSSStringParser parser(
+          value.c_str(), value.length(),
+          element_->element_manager()->GetCSSParserConfigs());
+      css_variables_->custom_properties_[key] = parser.ParseVariable();
+    }
+  }
+  for (const auto& [key, value] : css_variables_->css_variables_from_js_) {
+    css_variables_->custom_properties_[key] = value;
+  }
+  return css_variables_->custom_properties_;
 }
 
 void AttributeHolder::Reset() {

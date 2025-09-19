@@ -23,8 +23,11 @@
 #include "core/renderer/css/css_color.h"
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_id.h"
 #include "core/renderer/css/css_utils.h"
+#include "core/renderer/css/css_value.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -383,8 +386,14 @@ void FiberElement::MergeInlineStyles(StyleMap &new_styles) {
   // here.
   if (current_raw_inline_styles_.has_value()) {
     auto &configs = element_manager_->GetCSSParserConfigs();
-    for (const auto &style : *current_raw_inline_styles_) {
-      UnitHandler::Process(style.first, style.second, new_styles, configs);
+    for (const auto &[property_id, css_value] : *current_raw_inline_styles_) {
+      if (css_value.IsVariable()) {
+        // css variable will be resolved later
+        new_styles[property_id] = css_value;
+      } else {
+        UnitHandler::Process(property_id, css_value.GetValue(), new_styles,
+                             configs);
+      }
     }
   }
 }
@@ -394,7 +403,7 @@ void FiberElement::ProcessFullRawInlineStyle() {
   // not process to final style map. Inline styles will be merged finally by
   // MergeInlineStyles.
   if (!full_raw_inline_style_.empty()) {
-    ParseRawInlineStyles(nullptr);
+    ParseRawInlineStyles();
     full_raw_inline_style_ = base::String();
   }
 }
@@ -714,7 +723,7 @@ void FiberElement::SetStyle(CSSPropertyID id, const lepus::Value &value) {
   ProcessFullRawInlineStyle();
 
   if (!value.IsEmpty()) {
-    current_raw_inline_styles_->insert_or_assign(id, value);
+    current_raw_inline_styles_->insert_or_assign(id, CSSValue(value));
   } else if (current_raw_inline_styles_.has_value()) {
     current_raw_inline_styles_->erase(id);
   }
@@ -2927,6 +2936,7 @@ bool FiberElement::IsRelatedCSSVariableUpdated(
           if (it != holder->css_variable_related().end() &&
               !it->second.IsEqual(value.String())) {
             changed = true;
+            holder->ClearCustomProperties();
           }
         }
       });
@@ -3149,23 +3159,31 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(StyleMap *parsed_styles) {
+void FiberElement::ParseRawInlineStyles() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
   const auto &str = full_raw_inline_style_.str();
   ParseStyleDeclarationList(
       str.c_str(), static_cast<uint32_t>(str.size()),
-      [this, parsed_styles, &configs](
-          const char *key_start, uint32_t key_length, const char *value_start,
-          uint32_t value_length) {
+      [this, &configs](const char *key_start, uint32_t key_length,
+                       const char *value_start, uint32_t value_length) {
         auto id = CSSProperty::GetPropertyID(
             base::static_string::GenericCacheKey(key_start, key_length));
         if (CSSProperty::IsPropertyValid(id)) {
-          auto value = lepus::Value(base::String(value_start, value_length));
-          if (parsed_styles != nullptr) {
-            UnitHandler::Process(id, value, *parsed_styles, configs);
+          CSSValue css_value;
+          if (CSSStringParser::IsVariable(value_start, value_length)) {
+            CSSStringParser parser(value_start, value_length, configs);
+            css_value = parser.ParseVariable();
+          } else {
+            css_value.SetValue(
+                lepus::Value(base::String(value_start, value_length)));
           }
-          current_raw_inline_styles_->insert_or_assign(id, std::move(value));
+          current_raw_inline_styles_->insert_or_assign(id,
+                                                       std::move(css_value));
+        } else if (CSSProperty::IsCustomProperty(key_start, key_length)) {
+          data_model_->UpdateCSSVariableFromSetProperty(
+              base::String(key_start, key_length),
+              base::String(value_start, value_length), false);
         }
 
         // DevTool needs to get InlineStyle information from DataModel's

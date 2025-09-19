@@ -151,7 +151,8 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
   // Update CSSVariable From JS SetProperty.
   void UpdateCSSVariableFromSetProperty(const base::String& key,
-                                        const base::String& value);
+                                        const base::String& value,
+                                        bool on_style_change = true);
 
   // For Element Api
   void MergeWithCSSVariables(lepus::Value& css_variable_updated);
@@ -272,6 +273,19 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
                ? css_variables_->css_variable_related_
                : CSSVariableBundle::DefaultEmptyCSSVariableMap();
   }
+
+  const CSSValueMap& css_value_from_js() {
+    return css_variables_.has_value()
+               ? css_variables_->css_variables_from_js_
+               : CSSVariableBundle::DefaultEmptyCSSValueMap();
+  }
+
+  const CSSValueMap& GetCustomProperties();
+  void ClearCustomProperties() {
+    if (css_variables_.has_value()) {
+      css_variables_->custom_properties_.clear();
+    }
+  };
 
   // GetCSSVariableValue.
   // variable_from_js first. css_variable_ from comes second.
@@ -405,13 +419,20 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
   struct CSSVariableBundle {
     // css variable definition on this node. such as:
     // `--bg-color: red`
+
+    // TODO(yangguangzhao.solace): Should store CSS variables in a
+    // CSSValueMap instead of a CSSVariableMap.
     CSSVariableMap css_variables_;
 
     // css variable definition on this node that updated from JS. such as:
     // `background-color: var(--bg-color)`
     // this map will hold value like this:
-    // `key: --bg-color value: red`
-    CSSVariableMap css_variables_from_js_;
+    // `key: --bg-color value: CSSValue(red)`
+
+    // TODO(yangguangzhao.solace): This stores CSS variables from both inline
+    // styles and those set via JavaScript's setProperty(). Consider renaming to
+    // css_inline_variables_ for clarity.
+    CSSValueMap css_variables_from_js_;
 
     // css variable related on this node, such as:
     // `background-color: var(--bg-color)`
@@ -419,8 +440,11 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
     // `key: --bg-color value: red`
     CSSVariableMap css_variable_related_;
 
+    CSSValueMap custom_properties_{};
+
     LYNX_EXPORT_FOR_DEVTOOL static const CSSVariableMap&
     DefaultEmptyCSSVariableMap();
+    LYNX_EXPORT_FOR_DEVTOOL static const CSSValueMap& DefaultEmptyCSSValueMap();
   };
 
   LYNX_EXPORT_FOR_DEVTOOL static const GestureMap& DefaultEmptyGestureMap();

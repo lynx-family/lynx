@@ -1076,7 +1076,7 @@ class FiberElement : public Element,
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(StyleMap* parsed_styles);
+  void ParseRawInlineStyles();
   void DoFullCSSResolving();
   const tasm::CSSValue& ResolveCurrentStyleValue(
       const CSSPropertyID& key, const tasm::CSSValue& default_value);
@@ -1178,7 +1178,7 @@ class FiberElement : public Element,
 
   base::auto_create_optional<StyleMap> styles_from_attributes_;
 
-  base::auto_create_optional<RawLepusStyleMap> current_raw_inline_styles_;
+  base::auto_create_optional<RawStyleMap> current_raw_inline_styles_;
 
   // the parsed styles that set from front-end resolved in compiler stage
   base::auto_create_optional<StyleMap> extreme_parsed_styles_;

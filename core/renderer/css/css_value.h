@@ -13,6 +13,7 @@
 
 #include "base/include/flex_optional.h"
 #include "base/include/value/array.h"
+#include "base/include/value/base_string.h"
 #include "base/include/value/base_value.h"
 #include "core/base/lynx_export.h"
 #include "core/renderer/starlight/style/css_type.h"
@@ -224,7 +225,10 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       std::unique_ptr<base::InlineVector<VarReference, 1>> var_references) {
     var_references_ = std::move(var_references);
     type_ = CSSValueType::VARIABLE;
+    needs_variable_resolution_ = var_references_->size() > 0;
   }
+
+  bool NeedsVariableResolution() const { return needs_variable_resolution_; }
 
   bool IsVariable() const { return type_ == CSSValueType::VARIABLE; }
   bool IsString() const { return pattern_ == CSSValuePattern::STRING; }
@@ -263,25 +267,31 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return !(left == right);
   }
 
+  using ConsumeCustomNameFunc =
+      base::MoveOnlyClosure<void, const base::String&, const base::String&>;
   static std::string Substitution(const CSSValue& css_value,
                                   const CustomPropertiesMap& variable_map,
-                                  int max_depth = 10);
+                                  int max_depth = 10,
+                                  ConsumeCustomNameFunc func = nullptr);
 
  private:
   class CycleDetector;
   static std::string Substitution(const CSSValue& css_value,
                                   const CustomPropertiesMap& variable_map,
                                   const CycleDetector& detector,
-                                  int max_depth = 10);
+                                  int max_depth = 10,
+                                  ConsumeCustomNameFunc func = nullptr);
   static std::string ResolveVariable(
       const std::string& var_name, const CustomPropertiesMap& custom_properties,
-      const CycleDetector& detector, int max_depth = 10);
+      const CycleDetector& detector, int max_depth = 10,
+      ConsumeCustomNameFunc func = nullptr);
   mutable lepus::Value value_;
   mutable base::String default_value_;
   mutable std::unique_ptr<lepus::Value> default_value_map_opt_;
   mutable std::unique_ptr<base::InlineVector<VarReference, 1>> var_references_;
   mutable CSSValuePattern pattern_;
   mutable CSSValueType type_;
+  mutable bool needs_variable_resolution_ = false;
 };
 }  // namespace tasm
 }  // namespace lynx

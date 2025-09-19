@@ -5031,7 +5031,7 @@ RENDERER_FUNCTION_CC(FiberGetInlineStyle) {
     const auto iterator =
         inline_styles->find(static_cast<CSSPropertyID>(arg1->Number()));
     if (iterator != inline_styles->end()) {
-      RETURN(iterator->second);
+      RETURN(iterator->second.GetValue());
     }
   }
   RETURN_UNDEFINED();

@@ -192,6 +192,10 @@ class CSSStringParser final {
 
   CSSValue ParseVariable();
 
+  static bool IsVariable(const char* name, uint32_t len) {
+    return len > 3 && name[0] == 'v' && name[1] == 'a' && name[2] == 'r';
+  }
+
   inline void SetIsLegacyParser(bool is_legacy) { legacy_parser_ = is_legacy; }
 
   /// for image related only composed with url
