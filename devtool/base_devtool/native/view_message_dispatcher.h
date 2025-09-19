@@ -22,7 +22,7 @@ class ViewMessageDispatcher : public DevToolMessageDispatcher {
   int32_t Attach(const std::string& url);
   void Detach();
   virtual ~ViewMessageDispatcher();
-  std::shared_ptr<MessageSender> GetSender() const;
+  std::shared_ptr<MessageSender> GetSender() const override;
   void DispatchMessage(const std::shared_ptr<MessageSender>& sender,
                        const std::string& type,
                        const std::string& msg) override;

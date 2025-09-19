@@ -22,6 +22,10 @@ void GlobalMessageDispatcher::Initialize() {
   global_message_channel_ = GlobalMessageChannel::Create(shared_from_this());
 }
 
+std::shared_ptr<MessageSender> GlobalMessageDispatcher::GetSender() const {
+  return global_message_channel_;
+}
+
 GlobalMessageDispatcher::GlobalMessageDispatcher() {}
 
 GlobalMessageDispatcher::~GlobalMessageDispatcher() {}

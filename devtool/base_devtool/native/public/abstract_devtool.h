@@ -38,7 +38,7 @@ class BASE_DEVTOOL_EXPORT AbstractDevTool {
   /**
    * notify devtool that view destroyed
    */
-  void Detach();
+  virtual void Detach();
 
   // In most cases, you don't need to directly use this method. Instead,
   // you have a custom sender to retrieve the execution results of debugging

@@ -48,6 +48,8 @@ class BASE_DEVTOOL_EXPORT DevToolMessageDispatcher
 
   CDPDomainAgentBase* GetAgent(const std::string& agent_name);
 
+  virtual std::shared_ptr<MessageSender> GetSender() const = 0;
+
  protected:
   virtual void DispatchJsonMessage(const std::shared_ptr<MessageSender>& sender,
                                    const std::string& type,

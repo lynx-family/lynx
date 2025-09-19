@@ -6,6 +6,8 @@
 #include <memory>
 #include <thread>
 
+#include "devtool/base_devtool/native/global_message_channel.h"
+#include "devtool/base_devtool/native/global_message_dispatcher.h"
 #include "devtool/base_devtool/native/public/devtool_status.h"
 #include "devtool/base_devtool/native/test/message_sender_mock.h"
 #include "devtool/base_devtool/native/test/mock_base_agent.h"
@@ -238,6 +240,32 @@ TEST_F(BaseDevToolTest, BaseDevToolCompress) {
   agent->CompressData("", jsonResponse, result, "test");
   EXPECT_NE(result.get("test", ""), jsonResponse);
   EXPECT_TRUE(result.get("compress", false) == true);
+}
+
+TEST_F(BaseDevToolTest, GlobalMessageDispatcherGetSender) {
+  auto global_dispatcher = devtool::GlobalMessageDispatcher::Create();
+  ASSERT_NE(global_dispatcher, nullptr);
+
+  auto sender = global_dispatcher->GetSender();
+  ASSERT_NE(sender, nullptr);
+
+  Json::Value test_message;
+  test_message["id"] = 1;
+  test_message["method"] = "Test.method";
+  test_message["params"] = Json::Value(Json::ValueType::objectValue);
+
+  EXPECT_NO_THROW(sender->SendMessage("CDP", test_message));
+
+  std::string test_string_msg = R"({"id": 2, "method": "Test.stringMethod"})";
+  EXPECT_NO_THROW(sender->SendMessage("CDP", test_string_msg));
+
+  EXPECT_NO_THROW(sender->SendOKResponse(123));
+
+  EXPECT_NO_THROW(sender->SendErrorResponse(456, "Test error message"));
+
+  auto sender2 = global_dispatcher->GetSender();
+  ASSERT_NE(sender2, nullptr);
+  EXPECT_EQ(sender.get(), sender2.get());
 }
 
 // TODO(YUCHI): Add testcases for global handler and global slot

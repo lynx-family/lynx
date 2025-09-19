@@ -16,6 +16,7 @@ class GlobalMessageDispatcher : public DevToolMessageDispatcher {
  public:
   static std::shared_ptr<GlobalMessageDispatcher> Create();
   virtual ~GlobalMessageDispatcher();
+  std::shared_ptr<MessageSender> GetSender() const override;
 
  private:
   GlobalMessageDispatcher();
