@@ -49,12 +49,15 @@ export abstract class LynxNodeController extends NodeController {
   sendableModules: Map<string, SendableModuleClassWrapper>; = new Map()
   metaData: MetaData; = new MetaData()
   behaviors: BehaviorRegistryMap; = new Map()
+  url: string; = ''
+  buffer?: ArrayBuffer;
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
   uri?: url.URL;
   platformConfig?: string;
   logBox: ILogBox | null; = null
+  clients: LynxViewClient[]; = []
   @Prop fitContentWidth: boolean; = false
   @Prop fitContentHeight: boolean; = false
   experimentalFixFitContent?: boolean; = false
@@ -105,7 +108,7 @@ export class LynxContext implements IContext {
   public onEnterBackground(): void;
   public updateScreenMetrics(width: number, height: number): void;
   updateCustomData(data: Record<string, Object>): void;
-  public loadTemplate(): void;
+  public loadTemplate(url: string, bundle: TemplateBundle, buffer: ArrayBuffer, metaData: MetaData): void;
   public reload(data: MetaData): void;
   public getAllTimingInfo(): void;
   public setExtraTiming(extraTiming: LynxExtraTiming): void;

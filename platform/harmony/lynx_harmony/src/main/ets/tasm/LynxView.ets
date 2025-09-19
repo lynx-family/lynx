@@ -116,6 +116,8 @@ export struct LynxView {
   sendableModules: Map<string, SendableModuleClassWrapper> = new Map();
   metaData: MetaData = new MetaData();
   behaviors: BehaviorRegistryMap = new Map();
+  url: string = '';
+  buffer?: ArrayBuffer;
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
@@ -129,7 +131,7 @@ export struct LynxView {
   platformConfig?: string;
   logBox: ILogBox | null = null;
   private nodeController?: LynxNodeController;
-  private clients: LynxViewClient[] = [];
+  clients: LynxViewClient[] = [];
   @Prop fitContentWidth: boolean = false;
   @Prop fitContentHeight: boolean = false;
   //TODO(chengjunnan): This is an issue with OpenHarmony.
@@ -139,8 +141,6 @@ export struct LynxView {
   private perfController?: PerformanceController;
   private uiRenderer!: LynxUIRenderer;
   private templateRenderer!: LynxTemplateRenderer;
-  private url: string = '';
-  private buffer?: ArrayBuffer;
   private context: LynxContext = new LynxContext(this);
   private moduleManager: LynxModuleManager = new LynxModuleManager(this.context);
   private sendableModuleManager: SendableLynxModuleManager = new SendableLynxModuleManager();
@@ -555,7 +555,7 @@ export struct LynxView {
     timingOption.setTiming(TimingConstants.VERIFY_TASM_END, Date.now())
 
     if (result.verified) {
-      this.loadTemplateInternal(timingOption, buffer);
+      this.loadTemplateInternal(timingOption, undefined, buffer);
     } else {
       LLog.e(TAG, `verify template failed, errMsg: ${result?.errMsg}`);
       let error = LynxError.createLynxError(
@@ -566,16 +566,16 @@ export struct LynxView {
     }
   }
 
-  private loadTemplateInternal(timingOption: TimingOption, buffer?: ArrayBuffer) {
+  private loadTemplateInternal(timingOption: TimingOption, bundle?: TemplateBundle, buffer?: ArrayBuffer) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
     this.onPageStarted(LynxPipelineOrigin.LynxFirstScreen);
     if (this.metaData.globalProps !== undefined) {
       this.templateRenderer.updateGlobalProps(this.metaData.globalProps?.data);
     }
 
-    if (this.templateBundle) {
+    if (bundle) {
       timingOption.setTiming(TimingConstants.FFI_START, Date.now())
-      this.templateRenderer.loadTemplateBundle(this.url, this.templateBundle,
+      this.templateRenderer.loadTemplateBundle(this.url, bundle,
         this.metaData.templateData?.processor,
         this.metaData.templateData?.data,
         this.metaData.templateData?.readOnly, this.loadOption?.isEnableDumpElement(),

@@ -13,7 +13,7 @@ import { LynxExtraTiming } from './performance/timing/LynxExtraTiming';
 import { LynxView } from './LynxView';
 import { LynxReportEventPropValue } from './eventreport/ILynxEventReportObserver';
 import { LynxEventReporter } from './eventreport/LynxEventReporter';
-import { LLog, LynxEnv, LynxGenericResourceFetcher, LynxMediaResourceFetcher } from '../Index';
+import { LLog, LynxEnv, LynxGenericResourceFetcher, LynxMediaResourceFetcher, TemplateBundle } from '../Index';
 import { componentUtils } from '@kit.ArkUI';
 import { IContext } from './IContext';
 import { LynxExtensionModule } from '../extension/LynxExtensionModule';
@@ -163,9 +163,21 @@ export class LynxContext implements IContext {
     });
   }
 
-  public loadTemplate() {
+  public loadTemplate(url?: string, bundle?: TemplateBundle, buffer?: ArrayBuffer, metaData?: MetaData) {
     TraceEvent.beginSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
-    LLog.i(TAG, 'loadTemplate, it needs to initTemplateRenderer again');
+    if (!url && (bundle || buffer)) {
+      LLog.e(TAG, 'loadTemplate invalid url');
+      return;
+    }
+    if (url) {
+      this.lynxView.url = url;
+      this.lynxView.templateBundle = bundle;
+      this.lynxView.buffer = buffer;
+    }
+    if (metaData) {
+      this.lynxView.metaData = metaData;
+    }
+    LLog.i(TAG, 'loadTemplate width url: ' + this.lynxView.url);
     this.lynxView.reInitTemplateRenderer();
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.CONTEXT_RE_INIT_TEMPLATE);
   }
