@@ -2,19 +2,19 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Lynx/LynxUIView.h>
-
 #import <Lynx/LynxComponentRegistry.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
+#import <Lynx/LynxGestureHandlerTrigger.h>
 #import <Lynx/LynxUI+Internal.h>
+#import <Lynx/LynxUIView.h>
 #import <Lynx/UIScrollView+LynxGesture.h>
+#import "LynxUIContext+Internal.h"
 
 @interface UILynxView : UIView <UIGestureRecognizerDelegate>
 
 @property(nonatomic, strong) UIPanGestureRecognizer *nativeGesturePanRecognizer;
 
 @property(nonatomic, assign) LynxInterceptGestureState interceptGestureStatus;
-
 @end
 
 @implementation UILynxView

@@ -69,6 +69,12 @@
   }
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+  if (self.eventHandler != nil) {
+    [self.eventHandler onPlatformGestureStatusChanged:status];
+  }
+}
+
 - (void)onPropsChangedByUI:(LynxUI*)ui {
   if (self.eventHandler != nil) {
     [self.eventHandler onPropsChangedByEventTarget:ui];

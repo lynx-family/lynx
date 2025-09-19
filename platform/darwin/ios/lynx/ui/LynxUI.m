@@ -4161,6 +4161,10 @@ LYNX_PROP_DEFINE("accessibility-exclusive-focus", setAccessibilityExclusiveFocus
   return 0.0;
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+  [self.context onPlatformGestureStatusChanged:status];
+}
+
 - (int)getScrollContainerDirection {
   return DIRECTION_UNDETERMINED;
 }

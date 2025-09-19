@@ -87,6 +87,9 @@
   return YES;
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+}
+
 - (NSInteger)getGestureArenaMemberId {
   return _memberId;
 }

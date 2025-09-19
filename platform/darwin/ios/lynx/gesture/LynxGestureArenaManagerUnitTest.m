@@ -78,6 +78,9 @@
   return 1.0;
 }
 
+- (void)onPlatformGestureStatusChanged:(int)status {
+}
+
 - (int)getScrollContainerDirection {
   return DIRECTION_UNDETERMINED;
 }

@@ -159,12 +159,12 @@
   [_eventHandler setDisableLongpressAfterScroll:pageConfig->GetDisableLongpressAfterScroll()];
   [_eventHandler setTapSlop:[NSString stringWithUTF8String:pageConfig->GetTapSlop().c_str()]];
   [_eventHandler setLongPressDuration:pageConfig->GetLongPressDuration()];
+  [_eventHandler setEnablePlatformGesture:pageConfig->GetEnablePlatformGesture()];
   [_eventHandler.touchRecognizer setEnableTouchRefactor:pageConfig->GetEnableTouchRefactor()];
   [_eventHandler.touchRecognizer
       setEnableEndGestureAtLastFingerUp:pageConfig->GetEnableEndGestureAtLastFingerUp()];
   _eventHandler.touchRecognizer.enableNewGesture = pageConfig->GetEnableNewGesture();
   [_uiOwner initNewGestureInUIThread:pageConfig->GetEnableNewGesture()];
-
   // If enable fiber arch, enable touch pseudo as default.
   [_eventHandler.touchRecognizer setEnableTouchPseudo:pageConfig->GetEnableFiberArch()];
   // Enable support multi-finger events.

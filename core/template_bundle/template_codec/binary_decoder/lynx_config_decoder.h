@@ -574,6 +574,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableNewGesture].GetBool());
     }
 
+    if (doc.HasMember(config::kEnablePlatformGesture) &&
+        doc[config::kEnablePlatformGesture].IsBool()) {
+      page_config->SetEnablePlatformGesture(
+          doc[config::kEnablePlatformGesture].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableCheckLocalImage) &&
         doc[config::kEnableCheckLocalImage].IsBool()) {
       page_config->SetEnableCheckLocalImage(

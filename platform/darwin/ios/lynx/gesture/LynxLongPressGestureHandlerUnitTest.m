@@ -121,7 +121,7 @@
                 flingPoint:CGPointZero
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_FAIL);
+  XCTAssertEqual(handler.status, LYNX_STATE_CANCELLED);
 
 #pragma clang diagnostic pop
 }
@@ -155,6 +155,9 @@
 }
 
 - (void)onGestureScrollBy:(CGPoint)delta {
+}
+
+- (void)onPlatformGestureStatusChanged:(int)status {
 }
 
 - (BOOL)getGestureBorder:(BOOL)start {

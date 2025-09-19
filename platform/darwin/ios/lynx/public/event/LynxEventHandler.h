@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class LynxUIOwner;
 @class LynxUI;
 @class LynxGestureArenaManager;
+@class LynxCustomGestureRecognizer;
 
 @interface LynxEventHandler : NSObject
 
@@ -21,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, copy, readonly) LynxTouchHandler *touchRecognizer;
 @property(nonatomic, copy, readonly) UIGestureRecognizer *tapRecognizer;
 @property(nonatomic, copy, readonly) UIGestureRecognizer *longPressRecognizer;
+@property(nonatomic, strong) LynxCustomGestureRecognizer *customPlatformGesture;
 @property(nonatomic, weak, readonly) LynxGestureArenaManager *_Nullable gestureArenaManager;
 @property(nonatomic, assign) BOOL enableSimultaneousTap;
 @property(nonatomic, assign) BOOL disableEndEditing;
@@ -33,6 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateUiOwner:(nullable LynxUIOwner *)owner eventEmitter:(LynxEventEmitter *)eventEmitter;
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
+- (void)onPlatformGestureStatusChanged:(int)status;
 - (void)handleFocus:(id<LynxEventTarget>)target
              onView:(UIView *)view
       withContainer:(UIView *)container

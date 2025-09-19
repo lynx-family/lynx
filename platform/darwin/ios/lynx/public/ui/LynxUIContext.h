@@ -91,6 +91,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateScreenSize:(CGSize)screenSize;
 - (void)onGestureRecognized;
 - (void)onGestureRecognizedByUI:(LynxUI*)ui;
+- (void)onPlatformGestureStatusChanged:(int)status;
 - (void)onPropsChangedByUI:(LynxUI*)ui;
 - (BOOL)isTouchMoving;
 - (NSNumber*)getLynxRuntimeId;
