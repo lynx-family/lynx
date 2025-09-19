@@ -144,6 +144,10 @@ lynx_core_source_set("base") {
       libs += [ "user32.lib" ]
     }
 
+    if (is_headless) {
+      defines = [ "ENABLE_HEADLESS" ]
+    }
+
     deps += [
       ":json_utils",
       ":observer",

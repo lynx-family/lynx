@@ -52,6 +52,7 @@ class UIThread {
 
   // ensure call on ui thread.
   static void Init(void* platform_loop = nullptr);
+  static void InitTaskRunner(fml::TaskRunnerDelegate* task_runner_delegate);
 
  private:
   UIThread() = delete;

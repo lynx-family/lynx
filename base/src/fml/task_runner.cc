@@ -15,6 +15,7 @@
 #include "base/include/fml/message_loop_impl.h"
 #include "base/include/fml/message_loop_task_queues.h"
 #include "base/include/fml/synchronization/waitable_event.h"
+#include "base/include/fml/task_runner_delegate.h"
 
 namespace lynx {
 namespace fml {
@@ -62,12 +63,20 @@ TaskRunner::~TaskRunner() {
 };
 
 void TaskRunner::PostTask(base::closure task) {
+  if (delegate_) {
+    delegate_->PostTask(std::move(task));
+    return;
+  }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
       fml::TaskSourceGrade::kUnspecified);
 }
 
 void TaskRunner::PostEmergencyTask(base::closure task) {
+  if (delegate_) {
+    delegate_->PostTask(std::move(task));
+    return;
+  }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
       fml::TaskSourceGrade::kEmergency);
@@ -80,6 +89,10 @@ void TaskRunner::PostMicroTask(base::closure task) {
 }
 
 void TaskRunner::PostIdleTask(base::closure task) {
+  if (delegate_) {
+    delegate_->PostTask(std::move(task));
+    return;
+  }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now(),
       fml::TaskSourceGrade::kIdle);
@@ -100,12 +113,21 @@ void TaskRunner::PostSyncTask(base::closure task) {
 
 void TaskRunner::PostTaskForTime(base::closure task,
                                  fml::TimePoint target_time) {
+  if (delegate_) {
+    delegate_->PostTaskForTime(std::move(task),
+                               target_time.ToEpochDelta().ToMicroseconds());
+    return;
+  }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), target_time,
       fml::TaskSourceGrade::kUnspecified);
 }
 
 void TaskRunner::PostDelayedTask(base::closure task, fml::TimeDelta delay) {
+  if (delegate_) {
+    delegate_->PostDelayedTask(std::move(task), delay.ToMilliseconds());
+    return;
+  }
   MessageLoopTaskQueues::GetInstance()->RegisterTask(
       queue_id_, std::move(task), fml::TimePoint::Now() + delay,
       fml::TaskSourceGrade::kUnspecified);
@@ -120,6 +142,9 @@ TaskQueueId TaskRunner::GetTaskQueueId() {
 // TODO(heshan):this method acquires the lock of MessageLoopTaskQueues
 // three times, needs to be optimized.
 bool TaskRunner::RunsTasksOnCurrentThread() {
+  if (delegate_) {
+    return delegate_->RunsTasksOnCurrentThread();
+  }
   MessageLoop* current_loop = fml::MessageLoop::IsInitializedForCurrentThread();
   if (current_loop == nullptr) {
     return false;
@@ -201,6 +226,10 @@ void TaskRunner::RemoveTaskObserver(intptr_t key) {
 
 const fml::RefPtr<MessageLoopImpl>& TaskRunner::GetLoop() const {
   return loop_;
+}
+
+void TaskRunner::SetDelegate(lynx::fml::TaskRunnerDelegate* delegate) {
+  delegate_ = delegate;
 }
 
 }  // namespace fml
