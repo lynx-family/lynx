@@ -219,6 +219,7 @@ void TemplateBinaryReader::CopyForAsyncDecode(TemplateBinaryReader& other) {
   enable_css_variable_ = other.enable_css_variable_;
   enable_css_variable_multi_default_value_ =
       other.enable_css_variable_multi_default_value_;
+  enable_css_font_face_extension_ = other.enable_css_font_face_extension_;
   css_section_range_ = other.css_section_range_;
   lepus_chunk_route_ = other.lepus_chunk_route_;
   template_bundle().SetStringList(other.GetStringList());
