@@ -69,7 +69,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-public class UIList extends AbsLynxList<RecyclerView> implements GestureArenaMember {
+public class UIList extends AbsLynxList<RecyclerView> {
   private UIListAdapter mAdapter;
   /* package */ int mColumnCount = 1;
   private int mMainAxisGap = 0;

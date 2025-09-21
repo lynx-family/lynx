@@ -108,18 +108,14 @@ public class TapGestureHandler extends BaseGestureHandler {
 
   @Override
   public void fail() {
-    if (mStatus != GestureConstants.LYNX_STATE_FAIL) {
-      mStatus = GestureConstants.LYNX_STATE_FAIL;
-      onEnd(mLastX, mLastY, mLynxTouchEvent);
-    }
+    super.fail();
+    onEnd(mLastX, mLastY, mLynxTouchEvent);
   }
 
   @Override
   public void end() {
-    if (mStatus != GestureConstants.LYNX_STATE_END) {
-      mStatus = GestureConstants.LYNX_STATE_END;
-      onEnd(mLastX, mLastY, mLynxTouchEvent);
-    }
+    super.end();
+    onEnd(mLastX, mLastY, mLynxTouchEvent);
   }
 
   @Override

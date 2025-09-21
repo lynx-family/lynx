@@ -22,8 +22,7 @@ import com.lynx.tasm.gesture.handler.GestureConstants;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UIView
-    extends UISimpleView<AndroidView> implements GestureArenaMember, LynxNewGestureDelegate {
+public class UIView extends UISimpleView<AndroidView> {
   // key is gesture id, value is gesture handler
 
   @Deprecated

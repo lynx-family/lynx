@@ -41,8 +41,7 @@ public class LongPressGestureHandler extends BaseGestureHandler {
   private boolean mIsInvokedEnd = false;
 
   private final Runnable mDelayActivateRunnable = () -> {
-    if (mStatus != GestureConstants.LYNX_STATE_FAIL
-        && mStatus != GestureConstants.LYNX_STATE_ACTIVE) {
+    if (mStatus == GestureConstants.LYNX_STATE_BEGIN) {
       activate();
       onStart(mLastX, mLastY, mLynxTouchEvent);
     }
@@ -131,18 +130,14 @@ public class LongPressGestureHandler extends BaseGestureHandler {
 
   @Override
   public void fail() {
-    if (mStatus != GestureConstants.LYNX_STATE_FAIL) {
-      mStatus = GestureConstants.LYNX_STATE_FAIL;
-      onEnd(mLastX, mLastY, mLynxTouchEvent);
-    }
+    super.fail();
+    onEnd(mLastX, mLastY, mLynxTouchEvent);
   }
 
   @Override
   public void end() {
-    if (mStatus != GestureConstants.LYNX_STATE_END) {
-      mStatus = GestureConstants.LYNX_STATE_END;
-      onEnd(mLastX, mLastY, mLynxTouchEvent);
-    }
+    super.end();
+    onEnd(mLastX, mLastY, mLynxTouchEvent);
   }
 
   @Override

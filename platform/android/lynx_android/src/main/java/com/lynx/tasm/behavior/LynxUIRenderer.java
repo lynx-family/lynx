@@ -99,6 +99,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   private boolean mEnableMultiTouch;
   private boolean mEnableFiberArc;
   private boolean mEnableNewGesture;
+  private boolean mEnablePlatformGesture;
   private boolean mHasInited;
 
   private int getInstanceId() {
@@ -232,6 +233,7 @@ public class LynxUIRenderer implements ILynxUIRenderer {
     mTapSlop = config.getTapSlop();
     mEnableMultiTouch = config.getEnableMultiTouch();
     mEnableFiberArc = config.getEnableFiberArc();
+    mEnablePlatformGesture = config.isEnablePlatformGesture();
     mEnableNewGesture = config.isEnableNewGesture();
     if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
       LynxContext lynxContext = (mLynxContext != null) ? mLynxContext.get() : null;
@@ -365,7 +367,13 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   @Override
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
     EnsureEventDispatcher();
-    return (mEventDispatcher != null) ? mEventDispatcher.onTouchEvent(ev, rootUi) : false;
+    return (mEventDispatcher != null) && mEventDispatcher.onTouchEvent(ev, rootUi);
+  }
+
+  @Override
+  public boolean onInterceptTouchEvent(MotionEvent ev) {
+    EnsureEventDispatcher();
+    return (mEventDispatcher != null) && mEventDispatcher.onInterceptTouchEvent(ev);
   }
 
   /**
@@ -403,6 +411,9 @@ public class LynxUIRenderer implements ILynxUIRenderer {
       mEventDispatcher.setHasTouchPseudo(mEnableFiberArc);
       // Enable support multi-finger events.
       mEventDispatcher.setEnableMultiTouch(mEnableMultiTouch);
+      // Enable platform gesture
+      mEventDispatcher.setEnablePlatformGesture(mEnablePlatformGesture);
+
       // init if Enable new gesture in page config
       if (mEnableNewGesture && LynxLiteConfigs.enableNewGesture()) {
         mEventDispatcher.setGestureArenaManager(mLynxUIOwner.getGestureArenaManager());

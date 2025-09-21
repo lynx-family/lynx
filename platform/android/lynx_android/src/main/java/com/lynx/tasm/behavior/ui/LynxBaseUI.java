@@ -72,6 +72,7 @@ import com.lynx.tasm.gesture.LynxNewGestureDelegate;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
 import com.lynx.tasm.gesture.detector.GestureDetector;
 import com.lynx.tasm.gesture.handler.BaseGestureHandler;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.utils.ContextUtils;
 import com.lynx.tasm.utils.PixelUtils;
 import com.lynx.tasm.utils.SizeValue;
@@ -89,8 +90,8 @@ import org.json.JSONObject;
 
 @LynxUIMethodsHolder
 @LynxPropsHolder
-public abstract class LynxBaseUI
-    implements UIParent, EventTarget, PropertiesDispatcher, Cloneable, LynxNewGestureDelegate {
+public abstract class LynxBaseUI implements UIParent, EventTarget, PropertiesDispatcher, Cloneable,
+                                            GestureArenaMember, LynxNewGestureDelegate {
   public final static int[] SPACING_TYPES = {
       Spacing.ALL,
       Spacing.LEFT,
@@ -3847,6 +3848,7 @@ public abstract class LynxBaseUI
     return ui;
   }
 
+  // gesture interface
   @Nullable
   public GestureArenaManager getGestureArenaManager() {
     if (mContext == null) {
@@ -3898,6 +3900,50 @@ public abstract class LynxBaseUI
     return mGestureArenaMemberId > 0;
   }
 
+  @Override
+  public void onGestureScrollBy(float deltaX, float deltaY) {
+    // Implemented in child
+  }
+
+  @Override
+  public int getScrollContainerDirection() {
+    return GestureConstants.DIRECTION_UNDETERMINED;
+  }
+
+  @Override
+  public boolean canConsumeGesture(float deltaX, float deltaY) {
+    return false;
+  }
+
+  @Override
+  public int getMemberScrollX() {
+    return 0;
+  }
+
+  @Override
+  public boolean isAtBorder(boolean isStart) {
+    return true;
+  }
+
+  @Override
+  public int getMemberScrollY() {
+    return 0;
+  }
+
+  @Override
+  public void onInvalidate() {
+    // Implemented in child
+  }
+
+  @Override
+  public void onPlatformGestureStatusChanged(int status) {
+    if (mContext == null)
+      return;
+    TouchEventDispatcher dispatcher = mContext.getTouchEventDispatcher();
+    if (dispatcher != null) {
+      dispatcher.onPlatformGestureStatusChanged(status);
+    }
+  }
   /**
    * @name: hit-slop
    * @description: Change the margin of ui for hit-test. A positive value means to expand the

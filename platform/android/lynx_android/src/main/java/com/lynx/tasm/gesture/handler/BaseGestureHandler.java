@@ -254,6 +254,9 @@ public abstract class BaseGestureHandler {
    */
   public void activate() {
     mStatus = GestureConstants.LYNX_STATE_ACTIVE;
+    if (mGestureArenaMember != null) {
+      mGestureArenaMember.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_ACTIVE);
+    }
   }
 
   /**
@@ -268,7 +271,14 @@ public abstract class BaseGestureHandler {
    * coordinates and touch event.
    */
   public void fail() {
-    mStatus = GestureConstants.LYNX_STATE_FAIL;
+    if (mStatus == GestureConstants.LYNX_STATE_BEGIN) {
+      mStatus = GestureConstants.LYNX_STATE_CANCELLED;
+    } else {
+      mStatus = GestureConstants.LYNX_STATE_FAIL;
+    }
+    if (mGestureArenaMember != null) {
+      mGestureArenaMember.onPlatformGestureStatusChanged(mStatus);
+    }
   }
 
   /**
@@ -276,6 +286,9 @@ public abstract class BaseGestureHandler {
    */
   public void begin() {
     mStatus = GestureConstants.LYNX_STATE_BEGIN;
+    if (mGestureArenaMember != null) {
+      mGestureArenaMember.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_BEGIN);
+    }
   }
 
   /**
@@ -291,6 +304,9 @@ public abstract class BaseGestureHandler {
    */
   public void end() {
     mStatus = GestureConstants.LYNX_STATE_END;
+    if (mGestureArenaMember != null) {
+      mGestureArenaMember.onPlatformGestureStatusChanged(GestureConstants.LYNX_STATE_END);
+    }
   }
 
   /**

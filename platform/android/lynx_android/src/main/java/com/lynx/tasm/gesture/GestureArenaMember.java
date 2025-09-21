@@ -78,6 +78,15 @@ public interface GestureArenaMember {
   void onInvalidate();
 
   /**
+   *
+   * platform gesture status need changed
+   * @see com.lynx.tasm.gesture.handler.GestureConstants
+   * @param status 1 - LYNX_STATE_BEGIN 2 - LYNX_STATE_ACTIVE 3 - LYNX_STATE_FAIL 4 -
+   *     LYNX_STATE_CANCELLED 5 - LYNX_STATE_END 6 - LYNX_STATE_UNDETERMINED
+   */
+  void onPlatformGestureStatusChanged(int status);
+
+  /**
    * Retrieves the map of gesture detectors associated with the member.
    *
    * @return The map of gesture detectors, or null if not available.

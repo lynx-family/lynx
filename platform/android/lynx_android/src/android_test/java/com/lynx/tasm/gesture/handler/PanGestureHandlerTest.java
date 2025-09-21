@@ -91,6 +91,9 @@ public class PanGestureHandlerTest {
       @Override
       public void onInvalidate() {}
 
+      @Override
+      public void onPlatformGestureStatusChanged(int status) {}
+
       @Nullable
       @Override
       public Map<Integer, GestureDetector> getGestureDetectorMap() {

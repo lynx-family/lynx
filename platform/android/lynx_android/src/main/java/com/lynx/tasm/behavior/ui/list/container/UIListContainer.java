@@ -65,7 +65,7 @@ import java.util.ListIterator;
 import java.util.Map;
 
 public class UIListContainer extends UISimpleView<ListContainerView>
-    implements NestedScrollContainerView.OnScrollStateChangeListener, GestureArenaMember,
+    implements NestedScrollContainerView.OnScrollStateChangeListener,
                UIComponent.NodeReadyListener {
   private static final String TAG = "UIListContainer";
   public static final int INVALID_SCROLL_ESTIMATED_OFFSET = -1;

@@ -68,6 +68,7 @@ public class PageConfig {
   private static final String KEY_INIT_ASYNC_TT_VIDEO_ENGINE = "enableAsyncInitVideoEngine";
   private static final String KEY_PAGE_FLATTEN = "pageFlatten";
   private static final String KEY_ENABLE_NEW_GESTURE = "enableNewGesture";
+  private static final String KEY_ENABLE_PLATFORM_GESTURE = "enablePlatformGesture";
   private static final String KEY_USER = "user";
   private static final String KEY_GIT = "git";
   private static final String KEY_FILE_PATH = "filePath";
@@ -118,6 +119,7 @@ public class PageConfig {
   private boolean mEnableExposureWhenLayout = false;
   private boolean mEnableFlattenTranslateZ = false;
   private boolean mEnableNewGesture = false;
+  private boolean mEnablePlatformGesture = false;
   private boolean mEnableNewIntersectionObserver = false;
   private boolean mEnableFiber = false;
   private boolean mEnableMultiTouch = false;
@@ -201,6 +203,10 @@ public class PageConfig {
       if (map.hasKey(KEY_ENABLE_NEW_GESTURE)) {
         // page config enable new gesture
         mEnableNewGesture = map.getBoolean(KEY_ENABLE_NEW_GESTURE);
+      }
+
+      if (map.hasKey(KEY_ENABLE_PLATFORM_GESTURE)) {
+        mEnablePlatformGesture = map.getBoolean(KEY_ENABLE_PLATFORM_GESTURE);
       }
 
       if (map.hasKey(KEY_INCLUDE_FONT_PADDING)) {
@@ -506,6 +512,10 @@ public class PageConfig {
 
   public boolean isEnableNewGesture() {
     return mEnableNewGesture;
+  }
+
+  public boolean isEnablePlatformGesture() {
+    return mEnablePlatformGesture;
   }
 
   public boolean getEnableEventRefactor() {
