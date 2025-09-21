@@ -19,6 +19,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewParent;
 import android.view.WindowManager;
 import androidx.annotation.AnyThread;
 import androidx.annotation.Keep;
@@ -1374,7 +1375,13 @@ public class LynxView extends UIBodyView {
       }
 
       if (mLynxTemplateRender != null && mCanDispatchTouchEvent) {
-        mLynxTemplateRender.onInterceptTouchEvent(ev);
+        if (mLynxTemplateRender.onInterceptTouchEvent(ev)) {
+          ViewParent p = getParent();
+          if (p != null) {
+            p.requestDisallowInterceptTouchEvent(true);
+          }
+          return true;
+        }
       }
       return super.onInterceptTouchEvent(ev);
     } catch (Throwable e) {

@@ -36,10 +36,11 @@ public class GestureConstants {
   public static final int LYNX_STATE_BEGIN = 1;
   public static final int LYNX_STATE_ACTIVE = 2;
   public static final int LYNX_STATE_FAIL = 3;
-  public static final int LYNX_STATE_END = 4;
-  // not trigger in current event, for example, flingGesture will not trigger when touching the
-  // screen.
-  public static final int LYNX_STATE_UNDETERMINED = 5;
+  public static final int LYNX_STATE_CANCELLED = 4; // failed without active
+  public static final int LYNX_STATE_END = 5; // invoked end api
+  public static final int LYNX_STATE_UNDETERMINED =
+      6; // not trigger in current event, for example, flingGesture will not trigger when touching
+         // the screen.
 
   static final int MIN_SCROLL = Integer.MIN_VALUE;
   static final int MAX_SCROLL = Integer.MAX_VALUE;

@@ -55,8 +55,7 @@ import com.lynx.tasm.utils.UnitUtils;
 import java.util.HashMap;
 import java.util.Map;
 
-public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView>
-    implements IScrollSticky, GestureArenaMember, LynxNewGestureDelegate {
+public class UIScrollView extends AbsLynxUIScroll<AndroidScrollView> implements IScrollSticky {
   protected static final String TAG = "LynxUIScrollView";
   protected static final String LynxScrollViewInitialScrollOffset = "initialScrollOffset";
   protected static final String LynxScrollViewInitialScrollIndex = "initialScrollIndex";

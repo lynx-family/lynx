@@ -36,8 +36,7 @@ import com.lynx.tasm.gesture.handler.GestureConstants;
 import java.util.ArrayList;
 import java.util.Map;
 
-public class UIText
-    extends UIGroup<AndroidText> implements IUIText, GestureArenaMember, LynxNewGestureDelegate {
+public class UIText extends UIGroup<AndroidText> implements IUIText {
   // key is gesture id, value is gesture handler
   private Map<Integer, BaseGestureHandler> mGestureHandlers;
   private TextUpdateBundle mTextUpdateBundle;

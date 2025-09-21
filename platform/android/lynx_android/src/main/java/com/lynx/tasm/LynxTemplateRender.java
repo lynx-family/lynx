@@ -2711,7 +2711,9 @@ public class LynxTemplateRender
     return mLynxUIRender != null && mLynxUIRender.blockNativeEvent(ev);
   }
 
-  public void onInterceptTouchEvent(MotionEvent ev) {}
+  public boolean onInterceptTouchEvent(MotionEvent ev) {
+    return mLynxUIRender != null && mLynxUIRender.onInterceptTouchEvent(ev);
+  }
 
   public void onTouchEvent(MotionEvent ev) {}
 

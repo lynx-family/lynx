@@ -42,6 +42,7 @@ import com.lynx.tasm.event.LynxEventDetail.EVENT_TYPE;
 import com.lynx.tasm.event.LynxTouchEvent;
 import com.lynx.tasm.event.LynxTouchEvent.Point;
 import com.lynx.tasm.gesture.arena.GestureArenaManager;
+import com.lynx.tasm.gesture.handler.GestureConstants;
 import com.lynx.tasm.utils.PixelUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -112,6 +113,7 @@ public class TouchEventDispatcher {
   private final HashSet<Integer> mGestureRecognizedUISet;
   private final HashSet<Integer> mPropsChangedUISet;
   private boolean mHasTouchPseudo;
+  private boolean mEnablePlatformGesture;
   private boolean mHasMultiTouch;
   private boolean mEnableMultiTouch;
   private long mTimestamp = 0;
@@ -122,6 +124,7 @@ public class TouchEventDispatcher {
   private EventTarget mPreTarget;
   private String mPreTargetInlineCSSText;
   private Point mFirstFingerDownPoint;
+  private boolean mIsPlatformGestureActive = false;
 
   private static final String TAG = "LynxTouchEventDispatcher";
 
@@ -213,6 +216,10 @@ public class TouchEventDispatcher {
     // In case not following this order in the future and exec setHasTouchPseudo in updateEventInfo
     // first, let mHasTouchPseudo = mHasTouchPseudo || value;
     mHasTouchPseudo = mHasTouchPseudo || value;
+  }
+
+  public void setEnablePlatformGesture(boolean value) {
+    mEnablePlatformGesture = value;
   }
 
   public void setEnableMultiTouch(boolean value) {
@@ -992,9 +999,21 @@ public class TouchEventDispatcher {
     }
   }
 
+  public void onPlatformGestureStatusChanged(int status) {
+    mIsPlatformGestureActive = status == GestureConstants.LYNX_STATE_ACTIVE;
+  }
+
+  public boolean onInterceptTouchEvent(MotionEvent ev) {
+    if (mEnablePlatformGesture) {
+      return mIsPlatformGestureActive;
+    }
+    return false;
+  }
+
   public boolean onTouchEvent(MotionEvent ev, UIGroup rootUi) {
     mTimestamp = System.currentTimeMillis();
     if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
+      mIsPlatformGestureActive = false;
       if (!handleFirstTouchDown(ev, rootUi)) {
         return false;
       }
