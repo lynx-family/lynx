@@ -74,7 +74,7 @@ declare_args() {
   enable_lynx_clang_plugin = false
 
   # enable 16kb align for android
-  enable_16kb_align = false
+  enable_16kb_align = true
 
   # compiler optimization level
   compiler_optimization_level = "Oz"
