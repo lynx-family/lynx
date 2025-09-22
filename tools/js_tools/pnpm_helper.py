@@ -35,7 +35,7 @@ def run_pnpm_command(command, cwd, env=None):
     pnpm_command_str = ' '.join(command)
     npm_config_cmd = f"{npm_exec} config set strict-ssl false"
     # Force corepack to use the pnpm version specified by the build tool
-    full_command = f"corepack prepare pnpm@7.33.6 --activate && {npm_config_cmd} && {pnpm_command_str}"
+    full_command = f"corepack prepare pnpm@7.33.6 --activate && corepack enable && {npm_config_cmd} && {pnpm_command_str}"
     subprocess.check_call(
         full_command,
         cwd=cwd,
