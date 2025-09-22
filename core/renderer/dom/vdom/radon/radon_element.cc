@@ -884,7 +884,9 @@ void RadonElement::MergeInlineStyles(StyleMap& new_styles) {
   }
 }
 
-bool RadonElement::WillResolveStyle(StyleMap& merged_styles) {
+bool RadonElement::WillResolveStyle(StyleMap& merged_styles,
+                                    CSSVariableMap* changed_css_vars) {
+  (void)changed_css_vars;
   return GetTag() != kElementRawTextTag && merged_styles.empty();
 }
 

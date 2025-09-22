@@ -14,6 +14,7 @@
 #include "base/include/vector.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_value.h"
 #include "core/renderer/css/style_node.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/events/events.h"
@@ -273,9 +274,60 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
                : CSSVariableBundle::DefaultEmptyCSSVariableMap();
   }
 
+  void UpdateCSSInlineVariables(const base::String& key,
+                                const base::String& value,
+                                CSSVariableMap* changed_css_vars) {
+    css_variables_->css_variables_from_js_.insert_or_assign(key, value);
+    if (changed_css_vars) {
+      if (auto it = changed_css_vars->find(key);
+          it != changed_css_vars->end()) {
+        // The current key exists in the previous inline style.
+        if (it->second == value) {
+          // The value for the key is unchanged, so we can remove this key from
+          // changed_css_vars.
+          changed_css_vars->erase(it);
+        } else {
+          // The value for the key has changed, so we update the value in
+          // changed_css_vars.
+          it->second = value;
+        }
+      } else {
+        // The current key does not exist in the previous inline style, so we
+        // add it to changed_css_vars.
+        changed_css_vars->insert_or_assign(key, value);
+      }
+    }
+  }
+
+  const CSSVariableMap& GetCSSInlineVariables() {
+    return css_variables_.has_value()
+               ? css_variables_->css_variables_from_js_
+               : CSSVariableBundle::DefaultEmptyCSSVariableMap();
+  }
+
+  void MoveAndClearCSSInlineVariables(CSSVariableMap* changed_css_vars) {
+    // Before parsing the inline style, we first clear css_variables_from_js_.
+    // Since changed_css_vars needs to record the changed keys and values of the
+    // inline style, we can directly move css_variables_from_js_ to
+    // changed_css_vars, and at the same time, set the values in
+    // changed_css_vars to empty.
+    if (css_variables_.has_value()) {
+      if (changed_css_vars) {
+        *changed_css_vars = std::move(css_variables_->css_variables_from_js_);
+        for (auto& [_, value] : *changed_css_vars) {
+          value = "";
+        }
+      } else {
+        css_variables_->css_variables_from_js_.clear();
+      }
+    }
+  }
+
   // GetCSSVariableValue.
   // variable_from_js first. css_variable_ from comes second.
   base::String GetCSSVariableValue(const base::String& key) const;
+
+  const CustomPropertiesMap* GetCustomProperties() const;
 
   ClassList ReleaseClasses() { return std::move(classes_); }
 
@@ -421,6 +473,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
     LYNX_EXPORT_FOR_DEVTOOL static const CSSVariableMap&
     DefaultEmptyCSSVariableMap();
+    LYNX_EXPORT_FOR_DEVTOOL static const CSSValueMap& DefaultEmptyCSSValueMap();
   };
 
   LYNX_EXPORT_FOR_DEVTOOL static const GestureMap& DefaultEmptyGestureMap();

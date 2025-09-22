@@ -772,6 +772,15 @@ class LynxConfigDecoder final {
               ? TernaryBool::TRUE_VALUE
               : TernaryBool::FALSE_VALUE);
     }
+
+    if (doc.HasMember(config::kEnableCSSInlineVariables) &&
+        doc[config::kEnableCSSInlineVariables].IsBool()) {
+      page_config->SetEnableCSSInlineVariables(
+          doc[config::kEnableCSSInlineVariables].GetBool());
+    } else {
+      page_config->SetEnableCSSInlineVariables(
+          LynxEnv::GetInstance().EnableCSSInlineVariables());
+    }
   };
 };
 }  // namespace tasm

@@ -11,6 +11,7 @@
 #include <mutex>
 #include <tuple>
 
+#include "base/include/auto_reset.h"
 #include "core/base/threading/task_runner_manufactor.h"
 #include "core/base/threading/vsync_monitor.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -55,6 +56,11 @@
 namespace lynx {
 namespace tasm {
 namespace testing {
+static std::unordered_map<std::string, uint32_t> kTestColorMap = {
+    {"red", 4294901760},
+    {"green", 4278222848},
+    {"black", 4278190080},
+};
 
 TEST_P(FiberElementTest, ElementInitTest0) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
@@ -13721,6 +13727,243 @@ TEST_P(FiberElementTest, TestSetRawInlineStyles0) {
             lepus::Value(static_cast<double>(1)));
   EXPECT_EQ(node->props_["border-top-width"],
             lepus::Value(static_cast<double>(2)));
+}
+
+TEST_P(FiberElementTest, TestSetRawInlineStyles01) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+
+  {
+    // page inline style: "background-color:var(--bg-color); --bg-color: red;"
+    page->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: red;");
+    page->FlushActionsAsRoot();
+
+    auto painting_context = static_cast<FiberMockPaintingContext*>(
+        manager->painting_context()->platform_impl_.get());
+    painting_context->Flush();
+
+    auto node = painting_context->node_map_[page->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  auto text = manager->CreateFiberText("text");
+  {
+    // text inline style: "background-color:var(--bg-color);"
+    text->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                   lepus::Value("var(--bg-color)"));
+    page->InsertNode(text);
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  {
+    // text inline style: "background-color:var(--bg-color); --bg-color: black"
+    text->RemoveAllInlineStyles();
+    text->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: black");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["black"])));
+  }
+
+  {
+    // page inline style: "background-color:var(--bg-color); --bg-color: green"
+    page->RemoveAllInlineStyles();
+    page->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: green");
+
+    // text inline style: "background-color:var(--bg-color);"
+    text->RemoveAllInlineStyles();
+    text->SetRawInlineStyles("background-color:var(--bg-color);");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[page->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+    node = painting_context->node_map_[text->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
+}
+
+TEST_P(FiberElementTest, TestSetRawInlineStyles02) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  auto page = manager->CreateFiberPage("0", 0);
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+  auto text1 = manager->CreateFiberText("text1");
+  auto text2 = manager->CreateFiberText("text2");
+  page->InsertNode(text1);
+  page->InsertNode(text2);
+
+  {
+    // page inline style: "background-color:var(--bg-color); --bg-color: red;"
+    // text1 inline style: "background-color:var(--bg-color);"
+    // text2 inline style: "background-color:var(--bg-color);"
+    page->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: red;");
+    text1->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("var(--bg-color)"));
+    text2->SetStyle(CSSPropertyID::kPropertyIDBackgroundColor,
+                    lepus::Value("var(--bg-color)"));
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+    node = painting_context->node_map_[text2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  {
+    // page inline style: "background-color:var(--bg-color); --bg-color: black"
+    // text1 inline style: "background-color:var(--bg-color);"
+    // text2 inline style: "background-color:var(--bg-color);"
+    page->RemoveAllInlineStyles();
+    page->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: black");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["black"])));
+    node = painting_context->node_map_[text2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["black"])));
+  }
+
+  {
+    // page inline style: "background-color:var(--bg-color); --bg-color: green"
+    // text1 inline style: "background-color:var(--bg-color); --bg-color: red"
+    // text2 inline style: "background-color:var(--bg-color);"
+    page->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: green");
+    text1->RemoveAllInlineStyles();
+    text1->SetRawInlineStyles(
+        "background-color:var(--bg-color); --bg-color: red");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+    node = painting_context->node_map_[text2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
+
+  {
+    // text1 inline style: "background-color:var(--bg-color);"
+    text1->RemoveAllInlineStyles();
+    text1->SetRawInlineStyles("background-color:var(--bg-color);");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[text1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
+}
+
+TEST_P(FiberElementTest, TestSetRawInlineStyles03) {
+  lynx::base::AutoReset<bool> css_inline_config(
+      &(manager->GetConfig()->css_configs_.enable_css_inline_variables_), true);
+
+  // page
+  // └── text1
+  //     └── text2
+  auto page = manager->CreateFiberPage("0", 0);
+  auto view1 = manager->CreateFiberView();
+  auto view2 = manager->CreateFiberView();
+  page->InsertNode(view1);
+  view1->InsertNode(view2);
+
+  auto painting_context = static_cast<FiberMockPaintingContext*>(
+      manager->painting_context()->platform_impl_.get());
+
+  {
+    // page inline style: "--bg-color: red; --border: 1px solid
+    // var(--bg-color);"
+    // view1 inline style: "background-color: var(--no-color,
+    // var(--bg-color)); border-bottom: var(--border);"
+    // view2 inline style: "border-bottom: var(--no-border, var(--some-border,
+    // var(--border)));"
+    page->SetRawInlineStyles(
+        "--bg-color: red; --border: 1px dashed var(--bg-color);");
+    view1->SetRawInlineStyles(
+        "background-color: var(--no-color, var(--bg-color)); border-bottom: "
+        "var(--border);");
+    view2->SetRawInlineStyles(
+        "border-bottom: var(--no-border, var(--some-border, var(--border)));");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+    auto node = painting_context->node_map_[view1->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["background-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+    EXPECT_EQ(node->props_["border-bottom-width"],
+              lepus::Value(static_cast<double>(1)));
+    EXPECT_EQ(node->props_["border-bottom-style"],
+              lepus::Value(
+                  static_cast<uint8_t>(starlight::BorderStyleType::kDashed)));
+    EXPECT_EQ(node->props_["border-bottom-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+    node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["border-bottom-width"],
+              lepus::Value(static_cast<double>(1)));
+    EXPECT_EQ(node->props_["border-bottom-style"],
+              lepus::Value(
+                  static_cast<uint8_t>(starlight::BorderStyleType::kDashed)));
+    EXPECT_EQ(node->props_["border-bottom-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["red"])));
+  }
+
+  {
+    // view1 inline style: "--some-border: 2px dotted green;"
+    // view2 inline style: "border-bottom: var(--no-border, var(--some-border,
+    // var(--border)));"
+    view1->RemoveAllInlineStyles();
+    view1->SetRawInlineStyles("--some-border: 2px dotted green;");
+    page->FlushActionsAsRoot();
+    painting_context->Flush();
+
+    // view2 inline style: "border-bottom: 2px dotted green;"
+    auto node = painting_context->node_map_[view2->impl_id()].get();
+    EXPECT_TRUE(node != nullptr);
+    EXPECT_EQ(node->props_["border-bottom-width"],
+              lepus::Value(static_cast<double>(2)));
+    EXPECT_EQ(node->props_["border-bottom-style"],
+              lepus::Value(
+                  static_cast<uint8_t>(starlight::BorderStyleType::kDotted)));
+    EXPECT_EQ(node->props_["border-bottom-color"],
+              lepus::Value(static_cast<uint32_t>(kTestColorMap["green"])));
+  }
 }
 
 TEST_P(FiberElementTest, TestFontSizeWhenUnifyVwVhBehaviorFalse) {

@@ -343,6 +343,8 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   bool IsCSSInheritanceEnabled() const;
 
+  bool IsCSSInlineVariablesEnabled() const;
+
   ElementContainer* element_container() { return element_container_.get(); }
   void CreateElementContainer(bool platform_is_flatten);
 
@@ -679,7 +681,10 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   void ResolvePlaceHolder();
 
   // Callback before style resolving. Return false to skip style resolving.
-  virtual bool WillResolveStyle(StyleMap& merged_styles) { return true; }
+  virtual bool WillResolveStyle(StyleMap& merged_styles,
+                                CSSVariableMap* changed_css_vars) {
+    return true;
+  }
   virtual void DidResolveStyle(StyleMap& merged_styles) {}
 
   // Style resolver will firstly call `CountInlineStyles` to get count

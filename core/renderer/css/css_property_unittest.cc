@@ -104,6 +104,13 @@ TEST(CSSProperty, IsShorthandProperty) {
   }
 }
 
+TEST(CSSProperty, IsCustomProperty) {
+  EXPECT_FALSE(CSSProperty::IsCustomProperty("", 0));
+  EXPECT_FALSE(CSSProperty::IsCustomProperty("--", 2));
+  EXPECT_TRUE(CSSProperty::IsCustomProperty("--x", 3));
+  EXPECT_FALSE(CSSProperty::IsCustomProperty("custom-property", 15));
+  EXPECT_TRUE(CSSProperty::IsCustomProperty("--custom-property", 17));
+}
 }  // namespace test
 }  // namespace tasm
 }  // namespace lynx

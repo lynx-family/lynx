@@ -8,6 +8,7 @@
 
 #include "base/include/no_destructor.h"
 #include "base/include/value/table.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/selector/matching/attribute_selector_matching.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -26,6 +27,12 @@ const CSSVariableMap&
 AttributeHolder::CSSVariableBundle::DefaultEmptyCSSVariableMap() {
   static base::NoDestructor<CSSVariableMap> kEmptyCSSVariableMap;
   return *kEmptyCSSVariableMap.get();
+}
+
+const CSSValueMap&
+AttributeHolder::CSSVariableBundle::DefaultEmptyCSSValueMap() {
+  static base::NoDestructor<CSSValueMap> kEmptyCSSValueMap;
+  return *kEmptyCSSValueMap.get();
 }
 
 const GestureMap& AttributeHolder::DefaultEmptyGestureMap() {
@@ -175,6 +182,15 @@ base::String AttributeHolder::GetCSSVariableValue(
     base = static_cast<AttributeHolder*>(base->HolderParent());
   }
   return base::String();
+}
+
+const CustomPropertiesMap* AttributeHolder::GetCustomProperties() const {
+  if (!element_->is_fiber_element()) {
+    return nullptr;
+  }
+  return static_cast<FiberElement*>(element_)
+      ->GetInheritedProperty()
+      .custom_properties_;
 }
 
 void AttributeHolder::Reset() {

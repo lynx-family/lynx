@@ -32,6 +32,9 @@ class CSSVariableHandler {
   bool HasCSSVariableInStyleMap(const StyleMap& map);
 
  private:
+  void ResolveCSSVariables(CSSPropertyID id, const CSSValue& value,
+                           StyleMap& style_map, AttributeHolder* holder,
+                           const CSSParserConfigs& configs);
   static base::String GetCSSVariableByRule(
       const std::string& format,
       base::MoveOnlyClosure<base::String, const std::string&> rule_matcher);

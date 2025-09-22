@@ -3680,9 +3680,12 @@ RENDERER_FUNCTION_CC(FiberSetInlineStyles) {
     // TODO(linxs): opt this function, should diff first. Use
     tasm::ForEachLepusValue(
         *arg1, [&](const lepus::Value& key, const lepus::Value& value) {
+          auto key_string_view = key.StringView();
           auto id = CSSProperty::GetPropertyID(
-              base::CamelCaseToDashCase(key.StringView()));
-          if (CSSProperty::IsPropertyValid(id)) {
+              base::CamelCaseToDashCase(key_string_view));
+          if (CSSProperty::IsPropertyValid(id) ||
+              CSSProperty::IsCustomProperty(key_string_view.data(),
+                                            key_string_view.length())) {
             element->SetStyle(id, value.ToLepusValue());
           }
         });

@@ -155,7 +155,7 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
     return;
   }
 
-  if (!element_->WillResolveStyle(result)) {
+  if (!element_->WillResolveStyle(result, changed_css_vars)) {
     return;
   }
 
@@ -276,6 +276,14 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
     return;
   }
   bool is_fiber_arch = element_->is_fiber_element();
+
+  if (manager() &&
+      manager()->GetDynamicCSSConfigs().enable_css_inline_variables_ &&
+      is_fiber_arch) {
+    static_cast<FiberElement*>(element_)->CollectCustomProperties(
+        element_->data_model());
+  }
+
   CSSVariableHandler handler(is_fiber_arch);
   if (is_fiber_arch && element_->is_parallel_flush()) {
     if (handler.HasCSSVariableInStyleMap(styles)) {
