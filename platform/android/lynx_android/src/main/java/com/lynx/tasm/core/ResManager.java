@@ -4,6 +4,7 @@
 package com.lynx.tasm.core;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.text.TextUtils;
 import android.util.LruCache;
 import androidx.annotation.AnyThread;
@@ -39,7 +40,7 @@ public class ResManager {
   public static final String LOCAL_ASSET_SCHEME = "asset:///";
 
   /**
-   * Resource scheme for URIs  example:res:///drawable/icon
+   * Resource scheme for URIs  example:res:///raw/icon
    */
   public static final String LOCAL_RESOURCE_SCHEME = "res:///";
 
@@ -188,7 +189,8 @@ public class ResManager {
         findResId(LynxEnv.inst().getAppContext(), url.substring(LOCAL_RESOURCE_SCHEME.length()));
     LynxResResponse response = new LynxResResponse();
     if (null != resId) {
-      InputStream stream = new ByteArrayInputStream(new byte[] {resId.byteValue()});
+      Resources resources = LynxEnv.inst().getAppContext().getResources();
+      InputStream stream = resources.openRawResource(resId);
       response.setInputStream(stream);
       callback.onSuccess(response);
       try {
@@ -237,33 +239,55 @@ public class ResManager {
     if (name == null || name.isEmpty()) {
       return null;
     }
-    // name could be a resource id.
+
+    // Handle cases where the path is already a numeric ID.
     try {
       return Integer.parseInt(name);
     } catch (NumberFormatException e) {
-      // Do nothing.
+      // Not a numeric ID, proceed with name resolution.
     }
 
-    name = name.toLowerCase().replace("-", "_");
-    Integer id = mIdCache.get(name);
-    if (id != null) {
-      return id;
-    }
-    int i = name.indexOf(".");
-    String defType = null;
-    if (i > 0 && i < name.length()) {
-      defType = name.substring(0, i);
-    }
-    if (TextUtils.isEmpty(defType)) {
-      return null;
+    // Normalize path to match Android resource naming conventions.
+    String normalizedPath = name.toLowerCase().replace("-", "_");
+
+    // Check cache for previously resolved ID.
+    Integer cachedId = mIdCache.get(normalizedPath);
+    if (cachedId != null) {
+      return cachedId;
     }
 
+    // Split path into resource type and name.
+    int slashIndex = normalizedPath.indexOf('/');
+    if (slashIndex <= 0 || slashIndex == normalizedPath.length() - 1) {
+      return null; // Invalid format.
+    }
+
+    String defType = normalizedPath.substring(0, slashIndex);
+    String resName = normalizedPath.substring(slashIndex + 1);
+
+    // Strip the file extension from the resource name, if it exists.
+    // Android resource names do not include extensions.
+    int dotIndex = resName.lastIndexOf('.');
+    if (dotIndex > 0) {
+      resName = resName.substring(0, dotIndex);
+    }
+
+    // Perform dynamic lookup and update cache.
     synchronized (this) {
-      id = context.getResources().getIdentifier(name, defType, context.getPackageName());
-      if (id > 0) {
-        mIdCache.put(name, id);
+      // Double-check cache inside synchronized block to prevent race conditions.
+      cachedId = mIdCache.get(normalizedPath);
+      if (cachedId != null) {
+        return cachedId;
+      }
+
+      int id = context.getResources().getIdentifier(resName, defType, context.getPackageName());
+      if (id != 0) {
+        mIdCache.put(normalizedPath, id);
+        return id;
       }
     }
-    return id;
+
+    // Return null if the resource was not found.
+    return null;
   }
 }
