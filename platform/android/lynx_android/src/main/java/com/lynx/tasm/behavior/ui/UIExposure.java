@@ -466,7 +466,7 @@ public class UIExposure extends LynxObserverManager {
     mIsStopExposure = true;
     destroy();
     // Use the sendEvent field in options to control whether to send disexposure events.
-    if (options.containsKey("sendEvent") && (Boolean) options.get("sendEvent")) {
+    if (options == null || options.containsKey("sendEvent") && (Boolean) options.get("sendEvent")) {
       sendEvent(mUiInWindowBefore, "disexposure");
       mUiInWindowBefore.clear();
     }
