@@ -74,12 +74,14 @@ public class LynxAccessibilityWrapperTest {
     // Note: In enableNodeProvider() / enableDelegate() / enableHelper(), will invoke spyWrapper
     // onPageConfigDecoded() (1)
     LynxAccessibilityWrapper spyWrapper1 = spy(mWrapper);
+    when(spyWrapper1.isSystemAccessibilityEnable()).thenReturn(true);
     registerNodeProvider(spyWrapper1, spyNodeProvider);
     enableNodeProvider(spyWrapper1);
     verify(spyNodeProvider).setConfigEnableAccessibilityElement(true);
     verify(spyNodeProvider).setConfigEnableOverlapForAccessibilityElement(true);
     // (2)
     LynxAccessibilityWrapper spyWrapper2 = spy(mWrapper);
+    when(spyWrapper2.isSystemAccessibilityEnable()).thenReturn(true);
     registerDelegate(spyWrapper2, spyDelegate);
     enableDelegate(spyWrapper2);
     assertNotNull(getField(spyWrapper2, "mStateHelper"));
@@ -88,6 +90,7 @@ public class LynxAccessibilityWrapperTest {
     verify(spyDelegate).setConfigEnableAccessibilityElement(true);
     // (3)
     LynxAccessibilityWrapper spyWrapper3 = spy(mWrapper);
+    when(spyWrapper3.isSystemAccessibilityEnable()).thenReturn(true);
     registerHelper(spyWrapper3, spyHelper);
     enableHelper(spyWrapper3);
     assertNotNull(getField(spyWrapper3, "mStateHelper"));
