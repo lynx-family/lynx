@@ -411,11 +411,15 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   pageConfig_.reset();
   // ios block cannot capture std::unique_ptr, tricky...
   auto* shell = shell_.release();
-  // LynxView maybe release in main flow of TemplateAssembler,
-  // so need just release LynxShell delay, avoid crash
-  dispatch_async(dispatch_get_main_queue(), ^{
+  if ([_lynxUIRenderer isKindOfClass:[LynxUIRenderer class]]) {
+    // LynxView maybe release in main flow of TemplateAssembler,
+    // so need just release LynxShell delay, avoid crash
+    dispatch_async(dispatch_get_main_queue(), ^{
+      delete shell;
+    });
+  } else {
     delete shell;
-  });
+  }
 }
 
 #pragma mark - Runtime
