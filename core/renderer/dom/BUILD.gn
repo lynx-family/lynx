@@ -78,6 +78,7 @@ group("dom_tests") {
   deps = [
     ":dom_trace_unittest_exec",
     ":dom_unittest_exec",
+    "fragment:fragment_test_exec",
   ]
   public_deps = [
     ":dom_testset",

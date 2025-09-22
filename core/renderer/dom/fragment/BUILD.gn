@@ -2,9 +2,8 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("../../../testing/test.gni")
-import("../../Lynx.gni")
-import("build.gni")
+import("../../../../testing/test.gni")
+import("../../../Lynx.gni")
 
 lynx_core_source_set("fragment") {
   sources = [
@@ -12,7 +11,30 @@ lynx_core_source_set("fragment") {
     "fragment.h",
   ]
   public_deps = [
+    ":display_list",
     "../../css:css",
     "../../starlight:starlight",
   ]
+}
+
+lynx_core_source_set("display_list") {
+  sources = [
+    "display_list.cc",
+    "display_list.h",
+    "display_list_builder.cc",
+    "display_list_builder.h",
+  ]
+}
+
+unittest_set("display_list_testset") {
+  testonly = true
+  sources = [
+    "display_list_builder_unittest.cc",
+    "display_list_unittest.cc",
+  ]
+  public_deps = [ ":display_list" ]
+}
+
+unittest_exec("fragment_test_exec") {
+  deps = [ ":display_list_testset" ]
 }

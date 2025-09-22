@@ -14,9 +14,9 @@ namespace tasm {
 
 Fragment::Fragment(const starlight::ComputedCSSStyle& style, int sign,
                    PaintingContext& painting_context, base::String tag)
-    : style_{style},
-      sign_{sign},
-      painting_context_{painting_context},
+    : sign_(sign),
+      painting_context_(painting_context),
+      style_(style),
       tag_(std::move(tag)) {}
 
 void Fragment::CreateLayerIfNeeded() {
