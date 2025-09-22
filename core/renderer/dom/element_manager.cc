@@ -670,7 +670,7 @@ void ElementManager::OnPatchFinishForRadon(
     TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_MANAGER_ON_PATCH_FINISH_NO_PATCH);
     LOGI("ElementManager::OnPatchFinishNoPatch!");
     catalyzer_->painting_context()->FinishLayoutOperation(options);
-    delegate_->OnUpdateDataWithoutChange();
+    delegate_->OnUpdateDataWithoutChange(options);
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinish");
@@ -688,6 +688,9 @@ void ElementManager::OnPatchFinishForRadon(
       for (const auto &context : dirty_stacking_contexts_) {
         context->UpdateZIndexList();
       }
+    }
+    if (delegate_) {
+      delegate_->OnPipelineEnd(options->pipeline_id);
     }
     dirty_stacking_contexts_.clear();
     patch_finish_callback(true);
@@ -1422,7 +1425,7 @@ void ElementManager::OnPatchFinishForFiber(
     // notify list that child has been rendered.
     OnListComponentUpdated(options);
     catalyzer_->painting_context()->FinishLayoutOperation(options);
-    delegate_->OnUpdateDataWithoutChange();
+    delegate_->OnUpdateDataWithoutChange(options);
     patch_finish_callback(false);
   } else {
     LOGI("ElementManager::OnPatchFinishForFiber WithPatch!");
@@ -1449,6 +1452,10 @@ void ElementManager::OnPatchFinishForFiber(
   }
 
   DidPatchFinishForFiber();
+
+  if (delegate_) {
+    delegate_->OnPipelineEnd(options->pipeline_id);
+  }
 }
 
 int32_t ElementManager::GenerateElementID() { return element_id_++; }
