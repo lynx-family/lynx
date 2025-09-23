@@ -36,6 +36,7 @@ using ItemHolderPtrMap =
 static constexpr const char kCustomLisName[] = "custom-list-name";
 static constexpr const char kListContainer[] = "list-container";
 static constexpr const char kUpdateAnimation[] = "update-animation";
+static constexpr const char kUpdateAnimationTypeDefault[] = "default";
 
 // props
 static constexpr const char* const kEnableScroll = "enable-scroll";

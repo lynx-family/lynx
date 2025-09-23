@@ -6123,6 +6123,7 @@ public class com::lynx::tasm::LynxSubErrorCode :  {
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_LIST_CHILD_COMPONENT_NOT_EXIST E_COMPONENT_LIST_CHILD_COMPONENT_NOT_EXIST;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_LIST_UNSUPPORTED_THREAD_STRATEGY E_COMPONENT_LIST_UNSUPPORTED_THREAD_STRATEGY;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_LIST_DUPLICATE_ITEM_KEY E_COMPONENT_LIST_DUPLICATE_ITEM_KEY;
+  public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_IMAGE_UNSUPPORTED_PROP E_COMPONENT_IMAGE_UNSUPPORTED_PROP;
   public final int com.lynx.tasm.LynxSubErrorCode.E_COMPONENT_CUSTOM E_COMPONENT_CUSTOM;
   public final int com.lynx.tasm.LynxSubErrorCode.E_EXCEPTION_PLATFORM E_EXCEPTION_PLATFORM;
