@@ -142,28 +142,41 @@ const lepus::Value BaseGestureHandler::GetEventParamsFromTouchEvent(
                          std::chrono::milliseconds(1);
     params->SetValue("timestamp", time_stamp);
     params->SetValue("type", touch_event->Name());
-    const lepus::Value& map = touch_event->UITouchMap();
-    float client_x, client_y, page_x, page_y, x, y;
-    for (auto it : *map.Table()) {
-      if (it.second.Array()->size() >= 1) {
-        const auto& event_info = it.second.Array()->get(0).Array();
-        client_x = event_info->get(1).Number();
-        client_y = event_info->get(2).Number();
-        page_x = event_info->get(3).Number();
-        page_y = event_info->get(4).Number();
-        x = event_info->get(5).Number();
-        y = event_info->get(6).Number();
+    if (touch_event->IsMultiTouch()) {
+      const lepus::Value& map = touch_event->UITouchMap();
+      float client_x, client_y, page_x, page_y, x, y;
+      for (auto it : *map.Table()) {
+        if (it.second.Array()->size() >= 1) {
+          const auto& event_info = it.second.Array()->get(0).Array();
+          client_x = event_info->get(1).Number();
+          client_y = event_info->get(2).Number();
+          page_x = event_info->get(3).Number();
+          page_y = event_info->get(4).Number();
+          x = event_info->get(5).Number();
+          y = event_info->get(6).Number();
+        }
       }
+
+      params->SetValue("x", x);
+      params->SetValue("y", y);
+
+      params->SetValue("pageX", page_x);
+      params->SetValue("pageY", page_y);
+
+      params->SetValue("clientX", client_x);
+      params->SetValue("clientY", client_y);
+    } else {
+      float point[2] = {0.f};
+      touch_event->GetTargetPoint(point);
+      params->SetValue("x", point[0]);
+      params->SetValue("y", point[1]);
+      touch_event->GetPagePoint(point);
+      params->SetValue("pageX", point[0]);
+      params->SetValue("pageY", point[1]);
+      touch_event->GetClientPoint(point);
+      params->SetValue("clientX", point[0]);
+      params->SetValue("clientY", point[1]);
     }
-
-    params->SetValue("x", x);
-    params->SetValue("y", y);
-
-    params->SetValue("pageX", page_x);
-    params->SetValue("pageY", page_y);
-
-    params->SetValue("clientX", client_x);
-    params->SetValue("clientY", client_y);
   }
   return lepus::Value(std::move(params));
 }

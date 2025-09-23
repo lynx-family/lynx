@@ -744,18 +744,34 @@ void EventDispatcher::DispatchSingleTouchEvent(
                         std::chrono::system_clock::now().time_since_epoch())
                         .count();
   touch_event.SetTimeStamp(time_stamp);
-  float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, 0),
-                         OH_ArkUI_PointerEvent_GetYByIndex(event, 0)};
+  float scaled_density =
+      (name == TouchEvent::TAP || name == TouchEvent::LONGPRESS)
+          ? ui_owner_->Context()->ScaledDensity()
+          : 1;
+  float page_point[2] = {
+      OH_ArkUI_PointerEvent_GetXByIndex(event, 0) / scaled_density,
+      OH_ArkUI_PointerEvent_GetYByIndex(event, 0) / scaled_density};
   GetPagePoint(page_point, page_point);
   float target_point[2] = {page_point[0], page_point[1]};
   GetTargetPoint(active_target, target_point, page_point);
-  float client_point[2] = {OH_ArkUI_PointerEvent_GetWindowXByIndex(event, 0),
-                           OH_ArkUI_PointerEvent_GetWindowYByIndex(event, 0)};
+  float client_point[2] = {
+      OH_ArkUI_PointerEvent_GetWindowXByIndex(event, 0) / scaled_density,
+      OH_ArkUI_PointerEvent_GetWindowYByIndex(event, 0) / scaled_density};
   touch_event.SetTargetPoint(target_point);
   touch_event.SetPagePoint(page_point);
   touch_event.SetClientPoint(client_point);
   touch_event.SetTimeStamp(OH_ArkUI_UIInputEvent_GetEventTime(event));
   ui_owner_->SendEvent(touch_event);
+  if (ui_owner_->GetGestureArenaManager()) {
+    if (name == TouchEvent::START) {
+      ui_owner_->SetActiveUIToGestureArenaAtDownEvent(first_active_target_);
+    }
+    if (name == TouchEvent::START || name == TouchEvent::MOVE ||
+        name == TouchEvent::UP || name == TouchEvent::CANCEL) {
+      ui_owner_->DispatchTouchEventToGestureArena(
+          name, std::make_shared<TouchEvent>(touch_event), event);
+    }
+  }
 }
 
 void EventDispatcher::DispatchMultiTouchEvent(
