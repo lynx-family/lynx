@@ -219,7 +219,8 @@ bool CSSTransitionManager::ConsumeCSSProperty(tasm::CSSPropertyID css_id,
     if (!IsValueValid(property_type, start_value_internal, configs) ||
         !IsValueValid(property_type, end_value_internal, configs) ||
         start_value_internal == end_value_internal ||
-        end_value_internal == previous_end_values_[css_id]) {
+        (previous_end_values_.contains(css_id) &&
+         end_value_internal == previous_end_values_[css_id])) {
       TryToStopTransitionAnimator(property_type);
       return false;
     }
