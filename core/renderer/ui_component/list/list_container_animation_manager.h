@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "core/animation/lynx_basic_animator/basic_animator.h"
@@ -21,7 +20,7 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
  public:
   explicit ListContainerAnimationManager(ListContainerImpl* container);
 
-  ~ListContainerAnimationManager();
+  ~ListContainerAnimationManager() override;
 
   list::ListContainerAnimationType AnimationType() const override;
 
@@ -29,11 +28,11 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
 
   void RecycleItemHolder(ItemHolder* holder) override;
 
+  bool UpdateAnimation() const override;
+
   void UpdateDiffResult(list::ListAdapterDiffResult result);
 
-  bool UpdateAnimation() const;
-
-  void SetUpdateAnimation(std::string update_animation);
+  void SetUpdateAnimation(bool update_animation);
 
   void OnLayoutChildren();
 
@@ -44,12 +43,12 @@ class ListContainerAnimationManager : public ItemHolder::AnimationDelegate {
   void DoAnimationFrame(float progress);
 
  private:
-  bool update_animation_{false};
+  // TODO(dongjiajian): Support modify `update_animation_` multiple times.
+  std::optional<bool> update_animation_;
   list::ListContainerAnimationType animation_type_{
       list::ListContainerAnimationType::kNone};
   std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;
   ListContainerImpl* list_container_impl_;
-
   fml::WeakPtrFactory<ListContainerAnimationManager> weak_factory_{this};
 };
 }  // namespace tasm

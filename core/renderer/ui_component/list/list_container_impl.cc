@@ -14,6 +14,7 @@
 #include "core/renderer/ui_component/list/default_list_adapter.h"
 #include "core/renderer/ui_component/list/grid_layout_manager.h"
 #include "core/renderer/ui_component/list/linear_layout_manager.h"
+#include "core/renderer/ui_component/list/list_types.h"
 #include "core/renderer/ui_component/list/staggered_grid_layout_manager.h"
 #include "core/renderer/ui_wrapper/layout/list_node.h"
 #include "core/renderer/utils/lynx_env.h"
@@ -27,7 +28,9 @@ ListContainerImpl::ListContainerImpl(Element* element)
       list_layout_manager_(std::make_unique<LinearLayoutManager>(this)),
       list_adapter_(std::make_unique<DefaultListAdapter>(this, element)),
       list_children_helper_(std::make_unique<ListChildrenHelper>()),
-      list_event_manager_(std::make_unique<ListEventManager>(this)) {
+      list_event_manager_(std::make_unique<ListEventManager>(this)),
+      list_animation_manager_(
+          std::make_unique<ListContainerAnimationManager>(this)) {
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           list::Orientation::kVertical);
   list_event_manager_->SetChildrenHelper(list_children_helper_.get());
@@ -373,9 +376,11 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
     need_update_item_holders_ = true;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
-    list_animation_manager_ =
-        std::make_unique<ListContainerAnimationManager>(this);
-    list_animation_manager_->SetUpdateAnimation(value.StdString());
+    if (value.StdString() == list::kUpdateAnimationTypeDefault) {
+      list_animation_manager_->SetUpdateAnimation(true);
+    } else {
+      list_animation_manager_->SetUpdateAnimation(false);
+    }
   } else if (key.IsEqual(list::kListType)) {
     // list-type
     list::LayoutType last_layout_type = layout_type_;
@@ -493,7 +498,7 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
-        if (list_animation_manager_) {
+        if (list_animation_manager_->UpdateAnimation()) {
           list_animation_manager_->OnLayoutChildren();
         }
       } else {
@@ -525,11 +530,11 @@ bool ListContainerImpl::ShouldGenerateDebugInfo(
 }
 
 bool ListContainerImpl::UpdateAnimation() const {
-  return list_animation_manager_ != nullptr;
+  return list_animation_manager_->UpdateAnimation();
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
-  if (list_animation_manager_ && has_valid_diff_) {
+  if (list_animation_manager_->UpdateAnimation() && has_valid_diff_) {
     list_animation_manager_->UpdateDiffResult(diff_result_);
   }
   diff_result_ = list::ListAdapterDiffResult::kNone;

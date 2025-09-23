@@ -5,7 +5,6 @@
 #ifndef CORE_RENDERER_UI_COMPONENT_LIST_ANIMATION_ITEM_HOLDER_H_
 #define CORE_RENDERER_UI_COMPONENT_LIST_ANIMATION_ITEM_HOLDER_H_
 
-#include <array>
 #include <limits>
 #include <string>
 
@@ -15,23 +14,23 @@
 namespace lynx {
 namespace tasm {
 
-class AnimationItemHolder : public ItemHolder {
+class AnimationItemHolder final : public ItemHolder {
  public:
-  AnimationItemHolder(int index, const std::string& item_key);
+  AnimationItemHolder(int index, const std::string& item_key,
+                      AnimationDelegate* delegate);
 
   void UpdateLayoutToPlatform(float content_size, float container_size,
                               Element* element) override;
   void UpdateLayoutFromManager(float left, float top) override;
 
   void DoAnimationFrame(float progress) override;
-  void SetAnimationDelegate(ItemHolder::AnimationDelegate* delegate) override;
   void EndAnimation() override;
   void RecycleAfterAnimation(list::ItemHolderAnimationType type) override;
   void MarkInsertOpacity() override;
 
  private:
   float GetRTLLeft(float content_size, float container_size, float left,
-                   float width);
+                   float width) const;
   AnimationDelegate* animation_delegate_;
   float animation_origin_left_{std::numeric_limits<float>::quiet_NaN()};
   float animation_origin_top_{std::numeric_limits<float>::quiet_NaN()};

@@ -5,21 +5,23 @@
 #include "core/renderer/ui_component/list/animation_item_holder.h"
 
 #include <algorithm>
-#include <cmath>
 
 #include "base/include/float_comparison.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/ui_component/list/list_orientation_helper.h"
 
-namespace lynx {
-namespace tasm {
+namespace lynx::tasm {
 
-AnimationItemHolder::AnimationItemHolder(int index, const std::string& item_key)
-    : ItemHolder(index, item_key){};
+AnimationItemHolder::AnimationItemHolder(int index, const std::string& item_key,
+                                         AnimationDelegate* delegate)
+    : ItemHolder(index, item_key), animation_delegate_(delegate) {
+  DCHECK(delegate);
+}
 
 void AnimationItemHolder::DoAnimationFrame(float progress) {
   if (element_ && element_->element_container()) {
-    if (animation_type_ == list::ItemHolderAnimationType::kNone) {
+    if (!animation_delegate_->UpdateAnimation() ||
+        animation_type_ == list::ItemHolderAnimationType::kNone) {
       return;
     }
     DCHECK((animation_type_ == list::ItemHolderAnimationType::kTransform) ==
@@ -33,12 +35,13 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
         !std::isnan(animation_origin_top_)) {
       float l =
           animation_origin_left_ + (left() - animation_origin_left_) * progress;
-      float t =
+      const float t =
           animation_origin_top_ + (top() - animation_origin_top_) * progress;
-      element_->UpdateLayout(
-          GetRTLLeft(content_size_, container_size_, l, width_), t);
-      element_->element_container()->UpdateLayout(
-          GetRTLLeft(content_size_, container_size_, l, width_), t);
+      if (direction_ == list::Direction::kRTL) {
+        l = GetRTLLeft(content_size_, container_size_, l, width_);
+      }
+      element_->UpdateLayout(l, t);
+      element_->element_container()->UpdateLayout(l, t);
       element_->painting_context()->UpdateLayoutPatching();
       element_->painting_context()->OnNodeReady(element_->impl_id());
       element_->painting_context()->UpdateNodeReadyPatching();
@@ -58,10 +61,12 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
 }
 
 void AnimationItemHolder::EndAnimation() {
-  if (animation_type_ == list::ItemHolderAnimationType::kNone) {
+  if (!animation_delegate_->UpdateAnimation()) {
     return;
-  } else if (animation_type_ == list::ItemHolderAnimationType::kTransform) {
-    if (element_ && (left_ != element_->left() || top_ != element_->top())) {
+  }
+  if (animation_type_ == list::ItemHolderAnimationType::kTransform) {
+    if (element_ && element_->element_container() &&
+        (left_ != element_->left() || top_ != element_->top())) {
       if (direction_ == list::Direction::kRTL) {
         element_->UpdateLayout(
             GetRTLLeft(content_size_, container_size_, left_, width_), top_);
@@ -86,24 +91,32 @@ void AnimationItemHolder::EndAnimation() {
     }
     animation_origin_opacity_ = std::numeric_limits<float>::quiet_NaN();
   }
-  animation_type_ = list::ItemHolderAnimationType::kNone;
 
   DCHECK(std::isnan(animation_origin_top_));
   DCHECK(std::isnan(animation_origin_left_));
   DCHECK(std::isnan(animation_origin_opacity_));
   DCHECK(std::isnan(content_size_));
+
+  animation_type_ = list::ItemHolderAnimationType::kNone;
 }
 
 void AnimationItemHolder::UpdateLayoutFromManager(float left, float top) {
-  // Update left and top's value from list's layout manager.
-  if (animation_type_ == list::ItemHolderAnimationType::kNone &&
+  if (base::FloatsEqual(left, left_) && base::FloatsEqual(top, top_)) {
+    return;
+  }
+  if (animation_delegate_->UpdateAnimation() &&
       animation_delegate_->AnimationType() !=
           list::ListContainerAnimationType::kNone &&
-      (left_ != left || top_ != top)) {
+      std::isnan(animation_origin_left_) && std::isnan(animation_origin_top_)) {
     animation_origin_left_ = left_;
     animation_origin_top_ = top_;
     animation_type_ = list::ItemHolderAnimationType::kTransform;
+    // NOTE: In an insert animation, the item could be set with opacity
+    // animation first, currently we cover it with a transform animation.
+    animation_origin_opacity_ = std::numeric_limits<float>::quiet_NaN();
   }
+  // NOTE: When the coordinates are assigned multiple times during the
+  // animation, we take the last assignment as the animation’s target position.
   left_ = left;
   top_ = top;
 }
@@ -112,6 +125,9 @@ void AnimationItemHolder::UpdateLayoutFromManager(float left, float top) {
 // animations.
 void AnimationItemHolder::RecycleAfterAnimation(
     list::ItemHolderAnimationType type) {
+  if (!animation_delegate_->UpdateAnimation()) {
+    return;
+  }
   animation_type_ = type;
   if (type == list::ItemHolderAnimationType::kOpacity) {
     animation_origin_opacity_ = 1.f;
@@ -119,19 +135,12 @@ void AnimationItemHolder::RecycleAfterAnimation(
   animation_delegate_->DeferredDestroyItemHolder(this);
 }
 
-void AnimationItemHolder::SetAnimationDelegate(
-    ItemHolder::AnimationDelegate* delegate) {
-  DCHECK(delegate);
-  animation_delegate_ = delegate;
-}
-
 float AnimationItemHolder::GetRTLLeft(float content_size, float container_size,
-                                      float left, float width) {
+                                      float left, float width) const {
   if (orientation_ == list::Orientation::kHorizontal) {
     return std::max(content_size, container_size) - left - width;
-  } else {
-    return container_size - left - width;
   }
+  return container_size - left - width;
 }
 
 void AnimationItemHolder::MarkInsertOpacity() {
@@ -144,7 +153,8 @@ void AnimationItemHolder::UpdateLayoutToPlatform(float content_size,
                                                  float container_size,
                                                  Element* element) {
   if (element && element->element_container()) {
-    if (animation_type_ == list::ItemHolderAnimationType::kTransform) {
+    if (animation_delegate_->UpdateAnimation() &&
+        animation_type_ == list::ItemHolderAnimationType::kTransform) {
       // NOTE: In the remove animation, a new item holder is created, and we
       // need the new item holder to also run the transform animation.
       content_size_ = content_size;
@@ -163,5 +173,4 @@ void AnimationItemHolder::UpdateLayoutToPlatform(float content_size,
   }
 }
 
-}  // namespace tasm
-}  // namespace lynx
+}  // namespace lynx::tasm
