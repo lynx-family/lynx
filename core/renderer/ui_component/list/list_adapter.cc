@@ -277,20 +277,15 @@ void ListAdapter::UpdateItemHolderToLatest(
         OnItemHolderReInsert(item_holder);
       }
     } else {
-      if (auto mgr = list_container_->AnimationManager()) {
-        auto holder =
-            std::make_unique<AnimationItemHolder>(new_index, item_key);
-        holder->SetAnimationDelegate(mgr);
-        if (mgr->AnimationType() != list::ListContainerAnimationType::kNone) {
-          holder->MarkInsertOpacity();
-        }
-        (*item_holder_map_)[item_key] = std::move(holder);
-      } else {
-        (*item_holder_map_)[item_key] =
-            std::make_unique<ItemHolder>(new_index, item_key);
+      const auto mgr = list_container_->AnimationManager();
+      auto holder =
+          std::make_unique<AnimationItemHolder>(new_index, item_key, mgr);
+      if (mgr->AnimationType() != list::ListContainerAnimationType::kNone) {
+        holder->MarkInsertOpacity();
       }
-      item_holder = (*item_holder_map_)[item_key].get();
+      item_holder = holder.get();
       OnItemHolderInserted(item_holder);
+      (*item_holder_map_)[item_key] = std::move(holder);
     }
     CheckSticky(item_holder, new_index);
     item_holder->SetIndex(new_index);
@@ -454,9 +449,9 @@ void ListAdapter::RecycleRemovedItemHolders() {
     if (item_holder && IsRemoved(item_holder)) {
       RecycleItemHolder(item_holder);
       if (auto mgr = list_container_->AnimationManager();
-          mgr &&
+          mgr->UpdateAnimation() &&
           mgr->AnimationType() != list::ListContainerAnimationType::kNone) {
-        it++;
+        ++it;
       } else {
         it = item_holder_map_->erase(it);
       }
@@ -510,16 +505,14 @@ void ListAdapter::EnqueueElement(ItemHolder* item_holder) {
     return;
   }
   Element* list_item = GetListItemElement(item_holder);
-  if (auto mgr = list_container_->AnimationManager()) {
-    auto type = mgr->AnimationType();
-    if (type != list::ListContainerAnimationType::kNone) {
-      if (type == list::ListContainerAnimationType::kRemove) {
-        item_holder->RecycleAfterAnimation(
-            list::ItemHolderAnimationType::kOpacity);
-      } else if (type == list::ListContainerAnimationType::kInsert) {
-        item_holder->RecycleAfterAnimation(
-            list::ItemHolderAnimationType::kTransform);
-      }
+  if (auto type = list_container_->AnimationManager()->AnimationType();
+      type != list::ListContainerAnimationType::kNone) {
+    if (type == list::ListContainerAnimationType::kRemove) {
+      item_holder->RecycleAfterAnimation(
+          list::ItemHolderAnimationType::kOpacity);
+    } else if (type == list::ListContainerAnimationType::kInsert) {
+      item_holder->RecycleAfterAnimation(
+          list::ItemHolderAnimationType::kTransform);
     }
     return;
   }
