@@ -386,6 +386,10 @@ public class PerformanceController implements IMemoryMonitor, ITimingCollector {
     return reporter;
   }
 
+  public JavaOnlyArray getPendingPaintEndPipelineIds() {
+    return mPendingPaintEndPipelineIds;
+  }
+
   // Native API
   private native void nativeAllocateMemory(
       long nativePtr, String category, long sizeBytes, String detailKey, String detailValue);

@@ -2020,7 +2020,6 @@ public class LynxTemplateRender
   }
 
   public void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    onTraceEventBegin(TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE);
     markEngineInUse();
     boolean needLongTaskMonitor = false;
     if (mLynxContext != null) {
@@ -2071,7 +2070,6 @@ public class LynxTemplateRender
       mLynxUIRender.performInnerMeasure(widthMeasureSpec, heightMeasureSpec);
     }
     markEngineIdle();
-    onTraceEventEnd(TraceEventDef.LYNX_TEMPLATE_RENDER_MEASURE);
     return;
   }
 
@@ -2127,14 +2125,12 @@ public class LynxTemplateRender
   }
 
   public void onLayout(boolean changed, int left, int top, int right, int bottom) {
-    onTraceEventBegin(TraceEventDef.LYNX_TEMPLATE_RENDER_LAYOUT);
     if (mEnableReuseEngine && mLynxEngineRef == null) {
       return;
     }
     if (mLynxUIRender != null) {
       mLynxUIRender.onLayout(changed, left, top, right, bottom);
     }
-    onTraceEventEnd(TraceEventDef.LYNX_TEMPLATE_RENDER_LAYOUT);
   }
 
   private void onTraceEventBegin(String eventName) {

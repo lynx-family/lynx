@@ -1056,6 +1056,21 @@ public class LynxView extends UIBodyView {
     TraceEvent.endSection(eventName);
   }
 
+  private void putPendingPipelineIdsToMap(Map<String, String> extraMap) {
+    if (mLynxTemplateRender != null && mLynxTemplateRender.getPerformanceController() != null) {
+      JavaOnlyArray pipelineIds =
+          mLynxTemplateRender.getPerformanceController().getPendingPaintEndPipelineIds();
+      StringBuilder builder = new StringBuilder();
+      for (Object pipelineId : pipelineIds) {
+        if (builder.length() > 0) {
+          builder.append(",");
+        }
+        builder.append(String.valueOf(pipelineId));
+      }
+      extraMap.put(TraceEventDef.PIPELINE_IDS, builder.toString());
+    }
+  }
+
   @Override
   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
     onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_MEASURE, new Callable<HashMap<String, String>>() {
@@ -1064,6 +1079,7 @@ public class LynxView extends UIBodyView {
         HashMap<String, String> extraMap = new HashMap<>();
         extraMap.put(TraceEventDef.WIDTH_MEASURE_SPEC, String.valueOf(widthMeasureSpec));
         extraMap.put(TraceEventDef.HEIGHT_MEASURE_SPEC, String.valueOf(heightMeasureSpec));
+        putPendingPipelineIdsToMap(extraMap);
         return extraMap;
       }
     });
@@ -1105,6 +1121,7 @@ public class LynxView extends UIBodyView {
         HashMap<String, String> extraMap = new HashMap<>();
         extraMap.put(TraceEventDef.PARAMS,
             "" + changed + " " + left + " " + top + " " + right + " " + bottom);
+        putPendingPipelineIdsToMap(extraMap);
         return extraMap;
       }
     });
@@ -1422,6 +1439,14 @@ public class LynxView extends UIBodyView {
 
   @Override
   protected void dispatchDraw(Canvas canvas) {
+    onTraceEventBegin(TraceEventDef.LYNX_VIEW_ON_DRAW, new Callable<HashMap<String, String>>() {
+      @Override
+      public HashMap<String, String> call() throws Exception {
+        HashMap<String, String> extraMap = new HashMap<>();
+        putPendingPipelineIdsToMap(extraMap);
+        return extraMap;
+      }
+    });
     super.dispatchDraw(canvas);
     if (mLynxTemplateRender != null) {
       mLynxTemplateRender.onRootViewDraw(canvas);
@@ -1430,6 +1455,7 @@ public class LynxView extends UIBodyView {
       mOnLoadFired = true;
       triggerEmbeddedModeLifecycle(DefaultLogicExecutor.LIFECYCLE_EVENT_ON_LOAD, true);
     }
+    onTraceEventEnd(TraceEventDef.LYNX_VIEW_ON_DRAW);
   }
 
   private void triggerEmbeddedModeLifecycle(String name, boolean needData) {
