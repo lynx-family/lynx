@@ -4,6 +4,7 @@
 
 #import <Lynx/DevToolLogLevel.h>
 #import <Lynx/LynxBaseInspectorOwner.h>
+#import <Lynx/LynxBaseScrollView+Nested.h>
 #import <Lynx/LynxContext.h>
 #import <Lynx/LynxDevtool.h>
 #import <Lynx/LynxEngineProxy.h>
@@ -24,7 +25,6 @@
 #import <Lynx/LynxUIKitAPIAdapter.h>
 #import <Lynx/LynxView.h>
 #import <Lynx/LynxWeakProxy.h>
-#import "LynxBaseScrollView+Nested.h"
 #import "LynxFeatureCounter.h"
 #import "LynxTemplateRender+Internal.h"
 #import "LynxUIRendererProtocol.h"
@@ -374,8 +374,8 @@
                                        andEvent:event];
     // If target eventThrough, return nil to let event through LynxView.
     CGPoint targetPoint = point;
-    if ([touchTarget isKindOfClass:[LynxUI class]]) {
-      targetPoint = [self convertPoint:point toView:((LynxUI*)touchTarget).view];
+    if (touchTarget.view) {
+      targetPoint = [self convertPoint:point toView:touchTarget.view];
     }
     if ([touchTarget eventThrough:targetPoint]) {
       return nil;

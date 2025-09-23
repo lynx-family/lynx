@@ -1579,6 +1579,7 @@ public protocol LynxEventTarget-p : <LynxEventTargetBase> {
   public void LynxEventTarget-p::onEventBubble:withEventID:(BOOL isCatch,[withEventID] int64_t eventID);
   public void LynxEventTarget-p::startEventFire:withEventID:(BOOL isStop,[withEventID] int64_t eventID);
   public void LynxEventTarget-p::onEventFire:withEventID:(BOOL isStop,[withEventID] int64_t eventID);
+  public UIView * LynxEventTarget-p::view();
 }
 
 public protocol LynxEventTargetBase-p : <NSObject> {

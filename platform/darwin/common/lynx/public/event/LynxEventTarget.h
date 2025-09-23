@@ -3,6 +3,8 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
 #import <Lynx/LynxEventDetail.h>
 #import <Lynx/LynxEventSpec.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
@@ -93,6 +95,8 @@ enum LynxPointerEventsValue {
 - (void)startEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
 
 - (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID;
+
+- (UIView*)view;
 
 @end
 

@@ -217,4 +217,8 @@
 - (void)onEventFire:(BOOL)isStop withEventID:(int64_t)eventID {
 }
 
+- (UIView*)view {
+  return nil;
+}
+
 @end
