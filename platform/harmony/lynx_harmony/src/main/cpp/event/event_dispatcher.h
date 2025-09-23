@@ -97,6 +97,8 @@ class EventDispatcher {
 
   bool ShouldBlockNativeEvent();
 
+  bool ContainGestureNode();
+
   ConsumeSlideDirection ShouldConsumeSlideEvent();
 
   void AttachGesturesToRoot(UIBase* root);
