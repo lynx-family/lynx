@@ -563,6 +563,7 @@ export class LynxSubErrorCode {
   public static readonly E_COMPONENT_LIST_CHILD_COMPONENT_NOT_EXIST: number; = 220206
   public static readonly E_COMPONENT_LIST_UNSUPPORTED_THREAD_STRATEGY: number; = 220207
   public static readonly E_COMPONENT_LIST_DUPLICATE_ITEM_KEY: number; = 220208
+  public static readonly E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES: number; = 220209
   public static readonly E_COMPONENT_IMAGE_UNSUPPORTED_PROP: number; = 220301
   public static readonly E_COMPONENT_CUSTOM: number; = 229800
   public static readonly E_EXCEPTION_PLATFORM: number; = 990100

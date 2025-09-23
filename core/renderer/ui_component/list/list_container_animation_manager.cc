@@ -5,6 +5,7 @@
 #include "core/renderer/ui_component/list/list_container_animation_manager.h"
 
 #include <memory>
+#include <utility>
 
 #include "core/renderer/ui_component/list/list_container_impl.h"
 
@@ -22,7 +23,7 @@ ListContainerAnimationManager::~ListContainerAnimationManager() {
 }
 
 bool ListContainerAnimationManager::UpdateAnimation() const {
-  return update_animation_;
+  return update_animation_.value_or(false);
 }
 
 void ListContainerAnimationManager::DeferredDestroyItemHolder(
@@ -126,10 +127,13 @@ void ListContainerAnimationManager::EndAnimation() {
       });
 }
 
-void ListContainerAnimationManager::SetUpdateAnimation(
-    std::string update_animation) {
-  if (update_animation == "default") {
-    update_animation_ = true;
+void ListContainerAnimationManager::SetUpdateAnimation(bool update_animation) {
+  if (!update_animation_.has_value()) {
+    update_animation_ = update_animation;
+  } else {
+    list_container_impl_->list_adapter_->OnErrorOccurred(base::LynxError(
+        lynx::error::E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES,
+        "Update-animation cannot be set multiple times."));
   }
 }
 
