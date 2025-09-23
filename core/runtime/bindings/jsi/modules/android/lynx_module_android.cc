@@ -143,7 +143,7 @@ LynxModuleAndroid::InvokeMethod(const std::string& method_name,
 
   if (!invoke_result.has_value()) {
     auto lock_delegate = delegate_.lock();
-    if (!lock_delegate && invoke_result.error().second.has_value()) {
+    if (lock_delegate && invoke_result.error().second.has_value()) {
       lock_delegate->OnErrorOccurred(
           module_name_, method_name,
           std::move(invoke_result.error().second.value()));
