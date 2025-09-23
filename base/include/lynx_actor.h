@@ -93,6 +93,18 @@ class LynxActor : public LynxActorMixin<LynxActor<T>, T>,
     });
   }
 
+  template <typename F>
+  void ActEmergency(F&& func) {
+    if (!enable_) {
+      return;
+    }
+
+    runner_->PostEmergencyTask([self = this->shared_from_this(),
+                                func = std::forward<F>(func)]() mutable {
+      self->Invoke(std::forward<F>(func));
+    });
+  }
+
   template <typename F,
             typename = std::enable_if_t<!std::is_void<
                 std::invoke_result_t<F, std::unique_ptr<T>&>>::value>>
