@@ -6,6 +6,7 @@
 #define BASE_INCLUDE_LINKED_HASH_MAP_H_
 
 #include <algorithm>
+#include <cstddef>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -496,6 +497,8 @@ class LinkedHashMap {
     return (const_cast<LinkedHashMap*>(this))
                ->inner_find(key, FindBuildMapThreshold) != end();
   }
+
+  size_t count(const Key& key) const { return contains(key) ? 1 : 0; }
 
   /// @brief This method is basically for internal usage. It searches the map
   /// and if key is absent, a default constructed value will be inserted.
