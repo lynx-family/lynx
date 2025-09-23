@@ -8,22 +8,6 @@ import androidx.annotation.RestrictTo;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public class TraceEventDef {
   /**
-   * @trace_description: Draw LynxView and its children on Android.
-   */
-  public static final String LYNX_TEMPLATE_RENDER_DRAW = "LynxTemplateRender.Draw";
-
-  /**
-   * @trace_description: Layout LynxView and its children on Android.
-   */
-  public static final String LYNX_TEMPLATE_RENDER_LAYOUT = "LynxTemplateRender.Layout";
-
-  /**
-   * @trace_description: Measure LynxView and its children on Android, which may trigger starlight
-   * re-layout if MeasureSpec changes.
-   */
-  public static final String LYNX_TEMPLATE_RENDER_MEASURE = "LynxTemplateRender.Measure";
-
-  /**
    * @trace_description: LynxView's onMeasure function, it is triggered by the Android system.
    */
   public static final String LYNX_VIEW_ON_MEASURE = "LynxView.onMeasure";
@@ -32,6 +16,11 @@ public class TraceEventDef {
    * @trace_description: LynxView's onLayout function, it is triggered by the Android system.
    */
   public static final String LYNX_VIEW_ON_LAYOUT = "LynxView.onLayout";
+
+  /**
+   * @trace_description: LynxView's onDraw function, it is triggered by the Android system.
+   */
+  public static final String LYNX_VIEW_ON_DRAW = "LynxView.onDraw";
 
   /**
    * @trace_description: LynxView's onAttachedToWindow function, it is triggered by the Android
@@ -230,6 +219,7 @@ public class TraceEventDef {
   public static final String WIDTH_MEASURE_SPEC = "widthMeasureSpec";
   public static final String HEIGHT_MEASURE_SPEC = "heightMeasureSpec";
   public static final String PARAMS = "params";
+  public static final String PIPELINE_IDS = "pipeline_ids";
 
   // timing
   public static final String PIPELINE_ID = "pipeline_id";

@@ -546,12 +546,6 @@ public class UIBody extends UIGroup<UIBodyView> {
 
     @Override
     protected void dispatchDraw(final Canvas canvas) {
-      if (TraceEvent.enableTrace()) {
-        HashMap<String, String> map = new HashMap<>();
-        map.put(TraceEventDef.INSTANCE_ID, String.valueOf(mInstanceId));
-        TraceEvent.beginSection(TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW, map);
-      }
-
       mIsMeaningfulPaintingAreaInvalidate = false;
 
       ITimingCollector timingCollector = mTimingCollector.get();
@@ -583,7 +577,6 @@ public class UIBody extends UIGroup<UIBodyView> {
       if (needLongTaskMonitor) {
         LynxLongTaskMonitor.didProcessTask();
       }
-      TraceEvent.endSection(TraceEventDef.LYNX_TEMPLATE_RENDER_DRAW);
     }
 
     void notifyMeaningfulLayout() {
