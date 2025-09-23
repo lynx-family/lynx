@@ -99,7 +99,7 @@ void ValueImplDarwin::ForeachArray(pub::ForeachArrayFunc func) const {
     return;
   }
   @autoreleasepool {
-    NSArray* array = (NSArray*)backend_value_;
+    NSArray* array = [(NSArray*)backend_value_ copy];
     for (NSUInteger i = 0; i < [backend_value_ count]; i++) {
       id value = array[i];
       ValueImplDarwin result(value);
@@ -114,7 +114,7 @@ void ValueImplDarwin::ForeachMap(pub::ForeachMapFunc func) const {
   }
 
   @autoreleasepool {
-    NSDictionary* dict = (NSDictionary*)backend_value_;
+    NSDictionary* dict = [(NSDictionary*)backend_value_ copy];
     for (id key in dict) {
       id value = dict[key];
       func(ValueImplDarwin(key), ValueImplDarwin(value));
