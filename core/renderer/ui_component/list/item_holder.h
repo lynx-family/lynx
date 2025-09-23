@@ -22,9 +22,13 @@ class ItemHolder {
   class AnimationDelegate {
    public:
     virtual ~AnimationDelegate() = default;
+    // Animation running currently.
     virtual list::ListContainerAnimationType AnimationType() const = 0;
     virtual void DeferredDestroyItemHolder(ItemHolder* holder) = 0;
     virtual void RecycleItemHolder(ItemHolder* holder) = 0;
+    // Whether enable update animation in frontend, distinguish this from
+    // `AnimationType()` plz.
+    virtual bool UpdateAnimation() const = 0;
   };
 
   ItemHolder(int index, const std::string& item_key);
@@ -111,8 +115,6 @@ class ItemHolder {
     }
   };
 
-  // list animation.
-  virtual void SetAnimationDelegate(ItemHolder::AnimationDelegate* delegate) {}
   virtual void DoAnimationFrame(float progress) {}
   virtual void EndAnimation() {}
   virtual void RecycleAfterAnimation(list::ItemHolderAnimationType type) {}
