@@ -14451,6 +14451,147 @@ TEST_P(FiberElementTest,
               "0.438571, 0, 0.422618, -0.23457, 0.875426, 0, 10, 20, 30, 1)");
 }
 
+// Test case for PageElement holding a ComponentElement, which holds a
+// ViewElement. The ComponentElement's CSSFragment has a :root selector with CSS
+// variables. Repeatedly call PageElement's FlushActionsAsRoot 1000 times.
+TEST_P(FiberElementTest, FlushActionsAsRootWithCssVarLoop) {
+  for (int i = 0; i < 10; ++i) {
+    // 1. Create CSSFragment for ComponentElement with :root selector and CSS
+    // variables
+    CSSParserConfigs configs;
+    auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+
+    CSSParserTokenMap component_tokens_map;
+    // :root
+    {
+      auto id = CSSPropertyID::kPropertyIDOpacity;
+      auto impl = lepus::Value(0.3);
+      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+      tokens.get()->style_variables_["--main-color"] = "#ff0000";
+      tokens.get()->style_variables_["--font-size"] = "20px";
+      tokens.get()->style_variables_["--font-size0"] = "30px";
+      tokens.get()->style_variables_["--font-size1"] = "30px";
+      for (int j = 0; j < 10000; ++j) {
+        tokens.get()->style_variables_["--var" + std::to_string(j)] = "30px";
+      }
+
+      std::string key = ":root";
+      auto& sheets = tokens->sheets();
+      auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+      sheets.emplace_back(shared_css_sheet);
+      component_tokens_map.insert(std::make_pair(key, tokens));
+    }
+
+    // class .component
+    {
+      auto id = CSSPropertyID::kPropertyIDOpacity;
+      auto impl = lepus::Value(0.3);
+      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+      tokens.get()->style_variables_["--main-color"] = "#ff0000";
+      tokens.get()->style_variables_["--font-size"] = "20px";
+      tokens.get()->style_variables_["--font-size0"] = "30px";
+      tokens.get()->style_variables_["--font-size1"] = "30px";
+      for (int j = 0; j < 10000; ++j) {
+        tokens.get()->style_variables_["--var" + std::to_string(j)] = "30px";
+      }
+
+      std::string key = ".component";
+      auto& sheets = tokens->sheets();
+      auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+      sheets.emplace_back(shared_css_sheet);
+      component_tokens_map.insert(std::make_pair(key, tokens));
+    }
+
+    // class .view0-class
+    {
+      auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+      auto id = CSSPropertyID::kPropertyIDWidth;
+      auto impl = lepus::Value("20px");
+      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+      tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+          CSSValue(lepus::Value("var(--main-color)"));
+      tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+          CSSValue(lepus::Value("var(--font-size)"));
+
+      std::string key = ".view0-class";
+      auto& sheets = tokens->sheets();
+      auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+      sheets.emplace_back(shared_css_sheet);
+      component_tokens_map.insert(std::make_pair(key, tokens));
+    }
+
+    // class .view1-class
+    {
+      auto tokens = fml::MakeRefCounted<CSSParseToken>(configs);
+      auto id = CSSPropertyID::kPropertyIDWidth;
+      auto impl = lepus::Value("20px");
+      tokens.get()->raw_attributes_[id] = CSSValue(impl);
+
+      tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDColor] =
+          CSSValue(lepus::Value("var(--main-color)"));
+      tokens.get()->raw_attributes_[CSSPropertyID::kPropertyIDFontSize] =
+          CSSValue(lepus::Value("var(--font-size)"));
+
+      std::string key = ".view1-class";
+      auto& sheets = tokens->sheets();
+      auto shared_css_sheet = std::make_shared<CSSSheet>(key);
+      sheets.emplace_back(shared_css_sheet);
+      component_tokens_map.insert(std::make_pair(key, tokens));
+    }
+
+    const std::vector<int32_t> dependent_ids;
+    CSSKeyframesTokenMap keyframes;
+    CSSFontFaceRuleMap font_faces;
+    auto component_fragment = std::make_unique<SharedCSSFragment>(
+        2, dependent_ids, component_tokens_map, keyframes, font_faces);
+
+    // 2. Create element hierarchy: PageElement -> ComponentElement ->
+    // ViewElement
+    auto page = manager->CreateFiberPage("page", 2);
+    page->set_style_sheet_manager(
+        tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
+
+    base::String component_id("21");
+    int32_t css_id = 2;
+    base::String entry_name("__Card__");
+    base::String component_name("TestComp");
+    base::String path("/index/components/TestComp");
+    auto component = manager->CreateFiberComponent(
+        component_id, css_id, entry_name, component_name, path);
+    component->SetClass("component");
+    component->set_style_sheet_manager(
+        tasm->style_sheet_manager(tasm::DEFAULT_ENTRY_NAME));
+    component->SetParentComponentUniqueIdForFiber(
+        static_cast<int64_t>(page->impl_id()));
+
+    auto view0 = manager->CreateFiberView();
+    view0->SetClass("view0-class");
+    view0->SetParentComponentUniqueIdForFiber(
+        static_cast<int64_t>(component->impl_id()));
+
+    auto view1 = manager->CreateFiberView();
+    view1->SetClass("view0-class");
+    view1->SetParentComponentUniqueIdForFiber(
+        static_cast<int64_t>(component->impl_id()));
+
+    auto style_sheet_manager = page->css_style_sheet_manager_;
+    style_sheet_manager->raw_fragments_->insert(
+        std::make_pair(css_id, std::move(component_fragment)));
+
+    // Build the element tree
+    component->InsertNode(view0);
+    component->InsertNode(view1);
+
+    page->InsertNode(component);
+
+    // 3. Call FlushActionsAsRoot
+    page->FlushActionsAsRoot();
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(FiberElementTestModule, FiberElementTest,
                          ::testing::ValuesIn(fiber_element_generation_params));
 
