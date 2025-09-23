@@ -1607,7 +1607,12 @@ struct ReducedHash {
       (sizeof(K) <= sizeof(Type)) &&
       (std::is_enum_v<K> || std::is_integral_v<K>);
 
-  Type operator()(K v) const {
+  using BestTypeForOperator =
+      std::conditional_t<(sizeof(K) <= sizeof(void*)) &&
+                             std::is_trivially_copyable_v<K>,
+                         K, const K&>;
+
+  Type operator()(BestTypeForOperator v) const {
     if constexpr (sizeof(K) <= sizeof(Type)) {
       // Reinterpret K with unsigned zero extend when K is integer type or enum
       // type and fits into Type.
