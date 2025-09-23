@@ -1202,6 +1202,7 @@ void TemplateAssembler::PushRuntimeValidTid() {
   if (default_entry) {
     auto vm = default_entry->GetVm();
     if (vm) {
+      LOGE("PushRuntimeValidTid: " << this);
       vm->PushContextValidTid();
     }
   }

@@ -1068,6 +1068,12 @@ void LynxShell::AttachEngineToUIThread() {
       true, reinterpret_cast<int64_t>(this));
 #endif
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_ATTACH_ENGINE_TO_UI_THREAD);
+  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+    engine_actor_->ActEmergency([](auto& engine) {
+      // To enable MTS runtime tid check;
+      engine->GetTasm()->PushRuntimeValidTid();
+    });
+  }
   if (engine_thread_switch_) {
     switch (current_strategy_) {
       case base::ThreadStrategyForRendering::MOST_ON_TASM:
@@ -1090,6 +1096,12 @@ void LynxShell::DetachEngineFromUIThread() {
       false, reinterpret_cast<int64_t>(this));
 #endif
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LYNX_SHELL_DETACH_ENGINE_TO_UI_THREAD);
+  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+    engine_actor_->Act([](auto& engine) {
+      // To enable MTS runtime tid check;
+      engine->GetTasm()->PushRuntimeValidTid();
+    });
+  }
   if (engine_thread_switch_) {
     switch (current_strategy_) {
       case base::ThreadStrategyForRendering::ALL_ON_UI:
@@ -1119,8 +1131,6 @@ void LynxShell::OnThreadStrategyUpdated() {
   engine_actor_->Act([current_strategy = current_strategy_](auto& engine) {
     engine->GetTasm()->page_proxy()->element_manager()->SetThreadStrategy(
         current_strategy);
-    // To enable MTS runtime tid check;
-    engine->GetTasm()->PushRuntimeValidTid();
   });
 }
 
