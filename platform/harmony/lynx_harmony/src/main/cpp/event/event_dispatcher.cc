@@ -71,7 +71,8 @@ GestureInterrupter EventDispatcher::event_gesture_interrupter_callback_ =
   }
 
   if (gesture == event_dispatcher->velocity_tracker_pan_gesture_ &&
-      event_dispatcher->ui_owner_->GetGestureArenaManager() != nullptr) {
+      event_dispatcher->ui_owner_->GetGestureArenaManager() != nullptr &&
+      event_dispatcher->ContainGestureNode()) {
     return GESTURE_INTERRUPT_RESULT_CONTINUE;
   }
 
@@ -817,6 +818,21 @@ bool EventDispatcher::ShouldInterceptGesture() {
   auto target = first_active_target_.lock().get();
   while (target != nullptr && target->ParentTarget() != target) {
     if (target->IsInterceptGesture()) {
+      return true;
+    }
+    target = target->ParentTarget();
+  }
+  return false;
+}
+
+bool EventDispatcher::ContainGestureNode() {
+  if (first_active_target_.expired()) {
+    return false;
+  }
+  auto target = first_active_target_.lock().get();
+  while (target != nullptr && target->ParentTarget() != target) {
+    // When greater than 0, the corresponding node is bound to a gesture handler
+    if (target->GestureArenaMemberId() > 0) {
       return true;
     }
     target = target->ParentTarget();
