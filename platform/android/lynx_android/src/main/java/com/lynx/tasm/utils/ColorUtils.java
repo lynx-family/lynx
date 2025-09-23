@@ -10,17 +10,21 @@ public class ColorUtils {
     if (TextUtils.isEmpty(color)) {
       return 0;
     }
-    return nativeParse(color);
+    CSSColor cssColor = CSSColor.parse(color);
+    if (cssColor == null) {
+      return 0;
+    }
+    return cssColor.cast();
   }
 
   public static boolean isValid(String color) {
     if (color == null || color.isEmpty()) {
       return false;
     }
-
-    return nativeValidate(color);
+    return CSSColor.parse(color, new CSSColor[1]);
   }
 
   private static native int nativeParse(String color);
+
   private static native boolean nativeValidate(String color);
 }
