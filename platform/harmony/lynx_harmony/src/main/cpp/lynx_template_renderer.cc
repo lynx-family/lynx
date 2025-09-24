@@ -1097,6 +1097,9 @@ napi_value LynxTemplateRenderer::CallJSFunction(napi_env env,
   if (!CheckNapiUnwrapObject(status, obj, "CallJSFunction failed")) {
     return nullptr;
   }
+  if (!obj->runtime_proxy_) {
+    return nullptr;
+  }
   obj->runtime_proxy_->CallJSFunction(module_id, method, std::move(params));
 
   return nullptr;
@@ -1140,7 +1143,9 @@ napi_value LynxTemplateRenderer::CallJSApiCallbackWithValue(
                              "CallJSApiCallbackWithValue failed")) {
     return nullptr;
   }
-
+  if (!obj->runtime_proxy_) {
+    return nullptr;
+  }
   obj->runtime_proxy_->CallJSApiCallbackWithValue(callback_id,
                                                   std::move(params));
   return nullptr;
@@ -1165,7 +1170,9 @@ napi_value LynxTemplateRenderer::CallJSIntersectionObserver(
                              "CallJSIntersectionObserver failed")) {
     return nullptr;
   }
-
+  if (!obj->runtime_proxy_) {
+    return nullptr;
+  }
   obj->runtime_proxy_->CallJSIntersectionObserver(observer_id, callback_id,
                                                   std::move(params));
 
@@ -1189,7 +1196,9 @@ napi_value LynxTemplateRenderer::EvaluateScript(napi_env env,
   if (!CheckNapiUnwrapObject(status, obj, "EvaluateScript failed")) {
     return nullptr;
   }
-
+  if (!obj->runtime_proxy_) {
+    return nullptr;
+  }
   obj->runtime_proxy_->EvaluateScript(url, std::move(script), callback_id);
 
   return nullptr;
@@ -1214,7 +1223,9 @@ napi_value LynxTemplateRenderer::RejectDynamicComponentLoad(
                              "RejectDynamicComponentLoad failed")) {
     return nullptr;
   }
-
+  if (!obj->runtime_proxy_) {
+    return nullptr;
+  }
   obj->runtime_proxy_->RejectDynamicComponentLoad(url, callback_id, err_code,
                                                   err_msg);
   return nullptr;
