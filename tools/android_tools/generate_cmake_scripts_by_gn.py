@@ -62,6 +62,8 @@ def clean_all_products(root_dir):
     return 0
   for dir in os.listdir(gn_out_dir):
     cmake_targets_dir = os.path.join(gn_out_dir, dir, 'cmake_targets')
+    if not os.path.exists(cmake_targets_dir):
+      continue
     for target in os.listdir(cmake_targets_dir):
       if target in cmake_targets:
         continue
