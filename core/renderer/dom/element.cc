@@ -1465,8 +1465,13 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
   if (css_keyframe_manager_ != nullptr) {
     css_keyframe_manager_->TickAllAnimation(frame_time);
   }
-  bool has_layout_style = FlushAnimatedStyle();
-  if (has_layout_style) {
+  auto [need_layout, has_pending_bundle] = FlushAnimatedStyle();
+  bool need_mark_props_dirty = need_layout;
+  if (element_manager_->FixNewAnimatorFlushBug() && is_fiber_element()) {
+    // FIXME(linxs): remove this settings in next version
+    need_mark_props_dirty = need_layout || has_pending_bundle;
+  }
+  if (need_mark_props_dirty) {
     if (tasm::LynxEnv::GetInstance().EnableNewAnimatorOnPatchFinishOpt()) {
       if (is_radon_element()) {
         element_manager_->SetNeedsLayout();
@@ -1482,7 +1487,7 @@ bool Element::TickAllAnimation(fml::TimePoint& frame_time,
       element_manager_->OnFinishUpdateProps(this, options);
     }
   }
-  return has_layout_style;
+  return need_layout;
 }
 
 void Element::UpdateFinalStyleMap(const StyleMap& styles) {
@@ -1492,9 +1497,9 @@ void Element::UpdateFinalStyleMap(const StyleMap& styles) {
   }
 }
 
-bool Element::FlushAnimatedStyle() {
+std::tuple<bool, bool> Element::FlushAnimatedStyle() {
   if (!final_animator_map_.has_value() || final_animator_map_->empty()) {
-    return false;
+    return {false, false};
   }
   TRACE_EVENT(LYNX_TRACE_CATEGORY, ELEMENT_FLUSH_ANIMATED_STYLE);
   bool has_layout_style = false;
@@ -1513,7 +1518,8 @@ bool Element::FlushAnimatedStyle() {
     bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
   }
 
-  bool has_render_style = false;
+  bool has_pending_bundle = false;
+  bool should_do_full_flush = has_layout_style || !has_painting_node_;
   for (const auto& style : *final_animator_map_) {
     // Record previous before rtl-converter for transition.
     if (style.second != CSSValue::Empty()) {
@@ -1522,14 +1528,14 @@ bool Element::FlushAnimatedStyle() {
       ResetElementPreviousStyle(style.first);
     }
 
-    if (has_layout_style || !has_painting_node_) {
+    if (should_do_full_flush) {
       FlushAnimatedStyleInternal(style.first, style.second);
     } else {
       // If it's a render property, push it to the temporary bundle.
       if (computed_css_style()->SetValue(style.first, style.second)) {
         auto property_name = CSSProperty::GetPropertyName(style.first).c_str();
         auto style_value = computed_css_style()->GetValue(style.first);
-        has_render_style = true;
+        has_pending_bundle = true;
 
         switch (style.first) {
           case kPropertyIDTransform:
@@ -1558,7 +1564,7 @@ bool Element::FlushAnimatedStyle() {
       }
     }
   }
-  if (has_render_style && !prop_bundle_) {
+  if (has_pending_bundle && !prop_bundle_) {
     // // Flush prop_bundle to PaintingNode for render value.
     HandleDelayTask([this, id = impl_id(), tend_to_flatten = TendToFlatten(),
                      bundle_ = bundle]() {
@@ -1566,9 +1572,10 @@ bool Element::FlushAnimatedStyle() {
                                              std::move(bundle_));
       painting_context()->OnNodeReady(id);
     });
+    has_pending_bundle = false;
   }
   final_animator_map_.reset();
-  return has_layout_style || !has_painting_node_;
+  return {should_do_full_flush, has_pending_bundle};
 }
 
 bool Element::ShouldConsumeTransitionStylesInAdvance() {

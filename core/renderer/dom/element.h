@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -372,7 +373,8 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   virtual void CheckHasInlineContainer(Element* parent);
 
-  bool FlushAnimatedStyle();
+  //{need_request_layout,has_pending_bundle}
+  std::tuple<bool, bool> FlushAnimatedStyle();
   virtual void FlushAnimatedStyleInternal(tasm::CSSPropertyID,
                                           const tasm::CSSValue&) = 0;
 

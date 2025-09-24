@@ -832,13 +832,13 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle00) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.SetFontScale(2);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle0) {
@@ -849,26 +849,26 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle0) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.UpdateScreenSize(10, 100);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.SetFontScale(2);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.UpdateViewport(100, SLMeasureModeDefinite, 1,
                             SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
 
   auto* mock_painting_context = static_cast<FiberMockPaintingContext*>(
       view->painting_context()->platform_impl_.get());
@@ -880,7 +880,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle0) {
   EXPECT_TRUE(mock_painting_node_->props_.find("font-size") !=
               mock_painting_node_->props_.end());
   EXPECT_EQ(mock_painting_node_->props_["font-size"].Number(), 10);
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle1) {
@@ -891,24 +891,24 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle1) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.UpdateScreenSize(10, 100);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.SetFontScale(2);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
 
   env_config.UpdateViewport(1, SLMeasureModeDefinite, 1, SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle2) {
@@ -919,26 +919,26 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle2) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.UpdateViewport(390, SLMeasureMode::SLMeasureModeDefinite, 880,
                             SLMeasureMode::SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.SetFontScale(2);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.UpdateViewport(1, SLMeasureModeDefinite, 1, SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle3) {
@@ -949,27 +949,27 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle3) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.UpdateViewport(10, SLMeasureModeDefinite, 10,
                             SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.UpdateScreenSize(10, 100);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.SetFontScale(2);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle4) {
@@ -980,27 +980,27 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle4) {
 
   view->SetStyle(id, value);
   view->FlushActionsAsRoot();
-  view->prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
 
   auto& env_config = manager->GetLynxEnvConfig();
   env_config.UpdateViewport(10, SLMeasureModeDefinite, 10,
                             SLMeasureModeDefinite);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_TRUE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_TRUE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.UpdateScreenSize(10, 100);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 
   env_config.SetFontScale(10);
   view->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_FALSE(view->prop_bundle_);
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  view->pre_prop_bundle_ = nullptr;
 }
 
 TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
@@ -1009,7 +1009,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
   auto value = lepus::Value("10rpx");
   page->SetStyle(id, value);
   page->FlushActionsAsRoot();
-  page->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
 
   auto view = manager->CreateFiberView();
   CSSPropertyID new_id = CSSPropertyID::kPropertyIDWidth;
@@ -1019,8 +1019,8 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
 
   page->FlushActionsAsRoot();
 
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
@@ -1029,18 +1029,18 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
                             SLMeasureModeDefinite);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_FALSE(page->prop_bundle_);
-  EXPECT_FALSE(view->prop_bundle_);
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(page->pre_prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
   env_config.UpdateScreenSize(10, 100);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
@@ -1048,16 +1048,16 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle5) {
       tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::REM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
   env_config.SetFontScale(10);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 10,
                                          1));
@@ -1075,7 +1075,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
   auto value = lepus::Value("10rpx");
   page->SetStyle(id, value);
   page->FlushActionsAsRoot();
-  page->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
 
   auto view = manager->CreateFiberView();
   CSSPropertyID new_id_0 = CSSPropertyID::kPropertyIDWidth;
@@ -1088,8 +1088,8 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
 
   page->FlushActionsAsRoot();
 
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
@@ -1098,18 +1098,18 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
                             SLMeasureModeDefinite);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_FALSE(page->prop_bundle_);
-  EXPECT_FALSE(view->prop_bundle_);
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  EXPECT_FALSE(page->pre_prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
   env_config.UpdateScreenSize(10, 100);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
@@ -1117,16 +1117,16 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle6) {
       tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
   env_config.SetFontScale(10);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 10,
                                          1));
@@ -1144,7 +1144,7 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
   auto value = lepus::Value("10rpx");
   page->SetStyle(id, value);
   page->FlushActionsAsRoot();
-  page->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
 
   auto view = manager->CreateFiberView();
   CSSPropertyID new_id_0 = CSSPropertyID::kPropertyIDWidth;
@@ -1157,8 +1157,8 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
 
   page->FlushActionsAsRoot();
 
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
@@ -1167,8 +1167,8 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
                             SLMeasureModeDefinite);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateViewport,
                                   false);
-  EXPECT_FALSE(page->prop_bundle_);
-  EXPECT_FALSE(view->prop_bundle_);
+  EXPECT_FALSE(page->pre_prop_bundle_);
+  EXPECT_FALSE(view->pre_prop_bundle_);
   page->prop_bundle_ = nullptr;
   view->prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
@@ -1177,8 +1177,8 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
   env_config.UpdateScreenSize(10, 100);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateScreenMetrics,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 1, 1));
   EXPECT_TRUE(HasCaptureSignWithStyleKeyAndValue(
@@ -1186,16 +1186,16 @@ TEST_P(FiberElementTest, TestUpdateDynamicElementStyle7) {
       tasm::CSSValue(lepus::Value(1.0f), CSSValuePattern::EM)));
   EXPECT_TRUE(HasCaptureSignWithFontSize(view->impl_id(), view->GetFontSize(),
                                          view->GetCurrentRootFontSize(), 1, 1));
-  page->prop_bundle_ = nullptr;
-  view->prop_bundle_ = nullptr;
+  page->pre_prop_bundle_ = nullptr;
+  view->pre_prop_bundle_ = nullptr;
   tasm_mediator.captured_ids_.clear();
   tasm_mediator.captured_bundles_.clear();
 
   env_config.SetFontScale(10);
   page->UpdateDynamicElementStyle(DynamicCSSStylesManager::kUpdateFontScale,
                                   false);
-  EXPECT_TRUE(page->prop_bundle_);
-  EXPECT_TRUE(view->prop_bundle_);
+  EXPECT_TRUE(page->pre_prop_bundle_);
+  EXPECT_TRUE(view->pre_prop_bundle_);
   EXPECT_TRUE(HasCaptureSignWithFontSize(page->impl_id(), page->GetFontSize(),
                                          page->GetCurrentRootFontSize(), 10,
                                          1));
