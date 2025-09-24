@@ -9,12 +9,13 @@
 @class LynxContext;
 @class LynxViewBuilder;
 @class LynxProviderRegistry;
+@protocol LynxUIRendererProtocol;
 
 @protocol LynxUIRendererCreatorProtocol <NSObject>
 
-- (id)createUIRendererWithContext:(LynxContext *)context
-                    containerView:(UIView<LUIBodyView> *)containerView
-                          builder:(LynxViewBuilder *)builder
-                 providerRegistry:(LynxProviderRegistry *)providerRegistry;
+- (id<LynxUIRendererProtocol>)createUIRendererWithContext:(LynxContext *)context
+                                            containerView:(UIView<LUIBodyView> *)containerView
+                                                  builder:(LynxViewBuilder *)builder
+                                         providerRegistry:(LynxProviderRegistry *)providerRegistry;
 
 @end

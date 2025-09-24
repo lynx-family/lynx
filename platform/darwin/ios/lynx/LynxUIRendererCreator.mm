@@ -7,10 +7,10 @@
 
 @implementation LynxUIRendererCreator
 
-- (id)createUIRendererWithContext:(LynxContext *)context
-                    containerView:(UIView<LUIBodyView> *)containerView
-                          builder:(LynxViewBuilder *)builder
-                 providerRegistry:(LynxProviderRegistry *)providerRegistry {
+- (id<LynxUIRendererProtocol>)createUIRendererWithContext:(LynxContext *)context
+                                            containerView:(UIView<LUIBodyView> *)containerView
+                                                  builder:(LynxViewBuilder *)builder
+                                         providerRegistry:(LynxProviderRegistry *)providerRegistry {
   return [[LynxUIRenderer alloc] initWithLynxContext:context
                                        containerView:containerView
                                              builder:builder

@@ -4728,7 +4728,7 @@ public class LynxUIRendererCreator : NSObject, <LynxUIRendererCreatorProtocol> {
 }
 
 public protocol LynxUIRendererCreatorProtocol-p : <NSObject> {
-  public id LynxUIRendererCreatorProtocol-p::createUIRendererWithContext:containerView:builder:providerRegistry:(LynxContext *context,[containerView] UIView< LUIBodyView > *containerView,[builder] LynxViewBuilder *builder,[providerRegistry] LynxProviderRegistry *providerRegistry);
+  public id< LynxUIRendererProtocol > LynxUIRendererCreatorProtocol-p::createUIRendererWithContext:containerView:builder:providerRegistry:(LynxContext *context,[containerView] UIView< LUIBodyView > *containerView,[builder] LynxViewBuilder *builder,[providerRegistry] LynxProviderRegistry *providerRegistry);
 }
 
 public protocol LynxUIRendererProtocol-p : <NSObject> {
