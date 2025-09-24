@@ -78,9 +78,6 @@ config("base_public_config") {
       "lynx_EXPORTS",
     ]
   }
-  if (enable_unittests) {
-    defines += [ "BASE_NO_EXPORT" ]
-  }
   configs = [ ":base_log_public_config" ]
 }
 
