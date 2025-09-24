@@ -1289,7 +1289,7 @@ public class LynxEnv {
     mEnableImageAsyncLayout =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_ASYNC_LAYOUT, false);
     mEnableImageRequestOptimize =
-        getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_REQUEST_OPTIMIZE, false);
+        getBooleanFromExternalEnv(LynxEnvKey.ENABLE_IMAGE_REQUEST_OPTIMIZE, true);
     mEnableFlattenImageFlickerFix =
         getBooleanFromExternalEnv(LynxEnvKey.ENABLE_FLATTEN_IMAGE_FLICKER_FIX, true);
   }
