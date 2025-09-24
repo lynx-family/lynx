@@ -16,7 +16,7 @@
     "@lynx-example/lazy-bundle": "0.3.0",
     "@lynx-example/list": "0.3.0",
     "@lynx-example/scroll-view": "0.3.0",
-    "@lynx-example/text": "0.3.0",
+    "@lynx-example/text": "0.6.2",
     "@lynx-example/view": "0.3.0"
   },
   "devDependencies": {

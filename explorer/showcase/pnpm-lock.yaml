@@ -12,7 +12,7 @@ importers:
       '@lynx-example/lazy-bundle': 0.3.0
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
-      '@lynx-example/text': 0.3.0
+      '@lynx-example/text': 0.6.2
       '@lynx-example/view': 0.3.0
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
     dependencies:
@@ -24,7 +24,7 @@ importers:
       '@lynx-example/lazy-bundle': 0.3.0
       '@lynx-example/list': 0.3.0
       '@lynx-example/scroll-view': 0.3.0
-      '@lynx-example/text': 0.3.0
+      '@lynx-example/text': 0.6.2
       '@lynx-example/view': 0.3.0
     devDependencies:
       '@lynx-js/qrcode-rsbuild-plugin': 0.3.6
@@ -80,6 +80,10 @@ packages:
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
     engines: {node: '>=10.0.0'}
     dev: true
+
+  /@hongzhiyuan/preact/10.24.0-00213bad:
+    resolution: {integrity: sha512-bHWp4ZDK5ZimcY+bTWw3S3xGiB8eROpZj0RK3FClNIaTOajb0b11CsT3K+pdeakgPgq1jWN3T2e2rfrPm40JsQ==}
+    dev: false
 
   /@hongzhiyuan/preact/10.24.0-319c684e:
     resolution: {integrity: sha512-weWzMUnmXk7gynEpOo/iIyfq95pRoFO2+18eiwD0hk/TeIQUeHbyG4W/S3lCEjB54jvft/itXwhkF+vz623BEg==}
@@ -195,10 +199,10 @@ packages:
       - '@types/react'
     dev: false
 
-  /@lynx-example/text/0.3.0:
-    resolution: {integrity: sha512-kF0QvjOuxr1OR0vdhB09U50AGXNn4HOL3Wtx5BZ7CUnj4bhx5zoEniscssTYM524YNMd+9JFbVVc1vBC4qWVMA==}
+  /@lynx-example/text/0.6.2:
+    resolution: {integrity: sha512-P5CJoCt1hKqMrfK+gWcSevyx/k+kAwTfRWEGeirvEuej69XBW/EEPUM+G6DCRkT30svNEX0cnqHHoX4gofGuQw==}
     dependencies:
-      '@lynx-js/react': 0.105.0
+      '@lynx-js/react': 0.112.6
     transitivePeerDependencies:
       - '@lynx-js/types'
       - '@types/react'
@@ -324,6 +328,18 @@ packages:
       '@lynx-js/types': 3.3.0
       '@types/react': 18.3.18
       preact: /@hongzhiyuan/preact/10.24.0-319c684e
+
+  /@lynx-js/react/0.112.6:
+    resolution: {integrity: sha512-HBzWidMk8/1EdMi6Ej5f1onT5xt2tG8CL1+scsZ0ArURemcqiWKSSktb4zrvIl2u/Ele0Np3m7fy8Cm9YWXAjA==}
+    peerDependencies:
+      '@lynx-js/types': '*'
+      '@types/react': ^18
+    peerDependenciesMeta:
+      '@lynx-js/types':
+        optional: true
+    dependencies:
+      preact: /@hongzhiyuan/preact/10.24.0-00213bad
+    dev: false
 
   /@lynx-js/rspeedy/0.9.3:
     resolution: {integrity: sha512-2wwEVRkx37ITavXC210tWA5yMuQe+jbGqfJ9U056bkgJNcjHlpsobTTooxaF+uHnhDfeqll7OeCn05lyfNoxBA==}
