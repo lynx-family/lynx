@@ -1094,6 +1094,7 @@ class ElementManager : public ElementContextDelegate {
   bool FixStackingContextDirtyFlagBug() const {
     return fix_stacking_context_dirty_flag_;
   }
+  bool FixNewAnimatorFlushBug() const { return fix_new_animator_flush_bug_; }
 
   bool CSSFragmentParsingOnTASMWorkerMTSRender();
 
@@ -1238,6 +1239,7 @@ class ElementManager : public ElementContextDelegate {
   bool fix_negative_z_index_bug_{true};
   bool fix_fixed_z_index_switch_bug_{true};
   bool fix_stacking_context_dirty_flag_{true};
+  bool fix_new_animator_flush_bug_{true};
   bool css_fragment_parsing_tasm_worker_thread_{false};
 
   bool enable_fiber_element_memory_reporter_{false};

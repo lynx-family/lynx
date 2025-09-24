@@ -51,6 +51,7 @@ lynx_core_source_set("dom") {
 
   if (enable_unittests) {
     public_deps += [ "../css:css_decoder" ]
+    defines = [ "ENABLE_UNITTESTS" ]
   }
   if (enable_lepusng_worklet) {
     public_deps += [ "../worklet:worklet" ]

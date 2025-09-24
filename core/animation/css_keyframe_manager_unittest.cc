@@ -316,14 +316,14 @@ TEST_F(CSSKeyframeManagerTest, UpdateAndFlushAnimatedStyle) {
   bool update_flag = final_map.empty();
   EXPECT_TRUE(update_flag);
 
-  bool flush_flag = test_element->FlushAnimatedStyle();
+  auto [flush_flag, has_pending] = test_element->FlushAnimatedStyle();
   EXPECT_FALSE(flush_flag);
 
   test_manager->UpdateFinalStyleMap(test_map);
   update_flag = test_element->final_animator_map_->empty();
   EXPECT_FALSE(update_flag);
 
-  flush_flag = test_element->FlushAnimatedStyle();
+  std::tie(flush_flag, has_pending) = test_element->FlushAnimatedStyle();
   EXPECT_TRUE(flush_flag);
 }
 
