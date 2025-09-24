@@ -83,8 +83,10 @@ export interface DevtoolResult {
 export class LynxTemplateRenderer {
   constructor();
 
-  nativeAttach(ui_delegate: number[], providers: (Object | undefined)[], width: number, height: number,
-    density: number, isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
+  nativeAttach(density: number): void;
+
+  nativeReset(ui_delegate: number[], providers: (Object | undefined)[], width: number, height: number,
+    isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
     useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
     sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime): void;
@@ -198,7 +200,7 @@ export class UIOwner {
 
   keyboardStatusChanged(height: number): void;
 
-    canConsumeTouchEvent(x: number, y: number): boolean;
+  canConsumeTouchEvent(x: number, y: number): boolean;
 }
 
 export class UIBase {
@@ -248,9 +250,9 @@ export class EventReporter {
 
 export class PerformanceController {
   constructor(ref: Object, onPerformanceEventFunc: Function);
-  
+
   destroy();
-  
+
   setTiming(timestamp: number, timingKey: string, pipelineID: string): void;
 
   markTiming(timingKey: string, pipelineID: string): void;

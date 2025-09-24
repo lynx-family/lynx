@@ -23,6 +23,7 @@
 #include "core/runtime/bindings/jsi/modules/harmony/module_factory_harmony.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
+#include "core/shell/lynx_shell.h"
 #include "core/template_bundle/lynx_template_bundle.h"
 #include "harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 
@@ -46,16 +47,8 @@ namespace harmony {
 
 class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
  public:
-  LynxTemplateRenderer(
-      napi_env env, napi_value js_this, tasm::UIDelegate* ui_delegate,
-      const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
-      float width, float height, double display_density, bool is_host_renderer,
-      tasm::performance::PerformanceControllerHarmonyJSWrapper* perf_controller,
-      int thread_mode, std::string group_id, bool use_quickjs,
-      bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
-      bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
-      std::unique_ptr<ModuleFactoryHarmony> module_factory,
-      LynxRuntimeWrapper* runtime_wrapper);
+  LynxTemplateRenderer(napi_env env, napi_value js_this,
+                       double display_density);
 
   virtual ~LynxTemplateRenderer();
 
@@ -132,11 +125,24 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       int id, const std::vector<float>& pad_border_margin_layout) override;
   void SetInspectorOwner(devtool::LynxInspectorOwner* owner) override;
 
+  void SetUpLynxShell(
+      napi_env env, tasm::UIDelegate* ui_delegate,
+      const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
+      float width, float height, bool is_host_renderer,
+      tasm::performance::PerformanceControllerHarmonyJSWrapper*
+          js_perf_controller_wrapper,
+      int32_t thread_mode, std::string group_id, bool use_quickjs,
+      bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
+      bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
+      std::unique_ptr<ModuleFactoryHarmony> module_factory,
+      LynxRuntimeWrapper* runtime_wrapper);
+
   static napi_value Init(napi_env env, napi_value exports);
   static napi_value GetBaseTraceBackend(napi_env env, napi_callback_info info);
   static napi_value InitGlobalEnv(napi_env env, napi_callback_info info);
   static napi_value NativeAttach(napi_env env, napi_callback_info info);
   static napi_value NativeDetach(napi_env env, napi_callback_info info);
+  static napi_value NativeReset(napi_env env, napi_callback_info info);
   static napi_value SetTracingDirPath(napi_env env, napi_callback_info info);
   static napi_value SetCacheDirPath(napi_env env, napi_callback_info info);
   static napi_value TraceEventBegin(napi_env env, napi_callback_info info);

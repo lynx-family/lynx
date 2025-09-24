@@ -24,41 +24,54 @@ const TAG = 'LynxTemplateRenderer';
 export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   private clients: LynxViewClient[];
   private url?: string;
-  private perfController: PerformanceController;
+  private perfController?: PerformanceController;
   private providers: (LynxResourceProvider | undefined)[];
+  private isHostRenderer: boolean;
+  private enableJSRuntime: boolean;
   private readonly threadMode: ThreadStrategyForRendering;
   private backgroundRuntimeOptions: LynxBackgroundRuntimeOptions;
   private lynxView: LynxView;
   private lynxDevTool?: LynxDevTool;
   private moduleManager: LynxModuleManager;
+  private sendableModuleManager: SendableLynxModuleManager;
   private destroyed = false;
   private displayInfo = LynxEnv.getDisplayInfo().clone();
 
-  constructor(clients: LynxViewClient[], uiDelegate: number[], providers: (LynxResourceProvider | undefined)[],
-    isHostRenderer: boolean, threadMode: ThreadStrategyForRendering,
+  constructor(clients: LynxViewClient[], providers: (LynxResourceProvider | undefined)[],
+    isHostRenderer: boolean,
+    threadMode: ThreadStrategyForRendering,
     backgroundRuntimeOptions: LynxBackgroundRuntimeOptions,
-    lynxView: LynxView, perfController: PerformanceController, enableJSRuntime: boolean,
+    lynxView: LynxView,
+    enableJSRuntime: boolean,
     moduleManager: LynxModuleManager,
     sendableModuleManager: SendableLynxModuleManager) {
     super();
     this.clients = clients;
     this.providers = providers;
+    this.isHostRenderer = isHostRenderer;
+    this.enableJSRuntime = enableJSRuntime;
     this.threadMode = threadMode;
     this.backgroundRuntimeOptions = new LynxBackgroundRuntimeOptions(backgroundRuntimeOptions);
+    this.nativeAttach(LynxEnv.getDensity());
+    this.lynxView = lynxView;
+    this.moduleManager = moduleManager;
+    this.sendableModuleManager = sendableModuleManager;
+  }
+
+  reset(uiDelegate: number[], perfController: PerformanceController) {
     this.perfController = perfController;
-    this.nativeAttach(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
-      LynxEnv.getDensity(), isHostRenderer, this.perfController.native, this.threadMode,
+    this.nativeReset(uiDelegate, this.providers, this.displayInfo.screenWidth, this.displayInfo.screenHeight,
+      this.isHostRenderer, this.perfController.native, this.threadMode,
       this.backgroundRuntimeOptions.getGroupID(),
       this.backgroundRuntimeOptions.useQuickJSEngine(),
       this.backgroundRuntimeOptions.enableJSGroupThread(),
       this.backgroundRuntimeOptions.getPreloadJSPath(),
-      this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl, enableJSRuntime,
-      convertModuleArgs(moduleManager),
-      convertModuleArgs(sendableModuleManager), lynxView.backgroundRuntime);
-    this.lynxView = lynxView;
-    this.moduleManager = moduleManager;
+      this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl,
+      this.enableJSRuntime,
+      convertModuleArgs(this.moduleManager),
+      convertModuleArgs(this.sendableModuleManager), this.lynxView.backgroundRuntime);
     // release backgroundRuntime
-    lynxView.backgroundRuntime = undefined;
+    this.lynxView.backgroundRuntime = undefined;
   }
 
   aboutToDisappear() {
@@ -77,7 +90,7 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   onReloadTemplate() {
-    this.lynxView.reload();
+    this.lynxView.loadTemplate();
   }
 
   onRuntimeReady() {
@@ -146,11 +159,11 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
   }
 
   setTiming(timestamp: number, timingKey: string, pipelineID: string = '') {
-    this.perfController.setTiming(timestamp, timingKey, pipelineID);
+    this.perfController?.setTiming(timestamp, timingKey, pipelineID);
   }
 
   setExtraTiming(extraTiming: LynxExtraTiming) {
-    this.perfController.setExtraTiming(extraTiming);
+    this.perfController?.setExtraTiming(extraTiming);
   }
 
   initScreenMetrics() {
