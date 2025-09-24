@@ -135,6 +135,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (BOOL)enableImageAsyncLayout;
 
+- (BOOL)enableImageCancelRequest;
+
 - (BOOL)enableGenericResourceFetcher;
 
 - (BOOL)enableTextContainerOpt;

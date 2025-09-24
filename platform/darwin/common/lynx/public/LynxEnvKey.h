@@ -49,6 +49,7 @@ typedef NS_ENUM(uint64_t, LynxEnvKey) {
   LynxEnvEnableCreateUIAsync,
   LynxEnvEnableImageEventReport,
   LynxEnvEnableImageAsyncLayout,
+  LynxEnvEnableImageCancelRequest,
   LynxEnvEnableGenericResourceFetcher,
   LynxEnvEnableAnimationSyncTimeOpt,
   LynxEnvFixNewImageDownSampling,

@@ -1277,6 +1277,7 @@ public class LynxEnv : NSObject {
   public BOOL LynxEnv::enableComponentStatisticReport();
   public BOOL LynxEnv::enableImageEventReport();
   public BOOL LynxEnv::enableImageAsyncLayout();
+  public BOOL LynxEnv::enableImageCancelRequest();
   public BOOL LynxEnv::enableGenericResourceFetcher();
   public BOOL LynxEnv::enableTextContainerOpt();
   public BOOL LynxEnv::enableTextStorageDeallocFix();
@@ -5632,6 +5633,7 @@ public enum LynxEnvKey {
   LynxEnvEnableCreateUIAsync
   LynxEnvEnableImageEventReport
   LynxEnvEnableImageAsyncLayout
+  LynxEnvEnableImageCancelRequest
   LynxEnvEnableGenericResourceFetcher
   LynxEnvEnableAnimationSyncTimeOpt
   LynxEnvFixNewImageDownSampling
@@ -6188,6 +6190,7 @@ public enum LynxRadialCenterType {
   public FOUNDATION_EXPORT NSString* const LynxImageCacheChoice LynxImageCacheChoice;
   public FOUNDATION_EXPORT NSString* const LynxImageRequestPriority LynxImageRequestPriority;
   public FOUNDATION_EXPORT NSString* const LynxImagePlaceholderHashConfig LynxImagePlaceholderHashConfig;
+  public FOUNDATION_EXPORT NSString* const LynxImageCancelRequest LynxImageCancelRequest;
 
   public NSAttributedStringKey const LynxTextColorGradientKey LynxTextColorGradientKey;
   public NSAttributedStringKey const LynxInlineBackgroundKey LynxInlineBackgroundKey;

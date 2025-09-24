@@ -28,6 +28,7 @@ FOUNDATION_EXPORT NSString* const LynxImageSRScale;
 FOUNDATION_EXPORT NSString* const LynxImageCacheChoice;
 FOUNDATION_EXPORT NSString* const LynxImageRequestPriority;
 FOUNDATION_EXPORT NSString* const LynxImagePlaceholderHashConfig;
+FOUNDATION_EXPORT NSString* const LynxImageCancelRequest;
 
 @protocol LynxImageFetcher <NSObject>
 
