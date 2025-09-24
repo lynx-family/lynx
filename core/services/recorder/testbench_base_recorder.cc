@@ -89,7 +89,11 @@ void TestBenchBaseRecorder::InsertReplayConfig(int64_t record_id,
     replay_config_map_[record_id] = config_object;
   }
   rapidjson::Value& config = replay_config_map_[record_id];
-  config.AddMember(rapidjson::StringRef(name), value, allocator);
+  // StringRef creates dangling pointer when original string is destroyed, we
+  // create a deep copy of the string key to avoid heap-buffer-overflow.
+  rapidjson::Value key;
+  key.SetString(name, allocator);
+  config.AddMember(key, value, allocator);
 }
 
 TestBenchBaseRecorder& TestBenchBaseRecorder::GetInstance() {
