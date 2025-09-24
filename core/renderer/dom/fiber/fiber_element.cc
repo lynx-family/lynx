@@ -633,9 +633,7 @@ void FiberElement::RemovedFrom(FiberElement *insertion_point) {
   // any special action
 
   // Todo(kechenglong): Remove IsRadonArch.
-  if (LynxEnv::GetInstance().GetBoolEnv(
-          LynxEnv::Key::FIX_FIBER_REMOVE_TWICE_BUG, false) &&
-      IsRadonArch()) {
+  if (IsRadonArch()) {
     if (IsDetached()) {
       return;
     }
