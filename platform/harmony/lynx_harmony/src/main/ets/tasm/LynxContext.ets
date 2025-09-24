@@ -83,11 +83,7 @@ export class LynxContext implements IContext {
    * @param params Parameters carried by global events.
    */
   sendGlobalEvent(name: string, params: Object[]) {
-    if (this.lynxView.enableAirStrictMode) {
-      this.renderer?.triggerEventBus(name, params);
-    } else {
-      this.renderer?.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
-    }
+    this.lynxView.sendGlobalEvent(name, params);
   }
 
   public callJSFunction(moduleName: string, method: string, params: Object[]) {

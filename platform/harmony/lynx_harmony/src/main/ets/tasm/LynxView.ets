@@ -270,8 +270,7 @@ export struct LynxView {
       this.currentWindow = win;
       this.keyboardHeightChangeCallback = (height: number) => {
         const keyBoardHeight = Math.floor(px2vp(height));
-        this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit',
-          ['keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]]);
+        this.sendGlobalEvent('keyboardstatuschanged', [height !== 0 ? 'on' : 'off', keyBoardHeight, keyBoardHeight]);
         this.uiRenderer.keyboardStatusChanged(height !== 0 ? keyBoardHeight + 1: 0)
       };
       this.currentWindow.on('keyboardHeightChange', this.keyboardHeightChangeCallback);
@@ -402,6 +401,14 @@ export struct LynxView {
 
   aboutToRecycle(): void {
     LLog.d(TAG, 'aboutToRecycle');
+  }
+
+  sendGlobalEvent(name: string, params: Object[]) {
+    if (this.enableAirStrictMode) {
+      this.templateRenderer.triggerEventBus(name, params);
+    } else {
+      this.templateRenderer.callJSFunction('GlobalEventEmitter', 'emit', [name, params]);
+    }
   }
 
   private reportLynxError(error: LynxError) {
