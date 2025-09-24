@@ -84,6 +84,11 @@ class CSSBitsetBase {
     UNSAFE_TODO(chunks_.data()[bit / 64]) |= (1ull << (bit % 64));
   }
 
+  inline void Reset(CSSPropertyID id) {
+    size_t bit = static_cast<size_t>(static_cast<unsigned>(id));
+    UNSAFE_TODO(chunks_.data()[bit / 64]) &= ~(1ull << (bit % 64));
+  }
+
   inline void Or(CSSPropertyID id, bool v) {
     size_t bit = static_cast<size_t>(static_cast<unsigned>(id));
     UNSAFE_TODO(chunks_.data()[bit / 64]) |=

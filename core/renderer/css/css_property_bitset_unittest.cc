@@ -35,6 +35,18 @@ TEST(CSSIDBitsetTest, Reset) {
   EXPECT_FALSE(bits.Has(kPropertyIDTop));
 }
 
+TEST(CSSIDBitsetTest, ResetById) {
+  CSSIDBitset bits;
+  bits.Set(kPropertyIDTop);
+  bits.Set(kPropertyIDLeft);
+  EXPECT_TRUE(bits.Has(kPropertyIDTop));
+  EXPECT_TRUE(bits.Has(kPropertyIDLeft));
+
+  bits.Reset(kPropertyIDTop);
+  EXPECT_FALSE(bits.Has(kPropertyIDTop));
+  EXPECT_TRUE(bits.Has(kPropertyIDLeft));
+}
+
 TEST(CSSIDBitsetTest, Iterator) {
   CSSIDBitset bits;
   bits.Set(kPropertyIDTop);
