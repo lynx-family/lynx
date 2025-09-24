@@ -196,7 +196,7 @@ void LayoutMediator::OnLayoutAfter(
   options->updated_list_elements_.clear();
   if (is_first_layout && runtime_actor_) {
     runtime_actor_->ActAsync([](auto &runtime) {
-      runtime::MessageEvent event(
+      auto event = fml::MakeRefCounted<runtime::MessageEvent>(
           runtime::kMessageEventTypeOnAppFirstScreen,
           runtime::ContextProxy::Type::kCoreContext,
           runtime::ContextProxy::Type::kJSContext,

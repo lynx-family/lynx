@@ -121,7 +121,7 @@ void TimingMediator::TriggerSetupRuntimeCallback(
       auto args = lepus::CArray::Create();
       args->emplace_back(BASE_STATIC_STRING(kSetupRuntimeCallback));
       args->emplace_back((lepus_value::ShallowCopy(timing)));
-      runtime::MessageEvent event(
+      auto event = fml::MakeRefCounted<runtime::MessageEvent>(
           runtime::kMessageEventTypeSendGlobalEvent,
           runtime::ContextProxy::Type::kCoreContext,
           runtime::ContextProxy::Type::kJSContext,
@@ -353,7 +353,7 @@ void TimingMediator::TriggerUpdateRuntimeCallback(
       auto args = lepus::CArray::Create();
       args->emplace_back(BASE_STATIC_STRING(kUpdateRuntimeCallback));
       args->emplace_back(lepus_value::ShallowCopy(timing));
-      runtime::MessageEvent event(
+      auto event = fml::MakeRefCounted<runtime::MessageEvent>(
           runtime::kMessageEventTypeSendGlobalEvent,
           runtime::ContextProxy::Type::kCoreContext,
           runtime::ContextProxy::Type::kJSContext,

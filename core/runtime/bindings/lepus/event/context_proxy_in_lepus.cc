@@ -24,9 +24,9 @@ ContextProxyInLepus::ContextProxyInLepus(
       proxy_binding_(),
       on_trigger_event_() {}
 
-runtime::MessageEvent ContextProxyInLepus::CreateMessageEvent(
+fml::RefPtr<runtime::MessageEvent> ContextProxyInLepus::CreateMessageEvent(
     const lepus::Value& event) {
-  return runtime::MessageEvent(
+  return fml::MakeRefCounted<runtime::MessageEvent>(
       event.GetProperty(BASE_STATIC_STRING(runtime::kType)).StdString(),
       GetOriginType(), GetTargetType(),
       std::make_unique<pub::ValueImplLepus>(

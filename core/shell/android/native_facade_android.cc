@@ -297,12 +297,13 @@ void NativeFacadeAndroid::OnTemplateBundleReady(
                                           j_template_bundle.Get());
 }
 
-void NativeFacadeAndroid::OnReceiveMessageEvent(runtime::MessageEvent event) {
-  if (event.IsSendingToDevTool()) {
+void NativeFacadeAndroid::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
+  if (event->IsSendingToDevTool()) {
     JNIEnv* env = AttachCurrentThread();
     auto event_map =
         tasm::android::EventConverterAndroid::ConvertMessageEventToJavaOnlyMap(
-            event);
+            *event);
     Java_NativeFacade_onReceiveMessageEvent(env, jni_object_.Get(),
                                             event_map.jni_object());
   } else {

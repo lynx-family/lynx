@@ -69,7 +69,7 @@ class NativeFacadeAndroid : public NativeFacade {
 
   void OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) override;
 
-  void OnReceiveMessageEvent(runtime::MessageEvent event) override;
+  void OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event) override;
 
   void OnEventCapture(long target_id, bool is_catch, int64_t event_id) override;
 

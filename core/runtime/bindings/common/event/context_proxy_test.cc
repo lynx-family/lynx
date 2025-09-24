@@ -33,14 +33,14 @@ MockContextProxyDelegate::MockContextProxyDelegate() {
 }
 
 event::DispatchEventResult MockContextProxyDelegate::DispatchMessageEvent(
-    MessageEvent event) {
-  event_vec_.emplace_back(MessageEvent::ShallowCopy(event));
-  if (event.GetTargetType() == ContextProxy::Type::kJSContext) {
-    auto target = proxy_map_in_js_[event.GetOriginType()].get();
-    target->DispatchEvent(event);
-  } else if (event.GetTargetType() == ContextProxy::Type::kCoreContext) {
-    auto target = proxy_map_in_lepus_[event.GetOriginType()].get();
-    target->DispatchEvent(event);
+    fml::RefPtr<MessageEvent> event) {
+  event_vec_.emplace_back(MessageEvent::ShallowCopy(*event));
+  if (event->GetTargetType() == ContextProxy::Type::kJSContext) {
+    auto target = proxy_map_in_js_[event->GetOriginType()].get();
+    target->DispatchEvent(*event);
+  } else if (event->GetTargetType() == ContextProxy::Type::kCoreContext) {
+    auto target = proxy_map_in_lepus_[event->GetOriginType()].get();
+    target->DispatchEvent(*event);
   } else {
     return {event::EventCancelType::kCanceledBeforeDispatch, false};
   }
@@ -69,7 +69,7 @@ TEST_F(ContextProxyTest, TestContextProxyTest0) {
   context_proxy->PostMessage(lepus::Value());
   EXPECT_EQ(delegate_.event_vec_.size(), 1);
   EXPECT_TRUE(pub::ValueUtils::ConvertValueToLepusValue(
-                  *delegate_.event_vec_[0].message())
+                  *delegate_.event_vec_[0]->message())
                   .IsEmpty());
 }
 

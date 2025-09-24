@@ -515,7 +515,7 @@ void PageProxy::OnComponentPropertyChanged(RadonComponent *node) {
     args->emplace_back(node->ComponentStrId());
     // properties must copy first to avoid to be marked const.
     args->emplace_back(lepus_value::ShallowCopy(node->GetProperties()));
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnComponentPropertiesChanged,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -533,7 +533,7 @@ void PageProxy::OnComponentDataSetChanged(RadonComponent *node,
     args->emplace_back(node->ComponentStrId());
     // data_set must copy first to avoid to be marked const.
     args->emplace_back(lepus_value::ShallowCopy(data_set));
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnComponentDataSetChanged,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -551,7 +551,7 @@ void PageProxy::OnComponentSelectorChanged(RadonComponent *node,
     args->emplace_back(node->ComponentStrId());
     // instance should be ShallowCopy first to avoid to be marked const.
     args->emplace_back(lepus_value::ShallowCopy(instance));
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnComponentSelectorChanged,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -644,7 +644,7 @@ void PageProxy::OnReactComponentCreated(RadonComponent *component,
     args->emplace_back(lepus_value::ShallowCopy(data));
     args->emplace_back(parent_id);
     args->emplace_back(HasSSRRadonPage());
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactComponentCreated,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -668,7 +668,7 @@ void PageProxy::OnReactComponentRender(RadonComponent *component,
     args->emplace_back(lepus_value::ShallowCopy(props));
     args->emplace_back(lepus_value::ShallowCopy(data));
     args->emplace_back(should_component_update);
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactComponentRender,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -683,7 +683,7 @@ void PageProxy::OnReactComponentDidUpdate(RadonComponent *component) {
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
       tasm_delegate_->SupportComponentJS()) {
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactComponentDidUpdate,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -704,7 +704,7 @@ void PageProxy::OnReactComponentDidCatch(RadonComponent *component,
     args->emplace_back(component->ComponentStrId());
     // error should be ShallowCopy first to avoid to be marked const.
     args->emplace_back(lepus_value::ShallowCopy(error));
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactComponentDidCatch,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -719,7 +719,7 @@ void PageProxy::OnReactComponentUnmount(RadonComponent *component) {
       pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ != nullptr &&
       tasm_delegate_->SupportComponentJS()) {
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactComponentUnmount,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -743,7 +743,7 @@ void PageProxy::OnReactCardRender(const lepus::Value &data,
     args->emplace_back(lepus_value::ShallowCopy(data));
     args->emplace_back(should_component_update);
     args->emplace_back(HasSSRRadonPage());
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnReactCardRender,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -756,7 +756,7 @@ void PageProxy::OnReactCardDidUpdate() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, PAGE_PROXY_ON_REACT_CARD_DID_UPDATE);
   if (pre_painting_stage_ == PrePaintingStage::kPrePaintingOFF &&
       context_proxy_delegate_ && tasm_delegate_->SupportComponentJS()) {
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::KMessageEventTypeOnReactCardDidUpdate,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -835,7 +835,7 @@ void PageProxy::FireComponentLifecycleEvent(const std::string name,
       args->emplace_back(lepus_value::ShallowCopy(data));
     }
 
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnComponentActivity,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,
@@ -1346,7 +1346,7 @@ void PageProxy::ResetSSRPage() {
 
 void PageProxy::OnSsrScriptReady(std::string script) {
   if (context_proxy_delegate_) {
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeOnSsrScriptReady,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,

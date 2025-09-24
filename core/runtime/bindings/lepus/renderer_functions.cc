@@ -72,7 +72,6 @@
 #include "core/runtime/bindings/common/event/message_event.h"
 #include "core/runtime/bindings/common/event/runtime_constants.h"
 #include "core/runtime/bindings/common/resource/response_promise.h"
-#include "core/runtime/bindings/lepus/event/event_object.h"
 #include "core/runtime/bindings/lepus/event/lepus_event_listener.h"
 #include "core/runtime/bindings/lepus/modules/lynx_lepus_module.h"
 #include "core/runtime/bindings/lepus/renderer.h"
@@ -993,7 +992,7 @@ RENDERER_FUNCTION_CC(FiberCreateEvent) {
   // [1] String -> name
   // [2] Object -> options
   // [3] Object -> detail
-  CHECK_ARGC_GE(FiberDispatchEvent, 4);
+  CHECK_ARGC_GE(FiberCreateEvent, 4);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(type, 0, Number, FiberCreateEvent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(name, 1, String, FiberCreateEvent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(options, 2, Object, FiberCreateEvent);
@@ -1014,7 +1013,7 @@ RENDERER_FUNCTION_CC(FiberCreateEvent) {
   int64_t timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::system_clock::now().time_since_epoch())
                           .count();
-  auto event = fml::MakeRefCounted<tasm::EventObject>(
+  auto event = fml::MakeRefCounted<event::Event>(
       name->StdString(), timestamp,
       static_cast<event::Event::EventType>(type->Number()),
       static_cast<event::Event::Bubbles>(bubbles),
@@ -1036,9 +1035,7 @@ RENDERER_FUNCTION_CC(FiberDispatchEvent) {
                                         FiberDispatchEvent);
 
   auto element = fml::static_ref_ptr_cast<FiberElement>(arg0->RefCounted());
-  auto event_object =
-      fml::static_ref_ptr_cast<tasm::EventObject>(arg1->RefCounted());
-  auto event = event_object->GetEvent();
+  auto event = fml::static_ref_ptr_cast<event::Event>(arg1->RefCounted());
   bool res = event::EventDispatcher::DispatchEvent(*element.get(), event)
                  .cancel_type == event::EventCancelType::kNotCanceled;
 
@@ -1052,8 +1049,8 @@ RENDERER_FUNCTION_CC(FiberStopPropagation) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberStopPropagation);
 
-  auto event = fml::static_ref_ptr_cast<tasm::EventObject>(arg0->RefCounted());
-  event->GetEvent().set_is_stop_propagation(true);
+  auto event = fml::static_ref_ptr_cast<event::Event>(arg0->RefCounted());
+  event->set_is_stop_propagation(true);
 
   RETURN_UNDEFINED();
 }
@@ -1065,8 +1062,8 @@ RENDERER_FUNCTION_CC(FiberStopImmediatePropagation) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(arg0, 0, RefCounted,
                                         FiberStopImmediatePropagation);
 
-  auto event = fml::static_ref_ptr_cast<tasm::EventObject>(arg0->RefCounted());
-  event->GetEvent().set_is_stop_immediate_propagation(true);
+  auto event = fml::static_ref_ptr_cast<event::Event>(arg0->RefCounted());
+  event->set_is_stop_immediate_propagation(true);
 
   RETURN_UNDEFINED();
 }
@@ -1158,8 +1155,8 @@ RENDERER_FUNCTION_CC(DispatchEvent) {
     RETURN_UNDEFINED();
   }
 
-  runtime::MessageEvent event = context_proxy->CreateMessageEvent(*arg0);
-  context_proxy->DispatchEvent(event);
+  auto event = context_proxy->CreateMessageEvent(*arg0);
+  context_proxy->DispatchEvent(*event);
 
   RETURN_UNDEFINED();
 }
@@ -3787,15 +3784,13 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
   if (callback->IsEmpty()) {
     // If callback is undefined, remove event.
     element->RemoveEvent(name->String(), type->String());
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
-        tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
       element->RemoveEventListeners(name->StdString());
     }
   } else if (callback->IsString()) {
     element->SetJSEventHandler(name->String(), type->String(),
                                callback->String());
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
-        tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
       event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
       event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;
@@ -3831,7 +3826,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                     // info be ShallowCopy first to avoid to be marked const.
                     message->emplace_back(
                         lepus_value::ShallowCopy(event_detail));
-                    runtime::MessageEvent event(
+                    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
                         call_method_name
                             ? runtime::kMessageEventTypeSendPageEvent
                             : runtime::kMessageEventTypePublishComponentEvent,
@@ -3861,8 +3856,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       element->SetWorkletEventHandler(name->String(), type->String(), value,
                                       context);
     }
-    if (LynxEnv::GetInstance().EnableEventHandleRefactor() ||
-        tasm->IsEmbeddedModeOn()) {
+    if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
       event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
       event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;

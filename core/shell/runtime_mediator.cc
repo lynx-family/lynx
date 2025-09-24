@@ -545,21 +545,20 @@ void RuntimeMediator::CallLepusMethod(const std::string& method_name,
 }
 
 event::DispatchEventResult RuntimeMediator::DispatchMessageEvent(
-    runtime::MessageEvent event) {
+    fml::RefPtr<runtime::MessageEvent> event) {
   if (runtime_standalone_mode_) {
     // In standalone mode, runtime don't have other target, reject event message
     // here.
     return {event::EventCancelType::kCanceledByEventHandler, false};
   }
-  auto copy_event = runtime::MessageEvent::ShallowCopy(event);
-  if (event.IsSendingToCoreThread()) {
+  if (event->IsSendingToCoreThread()) {
     engine_actor_->Act(
-        [message_event = std::move(copy_event)](auto& engine) mutable {
+        [message_event = std::move(event)](auto& engine) mutable {
           engine->OnReceiveMessageEvent(std::move(message_event));
         });
-  } else if (event.IsSendingToUIThread()) {
+  } else if (event->IsSendingToUIThread()) {
     facade_actor_->Act(
-        [message_event = std::move(copy_event)](auto& facade) mutable {
+        [message_event = std::move(event)](auto& facade) mutable {
           facade->OnReceiveMessageEvent(std::move(message_event));
         });
   }

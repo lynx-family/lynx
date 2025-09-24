@@ -201,12 +201,12 @@ void NativeFacadeDarwin::OnTemplateBundleReady(tasm::LynxTemplateBundle bundle) 
   [render onTemplateBundleReady:templateBundle];
 }
 
-void NativeFacadeDarwin::OnReceiveMessageEvent(runtime::MessageEvent event) {
-  if (event.IsSendingToDevTool()) {
+void NativeFacadeDarwin::OnReceiveMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
+  if (event->IsSendingToDevTool()) {
     __strong id<TemplateRenderCallbackProtocol> render = _render;
     [render
         onReceiveMessageEvent:tasm::darwin::EventConverterDarwin::ConverMessageEventToNSDictionary(
-                                  event)];
+                                  *event)];
   } else {
     // TODO(songshourui.null): impl this after UIContext is supported.
   }

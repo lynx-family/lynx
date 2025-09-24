@@ -18,8 +18,8 @@ class EventConverterAndroid {
   static base::android::JavaOnlyMap ConvertMessageEventToJavaOnlyMap(
       const runtime::MessageEvent& event);
   // Convert JavaOnlyMap to MessageEvent
-  static runtime::MessageEvent ConvertJavaOnlyMapToMessageEvent(JNIEnv* env,
-                                                                jobject map);
+  static fml::RefPtr<runtime::MessageEvent> ConvertJavaOnlyMapToMessageEvent(
+      JNIEnv* env, jobject map);
 };
 
 }  // namespace android

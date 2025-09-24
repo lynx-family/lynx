@@ -2361,7 +2361,7 @@ void TemplateAssembler::SendGlobalEvent(const std::string& name,
   args->emplace_back(name);
   // info be ShallowCopy first to avoid to be marked const.
   args->emplace_back(lepus_value::ShallowCopy(info));
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeSendGlobalEvent,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
@@ -2601,7 +2601,7 @@ void TemplateAssembler::PreloadLazyBundles(
 
 void TemplateAssembler::OnDynamicJSSourcePrepared(
     const std::string& component_url) {
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeOnDynamicJSSourcePrepared,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
@@ -2616,7 +2616,7 @@ void TemplateAssembler::OnBTSConsoleEvent(const std::string& func_name,
   BASE_STATIC_STRING_DECL(kParams, "params");
   params->SetValue(kFuncName, func_name);
   params->SetValue(kParams, args);
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeOnBTSConsoleEvent,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
@@ -3302,17 +3302,18 @@ void TemplateAssembler::SyncAndroidPackageExternalPath(
   android_package_external_path = path;
 }
 
-void TemplateAssembler::OnReceiveMessageEvent(runtime::MessageEvent event) {
+void TemplateAssembler::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
   // TODO(songshourui.null): If LynxRuntime is standalone in the future, there
   // might be situations where LynxRuntime is initialized earlier than
   // TemplateAssembler, causing TemplateAssembler to not be initialized yet and
   // leading to event loss. A possible solution could be to implement a global
   // task cache, similar to the one in LynxRuntime.
-  auto proxy = GetContextProxy(event.GetOriginType());
+  auto proxy = GetContextProxy(event->GetOriginType());
   if (proxy == nullptr) {
     return;
   }
-  proxy->DispatchEvent(event);
+  proxy->DispatchEvent(*event);
 }
 
 ContextProxyInLepus* TemplateAssembler::GetContextProxy(
@@ -3336,7 +3337,7 @@ lepus::Value TemplateAssembler::GetCustomSectionByKey(
 }
 
 void TemplateAssembler::OnNativeAppReady() {
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeOnNativeAppReady,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,

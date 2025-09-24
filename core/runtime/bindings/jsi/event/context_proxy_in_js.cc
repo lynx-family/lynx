@@ -57,9 +57,9 @@ ContextProxyInJS::ContextProxyInJS(runtime::ContextProxy::Delegate &delegate,
                             target_type),
       native_app_(native_app) {}
 
-runtime::MessageEvent ContextProxyInJS::CreateMessageEvent(
+fml::RefPtr<runtime::MessageEvent> ContextProxyInJS::CreateMessageEvent(
     Runtime &rt, std::shared_ptr<App> native_app, const piper::Value &event) {
-  return runtime::MessageEvent(
+  return fml::MakeRefCounted<runtime::MessageEvent>(
       event.getObject(rt)
           .getProperty(rt, runtime::kType)
           ->asString(rt)
@@ -145,7 +145,7 @@ Value ContextProxyInJS::get(Runtime *rt, const PropNameID &name) {
             }
 
             auto message_event = CreateMessageEvent(rt, app, event);
-            auto result = DispatchEvent(message_event);
+            auto result = DispatchEvent(*message_event);
             return piper::Value(static_cast<int>(result.cancel_type));
           } else if (type == PropType::kAddEventListener) {
             if (count < 2) {

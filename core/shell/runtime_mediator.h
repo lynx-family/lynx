@@ -183,7 +183,7 @@ class RuntimeMediator : public runtime::TemplateDelegate {
                        const piper::ApiCallBack& callback) override;
 
   event::DispatchEventResult DispatchMessageEvent(
-      runtime::MessageEvent event) override;
+      fml::RefPtr<runtime::MessageEvent> event) override;
 
   std::string LoadJSSource(const std::string& name) override;
   std::shared_ptr<piper::Buffer> LoadBytecode(const std::string& url) override;

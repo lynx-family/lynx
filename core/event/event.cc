@@ -69,6 +69,14 @@ Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
                 .count(),
             event_type, bubbles, cancelable, composed_mode, PhaseType::kNone) {}
 
+Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
+             Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode,
+             PhaseType phase_type, const lepus::Value& detail)
+    : Event(type, time_stamp, event_type, bubbles, cancelable, composed_mode,
+            phase_type) {
+  detail_ = detail;
+}
+
 void Event::InitEventPath(EventTarget& target) {
   EventTarget* event_target = &target;
   if (!event_target) {
