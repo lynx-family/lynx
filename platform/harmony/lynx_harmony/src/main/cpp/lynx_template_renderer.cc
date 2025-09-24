@@ -69,36 +69,59 @@ void PrepareEnvWidthScreenSize(int width, int height, float density,
 
 }  // namespace
 
-LynxTemplateRenderer::LynxTemplateRenderer(
-    napi_env env, napi_value js_this, tasm::UIDelegate* ui_delegate,
+LynxTemplateRenderer::LynxTemplateRenderer(napi_env env, napi_value js_this,
+                                           double display_density)
+    : env_(env),
+      display_density_(display_density),
+      weak_flag_(std::make_shared<WeakFlag>(this)) {
+  napi_create_reference(env, js_this, 0, &template_renderer_ref_);
+
+  napi_value param[1];
+  param[0] =
+      base::NapiUtil::CreatePtrArray(env, reinterpret_cast<uintptr_t>(this));
+  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_, "createDevTool",
+                                 1, param, nullptr);
+}
+
+LynxTemplateRenderer::~LynxTemplateRenderer() {
+  LOGI("~TemplateRenderer");
+  int32_t instance_id = GetInstanceId();
+  if (resource_loader_) {
+    static_cast<LynxResourceLoaderHarmony*>(resource_loader_.get())
+        ->DeleteRef();
+  }
+  napi_delete_reference(env_, template_renderer_ref_);
+  tasm::report::EventTracker::ClearCache(instance_id);
+
+  SetInspectorOwner(nullptr);
+}
+
+void LynxTemplateRenderer::SetUpLynxShell(
+    napi_env env, tasm::UIDelegate* ui_delegate,
     const std::shared_ptr<LynxResourceLoaderHarmony>& resource_loader,
-    float width, float height, double display_density, bool is_host_renderer,
+    float width, float height, bool is_host_renderer,
     tasm::performance::PerformanceControllerHarmonyJSWrapper*
         js_perf_controller_wrapper,
     int32_t thread_mode, std::string group_id, bool use_quickjs,
     bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
     bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
     std::unique_ptr<ModuleFactoryHarmony> module_factory,
-    LynxRuntimeWrapper* runtime_wrapper)
-    : env_(env),
-      display_density_(display_density),
-      ui_delegate_(ui_delegate),
-      resource_loader_(resource_loader),
-      weak_flag_(std::make_shared<WeakFlag>(this)) {
-  napi_create_reference(env, js_this, 0, &template_renderer_ref_);
-  float w = width / display_density;
-  float h = height / display_density;
+    LynxRuntimeWrapper* runtime_wrapper) {
+  ui_delegate_ = ui_delegate;
+  resource_loader_ = resource_loader;
+
+  float w = width / display_density_;
+  float h = height / display_density_;
 
   // If the screen size is physical, density equals the device pixel ratio and
   // the ratio should be 1. If the screen size is a logical size, density equals
   // 1, the ratio should be device pixel ratio.
-  const float density = ui_delegate->UsesLogicalPixels() ? 1 : display_density;
-  const float ratio = ui_delegate->UsesLogicalPixels() ? display_density : 1;
-  PrepareEnvWidthScreenSize(w, h, density, ratio, display_density);
-
+  const float density = ui_delegate->UsesLogicalPixels() ? 1 : display_density_;
+  const float ratio = ui_delegate->UsesLogicalPixels() ? display_density_ : 1;
+  PrepareEnvWidthScreenSize(w, h, density, ratio, display_density_);
   auto lynx_env_config = tasm::LynxEnvConfig(w, h, density, ratio);
-  auto native_facade = std::make_unique<NativeFacadeHarmony>(this);
   auto loader = std::make_shared<tasm::LazyBundleLoader>(resource_loader);
+
   shell::ShellOption shell_option;
   shell_option.js_group_thread_name_ = enable_js_group_thread ? group_id : "";
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
@@ -106,12 +129,13 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   shell_option.instance_id_ =
       runtime_wrapper ? runtime_wrapper->GetRuntimeActor()->GetInstanceId()
                       : -1;
+
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
       weak_flag_->weak_from_this());
   auto* invoker_ptr = invoker.get();
   shell_.reset(
       shell::LynxShellBuilder()
-          .SetNativeFacade(std::move(native_facade))
+          .SetNativeFacade(std::make_unique<NativeFacadeHarmony>(this))
           .SetUseInvokeUIMethodFunction(true)
           .SetPaintingContextPlatformImpl(ui_delegate_->CreatePaintingContext())
           .SetLynxEnvConfig(lynx_env_config)
@@ -143,17 +167,11 @@ LynxTemplateRenderer::LynxTemplateRenderer(
           .build());
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
-  napi_value param[1];
-  param[0] =
-      base::NapiUtil::CreatePtrArray(env, reinterpret_cast<uintptr_t>(this));
-  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_, "createDevTool",
-                                 1, param, nullptr);
   if (inspector_owner_ != nullptr) {
     inspector_owner_->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
     inspector_owner_->OnTemplateAssemblerCreated(
         reinterpret_cast<intptr_t>(shell_.get()));
   }
-
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
   if (runtime_wrapper) {
@@ -184,36 +202,23 @@ LynxTemplateRenderer::LynxTemplateRenderer(
 
     auto runtime_flags =
         runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
-    shell_->InitRuntime(group_id, resource_loader, module_manager_,
+    shell_->InitRuntime(group_id, resource_loader_, module_manager_,
                         std::move(on_runtime_actor_created),
                         std::move(preload_js_paths), runtime_flags,
                         bytecode_source_url);
   }
+
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
   ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_,
-                             perf_controller_proxy_, resource_loader,
+                             perf_controller_proxy_, resource_loader_,
                              shell_->GetRunners()->GetUITaskRunner(),
                              shell_->GetRunners()->GetLayoutTaskRunner());
-
   tasm::report::EventTracker::UpdateGenericInfo(
       GetInstanceId(), tasm::report::harmony::kPropThreadMode,
       static_cast<int64_t>(thread_mode));
 
-  ui_delegate->SetInstanceId(GetInstanceId());
-}
-
-LynxTemplateRenderer::~LynxTemplateRenderer() {
-  LOGI("~TemplateRenderer");
-  int32_t instance_id = GetInstanceId();
-  if (resource_loader_) {
-    static_cast<LynxResourceLoaderHarmony*>(resource_loader_.get())
-        ->DeleteRef();
-  }
-  napi_delete_reference(env_, template_renderer_ref_);
-  tasm::report::EventTracker::ClearCache(instance_id);
-
-  SetInspectorOwner(nullptr);
+  ui_delegate_->SetInstanceId(GetInstanceId());
 }
 
 void LynxTemplateRenderer::UpdateViewport(float width, int width_mode,
@@ -541,6 +546,7 @@ napi_value LynxTemplateRenderer::Init(napi_env env, napi_value exports) {
   napi_property_descriptor properties[] = {
       DECLARE_NAPI_METHOD("nativeAttach", NativeAttach),
       DECLARE_NAPI_METHOD("nativeDetach", NativeDetach),
+      DECLARE_NAPI_METHOD("nativeReset", NativeReset),
       DECLARE_NAPI_METHOD("updateGlobalProps", UpdateGlobalProps),
       DECLARE_NAPI_METHOD("updateMetaData", UpdateMetaData),
       DECLARE_NAPI_METHOD("loadTemplate", LoadTemplate),
@@ -670,81 +676,15 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
 napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
                                               napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 18;
-  napi_value args[18] = {nullptr};
+  size_t argc = 1;
+  napi_value args[1] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
-  // UIDelegate
-  uint64_t delegate_num = base::NapiUtil::ConvertToPtr(env, args[0]);
-  auto* delegate_ptr = reinterpret_cast<tasm::UIDelegate*>(delegate_num);
-
-  // providers
-  auto resource_loader =
-      std::make_shared<LynxResourceLoaderHarmony>(env, args[1]);
-
-  // size
-  double screen_width;
-  napi_get_value_double(env, args[2], &screen_width);
-  double screen_height;
-  napi_get_value_double(env, args[3], &screen_height);
   double screen_density;
-  napi_get_value_double(env, args[4], &screen_density);
+  napi_get_value_double(env, args[0], &screen_density);
 
-  bool is_host_renderer;
-  napi_get_value_bool(env, args[5], &is_host_renderer);
-
-  // PerformanceController
-  tasm::performance::PerformanceControllerHarmonyJSWrapper*
-      js_perf_controller_wrapper;
-  napi_unwrap(env, args[6],
-              reinterpret_cast<void**>(&js_perf_controller_wrapper));
-
-  int thread_mode = 0;
-  napi_get_value_int32(env, args[7], &thread_mode);
-
-  // runtime options
-
-  // js group
-  std::string group_id = base::NapiUtil::ConvertToString(env, args[8]);
-  bool use_quickjs;
-  napi_get_value_bool(env, args[9], &use_quickjs);
-  bool enable_js_group_thread;
-  napi_get_value_bool(env, args[10], &enable_js_group_thread);
-  std::vector<std::string> preload_js_paths;
-  base::NapiUtil::ConvertToArrayString(env, args[11], preload_js_paths);
-
-  // bytecode
-  bool enable_bytecode = false;
-  napi_get_value_bool(env, args[12], &enable_bytecode);
-  std::string bytecode_source_url =
-      base::NapiUtil::ConvertToString(env, args[13]);
-
-  bool enable_js = true;
-  napi_get_value_bool(env, args[14], &enable_js);
-
-  // module
-  static constexpr uint32_t kArgsSize = 4;
-  napi_value module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[15], module_args, kArgsSize);
-  napi_value sendable_module_args[kArgsSize];
-  base::NapiUtil::ConvertToArray(env, args[16], sendable_module_args,
-                                 kArgsSize);
-  auto module_factory = std::make_unique<ModuleFactoryHarmony>(
-      env, module_args, sendable_module_args);
-
-  // LynxRuntimeWrapper
-  LynxRuntimeWrapper* runtime_wrapper = nullptr;
-  napi_unwrap(env, args[17], reinterpret_cast<void**>(&runtime_wrapper));
-
-  // LynxTemplateRenderer
-  LynxTemplateRenderer* renderer = new LynxTemplateRenderer(
-      env, js_this, delegate_ptr, resource_loader,
-      static_cast<float>(screen_width), static_cast<float>(screen_height),
-      screen_density, is_host_renderer, js_perf_controller_wrapper, thread_mode,
-      std::move(group_id), use_quickjs, enable_js_group_thread,
-      std::move(preload_js_paths), enable_bytecode,
-      std::move(bytecode_source_url), enable_js, std::move(module_factory),
-      runtime_wrapper);
+  LynxTemplateRenderer* renderer =
+      new LynxTemplateRenderer(env, js_this, screen_density);
 
   static auto noop_finalizer = [](napi_env env, void* data, void* hint) {
     // An empty implementation of the napi_finalize callback function is
@@ -761,6 +701,90 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
 
   NAPI_THROW_IF_FAILED_NULL(env, status,
                             "NativeAttach failed due to napi_wrap failed!");
+  return nullptr;
+}
+
+napi_value LynxTemplateRenderer::NativeReset(napi_env env,
+                                             napi_callback_info info) {
+  napi_value js_this;
+  size_t argc = 17;
+  napi_value args[17] = {nullptr};
+  napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
+
+  // UIDelegate
+  uint64_t delegate_num = base::NapiUtil::ConvertToPtr(env, args[0]);
+  auto* delegate_ptr = reinterpret_cast<tasm::UIDelegate*>(delegate_num);
+
+  // providers
+  auto resource_loader =
+      std::make_shared<LynxResourceLoaderHarmony>(env, args[1]);
+
+  // size
+  double screen_width;
+  napi_get_value_double(env, args[2], &screen_width);
+  double screen_height;
+  napi_get_value_double(env, args[3], &screen_height);
+
+  bool is_host_renderer;
+  napi_get_value_bool(env, args[4], &is_host_renderer);
+
+  // PerformanceController
+  tasm::performance::PerformanceControllerHarmonyJSWrapper*
+      js_perf_controller_wrapper;
+  napi_unwrap(env, args[5],
+              reinterpret_cast<void**>(&js_perf_controller_wrapper));
+
+  int thread_mode = 0;
+  napi_get_value_int32(env, args[6], &thread_mode);
+
+  // runtime options
+
+  // js group
+  std::string group_id = base::NapiUtil::ConvertToString(env, args[7]);
+  bool use_quickjs;
+  napi_get_value_bool(env, args[8], &use_quickjs);
+  bool enable_js_group_thread;
+  napi_get_value_bool(env, args[9], &enable_js_group_thread);
+  std::vector<std::string> preload_js_paths;
+  base::NapiUtil::ConvertToArrayString(env, args[10], preload_js_paths);
+
+  // bytecode
+  bool enable_bytecode = false;
+  napi_get_value_bool(env, args[11], &enable_bytecode);
+  std::string bytecode_source_url =
+      base::NapiUtil::ConvertToString(env, args[12]);
+
+  bool enable_js = true;
+  napi_get_value_bool(env, args[13], &enable_js);
+
+  // module
+  static constexpr uint32_t kArgsSize = 4;
+  napi_value module_args[kArgsSize];
+  base::NapiUtil::ConvertToArray(env, args[14], module_args, kArgsSize);
+  napi_value sendable_module_args[kArgsSize];
+  base::NapiUtil::ConvertToArray(env, args[15], sendable_module_args,
+                                 kArgsSize);
+  auto module_factory = std::make_unique<ModuleFactoryHarmony>(
+      env, module_args, sendable_module_args);
+
+  // LynxRuntimeWrapper
+  LynxRuntimeWrapper* runtime_wrapper = nullptr;
+  napi_unwrap(env, args[16], reinterpret_cast<void**>(&runtime_wrapper));
+
+  LynxTemplateRenderer* obj = nullptr;
+  napi_status status =
+      napi_unwrap(env, js_this, reinterpret_cast<void**>(&obj));
+  if (!CheckNapiUnwrapObject(status, obj,
+                             "LynxTemplateRenderer NativeReset failed")) {
+    return nullptr;
+  }
+  obj->SetUpLynxShell(
+      env, delegate_ptr, resource_loader, static_cast<float>(screen_width),
+      static_cast<float>(screen_height), is_host_renderer,
+      js_perf_controller_wrapper, thread_mode, std::move(group_id), use_quickjs,
+      enable_js_group_thread, std::move(preload_js_paths), enable_bytecode,
+      std::move(bytecode_source_url), enable_js, std::move(module_factory),
+      runtime_wrapper);
   return nullptr;
 }
 

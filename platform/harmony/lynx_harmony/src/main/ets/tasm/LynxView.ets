@@ -168,19 +168,11 @@ export struct LynxView {
 
   reInitTemplateRenderer() {
     LynxInfoReporterHelper.reportLynxTemplateEvent(LynxTemplateType.PAGE, this.url);
-    if (this.perfController) {
-      LLog.d(TAG, 'Destroy perfController before re-init template renderer');
-      this.perfController.destroy()
-    }
-    if (this.uiRenderer) {
-      LLog.d(TAG, 'Destroy uiRenderer before re-init template renderer');
-      this.uiRenderer.aboutToDisappear();
-    }
     if (this.templateRenderer) {
       LLog.d(TAG, 'Destroy templateRender before re-init template renderer, url: ' + this.url);
       this.templateRenderer.aboutToDisappear();
     }
-    const initStartTiming = new Date().getTime();
+
     if (this.backgroundRuntime) {
       this.backgroundRuntime.moduleFactory.setContext(this.context);
       this.moduleManager = this.backgroundRuntime.moduleFactory;
@@ -189,6 +181,7 @@ export struct LynxView {
       this.mediaResourceFetcher = this.mediaResourceFetcher ?? this.backgroundRuntime.mediaResourceFetcher;
       this.templateResourceFetcher = this.templateResourceFetcher ?? this.templateResourceFetcher;
     }
+
     this.modules.forEach((v, k) => {
       this.moduleManager.registerModule(k, v);
     });
@@ -201,9 +194,40 @@ export struct LynxView {
     this.moduleManager.registerModule('LynxSetModule', { moduleClass: LynxSetModule });
     this.moduleManager.registerModule('LynxResourceModule', { moduleClass: LynxResourceModule });
     this.moduleManager.registerModule('LynxAccessibilityModule', { moduleClass: LynxAccessibilityModule });
-    let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
+
     this.context.setGenericResourceFetcher(this.genericResourceFetcher);
     this.context.setMediaResourceFetcher(this.mediaResourceFetcher);
+
+    let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
+
+    this.templateRenderer =
+      new LynxTemplateRenderer(this.clients, providers, !this.uiRendererCreator,
+        this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
+        this.backgroundRuntimeOptions, this, !this.enableAirStrictMode,
+        this.moduleManager, this.sendableModuleManager);
+    if (this.platformConfig) {
+      this.templateRenderer.setPlatformConfig(this.platformConfig);
+    }
+
+    this.templateLoaded = false;
+    this.beforeLoadTemplate(this.context);
+    this.loadingID++;
+
+    this.loadTemplate();
+  }
+
+  prepareForLoadTemplate() {
+    if (this.perfController) {
+      LLog.d(TAG, 'Destroy perfController before re-init template renderer');
+      this.perfController.destroy()
+    }
+    if (this.uiRenderer) {
+      LLog.d(TAG, 'Destroy uiRenderer before re-init template renderer');
+      this.uiRenderer.aboutToDisappear();
+    }
+
+    const initStartTiming = new Date().getTime();
+    let providers = [this.genericResourceFetcher, this.mediaResourceFetcher, this.templateResourceFetcher];
     this.perfController = new PerformanceController();
     if (this.uiRendererCreator) {
       this.uiRenderer =
@@ -221,41 +245,25 @@ export struct LynxView {
       extensionService.onLynxViewSetup(this.context, uiDelegate, !this.uiRendererCreator);
     }
     this.perfController.setPerformanceObserver(this.clients);
-    this.templateRenderer =
-      new LynxTemplateRenderer(this.clients, uiDelegate, providers,
-        !this.uiRendererCreator,
-        this.uiRendererCreator ? ThreadStrategyForRendering.ALL_ON_UI : this.threadMode,
-        this.backgroundRuntimeOptions, this, this.perfController, !this.enableAirStrictMode,
-        this.moduleManager, this.sendableModuleManager);
-    if (this.platformConfig) {
-      this.templateRenderer.setPlatformConfig(this.platformConfig);
-    }
 
-    if (!this.enableAirStrictMode) {
-      this.setupExtensionModules();
-    }
+    this.templateRenderer.reset(uiDelegate, this.perfController);
 
+
+    const initEndTiming = new Date().getTime();
     this.uiRenderer.updateRefreshRate(LynxEnv.getDisplayInfo().refreshRate);
-    this.templateRenderer.initScreenMetrics();
     this.context.setRenderer(this.templateRenderer);
     if (this.fontScale != 1.0) {
       this.context.updateFontScale(this.fontScale);
     }
 
-    const initEndTiming = new Date().getTime();
     this.templateRenderer.setTiming(initStartTiming * 1000, TimingConstants.CREATE_LYNX_START);
     this.templateRenderer.setTiming(initEndTiming * 1000, TimingConstants.CREATE_LYNX_END);
     this.nodeController?.updateNode(this.uiRenderer, this.fitContentHeight && !!this.experimentalFixFitContent);
-    this.templateLoaded = false;
-    this.beforeLoadTemplate(this.context);
-    this.loadingID++;
-    this.loadTemplate();
-    if (this.measuredSize.width > 0) {
-      // The onMeasureSize may be ignored in reuse case if fitContentHeight and rootSize not changed,
-      // so we try to call updateViewport here.
 
-      this.updateViewport(this.measuredSize.width, this.measuredSize.height);
+    if (!this.enableAirStrictMode) {
+      this.setupExtensionModules();
     }
+    this.templateRenderer.initScreenMetrics();
   }
 
   aboutToAppear() {
@@ -272,6 +280,7 @@ export struct LynxView {
       });
     }
     this.reInitTemplateRenderer();
+
     if (this.onCreate) {
       this.onCreate(this.context)
     }
@@ -494,6 +503,7 @@ export struct LynxView {
   }
 
   loadTemplate() {
+    this.prepareForLoadTemplate();
     let timingOption: TimingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
     let loadBundleStartTimestamp = Date.now();
     timingOption.setTiming(TimingConstants.PIPELINE_START, loadBundleStartTimestamp);
@@ -606,6 +616,13 @@ export struct LynxView {
     }
     TraceEvent.endSection(TraceCategory.Lynx, TraceEventDef.LYNX_VIEW_LOAD);
     this.templateLoaded = true;
+
+    if (this.measuredSize.width > 0) {
+      // The onMeasureSize may be ignored in reuse case if fitContentHeight and rootSize not changed,
+      // so we try to call updateViewport here.
+
+      this.updateViewport(this.measuredSize.width, this.measuredSize.height);
+    }
   }
 
   build() {
@@ -623,7 +640,7 @@ export struct LynxView {
       : '100%')
     // Add 'key' property to locate LynxView during UI automation.
     .key('lynxview')
-    .translate({y: this.translateY})
+    .translate({ y: this.translateY })
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.measuredSize.width = newValue.width as number;
       this.measuredSize.height = newValue.height as number;

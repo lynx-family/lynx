@@ -31,6 +31,7 @@ export abstract class LynxNodeController extends NodeController {
 
 @Component export class LynxView {
   reInitTemplateRenderer(): void;
+  prepareForLoadTemplate(): void;
   aboutToAppear(): void;
   aboutToDisappear(): void;
   aboutToReuse(params: Record<string, ESObject>): void;
