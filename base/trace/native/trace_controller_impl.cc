@@ -131,7 +131,9 @@ void TraceEventImplementation(const char* category_name, const char* name,
           static_cast<TrackEvent_Type>(phase), trace_timestamp, false);
       TrackEventInternal::WriteEventName(::perfetto::StaticString(name),
                                          event_ctx, tls_state);
-      event_ctx.event()->add_categories(category_name, strlen(category_name));
+      if (category_name != nullptr) {
+        event_ctx.event()->add_categories(category_name, strlen(category_name));
+      }
       if (track_id != nullptr) {
         event_ctx.event()->set_track_uuid(
             ::perfetto::Track(track_id->id()).uuid);
