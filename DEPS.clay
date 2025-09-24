@@ -108,6 +108,13 @@ deps = {
         "commit": "35e197bdb7ec2b40768af4e4a6f0b71bb7b95bbc",
         "ignore_in_git": True,
     },
+    "third_party/nanopng": {
+        "type": "git",
+        "url": "https://gitlab.com/TSnake41/nanopng.git",
+        "commit": "fa1bf5cf7ec3ad98e0be665acbb4b36c696ae059",
+        "patches": os.path.join(root_dir, 'lynx', 'patches', 'nanopng', '0001-Adapt-nanopng-to-the-Skity-project.patch'),
+        "ignore_in_git": True,
+    },
     "third_party/skia": {
         "type": "git",
         "url": "https://skia.googlesource.com/skia.git",
