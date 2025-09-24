@@ -157,6 +157,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic) CGSize lastFrameSize;
 @property(nonatomic, assign) BOOL enableImageEventReport;
 @property(nonatomic, assign) BOOL enableImageAsyncLayout;
+@property(nonatomic, assign) BOOL enableImageCancelRequest;
 @property(nonatomic, assign) BOOL enableGenericFetcher;
 @property(nonatomic, strong) NSDictionary* additional_custom_info;
 @property(nonatomic, strong) NSString* request_priority;
@@ -193,8 +194,21 @@ LYNX_REGISTER_UI("image")
   _isDirty = YES;
   _enableImageEventReport = [LynxEnv.sharedInstance enableImageEventReport];
   _enableImageAsyncLayout = [LynxEnv.sharedInstance enableImageAsyncLayout];
+  _enableImageCancelRequest = [LynxEnv.sharedInstance enableImageCancelRequest];
   _frameCacheAutomatically = LynxBooleanOptionUnset;
   _superResolutionScale = 0.0;
+}
+
+- (void)dealloc {
+  // Cancel unresponsive image requests in the image library
+  if (self.enableImageCancelRequest) {
+    for (id key in [self.cancelBlocks allKeys]) {
+      if (self.cancelBlocks[key]) {
+        self.cancelBlocks[key]();
+      }
+    }
+    [self.cancelBlocks removeAllObjects];
+  }
 }
 
 - (void)freeMemoryCache {
@@ -762,6 +776,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                  LynxImageCacheChoice : self.cache_choice ?: @"",
                  LynxImageRequestPriority : self.request_priority ?: @"",
                  LynxImageSRScale : @(_superResolutionScale),
+                 LynxImageCancelRequest : @(_enableImageCancelRequest),
                }
                 processors:processors
               imageFetcher:[self shouldUseNewImage] ? nil : self.context.imageFetcher
