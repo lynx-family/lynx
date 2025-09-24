@@ -473,7 +473,7 @@ void RadonElement::FlushDynamicStyles() {
   // If the has_transition_props_changed_ is still true here, it means that this
   // element is first created and the transition props do not be consumed ahead.
   // We should consume them here.
-  if (has_transition_props_changed_ && enable_new_animator()) {
+  if (has_transition_props_changed() && enable_new_animator()) {
     SetDataToNativeTransitionAnimator();
   }
 
@@ -638,28 +638,26 @@ void RadonElement::FlushProps() {
     can_has_layout_only_children_ = false;
   }
   // Report when enableNewAnimator is the default value.
-  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
+  if ((has_transition_props_changed() || has_keyframe_props_changed()) &&
       !enable_new_animator()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
         element_manager()->GetInstanceId());
   }
 
-  if (has_transition_props_changed_) {
+  if (has_transition_props_changed()) {
     if (!enable_new_animator()) {
       PushToBundle(kPropertyIDTransition);
-      has_transition_props_changed_ = false;
     }
   }
 
-  if (has_keyframe_props_changed_) {
+  if (has_keyframe_props_changed()) {
     if (!enable_new_animator()) {
       ResolveAndFlushKeyframes();
       PushToBundle(kPropertyIDAnimation);
     } else {
       SetDataToNativeKeyframeAnimator();
     }
-    has_keyframe_props_changed_ = false;
   }
   // Update The root if needed
 
@@ -672,7 +670,7 @@ void RadonElement::FlushProps() {
     is_virtual_ = IsShadowNodeVirtual();
     bool platform_is_flatten = true;
     base::MoveOnlyClosure<bool, bool> func =
-        [radon_element = this, has_z_props = has_z_props_,
+        [radon_element = this, has_z_props = has_z_props(),
          is_fixed = is_fixed_](bool judge_by_props) {
           if (judge_by_props) {
             return !(has_z_props || is_fixed);
@@ -822,17 +820,7 @@ void RadonElement::ResetTransitionStylesInAdvanceInternal(
 bool RadonElement::ResolveStyleValue(CSSPropertyID id,
                                      const tasm::CSSValue& value,
                                      bool force_update) {
-  bool resolve_success = false;
-  if (computed_css_style()->SetValue(id, value) || force_update) {
-    // The props of transition and keyframe no need to be pushed to bundle here.
-    // Those props will be pushed to bundle separately later.
-    if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
-      PushToBundle(id);
-    }
-    resolve_success = true;
-  }
-
-  return resolve_success;
+  return computed_css_style()->SetValue(id, value) || force_update;
 }
 
 void RadonElement::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {

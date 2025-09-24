@@ -468,16 +468,10 @@ class Element : public lepus::RefCounted, public event::EventTarget {
   void CheckTimingAttribute(const lynx::base::String& key,
                             const lynx::lepus::Value& value);
   void CheckNewAnimatorAttr(const base::String& key, const lepus::Value& value);
-  void CheckHasOpacityProps(CSSPropertyID id, bool reset);
-  // return true indicates current style is transtion related
-  bool CheckTransitionProps(CSSPropertyID id);
-  // return true indicates current style is keyframe related
-  bool CheckKeyframeProps(CSSPropertyID id);
 
   void CheckHasNonFlattenCSSProps(CSSPropertyID id);
   void CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value);
-  // return true indicate that current css is z-index
-  bool CheckZIndexProps(CSSPropertyID id, bool reset);
+
   void CheckBoxShadowOrOutline(CSSPropertyID id);
   bool DisableFlattenWithOpacity();
 
@@ -657,7 +651,17 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   void PushToBundle(CSSPropertyID id);
 
-  bool has_z_props() const { return has_z_props_; }
+  bool has_z_props() const { return computed_css_style()->HasZIndex(); }
+
+  bool has_opacity() const { return computed_css_style()->HasOpacity(); }
+
+  bool has_transition_props_changed() {
+    return computed_css_style()->has_transition_props_changed();
+  }
+
+  bool has_keyframe_props_changed() {
+    return computed_css_style()->has_keyframe_props_changed();
+  }
 
   // For devtool
   ALLOW_UNUSED_TYPE void set_inspector_attribute(
@@ -762,13 +766,7 @@ class Element : public lepus::RefCounted, public event::EventTarget {
 
   bool has_event_listener_{false};
 
-  bool has_transition_props_changed_{false};
-  bool has_keyframe_props_changed_{false};
   bool has_non_flatten_attrs_{false};
-
-  bool has_opacity_{false};
-  // relevant to z-index
-  bool has_z_props_{false};
 
   bool enable_class_change_transmit_{false};
 

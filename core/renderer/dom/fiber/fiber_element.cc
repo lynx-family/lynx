@@ -971,7 +971,6 @@ void FiberElement::HandleKeyframePropsChange() {
   } else {
     SetDataToNativeKeyframeAnimator();
   }
-  has_keyframe_props_changed_ = false;
 }
 
 void FiberElement::HandleDelayTask(base::MoveOnlyClosure<void> operation) {
@@ -1370,14 +1369,15 @@ void FiberElement::ResolveCSSStyles(
   }
 
   // Report when enableNewAnimator is the default value.
-  if ((has_transition_props_changed_ || has_keyframe_props_changed_) &&
+  if ((has_transition_props_changed() || has_keyframe_props_changed()) &&
       !enable_new_animator()) {
     report::GlobalFeatureCounter::Count(
         report::LynxFeature::CPP_ENABLE_NEW_ANIMATOR_DEFAULT,
         element_manager()->GetInstanceId());
   }
+
   // keyframe props
-  if (has_keyframe_props_changed_) {
+  if (has_keyframe_props_changed()) {
     HandleDelayTask([this]() { HandleKeyframePropsChange(); });
     if (!enable_new_animator()) {
       PushToBundle(kPropertyIDAnimation);
@@ -1385,7 +1385,7 @@ void FiberElement::ResolveCSSStyles(
     need_update = true;
   }
 
-  if (has_transition_props_changed_) {
+  if (has_transition_props_changed()) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_TRANSITION_PROPS,
                 [this](lynx::perfetto::EventContext ctx) {
                   UpdateTraceDebugInfo(ctx.event());
@@ -1395,7 +1395,6 @@ void FiberElement::ResolveCSSStyles(
     } else {
       SetDataToNativeTransitionAnimator();
     }
-    has_transition_props_changed_ = false;
     need_update = true;
   }
 }
@@ -1518,11 +1517,10 @@ void FiberElement::TriggerElementUpdate() {
 }
 
 void FiberElement::VerifyKeyframePropsChangedHandling() {
-  if (has_keyframe_props_changed_) {
+  if (has_keyframe_props_changed()) {
     // Throw exception on purpose in debug mode or UT to indicate that
     // keyframe_props is not handled properly in this flow
-    DCHECK(!has_keyframe_props_changed_);
-    has_keyframe_props_changed_ = false;
+    DCHECK(!has_keyframe_props_changed());
   }
 }
 
@@ -2660,7 +2658,7 @@ void FiberElement::FlushProps() {
     is_virtual_ = IsShadowNodeVirtual();
     bool platform_is_flatten = true;
     base::MoveOnlyClosure<bool, bool> func =
-        [radon_element = this, has_z_props = has_z_props_,
+        [radon_element = this, has_z_props = has_z_props(),
          is_fixed = is_fixed_](bool judge_by_props) {
           if (judge_by_props) {
             return !(has_z_props || is_fixed);
@@ -2677,7 +2675,6 @@ void FiberElement::FlushProps() {
     CreateElementContainer(platform_is_flatten);
     has_painting_node_ = true;
   }
-  has_transition_props_changed_ = false;
 }
 
 // if child's related css variable is updated, invalidate child's style.
@@ -2966,17 +2963,7 @@ void FiberElement::UpdateCSSVariable(
 bool FiberElement::ResolveStyleValue(CSSPropertyID id,
                                      const tasm::CSSValue &value,
                                      bool force_update) {
-  bool resolve_success = false;
-  if (computed_css_style()->SetValue(id, value)) {
-    // The properties of transition and keyframe no need to be pushed to bundle
-    // separately here. Those properties will be pushed to bundle together
-    // later.
-    if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
-      PushToBundle(id);
-    }
-
-    resolve_success = true;
-  }
+  bool resolve_success = computed_css_style()->SetValue(id, value);
 
   if (EnableLayoutInElementMode()) {
     if (LayoutProperty::IsLayoutWanted(id)) {
