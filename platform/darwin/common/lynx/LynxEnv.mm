@@ -485,6 +485,16 @@
   return enableImageAsyncLayout;
 }
 
+- (BOOL)enableImageCancelRequest {
+  static dispatch_once_t onceToken;
+  static BOOL enableImageCancelRequest = NO;
+  dispatch_once(&onceToken, ^{
+    enableImageCancelRequest = [self boolFromExternalEnv:LynxEnvEnableImageCancelRequest
+                                            defaultValue:NO];
+  });
+  return enableImageCancelRequest;
+}
+
 - (BOOL)enableTextContainerOpt {
   static dispatch_once_t onceToken;
   static BOOL enableTextContainerOpt = NO;
@@ -623,6 +633,7 @@
     @(LynxEnvEnableCreateUIAsync) : @"enable_create_ui_async",
     @(LynxEnvEnableImageEventReport) : @"enable_image_event_report",
     @(LynxEnvEnableImageAsyncLayout) : @"enable_image_async_layout",
+    @(LynxEnvEnableImageCancelRequest) : @"enable_image_cancel_request",
     @(LynxEnvEnableGenericResourceFetcher) : @"enable_generic_resource_fetcher",
     @(LynxEnvEnableAnimationSyncTimeOpt) : @"enable_animation_sync_time_opt",
     @(LynxEnvFixNewImageDownSampling) : @"fix_new_image_downsampling",
