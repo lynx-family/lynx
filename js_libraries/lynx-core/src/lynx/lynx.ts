@@ -18,6 +18,7 @@ import {
   RequireModuleAsync,
   NativeLynxProxy,
   MessageEventType,
+  LoadScript,
 } from './interface';
 import { BaseApp, BundleInitReturnObj, NativeApp } from '../app';
 import { TextInfo, TextMetrics } from '../modules/nativeModules';
@@ -41,11 +42,6 @@ export class Lynx {
   __presetData: Record<string, unknown>;
   _switches: Record<string, boolean>;
   targetSdkVersion?: string;
-  // <bundleName, <path, exports>>
-  static _$loadScriptCache: Record<
-    string,
-    Record<string, BundleInitReturnObj>
-  > = {};
 
   constructor(
     // should use function to get native app to avoid cycle
@@ -497,34 +493,19 @@ export class Lynx {
     this.getNativeLynx().queueMicrotask(callback);
   }
 
-  loadScript = (url: string, options?: { bundleName?: string }) => {
+  loadScript = <LoadScript>(<T>(
+    url: string,
+    options?: { bundleName?: string }
+  ): T => {
     const { bundleName = DEFAULT_ENTRY } = options;
-    if (
-      NODE_ENV !== 'development' &&
-      Lynx._$loadScriptCache[bundleName]?.[url]
-    ) {
-      return this.getApp().execLoadScriptResult(
-        Lynx._$loadScriptCache[bundleName]?.[url],
-        url,
-        options
-      );
+    const cacheKey = bundleName + ':' + url;
+    if (this.loadScript.cache[cacheKey]) {
+      return this.loadScript.cache[cacheKey] as T;
     }
-    const exports = this.getNativeLynx().loadScript(url, options);
-    if (exports && typeof (exports as any).init === 'function') {
-      const ret = this.getApp().execLoadScriptResult(
-        exports as any,
-        url,
-        options
-      );
-      if (!Lynx._$loadScriptCache[bundleName]) {
-        Lynx._$loadScriptCache[bundleName] = {};
-      }
-      Lynx._$loadScriptCache[bundleName][url] = exports as any;
-      return ret;
-    } else {
-      return exports;
-    }
-  };
+    const exports = this.getApp().loadScript<T>(url, options);
+    this.loadScript.cache[cacheKey] = exports;
+    return exports;
+  });
 
   fetchBundle = this.getNativeLynx().fetchBundle;
 
