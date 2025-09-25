@@ -2,7 +2,6 @@
 # Licensed under the Apache License Version 2.0 that can be found in the
 # LICENSE file in the root directory of this source tree.
 
-import("//${lynx_dir}/build_overrides/darwin.gni")
 import("../../config.gni")
 import("../../oliver/oliver.gni")
 import("../../testing/test.gni")
