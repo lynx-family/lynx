@@ -6,8 +6,8 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICEIMAGEPROTOCOL_H_
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IOS
-#import <Lynx/LynxServiceProtocol.h>
 #import <Lynx/LynxUIImage.h>
+#import <LynxServiceAPI/ServiceAPI.h>
 #import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
