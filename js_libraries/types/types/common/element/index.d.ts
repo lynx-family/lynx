@@ -6,6 +6,7 @@ export * from './component';
 export * from './filter-image';
 export * from './image';
 export * from './list';
+export * from './list-item';
 export * from './page';
 export * from './scroll-view';
 export * from './text';

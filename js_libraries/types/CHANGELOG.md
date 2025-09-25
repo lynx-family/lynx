@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.9
+- Update `list` and `list-item` typings.
+
 ## 3.5.8
 - Update common typings on elements.
 
