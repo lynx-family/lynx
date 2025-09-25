@@ -34,19 +34,26 @@ class PanGestureHandler : public BaseGestureHandler {
   ~PanGestureHandler() override = default;
 
   void HandleConfigMap(const lepus::Value& config);
-  void OnHandle(const ArkUI_UIInputEvent* event,
-                std::shared_ptr<TouchEvent> lynx_touch_event,
-                float fling_delta_x, float fling_delta_y) override;
+  void OnHandle(
+      const ArkUI_UIInputEvent* event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+      float fling_delta_y, bool handle_by_simultaneous,
+      const std::shared_ptr<GestureExtraBundle>& extra_bundle) override;
+
   void Fail() override;
   void End() override;
   void Reset() override;
 
  protected:
-  void OnBegin(float x, float y, std::shared_ptr<TouchEvent> event) override;
-  void OnUpdate(float delta_x, float delta_y,
-                std::shared_ptr<TouchEvent> event) override;
-  void OnStart(float x, float y, std::shared_ptr<TouchEvent> event) override;
-  void OnEnd(float x, float y, std::shared_ptr<TouchEvent> event) override;
+  void OnBegin(float x, float y,
+               const std::shared_ptr<TouchEvent>& event) override;
+  void OnUpdate(
+      float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+      const std::shared_ptr<GestureExtraBundle>& extra_bundle) override;
+  void OnStart(float x, float y,
+               const std::shared_ptr<TouchEvent>& event) override;
+  void OnEnd(float x, float y,
+             const std::shared_ptr<TouchEvent>& event) override;
 
  private:
   bool ShouldActivate();

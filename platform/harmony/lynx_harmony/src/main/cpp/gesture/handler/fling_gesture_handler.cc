@@ -29,9 +29,11 @@ FlingGestureHandler::FlingGestureHandler(
 
 void FlingGestureHandler::HandleConfigMap(const lepus::Value& config) {}
 
-void FlingGestureHandler::OnHandle(const ArkUI_UIInputEvent* event,
-                                   std::shared_ptr<TouchEvent> lynx_touch_event,
-                                   float fling_delta_x, float fling_delta_y) {
+void FlingGestureHandler::OnHandle(
+    const ArkUI_UIInputEvent* event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+    float fling_delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   int32_t type = OH_ArkUI_UIInputEvent_GetAction(event);
 
   if (event != nullptr && (type == UI_TOUCH_EVENT_ACTION_DOWN ||
@@ -69,7 +71,7 @@ void FlingGestureHandler::OnHandle(const ArkUI_UIInputEvent* event,
     return;
   }
 
-  OnUpdate(fling_delta_x, fling_delta_y, nullptr);
+  OnUpdate(fling_delta_x, fling_delta_y, nullptr, extra_bundle);
 }
 
 lepus::Value FlingGestureHandler::GetEventParamsInActive(
@@ -114,7 +116,7 @@ void FlingGestureHandler::Reset() {
 }
 
 void FlingGestureHandler::OnBegin(float x, float y,
-                                  std::shared_ptr<TouchEvent> event) {
+                                  const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnBeginEnable() || is_invoked_begin_) {
     return;
   }
@@ -123,8 +125,9 @@ void FlingGestureHandler::OnBegin(float x, float y,
                    GetEventParamsInActive(event, x, y));
 }
 
-void FlingGestureHandler::OnUpdate(float delta_x, float delta_y,
-                                   std::shared_ptr<TouchEvent> event) {
+void FlingGestureHandler::OnUpdate(
+    float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   if (!IsOnUpdateEnable()) {
     return;
   }
@@ -133,7 +136,7 @@ void FlingGestureHandler::OnUpdate(float delta_x, float delta_y,
 }
 
 void FlingGestureHandler::OnStart(float x, float y,
-                                  std::shared_ptr<TouchEvent> event) {
+                                  const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnStartEnable() || is_invoked_start_ || !is_invoked_begin_) {
     return;
   }
@@ -143,7 +146,7 @@ void FlingGestureHandler::OnStart(float x, float y,
 }
 
 void FlingGestureHandler::OnEnd(float x, float y,
-                                std::shared_ptr<TouchEvent> event) {
+                                const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnEndEnable() || is_invoked_end_ || !is_invoked_begin_) {
     return;
   }

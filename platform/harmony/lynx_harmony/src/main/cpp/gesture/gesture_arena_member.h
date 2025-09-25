@@ -56,6 +56,12 @@ class GestureArenaMember {
   virtual float ScrollX() = 0;
 
   /**
+   * get scroll container direction
+   * @return 1 —— vertical  -1 —— horizontal 0 —— not scroll container
+   */
+  virtual int8_t GetScrollContainerDirection() = 0;
+
+  /**
    * Get current scroller container is at border edge or not
    * @param isStart if it is at start or end
    * @return true — at border edge, false — not at border edge
