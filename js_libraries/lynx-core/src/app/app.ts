@@ -439,6 +439,13 @@ export abstract class BaseApp<
 
   /**
    * @internal
+   * @static
+   * The LynxGroup level cache for loadScript
+   */
+  static _$loadScriptCache: Record<string, BundleInitReturnObj> = {};
+
+  /**
+   * @internal
    * Execute the loaded JS module ,  Called by {@link requireModule} & {@link requireModuleAsync}
    * @throws {UserRuntimeError} when loading or evaluating failed
    * @throws {Error} when executing failed
@@ -448,8 +455,14 @@ export abstract class BaseApp<
     {
       path,
       entryName,
-      shouldCache = true,
-    }: { path: string; entryName?: string; shouldCache?: boolean }
+      shouldCacheFactory = true,
+      cacheKey,
+    }: {
+      path: string;
+      entryName?: string;
+      shouldCacheFactory?: boolean;
+      cacheKey?: string;
+    }
   ): T {
     let factory: <T>(injected: { tt: BaseApp }) => T;
     if (exports && exports.init) {
@@ -474,9 +487,11 @@ export abstract class BaseApp<
 
       // Here means that no error occurred when executing.
       // Only then we cache the factory.
-      if (shouldCache) {
+      if (shouldCacheFactory) {
         BaseApp._$factoryCache[path] = factory;
       }
+      addLoadScriptCache(cacheKey, exports);
+
       return ret;
     } finally {
       this.lynx.performance.profileEnd();
@@ -519,9 +534,22 @@ export abstract class BaseApp<
       });
       return this._$executeJSON(content, { path, entryName });
     }
-
-    const exports = this.nativeApp.loadScript(path, entryName, options);
-    return this._$executeInit<T>(exports, { path, entryName });
+    const cacheKey = getLoadScriptCacheKey(
+      path,
+      entryName,
+      this.params.srcName
+    );
+    const cache = tryGetLoadScriptCache(cacheKey);
+    if (cache) {
+      // cache hit
+      return this._$executeInit<T>(cache, {
+        path,
+        entryName,
+      });
+    } else {
+      const exports = this.nativeApp.loadScript(path, entryName, options);
+      return this._$executeInit<T>(exports, { path, entryName, cacheKey });
+    }
   }
 
   requireModuleAsync<T>(
@@ -546,6 +574,17 @@ export abstract class BaseApp<
       return;
     }
 
+    // get cache first
+    const cacheKey = getLoadScriptCacheKey(path, this.params.srcName);
+    const cache = tryGetLoadScriptCache(cacheKey);
+    if (cache) {
+      // cache hit
+      try {
+        return callback(null, this._$executeInit(cache, { path }));
+      } catch (e) {
+        callback(e);
+      }
+    }
     // Create an error here to make sure the stack contains
     // lynx.requireModuleAsync and it's caller.
     const error = new Error();
@@ -558,7 +597,7 @@ export abstract class BaseApp<
       }
 
       try {
-        return callback(null, this._$executeInit(exports, { path }));
+        return callback(null, this._$executeInit(exports, { path, cacheKey }));
       } catch (e) {
         return callback(e);
       }
@@ -675,15 +714,27 @@ export abstract class BaseApp<
     };
   }
 
-  execLoadScriptResult<T>(
-    exports: BundleInitReturnObj,
-    path: string,
-    options?: { bundleName?: string }
-  ): T {
+  loadScript<T>(url: string, options?: { bundleName?: string }): T {
+    const cacheKey = getLoadScriptCacheKey(
+      url,
+      options?.bundleName,
+      this.params.srcName
+    );
+    let exports = tryGetLoadScriptCache(cacheKey);
+    if (NODE_ENV === 'development' || !exports) {
+      let maybeExports = this.lynx.getNativeLynx().loadScript(url, options);
+      if (maybeExports && typeof (maybeExports as any).init === 'function') {
+        exports = maybeExports as BundleInitReturnObj;
+      } else {
+        return maybeExports as T;
+      }
+    }
+
     return this._$executeInit<T>(exports, {
-      path,
+      path: url,
       entryName: options?.bundleName,
-      shouldCache: false,
+      shouldCacheFactory: false,
+      cacheKey: cacheKey,
     });
   }
 
@@ -971,4 +1022,39 @@ function inRequire(path: string): Function {
     /* eslint-disable no-sequences */
     return c.endsWith('.js') || (c += '.js'), that.require(c);
   };
+}
+
+function getLoadScriptCacheKey(
+  path: string,
+  entryName?: string,
+  template_url?: string
+): string | undefined {
+  if (!template_url || NODE_ENV === 'development') {
+    return undefined;
+  }
+  let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
+  if (path.startsWith('/') || path.startsWith('lynx_assets')) {
+    cacheKey =
+      template_url.replace(/^([^?#]+)(?:[?#].*)?$/, '$1') + '/' + cacheKey;
+  }
+  return cacheKey;
+}
+
+function tryGetLoadScriptCache(
+  cacheKey: string | undefined
+): BundleInitReturnObj | undefined {
+  if (!cacheKey) {
+    return undefined;
+  }
+  return BaseApp._$loadScriptCache[cacheKey];
+}
+
+function addLoadScriptCache(
+  cacheKey: string | undefined,
+  exports: BundleInitReturnObj | undefined
+) {
+  if (!cacheKey || !exports) {
+    return;
+  }
+  BaseApp._$loadScriptCache[cacheKey] = exports;
 }
