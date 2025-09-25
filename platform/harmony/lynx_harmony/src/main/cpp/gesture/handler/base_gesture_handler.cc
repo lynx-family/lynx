@@ -8,6 +8,7 @@
 #include "core/renderer/events/gesture.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/common/gesture_extra_bundle.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/default_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/fling_gesture_handler.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/longpress_gesture_handler.h"
@@ -93,9 +94,11 @@ void BaseGestureHandler::HandleEnableGestureCallback(
 
 void BaseGestureHandler::HandleMotionEvent(
     const ArkUI_UIInputEvent* input_event,
-    std::shared_ptr<TouchEvent> lynx_touch_event, float delta_x,
-    float delta_y) {
-  OnHandle(input_event, lynx_touch_event, delta_x, delta_y);
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float delta_x,
+    float delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
+  OnHandle(input_event, lynx_touch_event, delta_x, delta_y,
+           handle_by_simultaneous, extra_bundle);
 }
 
 bool BaseGestureHandler::IsEnd() const {
@@ -134,7 +137,7 @@ bool BaseGestureHandler::IsOnEndEnable() const {
 }
 
 const lepus::Value BaseGestureHandler::GetEventParamsFromTouchEvent(
-    std::shared_ptr<TouchEvent> touch_event) const {
+    const std::shared_ptr<TouchEvent>& touch_event) const {
   auto params = lepus::Dictionary::Create();
 
   if (touch_event) {
@@ -212,7 +215,7 @@ void BaseGestureHandler::Ignore() {
 void BaseGestureHandler::End() { status_ = GestureConstants::LYNX_STATE_END; }
 
 void BaseGestureHandler::OnTouchesDown(
-    std::shared_ptr<TouchEvent> touch_event) {
+    const std::shared_ptr<TouchEvent>& touch_event) {
   if (enable_flags_.at(GestureConstants::ON_TOUCHES_DOWN)) {
     SendGestureEvent(GestureConstants::ON_TOUCHES_DOWN,
                      GetEventParamsFromTouchEvent(touch_event));
@@ -220,14 +223,15 @@ void BaseGestureHandler::OnTouchesDown(
 }
 
 void BaseGestureHandler::OnTouchesMove(
-    std::shared_ptr<TouchEvent> touch_event) {
+    const std::shared_ptr<TouchEvent>& touch_event) {
   if (enable_flags_.at(GestureConstants::ON_TOUCHES_MOVE)) {
     SendGestureEvent(GestureConstants::ON_TOUCHES_MOVE,
                      GetEventParamsFromTouchEvent(touch_event));
   }
 }
 
-void BaseGestureHandler::OnTouchesUp(std::shared_ptr<TouchEvent> touch_event) {
+void BaseGestureHandler::OnTouchesUp(
+    const std::shared_ptr<TouchEvent>& touch_event) {
   if (enable_flags_.at(GestureConstants::ON_TOUCHES_UP)) {
     SendGestureEvent(GestureConstants::ON_TOUCHES_UP,
                      GetEventParamsFromTouchEvent(touch_event));
@@ -235,7 +239,7 @@ void BaseGestureHandler::OnTouchesUp(std::shared_ptr<TouchEvent> touch_event) {
 }
 
 void BaseGestureHandler::OnTouchesCancel(
-    std::shared_ptr<TouchEvent> touch_event) {
+    const std::shared_ptr<TouchEvent>& touch_event) {
   if (enable_flags_.at(GestureConstants::ON_TOUCHES_CANCEL)) {
     SendGestureEvent(GestureConstants::ON_TOUCHES_CANCEL,
                      GetEventParamsFromTouchEvent(touch_event));

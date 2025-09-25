@@ -64,6 +64,14 @@ void BaseScrollContainer::SetNestedScroll(
       static_cast<int>(nested_scroll_backward_mode));
 }
 
+int8_t BaseScrollContainer::GetScrollContainerDirection() {
+  if (is_horizontal_) {
+    return GestureConstants::DIRECTION_HORIZONTAL;
+  } else {
+    return GestureConstants::DIRECTION_VERTICAL;
+  }
+}
+
 ArkUI_ScrollNestedMode BaseScrollContainer::GetNestedScrollMode(
     const std::string& str) {
   if (str == "selfOnly") {

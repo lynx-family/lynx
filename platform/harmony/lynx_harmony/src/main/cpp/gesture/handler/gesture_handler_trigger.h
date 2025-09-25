@@ -69,13 +69,13 @@ class GestureHandlerTrigger {
   void ResolveTouchEvent(
       const ArkUI_UIInputEvent* event,
       std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
-      std::shared_ptr<TouchEvent> lynx_touch_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event,
       std::vector<std::weak_ptr<GestureArenaMember>>& bubble_chain_candidates);
 
   void HandleGestureDetectorState(std::weak_ptr<GestureArenaMember> member,
                                   int gesture_id, int state);
   void DispatchBubbleTouchEvent(
-      const std::string& type, std::shared_ptr<TouchEvent> touch_event,
+      const std::string& type, const std::shared_ptr<TouchEvent>& touch_event,
       std::vector<std::weak_ptr<GestureArenaMember>>& bubble_candidate,
       std::weak_ptr<GestureArenaMember> winner);
   void SetVelocity(float velocity_x, float velocity_y);
@@ -89,13 +89,13 @@ class GestureHandlerTrigger {
       std::weak_ptr<GestureArenaMember> member, int current_gesture_id,
       std::unordered_set<int>& simultaneous_gesture_ids);
   void StopFlingByLastFlingMember(
-      std::shared_ptr<TouchEvent> lynx_touch_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event,
       std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
       std::vector<std::weak_ptr<GestureArenaMember>>& bubble_candidates,
       const ArkUI_UIInputEvent* motion_event);
 
   void FindNextWinnerInBegin(
-      std::shared_ptr<TouchEvent> lynx_touch_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event,
       std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
       float x, float y, const ArkUI_UIInputEvent* event);
   void UpdateSimultaneousWinner(std::weak_ptr<GestureArenaMember> winner);
@@ -106,19 +106,20 @@ class GestureHandlerTrigger {
       std::weak_ptr<GestureArenaMember> current);
   void DispatchMotionEventOnCurrentWinner(
       const ArkUI_UIInputEvent* event, std::weak_ptr<GestureArenaMember> member,
-      std::shared_ptr<TouchEvent> lynx_touch_event, float delta_x,
-      float delta_y);
+      const std::shared_ptr<TouchEvent>& lynx_touch_event, float delta_x,
+      float delta_y, bool handle_by_simultaneous,
+      const std::shared_ptr<GestureExtraBundle>& current_extra_bundle);
   int GetCurrentMemberState(std::weak_ptr<GestureArenaMember> node);
   void ResetGestureHandlerAndSimultaneous(
       std::weak_ptr<GestureArenaMember> member);
   void ResetGestureHandler(std::weak_ptr<GestureArenaMember> member);
   void DispatchMotionEventWithSimultaneous(
       std::weak_ptr<GestureArenaMember> winner, float x, float y,
-      std::shared_ptr<TouchEvent> lynx_touch_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event,
       const ArkUI_UIInputEvent* event);
   void DispatchMotionEventWithSimultaneousAndReCompete(
       std::weak_ptr<GestureArenaMember> winner, float x, float y,
-      std::shared_ptr<TouchEvent> lynx_touch_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event,
       std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
       const ArkUI_UIInputEvent* motion_event);
   void FlingCallback(int status, float velocity_x, float velocity_y);
@@ -141,6 +142,8 @@ class GestureHandlerTrigger {
   std::weak_ptr<GestureArenaMember> last_winner_;
   std::shared_ptr<GestureDetectorManager> gesture_detector_manager_;
   std::unique_ptr<FlingScroller> fling_scroller_;
+  // current gesture extra bundle, reset when touch down
+  std::shared_ptr<GestureExtraBundle> current_extra_bundle_;
 };
 }  // namespace harmony
 }  // namespace tasm

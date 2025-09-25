@@ -147,6 +147,9 @@ class LYNX_EXPORT
   NativeNodeContent* NodeContent() const { return node_content_.get(); }
   const OverflowValue& Overflow() { return overflow_; }
   float ScrollX() override { return 0; }
+  int8_t GetScrollContainerDirection() override {
+    return GestureConstants::DIRECTION_UNDETERMINED;
+  }
   float ScrollY() override { return 0; }
   bool IsInterceptGesture() override;
   virtual float OffsetXForCalcPosition();
