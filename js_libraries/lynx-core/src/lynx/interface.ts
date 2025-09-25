@@ -103,3 +103,7 @@ export interface RequireModule extends RequireModuleCache {
 export interface RequireModuleAsync extends RequireModuleCache {
   <T>(path: string, callback?: (error?: Error, ret?: T) => void): void;
 }
+
+export interface LoadScript extends RequireModuleCache {
+  <T = unknown>(url: string, options?: { bundleName?: string }): T;
+}

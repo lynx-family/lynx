@@ -787,6 +787,12 @@ class LynxConfigDecoder final {
       page_config->SetEnableEventHandleRefactor(
           LynxEnv::GetInstance().EnableEventHandleRefactor());
     }
+
+    if (doc.HasMember(config::kEnableReuseLoadScriptExports) &&
+        doc[config::kEnableReuseLoadScriptExports].IsBool()) {
+      page_config->SetEnableReuseLoadScriptExports(
+          doc[config::kEnableReuseLoadScriptExports].GetBool());
+    }
   };
 };
 }  // namespace tasm
