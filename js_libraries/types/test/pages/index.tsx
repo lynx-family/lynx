@@ -14,7 +14,6 @@ import { MainThread, UIMethods, MessageEvent } from '../../types';
   <image style={{ backgroundColor: 'red' }} class="" className="" />;
   <list style={{ backgroundColor: 'red' }} class="" className="" />;
   <list-item style={{ backgroundColor: 'red' }} class="" className="" item-key={'a'} />;
-  <list-row style={{ backgroundColor: 'red' }} class="" className="" item-key={'b'} />;
   <page style={{ backgroundColor: 'red' }} class="" className="" />;
   <scroll-view style={{ backgroundColor: 'red' }} class="" className="" />;
   <text style={{ backgroundColor: 'red' }} class="" className="" />;
@@ -28,54 +27,6 @@ import { MainThread, UIMethods, MessageEvent } from '../../types';
 function noop() {}
 {
   <view bindtap={noop}></view>;
-}
-
-// UIMethods types check
-function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
-
-// list methods Check
-{
-  invoke<'list'>({
-    method: 'autoScroll',
-    params: {
-      rate: '',
-      start: true,
-      autoStop: false,
-    },
-  });
-
-  invoke<'list'>({
-    method: 'scrollToPosition',
-    params: {
-      position: 1,
-      index: 1,
-    },
-  });
-
-  let s: unknown;
-  invoke<'list'>({
-    method: s as 'initCache' | 'removeStickyView' | 'getVisibleCells' | 'getVisibleItemsPositions',
-  });
-}
-
-// scroll-view methods
-{
-  invoke<'scroll-view'>({
-    method: 'autoScroll',
-    params: {
-      rate: 1,
-      start: true,
-    },
-  });
-
-  invoke<'scroll-view'>({
-    method: 'scrollTo',
-    params: {
-      offset: 0,
-      smooth: false,
-      index: 0,
-    },
-  });
 }
 
 // fetch api

@@ -7,7 +7,8 @@ import { NoProps } from '../props';
 import { ComponentProps } from './component';
 import { FilterImageProps } from './filter-image';
 import { ImageProps, ImageUIMethods } from './image';
-import { ListItemProps, ListProps, ListRowProps, ListUIMethods } from './list';
+import { ListProps, ListUIMethods } from './list';
+import { ListItemProps } from './list-item';
 import { PageProps } from './page';
 import { ScrollViewProps, ScrollViewUIMethods } from './scroll-view';
 import { TextProps, TextUIMethods } from './text';
@@ -38,7 +39,7 @@ export interface IntrinsicElements {
   'inline-truncation': NoProps;
   'list': ListProps;
   'list-item': ListItemProps;
-  'list-row': ListRowProps;
+  'list-row': StandardProps;
   'page': PageProps;
   'scroll-view': ScrollViewProps;
   'text': TextProps;
@@ -61,7 +62,7 @@ declare module 'react' {
       'inline-truncation': NoProps;
       'list': ListProps;
       'list-item': ListItemProps;
-      'list-row': ListRowProps;
+      'list-row': StandardProps;
       'page': PageProps;
       'scroll-view': ScrollViewProps;
       'text': TextProps;
