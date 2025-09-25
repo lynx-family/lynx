@@ -41,9 +41,11 @@ void TapGestureHandler::HandleConfigMap(const lepus::Value& config) {
   }
 }
 
-void TapGestureHandler::OnHandle(const ArkUI_UIInputEvent* event,
-                                 std::shared_ptr<TouchEvent> lynx_touch_event,
-                                 float fling_delta_x, float fling_delta_y) {
+void TapGestureHandler::OnHandle(
+    const ArkUI_UIInputEvent* event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+    float fling_delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   last_touch_event_ = lynx_touch_event;
   if (event == nullptr) {
     Ignore();
@@ -126,7 +128,7 @@ bool TapGestureHandler::ShouldFail() {
 }
 
 void TapGestureHandler::OnBegin(float x, float y,
-                                std::shared_ptr<TouchEvent> event) {
+                                const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnBeginEnable()) {
     return;
   }
@@ -134,11 +136,12 @@ void TapGestureHandler::OnBegin(float x, float y,
                    GetEventParamsFromTouchEvent(event));
 }
 
-void TapGestureHandler::OnUpdate(float delta_x, float delta_y,
-                                 std::shared_ptr<TouchEvent> event) {}
+void TapGestureHandler::OnUpdate(
+    float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {}
 
 void TapGestureHandler::OnStart(float x, float y,
-                                std::shared_ptr<TouchEvent> event) {
+                                const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnStartEnable()) {
     return;
   }
@@ -147,7 +150,7 @@ void TapGestureHandler::OnStart(float x, float y,
 }
 
 void TapGestureHandler::OnEnd(float x, float y,
-                              std::shared_ptr<TouchEvent> event) {
+                              const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnEndEnable() || is_invoked_end_) {
     return;
   }

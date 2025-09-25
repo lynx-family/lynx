@@ -39,6 +39,7 @@ class BaseScrollContainer : public UIView {
   virtual void AutoScrollStopped(){};
   void OnPropUpdate(const std::string& name, const lepus::Value& value) override;
   bool IsAtBorder(bool isStart) override;
+  int8_t GetScrollContainerDirection() override;
 
  protected:
   BaseScrollContainer(LynxContext* context, int sign, const std::string& tag);

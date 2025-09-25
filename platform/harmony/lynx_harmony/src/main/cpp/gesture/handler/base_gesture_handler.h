@@ -47,6 +47,11 @@ constexpr int LYNX_STATE_FAIL = 3;
 constexpr int LYNX_STATE_END = 4;
 constexpr int LYNX_STATE_UNDETERMINED = 5;
 
+// Scroll container direction
+constexpr int DIRECTION_HORIZONTAL = -1;
+constexpr int DIRECTION_VERTICAL = 1;
+constexpr int DIRECTION_UNDETERMINED = 0;
+
 // Other constants
 constexpr int MIN_SCROLL = std::numeric_limits<int>::min();
 constexpr int MAX_SCROLL = std::numeric_limits<int>::max();
@@ -57,6 +62,7 @@ constexpr int FLING_SPEED_THRESHOLD = 300;
 namespace harmony {
 class LynxContext;
 class GestureArenaMember;
+class GestureExtraBundle;
 class TouchEvent;
 
 class BaseGestureHandler;
@@ -101,9 +107,11 @@ class BaseGestureHandler {
 
   void HandleEnableGestureCallback(
       const std::vector<GestureCallback>& callbacks);
-  void HandleMotionEvent(const ArkUI_UIInputEvent* input_event,
-                         std::shared_ptr<TouchEvent> lynx_touch_event,
-                         float delta_x, float delta_y);
+  void HandleMotionEvent(
+      const ArkUI_UIInputEvent* input_event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event, float delta_x,
+      float delta_y, bool handle_by_simultaneous,
+      const std::shared_ptr<GestureExtraBundle>& extra_bundle);
 
   bool IsEnd() const;
   bool IsActive() const;
@@ -118,7 +126,7 @@ class BaseGestureHandler {
   bool IsOnEndEnable() const;
 
   const lepus::Value GetEventParamsFromTouchEvent(
-      std::shared_ptr<TouchEvent> touch_event) const;
+      const std::shared_ptr<TouchEvent>& touch_event) const;
 
   int Px2vp(float px_value) const;
   int Dip2Px(float dp_value) const;
@@ -130,10 +138,10 @@ class BaseGestureHandler {
   virtual void Ignore();
   virtual void End();
 
-  void OnTouchesDown(std::shared_ptr<TouchEvent> touch_event);
-  void OnTouchesMove(std::shared_ptr<TouchEvent> touch_event);
-  void OnTouchesUp(std::shared_ptr<TouchEvent> touch_event);
-  void OnTouchesCancel(std::shared_ptr<TouchEvent> touch_event);
+  void OnTouchesDown(const std::shared_ptr<TouchEvent>& touch_event);
+  void OnTouchesMove(const std::shared_ptr<TouchEvent>& touch_event);
+  void OnTouchesUp(const std::shared_ptr<TouchEvent>& touch_event);
+  void OnTouchesCancel(const std::shared_ptr<TouchEvent>& touch_event);
 
   std::shared_ptr<GestureDetector> GetGestureDetector() const;
 
@@ -146,15 +154,21 @@ class BaseGestureHandler {
   std::shared_ptr<GestureDetector> gesture_detector_;
   std::weak_ptr<GestureArenaMember> gesture_arena_member_;
 
-  virtual void OnHandle(const ArkUI_UIInputEvent* event,
-                        std::shared_ptr<TouchEvent> lynx_touch_event,
-                        float fling_delta_x, float fling_delta_y) = 0;
+  virtual void OnHandle(
+      const ArkUI_UIInputEvent* event,
+      const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+      float fling_delta_y, bool handle_by_simultaneous,
+      const std::shared_ptr<GestureExtraBundle>& extra_bundle) = 0;
 
-  virtual void OnBegin(float x, float y, std::shared_ptr<TouchEvent> event) = 0;
-  virtual void OnUpdate(float delta_x, float deltaY,
-                        std::shared_ptr<TouchEvent> event) = 0;
-  virtual void OnStart(float x, float y, std::shared_ptr<TouchEvent> event) = 0;
-  virtual void OnEnd(float x, float y, std::shared_ptr<TouchEvent> event) = 0;
+  virtual void OnBegin(float x, float y,
+                       const std::shared_ptr<TouchEvent>& event) = 0;
+  virtual void OnUpdate(
+      float delta_x, float deltaY, const std::shared_ptr<TouchEvent>& event,
+      const std::shared_ptr<GestureExtraBundle>& extra_bundle) = 0;
+  virtual void OnStart(float x, float y,
+                       const std::shared_ptr<TouchEvent>& event) = 0;
+  virtual void OnEnd(float x, float y,
+                     const std::shared_ptr<TouchEvent>& event) = 0;
 };
 
 }  // namespace harmony

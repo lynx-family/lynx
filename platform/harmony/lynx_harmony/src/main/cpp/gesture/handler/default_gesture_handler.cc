@@ -4,10 +4,12 @@
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/default_gesture_handler.h"
 
+#include <cmath>
 #include <limits>
 
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/gesture_event.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/common/gesture_extra_bundle.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_arena_member.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_context.h"
 
@@ -31,11 +33,23 @@ void DefaultGestureHandler::HandleConfigMap(const lepus::Value& config) {}
 
 void DefaultGestureHandler::OnHandle(
     const ArkUI_UIInputEvent* event,
-    std::shared_ptr<TouchEvent> lynx_touch_event, float fling_delta_x,
-    float fling_delta_y) {
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+    float fling_delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   last_touch_event_ = lynx_touch_event;
   if (status_ >= GestureConstants::LYNX_STATE_FAIL) {
     OnEnd(last_x_, last_y_, last_touch_event_);
+    return;
+  }
+
+  if (handle_by_simultaneous && extra_bundle != nullptr) {
+    if (extra_bundle->IsNeedConsumedSimultaneousGesture()) {
+      if (gesture_arena_member_.lock() != nullptr) {
+        gesture_arena_member_.lock()->ScrollBy(
+            extra_bundle->SimultaneousDeltaX(),
+            extra_bundle->SimultaneousDeltaY());
+      }
+    }
     return;
   }
 
@@ -50,17 +64,40 @@ void DefaultGestureHandler::OnHandle(
     } else if (type == UI_TOUCH_EVENT_ACTION_MOVE) {
       float delta_x = last_x_ - OH_ArkUI_PointerEvent_GetXByIndex(event, 0);
       float delta_y = last_y_ - OH_ArkUI_PointerEvent_GetYByIndex(event, 0);
+
+      if (delta_x == 0 && delta_y == 0) {
+        return;
+      }
+      if (extra_bundle != nullptr &&
+          extra_bundle->GestureDirection() ==
+              GestureConstants::DIRECTION_UNDETERMINED) {
+        extra_bundle->SetGestureDirection(
+            std::fabs(delta_x) > std::fabs(delta_y)
+                ? GestureConstants::DIRECTION_HORIZONTAL
+                : GestureConstants::DIRECTION_VERTICAL);
+      }
+      if (extra_bundle != nullptr &&
+          extra_bundle->GestureDirection() !=
+              GestureConstants::DIRECTION_UNDETERMINED) {
+        if (extra_bundle->GestureDirection() ==
+            GestureConstants::DIRECTION_HORIZONTAL) {
+          delta_y = 0;
+        } else {
+          delta_x = 0;
+        }
+      }
+
       if (status_ == GestureConstants::LYNX_STATE_INIT) {
         OnBegin(last_x_, last_y_, lynx_touch_event);
         Activate();
       } else {
-        if (ShouldFail(delta_x, delta_y)) {
-          OnUpdate(delta_x, delta_y, lynx_touch_event);
+        if (ShouldFail(delta_x, delta_y, extra_bundle)) {
+          OnUpdate(delta_x, delta_y, lynx_touch_event, extra_bundle);
           Fail();
           OnEnd(last_x_, last_y_, lynx_touch_event);
         } else {
           Activate();
-          OnUpdate(delta_x, delta_y, lynx_touch_event);
+          OnUpdate(delta_x, delta_y, lynx_touch_event, extra_bundle);
         }
       }
       last_x_ = OH_ArkUI_PointerEvent_GetXByIndex(event, 0);
@@ -81,8 +118,23 @@ void DefaultGestureHandler::OnHandle(
       OnEnd(0, 0, nullptr);
       return;
     }
-    if (ShouldFail(fling_delta_x, fling_delta_y)) {
-      OnUpdate(fling_delta_x, fling_delta_y, nullptr);
+    if (extra_bundle != nullptr &&
+        extra_bundle->GestureDirection() !=
+            GestureConstants::DIRECTION_UNDETERMINED) {
+      if (extra_bundle->GestureDirection() ==
+          GestureConstants::DIRECTION_HORIZONTAL) {
+        fling_delta_y = 0;
+      } else {
+        fling_delta_x = 0;
+      }
+    }
+    if (ShouldFail(fling_delta_x, fling_delta_y, extra_bundle)) {
+      // consume last delta to arrive start or end
+      auto member = gesture_arena_member_.lock();
+      if (member != nullptr && !member->IsAtBorder(true) &&
+          !member->IsAtBorder(false)) {
+        OnUpdate(fling_delta_x, fling_delta_y, nullptr, extra_bundle);
+      }
       Fail();
       OnEnd(fling_delta_x, fling_delta_y, nullptr);
     } else {
@@ -91,16 +143,34 @@ void DefaultGestureHandler::OnHandle(
         Activate();
         return;
       }
-      OnUpdate(fling_delta_x, fling_delta_y, nullptr);
+      OnUpdate(fling_delta_x, fling_delta_y, nullptr, extra_bundle);
     }
   }
 }
 
-bool DefaultGestureHandler::ShouldFail(float delta_x, float delta_y) {
+bool DefaultGestureHandler::ShouldFail(
+    float delta_x, float delta_y,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   auto member = gesture_arena_member_.lock();
   if (!member) {
     return true;
   }
+
+  if (extra_bundle != nullptr) {
+    if (extra_bundle->GestureDirection() ==
+            GestureConstants::DIRECTION_HORIZONTAL &&
+        member->GetScrollContainerDirection() !=
+            GestureConstants::DIRECTION_HORIZONTAL) {
+      return true;
+    }
+    if (extra_bundle->GestureDirection() ==
+            GestureConstants::DIRECTION_VERTICAL &&
+        member->GetScrollContainerDirection() !=
+            GestureConstants::DIRECTION_VERTICAL) {
+      return true;
+    }
+  }
+
   return !member->CanConsumeGesture(delta_x, delta_y);
 }
 
@@ -156,7 +226,7 @@ void DefaultGestureHandler::Reset() {
 }
 
 void DefaultGestureHandler::OnBegin(float x, float y,
-                                    std::shared_ptr<TouchEvent> event) {
+                                    const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnBeginEnable() || is_invoked_begin_) {
     return;
   }
@@ -165,12 +235,19 @@ void DefaultGestureHandler::OnBegin(float x, float y,
                    GetEventParamsInActive(event, 0, 0));
 }
 
-void DefaultGestureHandler::OnUpdate(float delta_x, float delta_y,
-                                     std::shared_ptr<TouchEvent> event) {
+void DefaultGestureHandler::OnUpdate(
+    float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   auto member = gesture_arena_member_.lock();
   if (member != nullptr) {
     member->ScrollBy(delta_x, delta_y);
   }
+  if (extra_bundle != nullptr) {
+    extra_bundle->SetIsNeedConsumedSimultaneousGesture(true);
+    extra_bundle->SetSimultaneousDeltaX(delta_x);
+    extra_bundle->SetSimultaneousDeltaY(delta_y);
+  }
+
   if (!IsOnUpdateEnable()) {
     return;
   }
@@ -179,7 +256,7 @@ void DefaultGestureHandler::OnUpdate(float delta_x, float delta_y,
 }
 
 void DefaultGestureHandler::OnStart(float x, float y,
-                                    std::shared_ptr<TouchEvent> event) {
+                                    const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnStartEnable() || is_invoked_start_ || !is_invoked_begin_) {
     return;
   }
@@ -189,7 +266,7 @@ void DefaultGestureHandler::OnStart(float x, float y,
 }
 
 void DefaultGestureHandler::OnEnd(float x, float y,
-                                  std::shared_ptr<TouchEvent> event) {
+                                  const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnEndEnable() || is_invoked_end_ || !is_invoked_begin_) {
     return;
   }

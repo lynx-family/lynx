@@ -25,6 +25,8 @@ lynx_core_source_set("cpp") {
     "font/system_font_manager.h",
     "gesture/arena/gesture_arena_manager.cc",
     "gesture/arena/gesture_arena_manager.h",
+    "gesture/common/gesture_extra_bundle.cc",
+    "gesture/common/gesture_extra_bundle.h",
     "gesture/detector/gesture_detector_manager.cc",
     "gesture/detector/gesture_detector_manager.h",
     "gesture/gesture_arena_member.h",

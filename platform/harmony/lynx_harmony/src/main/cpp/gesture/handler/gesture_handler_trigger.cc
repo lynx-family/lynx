@@ -8,6 +8,7 @@
 
 #include "core/renderer/events/gesture.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/event/touch_event.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/gesture/common/gesture_extra_bundle.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/detector/gesture_detector_manager.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/gesture_handler_delegate.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/gesture/handler/base_gesture_handler.h"
@@ -32,12 +33,13 @@ void GestureHandlerTrigger::InitCurrentWinnerWhenDown(
   UpdateLastWinner(winner_);
   UpdateSimultaneousWinner(winner_);
   ResetGestureHandlerAndSimultaneous(winner_);
+  current_extra_bundle_ = std::make_shared<GestureExtraBundle>();
 }
 
 void GestureHandlerTrigger::ResolveTouchEvent(
     const ArkUI_UIInputEvent* event,
     std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
-    std::shared_ptr<TouchEvent> lynx_touch_event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event,
     std::vector<std::weak_ptr<GestureArenaMember>>& bubble_chain_candidates) {
   auto touch_action = OH_ArkUI_UIInputEvent_GetAction(event);
   float page_point[2] = {OH_ArkUI_PointerEvent_GetXByIndex(event, 0),
@@ -132,7 +134,7 @@ void GestureHandlerTrigger::HandleGestureDetectorState(
 }
 
 void GestureHandlerTrigger::DispatchBubbleTouchEvent(
-    const std::string& type, std::shared_ptr<TouchEvent> touch_event,
+    const std::string& type, const std::shared_ptr<TouchEvent>& touch_event,
     std::vector<std::weak_ptr<GestureArenaMember>>& bubble_candidate,
     std::weak_ptr<GestureArenaMember> winner) {
   if (!winner.lock()) {
@@ -201,7 +203,7 @@ void GestureHandlerTrigger::FailOthersMembersInRaceRelation(
 }
 
 void GestureHandlerTrigger::StopFlingByLastFlingMember(
-    std::shared_ptr<TouchEvent> lynx_touch_event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event,
     std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
     std::vector<std::weak_ptr<GestureArenaMember>>& bubble_candidates,
     const ArkUI_UIInputEvent* touch_event) {
@@ -228,7 +230,7 @@ void GestureHandlerTrigger::StopFlingByLastFlingMember(
 }
 
 void GestureHandlerTrigger::FindNextWinnerInBegin(
-    std::shared_ptr<TouchEvent> lynx_touch_event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event,
     std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
     float x, float y, const ArkUI_UIInputEvent* event) {
   for (int i = 0; i < compete_chain_candidates.size(); ++i) {
@@ -374,8 +376,9 @@ std::weak_ptr<GestureArenaMember> GestureHandlerTrigger::ReCompeteByGestures(
 
 void GestureHandlerTrigger::DispatchMotionEventOnCurrentWinner(
     const ArkUI_UIInputEvent* event, std::weak_ptr<GestureArenaMember> member,
-    std::shared_ptr<TouchEvent> lynx_touch_event, float delta_x,
-    float delta_y) {
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float delta_x,
+    float delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& current_extra_bundle) {
   if (!member.lock()) {
     return;
   }
@@ -386,7 +389,8 @@ void GestureHandlerTrigger::DispatchMotionEventOnCurrentWinner(
 
   for (auto& handler_pair : gesture_handler_map) {
     handler_pair.second->HandleMotionEvent(event, lynx_touch_event, delta_x,
-                                           delta_y);
+                                           delta_y, handle_by_simultaneous,
+                                           current_extra_bundle);
   }
 }
 
@@ -453,7 +457,7 @@ void GestureHandlerTrigger::ResetGestureHandler(
 
 void GestureHandlerTrigger::DispatchMotionEventWithSimultaneous(
     std::weak_ptr<GestureArenaMember> winner, float x, float y,
-    std::shared_ptr<TouchEvent> lynx_touch_event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event,
     const ArkUI_UIInputEvent* event) {
   static std::vector<std::weak_ptr<GestureArenaMember>> empty_list;
   DispatchMotionEventWithSimultaneousAndReCompete(
@@ -462,7 +466,7 @@ void GestureHandlerTrigger::DispatchMotionEventWithSimultaneous(
 
 void GestureHandlerTrigger::DispatchMotionEventWithSimultaneousAndReCompete(
     std::weak_ptr<GestureArenaMember> winner, float x, float y,
-    std::shared_ptr<TouchEvent> lynx_touch_event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event,
     std::vector<std::weak_ptr<GestureArenaMember>>& compete_chain_candidates,
     const ArkUI_UIInputEvent* input_event) {
   if (!winner.lock()) {
@@ -470,12 +474,14 @@ void GestureHandlerTrigger::DispatchMotionEventWithSimultaneousAndReCompete(
   }
 
   DispatchMotionEventOnCurrentWinner(input_event, winner, lynx_touch_event, x,
-                                     y);
+                                     y, false, current_extra_bundle_);
 
   for (const auto& member : simultaneous_winners_) {
     DispatchMotionEventOnCurrentWinner(input_event, member, lynx_touch_event, x,
-                                       y);
+                                       y, true, current_extra_bundle_);
   }
+
+  current_extra_bundle_->ResetSimultaneousDelta();
 
   if (!compete_chain_candidates.empty()) {
     winner_ = ReCompeteByGestures(compete_chain_candidates, winner_);
