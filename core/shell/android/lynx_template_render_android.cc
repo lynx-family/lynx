@@ -251,7 +251,8 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
              jboolean use_invoke_ui_method, jboolean long_task_monitor_disabled,
              jboolean force_layout_on_background_thread,
              jboolean enable_unified_pipeline, jint embedded_mode,
-             jlong engine_wrapper_ptr, jobject module_factory) {
+             jboolean debuggable, jlong engine_wrapper_ptr,
+             jobject module_factory) {
   auto* ui_delegate =
       reinterpret_cast<lynx::tasm::UIDelegate*>(ui_delegate_ptr);
 
@@ -298,6 +299,7 @@ jlong Create(JNIEnv* env, jclass jcaller, jlong runtime_wrapper_ptr,
       long_task_monitor_disabled);
   shell_option.page_options_.SetEmbeddedMode(
       static_cast<lynx::tasm::EmbeddedMode>(embedded_mode));
+  shell_option.page_options_.SetDebuggable(debuggable);
 
   std::shared_ptr<lynx::tasm::WhiteBoard> white_board = nullptr;
   if (white_board_ptr != 0) {

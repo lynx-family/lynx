@@ -15,7 +15,8 @@ void FiberElementTest::SetUp() {
   vsync_monitor_->BindToCurrentThread();
   auto unique_manager = std::make_unique<lynx::tasm::ElementManager>(
       std::make_unique<FiberMockPaintingContext>(), &tasm_mediator,
-      lynx_env_config, tasm::report::kUnknownInstanceId, vsync_monitor_);
+      lynx_env_config, PageOptions(), tasm::report::kUnknownInstanceId,
+      vsync_monitor_);
   manager = unique_manager.get();
   platform_impl_ = static_cast<FiberMockPaintingContext*>(
       manager->painting_context()->platform_impl_.get());

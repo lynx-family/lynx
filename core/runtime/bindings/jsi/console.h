@@ -21,7 +21,8 @@ class Runtime;
 
 class Console : public HostObject {
  public:
-  Console(std::shared_ptr<ConsoleMessagePostMan> post_man);
+  Console(std::shared_ptr<ConsoleMessagePostMan> post_man,
+          const tasm::PageOptions& page_options);
 
   // void RegFunctionToJs(Runtime& rt, Object& jsbridge);
 
@@ -56,6 +57,7 @@ class Console : public HostObject {
   std::weak_ptr<ConsoleMessagePostMan> post_man_;
   std::unordered_map<std::string, base::MoveOnlyClosure<Function, Runtime*>>
       methods_map_;
+  const tasm::PageOptions& page_options_;
 };
 }  // namespace piper
 }  // namespace lynx

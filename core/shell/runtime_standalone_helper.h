@@ -13,6 +13,7 @@
 #include "base/include/lynx_actor.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
 #include "core/public/lynx_resource_loader.h"
+#include "core/public/page_options.h"
 #include "core/resource/external_resource/external_resource_loader.h"
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/services/performance/performance_controller.h"

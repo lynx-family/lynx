@@ -364,6 +364,7 @@ public class LynxInspectorOwner implements LynxBaseInspectorOwnerNG {
 
   public void onRootViewInputEvent(InputEvent event) {
     if (!LynxEnv.inst().isDevtoolEnabled()) {
+      // The motion is not available in instance-level debuggable switch turn on
       return;
     }
     if (event instanceof MotionEvent && mDevMenu != null) {

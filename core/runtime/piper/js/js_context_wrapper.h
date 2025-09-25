@@ -27,10 +27,12 @@ class LYNX_EXPORT_FOR_DEVTOOL JSContextWrapper
 
   virtual void Def() = 0;
   virtual void EnsureConsole(
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) = 0;
+      std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) = 0;
   virtual void initGlobal(
       std::shared_ptr<piper::Runtime>& js_runtime,
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) = 0;
+      std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) = 0;
 
   bool isGlobalInited() { return global_inited_; }
   bool isJSCoreLoaded() { return js_core_loaded_; }
@@ -66,11 +68,12 @@ class LYNX_EXPORT_FOR_DEVTOOL SharedJSContextWrapper : public JSContextWrapper {
 
   virtual void Def() override;
   virtual void EnsureConsole(
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
+      std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) override;
 
-  void initGlobal(
-      std::shared_ptr<piper::Runtime>& rt,
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
+  void initGlobal(std::shared_ptr<piper::Runtime>& rt,
+                  std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+                  const tasm::PageOptions& page_options) override;
 
  protected:
   std::shared_ptr<piper::SharedContextGlobal> global_;
@@ -88,11 +91,12 @@ class LYNX_EXPORT_FOR_DEVTOOL NoneSharedJSContextWrapper
 
   virtual void Def() override;
   virtual void EnsureConsole(
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
+      std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+      const tasm::PageOptions& page_options) override;
 
-  void initGlobal(
-      std::shared_ptr<piper::Runtime>& js_runtime,
-      std::shared_ptr<piper::ConsoleMessagePostMan> post_man) override;
+  void initGlobal(std::shared_ptr<piper::Runtime>& js_runtime,
+                  std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+                  const tasm::PageOptions& page_options) override;
 
  protected:
   std::shared_ptr<piper::SingleGlobal> global_;

@@ -70,14 +70,16 @@ void RuntimeManagerDelegateImpl::OnRelease(const std::string& group_id) {
 }
 
 std::shared_ptr<piper::Runtime> RuntimeManagerDelegateImpl::MakeRuntime(
-    bool force_use_lightweight_js_engine, bool use_shared_context) {
+    bool force_use_lightweight_js_engine, bool use_shared_context,
+    const tasm::PageOptions& page_options) {
 #if !ENABLE_UNITTESTS
   // When using a shared js context, create a runtime of the same type as the
   // context.
   if (use_shared_context) {
     return MakeRuntimeForSharedContext(force_use_lightweight_js_engine);
   }
-  long v8_enable = tasm::LynxEnv::GetInstance().GetV8Enabled();
+  long v8_enable =
+      tasm::LynxEnv::GetInstance().GetV8Enabled(page_options.GetDebuggable());
   switch (v8_enable) {
     case 0:
       LOGI("js debug: make Quickjs runtime");
@@ -137,8 +139,10 @@ RuntimeManagerDelegateImpl::MakeRuntimeForSharedContext(
 std::shared_ptr<profile::RuntimeProfiler>
 RuntimeManagerDelegateImpl::MakeRuntimeProfiler(
     std::shared_ptr<piper::JSIContext> js_context,
-    bool force_use_lightweight_js_engine) {
-  long v8_enable = tasm::LynxEnv::GetInstance().GetV8Enabled();
+    bool force_use_lightweight_js_engine,
+    const tasm::PageOptions& page_options) {
+  long v8_enable =
+      tasm::LynxEnv::GetInstance().GetV8Enabled(page_options.GetDebuggable());
   switch (v8_enable) {
     case 0:
       LOGI("js debug: make Quickjs profiler");

@@ -336,12 +336,12 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool IsQuickjsCacheEnabled();
   bool IsDisableTracingGC();
   bool IsLayoutPerformanceEnabled();
-  long GetV8Enabled();
+  long GetV8Enabled(bool debuggable);
   bool IsPiperMonitorEnabled();
-  bool IsDomTreeEnabled();
+  bool IsDomTreeEnabled(bool debuggable);
   bool IsDevToolConnected();
-  bool IsQuickjsDebugEnabled();
-  bool IsJsDebugEnabled(bool force_use_lightweight_js_engine);
+  bool IsQuickjsDebugEnabled(bool debuggable);
+  bool IsJsDebugEnabled(bool force_use_lightweight_js_engine, bool debuggable);
   bool IsTableDeepCheckEnabled();
   bool IsDisabledLepusngOptimize();
   bool GetVsyncAlignedFlushGlobalSwitch();

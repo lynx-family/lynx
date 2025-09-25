@@ -395,6 +395,7 @@
   }
   option.page_options_.SetInstanceID(option.instance_id_);
   option.page_options_.SetEmbeddedMode(static_cast<lynx::tasm::EmbeddedMode>(_embeddedMode));
+  option.page_options_.SetDebuggable(_debuggable);
   return option;
 }
 

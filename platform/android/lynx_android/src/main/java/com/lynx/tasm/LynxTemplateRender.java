@@ -862,7 +862,8 @@ public class LynxTemplateRender
         tasmPlatformInvoker, whiteBoardPtr, lynxUIRenderer.getUIDelegatePtr(),
         lynxUIRenderer.useInvokeUIMethod(), mLongTaskMonitorEnabled == LynxBooleanOption.FALSE,
         mForceLayoutOnBackgroundThread, mLynxViewConfigProvider.isEnableUnifiedPipeline(),
-        mEmbeddedMode, mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
+        mEmbeddedMode, mLynxViewBuilder.isDebuggable(),
+        mLynxEngineRef == null ? 0 : mLynxEngineRef.getNativePtr(),
         mMainThreadModuleFactory != null ? mMainThreadModuleFactory : null);
 
     lynxUIRenderer.attachNativeFacade(mNativeFacade);
@@ -4091,7 +4092,8 @@ public class LynxTemplateRender
       boolean enableAsyncHydration, boolean enableJSGroupThread, String jsGroupThreadName,
       Object tasmPlatformInvoker, long whiteboard, long uiDelegate, boolean useInvokeUIMethod,
       boolean longTaskMonitorDisabled, boolean forceLayoutOnBackgroundThread,
-      boolean enableUnifiedPipeline, int embeddedMode, long enginePtr, Object moduleFactory);
+      boolean enableUnifiedPipeline, int embeddedMode, boolean debuggable, long enginePtr,
+      Object moduleFactory);
 
   private static native void nativeDestroy(long ptr);
 

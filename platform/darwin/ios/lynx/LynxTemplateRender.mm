@@ -233,6 +233,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableAutoExpose = builder.enableAutoExpose;
   _enablePreUpdateData = builder.enablePreUpdateData;
   _lynxModuleExtraData = builder.lynxModuleExtraData;
+  _debuggable = builder.debuggable;
 
   [self setUpContainerView:containerView builder:builder];
 

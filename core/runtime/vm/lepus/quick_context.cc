@@ -219,7 +219,8 @@ void RegisterConsole(QuickContext* ctx) {
   ctx->RegisterGlobalProperty("console", obj);
 }
 
-QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
+QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode,
+                           const tasm::PageOptions& page_options)
     : LEPUSRuntimeData(disable_tracing_gc, runtime_mode),
       Context(ContextType::LepusNGContextType),
       top_level_function_(LEPUS_UNDEFINED),
@@ -228,7 +229,8 @@ QuickContext::QuickContext(bool disable_tracing_gc, int runtime_mode)
       current_this_(LEPUS_UNDEFINED) {
   // TODO(nihao.royal): maybe add a platform interface to enable the runtime
   // leak checker later;
-  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled()) {
+  bool debuggable = page_options.GetDebuggable();
+  if (tasm::LynxEnv::GetInstance().IsDevToolEnabled() || debuggable) {
     EnableRuntimeLeakCheck(true);
     PushContextValidTid();
   }

@@ -244,6 +244,7 @@ class ElementManager : public ElementContextDelegate {
   ElementManager(
       std::unique_ptr<PaintingCtxPlatformImpl> platform_painting_context,
       Delegate *delegate, const LynxEnvConfig &lynx_env_config,
+      const PageOptions &page_options = PageOptions(),
       int32_t instance_id = tasm::report::kUnknownInstanceId,
       const std::shared_ptr<base::VSyncMonitor> &vsync_monitor = nullptr,
       std::unique_ptr<lynx::tasm::LayoutCtxPlatformImpl>

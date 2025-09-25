@@ -117,6 +117,7 @@ NS_ASSUME_NONNULL_BEGIN
   NSMutableDictionary<NSString*, id>* _lepusModulesClasses;
 
   BOOL _enableGenericResourceFetcher;
+  BOOL _debuggable;
 }
 
 - (lynx::piper::ModuleFactoryDarwin*)getModuleFactory;

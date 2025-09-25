@@ -39,7 +39,7 @@ static jlong CreateBackgroundRuntimeWrapper(
     jobject java_module_factory, jlong inspectorObserverPtr,
     jlong white_board_ptr, jstring java_group_id, jstring java_group_name,
     jobjectArray preload_js_paths, jstring bytecode_source_url,
-    jint runtime_flags, jlong globalPropsPtr) {
+    jint runtime_flags, jlong globalPropsPtr, jboolean debuggable) {
   // create native module manager
   std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
       std::make_shared<lynx::pub::LynxNativeModuleManager>();

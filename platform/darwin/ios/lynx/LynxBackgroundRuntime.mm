@@ -159,7 +159,6 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 @interface LynxBackgroundRuntime () <LynxErrorReceiverProtocol>
 @property(nonatomic, strong) LynxBackgroundRuntimeOptions* options;
 @property(atomic, nullable) NSString* lastScriptUrl;
-- (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions*)other;
 @end
 
 @implementation LynxBackgroundRuntime {
@@ -194,11 +193,11 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
   _runtime_observer = observer;
 }
 
-- (void)initDevTool {
+- (void)initDevTool:(BOOL)debuggable {
   if (LynxEnv.sharedInstance.lynxDebugEnabled) {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnonnull"
-    _devTool = [[LynxDevtool alloc] initWithLynxView:nil debuggable:YES];
+    _devTool = [[LynxDevtool alloc] initWithLynxView:nil debuggable:debuggable];
 #pragma clang diagnostic pop
     auto group_thread_name = [NSString stringWithUTF8String:[_options groupThreadName].c_str()];
     [_devTool onBackgroundRuntimeCreated:self groupThreadName:group_thread_name];
@@ -206,12 +205,16 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
 }
 
 - (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions*)options {
+  return [self initWithOptions:options debuggable:NO];
+}
+
+- (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions*)options debuggable:(BOOL)debuggable {
   self = [super init];
   if (self) {
     _state = LynxBackgroundRuntimeStateStart;
     _options = [[LynxBackgroundRuntimeOptions alloc] initWithOptions:options];
     _innerLifecycleClients = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory];
-    [self initDevTool];
+    [self initDevTool:debuggable];
 
     // create NativeModuleManager
     std::shared_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager =
@@ -264,7 +267,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
-        runtime_flags);
+        runtime_flags, nullptr, false);
 
     const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
     _js_proxy = lynx::shell::JSProxyDarwin::Create(

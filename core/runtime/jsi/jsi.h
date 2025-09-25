@@ -32,6 +32,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/console_message_postman.h"
 #include "core/inspector/observer/inspector_runtime_observer_ng.h"
+#include "core/public/page_options.h"
 
 #define BUILD_JSI_NATIVE_EXCEPTION(message) \
   piper::JSINativeException(message, __FUNCTION__, __FILE__, __LINE__)
@@ -249,6 +250,10 @@ class LYNX_EXPORT Runtime {
   int64_t getRuntimeId() const { return runtime_id_; }
   bool getGCFlag() { return gc_flag_; }
   void setRuntimeId(int64_t rt_id) { runtime_id_ = rt_id; }
+  void SetPageOptions(const tasm::PageOptions& options) {
+    page_options_ = options;
+  }
+  const tasm::PageOptions& GetPageOptions() { return page_options_; }
   const std::string& getGroupId() { return group_id_; }
   LYNX_EXPORT_FOR_DEVTOOL void setGroupId(const std::string& group_id) {
     group_id_ = group_id;
@@ -396,10 +401,8 @@ class LYNX_EXPORT Runtime {
   virtual void InitInspector(
       const std::shared_ptr<InspectorRuntimeObserverNG>& observer) {}
   virtual void DestroyInspector() {}
-  void SetDebuggable(bool debuggable) { debuggable_ = debuggable; }
-  bool IsDebuggable() { return debuggable_; }
   void SetSourceUrlPrefix(const std::string& prefix) {
-    if (!debuggable_ || prefix.empty()) {
+    if (!page_options_.GetDebuggable() || prefix.empty()) {
       return;
     }
     static constexpr char kUrlSeparator = '/';
@@ -412,7 +415,7 @@ class LYNX_EXPORT Runtime {
     }
   }
   virtual std::string AddPrefixToUrlIfNeeded(const std::string& url) {
-    if (!debuggable_ || url.empty()) {
+    if (!page_options_.GetDebuggable() || url.empty()) {
       return url;
     }
     static constexpr char kUrlHost[] = "file://lynx";
@@ -608,7 +611,7 @@ class LYNX_EXPORT Runtime {
       host_object_containers_;
   std::unordered_map<HostFunctionType*, std::shared_ptr<HostFunctionType>>
       host_function_containers_;
-  bool debuggable_{false};
+  tasm::PageOptions page_options_;
   std::string url_prefix_;
 };
 
@@ -1668,7 +1671,8 @@ class VMInstance {
 class HostGlobal {
  public:
   virtual void Init(std::shared_ptr<Runtime>& js_runtime_,
-                    std::shared_ptr<ConsoleMessagePostMan>& post_man) = 0;
+                    std::shared_ptr<ConsoleMessagePostMan>& post_man,
+                    const tasm::PageOptions& page_options) = 0;
   virtual void Release() = 0;
   virtual ~HostGlobal() { LOGE("~HostGlobal;"); }
 };

@@ -20,7 +20,8 @@ namespace piper {
 Global::~Global() { LOGI("lynx ~Global()"); }
 
 void Global::Init(std::shared_ptr<Runtime>& runtime,
-                  std::shared_ptr<piper::ConsoleMessagePostMan>& post_man) {
+                  std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+                  const tasm::PageOptions& page_options) {
   SetJSRuntime(runtime);
   auto js_runtime_ = GetJSRuntime();
   if (!js_runtime_) {
@@ -31,7 +32,7 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
 
   piper::Object global = js_runtime_->global();
   Object console_obj = Object::createFromHostObject(
-      *js_runtime_, std::make_shared<Console>(post_man));
+      *js_runtime_, std::make_shared<Console>(post_man, page_options));
   global.setProperty(*js_runtime_, "nativeConsole", console_obj);
 
   Object system_info_obj = Object::createFromHostObject(
@@ -57,7 +58,8 @@ void Global::Init(std::shared_ptr<Runtime>& runtime,
 }
 
 void Global::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan>& post_man) {
+    std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+    const tasm::PageOptions& page_options) {
   auto js_runtime = GetJSRuntime();
   if (!js_runtime) {
     return;
@@ -67,7 +69,7 @@ void Global::EnsureConsole(
   auto console = global.getProperty(*js_runtime, "console");
   if (console && !console->isObject()) {
     Object console_obj = Object::createFromHostObject(
-        *js_runtime, std::make_shared<Console>(post_man));
+        *js_runtime, std::make_shared<Console>(post_man, page_options));
     global.setProperty(*js_runtime, "console", console_obj);
   }
 }

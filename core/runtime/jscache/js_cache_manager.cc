@@ -192,7 +192,7 @@ std::string JsCacheManager::MakePath(const std::string &filename) {
 bool JsCacheManager::IsCacheEnabled() {
   // TODO(zhenziqi) consider rename `IsQuickjsCacheEnabled` later
   // as this switch should also control the cache of v8 in the future
-  return !tasm::LynxEnv::GetInstance().IsDevToolEnabled() &&
+  return !(tasm::LynxEnv::GetInstance().IsDevToolEnabled()) &&
          tasm::LynxEnv::GetInstance().IsQuickjsCacheEnabled() &&
          can_create_cache_;
 }
@@ -784,7 +784,8 @@ __attribute__((visibility("default"))) std::shared_ptr<Buffer> TryGetCacheV8(
     int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
     std::unique_ptr<CacheGenerator> cache_generator) {
   return JsCacheManager::GetV8Instance().TryGetCache(
-      source_url, template_url, runtime_id, buffer, std::move(cache_generator));
+      source_url, template_url, runtime_id, buffer, std::move(cache_generator),
+      nullptr);
 }
 
 // Use for v8

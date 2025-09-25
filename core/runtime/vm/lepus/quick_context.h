@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "core/public/page_options.h"
 #include "core/runtime/common/js_error_reporter.h"
 #include "core/runtime/profile/runtime_profiler.h"
 #include "core/runtime/vm/lepus/context.h"
@@ -50,7 +51,8 @@ class QuickContext : private LEPUSRuntimeData,
                      public GCObserver {
  public:
   static QuickContext* Cast(Context* context);
-  QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0);
+  QuickContext(bool disable_tracing_gc = false, int runtime_mode = 0,
+               const tasm::PageOptions& page_options = tasm::PageOptions());
   virtual ~QuickContext() override;
   virtual void Initialize() override;
   virtual bool Execute() override;

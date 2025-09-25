@@ -21,6 +21,7 @@
 #include "core/build/gen/lynx_sub_error_code.h"
 #include "core/inspector/lepus_inspector_manager.h"
 #include "core/inspector/observer/inspector_lepus_observer.h"
+#include "core/public/page_options.h"
 #include "core/runtime/bindings/lepus/renderer.h"
 #include "core/runtime/vm/lepus/lepus_context_cell.h"
 #include "core/runtime/vm/lepus/lepus_global.h"
@@ -195,9 +196,10 @@ class Context {
   base::StringTable* string_table() { return &string_table_; }
   void set_name(const std::string& name) { name_ = name; }
 
-  static std::shared_ptr<Context> CreateContext(bool use_lepusng = false,
-                                                bool disable_tracing_gc = false,
-                                                int runtime_mode = 0);
+  static std::shared_ptr<Context> CreateContext(
+      bool use_lepusng = false, bool disable_tracing_gc = false,
+      int runtime_mode = 0,
+      const tasm::PageOptions& page_options = tasm::PageOptions());
 
   // check context type
   bool IsVMContext() const { return type_ == VMContextType; }

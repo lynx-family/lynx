@@ -25,6 +25,7 @@
 #endif
 
 #include "base/include/closure.h"
+#include "core/public/page_options.h"
 #include "core/runtime/jscache/cache_generator.h"
 #include "core/runtime/jscache/js_cache_tracker.h"
 #include "core/runtime/jscache/meta_data.h"
@@ -157,7 +158,11 @@ UNITTEST_PUBLIC:
    */
   std::string MakeFilename(const std::string &file_md5);
 
+  /**
+   * Check if cache is enabled for the template.
+   */
   bool IsCacheEnabled();
+
   /**
    * Post a task into background thread. If the background thread is not
    * running, start a new background task.

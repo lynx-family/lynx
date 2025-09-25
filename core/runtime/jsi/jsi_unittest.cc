@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "core/public/page_options.h"
 #include "core/runtime/bindings/jsi/lynx_js_error.h"
 #include "core/runtime/jsi/jsi.h"
 #ifdef OS_OSX
@@ -1621,7 +1622,7 @@ TEST_P(JSITest, AddPrefixToUrlIfNeeded) {
   EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url2),
             rt.type() == JSRuntimeType::jsc ? jsc_prefix + url2 : url2);
 
-  rt.SetDebuggable(true);
+  rt.SetPageOptions(tasm::PageOptions(-1, true));
 
   EXPECT_EQ(rt.AddPrefixToUrlIfNeeded(url1),
             rt.type() == JSRuntimeType::jsc ? jsc_prefix + url1 : url1);

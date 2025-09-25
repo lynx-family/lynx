@@ -438,6 +438,7 @@ public class LynxBackgroundRadialGradientDrawable : LynxBackgroundGradientDrawab
 public class LynxBackgroundRuntime : NSObject {
   public NSString* LynxBackgroundRuntime::lastScriptUrl lastScriptUrl;
   public instancetype LynxBackgroundRuntime::initWithOptions:(LynxBackgroundRuntimeOptions *options);
+  public instancetype LynxBackgroundRuntime::initWithOptions:debuggable:(LynxBackgroundRuntimeOptions *options,[debuggable] BOOL debuggable);
   public void LynxBackgroundRuntime::addLifecycleClient:(nonnull id< LynxBackgroundRuntimeLifecycle > lifecycleClient);
   public void LynxBackgroundRuntime::removeLifecycleClient:(nonnull id< LynxBackgroundRuntimeLifecycle > lifecycleClient);
   public void LynxBackgroundRuntime::evaluateJavaScript:withSources:(NSString *url,[withSources] NSString *sources);

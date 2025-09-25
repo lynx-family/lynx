@@ -25,8 +25,9 @@
 namespace lynx {
 namespace piper {
 
-Console::Console(std::shared_ptr<ConsoleMessagePostMan> post_man)
-    : post_man_(post_man) {
+Console::Console(std::shared_ptr<ConsoleMessagePostMan> post_man,
+                 const tasm::PageOptions& page_options)
+    : post_man_(post_man), page_options_(page_options) {
   Init();
 }
 
@@ -199,7 +200,8 @@ piper::Value Console::CallJSEngineConsole(Runtime* rt, const Value* args,
                                           size_t count,
                                           const std::string& func_name) {
   Scope scope(*rt);
-  bool is_devtool_enabled = tasm::LynxEnv::GetInstance().IsDevToolEnabled();
+  bool is_devtool_enabled = tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
+                            page_options_.GetDebuggable();
   if (count > 0) {
     if (is_devtool_enabled) {
       piper::Object global = rt->global();
@@ -225,7 +227,8 @@ piper::Value Console::LogWithLevel(Runtime* rt, const int level,
                                    const std::string& func_name) {
   Scope scope(*rt);
 
-  bool is_devtool_enabled = tasm::LynxEnv::GetInstance().IsDevToolEnabled();
+  bool is_devtool_enabled = tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
+                            page_options_.GetDebuggable();
   if (count > 0) {
     CallJSEngineConsole(rt, args, count, func_name);
 

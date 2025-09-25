@@ -23,12 +23,13 @@ class RuntimeManagerDelegateImpl : public runtime::RuntimeManagerDelegate {
                                 piper::JSRuntimeType type) override;
   void OnRelease(const std::string& group_id) override;
   std::shared_ptr<piper::Runtime> MakeRuntime(
-      bool force_use_lightweight_js_engine,
-      bool use_shared_context = false) override;
+      bool force_use_lightweight_js_engine, bool use_shared_context = false,
+      const tasm::PageOptions& page_options = tasm::PageOptions()) override;
 #if ENABLE_TRACE_PERFETTO
   std::shared_ptr<profile::RuntimeProfiler> MakeRuntimeProfiler(
       std::shared_ptr<piper::JSIContext> js_context,
-      bool force_use_lightweight_js_engine) override;
+      bool force_use_lightweight_js_engine,
+      const tasm::PageOptions& page_options) override;
 #endif
 
   void SetReleaseContextCallback(

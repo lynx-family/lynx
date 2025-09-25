@@ -305,7 +305,9 @@ bool TemplateBinaryReader::DidDecodeTemplate() {
   }
   // different for LynxBinaryReader, TemplateBinaryReader need to init the
   // entry after decoding
-  if (!entry_->InitWithPageConfigger(configger_)) {
+  if (!entry_->InitWithPageConfigger(
+          configger_,
+          static_cast<TemplateAssembler*>(configger_)->GetPageOptions())) {
     error_message_ = entry_->GetErrorMsg();
     return false;
   }

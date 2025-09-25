@@ -263,7 +263,8 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   TemplateAssembler(Delegate& delegate, std::unique_ptr<ElementManager> client,
                     LayoutScheduler& layout_scheduler, int32_t instance_id,
-                    bool enable_unified_pipeline = false);
+                    bool enable_unified_pipeline = false,
+                    const PageOptions& page_options = PageOptions());
   ~TemplateAssembler() override;
 
   void LoadTemplate(const std::string& url, std::vector<uint8_t> source,

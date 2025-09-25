@@ -235,7 +235,8 @@ void LynxRuntime::InitExecutor(
       bytecode_source_url_,
       [delegate_ptr = delegate_.get()](const std::string& url) {
         return delegate_ptr->LoadBytecode(url);
-      });
+      },
+      page_options_);
   js_executor_->SetObserver(delegate_.get());
 
   TRACE_EVENT_END(LYNX_TRACE_CATEGORY_VITALS);
@@ -659,7 +660,8 @@ void LynxRuntime::OnJSSourcePrepared(
       // If devtool is enabled, enable circular data check always.
       bool enable_circular_data_check =
           (bundle.enable_circular_data_check ||
-           tasm::LynxEnv::GetInstance().IsDevToolEnabled());
+           tasm::LynxEnv::GetInstance().IsDevToolEnabled() ||
+           page_options_.GetDebuggable());
       js_runtime->SetCircularDataCheckFlag(enable_circular_data_check);
       LOGI("[LynxRuntime] circular data check flag: "
            << enable_circular_data_check);

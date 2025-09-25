@@ -74,21 +74,23 @@ void SharedJSContextWrapper::Def() {
 }
 
 void SharedJSContextWrapper::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
+    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
   if (isGlobalInited() && global_) {
-    global_->EnsureConsole(post_man);
+    global_->EnsureConsole(post_man, page_options);
   }
 }
 
 void SharedJSContextWrapper::initGlobal(
     std::shared_ptr<piper::Runtime>& rt,
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
+    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
   if (global_inited_) {
     return;
   }
   std::shared_ptr<piper::SharedContextGlobal> global =
       std::make_shared<piper::SharedContextGlobal>();
-  global->Init(rt, post_man);
+  global->Init(rt, post_man, page_options);
   global_inited_ = true;
   global_ = global;
 }
@@ -114,21 +116,23 @@ void NoneSharedJSContextWrapper::Def() {
 }
 
 void NoneSharedJSContextWrapper::EnsureConsole(
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
+    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
   if (isGlobalInited() && global_) {
-    global_->EnsureConsole(post_man);
+    global_->EnsureConsole(post_man, page_options);
   }
 }
 
 void NoneSharedJSContextWrapper::initGlobal(
     std::shared_ptr<piper::Runtime>& js_runtime,
-    std::shared_ptr<piper::ConsoleMessagePostMan> post_man) {
+    std::shared_ptr<piper::ConsoleMessagePostMan> post_man,
+    const tasm::PageOptions& page_options) {
   if (global_inited_) {
     return;
   }
   std::shared_ptr<piper::SingleGlobal> global =
       std::make_shared<piper::SingleGlobal>();
-  global->Init(js_runtime, post_man);
+  global->Init(js_runtime, post_man, page_options);
   global_inited_ = true;
   global_ = global;
 }

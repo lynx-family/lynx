@@ -89,8 +89,14 @@ typedef NS_ENUM(NSInteger, LynxBackgroundJsRuntimeType) {
  * Create a LynxBackgroundRuntime, can be called from any thread
  * @param options configuration for the runtime
  */
-
 - (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions *)options;
+
+/**
+ * Create a LynxBackgroundRuntime, can be called from any thread
+ * @param options configuration for the runtime
+ * @param debuggable whether the runtime is debuggable
+ */
+- (instancetype)initWithOptions:(LynxBackgroundRuntimeOptions *)options debuggable:(BOOL)debuggable;
 
 /**
  * Add LynxBackgroundRuntimeClient, client that listens to runtime's callback,  can be called from

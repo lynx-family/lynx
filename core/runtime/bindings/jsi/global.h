@@ -21,9 +21,11 @@ class Global : public HostGlobal {
   ~Global() override;
 
   void Init(std::shared_ptr<Runtime>& js_runtime_,
-            std::shared_ptr<piper::ConsoleMessagePostMan>& post_man) override;
+            std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+            const tasm::PageOptions& page_options) override;
   void Release() override;
-  void EnsureConsole(std::shared_ptr<piper::ConsoleMessagePostMan>& post_man);
+  void EnsureConsole(std::shared_ptr<piper::ConsoleMessagePostMan>& post_man,
+                     const tasm::PageOptions& page_options);
 
  private:
   virtual void SetJSRuntime(std::shared_ptr<Runtime> js_runtime_) = 0;

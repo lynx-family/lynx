@@ -162,6 +162,7 @@ class LynxShellBuilder {
   std::unique_ptr<TasmPlatformInvoker> tasm_platform_invoker_;
 
   bool force_layout_on_background_thread_{false};
+  tasm::PageOptions page_options_;
 
   std::unique_ptr<lynx::pub::LynxNativeModuleManager> native_module_manager_;
 };

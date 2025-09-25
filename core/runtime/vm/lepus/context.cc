@@ -389,12 +389,13 @@ Context::Delegate* Context::GetDelegate() {
   return delegate_;
 }
 
-std::shared_ptr<Context> Context::CreateContext(bool use_lepusng,
-                                                bool disable_tracing_gc,
-                                                int runtime_mode) {
+std::shared_ptr<Context> Context::CreateContext(
+    bool use_lepusng, bool disable_tracing_gc, int runtime_mode,
+    const tasm::PageOptions& page_options) {
   if (use_lepusng) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_QUICK_CONTEXT);
-    return std::make_shared<QuickContext>(disable_tracing_gc, runtime_mode);
+    return std::make_shared<QuickContext>(disable_tracing_gc, runtime_mode,
+                                          page_options);
   } else {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CONTEXT_CREATE_VM_CONTEXT);
 #if !ENABLE_JUST_LEPUSNG

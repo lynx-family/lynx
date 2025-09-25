@@ -65,7 +65,12 @@ struct PageOptions {
 
   PageOptions() = default;
 
-  explicit PageOptions(int32_t instance_id) : instance_id_(instance_id) {}
+  explicit PageOptions(int32_t instance_id, bool debuggable = false)
+      : instance_id_(instance_id), debuggable_(debuggable) {}
+
+  bool GetDebuggable() const { return debuggable_; }
+
+  void SetDebuggable(bool debuggable) { debuggable_ = debuggable; }
 
   void SetInstanceID(int32_t instance_id) { instance_id_ = instance_id; }
 
@@ -96,6 +101,7 @@ struct PageOptions {
 
  private:
   int32_t instance_id_{kUnknownInstanceID};
+  bool debuggable_{false};
   bool long_task_disabled_{false};
   EmbeddedMode embedded_mode_{UNSET};
 };

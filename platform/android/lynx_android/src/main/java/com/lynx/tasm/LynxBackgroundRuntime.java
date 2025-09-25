@@ -77,6 +77,18 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   @AnyThread
   public LynxBackgroundRuntime(
       @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options) {
+    this(context, options, false);
+  }
+
+  /**
+   * Create a LynxBackgroundRuntime
+   * @param context any Android context: eg. ApplicationContext/ActivityContext
+   * @param options configuration for the runtime
+   * @param debuggable whether the runtime is debuggable
+   */
+  @AnyThread
+  public LynxBackgroundRuntime(
+      @NonNull Context context, @NonNull LynxBackgroundRuntimeOptions options, boolean debuggable) {
     mRuntimeClients = new CopyOnWriteArrayList<>();
     mPlatformCallBackMap = new HashMap<>();
     if (!LynxEnv.inst().isNativeLibraryLoaded()) {
@@ -93,7 +105,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     mModuleFactory.addModuleParamWrapper(options.getWrappers());
 
     if (LynxEnv.inst().isLynxDebugEnabled()) {
-      initDevtool(context);
+      initDevtool(context, debuggable);
     }
 
     LynxGroup group = options.getLynxGroup();
@@ -122,7 +134,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     }
     mNativePtr = nativeCreateBackgroundRuntimeWrapper(mResourceLoader, mModuleFactory,
         mInspectorObserverPtr, whiteBoard, groupId, groupName, preloadJSPaths,
-        options.getBytecodeSourceUrl(), runtimeFlags, globalPropsPtr);
+        options.getBytecodeSourceUrl(), runtimeFlags, globalPropsPtr, debuggable);
     mInspectorObserverPtr = 0;
 
     TemplateData presetData = options.getPresetData();
@@ -376,8 +388,8 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     return mNativePtr;
   }
 
-  private void initDevtool(Context context) {
-    mDevTool = new LynxDevtool(true, context);
+  private void initDevtool(Context context, boolean debuggable) {
+    mDevTool = new LynxDevtool(context, debuggable);
 
     LynxGroup group = mOptions.getLynxGroup();
     String groupId = group != null ? group.getID() : LynxGroup.SINGNLE_GROUP;
@@ -430,7 +442,7 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   private native long nativeCreateBackgroundRuntimeWrapper(LynxResourceLoader resourceLoader,
       LynxModuleFactory moduleFactory, long inspectorObserverPtr, long whiteBoardPtr,
       String groupId, String groupName, String[] preloadJSPaths, String bytecodeSourceUrl,
-      int runtimeFlags, long globalPropsPtr);
+      int runtimeFlags, long globalPropsPtr, boolean debuggable);
 
   private native void nativeSetPresetData(long nativePtr, boolean readOnly, long presetData);
 
