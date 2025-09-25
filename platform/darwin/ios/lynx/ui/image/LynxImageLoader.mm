@@ -30,6 +30,8 @@ NSString* const LynxImageCacheChoice = @"LynxImageCacheChoice";
 NSString* const LynxImageRequestPriority = @"LynxImageRequestPriority";
 NSString* const LynxImagePlaceholderHashConfig = @"LynxImagePlaceholderHashConfig";
 NSString* const LynxImageCancelRequest = @"LynxImageCancelRequest";
+NSString* const LynxImagePreloadAllFrames = @"LynxImagePreloadAllFrames";
+
 BOOL LynxImageFetchherSupportsProcessor(id<LynxImageFetcher> fetcher) {
   return [fetcher respondsToSelector:@selector(loadImageWithURL:
                                                      processors:size:contextInfo:completion:)];

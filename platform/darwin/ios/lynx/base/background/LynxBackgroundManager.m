@@ -418,7 +418,10 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
     [[LynxImageLoader sharedInstance]
         loadImageFromLynxURL:requestUrl
                         size:self.ui.view.bounds.size
-                 contextInfo:@{LynxImageFetcherContextKeyUI : self}
+                 contextInfo:@{
+                   LynxImageFetcherContextKeyUI : self,
+                   LynxImagePreloadAllFrames : @(YES)
+                 }
                   processors:processors
                 imageFetcher:self.ui.context.imageFetcher
                  LynxUIImage:nil

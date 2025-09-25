@@ -777,6 +777,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                  LynxImageRequestPriority : self.request_priority ?: @"",
                  LynxImageSRScale : @(_superResolutionScale),
                  LynxImageCancelRequest : @(_enableImageCancelRequest),
+                 LynxImagePreloadAllFrames : @(NO),
                }
                 processors:processors
               imageFetcher:[self shouldUseNewImage] ? nil : self.context.imageFetcher
