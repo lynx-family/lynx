@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 import { BaseMethod, Callback } from '../events';
-import { AutoScrollMethod, ScrollToPositionMethod } from './list';
+import { AutoScrollMethod, ListUIMethods } from './list';
 import {  ScrollViewUIMethods } from './scroll-view';
 
-export type ListParams = ScrollToPositionMethod;
+export type ListParams = ListUIMethods;
 
 export type ScrollViewParams = ScrollViewUIMethods | AutoScrollMethod;
 
