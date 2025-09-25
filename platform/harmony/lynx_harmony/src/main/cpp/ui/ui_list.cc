@@ -523,20 +523,19 @@ void UIList::DetectSnapScroll(int32_t action) {
             scroll_position =
                 std::max(0, static_cast<int32_t>(item_keys_.size() - 1));
           }
-          const auto dict = lepus::Dictionary::Create();
-          dict->SetValue("position", scroll_position);
-          dict->SetValue("currentScrollLeft", scroll_offset.first);
-          dict->SetValue("currentScrollTop", scroll_offset.second);
-          dict->SetValue("targetScrollLeft", std::get<1>(scroll_target));
-          dict->SetValue("targetScrollTop", std::get<2>(scroll_target));
-          CustomEvent event{Sign(), list::kSnap, "detail", lepus_value(dict)};
-          context_->SendEvent(event);
-
           NodeManager::Instance().SetAttributeWithNumberValue(
               node_, NODE_SCROLL_OFFSET, std::get<1>(scroll_target),
               std::get<2>(scroll_target), 250,
               static_cast<int>(ARKUI_CURVE_SMOOTH), 0);
         }
+        auto dict = lepus::Dictionary::Create();
+        dict->SetValue("position", scroll_position);
+        dict->SetValue("currentScrollLeft", scroll_offset.first);
+        dict->SetValue("currentScrollTop", scroll_offset.second);
+        dict->SetValue("targetScrollLeft", std::get<1>(scroll_target));
+        dict->SetValue("targetScrollTop", std::get<2>(scroll_target));
+        CustomEvent event{Sign(), list::kSnap, "detail", lepus_value(dict)};
+        context_->SendEvent(event);
       } break;
       case UI_TOUCH_EVENT_ACTION_CANCEL:
         break;

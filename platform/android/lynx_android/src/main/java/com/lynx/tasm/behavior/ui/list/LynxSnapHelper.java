@@ -23,7 +23,7 @@ public class LynxSnapHelper {
     void willSnapTo(
         int position, int currentOffsetX, int currentOffsetY, int targetOffsetX, int targetOffsetY);
   }
-
+  private static final int INVALID_INDEX = -1;
   private LynxSnapHooks mSnapHooks = null;
   private boolean mIsVertical = true;
   private boolean mIsRtl = false;
@@ -65,15 +65,14 @@ public class LynxSnapHelper {
       int velocityX, int velocityY, boolean isVertical, boolean isRtl) {
     mIsVertical = isVertical;
     mIsRtl = isRtl;
-    int[] out = new int[2];
+    int[] out = new int[] {0, 0};
 
     int position = findTargetSnapPosition(velocityX, velocityY);
-    int offset = 0;
-    if (position != -1) {
+    int offset = mIsVertical ? mSnapHooks.getScrollY() : mSnapHooks.getScrollX();
+    if (position != INVALID_INDEX) {
       // check if position is illegal
       position = Math.min(Math.max(position, 0), mSnapHooks.getVirtualChildrenCount() - 1);
-
-      if (position != -1) {
+      if (position != INVALID_INDEX) {
         View view = mSnapHooks.getViewAtPosition(position);
         if (view != null) {
           if (view instanceof AndroidView
@@ -92,21 +91,19 @@ public class LynxSnapHelper {
             throw new RuntimeException(
                 "The target list-item is not an AndroidView, some thing went wrong");
           }
+        } else {
+          position = INVALID_INDEX;
         }
       }
     }
 
     if (mIsVertical) {
-      out[0] = 0;
       out[1] = offset;
     } else {
       out[0] = offset;
-      out[1] = 0;
     }
-
     mSnapHooks.willSnapTo(
         position, mSnapHooks.getScrollX(), mSnapHooks.getScrollY(), out[0], out[1]);
-
     return out;
   }
 
@@ -140,7 +137,7 @@ public class LynxSnapHelper {
       }
     }
 
-    int targetPosition = -1;
+    int targetPosition = INVALID_INDEX;
 
     final boolean forwardDirection = isForwardFling(velocityX, velocityY);
 
@@ -165,7 +162,7 @@ public class LynxSnapHelper {
       }
     }
 
-    if (targetPosition != -1) {
+    if (targetPosition != INVALID_INDEX) {
       return targetPosition;
     }
 
@@ -175,7 +172,7 @@ public class LynxSnapHelper {
     // snap to.
     View visibleView = forwardDirection ? closestChildBeforePosition : closestChildAfterPosition;
     if (visibleView == null) {
-      return -1;
+      return INVALID_INDEX;
     }
     int visiblePosition = mSnapHooks.getIndexFromView(visibleView);
 
