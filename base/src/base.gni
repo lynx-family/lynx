@@ -1,5 +1,5 @@
+import("//${lynx_dir}/build_overrides/darwin.gni")
 import("//build/config/profiler.gni")
-import("//build_overrides/darwin.gni")
 
 declare_args() {
   # Whether to use a custom message loop.
