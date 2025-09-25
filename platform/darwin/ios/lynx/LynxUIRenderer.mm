@@ -118,7 +118,7 @@
                  shellPtr:(int64_t)shellPtr
                     block:(onLynxEvent)block {
   _uiOwner.uiContext.shellPtr = shellPtr;
-  _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithShell:shellPtr];
+  _uiOwner.uiContext.fetcher = [[ListNodeInfoFetcher alloc] initWithContext:_lynxContext];
   _eventEmitter = [[LynxEventEmitter alloc] initWithLynxEngineProxy:engineProxy];
   __weak typeof(self) weakSelf = self;
   [_eventEmitter setEventReporterBlock:block];

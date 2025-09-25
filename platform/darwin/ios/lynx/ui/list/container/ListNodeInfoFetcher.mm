@@ -4,20 +4,21 @@
 
 #import <Lynx/ListNodeInfoFetcher.h>
 #import <Lynx/LynxTemplateRender.h>
-#include "core/shell/lynx_shell.h"
+#import "LynxContext+Internal.h"
+#include "core/public/list_element_proxy.h"
 
 @interface ListNodeInfoFetcher ()
 
-@property(nonatomic, assign, readwrite) int64_t shellPtr;
+@property(nonatomic, weak) LynxContext* context;
 
 @end
 
 @implementation ListNodeInfoFetcher
 
-- (instancetype)initWithShell:(int64_t)shellPtr {
+- (instancetype)initWithContext:(LynxContext*)context {
   self = [super init];
   if (self) {
-    self.shellPtr = shellPtr;
+    _context = context;
   }
   return self;
 }
@@ -30,9 +31,8 @@
                             y:(float)y
                     originalX:(float)originalX
                     originalY:(float)originalY {
-  if (_shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(_shellPtr)->ScrollByListContainer(
-        containerSign, x, y, originalX, originalY);
+  if (_context && _context->list_element_proxy_) {
+    _context->list_element_proxy_->ScrollByListContainer(containerSign, x, y, originalX, originalY);
   }
 }
 
@@ -45,9 +45,8 @@
                   offset:(float)offset
                    align:(int)align
                   smooth:(BOOL)smooth {
-  if (_shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(_shellPtr)->ScrollToPosition(containerSign, position,
-                                                                            offset, align, smooth);
+  if (_context && _context->list_element_proxy_) {
+    _context->list_element_proxy_->ScrollToPosition(containerSign, position, offset, align, smooth);
   }
 }
 
@@ -55,8 +54,8 @@
  notify the  stopped status to C++
  */
 - (void)scrollStopped:(int)containerSign {
-  if (_shellPtr) {
-    reinterpret_cast<lynx::shell::LynxShell *>(_shellPtr)->ScrollStopped(containerSign);
+  if (_context && _context->list_element_proxy_) {
+    _context->list_element_proxy_->ScrollStopped(containerSign);
   }
 }
 

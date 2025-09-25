@@ -341,6 +341,14 @@ lepus::Value LynxEngine::GetPageDataByKey(
 }
 
 tasm::ListNode* LynxEngine::GetListNode(int32_t tag) {
+  lynx::tasm::Element* element = GetElementById(tag);
+  if (element == nullptr) {
+    return nullptr;
+  }
+  return element->GetListNode();
+}
+
+tasm::Element* LynxEngine::GetElementById(int32_t tag) {
   // client maybe nullptr
   if (tasm_ == nullptr) {
     return nullptr;
@@ -350,10 +358,7 @@ tasm::ListNode* LynxEngine::GetListNode(int32_t tag) {
     return nullptr;
   }
   lynx::tasm::Element* element = client->node_manager()->Get(tag);
-  if (element == nullptr) {
-    return nullptr;
-  }
-  return element->GetListNode();
+  return element;
 }
 
 std::list<int32_t> LynxEngine::GetAncestorElements(int32_t tag) {

@@ -7,9 +7,11 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@class LynxContext;
+
 @interface ListNodeInfoFetcher : NSObject <ListNodeInfoFetcherProtocol>
 
-- (instancetype)initWithShell:(int64_t)shellPtr;
+- (instancetype)initWithContext:(LynxContext*)context;
 
 @end
 

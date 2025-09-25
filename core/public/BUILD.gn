@@ -16,6 +16,7 @@ lynx_core_source_set("public") {
     "layout_node_manager.h",
     "layout_node_value.h",
     "list_data.h",
+    "list_element_proxy.h",
     "lynx_engine_proxy.h",
     "lynx_extension_delegate.h",
     "lynx_resource_loader.h",
