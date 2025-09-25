@@ -16,6 +16,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/measure_context.h"
 #include "core/renderer/starlight/style/box_data.h"
@@ -41,6 +42,7 @@
 #include "core/style/transform_origin_data.h"
 #include "core/style/transform_raw_data.h"
 #include "core/style/transition_data.h"
+#include "core/style/z_index_data.h"
 
 namespace lynx {
 namespace tasm {
@@ -226,7 +228,48 @@ class ComputedCSSStyle {
 
   tasm::CSSParserConfigs& GetCSSParserConfigs() { return parser_configs_; }
 
-  int GetZIndex() const { return z_index_; }
+  bool IsDirty() const {
+    return changed_bitset_.HasAny() || reset_bitset_.HasAny();
+  }
+
+  void MarkClean() {
+    changed_bitset_.Reset();
+    reset_bitset_.Reset();
+  }
+
+  tasm::CSSIDBitset& GetChangedBitset() { return changed_bitset_; }
+
+  tasm::CSSIDBitset& GetResetBitset() { return reset_bitset_; }
+
+  int GetZIndex() const { return z_index_.z_index_value; }
+
+  bool HasZIndex() const { return z_index_.has_z_index; }
+
+  bool has_transition_props_changed() {
+    for (auto id =
+             static_cast<int32_t>(tasm::CSSPropertyID::kPropertyIDTransition);
+         id <= static_cast<int32_t>(
+                   tasm::CSSPropertyID::kPropertyIDTransitionTimingFunction);
+         ++id) {
+      if (changed_bitset_.Has(static_cast<tasm::CSSPropertyID>(id))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool has_keyframe_props_changed() {
+    for (auto id =
+             static_cast<int32_t>(tasm::CSSPropertyID::kPropertyIDAnimation);
+         id <= static_cast<int32_t>(
+                   tasm::CSSPropertyID::kPropertyIDAnimationPlayState);
+         ++id) {
+      if (changed_bitset_.Has(static_cast<tasm::CSSPropertyID>(id))) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   ImageRenderingType GetImageRendering() { return image_rendering_; }
 
@@ -402,7 +445,8 @@ class ComputedCSSStyle {
   // offset-path array [type, args..]
   fml::RefPtr<lepus::CArray> offset_path_{nullptr};
 
-  int z_index_{DefaultComputedStyle::DEFAULT_LONG};
+  ZIndexData z_index_;
+
   unsigned int handle_color_{0};
   float handle_size_{0.f};
   float opacity_{DefaultComputedStyle::DEFAULT_OPACITY};
@@ -581,6 +625,19 @@ class ComputedCSSStyle {
                ? width
                : 0.f;
   }
+
+  void MarkChanged(tasm::CSSPropertyID id) {
+    changed_bitset_.Set(id);
+    reset_bitset_.Reset(id);
+  }
+
+  void MarkReset(tasm::CSSPropertyID id) {
+    changed_bitset_.Reset(id);
+    reset_bitset_.Set(id);
+  }
+
+  tasm::CSSIDBitset changed_bitset_;
+  tasm::CSSIDBitset reset_bitset_;
 
   // TODO(songshourui.null): remove this when all the ##nameToLepus methods are
   // deleted. In the long term, the PropBundleStyleWriter will optimize all

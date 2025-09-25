@@ -121,8 +121,6 @@ Element::Element(const Element& element, bool clone_resolved_props)
       fixed_changed_(element.is_fixed_),
       has_event_listener_(element.has_event_listener_),
       has_non_flatten_attrs_(element.has_non_flatten_attrs_),
-      has_opacity_(element.has_opacity_),
-      has_z_props_(element.has_z_props_),
       is_virtual_(element.is_virtual_),
       subtree_need_update_(element.subtree_need_update_),
       frame_changed_(element.frame_changed_),
@@ -376,18 +374,13 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
       has_layout_only_props_ = false;
     }
 
-    // do special check for transition, keyframe, z-index,etc.
-    if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id) ||
-          CheckZIndexProps(css_id, false))) {
 #if OS_ANDROID
-      // check flatten flag for Android platform if needed
-      // FIXME(linxs): only Android need to check below props for flatten.
-      // Normally, it's better to move below checks to Android platform side,
-      // but checking in C++ size has a better performance
-      CheckHasOpacityProps(css_id, false);
-      CheckHasNonFlattenCSSProps(css_id);
+    // check flatten flag for Android platform if needed
+    // FIXME(linxs): only Android need to check below props for flatten.
+    // Normally, it's better to move below checks to Android platform side,
+    // but checking in C++ size has a better performance
+    CheckHasNonFlattenCSSProps(css_id);
 #endif
-    }
   }
 
   // resolve style and push to prop_bundle
@@ -451,15 +444,6 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   }
   has_layout_only_props_ = false;
   processed = computed_css_style()->ResetValue(css_id);
-
-  CheckZIndexProps(css_id, true);
-
-  // The properties of transition and keyframe no need to be pushed to bundle
-  // separately here. Those properties will be pushed to bundle together
-  // later.
-  if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id))) {
-    ResetProp(CSSProperty::GetPropertyName(css_id).c_str());
-  }
 
   return processed;
 }
@@ -904,7 +888,6 @@ void Element::AnimateV2(const lepus::Value& args,
   }
   if (!styles.empty()) {
     computed_css_style()->AppendAnimatedAnimationValue(styles);
-    has_keyframe_props_changed_ = true;
   }
   element_manager_->OnFinishUpdateProps(this, pipeline_option);
 }
@@ -953,7 +936,7 @@ void Element::HandleCSSVariables(StyleMap& styles) {
 void Element::ResolvePlaceHolder() { style_resolver_.ResolvePlaceHolder(); }
 
 bool Element::DisableFlattenWithOpacity() {
-  return has_opacity_ && !is_text() && !is_image();
+  return has_opacity() && !is_text() && !is_image();
 }
 
 starlight::ComputedCSSStyle* Element::GetParentComputedCSSStyle() {
@@ -978,7 +961,7 @@ bool Element::ShouldAvoidFlattenForView() {
 bool Element::TendToFlatten() {
   return config_flatten_ && !has_event_listener_ && !has_non_flatten_attrs_ &&
          !DisableFlattenWithOpacity() &&
-         !(has_z_props_ && !is_image() && !is_text()) && !is_inline_element_ &&
+         !(has_z_props() && !is_image() && !is_text()) && !is_inline_element_ &&
          !ShouldAvoidFlattenForView();
 }
 
@@ -1224,30 +1207,6 @@ void Element::CheckGlobalBindTarget(const lynx::base::String& key,
   }
 }
 
-void Element::CheckHasOpacityProps(CSSPropertyID id, bool reset) {
-  if (UNLIKELY(id == CSSPropertyID::kPropertyIDOpacity)) {
-    has_opacity_ = !reset;
-  }
-}
-
-bool Element::CheckTransitionProps(CSSPropertyID id) {
-  if (CSSProperty::IsTransitionProps(id)) {
-    has_transition_props_changed_ = true;
-    has_non_flatten_attrs_ = true;
-    return true;
-  }
-  return false;
-}
-
-bool Element::CheckKeyframeProps(CSSPropertyID id) {
-  if (CSSProperty::IsKeyframeProps(id)) {
-    has_keyframe_props_changed_ = true;
-    has_non_flatten_attrs_ = true;
-    return true;
-  }
-  return false;
-}
-
 void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
   if (has_non_flatten_attrs_) {
     // never change has_non_flatten_attrs_ to false again
@@ -1261,18 +1220,10 @@ void Element::CheckHasNonFlattenCSSProps(CSSPropertyID id) {
       (id >= CSSPropertyID::kPropertyIDOutline &&
        id <= CSSPropertyID::kPropertyIDOutlineWidth) ||
       (id >= CSSPropertyID::kPropertyIDLayoutAnimationCreateDuration &&
-       id <= CSSPropertyID::kPropertyIDLayoutAnimationUpdateDelay)) {
+       id <= CSSPropertyID::kPropertyIDLayoutAnimationUpdateDelay) ||
+      CSSProperty::IsTransitionProps(id) || CSSProperty::IsKeyframeProps(id)) {
     has_non_flatten_attrs_ = true;
   }
-}
-
-bool Element::CheckZIndexProps(CSSPropertyID id, bool reset) {
-  if (!GetEnableZIndex()) return false;
-  if (UNLIKELY(id == CSSPropertyID::kPropertyIDZIndex)) {
-    has_z_props_ = !reset;
-    return true;
-  }
-  return false;
 }
 
 void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
@@ -1293,7 +1244,7 @@ void Element::CheckFixedSticky(CSSPropertyID id, const tasm::CSSValue& value) {
 
 bool Element::IsStackingContextNode() {
   if (!GetEnableZIndex()) return false;
-  return element_manager()->root() == this || has_z_props_ || is_fixed_ ||
+  return element_manager()->root() == this || has_z_props() || is_fixed_ ||
          computed_css_style()->HasTransform() ||
          computed_css_style()->HasOpacity();
 }
@@ -1425,7 +1376,7 @@ void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
     return;
   }
   // keyframe animation
-  if (!has_keyframe_props_changed_ && !from_resume) {
+  if (!has_keyframe_props_changed() && !from_resume) {
     return;
   }
 
@@ -1439,7 +1390,7 @@ void Element::SetDataToNativeKeyframeAnimator(bool from_resume) {
 
 void Element::SetDataToNativeTransitionAnimator() {
   // transition animation
-  if (!has_transition_props_changed_) {
+  if (!has_transition_props_changed()) {
     return;
   }
 
@@ -1449,7 +1400,7 @@ void Element::SetDataToNativeTransitionAnimator() {
   }
   css_transition_manager_->setTransitionData(
       computed_css_style()->transition_data());
-  has_transition_props_changed_ = false;
+  // has_transition_props_changed() = false;
 }
 
 void Element::ClearTransitionPreviousEndValue(

@@ -553,7 +553,8 @@ void ComputedCSSStyle::Reset() {
   layout_computed_style_.Reset();
 
   opacity_ = DefaultComputedStyle::DEFAULT_OPACITY;
-  z_index_ = DefaultComputedStyle::DEFAULT_LONG;
+
+  z_index_.Reset();
 
   ResetOverflow();
 
@@ -581,7 +582,13 @@ bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
-      return (this->*func)(value, reset);
+      bool changed = (this->*func)(value, reset);
+
+      if (changed) {
+        MarkChanged(id);
+      }
+
+      return changed;
     }
   }
   LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
@@ -655,7 +662,13 @@ bool ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
       tasm::CSSValue value;
-      return (this->*func)(value, true);
+      bool reset = (this->*func)(value, true);
+
+      if (reset) {
+        MarkReset(id);
+      }
+
+      return reset;
     }
   }
   LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
@@ -688,7 +701,13 @@ bool ComputedCSSStyle::InheritValue(tasm::CSSPropertyID id,
     return false;
   }
   StyleInheritFunc func = iter->second;
-  return (this->*func)(from);
+  bool inherit = (this->*func)(from);
+
+  if (inherit) {
+    MarkChanged(id);
+  }
+
+  return inherit;
 }
 
 #define SUPPORTED_LENGTH_PROPERTY(V)                                           \
@@ -2621,8 +2640,19 @@ bool ComputedCSSStyle::SetTextDecorationColor(const tasm::CSSValue& value,
 
 bool ComputedCSSStyle::SetZIndex(const tasm::CSSValue& value,
                                  const bool reset) {
-  return CSSStyleUtils::ComputeIntStyle(
-      value, reset, z_index_, 0, "z-index must be a number!", parser_configs_);
+  if (reset) {
+    z_index_.z_index_value = 0;
+    z_index_.has_z_index = false;
+    return true;
+  }
+
+  bool changed = CSSStyleUtils::ComputeIntStyle(
+      value, reset, z_index_.z_index_value, 0, "z-index must be a number!",
+      parser_configs_);
+  if (changed) {
+    z_index_.has_z_index |= true;
+  }
+  return changed;
 }
 
 bool ComputedCSSStyle::SetBorderRadius(const tasm::CSSValue& value,
@@ -3753,7 +3783,9 @@ bool ComputedCSSStyle::InheritLetterSpacing(const ComputedCSSStyle& from) {
   return true;
 }
 
-lepus_value ComputedCSSStyle::ZIndexToLepus() { return lepus_value(z_index_); }
+lepus_value ComputedCSSStyle::ZIndexToLepus() {
+  return lepus_value(z_index_.z_index_value);
+}
 
 lepus_value ComputedCSSStyle::VerticalAlignToLepus() {
   if (text_attributes_) {

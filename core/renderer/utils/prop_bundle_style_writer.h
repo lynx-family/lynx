@@ -15,6 +15,9 @@ class PropBundleStyleWriter {
   using WriterFunc = void (*)(PropBundle*, starlight::ComputedCSSStyle*);
 
  public:
+  static void PushStyleToBundle(PropBundle* bundle,
+                                starlight::ComputedCSSStyle* style);
+
   static void PushStyleToBundle(PropBundle* bundle, CSSPropertyID id,
                                 starlight::ComputedCSSStyle* style);
 
