@@ -11,6 +11,10 @@
 #include <string>
 #include <utility>
 
+#if defined(OS_ANDROID)
+#include <android/log.h>
+#endif
+
 #if !defined(_WIN32)
 #include <unistd.h>
 #endif
@@ -187,9 +191,29 @@ LogMessage::~LogMessage() {
   if (kHasInitedLynxLog) {
     Log(this);
   } else {
+#if defined(OS_ANDROID)
+    android_LogPriority priority =
+        (severity_ < 0) ? ANDROID_LOG_VERBOSE : ANDROID_LOG_UNKNOWN;
+    switch (severity_) {
+      case LOG_INFO:
+        priority = ANDROID_LOG_INFO;
+        break;
+      case LOG_WARNING:
+        priority = ANDROID_LOG_WARN;
+        break;
+      case LOG_ERROR:
+        priority = ANDROID_LOG_ERROR;
+        break;
+      case LOG_FATAL:
+        priority = ANDROID_LOG_FATAL;
+        break;
+    }
+    __android_log_write(priority, "lynx", stream_.str().c_str());
+#else
     std::string str_newline(stream_.str());
     printf("lynx/%s [%s:%d]: %s\n", LogSeverityName(severity_), file_, line_,
            str_newline.c_str());
+#endif
   }
 
   if (severity_ == LOG_FATAL) {
