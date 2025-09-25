@@ -5,7 +5,8 @@
 import { assertType } from 'vitest';
 import { expectType } from 'tsd';
 
-import { UIMethods, ScrollToUpperEvent, ScrollToLowerEvent, ScrollEvent, ScrollEndEvent, IntrinsicElements } from '../../types';
+import { UIMethods, ScrollToUpperEvent, ScrollToLowerEvent, ScrollEvent, ScrollEndEvent, IntrinsicElements } from '../../../types';
+import { invoke } from '../test-utils';
 
 // Props Types Check
 let a;
@@ -81,9 +82,6 @@ function noop() {}
     }}
   />;
 }
-
-// UIMethods types check
-function invoke<T extends keyof UIMethods>(_param: UIMethods[T]) {}
 
 {
   invoke<'scroll-view'>({

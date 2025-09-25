@@ -64,14 +64,6 @@ export interface ChangedTouch {
 export interface BaseCommonEvent<T> extends BaseEventOrig<any, T> {}
 export interface CommonEvent extends BaseCommonEvent<Target | MainThreadElement> {}
 
-export interface AppearanceEvent {
-  type: 'nodeappear' | 'nodedisappear';
-  detail: {
-    position: number;
-    key: string;
-  };
-}
-
 export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
   /** 
    * Collection of touch points currently on the touch plane.
