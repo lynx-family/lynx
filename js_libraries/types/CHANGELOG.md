@@ -1,4 +1,7 @@
 # CHANGELOG
+## 3.5.9
+- Update typings for x-webview & x-texture-view elements.
+
 ## 3.5.8
 - Update common typings on elements.
 
