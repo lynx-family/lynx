@@ -36,9 +36,11 @@ void PanGestureHandler::HandleConfigMap(const lepus::Value& config) {
   }
 }
 
-void PanGestureHandler::OnHandle(const ArkUI_UIInputEvent* event,
-                                 std::shared_ptr<TouchEvent> lynx_touch_event,
-                                 float fling_delta_x, float fling_delta_y) {
+void PanGestureHandler::OnHandle(
+    const ArkUI_UIInputEvent* event,
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+    float fling_delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   last_touch_event_ = lynx_touch_event;
   if (event == nullptr) {
     Ignore();
@@ -68,7 +70,7 @@ void PanGestureHandler::OnHandle(const ArkUI_UIInputEvent* event,
         Activate();
       }
       if (status_ == GestureConstants::LYNX_STATE_ACTIVE) {
-        OnUpdate(last_x_, last_y_, lynx_touch_event);
+        OnUpdate(last_x_, last_y_, lynx_touch_event, extra_bundle);
       } else if (status_ >= GestureConstants::LYNX_STATE_FAIL) {
         OnEnd(last_x_, last_y_, lynx_touch_event);
       }
@@ -123,7 +125,7 @@ lepus::Value PanGestureHandler::GetEventParamsInActive(
 }
 
 void PanGestureHandler::OnBegin(float x, float y,
-                                std::shared_ptr<TouchEvent> event) {
+                                const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnBeginEnable() || is_invoked_begin_) {
     return;
   }
@@ -131,8 +133,9 @@ void PanGestureHandler::OnBegin(float x, float y,
   SendGestureEvent(GestureConstants::ON_BEGIN, GetEventParamsInActive(event));
 }
 
-void PanGestureHandler::OnUpdate(float delta_x, float delta_y,
-                                 std::shared_ptr<TouchEvent> event) {
+void PanGestureHandler::OnUpdate(
+    float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   if (!IsOnUpdateEnable()) {
     return;
   }
@@ -140,7 +143,7 @@ void PanGestureHandler::OnUpdate(float delta_x, float delta_y,
 }
 
 void PanGestureHandler::OnStart(float x, float y,
-                                std::shared_ptr<TouchEvent> event) {
+                                const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnStartEnable() || is_invoked_start_ || !is_invoked_begin_) {
     return;
   }
@@ -149,7 +152,7 @@ void PanGestureHandler::OnStart(float x, float y,
 }
 
 void PanGestureHandler::OnEnd(float x, float y,
-                              std::shared_ptr<TouchEvent> event) {
+                              const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnEndEnable() || is_invoked_end_ || !is_invoked_begin_) {
     return;
   }

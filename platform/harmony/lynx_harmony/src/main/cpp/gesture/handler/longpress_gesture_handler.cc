@@ -42,8 +42,9 @@ void LongPressGestureHandler::HandleConfigMap(const lepus::Value& config) {
 
 void LongPressGestureHandler::OnHandle(
     const ArkUI_UIInputEvent* event,
-    std::shared_ptr<TouchEvent> lynx_touch_event, float fling_delta_x,
-    float fling_delta_y) {
+    const std::shared_ptr<TouchEvent>& lynx_touch_event, float fling_delta_x,
+    float fling_delta_y, bool handle_by_simultaneous,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   last_touch_event_ = lynx_touch_event;
   if (event == nullptr) {
     Ignore();
@@ -120,8 +121,8 @@ bool LongPressGestureHandler::ShouldFail() {
   return dx > max_distance_ || dy > max_distance_;
 }
 
-void LongPressGestureHandler::OnBegin(float x, float y,
-                                      std::shared_ptr<TouchEvent> event) {
+void LongPressGestureHandler::OnBegin(
+    float x, float y, const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnBeginEnable()) {
     return;
   }
@@ -129,13 +130,14 @@ void LongPressGestureHandler::OnBegin(float x, float y,
                    GetEventParamsFromTouchEvent(event));
 }
 
-void LongPressGestureHandler::OnUpdate(float delta_x, float delta_y,
-                                       std::shared_ptr<TouchEvent> event) {
+void LongPressGestureHandler::OnUpdate(
+    float delta_x, float delta_y, const std::shared_ptr<TouchEvent>& event,
+    const std::shared_ptr<GestureExtraBundle>& extra_bundle) {
   // empty implementation, because long press gesture is not continuous gesture
 }
 
-void LongPressGestureHandler::OnStart(float x, float y,
-                                      std::shared_ptr<TouchEvent> event) {
+void LongPressGestureHandler::OnStart(
+    float x, float y, const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnStartEnable()) {
     return;
   }
@@ -144,7 +146,7 @@ void LongPressGestureHandler::OnStart(float x, float y,
 }
 
 void LongPressGestureHandler::OnEnd(float x, float y,
-                                    std::shared_ptr<TouchEvent> event) {
+                                    const std::shared_ptr<TouchEvent>& event) {
   if (!IsOnEndEnable() || is_invoked_end_) {
     return;
   }
