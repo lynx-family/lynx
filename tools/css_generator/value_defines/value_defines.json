@@ -21,6 +21,7 @@
         "<color-function>": "<rgb()> | <rgba()> | <hsl()> | <hsla()>",
         "<hex-color>": "string",
         "<named-color>": "string",
-        "<line-style>": "none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset"
+        "<line-style>": "none | hidden | dotted | dashed | solid | double | groove | ridge | inset | outset",
+        "<line-width>" : "<length> | thin | medium | thick"
     }
 }

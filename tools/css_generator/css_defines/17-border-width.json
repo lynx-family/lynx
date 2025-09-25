@@ -7,5 +7,6 @@
   "author": "yaoxiaopeng",
   "consumption_status": "layout-wanted",
   "desc": "A shorthand property for setting the width of all four borders of an element.",
-  "is_shorthand": true
+  "is_shorthand": true,
+  "formal_syntax": "<line-width>{1,4}"
 }

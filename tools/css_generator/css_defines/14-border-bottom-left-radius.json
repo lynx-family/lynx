@@ -7,5 +7,6 @@
   "author": "liyun,linyiyi",
   "consumption_status": "skip",
   "desc": "Used to add a rounded border to the bottom-left corner.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<length-percentage [0,∞]>{1,2}"
 }

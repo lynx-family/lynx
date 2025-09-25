@@ -7,5 +7,6 @@
   "author": "yaoxiaopeng",
   "consumption_status": "layout-wanted",
   "desc": "The border-top-width CSS property sets the width of the left border of an element.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<line-width>"
 }

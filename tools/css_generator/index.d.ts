@@ -201,9 +201,11 @@ export interface Properties {
   /**
    * The border-top-left-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.
    *
+   * **Syntax**: `<length-percentage [0,∞]>{1,2}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-top-left-radius
    */
-  borderTopLeftRadius?: (string & {}) | number | undefined;
+  borderTopLeftRadius?: (string & {}) | 0 | undefined;
   /**
    * The `direction` CSS property sets the direction of text.
    *
@@ -267,9 +269,11 @@ export interface Properties {
   /**
    * Used to add a rounded border to the bottom-left corner.
    *
+   * **Syntax**: `<length-percentage [0,∞]>{1,2}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-bottom-left-radius
    */
-  borderBottomLeftRadius?: (string & {}) | number | undefined;
+  borderBottomLeftRadius?: (string & {}) | 0 | undefined;
   /**
    * Used to set typesetting acceleration in relative-layout.
    *
@@ -328,9 +332,11 @@ export interface Properties {
   /**
    * The border-top-right-radius CSS property rounds the bottom-left corner of an element by specifying the radius (or the radius of the semi-major and semi-minor axes) of the ellipse defining the curvature of the corner.
    *
+   * **Syntax**: `<length-percentage [0,∞]>{1,2}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-top-right-radius
    */
-  borderTopRightRadius?: (string & {}) | number | undefined;
+  borderTopRightRadius?: (string & {}) | 0 | undefined;
   /**
    * The `margin-inline-start` CSS property defines the logical inline start margin of an element.
    *
@@ -394,9 +400,11 @@ export interface Properties {
   /**
    * Used to add a rounded border to the bottom-right corner.
    *
+   * **Syntax**: `<length-percentage [0,∞]>{1,2}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-bottom-right-radius
    */
-  borderBottomRightRadius?: (string & {}) | number | undefined;
+  borderBottomRightRadius?: (string & {}) | 0 | undefined;
   /**
    * The `border-start-start-radius` CSS property defines a logical border radius on an element, which notes the size of the circle radius or the semi-major and semi-minor axes of the ellipse.
    *
@@ -460,9 +468,11 @@ export interface Properties {
   /**
    * A shorthand property for setting the width of all four borders of an element.
    *
+   * **Syntax**: `<line-width>{1,4}`
+   *
    * @see https://lynxjs.org/api/css/properties/border-width
    */
-  borderWidth?: (string & {}) | number | undefined;
+  borderWidth?: 'medium' | 'thick' | 'thin' | (string & {}) | 0 | undefined;
   /**
    * The `mask-image` CSS property sets the image that is used as mask layer for an element.
    *
@@ -526,9 +536,11 @@ export interface Properties {
   /**
    * Used to set the width of the left border.
    *
+   * **Syntax**: `<line-width>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-left-width
    */
-  borderLeftWidth?: (string & {}) | number | undefined;
+  borderLeftWidth?: 'medium' | 'thick' | 'thin' | (string & {}) | 0 | undefined;
   /**
    * The `grid-row-end` CSS property specifies a grid item's end position within the grid row by contributing a line, a span, or nothing (automatic) to its grid placement.
    *
@@ -572,9 +584,11 @@ export interface Properties {
   /**
    * The border-right-width CSS property sets the width of the left border of an element.
    *
+   * **Syntax**: `<line-width>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-right-width
    */
-  borderRightWidth?: (string & {}) | number | undefined;
+  borderRightWidth?: 'medium' | 'thick' | 'thin' | (string & {}) | 0 | undefined;
   /**
    * The perspective CSS property determines the distance between the z=0 plane and the user in order to give a 3D-positioned element some perspective.
    *
@@ -636,9 +650,11 @@ export interface Properties {
   /**
    * The border-top-width CSS property sets the width of the left border of an element.
    *
+   * **Syntax**: `<line-width>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-top-width
    */
-  borderTopWidth?: (string & {}) | number | undefined;
+  borderTopWidth?: 'medium' | 'thick' | 'thin' | (string & {}) | 0 | undefined;
   maskRepeat?: (string & {}) | number | undefined;
   maskPosition?: (string & {}) | number | undefined;
   maskClip?: (string & {}) | number | undefined;
@@ -667,9 +683,11 @@ export interface Properties {
   /**
    * Used to set the width of the bottom border.
    *
+   * **Syntax**: `<line-width>`
+   *
    * @see https://lynxjs.org/api/css/properties/border-bottom-width
    */
-  borderBottomWidth?: (string & {}) | number | undefined;
+  borderBottomWidth?: 'medium' | 'thick' | 'thin' | (string & {}) | 0 | undefined;
   XAppRegion?: (string & {}) | number | undefined;
   XAnimationColorInterpolation?: (string & {}) | number | undefined;
   /**
