@@ -56,6 +56,7 @@
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/events/events.h"
 #include "core/renderer/events/gesture.h"
+#include "core/renderer/events/touch_event_handler.h"
 #include "core/renderer/signal/computation.h"
 #include "core/renderer/signal/lynx_signal.h"
 #include "core/renderer/signal/memo.h"
@@ -3887,13 +3888,22 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                 if (args.IsArray() && args_array->size() == 2) {
                   const auto& event_detail = args_array->get(1);
                   BASE_STATIC_STRING_DECL(kEntryFunction, "runWorklet");
+                  BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
+
                   const auto worklet_function_value =
                       context->GetGlobalData(kEntryFunction);
                   auto param_array = lepus::CArray::Create();
                   param_array->push_back(event_detail);
+
+                  auto options = lepus::Dictionary::Create();
+                  options.get()->SetValue(
+                      kRunWorkletSource,
+                      static_cast<int>(tasm::RunWorkletType::kEvents));
+
                   // Call the worklet function with closure.
                   context->CallClosure(worklet_function_value, value,
-                                       lepus::Value(std::move(param_array)));
+                                       lepus::Value(std::move(param_array)),
+                                       lepus::Value(std::move(options)));
                 }
               },
               event_options, event::ClosureEventListener::ClosureType::kCore,
