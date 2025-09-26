@@ -97,6 +97,8 @@ enum class EventResult : int {
   kStopImmediatePropagationBit = 0x2
 };
 
+enum class RunWorkletType { kNone, kEvents, kGesture };
+
 using ResponseChainVector = base::InlineVector<Element *, 16>;
 using EventOpsVector = base::InlineVector<EventOperation, 2>;
 

@@ -1420,6 +1420,7 @@ std::optional<lepus::Value> TouchEventHandler::TriggerFiberElementWorklet(
   }
 
   constexpr const static char kEntryFunction[] = "runWorklet";
+  BASE_STATIC_STRING_DECL(kRunWorkletSource, "source");
 
   // Get the worklet function value
   const auto worklet_function_value =
@@ -1427,14 +1428,21 @@ std::optional<lepus::Value> TouchEventHandler::TriggerFiberElementWorklet(
   auto param_array = lepus::CArray::Create();
   param_array->push_back(event_param);
 
+  auto options = lepus::Dictionary::Create();
+
   if (!gesture_manager_.IsEmpty() && type == tasm::EventType::kGesture) {
     param_array->push_back(gesture_manager_);
+    options.get()->SetValue(kRunWorkletSource,
+                            static_cast<int>(tasm::RunWorkletType::kGesture));
+  } else {
+    options.get()->SetValue(kRunWorkletSource,
+                            static_cast<int>(tasm::RunWorkletType::kEvents));
   }
 
   // Call the worklet function with closure
-  lepus::Value call_result_value =
-      context->CallClosure(worklet_function_value, worklet_info,
-                           lepus::Value(std::move(param_array)));
+  lepus::Value call_result_value = context->CallClosure(
+      worklet_function_value, worklet_info,
+      lepus::Value(std::move(param_array)), lepus::Value(std::move(options)));
 
   return call_result_value;
 }
@@ -1456,7 +1464,7 @@ EventResult TouchEventHandler::FireElementWorklet(
         tasm, handler->lepus_object(), value, element_id, context.event_type,
         handler->lepus_context());
 
-    BASE_STATIC_STRING_DECL(kEventResult, "__EventReturnResult");
+    BASE_STATIC_STRING_DECL(kEventResult, "eventReturnResult");
     if (call_result_value.has_value() && call_result_value->IsObject()) {
       result = static_cast<EventResult>(
           call_result_value->GetProperty(kEventResult).Number());
@@ -1901,17 +1909,21 @@ GetEventHandlers TouchEventHandler::get_handlers_f_ =
       res.push_back(global_event_handler);
     }
   } else {
-    // Find the event handler in the event map
-    auto *js_event_handler =
-        TouchEventHandler::find_event_f_(cur_target->event_map(), event_name);
-    if (js_event_handler) {
-      res.push_back(js_event_handler);
-    }
+    // Lepus Event Handler must be in the prior position of JS Event Handler, to
+    // make sure When lepusEventHandler calls `stopImmediatePropagation`, JS
+    // Event Handler will not be called
+
     // Find the event handler in the lepus event map
     auto *lepus_event_handler = TouchEventHandler::find_event_f_(
         cur_target->lepus_event_map(), event_name);
     if (lepus_event_handler) {
       res.push_back(lepus_event_handler);
+    }
+    // Find the event handler in the event map
+    auto *js_event_handler =
+        TouchEventHandler::find_event_f_(cur_target->event_map(), event_name);
+    if (js_event_handler) {
+      res.push_back(js_event_handler);
     }
   }
   return res;
