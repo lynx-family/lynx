@@ -490,8 +490,6 @@ inline constexpr const char* const FIBER_ELEMENT_HANDLE_GESTURES =
     "FiberElement::HandleGestures";
 inline constexpr const char* const FIBER_ELEMENT_HANDLE_DATASET =
     "FiberElement::HandleDataset";
-inline constexpr const char* const FIBER_ELEMENT_TRIGGER_ELEMENT_UPDATE =
-    "FiberElement::TriggerElementUpdate";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_ACTIONS_AS_ROOT =
     "FiberElement::FlushActionsAsRoot";
 inline constexpr const char* const FIBER_ELEMENT_FLUSH_SELF =
