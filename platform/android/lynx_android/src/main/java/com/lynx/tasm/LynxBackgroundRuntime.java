@@ -439,6 +439,14 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
     }
   };
 
+  public int getRuntimeId() {
+    if (mNativePtr == 0) {
+      return -1;
+    }
+
+    return nativeGetRuntimeId(mNativePtr);
+  }
+
   private native long nativeCreateBackgroundRuntimeWrapper(LynxResourceLoader resourceLoader,
       LynxModuleFactory moduleFactory, long inspectorObserverPtr, long whiteBoardPtr,
       String groupId, String groupName, String[] preloadJSPaths, String bytecodeSourceUrl,
@@ -471,4 +479,6 @@ public class LynxBackgroundRuntime implements ILynxErrorReceiver {
   private native void nativeUnsubscribeSessionStorage(long ptr, String key, double id);
 
   private native void nativeTransitionToFullRuntime(long ptr);
+
+  private native int nativeGetRuntimeId(long ptr);
 }

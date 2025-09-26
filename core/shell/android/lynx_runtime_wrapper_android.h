@@ -76,6 +76,8 @@ class LynxRuntimeWrapperAndroid {
 
   void TransitionToFullRuntime();
 
+  int32_t GetRuntimeId() { return runtime_standalone_bundle_.runtime_id_; }
+
  private:
   const InitRuntimeStandaloneResult
       runtime_standalone_bundle_;  // keep this read-only until destruction

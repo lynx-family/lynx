@@ -199,6 +199,12 @@ void DestroyRuntime(JNIEnv *env, jobject jcaller, jlong ptr) {
   runtime_wrapper->DestroyRuntime();
 }
 
+jint GetRuntimeId(JNIEnv *env, jobject jcaller, jlong ptr) {
+  auto *runtime_wrapper =
+      reinterpret_cast<lynx::shell::LynxRuntimeWrapperAndroid *>(ptr);
+  return runtime_wrapper->GetRuntimeId();
+}
+
 namespace lynx {
 namespace shell {
 

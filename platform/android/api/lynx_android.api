@@ -3563,6 +3563,7 @@ public class com::lynx::tasm::LynxBackgroundRuntime : com.lynx.tasm.ILynxErrorRe
   public long com.lynx.tasm.LynxBackgroundRuntime.getNativePtr();
   public void com.lynx.tasm.LynxBackgroundRuntime.addRuntimeLifecycleListener(@NonNull RuntimeLifecycleListener listener);
   public void com.lynx.tasm.LynxBackgroundRuntime.transitionToFullRuntime();
+  public int com.lynx.tasm.LynxBackgroundRuntime.getRuntimeId();
 }
 
 public class abstract com::lynx::tasm::LynxBackgroundRuntimeClient :  {
