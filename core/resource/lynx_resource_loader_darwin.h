@@ -52,7 +52,8 @@ class LynxResourceLoaderDarwin : public pub::LynxResourceLoader {
   /**
    * Try to fetch template by Generic Fetcher. if generic fetcher not set, return false;
    */
-  bool FetchTemplateByGenericFetcher(const std::string& url, CopyableClosure callback);
+  bool FetchTemplateByGenericFetcher(const std::string& url, LynxResourceRequestType type,
+                                     CopyableClosure callback);
 
   /**
    * Try to fetch resource by Generic Fetcher. if generic fetcher not set, return false;
