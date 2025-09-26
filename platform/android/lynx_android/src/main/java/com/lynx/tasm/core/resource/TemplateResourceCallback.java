@@ -6,7 +6,7 @@ package com.lynx.tasm.core.resource;
 
 import com.lynx.tasm.LynxInfoReportHelper;
 import com.lynx.tasm.TemplateBundle;
-import com.lynx.tasm.core.resource.LynxResourceType;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.service.security.ILynxSecurityService;
 import com.lynx.tasm.service.security.SecurityResult;
@@ -20,14 +20,18 @@ import com.lynx.tasm.service.security.SecurityResult;
 class TemplateResourceCallback extends GuardedResourceCallback {
   private final long mResponseHandler;
   private final LynxInfoReportHelper mReportHelper;
-  private final int mResourceType;
+  private final LynxResourceRequest.LynxResourceType mResourceType;
 
-  public TemplateResourceCallback(
-      String url, long responseHandler, LynxInfoReportHelper reportHelper, int resourceType) {
+  public TemplateResourceCallback(String url, long responseHandler,
+      LynxInfoReportHelper reportHelper, LynxResourceRequest.LynxResourceType resourceType) {
     super(url);
     mResponseHandler = responseHandler;
     mReportHelper = reportHelper;
     mResourceType = resourceType;
+  }
+
+  public LynxResourceRequest.LynxResourceType getResourceType() {
+    return this.mResourceType;
   }
 
   public void onTemplateLoaded(
@@ -50,7 +54,7 @@ class TemplateResourceCallback extends GuardedResourceCallback {
       if (securityService != null) {
         // TODO(zhoupeng.z): add new TASM type for frame
         final ILynxSecurityService.LynxTasmType tasmType =
-            mResourceType == LynxResourceType.LYNX_RESOURCE_TYPE_FRAME
+            mResourceType == LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate
             ? ILynxSecurityService.LynxTasmType.TYPE_TEMPLATE
             : ILynxSecurityService.LynxTasmType.TYPE_DYNAMIC_COMPONENT;
         SecurityResult result = securityService.verifyTASM(null, data, mUrl, tasmType);
