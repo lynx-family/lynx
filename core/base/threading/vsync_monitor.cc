@@ -131,7 +131,7 @@ void VSyncMonitor::BindToCurrentThread() {
   // platform, calling UIThread::GetRunner here can block current thread.
   // This piece of code fixes crash on Window platform, it's safe to delete
   // it from other platforms.
-#if defined(OS_WIN) || defined(ENABLE_HEADLESS)
+#if defined(OS_WIN) || defined(ENABLE_HEADLESS) || defined(OS_LINUX)
   auto ui_runner = base::UIThread::GetRunner();
   if (ui_runner->RunsTasksOnCurrentThread()) {
     runner_ = ui_runner;

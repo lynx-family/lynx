@@ -340,7 +340,10 @@ void TaskRunnerManufactor::StartUIThread(bool enable_vsync_aligned_msg_loop) {
 void TaskRunnerManufactor::CreateTASMRunner(
     fml::RefPtr<fml::MessageLoopImpl> loop,
     bool enable_vsync_aligned_msg_loop) {
-#ifdef OS_WIN
+#if defined(OS_WIN)
+  tasm_task_runner_ = ui_task_runner_;
+  return;
+#elif defined(OS_LINUX) && !ENABLE_UNITTESTS
   tasm_task_runner_ = ui_task_runner_;
   return;
 #endif
