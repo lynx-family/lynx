@@ -77,6 +77,18 @@ class LynxView {
       return *this;
     }
 
+    template <typename T>
+    Builder& RegisterNativeView(const std::string& tag_name,
+                                void* opaque = nullptr) {
+      lynx_view_builder_register_native_view(
+          builder_, tag_name.c_str(),
+          [](void* opaque) -> lynx_native_view_t* {
+            return (new T(opaque))->native_view();
+          },
+          opaque);
+      return *this;
+    }
+
     lynx_view_builder_t* Impl() { return builder_; }
 
     std::unique_ptr<LynxView> Build() {
