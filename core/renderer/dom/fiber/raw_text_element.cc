@@ -51,7 +51,7 @@ ParallelFlushReturn RawTextElement::PrepareForCreateOrUpdate() {
     RequestLayout();
   }
 
-  PerformElementContainerCreateOrUpdate(need_update);
+  PerformElementContainerCreateOrUpdate(need_update, true);
 
   // reset all dirty bits, some bits may never be processed
   ResetAllDirtyBits();

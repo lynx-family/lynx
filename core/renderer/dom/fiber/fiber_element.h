@@ -726,8 +726,6 @@ class FiberElement : public Element,
 
   void VerifyKeyframePropsChangedHandling();
 
-  void TriggerElementUpdate();
-
   void RequestLayout() override;
 
   void RequestNextFrame() override;
@@ -961,7 +959,7 @@ class FiberElement : public Element,
 
   bool ConsumeAllAttributes();
 
-  void PerformElementContainerCreateOrUpdate(bool need_update);
+  void PerformElementContainerCreateOrUpdate(bool need_update, bool need_reset);
 
   bool IsNewlyCreated() const { return dirty_ & kDirtyCreated; }
 

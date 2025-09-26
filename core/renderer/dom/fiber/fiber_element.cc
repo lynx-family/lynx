@@ -1489,12 +1489,7 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   }
 
   // Commit Create or Update UI Ops
-  PerformElementContainerCreateOrUpdate(need_update);
-
-  // update to layout node
-  UpdateLayoutNodeByBundle();
-
-  ResetPropBundle();
+  PerformElementContainerCreateOrUpdate(need_update, true);
 
   if (ShouldProcessParallelTasks()) {
     return CreateParallelTaskHandler();
@@ -1503,18 +1498,6 @@ ParallelFlushReturn FiberElement::PrepareForCreateOrUpdate() {
   VerifyKeyframePropsChangedHandling();
 
   return []() {};
-}
-
-void FiberElement::TriggerElementUpdate() {
-  TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_TRIGGER_ELEMENT_UPDATE,
-              [this](lynx::perfetto::EventContext ctx) {
-                UpdateTraceDebugInfo(ctx.event());
-              });
-  UpdateLayoutNodeProps(prop_bundle_);
-
-  if (!is_virtual()) {
-    UpdateFiberElement();
-  }
 }
 
 void FiberElement::VerifyKeyframePropsChangedHandling() {
@@ -2285,7 +2268,8 @@ bool FiberElement::ConsumeAllAttributes() {
   return need_update;
 }
 
-void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update) {
+void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
+                                                         bool need_reset) {
   if (dirty_ & kDirtyCreated) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -2297,9 +2281,15 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update) {
     dirty_ &= ~kDirtyCreated;
   } else if (need_update || dirty_ & kDirtyForceUpdate) {
     if (prop_bundle_) {
-      TriggerElementUpdate();
+      UpdateLayoutNodeProps(prop_bundle_);
+
+      if (!is_virtual()) {
+        UpdateFiberElement();
+      }
     }
 
+    // TODO(songshourui.null): Later, determine whether to call StyleChanged
+    // based on whether ComputedCSSStyle is dirty.
     if (element_manager() && element_manager()->FixZIndexCrash()) {
       HandleBeforeFlushActionsTask(
           [this]() { element_container()->StyleChanged(); });
@@ -2308,6 +2298,12 @@ void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update) {
     }
   }
   dirty_ &= ~kDirtyForceUpdate;
+
+  UpdateLayoutNodeByBundle();
+
+  if (need_reset) {
+    ResetPropBundle();
+  }
 }
 
 ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
@@ -2326,11 +2322,8 @@ ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
     }
     // Executing task in parallel_reduce_tasks_ may produce prop_bundle_,
     // need to consume newly created prop_bundle_
-    if (prop_bundle_) {
-      TriggerElementUpdate();
-      UpdateLayoutNodeByBundle();
-      ResetPropBundle();
-    }
+    PerformElementContainerCreateOrUpdate(prop_bundle_ != nullptr, true);
+
     this->UpdateResolveStatus(AsyncResolveStatus::kUpdated);
     VerifyKeyframePropsChangedHandling();
   };
@@ -3736,18 +3729,8 @@ void FiberElement::UpdateDynamicElementStyleRecursively(uint32_t style,
         inner_force_update |= true;
       }
 
-      if (prop_bundle_) {
-        UpdateLayoutNodeProps(prop_bundle_);
-        if (!is_virtual()) {
-          UpdateFiberElement();
-        }
-        if (element_manager_->FixNewAnimatorFlushBug()) {
-          // FIXME(linxs): remove this settings in next version
-          ResetPropBundle();
-        }
-      }
-
-      UpdateLayoutNodeByBundle();
+      PerformElementContainerCreateOrUpdate(
+          true, element_manager_->FixNewAnimatorFlushBug());
     }
   }
 
