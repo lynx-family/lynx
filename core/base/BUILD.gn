@@ -144,8 +144,14 @@ lynx_core_source_set("base") {
       libs += [ "user32.lib" ]
     }
 
+    defines = []
+
     if (is_headless) {
-      defines = [ "ENABLE_HEADLESS" ]
+      defines += [ "ENABLE_HEADLESS" ]
+    }
+
+    if (is_linux) {
+      defines += [ "OS_LINUX=1" ]
     }
 
     deps += [
