@@ -8,5 +8,6 @@ export default defineConfig({
     filename: {
       js: 'lynx-error-parser.js',
     },
+    overrideBrowserslist: ['ios >= 10'],
   },
 });
