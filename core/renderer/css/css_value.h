@@ -61,6 +61,7 @@ struct VarReference {
   size_t name_end;
   size_t start;
   size_t end;
+  size_t offset = 4;  // Default offset for var() format, use 2 for {{}} format
   base::String fallback;
   CSSParserConfigs parser_configs;
   std::string_view Name(const std::string& raw_value) const;
@@ -297,6 +298,12 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       const CSSValue& css_value, const CustomPropertiesMap& variable_map,
       int max_depth = 10,
       const HandleCustomPropertyFunc& handle_func = nullptr);
+
+  // Change the legacy css variable value which in a format with {{ variable }}
+  // into the new VarReference based variables.
+  // TODO(renzhongyue): reference values can be directly encode into template to
+  // reduce runtime overheads.
+  bool ToVarReference();
 
  private:
   class CycleDetector;

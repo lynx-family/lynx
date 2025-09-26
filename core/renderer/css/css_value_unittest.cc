@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "base/include/value/table.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 
@@ -16,6 +17,14 @@ class CSSValueSubstitutionTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Setup common test data
+  }
+  CSSParserConfigs configs_;
+};
+
+class CSSValueToVarReferenceTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // Setup common test data for ToVarReference tests
   }
   CSSParserConfigs configs_;
 };
@@ -642,6 +651,139 @@ TEST_F(CSSValueSubstitutionTest, SubstituteAll) {
   EXPECT_EQ(custom_properties["--b"].AsStdString(), "blue");
   EXPECT_EQ(custom_properties["--c"].AsStdString(), "blue");
   EXPECT_EQ(custom_properties["--d"].AsStdString(), "   blue");
+}
+
+// Tests for ToVarReference function using Substitution method
+TEST_F(CSSValueToVarReferenceTest, SimpleVariableToVarReference) {
+  // Test simple {{--variable}} format conversion
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+
+  CSSValue css_value(lepus::Value("{{--color}}"), CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  css_value.SetDefaultValue("blue");
+
+  // Convert to VarReference
+  EXPECT_TRUE(css_value.ToVarReference());
+  EXPECT_TRUE(css_value.NeedsVariableResolution());
+  EXPECT_TRUE(css_value.IsVariable());
+
+  // Test that substitution works with the converted VarReference
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "red");  // Should resolve to the variable value
+}
+
+TEST_F(CSSValueToVarReferenceTest, MultipleVariablesToVarReference) {
+  // Test multiple variables in one value: {{--color}} {{--size}}
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+  variables.insert_or_assign("--size", CSSValue(lepus::Value("16px")));
+
+  CSSValue css_value(lepus::Value("{{--color}} {{--size}}"),
+                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+
+  EXPECT_TRUE(css_value.ToVarReference());
+  EXPECT_TRUE(css_value.NeedsVariableResolution());
+
+  // Test that substitution works with multiple variables
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "red 16px");  // Should resolve both variables
+}
+
+TEST_F(CSSValueToVarReferenceTest, VariableWithFallbackMapToVarReference) {
+  // Test variable with fallback from default value map
+  CustomPropertiesMap variables;
+  // --primary is not defined, should use fallback
+
+  // Create a CSS value with default value map
+  lepus::Value default_map(lepus::Dictionary::Create());
+  default_map.Table()->SetValue("--primary", lepus::Value("red"));
+
+  CSSValue css_value(lepus::Value("{{--primary}}"), CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+  css_value.SetDefaultValueMap(default_map);
+
+  EXPECT_TRUE(css_value.ToVarReference());
+
+  // Test that substitution works with fallback from default map
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "red");  // Should use fallback from default map
+}
+
+TEST_F(CSSValueToVarReferenceTest, NoVariableConversionForNonVariable) {
+  // Test that non-variable CSS values are not converted
+  CSSValue css_value(lepus::Value("red"), CSSValuePattern::STRING,
+                     CSSValueType::DEFAULT);
+
+  EXPECT_FALSE(css_value.ToVarReference());
+  EXPECT_FALSE(css_value.NeedsVariableResolution());
+  EXPECT_FALSE(css_value.IsVariable());
+}
+
+TEST_F(CSSValueToVarReferenceTest, NoDoubleConversion) {
+  // Test that already converted variables are not converted again
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--color", CSSValue(lepus::Value("red")));
+
+  CSSValue css_value(lepus::Value("{{--color}}"), CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+
+  // First conversion
+  EXPECT_TRUE(css_value.ToVarReference());
+  EXPECT_TRUE(css_value.NeedsVariableResolution());
+
+  // Second conversion should fail
+  EXPECT_FALSE(css_value.ToVarReference());
+
+  // Verify substitution still works after attempted double conversion
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "red");
+}
+
+TEST_F(CSSValueToVarReferenceTest, EmptyVariableName) {
+  // Test edge case with empty variable name: {{}}
+  CustomPropertiesMap variables;
+
+  CSSValue css_value(lepus::Value("{{}}"), CSSValuePattern::STRING,
+                     CSSValueType::VARIABLE);
+
+  EXPECT_TRUE(css_value.ToVarReference());
+
+  // Test substitution with empty variable name
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "");  // Should return empty for undefined variable
+}
+
+TEST_F(CSSValueToVarReferenceTest, ComplexVariableWithCalc) {
+  // Test complex variable usage: calc({{--size}} * 2)
+  CustomPropertiesMap variables;
+  variables.insert_or_assign("--size", CSSValue(lepus::Value("10px")));
+
+  CSSValue css_value(lepus::Value("calc({{--size}} * 2)"),
+                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+
+  EXPECT_TRUE(css_value.ToVarReference());
+
+  // Test that substitution works with complex expressions
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result,
+            "calc(10px * 2)");  // Should resolve variable in calc expression
+}
+
+TEST_F(CSSValueToVarReferenceTest, VariableWithSimpleFallback) {
+  // Test variable with simple fallback value
+  CustomPropertiesMap variables;
+  // --undefined-color is not in variables, should use fallback
+
+  CSSValue css_value(lepus::Value("{{--undefined-color}}"),
+                     CSSValuePattern::STRING, CSSValueType::VARIABLE);
+  css_value.SetDefaultValue("black");
+
+  EXPECT_TRUE(css_value.ToVarReference());
+
+  // Test that substitution works with simple fallback
+  std::string result = CSSValue::Substitution(css_value, variables);
+  EXPECT_EQ(result, "black");  // Should use the fallback value
 }
 
 }  // namespace tasm

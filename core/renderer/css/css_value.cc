@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "base/include/value/table.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 #include "core/runtime/vm/lepus/json_parser.h"
@@ -250,9 +251,66 @@ std::string_view VarReference::Name(const std::string& raw_value) const {
       name_start >= name_end) {
     return "";
   }
-  constexpr size_t kVarParamOffset = 4;
-  return std::string_view(raw_value).substr(
-      start + kVarParamOffset + name_start, name_end - name_start);
+  return std::string_view{raw_value}.substr(start + offset + name_start,
+                                            name_end - name_start);
+}
+
+bool CSSValue::ToVarReference() {
+  if (!IsVariable() || var_references_ != nullptr) {
+    // Not a variable value or already a reference value.
+    return false;
+  }
+
+  auto format = AsStdString();
+  var_references_ = std::make_unique<base::InlineVector<VarReference, 1>>();
+  const auto* default_value_map_pointer =
+      default_value_map_opt_ && default_value_map_opt_->IsTable()
+          ? default_value_map_opt_->Table().get()
+          : nullptr;
+
+  // Look for {{variable}} patterns
+  size_t pos = 0;
+  while (pos < format.size()) {
+    // Find opening {{
+    size_t open_start = format.find("{{", pos);
+    if (open_start == std::string::npos) break;
+
+    // Find closing }}
+    size_t close_end = format.find("}}", open_start + 2);
+    if (close_end == std::string::npos) break;
+
+    VarReference ref;
+    // For {{--color}} format, we need to set positions to work with Name()
+    // method For {{--color}}, we want the variable name "--color" to be
+    // extracted correctly Use offset = 2 for {{}} format (vs default 4 for
+    // var() format)
+    ref.start = open_start;   // Base offset (position of {{)
+    ref.end = close_end + 2;  // End of string (position after }})
+    ref.offset =
+        2;  // Use 2 for {{}} format instead of default 4 for var() format
+    ref.name_start = 0;  // Variable name starts at position 2 in the string
+    ref.name_end =
+        close_end - open_start - 2;  // length of variable name (excluding }})
+
+    if (default_value_map_pointer) {
+      auto name = ref.Name(format);
+      if (auto it = default_value_map_pointer->find(std::string(name));
+          it != default_value_map_pointer->end()) {
+        ref.fallback = it->second.String();
+      }
+    } else if (!default_value_.empty()) {
+      ref.fallback = default_value_;
+    }
+    var_references_->emplace_back(std::move(ref));
+
+    // Move past this match
+    pos = close_end + 2;
+  }
+
+  needs_variable_resolution_ = true;
+  default_value_map_opt_ = nullptr;
+  default_value_ = base::String();
+  return true;
 }
 
 }  // namespace tasm

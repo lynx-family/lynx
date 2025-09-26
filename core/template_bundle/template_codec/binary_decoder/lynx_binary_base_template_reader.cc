@@ -509,6 +509,8 @@ bool LynxBinaryBaseTemplateReader::DecodeSpecificSection(
       EnsurePageConfig();
       ERROR_UNLESS(config_decoder_->DecodePageConfig(std::move(config_str),
                                                      page_configs_));
+      enable_css_inline_variables_ =
+          page_configs_->GetEnableCSSInlineVariables();
       break;
     }
     case BinarySection::DYNAMIC_COMPONENT: {

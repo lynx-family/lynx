@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/template_bundle/template_codec/binary_decoder/binary_decoder_trace_event_def.h"
 
 namespace lynx {
@@ -379,6 +380,14 @@ bool LynxBinaryBaseCSSReader::DecodeCSSValue(
       } else {
         target = std::make_unique<lepus::Value>(std::move(default_value_map));
       }
+    }
+    if (enable_css_inline_variables_) {
+      //  Compatible to new VarReference with ex {{}}
+      //  referenced string.
+      //  When inline CSS variables are enabled, check if the value contains
+      //  {{}} format and create VarReference structures for proper variable
+      //  resolution
+      result->ToVarReference();
     }
   }
   return true;
