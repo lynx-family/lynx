@@ -70,7 +70,7 @@ if (build_lynx_lepus_node) {
               "-s WASM=1",
               "-s ERROR_ON_UNDEFINED_SYMBOLS=0",
               "-s WASM_ASYNC_COMPILATION=0",
-              "-s ASSERTIONS=1",
+              "-s ASSERTIONS=0",
               "-s NODEJS_CATCH_EXIT=0",
               "-s NODEJS_CATCH_REJECTION=0",
               "-s DISABLE_EXCEPTION_CATCHING=0",
