@@ -17,13 +17,12 @@ import com.lynx.tasm.base.CalledByNative;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.component.DynamicComponentFetcher;
 import com.lynx.tasm.core.LynxThreadPool;
-import com.lynx.tasm.core.resource.LynxResourceType;
 import com.lynx.tasm.provider.LynxExternalResourceFetcherWrapper;
 import com.lynx.tasm.provider.LynxProviderRegistry;
 import com.lynx.tasm.provider.LynxResourceCallback;
 import com.lynx.tasm.provider.LynxResourceProvider;
-import com.lynx.tasm.provider.LynxResourceRequest;
 import com.lynx.tasm.provider.LynxResourceResponse;
+import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.generic.LynxGenericResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.utils.UIThreadUtils;
@@ -92,18 +91,18 @@ public class LynxResourceLoader {
 
   void loadResource(long responseHandler, String url, int type) {
     switch (type) {
-      case LynxResourceType.LYNX_RESOURCE_TYPE_ASSETS:
+      case LynxResourceType.LYNX_RESOURCE_TYPE_ASSETS: {
         byte[] data = loadJSSource(url);
         InvokeNativeCallbackWithBytes(responseHandler, data, RESOURCE_LOADER_SUCCESS, null);
-        break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE:
+      } break;
+      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_BYTE_CODE: {
         if (fetchExternalByteCodeByGenericFetcher(responseHandler, url)) {
           break;
         }
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
-        break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS:
+      } break;
+      case LynxResourceType.LYNX_RESOURCE_TYPE_EXTERNAL_JS: {
         // 1. try to use GenericResourceFetcher
         if (fetchScriptByGenericFetcher(responseHandler, url)) {
           break;
@@ -115,37 +114,41 @@ public class LynxResourceLoader {
         // invoke callback directly if no provider or fetcher set;
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
-        break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE:
+      } break;
+      case LynxResourceType.LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE: {
+        LynxResourceRequest.LynxResourceType resourceType =
+            LynxResourceRequest.LynxResourceType.LynxResourceTypeDynamicComponent;
         // 1. try to use LynxTemplateResourceFetcher
-        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
+        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, resourceType)) {
           break;
         }
         // 2. try to use LynxExternalResourceFetcherWrapper
-        if (fetchTemplateByFetcherWrapper(responseHandler, url, type)) {
+        if (fetchTemplateByFetcherWrapper(responseHandler, url, resourceType)) {
           break;
         }
         // 3. try to use LynxResourceProvider
-        if (fetchTemplateByProvider(responseHandler, url, type)) {
+        if (fetchTemplateByProvider(responseHandler, url, resourceType)) {
           break;
         }
         // invoke callback directly if no provider or fetcher set;
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
-        break;
-      case LynxResourceType.LYNX_RESOURCE_TYPE_FRAME:
+      } break;
+      case LynxResourceType.LYNX_RESOURCE_TYPE_FRAME: {
         // 1. frame only support LynxTemplateResourceFetcher
-        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, type)) {
+        LynxResourceRequest.LynxResourceType resourceType =
+            LynxResourceRequest.LynxResourceType.LynxResourceTypeTemplate;
+        if (fetchTemplateByGenericTemplateFetcher(responseHandler, url, resourceType)) {
           break;
         }
         // invoke callback directly if no provider or fetcher set;
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "No available provider or fetcher.");
-        break;
-      default:
+      } break;
+      default: {
         InvokeNativeCallbackWithBytes(
             responseHandler, null, RESOURCE_LOADER_FAILED, "Unsupported type" + type);
-        break;
+      } break;
     }
   }
 
@@ -308,7 +311,7 @@ public class LynxResourceLoader {
    * fetch lazy bundle template by LynxExternalResourceFetcherWrapper
    */
   private boolean fetchTemplateByFetcherWrapper(
-      long responseHandler, String url, int resourceType) {
+      long responseHandler, String url, LynxResourceRequest.LynxResourceType resourceType) {
     return mFetcherWrapper.fetchResourceWithDynamicComponentFetcher(
         url, new LynxExternalResourceFetcherWrapper.LoadedHandler() {
           private final TemplateResourceCallback mCallback =
@@ -326,13 +329,15 @@ public class LynxResourceLoader {
    * fetch lazy bundle template by LynxResourceProvider
    * @return whether the request has been sent, to determine whether using another loader
    */
-  private boolean fetchTemplateByProvider(long responseHandler, String url, int resourceType) {
+  private boolean fetchTemplateByProvider(
+      long responseHandler, String url, LynxResourceRequest.LynxResourceType resourceType) {
     LynxResourceProvider provider =
         getResourceProviderByType(LynxResourceType.LYNX_RESOURCE_TYPE_JS_LAZY_BUNDLE);
     if (provider == null) {
       return false;
     }
-    final LynxResourceRequest request = new LynxResourceRequest(url);
+    final com.lynx.tasm.provider.LynxResourceRequest request =
+        new com.lynx.tasm.provider.LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
       private final TemplateResourceCallback mCallback =
           new TemplateResourceCallback(url, responseHandler, mReportHelper, resourceType);
@@ -352,7 +357,7 @@ public class LynxResourceLoader {
    * @return whether the request has been sent, to determine whether using another loader
    */
   private boolean fetchTemplateByGenericTemplateFetcher(
-      long responseHandler, String url, int resourceType) {
+      long responseHandler, String url, LynxResourceRequest.LynxResourceType resourceType) {
     boolean hasTemplateFetcher = mTemplateLoaderHelper.hasTemplateFetcher();
     LLog.i(TAG, "Generic template fetcher existed: " + hasTemplateFetcher);
     if (!hasTemplateFetcher) {
@@ -429,7 +434,8 @@ public class LynxResourceLoader {
     if (provider == null) {
       return false;
     }
-    final LynxResourceRequest request = new LynxResourceRequest(url);
+    final com.lynx.tasm.provider.LynxResourceRequest request =
+        new com.lynx.tasm.provider.LynxResourceRequest(url);
     provider.request(request, new LynxResourceCallback<byte[]>() {
       private final ExternalScriptResourceCallback callback =
           new ExternalScriptResourceCallback(LynxResourceLoader.this, url, responseHandler);

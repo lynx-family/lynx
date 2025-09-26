@@ -36,7 +36,7 @@ class TemplateLoaderHelper {
   }
 
   public void fetchTemplateByGenericTemplateFetcher(String url, TemplateResourceCallback callback) {
-    mTemplateFetcher.fetchTemplate(new LynxResourceRequest(url, LynxResourceTypeTemplate),
+    mTemplateFetcher.fetchTemplate(new LynxResourceRequest(url, callback.getResourceType()),
         new LynxResourceCallback<TemplateProviderResult>() {
           @Override
           public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {

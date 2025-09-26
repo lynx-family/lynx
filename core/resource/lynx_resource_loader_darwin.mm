@@ -144,12 +144,12 @@ bool LynxResourceLoaderDarwin::FetchScriptByProvider(const std::string& url,
 }
 
 bool LynxResourceLoaderDarwin::FetchTemplateByGenericFetcher(const std::string& url,
+                                                             LynxResourceRequestType type,
                                                              CopyableClosure callback) {
   if (_templateResourceFetcher != nil) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FETCH_TEMPLATE_BY_GENERIC_FETCHER, "url", url);
     NSString* nsUrl = [NSString stringWithUTF8String:url.c_str()];
-    LynxResourceRequest* request =
-        [[LynxResourceRequest alloc] initWithUrl:nsUrl type:LynxResourceTypeDynamicComponent];
+    LynxResourceRequest* request = [[LynxResourceRequest alloc] initWithUrl:nsUrl type:type];
     [_templateResourceFetcher
         fetchTemplate:request
            onComplete:^(LynxTemplateResource* _Nullable data, NSError* _Nullable error) {
@@ -304,7 +304,8 @@ void LynxResourceLoaderDarwin::LoadResource(
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
     // 1. try to use LynxTemplateResourceFetcher
-    if (FetchTemplateByGenericFetcher(request.url, copyable_wrapper_callback)) {
+    if (FetchTemplateByGenericFetcher(request.url, LynxResourceTypeDynamicComponent,
+                                      copyable_wrapper_callback)) {
       return;
     }
 
@@ -334,7 +335,8 @@ void LynxResourceLoaderDarwin::LoadResource(
         };
     auto copyable_wrapper_callback = fml::MakeCopyable(std::move(callback_wrapper));
     // 1. try to use LynxTemplateResourceFetcher
-    if (FetchTemplateByGenericFetcher(request.url, copyable_wrapper_callback)) {
+    if (FetchTemplateByGenericFetcher(request.url, LynxResourceTypeTemplate,
+                                      copyable_wrapper_callback)) {
       return;
     }
     // invoke callback directly if no provider or fetcher set;
