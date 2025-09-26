@@ -111,6 +111,7 @@ void MessageLoopImpl::FlushTasks(FlushType type) {
 }
 
 void MessageLoopImpl::FlushVSyncAlignedTasks(FlushType type) {
+  TRACE_EVENT("lynx", MESSAGE_LOOP_FLUSH_VASYNC_ALIGNED_TASKS);
   FlushTasksWithRestrictionDuration(type, vsync_aligned_task_queue_ids_,
                                     max_execute_time_ms_);
 }
@@ -118,7 +119,6 @@ void MessageLoopImpl::FlushVSyncAlignedTasks(FlushType type) {
 bool MessageLoopImpl::FlushTasksWithRestrictionDuration(
     FlushType type, const std::vector<TaskQueueId>& queue_ids,
     int64_t restriction_duration) {
-  TRACE_EVENT("lynx", MESSAGE_LOOP_FLUSH_VASYNC_ALIGNED_TASKS);
   const auto now = fml::TimePoint::Now();
   bool reach_max_restriction = false;
   std::optional<TaskSource::TopTaskResult> task;
