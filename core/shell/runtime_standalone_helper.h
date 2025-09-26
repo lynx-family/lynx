@@ -32,6 +32,7 @@ struct InitRuntimeStandaloneResult {
   // will be released by LynxBackgroundRuntime if not attached to LynxView
   std::shared_ptr<LynxActor<NativeFacade>> native_runtime_facade_;
   std::shared_ptr<tasm::WhiteBoardRuntimeDelegate> white_board_delegate_;
+  int32_t runtime_id_;
 };
 
 InitRuntimeStandaloneResult InitRuntimeStandalone(
