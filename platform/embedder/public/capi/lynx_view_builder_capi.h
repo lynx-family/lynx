@@ -8,6 +8,7 @@
 #include "lynx_generic_resource_fetcher_capi.h"
 #include "lynx_group_capi.h"
 #include "lynx_native_module_capi.h"
+#include "lynx_native_view_capi.h"
 
 LYNX_EXTERN_C_BEGIN
 
@@ -63,11 +64,16 @@ LYNX_CAPI_EXPORT void lynx_view_builder_set_parent(lynx_view_builder_t*,
 LYNX_CAPI_EXPORT void lynx_view_builder_set_generic_resource_fetcher(
     lynx_view_builder_t*, lynx_generic_resource_fetcher_t* fetcher);
 
-// Register instance-level native module, witch have a higher priority than
+// Register instance-level native module, which have a higher priority than
 // global modules.
 LYNX_CAPI_EXPORT void lynx_view_builder_register_native_module(
     lynx_view_builder_t* builder, const char* name, napi_module_creator creator,
     void* opaque);
+
+// Register instance-level view factory.
+LYNX_CAPI_EXPORT void lynx_view_builder_register_native_view(
+    lynx_view_builder_t* builder, const char* name,
+    lynx_native_view_creator creator, void* opaque);
 
 LYNX_CAPI_EXPORT void lynx_view_builder_release(lynx_view_builder_t* builder);
 
