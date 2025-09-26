@@ -7,5 +7,6 @@
   "author": "linxiaosong",
   "consumption_status": "skip",
   "desc": "The opacity CSS property sets the opacity of an element.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<number>"
 }

@@ -42,13 +42,18 @@ def resolve_type(type_str, values_map, resolved_cache):
 
         # It's a keyword if it's not a custom type (like <length>)
         if not type_str.startswith("<"):
-            try:
-                # Check if it's a numeric literal
-                float(type_str)
-                return type_str
-            except ValueError:
-                # It's a keyword, wrap in single quotes
-                return f"'{type_str}'"
+            if type_str == "number":
+                return "(number & {})"
+            elif type_str == "string":
+                return "(string & {})"
+            else:
+                try:
+                    # Check if it's a numeric literal
+                    float(type_str)
+                    return type_str
+                except ValueError:
+                    # It's a keyword, wrap in single quotes
+                    return f"'{type_str}'"
         # It's a custom type like <angle> that is not in value_defines.json, return as is
         return type_str
 
@@ -118,7 +123,7 @@ def main():
         final_types = set()
         if not prop_syntax:
             final_types.add("(string & {})")
-            final_types.add("number")
+            final_types.add("(number & {})")
         else:
             # Strip range specifiers like [0,∞] from inside type definitions
             prop_syntax = re.sub(r"(<[\w-]+)\s*\[[^\]]+\](>)", r"\1\2", prop_syntax)

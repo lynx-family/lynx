@@ -118,5 +118,6 @@
       }
     }
   },
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "auto | max-content | fit-content | <length-percentage>"
 }

@@ -7,5 +7,6 @@
   "author": "yaoxiaopeng",
   "consumption_status": "skip",
   "desc": "The `color` CSS property sets the foreground `color value` of an element's text.",
-  "is_shorthand": false
+  "is_shorthand": false,
+  "formal_syntax": "<color> | <gradient>"
 }
