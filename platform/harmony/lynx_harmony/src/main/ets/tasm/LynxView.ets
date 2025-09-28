@@ -491,7 +491,7 @@ export struct LynxView {
     timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, loadBundleStartTimestamp);
     if (this.templateBundle) {
       LLog.i(TAG, `start loadTemplate(capi=${!this.uiRendererCreator}) with bundle`);
-      this.loadTemplateInternal(timingOption);
+      this.loadTemplateInternal(timingOption, this.templateBundle, undefined);
       return;
     }
 
