@@ -890,7 +890,7 @@ TEST(CSSStringParser, parse_variable_multiple_and_malformed) {
     CSSStringParser parser{raw.c_str(), static_cast<uint32_t>(raw.size()),
                            configs};
     CSSValue result = parser.ParseVariable();
-    EXPECT_TRUE(result.IsVariable());
+    EXPECT_FALSE(result.IsVariable());
     // No valid references should be attached
     EXPECT_TRUE(result.var_references_ == nullptr ||
                 result.var_references_->empty());

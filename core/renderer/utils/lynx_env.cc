@@ -523,5 +523,10 @@ uint32_t LynxEnv::EnableGCOnceOnIdle() {
   return cached_enable_gc_once_on_idle;
 }
 
+bool LynxEnv::EnableCSSInlineVariables() {
+  static bool enable_css_inline_variables =
+      GetBoolEnv(Key::ENABLE_CSS_INLINE_VARIABLES, false);
+  return enable_css_inline_variables;
+}
 }  // namespace tasm
 }  // namespace lynx

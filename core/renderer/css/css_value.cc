@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "base/include/vector.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/runtime/vm/lepus/json_parser.h"
 
 namespace lynx {
@@ -118,7 +119,8 @@ bool CSSValue::AsBool() const { return value_.Bool(); }
 
 std::string CSSValue::ResolveVariable(
     const std::string& var_name, const CustomPropertiesMap& custom_properties,
-    const CycleDetector& detector, int max_depth) {
+    const CycleDetector& detector, int max_depth,
+    const HandleCustomPropertyFunc& handle_func) {
   if (max_depth <= 0) {
     return "";
   }
@@ -135,23 +137,24 @@ std::string CSSValue::ResolveVariable(
   }
 
   return CSSValue::Substitution(css_value, custom_properties, detector,
-                                max_depth - 1);
+                                max_depth - 1, handle_func);
   ;
 }
 
-std::string CSSValue::Substitution(const CSSValue& css_value,
-                                   const CustomPropertiesMap& custom_properties,
-                                   int max_depth) {
+std::string CSSValue::Substitution(
+    const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
+    int max_depth, const HandleCustomPropertyFunc& handle_func) {
   // Build cycle detector for all variables (optimized for performance)
   CycleDetector detector(custom_properties);
 
-  return Substitution(css_value, custom_properties, detector, max_depth);
+  return Substitution(css_value, custom_properties, detector, max_depth,
+                      handle_func);
 }
 
-std::string CSSValue::Substitution(const CSSValue& css_value,
-                                   const CustomPropertiesMap& custom_properties,
-                                   const CycleDetector& detector,
-                                   int max_depth) {
+std::string CSSValue::Substitution(
+    const CSSValue& css_value, const CustomPropertiesMap& custom_properties,
+    const CycleDetector& detector, int max_depth,
+    const HandleCustomPropertyFunc& handle_func) {
   if (!css_value.IsVariable() || !css_value.var_references_) {
     return css_value.AsString();
   }
@@ -177,21 +180,31 @@ std::string CSSValue::Substitution(const CSSValue& css_value,
 
     const std::string dep_name(var_ref.Name(raw_value));
 
-    // Fast path: check if variable exists and not in cycle
     auto var_it = custom_properties.find(dep_name);
+    if (handle_func) {
+      if (var_it != custom_properties.end()) {
+        handle_func(dep_name, var_it->second.AsString());
+      } else {
+        handle_func(dep_name, base::String());
+      }
+    }
+
+    // Fast path: check if variable exists and not in cycle
     if (var_it != custom_properties.end() && !detector.IsInCycle(dep_name)) {
       // Variable exists and is not in a cycle - resolve it normally
-      std::string resolved_value =
-          ResolveVariable(dep_name, custom_properties, detector, max_depth);
+      std::string resolved_value = ResolveVariable(
+          dep_name, custom_properties, detector, max_depth, handle_func);
 
       if (!resolved_value.empty()) {
         result.append(std::move(resolved_value));
-      } else if (!var_ref.fallback.empty()) {
-        result.append(var_ref.fallback.str());
+      } else {
+        result.append(CSSValue::ResolveFallback(
+            var_ref, custom_properties, detector, max_depth, handle_func));
       }
     } else if (!var_ref.fallback.empty()) {
       // Variable not found or in cycle - use fallback
-      result.append(var_ref.fallback.str());
+      result.append(CSSValue::ResolveFallback(
+          var_ref, custom_properties, detector, max_depth, handle_func));
     }
 
     last_pos = var_ref.end;
@@ -204,6 +217,21 @@ std::string CSSValue::Substitution(const CSSValue& css_value,
 
   // Return by move to avoid copy
   return result;
+}
+
+std::string CSSValue::ResolveFallback(
+    const VarReference& ref, const CustomPropertiesMap& variable_map,
+    const CycleDetector& detector, int max_depth,
+    const HandleCustomPropertyFunc& handle_func) {
+  if (ref.fallback.empty()) {
+    return "";
+  }
+  CSSStringParser parser(ref.fallback.c_str(),
+                         static_cast<uint32_t>(ref.fallback.length()),
+                         ref.parser_configs);
+  CSSValue css_value = parser.ParseVariable();
+  return CSSValue::Substitution(css_value, variable_map, detector,
+                                max_depth - 1, handle_func);
 }
 
 std::string_view VarReference::Name(const std::string& raw_value) const {

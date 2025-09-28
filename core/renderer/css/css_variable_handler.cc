@@ -8,6 +8,8 @@
 
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
+#include "core/renderer/css/css_property.h"
+#include "core/renderer/css/unit_handler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 
 namespace lynx {
@@ -27,6 +29,11 @@ bool CSSVariableHandler::HandleCSSVariables(StyleMap& map,
   StyleMap style_map(CSSProperty::GetTotalParsedStyleCountFromMap(map));
   for (const auto& [id, css_value] : map) {
     if (css_value.IsVariable()) {
+      if (css_value.NeedsVariableResolution()) {
+        ResolveCSSVariables(id, css_value, style_map, holder, configs);
+        continue;
+      }
+
       const auto& value_expr = css_value.GetValue();
       if (value_expr.IsString()) {
         const auto& default_value_map_opt = css_value.GetDefaultValueMapOpt();
@@ -55,6 +62,14 @@ bool CSSVariableHandler::HasCSSVariableInStyleMap(const StyleMap& map) {
     }
   }
   return false;
+}
+
+bool CSSVariableHandler::HasCSSVariableInHolder(const AttributeHolder* holder) {
+  if (!holder) {
+    return false;
+  }
+  return !(holder->css_variables_map().empty() &&
+           holder->GetCSSInlineVariables().empty());
 }
 
 //    "The food taste {{ feeling }} !"
@@ -138,6 +153,38 @@ base::String CSSVariableHandler::GetCSSVariableByRule(
     css_variable_value = default_props;
   }
   return css_variable_value;
+}
+
+void CSSVariableHandler::ResolveCSSVariables(CSSPropertyID id,
+                                             const CSSValue& value,
+                                             StyleMap& style_map,
+                                             AttributeHolder* holder,
+                                             const CSSParserConfigs& configs) {
+  static const int kMaxDepth = 10;
+
+  if (!enable_fiber_arch_) {
+    // Resolve CSS variables only in FiberArch.
+    return;
+  }
+  if (!holder) {
+    LOGE("ResolveCSSVariables: holder is null");
+    return;
+  }
+
+  const CustomPropertiesMap* custom_properties = holder->GetCustomProperties();
+  if (!custom_properties) {
+    LOGE("ResolveCSSVariables: custom_properties is null");
+    return;
+  }
+
+  const auto handle_custom_property_func = [holder](const base::String& name,
+                                                    const base::String& value) {
+    holder->AddCSSVariableRelated(name, value);
+  };
+  auto property = CSSValue::Substitution(value, *custom_properties, kMaxDepth,
+                                         handle_custom_property_func);
+  UnitHandler::Process(id, lepus::Value(std::move(property)), style_map,
+                       configs);
 }
 
 }  // namespace tasm

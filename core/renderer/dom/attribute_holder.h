@@ -14,6 +14,7 @@
 #include "base/include/vector.h"
 #include "core/renderer/css/css_fragment.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_value.h"
 #include "core/renderer/css/style_node.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/events/events.h"
@@ -273,9 +274,37 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
                : CSSVariableBundle::DefaultEmptyCSSVariableMap();
   }
 
+  void UpdateCSSInlineVariables(const base::String& key,
+                                const base::String& value) {
+    css_variables_->css_variables_from_js_.insert_or_assign(key, value);
+  }
+
+  const CSSVariableMap& GetCSSInlineVariables() const {
+    return css_variables_.has_value()
+               ? css_variables_->css_variables_from_js_
+               : CSSVariableBundle::DefaultEmptyCSSVariableMap();
+  }
+
+  void MoveAndClearCSSInlineVariables(CSSVariableMap* changed_css_vars) {
+    // Before parsing the inline style, we first clear css_variables_from_js_.
+    // Since changed_css_vars needs to record the changed keys and values of the
+    // inline style, we can directly move css_variables_from_js_ to
+    // changed_css_vars, and at the same time, set the values in
+    // changed_css_vars to empty.
+    if (css_variables_.has_value()) {
+      if (changed_css_vars) {
+        *changed_css_vars = std::move(css_variables_->css_variables_from_js_);
+      } else {
+        css_variables_->css_variables_from_js_.clear();
+      }
+    }
+  }
+
   // GetCSSVariableValue.
   // variable_from_js first. css_variable_ from comes second.
   base::String GetCSSVariableValue(const base::String& key) const;
+
+  const CustomPropertiesMap* GetCustomProperties() const;
 
   ClassList ReleaseClasses() { return std::move(classes_); }
 
@@ -421,6 +450,7 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
 
     LYNX_EXPORT_FOR_DEVTOOL static const CSSVariableMap&
     DefaultEmptyCSSVariableMap();
+    LYNX_EXPORT_FOR_DEVTOOL static const CSSValueMap& DefaultEmptyCSSValueMap();
   };
 
   LYNX_EXPORT_FOR_DEVTOOL static const GestureMap& DefaultEmptyGestureMap();
@@ -431,6 +461,8 @@ class AttributeHolder : public fml::RefCountedThreadSafeStorage,
       *css_variables_ = *holder.css_variables_;
     }
   }
+
+  void UpdateInlineStyleChangedVars(CSSVariableMap* changed_css_vars);
 
  protected:
   ClassList classes_;

@@ -1303,6 +1303,11 @@ bool Element::IsCSSInheritanceEnabled() const {
          element_manager_->GetDynamicCSSConfigs().enable_css_inheritance_;
 }
 
+bool Element::IsCSSInlineVariablesEnabled() const {
+  return element_manager_ &&
+         element_manager_->GetDynamicCSSConfigs().enable_css_inline_variables_;
+}
+
 PaintingContext* Element::painting_context() {
   return catalyzer_->painting_context();
 }

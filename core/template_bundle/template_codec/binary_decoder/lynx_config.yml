@@ -778,3 +778,15 @@ enableReuseLoadScriptExports:
   syncTo:
     - script
   author: 'liyanbo.monster'
+enableCSSInlineVariables:
+  description: Enable CSS inline variables.
+  defaultValue: false
+  valueType: bool
+  readSettings: true
+  readNative: true
+  bindMemberTo: css_configs_.enable_css_inline_variables_
+  codeGen:
+    - SETTER
+    - GETTER
+    - DECODE
+  author: 'pilipala195'

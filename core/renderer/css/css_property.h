@@ -175,6 +175,7 @@ static constexpr PseudoState kPseudoStateSelection = 1 << 11;
 
 using StyleMap = base::LinkedHashMap<CSSPropertyID, tasm::CSSValue>;
 using CSSVariableMap = base::LinearFlatMap<base::String, base::String>;
+using CSSValueMap = base::LinkedHashMap<base::String, tasm::CSSValue>;
 using ParsedStyles = std::pair<StyleMap, CSSVariableMap>;
 // TODO(yuyang), choose proper map type
 using ParsedStylesMap =
@@ -267,6 +268,10 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSProperty {
 
   static inline bool IsPropertyValid(CSSPropertyID id) {
     return id > kPropertyStart && id < kPropertyEnd;
+  }
+
+  static inline bool IsCustomProperty(const char* name, uint32_t len) {
+    return len > 2 && name[0] == '-' && name[1] == '-';
   }
 
   // When using Element animation api, the timing options's keys are not

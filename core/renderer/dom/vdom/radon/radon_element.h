@@ -161,7 +161,8 @@ class RadonElement : public Element {
   virtual size_t CountInlineStyles() override;
   virtual void MergeInlineStyles(StyleMap& new_styles) override;
 
-  virtual bool WillResolveStyle(StyleMap& merged_styles) override;
+  virtual bool WillResolveStyle(StyleMap& merged_styles,
+                                CSSVariableMap* changed_css_vars) override;
 
   virtual const base::String& GetPlatformNodeTag() const override;
 

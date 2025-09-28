@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/css/parser/css_string_parser.h"
 
 namespace lynx {
@@ -516,6 +517,89 @@ TEST_F(CSSValueSubstitutionTest, MixedCycleAndValidVariables2) {
 
   std::string result = CSSValue::Substitution(css_value, variables);
   EXPECT_EQ(result, " yellow");
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionConsumeProperty1) {
+  CustomPropertiesMap custom_properties;
+
+  {
+    lepus::Value variable = lepus::Value("var(--b, red)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_cyclic = parser.ParseVariable();
+    custom_properties.insert_or_assign("--a", ref_to_cyclic);
+  }
+
+  {
+    lepus::Value variable = lepus::Value("var(--c, yellow)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_a = parser.ParseVariable();
+    custom_properties.insert_or_assign("--b", ref_to_a);
+  }
+
+  {
+    lepus::Value variable = lepus::Value("blue");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_b = parser.ParseVariable();
+    custom_properties.insert_or_assign("--c", ref_to_b);
+  }
+
+  CSSVariableMap result_css_related_variables{};
+  CSSVariableMap target_css_related_variables{};
+  target_css_related_variables.insert_or_assign("--d", "");
+  target_css_related_variables.insert_or_assign("--a", "var(--b, red)");
+  target_css_related_variables.insert_or_assign("--b", "var(--c, yellow)");
+  target_css_related_variables.insert_or_assign("--c", "blue");
+
+  lepus::Value variable = lepus::Value("var(--d, var(--a))");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+
+  CSSValue::HandleCustomPropertyFunc handle_func =
+      [&result_css_related_variables](const base::String& name,
+                                      const base::String& value) {
+        result_css_related_variables.insert_or_assign(name, value);
+      };
+
+  std::string value_str =
+      CSSValue::Substitution(css_value, custom_properties, 10, handle_func);
+  EXPECT_EQ(value_str, " blue");
+  EXPECT_EQ(result_css_related_variables, target_css_related_variables);
+}
+
+TEST_F(CSSValueSubstitutionTest, SubstitutionNestedVariable) {
+  CustomPropertiesMap custom_properties;
+  {
+    lepus::Value variable = lepus::Value("var(--b, red)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_cyclic = parser.ParseVariable();
+    custom_properties.insert_or_assign("--a", ref_to_cyclic);
+  }
+  {
+    lepus::Value variable = lepus::Value("var(--c, yellow)");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_a = parser.ParseVariable();
+    custom_properties.insert_or_assign("--b", ref_to_a);
+  }
+  {
+    lepus::Value variable = lepus::Value("blue");
+    CSSStringParser parser =
+        CSSStringParser::FromLepusString(variable, configs_);
+    CSSValue ref_to_b = parser.ParseVariable();
+    custom_properties.insert_or_assign("--c", ref_to_b);
+  }
+
+  lepus::Value variable = lepus::Value(
+      "var(--d, var(--invalid-name, var(--invalid-name2, var(--a))))");
+  CSSStringParser parser = CSSStringParser::FromLepusString(variable, configs_);
+  CSSValue css_value = parser.ParseVariable();
+  std::string result =
+      css_value.Substitution(css_value, custom_properties, 10, nullptr);
+  EXPECT_EQ(result, "   blue");
 }
 
 }  // namespace tasm

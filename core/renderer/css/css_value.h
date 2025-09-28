@@ -15,6 +15,7 @@
 #include "base/include/value/array.h"
 #include "base/include/value/base_value.h"
 #include "core/base/lynx_export.h"
+#include "core/renderer/css/parser/css_parser_configs.h"
 #include "core/renderer/starlight/style/css_type.h"
 
 namespace lynx {
@@ -54,18 +55,16 @@ enum class CSSFunctionType : uint8_t {
   MINMAX = 2,
 };
 
+class CSSValue;
 struct VarReference {
   size_t name_start;
   size_t name_end;
   size_t start;
   size_t end;
-  // TODO(zhongyr): maybe the fallback should be CSSValue, because the
-  // fallback can be a variable reference as well.
   base::String fallback;
+  CSSParserConfigs parser_configs;
   std::string_view Name(const std::string& raw_value) const;
 };
-
-class CSSValue;
 
 using CustomPropertiesMap = base::LinearFlatMap<base::String, CSSValue>;
 
@@ -224,7 +223,9 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
       std::unique_ptr<base::InlineVector<VarReference, 1>> var_references) {
     var_references_ = std::move(var_references);
     type_ = CSSValueType::VARIABLE;
+    needs_variable_resolution_ = true;
   }
+  bool NeedsVariableResolution() const { return needs_variable_resolution_; }
 
   bool IsVariable() const { return type_ == CSSValueType::VARIABLE; }
   bool IsString() const { return pattern_ == CSSValuePattern::STRING; }
@@ -263,25 +264,40 @@ class LYNX_EXPORT_FOR_DEVTOOL CSSValue {
     return !(left == right);
   }
 
-  static std::string Substitution(const CSSValue& css_value,
-                                  const CustomPropertiesMap& variable_map,
-                                  int max_depth = 10);
+  using HandleCustomPropertyFunc =
+      std::function<void(const base::String&, const base::String&)>;
+  static std::string Substitution(
+      const CSSValue& css_value, const CustomPropertiesMap& variable_map,
+      int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
 
  private:
   class CycleDetector;
-  static std::string Substitution(const CSSValue& css_value,
-                                  const CustomPropertiesMap& variable_map,
-                                  const CycleDetector& detector,
-                                  int max_depth = 10);
+  static std::string Substitution(
+      const CSSValue& css_value, const CustomPropertiesMap& variable_map,
+      const CycleDetector& detector, int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
   static std::string ResolveVariable(
       const std::string& var_name, const CustomPropertiesMap& custom_properties,
-      const CycleDetector& detector, int max_depth = 10);
+      const CycleDetector& detector, int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
+  static std::string ResolveFallback(
+      const VarReference& ref, const CustomPropertiesMap& variable_map,
+      const CycleDetector& detector, int max_depth = 10,
+      const HandleCustomPropertyFunc& handle_func = nullptr);
   mutable lepus::Value value_;
   mutable base::String default_value_;
   mutable std::unique_ptr<lepus::Value> default_value_map_opt_;
   mutable std::unique_ptr<base::InlineVector<VarReference, 1>> var_references_;
   mutable CSSValuePattern pattern_;
   mutable CSSValueType type_;
+  // TODO(yangguangzhao.solace): Currently, `needs_variable_resolution_` serves
+  // a dual purpose: it indicates
+  // both whether the current CSSValue is handled by the new parsing logic and
+  // whether it requires further resolution. After the old CSSVariable parsing
+  // logic is deprecated, we will update this flag to solely represent its
+  // single, intended meaning: whether the CSSValue needs further resolution.
+  mutable bool needs_variable_resolution_{false};
 };
 }  // namespace tasm
 }  // namespace lynx

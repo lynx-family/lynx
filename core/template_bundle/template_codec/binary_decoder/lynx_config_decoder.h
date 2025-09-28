@@ -799,6 +799,15 @@ class LynxConfigDecoder final {
       page_config->SetEnableReuseLoadScriptExports(
           doc[config::kEnableReuseLoadScriptExports].GetBool());
     }
+
+    if (doc.HasMember(config::kEnableCSSInlineVariables) &&
+        doc[config::kEnableCSSInlineVariables].IsBool()) {
+      page_config->SetEnableCSSInlineVariables(
+          doc[config::kEnableCSSInlineVariables].GetBool());
+    } else {
+      page_config->SetEnableCSSInlineVariables(
+          LynxEnv::GetInstance().EnableCSSInlineVariables());
+    }
   };
 };
 }  // namespace tasm

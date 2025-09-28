@@ -8,6 +8,7 @@
 
 #include "base/include/no_destructor.h"
 #include "base/include/value/table.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/dom/element.h"
 #include "core/renderer/dom/selector/matching/attribute_selector_matching.h"
 #include "core/renderer/dom/vdom/radon/radon_component.h"
@@ -26,6 +27,12 @@ const CSSVariableMap&
 AttributeHolder::CSSVariableBundle::DefaultEmptyCSSVariableMap() {
   static base::NoDestructor<CSSVariableMap> kEmptyCSSVariableMap;
   return *kEmptyCSSVariableMap.get();
+}
+
+const CSSValueMap&
+AttributeHolder::CSSVariableBundle::DefaultEmptyCSSValueMap() {
+  static base::NoDestructor<CSSValueMap> kEmptyCSSValueMap;
+  return *kEmptyCSSValueMap.get();
 }
 
 const GestureMap& AttributeHolder::DefaultEmptyGestureMap() {
@@ -177,6 +184,15 @@ base::String AttributeHolder::GetCSSVariableValue(
   return base::String();
 }
 
+const CustomPropertiesMap* AttributeHolder::GetCustomProperties() const {
+  if (!element_->is_fiber_element()) {
+    return nullptr;
+  }
+  return static_cast<FiberElement*>(element_)
+      ->GetInheritedProperty()
+      .custom_properties_;
+}
+
 void AttributeHolder::Reset() {
   classes_.clear();
   inline_styles_.clear();
@@ -309,6 +325,45 @@ size_t AttributeHolder::ChildCount() const {
     return 0;
   }
   return element_->GetChildCount();
+}
+
+void AttributeHolder::UpdateInlineStyleChangedVars(
+    CSSVariableMap* changed_css_vars) {
+  // Here, css_variables_from_js_ has been updated according to the inline
+  // style, and changed_css_vars contains the data of css_variables_from_js_
+  // before the update. In this function, we need to filter out the css
+  // variables that have actually changed and store them in changed_css_vars.
+  if (!changed_css_vars) {
+    return;
+  }
+  if (!css_variables_.has_value()) {
+    for (auto& [name, value] : *changed_css_vars) {
+      value = base::String();
+    }
+    return;
+  }
+
+  for (const auto& [name, value] : css_variables_->css_variables_from_js_) {
+    if (auto it = changed_css_vars->find(name); it != changed_css_vars->end()) {
+      if (it->second == value) {
+        // The value has not changed, remove it from changed_css_vars.
+        changed_css_vars->erase(it);
+      } else {
+        // The value has changed, update it in changed_css_vars.
+        it->second = value;
+      }
+    } else {
+      // The value has been added, add it to changed_css_vars.
+      changed_css_vars->insert({name, value});
+    }
+  }
+  for (auto& [name, value] : *changed_css_vars) {
+    if (auto it = css_variables_->css_variables_from_js_.find(name);
+        it == css_variables_->css_variables_from_js_.end()) {
+      // The value has been removed, remove it from changed_css_vars.
+      value = base::String();
+    }
+  }
 }
 
 }  // namespace tasm

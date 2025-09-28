@@ -17,6 +17,7 @@
 #include "base/include/timer/time_utils.h"
 #include "base/include/value/array.h"
 #include "base/include/value/base_string.h"
+#include "base/include/value/base_value.h"
 #include "base/include/value/table.h"
 #include "base/trace/native/trace_event.h"
 #include "core/renderer/css/computed_css_style_css_text_helper.h"
@@ -24,7 +25,9 @@
 #include "core/renderer/css/css_keyframes_token.h"
 #include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_utils.h"
+#include "core/renderer/css/css_value.h"
 #include "core/renderer/css/layout_property.h"
+#include "core/renderer/css/parser/css_string_parser.h"
 #include "core/renderer/css/parser/length_handler.h"
 #include "core/renderer/css/unit_handler.h"
 #include "core/renderer/dom/element_manager.h"
@@ -112,6 +115,7 @@ FiberElement::FiberElement(const FiberElement &element,
       extreme_parsed_styles_(element.extreme_parsed_styles_),
       inherited_styles_(element.inherited_styles_),
       reset_inherited_ids_(element.reset_inherited_ids_),
+      custom_properties_(element.custom_properties_),
       updated_attr_map_(element.updated_attr_map_),
       builtin_attr_map_(element.builtin_attr_map_),
       reset_attr_vec_(element.reset_attr_vec_),
@@ -245,7 +249,7 @@ void FiberElement::RequireFlush() {
 
 const FiberElement::InheritedProperty FiberElement::GetInheritedProperty() {
   return {children_propagate_inherited_styles_flag_, inherited_styles_.get(),
-          reset_inherited_ids_.get()};
+          reset_inherited_ids_.get(), custom_properties_.get()};
 }
 
 const FiberElement::InheritedProperty
@@ -254,7 +258,7 @@ FiberElement::GetParentInheritedProperty() {
   // empty InheritedProperty indicating that it is not necessary to consider the
   // inheritance logic at this time.
   if (this->is_parallel_flush()) {
-    return InheritedProperty();
+    return {false, nullptr, nullptr, custom_properties_.get()};
   }
 
   FiberElement *real_parent = static_cast<FiberElement *>(parent());
@@ -383,24 +387,36 @@ void FiberElement::MergeInlineStyles(StyleMap &new_styles) {
   // here.
   if (current_raw_inline_styles_.has_value()) {
     auto &configs = element_manager_->GetCSSParserConfigs();
-    for (const auto &style : *current_raw_inline_styles_) {
-      UnitHandler::Process(style.first, style.second, new_styles, configs);
+    for (const auto &[id, style_value] : *current_raw_inline_styles_) {
+      bool process_result =
+          UnitHandler::Process(id, style_value, new_styles, configs);
+      if (!process_result && IsCSSInlineVariablesEnabled()) {
+        base::String style_str = style_value.String();
+        CSSStringParser parser{style_str.c_str(),
+                               static_cast<uint32_t>(style_str.length()),
+                               configs};
+        CSSValue css_value = parser.ParseVariable();
+        if (parser.HasMetVarToken()) {
+          new_styles[id] = std::move(css_value);
+        }
+      }
     }
   }
 }
 
-void FiberElement::ProcessFullRawInlineStyle() {
+void FiberElement::ProcessFullRawInlineStyle(CSSVariableMap *changed_css_vars) {
   // If self has raw inline styles, parse to current_raw_inline_styles_ but do
   // not process to final style map. Inline styles will be merged finally by
   // MergeInlineStyles.
   if (!full_raw_inline_style_.empty()) {
-    ParseRawInlineStyles(nullptr);
+    ParseRawInlineStyles(changed_css_vars);
     full_raw_inline_style_ = base::String();
   }
 }
 
-bool FiberElement::WillResolveStyle(StyleMap &merged_styles) {
-  ProcessFullRawInlineStyle();
+bool FiberElement::WillResolveStyle(StyleMap &merged_styles,
+                                    CSSVariableMap *changed_css_vars) {
+  ProcessFullRawInlineStyle(changed_css_vars);
   return true;
 }
 
@@ -709,7 +725,7 @@ void FiberElement::SetStyle(CSSPropertyID id, const lepus::Value &value) {
   // `ProcessFullRawInlineStyle` first to ensure that `full_raw_inline_style_`
   // is set into `current_raw_inline_styles_`. Otherwise, `SetRawInlineStyles`
   // might override the `SetStyle` call, leading to unexpected behavior.
-  ProcessFullRawInlineStyle();
+  ProcessFullRawInlineStyle(nullptr);
 
   if (!value.IsEmpty()) {
     current_raw_inline_styles_->insert_or_assign(id, value);
@@ -791,6 +807,7 @@ void FiberElement::RemoveAllInlineStyles() {
 
   full_raw_inline_style_ = base::String();
   current_raw_inline_styles_.reset();
+
   MarkDirty(kDirtyStyle);
 }
 
@@ -3140,23 +3157,27 @@ void FiberElement::RestoreLayoutNode(FiberElement *node) {
   node->next_render_sibling_ = nullptr;
 }
 
-void FiberElement::ParseRawInlineStyles(StyleMap *parsed_styles) {
+void FiberElement::ParseRawInlineStyles(CSSVariableMap *changed_css_vars) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_PARSE_RAW_INLINE_STYLES);
   auto &configs = element_manager_->GetCSSParserConfigs();
   const auto &str = full_raw_inline_style_.str();
+  data_model()->MoveAndClearCSSInlineVariables(changed_css_vars);
+
   ParseStyleDeclarationList(
       str.c_str(), static_cast<uint32_t>(str.size()),
-      [this, parsed_styles, &configs](
-          const char *key_start, uint32_t key_length, const char *value_start,
-          uint32_t value_length) {
+      [this, &configs](const char *key_start, uint32_t key_length,
+                       const char *value_start, uint32_t value_length) {
+        (void)configs;
         auto id = CSSProperty::GetPropertyID(
             base::static_string::GenericCacheKey(key_start, key_length));
         if (CSSProperty::IsPropertyValid(id)) {
           auto value = lepus::Value(base::String(value_start, value_length));
-          if (parsed_styles != nullptr) {
-            UnitHandler::Process(id, value, *parsed_styles, configs);
-          }
           current_raw_inline_styles_->insert_or_assign(id, std::move(value));
+        } else if (IsCSSInlineVariablesEnabled() &&
+                   CSSProperty::IsCustomProperty(key_start, key_length)) {
+          data_model()->UpdateCSSInlineVariables(
+              base::String(key_start, key_length),
+              base::String(value_start, value_length));
         }
 
         // DevTool needs to get InlineStyle information from DataModel's
@@ -3170,6 +3191,8 @@ void FiberElement::ParseRawInlineStyles(StyleMap *parsed_styles) {
               id, base::String(value_start, value_length), configs);
         });
       });
+
+  data_model()->UpdateInlineStyleChangedVars(changed_css_vars);
 
   EXEC_EXPR_FOR_INSPECTOR(if (element_manager()->IsDomTreeEnabled()) {
     element_manager()->OnElementNodeSetForInspector(this);
@@ -3232,6 +3255,8 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
   if (!parsed_styles_map_.empty()) {
     pre_parsed_styles_map = std::move(parsed_styles_map_);
   }
+
+  MarkCustomPropertiesDirty();
   if (!has_extreme_parsed_styles_) {
     DoFullCSSResolving();
   } else {
@@ -3239,7 +3264,7 @@ bool FiberElement::RefreshStyle(StyleMap &parsed_styles,
     // styles
     parsed_styles_map_ = *extreme_parsed_styles_;
     if (only_selector_extreme_parsed_styles_) {
-      ProcessFullRawInlineStyle();
+      ProcessFullRawInlineStyle(nullptr);
       MergeInlineStyles(parsed_styles_map_);
     }
     // Handle CSS varibale
@@ -4197,6 +4222,48 @@ lepus::Value FiberElement::GetComputedStyleByKey(const base::String &key) {
       ComputedCSSStyleCssTextHelper().GetComputedStyleByPropertyID(
           property_id, computed_css_style(), layout_result()));
 }
+
+bool FiberElement::CollectCustomProperties(AttributeHolder *holder) {
+  if (custom_properties_.has_value()) {
+    return true;
+  }
+
+  if (!holder) {
+    return false;
+  }
+
+  if (FiberElement *real_parent = static_cast<FiberElement *>(parent());
+      real_parent) {
+    if (!real_parent->CollectCustomProperties(holder)) {
+      return false;
+    }
+    if (const auto parent_custom_properties = real_parent->custom_properties_;
+        parent_custom_properties) {
+      for (const auto &[name, css_value] : *parent_custom_properties) {
+        custom_properties_->insert_or_assign(name, css_value);
+      }
+    }
+  }
+
+  // TODO(renzhongyue): Variables declared in CSS must use the normal
+  // custom-property declaration syntax, not {{}}.
+  for (const auto &[name, value] : holder->css_variables_map()) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    CSSValue css_value = parser.ParseVariable();
+    custom_properties_->insert_or_assign(name, std::move(css_value));
+  }
+
+  for (const auto &[name, value] : holder->GetCSSInlineVariables()) {
+    CSSStringParser parser{value.c_str(), static_cast<uint32_t>(value.length()),
+                           element_manager()->GetCSSParserConfigs()};
+    CSSValue css_value = parser.ParseVariable();
+    custom_properties_->insert_or_assign(name, std::move(css_value));
+  }
+  return true;
+}
+
+void FiberElement::MarkCustomPropertiesDirty() { custom_properties_.reset(); }
 
 }  // namespace tasm
 }  // namespace lynx

@@ -37,6 +37,7 @@ struct DynamicCSSConfigs {
   bool unify_vw_vh_behavior_ = false;
   bool font_scale_sp_only = false;
   bool once_inheritance_disabled_{true};
+  bool enable_css_inline_variables_{false};
 };
 
 }  // namespace tasm

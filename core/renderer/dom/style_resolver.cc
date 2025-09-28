@@ -155,7 +155,7 @@ void StyleResolver::ResolveStyle(StyleMap& result, CSSFragment* fragment,
     return;
   }
 
-  if (!element_->WillResolveStyle(result)) {
+  if (!element_->WillResolveStyle(result, changed_css_vars)) {
     return;
   }
 
@@ -276,14 +276,22 @@ void StyleResolver::HandleCSSVariables(StyleMap& styles) {
     return;
   }
   bool is_fiber_arch = element_->is_fiber_element();
+
   CSSVariableHandler handler(is_fiber_arch);
   if (is_fiber_arch && element_->is_parallel_flush()) {
-    if (handler.HasCSSVariableInStyleMap(styles)) {
+    if (handler.HasCSSVariableInStyleMap(styles) ||
+        (manager()->GetDynamicCSSConfigs().enable_css_inline_variables_ &&
+         handler.HasCSSVariableInHolder(element_->data_model()))) {
       // mark need refresh style in parallel flush with css variables in
       // StyleMap
       static_cast<FiberElement*>(element_)->MarkRefreshCSSStyles();
     }
   } else {
+    if (is_fiber_arch && element()->IsCSSInlineVariablesEnabled()) {
+      static_cast<FiberElement*>(element_)->CollectCustomProperties(
+          element_->data_model());
+    }
+
     handler.HandleCSSVariables(styles, element_->data_model(),
                                GetCSSParserConfigs());
   }

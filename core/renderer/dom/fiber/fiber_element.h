@@ -17,6 +17,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/thread/once_task.h"
 #include "core/renderer/css/css_fragment_decorator.h"
+#include "core/renderer/css/css_property.h"
 #include "core/renderer/css/css_style_sheet_manager.h"
 #include "core/renderer/dom/attribute_holder.h"
 #include "core/renderer/dom/element.h"
@@ -125,6 +126,7 @@ class FiberElement : public Element,
 
     const StyleMap* inherited_styles_{nullptr};
     const base::Vector<tasm::CSSPropertyID>* reset_inherited_ids_{nullptr};
+    const CustomPropertiesMap* custom_properties_{nullptr};
   };
 
   struct PerfStatistic {
@@ -878,7 +880,8 @@ class FiberElement : public Element,
   virtual size_t CountInlineStyles() override;
   virtual void MergeInlineStyles(StyleMap& new_styles) override;
 
-  virtual bool WillResolveStyle(StyleMap& merged_styles) override;
+  virtual bool WillResolveStyle(StyleMap& merged_styles,
+                                CSSVariableMap* changed_css_vars) override;
 
   // Check has_value() before usage to avoid unintentional construction.
   const auto& builtin_attr_map() const { return builtin_attr_map_; }
@@ -950,6 +953,8 @@ class FiberElement : public Element,
 
   lepus::Value GetComputedStyleByKey(const base::String& key);
 
+  bool CollectCustomProperties(AttributeHolder* holder);
+
  protected:
   FiberElement(const FiberElement& element, bool clone_resolved_props);
 
@@ -974,7 +979,7 @@ class FiberElement : public Element,
     has_layout_only_props_ = false;
   }
 
-  void ProcessFullRawInlineStyle();
+  void ProcessFullRawInlineStyle(CSSVariableMap* changed_css_vars);
 
   /**
    * This function will be called before add node.
@@ -1074,7 +1079,7 @@ class FiberElement : public Element,
 
   void PrepareComponentExternalStyles(AttributeHolder* holder);
   void PrepareRootCSSVariables(AttributeHolder* holder);
-  void ParseRawInlineStyles(StyleMap* parsed_styles);
+  void ParseRawInlineStyles(CSSVariableMap* changed_css_vars);
   void DoFullCSSResolving();
   const tasm::CSSValue& ResolveCurrentStyleValue(
       const CSSPropertyID& key, const tasm::CSSValue& default_value);
@@ -1088,6 +1093,8 @@ class FiberElement : public Element,
   void EnsureSLNode();
 
   virtual void DispatchLayoutBefore();
+
+  void MarkCustomPropertiesDirty();
 
   // relevant to hierarchy
   base::InlineVector<fml::RefPtr<FiberElement>, kChildrenInlineVectorSize>
@@ -1187,6 +1194,7 @@ class FiberElement : public Element,
                                   // updated_inherited_styles_
   base::auto_create_optional<base::Vector<tasm::CSSPropertyID>>
       reset_inherited_ids_;
+  base::auto_create_optional<CustomPropertiesMap> custom_properties_;
 
   //{origin_css_id, {css_value, is_logic_style}}
   base::auto_create_optional<

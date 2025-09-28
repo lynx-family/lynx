@@ -2973,10 +2973,13 @@ bool CSSStringParser::ParseVarReference(VarReference &ref) {
 CSSValue CSSStringParser::ParseVariable() {
   Advance();
 
+  if (scanner_.Length() == 0) {
+    return CSSValue::Empty();
+  }
+
   // Create a CSSValue to store the result
   CSSValue result(
       lepus::Value(base::String(scanner_.content(), scanner_.Length())));
-  result.SetType(CSSValueType::VARIABLE);
 
   auto references = std::make_unique<base::InlineVector<VarReference, 1>>();
   Token token;
@@ -2992,6 +2995,7 @@ CSSValue CSSStringParser::ParseVariable() {
                                    this->parser_configs_};
 
       if (args_parser_.ParseVarReference(ref)) {
+        ref.parser_configs = parser_configs_;
         // Add reference to the vector
         references->push_back(std::move(ref));
       }
@@ -2999,8 +3003,9 @@ CSSValue CSSStringParser::ParseVariable() {
     Advance();
   }
 
-  result.SetVarReferences(std::move(references));
-
+  if (HasMetVarToken()) {
+    result.SetVarReferences(std::move(references));
+  }
   return result;
 }
 
