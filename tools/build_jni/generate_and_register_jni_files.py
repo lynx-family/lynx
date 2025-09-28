@@ -460,9 +460,9 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
     print(f"Warning: so load file path is empty, you can input the path by `jni_register_configs.output_path` in {jni_configs_file}.")
   else:
     include_headers.extend(special_headers)
-    register_methods.extend(special_methods)
-    include_headers.sort()
     register_methods.sort()
+    register_methods = special_methods + register_methods
+    include_headers.sort()
     jni_register_configs['output_path'] = os.path.join(root_path, so_load_file_path)
     append_content_to_so_registry(jni_register_configs, include_headers, register_methods)
     gn_files.append(convert_to_relative_path(root_path, gn_file_path, so_load_file_path))
