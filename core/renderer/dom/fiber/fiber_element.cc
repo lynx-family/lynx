@@ -3311,8 +3311,10 @@ void FiberElement::OnPseudoStatusChanged(PseudoState prev_status,
   // FIXME: Every element will emit the OnPseudoStatusChanged event
   auto *css_fragment = GetRelatedCSSFragment();
   if (css_fragment && css_fragment->enable_css_selector()) {
-    // If disable the invalidation do nothing
     if (!css_fragment->enable_css_invalidation()) {
+      data_model_->SetPseudoState(current_status);
+      MarkStyleDirty(true);
+      element_manager_->RequestResolve(pipeline_options);
       return;
     }
     css::InvalidationLists invalidation_lists;
