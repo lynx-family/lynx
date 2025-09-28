@@ -32,8 +32,8 @@ class BASE_EXPORT Dictionary : public RefCountedBase {
   // Stores up-to 4 key-value pairs on inline memory.
   static constexpr size_t kInlineStorageSize = 4;
 
-  // Stores up-to 12 elements in small map.
-  static constexpr size_t kSmallMapMaximumSize = 12;
+  // Stores up-to 16 elements in small map.
+  static constexpr size_t kSmallMapMaximumSize = 16;
 
   using MapValueType = std::pair<const base::String, Value>;
 
