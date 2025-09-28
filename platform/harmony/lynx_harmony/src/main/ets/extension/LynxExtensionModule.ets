@@ -6,6 +6,8 @@ export interface LynxExtensionModule {
   getExtensionDelegatePtr(): number[];
 
   setup(): void;
+  
+  onTemplateLoad(url : string) : void;
 
   destroy(): void;
 }

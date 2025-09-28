@@ -636,5 +636,6 @@ export struct LynxView {
     }
     this.templateRenderer.setupExtensionDelegate(module.getExtensionDelegatePtr());
     module.setup();
+    module.onTemplateLoad(this.url); // no other timing to set, may various with other platform
   }
 }

@@ -288,6 +288,8 @@ export class ExtensionModule {
   constructor(uiDelegate: number[])
 
   nativeSetup(): void;
+  
+  nativeOnTemplateLoad(url : stirng) : void;
 
   nativeGetExtensionDelegatePtr(): number[];
 
