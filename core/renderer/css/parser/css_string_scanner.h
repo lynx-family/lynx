@@ -67,10 +67,12 @@ class Scanner final {
 
  private:
   static bool IsWhitespace(char c);
+  static bool IsCSSNewLine(char c);
   static bool IsDigit(char c);
   static bool IsAlpha(char c);
   static bool IsNamed(char c);
   static bool ToLower(const char* src, unsigned length, char* dst);
+  static bool TwoCharsAreValidEscape(char first, char second);
   bool IsIdentStart(char c);
   Token IdentLikeToken();
   Token FunctionExpression(TokenType type);

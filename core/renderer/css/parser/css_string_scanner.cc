@@ -24,7 +24,7 @@ Token Scanner::ScanToken() {
     return Whitespace();
   }
 
-  if (IsIdentStart(c)) {
+  if (IsIdentStart(c) || (c == '\\' && TwoCharsAreValidEscape(c, Peek()))) {
     return IdentLikeToken();
   }
   // [<Number>] <dot> <Number>
@@ -109,6 +109,14 @@ bool Scanner::IsIdentStart(char c) {
 
 bool Scanner::IsWhitespace(char c) {
   return c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f';
+}
+
+bool Scanner::IsCSSNewLine(char c) {
+  return c == '\n' || c == '\t' || c == '\r' || c == '\f';
+}
+
+bool Scanner::TwoCharsAreValidEscape(char first, char second) {
+  return first == '\\' && !IsCSSNewLine(second);
 }
 
 bool Scanner::IsDigit(char c) { return c >= '0' && c <= '9'; }
