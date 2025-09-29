@@ -21,7 +21,7 @@ static napi_module lynx_base_module = {
     .nm_flags = 0,
     .nm_filename = nullptr,
     .nm_register_func = InitLynxBase,
-    .nm_modname = "lynx_base",
+    .nm_modname = "lynxbase",
     .nm_priv = ((void *)0),
     .reserved = {0},
 };
