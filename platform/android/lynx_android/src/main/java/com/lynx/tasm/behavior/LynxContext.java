@@ -1416,7 +1416,8 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     proxy.runOnJSThread(runnable);
   }
 
-  private void runOnLayoutThread(Runnable runnable) {
+  @RestrictTo(RestrictTo.Scope.LIBRARY)
+  public void runOnLayoutThread(Runnable runnable) {
     if (runnable == null) {
       return;
     }
