@@ -1194,6 +1194,7 @@ public interface com::lynx::devtoolwrapper::CDPResultCallback {
 }
 
 public class com::lynx::tasm::behavior::shadow::ChoreographerLayoutTick : com.lynx.tasm.behavior.shadow.LayoutTick {
+  public com.lynx.tasm.behavior.shadow.ChoreographerLayoutTick.ChoreographerLayoutTick(LynxContext context);
   public void com.lynx.tasm.behavior.shadow.ChoreographerLayoutTick.request(final Runnable runnable);
 }
 
@@ -4442,6 +4443,7 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public Object com.lynx.tasm.behavior.LynxContext.getLynxExtraData();
   public boolean com.lynx.tasm.behavior.LynxContext.isInPreLoad();
   public void com.lynx.tasm.behavior.LynxContext.runOnJSThread(Runnable runnable);
+  public void com.lynx.tasm.behavior.LynxContext.runOnLayoutThread(Runnable runnable);
   public void com.lynx.tasm.behavior.LynxContext.setForceDarkAllowed(boolean allowed);
   public boolean com.lynx.tasm.behavior.LynxContext.getForceDarkAllowed();
   public void com.lynx.tasm.behavior.LynxContext.setEnableAutoConcurrency(boolean enable);
