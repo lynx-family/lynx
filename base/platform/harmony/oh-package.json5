@@ -6,7 +6,7 @@
   "main": "Index.ets",
   "version": "@param:dependencies.lynx_version",
   "dependencies": {
-    "liblynxbase.so": "file:./src/cpp/types/liblynx_base",
+    "liblynxbase.so": "file:./src/cpp/types/liblynxbase",
   },
   "repository": "https://github.com/lynx-family/lynx",
   "author": "lynx",
