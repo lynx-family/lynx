@@ -65,7 +65,7 @@ export interface BaseCommonEvent<T> extends BaseEventOrig<any, T> {}
 export interface CommonEvent extends BaseCommonEvent<Target | MainThreadElement> {}
 
 export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
-  /** 
+  /**
    * Collection of touch points currently on the touch plane.
    * @Android
    * @iOS
@@ -74,7 +74,7 @@ export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
    */
   touches: Array<Touch>;
 
-  /** 
+  /**
    * Collection of touch points whose state has changed compared to the last touch event.
    * @Android
    * @iOS
@@ -84,7 +84,7 @@ export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
   changedTouches: Array<Touch>;
 
   detail: {
-    /** 
+    /**
      * The current position of the touch point relative to the page's x-coordinate.
      * @Android
      * @iOS
@@ -92,7 +92,7 @@ export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
      * @PC
      */
     x: number;
-    /** 
+    /**
      * The current position of the touch point relative to the page's y-coordinate.
      * @Android
      * @iOS
@@ -106,43 +106,49 @@ export interface BaseTouchEvent<T> extends BaseEventOrig<any, T> {
 export interface TouchEvent extends BaseTouchEvent<Target> {}
 
 export interface BaseMouseEvent<T> extends BaseEventOrig<{}, T> {
-  /** 
-   * The currently pressed mouse button, if multiple buttons are pressed simultaneously, is the last one pressed. 
+  /**
+   * The currently pressed mouse button, if multiple buttons are pressed simultaneously, is the last one pressed.
    * @PC
    */
   button: number;
-  /** 
-   * The current mouse button being pressed, if multiple buttons are simultaneously pressed, it is a bit field composed of all button codes. 
+  /**
+   * The current mouse button being pressed, if multiple buttons are simultaneously pressed, it is a bit field composed of all button codes.
    * @PC
    */
   buttons: number;
-  /** 
-   * clientX 
+
+  /**
+   * Current scale factor. Greater than 1 means zoom in. Less than 1 means zoom out.
+   * @PC
+   */
+  scale: number;
+  /**
+   * clientX
    * @PC
    */
   x: number;
-  /** 
-   * clientY 
+  /**
+   * clientY
    * @PC
    */
   y: number;
-  /** 
-   * The current position of the cursor relative to the page's x-coordinate. 
+  /**
+   * The current position of the cursor relative to the page's x-coordinate.
    * @PC
    */
   pageX: number;
-  /** 
-   * The current position of the cursor relative to the page's y-coordinate. 
+  /**
+   * The current position of the cursor relative to the page's y-coordinate.
    * @PC
    */
   pageY: number;
-  /** 
-   * The current position of the cursor relative to the element's x-coordinate. 
+  /**
+   * The current position of the cursor relative to the element's x-coordinate.
    * @PC
    */
   clientX: number;
-  /** 
-   * The current position of the cursor relative to the element's y-coordinate. 
+  /**
+   * The current position of the cursor relative to the element's y-coordinate.
    * @PC
    */
   clientY: number;
@@ -151,43 +157,43 @@ export interface BaseMouseEvent<T> extends BaseEventOrig<{}, T> {
 export interface MouseEvent extends BaseMouseEvent<Target> {}
 
 export interface BaseWheelEvent<T> extends BaseEventOrig<{}, T> {
-  /** 
-   * clientX 
+  /**
+   * clientX
    * @PC
    */
   x: number;
-  /** 
-   * clientY 
+  /**
+   * clientY
    * @PC
    */
   y: number;
-  /** 
-   * The current position of the cursor relative to the page's x-coordinate. 
+  /**
+   * The current position of the cursor relative to the page's x-coordinate.
    * @PC
    */
   pageX: number;
-  /** 
-   * The current position of the cursor relative to the page's y-coordinate. 
+  /**
+   * The current position of the cursor relative to the page's y-coordinate.
    * @PC
    */
   pageY: number;
-  /** 
-   * The current position of the cursor relative to the element's x-coordinate. 
+  /**
+   * The current position of the cursor relative to the element's x-coordinate.
    * @PC
-   */ 
+   */
   clientX: number;
-  /** 
-   * The current position of the cursor relative to the element's y-coordinate. 
+  /**
+   * The current position of the cursor relative to the element's y-coordinate.
    * @PC
    */
   clientY: number;
-  /** 
-   * The distance of x-axis scrolling on the mouse wheel. 
+  /**
+   * The distance of x-axis scrolling on the mouse wheel.
    * @PC
-   */ 
+   */
   deltaX: number;
-  /** 
-   * The distance of y-axis scrolling on the mouse wheel. 
+  /**
+   * The distance of y-axis scrolling on the mouse wheel.
    * @PC
    */
   deltaY: number;
@@ -196,9 +202,9 @@ export interface BaseWheelEvent<T> extends BaseEventOrig<{}, T> {
 export interface WheelEvent extends BaseWheelEvent<Target> {}
 
 export interface BaseKeyEvent<T> extends BaseEventOrig<{}, T> {
-  /** 
+  /**
    * Button Name
-   * @PC 
+   * @PC
    */
   key: string;
 }
@@ -206,7 +212,7 @@ export interface BaseKeyEvent<T> extends BaseEventOrig<{}, T> {
 export interface KeyEvent extends BaseKeyEvent<Target> {}
 
 export interface BaseAnimationEvent<T> extends BaseEventOrig<{}, T> {
-  /** 
+  /**
    * Animation params.
    * @Android
    * @iOS
@@ -275,7 +281,7 @@ export interface BaseImageLoadEvent<T> extends BaseEventOrig<{}, T> {
    */
   width: number;
   /**
-   * Image height. In pixels. 
+   * Image height. In pixels.
    * @Android
    * @iOS
    */
@@ -441,7 +447,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     id: string;
-    /** 
+    /**
      * The width of the target. In pixels.
      * @Android
      * @iOS
@@ -454,9 +460,9 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @iOS
      * @Harmony
      * @PC
-     */ 
+     */
     height: number;
-    /** 
+    /**
      * The position of the target's top border relative to the page's coordinate. In pixels.
      * @Android
      * @iOS
@@ -464,7 +470,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     top: number;
-    /** 
+    /**
      * The position of the target's right border relative to the page's coordinate. In pixels.
      * @Android
      * @iOS
@@ -472,7 +478,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     right: number;
-    /** 
+    /**
      * The position of the target's bottom border relative to the page's coordinate. In pixels.
      * @Android
      * @iOS
@@ -480,7 +486,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     bottom: number;
-    /** 
+    /**
      * The position of the target's left border relative to the page's coordinate. In pixels.
      * @Android
      * @iOS
@@ -488,7 +494,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     left: number;
-    /** 
+    /**
      * The collection of custom attributes starting with data- on the event target.
      * @Android
      * @iOS
@@ -504,7 +510,7 @@ export interface LayoutChangeDetailEvent<T> extends BaseEventOrig<{}, T> {
 export interface UIAppearanceDetailEvent<T> extends BaseEventOrig<{}, T> {
   type: 'uiappear' | 'uidisappear';
   detail: {
-    /** 
+    /**
      * exposure-id set on the target.
      * @Android
      * @iOS
@@ -512,7 +518,7 @@ export interface UIAppearanceDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     'exposure-id': string;
-    /** 
+    /**
      * exposure-scene set on the target.
      * @Android
      * @iOS
@@ -520,7 +526,7 @@ export interface UIAppearanceDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     'exposure-scene': string;
-    /** 
+    /**
      * uid of the target
      * @Android
      * @iOS
@@ -528,7 +534,7 @@ export interface UIAppearanceDetailEvent<T> extends BaseEventOrig<{}, T> {
      * @PC
      */
     'unique-id': string;
-    /** 
+    /**
      * The collection of custom attributes starting with data- on the event target.
      * @Android
      * @iOS
@@ -564,7 +570,7 @@ export interface LepusEventInstance {
 export type EventHandler<T> = (event: T, instance?: LepusEventInstance) => void;
 
 export interface BaseEvent<T = string, D = any> {
-  /** 
+  /**
    * Event type.
    * @Android
    * @iOS
@@ -573,7 +579,7 @@ export interface BaseEvent<T = string, D = any> {
    */
   type: T;
 
-  /** 
+  /**
    * Timestamp when the event was generated.
    * @Android
    * @iOS
@@ -582,7 +588,7 @@ export interface BaseEvent<T = string, D = any> {
    */
   timestamp: number;
 
-  /** 
+  /**
    * Collection of attribute values of the target that triggers the event.
    * @Android
    * @iOS
@@ -591,7 +597,7 @@ export interface BaseEvent<T = string, D = any> {
    */
   target: Target;
 
-  /** 
+  /**
    * Collection of attribute values of the target that listens to the event.
    * @Android
    * @iOS
@@ -600,7 +606,7 @@ export interface BaseEvent<T = string, D = any> {
    */
   currentTarget: Target;
 
-  /** 
+  /**
    * Additional information.
    * @Android
    * @iOS
@@ -631,8 +637,8 @@ export interface LynxEvent<T> {
 
   // NodeDisappear?: EventHandler<ReactLynx.AppearanceEvent>;
 
-  /** 
-   * Finger touch action begins. 
+  /**
+   * Finger touch action begins.
    * @Android
    * @iOS
    * @Harmony
@@ -640,7 +646,7 @@ export interface LynxEvent<T> {
    */
   TouchStart?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
+  /**
    * Moving after touching with fingers.
    * @Android
    * @iOS
@@ -649,8 +655,8 @@ export interface LynxEvent<T> {
    */
   TouchMove?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
-   * Finger touch actions are interrupted by incoming call reminders and pop-up windows. 
+  /**
+   * Finger touch actions are interrupted by incoming call reminders and pop-up windows.
    * @Android
    * @iOS
    * @Harmony
@@ -658,8 +664,8 @@ export interface LynxEvent<T> {
    */
   TouchCancel?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
-   * Finger touch action ends. 
+  /**
+   * Finger touch action ends.
    * @Android
    * @iOS
    * @Harmony
@@ -667,8 +673,8 @@ export interface LynxEvent<T> {
    */
   TouchEnd?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
-   * After touching the finger, if it leaves after more than 350ms and the event callback function is specified and triggered, the tap event will not be triggered. 
+  /**
+   * After touching the finger, if it leaves after more than 350ms and the event callback function is specified and triggered, the tap event will not be triggered.
    * @Android
    * @iOS
    * @Harmony
@@ -676,17 +682,17 @@ export interface LynxEvent<T> {
    */
   LongPress?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
-   * It will trigger during a transition animation start. 
+  /**
+   * It will trigger during a transition animation start.
    * @Android
    * @iOS
    * @Harmony
    * @PC
-   */ 
+   */
   TransitionStart?: EventHandler<BaseTransitionEvent<T>>;
 
-  /** 
-   * It will trigger when a transition animation is cancelled. 
+  /**
+   * It will trigger when a transition animation is cancelled.
    * @Android
    * @iOS
    * @Harmony
@@ -694,8 +700,8 @@ export interface LynxEvent<T> {
    */
   TransitionCancel?: EventHandler<BaseTransitionEvent<T>>;
 
-  /** 
-   * It will trigger after the transition or createAnimation animation is finished. 
+  /**
+   * It will trigger after the transition or createAnimation animation is finished.
    * @Android
    * @iOS
    * @Harmony
@@ -703,8 +709,8 @@ export interface LynxEvent<T> {
    */
   TransitionEnd?: EventHandler<BaseTransitionEvent<T>>;
 
-  /** 
-   * It will trigger at the beginning of an animation. 
+  /**
+   * It will trigger at the beginning of an animation.
    * @Android
    * @iOS
    * @Harmony
@@ -712,8 +718,8 @@ export interface LynxEvent<T> {
    */
   AnimationStart?: EventHandler<BaseAnimationEvent<T>>;
 
-  /** 
-   * It will trigger during an animation iteration. 
+  /**
+   * It will trigger during an animation iteration.
    * @Android
    * @iOS
    * @Harmony
@@ -721,8 +727,8 @@ export interface LynxEvent<T> {
    */
   AnimationIteration?: EventHandler<BaseAnimationEvent<T>>;
 
-  /** 
-   * It will trigger when an animation is cancelled. 
+  /**
+   * It will trigger when an animation is cancelled.
    * @Android
    * @iOS
    * @Harmony
@@ -730,8 +736,8 @@ export interface LynxEvent<T> {
    */
   AnimationCancel?: EventHandler<BaseAnimationEvent<T>>;
 
-  /** 
-   * It will trigger upon completion of an animation. 
+  /**
+   * It will trigger upon completion of an animation.
    * @Android
    * @iOS
    * @Harmony
@@ -739,74 +745,80 @@ export interface LynxEvent<T> {
    */
   AnimationEnd?: EventHandler<BaseAnimationEvent<T>>;
 
-  /** 
+  /**
    * Indicates that a mouse button (primary or secondary) is pressed. The target is the UI that contains the mouse pointer and is closest to the user.
    * @PC
    */
   MouseDown?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Indicates that a mouse button (primary or secondary) is released. The target is the UI that contains the mouse pointer and is closest to the user.
    * @PC
    */
   MouseUp?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Mouse movement.
    * @PC
    */
   MouseMove?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Mouse click.
    * @PC
    */
   MouseClick?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Double-click the mouse.
-   * @PC  
+   * @PC
    */
   MouseDblClick?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Long press on the mouse.
    * @PC
    */
   MouseLongPress?: EventHandler<BaseMouseEvent<T>>;
 
-  /** 
+  /**
    * Mouse (or touchpad) scrolling.
    * @PC
    */
   Wheel?: EventHandler<BaseWheelEvent<T>>;
 
-  /** 
+  /**
+   * Zoom gesture in the trackpaad
+   * @PC
+   */
+  Zoom?: EventHandler<BaseMouseEvent<T>>;
+
+  /**
    * Keyboard (or remote control) button pressed.
    * @PC
    */
   KeyDown?: EventHandler<BaseKeyEvent<T>>;
 
-  /** 
+  /**
    * Keyboard (or remote control) key released.
    * @PC
    */
   KeyUp?: EventHandler<BaseKeyEvent<T>>;
 
-  /** 
+  /**
    * Element gets focus.
    * @PC
    */
   Focus?: EventHandler<BaseCommonEvent<T>>;
 
-  /** 
+  /**
    * Element loses focus.
    * @PC
    */
   Blur?: EventHandler<BaseCommonEvent<T>>;
 
-  /** 
-   * Layout info changed event 
+  /**
+   * Layout info changed event
    * @Android
    * @iOS
    * @Harmony
@@ -823,7 +835,7 @@ export interface LynxEvent<T> {
    */
   UIAppear?: EventHandler<UIAppearanceDetailEvent<T>>;
 
-  /** 
+  /**
    * Element disappear event
    * @Android
    * @iOS
@@ -858,7 +870,7 @@ export interface LynxBindCatchEvent<T = any> {
    */
   Tap?: EventHandler<BaseTouchEvent<T>>;
 
-  /** 
+  /**
    * After touching the finger, leave after more than 350ms
    * @deprecated It is recommended to use the longpress event instead
    */
@@ -896,6 +908,7 @@ interface MouseClickProps<T> { bindmouseclick?: LynxEvent<T>['MouseClick']; catc
 interface MouseDblClickProps<T> { bindmousedblclick?: LynxEvent<T>['MouseDblClick']; catchmousedblclick?: LynxEvent<T>['MouseDblClick']; 'capture-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'capture-catchmousedblclick'?: LynxEvent<T>['MouseDblClick']; 'global-bindmousedblclick'?: LynxEvent<T>['MouseDblClick']; }
 interface MouseLongPressProps<T> { bindmouselongpress?: LynxEvent<T>['MouseLongPress']; catchmouselongpress?: LynxEvent<T>['MouseLongPress']; 'capture-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'capture-catchmouselongpress'?: LynxEvent<T>['MouseLongPress']; 'global-bindmouselongpress'?: LynxEvent<T>['MouseLongPress']; }
 interface WheelProps<T> { bindwheel?: LynxEvent<T>['Wheel']; catchwheel?: LynxEvent<T>['Wheel']; 'capture-bindwheel'?: LynxEvent<T>['Wheel']; 'capture-catchwheel'?: LynxEvent<T>['Wheel']; 'global-bindwheel'?: LynxEvent<T>['Wheel']; }
+interface ZoomProps<T> { bindzoom?: LynxEvent<T>['Zoom']; catchzoom?: LynxEvent<T>['Zoom']; 'capture-bindzoom'?: LynxEvent<T>['Zoom']; 'capture-catchzoom'?: LynxEvent<T>['Zoom']; 'global-bindzoom'?: LynxEvent<T>['Zoom']; }
 interface KeyDownProps<T> { bindkeydown?: LynxEvent<T>['KeyDown']; catchkeydown?: LynxEvent<T>['KeyDown']; 'capture-bindkeydown'?: LynxEvent<T>['KeyDown']; 'capture-catchkeydown'?: LynxEvent<T>['KeyDown']; 'global-bindkeydown'?: LynxEvent<T>['KeyDown']; }
 interface KeyUpProps<T> { bindkeyup?: LynxEvent<T>['KeyUp']; catchkeyup?: LynxEvent<T>['KeyUp']; 'capture-bindkeyup'?: LynxEvent<T>['KeyUp']; 'capture-catchkeyup'?: LynxEvent<T>['KeyUp']; 'global-bindkeyup'?: LynxEvent<T>['KeyUp']; }
 interface FocusProps<T> { bindfocus?: LynxEvent<T>['Focus']; catchfocus?: LynxEvent<T>['Focus']; 'capture-bindfocus'?: LynxEvent<T>['Focus']; 'capture-catchfocus'?: LynxEvent<T>['Focus']; 'global-bindfocus'?: LynxEvent<T>['Focus']; }
@@ -932,6 +945,7 @@ export type LynxEventPropsBase<T> = BGLoadProps<T> &
   MouseDblClickProps<T> &
   MouseLongPressProps<T> &
   WheelProps<T> &
+  ZoomProps<T> &
   KeyDownProps<T> &
   KeyUpProps<T> &
   FocusProps<T> &
