@@ -87,7 +87,7 @@ export class LynxTemplateRenderer {
     density: number, isHostRenderer: boolean, perfController: PerformanceCollector, threadMode: number, groupId: string,
     useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
     bytecodeSourceUrl: string, enableJSRuntime: boolean, moduleManagerArgs: Object[],
-    sendableModuleManagerArgs: Object[]): void;
+    sendableModuleManagerArgs: Object[], backgroundRuntime: NativeLynxBackgroundRuntime): void;
 
   nativeDetach(): void;
 
@@ -294,4 +294,20 @@ export class ExtensionModule {
   nativeGetExtensionDelegatePtr(): number[];
 
   nativeDestroy(): void;
+}
+
+export class LynxRuntimeWrapper {
+  constructor();
+
+  protected nativeCreate(providers: (Object | undefined)[], groupId: string,
+    useQuickjs: boolean, enableJSGroupThread: boolean, preloadJSPaths: string[], enableBytecode: boolean,
+  bytecodeSourceUrl: string, moduleManagerArgs: Object[],
+  sendableModuleManagerArgs: Object[], processor?: string, data?: Object | string, readonly?: boolean, props?: Object | string): void;
+
+  protected nativeEvaluateScript(url: string, sources: string): void;
+  protected nativeEvaluateBundleScript(url: string, bundle: TemplateBundle, jsFile: string): void;
+  protected nativeTransitionToFullRuntime(): void;
+  protected nativeCallJSFunction(module: string, method: string, params: Object[]): void;
+  protected nativeAddRuntimeLifecycleListener(listener: Object);
+  
 }

@@ -41,7 +41,7 @@ import { LynxSetModule } from '../jsbridge/LynxSetModule';
 import { ILynxExtensionService } from './service/ILynxExtensionService';
 import { LynxUIRendererCreator } from './LynxUIRendererCreator';
 import { url } from '@kit.ArkTS';
-import { ILynxTrailService } from '../Index';
+import { ILynxTrailService, LynxBackgroundRuntime } from '../Index';
 import { ILogBox } from '../devtool_wrapper/ILogBox';
 import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { ILynxDevToolService } from './service/ILynxDevToolService';
@@ -121,6 +121,7 @@ export struct LynxView {
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
+  backgroundRuntime?: LynxBackgroundRuntime;
   /**
    * URL for LynxView, which will be parsed by ILynxTrailService in building LynxView.
    */
@@ -180,6 +181,14 @@ export struct LynxView {
       this.templateRenderer.aboutToDisappear();
     }
     const initStartTiming = new Date().getTime();
+    if (this.backgroundRuntime) {
+      this.backgroundRuntime.moduleFactory.setContext(this.context);
+      this.moduleManager = this.backgroundRuntime.moduleFactory;
+      this.backgroundRuntimeOptions.merge(this.backgroundRuntime.runtimeOptions);
+      this.genericResourceFetcher = this.genericResourceFetcher ?? this.backgroundRuntime.genericResourceFetcher;
+      this.mediaResourceFetcher = this.mediaResourceFetcher ?? this.backgroundRuntime.mediaResourceFetcher;
+      this.templateResourceFetcher = this.templateResourceFetcher ?? this.templateResourceFetcher;
+    }
     this.modules.forEach((v, k) => {
       this.moduleManager.registerModule(k, v);
     });

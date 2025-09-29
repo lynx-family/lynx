@@ -16,6 +16,7 @@ import { LynxDevTool } from '../devtool_wrapper/LynxDevTool';
 import { PerformanceController } from './performance/PerformanceController';
 import { convertModuleArgs, LynxModuleManager, SendableLynxModuleManager } from '../jsbridge/LynxModuleManager';
 import { LynxLepusModule } from '../lepus/LynxLepusModule';
+import { LynxBackgroundRuntime } from '../Index';
 
 const TAG = 'LynxTemplateRenderer';
 
@@ -53,9 +54,11 @@ export class LynxTemplateRenderer extends lynx.LynxTemplateRenderer {
       this.backgroundRuntimeOptions.getPreloadJSPath(),
       this.backgroundRuntimeOptions.enableBytecode, this.backgroundRuntimeOptions.bytecodeSourceUrl, enableJSRuntime,
       convertModuleArgs(moduleManager),
-      convertModuleArgs(sendableModuleManager));
+      convertModuleArgs(sendableModuleManager), lynxView.backgroundRuntime);
     this.lynxView = lynxView;
     this.moduleManager = moduleManager;
+    // release backgroundRuntime
+    lynxView.backgroundRuntime = undefined;
   }
 
   aboutToDisappear() {

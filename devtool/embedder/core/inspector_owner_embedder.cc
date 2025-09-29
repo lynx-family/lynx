@@ -59,6 +59,15 @@ void InspectorOwnerEmbedder::OnTemplateAssemblerCreated(intptr_t ptr) {
   record_id_ = ptr;
 }
 
+std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+InspectorOwnerEmbedder::OnBackgroundRuntimeCreated(
+    const std::string& group_thread_name) {
+  if (devtoolng_delegate_) {
+    return devtoolng_delegate_->OnBackgroundRuntimeCreated(group_thread_name);
+  }
+  return nullptr;
+}
+
 void InspectorOwnerEmbedder::InitRecord() {
   CHECK_NULL_AND_LOG_RETURN(devtoolng_delegate_, "devtoolng_delegate_ is null");
   std::string dir_path = tasm::LynxEnv::GetInstance().GetStorageDirectory();

@@ -52,6 +52,8 @@ lynx_core_source_set("cpp") {
     "lynx_context.cc",
     "lynx_context.h",
     "lynx_napi_export.h",
+    "lynx_runtime_wrapper.cc",
+    "lynx_runtime_wrapper.h",
     "lynx_template_renderer.cc",
     "lynx_template_renderer.h",
     "module/lynx_exposure_module.cc",

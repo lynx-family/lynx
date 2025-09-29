@@ -17,6 +17,7 @@
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/shell/harmony/embedder_platform_harmony.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/lynx_template_renderer.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/shadow_node/js_shadow_node.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/js_ui_base.h"
@@ -37,6 +38,7 @@ void LynxNapiInit(napi_env env, napi_value exports) {
   lynx::trace::TraceControllerHarmony::Init(env, exports);
   lynx::harmony::LynxInfoReporterHelper::Init(env, exports);
   lynx::harmony::LynxTemplateBundleHarmony::Init(env, exports);
+  lynx::harmony::LynxRuntimeWrapper::Init(env, exports);
 }
 
 #endif  // PLATFORM_HARMONY_LYNX_HARMONY_SRC_MAIN_CPP_LYNX_NAPI_EXPORT_H_

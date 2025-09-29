@@ -130,3 +130,7 @@ export { LynxBaseInspectorOwner } from './devtool_wrapper/LynxBaseInspectorOwner
 export { ILogBox, OnErrorCallback, GetJSSourceCallback } from './devtool_wrapper/ILogBox'
 
 export { LynxInspectorConsoleDelegate } from './devtool_wrapper/LynxInspectorConsoleDelegate'
+
+export {LynxBackgroundRuntime, LynxBackgroundRuntimeClient} from './tasm/LynxBackgroundRuntime'
+
+export { RuntimeLifecycleListener } from './jsbridge/RuntimeLifecycleListener'

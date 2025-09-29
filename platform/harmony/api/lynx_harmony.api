@@ -55,6 +55,7 @@ export abstract class LynxNodeController extends NodeController {
   templateBundle?: TemplateBundle;
   loadOption?: LynxLoadOption;
   uiRendererCreator?: LynxUIRendererCreator;
+  backgroundRuntime?: LynxBackgroundRuntime;
   uri?: url.URL;
   platformConfig?: string;
   logBox: ILogBox | null; = null
@@ -685,6 +686,7 @@ export class LynxBackgroundRuntimeOptions {
   getGroupID(): string;
   getPreloadJSPath(): string[];
   enableJSGroupThread(): boolean;
+  merge(other: LynxBackgroundRuntimeOptions): void;
   public enableBytecode: boolean; = false
   public bytecodeSourceUrl: string; = ''
   public lynxGroup?: LynxGroup;
@@ -924,7 +926,8 @@ export abstract class LynxUIRendererCreator {
 }
 
 export class LynxModuleManager {
-  constructor(context: LynxContext);
+  constructor(context: LynxContext | undefined);
+  setContext(context: LynxContext): void;
   registerModule(name: string, wrapper: ModuleClassWrapper): void;
   getModulesMap(): void;
   getModule(name: string): LynxModule | undefined;
@@ -963,6 +966,38 @@ export type GetJSSourceCallback = () => Record<string, string> {
 
 export interface LynxInspectorConsoleDelegate {
   onConsoleMessage(msg: string): void;
+}
+
+export abstract class LynxBackgroundRuntimeClient {
+  public onReceivedError(error: LynxError): void;
+  public onModuleMethodInvoked(module: string, method: string, error_code: number): void;
+  public onEvaluateJavaScriptEnd(url: string): void;
+}
+
+export class LynxBackgroundRuntime extends lynx.LynxRuntimeWrapper {
+  constructor(backgroundRuntimeOptions: LynxBackgroundRuntimeOptions, genericResourceFetcher: LynxGenericResourceFetcher | undefined, mediaResourceFetcher: LynxMediaResourceFetcher | undefined, templateResourceFetcher: LynxTemplateResourceFetcher | undefined, modules: Map<string, ModuleClassWrapper> | undefined, sendableModules: Map<string, SendableModuleClassWrapper> | undefined, data: MetaData | undefined);
+  onErrorOccurred(level: string, errorCode: number, message: string, suggestion: string, customInfo: Record<string, string>, logboxOnly: boolean): void;
+  onModuleMethodInvoked(module: string, method: string, error_code: number): void;
+  onEvaluateJavaScriptEnd(url: string): void;
+  createDevTool(embedderProxy: number[]): void;
+  getDevTool(): void;
+  evaluateJavaScript(url: string, sources: string): void;
+  evaluateBundleScript(url: string, bundle: TemplateBundle, jsFileName: string): void;
+  callJSFunction(module: string, method: string, params: Object[]): void;
+  sendGlobalEvent(name: string, params: object[]): void;
+  transitionToFullRuntime(): void;
+  addRuntimeLifecycleListener(listener: RuntimeLifecycleListener): void;
+  getLastScriptUrl(): string | undefined;
+  moduleFactory(): LynxModuleManager;
+  runtimeOptions(): LynxBackgroundRuntimeOptions;
+  genericResourceFetcher(): LynxGenericResourceFetcher;
+  mediaResourceFetcher(): LynxMediaResourceFetcher;
+  templateResourceFetcher(): LynxTemplateResourceFetcher;
+}
+
+export interface RuntimeLifecycleListener {
+  onRuntimeAttach(napiEnv: number[]): void;
+  onRuntimeDetach(): void;
 }
 
 export class LynxInspectorOwner implements LynxBaseInspectorOwner {

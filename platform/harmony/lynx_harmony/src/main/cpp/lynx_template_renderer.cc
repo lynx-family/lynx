@@ -78,7 +78,8 @@ LynxTemplateRenderer::LynxTemplateRenderer(
     int32_t thread_mode, std::string group_id, bool use_quickjs,
     bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
     bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
-    std::unique_ptr<ModuleFactoryHarmony> module_factory)
+    std::unique_ptr<ModuleFactoryHarmony> module_factory,
+    LynxRuntimeWrapper* runtime_wrapper)
     : env_(env),
       display_density_(display_density),
       ui_delegate_(ui_delegate),
@@ -102,6 +103,9 @@ LynxTemplateRenderer::LynxTemplateRenderer(
   shell_option.js_group_thread_name_ = enable_js_group_thread ? group_id : "";
   shell_option.enable_js_group_thread_ = enable_js_group_thread;
   shell_option.enable_js_ = enable_js;
+  shell_option.instance_id_ =
+      runtime_wrapper ? runtime_wrapper->GetRuntimeActor()->GetInstanceId()
+                      : -1;
   auto invoker = std::make_unique<TasmPlatformInvokerHarmony>(
       weak_flag_->weak_from_this());
   auto* invoker_ptr = invoker.get();
@@ -129,6 +133,13 @@ LynxTemplateRenderer::LynxTemplateRenderer(
                   std::shared_ptr<
                       tasm::performance::PerformanceControllerHarmonyJSWrapper>(
                       js_perf_controller_wrapper)))
+          .SetRuntimeActor((runtime_wrapper != nullptr)
+                               ? runtime_wrapper->GetRuntimeActor()
+                               : nullptr)
+          .SetPerfControllerActor(
+              (runtime_wrapper != nullptr)
+                  ? runtime_wrapper->GetPerfControllerActor()
+                  : nullptr)
           .build());
   invoker_ptr->SetUITaskRunner(shell_->GetRunners()->GetUITaskRunner());
 
@@ -145,32 +156,39 @@ LynxTemplateRenderer::LynxTemplateRenderer(
 
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
+  if (runtime_wrapper) {
+    module_manager_ = runtime_wrapper->GetModuleManager();
+    module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+    runtime_wrapper->SetAttached(true);
+    shell_->AttachRuntime();
+    runtime_proxy_ = runtime_wrapper->GetRuntimeProxy();
+  } else {
+    // InitJSBridge
+    module_manager_ = std::make_shared<piper::LynxModuleManager>();
+    module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
+    module_manager_->SetModuleFactory(std::move(module_factory));
+    napi_value module_param[1];
+    module_param[0] = base::NapiUtil::CreatePtrArray(
+        env, reinterpret_cast<uintptr_t>(module_manager_.get()));
+    base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_,
+                                   "initNativeSetModule", 1, module_param,
+                                   nullptr);
 
-  // InitJSBridge
-  module_manager_ = std::make_shared<piper::LynxModuleManager>();
-  module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
-  module_manager_->SetModuleFactory(std::move(module_factory));
-  napi_value module_param[1];
-  module_param[0] = base::NapiUtil::CreatePtrArray(
-      env, reinterpret_cast<uintptr_t>(module_manager_.get()));
-  base::NapiUtil::InvokeJsMethod(env_, template_renderer_ref_,
-                                 "initNativeSetModule", 1, module_param,
-                                 nullptr);
+    auto on_runtime_actor_created = [this](auto& actor) {
+      auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
+          shell_->GetRuntimeActor(), shell_->GetFacadeActor());
+      module_manager_->initBindingPtr(module_manager_, module_delegate);
+      runtime_proxy_ = std::make_shared<shell::LynxRuntimeProxyImpl>(actor);
+      module_manager_->runtime_proxy = runtime_proxy_;
+    };
 
-  auto on_runtime_actor_created = [this](auto& actor) {
-    auto module_delegate = std::make_shared<shell::ModuleDelegateImpl>(
-        shell_->GetRuntimeActor(), shell_->GetFacadeActor());
-    module_manager_->initBindingPtr(module_manager_, module_delegate);
-    runtime_proxy_ = std::make_shared<shell::LynxRuntimeProxyImpl>(actor);
-    module_manager_->runtime_proxy = runtime_proxy_;
-  };
-
-  auto runtime_flags =
-      runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
-  shell_->InitRuntime(group_id, resource_loader, module_manager_,
-                      std::move(on_runtime_actor_created),
-                      std::move(preload_js_paths), runtime_flags,
-                      bytecode_source_url);
+    auto runtime_flags =
+        runtime::CalcRuntimeFlags(false, use_quickjs, false, enable_bytecode);
+    shell_->InitRuntime(group_id, resource_loader, module_manager_,
+                        std::move(on_runtime_actor_created),
+                        std::move(preload_js_paths), runtime_flags,
+                        bytecode_source_url);
+  }
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
       shell_->GetPerfControllerActor());
   ui_delegate_->OnLynxCreate(engine_proxy_, runtime_proxy_,
@@ -652,8 +670,8 @@ napi_value LynxTemplateRenderer::InitGlobalEnv(napi_env env,
 napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
                                               napi_callback_info info) {
   napi_value js_this;
-  size_t argc = 17;
-  napi_value args[17] = {nullptr};
+  size_t argc = 18;
+  napi_value args[18] = {nullptr};
   napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
 
   // UIDelegate
@@ -714,6 +732,10 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
   auto module_factory = std::make_unique<ModuleFactoryHarmony>(
       env, module_args, sendable_module_args);
 
+  // LynxRuntimeWrapper
+  LynxRuntimeWrapper* runtime_wrapper = nullptr;
+  napi_unwrap(env, args[17], reinterpret_cast<void**>(&runtime_wrapper));
+
   // LynxTemplateRenderer
   LynxTemplateRenderer* renderer = new LynxTemplateRenderer(
       env, js_this, delegate_ptr, resource_loader,
@@ -721,7 +743,8 @@ napi_value LynxTemplateRenderer::NativeAttach(napi_env env,
       screen_density, is_host_renderer, js_perf_controller_wrapper, thread_mode,
       std::move(group_id), use_quickjs, enable_js_group_thread,
       std::move(preload_js_paths), enable_bytecode,
-      std::move(bytecode_source_url), enable_js, std::move(module_factory));
+      std::move(bytecode_source_url), enable_js, std::move(module_factory),
+      runtime_wrapper);
 
   static auto noop_finalizer = [](napi_env env, void* data, void* hint) {
     // An empty implementation of the napi_finalize callback function is

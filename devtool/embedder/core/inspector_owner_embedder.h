@@ -75,6 +75,8 @@ class InspectorOwnerEmbedder
 
   // LynxInspectorOwner
   void OnTemplateAssemblerCreated(intptr_t prt) override;
+  std::shared_ptr<lynx::piper::InspectorRuntimeObserverNG>
+  OnBackgroundRuntimeCreated(const std::string& group_thread_name) override;
   void OnLoaded(const std::string& url) override;
   void OnLoadTemplate(const std::string& url, const std::vector<uint8_t>& tem,
                       const std::shared_ptr<tasm::TemplateData>& data) override;

@@ -11,10 +11,14 @@ import { collections } from '@kit.ArkTS';
 export class LynxModuleManager {
   private modulesByName: Map<string, LynxModule> = new Map();
   private modulesMap: Map<string, ModuleClassWrapper> = new Map();
-  private context: LynxContext;
+  private context?: LynxContext;
   private static TAG: string = 'LynxModuleManager';
 
-  constructor(context: LynxContext) {
+  constructor(context: LynxContext | undefined) {
+    this.context = context;
+  }
+  
+  setContext(context: LynxContext) {
     this.context = context;
   }
 

@@ -3,7 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 export interface LynxModuleConstructor extends Function {
-  new (context: Object, param: Object): Object;
+  new (context: Object | undefined, param: Object): Object;
 }
 
 export interface SendableLynxModuleConstructor extends Function {
@@ -12,7 +12,7 @@ export interface SendableLynxModuleConstructor extends Function {
 
 export function constructModule(
   cons: Function,
-  context: Object,
+  context: Object | undefined,
   param: Object
 ): Object {
   return new (cons as LynxModuleConstructor)(context, param);

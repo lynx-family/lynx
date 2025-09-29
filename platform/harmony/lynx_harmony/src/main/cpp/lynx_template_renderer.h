@@ -24,6 +24,7 @@
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
 #include "core/template_bundle/lynx_template_bundle.h"
+#include "harmony/lynx_harmony/src/main/cpp/lynx_runtime_wrapper.h"
 
 namespace lynx {
 
@@ -53,7 +54,8 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
       int thread_mode, std::string group_id, bool use_quickjs,
       bool enable_js_group_thread, std::vector<std::string> preload_js_paths,
       bool enable_bytecode, std::string bytecode_source_url, bool enable_js,
-      std::unique_ptr<ModuleFactoryHarmony> module_factory);
+      std::unique_ptr<ModuleFactoryHarmony> module_factory,
+      LynxRuntimeWrapper* runtime_wrapper);
 
   virtual ~LynxTemplateRenderer();
 
@@ -202,6 +204,7 @@ class LynxTemplateRenderer : public devtool::LynxDevToolProxy {
   std::shared_ptr<shell::LynxRuntimeProxy> runtime_proxy_;
   std::shared_ptr<shell::PerfControllerProxy> perf_controller_proxy_;
   std::shared_ptr<shell::LynxShell> shell_;
+  // TODO(liyanbo.monster): use weak_ptr instead of shared_ptr
   std::shared_ptr<piper::LynxModuleManager> module_manager_;
   tasm::UIDelegate* ui_delegate_;
   std::shared_ptr<LynxResourceLoaderHarmony> resource_loader_;
