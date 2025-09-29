@@ -5,6 +5,7 @@
 #import <Lynx/LynxTemplateRenderHelper.h>
 
 #import <Lynx/LynxAccessibilityModule.h>
+#import <Lynx/LynxBaseConfigurator+Internal.h>
 #import <Lynx/LynxConfig+Internal.h>
 #import <Lynx/LynxContext+Internal.h>
 #import <Lynx/LynxDevtool+Internal.h>
@@ -34,7 +35,6 @@
 #import <Lynx/LynxUILayoutTick.h>
 #import <Lynx/LynxUIMethodModule.h>
 #import <Lynx/LynxUIRenderer.h>
-#import <Lynx/LynxViewBuilder+Internal.h>
 #import <Lynx/PaintingContextProxy.h>
 
 #include "core/base/darwin/lynx_env_darwin.h"

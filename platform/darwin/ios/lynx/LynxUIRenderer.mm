@@ -11,6 +11,7 @@
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #import <Lynx/LynxWeakProxy.h>
+#import "LynxBaseConfigurator+Internal.h"
 #import "LynxContext+Internal.h"
 #import "LynxEnv+Internal.h"
 #import "LynxEventHandler+Internal.h"
@@ -20,7 +21,6 @@
 #import "LynxUIContext+Internal.h"
 #import "LynxUIExposure+Internal.h"
 #import "LynxUIIntersectionObserver+Internal.h"
-#import "LynxViewBuilder+Internal.h"
 
 #include "core/renderer/ui_wrapper/painting/ios/ui_delegate_darwin.h"
 

@@ -6,7 +6,7 @@
 
 #import "LynxBackgroundRuntime+Internal.h"
 
-@interface LynxViewBuilder ()
+@interface LynxBaseConfigurator ()
 
 @property(nonatomic, nonnull) LynxBackgroundRuntimeOptions* lynxBackgroundRuntimeOptions;
 
