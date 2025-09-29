@@ -577,6 +577,17 @@ enableExposureWhenLayout:
   defaultValue: false
   valueType: bool
   author: 'ShouruiSong'
+enableExposureWhenReload:
+  description: Enable exposure event when LynxView is reload
+  defaultValue: false
+  valueType: bool
+  syncTo: platform
+  supportPlatform:
+    - Android
+    - iOS
+    - Harmony
+  since: 3.6
+  author: 'rAY-ooo'
 enableAirDetectRemovedKeysWhenUpdateData:
   description: enable Air Mode detect removed keys when updating data from native
   defaultValue: false

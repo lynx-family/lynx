@@ -235,6 +235,13 @@
   [[self intersectionManager] removeAttachedIntersectionObserver:ui];
 }
 
+- (void)stopExposure {
+  [_uiExposure stopExposure:nil];
+}
+- (void)resumeExposure {
+  [_uiExposure resumeExposure];
+}
+
 #pragma mark - Page configs
 
 - (void)setUIConfig:(id<LUIConfig>)config {
@@ -271,6 +278,7 @@
   [self setLogBoxImageSizeWarningThreshold:config.logBoxImageSizeWarningThreshold];
   [self setEnableTextLayoutCache:config.enableTextLayoutCache];
   [self setEnableTextGradientOpt:config.enableTextGradientOpt];
+  [self setEnableExposureWhenReload:config.enableExposureWhenReload];
 }
 
 - (void)setDefaultOverflowVisible:(BOOL)enable {
@@ -367,6 +375,10 @@
 
 - (void)setLogBoxImageSizeWarningThreshold:(NSInteger)threshold {
   _logBoxImageSizeWarningThreshold = threshold;
+}
+
+- (void)setEnableExposureWhenReload:(BOOL)enable {
+  _enableExposureWhenReload = enable;
 }
 
 - (int32_t)instanceId {

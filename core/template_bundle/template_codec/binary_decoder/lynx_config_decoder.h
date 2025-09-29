@@ -656,6 +656,12 @@ class LynxConfigDecoder final {
           doc[config::kEnableExposureWhenLayout].GetBool());
     }
 
+    if (doc.HasMember(config::kEnableExposureWhenReload) &&
+        doc[config::kEnableExposureWhenReload].IsBool()) {
+      page_config->SetEnableExposureWhenReload(
+          doc[config::kEnableExposureWhenReload].GetBool());
+    }
+
     if (doc.HasMember(config::kEnableAirDetectRemovedKeysWhenUpdateData) &&
         doc[config::kEnableAirDetectRemovedKeysWhenUpdateData].IsBool()) {
       page_config->SetEnableAirDetectRemovedKeysWhenUpdateData(
