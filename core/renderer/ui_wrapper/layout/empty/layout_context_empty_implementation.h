@@ -44,8 +44,6 @@ class PlatformImplEmptyImpl : public LayoutCtxPlatformImpl {
   virtual void UpdateLayoutNode(int sign, PropBundle* props) override {}
   virtual void InsertLayoutNode(int parent, int child, int index) override {}
   virtual void RemoveLayoutNode(int parent, int child, int index) override {}
-  virtual void MoveLayoutNode(int parent, int child, int from_index,
-                              int to_index) override {}
   virtual void DestroyLayoutNodes(const std::unordered_set<int>& ids) override {
   }
   virtual void ScheduleLayout(base::closure callback) override {}

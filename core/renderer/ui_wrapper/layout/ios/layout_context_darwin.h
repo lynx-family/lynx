@@ -27,8 +27,6 @@ class LayoutContextDarwin : public LayoutCtxPlatformImpl {
   void UpdateLayoutNode(int sign, PropBundle* props) override;
   void InsertLayoutNode(int parent, int child, int index) override;
   void RemoveLayoutNode(int parent, int child, int index) override;
-  void MoveLayoutNode(int parent, int child, int from_index,
-                      int to_index) override;
   void DestroyLayoutNodes(const std::unordered_set<int>& ids) override;
   void ScheduleLayout(base::closure) override;
   void OnLayoutBefore(int sign) override;

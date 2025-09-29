@@ -33,11 +33,6 @@ void LayoutContextHarmony::RemoveLayoutNode(int parent, int child, int index) {
   node_owner_->RemoveLayoutNode(parent, child, index);
 }
 
-void LayoutContextHarmony::MoveLayoutNode(int parent, int child, int from_index,
-                                          int to_index) {
-  node_owner_->MoveLayoutNode(parent, child, from_index, to_index);
-}
-
 void LayoutContextHarmony::UpdateLayoutNode(int id, PropBundle* painting_data) {
   node_owner_->UpdateLayoutNode(
       id, reinterpret_cast<PropBundleHarmony*>(painting_data));

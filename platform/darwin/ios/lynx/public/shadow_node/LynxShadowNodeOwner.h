@@ -51,11 +51,6 @@ typedef NS_ENUM(NSInteger, LynxShadowNodeType) {
 
 - (void)removeNode:(NSInteger)childSign fromParent:(NSInteger)parentSign atIndex:(NSInteger)index;
 
-- (void)moveNode:(NSInteger)childSign
-        inParent:(NSInteger)parentSign
-       fromIndex:(NSInteger)from
-         toIndex:(NSInteger)to;
-
 - (void)destroyNode:(NSInteger)sign;
 
 - (void)didLayoutStartOnNode:(NSInteger)sign;

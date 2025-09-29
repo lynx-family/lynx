@@ -200,8 +200,6 @@ class TasmMediator : public LynxEngine::Delegate {
   void SendAnimationEvent(const std::string& type, int tag,
                           const lepus::Value& dict) override;
   void RemoveLayoutNodeAtIndex(int32_t parent_id, int index) override;
-  void MoveLayoutNode(int32_t parent_id, int32_t child_id, int from_index,
-                      int to_index) override;
   void InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                               int32_t ref_id) override;
   void RemoveLayoutNode(int32_t parent_id, int32_t child_id) override;

@@ -114,17 +114,6 @@ void LayoutContextAndroid::RemoveLayoutNode(int parent, int child, int index) {
   Java_LayoutContext_removeNode(env, local_ref.Get(), parent, child, index);
 }
 
-void LayoutContextAndroid::MoveLayoutNode(int parent, int child, int from_index,
-                                          int to_index) {
-  JNIEnv* env = base::android::AttachCurrentThread();
-  base::android::ScopedLocalJavaRef<jobject> local_ref(impl_);
-  if (local_ref.IsNull()) {
-    return;
-  }
-  Java_LayoutContext_moveNode(env, local_ref.Get(), parent, child, from_index,
-                              to_index);
-}
-
 void LayoutContextAndroid::UpdateLayoutNode(int id, PropBundle* painting_data) {
   PropBundleAndroid* pda = static_cast<PropBundleAndroid*>(painting_data);
   JNIEnv* env = base::android::AttachCurrentThread();

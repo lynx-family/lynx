@@ -32,8 +32,6 @@ class LayoutContextHarmony final : public LayoutCtxPlatformImpl {
                        bool allow_inline) override;
   void InsertLayoutNode(int parent, int child, int index) override;
   void RemoveLayoutNode(int parent, int child, int index) override;
-  void MoveLayoutNode(int parent, int child, int from_index,
-                      int to_index) override;
   void UpdateLayoutNode(int id, PropBundle* painting_data) override;
   void OnLayoutBefore(int tag) override;
   void OnLayout(int tag, float left, float top, float width, float height,

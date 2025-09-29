@@ -49,10 +49,6 @@ void LayoutContextDarwin::RemoveLayoutNode(int parent, int child, int index) {
   [nodeOwner removeNode:child fromParent:parent atIndex:index];
 }
 
-void LayoutContextDarwin::MoveLayoutNode(int parent, int child, int from_index, int to_index) {
-  [nodeOwner moveNode:child inParent:parent fromIndex:from_index toIndex:to_index];
-}
-
 void LayoutContextDarwin::DestroyLayoutNodes(const std::unordered_set<int>& ids) {
   for (int sign : ids) {
     [nodeOwner destroyNode:sign];

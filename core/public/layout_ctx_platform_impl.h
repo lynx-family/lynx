@@ -40,8 +40,6 @@ class LayoutCtxPlatformImpl {
   virtual void UpdateLayoutNode(int id, PropBundle* props) = 0;
   virtual void InsertLayoutNode(int parent, int child, int index) = 0;
   virtual void RemoveLayoutNode(int parent, int child, int index) = 0;
-  virtual void MoveLayoutNode(int parent, int child, int from_index,
-                              int to_index) = 0;
   virtual void DestroyLayoutNodes(const std::unordered_set<int>& ids) = 0;
   virtual void ScheduleLayout(base::closure callback) = 0;
   virtual void OnLayoutBefore(int id) = 0;

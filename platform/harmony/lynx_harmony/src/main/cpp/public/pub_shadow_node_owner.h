@@ -31,8 +31,6 @@ class LYNX_EXPORT PubShadowNodeOwner {
                        bool allow_inline) const;
   void RemoveLayoutNode(int parent, int child, int index) const;
   void InsertLayoutNode(int parent, int child, int index) const;
-  void MoveLayoutNode(int parent, int child, int from_index,
-                      int to_index) const;
   void DestroyNode(int sign) const;
   void Destroy() const;
   void OnLayoutBefore(int id) const;

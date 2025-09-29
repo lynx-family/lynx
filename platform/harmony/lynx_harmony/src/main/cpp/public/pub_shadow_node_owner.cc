@@ -40,11 +40,6 @@ void PubShadowNodeOwner::InsertLayoutNode(int parent, int child,
   shadow_node_owner_->InsertLayoutNode(parent, child, index);
 }
 
-void PubShadowNodeOwner::MoveLayoutNode(int parent, int child, int from_index,
-                                        int to_index) const {
-  shadow_node_owner_->MoveLayoutNode(parent, child, from_index, to_index);
-}
-
 void PubShadowNodeOwner::DestroyNode(int sign) const {
   shadow_node_owner_->DestroyNode(sign);
 }

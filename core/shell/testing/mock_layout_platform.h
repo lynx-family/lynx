@@ -51,7 +51,6 @@ class MockPlatformImpl : public LayoutCtxPlatformImpl {
 
   void SetFontFaces(const CSSFontFaceRuleMap&) override {}
   MOCK_METHOD(void, UpdateLayoutNode, (int, PropBundle*), (override));
-  MOCK_METHOD(void, MoveLayoutNode, (int, int, int, int), (override));
 };
 }  // namespace test
 }  // namespace tasm

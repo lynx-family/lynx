@@ -3332,7 +3332,6 @@ public class LynxShadowNodeOwner : NSObject {
   public void LynxShadowNodeOwner::updateNodeWithSign:props:eventSet:lepusEventSet:(NSInteger sign,[props] nullable NSDictionary *props,[eventSet] nullable NSSet< NSString * > *eventSet,[lepusEventSet] nullable NSSet< NSString * > *lepusEventSet);
   public void LynxShadowNodeOwner::insertNode:toParent:atIndex:(NSInteger childSign,[toParent] NSInteger parentSign,[atIndex] NSInteger index);
   public void LynxShadowNodeOwner::removeNode:fromParent:atIndex:(NSInteger childSign,[fromParent] NSInteger parentSign,[atIndex] NSInteger index);
-  public void LynxShadowNodeOwner::moveNode:inParent:fromIndex:toIndex:(NSInteger childSign,[inParent] NSInteger parentSign,[fromIndex] NSInteger from,[toIndex] NSInteger to);
   public void LynxShadowNodeOwner::destroyNode:(NSInteger sign);
   public void LynxShadowNodeOwner::didLayoutStartOnNode:(NSInteger sign);
   public void LynxShadowNodeOwner::didUpdateLayoutLeft:top:width:height:onNode:(CGFloat left,[top] CGFloat top,[width] CGFloat width,[height] CGFloat height,[onNode] NSInteger sign);

@@ -119,14 +119,6 @@ public class ShadowNodeOwner extends LayoutContext {
   }
 
   @Override
-  public void moveNode(int parentSignature, int childSignature, int fromIndex, int toIndex) {
-    ShadowNode parentNode = mShadowNodeRegistry.getNode(parentSignature);
-    ShadowNode childNode = mShadowNodeRegistry.getNode(childSignature);
-    parentNode.removeChildAt(fromIndex);
-    parentNode.addChildAt(childNode, toIndex);
-  }
-
-  @Override
   public void destroyNodes(int[] signatures) {
     // Call child destroy as it will not be continue used
     for (int sign : signatures) {

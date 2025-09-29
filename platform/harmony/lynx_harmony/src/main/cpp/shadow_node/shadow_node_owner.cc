@@ -152,9 +152,6 @@ void ShadowNodeOwner::RemoveLayoutNode(int parent, int child, int index) {
   parent_it->second->RemoveChild(child_it->second.get());
 }
 
-void ShadowNodeOwner::MoveLayoutNode(int parent, int child, int from_index,
-                                     int to_index) {}
-
 void ShadowNodeOwner::UpdateLayoutNode(int id,
                                        PropBundleHarmony* painting_data) {
   auto it = node_holder_.find(id);

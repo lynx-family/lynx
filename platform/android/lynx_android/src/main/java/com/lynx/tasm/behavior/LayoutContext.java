@@ -28,10 +28,6 @@ public abstract class LayoutContext {
   @CalledByNative
   public abstract void insertNode(int parentSignature, int childSignature, int index);
 
-  @CalledByNative
-  public abstract void moveNode(
-      int parentSignature, int childSignature, int fromIndex, int toIndex);
-
   @CalledByNative public abstract void destroyNodes(int[] signatures);
 
   @CalledByNative public abstract void dispatchOnLayoutBefore(int rootSignature);

@@ -126,8 +126,6 @@ class LayoutContext : public std::enable_shared_from_this<LayoutContext>,
   void ResetLayoutNodeAttribute(int32_t id, starlight::LayoutAttribute key);
   void InsertLayoutNode(int32_t parent_id, int32_t child_id, int index);
   void RemoveLayoutNodeAtIndex(int32_t parent_id, int index);
-  void MoveLayoutNode(int32_t parent_id, int32_t child_id, int from_index,
-                      int to_index);
   void InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                               int32_t ref_id);
   void RemoveLayoutNode(int32_t parent_id, int32_t child_id);

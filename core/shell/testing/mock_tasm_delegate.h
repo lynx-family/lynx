@@ -164,11 +164,6 @@ class MockTasmDelegate : public TemplateAssembler::Delegate,
 
   MOCK_METHOD(void, DestroyLayoutNode, (int32_t id), (override));
 
-  MOCK_METHOD(void, MoveLayoutNode,
-              (int32_t parent_id, int32_t child_id, int from_index,
-               int to_index),
-              (override));
-
   MOCK_METHOD(void, UpdateLayoutNodeStyle,
               (int32_t id, tasm::CSSPropertyID css_id,
                const tasm::CSSValue& value),

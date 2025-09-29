@@ -3051,7 +3051,6 @@ public class abstract com::lynx::tasm::behavior::LayoutContext :  {
   public abstract int com.lynx.tasm.behavior.LayoutContext.createNode(int signature, String tagName, PropBundle bundle, ReadableMapBuffer initialStyles, boolean allowInline);
   public abstract void com.lynx.tasm.behavior.LayoutContext.removeNode(int parentSignature, int childSignature, int index);
   public abstract void com.lynx.tasm.behavior.LayoutContext.insertNode(int parentSignature, int childSignature, int index);
-  public abstract void com.lynx.tasm.behavior.LayoutContext.moveNode(int parentSignature, int childSignature, int fromIndex, int toIndex);
   public abstract void com.lynx.tasm.behavior.LayoutContext.destroyNodes(int[] signatures);
   public abstract void com.lynx.tasm.behavior.LayoutContext.dispatchOnLayoutBefore(int rootSignature);
   public abstract void com.lynx.tasm.behavior.LayoutContext.dispatchOnLayout(int sign, int left, int top, int width, int height);
@@ -8773,7 +8772,6 @@ public class com::lynx::tasm::behavior::ShadowNodeOwner : com.lynx.tasm.behavior
   public int com.lynx.tasm.behavior.ShadowNodeOwner.createNode(int signature, String tagName, ReadableMap props, ReadableMapBuffer styles, ReadableArray eventListener, boolean allowInline);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.removeNode(int parentSignature, int childSignature, int index);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.insertNode(int parentSignature, int childSignature, int index);
-  public void com.lynx.tasm.behavior.ShadowNodeOwner.moveNode(int parentSignature, int childSignature, int fromIndex, int toIndex);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.destroyNodes(int[] signatures);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.dispatchOnLayoutBefore(int signature);
   public void com.lynx.tasm.behavior.ShadowNodeOwner.dispatchOnLayout(int sign, int left, int top, int width, int height);

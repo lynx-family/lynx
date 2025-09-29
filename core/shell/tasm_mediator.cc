@@ -604,14 +604,6 @@ void TasmMediator::RemoveLayoutNodeAtIndex(int32_t parent_id, int index) {
   });
 }
 
-void TasmMediator::MoveLayoutNode(int32_t parent_id, int32_t child_id,
-                                  int from_index, int to_index) {
-  layout_actor_->ActLite(
-      [parent_id, child_id, from_index, to_index](auto& layout) {
-        layout->MoveLayoutNode(parent_id, child_id, from_index, to_index);
-      });
-}
-
 void TasmMediator::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                           int32_t ref_id) {
   layout_actor_->ActLite([parent_id, child_id, ref_id](auto& layout) {

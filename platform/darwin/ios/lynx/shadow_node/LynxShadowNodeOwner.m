@@ -153,18 +153,6 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)init)
   [parentNode removeChild:childNode atIndex:index];
 }
 
-- (void)moveNode:(NSInteger)childSign
-        inParent:(NSInteger)parentSign
-       fromIndex:(NSInteger)from
-         toIndex:(NSInteger)to {
-  LynxShadowNode* childNode = _nodeHolder[[NSNumber numberWithInteger:childSign]];
-  LynxShadowNode* parentNode = _nodeHolder[[NSNumber numberWithInteger:parentSign]];
-  NSAssert(childNode, @"Can not find child shadow node for sign:%ld", (long)childSign);
-  NSAssert(parentNode, @"Can not find parent shadow node for sign:%ld", (long)parentSign);
-  [parentNode removeChild:childNode atIndex:from];
-  [parentNode insertChild:childNode atIndex:to];
-}
-
 - (void)destroyNode:(NSInteger)sign {
   LynxShadowNode* node = _nodeHolder[[NSNumber numberWithInteger:sign]];
   if (!node) {

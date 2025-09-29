@@ -493,17 +493,6 @@ void LayoutContext::RemoveLayoutNodeAtIndex(int32_t parent_id, int index) {
   }
 }
 
-void LayoutContext::MoveLayoutNode(int32_t parent_id, int32_t child_id,
-                                   int from_index, int to_index) {
-  auto parent = FindNodeById(parent_id);
-  auto child = FindNodeById(child_id);
-  parent->MoveNode(child, from_index, to_index);
-  if (!parent->is_common()) {
-    platform_impl_->MoveLayoutNode(parent->id(), child->id(), from_index,
-                                   to_index);
-  }
-}
-
 void LayoutContext::InsertLayoutNodeBefore(int32_t parent_id, int32_t child_id,
                                            int32_t ref_id) {
   auto parent = FindNodeById(parent_id);

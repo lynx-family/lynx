@@ -196,8 +196,6 @@ class ElementManager : public ElementContextDelegate {
     virtual void SendAnimationEvent(const std::string &type, int tag,
                                     const lepus::Value &dict) = 0;
     virtual void RemoveLayoutNodeAtIndex(int32_t parent_id, int index) = 0;
-    virtual void MoveLayoutNode(int32_t parent_id, int32_t child_id,
-                                int from_index, int to_index) = 0;
     virtual void SendNativeCustomEvent(const std::string &name, int tag,
                                        const lepus::Value &param_value,
                                        const std::string &param_name) = 0;
@@ -327,8 +325,6 @@ class ElementManager : public ElementContextDelegate {
   void DestroyLayoutNode(int32_t id);
   void SendAnimationEvent(const std::string &type, int tag,
                           const lepus::Value &dict);
-  void MoveLayoutNode(int32_t parent_id, int32_t child_id, int from_index,
-                      int to_index);
   void UpdateLayoutNodeStyle(int32_t id, tasm::CSSPropertyID css_id,
                              const tasm::CSSValue &value);
   void SendNativeCustomEvent(const std::string &name, int tag,

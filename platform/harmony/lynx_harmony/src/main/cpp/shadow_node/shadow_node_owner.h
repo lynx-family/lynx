@@ -57,7 +57,6 @@ class ShadowNodeOwner : public std::enable_shared_from_this<ShadowNodeOwner> {
 
   void InsertLayoutNode(int parent, int child, int index);
   void RemoveLayoutNode(int parent, int child, int index);
-  void MoveLayoutNode(int parent, int child, int from_index, int to_index);
   void UpdateLayoutNode(int id, PropBundleHarmony* painting_data);
   void OnLayoutBefore(int id);
   LayoutResult MeasureNode(int id, float width, int32_t width_mode,
