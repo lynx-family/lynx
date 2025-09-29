@@ -365,7 +365,7 @@
     return;
   }
   id<LynxBaseInspectorOwner> inspectorOwner =
-      ((LynxView*)_eventHandler.rootView).baseInspectorOwner;
+      ((LynxView*)((LynxUI*)_eventHandler.uiOwner.rootUI).view).baseInspectorOwner;
   if (!inspectorOwner) {
     return;
   }
@@ -1144,6 +1144,7 @@
                                          [_eventHandler.rootView hash], 3]
                      withLevel:DevToolLogLevelInfo];
     }
+    _LogI(@"Lynxview LynxTouchHandler touchesCancelled %p: ", _eventHandler.rootView);
     if (!_enableMultiTouch) {
       CGPoint windowLocation = [otherGestureRecognizer locationInView:otherGestureRecognizer.view];
       CGPoint clientPoint = [otherGestureRecognizer.view convertPoint:windowLocation

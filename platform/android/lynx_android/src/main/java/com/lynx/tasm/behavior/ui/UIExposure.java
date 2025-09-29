@@ -8,9 +8,12 @@ import android.graphics.RectF;
 import android.util.DisplayMetrics;
 import android.view.Choreographer;
 import androidx.annotation.Nullable;
+import com.lynx.devtoolwrapper.LogBoxLogLevel;
+import com.lynx.devtoolwrapper.LynxBaseInspectorOwner;
 import com.lynx.react.bridge.JavaOnlyArray;
 import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.react.bridge.ReadableMap;
+import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.LynxView;
 import com.lynx.tasm.base.LLog;
 import com.lynx.tasm.behavior.LynxContext;
@@ -462,6 +465,9 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void stopExposure(HashMap<String, Object> options) {
+    if (LynxEnv.inst().isHighlightTouchEnabled()) {
+      showMessageOnConsole(TAG + ": stopExposure", LogBoxLogLevel.Info.ordinal());
+    }
     LLog.i(TAG, "stopExposure");
     mIsStopExposure = true;
     destroy();
@@ -473,6 +479,9 @@ public class UIExposure extends LynxObserverManager {
   }
 
   public void resumeExposure() {
+    if (LynxEnv.inst().isHighlightTouchEnabled()) {
+      showMessageOnConsole(TAG + ": resumeExposure", LogBoxLogLevel.Info.ordinal());
+    }
     LLog.i(TAG, "resumeExposure");
     mIsStopExposure = false;
     addToObserverTree();
@@ -490,6 +499,15 @@ public class UIExposure extends LynxObserverManager {
             new HashMap<>();
 
         for (UIExposureDetail detail : uiList) {
+          if (LynxEnv.inst().isHighlightTouchEnabled()) {
+            showMessageOnConsole(TAG + ": sendEvent "
+                    + "[" + eventName + "] "
+                    + "[" + detail.mExposureScene + "] "
+                    + "[" + detail.mExposureID + "] "
+                    + "[" + detail.mUniqueID + "] "
+                    + "[" + detail.mSign + "]",
+                LogBoxLogLevel.Info.ordinal());
+          }
           if (detail.mUseOptions != null && detail.mUseOptions.containsKey("sendCustom")
               && detail.mUseOptions.getBoolean("sendCustom")) {
             if (detail.mUseOptions.containsKey("specifyTarget")
@@ -682,5 +700,24 @@ public class UIExposure extends LynxObserverManager {
         mUiInWindowBefore.clear();
       }
     });
+  }
+
+  /**
+   * Used to output logs to the console of DevTool. This function is effective only when DevTool is
+   * connected.
+   * @param msg Information related to event processing.
+   * @param level The log level.
+   */
+  // TODO(hexionghui): Postpone string concatenation and encapsulate the method in LynxDevtool.
+  private void showMessageOnConsole(String msg, int level) {
+    LynxView view = (LynxView) getRootView();
+    if (view == null) {
+      return;
+    }
+    LynxBaseInspectorOwner inspectorOwner = view.getBaseInspectorOwner();
+    if (inspectorOwner == null) {
+      return;
+    }
+    inspectorOwner.showMessageOnConsole(msg, level);
   }
 }

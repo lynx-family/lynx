@@ -2,6 +2,8 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
+#import <Lynx/DevToolLogLevel.h>
+#import <Lynx/LynxBaseInspectorOwner.h>
 #import <Lynx/LynxEnv.h>
 #import <Lynx/LynxLog.h>
 #import <Lynx/LynxTraceEvent.h>
@@ -460,6 +462,10 @@
 }
 
 - (void)stopExposure:(NSDictionary *)options {
+  if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
+    [self showMessageOnConsole:[NSString stringWithFormat:@"LynxUIExposure: stopExposure"]
+                     withLevel:DevToolLogLevelInfo];
+  }
   LLogInfo(@"LynxUIExposure stopExposure");
   _isStopExposure = YES;
   [self removeFromRunLoop];
@@ -471,6 +477,10 @@
 }
 
 - (void)resumeExposure {
+  if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
+    [self showMessageOnConsole:[NSString stringWithFormat:@"LynxUIExposure: resumeExposure"]
+                     withLevel:DevToolLogLevelInfo];
+  }
   LLogInfo(@"LynxUIExposure resumeExposure");
   _isStopExposure = NO;
   if ([_exposedLynxUIMap count] != 0) {
@@ -489,6 +499,14 @@
                                     [_rootUI.lynxView.templateRender enableAirStrictMode];
     if (enableGlobalEventSending) {
       for (LynxUIExposureDetail *detail in uiSet) {
+        if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
+          [self
+              showMessageOnConsole:
+                  [NSString stringWithFormat:@"LynxUIExposure: sendEvent [%@] [%@] [%@] [%@] [%ld]",
+                                             eventName, detail.exposureScene, detail.exposureID,
+                                             detail.uniqueID ?: @"undefined", detail.sign]
+                         withLevel:DevToolLogLevelInfo];
+        }
         if (detail.internalSignature && [detail.ui respondsToSelector:@selector(targetOffScreen)]) {
           [detail.ui targetOffScreen];
         }
@@ -716,10 +734,25 @@
 }
 
 - (void)removeFromRunLoop {
+  LLogInfo(@"LynxUIExposure removeFromRunLoop");
   if (_displayLink) {
     [_displayLink invalidate];
     _displayLink = nil;
   }
+}
+
+/**
+ * Used to output logs to the console of DevTool. This function is effective only when DevTool is
+ * connected.
+ * @param msg Information related to event processing.
+ * @param level The log level.
+ */
+- (void)showMessageOnConsole:(NSString *)msg withLevel:(int32_t)level {
+  id<LynxBaseInspectorOwner> inspectorOwner = ((LynxView *)_rootUI.view).baseInspectorOwner;
+  if (!inspectorOwner) {
+    return;
+  }
+  [inspectorOwner showMessageOnConsole:msg withLevel:level];
 }
 
 @end

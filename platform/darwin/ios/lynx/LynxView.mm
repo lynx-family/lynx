@@ -343,8 +343,10 @@
 
 - (UIView*)hitTest:(CGPoint)point withEvent:(UIEvent*)event {
   if ([LynxEnv.sharedInstance highlightTouchEnabled]) {
-    [self showMessageOnConsole:[NSString
-                                   stringWithFormat:@"LynxView: hit test for lynx %ld", [self hash]]
+    [self showMessageOnConsole:
+              [NSString
+                  stringWithFormat:@"LynxView: hit test for lynx %ld with point.x: %f, point.y: %f",
+                                   [self hash], point.x, point.y]
                      withLevel:DevToolLogLevelInfo];
   }
   _LogI(@"LynxView %p: hitTest with point.x: %f, point.y: %f", self, point.x, point.y);
