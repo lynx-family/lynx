@@ -27,6 +27,7 @@
 #import <Lynx/LynxView.h>
 #import "LynxAccessibilityModule.h"
 #import "LynxBackgroundRuntime+Internal.h"
+#import "LynxBaseConfigurator+Internal.h"
 #import "LynxCallStackUtil.h"
 #import "LynxConfig+Internal.h"
 #import "LynxContext+Internal.h"
@@ -51,7 +52,6 @@
 #import "LynxUIMethodModule.h"
 #import "LynxUIRenderer.h"
 #import "LynxUIRendererProtocol.h"
-#import "LynxViewBuilder+Internal.h"
 #import "PaintingContextProxy.h"
 
 #include <functional>
@@ -220,7 +220,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
   _enableTextNonContiguousLayout = [builder enableTextNonContiguousLayout];
   _enableLayoutOnly = [LynxEnv.sharedInstance getEnableLayoutOnly];
   _embeddedMode = [builder getEmbeddedMode];
-  _templateBundle = [builder lynxTemplateBundleForEngineReused];
+  _templateBundle = builder.lynxViewGroup.templateBundle;
   builder.config = builder.config ?: [LynxEnv sharedInstance].config;
   builder.config = builder.config ?: [[LynxConfig alloc] initWithProvider:nil];
   _config = builder.config;
@@ -237,8 +237,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 
   [self setUpContainerView:containerView builder:builder];
 
-  _enableReuseEngine = ((_embeddedMode & LynxEmbeddedModeEnginePool) != 0 &&
-                        builder.lynxTemplateBundleForEngineReused != nil);
+  _enableReuseEngine = ((_embeddedMode & LynxEmbeddedModeEnginePool) != 0 && _templateBundle);
   if (_enableReuseEngine) {
     [self reuseLynxEngine];
   }
