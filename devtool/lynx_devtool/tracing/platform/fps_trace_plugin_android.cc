@@ -10,11 +10,13 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/FPSTrace_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForFPSTrace(JNIEnv* env) { return RegisterNativesImpl(env); }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 static jlong CreateFPSTrace(JNIEnv* env, jobject jcaller) {

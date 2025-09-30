@@ -151,6 +151,7 @@ void UpdateDevice(JNIEnv* env, jobject jcaller, jint width, jint height,
 }
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForLynxDevToolNGDelegate(JNIEnv* env) {
@@ -158,4 +159,5 @@ bool RegisterJNIForLynxDevToolNGDelegate(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx

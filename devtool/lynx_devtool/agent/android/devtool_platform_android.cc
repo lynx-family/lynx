@@ -17,6 +17,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/DevToolPlatformAndroidDelegate_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForDevToolPlatformAndroidDelegate(JNIEnv* env) {
@@ -24,6 +25,7 @@ bool RegisterJNIForDevToolPlatformAndroidDelegate(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 jlong CreateDevToolPlatformFacade(JNIEnv* env, jobject jcaller) {

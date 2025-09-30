@@ -9,6 +9,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/CDPResultCallbackWrapper_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForCDPResultCallbackWrapper(JNIEnv* env) {
@@ -16,6 +17,7 @@ bool RegisterJNIForCDPResultCallbackWrapper(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 namespace lynx {

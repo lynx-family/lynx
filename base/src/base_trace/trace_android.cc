@@ -9,13 +9,13 @@
 #include "base/platform/android/src/main/jni/gen/LynxBaseTrace_jni.h"
 #include "base/platform/android/src/main/jni/gen/LynxBaseTrace_register_jni.h"
 
-namespace lynx {
+namespace lynxbase {
 namespace jni {
 bool RegisterJNIForLynxBaseTrace(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynxbase
 
 namespace lynx {
 namespace base {

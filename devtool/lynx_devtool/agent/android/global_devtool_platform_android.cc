@@ -12,6 +12,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/GlobalDevToolPlatformAndroidDelegate_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForGlobalDevToolPlatformAndroidDelegate(JNIEnv* env) {
@@ -19,6 +20,7 @@ bool RegisterJNIForGlobalDevToolPlatformAndroidDelegate(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 namespace lynx {

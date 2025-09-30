@@ -4,7 +4,8 @@ jni_register_configs:
   custom_headers:
     - core/base/android/android_jni.h
   namespaces:
-    - lynx_devtool
+    - lynx
+    - devtool
 # gn file configs.
 gn_configs:
   output_path: platform/android/lynx_devtool/src/main/jni/BUILD.gn

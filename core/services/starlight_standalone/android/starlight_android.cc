@@ -25,7 +25,7 @@ static jclass g_starlightNodeClass = nullptr;
 static jmethodID g_measureMethod = nullptr;
 static jmethodID g_baselineMethod = nullptr;
 
-namespace lynx {
+namespace lynx_starlight {
 namespace jni {
 bool RegisterJNIForStarlightNode(JNIEnv* env) {
   g_starlightNodeClass =
@@ -56,7 +56,7 @@ bool RegisterJNIForStarlightNode(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynx_starlight
 
 namespace starlight {
 SLMeasureDelegateAndroid::SLMeasureDelegateAndroid(JNIEnv* env, jobject obj)

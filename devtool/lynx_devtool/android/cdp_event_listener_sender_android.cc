@@ -9,6 +9,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/CDPEventListenerWrapper_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForCDPEventListenerWrapper(JNIEnv* env) {
@@ -16,6 +17,7 @@ bool RegisterJNIForCDPEventListenerWrapper(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 namespace lynx {

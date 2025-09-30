@@ -15,11 +15,11 @@
 #include "base/platform/android/src/main/jni/gen/LynxLog_jni.h"
 #include "base/platform/android/src/main/jni/gen/LynxLog_register_jni.h"
 
-namespace lynx {
+namespace lynxbase {
 namespace jni {
 bool RegisterJNIForLynxLog(JNIEnv* env) { return RegisterNativesImpl(env); }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynxbase
 
 static lynx::base::alog_write_func_ptr s_alog_write = nullptr;
 

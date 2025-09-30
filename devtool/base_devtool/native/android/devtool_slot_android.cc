@@ -10,9 +10,11 @@
 #include "devtool/base_devtool/android/base_devtool/src/main/jni/gen/DevToolSlot_register_jni.h"
 
 namespace lynx {
+namespace base_devtool {
 namespace jni {
 bool RegisterJNIForDevToolSlot(JNIEnv* env) { return RegisterNativesImpl(env); }
 }  // namespace jni
+}  // namespace base_devtool
 }  // namespace lynx
 
 static void OnSlotMessage(JNIEnv* env, jobject jcaller, jlong nativeHandler,

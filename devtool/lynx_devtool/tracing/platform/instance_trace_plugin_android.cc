@@ -10,6 +10,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/InstanceTrace_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForInstanceTrace(JNIEnv* env) {
@@ -17,6 +18,7 @@ bool RegisterJNIForInstanceTrace(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 static jlong CreateInstanceTrace(JNIEnv* env, jobject jcaller) {

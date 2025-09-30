@@ -14,6 +14,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/LynxInspectorOwner_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForLynxInspectorOwner(JNIEnv* env) {
@@ -21,6 +22,7 @@ bool RegisterJNIForLynxInspectorOwner(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 void InitRecorderConfig(JNIEnv* env, jobject jcaller, jstring filePath,

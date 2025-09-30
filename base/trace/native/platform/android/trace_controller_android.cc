@@ -17,13 +17,13 @@
 #include "base/trace/native/trace_event.h"
 #include "core/base/android/jni_helper.h"
 
-namespace lynx {
+namespace lynxtrace {
 namespace jni {
 bool RegisterJNIForTraceController(JNIEnv* env) {
   return RegisterNativesImpl(env);
 }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynxtrace
 
 static constexpr int kInvalidTraceSessionId = -1;
 

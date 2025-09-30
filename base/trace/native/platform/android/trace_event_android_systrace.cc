@@ -101,11 +101,11 @@ static void RuntimeLoadAtrace() {
 }  // namespace trace
 }  // namespace lynx
 
-namespace lynx {
+namespace lynxtrace {
 namespace jni {
 bool RegisterJNIForTraceEvent(JNIEnv* env) {
   lynx::trace::RuntimeLoadAtrace();
   return RegisterNativesImpl(env);
 }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynxtrace

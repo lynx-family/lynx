@@ -88,13 +88,11 @@ register_header_template = """
 
 #include <jni.h>
 
-namespace lynx {
-namespace jni {
+NAMESPACE_START
 
 bool FUNCTION_NAME(JNIEnv* env);
 
-}  // namespace jni
-}  // namespace lynx
+NAMESPACE_END
 
 #endif  // HEADER_GUARD
 
@@ -104,6 +102,19 @@ def get_relative_path(path1, path2):
 
 def convert_to_relative_path(root_path, src_path, des_path):
     return get_relative_path(os.path.join(root_path, src_path), os.path.join(root_path, des_path))
+
+def get_namespace(configs):
+  jni_namespaces = configs.get('namespaces', ['lynx'])  + ['jni']
+  return jni_namespaces
+
+def get_namespace_guard(configs):
+  namespaces = get_namespace(configs)
+  namespace_start_str = ''
+  namespace_end_str = ''
+  for namespace in namespaces:
+    namespace_start_str =  namespace_start_str + 'namespace {} '.format(namespace) + '{'
+    namespace_end_str = '}' + '  // namespace {}\n'.format(namespace) + namespace_end_str
+  return namespace_start_str, namespace_end_str
 
 def format_file(file_path):
   format_cmd = 'clang-format -i {}'.format(file_path)
@@ -121,7 +132,7 @@ def write_content_to_file(file_path, content):
     file.write(content)
   format_file(file_path)
 
-def generate_register_header(java_file, function_name, register_header_path):
+def generate_register_header(java_file, function_name, register_header_path, namespace_start_str, namespace_end_str):
   # generate XXX_register_jni.h which contains RegisterJNIForXXX method.
   guard_string = java_file.replace('/', '_')
   guard_string = guard_string.split('.')[0].upper()
@@ -129,6 +140,8 @@ def generate_register_header(java_file, function_name, register_header_path):
   header_filled_template = register_header_template.replace('HEADER_GUARD', guard_string)
   header_filled_template = header_filled_template.replace('JAVA_FILE_PATH', java_file)
   header_filled_template = header_filled_template.replace('FUNCTION_NAME', function_name)
+  header_filled_template = header_filled_template.replace('NAMESPACE_START', namespace_start_str)
+  header_filled_template = header_filled_template.replace('NAMESPACE_END', namespace_end_str)
   write_content_to_file(register_header_path, header_filled_template)
 
 def append_content_if_changed(file_path, start_flag, end_flag, new_content_list):
@@ -206,7 +219,7 @@ def append_content_if_changed(file_path, start_flag, end_flag, new_content_list)
 def append_content_to_so_registry(so_configs, include_headers, register_methods):
   cpp_output_path = so_configs.get('output_path', '')
   custom_headers = so_configs.get('custom_headers', [])
-  namespaces = so_configs.get('namespaces', ['lynx'])
+  
   so_file_str = so_load_file_template
 
   # custom headers
@@ -216,11 +229,7 @@ def append_content_to_so_registry(so_configs, include_headers, register_methods)
   so_file_str = so_file_str.replace('CUSTOM_HEADERS', header_str)
   
   # namespaces
-  namespace_start_str = ''
-  namespace_end_str = ''
-  for namespace in namespaces:
-    namespace_start_str =  namespace_start_str + 'namespace {} '.format(namespace) + '{\n'
-    namespace_end_str = '}' + '  // namespace {}'.format(namespace) + namespace_end_str
+  namespace_start_str, namespace_end_str = get_namespace_guard(so_configs)
   so_file_str = so_file_str.replace('NAMESPACE_START', namespace_start_str)
   so_file_str = so_file_str.replace('NAMESPACE_END', namespace_end_str)
 
@@ -440,7 +449,7 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
 
     include_header = f'#include "{jni_register_header_rel_path}"'
     include_headers.append([include_header, macro])
-    register_method = f'lynx::jni::{register_method_name}(env);'
+    register_method = '::'.join(get_namespace(jni_register_configs)) + f'::{register_method_name}(env);'
     register_methods.append([register_method, macro])
 
     gn_files.append(convert_to_relative_path(root_path, gn_file_path, jni_file_rel_path))
@@ -451,9 +460,12 @@ def generate_files(root_path, jni_configs_file, use_base_jni_utils_header):
     print(jni_file_path)
     GenerateJNIHeader(java_file_full_path, jni_file_path, options)
     # generate register method header file
+    namespace_start_str, namespace_end_str = get_namespace_guard(jni_register_configs)
     generate_register_header(java_path, 
                              register_method_name, 
-                             jni_register_header_abs_path)
+                             jni_register_header_abs_path,
+                             namespace_start_str,
+                             namespace_end_str)
 
   # generate SoLoad.cc
   if not so_load_file_path:

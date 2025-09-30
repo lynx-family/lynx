@@ -10,6 +10,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/FrameViewTrace_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForFrameViewTrace(JNIEnv* env) {
@@ -17,6 +18,7 @@ bool RegisterJNIForFrameViewTrace(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 static jlong CreateFrameViewTrace(JNIEnv* env, jobject jcaller) {

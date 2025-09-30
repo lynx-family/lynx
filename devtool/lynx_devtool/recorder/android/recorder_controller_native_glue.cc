@@ -13,6 +13,7 @@ void StartRecord(JNIEnv* env, jclass jcaller) {
 }
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForRecorderController(JNIEnv* env) {
@@ -20,4 +21,5 @@ bool RegisterJNIForRecorderController(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx

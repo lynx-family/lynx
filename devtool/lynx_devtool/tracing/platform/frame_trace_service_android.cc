@@ -11,6 +11,7 @@
 #include "platform/android/lynx_devtool/src/main/jni/gen/FrameTraceService_register_jni.h"
 
 namespace lynx {
+namespace devtool {
 namespace jni {
 
 bool RegisterJNIForFrameTraceService(JNIEnv* env) {
@@ -18,6 +19,7 @@ bool RegisterJNIForFrameTraceService(JNIEnv* env) {
 }
 
 }  // namespace jni
+}  // namespace devtool
 }  // namespace lynx
 
 static void Initialize(JNIEnv* env, jobject jcaller, jlong nativePtr) {

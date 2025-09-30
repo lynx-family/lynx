@@ -40,8 +40,8 @@ jboolean SystemTraceEnabled(JNIEnv* env, jclass jcaller) { return false; }
 // static
 jboolean PerfettoTraceEnabled(JNIEnv* env, jclass jcaller) { return false; }
 
-namespace lynx {
+namespace lynxtrace {
 namespace jni {
 bool RegisterJNIForTraceEvent(JNIEnv* env) { return RegisterNativesImpl(env); }
 }  // namespace jni
-}  // namespace lynx
+}  // namespace lynxtrace
