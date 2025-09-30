@@ -33,6 +33,7 @@
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/ui_root.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_ui_helper.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/lynx_unit_utils.h"
+#include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/svg_path_utils.h"
 #include "platform/harmony/lynx_harmony/src/main/cpp/ui/utils/transform.h"
 #include "third_party/modp_b64/modp_b64.h"
 
@@ -703,72 +704,73 @@ void UIBase::SetOverflowY(const lepus::Value& value) {
   dirty_flags_ |= kFlagOverflowChanged;
 }
 
-void UIBase::ApplyOverflowClipPath(float clip_width, float clip_height) {
-  if (background_drawable_ && !background_drawable_->GetClipPath().empty()) {
-    ArkUI_NumberValue value[] = {
-        {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
-        {.f32 = clip_width},
-        {.f32 = clip_height}};
-    ArkUI_AttributeItem item = {
-        .value = value,
-        .size = sizeof(value) / sizeof(ArkUI_NumberValue),
-        .string = background_drawable_->GetClipPath().c_str(),
-    };
-    NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+void UIBase::ApplyOverflowClipPath(float width, float height,
+                                   const std::string& path) {
+  if (path.empty()) {
+    return;
   }
-}
-
-void UIBase::ApplyOverflowClipRectangle(float clip_width, float clip_height) {
   ArkUI_NumberValue value[] = {
-      {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_RECTANGLE)},
-      {.f32 = clip_width},
-      {.f32 = clip_height},
-      {.f32 = 0},
-      {.f32 = 0}};
+      {.i32 = static_cast<int32_t>(ARKUI_CLIP_TYPE_PATH)},
+      {.f32 = width},
+      {.f32 = height},
+  };
   ArkUI_AttributeItem item = {
       .value = value,
       .size = sizeof(value) / sizeof(ArkUI_NumberValue),
+      .string = path.c_str(),
   };
   NodeManager::Instance().SetAttribute(Node(), NODE_CLIP_SHAPE, &item);
+}
+
+void UIBase::ApplyOverflowClipRectangle(float left, float top, float width,
+                                        float height) {
+  std::ostringstream oss;
+  SvgPathUtils::MoveTo(oss, left, top);
+  SvgPathUtils::LineTo(oss, left + width, top);
+  SvgPathUtils::LineTo(oss, left + width, top + height);
+  SvgPathUtils::LineTo(oss, left, top + height);
+  SvgPathUtils::LineTo(oss, left, top);
+  SvgPathUtils::Close(oss);
+  ApplyOverflowClipPath(width, height, oss.str());
 }
 
 // hidden is false and visible is true
 void UIBase::ApplyOverflowClip() {
   if (!overflow_.overflow_x && !overflow_.overflow_y) {
+    // overflow: hidden
     need_clip_ = true;
     if (background_drawable_ && background_drawable_->GetBorderRadius() &&
         !background_drawable_->GetBorderRadius()->IsZero()) {
-      ApplyOverflowClipPath(width_, height_);
+      ApplyOverflowClipPath(width_, height_,
+                            background_drawable_->GetClipPath());
     } else {
       NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 1);
     }
   } else if (overflow_.overflow_x && overflow_.overflow_y) {
-    if ((dirty_flags_ & kFlagOverflowChanged) != 0) {
-      if (background_drawable_ && background_drawable_->GetBorderRadius() &&
-          !background_drawable_->GetBorderRadius()->IsZero()) {
-        need_clip_ = true;
-        ApplyOverflowClipPath(width_, height_);
-      } else {
-        need_clip_ = false;
-        // overflow changed to visible.
-        NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP,
-                                                            0);
-      }
-    }
+    // overflow: visible
+    need_clip_ = false;
+    // overflow changed to visible.
+    NodeManager::Instance().SetAttributeWithNumberValue(Node(), NODE_CLIP, 0);
   } else {
-    if ((dirty_flags_ & (kFlagOverflowChanged | kFlagFrameSizeChanged)) != 0) {
-      need_clip_ = true;
-      float screen_size[2] = {0};
-      context_->ScreenSize(screen_size);
-      float clip_width = overflow_.overflow_x ? screen_size[0] : width_;
-      float clip_height = overflow_.overflow_y ? screen_size[1] : height_;
-      if (background_drawable_ && background_drawable_->GetBorderRadius() &&
-          !background_drawable_->GetBorderRadius()->IsZero()) {
-        ApplyOverflowClipPath(clip_width, clip_height);
-      } else {
-        ApplyOverflowClipRectangle(clip_width, clip_height);
-      }
+    // overflow-x or overflow-y
+    need_clip_ = true;
+    float screen_size[2] = {};
+    context_->ScreenSize(screen_size);
+    int w = width_;
+    int h = height_;
+    int x = 0;
+    int y = 0;
+    if (overflow_.overflow_x) {
+      x -= screen_size[0];
+      w += 2 * screen_size[0];
     }
+    if (overflow_.overflow_y) {
+      y -= screen_size[1];
+      h += 2 * screen_size[1];
+    }
+    float density = context_->ScaledDensity();
+    ApplyOverflowClipRectangle(x * density, y * density, w * density,
+                               h * density);
   }
 }
 
