@@ -980,6 +980,17 @@ public class LynxTemplateRender
     }
   }
 
+  private void notifyExtensionModulesTemplateLoad(String url) {
+    if (mBodyView == null || !mLynxViewBuilder.isEnableJSRuntime()) {
+      return;
+    }
+    Map<String, LynxExtensionModule> modules = mLynxContext.getExtensionModules();
+    for (String key : modules.keySet()) {
+      LynxExtensionModule module = modules.get(key);
+      module.onTemplateLoad(url);
+    }
+  }
+
   private void init(Context context) {
     TraceEvent.beginSection(TraceEventDef.TEMPLATE_RENDER_INIT_WITH_CONTEXT);
     reload = false;
@@ -1307,6 +1318,7 @@ public class LynxTemplateRender
     if (mLynxContext != null) {
       mLynxContext.setTemplateUrl(mUrl);
     }
+    notifyExtensionModulesTemplateLoad(url);
   }
 
   private void prepareLynxEngineIfNeeded() {

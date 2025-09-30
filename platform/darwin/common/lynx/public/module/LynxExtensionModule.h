@@ -16,6 +16,7 @@
 - (instancetype)initWithLynxContext:(LynxContext *)context group:(LynxGroup *)group;
 
 - (void *)getExtensionDelegate;
+- (void *)onTemplateLoad:(NSString *)url;
 // TODO(chenyouhui): Remove this function later.
 - (void)setUp;
 

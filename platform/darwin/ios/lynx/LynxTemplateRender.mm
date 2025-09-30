@@ -753,6 +753,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
 - (void)updateUrl:(NSString*)url {
   _url = url;
   [self updateGenericInfoURL:url];
+  [self notifyExtensionModulesTemplateLoad:url];
 }
 
 - (void)updateGenericInfoURL:(NSString*)url {
@@ -766,6 +767,14 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [LynxEventReporter updateGenericInfo:relativePath
                                      key:kPropRelativePath
                               instanceId:_context.instanceId];
+  }
+}
+
+- (void)notifyExtensionModulesTemplateLoad:(NSString*)url {
+  NSDictionary* modules = _context.extentionModules;
+  for (NSString* key in modules) {
+    id<LynxExtensionModule> instance = modules[key];
+    [instance onTemplateLoad:url];
   }
 }
 
