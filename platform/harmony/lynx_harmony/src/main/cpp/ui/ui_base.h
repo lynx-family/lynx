@@ -48,12 +48,10 @@ struct OverflowValue {
   bool overflow_y;
 };
 
-class LYNX_EXPORT
-
-    UIBase : public std::enable_shared_from_this<UIBase>,
-             public EventTarget,
-             public GestureArenaMember,
-             public GestureHandlerDelegate {
+class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
+                           public EventTarget,
+                           public GestureArenaMember,
+                           public GestureHandlerDelegate {
  public:
   UIBase(LynxContext* context, ArkUI_NodeType type, int sign,
          const std::string& tag, bool has_customized_layout = false);
@@ -77,18 +75,18 @@ class LYNX_EXPORT
   virtual void RemoveChild(UIBase* child);
   virtual void UpdateExtraData(
       const fml::RefPtr<fml::RefCountedThreadSafeStorage>& extra_data) {}
-  virtual void OnMeasure(ArkUI_LayoutConstraint* layout_constraint){};
-  virtual void OnLayout(){};
-  virtual void FinishLayoutOperation(){};
+  virtual void OnMeasure(ArkUI_LayoutConstraint* layout_constraint) {}
+  virtual void OnLayout() {}
+  virtual void FinishLayoutOperation() {}
   virtual void OnDraw(OH_Drawing_Canvas* canvas, ArkUI_NodeHandle node);
   virtual void UpdateProps(PropBundleHarmony* props);
   virtual void OnNodeEvent(ArkUI_NodeEvent* event);
   virtual void OnNodeReady();
-  virtual bool NotifyParent() { return false; };
+  virtual bool NotifyParent() { return false; }
 
   virtual void OnDestroy() {}
   virtual LynxContext* GetContext() { return context_; };
-  virtual void OnLayoutFinish(UIBase* base, int64_t operation_id){};
+  virtual void OnLayoutFinish(UIBase* base, int64_t operation_id) {}
   virtual void UpdateSticky(const float* sticky);
   virtual void WillRemoveFromUIParent();
   bool CheckStickyOnParentScroll(float scroll_left, float scroll_top);
@@ -375,8 +373,10 @@ class LYNX_EXPORT
   void Base64EncodeTask(
       OH_PixelmapNative* pixel_map, const std::string& format,
       base::MoveOnlyClosure<void, int32_t, const lepus::Value&> callback);
-  void ApplyOverflowClipPath(float clip_width, float clip_height);
-  void ApplyOverflowClipRectangle(float clip_width, float clip_height);
+  void ApplyOverflowClipPath(float width, float height,
+                             const std::string& path);
+  void ApplyOverflowClipRectangle(float width, float height, float left,
+                                  float top);
   void ParseRegionArray(const lepus::Value& value,
                         std::vector<std::vector<PlatformLength>>& regions);
 
