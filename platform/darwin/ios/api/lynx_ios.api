@@ -1618,6 +1618,7 @@ public protocol LynxExtensionModule-p : <NSObject> {
   public NSString * LynxExtensionModule-p::name();
   public instancetype LynxExtensionModule-p::initWithLynxContext:group:(LynxContext *context,[group] LynxGroup *group);
   public void * LynxExtensionModule-p::getExtensionDelegate();
+  public void * LynxExtensionModule-p::onTemplateLoad:(NSString *url);
   public void LynxExtensionModule-p::setUp();
 }
 

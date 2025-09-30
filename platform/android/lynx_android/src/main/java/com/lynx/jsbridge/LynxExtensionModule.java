@@ -23,5 +23,6 @@ public abstract class LynxExtensionModule {
 
   public abstract long getExtensionDelegatePtr();
   public abstract void setUp();
+  public abstract void onTemplateLoad(String url);
   public abstract void destroy();
 }

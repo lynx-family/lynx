@@ -5029,6 +5029,7 @@ public class abstract com::lynx::jsbridge::LynxExtensionModule :  {
   public com.lynx.jsbridge.LynxExtensionModule.LynxExtensionModule(LynxContext context, LynxGroup group, BehaviorRegistry behaviorRegistry);
   public abstract long com.lynx.jsbridge.LynxExtensionModule.getExtensionDelegatePtr();
   public abstract void com.lynx.jsbridge.LynxExtensionModule.setUp();
+  public abstract void com.lynx.jsbridge.LynxExtensionModule.onTemplateLoad(String url);
   public abstract void com.lynx.jsbridge.LynxExtensionModule.destroy();
 }
 

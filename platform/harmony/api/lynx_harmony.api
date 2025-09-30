@@ -410,6 +410,7 @@ export class NativeContent {
 export class ExtensionModule {
   constructor(uiDelegate: number[]);
   nativeSetup(): void;
+  nativeOnTemplateLoad(url: stirng): void;
   nativeGetExtensionDelegatePtr(): number[];
   nativeDestroy(): void;
 }
@@ -1105,6 +1106,7 @@ export interface ILynxExtensionService {
 export interface LynxExtensionModule {
   getExtensionDelegatePtr(): number[];
   setup(): void;
+  onTemplateLoad(url: string): void;
   destroy(): void;
 }
 
