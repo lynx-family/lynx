@@ -12,14 +12,16 @@ __all__ = ["NativeGenerator"]
 BASE_RELATIVE_PATH = "core/build/gen/"
 
 class NativeGenerator(PlatformGenerator):
-    def __init__(self):
+    def __init__(self, meta_data_list):
         super().__init__()
         file_name = to_lower_snake(SUB_ERR_CLASS_NAME)
         self._register_child_generator(
             NativeSubCodeHeaderFileGenerator(
                 BASE_RELATIVE_PATH,
-                "{0}{1}".format(file_name, HEADER_FILE_EXT)))
+                "{0}{1}".format(file_name, HEADER_FILE_EXT),
+                meta_data_list))
         self._register_child_generator(
             NativeSubCodeSrcGenerator(
                 BASE_RELATIVE_PATH,
-                "{0}{1}".format(file_name, SOURCE_FILE_EXT)))
+                "{0}{1}".format(file_name, SOURCE_FILE_EXT),
+                meta_data_list))

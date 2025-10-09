@@ -26,3 +26,24 @@ def get_sub_code_name(code, behavior, section):
     raw_name = section[KEY_NAME] + behavior[KEY_NAME] + code[KEY_NAME]
     raw_name = raw_name.replace(VALUE_DEFAULT, "")
     return CODE_NAME_PREFIX + pascal_to_upper_snake(raw_name)
+
+def get_field_name(meta_data):
+    return to_lower_snake(meta_data[KEY_NAME]) + "_"
+
+def convert_meta_data_type(meta_data):
+    data_type = meta_data[KEY_TYPE]
+    data_name = meta_data[KEY_NAME]
+
+    if data_type == TYPE_STR:
+        real_type = "std::string"
+    elif data_type == TYPE_BOOL:
+        real_type = "bool"
+    elif data_type == TYPE_ENUM:
+        real_type = data_name
+    else:
+        real_type = data_type
+
+    if meta_data.get("multi-selection", False):
+        return "std::vector<{0}>".format(real_type)
+    else:
+        return real_type

@@ -25,7 +25,7 @@ class ErrorCodeGenerator:
         if LANG_OC in lang:
             self._child_generators.append(DarwinGenerator(meta_data_list))
         if LANG_CPP in lang:
-            self._child_generators.append(NativeGenerator())
+            self._child_generators.append(NativeGenerator(meta_data_list))
         if LANG_TS in lang:
             self._child_generators.append(TypescriptGenerator())
         if LANG_ETS in lang:
