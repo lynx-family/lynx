@@ -773,7 +773,8 @@ void LynxEngine::InsertLynxTemplateBundle(
   tasm_->InsertLynxTemplateBundle(url, std::move(bundle));
 }
 
-void LynxEngine::OnReceiveMessageEvent(runtime::MessageEvent event) {
+void LynxEngine::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
   tasm_->OnReceiveMessageEvent(std::move(event));
 }
 

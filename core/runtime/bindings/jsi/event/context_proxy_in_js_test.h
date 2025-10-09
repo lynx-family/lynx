@@ -25,7 +25,7 @@ namespace test {
 class JSRuntimeTestMockDelegate : public runtime::test::MockTemplateDelegate {
  public:
   event::DispatchEventResult DispatchMessageEvent(
-      runtime::MessageEvent event) override;
+      fml::RefPtr<runtime::MessageEvent> event) override;
 
   void ClearResult();
   std::string DumpResult();

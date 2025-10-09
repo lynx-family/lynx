@@ -54,14 +54,8 @@ class MessageEvent : public event::Event {
                std::unique_ptr<pub::Value> message);
   virtual ~MessageEvent() override = default;
 
-  static MessageEvent ShallowCopy(const MessageEvent&);
-  static MessageEvent ShallowCopy(MessageEvent&);
-
-  // make MessageEvent move only
-  MessageEvent(const MessageEvent&) = delete;
-  MessageEvent& operator=(const MessageEvent&) = delete;
-  MessageEvent(MessageEvent&&) = default;
-  MessageEvent& operator=(MessageEvent&&) = default;
+  static fml::RefPtr<MessageEvent> ShallowCopy(const MessageEvent&);
+  static fml::RefPtr<MessageEvent> ShallowCopy(MessageEvent&);
 
   ContextProxy::Type GetTargetType() const { return target_; }
   ContextProxy::Type GetOriginType() const { return origin_; }

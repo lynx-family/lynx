@@ -22,15 +22,15 @@ TEST_F(MessageEventTest, TestMessageEventTest0) {
   EXPECT_EQ(event->GetOriginType(), ContextProxy::Type::kCoreContext);
 
   auto new_event = MessageEvent::ShallowCopy(*event);
-  EXPECT_EQ(new_event.time_stamp(), event->time_stamp());
-  EXPECT_EQ(new_event.GetTargetType(), event->GetTargetType());
-  EXPECT_EQ(new_event.GetOriginType(), event->GetOriginType());
+  EXPECT_EQ(new_event->time_stamp(), event->time_stamp());
+  EXPECT_EQ(new_event->GetTargetType(), event->GetTargetType());
+  EXPECT_EQ(new_event->GetOriginType(), event->GetOriginType());
 
   MessageEvent& left_ref_event = *event;
   new_event = MessageEvent::ShallowCopy(left_ref_event);
-  EXPECT_EQ(new_event.time_stamp(), left_ref_event.time_stamp());
-  EXPECT_EQ(new_event.GetTargetType(), left_ref_event.GetTargetType());
-  EXPECT_EQ(new_event.GetOriginType(), left_ref_event.GetOriginType());
+  EXPECT_EQ(new_event->time_stamp(), left_ref_event.time_stamp());
+  EXPECT_EQ(new_event->GetTargetType(), left_ref_event.GetTargetType());
+  EXPECT_EQ(new_event->GetOriginType(), left_ref_event.GetOriginType());
 }
 
 }  // namespace test

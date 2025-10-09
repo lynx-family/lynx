@@ -753,3 +753,10 @@ enableTextGradientOpt:
   syncTo: platform
   author: 'zhongyr'
   readNative: true
+enableEventHandleRefactor:
+  description: Enable support new event handling logic.
+  defaultValue: false
+  valueType: bool
+  since: 3.5
+  readSettings: true
+  author: 'rAY-ooo'

@@ -318,7 +318,7 @@ class LynxShell {
    * Dispatch MessageEvent from platform, currently only dispatching
    * MessageEvent from DevTool.
    */
-  void DispatchMessageEvent(runtime::MessageEvent event);
+  void DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event);
 
   // Timing related function.
   void SetTiming(uint64_t us_timestamp, tasm::timing::TimestampKey timing_key,

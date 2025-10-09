@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "base/include/fml/memory/ref_ptr.h"
 #include "core/runtime/bindings/common/event/context_proxy.h"
 #include "third_party/googletest/googletest/include/gtest/gtest.h"
 
@@ -20,8 +21,8 @@ class MockContextProxyDelegate : public ContextProxy::Delegate {
  public:
   MockContextProxyDelegate();
   virtual event::DispatchEventResult DispatchMessageEvent(
-      MessageEvent event) override;
-  std::vector<MessageEvent> event_vec_;
+      fml::RefPtr<MessageEvent> event) override;
+  std::vector<fml::RefPtr<MessageEvent>> event_vec_;
 
   std::unordered_map<ContextProxy::Type, std::unique_ptr<ContextProxy>>
       proxy_map_in_js_;

@@ -50,7 +50,7 @@ namespace event {
 class EventTarget;
 class EventDispatcher;
 
-class Event {
+class Event : public lepus::RefCounted {
  public:
   enum class Bubbles {
     kYes,
@@ -108,7 +108,12 @@ class Event {
 
   Event(const std::string&, EventType, Bubbles, Cancelable, ComposedMode);
 
+  Event(const std::string&, int64_t, EventType, Bubbles, Cancelable,
+        ComposedMode, PhaseType, const lepus::Value&);
+
   virtual ~Event() = default;
+
+  lepus::RefType GetRefType() const override { return lepus::RefType::kEvent; };
 
   EventType event_type() { return event_type_; }
   void set_event_type(EventType event_type) { event_type_ = event_type; }

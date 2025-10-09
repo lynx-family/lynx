@@ -587,7 +587,7 @@ void LynxRuntime::CallFunction(const std::string& module_id,
         std::make_unique<pub::ValueImplPiper>(
             *js_runtime, piper::Value(*js_runtime, arguments)));
     native_context_proxy->DispatchEvent(jsContextEvent);
-    MessageEvent coreContextEvent(
+    auto coreContextEvent = fml::MakeRefCounted<MessageEvent>(
         kMessageEventTypeGlobalEvent, ContextProxy::Type::kNative,
         ContextProxy::Type::kCoreContext,
         std::make_unique<pub::ValueImplLepus>(*app_->ParseJSValueToLepusValue(
@@ -999,19 +999,20 @@ void LynxRuntime::SetPageOptions(const tasm::PageOptions& page_options) {
   }
 }
 
-void LynxRuntime::OnReceiveMessageEvent(runtime::MessageEvent event) {
+void LynxRuntime::OnReceiveMessageEvent(
+    fml::RefPtr<runtime::MessageEvent> event) {
   if (state_ == State::kDestroying) {
     return;
   }
 
-  if (OnReceiveMessageEventForSSR(event)) {
+  if (OnReceiveMessageEventForSSR(*event)) {
     return;
   }
 
   QueueOrExecTask([this, event = std::move(event)]() mutable {
-    auto proxy = app_->GetContextProxy(event.GetOriginType());
+    auto proxy = app_->GetContextProxy(event->GetOriginType());
     if (proxy != nullptr) {
-      proxy->DispatchEvent(event);
+      proxy->DispatchEvent(*event);
     }
   });
 }
@@ -1029,7 +1030,7 @@ void LynxRuntime::OnGlobalPropsUpdated(const lepus::Value& props) {
   if (state_ == State::kNotStarted) {
     init_global_props_ = props;
   } else {
-    runtime::MessageEvent event(
+    auto event = fml::MakeRefCounted<runtime::MessageEvent>(
         runtime::kMessageEventTypeNotifyGlobalPropsUpdated,
         runtime::ContextProxy::Type::kCoreContext,
         runtime::ContextProxy::Type::kJSContext,

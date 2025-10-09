@@ -27,22 +27,22 @@ TEST(EventConverterAndroidTest, TestConvertFunctions) {
   auto result = EventConverterAndroid::ConvertJavaOnlyMapToMessageEvent(
       env, map.jni_object());
 
-  EXPECT_EQ(result.type(), "xxx");
-  EXPECT_EQ(event.type(), result.type());
-  EXPECT_EQ(result.time_stamp(), 1);
-  EXPECT_EQ(event.time_stamp(), result.time_stamp());
-  EXPECT_EQ(result.GetOriginType(), runtime::ContextProxy::Type::kJSContext);
-  EXPECT_EQ(event.GetOriginType(), result.GetOriginType());
-  EXPECT_EQ(result.GetOriginString(), std::string(runtime::kJSContext));
-  EXPECT_EQ(event.GetOriginString(), result.GetOriginString());
-  EXPECT_EQ(result.GetTargetType(), runtime::ContextProxy::Type::kDevTool);
-  EXPECT_EQ(event.GetTargetType(), result.GetTargetType());
-  EXPECT_EQ(result.GetTargetString(), std::string(runtime::kDevTool));
-  EXPECT_EQ(event.GetTargetString(), result.GetTargetString());
-  EXPECT_EQ(pub::ValueUtils::ConvertValueToLepusValue(*result.message()),
+  EXPECT_EQ(result->type(), "xxx");
+  EXPECT_EQ(event.type(), result->type());
+  EXPECT_EQ(result->time_stamp(), 1);
+  EXPECT_EQ(event.time_stamp(), result->time_stamp());
+  EXPECT_EQ(result->GetOriginType(), runtime::ContextProxy::Type::kJSContext);
+  EXPECT_EQ(event.GetOriginType(), result->GetOriginType());
+  EXPECT_EQ(result->GetOriginString(), std::string(runtime::kJSContext));
+  EXPECT_EQ(event.GetOriginString(), result->GetOriginString());
+  EXPECT_EQ(result->GetTargetType(), runtime::ContextProxy::Type::kDevTool);
+  EXPECT_EQ(event.GetTargetType(), result->GetTargetType());
+  EXPECT_EQ(result->GetTargetString(), std::string(runtime::kDevTool));
+  EXPECT_EQ(event.GetTargetString(), result->GetTargetString());
+  EXPECT_EQ(pub::ValueUtils::ConvertValueToLepusValue(*result->message()),
             lepus::Value("zzz"));
   EXPECT_EQ(pub::ValueUtils::ConvertValueToLepusValue(*event.message()),
-            pub::ValueUtils::ConvertValueToLepusValue(*result.message()));
+            pub::ValueUtils::ConvertValueToLepusValue(*result->message()));
 }
 
 }  // namespace android

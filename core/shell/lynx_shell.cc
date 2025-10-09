@@ -1013,7 +1013,7 @@ void LynxShell::OnEnterForeground() {
     return;
   }
   app_state_ = AppState::kForeground;
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeOnAppEnterForeground,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
@@ -1029,7 +1029,7 @@ void LynxShell::OnEnterBackground() {
     return;
   }
   app_state_ = AppState::kBackground;
-  runtime::MessageEvent event(
+  auto event = fml::MakeRefCounted<runtime::MessageEvent>(
       runtime::kMessageEventTypeOnAppEnterBackground,
       runtime::ContextProxy::Type::kCoreContext,
       runtime::ContextProxy::Type::kJSContext,
@@ -1211,16 +1211,16 @@ void LynxShell::SetAnimationsPending(bool need_pending_ui_op) {
   });
 }
 
-void LynxShell::DispatchMessageEvent(runtime::MessageEvent event) {
-  if (event.IsSendingToUIThread()) {
+void LynxShell::DispatchMessageEvent(fml::RefPtr<runtime::MessageEvent> event) {
+  if (event->IsSendingToUIThread()) {
     facade_actor_->Act([event = std::move(event)](auto& facade) mutable {
       facade->OnReceiveMessageEvent(std::move(event));
     });
-  } else if (event.IsSendingToCoreThread()) {
+  } else if (event->IsSendingToCoreThread()) {
     engine_actor_->Act([event = std::move(event)](auto& engine) mutable {
       engine->OnReceiveMessageEvent(std::move(event));
     });
-  } else if (event.IsSendingToJSThread()) {
+  } else if (event->IsSendingToJSThread()) {
     if (runtime_actor_) {
       auto enqueue_info =
           tasm::performance::JSBlockingMonitor::MarkJSTaskEnqueue();

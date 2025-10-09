@@ -27,9 +27,8 @@ class ContextProxyInJS : public HostObject, public runtime::ContextProxy {
                    runtime::ContextProxy::Type, std::weak_ptr<App>);
   virtual ~ContextProxyInJS() override = default;
 
-  runtime::MessageEvent CreateMessageEvent(Runtime& rt,
-                                           std::shared_ptr<App> native_app,
-                                           const piper::Value& event);
+  fml::RefPtr<runtime::MessageEvent> CreateMessageEvent(
+      Runtime& rt, std::shared_ptr<App> native_app, const piper::Value& event);
 
   virtual Value get(Runtime*, const PropNameID& name) override;
   virtual void set(Runtime*, const PropNameID& name,
