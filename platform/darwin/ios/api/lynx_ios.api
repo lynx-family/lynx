@@ -4295,6 +4295,7 @@ public class LynxUIContext : NSObject {
   public id<LynxGenericResourceFetcher> LynxUIContext::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxUIContext::mediaResourceFetcher mediaResourceFetcher;
   public id<LynxTemplateResourceFetcher> LynxUIContext::templateResourceFetcher templateResourceFetcher;
+  public BOOL LynxUIContext::enableFetchUIImage enableFetchUIImage;
   public NSString* LynxUIContext::imagePreviewHashMetadata imagePreviewHashMetadata;
   public BOOL LynxUIContext::defaultOverflowVisible defaultOverflowVisible;
   public BOOL LynxUIContext::defaultImplicitAnimation defaultImplicitAnimation;
@@ -6443,6 +6444,8 @@ public enum LynxRadialCenterType {
   public FOUNDATION_EXPORT NSString* const LynxImagePlaceholderHashConfig LynxImagePlaceholderHashConfig;
   public FOUNDATION_EXPORT NSString* const LynxImageCancelRequest LynxImageCancelRequest;
   public FOUNDATION_EXPORT NSString* const LynxImagePreloadAllFrames LynxImagePreloadAllFrames;
+  public FOUNDATION_EXPORT NSString* const LynxImageTargetSize LynxImageTargetSize;
+  public FOUNDATION_EXPORT NSString* const LynxImageEnableFetchUIImage LynxImageEnableFetchUIImage;
 
   public NSAttributedStringKey const LynxTextColorGradientKey LynxTextColorGradientKey;
   public NSAttributedStringKey const LynxInlineBackgroundKey LynxInlineBackgroundKey;
@@ -6523,6 +6526,7 @@ public enum LynxImageRequestType {
 
   public NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG KEY_LYNX_PLATFORM_CONFIG;
   public NSString* _Nonnull const KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA KEY_LYNX_IMAGE_PREVIEW_HASH_METADATA;
+  public NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE KEY_LYNX_ENABLE_FETCH_UIIMAGE;
 
   typedef struct MeasureResult MeasureResult
 
