@@ -2136,7 +2136,10 @@ void App::loadApp(tasm::TasmRuntimeBundle bundle,
   piper::Object page_config_subset(*rt);
   if (!page_config_subset.setProperty(
           *rt, runtime::kEnableMicrotaskPromisePolyfill,
-          card_bundle_.enable_microtask_promise_polyfill)) {
+          card_bundle_.enable_microtask_promise_polyfill) ||
+      !page_config_subset.setProperty(
+          *rt, runtime::kEnableReuseLoadScriptExports,
+          card_bundle_.enable_reuse_load_script_exports)) {
     handleLoadAppFailed(" App::loadApp error! page_config_subset init fail.");
     return;
   }

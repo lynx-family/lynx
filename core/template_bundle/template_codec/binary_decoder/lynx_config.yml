@@ -760,3 +760,10 @@ enableEventHandleRefactor:
   since: 3.5
   readSettings: true
   author: 'rAY-ooo'
+enableReuseLoadScriptExports:
+  description: Enable reuse loadScript's result.
+  defaultValue: false
+  valueType: bool
+  syncTo:
+    - script
+  author: 'liyanbo.monster'

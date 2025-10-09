@@ -91,6 +91,16 @@ constexpr const char kEnableMicrotaskPromisePolyfill[] =
     "enableMicrotaskPromisePolyfill";
 
 /**
+ * @name: enableReuseLoadScriptExports
+ * @description: Use for app-service.js or other files to reuse exports of
+ *loadScript.
+ * @platform: Both
+ * @supportVersion: 3.6
+ **/
+constexpr const char kEnableReuseLoadScriptExports[] =
+    "enableReuseLoadScriptExports";
+
+/**
  * Check if the given url indicates lynx_core.js.
  * @param url the url to check
  * @return true if the given url indicates lynx_core.js.

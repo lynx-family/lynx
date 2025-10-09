@@ -534,7 +534,7 @@ export abstract class BaseApp<
       });
       return this._$executeJSON(content, { path, entryName });
     }
-    const cacheKey = getLoadScriptCacheKey(
+    const cacheKey = this.getLoadScriptCacheKey(
       path,
       entryName,
       this.params.srcName
@@ -575,7 +575,7 @@ export abstract class BaseApp<
     }
 
     // get cache first
-    const cacheKey = getLoadScriptCacheKey(path, this.params.srcName);
+    const cacheKey = this.getLoadScriptCacheKey(path, this.params.srcName);
     const cache = tryGetLoadScriptCache(cacheKey);
     if (cache) {
       // cache hit
@@ -722,7 +722,7 @@ export abstract class BaseApp<
     options?: { bundleName?: string; useModuleWrapper?: boolean }
   ): T {
     const { bundleName = DEFAULT_ENTRY, useModuleWrapper = false } = options;
-    const cacheKey = getLoadScriptCacheKey(
+    const cacheKey = this.getLoadScriptCacheKey(
       url,
       bundleName,
       this.params.srcName
@@ -963,6 +963,26 @@ export abstract class BaseApp<
     });
   };
 
+  private getLoadScriptCacheKey(
+    path: string,
+    entryName?: string,
+    template_url?: string
+  ): string | undefined {
+    if (
+      !template_url ||
+      NODE_ENV === 'development' ||
+      !this.params?.pageConfigSubset?.enableReuseLoadScriptExports
+    ) {
+      return undefined;
+    }
+    let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
+    if (path.startsWith('/') || path.startsWith('lynx_assets')) {
+      cacheKey =
+        template_url.replace(/^([^?#]+)(?:[?#].*)?$/, '$1') + '/' + cacheKey;
+    }
+    return cacheKey;
+  }
+
   /**
    *  override by subclass
    * @param newData
@@ -1061,22 +1081,6 @@ function inRequire(path: string): Function {
     /* eslint-disable no-sequences */
     return c.endsWith('.js') || (c += '.js'), that.require(c);
   };
-}
-
-function getLoadScriptCacheKey(
-  path: string,
-  entryName?: string,
-  template_url?: string
-): string | undefined {
-  if (!template_url || NODE_ENV === 'development') {
-    return undefined;
-  }
-  let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
-  if (path.startsWith('/') || path.startsWith('lynx_assets')) {
-    cacheKey =
-      template_url.replace(/^([^?#]+)(?:[?#].*)?$/, '$1') + '/' + cacheKey;
-  }
-  return cacheKey;
 }
 
 function tryGetLoadScriptCache(

@@ -226,6 +226,8 @@ bool TemplateEntry::InitWithPageConfigger(
   SetEnableMicrotaskPromisePolyfill(
       page_config->GetEnableMicrotaskPromisePolyfill() ==
       TernaryBool::TRUE_VALUE);
+  SetEnableReuseLoadScriptExports(
+      page_config->GetEnableReuseLoadScriptExports());
   return true;
 }
 
@@ -548,6 +550,7 @@ TasmRuntimeBundle TemplateEntry::CreateTasmRuntimeBundle() {
           enable_js_binding_api_throw_exception_,
           enable_bind_icu_,
           enable_microtask_promise_polyfill_,
+          enable_reuse_load_script_exports_,
           template_bundle().custom_sections_};
 }
 
