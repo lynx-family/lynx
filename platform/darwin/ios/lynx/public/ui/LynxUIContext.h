@@ -59,6 +59,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, strong, nullable) id<LynxGenericResourceFetcher> genericResourceFetcher;
 @property(nonatomic, strong, nullable) id<LynxMediaResourceFetcher> mediaResourceFetcher;
 @property(nonatomic, strong, nullable) id<LynxTemplateResourceFetcher> templateResourceFetcher;
+@property(nonatomic, assign) BOOL enableFetchUIImage;
 
 // image global property
 @property(nonatomic, nullable) NSString* imagePreviewHashMetadata;

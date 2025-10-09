@@ -158,6 +158,7 @@ LYNX_REGISTER_SHADOW_NODE("image")
 @property(nonatomic, assign) BOOL enableImageAsyncLayout;
 @property(nonatomic, assign) BOOL enableImageCancelRequest;
 @property(nonatomic, assign) BOOL enableGenericFetcher;
+@property(nonatomic, assign) BOOL enableFetchUIImage;
 @property(nonatomic, strong) NSDictionary* additional_custom_info;
 @property(nonatomic, strong) NSString* request_priority;
 @property(nonatomic, strong) NSString* cache_choice;
@@ -253,6 +254,7 @@ LYNX_REGISTER_UI("image")
 - (void)setContext:(LynxUIContext*)context {
   [super setContext:context];
   _enableGenericFetcher = self.context.mediaResourceFetcher != nil;
+  _enableFetchUIImage = self.context.enableFetchUIImage;
 }
 
 - (void)targetOffScreen {
@@ -777,6 +779,7 @@ UIEdgeInsets LynxRoundInsetsToPixel(UIEdgeInsets edgeInsets) {
                  LynxImageSRScale : @(_superResolutionScale),
                  LynxImageCancelRequest : @(_enableImageCancelRequest),
                  LynxImagePreloadAllFrames : @(NO),
+                 LynxImageEnableFetchUIImage : @(_enableFetchUIImage),
                }
                 processors:processors
               imageFetcher:[self shouldUseNewImage] ? nil : self.context.imageFetcher
