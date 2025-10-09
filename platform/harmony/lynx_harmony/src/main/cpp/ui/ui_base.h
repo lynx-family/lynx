@@ -186,6 +186,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override;
   LynxPointerEventsValue PointerEvents() override;
+  bool NativeInteractionEnabled() override;
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;
@@ -400,6 +401,7 @@ class LYNX_EXPORT UIBase : public std::enable_shared_from_this<UIBase>,
   bool has_background_color_{false};
 
   bool user_interaction_enabled_{true};
+  bool native_interaction_enabled_{true};
   float hit_slop_left_{0};
   float hit_slop_right_{0};
   float hit_slop_top_{0};

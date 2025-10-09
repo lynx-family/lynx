@@ -667,6 +667,10 @@ void UIOwner::OnGestureRecognizedWithSign(int sign) {
   event_dispatcher_->OnGestureRecognizedWithSign(sign);
 }
 
+void UIOwner::UpdateNativeInteractionEnabledForTree(UIBase* root) {
+  event_dispatcher_->UpdateNativeInteractionEnabledForTree(root);
+}
+
 void UIOwner::SetEnableMultiTouch(bool enable_multi_touch) {
   event_dispatcher_->SetEnableMultiTouch(enable_multi_touch);
 }

@@ -76,6 +76,8 @@ class EventTarget {
 
   virtual LynxPointerEventsValue PointerEvents() = 0;
 
+  virtual bool NativeInteractionEnabled() = 0;
+
   virtual bool BlockNativeEvent(float point[2]) = 0;
 
   virtual bool EventThrough(float point[2]) = 0;

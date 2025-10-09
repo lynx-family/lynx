@@ -964,16 +964,7 @@ void UIBase::SetUserInteractionEnabled(const lepus::Value& value) {
 
 void UIBase::SetNativeInteractionEnabled(const lepus::Value& value) {
   if (value.IsBool()) {
-    // TODO(hexionghui): Aligned to iOS.
-    if (value.Bool()) {
-      NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_HIT_TEST_BEHAVIOR,
-          static_cast<int32_t>(ARKUI_HIT_TEST_MODE_DEFAULT));
-      return;
-    }
-    NodeManager::Instance().SetAttributeWithNumberValue(
-        node_, NODE_HIT_TEST_BEHAVIOR,
-        static_cast<int32_t>(ARKUI_HIT_TEST_MODE_NONE));
+    native_interaction_enabled_ = value.Bool();
   }
 }
 
@@ -2112,6 +2103,8 @@ void UIBase::GetPointInTarget(float res[2], EventTarget* parent_target,
   return LynxUIHelper::ConvertPointFromAncestorToDescendant(
       res, static_cast<UIBase*>(parent_target), this, point);
 }
+
+bool UIBase::NativeInteractionEnabled() { return native_interaction_enabled_; }
 
 bool UIBase::BlockNativeEvent(float point[2]) {
   if (block_native_event_) {
