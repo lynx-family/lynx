@@ -118,6 +118,7 @@ void UIRoot::OnNodeEvent(ArkUI_NodeEvent* event) {
           transparent_sibling_, NODE_HIT_TEST_BEHAVIOR,
           static_cast<int32_t>(ARKUI_HIT_TEST_MODE_DEFAULT));
     }
+    context_->UpdateNativeInteractionEnabledForTree(context_->Root());
   } else if (OH_ArkUI_NodeEvent_GetEventType(event) == NODE_TOUCH_EVENT) {
     ArkUI_UIInputEvent* touch_event = OH_ArkUI_NodeEvent_GetInputEvent(event);
     if (context_->ShouldBlockNativeEvent()) {

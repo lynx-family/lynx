@@ -48,6 +48,7 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override{};
   LynxPointerEventsValue PointerEvents() override;
+  bool NativeInteractionEnabled() override;
   bool BlockNativeEvent(float point[2]) override;
   bool EventThrough(float point[2]) override;
   bool IgnoreFocus() override;

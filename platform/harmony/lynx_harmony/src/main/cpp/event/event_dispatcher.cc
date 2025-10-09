@@ -925,6 +925,39 @@ bool EventDispatcher::CanConsumeTouchEvent(float point[2]) {
   return !active_target->EventThrough(target_point);
 }
 
+void EventDispatcher::UpdateNativeInteractionEnabledForTree(UIBase* root) {
+  if (!root) {
+    return;
+  }
+
+  TraverseAndUpdateHitTestBehavior(root, false);
+}
+
+void EventDispatcher::TraverseAndUpdateHitTestBehavior(
+    UIBase* node, bool has_disabled_ancestor) {
+  if (!node || !node->Node()) {
+    return;
+  }
+
+  bool current_native_interaction_enabled = node->NativeInteractionEnabled();
+  bool should_disable =
+      has_disabled_ancestor || !current_native_interaction_enabled;
+
+  if (should_disable) {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        node->DrawNode(), NODE_HIT_TEST_BEHAVIOR,
+        static_cast<int32_t>(ARKUI_HIT_TEST_MODE_NONE));
+  } else {
+    NodeManager::Instance().SetAttributeWithNumberValue(
+        node->DrawNode(), NODE_HIT_TEST_BEHAVIOR,
+        static_cast<int32_t>(ARKUI_HIT_TEST_MODE_DEFAULT));
+  }
+
+  for (UIBase* child : node->Children()) {
+    TraverseAndUpdateHitTestBehavior(child, should_disable);
+  }
+}
+
 }  // namespace harmony
 }  // namespace tasm
 }  // namespace lynx

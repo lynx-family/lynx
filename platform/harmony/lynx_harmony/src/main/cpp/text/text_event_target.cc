@@ -28,6 +28,8 @@ LynxPointerEventsValue TextEventTarget::PointerEvents() {
   return LynxPointerEventsValue::kAuto;
 }
 
+bool TextEventTarget::NativeInteractionEnabled() { return true; }
+
 bool TextEventTarget::BlockNativeEvent(float point[2]) { return false; }
 
 bool TextEventTarget::EventThrough(float point[2]) {
