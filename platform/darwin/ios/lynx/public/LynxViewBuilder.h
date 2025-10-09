@@ -15,6 +15,11 @@
  */
 static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 
+/**
+ * Key for set image fetchUIImage to LynxViewConfig
+ */
+static NSString* _Nonnull const KEY_LYNX_ENABLE_FETCH_UIIMAGE = @"lynx_enable_fetch_UIImage";
+
 @interface LynxViewBuilder : LynxBaseConfigurator
 
 // legacy props that needs to be removed.

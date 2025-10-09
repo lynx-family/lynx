@@ -81,6 +81,11 @@
     _uiOwner.uiContext.mediaResourceFetcher = [builder mediaResourceFetcher];
     _uiOwner.uiContext.templateResourceFetcher = [builder templateResourceFetcher];
     _uiOwner.fontFaceContext.genericResourceServiceFetcher = [builder genericResourceFetcher];
+    _uiOwner.uiContext.enableFetchUIImage = NO;
+    if ([builder.lynxViewConfig objectForKey:KEY_LYNX_ENABLE_FETCH_UIIMAGE]) {
+      _uiOwner.uiContext.enableFetchUIImage =
+          [[builder.lynxViewConfig objectForKey:KEY_LYNX_ENABLE_FETCH_UIIMAGE] boolValue];
+    }
   }
 }
 
