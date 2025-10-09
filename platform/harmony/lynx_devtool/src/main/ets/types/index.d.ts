@@ -29,9 +29,9 @@ export interface HarmonyGlobalHandler {
 }
 
 export interface HarmonySessionHandler {
-  OnSessionCreate: (session_id: number, url: string) => void;
-  OnSessionDestroy: (session_id: number) => void;
-  OnMessage: (message: string, type: string, session_id: number) => void;
+  onSessionCreate: (session_id: number, url: string) => void;
+  onSessionDestroy: (session_id: number) => void;
+  onMessage: (message: string, type: string, session_id: number) => void;
 }
 
 export declare class DebugRouterWrapper {
