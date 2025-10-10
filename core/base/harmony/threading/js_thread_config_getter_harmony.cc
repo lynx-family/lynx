@@ -36,11 +36,13 @@ void SetupArkTSRuntime() {
 }
 }  // namespace
 
-fml::Thread::ThreadConfig GetJSThreadConfig(const std::string& worker_name) {
+fml::Thread::ThreadConfig GetJSThreadConfig(
+    const std::string& worker_name, bool enable_preset_thread_priority) {
   return fml::Thread::ThreadConfig{
       worker_name, fml::Thread::ThreadPriority::HIGH,
       std::make_shared<base::closure>(
-          static_cast<void (*)()>(SetupArkTSRuntime))};
+          static_cast<void (*)()>(SetupArkTSRuntime)),
+      enable_preset_thread_priority};
 }
 }  // namespace base
 }  // namespace lynx
