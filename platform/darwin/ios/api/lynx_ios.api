@@ -3205,6 +3205,10 @@ public protocol LynxServiceExtensionProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceExtensionProtocol-p::onLynxViewDestroy();
 }
 
+public class LynxServiceHelper : NSObject {
+  public nullable id< LynxServiceTrailExtensionProtocol > LynxServiceHelper::getLynxTrailExtensionService();
+}
+
 public protocol LynxServiceHttpProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceHttpProtocol-p::invokeWithRequest:callback:(LynxHttpRequest *request,[callback] LynxHttpCallback callback);
   public void LynxServiceHttpProtocol-p::invokeStreamingWithRequest:callback:withDelegate:(LynxHttpRequest *request,[callback] LynxHttpCallback callback,[withDelegate] LynxHttpStreamingDelegate *delegate);
@@ -3241,10 +3245,6 @@ public class LynxServiceInfo : NSObject {
   public NSDictionary* LynxServiceInfo::extra extra;
 }
 
-public protocol LynxServiceLogProtocol-p : <LynxServiceProtocol> {
-  public void * LynxServiceLogProtocol-p::getWriteFunction();
-}
-
 public protocol LynxServiceModuleProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceModuleProtocol-p::initGlobalProps:(LynxView *lynxView);
   public void LynxServiceModuleProtocol-p::clearModuleForDestroy:(LynxView *lynxView);
@@ -3256,13 +3256,6 @@ public protocol LynxServiceMonitorProtocol-p : <LynxServiceProtocol> {
   public void LynxServiceMonitorProtocol-p::reportImageStatus:data:(NSString *event,[data] NSDictionary *data);
   public void LynxServiceMonitorProtocol-p::reportErrorGlobalContextTag:data:(LynxContextTagType type,[data] NSString *data);
   public void LynxServiceMonitorProtocol-p::reportResourceStatus:data:extra:(LynxView *__nonnull LynxView,[data] NSDictionary *__nonnull data,[extra] NSDictionary *__nullable extra);
-}
-
-public protocol LynxServiceProtocol-p : <NSObject> {
-  public LynxServiceScope LynxServiceProtocol-p::serviceScope();
-  public NSUInteger LynxServiceProtocol-p::serviceType();
-  public NSString * LynxServiceProtocol-p::serviceBizID();
-  public instancetype LynxServiceProtocol-p::sharedInstance();
 }
 
 public protocol LynxServiceResourceProtocol-p : <LynxServiceProtocol> {
@@ -3289,11 +3282,6 @@ public protocol LynxServiceResourceResponseProtocol-p : <LynxResourceResponseDat
   public BOOL LynxServiceResourceResponseProtocol-p::isSuccess();
 }
 
-public class LynxServices : NSObject {
-  public void LynxServices::registerService:(Class cls);
-  public id LynxServices::getInstanceWithProtocol:bizID:(Protocol *protocol,[bizID] NSString *__nullable bizID);
-}
-
 public protocol LynxServiceSecurityProtocol-p : <NSObjectLynxServiceProtocol> {
   public LynxVerificationResult * LynxServiceSecurityProtocol-p::verifyTASM:view:url:type:(NSData *data,[view] nullable LynxView *lynxView,[url] nullable NSString *url,[type] LynxTASMType type);
   public BOOL LynxServiceSecurityProtocol-p::onPiperInvoked:method:param:url:(NSString *module,[method] NSString *method,[param] NSString *param,[url] NSString *url);
@@ -3310,11 +3298,8 @@ public protocol LynxServiceSystemInvokeProtocol-p : <LynxServiceProtocol> {
   public NSInteger LynxServiceSystemInvokeProtocol-p::stopAudioOutputUnit:(void *audioUnitPtr);
 }
 
-public protocol LynxServiceTrailProtocol-p : <LynxServiceProtocol> {
-  public NSString * LynxServiceTrailProtocol-p::stringValueForTrailKey:(NSString *key);
-  public id LynxServiceTrailProtocol-p::objectValueForTrailKey:(NSString *key);
-  public NSDictionary * LynxServiceTrailProtocol-p::getAllValues();
-  public void LynxServiceTrailProtocol-p::parseLynxViewBuilder:(LynxViewBuilder *builder);
+public protocol LynxServiceTrailExtensionProtocol-p :  {
+  public void LynxServiceTrailExtensionProtocol-p::parseLynxViewBuilder:(LynxViewBuilder *builder);
 }
 
 public class LynxSetModule : NSObject, <LynxContextModule> {
@@ -6196,21 +6181,6 @@ public enum LynxContextTagType {
   LynxContextTagLastLynxAsyncComponentURL
 }
 
-
-  public NSUInteger const kLynxServiceTypeMonitor kLynxServiceTypeMonitor;
-  public NSUInteger const kLynxServiceHttp kLynxServiceHttp;
-  public NSUInteger const kLynxServiceTrail kLynxServiceTrail;
-  public NSUInteger const kLynxServiceImage kLynxServiceImage;
-  public NSUInteger const kLynxServiceEventReporter kLynxServiceEventReporter;
-  public NSUInteger const kLynxServiceModule kLynxServiceModule;
-  public NSUInteger const kLynxServiceLog kLynxServiceLog;
-  public NSUInteger const kLynxServiceI18n kLynxServiceI18n;
-  public NSUInteger const kLynxServiceSystemInvoke kLynxServiceSystemInvoke;
-  public NSUInteger const kLynxServiceResource kLynxServiceResource;
-  public NSUInteger const kLynxServiceSecurity kLynxServiceSecurity;
-  public NSUInteger const kLynxServiceDevTool kLynxServiceDevTool;
-  public NSUInteger const kLynxServiceExtension kLynxServiceExtension;
-  public typedef NS_OPTIONS(NSUInteger, LynxServiceScope);
 
 public enum LynxServiceResourceScene {
   ResourceSceneOther
