@@ -6,12 +6,12 @@ package com.lynx.service.log
 
 import android.util.Log
 import androidx.annotation.Keep
-import com.lynx.base.service.ILynxBaseLogService
-import com.lynx.base.service.ILynxBaseLogService.LogOutputChannelType
+import com.lynx.tasm.service.ILynxLogService
+import com.lynx.tasm.service.ILynxLogService.LogOutputChannelType
 import com.lynx.base.log.LynxLog
 
 @Keep
-object LynxLogService : ILynxBaseLogService {
+object LynxLogService : ILynxLogService {
   private var logOutputChannel: LogOutputChannelType = LogOutputChannelType.Platform
 
   // By default, lynx logs are consumed on the platform layer.
