@@ -25,7 +25,6 @@
 #include "core/services/long_task_timing/long_task_monitor.h"
 #include "core/services/timing_handler/timing_constants.h"
 #include "core/shared_data/lynx_white_board.h"
-#include "core/shell/lynx_runtime_actor_holder.h"
 #include "core/template_bundle/template_codec/ttml_constant.h"
 #include "core/value_wrapper/value_impl_piper.h"
 
@@ -462,14 +461,6 @@ void LynxRuntime::CallJSCallback(
     callback->timing_collector_->EndCallCallback(callback_thread_switch_end,
                                                  callback_call_start_time);
   }
-
-  if (state_ == State::kDestroying && callbacks_.empty()) {
-    shell::LynxRuntimeActorHolder::GetInstance()->Release(
-        GetRuntimeId(),
-        (runtime_flags_ & LynxRuntimeFlags::ENABLE_JS_GROUP_THREAD) ? group_id_
-                                                                    : "");
-    return;
-  }
 }
 
 int64_t LynxRuntime::RegisterJSCallbackFunction(piper::Function func) {
@@ -708,9 +699,9 @@ void LynxRuntime::OnJSSourcePrepared(
   }
 }
 
-bool LynxRuntime::TryToDestroy() {
+void LynxRuntime::TryToDestroy() {
   if (state_ == State::kNotStarted) {
-    return true;
+    return;
   }
   state_ = State::kDestroying;
 
@@ -753,22 +744,9 @@ bool LynxRuntime::TryToDestroy() {
     js_runtime->DestroyInspector();
   }
 
-  destroy_js_app_early_ = tasm::LynxEnv::GetInstance().GetBoolEnv(
-      tasm::LynxEnv::Key::OPT_DESTROY_JS_APP_EARLY, true);
-  DestroyAppAndNapi(destroy_js_app_early_);
+  DestroyAppAndNapi();
 
-  // if opt_avoid_destroy_runtime_wait is true, destroy LynxRuntime directly.
-  if (tasm::LynxEnv::GetInstance().GetBoolEnv(
-          tasm::LynxEnv::Key::OPT_AVOID_DESTROY_RUNTIME_WAIT, true)) {
-    callbacks_.clear();
-    return true;
-  }
-
-  if (callbacks_.empty()) {
-    return true;
-  } else {
-    return false;
-  }
+  callbacks_.clear();
 }
 
 void LynxRuntime::Destroy() {
@@ -780,39 +758,35 @@ void LynxRuntime::Destroy() {
   cached_tasks_.clear();
   ssr_global_event_cached_tasks_.clear();
   callbacks_.clear();
-  DestroyAppAndNapi(!destroy_js_app_early_);
 
   js_executor_->SetObserver(nullptr);
   js_executor_->Destroy();
   js_executor_ = nullptr;
 }
 
-void LynxRuntime::DestroyAppAndNapi(bool destroy) {
-  if (destroy) {
-    LOGI("LynxRuntime::DestroyAppAndNapi, runtime_id: " << GetRuntimeId()
-                                                        << " this: " << this);
-    // App destroy might invoke front-page's destroy, which could call a NAPI
-    // API, so it's important to call destroy first, and then call NAPI destroy.
-    app_->destroy();
-    app_ = nullptr;
+void LynxRuntime::DestroyAppAndNapi() {
+  LOGI("LynxRuntime::DestroyAppAndNapi, runtime_id: " << GetRuntimeId()
+                                                      << " this: " << this);
+  // App destroy might invoke front-page's destroy, which could call a NAPI
+  // API, so it's important to call destroy first, and then call NAPI destroy.
+  app_->destroy();
+  app_ = nullptr;
 #if ENABLE_NAPI_BINDING
-    if (napi_environment_) {
-      LOGI("napi detaching runtime, id: " << GetRuntimeId());
-      napi_environment_->Detach();
-      napi_environment_.reset();
-    }
-    if (napi_restricted_environment_) {
-      LOGI("restricted napi detaching runtime, id: " << GetRuntimeId());
-      napi_restricted_environment_->Detach();
-      napi_restricted_environment_.reset();
-    }
+  if (napi_environment_) {
+    LOGI("napi detaching runtime, id: " << GetRuntimeId());
+    napi_environment_->Detach();
+    napi_environment_.reset();
+  }
+  if (napi_restricted_environment_) {
+    LOGI("restricted napi detaching runtime, id: " << GetRuntimeId());
+    napi_restricted_environment_->Detach();
+    napi_restricted_environment_.reset();
+  }
 #endif
-    lifecycle_observer_->OnRuntimeDetach();
-    auto& factory =
-        js_executor_->GetModuleManager()->GetExtensionModuleFactory();
-    if (factory) {
-      factory->OnRuntimeDetach();
-    }
+  lifecycle_observer_->OnRuntimeDetach();
+  auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
+  if (factory) {
+    factory->OnRuntimeDetach();
   }
 }
 

@@ -24,7 +24,6 @@
 #include "core/services/watch_dog/watch_dog.h"
 #include "core/shell/common/shell_trace_event_def.h"
 #include "core/shell/lynx_engine_wrapper.h"
-#include "core/shell/lynx_runtime_actor_holder.h"
 #include "core/shell/runtime_mediator.h"
 #include "core/shell/runtime_standalone_helper.h"
 #include "core/shell/tasm_operation_queue_async.h"
@@ -368,19 +367,11 @@ void LynxShell::TriggerDestroyRuntime(
   }
   auto instance_id = runtime_actor->GetInstanceId();
   auto runtime = runtime_actor->Impl();
-  if (runtime->TryToDestroy()) {
-    runtime_actor->Act([instance_id](auto& runtime) {
-      runtime = nullptr;
-      tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
-    });
-  } else {
-    // Hold LynxRuntime. It will be released when destroyed callback be
-    // handled in LynxRuntime::CallJSCallback() or the delayed release
-    // task time out.
-    auto holder = LynxRuntimeActorHolder::GetInstance();
-    holder->Hold(runtime_actor, js_group_thread_name);
-    holder->PostDelayedRelease(instance_id, js_group_thread_name);
-  }
+  runtime->TryToDestroy();
+  runtime_actor->Act([instance_id](auto& runtime) {
+    runtime = nullptr;
+    tasm::report::FeatureCounter::Instance()->ClearAndReport(instance_id);
+  });
 }
 
 bool LynxShell::IsDestroyed() { return is_destroyed_; }

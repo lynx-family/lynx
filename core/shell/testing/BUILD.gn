@@ -19,7 +19,6 @@ mocktest_set("shell_testset") {
     "../layout_result_manager_unittest.cc",
     "../lynx_card_cache_data_manager_unittest.cc",
     "../lynx_engine_proxy_impl_unittest.cc",
-    "../lynx_runtime_actor_holder_unittest.cc",
     "../lynx_shell_builder_unitest.cc",
     "../lynx_shell_unittest.cc",
     "../lynx_ui_operation_async_queue_unittest.cc",

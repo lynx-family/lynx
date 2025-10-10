@@ -148,7 +148,7 @@ class LynxRuntime final {
 
   void I18nResourceChanged(const std::string& msg);
 
-  bool TryToDestroy();
+  void TryToDestroy();
 
   std::shared_ptr<runtime::IVSyncObserver> GetVSyncObserver() {
     return delegate_->GetVSyncObserver();
@@ -202,7 +202,7 @@ class LynxRuntime final {
   };
 
   void Destroy();
-  void DestroyAppAndNapi(bool destroy);
+  void DestroyAppAndNapi();
   void ReadPreloadJSSource(
       std::vector<std::string> preload_js_paths,
       std::vector<std::pair<std::string, std::string>>& ret);
@@ -274,7 +274,6 @@ class LynxRuntime final {
   lepus::Value init_global_props_;
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       cached_native_factories_;
-  bool destroy_js_app_early_{false};
 };
 
 }  // namespace runtime

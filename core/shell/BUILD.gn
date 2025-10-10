@@ -31,8 +31,6 @@ shell_shared_sources = [
   "lynx_engine_wrapper.h",
   "lynx_layout_proxy.cc",
   "lynx_layout_proxy.h",
-  "lynx_runtime_actor_holder.cc",
-  "lynx_runtime_actor_holder.h",
   "lynx_runtime_proxy_impl.cc",
   "lynx_runtime_proxy_impl.h",
   "lynx_shell.cc",
