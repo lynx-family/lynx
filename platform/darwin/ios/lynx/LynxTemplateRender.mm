@@ -112,7 +112,9 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     if (block) {
       TRACE_EVENT(LYNX_TRACE_CATEGORY, TEMPLATE_RENDER_CUSTOM_BUILDER);
       block(builder);
-      [LynxTrail parseLynxViewBuilder:builder];
+      if (LynxTrailExtensionService != nil) {
+        [LynxTrailExtensionService parseLynxViewBuilder:builder];
+      }
     }
 
     /// Runtime Options

@@ -171,9 +171,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
     NSString* preloadKey = params[@"preloadKey"];
     NSString* videoID = params[@"videoID"];
     BOOL videoModel = [params[@"videoModel"] boolValue];
-    id<LynxServiceResourceProtocol> service =
-        [LynxServices getInstanceWithProtocol:@protocol(LynxServiceResourceProtocol)
-                                        bizID:DEFAULT_LYNX_SERVICE];
+    id<LynxServiceResourceProtocol> service = LynxService(LynxServiceResourceProtocol);
     if (!preloadKey) {
       code = ECLynxResourceModuleParamsError;
       msg = @"missing preloadKey!";
@@ -199,9 +197,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
   if ([type isEqualToString:kImageType]) {
     LynxURL* lynxUri = [[LynxURL alloc] init];
     lynxUri.url = [[NSURL alloc] initWithString:uri];
-    id<LynxServiceImageProtocol> service =
-        [LynxServices getInstanceWithProtocol:@protocol(LynxServiceImageProtocol)
-                                        bizID:DEFAULT_LYNX_SERVICE];
+    id<LynxServiceImageProtocol> service = LynxService(LynxServiceImageProtocol);
     if (service) {
       [service prefetchImage:lynxUri params:params];
     } else {
@@ -228,9 +224,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
       size = [params[@"size"] integerValue];
     }
 
-    id<LynxServiceResourceProtocol> service =
-        [LynxServices getInstanceWithProtocol:@protocol(LynxServiceResourceProtocol)
-                                        bizID:DEFAULT_LYNX_SERVICE];
+    id<LynxServiceResourceProtocol> service = LynxService(LynxServiceResourceProtocol);
 
     if (!preloadKey) {
       code = ECLynxResourceModuleParamsError;
@@ -277,9 +271,7 @@ static NSInteger kDefaultMediaSize = 500 * 1024;
     }
     return;
   }
-  id<LynxServiceImageProtocol> service =
-      [LynxServices getInstanceWithProtocol:@protocol(LynxServiceImageProtocol)
-                                      bizID:DEFAULT_LYNX_SERVICE];
+  id<LynxServiceImageProtocol> service = LynxService(LynxServiceImageProtocol);
   if (service == nil) {
     NSInteger code = ECLynxResourceModuleImgPrefetchHelperNotExist;
     NSString* msg = @"Image prefetch service do not exist!";

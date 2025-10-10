@@ -1,0 +1,71 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//${lynx_dir}/build_overrides/darwin.gni")
+import("../../../../config.gni")
+import("../../../../core/Lynx.gni")
+
+group("LynxServiceAPI") {
+  deps = [ ":LynxServiceAPI_podspec" ]
+}
+
+podspec_target("LynxServiceAPI_podspec") {
+  output_name = "LynxServiceAPI.podspec"
+  output_path = rebase_path("//")
+  root_specification = {
+    name = "LynxServiceAPI"
+    version = "$lynx_version"
+    summary = "Service API provided for frameworks such as Lynx/LynxBase"
+    homepage = "https://github.com/lynx-family/lynx"
+    license = "Apache 2.0"
+    author = "Lynx"
+    source = {
+      git = "https://github.com/lynx-family/lynx.git"
+    }
+    requires_arc = true
+    compiler_flags = [
+      "-Wall",
+      "-Wextra",
+      "-Wno-unused-parameter",
+      "-Wshorten-64-to-32",
+      "-fno-rtti",
+    ]
+    pod_target_xcconfig = {
+      GCC_PREPROCESSOR_DEFINITIONS = [ "OS_IOS=1" ]
+      CLANG_CXX_LANGUAGE_STANDARD = "gnu++17"
+      OTHER_CPLUSPLUSFLAGS =
+          "-fno-aligned-allocation -fno-c++-static-destructors"
+    }
+    if (!is_debug) {
+      pod_target_xcconfig.GCC_PREPROCESSOR_DEFINITIONS += [ "NDEBUG=1" ]
+    }
+    ios = {
+      deployment_target = "10.0"
+    }
+  }
+  deps = [ ":Core" ]
+}
+
+lynx_service_api_sources = [
+  "./LynxServiceLogProtocol.h",
+  "./LynxServiceProtocol.h",
+  "./LynxServiceTrailProtocol.h",
+  "./ServiceAPI.h",
+  "./ServiceAPI.m",
+  "./ServiceLazyLoad.h",
+]
+
+subspec_target("Core") {
+  sources = lynx_service_api_sources
+  public_header_files = [
+    "./ServiceAPI.h",
+    "./LynxServiceProtocol.h",
+    "./LynxServiceTrailProtocol.h",
+    "./LynxServiceLogProtocol.h",
+  ]
+}
+
+lynx_core_source_set("lynx_service_api_sources") {
+  sources = lynx_service_api_sources
+}

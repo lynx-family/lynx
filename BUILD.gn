@@ -22,6 +22,7 @@ group("default") {
     deps += [ "platform/harmony" ]
   } else if (is_ios) {
     deps += [ "platform/darwin/ios/lynx_service:LynxService" ]
+    deps += [ "platform/darwin/ios/lynx_service_api:LynxServiceAPI_podspec" ]
     deps += [ "platform/darwin/ios/lynx_devtool:devtool_podspec" ]
     deps += [ "platform/darwin/ios/lynx_xelement:XElement" ]
     deps += [ "platform/darwin/ios:iOS" ]

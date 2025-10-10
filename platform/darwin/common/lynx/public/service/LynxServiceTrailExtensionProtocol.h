@@ -6,32 +6,17 @@
 #define DARWIN_COMMON_LYNX_SERVICE_LYNXSERVICETRAILPROTOCOL_H_
 
 #import <Foundation/Foundation.h>
+#import <LynxServiceAPI/LynxServiceTrailProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class LynxViewBuilder;
 
-@protocol LynxServiceProtocol;
-
-@protocol LynxServiceTrailProtocol <LynxServiceProtocol>
-
 /**
- * Get string value for key from experiment
- * @param key key of experiment
+ * This protocol is used to extend the default LynxServiceTrailProtocol, which does not have some
+ * lynx-specific methods.
  */
-- (NSString *)stringValueForTrailKey:(NSString *)key;
-
-/**
- * Get object value for key from experiment. Only used for compatibility with different types,
- * please use stringValueForTrailKey in most cases
- * @param key key of experiment
- */
-- (id)objectValueForTrailKey:(NSString *)key;
-
-/**
- * Get all values for key from experiment.
- */
-- (NSDictionary *)getAllValues;
+@protocol LynxServiceTrailExtensionProtocol
 
 /**
  * parse configs of LynxViewBuilder
