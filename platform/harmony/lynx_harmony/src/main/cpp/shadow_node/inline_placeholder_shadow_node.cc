@@ -86,7 +86,7 @@ float InlinePlaceholderShadowNode::CalcPlaceholderTopOffset(
     case starlight::VerticalAlignType::kTextTop:
       return line_metrics->Top();
     case starlight::VerticalAlignType::kMiddle:
-      return line_metrics->Ascent() -
+      return line_metrics->Top() + line_metrics->Ascent() -
              (line_metrics->XHeight() + size_.height_) / 2.f;
     case starlight::VerticalAlignType::kCenter:
       return line_metrics->Top() +
