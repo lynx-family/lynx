@@ -51,14 +51,6 @@ public class LynxConfigInfo {
     return mPageType;
   }
 
-  public String getCliVersion() {
-    return mCliVersion;
-  }
-
-  public String getCustomData() {
-    return mCustomData;
-  }
-
   public String getTemplateUrl() {
     return mTemplateUrl;
   }

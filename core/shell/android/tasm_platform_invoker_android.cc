@@ -150,8 +150,6 @@ base::android::JavaOnlyMap TasmPlatformInvokerAndroid::ConvertToJavaOnlyMap(
   java_config.PushBoolean(kUseImagePostProcessor,
                           config->GetUseImagePostProcessor());
   java_config.PushString(kPageType, tasm::GetDSLName(config->GetDSL()));
-  java_config.PushString(kCliVersion, config->GetCliVersion());
-  java_config.PushString(kCustomData, config->GetCustomData());
   java_config.PushBoolean(kUseNewSwiper, config->GetUseNewSwiper());
   java_config.PushBoolean(kEnableAsyncInitVideoEngine,
                           config->GetEnableAsyncInitTTVideoEngine());

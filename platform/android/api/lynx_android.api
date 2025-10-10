@@ -4239,8 +4239,6 @@ public class com::lynx::tasm::navigator::LynxCardManager : com.lynx.tasm.navigat
 public class com::lynx::tasm::LynxConfigInfo :  {
   public String com.lynx.tasm.LynxConfigInfo.getPageVersion();
   public String com.lynx.tasm.LynxConfigInfo.getPageType();
-  public String com.lynx.tasm.LynxConfigInfo.getCliVersion();
-  public String com.lynx.tasm.LynxConfigInfo.getCustomData();
   public String com.lynx.tasm.LynxConfigInfo.getTemplateUrl();
   public String com.lynx.tasm.LynxConfigInfo.getTargetSdkVersion();
   public String com.lynx.tasm.LynxConfigInfo.getLepusVersion();
@@ -7604,8 +7602,6 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.isUseNewSwiper();
   public boolean com.lynx.tasm.PageConfig.isAsyncInitTTVideoEngine();
   public String com.lynx.tasm.PageConfig.getPageType();
-  public String com.lynx.tasm.PageConfig.getCliVersion();
-  public String com.lynx.tasm.PageConfig.getCustomData();
   public String com.lynx.tasm.PageConfig.getTargetSdkVersion();
   public String com.lynx.tasm.PageConfig.getLepusVersion();
   public boolean com.lynx.tasm.PageConfig.isEnableLepusNG();

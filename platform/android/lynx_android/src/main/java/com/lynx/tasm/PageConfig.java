@@ -412,14 +412,6 @@ public class PageConfig {
     return pageType;
   }
 
-  public String getCliVersion() {
-    return cliVersion;
-  }
-
-  public String getCustomData() {
-    return customData;
-  }
-
   public String getTargetSdkVersion() {
     return targetSdkVersion;
   }

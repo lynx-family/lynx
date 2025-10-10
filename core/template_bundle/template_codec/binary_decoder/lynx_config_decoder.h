@@ -32,19 +32,9 @@ class LynxConfigDecoder final {
       page_config->SetVersion(doc[config::kVersion].GetString());
     }
 
-    if (doc.HasMember(config::kCliVersion) &&
-        doc[config::kCliVersion].IsString()) {
-      page_config->SetCliVersion(doc[config::kCliVersion].GetString());
-    }
-
     if (doc.HasMember(config::kReactVersion) &&
         doc[config::kReactVersion].IsString()) {
       page_config->SetReactVersion(doc[config::kReactVersion].GetString());
-    }
-
-    if (doc.HasMember(config::kCustomData) &&
-        doc[config::kCustomData].IsString()) {
-      page_config->SetCustomData(doc[config::kCustomData].GetString());
     }
 
     if (doc.HasMember(config::kTapSlop) && doc[config::kTapSlop].IsString()) {

@@ -31,20 +31,7 @@ version:
   valueType: string
   nameAs:
     member: page_version
-cli:
-  description: cli version
-  defaultValue: null
-  valueType: string
-  nameAs:
-    member: cli_version
-    setter: SetCliVersion
-    getter: GetCliVersion
-    const: kCliVersion
 reactVersion:
-  description:
-  defaultValue: null
-  valueType: string
-customData:
   description:
   defaultValue: null
   valueType: string
