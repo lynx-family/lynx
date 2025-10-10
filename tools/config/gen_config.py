@@ -11,6 +11,7 @@ import re
 import sys
 from jinja2 import Template
 from config_utils import clang_format
+import argparse
 
 
 class Config:
@@ -20,8 +21,13 @@ class Config:
         self,
         name: str,
         desc: str,
-        default_value,
+        default_value: str,
+        js_default_value: str,
         value_type: str,
+        js_value_type: str,
+        since: str,
+        deprecated: str,
+        support_platform: str,
         sync_to: list[str],
         version_overrides: list[dict],
         author: str,
@@ -65,20 +71,33 @@ class Config:
         self.value_type = value_type
         self.sync_to = sync_to
         self.setter_input_type = self.value_type
+        self.js_default_value = js_default_value
+        self.js_value_type = js_value_type
+        self.since = since
+        self.deprecated = deprecated
+        self.support_platform = support_platform
 
         if self.value_type == "bool" or self.value_type == "boolean":
             self.value_type = "bool"
             self.default_value = "true" if self.default_value else "false"
+            self.js_value_type = "boolean"
+            self.js_default_value = "true" if self.default_value else "false"
         elif self.value_type == "string":
             self.value_type = "std::string"
             self.setter_input_type = "const std::string&"
+            self.js_value_type = "string"
             if not self.default_value:
                 self.default_value = '""'
+                self.js_default_value = '""'
             else:
                 self.default_value = '"' + self.default_value + '"'
+                self.js_default_value = self.default_value
+        else:
+            self.js_value_type = "undefined"
 
         if self.default_value is None:
             self.default_value = ""
+            self.js_default_value = "undefined"
 
         self.doc_type = None
         if self.value_type == "bool" or self.value_type == "TernaryBool":
@@ -126,21 +145,27 @@ def parse_config() -> list[Config]:
         config = yaml.safe_load(f)
     configs = []
     for key, value in config.items():
-        version_overrides: list[dict] = value.get("versionOverrides")
         configs.append(
             Config(
-                key,
-                value["description"],
-                value["defaultValue"],
-                value["valueType"],
-                value.get("syncTo"),
-                version_overrides,
-                value.get("author"),
-                value.get("codeGen"),
-                value.get("nameAs"),
-                value.get("bindMemberTo"),
-                value.get("readSettings"),
-                value.get("readNative"),
+                name=key,
+                desc=value.get("description", None),
+                default_value=value.get("defaultValue", None),
+                js_default_value=value.get("jsDefaultValue", "undefined"),
+                value_type=value.get("valueType", None),
+                js_value_type=value.get("jsValueType", "undefined"),
+                since=value.get("since", None),
+                deprecated=value.get("deprecated", ""),
+                support_platform=value.get(
+                    "supportPlatform", ["Android", "iOS", "HarmonyOS"]
+                ),
+                sync_to=value.get("syncTo", []),
+                version_overrides=value.get("versionOverrides", []),
+                author=value.get("author", None),
+                code_gen=value.get("codeGen", ["ALL"]),
+                name_as=value.get("nameAs", {}),
+                bind_member_to=value.get("bindMemberTo", ""),
+                read_settings=value.get("readSettings", False),
+                read_native=value.get("readNative", False),
             )
         )
     return configs
@@ -156,7 +181,8 @@ def render_code_content(template_path: str, output_path: str, configs: list[Conf
     rendered_content = Template(
         lynx_config_tmpl, trim_blocks=True, lstrip_blocks=True
     ).render(configs=configs)
-    rendered_content = clang_format(rendered_content, file_extension=".h")
+    if output_path.endswith(".cc") or output_path.endswith(".h"):
+        rendered_content = clang_format(rendered_content, file_extension=".h")
 
     if not os.path.exists(output_path):
         with open(output_path, "w") as f:
@@ -222,13 +248,56 @@ def gen_lynx_config():
     render_code_content(config_const_tmpl_path, lynx_config_const_header_path, configs)
 
 
-def gen_config():
-    # gen page config decode
-    gen_page_config_decode()
-    # gen lynx config constants
-    gen_lynx_config()
+def gen_rspeedy_plugin_config_types():
+    configs = parse_config()
+    rspeedy_plugin_config_types_tmpl_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "rspeedy_plugin_config_types.tmpl",
+    )
+    rspeedy_plugin_config_types_header_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "rspeedy_plugin_config_types.ts",
+    )
+    render_code_content(
+        rspeedy_plugin_config_types_tmpl_path,
+        rspeedy_plugin_config_types_header_path,
+        configs,
+    )
+
+
+def gen_config_doc():
+    configs = parse_config()
+    config_doc_tmpl_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "lynx_config_doc.tmpl",
+    )
+    config_doc_header_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "lynx_config_doc.mdx",
+    )
+    render_code_content(config_doc_tmpl_path, config_doc_header_path, configs)
+
+
+def main():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--gen-lynx-config", default=True, action="store_true")
+    arg_parser.add_argument("--gen-rspeedy-plugin-config-types", action="store_true")
+    arg_parser.add_argument("--gen-config-doc", action="store_true")
+    args = arg_parser.parse_args()
+
+    if args.gen_lynx_config:
+        # gen page config decode
+        gen_page_config_decode()
+        # gen lynx config constants
+        gen_lynx_config()
+    if args.gen_rspeedy_plugin_config_types:
+        # gen rspeedy plugin config types
+        gen_rspeedy_plugin_config_types()
+    if args.gen_config_doc:
+        # gen config doc
+        gen_config_doc()
     sys.exit(0)
 
 
 if __name__ == "__main__":
-    gen_config()
+    main()

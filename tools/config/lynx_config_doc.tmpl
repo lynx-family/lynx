@@ -1,0 +1,22 @@
+# Lynx Config
+
+{% for config in configs %}
+## {{ config.name }}
+  {{ config.desc }}
+
+  * `valueType:` {{ config.js_value_type }}
+
+  * `defaultValue:` {{ config.js_default_value }}
+
+  * `since:` {{ config.since }}
+
+  * `supportPlatform:` {{ config.support_platform }}
+
+  {% if config.deprecated %}
+  * `deprecated:` {{ config.deprecated }}
+  {% endif %}
+  ```ts
+  {{ config.name }}?: {{ config.js_value_type }} | undefined;
+  ```
+
+{% endfor %}
