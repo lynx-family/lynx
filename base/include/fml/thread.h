@@ -45,10 +45,12 @@ class BASE_EXPORT Thread {
   /// The ThreadConfig is the thread info include thread name, thread priority.
   struct ThreadConfig {
     ThreadConfig(const std::string& name, ThreadPriority priority,
-                 std::shared_ptr<base::closure> additional_setup_closure)
+                 std::shared_ptr<base::closure> additional_setup_closure,
+                 bool enable_preset_thread_priority = false)
         : name(name),
           priority(priority),
-          additional_setup_closure(std::move(additional_setup_closure)) {}
+          additional_setup_closure(std::move(additional_setup_closure)),
+          enable_preset_thread_priority(enable_preset_thread_priority) {}
 
     ThreadConfig(const std::string& name, ThreadPriority priority)
         : ThreadConfig(name, priority, nullptr) {}
@@ -62,6 +64,7 @@ class BASE_EXPORT Thread {
     ThreadPriority priority;
     std::shared_ptr<base::closure>
         additional_setup_closure;  // thread config should be copyable
+    bool enable_preset_thread_priority;
   };
 
   using ThreadConfigSetter = std::function<void(const ThreadConfig&)>;

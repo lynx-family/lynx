@@ -3,11 +3,30 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Foundation/Foundation.h>
-
+#include <pthread.h>
 #include "base/include/fml/platform/thread_config_setter.h"
 
 namespace lynx {
 namespace fml {
+
+namespace {
+
+void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority,
+                       bool need_reset_priority) {
+  if (need_reset_priority) {
+    sched_param param;
+    int policy;
+    pthread_t thread = pthread_self();
+    if (pthread_getschedparam(thread, &policy, &param) == 0) {
+      param.sched_priority = sched_priority;
+      pthread_setschedparam(thread, policy, &param);
+    }
+  }
+  pthread_set_qos_class_self_np(qos_class, 0);
+  [[NSThread currentThread] setThreadPriority:thread_priority];
+}
+
+}  // namespace
 
 /// Inheriting ThreadConfigurer and use iOS platform thread API to configure the thread priorities
 /// Using iOS platform thread API to configure thread priority
@@ -22,36 +41,24 @@ void PlatformThreadPriority::Setter(const lynx::fml::Thread::ThreadConfig& confi
     lynx::fml::Thread::SetCurrentThreadName(config);
 
     // set thread priority
+    // The sched_priority values are based on the Darwin kernel's scheduling priorities.
+    // The range for default policy (SCHED_OTHER) is typically 0-63.
+    // A higher number means a higher priority.
+    // 4: A low priority, suitable for background tasks that are not time-sensitive.
+    // 31: The default priority for user-interactive threads.
+    // 46: A high priority, just below the typical main thread priority (47),
+    //     suitable for important, user-initiated work.
     switch (config.priority) {
-      case lynx::fml::Thread::ThreadPriority::BACKGROUND: {
-        pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
-        [[NSThread currentThread] setThreadPriority:0];
+      case lynx::fml::Thread::ThreadPriority::BACKGROUND:
+      case lynx::fml::Thread::ThreadPriority::LOW:
+        SetThreadPriority(4, QOS_CLASS_BACKGROUND, 0.0, config.enable_preset_thread_priority);
         break;
-      }
-      case lynx::fml::Thread::ThreadPriority::LOW: {
-        pthread_set_qos_class_self_np(QOS_CLASS_BACKGROUND, 0);
-        [[NSThread currentThread] setThreadPriority:0];
+      case lynx::fml::Thread::ThreadPriority::NORMAL:
+        SetThreadPriority(31, QOS_CLASS_DEFAULT, 0.5, config.enable_preset_thread_priority);
         break;
-      }
-      case lynx::fml::Thread::ThreadPriority::NORMAL: {
-        pthread_set_qos_class_self_np(QOS_CLASS_DEFAULT, 0);
-        [[NSThread currentThread] setThreadPriority:0.5];
+      case lynx::fml::Thread::ThreadPriority::HIGH:
+        SetThreadPriority(46, QOS_CLASS_USER_INITIATED, 1.0, true);
         break;
-      }
-      case lynx::fml::Thread::ThreadPriority::HIGH: {
-        pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
-        [[NSThread currentThread] setThreadPriority:1.0];
-        sched_param param;
-        int policy;
-        pthread_t thread = pthread_self();
-        if (!pthread_getschedparam(thread, &policy, &param)) {
-          // It is common to see the main thread preempt current thread at priority 47.
-          // so we set the child thread priority to 46(47-1);
-          param.sched_priority = 46;
-          pthread_setschedparam(thread, policy, &param);
-        }
-        break;
-      }
     }
   }
 }

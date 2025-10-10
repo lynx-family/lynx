@@ -66,6 +66,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
     ENABLE_ASYNC_THREAD_CACHE,
     MULTI_TASM_THREAD_SIZE,
     MULTI_LAYOUT_THREAD_SIZE,
+    ENABLE_PRESET_THREAD_PRIORITY,
     ENABLE_FLUENCY_TRACE,
     GLOBAL_QUICK_CONTEXT_POOL_SIZE,
     ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
@@ -185,6 +186,8 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
             {Key::ENABLE_ASYNC_THREAD_CACHE, "enable_async_thread_cache"},
             {Key::MULTI_TASM_THREAD_SIZE, "multi_tasm_thread_size"},
             {Key::MULTI_LAYOUT_THREAD_SIZE, "multi_layout_thread_size"},
+            {Key::ENABLE_PRESET_THREAD_PRIORITY,
+             "enable_preset_thread_priority"},
             {Key::ENABLE_FLUENCY_TRACE, "ENABLE_FLUENCY_TRACE"},
             {Key::ENABLE_REPORT_THREADED_ELEMENT_FLUSH_STATISTIC,
              "enable_report_threaded_element_flush_statistic"},
@@ -349,6 +352,7 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxEnv {
   bool GetVsyncAlignedFlushGlobalSwitch();
   bool EnableGlobalFeatureSwitchStatistic();
   bool EnableFeatureCounter();
+  bool EnablePresetThreadPriority();
   bool EnableJSBTiming();
   bool EnableAsyncJSBTiming();
   bool EnableLongTaskTiming();
