@@ -14,9 +14,10 @@ def check_and_run():
     try:
         import yaml
         import jinja2
-        from gen_config import gen_config
+        from gen_config import gen_page_config_decode, gen_lynx_config
 
-        gen_config()
+        gen_page_config_decode()
+        gen_lynx_config()
         sys.exit(0)
     except ImportError:
         print("Required dependencies not found. Running gen_config.py...")
