@@ -93,6 +93,11 @@ lynx_core_source_set("tasm") {
       deps += [ "../runtime/bindings/napi:napi_binding_jsc" ]
     }
   }
+  if (is_mac && !enable_unittests) {
+    deps += [
+      "../../platform/darwin/ios/lynx_service_api:lynx_service_api_sources",
+    ]
+  }
 
   if (lepus_compile) {
     public_deps += [ "../template_bundle/template_codec:lepus_compile" ]
