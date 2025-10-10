@@ -503,7 +503,7 @@ jobs:
         uses: actions/checkout@v4.2.2
         with:
           repository: lynx-family/integrating-lynx-demo-projects
-          ref: 24386a5dbefa7b7a7464c0b3c59535878005a9b2
+          ref: 20e6918fe7b29cc503fa8b9839cfd2e158a15ae9
           path: lynx
       - name: Cherry Pick Commit To Build With Local AAR
         run: |

@@ -8,8 +8,8 @@ import androidx.annotation.Nullable;
 import com.lynx.base.BuildConfig;
 import com.lynx.base.CalledByNative;
 import com.lynx.base.LynxBaseEnv;
-import com.lynx.base.service.ILynxBaseLogService;
-import com.lynx.base.service.LynxBaseServiceCenter;
+import com.lynx.tasm.service.ILynxLogService;
+import com.lynx.tasm.service.LynxServiceCenter;
 
 public class LynxLog {
   private static final String TAG = "LynxLog";
@@ -28,7 +28,7 @@ public class LynxLog {
 
   private static boolean sIsNativeLibLoad = false;
   private static boolean sIsJSLogsFromExternalChannelsOpen = false;
-  private static ILynxBaseLogService service = null;
+  private static ILynxLogService service = null;
 
   public static void initLynxLog(boolean isPrintLogsToAllChannels) {
     try {
@@ -206,7 +206,7 @@ public class LynxLog {
 
   private static void detectALogDependence() {
     long address = 0;
-    service = LynxBaseServiceCenter.inst().getService(ILynxBaseLogService.class);
+    service = LynxServiceCenter.inst().getService(ILynxLogService.class);
     if (service != null) {
       address = service.getDefaultWriteFunction();
     }

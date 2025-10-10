@@ -3,10 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 package com.lynx.jsbridge;
 
-import com.lynx.base.service.ILynxBaseLogService;
-import com.lynx.base.service.LynxBaseServiceCenter;
 import com.lynx.tasm.LynxEnv;
 import com.lynx.tasm.behavior.LynxContext;
+import com.lynx.tasm.service.ILynxLogService;
+import com.lynx.tasm.service.LynxServiceCenter;
 import java.lang.reflect.Field;
 
 public class LynxSetModule extends LynxContextModule {
@@ -24,8 +24,7 @@ public class LynxSetModule extends LynxContextModule {
 
   @LynxMethod
   public void switchLogToSystem(boolean arg) {
-    ILynxBaseLogService service =
-        LynxBaseServiceCenter.inst().getService(ILynxBaseLogService.class);
+    ILynxLogService service = LynxServiceCenter.inst().getService(ILynxLogService.class);
     if (service != null) {
       service.switchLogToSystem(arg);
     }
@@ -33,8 +32,7 @@ public class LynxSetModule extends LynxContextModule {
 
   @LynxMethod
   public boolean getLogToSystemStatus() {
-    ILynxBaseLogService service =
-        LynxBaseServiceCenter.inst().getService(ILynxBaseLogService.class);
+    ILynxLogService service = LynxServiceCenter.inst().getService(ILynxLogService.class);
     if (service != null) {
       return service.getLogToSystemStatus();
     }
