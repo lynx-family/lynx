@@ -12,6 +12,7 @@
 #include <vector>
 
 #include "base/include/fml/thread.h"
+#include "core/renderer/utils/lynx_env.h"
 #include "core/services/event_report/event_tracker.h"
 
 // Name of report thread.
@@ -70,8 +71,9 @@ class EventTrackerPlatformImpl {
   // Get Task Runner of report thread.
   static fml::RefPtr<fml::TaskRunner> GetReportTaskRunner() {
     static base::NoDestructor<fml::Thread> event_report_thread_t_(
-        fml::Thread::ThreadConfig(kLynxReportThread,
-                                  fml::Thread::ThreadPriority::NORMAL));
+        fml::Thread::ThreadConfig(
+            kLynxReportThread, fml::Thread::ThreadPriority::NORMAL, nullptr,
+            tasm::LynxEnv::GetInstance().EnablePresetThreadPriority()));
     return event_report_thread_t_->GetTaskRunner();
   }
 };

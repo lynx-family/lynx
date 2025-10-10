@@ -263,6 +263,10 @@ bool LynxEnv::EnableFeatureCounter() {
   return GetBoolEnv(Key::ENABLE_FEATURE_COUNTER, false);
 }
 
+bool LynxEnv::EnablePresetThreadPriority() {
+  return GetBoolEnv(Key::ENABLE_PRESET_THREAD_PRIORITY, false);
+}
+
 bool LynxEnv::EnableJSBTiming() {
   return GetBoolEnv(Key::ENABLE_JSB_TIMING, false);
 }
