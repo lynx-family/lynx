@@ -14,7 +14,6 @@
 #import <Lynx/LynxNinePatchImageProcessor.h>
 #import <Lynx/LynxPropsProcessor.h>
 #import <Lynx/LynxService.h>
-#import <Lynx/LynxServiceTrailProtocol.h>
 #import <Lynx/LynxShadowNodeOwner.h>
 #import <Lynx/LynxTraceEvent.h>
 #import <Lynx/LynxTraceEventDef.h>
