@@ -17,13 +17,30 @@
 namespace lynx {
 namespace tasm {
 
+void PropBundleStyleWriter::PushStyleToBundle(
+    PropBundle* bundle, starlight::ComputedCSSStyle* style) {
+  if (bundle == nullptr || style == nullptr) {
+    return;
+  }
+
+  auto& changed_bitset = style->GetChangedBitset();
+  auto& reset_bitset = style->GetResetBitset();
+
+  for (const auto id : changed_bitset) {
+    PushStyleToBundle(bundle, id, style);
+  }
+
+  for (const auto id : reset_bitset) {
+    bundle->SetNullPropsByID(id);
+  }
+}
+
 // This class is used to push different values from style module. Now, all
 // properties are lepus::Value got from ComputedCSSValue. So we use a
 // DefaultWriterFunc to handle it. We are going to make it cleaner by
 // refactoring values to property specified values (e.g. ColorValue,
 // GradientValue, ImageValue, etc.). Once a specified value is ready, we'll add
 // corresponding writer here.
-
 void PropBundleStyleWriter::PushStyleToBundle(
     PropBundle* bundle, CSSPropertyID id, starlight::ComputedCSSStyle* style) {
   if (id > kPropertyStart && id < kPropertyEnd) {

@@ -581,7 +581,12 @@ bool ComputedCSSStyle::SetValue(tasm::CSSPropertyID id,
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
-      return (this->*func)(value, reset);
+      if (auto changed = (this->*func)(value, reset); changed) {
+        MarkChanged(id);
+        return true;
+      }
+
+      return false;
     }
   }
   LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
@@ -654,8 +659,12 @@ bool ComputedCSSStyle::ResetValue(tasm::CSSPropertyID id) {
   if (id > tasm::CSSPropertyID::kPropertyStart &&
       id < tasm::CSSPropertyID::kPropertyEnd) {
     if (StyleFunc func = funcMap[id]) {
-      tasm::CSSValue value;
-      return (this->*func)(value, true);
+      if (auto reset = (this->*func)(tasm::CSSValue(), true); reset) {
+        MarkReset(id);
+        return true;
+      }
+
+      return false;
     }
   }
   LynxWarning(false, error::E_CSS_COMPUTED_CSS_VALUE_UNKNOWN_SETTER,
@@ -688,7 +697,12 @@ bool ComputedCSSStyle::InheritValue(tasm::CSSPropertyID id,
     return false;
   }
   StyleInheritFunc func = iter->second;
-  return (this->*func)(from);
+  if (auto inherit = (this->*func)(from); inherit) {
+    MarkChanged(id);
+    return true;
+  }
+
+  return false;
 }
 
 #define SUPPORTED_LENGTH_PROPERTY(V)                                           \

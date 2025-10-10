@@ -16,6 +16,7 @@
 #include "base/include/string/string_utils.h"
 #include "base/include/vector.h"
 #include "core/renderer/css/css_property.h"
+#include "core/renderer/css/css_property_bitset.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/css/measure_context.h"
 #include "core/renderer/starlight/style/box_data.h"
@@ -581,6 +582,26 @@ class ComputedCSSStyle {
                ? width
                : 0.f;
   }
+
+  tasm::CSSIDBitset& GetChangedBitset() { return changed_bitset_; }
+  tasm::CSSIDBitset& GetResetBitset() { return reset_bitset_; }
+
+  void MarkChanged(tasm::CSSPropertyID id) {
+    changed_bitset_.Set(id);
+    reset_bitset_.Reset(id);
+  }
+
+  void MarkReset(tasm::CSSPropertyID id) {
+    changed_bitset_.Reset(id);
+    reset_bitset_.Set(id);
+  }
+
+  void ClearChanged() { changed_bitset_.Reset(); }
+
+  void ClearReset() { reset_bitset_.Reset(); }
+
+  tasm::CSSIDBitset changed_bitset_;
+  tasm::CSSIDBitset reset_bitset_;
 
   // TODO(songshourui.null): remove this when all the ##nameToLepus methods are
   // deleted. In the long term, the PropBundleStyleWriter will optimize all

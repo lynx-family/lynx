@@ -23,6 +23,7 @@ class PropBundleStyleWriterTest : public ::testing::Test {
  protected:
   PropBundleMock new_bundle_;
   PropBundleMock old_bundle_;
+  PropBundleMock bitset_bundle_;
 
   starlight::ComputedCSSStyle style_;
 };
