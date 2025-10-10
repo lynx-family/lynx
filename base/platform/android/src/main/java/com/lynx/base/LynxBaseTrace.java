@@ -5,8 +5,8 @@ package com.lynx.base;
 
 import com.lynx.base.LynxBaseEnv;
 import com.lynx.base.log.LynxLog;
-import com.lynx.base.service.ILynxBaseTraceService;
-import com.lynx.base.service.LynxBaseServiceCenter;
+import com.lynx.tasm.service.ILynxTraceService;
+import com.lynx.tasm.service.LynxServiceCenter;
 
 public class LynxBaseTrace {
   private static final String TAG = "LynxBaseTrace";
@@ -27,8 +27,7 @@ public class LynxBaseTrace {
 
   private static boolean initNativeBaseTrace() {
     long address = 0;
-    ILynxBaseTraceService service =
-        LynxBaseServiceCenter.inst().getService(ILynxBaseTraceService.class);
+    ILynxTraceService service = LynxServiceCenter.inst().getService(ILynxTraceService.class);
     if (service == null) {
       nativeInitBaseTrace(0);
       LynxLog.i(TAG, "LynxBaseTrace init successfully by itself.");

@@ -166,4 +166,5 @@ task configGnCompileParas {
 
 dependencies {
     compileOnly 'androidx.annotation:annotation:1.0.0'
+    api project(':ServiceAPI')
 }
