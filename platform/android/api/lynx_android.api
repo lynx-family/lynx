@@ -2255,6 +2255,15 @@ public interface com::lynx::tasm::ILynxLogicExecutor {
   public void com.lynx.tasm.ILynxLogicExecutor.destroy();
 }
 
+public interface com::lynx::tasm::service::ILynxLogService {
+  public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxLogService.getServiceClass();
+  public void com.lynx.tasm.service.ILynxLogService.logByPlatform(int level, String tag, String msg);
+  public boolean com.lynx.tasm.service.ILynxLogService.isLogOutputByPlatform();
+  public long com.lynx.tasm.service.ILynxLogService.getDefaultWriteFunction();
+  public void com.lynx.tasm.service.ILynxLogService.switchLogToSystem(boolean enableSystemLog);
+  public boolean com.lynx.tasm.service.ILynxLogService.getLogToSystemStatus();
+}
+
 public interface com::lynx::tasm::service::ILynxMemoryMonitorService {
   public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxMemoryMonitorService.getServiceClass();
   public void com.lynx.tasm.service.ILynxMemoryMonitorService.reportMemoryUsage(@NonNull LynxMemoryInfo data);
@@ -2347,6 +2356,11 @@ public interface com::lynx::tasm::service::ILynxSystemInvokeService {
   public void com.lynx.tasm.service.ILynxSystemInvokeService.unregisterSensorListener(SensorManager manager, SensorEventListener listener);
   public Bitmap com.lynx.tasm.service.ILynxSystemInvokeService.takeScreenshot(View view, Bitmap.Config config);
   public String com.lynx.tasm.service.ILynxSystemInvokeService.getLocale();
+}
+
+public interface com::lynx::tasm::service::ILynxTraceService {
+  public default Class<? extends IServiceProvider > com.lynx.tasm.service.ILynxTraceService.getServiceClass();
+  public long com.lynx.tasm.service.ILynxTraceService.getDefaultTraceFunction();
 }
 
 public interface com::lynx::tasm::service::ILynxTrailService {
@@ -3363,6 +3377,11 @@ public class com::lynx::tasm::LynxTemplateRender::LogLynxViewClient : com.lynx.t
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onFirstScreen();
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onPageUpdate();
   public void com.lynx.tasm.LynxTemplateRender.LogLynxViewClient.onDataUpdated();
+}
+
+public enum com::lynx::tasm::service::ILynxLogService::LogOutputChannelType {
+  public com.lynx.tasm.service.ILynxLogService.LogOutputChannelType.Native Native;
+  public com.lynx.tasm.service.ILynxLogService.LogOutputChannelType.Platform Platform;
 }
 
 public enum com::lynx::tasm::base::LogSource {

@@ -2,29 +2,30 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-package com.lynx.base.service;
+package com.lynx.tasm.service;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
+import com.lynx.tasm.service.IServiceProvider;
 
 /*
  * The selection of lynx log consumption channels is supported. Developers can choose to consume
  * lynx logs at either the platform layer or the C++ layer as required.
- * - For platform layer channel: Developers need to overload ILynxBaseLogService::logByPlatform;
+ * - For platform layer channel: Developers need to overload ILynxLogService::logByPlatform;
  * - For C++ layer channel: Developers are required to introduce the corresponding C/C++ library,
- * overload the function ILynxBaseLogService::getDefaultWriteFunction, and return the address of the
+ * overload the function ILynxLogService::getDefaultWriteFunction, and return the address of the
  * C++ layer log processing function via this function;
  * */
 
 @Keep
-public interface ILynxBaseLogService extends IBaseServiceProvider {
+public interface ILynxLogService extends IServiceProvider {
   public enum LogOutputChannelType { Native, Platform }
   /**
    * Get service class, DO NOT OVERRIDE THIS METHOD
    */
   @NonNull
-  default Class<? extends IBaseServiceProvider> getServiceClass() {
-    return ILynxBaseLogService.class;
+  default Class<? extends IServiceProvider> getServiceClass() {
+    return ILynxLogService.class;
   }
 
   /*
