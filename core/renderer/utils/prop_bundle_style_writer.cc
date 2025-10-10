@@ -27,12 +27,24 @@ void PropBundleStyleWriter::PushStyleToBundle(
   auto& reset_bitset = style->GetResetBitset();
 
   for (const auto id : changed_bitset) {
+    if (CSSProperty::IsTransitionProps(id) ||
+        CSSProperty::IsKeyframeProps(id)) {
+      continue;
+    }
+
     PushStyleToBundle(bundle, id, style);
   }
+  style->ClearChanged();
 
   for (const auto id : reset_bitset) {
+    if (CSSProperty::IsTransitionProps(id) ||
+        CSSProperty::IsKeyframeProps(id)) {
+      continue;
+    }
+
     bundle->SetNullPropsByID(id);
   }
+  style->ClearReset();
 }
 
 // This class is used to push different values from style module. Now, all

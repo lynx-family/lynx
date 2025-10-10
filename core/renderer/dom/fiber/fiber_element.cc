@@ -52,6 +52,7 @@
 #include "core/renderer/template_assembler.h"
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/utils/lynx_env.h"
+#include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/renderer/utils/value_utils.h"
 #include "core/runtime/bindings/jsi/java_script_element.h"
 #include "core/services/event_report/event_tracker.h"
@@ -2226,12 +2227,7 @@ void FiberElement::ConsumeStyleInternal(
           // Inline style or matched selectors has same style property
           continue;
         }
-        const bool value_changed = computed_css_style()->InheritValue(
-            style.first, *parent_computed_css);
-        if (value_changed) {
-          PreparePropBundleIfNeed();
-          PushToBundle(style.first);
-        }
+        computed_css_style()->InheritValue(style.first, *parent_computed_css);
         continue;
       }
 
@@ -2287,6 +2283,8 @@ bool FiberElement::ConsumeAllAttributes() {
 
 void FiberElement::PerformElementContainerCreateOrUpdate(bool need_update,
                                                          bool need_reset) {
+  PushStyleToBundle();
+
   if (dirty_ & kDirtyCreated) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, FIBER_ELEMENT_HANDLE_CRATE,
                 [this](lynx::perfetto::EventContext ctx) {
@@ -2339,7 +2337,8 @@ ParallelFlushReturn FiberElement::CreateParallelTaskHandler() {
     }
     // Executing task in parallel_reduce_tasks_ may produce prop_bundle_,
     // need to consume newly created prop_bundle_
-    PerformElementContainerCreateOrUpdate(prop_bundle_ != nullptr, true);
+    PerformElementContainerCreateOrUpdate(
+        prop_bundle_ != nullptr || computed_css_style()->IsDirty(), true);
 
     this->UpdateResolveStatus(AsyncResolveStatus::kUpdated);
     VerifyKeyframePropsChangedHandling();
@@ -2638,6 +2637,7 @@ void FiberElement::FlushProps() {
               [this](lynx::perfetto::EventContext ctx) {
                 UpdateTraceDebugInfo(ctx.event());
               });
+  PushStyleToBundle();
 
   if (is_scroll_view() || is_list()) {
     UpdateLayoutNodeAttribute(starlight::LayoutAttribute::kScroll,
@@ -2981,10 +2981,8 @@ bool FiberElement::ResolveStyleValue(CSSPropertyID id,
     // The properties of transition and keyframe no need to be pushed to bundle
     // separately here. Those properties will be pushed to bundle together
     // later.
-    if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
-      PushToBundle(id);
-    }
-
+    CheckTransitionProps(id);
+    CheckKeyframeProps(id);
     resolve_success = true;
   }
 

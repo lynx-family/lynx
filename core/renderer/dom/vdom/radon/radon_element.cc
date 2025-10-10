@@ -17,6 +17,7 @@
 #include "core/renderer/trace/renderer_trace_event_def.h"
 #include "core/renderer/ui_component/list/list_types.h"
 #include "core/renderer/utils/base/tasm_constants.h"
+#include "core/renderer/utils/prop_bundle_style_writer.h"
 #include "core/services/feature_count/feature_counter.h"
 #include "core/services/feature_count/global_feature_counter.h"
 
@@ -477,7 +478,7 @@ void RadonElement::FlushDynamicStyles() {
     SetDataToNativeTransitionAnimator();
   }
 
-  if (prop_bundle_) {
+  if (prop_bundle_ || computed_css_style()->IsDirty()) {
     FlushProps();
   }
 
@@ -663,6 +664,8 @@ void RadonElement::FlushProps() {
   }
   // Update The root if needed
 
+  PushStyleToBundle();
+
   if (!has_painting_node_) {
     TRACE_EVENT(LYNX_TRACE_CATEGORY, CATALYZER_NO_PAINTING_NODE);
     PreparePropBundleIfNeed();
@@ -826,9 +829,8 @@ bool RadonElement::ResolveStyleValue(CSSPropertyID id,
   if (computed_css_style()->SetValue(id, value) || force_update) {
     // The props of transition and keyframe no need to be pushed to bundle here.
     // Those props will be pushed to bundle separately later.
-    if (!(CheckTransitionProps(id) || CheckKeyframeProps(id))) {
-      PushToBundle(id);
-    }
+    CheckTransitionProps(id);
+    CheckKeyframeProps(id);
     resolve_success = true;
   }
 

@@ -508,12 +508,10 @@ DynamicCSSStylesManager::ApplyInheritance(
                 SetStyleToElement(prop.first, prop.second.value_);
               } else if (parent) {
                 // If the property is inherited by computed value.
-                const bool value_changed =
-                    element_->computed_css_style()->InheritValue(
-                        prop.first, *(parent->computed_css_style()));
-                if (value_changed || is_inherited_prop_affected_by_env) {
-                  element_->PreparePropBundleIfNeed();
-                  element_->PushToBundle(prop.first);
+                element_->computed_css_style()->InheritValue(
+                    prop.first, *(parent->computed_css_style()));
+                if (is_inherited_prop_affected_by_env) {
+                  element_->computed_css_style()->MarkChanged(prop.first);
                 }
               }
             }

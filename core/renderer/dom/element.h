@@ -190,7 +190,6 @@ class Element : public lepus::RefCounted,
 
   // For prop op
   void SetProp(const char* key, const lepus::Value& value);
-  void ResetProp(const char* key);
 
   // For keyframe op
   // The first parameter names can be string type or array type of lepus value
@@ -738,6 +737,8 @@ class Element : public lepus::RefCounted,
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id);
 
+  virtual void PushStyleToBundle();
+
   base::String tag_;
 
   int32_t id_;
@@ -904,9 +905,7 @@ class Element : public lepus::RefCounted,
   base::LinearFlatMap<std::string, BindEventCatch> bind_event_catch_map_;
 
  private:
-  fml::RefPtr<PropBundle> MakeBundleForAnimation(bool has_layout_style);
-  bool WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
-                                tasm::CSSPropertyID id,
+  bool WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                 const tasm::CSSValue& value);
   void DispatchBundleToPaintingNode(fml::RefPtr<PropBundle> bundle);
 };

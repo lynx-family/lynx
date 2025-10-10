@@ -190,6 +190,14 @@ void Element::AttachToElementManager(
   enable_layout_in_element_mode_ = manager->IsLayoutInElementModeOn();
 }
 
+void Element::PushStyleToBundle() {
+  if (computed_css_style() && computed_css_style()->IsDirty()) {
+    PreparePropBundleIfNeed();
+    PropBundleStyleWriter::PushStyleToBundle(prop_bundle_.get(),
+                                             computed_css_style());
+  }
+}
+
 std::vector<float> Element::ScrollBy(float width, float height) {
   return catalyzer_->ScrollBy(impl_id(), width, height);
 }
@@ -457,11 +465,8 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   // The properties of transition and keyframe no need to be pushed to bundle
   // separately here. Those properties will be pushed to bundle together
   // later.
-  if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id)) &&
-      processed) {
-    PreparePropBundleIfNeed();
-    prop_bundle_->SetNullPropsByID(css_id);
-  }
+  CheckTransitionProps(css_id);
+  CheckKeyframeProps(css_id);
 
   return processed;
 }
@@ -536,7 +541,9 @@ bool Element::ResetTransitionStylesInAdvance(
 void Element::ResetAttribute(const base::String& key) {
   CheckGlobalBindTarget(key);
   has_layout_only_props_ = false;
-  ResetProp(key.c_str());
+
+  PreparePropBundleIfNeed();
+  prop_bundle_->SetNullProps(key.c_str());
 }
 
 void Element::WillConsumeAttribute(const base::String& key,
@@ -634,11 +641,6 @@ void Element::SetFontFaces(const CSSFontFaceRuleMap& fontFaces) {
 void Element::SetProp(const char* key, const lepus::Value& value) {
   PreparePropBundleIfNeed();
   prop_bundle_->SetProps(key, pub::ValueImplLepus(value));
-}
-
-void Element::ResetProp(const char* key) {
-  PreparePropBundleIfNeed();
-  prop_bundle_->SetNullProps(key);
 }
 
 // TODO: just so easy?
@@ -1521,9 +1523,15 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
       break;
     }
   }
-  fml::RefPtr<PropBundle> bundle = MakeBundleForAnimation(has_layout_style);
+
+  // When prop_bundle_ == nullptr && computed_css_style()->IsClean() and
+  // has_pending_bundle is true, a fast path is needed to dispatch a bundle to
+  // the painting node.
+  bool need_dispatch =
+      prop_bundle_ == nullptr && computed_css_style()->IsClean();
   bool has_pending_bundle = false;
   bool should_do_full_flush = has_layout_style || !has_painting_node_;
+
   for (const auto& style : *final_animator_map_) {
     // Record previous before rtl-converter for transition.
     if (style.second != CSSValue::Empty()) {
@@ -1536,13 +1544,15 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
       FlushAnimatedStyleInternal(style.first, style.second);
     } else {
       // If it's a render property, push it to the temporary bundle.
-      has_pending_bundle |=
-          WriteRenderStyleToBundle(bundle, style.first, style.second);
+      has_pending_bundle |= WriteRenderStyleToBundle(style.first, style.second);
     }
   }
-  if (has_pending_bundle && !prop_bundle_) {
+  if (has_pending_bundle && need_dispatch) {
     // if prop_bundle_ not null, it means the element is dirty,no need to
     // dispatch it here
+    auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
+    PropBundleStyleWriter::PushStyleToBundle(bundle.get(),
+                                             computed_css_style());
     DispatchBundleToPaintingNode(bundle);
     has_pending_bundle = false;
   }
@@ -1550,32 +1560,24 @@ std::tuple<bool, bool> Element::FlushAnimatedStyle() {
   return {should_do_full_flush, has_pending_bundle};
 }
 
+// Currently, this function is only called by the list for animation logic, and
+// it only handles opacity animations. If other animation types are added in the
+// future, or if it might affect the layout, be aware that changes need to be
+// coordinated with the current animation logic of the list.
 void Element::FlushAnimatedStyle(tasm::CSSPropertyID id, tasm::CSSValue value) {
   auto style = std::make_pair(id, std::move(value));
-  const bool has_layout_style = NeedFullFlushPath(style);
-  auto bundle = MakeBundleForAnimation(has_layout_style);
-  if (has_layout_style || !has_painting_node_) {
-    FlushAnimatedStyleInternal(id, style.second);
-    return;
-  }
-  if (WriteRenderStyleToBundle(bundle, id, style.second) && !prop_bundle_) {
+
+  if (WriteRenderStyleToBundle(id, style.second) && prop_bundle_ == nullptr &&
+      computed_css_style()->IsClean()) {
+    auto bundle = element_manager()->GetPropBundleCreator()->CreatePropBundle();
+    PropBundleStyleWriter::PushStyleToBundle(bundle.get(),
+                                             computed_css_style());
     DispatchBundleToPaintingNode(bundle);
   }
 }
 
-fml::RefPtr<PropBundle> Element::MakeBundleForAnimation(bool has_layout_style) {
-  if (has_layout_style) return nullptr;
-  if (prop_bundle_) return prop_bundle_;
-  return element_manager()->GetPropBundleCreator()->CreatePropBundle();
-}
-
-bool Element::WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
-                                       tasm::CSSPropertyID id,
+bool Element::WriteRenderStyleToBundle(tasm::CSSPropertyID id,
                                        const tasm::CSSValue& value) {
-  if (!computed_css_style()->SetValue(id, value)) {
-    return false;
-  }
-
   switch (id) {
     case kPropertyIDTransform:
     case kPropertyIDColor:
@@ -1586,9 +1588,7 @@ bool Element::WriteRenderStyleToBundle(fml::RefPtr<PropBundle> bundle,
     case kPropertyIDBorderBottomColor:
     case kPropertyIDOpacity:
     case kPropertyIDOffsetDistance:
-      PropBundleStyleWriter::PushStyleToBundle(bundle.get(), id,
-                                               computed_css_style());
-      return true;
+      return computed_css_style()->SetValue(id, value);
     default:
       LOGE("[animation] unsupported animation value type for css:" << id);
       return false;

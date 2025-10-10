@@ -356,6 +356,15 @@ class ComputedCSSStyle {
   static float SAFE_AREA_INSET_LEFT_;
   static float SAFE_AREA_INSET_RIGHT_;
 
+  bool IsDirty() { return changed_bitset_.HasAny() || reset_bitset_.HasAny(); }
+
+  bool IsClean() { return !IsDirty(); }
+
+  void MarkChanged(tasm::CSSPropertyID id) {
+    changed_bitset_.Set(id);
+    reset_bitset_.Reset(id);
+  }
+
  private:
   friend class tasm::ComputedCSSStyleCssTextHelper;
   using StyleFunc = bool (ComputedCSSStyle::*)(const tasm::CSSValue&,
@@ -585,11 +594,6 @@ class ComputedCSSStyle {
 
   tasm::CSSIDBitset& GetChangedBitset() { return changed_bitset_; }
   tasm::CSSIDBitset& GetResetBitset() { return reset_bitset_; }
-
-  void MarkChanged(tasm::CSSPropertyID id) {
-    changed_bitset_.Set(id);
-    reset_bitset_.Reset(id);
-  }
 
   void MarkReset(tasm::CSSPropertyID id) {
     changed_bitset_.Reset(id);

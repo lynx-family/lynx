@@ -76,6 +76,8 @@ class TextElement : public FiberElement {
   }
 
  protected:
+  void PushStyleToBundle() override;
+
   void OnNodeAdded(FiberElement* child) override;
   void SetAttributeInternal(const base::String& key,
                             const lepus::Value& value) override;
