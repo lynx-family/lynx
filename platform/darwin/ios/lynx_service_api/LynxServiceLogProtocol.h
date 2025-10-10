@@ -2,11 +2,11 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#ifndef DARWIN_COMMON_LYNX_PUBLIC_SERVICE_LynxServiceLogProtocol_h
-#define DARWIN_COMMON_LYNX_PUBLIC_SERVICE_LynxServiceLogProtocol_h
+#ifndef DARWIN_SERVICE_API_LYNX_SERVICE_LOG_PROTOCOL_H_
+#define DARWIN_SERVICE_API_LYNX_SERVICE_LOG_PROTOCOL_H_
 
 #import <Foundation/Foundation.h>
-#import <Lynx/LynxServiceProtocol.h>
+#import <LynxServiceAPI/ServiceAPI.h>
 
 @protocol LynxServiceLogProtocol <LynxServiceProtocol>
 
@@ -14,4 +14,4 @@
 
 @end
 
-#endif /* DARWIN_COMMON_LYNX_PUBLIC_SERVICE_LynxServiceLogProtocol_h */
+#endif /* DARWIN_SERVICE_API_LYNX_SERVICE_LOG_PROTOCOL_H_ */

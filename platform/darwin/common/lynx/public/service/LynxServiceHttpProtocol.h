@@ -4,7 +4,7 @@
 
 #import <Lynx/LynxHttpRequest.h>
 #import <Lynx/LynxHttpStreamingDelegate.h>
-#import <Lynx/LynxServiceProtocol.h>
+#import <LynxServiceAPI/ServiceAPI.h>
 
 @protocol LynxHttpInterceptor
 // TODO(huzhanbo.luc): let interceptRequest support streaming response by chunk
