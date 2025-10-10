@@ -29,9 +29,9 @@
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
-#import <Lynx/LynxServiceLogProtocol.h>
 #import <LynxBase/LynxBaseEnv.h>
 #import <LynxBase/LynxBaseService.h>
+#import <LynxServiceAPI/LynxServiceLogProtocol.h>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"

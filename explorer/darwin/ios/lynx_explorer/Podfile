@@ -40,6 +40,9 @@ target 'LynxExplorer' do
     'Devtool',
     'Http',
   ]
+  pod 'LynxServiceAPI', :path => '../../../..', :subspecs => [
+    'Core'
+  ]
 
   pod 'XElement', :path => '../../../..', :subspecs => [
     'Behavior',

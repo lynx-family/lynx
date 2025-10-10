@@ -6,21 +6,9 @@
 #import <LynxService/LynxHttpService.h>
 #import <LynxService/LynxNSUrlSessionDelegate.h>
 
-@LynxServiceRegister(LynxHttpService) @implementation LynxHttpService
+@LynxServiceRegister(LynxHttpService, LynxServiceHttpProtocol) @implementation LynxHttpService
 
 static const NSInteger SDK_ERROR_STATUS_CODE = 499;
-
-+ (LynxServiceScope)serviceScope {
-  return LynxServiceScopeDefault;
-}
-
-+ (NSUInteger)serviceType {
-  return kLynxServiceHttp;
-}
-
-+ (NSString *)serviceBizID {
-  return DEFAULT_LYNX_SERVICE;
-}
 
 + (NSMutableURLRequest *)convertToNSRequest:(LynxHttpRequest *)request {
   NSURL *url = [NSURL URLWithString:request.url];
