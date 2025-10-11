@@ -275,6 +275,10 @@ class LynxRuntime final {
   base::InlineVector<std::unique_ptr<piper::NativeModuleFactory>, 4>
       cached_native_factories_;
   bool destroy_js_app_early_{false};
+#if OS_IOS
+  std::shared_ptr<bool> is_running_foreground_;
+  std::string template_url_;
+#endif  // OS_IOS
 };
 
 }  // namespace runtime
