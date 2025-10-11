@@ -49,10 +49,6 @@ base_darwin_public_headers = [
   "log/LynxLog.h",
   "LynxBaseEnv.h",
   "LynxBaseDefines.h",
-  "service/LynxBaseService.h",
-  "service/LynxBaseServiceLogProtocol.h",
-  "service/LynxBaseServiceProtocol.h",
-  "service/LynxBaseServiceTraceProtocol.h",
   "trace/LynxBaseTrace.h",
 ]
 
@@ -103,6 +99,7 @@ subspec_target("Framework") {
   ]
   frameworks = []
   libraries = [ "stdc++" ]
+  dependency = [ "LynxServiceAPI/Core" ]
 }
 
 lynx_base_source_set("base") {
@@ -110,7 +107,6 @@ lynx_base_source_set("base") {
   sources = base_darwin_public_headers + [
               "LynxBaseEnv.mm",
               "log/LynxLog.mm",
-              "service/LynxBaseService.m",
               "trace/LynxBaseTrace.mm",
             ]
 }

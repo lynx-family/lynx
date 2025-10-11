@@ -760,7 +760,7 @@ public class LynxBaseTextShadowNode : LynxShadowNode {
   public void LynxBaseTextShadowNode::markStyleDirty();
 }
 
-public class LynxBaseTraceService : NSObject, <LynxBaseServiceTraceProtocol> {
+public class LynxBaseTraceService : NSObject, <LynxServiceTraceProtocol> {
 }
 
 public class LynxBasicShape : NSObject {

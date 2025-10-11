@@ -24,14 +24,11 @@
 #import <Lynx/LynxTraceController.h>
 #endif
 #import <Lynx/LynxBaseInspectorOwner.h>
-#import <Lynx/LynxBaseTraceService.h>
 #import <Lynx/LynxDevToolUtils.h>
 #import <Lynx/LynxService.h>
 #import <Lynx/LynxServiceDevToolProtocol.h>
 #import <Lynx/LynxServiceExtensionProtocol.h>
 #import <LynxBase/LynxBaseEnv.h>
-#import <LynxBase/LynxBaseService.h>
-#import <LynxServiceAPI/LynxServiceLogProtocol.h>
 
 #include "base/include/fml/synchronization/shared_mutex.h"
 #include "base/trace/native/trace_event.h"
@@ -106,11 +103,6 @@
 }
 
 - (void)initLynxBase {
-  id<LynxServiceProtocol> BaseLogService = LynxService(LynxServiceLogProtocol);
-  if (BaseLogService) {
-    RegisterLynxBaseService(BaseLogService.class);
-  }
-  RegisterLynxBaseService(LynxBaseTraceService.class);
   [[LynxBaseEnv sharedInstance] initialize:[self devtoolEnabled]];
 }
 

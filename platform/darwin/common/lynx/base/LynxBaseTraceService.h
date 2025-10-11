@@ -2,12 +2,12 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <LynxBase/LynxBaseService.h>
-#import <LynxBase/LynxBaseServiceTraceProtocol.h>
+#import <Lynx/LynxService.h>
+#import <LynxServiceAPI/LynxServiceTraceProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxBaseTraceService : NSObject <LynxBaseServiceTraceProtocol>
+@interface LynxBaseTraceService : NSObject <LynxServiceTraceProtocol>
 
 @end
 

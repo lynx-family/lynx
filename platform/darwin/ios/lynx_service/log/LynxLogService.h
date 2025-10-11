@@ -3,12 +3,11 @@
 // LICENSE file in the root directory of this source tree.
 
 #import <Lynx/LynxService.h>
-#import <LynxBase/LynxBaseServiceLogProtocol.h>
 #import <LynxServiceAPI/LynxServiceLogProtocol.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface LynxLogService : NSObject <LynxServiceLogProtocol, LynxBaseServiceLogProtocol>
+@interface LynxLogService : NSObject <LynxServiceLogProtocol>
 
 @end
 
