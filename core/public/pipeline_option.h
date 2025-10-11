@@ -83,6 +83,16 @@ struct PipelineOptions {
         PipelineIDGenerator::Instance()->GenerateThreadTimestampPipelineID();
     pipeline_start_timestamp = base::CurrentSystemTimeMicroseconds();
   }
+
+  void ResetListRelatedFlag() {
+    list_id_ = 0;
+    list_comp_id_ = 0;
+    operation_id = 0;
+    list_item_ids_.clear();
+    operation_ids_.clear();
+    updated_list_elements_.clear();
+  }
+
   PipelineID pipeline_id;
   PipelineOrigin pipeline_origin;
   uint64_t pipeline_start_timestamp;

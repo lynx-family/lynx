@@ -191,9 +191,9 @@ void LayoutMediator::OnLayoutAfter(
 
   // As the layout is triggered twice in the layout process, and the second
   // layout copies the options, the HandleListOrComponentUpdated may also
-  // trigger twice. Therefore, updated_list_elements_ has to be cleared after
-  // the first call.
-  options->updated_list_elements_.clear();
+  // trigger twice. Therefore we should clear all list-related variables in
+  // PipelineOption after the first call.
+  options->ResetListRelatedFlag();
   if (is_first_layout && runtime_actor_) {
     runtime_actor_->ActAsync([](auto &runtime) {
       auto event = fml::MakeRefCounted<runtime::MessageEvent>(
