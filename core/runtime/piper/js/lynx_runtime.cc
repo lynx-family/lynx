@@ -6,6 +6,8 @@
 #include <memory>
 
 #include "base/include/debug/lynx_assert.h"
+#include "base/include/fml/make_copyable.h"
+#include "base/include/fml/message_loop.h"
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
@@ -134,6 +136,9 @@ LynxRuntime::LynxRuntime(const std::string& group_id, int32_t instance_id,
       lifecycle_observer_(std::make_unique<RuntimeLifecycleObserverImpl>()),
       page_options_(page_options) {
   cached_tasks_.reserve(8);
+#if OS_IOS
+  is_running_foreground_ = std::make_shared<bool>(false);
+#endif
 }
 
 LynxRuntime::~LynxRuntime() { Destroy(); }
@@ -646,6 +651,9 @@ void LynxRuntime::OnJSSourcePrepared(
     tasm::TimingCollector::Scope<TemplateDelegate> scope(delegate_.get(),
                                                          pipeline_options);
     LOGI("lynx runtime loadApp, napi id:" << GetRuntimeId());
+#if OS_IOS
+    template_url_ = url;
+#endif
     // TODO(huzhanbo): This is needed by Lynx Network now, will be removed
     // after we fully switch to it.
     js_executor_->SetUrl(url);
@@ -903,6 +911,28 @@ void LynxRuntime::OnRuntimeReady() {
     task();
   }
   cached_tasks_.clear();
+
+  // TODO(liyanbo.monster): delete this when jsc crash fixed.
+#if OS_IOS
+  if (js_executor_->GetJSRuntime()->type() == piper::JSRuntimeType::jsc) {
+    auto task_runner = fml::MessageLoop::GetCurrent().GetTaskRunner();
+    task_runner->PostDelayedTask(
+        fml::MakeCopyable(
+            [is_foreground = std::weak_ptr<bool>(is_running_foreground_),
+             url = template_url_]() mutable {
+              auto lock_is_foreground = is_foreground.lock();
+              if (lock_is_foreground && *lock_is_foreground) {
+                tasm::report::EventTracker::OnEvent(
+                    [url = std::move(url)](tasm::report::MoveOnlyEvent& event) {
+                      event.SetName("lynx_bts_load_type");
+                      event.SetProps("template_url", url);
+                      event.SetProps("is_preload", 1);
+                    });
+              }
+            }),
+        fml::TimeDelta::FromMilliseconds(2000));
+  }
+#endif
 }
 
 void LynxRuntime::AddEventListeners() {
@@ -914,6 +944,9 @@ void LynxRuntime::AddEventListeners() {
         std::make_unique<event::ClosureEventListener>(
             [this](lepus::Value args) {
               lifecycle_observer_->OnAppEnterForeground();
+#if OS_IOS
+              *is_running_foreground_ = true;
+#endif  // OS_IOS
             }));
     core_context_proxy->AddEventListener(
         kMessageEventTypeOnAppEnterBackground,
