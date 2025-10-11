@@ -28,15 +28,8 @@ void trace_backend(const char *category, const char *name, BaseTraceEventType ph
 }  // namespace base
 }  // namespace lynx
 
-@implementation LynxBaseTraceService
-
-+ (NSUInteger)getServiceType {
-  return kLynxBaseServiceTrace;
-}
-
-+ (NSString *)getServiceBizID {
-  return DEFAULT_LYNX_BASE_SERVICE;
-}
+@LynxServiceRegister(LynxBaseTraceService, LynxServiceTraceProtocol)
+    @implementation LynxBaseTraceService
 
 - (void *)getDefaultTraceFunction {
   return (void *)lynx::base::trace::trace_backend;
