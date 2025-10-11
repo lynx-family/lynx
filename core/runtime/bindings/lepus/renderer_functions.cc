@@ -876,18 +876,18 @@ RENDERER_FUNCTION_CC(FiberAddEventListener) {
     auto& event_bind_catch_map = element->GetBindEventCatchMap();
     event_bind_catch_map[name->StdString()].capture_catch += is_capture_catch;
     event_bind_catch_map[name->StdString()].bubble_catch += is_bubble_catch;
-    auto handlerName = callback->StdString();
+    auto handler_name = callback->StdString();
 
     element->AddEventListener(
         name->StdString(),
         std::make_unique<event::ClosureEventListener>(
-            [tasm, handlerName](lepus::Value args) {
+            [tasm, handler_name](lepus::Value args) {
               const auto& args_array = args.Array();
               if (args.IsArray() && args_array->size() == 2) {
                 BASE_STATIC_STRING_DECL(kMethod, "method");
                 BASE_STATIC_STRING_DECL(kArgs, "args");
                 const auto& event_detail = lepus::Dictionary::Create();
-                event_detail->SetValue(kMethod, handlerName);
+                event_detail->SetValue(kMethod, handler_name);
                 event_detail->SetValue(kArgs, args_array->get(1));
                 tasm->OnLynxEvent(lepus::Value(event_detail));
               }
@@ -3795,6 +3795,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
       event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
       event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;
+      auto handler_name = callback->StdString();
 
       // remove the listener firstly to adapt rebind
       auto event_options = event::EventListener::Options(
@@ -3808,22 +3809,20 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       element->AddEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
-              [tasm](lepus::Value args) {
+              [tasm, handler_name](lepus::Value args) {
                 const auto& args_array = args.Array();
                 if (args.IsArray() && args_array->size() == 2) {
                   const auto& event_info = args_array->get(0);
                   const auto& event_detail = args_array->get(1);
                   const auto& event_info_array = event_info.Array();
-                  if (event_info.IsArray() && event_info_array->size() == 3) {
+                  if (event_info.IsArray() && event_info_array->size() == 2) {
                     const auto& call_method_name =
                         event_info_array->get(0).Bool();
                     const auto& page_name_or_component_id =
                         event_info_array->get(1).StdString();
-                    const auto& event_handler_index =
-                        event_info_array->get(2).StdString();
                     auto message = lepus::CArray::Create();
                     message->emplace_back(page_name_or_component_id);
-                    message->emplace_back(event_handler_index);
+                    message->emplace_back(handler_name);
                     // info be ShallowCopy first to avoid to be marked const.
                     message->emplace_back(
                         lepus_value::ShallowCopy(event_detail));
@@ -3866,11 +3865,14 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
       auto event_options = event::EventListener::Options(
           is_capture || is_capture_catch, false, false, false,
           is_capture_catch || is_bubble_catch, is_global_bind);
+      // Because the framework will repeatedly add different callbacks for the
+      // same MTS callback, callback should not be passed in as the only flag of
+      // the listener.
       element->RemoveEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
               [](lepus::Value args) {}, event_options,
-              event::ClosureEventListener::ClosureType::kCore, *callback));
+              event::ClosureEventListener::ClosureType::kCore));
       element->AddEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
@@ -3900,8 +3902,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                                        lepus::Value(std::move(options)));
                 }
               },
-              event_options, event::ClosureEventListener::ClosureType::kCore,
-              *callback));
+              event_options, event::ClosureEventListener::ClosureType::kCore));
     }
   } else {
     LOGW(

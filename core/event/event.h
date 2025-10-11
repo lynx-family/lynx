@@ -39,7 +39,7 @@
 #include "base/trace/native/trace_event.h"
 #include "core/event/event_dispatch_result.h"
 
-#define EVENT_TYPE_CAPTURE "captureEvent"
+#define EVENT_TYPE_CAPTURE "capture-bind"
 #define EVENT_TYPE_CAPTURE_CATCH "capture-catch"
 #define EVENT_TYPE_CATCH "catchEvent"
 #define EVENT_TYPE_GLOBAL "global-bindEvent"
