@@ -111,6 +111,7 @@ class UIOwner {
   void AttachGesturesToRoot(UIBase* root);
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);
+  void UpdateNativeInteractionEnabledForTree(UIBase* root);
   void SetEnableMultiTouch(bool enable_multi_touch);
   void SetTapSlop(const std::string& tap_slop);
   void SetHasTouchPseudo(bool has_touch_pseudo);

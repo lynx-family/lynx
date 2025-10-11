@@ -67,6 +67,8 @@ class EventTarget {
 
   virtual PseudoStatus GetPseudoStatus() = 0;
 
+  virtual bool NativeInteractionEnabled() = 0;
+
   virtual bool BlockNativeEvent() = 0;
 
   virtual bool EventThrough() = 0;

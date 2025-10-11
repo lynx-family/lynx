@@ -16,6 +16,8 @@ EventTarget* TextEventTarget::ParentTarget() { return parent_; }
 
 void TextEventTarget::SetParent(EventTarget* parent) { parent_ = parent; }
 
+bool TextEventTarget::NativeInteractionEnabled() { return true; }
+
 bool TextEventTarget::BlockNativeEvent() { return false; }
 
 bool TextEventTarget::EventThrough() {

@@ -105,6 +105,9 @@ class EventDispatcher {
 
   bool CanConsumeTouchEvent(float point[2]);
 
+  // TODO(hexionghui): replace it with HitTestMode.BLOCK_DESCENDANTS
+  void UpdateNativeInteractionEnabledForTree(UIBase* root);
+
  private:
   void InitTouchEnv(const ArkUI_UIInputEvent* event);
 
@@ -149,6 +152,9 @@ class EventDispatcher {
   bool IsTouchMoveOutside(EventTarget* target);
 
   bool IsActiveFinger(const ArkUI_UIInputEvent* event, size_t index);
+
+  void TraverseAndUpdateHitTestBehavior(UIBase* node,
+                                        bool has_disabled_ancestor);
 
   UIOwner* ui_owner_{nullptr};
   std::weak_ptr<EventTarget> root_target_;

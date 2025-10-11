@@ -44,6 +44,7 @@ class TextEventTarget : public std::enable_shared_from_this<TextEventTarget>,
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override{};
+  bool NativeInteractionEnabled() override;
   bool BlockNativeEvent() override;
   bool EventThrough() override;
   bool IgnoreFocus() override;

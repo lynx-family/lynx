@@ -455,6 +455,13 @@ void LynxContext::OnGestureRecognizedWithSign(int sign) {
   ui_owner_->OnGestureRecognizedWithSign(sign);
 }
 
+void LynxContext::UpdateNativeInteractionEnabledForTree(UIBase* root) {
+  if (!ui_owner_) {
+    return;
+  }
+  ui_owner_->UpdateNativeInteractionEnabledForTree(root);
+}
+
 void LynxContext::SetFocusedTarget(
     const std::weak_ptr<EventTarget>& focused_target) {
   if (!ui_owner_) {

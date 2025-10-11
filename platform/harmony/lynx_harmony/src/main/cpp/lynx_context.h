@@ -256,6 +256,7 @@ class LynxContext {
   void AttachGesturesToRoot(UIBase* root);
   void OnGestureRecognized(UIBase* ui);
   void OnGestureRecognizedWithSign(int sign);
+  void UpdateNativeInteractionEnabledForTree(UIBase* root);
 
   using UICreatorFunc = UIBase* (*)(LynxContext*, int, const std::string&);
   using LayoutNodeCreatorFuc = ShadowNode* (*)(int, const std::string&);

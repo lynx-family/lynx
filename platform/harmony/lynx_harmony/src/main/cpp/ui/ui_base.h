@@ -184,6 +184,7 @@ class BASE_EXPORT
   EventTarget* ParentTarget() override;
   void GetPointInTarget(float res[2], EventTarget* parent_target,
                         float point[2]) override;
+  bool NativeInteractionEnabled() override;
   bool BlockNativeEvent() override;
   bool EventThrough() override;
   bool IgnoreFocus() override;
@@ -381,6 +382,7 @@ class BASE_EXPORT
   bool has_background_color_{false};
 
   bool user_interaction_enabled_{true};
+  bool native_interaction_enabled_{true};
   float hit_slop_left_{0};
   float hit_slop_right_{0};
   float hit_slop_top_{0};
