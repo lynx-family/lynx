@@ -570,16 +570,12 @@ public class LynxBaseConfigurator : NSObject {
   public BOOL LynxBaseConfigurator::enableJSRuntime enableJSRuntime;
   public BOOL LynxBaseConfigurator::enableAirStrictMode enableAirStrictMode;
   public BOOL LynxBaseConfigurator::enableAsyncCreateRender enableAsyncCreateRender;
-  public BOOL LynxBaseConfigurator::enableRadonCompatible enableRadonCompatible;
   public BOOL LynxBaseConfigurator::enableSyncFlush enableSyncFlush;
   public BOOL LynxBaseConfigurator::enableMultiAsyncThread enableMultiAsyncThread;
   public BOOL LynxBaseConfigurator::enableVSyncAlignedMessageLoop enableVSyncAlignedMessageLoop;
   public BOOL LynxBaseConfigurator::enableAsyncHydration enableAsyncHydration;
   public BOOL LynxBaseConfigurator::enableMTSModule enableMTSModule;
-  public CGRect LynxBaseConfigurator::frame frame;
-  public id<LynxDynamicComponentFetcher> LynxBaseConfigurator::fetcher fetcher;
   public CGFloat LynxBaseConfigurator::fontScale fontScale;
-  public NSMutableDictionary<NSString*, id>* LynxBaseConfigurator::lynxViewConfig lynxViewConfig;
   public LynxBooleanOption LynxBaseConfigurator::enableGenericResourceFetcher enableGenericResourceFetcher;
   public id<LynxGenericResourceFetcher> LynxBaseConfigurator::genericResourceFetcher genericResourceFetcher;
   public id<LynxMediaResourceFetcher> LynxBaseConfigurator::mediaResourceFetcher mediaResourceFetcher;
@@ -587,15 +583,12 @@ public class LynxBaseConfigurator : NSObject {
   public CGSize LynxBaseConfigurator::screenSize screenSize;
   public BOOL LynxBaseConfigurator::debuggable debuggable;
   public BOOL LynxBaseConfigurator::enablePreUpdateData enablePreUpdateData;
-  public BOOL LynxBaseConfigurator::enableLynxResourceServiceLoaderInjection enableLynxResourceServiceLoaderInjection;
   public LynxBackgroundJsRuntimeType LynxBaseConfigurator::backgroundJsRuntimeType backgroundJsRuntimeType;
   public BOOL LynxBaseConfigurator::enableBytecode enableBytecode;
   public BOOL LynxBaseConfigurator::enableUnifiedPipeline enableUnifiedPipeline;
   public NSString* LynxBaseConfigurator::bytecodeUrl bytecodeUrl;
-  public NSURL* LynxBaseConfigurator::uri uri;
   public id<LynxUIRendererCreatorProtocol> LynxBaseConfigurator::uiRendererCreator uiRendererCreator;
   public LynxBackgroundRuntimeOptions* LynxBaseConfigurator()::lynxBackgroundRuntimeOptions lynxBackgroundRuntimeOptions;
-  public BOOL isUIRunningMode LynxBaseConfigurator::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
   public void LynxBaseConfigurator::setThreadStrategyForRender:(LynxThreadStrategyForRender threadStrategy);
   public LynxThreadStrategyForRender LynxBaseConfigurator::getThreadStrategyForRender();
   public void LynxBaseConfigurator::setEmbeddedMode:(LynxEmbeddedMode embeddedMode);
@@ -603,7 +596,6 @@ public class LynxBaseConfigurator : NSObject {
   public void LynxBaseConfigurator::addLynxResourceProvider:provider:(NSString *_Nonnull resType,[provider] id< LynxResourceProvider > _Nonnull provider);
   public void LynxBaseConfigurator::registerFont:forName:(UIFont *_Nonnull font,[forName] NSString *_Nonnull name);
   public void LynxBaseConfigurator::registerFamilyName:withAliasName:(NSString *_Nonnull fontFamilyName,[withAliasName] NSString *_Nonnull aliasName);
-  public void LynxBaseConfigurator::insertLynxViewConfig:forKey:(id _Nonnull config,[forKey] NSString *_Nonnull key);
   public NSDictionary *_Nonnull LynxBaseConfigurator()::getLynxResourceProviders();
   public NSDictionary *_Nonnull LynxBaseConfigurator()::getBuilderRegisteredAliasFontMap();
 }
@@ -5116,9 +5108,17 @@ public protocol LynxViewBaseLifecycle-p : <NSObjectNSObject> {
 }
 
 public class LynxViewBuilder : LynxBaseConfigurator {
+  public BOOL LynxViewBuilder::enableRadonCompatible enableRadonCompatible;
+  public id<LynxDynamicComponentFetcher> LynxViewBuilder::fetcher fetcher;
+  public BOOL LynxViewBuilder::enableLynxResourceServiceLoaderInjection enableLynxResourceServiceLoaderInjection;
+  public CGRect LynxViewBuilder::frame frame;
   public LynxBackgroundRuntime* LynxViewBuilder::lynxBackgroundRuntime lynxBackgroundRuntime;
   public LynxViewGroup* LynxViewBuilder::lynxViewGroup lynxViewGroup;
+  public NSMutableDictionary<NSString*, id>* LynxViewBuilder::lynxViewConfig lynxViewConfig;
   public id LynxViewBuilder::lynxModuleExtraData lynxModuleExtraData;
+  public NSURL* LynxViewBuilder::uri uri;
+  public BOOL isUIRunningMode LynxViewBuilder::__attribute__((deprecated("try to set 'threadStrategy' variable if you want to change the thread strategy for rendering")));
+  public void LynxViewBuilder::insertLynxViewConfig:forKey:(id _Nonnull config,[forKey] NSString *_Nonnull key);
 }
 
 public class LynxViewGroup : LynxBaseConfigurator {

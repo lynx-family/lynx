@@ -117,6 +117,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       }
     }
 
+    _lynxViewGroup = builder.lynxViewGroup;
     /// Runtime Options
     _runtime = builder.lynxBackgroundRuntime;
     // Avoid unexpected changes
@@ -473,7 +474,11 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
     [_lynxSSRHelper onHydrateStart];
   }
 
-  if (meta.templateBundle) {
+  // bundle in meta is considered before bundle in lynxViewGroup.
+  LynxTemplateBundle* templateBundle =
+      meta.templateBundle ? meta.templateBundle : _lynxViewGroup.templateBundle;
+
+  if (templateBundle) {
     [self loadTemplateBundle:meta.templateBundle withURL:meta.url initData:meta.initialData];
   } else if (meta.binaryData) {
     [self loadTemplate:meta.binaryData withURL:meta.url initData:meta.initialData];

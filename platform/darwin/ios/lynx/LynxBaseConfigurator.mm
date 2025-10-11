@@ -177,17 +177,4 @@
   self.lynxBackgroundRuntimeOptions.templateResourceFetcher = templateResourceFetcher;
 }
 
-- (void)insertLynxViewConfig:(id)config forKey:(NSString*)key {
-  if (!key || !config) {
-    return;
-  }
-  if (!self.lynxViewConfig) {
-    self.lynxViewConfig = [[NSMutableDictionary alloc] initWithObjectsAndKeys:config, key, nil];
-  } else {
-    if (![self.lynxViewConfig objectForKey:key]) {
-      [self.lynxViewConfig setObject:config forKey:key];
-    }
-  }
-}
-
 @end

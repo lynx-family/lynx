@@ -17,13 +17,38 @@ static NSString* _Nonnull const KEY_LYNX_PLATFORM_CONFIG = @"platform_config";
 
 @interface LynxViewBuilder : LynxBaseConfigurator
 
+// legacy props that needs to be removed.
+@property(nonatomic, assign) BOOL enableRadonCompatible;
+@property(nonatomic, nullable) id<LynxDynamicComponentFetcher> fetcher;
+
+/**
+ * enable LynxResourceService loader injection
+ */
+@property(nonatomic, assign) BOOL enableLynxResourceServiceLoaderInjection;
+
+@property(nonatomic, assign) BOOL isUIRunningMode __attribute__((deprecated(
+    "try to set 'threadStrategy' variable if you want to change the thread strategy for rendering"))
+);
+
+@property(nonatomic, assign) CGRect frame;
 @property(nonatomic, nullable) LynxBackgroundRuntime* lynxBackgroundRuntime;
 @property(nonatomic, nullable) LynxViewGroup* lynxViewGroup;
+@property(nonatomic, nullable, strong) NSMutableDictionary<NSString*, id>* lynxViewConfig;
 
 /**
  * Pass extra data to LynxModule, the usage of data depends on module's implementation
  */
 @property(nonatomic, nullable) id lynxModuleExtraData;
+
+/**
+ * URL for LynxView, which will be parsed by LynxServiceTrailProtocol in building LynxView.
+ */
+@property(nonatomic, strong, nullable) NSURL* uri;
+
+/**
+ * insert a key-value pair into lynxViewConfig if the key does not exist, otherwise ignored.
+ */
+- (void)insertLynxViewConfig:(id _Nonnull)config forKey:(NSString* _Nonnull)key;
 
 @end
 
