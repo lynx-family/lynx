@@ -171,6 +171,7 @@ class ListContainerImpl : public ListContainer::Delegate {
   int layout_id_{-1};
   bool should_request_state_restore_{false};
   bool has_valid_diff_{false};
+  bool update_animation_{false};
 
   list::ListAdapterDiffResult diff_result_{list::ListAdapterDiffResult::kNone};
 

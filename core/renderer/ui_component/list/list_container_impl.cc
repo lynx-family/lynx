@@ -272,6 +272,8 @@ void ListContainerImpl::UpdateListLayoutManager(list::LayoutType layout_type) {
     list_layout_manager_ = std::make_unique<GridLayoutManager>(this);
   } else if (layout_type == list::LayoutType::kWaterFall) {
     list_layout_manager_ = std::make_unique<StaggeredGridLayoutManager>(this);
+    // TODO(dongjiajian): support update animation in waterfall.
+    list_animation_manager_->SetUpdateAnimation(false);
   }
   list_layout_manager_->InitLayoutManager(list_children_helper_.get(),
                                           orientation);
@@ -377,9 +379,9 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     need_update_item_holders_ = true;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
     if (value.StdString() == list::kUpdateAnimationTypeDefault) {
-      list_animation_manager_->SetUpdateAnimation(true);
+      update_animation_ = true;
     } else {
-      list_animation_manager_->SetUpdateAnimation(false);
+      update_animation_ = false;
     }
   } else if (key.IsEqual(list::kListType)) {
     // list-type
@@ -498,9 +500,6 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
-        if (list_animation_manager_->UpdateAnimation()) {
-          list_animation_manager_->OnLayoutChildren();
-        }
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
       }
@@ -534,8 +533,14 @@ bool ListContainerImpl::UpdateAnimation() const {
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
-  if (list_animation_manager_->UpdateAnimation() && has_valid_diff_) {
+  if (list_animation_manager_->UpdateAnimation() &&
+      diff_result_ != list::ListAdapterDiffResult::kNone) {
     list_animation_manager_->UpdateDiffResult(diff_result_);
+  }
+  // Note: `update-animation` is not enabled at first screen.
+  if (update_animation_ != list_animation_manager_->UpdateAnimation() &&
+      diff_result_ != list::ListAdapterDiffResult::kNone) {
+    list_animation_manager_->SetUpdateAnimation(update_animation_);
   }
   diff_result_ = list::ListAdapterDiffResult::kNone;
   if (span_count_changed_) {
