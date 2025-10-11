@@ -119,7 +119,9 @@ def get_namespace_guard(configs):
 def format_file(file_path):
   format_cmd = 'clang-format -i {}'.format(file_path)
   if file_path.endswith('.gn'):
-    format_cmd = 'gn format {}'.format(file_path)
+    lynx_tools_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    gn_cmd = os.path.join(lynx_tools_path, 'gn_tools', 'gn_wrapper.py')
+    format_cmd = 'python3 {} format {}'.format(gn_cmd, file_path)
   os.system(format_cmd)
 
 def write_content_to_file(file_path, content):
