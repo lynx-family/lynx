@@ -309,7 +309,7 @@ public class LynxView extends UIBodyView {
   }
 
   /**
-   * Please use {@link com.lynx.tasm.LynxView#setExtraTiming(TimingHandler.ExtraTimingInfo)} first!
+   * Please use {@link LynxView#setExtraTiming(TimingHandler.ExtraTimingInfo)} first!
    *
    * This interface is used to supplement key performance data before loading the Lynx page.
    *
@@ -414,7 +414,7 @@ public class LynxView extends UIBodyView {
    * Multiple views are not supported with different settings!
    *
    * ATTENTION: In most cases, Should call this function with REAL screen metrics.
-   * May use {@link com.lynx.tasm.utils.DisplayMetricsHolder#getRealScreenDisplayMetrics(Context)}
+   * May use {@link DisplayMetricsHolder#getRealScreenDisplayMetrics(Context)}
    * to get real screen metrics.
    * @param width(px) screen width
    * @param height(px) screen screen
@@ -1096,6 +1096,12 @@ public class LynxView extends UIBodyView {
     ILynxUIRenderer lynxUIRenderer = lynxUIRenderer();
 
     if (lynxUIRenderer != null) {
+      if (mLynxTemplateRender.isEnableReuseEngine()) {
+        UIGroup<UIBodyView> rootUI = getLynxUIRoot();
+        if (rootUI instanceof UIBody) {
+          ((UIBody) rootUI).rebuildViewTree();
+        }
+      }
       mLynxTemplateRender.onMeasure(widthMeasureSpec, heightMeasureSpec);
       if (lynxUIRenderer.shouldInvokeNativeViewMethod()) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
@@ -1224,7 +1230,8 @@ public class LynxView extends UIBodyView {
         group.removeLynxView(mLynxViewId);
       }
     }
-    if (mKeyboardEvent.isStart()) {
+
+    if (mKeyboardEvent != null && mKeyboardEvent.isStart()) {
       mKeyboardEvent.stop();
     }
 

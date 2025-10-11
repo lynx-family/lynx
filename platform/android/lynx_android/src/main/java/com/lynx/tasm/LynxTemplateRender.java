@@ -584,6 +584,10 @@ public class LynxTemplateRender
     }
   }
 
+  boolean isEnableReuseEngine() {
+    return mEnableReuseEngine;
+  }
+
   public LynxContext getLynxContext() {
     return mLynxContext;
   }
