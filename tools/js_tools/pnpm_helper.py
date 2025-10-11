@@ -11,6 +11,7 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 tools_dir = os.path.abspath(os.path.join(current_dir, '../'))
 sys.path.append(tools_dir)
 from buildtools_helper import get_buildtools_path
+pnpm_version = "7.33.6"
 
 # Get development system
 system = platform.system().lower()
@@ -32,12 +33,21 @@ def run_pnpm_command(command, cwd, env=None):
         "COREPACK_HOME": os.path.join(get_buildtools_path(), "corepack"),
         "COREPACK_ENABLE_NETWORK": "0",
     }
+
+    # check the pnpm cache
+    pnpm_cache_path = os.path.join(os.path.join(get_buildtools_path(), "corepack"), 'pnpm', pnpm_version)
+    print(f"check the pnpm cache path: {pnpm_cache_path}")
+    if os.path.exists(pnpm_cache_path):
+        print(f"pnpm cache is existed: {os.listdir(pnpm_cache_path)}")
+    else:
+        print(f"warning: pnpm cache is not existed")
+
     npm_exec = os.path.join(node_bin_path, "npm.CMD" if is_win else "npm")
     command[0] = os.path.join(node_bin_path, "pnpm.CMD" if is_win else "pnpm")
     pnpm_command_str = ' '.join(command)
     npm_config_cmd = f"{npm_exec} config set strict-ssl false"
     # Force corepack to use the pnpm version specified by the build tool
-    full_command = f"corepack prepare pnpm@7.33.6 --activate && {npm_config_cmd} && {pnpm_command_str}"
+    full_command = f"corepack prepare pnpm@{pnpm_version} --activate && {npm_config_cmd} && {pnpm_command_str}"
     subprocess.check_call(
         full_command,
         cwd=cwd,
