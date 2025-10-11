@@ -93,6 +93,11 @@ void LynxTemplateRenderer::Reset() {
       tasm::LynxEnvConfig(view_size.cx, view_size.cy, density, ratio);
   ClearGenericInfo();
   shell_.reset();
+#if ENABLE_INSPECTOR
+  auto& devtool_env = DevToolEnvEmbedder::GetInstance();
+  bool is_devtool_enabled =
+      devtool_env.IsLynxDebugEnabled() && devtool_env.IsDevToolEnabled();
+#endif
   auto native_facade = std::make_unique<NativeFacadeImpl>(this);
   auto loader =
       std::make_shared<tasm::LazyBundleLoader>(settings_.resource_loader);
@@ -123,17 +128,6 @@ void LynxTemplateRenderer::Reset() {
           .SetPerformanceControllerPlatform(std::move(perf_controller_ptr_))
           .build());
 
-#if ENABLE_INSPECTOR
-  if (DevToolEnvEmbedder::GetInstance().IsLynxDebugEnabled() &&
-      DevToolEnvEmbedder::GetInstance().IsDevToolEnabled()) {
-    if (!devtools_) {
-      devtools_ = std::make_unique<devtool::DevtoolsEmbedder>(this);
-    }
-    devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
-        reinterpret_cast<intptr_t>(shell_.get()));
-  }
-#endif  // ENABLE_INSPECTOR
-
   engine_proxy_ =
       std::make_shared<shell::LynxEngineProxyImpl>(shell_->GetEngineActor());
   perf_controller_proxy_ = std::make_shared<shell::PerfControllerProxyImpl>(
@@ -145,6 +139,13 @@ void LynxTemplateRenderer::Reset() {
   }
   module_manager_->SetModuleFactory(ui_delegate_->GetCustomModuleFactory());
 #if ENABLE_INSPECTOR
+  if (is_devtool_enabled) {
+    if (!devtools_) {
+      devtools_ = std::make_unique<devtool::DevtoolsEmbedder>(this);
+    }
+    devtools_->GetInspectorOwner()->OnTemplateAssemblerCreated(
+        reinterpret_cast<intptr_t>(shell_.get()));
+  }
   std::unique_ptr<piper::NativeModuleFactory> devtool_module_factory_ =
       std::make_unique<piper::NativeModuleFactory>();
   devtool_module_factory_->Register(devtool::LynxDevToolSetModule::GetName(),
