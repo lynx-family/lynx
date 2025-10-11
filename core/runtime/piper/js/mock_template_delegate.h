@@ -184,6 +184,8 @@ class MockTemplateDelegate : public runtime::TemplateDelegate {
 
   void AddJSBlockingTime(uint64_t enqueue_time) override{};
 
+  fml::RefPtr<fml::TaskRunner> GetJSRunner() override { return nullptr; }
+
  protected:
   std::string sdk_version_;
   std::shared_ptr<tasm::PropBundleCreator> prop_bundle_creator_;

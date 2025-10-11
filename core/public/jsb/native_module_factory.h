@@ -51,7 +51,7 @@ class LYNX_EXPORT_FOR_DEVTOOL NativeModuleFactory {
     creators_.emplace(name, std::move(creator));
   }
 
- private:
+ protected:
   std::mutex mutex_;
   std::unordered_map<std::string, ModuleCreator> creators_;
 };

@@ -220,6 +220,8 @@ class RuntimeMediator : public runtime::TemplateDelegate {
   int64_t record_id_ = 0;
 #endif
 
+  fml::RefPtr<fml::TaskRunner> GetJSRunner() override { return js_runner_; }
+
  private:
   std::shared_ptr<LynxActor<NativeFacade>> facade_actor_;
 

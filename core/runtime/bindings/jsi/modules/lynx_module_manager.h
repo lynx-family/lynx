@@ -37,6 +37,8 @@ struct LynxModuleManagerAllowList {
 };
 }  // namespace LynxModuleUtils
 
+class ExtensionModuleFactory;
+
 using LynxJSIModuleBindingPtr =
     std::shared_ptr<lynx::piper::LynxJSIModuleBinding>;
 // LynxModuleManager is the implementation of LynxNativeModuleManager , Use JSI
@@ -70,6 +72,14 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   }
 #endif
 
+  void SetExtensionModuleFactory(
+      const std::shared_ptr<ExtensionModuleFactory> &factory) {
+    extension_module_factory_ = factory;
+  }
+  const std::shared_ptr<ExtensionModuleFactory> &GetExtensionModuleFactory() {
+    return extension_module_factory_;
+  }
+
   std::weak_ptr<shell::LynxRuntimeProxy> runtime_proxy;
   std::shared_ptr<ModuleDelegate> delegate_;
   int64_t record_id_ = 0;
@@ -86,6 +96,7 @@ class LynxModuleManager : public pub::LynxNativeModuleManager {
   // JSIModule cache
   std::unordered_map<std::string, std::shared_ptr<LynxModule>> module_map_;
   std::shared_ptr<GroupInterceptor> group_interceptor_;
+  std::shared_ptr<ExtensionModuleFactory> extension_module_factory_ = nullptr;
 };
 
 }  // namespace piper

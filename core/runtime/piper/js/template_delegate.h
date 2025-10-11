@@ -223,6 +223,8 @@ class TemplateDelegate : public ContextProxy::Delegate,
 
   virtual void SubscribeSessionStorage(const std::string&, double listener_id,
                                        const piper::ApiCallBack& callback) = 0;
+
+  virtual fml::RefPtr<fml::TaskRunner> GetJSRunner() = 0;
 };
 }  // namespace runtime
 }  // namespace lynx

@@ -4,6 +4,7 @@
 
 #include "core/runtime/bindings/jsi/modules/lynx_module_manager.h"
 
+#include "core/public/jsb/extension_module_factory.h"
 #include "core/runtime/bindings/jsi/interceptor/interceptor_factory.h"
 #include "core/runtime/bindings/jsi/modules/lynx_jsi_module.h"
 
@@ -39,6 +40,9 @@ std::shared_ptr<LynxModule> LynxModuleManager::GetModule(
   // create new native module
   std::shared_ptr<piper::LynxNativeModule> native_module =
       pub::LynxNativeModuleManager::GetModule(name);
+  if (!native_module && extension_module_factory_) {
+    native_module = extension_module_factory_->CreateModule(name);
+  }
   if (native_module) {
     auto lynx_jsi_module =
         std::make_shared<LynxJSIModule>(name, delegate, native_module);

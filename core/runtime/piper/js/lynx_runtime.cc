@@ -9,6 +9,7 @@
 #include "base/include/log/logging.h"
 #include "base/trace/native/trace_event.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/public/jsb/extension_module_factory.h"
 #include "core/renderer/events/closure_event_listener.h"
 #include "core/renderer/tasm/config.h"
 #include "core/renderer/tasm/i18n/i18n.h"
@@ -365,6 +366,12 @@ void LynxRuntime::RegisterNapiModules() {
   TRACE_EVENT(LYNX_TRACE_CATEGORY_VITALS,
               RUNTIME_LIFECYCLE_OBSERVER_RUNTIME_ATTACH);
   lifecycle_observer_->OnRuntimeAttach(napi_environment_->proxy()->Env());
+  auto& factory = js_executor_->GetModuleManager()->GetExtensionModuleFactory();
+  if (factory) {
+    factory->OnRuntimeAttach(
+        static_cast<napi_env>(napi_environment_->proxy()->Env()),
+        delegate_->GetVSyncObserver(), delegate_->GetJSRunner());
+  }
 }
 #endif
 
@@ -801,6 +808,11 @@ void LynxRuntime::DestroyAppAndNapi(bool destroy) {
     }
 #endif
     lifecycle_observer_->OnRuntimeDetach();
+    auto& factory =
+        js_executor_->GetModuleManager()->GetExtensionModuleFactory();
+    if (factory) {
+      factory->OnRuntimeDetach();
+    }
   }
 }
 
