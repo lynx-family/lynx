@@ -197,7 +197,15 @@ void DefaultListAdapter::OnFinishBindItemHolder(
             << "] DefaultListAdapter::OnFinishBindItemHolder: "
             << "not in binding_item_holder_weak_map_ with operation_id = "
             << operation_id);
-    list_element_->GetListNode()->EnqueueComponent(component->impl_id());
+    const auto& attached_element_item_holder_map =
+        list_container_->list_children_helper()
+            ->attached_element_item_holder_map();
+    if (attached_element_item_holder_map.find(component) !=
+        attached_element_item_holder_map.end()) {
+      // The component is not attached to any item holder, so we can enqueue
+      // this component directly.
+      list_element_->GetListNode()->EnqueueComponent(component->impl_id());
+    }
   }
 }
 
