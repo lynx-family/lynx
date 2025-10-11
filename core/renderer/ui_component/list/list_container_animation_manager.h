@@ -36,8 +36,6 @@ class ListContainerAnimationManager
 
   void SetUpdateAnimation(bool update_animation);
 
-  void OnLayoutChildren();
-
   void EndAnimation();
 
   void InitializeAnimator();

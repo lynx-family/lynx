@@ -45,32 +45,29 @@ void ListContainerAnimationManager::UpdateDiffResult(
                         list::ListAdapterDiffResult::kUpdate) ||
              result == list::ListAdapterDiffResult::kUpdate) {
     animation_type_ = list::ListContainerAnimationType::kInsert;
-  } else {
+  } else if (result != list::ListAdapterDiffResult::kNone) {
     animation_type_ = list::ListContainerAnimationType::kUpdate;
+  } else {
+    return;
   }
-}
 
-void ListContainerAnimationManager::OnLayoutChildren() {
-  if (update_animation_ &&
-      AnimationType() != list::ListContainerAnimationType::kNone) {
-    if (!animator_) {
-      InitializeAnimator();
-      animator_->RegisterCustomCallback(
-          [weak_ptr = WeakFromThis()](float progress) {
-            if (auto ptr = weak_ptr.get()) {
-              ptr->DoAnimationFrame(progress);
-            }
-          });
-      animator_->RegisterEventCallback(
-          [weak_ptr = WeakFromThis()]() {
-            if (auto ptr = weak_ptr.get()) {
-              ptr->EndAnimation();
-            }
-          },
-          animation::basic::Animation::EventType::End);
-    }
-    animator_->Start();
+  if (!animator_) {
+    InitializeAnimator();
+    animator_->RegisterCustomCallback(
+        [weak_ptr = WeakFromThis()](float progress) {
+          if (auto ptr = weak_ptr.get()) {
+            ptr->DoAnimationFrame(progress);
+          }
+        });
+    animator_->RegisterEventCallback(
+        [weak_ptr = WeakFromThis()]() {
+          if (auto ptr = weak_ptr.get()) {
+            ptr->EndAnimation();
+          }
+        },
+        animation::basic::Animation::EventType::End);
   }
+  animator_->Start();
 }
 
 void ListContainerAnimationManager::InitializeAnimator() {
