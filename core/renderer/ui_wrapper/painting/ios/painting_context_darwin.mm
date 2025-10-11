@@ -9,6 +9,7 @@
 #include "base/include/value/array.h"
 #include "base/include/value/table.h"
 #include "core/build/gen/lynx_sub_error_code.h"
+#include "core/public/box_model.h"
 #include "core/renderer/css/css_style_utils.h"
 #include "core/renderer/dom/ios/lepus_value_converter.h"
 #include "core/renderer/ui_wrapper/common/ios/platform_extra_bundle_darwin.h"
@@ -49,27 +50,6 @@
 
 namespace lynx {
 namespace tasm {
-
-// LEFT,TOP,RIGHT,BOTTOM
-
-enum BoxModelOffset {
-  PAD_LEFT = 0,
-  PAD_TOP,
-  PAD_RIGHT,
-  PAD_BOTTOM,
-  BORDER_LEFT,
-  BORDER_TOP,
-  BORDER_RIGHT,
-  BORDER_BOTTOM,
-  MARGIN_LEFT,
-  MARGIN_TOP,
-  MARGIN_RIGHT,
-  MARGIN_BOTTOM,
-  LAYOUT_LEFT,
-  LAYOUT_TOP,
-  LAYOUT_RIGHT,
-  LAYOUT_BOTTOM
-};
 
 namespace {
 
