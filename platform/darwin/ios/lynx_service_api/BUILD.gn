@@ -50,6 +50,7 @@ podspec_target("LynxServiceAPI_podspec") {
 lynx_service_api_sources = [
   "./LynxServiceLogProtocol.h",
   "./LynxServiceProtocol.h",
+  "./LynxServiceTraceProtocol.h",
   "./LynxServiceTrailProtocol.h",
   "./ServiceAPI.h",
   "./ServiceAPI.m",
@@ -62,6 +63,7 @@ subspec_target("Core") {
     "./ServiceAPI.h",
     "./ServiceLazyLoad.h",
     "./LynxServiceProtocol.h",
+    "./LynxServiceTraceProtocol.h",
     "./LynxServiceTrailProtocol.h",
     "./LynxServiceLogProtocol.h",
   ]

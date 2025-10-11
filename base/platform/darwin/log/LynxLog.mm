@@ -5,8 +5,8 @@
 #import <LynxBase/LynxLog.h>
 #include <map>
 
-#import <LynxBase/LynxBaseService.h>             // nogncheck
-#import <LynxBase/LynxBaseServiceLogProtocol.h>  // nogncheck
+#import <LynxServiceAPI/LynxServiceLogProtocol.h>  // nogncheck
+#import <LynxServiceAPI/ServiceAPI.h>              // nogncheck
 #include "base/include/debug/lynx_assert.h"
 #include "base/include/log/logging_darwin.h"
 #include "base/src/base_trace/base_trace_event_def.h"
@@ -120,7 +120,7 @@ void PrintLogMessageByLogDelegate(LogMessage *msg, const char *tag) {
 }  // namespace lynx
 
 void InitLynxLog(bool print_logs_to_all_channels) {
-  id service = LynxBaseService(LynxBaseServiceLogProtocol);
+  id service = LynxService(LynxServiceLogProtocol);
   void *log_address = nullptr;
   if (service) {
     log_address = (void *)[service getWriteFunction];
