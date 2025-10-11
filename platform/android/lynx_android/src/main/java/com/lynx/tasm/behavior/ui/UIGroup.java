@@ -589,7 +589,7 @@ public abstract class UIGroup<T extends ViewGroup>
       View child = viewGroup.getChildAt(i);
       if (mContext.getEnableEventRefactor()) {
         float[] childPoint = new float[2];
-        if (isTransformedTouchPointInView(eventCoords, viewGroup, child, childPoint)) {
+        if (isTransformedTouchPointInView(eventCoords, viewGroup, child, childPoint, relations)) {
           if (relations.containsKey(child)) {
             touchTarget = relations.get(child);
             eventCoords[0] = childPoint[0];
@@ -637,8 +637,8 @@ public abstract class UIGroup<T extends ViewGroup>
   private static final float[] mMatrixTransformCoords = new float[2];
   private static final Matrix mInverseMatrix = new Matrix();
 
-  private boolean isTransformedTouchPointInView(
-      float[] inPoint, View parent, View child, float[] outLocalPoint) {
+  protected boolean isTransformedTouchPointInView(float[] inPoint, View parent, View child,
+      float[] outLocalPoint, Map<View, LynxUI> relations) {
     float[] point = getTargetPoint(
         inPoint[0], inPoint[1], parent.getScrollX(), parent.getScrollY(), child, child.getMatrix());
     outLocalPoint[0] = point[0];
