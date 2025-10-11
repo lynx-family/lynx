@@ -34,6 +34,7 @@
 @class LynxView;
 @class LynxViewBuilder;
 @class LynxLifecycleDispatcher;
+@class LynxViewGroup;
 typedef NS_ENUM(NSInteger, LynxBooleanOption);
 
 @protocol LynxDynamicComponentFetcher;
@@ -79,6 +80,7 @@ NS_ASSUME_NONNULL_BEGIN
   LynxSSRHelper* _lynxSSRHelper;
   LynxPerformanceController* _performanceController;
   LynxEngine* _lynxEngine;
+  LynxViewGroup* _lynxViewGroup;
   CGFloat _fontScale;
   CGSize _intrinsicContentSize;
   std::unique_ptr<lynx::shell::LynxShell> shell_;

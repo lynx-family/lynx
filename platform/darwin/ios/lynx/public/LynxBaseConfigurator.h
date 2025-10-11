@@ -30,17 +30,13 @@
 @property(nonatomic, assign) BOOL enableJSRuntime;
 @property(nonatomic, assign) BOOL enableAirStrictMode;
 @property(nonatomic, assign) BOOL enableAsyncCreateRender;
-@property(nonatomic, assign) BOOL enableRadonCompatible;
 @property(nonatomic, assign) BOOL enableSyncFlush;
 @property(nonatomic, assign) BOOL enableMultiAsyncThread;
 @property(nonatomic, assign) BOOL enableVSyncAlignedMessageLoop;
 // Run the hydration process in a async thread.
 @property(nonatomic, assign) BOOL enableAsyncHydration;
 @property(nonatomic, assign) BOOL enableMTSModule;
-@property(nonatomic, assign) CGRect frame;
-@property(nonatomic, nullable) id<LynxDynamicComponentFetcher> fetcher;
 @property(nonatomic, assign) CGFloat fontScale;
-@property(nonatomic, nullable, strong) NSMutableDictionary<NSString*, id>* lynxViewConfig;
 @property(nonatomic, assign) LynxBooleanOption enableGenericResourceFetcher;
 
 // generic resource fetcher api.
@@ -71,11 +67,6 @@
 @property(nonatomic, assign) BOOL enablePreUpdateData;
 
 /**
- * enable LynxResourceService loader injection
- */
-@property(nonatomic, assign) BOOL enableLynxResourceServiceLoaderInjection;
-
-/**
  * Set backgroundJSRuntime js engine type.
  */
 @property(nonatomic, assign) LynxBackgroundJsRuntimeType backgroundJsRuntimeType;
@@ -96,15 +87,6 @@
  * Set bytecode key for current lynxview.
  */
 @property(nonatomic, strong, nullable) NSString* bytecodeUrl;
-
-@property(nonatomic, assign) BOOL isUIRunningMode __attribute__((deprecated(
-    "try to set 'threadStrategy' variable if you want to change the thread strategy for rendering"))
-);
-
-/**
- * URL for LynxView, which will be parsed by LynxServiceTrailProtocol in building LynxView.
- */
-@property(nonatomic, strong, nullable) NSURL* uri;
 
 @property(nonatomic, nullable) id<LynxUIRendererCreatorProtocol> uiRendererCreator;
 
@@ -133,11 +115,6 @@
 - (void)registerFont:(UIFont* _Nonnull)font forName:(NSString* _Nonnull)name;
 - (void)registerFamilyName:(NSString* _Nonnull)fontFamilyName
              withAliasName:(NSString* _Nonnull)aliasName;
-
-/**
- * insert a key-value pair into lynxViewConfig if the key does not exist, otherwise ignored.
- */
-- (void)insertLynxViewConfig:(id _Nonnull)config forKey:(NSString* _Nonnull)key;
 
 @end
 
