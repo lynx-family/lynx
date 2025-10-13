@@ -196,6 +196,9 @@ bool ParseStyleDeclarationList(const char* content, uint32_t content_length,
         if (current >= content_length) {
           // Unterminated string without `'` at end , like 'xxxxx
           return false;
+        } else if (content[current] == boundary) {
+          // content[current] == boundary,just skip the end boundary,like `'`
+          current++;
         }
         continue;
       }
