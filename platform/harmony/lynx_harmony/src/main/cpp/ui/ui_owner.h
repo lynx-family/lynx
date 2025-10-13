@@ -136,7 +136,7 @@ class UIOwner {
   void InitGestureArenaManager(LynxContext* context);
 
   void DispatchTouchEventToGestureArena(
-      std::string type, const std::shared_ptr<TouchEvent>& touch_event,
+      const std::string& type, const std::shared_ptr<TouchEvent>& touch_event,
       const ArkUI_UIInputEvent* event) const;
 
   void SetActiveUIToGestureArenaAtDownEvent(std::weak_ptr<EventTarget> target);
