@@ -743,15 +743,15 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
 
   @LynxUIMethod
   public void takeScreenshot(ReadableMap params, Callback callback) {
-    JavaOnlyMap result = new JavaOnlyMap();
     if (mView == null) {
-      callback.invoke(LynxUIMethodConstants.NO_UI_FOR_NODE, result);
+      callback.invoke(LynxUIMethodConstants.NO_UI_FOR_NODE, new JavaOnlyMap());
       return;
     }
     final String format = params.getString("format", "jpeg");
+    final boolean pixelCopy = params.getBoolean("androidEnablePixelCopy", false);
     Bitmap.Config config;
-    Bitmap.CompressFormat compressFormat;
-    String header;
+    final Bitmap.CompressFormat compressFormat;
+    final String header;
     if (format.equals("png")) {
       config = Bitmap.Config.ARGB_8888;
       compressFormat = Bitmap.CompressFormat.PNG;
@@ -763,7 +763,7 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
     }
     final float scale = (float) params.getDouble("scale", 1.0);
     try {
-      Bitmap bitmap;
+      final Bitmap bitmap;
       ILynxSystemInvokeService systemInvokeService =
           LynxServiceCenter.inst().getService(ILynxSystemInvokeService.class);
       if (systemInvokeService != null) {
@@ -771,24 +771,42 @@ public abstract class LynxUI<T extends View> extends LynxBaseUI implements IProc
       } else {
         bitmap = Bitmap.createBitmap(mView.getWidth(), mView.getHeight(), config);
         final Canvas canvas = new Canvas(bitmap);
-        boolean dirty = mView.isDirty();
-        mView.draw(canvas);
-        if (dirty) {
-          mView.postInvalidate();
+        if (pixelCopy && mContext != null && mContext.getUIBodyView() != null) {
+          mContext.getUIBodyView().getLynxUIRendererInternal().drawViewToBitmap(
+              mView, bitmap, canvas);
+        } else {
+          boolean dirty = mView.isDirty();
+          mView.draw(canvas);
+          if (dirty) {
+            mView.postInvalidate();
+          }
         }
       }
-      if (scale != 1.f) {
-        Matrix m = new Matrix();
-        m.setScale(scale, scale);
-        bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
-      }
-      String data = BitmapUtils.bitmapToBase64(bitmap, compressFormat, 100, Base64.NO_WRAP);
-      result.putInt("width", bitmap.getWidth());
-      result.putInt("height", bitmap.getHeight());
-      result.putString("data", header + data);
-      callback.invoke(LynxUIMethodConstants.SUCCESS, result);
+      LynxThreadPool.getBriefIOExecutor().execute(new Runnable() {
+        @Override
+        public void run() {
+          final Bitmap scaledBitmap;
+          if (scale != 1.f) {
+            Matrix m = new Matrix();
+            m.setScale(scale, scale);
+            scaledBitmap =
+                Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), m, true);
+            bitmap.recycle();
+          } else {
+            scaledBitmap = bitmap;
+          }
+          String data =
+              BitmapUtils.bitmapToBase64(scaledBitmap, compressFormat, 100, Base64.NO_WRAP);
+          JavaOnlyMap result = new JavaOnlyMap();
+          result.putInt("width", scaledBitmap.getWidth());
+          result.putInt("height", scaledBitmap.getHeight());
+          result.putString("data", header + data);
+          callback.invoke(LynxUIMethodConstants.SUCCESS, result);
+          scaledBitmap.recycle();
+        }
+      });
     } catch (Throwable e) {
-      callback.invoke(LynxUIMethodConstants.UNKNOWN, result);
+      callback.invoke(LynxUIMethodConstants.UNKNOWN, new JavaOnlyMap());
     }
   }
 
