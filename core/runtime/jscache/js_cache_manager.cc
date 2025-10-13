@@ -290,7 +290,7 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
 
 void JsCacheManager::RequestCacheGeneration(
     const std::string &template_url,
-    std::vector<std::unique_ptr<CacheGenerator>> &&generators, bool force,
+    std::vector<std::unique_ptr<CacheGenerator>> &&generators,
     std::unique_ptr<BytecodeGenerateCallback> callback) {
   LOGI("RequestCacheGeneration template_url: '" << template_url);
   if (!IsCacheEnabledForTemplate(template_url)) {
@@ -301,10 +301,9 @@ void JsCacheManager::RequestCacheGeneration(
     return;
   }
 
-  PostTaskBackground(TaskInfo(
-      force ? TaskInfo::TaskType::GENERATE_CACHE
-            : TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED,
-      template_url, std::nullopt, std::move(generators), std::move(callback)));
+  PostTaskBackground(TaskInfo(TaskInfo::TaskType::GENERATE_CACHE_FULL,
+                              template_url, std::nullopt, std::move(generators),
+                              std::move(callback)));
 }
 
 /*
@@ -359,19 +358,54 @@ void JsCacheManager::AdjustTaskListWithNewTask(TaskInfo task) {
                      return existed_task.template_key == task.template_key;
                    });
 
-  // no task with same identifier exists, insert it
+  // If no task with the same key exists, it's a new task.
   if (iter == task_list_.end()) {
     task_list_.push_back(std::move(task));
     return;
   }
 
-  // task with same identifier exists, replace it if the new task is more
-  // promising. Otherwise ignore it.
-  if (iter->type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED &&
-      task.type == TaskInfo::TaskType::GENERATE_CACHE) {
-    *iter = std::move(task);
-  } else {
-    LOGI("task already exists, ignore");
+  // A task with the same key exists.
+  auto &existed_task = *iter;
+  const bool new_is_full = task.type == TaskInfo::TaskType::GENERATE_CACHE_FULL;
+  const bool existed_is_full =
+      existed_task.type == TaskInfo::TaskType::GENERATE_CACHE_FULL;
+
+  if (new_is_full) {
+    if (existed_is_full) {
+      // Both are full-generation tasks. The new one replaces the old one.
+      // Notify the old task's callback that it's being superseded.
+      if (existed_task.callback) {
+        (*existed_task.callback)("generate duplicated.", {});
+      }
+      // Erase the old task and add the new one to the end of the queue.
+      task_list_.erase(iter);
+      task_list_.push_back(std::move(task));
+    } else {
+      // New task is 'full', existing is not. 'Full' takes precedence.
+      existed_task = std::move(task);
+    }
+  } else {  // New task is NOT 'full'.
+    if (existed_is_full) {
+      // Existing task is 'full', new is not. 'Full' takes precedence, so
+      // ignore the new one.
+      LOGI("task already exists, ignore");
+    } else {
+      // Both tasks are partial.
+      // Add the new task unless both tasks have exactly one generator and their
+      // source URLs are identical.
+      bool is_duplicate = existed_task.cache_generators.size() == 1 &&
+                          task.cache_generators.size() == 1 &&
+                          existed_task.cache_generators[0]->SourceUrl() ==
+                              task.cache_generators[0]->SourceUrl();
+
+      if (is_duplicate) {
+        LOGI("task already exists, ignore");
+      } else {
+        // This is either a new generator for the same template, or a
+        // malformed task. In both cases, add it to the list for processing.
+        task_list_.push_back(std::move(task));
+      }
+    }
   }
 }
 
@@ -413,15 +447,13 @@ void JsCacheManager::RunTask(TaskInfo &task) {
 
   for (const auto &generator : generators) {
     auto identifier = BuildIdentifier(generator->SourceUrl(), template_key);
-    if (type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED) {
-      if (auto cache = LoadCacheFromStorage(
-              identifier, EnsureMd5(generator->SrcBuffer(), md5_optional))) {
-        if (callback) {
-          generator_results[GetCacheUrlFromIdentifier(identifier)] =
-              std::move(cache);
-        }
-        continue;
+    if (auto cache = LoadCacheFromStorage(
+            identifier, EnsureMd5(generator->SrcBuffer(), md5_optional))) {
+      if (callback) {
+        generator_results[GetCacheUrlFromIdentifier(identifier)] =
+            std::move(cache);
       }
+      continue;
     }
     std::string file_md5 = EnsureMd5(generator->SrcBuffer(), md5_optional);
 
@@ -792,11 +824,11 @@ __attribute__((visibility("default"))) std::shared_ptr<Buffer> TryGetCacheV8(
 __attribute__((visibility("default"))) void RequestCacheGenerationV8(
     const std::string &source_url, const std::string &template_url,
     const std::shared_ptr<const Buffer> &buffer,
-    std::unique_ptr<CacheGenerator> cache_generator, bool force) {
+    std::unique_ptr<CacheGenerator> cache_generator) {
   std::vector<std::unique_ptr<cache::CacheGenerator>> generators;
   generators.push_back(std::move(cache_generator));
-  JsCacheManager::GetV8Instance().RequestCacheGeneration(
-      template_url, std::move(generators), force);
+  JsCacheManager::GetV8Instance().RequestCacheGeneration(template_url,
+                                                         std::move(generators));
 }
 
 }  // namespace cache

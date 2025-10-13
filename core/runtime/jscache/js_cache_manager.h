@@ -52,7 +52,7 @@ class JsCacheManager {
   struct TaskInfo {
     enum class TaskType {
       GENERATE_CACHE,
-      GENERATE_CACHE_IF_NEEDED,
+      GENERATE_CACHE_FULL,
     } type;
 
     std::string template_key;                 // template unique key
@@ -98,14 +98,13 @@ class JsCacheManager {
    * broken.
    * @param template_url url of the template.
    * @param generators functions to generate cache.
-   * @param force If true, it will generate cache file even if it's already
    * existed.
    * @param callback this can be null. If it's not null, when exec finished,
    * pass result to it.
    */
   void RequestCacheGeneration(
       const std::string &template_url,
-      std::vector<std::unique_ptr<CacheGenerator>> &&generators, bool force,
+      std::vector<std::unique_ptr<CacheGenerator>> &&generators,
       std::unique_ptr<BytecodeGenerateCallback> callback = nullptr);
 
   /**

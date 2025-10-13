@@ -44,7 +44,7 @@ extern std::shared_ptr<Buffer> TryGetCacheV8(
 extern void RequestCacheGenerationV8(
     const std::string& source_url, const std::string& template_url,
     const std::shared_ptr<const Buffer>& buffer,
-    std::unique_ptr<CacheGenerator> cache_generator, bool force);
+    std::unique_ptr<CacheGenerator> cache_generator);
 }  // namespace cache
 #endif
 
@@ -152,8 +152,7 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
         // regenerate cache file
         cache::RequestCacheGenerationV8(
             source_url, bytecode_source_url_, buffer,
-            std::make_unique<cache::V8CacheGenerator>(origin_url, buffer),
-            true);
+            std::make_unique<cache::V8CacheGenerator>(origin_url, buffer));
       }
     }
   } else {

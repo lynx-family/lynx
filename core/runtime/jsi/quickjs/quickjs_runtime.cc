@@ -254,7 +254,7 @@ QuickjsRuntime::evaluatePreparedJavaScript(
       generators.push_back(std::make_unique<cache::QuickjsCacheGenerator>(
           preparation->source_url, source));
       cache::JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
-          bytecode_source_url_, std::move(generators), true);
+          bytecode_source_url_, std::move(generators));
     }
 #endif
   }

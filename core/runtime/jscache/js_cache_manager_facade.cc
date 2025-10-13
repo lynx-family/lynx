@@ -94,7 +94,7 @@ inline void JsCacheManagerFacade::PostCacheGenerationTaskQuickJs(
         std::move(iter.first), std::move(iter.second.GetBuffer())));
   }
   JsCacheManager::GetQuickjsInstance().RequestCacheGeneration(
-      template_url, std::move(generators), false, std::move(callback));
+      template_url, std::move(generators), std::move(callback));
 #endif
 }
 }  // namespace cache
