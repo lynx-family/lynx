@@ -1303,26 +1303,37 @@ fml::RefPtr<lepus::CArray> UIList::GetVisibleCells() const {
   bool vertical = !IsHorizontal();
   float scroll_x = GetScrollOffset().first;
   float scroll_y = GetScrollOffset().second;
-
-  for (const auto child : children_) {
+  std::vector<UIBase*> visible_children;
+  for (UIBase* child : children_) {
     if (IsListItem(child)) {
       if (vertical
               ? IsVisibleCellVertical(static_cast<UIComponent*>(child))
               : IsVisibleCellHorizontal(static_cast<UIComponent*>(child))) {
-        auto param = lepus::Dictionary::Create();
-        param->SetValue("id", child->Sign());
-        auto index =
-            GetIndexFromItemKey(static_cast<UIComponent*>(child)->item_key());
-        param->SetValue("position", index);
-        param->SetValue("index", index);
-        param->SetValue("itemKey",
-                        static_cast<UIComponent*>(child)->item_key());
-        param->SetValue("top", child->top_ - scroll_y);
-        param->SetValue("bottom", child->top_ + child->height_ - scroll_y);
-        param->SetValue("left", child->left_ - scroll_x);
-        param->SetValue("right", child->left_ + child->width_ - scroll_x);
-        array->emplace_back(std::move(param));
+        visible_children.emplace_back(child);
       }
+    }
+  }
+  if (!visible_children.empty()) {
+    std::sort(visible_children.begin(), visible_children.end(),
+              [this](UIBase* lhs, UIBase* rhs) {
+                return GetIndexFromItemKey(
+                           static_cast<UIComponent*>(lhs)->item_key()) <
+                       GetIndexFromItemKey(
+                           static_cast<UIComponent*>(rhs)->item_key());
+              });
+    for (UIBase* child : visible_children) {
+      auto param = lepus::Dictionary::Create();
+      param->SetValue("id", child->IdSelector());
+      auto index =
+          GetIndexFromItemKey(static_cast<UIComponent*>(child)->item_key());
+      param->SetValue("position", index);
+      param->SetValue("index", index);
+      param->SetValue("itemKey", static_cast<UIComponent*>(child)->item_key());
+      param->SetValue("top", child->top_ - scroll_y);
+      param->SetValue("bottom", child->top_ + child->height_ - scroll_y);
+      param->SetValue("left", child->left_ - scroll_x);
+      param->SetValue("right", child->left_ + child->width_ - scroll_x);
+      array->emplace_back(std::move(param));
     }
   }
   return array;
