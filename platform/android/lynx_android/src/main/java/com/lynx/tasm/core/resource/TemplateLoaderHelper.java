@@ -13,6 +13,7 @@ import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.resourceprovider.LynxResourceResponse;
 import com.lynx.tasm.resourceprovider.template.LynxTemplateResourceFetcher;
 import com.lynx.tasm.resourceprovider.template.TemplateProviderResult;
+import java.nio.ByteBuffer;
 
 /**
  * Help LynxResourceLoader to load template from LynxTemplateResourceFetcher.
@@ -41,10 +42,18 @@ class TemplateLoaderHelper {
           @Override
           public void onResponse(LynxResourceResponse<TemplateProviderResult> response) {
             TemplateProviderResult data = response.getData();
-            byte[] template = data != null ? data.getTemplateBinary() : null;
-            TemplateBundle bundle = data != null ? data.getTemplateBundle() : null;
+            byte[] binary = null;
+            ByteBuffer buffer = null;
+            TemplateBundle bundle = null;
+            // Priority: bundle > buffer > binary;
+            if (data != null) {
+              binary = data.getTemplateBinary();
+              buffer = data.getTemplateBuffer();
+              bundle = data.getTemplateBundle();
+            }
             String errorMsg = response.getError() != null ? response.getError().getMessage() : null;
-            callback.onTemplateLoaded(response.getState() == SUCCESS, template, bundle, errorMsg);
+            callback.onTemplateLoaded(
+                response.getState() == SUCCESS, binary, bundle, buffer, errorMsg);
           }
         });
   }
