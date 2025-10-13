@@ -457,8 +457,10 @@ bool Element::ResetCSSValue(CSSPropertyID css_id) {
   // The properties of transition and keyframe no need to be pushed to bundle
   // separately here. Those properties will be pushed to bundle together
   // later.
-  if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id))) {
-    ResetProp(CSSProperty::GetPropertyName(css_id).c_str());
+  if (!(CheckTransitionProps(css_id) || CheckKeyframeProps(css_id)) &&
+      processed) {
+    PreparePropBundleIfNeed();
+    prop_bundle_->SetNullPropsByID(css_id);
   }
 
   return processed;

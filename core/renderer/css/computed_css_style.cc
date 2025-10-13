@@ -1540,14 +1540,19 @@ bool ComputedCSSStyle::SetLineHeight(const tasm::CSSValue& value,
                                      const bool reset) {
   PrepareOptionalForTextAttributes();
   auto old_value = text_attributes_->computed_line_height;
+  auto old_factor = text_attributes_->line_height_factor;
   if (reset) {
     text_attributes_->computed_line_height =
         DefaultComputedStyle::DEFAULT_LINE_HEIGHT;
     text_attributes_->line_height_factor =
         DefaultComputedStyle::DEFAULT_LINE_HEIGHT_FACTOR;
+
+    return base::FloatsNotEqual(text_attributes_->computed_line_height,
+                                old_value) ||
+           base::FloatsNotEqual(old_factor,
+                                text_attributes_->line_height_factor);
   } else {
     if (value.IsNumber() || value.IsPercent()) {
-      auto old_factor = text_attributes_->line_height_factor;
       text_attributes_->line_height_factor =
           value.GetValue().Number() / (value.IsPercent() ? 100 : 1);
       text_attributes_->computed_line_height =
@@ -1558,7 +1563,7 @@ bool ComputedCSSStyle::SetLineHeight(const tasm::CSSValue& value,
       return base::FloatsNotEqual(text_attributes_->computed_line_height,
                                   old_value) ||
              base::FloatsNotEqual(old_factor,
-                                  text_attributes_->computed_line_height);
+                                  text_attributes_->line_height_factor);
     } else {
       if (UNLIKELY(!CalculateCSSValueToFloat(
               value, text_attributes_->computed_line_height, length_context_,

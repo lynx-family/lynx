@@ -3956,7 +3956,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase02) {
         CSSValue(impl_border_top_left_radius);
     auto id_border_top_right_radius =
         CSSPropertyID::kPropertyIDBorderTopRightRadius;
-    auto impl_border_top_right_radius = lepus::Value("0rpx");
+    auto impl_border_top_right_radius = lepus::Value("1rpx");
     tokens.get()->raw_attributes_[id_border_top_right_radius] =
         CSSValue(impl_border_top_right_radius);
 
@@ -4000,7 +4000,7 @@ TEST_P(FiberElementTest, FiberElementDirectionCase02) {
       element_painting_node_->props_.find("border-top-left-radius");
   EXPECT_TRUE(top_left_radius_it != element_painting_node_->props_.end());
   auto tl_value = top_left_radius_it->second.Array()->get(0).Number();
-  EXPECT_TRUE(tl_value == 0);
+  EXPECT_TRUE(tl_value == 1 * kScreeWidth / kRpxRatio);
 
   auto top_right_radius_it =
       element_painting_node_->props_.find("border-top-right-radius");
