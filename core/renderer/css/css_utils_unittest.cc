@@ -209,6 +209,24 @@ TEST(CSSUtils, ParseStyleDeclarationList) {
   EXPECT_TRUE(!ret);
 }
 
+TEST(CSSUtils, ParseStyleDeclarationListCase2) {
+  const char* input = "color:red;font-family: 'TIKTOK LATIN'";
+  std::unordered_map<std::string, std::string> values;
+  auto ret = ParseStyleDeclarationList(
+      input, static_cast<uint32_t>(strlen(input)),
+      [&values](const char* key_start, uint32_t key_len,
+                const char* value_start, uint32_t value_len) {
+        auto key = std::string(key_start, key_start + key_len);
+        auto value = std::string(value_start, value_start + value_len);
+        values.insert(std::make_pair(key, value));
+      });
+
+  EXPECT_TRUE(ret);
+
+  EXPECT_TRUE(values["color"] == "red");
+  EXPECT_TRUE(values["font-family"] == "'TIKTOK LATIN'");
+}
+
 TEST(CSSUtils, SplitClasses) {
   const char* input0 = "dark blue";
 
