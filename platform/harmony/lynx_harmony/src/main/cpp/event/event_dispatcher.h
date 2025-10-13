@@ -26,6 +26,7 @@ class UIOwner;
 class UIRoot;
 class UIBase;
 class EventTarget;
+class TouchEvent;
 
 class EventDispatcher {
  public:
@@ -163,6 +164,7 @@ class EventDispatcher {
   std::unordered_map<int, EventTargetDetail> active_target_finger_map_;
   std::vector<std::weak_ptr<EventTarget>> event_target_chain_;
   std::unordered_set<int> gesture_recognized_target_set_;
+  std::shared_ptr<TouchEvent> last_touch_event_;
   bool has_touch_moved_{false};
   bool first_touch_moved_{false};
   bool first_touch_outside_{false};
