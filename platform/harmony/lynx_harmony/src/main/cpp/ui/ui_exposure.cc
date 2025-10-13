@@ -125,7 +125,7 @@ void UIExposure::RemoveUIFromExposedMap(UIBase* ui, std::string unique_id) {
 
 void UIExposure::StopExposure(const lepus::Value& options) {
   UnregisterExposureCheckCallBack();
-  bool is_send_event = false;
+  bool is_send_event = true;
   if (options.IsObject()) {
     tasm::ForEachLepusValue(options,
                             [&is_send_event](const auto& key, const auto& val) {

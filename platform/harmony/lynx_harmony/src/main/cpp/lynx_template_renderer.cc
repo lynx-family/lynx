@@ -17,6 +17,7 @@
 #include "core/base/harmony/napi_convert_helper.h"
 #include "core/renderer/data/harmony/template_data_harmony.h"
 #include "core/renderer/dom/harmony/lynx_template_bundle_harmony.h"
+#include "core/renderer/ui_wrapper/painting/harmony/ui_delegate_harmony.h"
 #include "core/runtime/jscache/harmony/js_cache_manager_harmony.h"
 #include "core/services/event_report/harmony/event_tracker_harmony.h"
 #include "core/services/performance/harmony/performance_controller_harmony.h"
@@ -286,6 +287,13 @@ void LynxTemplateRenderer::ReloadTemplate(
     const std::shared_ptr<tasm::TemplateData>& data,
     const std::shared_ptr<lynx::tasm::PipelineOptions>& pipeline_options,
     lepus::Value global_props) {
+  auto lynx_context =
+      static_cast<tasm::harmony::UIDelegateHarmony*>(ui_delegate_)
+          ->GetLynxContext();
+  if (lynx_context && lynx_context->EnableExposureWhenReload()) {
+    lynx_context->StopExposure(lepus::Value());
+    lynx_context->ResumeExposure();
+  }
   global_props_ = std::move(global_props);
   shell_->ReloadTemplate(data, pipeline_options, global_props_);
 }
