@@ -51,6 +51,9 @@ class LayoutObject : public ContainerNode {
       delete;
   virtual ~LayoutObject();
 
+  void set_uid(int32_t uid) { uid_ = uid; }
+  int32_t uid() { return uid_; }
+
   // exports
   LYNX_EXPORT void SetSLRequestLayoutFunc(
       SLRequestLayoutFunc request_layout_func);
@@ -367,6 +370,8 @@ class LayoutObject : public ContainerNode {
   float pos_right_ = 0;
   float pos_top_ = 0;
   float pos_bottom_ = 0;
+
+  int32_t uid_ = -1;
 };
 
 }  // namespace starlight

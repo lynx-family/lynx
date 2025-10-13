@@ -30,6 +30,7 @@ LayoutNode::LayoutNode(int id, const starlight::LayoutConfigs& layout_configs,
       type_(LayoutNodeType::COMMON),
       css_style_(std::make_unique<starlight::ComputedCSSStyle>(init_style)),
       sl_node_(layout_configs, css_style_->GetLayoutComputedStyle()) {
+  sl_node_.set_uid(id);
   css_style_->SetFontScaleOnlyEffectiveOnSp(layout_configs.font_scale_sp_only_);
   css_style_->SetCssAlignLegacyWithW3c(
       layout_configs.css_align_with_legacy_w3c_);

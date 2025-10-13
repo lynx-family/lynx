@@ -24,8 +24,11 @@ double RoundToLayoutAccuracy(float value) {
 }
 
 void WriteNodeInfo(rapidjson::Writer<rapidjson::StringBuffer>& writer,
-                   std::vector<double>& box_model, float offset_top,
-                   float offset_left) {
+                   int32_t uid, std::vector<double>& box_model,
+                   float offset_top, float offset_left) {
+  writer.Key("uid");
+  writer.Int(uid);
+
   writer.Key("width");
   writer.Double(RoundToLayoutAccuracy(box_model[0]));
   writer.Key("height");
@@ -69,7 +72,7 @@ void GetLayoutTreeRecursive(rapidjson::Writer<rapidjson::StringBuffer>& writer,
                             SLNode* slnode) {
   writer.StartObject();
   std::vector<double> box_model = slnode->GetBoxModel();
-  WriteNodeInfo(writer, box_model,
+  WriteNodeInfo(writer, slnode->uid(), box_model,
                 slnode->GetBorderBoundTopFromParentPaddingBound(),
                 slnode->GetBorderBoundLeftFromParentPaddingBound());
   int child_size = slnode->GetChildCount();
