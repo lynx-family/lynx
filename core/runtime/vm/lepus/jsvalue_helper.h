@@ -112,17 +112,15 @@ class LEPUSValueHelper {
   static inline LEPUSValue NewInt64(LEPUSContext* ctx, int64_t val) {
     if (val < MAX_SAFE_INTEGER && val > -MAX_SAFE_INTEGER) {
       return LEPUS_NewInt64(ctx, val);
-    } else {
-      return LEPUS_NewBigUint64(ctx, static_cast<uint64_t>(val));  //
     }
+    return LEPUS_NewFloat64(ctx, static_cast<double>(val));  //
   }
 
   static inline LEPUSValue NewUint64(LEPUSContext* ctx, uint64_t val) {
     if (val < MAX_SAFE_INTEGER) {
       return LEPUS_NewInt64(ctx, val);
-    } else {
-      return LEPUS_NewBigUint64(ctx, val);
     }
+    return LEPUS_NewFloat64(ctx, static_cast<double>(val));
   }
 
   static inline LEPUSValue NewPointer(void* p) {
