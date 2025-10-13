@@ -123,4 +123,15 @@ public class LLog {
 
   @Deprecated
   public static void onEnvReady() {}
+
+  @Deprecated
+  private static void nativeSetNativeMinLogLevel(int level) {}
+  @Deprecated
+  private static void nativeInitALogNative(long addr) {}
+  @Deprecated
+  private static void nativeInternalLog(int level, String tag, String msg) {}
+  @Deprecated
+  private static void nativeInitLynxLoggingNative(boolean isPrintLogsToAllChannels) {}
+  @Deprecated
+  private static void nativeSetLogOutputByPlatform() {}
 }
