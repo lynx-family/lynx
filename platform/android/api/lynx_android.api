@@ -2417,6 +2417,7 @@ public interface com::lynx::tasm::behavior::ILynxUIRenderer {
   public String com.lynx.tasm.behavior.ILynxUIRenderer.getActualScreenshotMode();
   public void com.lynx.tasm.behavior.ILynxUIRenderer.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
   public Bitmap com.lynx.tasm.behavior.ILynxUIRenderer.getBitmapOfView();
+  public void com.lynx.tasm.behavior.ILynxUIRenderer.drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
   public int com.lynx.tasm.behavior.ILynxUIRenderer.getNodeForLocation(float x, float y, String mode);
   public float[] com.lynx.tasm.behavior.ILynxUIRenderer.getTransformValue(int sign, float[] padBorderMarginLayout);
 }
@@ -6669,6 +6670,7 @@ public class com::lynx::tasm::behavior::LynxUIRenderer : com.lynx.tasm.behavior.
   public void com.lynx.tasm.behavior.LynxUIRenderer.scrollIntoViewFromUI(int nodeId);
   public String com.lynx.tasm.behavior.LynxUIRenderer.getActualScreenshotMode();
   public void com.lynx.tasm.behavior.LynxUIRenderer.takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
+  public void com.lynx.tasm.behavior.LynxUIRenderer.drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
   public Bitmap com.lynx.tasm.behavior.LynxUIRenderer.getBitmapOfView();
   public float[] com.lynx.tasm.behavior.LynxUIRenderer.convertPointFromScreenToGivenUI(float x, float y, @NonNull LynxBaseUI ui);
   public int com.lynx.tasm.behavior.LynxUIRenderer.findNodeIdForLocationFromUI(float x, float y, int uiSign, String mode);
