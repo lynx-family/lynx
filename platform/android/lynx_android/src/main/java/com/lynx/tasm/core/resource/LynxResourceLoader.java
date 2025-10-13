@@ -32,6 +32,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.nio.ByteBuffer;
 
 public class LynxResourceLoader {
   static final String CORE_JS = "assets://lynx_core.js";
@@ -320,7 +321,7 @@ public class LynxResourceLoader {
           @Override
           public void onLoaded(@Nullable byte[] data, @Nullable Throwable error) {
             mCallback.onTemplateLoaded(
-                error == null, data, null, error != null ? error.getMessage() : null);
+                error == null, data, null, null, error != null ? error.getMessage() : null);
           }
         });
   }
@@ -345,7 +346,7 @@ public class LynxResourceLoader {
       @Override
       public void onResponse(@NonNull LynxResourceResponse<byte[]> response) {
         super.onResponse(response);
-        mCallback.onTemplateLoaded(response.success(), response.getData(), null,
+        mCallback.onTemplateLoaded(response.success(), response.getData(), null, null,
             response.getError() != null ? response.getError().getMessage() : null);
       }
     });
@@ -463,11 +464,11 @@ public class LynxResourceLoader {
 
   static void InvokeNativeCallbackWithBytes(
       long responseHandler, byte[] data, int errCode, String errMsg) {
-    nativeInvokeCallback(responseHandler, data, 0L, errCode, errMsg);
+    nativeInvokeCallback(responseHandler, data, 0L, null, errCode, errMsg);
   }
 
-  static native void nativeInvokeCallback(
-      long responseHandler, byte[] data, long bundleNativePtr, int errCode, String errMsg);
+  static native void nativeInvokeCallback(long responseHandler, byte[] data, long bundleNativePtr,
+      ByteBuffer buffer, int errCode, String errMsg);
 
   private native void nativeConfigLynxResourceSetting();
 }

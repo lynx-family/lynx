@@ -541,7 +541,9 @@ void LoadTemplateBufferByPreParsedData(JNIEnv* env, jclass jcaller, jlong ptr,
   std::string processor_name =
       JNIConvertHelper::ConvertToString(env, j_processor_name);
   auto* buffer_ptr =
-      static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr));
+      bufferPtr != nullptr
+          ? static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr))
+          : nullptr;
   if (buffer_ptr == nullptr) {
     LOGE("Error: Not a direct buffer!");
     return;

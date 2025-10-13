@@ -10,6 +10,7 @@ import com.lynx.tasm.resourceprovider.LynxResourceRequest;
 import com.lynx.tasm.service.LynxServiceCenter;
 import com.lynx.tasm.service.security.ILynxSecurityService;
 import com.lynx.tasm.service.security.SecurityResult;
+import java.nio.ByteBuffer;
 
 /**
  * Provide unified lazy bundle loading callback
@@ -35,7 +36,7 @@ class TemplateResourceCallback extends GuardedResourceCallback {
   }
 
   public void onTemplateLoaded(
-      boolean success, byte[] data, TemplateBundle bundle, String errorMsg) {
+      boolean success, byte[] data, TemplateBundle bundle, ByteBuffer buffer, String errorMsg) {
     if (!EnsureInvokedOnce()) {
       return;
     }
@@ -66,7 +67,7 @@ class TemplateResourceCallback extends GuardedResourceCallback {
     }
 
     LynxResourceLoader.nativeInvokeCallback(mResponseHandler, data,
-        bundleValid ? bundle.getNativePtr() : 0L,
+        bundleValid ? bundle.getNativePtr() : 0L, buffer,
         success ? LynxResourceLoader.RESOURCE_LOADER_SUCCESS
                 : LynxResourceLoader.RESOURCE_LOADER_FAILED,
         errorMsg);
