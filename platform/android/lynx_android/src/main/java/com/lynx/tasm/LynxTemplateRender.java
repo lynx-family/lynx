@@ -1197,6 +1197,8 @@ public class LynxTemplateRender
               TemplateBundle templateBundle = response.getData().getTemplateBundle();
               if (templateBundle != null && templateBundle.isValid()) {
                 callback.onSuccess(templateBundle);
+              } else if (response.getData().getTemplateBuffer() != null) {
+                callback.onSuccess(response.getData().getTemplateBuffer());
               } else {
                 callback.onSuccess(response.getData().getTemplateBinary());
               }
@@ -2538,6 +2540,39 @@ public class LynxTemplateRender
           }
         }
       });
+    }
+
+    public void onSuccess(@NonNull ByteBuffer buffer) {
+      if (buffer == null || buffer.limit() == 0) {
+        onFailed("ByteBuffer is null!");
+        return;
+      }
+
+      if (mDevTool != null) {
+        mDevTool.attachToDebugBridge(mUrl);
+      }
+
+      // TODO(nihao.royal): support devtool.
+      mPerformanceController.markTiming(TimingHandler.PREPARE_TEMPLATE_END, null);
+      LynxLoadMeta meta = metaData;
+      if (meta == null) {
+        TemplateData templateData;
+        if (mTemplateData != null) {
+          templateData = mTemplateData;
+        } else if (mData != null) {
+          templateData = TemplateData.fromMap(mData);
+        } else {
+          templateData = TemplateData.fromString(mJsonData == null ? "" : mJsonData);
+        }
+        meta = new LynxLoadMeta.Builder().build();
+        meta.initialData = templateData;
+      }
+      TimingOption timingOption = new TimingOption(TimingConstants.LOAD_BUNDLE);
+      long currentTimeMillis = System.currentTimeMillis();
+      timingOption.setTiming(TimingConstants.PIPELINE_START, currentTimeMillis);
+      timingOption.setTiming(TimingConstants.LOAD_BUNDLE_START, currentTimeMillis);
+      meta.byteBuffer = buffer;
+      renderWithLoadMeta(metaData, timingOption);
     }
 
     /**
