@@ -731,7 +731,7 @@ std::shared_ptr<GestureArenaManager> UIOwner::GetGestureArenaManager() const {
 }
 
 void UIOwner::DispatchTouchEventToGestureArena(
-    std::string type, const std::shared_ptr<TouchEvent>& touch_event,
+    const std::string& type, const std::shared_ptr<TouchEvent>& touch_event,
     const ArkUI_UIInputEvent* event) const {
   if (gesture_arena_manager_) {
     gesture_arena_manager_->DispatchTouchEventToArena(event, touch_event);
