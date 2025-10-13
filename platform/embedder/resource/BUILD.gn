@@ -1,0 +1,21 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../core/Lynx.gni")
+
+lynx_core_source_set("resource") {
+  sources = [
+    "core_js_loader_manager.cc",
+    "core_js_loader_manager.h",
+    "js_source_loader_desktop.h",
+    "lynx_resource_loader_embedder.cc",
+    "lynx_resource_loader_embedder.h",
+  ]
+  if (is_win) {
+    sources += [ "js_source_loader_desktop.cc" ]
+  } else if (is_mac) {
+    sources += [ "js_source_loader_desktop.mm" ]
+  }
+  deps = [ "../fetcher:fetcher" ]
+}
