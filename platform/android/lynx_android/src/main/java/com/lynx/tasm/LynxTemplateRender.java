@@ -1982,6 +1982,10 @@ public class LynxTemplateRender
         newGlobalProps.flush();
         propsNativePtr = newGlobalProps.getNativePtr();
       }
+      if (mLynxContext != null && mLynxContext.getEnableExposureWhenReload()) {
+        mLynxContext.stopExposure();
+        mLynxContext.resumeExposure();
+      }
       /**
        * Empty props should overwrite the original global props and null props should do nothing,
        * but these two kinds of props' nativePtr are both 0. So have to pass the object to let

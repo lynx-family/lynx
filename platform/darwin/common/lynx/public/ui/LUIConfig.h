@@ -31,4 +31,5 @@
 - (NSUInteger)logBoxImageSizeWarningThreshold;
 - (bool)enableTextLayoutCache;
 - (bool)enableTextGradientOpt;
+- (bool)enableExposureWhenReload;
 @end

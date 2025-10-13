@@ -897,11 +897,18 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       [_delegate templateRenderOnPageStarted:self withPipelineInfo:pipelineInfo];
     }
 
+    __weak typeof(self) weakSelf = self;
     [self executeUpdateDataSafely:^() {
       auto template_data = ConvertLynxTemplateDataToTemplateData(data);
       template_data->SetPlatformData(std::make_unique<lynx::tasm::PlatformDataDarwin>(data));
       [self resetLayoutStatus];
       [self markDirty];
+      __strong __typeof(weakSelf) strongSelf = weakSelf;
+      LynxUIContext* uiContext = strongSelf->_context.uiOwner.uiContext;
+      if (uiContext.enableExposureWhenReload) {
+        [uiContext stopExposure];
+        [uiContext resumeExposure];
+      }
 
       /**
        * Null globalProps -> Nil Value;
