@@ -27,13 +27,24 @@ using lynx::base::android::ScopedLocalJavaRef;
 
 // JNI method
 void InvokeCallback(JNIEnv* env, jclass jcaller, jlong response_handler,
-                    jbyteArray data, jlong bundle_ptr, jint err_code,
-                    jstring err_msg) {
+                    jbyteArray data, jlong bundle_ptr, jobject bufferPtr,
+                    jint err_code, jstring err_msg) {
   auto* handler = reinterpret_cast<
       lynx::shell::LynxResourceLoaderAndroid::ResponseHandler*>(
       response_handler);
+  std::vector<uint8_t> vec;
+  auto* buffer_ptr =
+      bufferPtr != nullptr
+          ? static_cast<uint8_t*>(env->GetDirectBufferAddress(bufferPtr))
+          : nullptr;
+  if (buffer_ptr != nullptr) {
+    jlong capacity = env->GetDirectBufferCapacity(bufferPtr);
+    vec = std::vector<uint8_t>(buffer_ptr, buffer_ptr + capacity);
+  } else {
+    vec = JNIConvertHelper::ConvertJavaBinary(env, data);
+  }
   handler->HandleResponse(
-      JNIConvertHelper::ConvertJavaBinary(env, data),
+      std::move(vec),
       bundle_ptr != 0 ? reinterpret_cast<void*>(bundle_ptr) : nullptr, err_code,
       JNIConvertHelper::ConvertToString(env, err_msg));
   delete handler;

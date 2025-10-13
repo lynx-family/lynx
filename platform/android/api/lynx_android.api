@@ -9242,8 +9242,10 @@ public class com::lynx::tasm::TemplateData :  {
 public class com::lynx::tasm::resourceprovider::template::TemplateProviderResult :  {
   public byte[] com.lynx.tasm.resourceprovider.template.TemplateProviderResult.getTemplateBinary();
   public TemplateBundle com.lynx.tasm.resourceprovider.template.TemplateProviderResult.getTemplateBundle();
+  public ByteBuffer com.lynx.tasm.resourceprovider.template.TemplateProviderResult.getTemplateBuffer();
   public static TemplateProviderResult com.lynx.tasm.resourceprovider.template.TemplateProviderResult.fromBinary(byte[] binary);
   public static TemplateProviderResult com.lynx.tasm.resourceprovider.template.TemplateProviderResult.fromTemplateBundle(TemplateBundle bundle);
+  public static TemplateProviderResult com.lynx.tasm.resourceprovider.template.TemplateProviderResult.fromBuffer(ByteBuffer byteBuffer);
 }
 
 public class com::lynx::tasm::behavior::shadow::text::TextAttributes :  {
