@@ -577,7 +577,8 @@ public class LynxUIRenderer implements ILynxUIRenderer {
   // draw view to given bitmap of the given canvas
   // whether to use pixel copy or view.draw depends on android version and pixelCopy switch, default
   // use view.draw
-  private void drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas) {
+  @Override
+  public void drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas) {
     try {
       // pixel copy for e2e and some special circumstances, switch off by default
       // Above Android 8.0, use PixelCopy

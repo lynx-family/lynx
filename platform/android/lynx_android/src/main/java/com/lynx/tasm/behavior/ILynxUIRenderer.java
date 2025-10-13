@@ -5,9 +5,11 @@ package com.lynx.tasm.behavior;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.util.DisplayMetrics;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.lynx.devtoolwrapper.ScreenshotBitmapHandler;
@@ -116,6 +118,8 @@ public interface ILynxUIRenderer {
   void takeScreenshot(ScreenshotBitmapHandler handler, String screenShotMode);
 
   Bitmap getBitmapOfView();
+
+  void drawViewToBitmap(View view, Bitmap bitmap, Canvas canvas);
 
   int getNodeForLocation(float x, float y, String mode);
 
