@@ -4179,10 +4179,10 @@ lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
   auto array = lepus::CArray::Create();
   if (InComponent()) {
     array->emplace_back(false);
-    array->emplace_back("");
+    array->emplace_back(ParentComponentIdString());
   } else {
     array->emplace_back(true);
-    array->emplace_back(ParentComponentId());
+    array->emplace_back("");
   }
   return lepus::Value(std::move(array));
 }
