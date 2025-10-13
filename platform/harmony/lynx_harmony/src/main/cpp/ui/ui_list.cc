@@ -163,6 +163,10 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
 
 void UIList::OnNodeReady() {
   BaseScrollContainer::OnNodeReady();
+  UpdateStickyView();
+}
+
+void UIList::UpdateStickyView() {
   std::pair result = GetScrollOffset();
   UpdateStickyStartView(result.first, result.second);
   UpdateStickyEndView(result.first, result.second);
@@ -439,6 +443,7 @@ void UIList::ScrollToAsync(float delta_x, float delta_y) {
         auto* list = static_cast<UIList*>(shared_this.get());
         auto offset = list->GetScrollOffset();
         list->ScrollTo(offset.first + delta_x, offset.second + delta_y, false);
+        list->UpdateStickyView();
       });
 }
 
