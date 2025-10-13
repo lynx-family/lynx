@@ -135,6 +135,8 @@ static constexpr const char* const kEnableRemoveComponentExtraData =
     "enableRemoveComponentExtraData";
 static constexpr const char* const kEnableExposureUIMargin =
     "enableExposureUIMargin";
+static constexpr const char* const kEnableExposureWhenReload =
+    "enableExposureWhenReload";
 static constexpr const char* const kEnableNewGesture = "enableNewGesture";
 static constexpr const char* const kLongPressDuration = "longPressDuration";
 static constexpr const char* const kMapContainerType = "mapContainerType";
@@ -830,6 +832,12 @@ bool LynxBinaryConfigDecoder::DecodePageConfig(
       doc[kEnableExposureWhenLayout].IsBool()) {
     page_config->SetEnableExposureWhenLayout(
         doc[kEnableExposureWhenLayout].GetBool());
+  }
+
+  if (doc.HasMember(kEnableExposureWhenReload) &&
+      doc[kEnableExposureWhenReload].IsBool()) {
+    page_config->SetEnableExposureWhenReload(
+        doc[kEnableExposureWhenReload].GetBool());
   }
 
   if (doc.HasMember(kEnableAirDetectRemovedKeysWhenUpdateData) &&

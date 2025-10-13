@@ -4139,9 +4139,12 @@ public class abstract com::lynx::tasm::behavior::LynxContext : com.lynx.tasm.beh
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableEventRefactor();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.behavior.LynxContext.getEnableExposureWhenLayout();
+  public boolean com.lynx.tasm.behavior.LynxContext.getEnableExposureWhenReload();
   public void com.lynx.tasm.behavior.LynxContext.reset();
   public void com.lynx.tasm.behavior.LynxContext.destory();
   public void com.lynx.tasm.behavior.LynxContext.clearExposure();
+  public void com.lynx.tasm.behavior.LynxContext.stopExposure();
+  public void com.lynx.tasm.behavior.LynxContext.resumeExposure();
   public void com.lynx.tasm.behavior.LynxContext.addUIToExposedMap(LynxBaseUI ui);
   public void com.lynx.tasm.behavior.LynxContext.addUIToExposedMap(LynxBaseUI ui, @Nullable String uniqueID, @Nullable JavaOnlyMap data, @Nullable JavaOnlyMap options);
   public void com.lynx.tasm.behavior.LynxContext.removeUIFromExposedMap(LynxBaseUI ui);
@@ -7283,6 +7286,7 @@ public class com::lynx::tasm::PageConfig :  {
   public boolean com.lynx.tasm.PageConfig.getEnableEventRefactor();
   public boolean com.lynx.tasm.PageConfig.getEnableDisexposureWhenLynxHidden();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenLayout();
+  public boolean com.lynx.tasm.PageConfig.getEnableExposureWhenReload();
   public boolean com.lynx.tasm.PageConfig.getEnableNewIntersectionObserver();
   public int com.lynx.tasm.PageConfig.getObserverFrameRate();
   public boolean com.lynx.tasm.PageConfig.getEnableExposureUIMargin();

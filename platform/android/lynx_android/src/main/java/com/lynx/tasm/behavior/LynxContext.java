@@ -1144,6 +1144,13 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
     return false;
   }
 
+  public boolean getEnableExposureWhenReload() {
+    if (null != mPageConfig) {
+      return mPageConfig.getEnableExposureWhenReload();
+    }
+    return false;
+  }
+
   public void reset() {
     synchronized (mCSSFontFaces) {
       mCSSFontFaces.clear();
@@ -1183,6 +1190,17 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
   public void clearExposure() {
     if (mExposure != null) {
       mExposure.clear();
+    }
+  }
+
+  public void stopExposure() {
+    if (mExposure != null) {
+      mExposure.stopExposure(null);
+    }
+  }
+  public void resumeExposure() {
+    if (mExposure != null) {
+      mExposure.resumeExposure();
     }
   }
 

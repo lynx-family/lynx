@@ -18,7 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)didMoveToWindow:(BOOL)windowIsNil;
 - (void)destroyExposure;
 - (void)addExposureToRunLoop;
-- (void)stopExposure:(NSDictionary *)options;
+- (void)stopExposure:(NSDictionary *_Nullable)options;
 - (void)resumeExposure;
 - (void)setObserverFrameRateDynamic:(NSDictionary *)options;
 

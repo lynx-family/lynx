@@ -221,6 +221,15 @@ bool LynxContext::EnableHarmonyVisibleAreaChangeForExposure() {
   return enable_harmony_visible_area_change_for_exposure_;
 }
 
+void LynxContext::SetEnableExposureWhenReload(
+    bool enable_exposure_when_reload) {
+  enable_exposure_when_reload_ = enable_exposure_when_reload;
+}
+
+bool LynxContext::EnableExposureWhenReload() {
+  return enable_exposure_when_reload_;
+}
+
 void LynxContext::CallJSApiCallbackWithValue(int32_t callback_id,
                                              const lepus::Value& params) const {
   if (!runtime_proxy_) {

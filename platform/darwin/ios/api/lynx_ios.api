@@ -166,6 +166,7 @@ public protocol LUIConfig-p : <NSObject> {
   public bool LUIConfig-p::trailUseNewImage();
   public NSUInteger LUIConfig-p::logBoxImageSizeWarningThreshold();
   public bool LUIConfig-p::enableTextLayoutCache();
+  public bool LUIConfig-p::enableExposureWhenReload();
 }
 
 public class LUIConfigAdapter : NSObject, <LUIConfig> {
@@ -4090,6 +4091,7 @@ public class LynxUIContext : NSObject {
   public BOOL LynxUIContext::trailUseNewImage trailUseNewImage;
   public NSInteger LynxUIContext::logBoxImageSizeWarningThreshold logBoxImageSizeWarningThreshold;
   public BOOL LynxUIContext::enableTextLayoutCache enableTextLayoutCache;
+  public BOOL LynxUIContext::enableExposureWhenReload enableExposureWhenReload;
   public BOOL LynxUIContext()::imageMonitorEnabled imageMonitorEnabled;
   public BOOL LynxUIContext()::devtoolEnabled devtoolEnabled;
   public BOOL LynxUIContext()::fixNewImageDownSampling fixNewImageDownSampling;
@@ -4110,6 +4112,8 @@ public class LynxUIContext : NSObject {
   public void LynxUIContext::removeUIFromExposedMap:(LynxUI *ui);
   public void LynxUIContext::removeUIFromExposedMap:withUniqueIdentifier:(LynxUI *ui,[withUniqueIdentifier] NSString *_Nullable uniqueID);
   public void LynxUIContext::removeUIFromIntersectionManager:(LynxUI *ui);
+  public void LynxUIContext::stopExposure();
+  public void LynxUIContext::resumeExposure();
   public void LynxUIContext::findShadowNodeAndRunTask:task:(NSInteger sign,[task] void(^ task)(LynxShadowNode *));
   public nullable id< LynxResourceFetcher > LynxUIContext::getGenericResourceFetcher();
   public void LynxUIContext()::setUIConfig:(id< LUIConfig > config);
@@ -4159,7 +4163,7 @@ public class LynxUIExposure : NSObject {
   public void LynxUIExposure::didMoveToWindow:(BOOL windowIsNil);
   public void LynxUIExposure::destroyExposure();
   public void LynxUIExposure::addExposureToRunLoop();
-  public void LynxUIExposure::stopExposure:(NSDictionary *options);
+  public void LynxUIExposure::stopExposure:(NSDictionary *_Nullable options);
   public void LynxUIExposure::resumeExposure();
   public void LynxUIExposure::setObserverFrameRateDynamic:(NSDictionary *options);
   public instancetype LynxUIExposure()::initWithObserver:(LynxGlobalObserver *observer);

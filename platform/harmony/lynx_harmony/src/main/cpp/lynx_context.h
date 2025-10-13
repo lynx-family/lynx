@@ -125,6 +125,10 @@ class LynxContext {
 
   bool EnableHarmonyVisibleAreaChangeForExposure();
 
+  void SetEnableExposureWhenReload(bool enable_exposure_when_reload);
+
+  bool EnableExposureWhenReload();
+
   void CallJSApiCallbackWithValue(int32_t callback_id,
                                   const lepus::Value& params) const;
 
@@ -309,6 +313,7 @@ class LynxContext {
 
   bool enable_event_through_{false};
   bool enable_harmony_visible_area_change_for_exposure_{false};
+  bool enable_exposure_when_reload_{false};
 };
 
 }  // namespace harmony
