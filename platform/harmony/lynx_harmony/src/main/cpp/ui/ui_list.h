@@ -109,6 +109,7 @@ class UIList : public BaseScrollContainer,
   fml::RefPtr<lepus::CArray> GetVisibleCells() const;
   void SendScrollEndEvent();
   float GetScrollRange();
+  void UpdateStickyView();
 
  private:
   ArkUI_NodeHandle container_layout_{nullptr};
