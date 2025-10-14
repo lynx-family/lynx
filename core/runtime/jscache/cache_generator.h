@@ -25,10 +25,15 @@ class CacheGenerator {
 
   const std::string SourceUrl() { return source_url_; }
   std::shared_ptr<const Buffer>& SrcBuffer() { return src_buffer_; }
+  std::optional<std::string>& Md5() { return md5_optional_; }
+  void SetMd5(std::optional<std::string> md5) {
+    md5_optional_ = std::move(md5);
+  }
 
  protected:
   std::string source_url_;
   std::shared_ptr<const Buffer> src_buffer_;
+  std::optional<std::string> md5_optional_;
 };
 }  // namespace cache
 }  // namespace piper
