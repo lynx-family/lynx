@@ -50,7 +50,6 @@ public class DevtoolWebSocketModule extends LynxContextModule {
     }
   }
 
-  @LynxMethod
   public void postMessage(final String message, final String type, final int mark) {
     LynxBaseInspectorOwner owner = this.mLynxContext.getBaseInspectorOwner();
     if (owner instanceof LynxBaseInspectorOwnerNG) {
