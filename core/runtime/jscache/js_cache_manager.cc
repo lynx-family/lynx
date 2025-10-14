@@ -204,9 +204,11 @@ bool JsCacheManager::IsCacheEnabled() {
 //
 std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
     const std::string &source_url, const std::string &template_url,
-    int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
-    std::unique_ptr<CacheGenerator> cache_generator,
+    int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator,
     BytecodeGetter *bytecode_getter) {
+  if (!cache_generator) {
+    return nullptr;
+  }
   auto cost_start = base::CurrentTimeMilliseconds();
   if (!IsCacheEnabledForTemplate(template_url)) {
     JsCacheTracker::OnGetBytecodeDisable(runtime_id, engine_type_, source_url,
@@ -215,7 +217,7 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
   }
   LOGI("bytecode enabled"
        << ", url: '" << source_url << "', template_url: '" << template_url
-       << "', file_content size:" << buffer->size());
+       << "', file_content size:" << cache_generator->SrcBuffer()->size());
 
   TRACE_EVENT(LYNX_TRACE_CATEGORY, JS_CACHE_MANAGER_TRY_GET_CACHE,
               [&source_url](lynx::perfetto::EventContext ctx) {
@@ -223,8 +225,6 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
                 debug->set_name("source_url");
                 debug->set_string_value(source_url);
               });
-
-  std::optional<std::string> md5_optional;
 
   // try to load cache from memory
   if (runtime::IsKernelJs(source_url)) {
@@ -259,8 +259,9 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
 
   JsCacheErrorCode error_code = JsCacheErrorCode::META_FILE_READ_ERROR;
   {
-    auto cache =
-        LoadCacheFromStorage(identifier, EnsureMd5(buffer, md5_optional));
+    auto cache = LoadCacheFromStorage(
+        identifier,
+        EnsureMd5(cache_generator->SrcBuffer(), cache_generator->Md5()));
     if (cache) {
       LOGI("cache loaded from storage, size: " << cache->size() << " bytes");
       if (runtime::IsKernelJs(source_url)) {
@@ -284,7 +285,7 @@ std::shared_ptr<Buffer> JsCacheManager::TryGetCache(
   std::vector<std::unique_ptr<CacheGenerator>> generators;
   generators.push_back(std::move(cache_generator));
   PostTaskBackground(TaskInfo(TaskInfo::TaskType::GENERATE_CACHE, template_url,
-                              std::move(md5_optional), std::move(generators)));
+                              std::move(generators)));
   return nullptr;
 }
 
@@ -301,10 +302,10 @@ void JsCacheManager::RequestCacheGeneration(
     return;
   }
 
-  PostTaskBackground(TaskInfo(
-      force ? TaskInfo::TaskType::GENERATE_CACHE
-            : TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED,
-      template_url, std::nullopt, std::move(generators), std::move(callback)));
+  PostTaskBackground(
+      TaskInfo(force ? TaskInfo::TaskType::GENERATE_CACHE
+                     : TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED,
+               template_url, std::move(generators), std::move(callback)));
 }
 
 /*
@@ -408,14 +409,14 @@ void JsCacheManager::RunTasks() {
 void JsCacheManager::RunTask(TaskInfo &task) {
   auto start = base::CurrentTimeMilliseconds();
 
-  auto &[type, template_key, md5_optional, generators, callback] = task;
+  auto &[type, template_key, generators, callback] = task;
   std::unordered_map<std::string, std::shared_ptr<Buffer>> generator_results;
 
   for (const auto &generator : generators) {
     auto identifier = BuildIdentifier(generator->SourceUrl(), template_key);
+    std::string file_md5 = EnsureMd5(generator->SrcBuffer(), generator->Md5());
     if (type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED) {
-      if (auto cache = LoadCacheFromStorage(
-              identifier, EnsureMd5(generator->SrcBuffer(), md5_optional))) {
+      if (auto cache = LoadCacheFromStorage(identifier, file_md5)) {
         if (callback) {
           generator_results[GetCacheUrlFromIdentifier(identifier)] =
               std::move(cache);
@@ -423,7 +424,6 @@ void JsCacheManager::RunTask(TaskInfo &task) {
         continue;
       }
     }
-    std::string file_md5 = EnsureMd5(generator->SrcBuffer(), md5_optional);
 
     LOGI("RunTask start"
          << ", url: '" << identifier.url << "', template_url: '"
@@ -781,10 +781,9 @@ std::string JsCacheManager::GetBytecodeGenerateEngineVersion() {
 // Use for v8
 __attribute__((visibility("default"))) std::shared_ptr<Buffer> TryGetCacheV8(
     const std::string &source_url, const std::string &template_url,
-    int64_t runtime_id, const std::shared_ptr<const Buffer> &buffer,
-    std::unique_ptr<CacheGenerator> cache_generator) {
+    int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator) {
   return JsCacheManager::GetV8Instance().TryGetCache(
-      source_url, template_url, runtime_id, buffer, std::move(cache_generator),
+      source_url, template_url, runtime_id, std::move(cache_generator),
       nullptr);
 }
 
