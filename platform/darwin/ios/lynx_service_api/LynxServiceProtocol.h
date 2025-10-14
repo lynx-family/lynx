@@ -7,6 +7,8 @@
 
 #import <Foundation/Foundation.h>
 
+#define DEFAULT_LYNX_SERVICE @"lynx_default_service"
+
 typedef NS_OPTIONS(NSUInteger, LynxServiceScope) {
   LynxServiceScopeDefault = 1 << 0,
   LynxServiceScopeBiz = 1 << 1

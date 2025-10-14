@@ -60,6 +60,7 @@ subspec_target("Core") {
   sources = lynx_service_api_sources
   public_header_files = [
     "./ServiceAPI.h",
+    "./ServiceLazyLoad.h",
     "./LynxServiceProtocol.h",
     "./LynxServiceTrailProtocol.h",
     "./LynxServiceLogProtocol.h",
