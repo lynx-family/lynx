@@ -125,10 +125,8 @@ void BaseTextShadowNode::SetCustomFontFamiliesToStyle() {
 
 void BaseTextShadowNode::AppendToParagraph(ParagraphBuilderHarmony& builder,
                                            float width, float height) {
-  if (!text_props_.has_value() ||
-      static_cast<int64_t>(text_props_->line_height) == kLineHeightNormal) {
-    style_.SetFontHeight(1.4f);
-  } else {
+  if (text_props_.has_value() &&
+      static_cast<int64_t>(text_props_->line_height) != kLineHeightNormal) {
     double font_size = text_props_->font_size != -1
                            ? text_props_->font_size
                            : context_->DefaultFontSize() * ScaleDensity();
