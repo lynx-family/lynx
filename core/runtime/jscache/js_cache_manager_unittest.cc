@@ -150,9 +150,11 @@ class JsCacheManagerTest : public ::testing::Test {
   void SetUp() override {
     // clean first.
     JsCacheManager::GetQuickjsInstance().ClearCacheDir();
+    JsCacheManager::GetQuickjsInstance().unique_task_keys_.clear();
     JsCacheManager::GetQuickjsInstance().cache_path_.clear();
     JsCacheManager::GetV8Instance().ClearCacheDir();
     JsCacheManager::GetV8Instance().cache_path_.clear();
+    JsCacheManager::GetV8Instance().unique_task_keys_.clear();
     JsCacheTracker::s_test_intercept_event_ = &SetTestInterceptEvent;
   }
 
@@ -277,7 +279,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheDynamicComponentGenerate) {
 
 TEST_F(JsCacheManagerTest, TryGetCacheLynxDynamicJsGenerate) {
   auto &instance = QuickjsCacheManagerForTesting::GetInstance();
-  const std::string source_url = "/dynamic1.js";
+  const std::string source_url = "http://dynamic1.js";
   auto js_file_buffer = std::make_shared<StringBuffer>(js_file);
   auto buffer =
       instance.TryGetCache(source_url, k_template_url, 0, js_file_buffer,
@@ -368,7 +370,7 @@ TEST_F(JsCacheManagerTest, TryGetCacheForExternal) {
   auto js_file_buffer = std::make_shared<StringBuffer>("");
   {
     // dynamic url
-    const std::string dynamic_url = "/from_external.js";
+    const std::string dynamic_url = "http://from_external.js";
     auto bytecode_getter = std::make_unique<piper::BytecodeGetter>(
         [&dynamic_url](const std::string &url) {
           EXPECT_EQ(url, dynamic_url);
@@ -427,11 +429,11 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationApp) {
     std::vector<std::unique_ptr<CacheGenerator>> generators;
     generators.push_back(std::make_unique<TestingCacheGenerator>(
         k_source_url, js_file_buffer, js_file));
-    instance.RequestCacheGeneration("RequestCacheGeneration.js",
+    instance.RequestCacheGeneration("RequestCacheGenerationApp1.js",
                                     std::move(generators), false);
 
     auto buffer = instance.TryGetCache(
-        k_source_url, "RequestCacheGeneration.js", 0, js_file_buffer,
+        k_source_url, "RequestCacheGenerationApp1.js", 0, js_file_buffer,
         std::make_unique<TestingCacheGenerator>(k_source_url, js_file_buffer,
                                                 js_file));
     EXPECT_TRUE(buffer);
@@ -442,26 +444,26 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationApp) {
     std::vector<std::unique_ptr<CacheGenerator>> generators;
     generators.push_back(std::make_unique<TestingCacheGenerator>(
         k_source_url, js_file_buffer, mock_cache));
-    instance.RequestCacheGeneration("RequestCacheGeneration.js",
+    instance.RequestCacheGeneration("RequestCacheGeneration2.js",
                                     std::move(generators), false);
 
     auto buffer = instance.TryGetCache(
-        k_source_url, "RequestCacheGeneration.js", 0, js_file_buffer,
+        k_source_url, "RequestCacheGeneration2.js", 0, js_file_buffer,
         std::make_unique<TestingCacheGenerator>(k_source_url, js_file_buffer,
                                                 js_file));
     EXPECT_TRUE(buffer);
-    EXPECT_EQ(std::string((char *)buffer->data()), std::string(js_file));
+    EXPECT_EQ(std::string((char *)buffer->data()), std::string(mock_cache));
   }
 
   {
     std::vector<std::unique_ptr<CacheGenerator>> generators;
     generators.push_back(std::make_unique<TestingCacheGenerator>(
         k_source_url, js_file_buffer, mock_cache));
-    instance.RequestCacheGeneration("RequestCacheGeneration.js",
+    instance.RequestCacheGeneration("RequestCacheGeneration3.js",
                                     std::move(generators), true);
 
     auto buffer = instance.TryGetCache(
-        k_source_url, "RequestCacheGeneration.js", 0, js_file_buffer,
+        k_source_url, "RequestCacheGeneration3.js", 0, js_file_buffer,
         std::make_unique<TestingCacheGenerator>(k_source_url, js_file_buffer,
                                                 js_file));
     EXPECT_TRUE(buffer);
@@ -500,9 +502,9 @@ TEST_F(JsCacheManagerTest, RequestCacheGenerationCallback) {
   auto &instance = QuickjsCacheManagerForTesting::GetInstance();
   bool called = false;
   std::vector<std::unique_ptr<CacheGenerator>> generators;
-  const std::string cache_key = "RequestCacheGeneration.js";
+  const std::string cache_key = "RequestCacheGenerationCallback.js";
   const std::string package_url = "lynx://external.js";
-  const std::string external_url = "/external.js";
+  const std::string external_url = "http://external.js";
   generators.push_back(std::make_unique<TestingCacheGenerator>(
       k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
   generators.push_back(std::make_unique<TestingCacheGenerator>(
@@ -657,18 +659,19 @@ TEST_F(JsCacheManagerTest, DifferentEngineVersion) {
     EXPECT_EQ(meta1->GetBytecodeGenerateEngineVersion(),
               std::to_string(LEPUS_GetPrimjsVersion()));
   }
+  auto key = "DifferentEngineVersion";
   auto buffer = QuickjsCacheManagerForTesting::GetInstance().TryGetCache(
-      k_source_url, k_template_url, 0, std::make_shared<StringBuffer>(js_file),
+      k_source_url, key, 0, std::make_shared<StringBuffer>(js_file),
       std::make_unique<TestingCacheGenerator>(
           k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
   buffer = QuickjsCacheManagerForTesting::GetInstance().TryGetCache(
-      k_source_url, k_template_url, 0, std::make_shared<StringBuffer>(js_file),
+      k_source_url, key, 0, std::make_shared<StringBuffer>(js_file),
       std::make_unique<TestingCacheGenerator>(
           k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
   EXPECT_NE(buffer, nullptr);
 
   buffer = DifferentEngineVersion::GetInstance().TryGetCache(
-      k_source_url, k_template_url, 0, std::make_shared<StringBuffer>(js_file),
+      k_source_url, key, 0, std::make_shared<StringBuffer>(js_file),
       std::make_unique<TestingCacheGenerator>(
           k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
 
@@ -683,7 +686,8 @@ TEST_F(JsCacheManagerTest, DifferentEngineVersion) {
 TEST_F(JsCacheManagerTest, ClearCacheDir2) {
   auto &instance = QuickjsCacheManagerForTesting::GetInstance();
   auto buffer = instance.TryGetCache(
-      k_source_url, k_template_url, 0, std::make_shared<StringBuffer>(js_file),
+      k_source_url, "ClearCacheDir2", 0,
+      std::make_shared<StringBuffer>(js_file),
       std::make_unique<TestingCacheGenerator>(
           k_source_url, std::make_shared<StringBuffer>(js_file), js_file));
 
@@ -933,7 +937,7 @@ TEST_F(JsCacheManagerTest, ClearCache) {
   }
   auto vec =
       quickjs_instance.GetLockedMetaData()->GetAllCacheFileInfo(clear_url);
-  EXPECT_EQ(vec.size(), 2);
+  EXPECT_EQ(vec.size(), 1);
   quickjs_instance.ClearCache(clear_url);
   vec = quickjs_instance.GetLockedMetaData()->GetAllCacheFileInfo(clear_url);
   EXPECT_EQ(vec.size(), 0);

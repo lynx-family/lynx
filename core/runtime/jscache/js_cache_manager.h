@@ -7,11 +7,11 @@
 
 #include <stdint.h>
 
-#include <list>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -176,18 +176,13 @@ UNITTEST_PUBLIC:
    *
    * @param task the new task to run.
    */
-  void AdjustTaskListWithNewTask(TaskInfo task);
-
-  /**
-   * Run the tasks in task queue.
-   */
-  void RunTasks();
+  bool Deduplicate(TaskInfo &task);
 
   /**
    * Generate cache file and save to storage.
    * @param task info of the cache generation task.
    */
-  void RunTask(TaskInfo &task);
+  void RunTask(TaskInfo task);
 
   /**
    * Try to load cache file from storage.
@@ -274,9 +269,8 @@ UNITTEST_PUBLIC:
   UNITTEST_VIRTUAL std::string GetBytecodeGenerateEngineVersion();
 
   JSRuntimeType engine_type_;
-  std::list<TaskInfo> task_list_;
+  std::unordered_set<std::string> unique_task_keys_;
   std::mutex task_lock_;  // lock for task_list_
-  bool background_thread_working_ = false;
   std::unordered_map<std::string, std::shared_ptr<Buffer>> cache_;
   std::recursive_mutex cache_lock_;
   std::once_flag meta_data_init_flag_;

@@ -140,7 +140,7 @@ inline bool IsLynxAssets(const std::string &url) {
  * @return true if the given url indicates a js file bundled in a lynx template.
  */
 inline bool IsLynxTemplateAssets(const std::string &url) {
-  return IsAppServiceJS(url) ||
+  return base::BeginsWith(url, "/") ||
          base::BeginsWith(url, std::string(kLynxTemplateAssetsScheme) + ":");
 }
 

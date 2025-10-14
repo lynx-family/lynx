@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -314,98 +315,70 @@ void JsCacheManager::RequestCacheGeneration(
  * 3. If make_cache_thread is not running, start it.
  */
 void JsCacheManager::PostTaskBackground(TaskInfo task) {
-  std::scoped_lock<std::mutex> lock(task_lock_);
-
-  AdjustTaskListWithNewTask(std::move(task));
-
-  if (task_list_.empty()) {
+  if (!Deduplicate(task)) {
     return;
   }
 
   // start background thread if not started
-  if (!background_thread_working_) {
-    LOGI("start background thread to make cache");
-    background_thread_working_ = true;
+#ifdef QUICKJS_CACHE_UNITTEST
+  fml::AutoResetWaitableEvent latch;
+#endif
+  base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
+      [this, task = std::move(task)
+#ifdef QUICKJS_CACHE_UNITTEST
+                 ,
+       &latch
+#endif
+  ]() mutable {
+#if defined(OS_ANDROID)
+        base::android::AttachCurrentThread();
+#endif
+        RunTask(std::move(task));
+#if defined(OS_ANDROID)
+        base::android::DetachFromVM();
+#endif
+#ifdef QUICKJS_CACHE_UNITTEST
+        latch.Signal();
+#endif
+      },
+      base::ConcurrentTaskType::NORMAL_PRIORITY);
 
 #ifdef QUICKJS_CACHE_UNITTEST
-    fml::AutoResetWaitableEvent latch;
+  cache_lock_.unlock();
+  latch.Wait();
 #endif
-    base::TaskRunnerManufactor::PostTaskToConcurrentLoop(
-        [this
-#ifdef QUICKJS_CACHE_UNITTEST
-         ,
-         &latch
-#endif
-    ] {
-          RunTasks();
-#ifdef QUICKJS_CACHE_UNITTEST
-          latch.Signal();
-#endif
-        },
-        base::ConcurrentTaskType::NORMAL_PRIORITY);
-
-#ifdef QUICKJS_CACHE_UNITTEST
-    task_lock_.unlock();
-    cache_lock_.unlock();
-    latch.Wait();
-#endif
-  }
 }
 
-void JsCacheManager::AdjustTaskListWithNewTask(TaskInfo task) {
-  auto iter =
-      std::find_if(task_list_.begin(), task_list_.end(),
-                   [&task](const TaskInfo &existed_task) {
-                     return existed_task.template_key == task.template_key;
-                   });
-
-  // no task with same identifier exists, insert it
-  if (iter == task_list_.end()) {
-    task_list_.push_back(std::move(task));
-    return;
+bool JsCacheManager::Deduplicate(TaskInfo &task) {
+  {
+    std::lock_guard<std::mutex> lock(task_lock_);
+    for (auto it = task.cache_generators.begin();
+         it != task.cache_generators.end();) {
+      auto key = task.template_key + (*it)->SourceUrl() +
+                 std::to_string((*it)->SrcBuffer()->size());
+      if (unique_task_keys_.find(key) != unique_task_keys_.end()) {
+        LOGI("duplicate task, key: " << key);
+        it = task.cache_generators.erase(it);
+      } else {
+        unique_task_keys_.insert(key);
+        ++it;
+      }
+    }
   }
-
-  // task with same identifier exists, replace it if the new task is more
-  // promising. Otherwise ignore it.
-  if (iter->type == TaskInfo::TaskType::GENERATE_CACHE_IF_NEEDED &&
-      task.type == TaskInfo::TaskType::GENERATE_CACHE) {
-    *iter = std::move(task);
-  } else {
-    LOGI("task already exists, ignore");
+  if (task.cache_generators.empty()) {
+    if (task.callback) {
+      (*task.callback)("generate duplicated.", {});
+    }
+    return false;
   }
+  return true;
 }
 
 //
 // background thread
 //
 
-void JsCacheManager::RunTasks() {
-#if defined(OS_ANDROID)
-  base::android::AttachCurrentThread();
-#endif
-
-  while (true) {
-    // 1. get task
-    std::optional<TaskInfo> task;
-    {
-      std::scoped_lock<std::mutex> lock(task_lock_);
-      if (task_list_.empty()) {
-        background_thread_working_ = false;
-#if defined(OS_ANDROID)
-        base::android::DetachFromVM();
-#endif
-        return;
-      }
-      task = std::move(task_list_.front());
-      task_list_.pop_front();
-    }
-
-    // 2. run task
-    RunTask(*task);
-  }
-}
-
-void JsCacheManager::RunTask(TaskInfo &task) {
+void JsCacheManager::RunTask(TaskInfo task) {
   auto start = base::CurrentTimeMilliseconds();
 
   auto &[type, template_key, md5_optional, generators, callback] = task;
