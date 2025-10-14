@@ -5669,6 +5669,7 @@ public class com::lynx::tasm::event::LynxScrollEvent : com.lynx.tasm.event.LynxD
 
 public class com::lynx::tasm::service::LynxServiceCenter : com.lynx.tasm.service.LynxLazyInitializer {
   public static LynxServiceCenter com.lynx.tasm.service.LynxServiceCenter.inst();
+  public void com.lynx.tasm.service.LynxServiceCenter.setManualRegister(boolean manualRegister);
   public void com.lynx.tasm.service.LynxServiceCenter.registerService(@NonNull IServiceProvider instance);
   public void com.lynx.tasm.service.LynxServiceCenter.registerService(Class<? extends IServiceProvider > clazz, @NonNull IServiceProvider instance);
   public void com.lynx.tasm.service.LynxServiceCenter.unregisterService(Class<? extends IServiceProvider > clazz);

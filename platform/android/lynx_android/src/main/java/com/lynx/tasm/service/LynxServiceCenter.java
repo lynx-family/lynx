@@ -41,6 +41,10 @@ public class LynxServiceCenter extends LynxLazyInitializer {
     initialize();
   }
 
+  public void setManualRegister(boolean manualRegister) {
+    mManualRegister.set(manualRegister);
+  }
+
   @Override
   protected boolean doInitialize() {
     if (BuildConfig.enable_lite) {
