@@ -88,6 +88,9 @@ class UIList : public BaseScrollContainer,
 
   int GetIndexFromItemKey(const std::string& item_key) const;
   void SetScrollState(list::ScrollState state);
+  void ResolveItemSnapProp(const lepus::Value& value);
+  void ResetItemSnapProp();
+  bool HasParentDrawNode(UIBase* child);
   void HandleScrollStartEvent();
   void HandleScrollEvent();
   void HandleScrollStopEvent();

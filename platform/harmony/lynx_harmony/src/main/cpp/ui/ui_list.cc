@@ -133,15 +133,31 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
   } else if (name == list::kExperimentalUpdateStickyForDiff && value.IsBool()) {
     update_sticky_for_diff_ = value.Bool();
   } else if (name == list::kItemSnap) {
-    if (!value.IsTable() || value.Table()->size() == 0) {
-      snap_factor_ = -1;
-      // 0.6 is the default friction value.
-      NodeManager::Instance().SetAttributeWithNumberValue(
-          node_, NODE_SCROLL_FRICTION, 0.6f);
+    ResolveItemSnapProp(value);
+  } else {
+    BaseScrollContainer::OnPropUpdate(name, value);
+  }
+}
+
+void UIList::ResolveItemSnapProp(const lepus::Value& value) {
+  if (!value.IsObject()) {
+    ResetItemSnapProp();
+  } else {
+    bool need_reset_item_snap = true;
+    tasm::ForEachLepusValue(
+        value, [this, &need_reset_item_snap](const lepus::Value& key,
+                                             const lepus::Value& val) {
+          if (key.StdString() == "factor" && val.IsNumber()) {
+            snap_factor_ = val.Number();
+            need_reset_item_snap = false;
+          } else if (key.StdString() == "offset" && val.IsNumber()) {
+            snap_offset_ = val.Number();
+            need_reset_item_snap = false;
+          }
+        });
+    if (need_reset_item_snap) {
+      ResetItemSnapProp();
     } else {
-      const auto params = value.Table();
-      snap_factor_ = params->GetValue("factor").Number();
-      snap_offset_ = params->GetValue("offset").Number();
       if (snap_factor_ < 0 || snap_factor_ > 1) {
         auto error = lynx::base::LynxError(
             error::E_COMPONENT_LIST_INVALID_PROPS_ARG,
@@ -156,9 +172,14 @@ void UIList::OnPropUpdate(const std::string& name, const lepus::Value& value) {
       NodeManager::Instance().SetAttributeWithNumberValue(
           node_, NODE_SCROLL_FRICTION, 1000.f);
     }
-  } else {
-    BaseScrollContainer::OnPropUpdate(name, value);
   }
+}
+
+void UIList::ResetItemSnapProp() {
+  snap_factor_ = -1;
+  // 0.6 is the default friction value.
+  NodeManager::Instance().SetAttributeWithNumberValue(
+      node_, NODE_SCROLL_FRICTION, 0.6f);
 }
 
 void UIList::OnNodeReady() {
@@ -598,6 +619,11 @@ float UIList::GetScrollRange() {
   }
 }
 
+bool UIList::HasParentDrawNode(UIBase* child) {
+  return child->DrawNode() &&
+         NodeManager::Instance().GetParent(child->DrawNode()) != nullptr;
+}
+
 std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
                                                          bool has_velocity) {
   bool vertical = IsVerticalScrollView();
@@ -610,7 +636,8 @@ std::tuple<int32_t, float, float> UIList::CalcSnapScroll(bool forward,
   float distance_after = std::numeric_limits<float>::max();
 
   for (const auto child : children_) {
-    if (IsListItem(child)) {
+    // Note: use HasParentDrawNode() to make sure that child is on view tree.
+    if (IsListItem(child) && HasParentDrawNode(child)) {
       auto list_item = static_cast<UIComponent*>(child);
 
       if (vertical ? IsVisibleCellVertical(list_item)
