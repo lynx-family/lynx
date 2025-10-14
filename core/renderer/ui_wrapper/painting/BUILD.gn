@@ -20,8 +20,18 @@ if (!enable_unittests) {
       "android/native_painting_context_android.h",
       "android/painting_context_android.cc",
       "android/painting_context_android.h",
+      "android/platform_renderer.h",
+      "android/platform_renderer_android.cc",
+      "android/platform_renderer_android.h",
       "android/platform_renderer_context.cc",
       "android/platform_renderer_context.h",
+
+      # platform_renderer_impl class and its common iterface in header file can
+      # be moved to common sources to share with other platforms.
+      # We can put it here for android only since we don't have implementations
+      # on other platforms.
+      "android/platform_renderer_impl.cc",
+      "android/platform_renderer_impl.h",
       "android/ui_delegate_android.cc",
       "android/ui_delegate_android.h",
     ]
