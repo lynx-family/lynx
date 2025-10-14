@@ -1,0 +1,145 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+import("../shell/config.gni")
+import("testing.gni")
+
+config("dynamic_symbols") {
+  if (is_clang && is_linux) {
+    ldflags = [ "-rdynamic" ]
+  }
+}
+
+source_set("testing_lib") {
+  testonly = true
+
+  sources = [
+    "assertions.h",
+    "fixture_test.cc",
+    "fixture_test.h",
+    "post_task_sync.cc",
+    "post_task_sync.h",
+    "testing.cc",
+    "testing.h",
+    "thread_test.cc",
+    "thread_test.h",
+  ]
+
+  public_deps = [
+    "../common:common",
+    "../fml:fml",
+    "//third_party/googletest:gmock",
+    "//third_party/googletest:gtest",
+  ]
+  public_configs = [ "../:config" ]
+}
+
+source_set("testing") {
+  testonly = true
+
+  sources = [
+    "debugger_detection.cc",
+    "debugger_detection.h",
+    "run_all_unittests.cc",
+    "test_timeout_listener.cc",
+    "test_timeout_listener.h",
+  ]
+
+  public_deps = [ ":testing_lib" ]
+  public_configs = [ ":dynamic_symbols" ]
+}
+
+source_set("skia") {
+  testonly = true
+
+  sources = [
+    "assertions_skia.cc",
+    "assertions_skia.h",
+    "canvas_test.h",
+    "mock_canvas.cc",
+    "mock_canvas.h",
+  ]
+
+  public_deps = [ ":testing_lib" ]
+
+  if (!enable_skity) {
+    public_deps += [ "//third_party/skia" ]
+  }
+}
+
+if (enable_unittests) {
+  test_fixtures("testing_fixtures") {
+    fixtures = []
+  }
+
+  # The //clay/testing library provides utility methods to other test targets.
+  # This test target tests the testing utilities.
+  executable("testing_unittests") {
+    testonly = true
+
+    sources = [ "mock_canvas_unittests.cc" ]
+
+    deps = [
+      ":skia",
+      ":testing",
+      ":testing_fixtures",
+      "../../base/src:base_static",
+    ]
+
+    if (shell_enable_metal) {
+      sources += [ "test_metal_surface_unittests.cc" ]
+
+      deps += [ ":metal" ]
+    }
+  }
+}
+
+# All targets on all platforms should be able to use the Metal utilities. On
+# platforms where Metal is not available, the tests must be skipped or
+# implemented to use another available client rendering API. This is usually
+# either OpenGL which is portably implemented via SwiftShader or the software
+# backend. This way, all tests compile on all platforms but the Metal backend
+# is exercised on platforms where Metal itself is available.
+#
+# On iOS, this is enabled to allow for Metal tests to run within a test app
+if (is_mac || is_ios) {
+  source_set("metal") {
+    if (shell_enable_metal) {
+      sources = [
+        "test_metal_context.h",
+        "test_metal_context.mm",
+        "test_metal_surface.cc",
+        "test_metal_surface.h",
+        "test_metal_surface_impl.h",
+        "test_metal_surface_impl.mm",
+      ]
+      deps = [
+        ":skia",
+        "../fml:fml",
+      ]
+      configs += [ "../:config" ]
+    }
+
+    testonly = true
+  }
+}
+
+source_set("opengl") {
+  testonly = true
+
+  sources = [
+    "test_gl_surface.cc",
+    "test_gl_surface.h",
+  ]
+
+  deps = [
+    ":skia",
+    "../fml:fml",
+  ]
+  configs += [ "../:config" ]
+}

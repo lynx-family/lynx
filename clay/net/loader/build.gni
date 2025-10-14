@@ -1,0 +1,14 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+loader_sources = [
+  "data_image_loader.cc",
+  "data_image_loader.h",
+  "resource_loader.h",
+  "resource_loader_creator_service.h",
+  "resource_loader_factory.cc",
+  "resource_loader_factory.h",
+  "resource_loader_intercept.h",
+  "resource_loader_platform.h",
+]

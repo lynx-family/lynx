@@ -1,0 +1,163 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//third_party/icu/config.gni")
+import("../../common/config.gni")
+import("../../testing/testing.gni")
+
+source_set("common") {
+  sources = [
+    "context_options.cc",
+    "context_options.h",
+    "devtools_instrumentation.cc",
+    "devtools_instrumentation.h",
+    "display.cc",
+    "display.h",
+    "display_manager.cc",
+    "display_manager.h",
+    "engine.cc",
+    "engine.h",
+    "one_shot_callback.h",
+    "output_surface.cc",
+    "output_surface.h",
+    "platform_view.cc",
+    "platform_view.h",
+    "pointer_data_dispatcher.cc",
+    "pointer_data_dispatcher.h",
+    "pointer_data_to_event.cc",
+    "pointer_data_to_event.h",
+    "rasterizer.cc",
+    "rasterizer.h",
+    "resource_cache_limit_calculator.cc",
+    "resource_cache_limit_calculator.h",
+    "scheduler/scheduler.cc",
+    "scheduler/scheduler.h",
+    "scheduler/scheduler_client.h",
+    "scheduler/scheduler_state_machine.cc",
+    "scheduler/scheduler_state_machine.h",
+    "screenshot_utils.cc",
+    "screenshot_utils.h",
+    "serialization_callbacks.cc",
+    "serialization_callbacks.h",
+    "services/animation_event_service_impl.cc",
+    "services/animation_event_service_impl.h",
+    "services/animator_info_service.cc",
+    "services/animator_info_service.h",
+    "services/compositor/compositor_service.cc",
+    "services/compositor/compositor_service.h",
+    "services/compositor/platform_overlay_service.h",
+    "services/compositor/presenter_service.cc",
+    "services/compositor/presenter_service.h",
+    "services/gesture_mediate_service.h",
+    "services/initialize_service.h",
+    "services/instrumentation_service.cc",
+    "services/instrumentation_service.h",
+    "services/platform_const_service.cc",
+    "services/platform_const_service.h",
+    "services/raster_frame_service.cc",
+    "services/raster_frame_service.h",
+    "services/rasterizer_service.cc",
+    "services/rasterizer_service.h",
+    "services/sync_compositor_service.cc",
+    "services/sync_compositor_service.h",
+    "services/ui_frame_service.cc",
+    "services/ui_frame_service.h",
+    "services/vsync_waiter_service.h",
+    "shell.cc",
+    "shell.h",
+    "shell_common_rendering_backend.h",
+    "switches.cc",
+    "switches.h",
+    "timing_client_delegate.cc",
+    "timing_client_delegate.h",
+    "variable_refresh_rate_display.cc",
+    "variable_refresh_rate_display.h",
+    "variable_refresh_rate_reporter.h",
+    "vsync_waiter.cc",
+    "vsync_waiter.h",
+  ]
+
+  if (enable_clay_standalone) {
+    sources += [ "services/initialize_service.cc" ]
+  }
+
+  if (is_win || is_mac || is_headless) {
+    sources += [
+      "services/drag_drop_service.cc",
+      "services/drag_drop_service.h",
+    ]
+  }
+
+  # Use real vsync waiter on mobile platforms, use timer-based fallback on other platforms
+  if (!(is_android || is_harmony || is_ios || is_tvos)) {
+    sources += [
+      "vsync_waiter_fallback.cc",
+      "vsync_waiter_fallback.h",
+    ]
+  }
+
+  # Note that: macOS 14.0- needs fallback
+  if (is_mac) {
+    sources += [
+      "vsync_waiter_macos.h",
+      "vsync_waiter_macos.mm",
+    ]
+    frameworks = [ "QuartzCore.framework" ]
+  }
+
+  if (!(is_android || is_ios)) {
+    sources += [
+      "services/compositor/platform_overlay_service_fallback.cc",
+      "services/compositor/presenter_service_fallback.cc",
+    ]
+  }
+
+  if (enable_screenshot_service) {
+    sources += [
+      "services/screenshot_encoder.cc",
+      "services/screenshot_encoder.h",
+      "services/screenshot_service.cc",
+      "services/screenshot_service.h",
+    ]
+  }
+
+  defines = []
+
+  public_configs = [ "../../:config" ]
+
+  public_deps = [
+    "../../../third_party/rapidjson",
+    "../../third_party/txt",
+    "../../version",
+  ]
+
+  deps = [
+    "../../common",
+    "../../common/graphics",
+    "../../flow",
+    "../../fml:fml",
+    "../../gfx",
+    "../../gfx/shared_image",
+    "../../memory:memory",
+    "../../shell/profiling",
+    "../../ui",
+  ]
+
+  if (enable_skity) {
+    deps += [ "../../gfx/skity" ]
+  } else {
+    if (!is_android || use_system_icu) {
+      deps += [ "../../fml:icu_util" ]
+    }
+
+    sources += [
+      "skia_event_tracer_impl.cc",
+      "skia_event_tracer_impl.h",
+    ]
+    public_deps += [ "//third_party/skia" ]
+  }
+}

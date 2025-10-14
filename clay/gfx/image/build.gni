@@ -1,0 +1,83 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+gfx_image_sources = [
+  "codec.h",
+  "decode_priority.h",
+  "decoding_image.h",
+  "frame_info.h",
+  "graphics_image.cc",
+  "graphics_image.h",
+  "image.cc",
+  "image.h",
+  "image_data.h",
+  "image_data_cache.cc",
+  "image_data_cache.h",
+  "image_decoder.cc",
+  "image_decoder.h",
+  "image_descriptor.cc",
+  "image_descriptor.h",
+  "image_produce_context.h",
+  "image_producer.cc",
+  "image_producer.h",
+  "image_resource.cc",
+  "image_resource.h",
+  "image_resource_client.h",
+  "image_upload_manager.cc",
+  "image_upload_manager.h",
+  "platform_image.h",
+  "skimage_holder.cc",
+  "skimage_holder.h",
+]
+
+if (enable_skity) {
+  gfx_image_sources += [
+    "animated_image.cc",
+    "animated_image.h",
+    "base_image.h",
+    "graphics_image_skity.cc",
+    "graphics_image_skity.h",
+    "graphics_image_skity_lazy.cc",
+    "graphics_image_skity_lazy.h",
+    "image_info.h",
+    "static_image.cc",
+    "static_image.h",
+    "svg_image.cc",
+    "svg_image.h",
+  ]
+} else {
+  gfx_image_sources += [
+    "decoding_image.cc",
+    "decoding_image.h",
+    "graphics_image_skia.cc",
+    "graphics_image_skia.h",
+    "graphics_image_skia_lazy.cc",
+    "graphics_image_skia_lazy.h",
+    "multi_frame_codec.cc",
+    "multi_frame_codec.h",
+    "single_frame_codec.cc",
+    "single_frame_codec.h",
+  ]
+}
+
+if (use_platform_decode) {
+  gfx_image_sources += [
+    "image_descriptor_platform.cc",
+    "image_descriptor_platform.h",
+  ]
+} else {
+  gfx_image_sources += [
+    "image_descriptor_skia.cc",
+    "image_descriptor_skia.h",
+  ]
+}
+
+if (enable_svg) {
+  gfx_image_sources += [
+    "svg_image_holder.cc",
+    "svg_image_holder.h",
+  ]
+}

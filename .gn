@@ -11,4 +11,11 @@ root = ":root"
 
 default_args = {
   lynx_dir = ""
+
+  # Disable ANGLE vulkan
+  angle_enable_vulkan = false
+  angle_build_vulkan_system_info = false
+
+  # Do not build ANGLE tests
+  angle_build_all = false
 }

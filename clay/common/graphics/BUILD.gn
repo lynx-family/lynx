@@ -1,0 +1,99 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+import("../../testing/testing.gni")
+
+source_set("graphics") {
+  sources = [
+    "drawable_image.cc",
+    "drawable_image.h",
+    "gl_context_switch.cc",
+    "gl_context_switch.h",
+    "graphic_meminfo.h",
+    "msaa_sample_count.h",
+    "persistent_cache.cc",
+    "persistent_cache.h",
+    "screenshot.h",
+    "shared_drawable_image.cc",
+    "shared_drawable_image.h",
+    "shared_image_external_texture.cc",
+    "shared_image_external_texture.h",
+  ]
+
+  if (is_linux) {
+    sources += [
+      "shared_image_external_bitmap.cc",
+      "shared_image_external_bitmap.h",
+    ]
+  }
+
+  # Heed caution when adding targets to the dependencies. This is a minimal
+  # target containing graphics sources that embedders can depend on. Any
+  # additions here could result in added app sizes across embeddings.
+  deps = [
+    "../../../third_party/rapidjson",
+    "../../assets",
+    "../../fml:fml",
+    "../../version",
+  ]
+
+  if (!enable_skity) {
+    deps += [
+      "../../third_party/skity_geometry:skity_geometry",
+      "//third_party/skia",
+    ]
+  }
+
+  public_configs = [ "../../:config" ]
+}
+
+source_set("gl_scoped_binder") {
+  sources = [
+    "gl/gl_api.h",
+    "gl/scoped_framebuffer_binder.cc",
+    "gl/scoped_framebuffer_binder.h",
+    "gl/scoped_texture_binder.cc",
+    "gl/scoped_texture_binder.h",
+  ]
+
+  public_configs = [ "../../:config" ]
+
+  if (is_android || is_win) {
+    sources += [
+      "gl/gl_pipeline_helper.cc",
+      "gl/gl_pipeline_helper.h",
+      "gl/gl_shader_program.cc",
+      "gl/gl_shader_program.h",
+    ]
+  }
+
+  sources += [
+    "gl/gl_api_common.cc",
+    "gl/gl_api_common.h",
+  ]
+  if (is_ios || is_tvos) {
+    frameworks = [ "OpenGLES.framework" ]
+  }
+
+  if (is_win) {
+    sources += [
+      "gl/gl_api_windows.cc",
+      "gl/gl_api_windows.h",
+    ]
+  }
+
+  public_deps = [ "../../fml:fml" ]
+
+  if (is_win) {
+    include_dirs = [ "//third_party/angle/include" ]
+    deps = [
+      "//third_party/angle:libEGL_static",
+      "//third_party/angle:libGLESv2_static",
+    ]
+  }
+}

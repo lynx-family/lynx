@@ -1,0 +1,72 @@
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Copyright 2022 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#ifndef CLAY_FLOW_LAYERS_CONTAINER_LAYER_H_
+#define CLAY_FLOW_LAYERS_CONTAINER_LAYER_H_
+
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "clay/flow/layers/layer.h"
+
+namespace clay {
+
+class ContainerLayer : public Layer {
+ public:
+  ContainerLayer();
+
+  void Diff(DiffContext* context, const Layer* old_layer) override;
+  void PreservePaintRegion(DiffContext* context) override;
+
+  virtual void Add(std::shared_ptr<Layer> layer);
+
+  void Preroll(PrerollContext* context) override;
+  void Paint(PaintContext& context) const override;
+  const std::vector<std::shared_ptr<Layer>>& layers() const { return layers_; }
+
+  virtual void DiffChildren(DiffContext* context,
+                            const ContainerLayer* old_layer);
+
+  void PaintChildren(PaintContext& context) const override;
+
+  const ContainerLayer* as_container_layer() const override { return this; }
+
+  const skity::Rect& child_paint_bounds() const { return child_paint_bounds_; }
+  void set_child_paint_bounds(const skity::Rect& bounds) {
+    child_paint_bounds_ = bounds;
+  }
+
+  int children_renderable_state_flags() const {
+    return children_renderable_state_flags_;
+  }
+  void set_children_renderable_state_flags(int flags) {
+    children_renderable_state_flags_ = flags;
+  }
+
+#ifndef NDEBUG
+  std::string DebugName() const override { return "ContainerLayer"; }
+  void DebugDumpTree(int depth) const override;
+#endif
+
+  bool IsContainer() const override { return true; }
+
+ protected:
+  void PrerollChildren(PrerollContext* context,
+                       skity::Rect* child_paint_bounds);
+
+ private:
+  std::vector<std::shared_ptr<Layer>> layers_;
+  skity::Rect child_paint_bounds_;
+  int children_renderable_state_flags_ = 0;
+
+  BASE_DISALLOW_COPY_AND_ASSIGN(ContainerLayer);
+};
+
+}  // namespace clay
+
+#endif  // CLAY_FLOW_LAYERS_CONTAINER_LAYER_H_

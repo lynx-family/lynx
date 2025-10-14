@@ -38,6 +38,8 @@ checker-config:
       - '^lynx/third_party/(aes|double-conversion|modp_b64|rapidjson|binding|quickjs|napi)/*'
       - '^lynx/explorer/darwin/ios/Lynx_explorer/LynxExplorer/Resource/'
       - '^base/include/boost/*'
+      - '^clay/testing/*'
+      - '^clay/third_party/txt/*'
 
   api-checker:
     api-dirs:

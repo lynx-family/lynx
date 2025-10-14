@@ -1,0 +1,209 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../config.gni")
+import("../testing/testing.gni")
+import("common/build.gni")
+import("component/build.gni")
+import("compositing/build.gni")
+import("event/build.gni")
+import("gesture/build.gni")
+import("lynx_module/build.gni")
+import("painter/build.gni")
+import("platform/build.gni")
+import("public/build.gni")
+import("rendering/build.gni")
+import("resource/build.gni")
+import("semantics/build.gni")
+import("shadow/build.gni")
+import("window/build.gni")
+
+config("ui_defines") {
+  defines = []
+  defines += [ "CLAY_LIBRARY_IMPLEMENTATION" ]
+
+  if (is_win) {
+    # Required for M_PI and others.
+    defines += [ "_USE_MATH_DEFINES" ]
+
+    # For wstring_conversion. See issue #50053.
+    defines += [ "_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING" ]
+
+    cflags = [ "-Wno-c99-designator" ]
+  }
+}
+
+source_set("ui") {
+  sources = [
+    "render_delegate.h",
+    "ui_rendering_backend.h",
+  ]
+  sources += rebase_path(ui_common_sources, "", "common")
+  sources += rebase_path(ui_component_sources, "", "component")
+  sources += rebase_path(ui_compositing_sources, "", "compositing")
+  sources += rebase_path(ui_event_sources, "", "event")
+  sources += rebase_path(ui_gesture_sources, "", "gesture")
+  sources += rebase_path(ui_lynx_module_sources, "", "lynx_module")
+  sources += rebase_path(ui_painter_sources, "", "painter")
+  sources += rebase_path(ui_platform_sources, "", "platform")
+  sources += rebase_path(ui_public_sources, "", "public")
+  sources += rebase_path(ui_rendering_sources, "", "rendering")
+  sources += rebase_path(ui_resource_sources, "", "resource")
+  sources += rebase_path(ui_shadow_sources, "", "shadow")
+  sources += rebase_path(ui_window_sources, "", "window")
+
+  configs += [ ":ui_defines" ]
+
+  if (use_accessbility) {
+    sources += rebase_path(ui_semantics_sources, "", "semantics")
+  }
+
+  if (enable_clay_lite || enable_clay_standalone) {
+    sources += rebase_path(ui_platform_fallback_sources, "", "platform")
+  }
+  if (!enable_clay_lite) {
+    sources += rebase_path(ui_extended_component_sources, "", "component")
+    sources += rebase_path(ui_extended_rendering_sources, "", "rendering")
+    sources += rebase_path(ui_extended_shadow_sources, "", "shadow")
+  }
+
+  if (enable_unittests) {
+    sources += rebase_path(ui_component_unittests_sources, "", "component")
+  }
+
+  if (use_net_loader) {
+    sources += rebase_path(ui_net_loader_sources, "", "platform")
+  }
+
+  deps = [
+    "../common",
+    "../common/graphics",
+    "../fml:fml",
+    "../shell/platform/common:common_cpp_input",
+  ]
+
+  public_deps = [
+    "../fml:fml",
+    "../net:net",
+    "../third_party/txt",
+  ]
+
+  public_configs = [
+    "../:config",
+    "../../base/src:base_public_config",
+  ]
+
+  if (enable_skity) {
+    public_deps += [ "../gfx/skity" ]
+  } else {
+    sources += [
+      "../gfx/skia/skia_concurrent_executor.cc",
+      "../gfx/skia/skia_concurrent_executor.h",
+    ]
+    public_deps += [ "//third_party/skia" ]
+  }
+
+  include_dirs = []
+}
+
+source_set("ui_platform_fallback") {
+  sources = []
+  sources += rebase_path(ui_platform_fallback_sources, "", "platform")
+
+  deps = [
+    ":ui",
+    "../common",
+    "../flow",
+    "../gfx",
+    "../shell/common",
+  ]
+
+  configs += [ ":ui_defines" ]
+}
+
+source_set("ui_fixture_sources") {
+  testonly = true
+
+  sources = [
+    "testing/test_utils.cc",
+    "testing/ui_test.cc",
+  ]
+
+  sources += rebase_path(ui_platform_fallback_sources, "", "platform")
+
+  deps = [
+    ":ui",
+    "../common",
+    "../flow",
+    "../gfx",
+    "../shell/common",
+    "../testing",
+  ]
+
+  configs += [ ":ui_defines" ]
+}
+
+if (enable_unittests) {
+  test_fixtures("ui_fixtures") {
+    fixtures = []
+  }
+
+  executable("clay_unittests") {
+    testonly = true
+    sources = [
+      "common/attribute_utils_unittests.cc",
+      "component/base_view_unittests.cc",
+      "component/keyframe_animator_unittests.cc",
+      "component/list/base_list_view_unittests.cc",
+      "component/list/focus_list_view_unittests.cc",
+      "component/list/list_item_length_cache_unittests.cc",
+      "component/native_view_unittests.cc",
+      "component/nested_scroll/nested_scrollable_unittests.cc",
+      "component/page_view_unittests.cc",
+      "component/scroll_view_unittests.cc",
+      "compositing/frame_builder_unittests.cc",
+      "compositing/pending_container_layer_unittests.cc",
+      "compositing/pending_layer_unittests.cc",
+      "compositing/testing/mock_pending_layer.h",
+      "event/focus_isolate_unittests.cc",
+      "event/focus_manager_unittests.cc",
+      "event/gesture_event_unittests.cc",
+      "gesture/gesture_manager_unittests.cc",
+      "gesture/mouse_region_manager_unittests.cc",
+      "lynx_module/lynx_module_unittests.cc",
+      "lynx_module/lynx_ui_method_unittests.cc",
+      "painter/box_painter_unittests.cc",
+      "painter/gradient_unittests.cc",
+      "painter/image_painter_unittests.cc",
+      "painter/painter_graphics_test.cc",
+      "painter/painter_graphics_test.h",
+      "painter/painting_context_unittests.cc",
+      "rendering/abstract_node_unittests.cc",
+      "rendering/render_box_unittests.cc",
+      "rendering/render_object_child_list_unittests.cc",
+      "rendering/render_object_unittests.cc",
+      "resource/font_resource_manager_unittests.cc",
+      "shadow/text_unittests.cc",
+      "testing/test_utils_unittests.cc",
+    ]
+
+    public_configs = [
+      "../:export_dynamic_symbols",
+      "../:config",
+    ]
+
+    public_deps = [
+      ":ui",
+      ":ui_fixture_sources",
+      ":ui_fixtures",
+      "../../base/src:base_static",
+      "../common/service",
+      "../flow",
+      "../gfx",
+      "../testing",
+      "../testing:skia",
+      "//third_party/skia/modules/skparagraph:skparagraph",
+    ]
+  }
+}

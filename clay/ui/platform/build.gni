@@ -1,0 +1,40 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("../../common/config.gni")
+
+ui_platform_sources = [
+  "common/utils.h",
+  "cursor_types.cc",
+  "cursor_types.h",
+  "keyboard_bridge.cc",
+  "keyboard_bridge.h",
+  "keyboard_types.h",
+  "native_view_service.h",
+]
+
+ui_net_loader_sources = [
+  "common/resource_loader_common_net.cc",
+  "common/resource_loader_common_net.h",
+]
+
+ui_platform_fallback_sources = [
+  "common/native_view_service_common.cc",
+  "common/native_view_service_common.h",
+  "common/resource_loader_common.cc",
+]
+
+if (is_android) {
+  if (enable_clay_lite) {
+    ui_platform_fallback_sources -= [
+      "common/native_view_service_common.cc",
+      "common/native_view_service_common.h",
+      "common/resource_loader_common.cc",
+    ]
+  } else {
+    ui_platform_fallback_sources += [
+      "../../shell/common/vsync_waiter_fallback.cc",
+      "../../shell/common/vsync_waiter_fallback.h",
+    ]
+  }
+}

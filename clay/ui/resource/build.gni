@@ -1,0 +1,34 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+import("//config.gni")
+import("../../common/config.gni")
+
+ui_resource_sources = [
+  "asset_font_manager_clay.h",
+  "font_collection.cc",
+  "font_collection.h",
+  "font_resource_manager.cc",
+  "font_resource_manager.h",
+  "gpu_resource_cache.cc",
+  "gpu_resource_cache.h",
+  "image_cache.h",
+  "image_manager.cc",
+  "image_manager.h",
+  "image_resource_fetcher.cc",
+  "image_resource_fetcher.h",
+]
+
+if (enable_skity) {
+  ui_resource_sources += [
+    "asset_manager_font_provider_skity.cc",
+    "asset_manager_font_provider_skity.h",
+    "image_fetcher.cc",
+    "image_fetcher.h",
+  ]
+} else {
+  ui_resource_sources += [
+    "asset_manager_font_provider_skia.cc",
+    "asset_manager_font_provider_skia.h",
+  ]
+}

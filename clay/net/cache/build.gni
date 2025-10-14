@@ -1,0 +1,12 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+cache_sources = [
+  "cache_stats.cc",
+  "cache_stats.h",
+  "net_disk_cache.cc",
+  "net_disk_cache.h",
+  "net_resource_cache_key.cc",
+  "net_resource_cache_key.h",
+]

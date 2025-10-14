@@ -1,0 +1,35 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+ui_common_sources = [
+  "attribute_utils.cc",
+  "attribute_utils.h",
+  "background_data.cc",
+  "background_data.h",
+  "editing_misc.h",
+  "gap_task.h",
+  "gap_worker.cc",
+  "gap_worker.h",
+  "input_client_manager.h",
+  "isolate.cc",
+  "isolate.h",
+  "json_utils.h",
+  "macros.h",
+  "measure_constraint.h",
+  "perf_collector.cc",
+  "perf_collector.h",
+  "render_settings.cc",
+  "render_settings.h",
+  "text_input_type_traits.h",
+  "text_selection.h",
+  "type_info.h",
+  "utils/floating_comparison.h",
+  "utils/value_change_notifier.h",
+  "utils/watch_dog.cc",
+  "utils/watch_dog.h",
+  "value_utils.cc",
+  "value_utils.h",
+]

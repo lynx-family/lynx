@@ -1,0 +1,40 @@
+# Copyright 2024 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+source_set("skity") {
+  sources = [
+    "picture_skity.cc",
+    "picture_skity.h",
+    "rendering_material.cc",
+    "rendering_material.h",
+    "skity_auto_canvas_save.h",
+    "skity_canvas.cc",
+    "skity_canvas.h",
+    "skity_decoding_image.cc",
+    "skity_decoding_image.h",
+    "skity_image.cc",
+    "skity_image.h",
+    "skity_lazy_image_traveller.cc",
+    "skity_lazy_image_traveller.h",
+  ]
+
+  deps = [ "../../gfx" ]
+
+  public_deps = [ "../../fml:fml" ]
+
+  public_configs = [ "../../:config" ]
+
+  sources += [
+    "jpeg_codec_skity.cc",
+    "jpeg_codec_skity.h",
+  ]
+
+  deps += [ "//third_party/libjpeg-turbo:turbojpeg" ]
+
+  if (!enable_skity) {
+    public_deps += [ "//third_party/skia" ]
+  }
+}

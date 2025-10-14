@@ -1,0 +1,22 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+ui_window_sources = [
+  "key_data.cc",
+  "key_data.h",
+  "key_data_helper.cc",
+  "key_data_helper.h",
+  "key_data_packet.cc",
+  "key_data_packet.h",
+  "pointer_data.cc",
+  "pointer_data.h",
+  "pointer_data_helper.cc",
+  "pointer_data_helper.h",
+  "pointer_data_packet.cc",
+  "pointer_data_packet.h",
+  "pointer_data_packet_converter.cc",
+  "pointer_data_packet_converter.h",
+  "viewport_metrics.cc",
+  "viewport_metrics.h",
+]

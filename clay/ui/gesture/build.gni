@@ -1,0 +1,45 @@
+# Copyright 2021 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+ui_gesture_sources = [
+  "arena.h",
+  "arena_manager.cc",
+  "arena_manager.h",
+  "arena_member.h",
+  "drag_gesture_recognizer.cc",
+  "drag_gesture_recognizer.h",
+  "gesture_manager.cc",
+  "gesture_manager.h",
+  "gesture_recognizer.cc",
+  "gesture_recognizer.h",
+  "hit_test.h",
+  "hit_test_responsive_result.h",
+  "long_press_gesture_recognizer.cc",
+  "long_press_gesture_recognizer.h",
+  "macros.h",
+  "mouse_cursor_manager.cc",
+  "mouse_cursor_manager.h",
+  "mouse_region_manager.cc",
+  "mouse_region_manager.h",
+  "mouse_wheel_phase_handler.cc",
+  "mouse_wheel_phase_handler.h",
+  "multi_tap_gesture_recognizer.cc",
+  "multi_tap_gesture_recognizer.h",
+  "pointer_router.cc",
+  "pointer_router.h",
+  "scrollable_direction.h",
+  "tap_gesture_recognizer.cc",
+  "tap_gesture_recognizer.h",
+  "velocity_tracker.cc",
+  "velocity_tracker.h",
+]
+
+if (is_win || is_mac || is_headless) {
+  ui_gesture_sources += [
+    "drag_drop_manager.cc",
+    "drag_drop_manager.h",
+  ]
+}

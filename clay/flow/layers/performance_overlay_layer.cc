@@ -1,0 +1,113 @@
+// Copyright 2013 The Flutter Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// Copyright 2022 The Lynx Authors. All rights reserved.
+// Licensed under the Apache License Version 2.0 that can be found in the
+// LICENSE file in the root directory of this source tree.
+
+#include "clay/flow/layers/performance_overlay_layer.h"
+
+#include <iomanip>
+#include <iostream>
+#include <string>
+
+namespace clay {
+namespace {
+
+void VisualizeStopWatch(clay::GrCanvas* canvas, const Stopwatch& stopwatch,
+                        float x, float y, float width, float height,
+                        bool show_graph, bool show_labels,
+                        const std::string& label_prefix,
+                        const std::string& font_path) {
+  const int label_x = 8;    // distance from x
+  const int label_y = -10;  // distance from y+height
+
+  if (show_graph) {
+    skity::Rect visualization_rect = skity::Rect::MakeXYWH(x, y, width, height);
+    stopwatch.Visualize(canvas, visualization_rect);
+  }
+  if (show_labels) {
+    auto text = PerformanceOverlayLayer::MakeStatisticsText(
+        stopwatch, label_prefix, font_path);
+    clay::GrPaint paint;
+    PAINT_SET_COLOR(paint, clay::Color::kRed());
+    CANVAS_DRAW_TEXTBLOB(text, x + label_x, y + height + label_y, paint);
+  }
+}
+
+}  // namespace
+
+clay::GrTextBlobPtr PerformanceOverlayLayer::MakeStatisticsText(
+    const Stopwatch& stopwatch, const std::string& label_prefix,
+    const std::string& font_path) {
+  double max_ms_per_frame = stopwatch.MaxDelta().ToMillisecondsF();
+  double average_ms_per_frame = stopwatch.AverageDelta().ToMillisecondsF();
+  std::stringstream stream;
+  stream.setf(std::ios::fixed | std::ios::showpoint);
+  stream << std::setprecision(1);
+  stream << label_prefix << "  "
+         << "max " << max_ms_per_frame << " ms/frame, "
+         << "avg " << average_ms_per_frame << " ms/frame";
+  auto text = stream.str();
+#ifndef ENABLE_SKITY
+  SkFont font;
+  if (font_path != "") {
+    font = SkFont(SkTypeface::MakeFromFile(font_path.c_str()));
+  }
+  font.setSize(18);
+  return SkTextBlob::MakeFromText(text.c_str(), text.size(), font,
+                                  SkTextEncoding::kUTF8);
+#else
+  skity::Paint paint;
+  if (font_path != "") {
+    paint.SetTypeface(skity::Typeface::MakeFromFile(font_path.c_str()));
+  }
+  paint.SetTextSize(18);
+  return skity::TextBlobBuilder().BuildTextBlob(text.c_str(), paint);
+#endif  // ENABLE_SKITY
+}
+
+PerformanceOverlayLayer::PerformanceOverlayLayer(uint64_t options,
+                                                 const char* font_path)
+    : options_(options) {
+  if (font_path != nullptr) {
+    font_path_ = font_path;
+  }
+}
+
+void PerformanceOverlayLayer::Diff(DiffContext* context,
+                                   const Layer* old_layer) {
+  DiffContext::AutoSubtreeRestore subtree(context);
+  if (!context->IsSubtreeDirty()) {
+    FML_DCHECK(old_layer);
+    auto prev = old_layer->as_performance_overlay_layer();
+    context->MarkSubtreeDirty(context->GetOldLayerPaintRegion(prev));
+  }
+  context->AddLayerBounds(paint_bounds());
+  context->SetLayerPaintRegion(this, context->CurrentSubtreeRegion());
+}
+
+void PerformanceOverlayLayer::Paint(PaintContext& context) const {
+  const int padding = 8;
+
+  if (!options_) {
+    return;
+  }
+
+  float x = paint_bounds().X() + padding;
+  float y = paint_bounds().Y() + padding;
+  float width = paint_bounds().Width() - (padding * 2);
+  float height = paint_bounds().Height() / 2;
+  auto mutator = context.state_stack.save();
+
+  VisualizeStopWatch(
+      context.canvas, context.raster_time, x, y, width, height - padding,
+      options_ & kVisualizeRasterizerStatistics,
+      options_ & kDisplayRasterizerStatistics, "Raster", font_path_);
+
+  VisualizeStopWatch(context.canvas, context.ui_time, x, y + height, width,
+                     height - padding, options_ & kVisualizeEngineStatistics,
+                     options_ & kDisplayEngineStatistics, "UI", font_path_);
+}
+
+}  // namespace clay

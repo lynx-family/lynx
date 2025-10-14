@@ -1,0 +1,73 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../common/config.gni")
+import("cache/build.gni")
+import("fetcher/build.gni")
+import("loader/build.gni")
+import("url/build.gni")
+
+source_set("net") {
+  sources = [
+    "macros.h",
+    "resource_type.h",
+  ]
+
+  sources += rebase_path(url_parse_sources, "", "url")
+  sources += rebase_path(loader_sources, "", "loader")
+
+  if (use_net_loader) {
+    sources += [
+      "net_loader_callback.cc",
+      "net_loader_callback.h",
+      "net_loader_manager.cc",
+      "net_loader_manager.h",
+    ]
+
+    sources += rebase_path(cache_sources, "", "cache")
+    sources += rebase_path(fetcher_sources, "", "fetcher")
+  }
+
+  deps = [
+    "../common",
+    "../fml:fml",
+  ]
+
+  public_deps = []
+  if (enable_skity) {
+    public_deps += [ "../gfx/skity" ]
+  } else {
+    public_deps += [ "//third_party/skia" ]
+  }
+
+  configs += [
+    "../:config",
+    "../ui:ui_defines",
+  ]
+  public_configs = [
+    "../:config",
+    "../../../lynx/base/src:base_public_config",
+  ]
+}
+
+if (enable_unittests) {
+  if (use_net_loader) {
+    executable("net_unittests") {
+      testonly = true
+      sources = [
+        "fetcher/http_resource_fetcher_unittests.cc",
+        "net_loader_manager_unittests.cc",
+      ]
+
+      public_deps = [
+        "../../base/src:base_static",
+        "../shell/common",
+        "../testing",
+        "../ui:ui",
+        "../ui:ui_fixture_sources",
+        "../ui:ui_fixtures",
+      ]
+    }
+  }
+}

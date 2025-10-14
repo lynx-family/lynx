@@ -1,0 +1,12 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+fetcher_sources = [
+  "http_resource_fetcher.cc",
+  "http_resource_fetcher.h",
+  "http_resource_fetcher_factory.cc",
+  "http_resource_fetcher_factory.h",
+  "http_resource_fetcher_host.cc",
+  "http_resource_fetcher_host.h",
+]

@@ -1,0 +1,109 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../../common/config.gni")
+import("../../../testing/testing.gni")
+
+source_set("common_cpp_input") {
+  public = [
+    "text_editing_delta.h",
+    "text_input_model.h",
+    "text_range.h",
+  ]
+
+  sources = [
+    "text_editing_delta.cc",
+    "text_editing_delta.h",
+    "text_input_model.cc",
+    "text_input_model.h",
+    "text_range.h",
+  ]
+
+  public_configs = [ "../../../:config" ]
+
+  deps = [ "../../../fml:fml" ]
+}
+
+source_set("common_cpp_enums") {
+  public = [ "platform_provided_menu.h" ]
+
+  public_configs = [ "../../../:config" ]
+}
+
+source_set("common_cpp_switches") {
+  public = [ "engine_switches.h" ]
+
+  sources = [
+    "engine_switches.cc",
+    "engine_switches.h",
+  ]
+
+  public_configs = [ "../../../:config" ]
+}
+
+# The portion of common_cpp that has no dependencies on the public/
+# headers. This division should be revisited once the Linux GTK
+# embedding is further along and it's clearer how much, if any, shared
+# API surface there will be.
+source_set("common_cpp_core") {
+  public = [ "path_utils.h" ]
+
+  sources = [ "path_utils.h" ]
+
+  if (!is_android) {
+    sources += [ "path_utils.cc" ]
+  }
+
+  public_configs = [ "../../../:config" ]
+}
+
+if (enable_unittests) {
+  test_fixtures("common_cpp_core_fixtures") {
+    fixtures = []
+  }
+
+  executable("common_cpp_core_unittests") {
+    testonly = true
+
+    sources = [ "path_utils_unittests.cc" ]
+
+    deps = [
+      ":common_cpp_core",
+      ":common_cpp_core_fixtures",
+      "../../../../base/src:base_static",
+      "../../../testing",
+    ]
+
+    public_configs = [ "../../../../clay:config" ]
+  }
+
+  test_fixtures("common_cpp_fixtures") {
+    fixtures = []
+  }
+
+  executable("common_cpp_unittests") {
+    testonly = true
+
+    sources = [
+      "engine_switches_unittests.cc",
+      "text_editing_delta_unittests.cc",
+      "text_input_model_unittests.cc",
+      "text_range_unittests.cc",
+    ]
+
+    deps = [
+      ":common_cpp_input",
+      ":common_cpp_switches",
+      "../../../../base/src:base_static",
+      "../../../fml:string_conversion",
+      "../../../testing",
+      "../../../ui:ui_fixture_sources",
+    ]
+
+    public_configs = [ "../../../../clay:config" ]
+  }
+}

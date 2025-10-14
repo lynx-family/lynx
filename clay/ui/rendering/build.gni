@@ -1,0 +1,43 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+ui_rendering_sources = [
+  "abstract_node.cc",
+  "abstract_node.h",
+  "decode_utils.cc",
+  "decode_utils.h",
+  "render_bounce.h",
+  "render_box.cc",
+  "render_box.h",
+  "render_container.cc",
+  "render_container.h",
+  "render_dummy.h",
+  "render_external_content.cc",
+  "render_external_content.h",
+  "render_external_view.cc",
+  "render_external_view.h",
+  "render_image.cc",
+  "render_image.h",
+  "render_object.cc",
+  "render_object.h",
+  "render_object_child_list.cc",
+  "render_object_child_list.h",
+  "render_page.cc",
+  "render_page.h",
+  "render_scroll.cc",
+  "render_scroll.h",
+  "renderer.cc",
+  "renderer.h",
+  "text/render_inline_text.cc",
+  "text/render_inline_text.h",
+  "text/render_text.cc",
+  "text/render_text.h",
+]
+
+ui_extended_rendering_sources = [
+  "editable/render_editable.cc",
+  "editable/render_editable.h",
+  "render_list.cc",
+  "render_list.h",
+]

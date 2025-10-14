@@ -1,0 +1,216 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+
+if (!enable_skity) {
+  import("//third_party/skia/gn/skia.gni")
+}
+
+source_set("shared_image") {
+  sources = [
+    "fence_sync.h",
+    "shared_image_backing.cc",
+    "shared_image_backing.h",
+    "shared_image_representation.cc",
+    "shared_image_representation.h",
+    "shared_image_sink.cc",
+    "shared_image_sink.h",
+    "shared_image_sink_accessor.cc",
+    "shared_image_sink_accessor.h",
+    "utils/image_utils.cc",
+    "utils/image_utils.h",
+  ]
+
+  public_deps = [ "../../fml:fml" ]
+
+  defines = []
+
+  deps = [ "../../common/graphics:gl_scoped_binder" ]
+
+  public_configs = [ "../../:config" ]
+
+  if (!enable_skity && skia_use_gl) {
+    defines += [ "SKIA_ENABLE_GL" ]
+    sources += [
+      "skia_gl_image_representation.cc",
+      "skia_gl_image_representation.h",
+    ]
+  }
+  if (!enable_skity && skia_use_metal) {
+    defines += [ "SKIA_ENABLE_METAL" ]
+    sources += [
+      "skia_mtl_image_representation.h",
+      "skia_mtl_image_representation.mm",
+    ]
+  }
+
+  if (enable_skity) {
+    if (is_android || is_win) {
+      sources += [
+        "skity_gl_image_representation.cc",
+        "skity_gl_image_representation.h",
+        "utils/gl_texture_converter.cc",
+        "utils/gl_texture_converter.h",
+      ]
+    } else if (is_ios) {
+      sources += [
+        "skity_mtl_image_representation.h",
+        "skity_mtl_image_representation.mm",
+      ]
+    }
+  } else {
+    public_deps += [ "//third_party/skia" ]
+  }
+
+  if (is_apple) {
+    sources += [
+      "cv_pixelbuffer_image_backing.h",
+      "cv_pixelbuffer_image_backing.mm",
+      "iosurface_image_backing.h",
+      "iosurface_image_backing.mm",
+    ]
+
+    sources += [
+      "mtl_fence_sync.h",
+      "mtl_fence_sync.mm",
+      "mtl_image_representation.h",
+      "mtl_image_representation.mm",
+    ]
+
+    frameworks = [
+      "IOSurface.framework",
+      "Metal.framework",
+      "CoreVideo.framework",
+    ]
+
+    cflags_objcc = [ "-fobjc-weak" ]  # tweak Skia include files
+
+    if (is_mac) {
+      sources += [
+        "cgl_image_representation.h",
+        "cgl_image_representation.mm",
+      ]
+
+      frameworks += [ "OpenGL.framework" ]
+    }
+
+    if (is_ios) {
+      sources += [
+        "eagl_image_representation.h",
+        "eagl_image_representation.mm",
+      ]
+
+      frameworks += [ "OpenGLES.framework" ]
+    }
+  }
+
+  if (is_win) {
+    defines += [ "NOMINMAX" ]
+
+    sources += [
+      "angle_d3d_image_representation.cc",
+      "angle_d3d_image_representation.h",
+      "d3d9_texture_image_backing.cc",
+      "d3d9_texture_image_backing.h",
+      "d3d_image_representation.cc",
+      "d3d_image_representation.h",
+      "d3d_texture_image_backing.cc",
+      "d3d_texture_image_backing.h",
+      "utils/angle_get_proc.cc",
+      "utils/angle_get_proc.h",
+      "utils/dxgi_utils.cc",
+      "utils/dxgi_utils.h",
+      "utils/functions_angle.cc",
+      "utils/functions_angle.h",
+    ]
+
+    if (clay_force_d3d9) {
+      defines += [ "CLAY_FORCE_D3D9" ]
+    }
+
+    # prevent using ANGLE symbols directly
+    configs += [ "//third_party/angle:gl_prototypes" ]
+
+    deps += [
+      "//third_party/angle:includes",
+      "//third_party/angle:libEGL_static",  # the order of libEGL_static and
+                                            # libGLESv2_static is important.. if
+                                            # reversed, will cause a linker
+                                            # error
+                                            # DllMain already defined in
+                                            # LIBCMTD.lib
+      "//third_party/angle:libGLESv2_static",
+    ]
+  }
+
+  if (is_android) {
+    defines += [
+      "EGL_EGLEXT_PROTOTYPES",
+      "GL_GLEXT_PROTOTYPES",
+    ]
+    sources += [
+      "android/android_hardwarebuffer_utils.cc",
+      "android/android_hardwarebuffer_utils.h",
+      "android/scoped_a_native_window.cc",
+      "android/scoped_a_native_window.h",
+      "android/scoped_java_surface.cc",
+      "android/scoped_java_surface.h",
+      "android/surface_texture.cc",
+      "android/surface_texture.h",
+      "android/surface_texture_listener.cc",
+      "android/surface_texture_listener.h",
+      "android_egl_image_representation.cc",
+      "android_egl_image_representation.h",
+      "android_hardwarebuffer_image_backing.cc",
+      "android_hardwarebuffer_image_backing.h",
+      "android_surface_texture_image_backing.cc",
+      "android_surface_texture_image_backing.h",
+      "egl_image_backing.cc",
+      "egl_image_backing.h",
+      "vulkan_image_hardwarebuffer_representation.cc",
+      "vulkan_image_hardwarebuffer_representation.h",
+    ]
+    deps += [ "../../fml:fml" ]
+    configs += [ "../../:config" ]
+  }
+
+  if (is_linux) {
+    sources += [
+      "epoxy_shm_image_backing.cc",
+      "epoxy_shm_image_backing.h",
+      "epoxy_shm_image_representation.cc",
+      "epoxy_shm_image_representation.h",
+      "linux_shm_image_representation.cc",
+      "linux_shm_image_representation.h",
+    ]
+
+    if (enable_software_rendering) {
+      sources += [
+        "angle_software_shm_image_backing.cc",
+        "angle_software_shm_image_backing.h",
+        "angle_sw_shm_image_representation.cc",
+        "angle_sw_shm_image_representation.h",
+        "skia_shm_image_representation.cc",
+        "skia_shm_image_representation.h",
+      ]
+      deps += [
+        "//third_party/angle:includes",
+        "//third_party/angle:libEGL_static",
+        "//third_party/angle:libGLESv2_static",
+      ]
+    }
+    deps += [ "../../fml:fml" ]
+    configs += [ "../../:config" ]
+  }
+
+  if (is_harmony) {
+    sources += [
+      "native_image_egl_image_representation.cc",
+      "native_image_egl_image_representation.h",
+      "native_image_image_backing.cc",
+      "native_image_image_backing.h",
+    ]
+  }
+}

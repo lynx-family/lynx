@@ -1,0 +1,85 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("../../common/config.gni")
+import("../../shell/config.gni")
+
+gpu_common_deps = [
+  "../../common",
+  "../../common/graphics",
+  "../../flow",
+  "../../fml:fml",
+  "../../gfx",
+  "../../shell/common",
+  "../../ui:ui",
+]
+
+source_set("gpu_surface_software") {
+  sources = [
+    "gpu_surface_software.cc",
+    "gpu_surface_software.h",
+    "gpu_surface_software_delegate.cc",
+    "gpu_surface_software_delegate.h",
+  ]
+
+  public_deps = gpu_common_deps
+  public_configs = [ "../../:config" ]
+}
+
+source_set("gpu_surface_gl") {
+  sources = [
+    "gpu_surface_gl_delegate.cc",
+    "gpu_surface_gl_delegate.h",
+  ]
+
+  if (!enable_skity) {
+    sources += [
+      "gpu_surface_gl_skia.cc",
+      "gpu_surface_gl_skia.h",
+      "trace_gl_fuctions.cc",
+      "trace_gl_fuctions.h",
+    ]
+  }
+
+  public_deps = gpu_common_deps
+
+  public_configs = [ "../../:config" ]
+
+  if (enable_skity) {
+    sources += [
+      "gpu_surface_gl_skity.cc",
+      "gpu_surface_gl_skity.h",
+    ]
+    public_deps += [ "../../gfx/skity" ]
+  }
+  if (is_win) {
+    deps = [ "//third_party/angle:includes" ]
+  }
+}
+
+source_set("gpu_surface_metal") {
+  sources = [
+    "gpu_surface_metal_delegate.cc",
+    "gpu_surface_metal_delegate.h",
+  ]
+
+  if (!enable_skity) {
+    sources += [
+      "gpu_surface_metal_skia.h",
+      "gpu_surface_metal_skia.mm",
+    ]
+  } else {
+    sources += [
+      "gpu_surface_metal_skity.h",
+      "gpu_surface_metal_skity.mm",
+    ]
+  }
+
+  public_deps = gpu_common_deps
+
+  public_configs = [ "../../:config" ]
+}

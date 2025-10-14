@@ -47,7 +47,7 @@ deps = {
     "third_party/glfw": {
         "type": "git",
         "url": "https://fuchsia.googlesource.com/third_party/glfw.git",
-        "commit": "999f3556fdd80983b10051746264489f2cb1ef16"
+        "commit": "412fdb06bb5d1ddc6ba20e0c9a209771c877a3cc"
     },
     'third_party/gtest-parallel': {
         "type": "git",
@@ -107,7 +107,7 @@ deps = {
         "type": "git",
         "url": "https://gitlab.com/TSnake41/nanopng.git",
         "commit": "fa1bf5cf7ec3ad98e0be665acbb4b36c696ae059",
-        "patches": os.path.join(root_dir, 'lynx', 'patches', 'nanopng', '0001-Adapt-nanopng-to-the-Skity-project.patch'),
+        "patches": os.path.join(root_dir, 'patches', 'nanopng', '0001-Adapt-nanopng-to-the-Skity-project.patch'),
         "ignore_in_git": True,
     },
     "third_party/skia": {
@@ -220,5 +220,23 @@ deps = {
             os.path.join(root_dir, 'patches', 'freetype2', '*.patch')
         ],
         "ignore_in_git": True,
+    },
+    "clay/third_party/glm": {
+        "type": "git",
+        "url": "https://github.com/g-truc/glm.git",
+        "ignore_in_git": True,
+        "commit": "0af55ccecd98d4e5a8d1fad7de25ba429d60e863",
+    },
+    'clay/testing/resources': {
+        "type": "http",
+        'url': f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/testing_res.zip",
+        "ignore_in_git": True,
+        "decompress": True,
+    },
+    'clay/third_party/txt/third_party/fonts': {
+        "type": "http",
+        'url': f"https://lf-lynx.tiktok-cdns.com/obj/lynx-artifacts-oss-sg/clay/roboto-bold.ttf.zip",
+        "ignore_in_git": True,
+        "decompress": True,
     },
 }

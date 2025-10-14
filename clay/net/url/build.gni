@@ -1,0 +1,14 @@
+# Copyright 2025 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+url_parse_sources = [
+  "uri.cc",
+  "uri.h",
+  "url_helper.cc",
+  "url_helper.h",
+  "url_parse.cc",
+  "url_parse.h",
+  "url_parse_internal.cc",
+  "url_parse_internal.h",
+]

@@ -1,0 +1,171 @@
+# Copyright 2013 The Flutter Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Copyright 2023 The Lynx Authors. All rights reserved.
+# Licensed under the Apache License Version 2.0 that can be found in the
+# LICENSE file in the root directory of this source tree.
+
+import("//build/toolchain/clang.gni")
+import("common/config.gni")
+import("testing/testing.gni")
+
+if (is_win) {
+  import("//build/config/win/win.gni")
+}
+
+config("config") {
+  defines = feature_defines_list
+
+  include_dirs = [
+    "..",
+    "$root_gen_dir/lynx",
+  ]
+
+  if (enable_skity) {
+    include_dirs += [
+      "../base/trace",
+
+      # skity
+      "//third_party/skity",
+      "//third_party/skity/third_party/glm",
+      "//third_party/skity/include",
+
+      # textlayout
+      "//third_party/textlayout/textra/public",
+
+      "//third_party/icu/source/common",
+    ]
+
+    if (is_win) {
+      include_dirs += [
+        "//third_party/skity/skity/include",
+        "//third_party/skity/skity/module/codec/include",
+      ]
+      defines += [ "TTTEXT_OS_WIN" ]
+    }
+
+    defines += [ "ENABLE_SKITY" ]
+  } else {
+    include_dirs += [
+      # textlayout
+      "//third_party/textlayout/textra/public",
+      "//third_party/skia/include",
+
+      # use the independent skity geometry.
+      "third_party/glm/",
+      "third_party/skity_geometry/include/",
+      "third_party/txt/src",
+    ]
+  }
+
+  cflags = []
+  if (is_mac) {
+    cflags += [ "-g" ]
+    cflags += [ "-fno-standalone-debug" ]
+  } else if (is_win) {
+    cflags += [
+      "/Zi",
+      "-Wno-vla-extension",
+      "-Wno-vla-cxx-extension",
+      "-Wno-microsoft-template-shadow",
+      "-Wno-unknown-warning-option",
+      "-Wno-gnu-zero-variadic-macro-arguments",
+    ]
+    ldflags = [ "/DEBUG" ]
+  }
+
+  if (is_apple) {
+    cflags_objc = [
+      "-Werror=overriding-method-mismatch",
+      "-Werror=undeclared-selector",
+      "-fobjc-arc",
+    ]
+    cflags_objcc = cflags_objc
+  }
+
+  if (is_clang) {
+    cflags += [
+      "-Wno-unused-lambda-capture",
+      "-Wno-unused-const-variable",
+    ]
+  }
+}
+
+config("export_dynamic_symbols") {
+  # --dynamic-list is the GNU linker syntax supported by ELF linkers.
+  # -exported_symbols_list is the macOS linker syntax. The different flags
+  # accept files formatted differently, so we have exported_symbols.sym for GNU
+  # linker syntax, and exported_symbols_mac.sym for the macOS linker syntax.
+  if (is_linux || is_fuchsia) {
+    inputs = [ "../common/exported_symbols.sym" ]
+    ldflags = [ "-Wl,--dynamic-list=" + rebase_path(inputs[0], root_build_dir) ]
+  }
+}
+
+if (enable_clay_standalone) {
+  clay_lib_type = "shared_library"
+} else {
+  clay_lib_type = "source_set"
+}
+
+target(clay_lib_type, "standalone_lib") {
+  testonly = true
+  output_name = "clay"
+
+  include_dirs = [
+    "../",
+    "../lynx",
+  ]
+
+  sources = []
+
+  deps = [
+    ":unittests",
+    "../base/src:base_static",
+    "example/glfw",
+    "shell/common",
+  ]
+
+  configs += [ ":config" ]
+
+  cflags = []
+
+  lib_dirs = []
+  libs = []
+
+  if (enable_clay_standalone && is_win && use_flutter_cxx) {
+    if (windows_runtime_library_mode == "md") {
+      libs += [ "msvcprt.lib" ]
+    } else if (windows_runtime_library_mode == "mt") {
+      libs += [ "libcpmt.lib" ]
+    }
+  }
+}
+
+group("unittests") {
+  testonly = true
+  public_deps = []
+
+  # Compile all unittests targets if enabled.
+  if (enable_unittests) {
+    public_deps += [
+      "flow:flow_unittests",
+      "gfx:gfx_unittests",
+      "memory:memory_unittests",
+      "testing:testing_unittests",
+      "third_party/txt:txt_unittests",
+      "ui:clay_unittests",
+    ]
+
+    if (use_net_loader) {
+      public_deps += [ "net:net_unittests" ]
+    }
+
+    if (is_mac || is_win) {
+      public_deps += [
+        "shell/platform/common:common_cpp_core_unittests",
+        "shell/platform/common:common_cpp_unittests",
+      ]
+    }
+  }
+}
