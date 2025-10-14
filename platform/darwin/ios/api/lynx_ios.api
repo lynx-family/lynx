@@ -3717,7 +3717,6 @@ public class LynxTextRenderer : NSObject {
   public instancetype LynxTextRenderer::initWithAttributedString:layoutSpec:(NSAttributedString *attrStr,[layoutSpec] LynxLayoutSpec *spec);
   public CGSize LynxTextRenderer::size();
   public CGSize LynxTextRenderer::textsize();
-  public CGFloat LynxTextRenderer::maxFontSize();
   public CGFloat LynxTextRenderer::textContentOffsetX();
   public CGRect LynxTextRenderer::textBoundingRect();
   public void LynxTextRenderer::drawRect:padding:border:(CGRect bounds,[padding] UIEdgeInsets padding,[border] UIEdgeInsets border);
