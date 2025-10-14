@@ -89,7 +89,6 @@ LYNX_PROPS_GROUP_DECLARE(
 }
 
 - (void)_lynxUIRequestDisplay {
-  [_overflow_layer setContents:nil];
   if (self.renderer == nil || ((self.frame.size.width <= 0 || self.frame.size.height <= 0) &&
                                self.overflow == OVERFLOW_HIDDEN_VAL)) {
     return;
@@ -329,13 +328,13 @@ LYNX_PROPS_GROUP_DECLARE(
   self.view.border = self.border;
   self.view.padding = self.padding;
 
+  [_overflow_layer setContents:nil];
+  [self.view setNeedsDisplay];
+
   if ([self enableLayerRender]) {
     if (self.overflow != OVERFLOW_HIDDEN_VAL) {
       CALayer *layer = [self getOverflowLayer];
-      layer.contents = nil;
       [layer setNeedsDisplay];
-    } else {
-      [self.view setNeedsDisplay];
     }
     [self calcOverflowLayerFrame];
   } else {

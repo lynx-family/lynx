@@ -132,6 +132,24 @@
   }
   _textContainer.size = inputSize;
 
+  __block CGFloat skewWidth = 0.f, fontSize = 0.f;
+  [_attrStr enumerateAttribute:NSFontAttributeName
+                       inRange:NSMakeRange(0, _attrStr.length)
+                       options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
+                    usingBlock:^(UIFont *font, NSRange range, BOOL *_Nonnull stop) {
+                      fontSize = MAX(fontSize, font.pointSize);
+                      // A hack way to detect if this font is fake apply italic with skew
+                      // transform
+                      if ([font.fontDescriptor.fontAttributes
+                              objectForKey:@"NSCTFontMatrixAttribute"] == nil) {
+                        return;
+                      }
+
+                      // fake italic use -0.25 skew
+                      skewWidth = MAX(skewWidth, font.xHeight * 0.25);
+                    }];
+  _maxFontSize = fontSize;
+
   if (_layoutSpec.enableTextNonContiguousLayout) {
     _layoutManager.allowsNonContiguousLayout = YES;
     if (_layoutSpec.maxTextLength != LynxNumberNotSet) {
@@ -149,8 +167,7 @@
       } else {
         // FIXME(linxs:) We will delete these when enableTextContainerOpt is enabled by default.
         if (_layoutSpec.maxLineNum > 0) {
-          h = _layoutSpec.maxLineNum *
-              (MAX(_layoutSpec.textStyle.lineHeight, [self maxFontSize] * 1.5));
+          h = _layoutSpec.maxLineNum * (MAX(_layoutSpec.textStyle.lineHeight, _maxFontSize * 1.5));
         }
         if (_layoutSpec.widthMode != LynxMeasureModeDefinite) {
           w = MAXFLOAT;
@@ -240,26 +257,14 @@
   }
 
   [self handleEllipsisDirectionAndNewline:_layoutSpec];
-
-  [_attrStr enumerateAttribute:NSFontAttributeName
-                       inRange:NSMakeRange(0, _attrStr.length)
-                       options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
-                    usingBlock:^(UIFont *font, NSRange range, BOOL *_Nonnull stop) {
-                      // A hack way to detect if this font is fake apply italic with skew
-                      // transform
-                      if ([font.fontDescriptor.fontAttributes
-                              objectForKey:@"NSCTFontMatrixAttribute"] == nil) {
-                        return;
-                      }
-
-                      // fake italic use -0.25 skew
-                      _calculatedSize.width += font.xHeight * 0.25;
-                    }];
+  _calculatedSize.width += skewWidth;
 
   self.baseline = ((LineSpacingAdaptation *)_layoutManager.delegate).baseline;
   NSRange glyphRange = [_layoutManager glyphRangeForTextContainer:_textContainer];
   _textBoundingRect = [_layoutManager boundingRectForGlyphRange:glyphRange
                                                 inTextContainer:_textContainer];
+  _textBoundingRect.size.width = MAX(_maxFontSize, _calculatedSize.width);
+
   LYNX_TRACE_END_SECTION(LYNX_TRACE_CATEGORY_WRAPPER)
 }
 
@@ -807,22 +812,6 @@
 
 - (CGRect)textBoundingRect {
   return _textBoundingRect;
-}
-
-- (CGFloat)maxFontSize {
-  // TODO: (linxs)check performance and run times
-  if (_maxFontSize == 0) {
-    __block CGFloat fontsize = 0;
-    [_layoutManager.textStorage
-        enumerateAttribute:NSFontAttributeName
-                   inRange:NSMakeRange(0, _layoutManager.textStorage.length)
-                   options:NSAttributedStringEnumerationLongestEffectiveRangeNotRequired
-                usingBlock:^(UIFont *font, NSRange range, __unused BOOL *stop) {
-                  fontsize = font.pointSize > fontsize ? font.pointSize : fontsize;
-                }];
-    _maxFontSize = fontsize;
-  }
-  return _maxFontSize;
 }
 
 - (NSLayoutManager *)layoutManager {

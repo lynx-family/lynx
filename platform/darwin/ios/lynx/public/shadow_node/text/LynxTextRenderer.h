@@ -45,7 +45,6 @@ NS_ASSUME_NONNULL_BEGIN
  */
 - (CGSize)size;
 - (CGSize)textsize;
-- (CGFloat)maxFontSize;
 - (CGFloat)textContentOffsetX;
 - (CGRect)textBoundingRect;
 
