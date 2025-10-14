@@ -38,8 +38,7 @@ namespace piper {
 namespace cache {
 extern std::shared_ptr<Buffer> TryGetCacheV8(
     const std::string& source_url, const std::string& template_url,
-    int64_t runtime_id, const std::shared_ptr<const Buffer>& buffer,
-    std::unique_ptr<CacheGenerator> cache_generator);
+    int64_t runtime_id, std::unique_ptr<CacheGenerator> cache_generator);
 
 extern void RequestCacheGenerationV8(
     const std::string& source_url, const std::string& template_url,
@@ -137,9 +136,8 @@ base::expected<Value, JSINativeException> V8Runtime::evaluateJavaScript(
     LOGI("using v8 bytecode");
     auto generator =
         std::make_unique<cache::V8CacheGenerator>(origin_url, buffer);
-    auto cache =
-        cache::TryGetCacheV8(source_url, bytecode_source_url_, getRuntimeId(),
-                             buffer, std::move(generator));
+    auto cache = cache::TryGetCacheV8(source_url, bytecode_source_url_,
+                                      getRuntimeId(), std::move(generator));
     if (cache) {
       auto* cached_data =
           new v8::ScriptCompiler::CachedData(cache->data(), cache->size());
