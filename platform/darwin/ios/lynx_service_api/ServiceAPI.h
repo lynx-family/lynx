@@ -6,6 +6,7 @@
 #define DARWIN_SERVICE_API_SERVICE_API_H_
 #import <Foundation/Foundation.h>
 #import <LynxServiceAPI/LynxServiceProtocol.h>
+#import <LynxServiceAPI/ServiceLazyLoad.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -30,6 +31,11 @@ typedef struct {
 } LynxServiceEntry;
 
 #define LYNX_AUTO_REGISTER_SERVICE_PREFIX __lynx_auto_register_service__
+
+#ifndef LYNX_CONCAT
+#define LYNX_CONCAT2(A, B) A##B
+#define LYNX_CONCAT(A, B) LYNX_CONCAT2(A, B)
+#endif
 
 /*
  * You can use @LynxServiceRegister to specify a LynxService will be

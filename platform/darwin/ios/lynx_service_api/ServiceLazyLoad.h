@@ -7,86 +7,62 @@
 
 #import <Foundation/Foundation.h>
 
-typedef enum : NSUInteger {
-  LynxTypeFunction = 1,
-  LynxTypeObjCMethod = 2,
-  LynxTypeFunctionInfo = 3,  // The difference with function is that this type carries the file
-                             // information of the function
-} LynxType;
+// The definitions in this file need be the same with LynxLazyLoad.h
 
-typedef struct LynxData {
-  const LynxType type;
+typedef enum : NSUInteger {
+  ServiceLazyLoadTypeFunction = 1,
+  ServiceLazyLoadTypeObjCMethod = 2,
+  ServiceLazyLoadTypeFunctionInfo = 3,  // The difference with function is that this type carries
+                                        // the file information of the function
+} ServiceLazyLoadType;
+
+typedef struct ServiceLazyLoadData {
+  const ServiceLazyLoadType type;
   const bool repeatable;
   const char *key;
   const void *value;
-} LynxData;
+} ServiceLazyLoadData;
 
-typedef struct _LynxFunctionInfo {
+typedef struct _ServiceLazyLoadFunctionInfo {
   const void *function;
   const char *fileName;
   const int line;
-} LynxFunctionInfo;
+} ServiceLazyLoadFunctionInfo;
 
-#define LYNX_BASE_INIT_KEY "LynxBaseInitKey"
-#define LYNX_LAZY_CONCAT(A, B) A##B
+#define SERVICE_LAZY_LOAD_BASE_INIT_KEY "LynxBaseInitKey"
+#define SERVICE_LAZY_LOAD_LAZY_CONCAT(A, B) A##B
 
-#define LYNX_METHOD(KEY) LYNX_EXPORT_OBJC_METHOD(KEY, false)
-#define LYNX_BASE_INIT_METHOD LYNX_METHOD(LYNX_BASE_INIT_KEY);
-#define LYNX_EXPORT_OBJC_METHOD(KEY, REPEATABLE) \
-  LynxDataDefine(KEY, REPEATABLE, LynxTypeObjCMethod, __func__)
+#define SERVICE_LAZY_LOAD_METHOD(KEY) SERVICE_LAZY_LOAD_EXPORT_OBJC_METHOD(KEY, false)
+#define SERVICE_LAZY_LOAD_BASE_INIT_METHOD \
+  SERVICE_LAZY_LOAD_METHOD(SERVICE_LAZY_LOAD_BASE_INIT_KEY);
+#define SERVICE_LAZY_LOAD_EXPORT_OBJC_METHOD(KEY, REPEATABLE) \
+  ServiceLazyLoadDataDefine(KEY, REPEATABLE, ServiceLazyLoadTypeObjCMethod, __func__)
 
-#define LynxSegmentName "__LYNX__DATA"
-#define LynxSectionName "__LYNX__SECTION"
-#define LynxSectionSeparator ","
+#define ServiceLazyLoadSegmentName "__LYNX__DATA"
+#define ServiceLazyLoadSectionName "__LYNX__SECTION"
+#define ServiceLazyLoadSectionSeperator ","
 
-#define LynxSectionFullName LynxSegmentName LynxSectionSeparator LynxSectionName
+#define ServiceLazyLoadSectionFullName \
+  ServiceLazyLoadSegmentName ServiceLazyLoadSectionSeperator ServiceLazyLoadSectionName
 
-#define LynxIdentifier(COUNTER) LYNX_LAZY_CONCAT(__LYNX_ID__, COUNTER)
+#define ServiceLazyLoadIdentifier(COUNTER) SERVICE_LAZY_LOAD_LAZY_CONCAT(__LYNX_ID__, COUNTER)
 
-#define LynxUniqueIdentifier LynxIdentifier(__COUNTER__)
+#define ServiceLazyLoadUniqueIdentifier ServiceLazyLoadIdentifier(__COUNTER__)
 
-#define LynxDataDefine(KEY, REPEATABLE, TYPE, VALUE)                                         \
-  __attribute__((used, no_sanitize_address,                                                  \
-                 section(LynxSectionFullName))) static const LynxData LynxUniqueIdentifier = \
-      (LynxData) {                                                                           \
-    TYPE, REPEATABLE, KEY, (void *)VALUE                                                     \
-  }
-
-/**
- * Register ui class when lynx was initialized firstly which will be used by LynxUIOwner.
- *
- * the order of registration is not exact. It's possible that the
- * previous ui will be replace by the current class with the same name.
- *
- * @param name, the tag name used for displaying in front-end
- */
-#define LYNX_LAZY_REGISTER_UI(name)                                               \
-  +(void)lynxLazyLoad {                                                           \
-    LYNX_BASE_INIT_METHOD [LynxComponentRegistry registerUI:self withName:@name]; \
-  }
-
-/**
- * Register shadow node class when lynx was initialized firstly which will be used by
- * LynxShadowNodeOwner.
- *
- * the order of registration is not exact. It's possible that the
- * previous ui will be replace by the current class with the same name.
- *
- * @param name, the tag name used for displaying in front-end
- */
-
-#define LYNX_LAZY_REGISTER_SHADOW_NODE(name)                                              \
-  +(void)lynxLazyLoad {                                                                   \
-    LYNX_BASE_INIT_METHOD [LynxComponentRegistry registerShadowNode:self withName:@name]; \
+#define ServiceLazyLoadDataDefine(KEY, REPEATABLE, TYPE, VALUE)                             \
+  __attribute__((used, no_sanitize_address,                                                 \
+                 section(ServiceLazyLoadSectionFullName))) static const ServiceLazyLoadData \
+      ServiceLazyLoadUniqueIdentifier = (ServiceLazyLoadData) {                             \
+    TYPE, REPEATABLE, KEY, (void *)VALUE                                                    \
   }
 
 /**
  * Code will be executed util lynxEnv was initialized when LazyLoad is true
  */
-#define LYNX_LOAD_LAZY(Codec) \
-  +(void)lynxLazyLoad {       \
-    LYNX_BASE_INIT_METHOD     \
-    Codec                     \
+#define SERVICE_LOAD_LAZY(Codec)       \
+  +(void)lynxLazyLoad {                \
+    SERVICE_LAZY_LOAD_BASE_INIT_METHOD \
+    Codec                              \
   }
 
 #endif  // DARWIN_SERVICE_API_LYNXLAZYLOAD_H_
