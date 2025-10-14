@@ -18,24 +18,24 @@
 
 @implementation LynxServices
 
-LYNX_LOAD_LAZY(static dispatch_once_t onceToken; dispatch_once(&onceToken, ^{
-                 unsigned int methodCount = 0;
-                 Method *methods =
-                     class_copyMethodList(object_getClass([self class]), &methodCount);
-                 NSString *prefix = @STRINGIFY_(LYNX_AUTO_REGISTER_SERVICE_PREFIX);
-                 for (unsigned int i = 0; i < methodCount; i++) {
-                   Method method = methods[i];
-                   SEL selector = method_getName(method);
-                   if ([NSStringFromSelector(selector) hasPrefix:prefix]) {
-                     IMP imp = method_getImplementation(method);
-                     LynxServiceEntry *entry =
-                         ((LynxServiceEntry * (*)(id, SEL)) imp)(self, selector);
-                     [LynxServices registerServiceWithProtocol:entry->classObj
-                                                      protocol:entry->protocolObj];
-                   }
-                 }
-                 free(methods);
-               });)
+SERVICE_LOAD_LAZY(static dispatch_once_t onceToken; dispatch_once(&onceToken, ^{
+                    unsigned int methodCount = 0;
+                    Method *methods =
+                        class_copyMethodList(object_getClass([self class]), &methodCount);
+                    NSString *prefix = @STRINGIFY_(LYNX_AUTO_REGISTER_SERVICE_PREFIX);
+                    for (unsigned int i = 0; i < methodCount; i++) {
+                      Method method = methods[i];
+                      SEL selector = method_getName(method);
+                      if ([NSStringFromSelector(selector) hasPrefix:prefix]) {
+                        IMP imp = method_getImplementation(method);
+                        LynxServiceEntry *entry =
+                            ((LynxServiceEntry * (*)(id, SEL)) imp)(self, selector);
+                        [LynxServices registerServiceWithProtocol:entry->classObj
+                                                         protocol:entry->protocolObj];
+                      }
+                    }
+                    free(methods);
+                  });)
 
 + (instancetype)sharedInstance {
   static dispatch_once_t onceToken;
