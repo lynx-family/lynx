@@ -267,7 +267,7 @@ typedef NS_ENUM(NSInteger, LynxBackgroundRuntimeState) {
         group_thread_name, [_options groupID], std::move(native_runtime), _runtime_observer, loader,
         native_module_manager, bundle_creator, _options.group.whiteBoard,
         std::move(on_runtime_actor_created), [_options preloadJSPath], [_options bytecodeUrlString],
-        runtime_flags, nullptr, false);
+        runtime_flags, nullptr, debuggable, false);
 
     const auto& runtime_actor = _runtime_standalone_bundle.runtime_actor_;
     _js_proxy = lynx::shell::JSProxyDarwin::Create(
