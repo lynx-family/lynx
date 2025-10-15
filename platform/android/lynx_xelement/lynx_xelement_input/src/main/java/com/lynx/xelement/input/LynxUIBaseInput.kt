@@ -232,9 +232,13 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
             }
 
         }
-        mContext.lynxView.keyboardEvent.start()
-        mContext.lynxView.keyboardEvent.addKeyboardEventObserver(this)
+        mContext.lynxView?.let {
+          it.keyboardEvent.start()
+          it.keyboardEvent.addKeyboardEventObserver(this)
+        }
         editText.hint = ""
+        // If context is application, the focusableInTouchMode in default style may be false
+        editText.isFocusableInTouchMode = true
         return  editText
     }
 
@@ -869,7 +873,7 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
     }
   
   private fun handleAvoidKeyboard(keyboardDisplayed: Boolean) : Float {
-    if (!mAvoidKeyboardInLynxView) {
+    if (!mAvoidKeyboardInLynxView || mContext.lynxView == null) {
       return 0.0f
     }
     if (keyboardDisplayed) {
