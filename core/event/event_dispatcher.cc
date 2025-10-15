@@ -78,52 +78,58 @@ DispatchEventResult EventDispatcher::Dispatch() {
 
   // TODO(hexionghui): global-bind event, eg: global-bindtap
 
-  // no capture and bubble, eg: bindscroll
-  if (!event_->bubbles()) {
+  // capture, eg: capture-bindtap
+  if (event_->capture()) {
+    for (auto item = path.rbegin(); item != path.rend(); ++item) {
+      fml::WeakPtr<EventTarget> target = *item;
+      if (!target) {
+        LOGE(
+            "EventDispatcher::Dispatch capture error: the target of event path "
+            "is null.");
+        continue;
+      }
+      if (event_->target() == target) {
+        // target is handled by target phase.
+        continue;
+      }
+      event_->set_event_phase(Event::PhaseType::kCapturingPhase);
+      event_->set_current_target(*item);
+      auto result = (*item)->DispatchEvent(*event_);
+      consumed |= result.consumed;
+      if (result.IsCanceled()) {
+        return result;
+      }
+    }
+  }
+
+  // at target
+  {
     event_->set_event_phase(Event::PhaseType::kAtTarget);
     event_->set_current_target(target_->GetWeakTarget());
     auto result = target_->DispatchEvent(*event_);
-    return {EventCancelType::kCanceledByDefaultEventHandler, result.consumed};
-  }
-
-  // capture, eg: capture-bindtap
-  for (auto item = path.rbegin(); item != path.rend(); ++item) {
-    fml::WeakPtr<EventTarget> target = *item;
-    if (!target) {
-      LOGE(
-          "EventDispatcher::Dispatch capture error: the target of event path "
-          "is null.");
-      continue;
-    }
-    event_->set_event_phase((event_->target() == target)
-                                ? Event::PhaseType::kAtTarget
-                                : Event::PhaseType::kCapturingPhase);
-    event_->set_current_target(*item);
-    auto result = (*item)->DispatchEvent(*event_);
     consumed |= result.consumed;
-    if (result.IsCanceled()) {
-      return result;
-    }
   }
 
   // bubble, eg: bindtap
-  for (auto& item : path) {
-    if (!item) {
-      LOGE(
-          "EventDispatcher::Dispatch capture error: the target of event path "
-          "is null.");
-      continue;
-    }
-    if (event_->target() == item) {
-      // target is handled by capture phase.
-      continue;
-    }
-    event_->set_event_phase(Event::PhaseType::kBubblingPhase);
-    event_->set_current_target(item);
-    auto result = item->DispatchEvent(*event_);
-    consumed |= result.consumed;
-    if (result.IsCanceled()) {
-      return result;
+  if (event_->bubbles()) {
+    for (auto& item : path) {
+      if (!item) {
+        LOGE(
+            "EventDispatcher::Dispatch capture error: the target of event path "
+            "is null.");
+        continue;
+      }
+      if (event_->target() == item) {
+        // target is handled by target phase.
+        continue;
+      }
+      event_->set_event_phase(Event::PhaseType::kBubblingPhase);
+      event_->set_current_target(item);
+      auto result = item->DispatchEvent(*event_);
+      consumed |= result.consumed;
+      if (result.IsCanceled()) {
+        return result;
+      }
     }
   }
 

@@ -52,14 +52,19 @@ class EventDispatcher;
 
 class Event : public lepus::RefCounted {
  public:
-  enum class Bubbles {
-    kYes,
+  enum class Capture {
     kNo,
+    kYes,
+  };
+
+  enum class Bubbles {
+    kNo,
+    kYes,
   };
 
   enum class Cancelable {
-    kYes,
     kNo,
+    kYes,
   };
 
   enum class PhaseType {
@@ -100,15 +105,16 @@ class Event : public lepus::RefCounted {
     kCustomEvent,
   };
 
-  Event(const std::string&, int64_t, EventType, Bubbles, Cancelable,
+  Event(const std::string&, int64_t, EventType, Capture, Bubbles, Cancelable,
         ComposedMode, PhaseType);
 
-  Event(const std::string&, EventType, Bubbles, Cancelable, ComposedMode,
-        PhaseType);
+  Event(const std::string&, EventType, Capture, Bubbles, Cancelable,
+        ComposedMode, PhaseType);
 
-  Event(const std::string&, EventType, Bubbles, Cancelable, ComposedMode);
+  Event(const std::string&, EventType, Capture, Bubbles, Cancelable,
+        ComposedMode);
 
-  Event(const std::string&, int64_t, EventType, Bubbles, Cancelable,
+  Event(const std::string&, int64_t, EventType, Capture, Bubbles, Cancelable,
         ComposedMode, PhaseType, const lepus::Value&);
 
   virtual ~Event() = default;
@@ -119,6 +125,7 @@ class Event : public lepus::RefCounted {
   void set_event_type(EventType event_type) { event_type_ = event_type; }
   int64_t time_stamp() const { return time_stamp_; };
   const std::string& type() const { return type_; }
+  bool capture() const { return capture_; }
   bool bubbles() const { return bubbles_; }
   bool cancelable() const { return cancelable_; }
   bool composed() const { return composed_; }
@@ -172,6 +179,7 @@ class Event : public lepus::RefCounted {
   int64_t time_stamp_;
   std::string type_;
 
+  bool capture_ : 1;
   bool bubbles_ : 1;
   bool cancelable_ : 1;
   bool composed_ : 1;

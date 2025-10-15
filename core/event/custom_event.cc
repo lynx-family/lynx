@@ -14,13 +14,15 @@ namespace event {
 
 CustomEvent::CustomEvent(const std::string& event_name,
                          const lepus::Value& event_param,
-                         const std::string& param_name, float time_stamp)
-    : Event(event_name, time_stamp, Event::EventType::kCustomEvent,
-            Event::Bubbles::kNo, Event::Cancelable::kYes,
-            Event::ComposedMode::kComposed, Event::PhaseType::kNone),
+                         const std::string& param_name, int64_t time_stamp,
+                         Capture capture, Bubbles bubbles,
+                         Cancelable cancelable, ComposedMode composed_mode,
+                         PhaseType phase_type)
+    : Event(event_name, time_stamp, EventType::kCustomEvent, capture, bubbles,
+            cancelable, composed_mode, phase_type),
       event_param_(event_param),
       param_name_(param_name) {
-  event_type_ = Event::EventType::kCustomEvent;
+  event_type_ = EventType::kCustomEvent;
 }
 
 void CustomEvent::HandleEventCustomDetail() {

@@ -999,9 +999,13 @@ RENDERER_FUNCTION_CC(FiberCreateEvent) {
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(options, 2, Object, FiberCreateEvent);
   CONVERT_ARG_AND_CHECK_FOR_ELEMENT_API(detail, 3, Object, FiberCreateEvent);
 
+  BASE_STATIC_STRING_DECL(kCapture, "capture");
   BASE_STATIC_STRING_DECL(kBubbles, "bubbles");
   BASE_STATIC_STRING_DECL(kCancelable, "cancelable");
   BASE_STATIC_STRING_DECL(kComposed, "composed");
+  bool capture = options->Contains(kCapture)
+                     ? options->GetProperty(kCapture).Bool()
+                     : false;
   bool bubbles = options->Contains(kBubbles)
                      ? options->GetProperty(kBubbles).Bool()
                      : false;
@@ -1017,6 +1021,7 @@ RENDERER_FUNCTION_CC(FiberCreateEvent) {
   auto event = fml::MakeRefCounted<event::Event>(
       name->StdString(), timestamp,
       static_cast<event::Event::EventType>(type->Number()),
+      static_cast<event::Event::Capture>(capture),
       static_cast<event::Event::Bubbles>(bubbles),
       static_cast<event::Event::Cancelable>(cancelable),
       static_cast<event::Event::ComposedMode>(composed),
@@ -3790,15 +3795,35 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
     // If callback is undefined, remove event.
     element->RemoveEvent(name->String(), type->String());
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
-      element->RemoveEventListeners(name->StdString());
+      auto& event_bind_catch_map = element->GetBindEventCatchMap();
+      if (is_capture_catch) {
+        event_bind_catch_map[name->StdString()].capture_catch = 0;
+      }
+      if (is_bubble_catch) {
+        event_bind_catch_map[name->StdString()].bubble_catch = 0;
+      }
+      auto handler_name = callback->StdString();
+
+      auto event_options = event::EventListener::Options(
+          is_capture || is_capture_catch, false, false, false,
+          is_capture_catch || is_bubble_catch, is_global_bind);
+      element->RemoveEventListener(
+          name->StdString(),
+          std::make_unique<event::ClosureEventListener>(
+              [](lepus::Value args) {}, event_options,
+              event::ClosureEventListener::ClosureType::kJS));
     }
   } else if (callback->IsString()) {
     element->SetJSEventHandler(name->String(), type->String(),
                                callback->String());
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
-      event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
-      event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;
+      if (is_capture_catch) {
+        event_bind_catch_map[name->StdString()].capture_catch = 1;
+      }
+      if (is_bubble_catch) {
+        event_bind_catch_map[name->StdString()].bubble_catch = 1;
+      }
       auto handler_name = callback->StdString();
 
       // remove the listener firstly to adapt rebind
@@ -3809,7 +3834,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
               [](lepus::Value args) {}, event_options,
-              event::ClosureEventListener::ClosureType::kJS, *callback));
+              event::ClosureEventListener::ClosureType::kJS));
       element->AddEventListener(
           name->StdString(),
           std::make_unique<event::ClosureEventListener>(
@@ -3842,8 +3867,7 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
                   }
                 }
               },
-              event_options, event::ClosureEventListener::ClosureType::kJS,
-              *callback));
+              event_options, event::ClosureEventListener::ClosureType::kJS));
     }
   } else if (callback->IsCallable()) {
     element->SetLepusEventHandler(name->String(), type->String(),
@@ -3862,8 +3886,12 @@ RENDERER_FUNCTION_CC(FiberAddEvent) {
     }
     if (tasm->EnableEventHandleRefactor() || tasm->IsEmbeddedModeOn()) {
       auto& event_bind_catch_map = element->GetBindEventCatchMap();
-      event_bind_catch_map[name->StdString()].capture_catch = is_capture_catch;
-      event_bind_catch_map[name->StdString()].bubble_catch = is_bubble_catch;
+      if (is_capture_catch) {
+        event_bind_catch_map[name->StdString()].capture_catch = 1;
+      }
+      if (is_bubble_catch) {
+        event_bind_catch_map[name->StdString()].bubble_catch = 1;
+      }
 
       // remove the listener firstly to adapt rebind
       auto event_options = event::EventListener::Options(

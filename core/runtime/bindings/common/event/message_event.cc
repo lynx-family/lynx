@@ -59,8 +59,8 @@ MessageEvent::MessageEvent(const std::string& type, int64_t time_stamp,
                            ContextProxy::Type origin, ContextProxy::Type target,
                            std::unique_ptr<pub::Value> message)
     : event::Event(type, time_stamp, event::Event::EventType::kMessageEvent,
-                   Bubbles::kNo, Cancelable::kNo, ComposedMode::kScoped,
-                   PhaseType::kAtTarget),
+                   Capture::kNo, Bubbles::kNo, Cancelable::kNo,
+                   ComposedMode::kScoped, PhaseType::kAtTarget),
       origin_(origin),
       target_(target),
       message_(std::move(message)) {}

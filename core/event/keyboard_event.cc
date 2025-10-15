@@ -9,8 +9,9 @@ namespace event {
 
 KeyboardEvent::KeyboardEvent(const std::string& event_name,
                              const std::string& key_code)
-    : Event(event_name, Event::EventType::kKeyboardEvent, Event::Bubbles::kYes,
-            Event::Cancelable::kNo, Event::ComposedMode::kComposed) {
+    : Event(event_name, Event::EventType::kKeyboardEvent, Event::Capture::kYes,
+            Event::Bubbles::kYes, Event::Cancelable::kNo,
+            Event::ComposedMode::kComposed) {
   key_code_ = key_code;
 }
 
