@@ -360,12 +360,13 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
   } else if (key.IsEqual(list::kListPlatformInfo) ||
              key.IsEqual(list::kFiberListDiffInfo)) {
+    std::pair<list::ListAdapterDiffResult, bool> result;
     if (key.IsEqual(list::kListPlatformInfo)) {
-      diff_result_ = list_adapter_->UpdateDataSource(value);
+      result = list_adapter_->UpdateDataSource(value);
     } else if (key.IsEqual(list::kFiberListDiffInfo)) {
-      diff_result_ = list_adapter_->UpdateFiberDataSource(value);
+      result = list_adapter_->UpdateFiberDataSource(value);
     }
-    if (diff_result_ != list::ListAdapterDiffResult::kNone) {
+    if (result.first != list::ListAdapterDiffResult::kNone) {
       should_mark_layout_dirty = true;
     }
     has_valid_diff_ = should_mark_layout_dirty;
@@ -375,11 +376,13 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     }
     should_set_props = false;
     need_update_item_holders_ = true;
+    animation_diff_result_ =
+        result.second ? result.first : list::ListAdapterDiffResult::kNone;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
     if (value.StdString() == list::kUpdateAnimationTypeDefault) {
-      list_animation_manager_->SetUpdateAnimation(true);
+      update_animation_ = true;
     } else {
-      list_animation_manager_->SetUpdateAnimation(false);
+      update_animation_ = false;
     }
   } else if (key.IsEqual(list::kListType)) {
     // list-type
@@ -478,6 +481,14 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
 
 void ListContainerImpl::OnLayoutChildren(
     const std::shared_ptr<PipelineOptions>& options) {
+  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
+    list_animation_manager_->SetUpdateAnimation(update_animation_);
+  }
+  if (list_animation_manager_->UpdateAnimation() &&
+      animation_diff_result_ != list::ListAdapterDiffResult::kNone) {
+    list_animation_manager_->UpdateDiffResult(animation_diff_result_);
+  }
+  animation_diff_result_ = list::ListAdapterDiffResult::kNone;
   if (list_layout_manager_) {
     if (options->need_timestamps) {
       tasm::TimingCollector::Instance()->Mark(
@@ -498,9 +509,6 @@ void ListContainerImpl::OnLayoutChildren(
       }
       if (!enable_batch_render()) {
         list_layout_manager_->OnLayoutChildren();
-        if (list_animation_manager_->UpdateAnimation()) {
-          list_animation_manager_->OnLayoutChildren();
-        }
       } else {
         list_layout_manager_->OnBatchLayoutChildren();
       }
@@ -534,10 +542,18 @@ bool ListContainerImpl::UpdateAnimation() const {
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
-  if (list_animation_manager_->UpdateAnimation() && has_valid_diff_) {
-    list_animation_manager_->UpdateDiffResult(diff_result_);
+  if (layout_type_ == list::LayoutType::kWaterFall) {
+    // Consider the order of resolving list-type and update-animation is not
+    // fixed, we should move this logic in PropsUpdateFinish().
+    // TODO(dongjiajian): support update animation in waterfall.
+    update_animation_ = false;
   }
-  diff_result_ = list::ListAdapterDiffResult::kNone;
+  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
+    // Update-animation is in the `onLayoutChildren` process, because the
+    // animation will start at the `update-diff-result`, we need to ensure
+    // animation is happened in the right time.
+    element_->MarkLayoutDirty();
+  }
   if (span_count_changed_) {
     span_count_changed_ = false;
     if (!enable_dynamic_span_count_) {

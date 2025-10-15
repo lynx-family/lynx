@@ -37,6 +37,7 @@ class AnimationItemHolder final : public ItemHolder {
   // 1.f means the opacity animation of 1 -> 0, and the 0.f is the opposite.
   float animation_origin_opacity_{std::numeric_limits<float>::quiet_NaN()};
   float content_size_{std::numeric_limits<float>::quiet_NaN()};
+  float container_width_{std::numeric_limits<float>::quiet_NaN()};
   list::ItemHolderAnimationType animation_type_{
       list::ItemHolderAnimationType::kNone};
 };
