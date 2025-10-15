@@ -26,9 +26,9 @@ class TouchEvent : public Event {
 
   TouchEvent(const std::string& event_name, float x = 0, float y = 0,
              float page_x = 0, float page_y = 0, float client_x = 0,
-             float client_y = 0, float time_stamp = 0);
+             float client_y = 0, int64_t time_stamp = 0);
   TouchEvent(const std::string& event_name, const lepus::Value& targets_touches,
-             float time_stamp = 0);
+             int64_t time_stamp = 0);
 
   float x() const { return x_; }
   float y() const { return y_; }

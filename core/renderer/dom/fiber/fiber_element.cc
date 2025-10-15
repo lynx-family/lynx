@@ -4192,25 +4192,11 @@ lepus::Value FiberElement::GetEventControlInfo(const std::string &event_type,
   auto array = lepus::CArray::Create();
   if (InComponent()) {
     array->emplace_back(false);
-    array->emplace_back("");
+    array->emplace_back(ParentComponentIdString());
   } else {
     array->emplace_back(true);
-    array->emplace_back(ParentComponentId());
+    array->emplace_back("");
   }
-  if (is_global) {
-    const auto &bind_event_map = global_bind_event_map();
-    if (auto it = bind_event_map.find(event_type); it != bind_event_map.end()) {
-      auto event_handler = it->second.get();
-      array->emplace_back(event_handler->function().str());
-    }
-  } else {
-    const auto &bind_event_map = event_map();
-    if (auto it = bind_event_map.find(event_type); it != bind_event_map.end()) {
-      auto event_handler = it->second.get();
-      array->emplace_back(event_handler->function().str());
-    }
-  }
-
   return lepus::Value(std::move(array));
 }
 

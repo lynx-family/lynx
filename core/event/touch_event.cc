@@ -22,10 +22,10 @@ bool TouchEvent::long_press_consumed_ = false;
 
 TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
                        float page_x, float page_y, float client_x,
-                       float client_y, float time_stamp)
-    : Event(event_name, time_stamp, Event::EventType::kTouchEvent,
-            Event::Bubbles::kYes, Event::Cancelable::kYes,
-            Event::ComposedMode::kComposed, Event::PhaseType::kNone),
+                       float client_y, int64_t time_stamp)
+    : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
+            Bubbles::kYes, Cancelable::kYes, ComposedMode::kComposed,
+            PhaseType::kNone),
       x_(x),
       y_(y),
       page_x_(page_x),
@@ -33,17 +33,17 @@ TouchEvent::TouchEvent(const std::string& event_name, float x, float y,
       client_x_(client_x),
       client_y_(client_y),
       identifier_(GetNextUniqueTouchEventID()) {
-  event_type_ = Event::EventType::kTouchEvent;
+  event_type_ = EventType::kTouchEvent;
 }
 
 TouchEvent::TouchEvent(const std::string& event_name,
-                       const lepus::Value& targets_touches, float time_stamp)
-    : Event(event_name, time_stamp, Event::EventType::kTouchEvent,
-            Event::Bubbles::kYes, Event::Cancelable::kYes,
-            Event::ComposedMode::kComposed, Event::PhaseType::kNone),
+                       const lepus::Value& targets_touches, int64_t time_stamp)
+    : Event(event_name, time_stamp, EventType::kTouchEvent, Capture::kYes,
+            Bubbles::kYes, Cancelable::kYes, ComposedMode::kComposed,
+            PhaseType::kNone),
       is_multi_touch_(true),
       targets_touches_(targets_touches) {
-  event_type_ = Event::EventType::kTouchEvent;
+  event_type_ = EventType::kTouchEvent;
 }
 
 void TouchEvent::HandleEventCustomDetail() {

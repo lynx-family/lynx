@@ -73,9 +73,24 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   // excludes new event listeners.
   EventListenerVector copy = *vector;
   bool consumed = false;
+  // When in the target phase, the listeners need to be sorted in a stable order
+  // based on the capture order.
+  if (event.event_phase() == Event::PhaseType::kAtTarget) {
+    std::stable_sort(copy.begin(), copy.end(),
+                     [](const std::shared_ptr<EventListener>& a,
+                        const std::shared_ptr<EventListener>& b) {
+                       return a->GetOptions().IsCapture() &&
+                              !b->GetOptions().IsCapture();
+                     });
+  }
   for (auto& listener : copy) {
     if (event.event_phase() == Event::PhaseType::kCapturingPhase &&
         !listener->GetOptions().IsCapture()) {
+      continue;
+    }
+    // Align the logic of capturePhase:false of miniapp.
+    if ((event.event_phase() == Event::PhaseType::kAtTarget) &&
+        !event.capture() && listener->GetOptions().IsCapture()) {
       continue;
     }
     if ((event.event_phase() == Event::PhaseType::kBubblingPhase) &&
@@ -102,8 +117,7 @@ DispatchEventResult EventTarget::DispatchEvent(Event& event) {
   }
 
   bool is_catch_in_capture =
-      (event.event_phase() == Event::PhaseType::kCapturingPhase ||
-       event.event_phase() == Event::PhaseType::kAtTarget) &&
+      event.event_phase() == Event::PhaseType::kCapturingPhase &&
       IsEventCaptureCatch(event.type());
   bool is_catch_in_bubble =
       event.event_phase() == Event::PhaseType::kBubblingPhase &&
