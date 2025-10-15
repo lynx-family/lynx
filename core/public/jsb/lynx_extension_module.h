@@ -35,6 +35,9 @@ class LynxExtensionModule : public LynxNativeModule {
                                     const std::string& url) = 0;
   virtual void SetRuntimeDetachedState() = 0;
 
+  virtual void SetEnteringForegroundState() = 0;
+  virtual void SetEnteringBackgroundState() = 0;
+
   void RegisterMethod(
       const piper::NativeModuleMethod& method,
       piper::LynxNativeModule::NativeModuleInvocation invocation) {

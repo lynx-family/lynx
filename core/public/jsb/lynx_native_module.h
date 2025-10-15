@@ -74,7 +74,9 @@ class LYNX_EXPORT_FOR_DEVTOOL LynxNativeModule {
   // Returns a list of NativeModuleMethod you registered
   virtual const NativeModuleMethods& GetMethodList() const { return methods_; }
 
-  void SetDelegate(std::weak_ptr<Delegate> delegate) { delegate_ = delegate; }
+  virtual void SetDelegate(std::weak_ptr<Delegate> delegate) {
+    delegate_ = delegate;
+  }
   void SetRuntimeProxy(std::weak_ptr<shell::LynxRuntimeProxy> proxy) {
     runtime_proxy_ = proxy;
   }

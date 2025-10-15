@@ -31,8 +31,25 @@ struct ModuleCreatorInfo {
 class ExtensionModuleFactory : public NativeModuleFactory {
  public:
   ExtensionModuleFactory()
-      : env_(nullptr), vsync_observer_(nullptr), task_runner_(nullptr) {}
+      : env_(nullptr),
+        vsync_observer_(nullptr),
+        task_runner_(nullptr),
+        ui_delegate_(nullptr) {}
   virtual ~ExtensionModuleFactory() = default;
+
+  // Called on the main thread
+  virtual void OnLynxViewCreate(tasm::UIDelegate* ui_delegate) {
+    ui_delegate_ = ui_delegate;
+  }
+
+  // Called on the main thread
+  virtual void OnLynxViewDestroy() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& pair : module_map_) {
+      pair.second->SetLynxViewDestroyedState();
+    }
+    ui_delegate_ = nullptr;
+  }
 
   // Called on the BTS thread
   void OnRuntimeAttach(
@@ -62,6 +79,20 @@ class ExtensionModuleFactory : public NativeModuleFactory {
     }
   }
 
+  void OnEnterForeground() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& pair : module_map_) {
+      pair.second->SetEnteringForegroundState();
+    }
+  }
+
+  void OnEnterBackground() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (const auto& pair : module_map_) {
+      pair.second->SetEnteringBackgroundState();
+    }
+  }
+
   // LynxExtensionModule is created using lazy loading by default. If lazy
   // loading is not used, it is created when OnLynxViewCreate is called.
   virtual void RegisterExtensionModule(const std::string& name,
@@ -80,6 +111,7 @@ class ExtensionModuleFactory : public NativeModuleFactory {
   napi_env env_;
   std::shared_ptr<runtime::IVSyncObserver> vsync_observer_;
   fml::RefPtr<fml::TaskRunner> task_runner_;
+  tasm::UIDelegate* ui_delegate_;
 };
 
 }  // namespace piper
