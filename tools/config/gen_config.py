@@ -13,6 +13,17 @@ from jinja2 import Template
 from config_utils import clang_format
 import argparse
 
+_accounts_set = None
+_accounts_mapping_path = os.path.normpath(
+    os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        os.path.pardir,
+        os.path.pardir,
+        os.path.pardir,
+        "accounts-mapping.yml",
+    )
+)
+
 
 class Config:
     _type_known_list = ["PackageInstanceBundleModuleMode", "PackageInstanceDSL"]
@@ -75,13 +86,11 @@ class Config:
         self.js_value_type = js_value_type
         self.since = since
         self.deprecated = deprecated
-        self.support_platform = support_platform
+        self.support_platform = ", ".join(support_platform)
 
         if self.value_type == "bool" or self.value_type == "boolean":
             self.value_type = "bool"
-            self.default_value = "true" if self.default_value else "false"
             self.js_value_type = "boolean"
-            self.js_default_value = "true" if self.default_value else "false"
         elif self.value_type == "string":
             self.value_type = "std::string"
             self.setter_input_type = "const std::string&"
@@ -92,7 +101,9 @@ class Config:
             else:
                 self.default_value = '"' + self.default_value + '"'
                 self.js_default_value = self.default_value
-        else:
+        elif self.value_type == "TernaryBool":
+            self.js_value_type = "boolean"
+        elif not self.js_value_type:
             self.js_value_type = "undefined"
 
         if self.default_value is None:
@@ -125,6 +136,64 @@ class Config:
         self.read_settings = read_settings
         self.read_native = read_native
 
+    def is_invalid(self):
+        if self.deprecated:
+            return True
+        if not (self.desc and isinstance(self.desc, str)):
+            print(
+                f"Config {self.name} config description field '{self.desc}' is invalid, please ensure it is not empty and configured as a string.",
+                file=sys.stderr,
+            )
+            return False
+        if not isinstance(self.default_value, str):
+            print(
+                f"Config {self.name} defaultValue field '{self.default_value}' is invalid, please configured as a string.",
+                file=sys.stderr,
+            )
+            return False
+        if not (self.value_type and isinstance(self.value_type, str)):
+            print(
+                f"Config {self.name} valueType field '{self.value_type}' is invalid, please ensure it is not empty and configured as a string.",
+                file=sys.stderr,
+            )
+            return False
+        if not (self.since and isinstance(self.since, str)):
+            print(
+                f"Config {self.name} since field '{self.since}' is invalid, please ensure it is not empty and configured as a string.",
+                file=sys.stderr,
+            )
+            return False
+        if not (self.author and isinstance(self.author, str) and self._check_author()):
+            print(
+                f"Config {self.name} author field '{self.author}' is invalid, please ensure it is not empty and configured as a string.",
+                file=sys.stderr,
+            )
+            return False
+        return True
+
+    def _check_author(self) -> bool:
+        global _accounts_set
+        if _accounts_set is None:
+            _accounts_set = set()
+            if not os.path.exists(_accounts_mapping_path):
+                print(
+                    f"please ensure {_accounts_mapping_path} file exists.",
+                    file=sys.stderr,
+                )
+            else:
+                with open(_accounts_mapping_path, "r") as f:
+                    accounts_mapping = yaml.safe_load(f)
+                    for account in accounts_mapping.get("mappings"):
+                        _accounts_set.add(account.get("external_username"))
+        if not _accounts_set or self.author in _accounts_set:
+            return True
+        else:
+            print(
+                f"Config {self.name} author field '{self.author}' is invalid, please ensure it is in the {_accounts_mapping_path} file.",
+                file=sys.stderr,
+            )
+            return False
+
 
 _binary_decoder_path = os.path.abspath(
     os.path.join(
@@ -143,7 +212,7 @@ _config_yaml_path = os.path.join(_binary_decoder_path, "lynx_config.yml")
 def parse_config() -> list[Config]:
     with open(_config_yaml_path, "r") as f:
         config = yaml.safe_load(f)
-    configs = []
+    configs: list[Config] = []
     for key, value in config.items():
         configs.append(
             Config(
@@ -168,6 +237,9 @@ def parse_config() -> list[Config]:
                 read_native=value.get("readNative", False),
             )
         )
+    for config in configs:
+        if not config.is_invalid():
+            return []
     return configs
 
 
@@ -197,8 +269,7 @@ def render_code_content(template_path: str, output_path: str, configs: list[Conf
             print(f"No need to update {output_path}")
 
 
-def gen_page_config_decode():
-    configs = parse_config()
+def gen_page_config_decode(configs: list[Config]):
     config_decode_tmpl_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_decoder.tmpl",
@@ -213,8 +284,7 @@ def gen_page_config_decode():
     )
 
 
-def gen_lynx_config():
-    configs = parse_config()
+def gen_lynx_config(configs: list[Config]):
     lynx_config_header_tmpl_path = os.path.join(
         _binary_decoder_path,
         "lynx_config_header.tmpl",
@@ -248,8 +318,7 @@ def gen_lynx_config():
     render_code_content(config_const_tmpl_path, lynx_config_const_header_path, configs)
 
 
-def gen_rspeedy_plugin_config_types():
-    configs = parse_config()
+def gen_rspeedy_plugin_config_types(configs: list[Config]):
     rspeedy_plugin_config_types_tmpl_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "rspeedy_plugin_config_types.tmpl",
@@ -265,8 +334,7 @@ def gen_rspeedy_plugin_config_types():
     )
 
 
-def gen_config_doc():
-    configs = parse_config()
+def gen_config_doc(configs: list[Config]):
     config_doc_tmpl_path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
         "lynx_config_doc.tmpl",
@@ -275,7 +343,14 @@ def gen_config_doc():
         os.path.dirname(os.path.abspath(__file__)),
         "lynx_config_doc.mdx",
     )
-    render_code_content(config_doc_tmpl_path, config_doc_header_path, configs)
+
+    configs_for_docs = configs.copy()
+    valid_configs = [config for config in configs_for_docs if not config.deprecated]
+    deprecated_configs = [config for config in configs_for_docs if config.deprecated]
+    valid_configs.sort(key=lambda c: c.name.lower())
+    deprecated_configs.sort(key=lambda c: c.name.lower())
+    configs_for_docs = valid_configs + deprecated_configs
+    render_code_content(config_doc_tmpl_path, config_doc_header_path, configs_for_docs)
 
 
 def main():
@@ -285,17 +360,21 @@ def main():
     arg_parser.add_argument("--gen-config-doc", action="store_true")
     args = arg_parser.parse_args()
 
+    configs: list[Config] = parse_config()
+    if not configs:
+        sys.exit(-1)
+
     if args.gen_lynx_config:
         # gen page config decode
-        gen_page_config_decode()
+        gen_page_config_decode(configs)
         # gen lynx config constants
-        gen_lynx_config()
+        gen_lynx_config(configs)
     if args.gen_rspeedy_plugin_config_types:
         # gen rspeedy plugin config types
-        gen_rspeedy_plugin_config_types()
+        gen_rspeedy_plugin_config_types(configs)
     if args.gen_config_doc:
         # gen config doc
-        gen_config_doc()
+        gen_config_doc(configs)
     sys.exit(0)
 
 
