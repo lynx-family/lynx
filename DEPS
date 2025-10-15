@@ -171,6 +171,7 @@ deps = {
         "type": "git",
         "url": "https://chromium.googlesource.com/external/github.com/llvm/llvm-project/libcxx",
         "commit": "64d36e572d3f9719c5d75011a718f33f11126851",
+        "patches": os.path.join(root_dir, 'patches', 'libcxx', '*.patch'),
         "ignore_in_git": True,
     },
     'third_party/libcxxabi': {

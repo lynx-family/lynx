@@ -1,0 +1,153 @@
+From 59816c33fe48bec8bd7c64a47ece65898e8eb6e5 Mon Sep 17 00:00:00 2001
+From: zsy-json <186247581+zsy-jason@users.noreply.github.com>
+Date: Tue, 14 Oct 2025 19:39:17 +0800
+Subject: [PATCH] Fix some issues on windows and linux.
+
+1. Resolve duplicate symbol definition issue of uncaught_exception and uncaught_exceptions on Windows platform;
+2. Resolve duplicate symbol definition issue of nothrow on Windows platform;
+3. The MT compilation option does not take effect, causing MSVCP140.dll to require external dependencies, resulting in a crash that cannot be found;
+4. The GetSystemTimePreciseAsFileTime API was brought Windows 8;
+5. Fix linux compile error.
+---
+ include/system_error                           |  5 +++++
+ src/chrono.cpp                                 | 18 ++++++++----------
+ src/new.cpp                                    |  4 +++-
+ src/support/runtime/exception_msvc.ipp         |  2 ++
+ src/support/runtime/exception_pointer_msvc.ipp | 10 ++++++----
+ 5 files changed, 24 insertions(+), 15 deletions(-)
+
+diff --git a/include/system_error b/include/system_error
+index 98919927b..d93be0e7b 100644
+--- a/include/system_error
++++ b/include/system_error
+@@ -259,8 +259,13 @@ _LIBCPP_FUNC_VIS const error_category& system_category() _NOEXCEPT;
+ namespace __adl_only {
+     // Those cause ADL to trigger but they are not viable candidates,
+     // so they are never actually selected.
++#ifndef __linux__
+     void make_error_condition() = delete;
+     void make_error_code() = delete;
++#else
++    void make_error_condition();
++    void make_error_code();
++#endif
+ } // namespace __adl_only
+ 
+ class _LIBCPP_TYPE_VIS error_condition
+diff --git a/src/chrono.cpp b/src/chrono.cpp
+index 0af89d6a5..284905b7c 100644
+--- a/src/chrono.cpp
++++ b/src/chrono.cpp
+@@ -67,12 +67,12 @@ namespace chrono
+ 
+ #if defined(_LIBCPP_WIN32API)
+ 
++typedef void(WINAPI *GetSystemTimeAsFileTimePtr)(LPFILETIME);
++
+ #if _WIN32_WINNT < _WIN32_WINNT_WIN8
+ 
+ namespace {
+ 
+-typedef void(WINAPI *GetSystemTimeAsFileTimePtr)(LPFILETIME);
+-
+ class GetSystemTimeInit {
+ public:
+   GetSystemTimeInit() {
+@@ -102,14 +102,12 @@ static system_clock::time_point __libcpp_system_clock_now() {
+   static _LIBCPP_CONSTEXPR const seconds nt_to_unix_epoch{11644473600};
+ 
+   FILETIME ft;
+-#if (_WIN32_WINNT >= _WIN32_WINNT_WIN8 && WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)) || \
+-    (_WIN32_WINNT >= _WIN32_WINNT_WIN10)
+-  GetSystemTimePreciseAsFileTime(&ft);
+-#elif !WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)
+-  GetSystemTimeAsFileTime(&ft);
+-#else
+-  GetSystemTimeAsFileTimeFunc.fp(&ft);
+-#endif
++  GetSystemTimeAsFileTimePtr fp = (GetSystemTimeAsFileTimePtr)GetProcAddress(
++        GetModuleHandleW(L"kernel32.dll"), "GetSystemTimePreciseAsFileTime");
++  if (fp == nullptr){
++    fp = GetSystemTimeAsFileTime;
++  }
++  fp(&ft);
+ 
+   filetime_duration d{(static_cast<__int64>(ft.dwHighDateTime) << 32) |
+                        static_cast<__int64>(ft.dwLowDateTime)};
+diff --git a/src/new.cpp b/src/new.cpp
+index 48d6f997f..7ca552bf1 100644
+--- a/src/new.cpp
++++ b/src/new.cpp
+@@ -30,7 +30,9 @@ namespace std
+ {
+ 
+ #ifndef __GLIBCXX__
+-const nothrow_t nothrow{};
++    #ifndef _WIN32
++        const nothrow_t nothrow{};
++    #endif
+ #endif
+ 
+ #ifndef LIBSTDCXX
+diff --git a/src/support/runtime/exception_msvc.ipp b/src/support/runtime/exception_msvc.ipp
+index 7e36c7068..2e6f5bf79 100644
+--- a/src/support/runtime/exception_msvc.ipp
++++ b/src/support/runtime/exception_msvc.ipp
+@@ -76,11 +76,13 @@ void terminate() noexcept
+ #endif // _LIBCPP_NO_EXCEPTIONS
+ }
+ 
++#if !defined(_WIN32)
+ bool uncaught_exception() noexcept { return uncaught_exceptions() > 0; }
+ 
+ int uncaught_exceptions() noexcept {
+     return __uncaught_exceptions();
+ }
++#endif
+ 
+ #if !defined(_LIBCPP_ABI_VCRUNTIME)
+ bad_cast::bad_cast() noexcept
+diff --git a/src/support/runtime/exception_pointer_msvc.ipp b/src/support/runtime/exception_pointer_msvc.ipp
+index 9e7f392e7..7d5f2d1c6 100644
+--- a/src/support/runtime/exception_pointer_msvc.ipp
++++ b/src/support/runtime/exception_pointer_msvc.ipp
+@@ -27,9 +27,11 @@ namespace std {
+ exception_ptr::exception_ptr() noexcept { __ExceptionPtrCreate(this); }
+ exception_ptr::exception_ptr(nullptr_t) noexcept { __ExceptionPtrCreate(this); }
+ 
++#ifdef _DLL
+ exception_ptr::exception_ptr(const exception_ptr& __other) noexcept {
+   __ExceptionPtrCopy(this, &__other);
+ }
++#endif
+ exception_ptr& exception_ptr::operator=(const exception_ptr& __other) noexcept {
+   __ExceptionPtrAssign(this, &__other);
+   return *this;
+@@ -40,9 +42,9 @@ exception_ptr& exception_ptr::operator=(nullptr_t) noexcept {
+   __ExceptionPtrAssign(this, &dummy);
+   return *this;
+ }
+-
++#ifdef _DLL
+ exception_ptr::~exception_ptr() noexcept { __ExceptionPtrDestroy(this); }
+-
++#endif
+ exception_ptr::operator bool() const noexcept {
+   return __ExceptionPtrToBool(this);
+ }
+@@ -68,10 +70,10 @@ exception_ptr current_exception() noexcept {
+   __ExceptionPtrCurrentException(&__ret);
+   return __ret;
+ }
+-
++#ifdef _DLL
+ _LIBCPP_NORETURN
+ void rethrow_exception(exception_ptr p) { __ExceptionPtrRethrow(&p); }
+-
++#endif
+ nested_exception::nested_exception() noexcept : __ptr_(current_exception()) {}
+ 
+ nested_exception::~nested_exception() noexcept {}
+-- 
+2.49.0
+
