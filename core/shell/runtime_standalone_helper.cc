@@ -31,7 +31,8 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths,
     const std::string& bytecode_source_url, uint32_t runtime_flag,
-    const lepus::Value* global_props, bool long_task_monitor_disabled) {
+    const lepus::Value* global_props, bool debuggable,
+    bool long_task_monitor_disabled) {
   auto instance_id = lynx::shell::LynxShell::NextInstanceId();
   lynx::fml::RefPtr<lynx::fml::TaskRunner> js_task_runner =
       lynx::base::TaskRunnerManufactor::GetJSRunner(group_name);
@@ -79,6 +80,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
 
   auto page_options = tasm::PageOptions(instance_id);
   page_options.SetLongTaskMonitorDisabled(long_task_monitor_disabled);
+  page_options.SetDebuggable(debuggable);
 
   auto runtime = std::make_unique<runtime::LynxRuntime>(
       group_id, instance_id, std::move(delegate), bytecode_source_url,

@@ -49,7 +49,7 @@ InitRuntimeStandaloneResult InitRuntimeStandalone(
         on_runtime_actor_created,
     std::vector<std::string> preload_js_paths,
     const std::string& bytecode_source_url, uint32_t runtime_flag,
-    const lepus::Value* global_props = nullptr,
+    const lepus::Value* global_props = nullptr, bool debuggable = false,
     bool long_task_monitor_disabled = false);
 
 }  // namespace shell
