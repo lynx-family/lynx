@@ -206,6 +206,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
 
         }
         editText.hint = ""
+        // If context is application, the focusableInTouchMode in default style may be false
+        editText.isFocusableInTouchMode = true
         return  editText
     }
 
