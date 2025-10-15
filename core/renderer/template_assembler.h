@@ -800,6 +800,10 @@ class TemplateAssembler final : public TemplateEntryHolder,
 
   bool IsEmbeddedModeOn() const { return page_options_.IsEmbeddedModeOn(); }
 
+  bool EnableEventHandleRefactor() const {
+    return page_config_ ? page_config_->GetEnableEventHandleRefactor() : false;
+  }
+
  private:
   void ExecuteOnLayoutReadyHooks();
   void EnsureOnLayoutReadyHooksFinish();

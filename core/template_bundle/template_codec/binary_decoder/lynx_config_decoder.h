@@ -778,6 +778,15 @@ class LynxConfigDecoder final {
               ? TernaryBool::TRUE_VALUE
               : TernaryBool::FALSE_VALUE);
     }
+
+    if (doc.HasMember(config::kEnableEventHandleRefactor) &&
+        doc[config::kEnableEventHandleRefactor].IsBool()) {
+      page_config->SetEnableEventHandleRefactor(
+          doc[config::kEnableEventHandleRefactor].GetBool());
+    } else {
+      page_config->SetEnableEventHandleRefactor(
+          LynxEnv::GetInstance().EnableEventHandleRefactor());
+    }
   };
 };
 }  // namespace tasm

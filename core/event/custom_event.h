@@ -15,7 +15,11 @@ namespace event {
 class CustomEvent : public Event {
  public:
   CustomEvent(const std::string& event_name, const lepus::Value& event_param,
-              const std::string& param_name, float time_stamp = 0);
+              const std::string& param_name, int64_t time_stamp = 0,
+              Capture capture = Capture::kNo, Bubbles bubbles = Bubbles::kNo,
+              Cancelable cancelable = Cancelable::kNo,
+              ComposedMode composed_mode = ComposedMode::kScoped,
+              PhaseType phase_type = PhaseType::kNone);
 
   void HandleEventCustomDetail() override;
 

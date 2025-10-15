@@ -37,11 +37,12 @@ namespace lynx {
 namespace event {
 
 Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
-             Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode,
-             PhaseType phase_type)
+             Capture capture, Bubbles bubbles, Cancelable cancelable,
+             ComposedMode composed_mode, PhaseType phase_type)
     : event_type_(event_type),
       time_stamp_(time_stamp),
       type_(type),
+      capture_(capture == Capture::kYes),
       bubbles_(bubbles == Bubbles::kYes),
       cancelable_(cancelable == Cancelable::kYes),
       composed_(composed_mode == ComposedMode::kScoped),
@@ -52,22 +53,24 @@ Event::Event(const std::string& type, int64_t time_stamp, EventType event_type,
   detail_.Table()->SetValue(kTimestamp, time_stamp_);
 }
 
-Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
-             Cancelable cancelable, ComposedMode composed_mode,
+Event::Event(const std::string& type, EventType event_type, Capture capture,
+             Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode,
              PhaseType phase_type)
     : Event(type,
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
                 .count(),
-            event_type, bubbles, cancelable, composed_mode, phase_type) {}
+            event_type, capture, bubbles, cancelable, composed_mode,
+            phase_type) {}
 
-Event::Event(const std::string& type, EventType event_type, Bubbles bubbles,
-             Cancelable cancelable, ComposedMode composed_mode)
+Event::Event(const std::string& type, EventType event_type, Capture capture,
+             Bubbles bubbles, Cancelable cancelable, ComposedMode composed_mode)
     : Event(type,
             std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch())
                 .count(),
-            event_type, bubbles, cancelable, composed_mode, PhaseType::kNone) {}
+            event_type, capture, bubbles, cancelable, composed_mode,
+            PhaseType::kNone) {}
 
 void Event::InitEventPath(EventTarget& target) {
   EventTarget* event_target = &target;
