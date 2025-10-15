@@ -13,6 +13,8 @@ namespace {
 
 void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_priority,
                        bool need_reset_priority) {
+  pthread_set_qos_class_self_np(qos_class, 0);
+  [[NSThread currentThread] setThreadPriority:thread_priority];
   if (need_reset_priority) {
     sched_param param;
     int policy;
@@ -22,8 +24,6 @@ void SetThreadPriority(int sched_priority, qos_class_t qos_class, double thread_
       pthread_setschedparam(thread, policy, &param);
     }
   }
-  pthread_set_qos_class_self_np(qos_class, 0);
-  [[NSThread currentThread] setThreadPriority:thread_priority];
 }
 
 }  // namespace
