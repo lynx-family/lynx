@@ -9,8 +9,7 @@
 
 #include "core/renderer/ui_component/list/list_container_impl.h"
 
-namespace lynx {
-namespace tasm {
+namespace lynx::tasm {
 
 ListContainerAnimationManager::ListContainerAnimationManager(
     ListContainerImpl* container)
@@ -23,7 +22,7 @@ ListContainerAnimationManager::~ListContainerAnimationManager() {
 }
 
 bool ListContainerAnimationManager::UpdateAnimation() const {
-  return update_animation_.value_or(false);
+  return update_animation_;
 }
 
 void ListContainerAnimationManager::DeferredDestroyItemHolder(
@@ -38,6 +37,14 @@ void ListContainerAnimationManager::RecycleItemHolder(ItemHolder* holder) {
 
 void ListContainerAnimationManager::UpdateDiffResult(
     list::ListAdapterDiffResult result) {
+  if (result == list::ListAdapterDiffResult::kNone) {
+    return;
+  }
+
+  if (animator_ && animator_->IsRunning()) {
+    animator_->Stop();
+  }
+
   if (result == (list::ListAdapterDiffResult::kRemove |
                  list::ListAdapterDiffResult::kUpdate)) {
     animation_type_ = list::ListContainerAnimationType::kRemove;
@@ -45,10 +52,8 @@ void ListContainerAnimationManager::UpdateDiffResult(
                         list::ListAdapterDiffResult::kUpdate) ||
              result == list::ListAdapterDiffResult::kUpdate) {
     animation_type_ = list::ListContainerAnimationType::kInsert;
-  } else if (result != list::ListAdapterDiffResult::kNone) {
-    animation_type_ = list::ListContainerAnimationType::kUpdate;
   } else {
-    return;
+    animation_type_ = list::ListContainerAnimationType::kUpdate;
   }
 
   if (!animator_) {
@@ -125,15 +130,11 @@ void ListContainerAnimationManager::EndAnimation() {
 }
 
 void ListContainerAnimationManager::SetUpdateAnimation(bool update_animation) {
-  if (!update_animation_.has_value()) {
-    update_animation_ = update_animation;
-  } else {
-    list_container_impl_->list_adapter_->OnErrorOccurred(base::LynxError(
-        lynx::error::E_COMPONENT_LIST_SET_UPDATE_ANIMATION_MULTIPLE_TIMES,
-        "Update-animation cannot be set multiple times."));
+  if (update_animation_ && !update_animation && animator_ &&
+      animator_->IsRunning()) {
+    animator_->Stop();
   }
+  update_animation_ = update_animation;
 }
 
-}  // namespace tasm
-
-}  // namespace lynx
+}  // namespace lynx::tasm

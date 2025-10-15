@@ -173,7 +173,8 @@ class ListContainerImpl : public ListContainer::Delegate {
   bool has_valid_diff_{false};
   bool update_animation_{false};
 
-  list::ListAdapterDiffResult diff_result_{list::ListAdapterDiffResult::kNone};
+  list::ListAdapterDiffResult animation_diff_result_{
+      list::ListAdapterDiffResult::kNone};
 
   struct ListOption {
     list::BatchRenderStrategy batch_render_strategy{

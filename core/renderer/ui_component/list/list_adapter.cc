@@ -37,7 +37,7 @@ void ListAdapter::OnErrorOccurred(lynx::base::LynxError error) {
 }
 
 // Update data source for radon diff arch.
-list::ListAdapterDiffResult ListAdapter::UpdateDataSource(
+std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateDataSource(
     const lepus::Value& data_source) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_DATA_SOURCE);
   bool has_updated = false;
@@ -158,15 +158,15 @@ list::ListAdapterDiffResult ListAdapter::UpdateDataSource(
       result |= list::ListAdapterDiffResult::kMove;
     }
   }
-  return result;
+  return {result, HasExpectedDiffAnimation()};
 }
 
 // Update data source for fiber arch.
-list::ListAdapterDiffResult ListAdapter::UpdateFiberDataSource(
+std::pair<list::ListAdapterDiffResult, bool> ListAdapter::UpdateFiberDataSource(
     const lepus::Value& data) {
   TRACE_EVENT(LYNX_TRACE_CATEGORY, LIST_ADAPTER_UPDATE_FIVER_DATA_SOURCE);
   if (!data.IsTable()) {
-    return list::ListAdapterDiffResult::kNone;
+    return {list::ListAdapterDiffResult::kNone, false};
   }
   const auto& insert_action =
       data.GetProperty(BASE_STATIC_STRING(list::kFiberInsertAction));
@@ -208,10 +208,20 @@ list::ListAdapterDiffResult ListAdapter::UpdateFiberDataSource(
         !adapter_helper_->move_to().empty()) {
       result |= list::ListAdapterDiffResult::kMove;
     }
-    return result;
+    return {result, HasExpectedDiffAnimation()};
   } else {
-    return list::ListAdapterDiffResult::kNone;
+    return {list::ListAdapterDiffResult::kNone, false};
   }
+}
+
+bool ListAdapter::HasExpectedDiffAnimation() const {
+  return !(adapter_helper_->insertions().size() ==
+               adapter_helper_->item_keys().size() &&
+           adapter_helper_->update_from().empty() &&
+           adapter_helper_->update_to().empty() &&
+           adapter_helper_->move_from().empty() &&
+           adapter_helper_->move_to().empty() &&
+           adapter_helper_->removals().empty());
 }
 
 void ListAdapter::UpdateListContainerDataSource(

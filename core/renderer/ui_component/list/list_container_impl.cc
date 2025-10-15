@@ -362,12 +362,13 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     should_set_props = false;
   } else if (key.IsEqual(list::kListPlatformInfo) ||
              key.IsEqual(list::kFiberListDiffInfo)) {
+    std::pair<list::ListAdapterDiffResult, bool> result;
     if (key.IsEqual(list::kListPlatformInfo)) {
-      diff_result_ = list_adapter_->UpdateDataSource(value);
+      result = list_adapter_->UpdateDataSource(value);
     } else if (key.IsEqual(list::kFiberListDiffInfo)) {
-      diff_result_ = list_adapter_->UpdateFiberDataSource(value);
+      result = list_adapter_->UpdateFiberDataSource(value);
     }
-    if (diff_result_ != list::ListAdapterDiffResult::kNone) {
+    if (result.first != list::ListAdapterDiffResult::kNone) {
       should_mark_layout_dirty = true;
     }
     has_valid_diff_ = should_mark_layout_dirty;
@@ -377,6 +378,8 @@ bool ListContainerImpl::ResolveAttribute(const base::String& key,
     }
     should_set_props = false;
     need_update_item_holders_ = true;
+    animation_diff_result_ =
+        result.second ? result.first : list::ListAdapterDiffResult::kNone;
   } else if (key.IsEqual(list::kUpdateAnimation)) {
     if (value.StdString() == list::kUpdateAnimationTypeDefault) {
       update_animation_ = true;
@@ -533,16 +536,14 @@ bool ListContainerImpl::UpdateAnimation() const {
 }
 
 void ListContainerImpl::PropsUpdateFinish() {
-  if (list_animation_manager_->UpdateAnimation() &&
-      diff_result_ != list::ListAdapterDiffResult::kNone) {
-    list_animation_manager_->UpdateDiffResult(diff_result_);
-  }
-  // Note: `update-animation` is not enabled at first screen.
-  if (update_animation_ != list_animation_manager_->UpdateAnimation() &&
-      diff_result_ != list::ListAdapterDiffResult::kNone) {
+  if (update_animation_ != list_animation_manager_->UpdateAnimation()) {
     list_animation_manager_->SetUpdateAnimation(update_animation_);
   }
-  diff_result_ = list::ListAdapterDiffResult::kNone;
+  if (list_animation_manager_->UpdateAnimation() &&
+      animation_diff_result_ != list::ListAdapterDiffResult::kNone) {
+    list_animation_manager_->UpdateDiffResult(animation_diff_result_);
+  }
+  animation_diff_result_ = list::ListAdapterDiffResult::kNone;
   if (span_count_changed_) {
     span_count_changed_ = false;
     if (!enable_dynamic_span_count_) {

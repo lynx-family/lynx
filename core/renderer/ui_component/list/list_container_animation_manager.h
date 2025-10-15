@@ -6,7 +6,6 @@
 #define CORE_RENDERER_UI_COMPONENT_LIST_LIST_CONTAINER_ANIMATION_MANAGER_H_
 
 #include <memory>
-#include <string>
 
 #include "base/include/fml/memory/weak_ptr.h"
 #include "core/animation/lynx_basic_animator/basic_animator.h"
@@ -38,13 +37,12 @@ class ListContainerAnimationManager
 
   void EndAnimation();
 
-  void InitializeAnimator();
-
   void DoAnimationFrame(float progress);
 
  private:
-  // TODO(dongjiajian): Support modify `update_animation_` multiple times.
-  std::optional<bool> update_animation_;
+  void InitializeAnimator();
+
+  bool update_animation_{false};
   list::ListContainerAnimationType animation_type_{
       list::ListContainerAnimationType::kNone};
   std::shared_ptr<animation::basic::LynxBasicAnimator> animator_;

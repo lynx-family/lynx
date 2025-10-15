@@ -20,8 +20,7 @@ AnimationItemHolder::AnimationItemHolder(int index, const std::string& item_key,
 
 void AnimationItemHolder::DoAnimationFrame(float progress) {
   if (element_ && element_->element_container()) {
-    if (!animation_delegate_->UpdateAnimation() ||
-        animation_type_ == list::ItemHolderAnimationType::kNone) {
+    if (animation_type_ == list::ItemHolderAnimationType::kNone) {
       return;
     }
     DCHECK((animation_type_ == list::ItemHolderAnimationType::kTransform) ==
@@ -38,7 +37,7 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
       const float t =
           animation_origin_top_ + (top() - animation_origin_top_) * progress;
       if (direction_ == list::Direction::kRTL) {
-        l = GetRTLLeft(content_size_, container_size_, l, width_);
+        l = GetRTLLeft(content_size_, container_width_, l, width_);
       }
       element_->UpdateLayout(l, t);
       element_->element_container()->UpdateLayout(l, t);
@@ -61,17 +60,14 @@ void AnimationItemHolder::DoAnimationFrame(float progress) {
 }
 
 void AnimationItemHolder::EndAnimation() {
-  if (!animation_delegate_->UpdateAnimation()) {
-    return;
-  }
   if (animation_type_ == list::ItemHolderAnimationType::kTransform) {
     if (element_ && element_->element_container() &&
         (left_ != element_->left() || top_ != element_->top())) {
       if (direction_ == list::Direction::kRTL) {
         element_->UpdateLayout(
-            GetRTLLeft(content_size_, container_size_, left_, width_), top_);
+            GetRTLLeft(content_size_, container_width_, left_, width_), top_);
         element_->element_container()->UpdateLayout(
-            GetRTLLeft(content_size_, container_size_, left_, width_), top_);
+            GetRTLLeft(content_size_, container_width_, left_, width_), top_);
       } else {
         element_->UpdateLayout(left_, top_);
         element_->element_container()->UpdateLayout(left_, top_);
@@ -80,6 +76,7 @@ void AnimationItemHolder::EndAnimation() {
     animation_origin_left_ = std::numeric_limits<float>::quiet_NaN();
     animation_origin_top_ = std::numeric_limits<float>::quiet_NaN();
     content_size_ = std::numeric_limits<float>::quiet_NaN();
+    container_width_ = std::numeric_limits<float>::quiet_NaN();
   } else if (animation_type_ == list::ItemHolderAnimationType::kOpacity) {
     if (element_) {
       element_->FlushAnimatedStyle(
@@ -95,7 +92,6 @@ void AnimationItemHolder::EndAnimation() {
   DCHECK(std::isnan(animation_origin_top_));
   DCHECK(std::isnan(animation_origin_left_));
   DCHECK(std::isnan(animation_origin_opacity_));
-  DCHECK(std::isnan(content_size_));
 
   animation_type_ = list::ItemHolderAnimationType::kNone;
 }
@@ -157,8 +153,6 @@ void AnimationItemHolder::UpdateLayoutToPlatform(float content_size,
         animation_type_ == list::ItemHolderAnimationType::kTransform) {
       // NOTE: In the remove animation, a new item holder is created, and we
       // need the new item holder to also run the transform animation.
-      content_size_ = content_size;
-      container_size_ = container_size;
     } else {
       if (direction_ == list::Direction::kRTL) {
         element->UpdateLayout(
@@ -170,6 +164,8 @@ void AnimationItemHolder::UpdateLayoutToPlatform(float content_size,
         element->element_container()->UpdateLayout(left_, top_);
       }
     }
+    content_size_ = content_size;
+    container_width_ = container_size;
   }
 }
 
