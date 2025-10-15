@@ -8,12 +8,21 @@ import sys
 import argparse
 import shutil
 
-from pnpm_helper import get_pnpm_env, run_pnpm_command
-
 # Set the root path and output path
 rootPath = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '../..'))
 outputPath = os.path.join(rootPath, 'js_libraries', 'lynx-core', 'output')
+
+# Add lynx/tools to sys.path to import buildtools_helper
+sys.path.append(os.path.join(rootPath, 'tools'))
+from buildtools_helper import get_buildtools_path
+
+# Get buildtools path using buildtools_helper
+buildtools_path = get_buildtools_path()
+if not buildtools_path:
+    print("Error: Could not find buildtools directory", file=sys.stderr)
+    sys.exit(1)
+pnpm_script = os.path.join(buildtools_path, "pnpm", "pnpm")
 
 
 def usage():
@@ -34,18 +43,16 @@ def build(platform, releaseOutput, devOutput, version):
         os.chdir(rootPath)
 
         # Run pnpm build for @lynx-js/runtime-shared
-        run_pnpm_command(
-            ['pnpm', '--filter', '@lynx-js/runtime-shared', 'build'],
-            os.getcwd())
+        subprocess.check_call([pnpm_script, '--filter', '@lynx-js/runtime-shared', 'build'],
+                             cwd=os.getcwd())
 
         # Bundle lynx_core.js and lynx_core_dev.js
-        env = get_pnpm_env()
+        env = os.environ.copy()
         env['NODE_OPTIONS'] = '--max-old-space-size=8192'
         if version:
             env['version'] = version
-        run_pnpm_command(
-            ['pnpm', '--filter', f'@lynx-js/lynx-core', f'build:{platform}'],
-            os.getcwd(), env)
+        subprocess.check_call([pnpm_script, '--filter', f'@lynx-js/lynx-core', f'build:{platform}'],
+                             cwd=os.getcwd(), env=env)
 
         # Copy lynx_core.js if releaseOutput is provided
         if releaseOutput:

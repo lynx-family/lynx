@@ -13,8 +13,9 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 # Calculate the root path
 root_path = os.path.abspath(os.path.join(current_dir, '..', '..', '..', '..'))
 
-sys.path.append(root_path)
-from tools.js_tools.pnpm_helper import run_pnpm_command
+# Add lynx/tools to sys.path to import buildtools_helper
+sys.path.append(os.path.join(root_path, 'tools'))
+from buildtools_helper import get_buildtools_path
 
 # Define the distribution path
 dist_path = os.path.join(root_path, 'devtool', 'lynx_devtool', 'resources',
@@ -42,9 +43,14 @@ def build():
     # Create the distribution directory if it doesn't exist
     os.makedirs(dist_path, exist_ok=True)
 
-    # Run the pnpm build command
-    run_pnpm_command(['pnpm', '--filter', '@lynx-dev/lynx-error-parser', 'build'],
-                     root_path)
+    # Run the pnpm build command using buildtools_helper
+    buildtools_path = get_buildtools_path()
+    if not buildtools_path:
+        print("Error: Could not find buildtools directory", file=sys.stderr)
+        sys.exit(1)
+    pnpm_script = os.path.join(buildtools_path, "pnpm", "pnpm")
+    subprocess.check_call([pnpm_script, '--filter', '@lynx-dev/lynx-error-parser', 'build'],
+                         cwd=root_path)
 
     # Create the Android and iOS target directories
     os.makedirs(android_target_path, exist_ok=True)

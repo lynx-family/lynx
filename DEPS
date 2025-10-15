@@ -88,8 +88,9 @@ deps = {
         "type": "action",
         "commands": [
             "chmod +x buildtools/ninja/ninja",
+            "chmod +x buildtools/pnpm/pnpm",
         ],
-        "require": ["buildtools/ninja"],
+        "require": ["buildtools/ninja", "buildtools/pnpm/pnpm"],
         "condition": system in ['linux', 'darwin']
     },
     'buildtools/gn': {
@@ -275,33 +276,48 @@ deps = {
         'patches': os.path.join(root_dir, 'patches', 'httplib', '*.patch'),
         "ignore_in_git": True,
     },
-    'buildtools/corepack/pnpm/7.33.6': {
+    'buildtools/pnpm/pnpm': {
         "type": "http",
-        "url": "https://registry.npmjs.org/pnpm/-/pnpm-7.33.6.tgz",
-        "sha256": "f0c52b41f8128da92160f6826b53a105aad31c6c7cdc00b907fde507c5ca09b5",
-        "ignore_in_git": True
+        "url": {
+            "linux-x86_64": "https://github.com/pnpm/pnpm/releases/download/v10.18.3/pnpm-linuxstatic-x64",
+            "linux-arm64": "https://github.com/pnpm/pnpm/releases/download/v10.18.3/pnpm-linuxstatic-arm64",
+            "darwin-arm64": "https://github.com/pnpm/pnpm/releases/download/v10.18.3/pnpm-macos-arm64",
+            "darwin-x86_64": "https://github.com/pnpm/pnpm/releases/download/v10.18.3/pnpm-macos-x64",
+            "windows-x86_64": "https://github.com/pnpm/pnpm/releases/download/v10.18.3/pnpm-win-x64.exe",
+        }.get(f'{system}-{machine}', None),
+        "sha256": {
+            "linux-x86_64": "8c43380476066cb6356a1cef1823e46f4ab82709dc2d017bd5983bf3fed7f7f5",
+            "linux-arm64": "876dc67afe8ad064d4f74712da3083d5df2b85152bdbc9fc686bfc9dfac273d5",
+            "darwin-arm64": "7cf378c3a55d2aa3734007e4fdce5252291a4f1315966b0a996cffcff6aa2a74",
+            "darwin-x86_64": "fd9380941b1eac83b6e6a8660e9ca341eb8bc5a294c26d510e356c7bdf51a255",
+            "windows-x86_64": "8a525ed3a9ec7c9d29da13943c0ae20ee110fc237e82f67029e5a5be985eb2d3",
+        }.get(f'{system}-{machine}', None),
+        "decompress": False,
+        "ignore_in_git": True,
+        "condition": system in ['linux', 'darwin', 'windows']
     },
-    # setup corepack and pnpm
-    'setup_corepack_pnpm': {
+    # setup pnpm
+    'setup_pnpm': {
         "type": "action",
         "cwd": root_dir,
         "env": {
-            'NODE_CHANNEL_FD': '1' if not system == 'windows' else '',
-            'COREPACK_HOME': os.path.join(root_dir, 'buildtools', 'corepack'),
-            # Windows does not have `node/bin` dir
-            # And it also use `;` as seperator of PATH
-            'PATH': f"{os.path.join(root_dir, 'buildtools', 'node')};{os.environ.get('PATH')}"
-               if system == "windows"
-               else f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:{os.environ.get('PATH')}"
+            'PATH': (
+                f"{os.path.join(root_dir, 'buildtools', 'pnpm')};"
+                f"{os.path.join(root_dir, 'buildtools', 'node')};"
+                f"{os.environ.get('PATH')}"
+            ) if system == "windows" else (
+                f"{os.path.join(root_dir, 'buildtools', 'pnpm')}:"
+                f"{os.path.join(root_dir, 'buildtools', 'node', 'bin')}:"
+                f"{os.environ.get('PATH')}"
+            ),
         },
         "commands": [
-            "corepack prepare pnpm@7.33.6 --activate",
-            "corepack enable",
             "pnpm install --frozen-lockfile"
         ],
         "require": [
             "buildtools/node",
-            "buildtools/corepack/pnpm/7.33.6",
+            "buildtools/pnpm/pnpm",
+            "change_executable_permission",
         ],
         "condition": system in ['linux', 'darwin', 'windows']
     },
