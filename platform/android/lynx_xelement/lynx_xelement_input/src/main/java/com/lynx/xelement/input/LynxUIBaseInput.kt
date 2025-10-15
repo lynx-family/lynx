@@ -235,6 +235,8 @@ open class LynxUIBaseInput(context: LynxContext, params: Any?) : LynxUI<LynxEdit
         mContext.lynxView.keyboardEvent.start()
         mContext.lynxView.keyboardEvent.addKeyboardEventObserver(this)
         editText.hint = ""
+        // If context is application, the focusableInTouchMode in default style may be false
+        editText.isFocusableInTouchMode = true
         return  editText
     }
 
