@@ -88,7 +88,7 @@ static jlong CreateBackgroundRuntimeWrapper(
       group_name, group_id, std::move(native_facade_runtime),
       observer ? *observer : nullptr, loader, native_module_manager,
       bundle_creator, white_board, on_runtime_actor_created, std::move(paths),
-      source_url, runtime_flags, global_props);
+      source_url, runtime_flags, global_props, debuggable);
 
   // Delete observer to decrease ref count.
   delete observer;
