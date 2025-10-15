@@ -479,7 +479,7 @@ LYNX_NOT_IMPLEMENTED(-(instancetype)initWithCoder : (NSCoder*)aDecoder)
       meta.templateBundle ? meta.templateBundle : _lynxViewGroup.templateBundle;
 
   if (templateBundle) {
-    [self loadTemplateBundle:meta.templateBundle withURL:meta.url initData:meta.initialData];
+    [self loadTemplateBundle:templateBundle withURL:meta.url initData:meta.initialData];
   } else if (meta.binaryData) {
     [self loadTemplate:meta.binaryData withURL:meta.url initData:meta.initialData];
   } else if (meta.url) {

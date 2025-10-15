@@ -15,14 +15,24 @@
 
 @implementation LynxViewBuilder
 
-- (LynxConfig*)config {
+- (LynxConfig *)config {
   if (_lynxViewGroup) {
     return _lynxViewGroup.config;
   }
   return [super config];
 }
 
-- (LynxGroup*)group {
+// TODO(nihao.royal): config changed in LynxTemplateRender initialization is not a good practice in
+// Lynx. Needs to be optimized
+- (void)setConfig:(LynxConfig *)config {
+  if (_lynxViewGroup) {
+    _lynxViewGroup.config = config;
+    return;
+  }
+  [super setConfig:config];
+}
+
+- (LynxGroup *)group {
   if (_lynxViewGroup) {
     return _lynxViewGroup.group;
   }
@@ -205,7 +215,7 @@
   return [super enableUnifiedPipeline];
 }
 
-- (NSString*)bytecodeUrl {
+- (NSString *)bytecodeUrl {
   if (_lynxViewGroup) {
     return _lynxViewGroup.bytecodeUrl;
   }
@@ -233,7 +243,7 @@
   return [super getEmbeddedMode];
 }
 
-- (void)insertLynxViewConfig:(id)config forKey:(NSString*)key {
+- (void)insertLynxViewConfig:(id)config forKey:(NSString *)key {
   if (!key || !config) {
     return;
   }
