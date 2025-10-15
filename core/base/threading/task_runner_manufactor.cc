@@ -345,6 +345,9 @@ void TaskRunnerManufactor::CreateTASMRunner(
 #ifdef OS_WIN
   tasm_task_runner_ = ui_task_runner_;
   return;
+#elif defined(OS_HARMONY) && defined(ENABLE_HEADLESS)
+  tasm_task_runner_ = ui_task_runner_;
+  return;
 #endif
 
   tasm_task_runner_ = fml::MakeRefCounted<fml::TaskRunner>(

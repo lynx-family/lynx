@@ -1,0 +1,29 @@
+From 3aa265d3daa18bfed104a1252b1c1c641660cdd2 Mon Sep 17 00:00:00 2001
+From: chennengshi <chrischan0668@gmail.com>
+Date: Mon, 13 Oct 2025 11:25:54 +0800
+Subject: [PATCH] add FREETYPE_STATIC_LIB=1 in static_library
+
+---
+ BUILD.gn | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 4008e31..ca426ef 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -98,6 +98,12 @@ target(default_library_type, "freetype2") {
+     ]
+   }
+ 
++  if (default_library_type == "static_library") {
++    defines += [
++      "FREETYPE_STATIC_LIB=1",
++    ]
++  }
++
+   public_configs = [ ":freetype_config" ]
+ 
+   deps = [
+-- 
+2.50.0
+
