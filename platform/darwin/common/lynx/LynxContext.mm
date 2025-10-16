@@ -4,6 +4,7 @@
 
 #import <Lynx/LynxExtensionModule.h>
 #if TARGET_OS_IPHONE
+#import <Lynx/LynxFrameView.h>
 #import <Lynx/LynxKeyboardEventDispatcher.h>
 #endif
 #import <Lynx/LynxLog.h>
@@ -86,6 +87,10 @@ NSString *const kDefaultComponentID = @"-1";
 - (nullable LynxView *)getLynxView {
   if ([_containerView isKindOfClass:[LynxView class]]) {
     return (LynxView *)_containerView;
+#if TARGET_OS_IPHONE
+  } else if ([_containerView isKindOfClass:[LynxFrameView class]]) {
+    return (LynxView *)[(LynxFrameView *)_containerView getRootView];
+#endif
   }
   return nil;
 }
