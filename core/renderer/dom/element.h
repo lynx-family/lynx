@@ -163,8 +163,8 @@ class Element : public lepus::RefCounted,
   LYNX_EXPORT_FOR_DEVTOOL virtual void ConsumeStyle(
       const StyleMap& styles, const StyleMap* inherit_styles = nullptr) = 0;
 
-  virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value,
-                                bool force_update = false);
+  virtual void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value);
+
   LYNX_EXPORT_FOR_DEVTOOL virtual void ResetStyle(
       const base::Vector<CSSPropertyID>& style_names);
 
@@ -365,6 +365,8 @@ class Element : public lepus::RefCounted,
 
   virtual void MarkLayoutDirty();
 
+  virtual void MarkLayoutDirtyLite(){};
+
   // In RadonDiff Mode, worklets require the following two APIs. In RL3.0 or
   // TTML NoDiff, the implementation of worklets no longer relies on these
   // capabilities. After the 2.0 worklet services are phased out, the following
@@ -394,8 +396,8 @@ class Element : public lepus::RefCounted,
 
   PropertiesResolvingStatus GenerateRootPropertyStatus() const;
 
-  void SetComputedFontSize(const tasm::CSSValue& value, double font_size,
-                           double root_font_size, bool force_update = false);
+  void SetComputedFontSize(double font_size, double root_font_size);
+
   void SetPlaceHolderStylesInternal(const PseudoPlaceHolderStyles& styles);
 
   void ResetStyleInternal(CSSPropertyID id);
@@ -513,10 +515,8 @@ class Element : public lepus::RefCounted,
   virtual void UpdateLayoutNodeAttribute(starlight::LayoutAttribute key,
                                          const lepus::Value& value) = 0;
 
-  virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                                 bool force_update) {
-    return false;
-  }
+  virtual bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value);
+
   virtual void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                                 bool reset) {
     // currently, radon element do no need to such kind of check

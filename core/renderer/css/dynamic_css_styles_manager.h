@@ -220,8 +220,9 @@ class DynamicCSSStylesManager {
       const base::MoveOnlyClosure<void, std::map<CSSPropertyID, CSSValue>&>&
           func);
   void ResetAllDirectionAwareProperty();
-  void SetStyleToElement(CSSPropertyID id, const CSSValue& css_value,
-                         bool force_update = false);
+
+  void SetStyleToElement(CSSPropertyID id, const CSSValue& css_value);
+
   void ResetStyleToElement(CSSPropertyID id);
 
   // Assuming each of the field will contains only a few styles

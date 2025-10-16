@@ -151,9 +151,6 @@ class RadonElement : public Element {
   virtual bool NeedFullFlushPath(
       const std::pair<CSSPropertyID, tasm::CSSValue>& style) override;
 
-  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                         bool force_update) override;
-
   virtual CSSFragment* GetRelatedCSSFragment() override;
 
   virtual int32_t GetCSSID() const override;

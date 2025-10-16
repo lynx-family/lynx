@@ -87,8 +87,8 @@ FiberElement::FiberElement(ElementManager *manager, const base::String &tag,
 
   computed_css_style()->SetFontScale(env_config.FontScale());
   if (Config::DefaultFontScale() != env_config.FontScale()) {
-    SetComputedFontSize(tasm::CSSValue(), env_config.PageDefaultFontSize(),
-                        env_config.PageDefaultFontSize(), true);
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
   }
 
   if (element_manager_->GetEnableStandardCSSSelector()) {
@@ -188,8 +188,8 @@ void FiberElement::AttachToElementManager(
   }
 
   if (Config::DefaultFontScale() != env_config.FontScale()) {
-    SetComputedFontSize(tasm::CSSValue(), env_config.PageDefaultFontSize(),
-                        env_config.PageDefaultFontSize(), true);
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
   }
 
   if (element_manager_->GetEnableStandardCSSSelector()) {
@@ -2971,28 +2971,6 @@ void FiberElement::UpdateCSSVariable(
   } else {
     element_manager()->OnPatchFinish(pipeline_option, this);
   }
-}
-
-bool FiberElement::ResolveStyleValue(CSSPropertyID id,
-                                     const tasm::CSSValue &value,
-                                     bool force_update) {
-  bool resolve_success = false;
-  if (computed_css_style()->SetValue(id, value)) {
-    // The properties of transition and keyframe no need to be pushed to bundle
-    // separately here. Those properties will be pushed to bundle together
-    // later.
-    CheckTransitionProps(id);
-    CheckKeyframeProps(id);
-    resolve_success = true;
-  }
-
-  if (EnableLayoutInElementMode()) {
-    if (LayoutProperty::IsLayoutWanted(id)) {
-      MarkLayoutDirtyLite();
-    }
-  }
-
-  return resolve_success;
 }
 
 void FiberElement::SetFontSize(const tasm::CSSValue &value) {

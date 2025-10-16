@@ -387,8 +387,6 @@ void DynamicCSSStylesManager::ApplyFontSizeUpdateResolvingData(
       (current_updates & kUpdateRem) || (current_updates & kUpdateFontScale)) {
     // CSSValue is not relevant to what is actually set for font size.
     element_->SetComputedFontSize(
-        CSSValue(lepus_value(next_resolving_data.computed_font_size_),
-                 CSSValuePattern::NUMBER),
         next_resolving_data.computed_font_size_,
         next_resolving_data.page_status_.root_font_size_);
   } else {
@@ -570,8 +568,7 @@ void DynamicCSSStylesManager::ResetAllDirectionAwareProperty() {
 }
 
 void DynamicCSSStylesManager::SetStyleToElement(CSSPropertyID id,
-                                                const CSSValue& css_value,
-                                                bool force_update) {
+                                                const CSSValue& css_value) {
   CSSPropertyID trans_id = id;
 
   // special case.
@@ -586,7 +583,7 @@ void DynamicCSSStylesManager::SetStyleToElement(CSSPropertyID id,
   // 1.start ---> left/right
   // 2.rtl:left/right ---> right/left
   trans_id = ResolveDirectionAwareProperty(id, element_->Direction());
-  element_->SetStyleInternal(trans_id, css_value, force_update);
+  element_->SetStyleInternal(trans_id, css_value);
 }
 
 void DynamicCSSStylesManager::ResetStyleToElement(CSSPropertyID id) {

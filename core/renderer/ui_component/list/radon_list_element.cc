@@ -132,9 +132,8 @@ void RadonListElement::ResetEventHandlers() {
 }
 
 bool RadonListElement::ResolveStyleValue(CSSPropertyID id,
-                                         const tasm::CSSValue& value,
-                                         bool force_update) {
-  bool ret = RadonElement::ResolveStyleValue(id, value, force_update);
+                                         const tasm::CSSValue& value) {
+  bool ret = Element::ResolveStyleValue(id, value);
   if (list_container_delegate()) {
     switch (id) {
       case CSSPropertyID::kPropertyIDListMainAxisGap:

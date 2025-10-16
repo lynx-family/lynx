@@ -825,8 +825,6 @@ class FiberElement : public Element,
 
   void UpdateDynamicElementStyle(uint32_t style, bool force_update) override;
 
-  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                         bool force_update) override;
   void CheckDynamicUnit(CSSPropertyID id, const CSSValue& value,
                         bool reset) override;
   void WillResetCSSValue(CSSPropertyID& id) override;
@@ -1086,7 +1084,7 @@ class FiberElement : public Element,
 
   void UpdateLayoutInfo();
 
-  void MarkLayoutDirtyLite();
+  void MarkLayoutDirtyLite() override;
 
   bool IfNeedsUpdateLayoutInfo();
 

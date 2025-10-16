@@ -70,14 +70,14 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
 
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value("30px"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("30px"),
+                     lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_layout_only_props_ == true);
 
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDFilter,
-      tasm::CSSValue(lepus::Value("grey"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("grey"),
+                     lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_layout_only_props_ == false);
 
   EXPECT_TRUE(element->has_transition_props_changed_ == false);
@@ -88,28 +88,26 @@ TEST_F(RadonElementTest, CheckSetStyleInternal) {
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDOverflow,
       tasm::CSSValue(lepus::Value((int)starlight::OverflowType::kVisible),
-                     lynx::tasm::CSSValuePattern::NUMBER),
-      false);
+                     lynx::tasm::CSSValuePattern::NUMBER));
   EXPECT_TRUE(element->overflow_ == Element::OVERFLOW_XY);
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
 
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDTransition,
-      tasm::CSSValue(lepus::Value("test"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("test"),
+                     lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_transition_props_changed_ == true);
   EXPECT_TRUE(element->has_non_flatten_attrs_ == true);
 
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDAnimation,
-      tasm::CSSValue(lepus::Value("test"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("test"),
+                     lynx::tasm::CSSValuePattern::STRING));
 
   EXPECT_TRUE(element->has_keyframe_props_changed_ == true);
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_z_props_ == true);
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);
@@ -152,8 +150,8 @@ TEST_F(RadonElementTest, CheckShouldFlushGestureDetector) {
   // Set an internal style property for the element's width.
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDWidth,
-      tasm::CSSValue(lepus::Value("40px"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("40px"),
+                     lynx::tasm::CSSValuePattern::STRING));
 
   // Validate that the element has layout-only properties.
   EXPECT_TRUE(element->has_layout_only_props_ == true);
@@ -183,8 +181,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element0->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER),
-      false);
+      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element0->has_z_props_ == true);
   EXPECT_TRUE(element0->is_view() == true);
@@ -197,8 +194,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element1->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER),
-      false);
+      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element1->has_z_props_ == true);
   EXPECT_TRUE(element1->is_image() == true);
@@ -210,8 +206,7 @@ TEST_F(RadonElementTest, TestImageTextFlatten) {
   // Set an internal style property for the element's width.
   element2->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER),
-      false);
+      tasm::CSSValue(lepus::Value(100), lynx::tasm::CSSValuePattern::NUMBER));
 
   EXPECT_TRUE(element2->has_z_props_ == true);
   EXPECT_TRUE(element2->is_image() == false);

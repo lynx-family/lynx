@@ -102,6 +102,41 @@ TEST_P(FiberElementTest, TestRefType) {
   EXPECT_EQ(prim_obj->GetRefType(), lepus::RefType::kJSIObject);
 }
 
+TEST_P(FiberElementTest, TestSetComputedFontSize0) {
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+
+  auto page = manager->CreateFiberPage("0", 0);
+
+  page->SetComputedFontSize(99, 199);
+  EXPECT_TRUE(page->GetRecordedRootFontSize() - 199 < 0.1);
+  EXPECT_TRUE(page->GetFontSize() - 99 < 0.1);
+  EXPECT_TRUE(
+      page->computed_css_style()->GetChangedBitset().Has(kPropertyIDFontSize));
+}
+
+TEST_P(FiberElementTest, TestSetComputedFontSize1) {
+  manager->GetLynxEnvConfig().font_scale_ = 1.3f;
+  manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
+
+  const auto& env_config = manager->GetLynxEnvConfig();
+
+  auto page = manager->CreateFiberPage("0", 0);
+  EXPECT_TRUE(page->GetRecordedRootFontSize() -
+                  env_config.PageDefaultFontSize() * 1.3 <
+              0.1);
+  EXPECT_TRUE(page->GetFontSize() - env_config.PageDefaultFontSize() * 1.3 <
+              0.1);
+
+  page->FlushActionsAsRoot();
+
+  page->SetComputedFontSize(page->GetFontSize(),
+                            page->GetRecordedRootFontSize());
+
+  EXPECT_FALSE(
+      page->computed_css_style()->GetChangedBitset().Has(kPropertyIDFontSize));
+}
+
 TEST_P(FiberElementTest, TestSetAttributeInternal00) {
   manager->GetLynxEnvConfig().font_scale_ = 1.3f;
   manager->GetLynxEnvConfig().font_scale_sp_only_ = false;
@@ -5032,22 +5067,21 @@ TEST_P(FiberElementTest, CheckFlattenRelatedFlags) {
   EXPECT_TRUE(element->has_non_flatten_attrs_ == false);
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDTransition,
-      tasm::CSSValue(lepus::Value("test"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("test"),
+                     lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_transition_props_changed_ == true);
   EXPECT_TRUE(element->has_non_flatten_attrs_ == true);
 
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDAnimation,
-      tasm::CSSValue(lepus::Value("test"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("test"),
+                     lynx::tasm::CSSValuePattern::STRING));
 
   element->has_non_flatten_attrs_ = false;
   EXPECT_TRUE(element->has_keyframe_props_changed_ == true);
   element->SetStyleInternal(
       CSSPropertyID::kPropertyIDZIndex,
-      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING),
-      false);
+      tasm::CSSValue(lepus::Value("3"), lynx::tasm::CSSValuePattern::STRING));
   EXPECT_TRUE(element->has_z_props_ == true);
 
   element->ResetStyleInternal(CSSPropertyID::kPropertyIDTransition);

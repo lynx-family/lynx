@@ -326,7 +326,7 @@ bool Element::ConsumeTransitionStylesInAdvance(const StyleMap& styles,
 }
 
 void Element::SetStyleInternal(CSSPropertyID css_id,
-                               const tasm::CSSValue& value, bool force_update) {
+                               const tasm::CSSValue& value) {
   TRACE_EVENT(
       LYNX_TRACE_CATEGORY, ELEMENT_SET_STYLE_INTERNAL,
       [css_id](lynx::perfetto::EventContext ctx) {
@@ -399,7 +399,27 @@ void Element::SetStyleInternal(CSSPropertyID css_id,
   }
 
   // resolve style and push to prop_bundle
-  ResolveStyleValue(css_id, value, force_update);
+  ResolveStyleValue(css_id, value);
+}
+
+bool Element::ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value) {
+  bool resolve_success = false;
+  if (computed_css_style()->SetValue(id, value)) {
+    // The properties of transition and keyframe no need to be pushed to bundle
+    // separately here. Those properties will be pushed to bundle together
+    // later.
+    CheckTransitionProps(id);
+    CheckKeyframeProps(id);
+    resolve_success = true;
+  }
+
+  if (is_fiber_element() && EnableLayoutInElementMode()) {
+    if (LayoutProperty::IsLayoutWanted(id)) {
+      MarkLayoutDirtyLite();
+    }
+  }
+
+  return resolve_success;
 }
 
 void Element::CheckHasInlineContainer(Element* parent) {
@@ -1004,8 +1024,13 @@ double Element::GetCurrentRootFontSize() {
   return element_manager()->root()->GetFontSize();
 }
 
-void Element::SetComputedFontSize(const tasm::CSSValue& value, double font_size,
-                                  double root_font_size, bool force_update) {
+// TODO(songshourui.null): This function is called during Element creation, and
+// ResolveStyleValue marks computed_css_style() as dirty, causing font-size to
+// be written to the bundle by default. To optimize, consider maintaining the
+// default font scale and font size at both the platform and C++ layers. This
+// would avoid the performance cost of passing the default font size. A similar
+// optimization could be applied to other default style values.
+void Element::SetComputedFontSize(double font_size, double root_font_size) {
   if (font_size != GetFontSize()) {
     NotifyUnitValuesUpdatedToAnimation(DynamicCSSStylesManager::kUpdateEm);
   }
@@ -1016,9 +1041,8 @@ void Element::SetComputedFontSize(const tasm::CSSValue& value, double font_size,
 
   computed_css_style()->SetFontSize(font_size, root_font_size);
   UpdateLayoutNodeFontSize(font_size, root_font_size);
-  if (!value.IsEmpty() || force_update) {
-    ResolveStyleValue(kPropertyIDFontSize, value, force_update);
-  }
+  ResolveStyleValue(kPropertyIDFontSize,
+                    CSSValue(lepus_value(font_size), CSSValuePattern::NUMBER));
 }
 
 void Element::CheckFlattenRelatedProp(const base::String& key,

@@ -28,8 +28,9 @@ class TextElement : public FiberElement {
 
   bool is_text() const override { return true; }
   bool NeedProcessDirection() override { return true; }
-  void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value,
-                        bool force_update = false) override;
+
+  void SetStyleInternal(CSSPropertyID id, const tasm::CSSValue& value) override;
+
   void ConvertToInlineElement() override;
 
   void AttachToElementManager(
@@ -37,8 +38,8 @@ class TextElement : public FiberElement {
       const std::shared_ptr<CSSStyleSheetManager>& style_manager,
       bool keep_element_id) override;
 
-  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                         bool force_update) override;
+  bool ResolveStyleValue(CSSPropertyID id,
+                         const tasm::CSSValue& value) override;
 
   bool ResetCSSValue(CSSPropertyID id) override;
 

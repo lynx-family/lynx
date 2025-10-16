@@ -52,9 +52,8 @@ void TextElement::PushStyleToBundle() {
 }
 
 void TextElement::SetStyleInternal(CSSPropertyID id,
-                                   const tasm::CSSValue& value,
-                                   bool force_update) {
-  FiberElement::SetStyleInternal(id, value, force_update);
+                                   const tasm::CSSValue& value) {
+  FiberElement::SetStyleInternal(id, value);
 
   if (id == kPropertyIDFontFamily) {
     if (!EnableLayoutInElementMode()) {
@@ -183,8 +182,7 @@ void TextElement::ResolveAndFlushFontFaces(const base::String& font_family) {
 }
 
 bool TextElement::ResolveStyleValue(CSSPropertyID id,
-                                    const tasm::CSSValue& value,
-                                    bool force_update) {
+                                    const tasm::CSSValue& value) {
   bool has_processed = false;
 
   if (EnableLayoutInElementMode() && IsTextMeasurerWanted(id)) {
@@ -193,7 +191,7 @@ bool TextElement::ResolveStyleValue(CSSPropertyID id,
       has_processed = true;
     }
   } else {
-    has_processed = FiberElement::ResolveStyleValue(id, value, force_update);
+    has_processed = Element::ResolveStyleValue(id, value);
   }
 
   return has_processed;

@@ -149,8 +149,9 @@ class ListElement : public FiberElement,
 
   ParallelFlushReturn PrepareForCreateOrUpdate() override;
 
-  bool ResolveStyleValue(CSSPropertyID id, const tasm::CSSValue& value,
-                         bool force_update) override;
+  bool ResolveStyleValue(CSSPropertyID id,
+                         const tasm::CSSValue& value) override;
+
   void PropsUpdateFinish() override;
 
   virtual void ParallelFlushAsRoot() override;

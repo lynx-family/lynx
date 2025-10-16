@@ -57,8 +57,8 @@ RadonElement::RadonElement(const base::String& tag,
 
   if (Config::DefaultFontScale() != env_config.FontScale()) {
     computed_css_style()->SetFontScale(env_config.FontScale());
-    SetComputedFontSize(tasm::CSSValue(), env_config.PageDefaultFontSize(),
-                        env_config.PageDefaultFontSize(), true);
+    SetComputedFontSize(env_config.PageDefaultFontSize(),
+                        env_config.PageDefaultFontSize());
     manager->UpdateLayoutNodeFontSize(impl_id(),
                                       env_config.PageDefaultFontSize(),
                                       env_config.PageDefaultFontSize());
@@ -820,21 +820,6 @@ void RadonElement::ResetTransitionStylesInAdvanceInternal(
   // record styles, used for worklet
   styles_.erase(css_id);
   StylesManager().AdoptStyle(css_id, CSSValue::Empty());
-}
-
-bool RadonElement::ResolveStyleValue(CSSPropertyID id,
-                                     const tasm::CSSValue& value,
-                                     bool force_update) {
-  bool resolve_success = false;
-  if (computed_css_style()->SetValue(id, value) || force_update) {
-    // The props of transition and keyframe no need to be pushed to bundle here.
-    // Those props will be pushed to bundle separately later.
-    CheckTransitionProps(id);
-    CheckKeyframeProps(id);
-    resolve_success = true;
-  }
-
-  return resolve_success;
 }
 
 void RadonElement::OnPatchFinish(std::shared_ptr<PipelineOptions>& option) {
