@@ -86,6 +86,13 @@ class CSSFragmentDecorator : public CSSFragment {
                                                                      pseudo);
   }
 
+  bool IntrinsicStyleSheetHasTouchPseudoToken() {
+    if (intrinsic_style_sheets_) {
+      return intrinsic_style_sheets_->HasTouchPseudoToken();
+    }
+    return HasTouchPseudoToken();
+  }
+
  private:
   CSSFragment* intrinsic_style_sheets_ = nullptr;
   CSSParserTokenMap external_css_;
