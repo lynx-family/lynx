@@ -16,8 +16,6 @@
 
 @interface LynxBaseGestureHandler ()
 
-@property(nonatomic, assign) int status;
-
 @property(nonatomic, strong) NSMutableDictionary<const NSString *, NSNumber *> *enableFlags;
 
 @end
@@ -122,29 +120,29 @@
 }
 
 - (BOOL)canActiveWithCurrentGesture:(CGPoint)deltaPoint {
-  return _status == LYNX_STATE_ACTIVE;
+  return _status == LynxGestureHandlerStateActive;
 }
 
 - (BOOL)isCurrentGestureEnd {
-  return _status == LYNX_STATE_END;
+  return _status == LynxGestureHandlerStateEnd;
 }
 
 - (void)reset {
-  _status = LYNX_STATE_INIT;
+  _status = LynxGestureHandlerStateInit;
 }
 
 - (void)activate {
-  _status = LYNX_STATE_ACTIVE;
+  _status = LynxGestureHandlerStateActive;
   if (_gestureMember) {
     [_gestureMember onPlatformGestureStatusChanged:_status];
   }
 }
 
 - (void)fail {
-  if (_status == LYNX_STATE_BEGIN) {
-    _status = LYNX_STATE_CANCELLED;
+  if (_status == LynxGestureHandlerStateBegin) {
+    _status = LynxGestureHandlerStateCancel;
   } else {
-    _status = LYNX_STATE_FAIL;
+    _status = LynxGestureHandlerStateCancel;
   }
   if (_gestureMember) {
     [_gestureMember onPlatformGestureStatusChanged:_status];
@@ -152,21 +150,21 @@
 }
 
 - (void)end {
-  _status = LYNX_STATE_END;
+  _status = LynxGestureHandlerStateEnd;
   if (_gestureMember) {
     [_gestureMember onPlatformGestureStatusChanged:_status];
   }
 }
 
 - (void)begin {
-  _status = LYNX_STATE_BEGIN;
+  _status = LynxGestureHandlerStateBegin;
   if (_gestureMember) {
     [_gestureMember onPlatformGestureStatusChanged:_status];
   }
 }
 
 - (void)ignore {
-  _status = LYNX_STATE_UNDETERMINED;
+  _status = LynxGestureHandlerStateUndetermined;
 }
 
 - (void)begin:(NSUInteger)typeMask
@@ -229,15 +227,11 @@
 }
 
 - (BOOL)isEnd {
-  return _status == LYNX_STATE_END;
+  return _status == LynxGestureHandlerStateEnd;
 }
 
 - (BOOL)isActive {
-  return _status == LYNX_STATE_ACTIVE;
-}
-
-- (int)status {
-  return _status;
+  return _status == LynxGestureHandlerStateActive;
 }
 
 - (void)onBegin:(CGPoint)point touchEvent:(LynxTouchEvent *_Nullable)touchEvent {

@@ -78,7 +78,7 @@
   return 1.0;
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
 }
 
 - (int)getScrollContainerDirection {

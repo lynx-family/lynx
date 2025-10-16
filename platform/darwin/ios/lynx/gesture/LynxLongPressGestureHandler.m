@@ -66,7 +66,7 @@
     [self ignore];
     return;
   }
-  if ([self status] >= LYNX_STATE_FAIL) {
+  if (self.status >= LynxGestureHandlerStateFail) {
     [self endLongPress];
     return;
   }
@@ -96,7 +96,8 @@
   __weak typeof(self) weakSelf = self;
   _delayActivateRunnable = dispatch_block_create(0, ^{
     __strong typeof(weakSelf) strongSelf = weakSelf;
-    if ([strongSelf status] != LYNX_STATE_FAIL && [strongSelf status] != LYNX_STATE_ACTIVE) {
+    if (strongSelf.status != LynxGestureHandlerStateFail &&
+        strongSelf.status != LynxGestureHandlerStateActive) {
       [strongSelf activate];
       [strongSelf onStart:strongSelf.lastPoint touchEvent:strongSelf.lastTouchEvent];
     }

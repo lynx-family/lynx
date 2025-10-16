@@ -69,7 +69,7 @@
   }
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
   if (self.eventHandler != nil) {
     [self.eventHandler onPlatformGestureStatusChanged:status];
   }

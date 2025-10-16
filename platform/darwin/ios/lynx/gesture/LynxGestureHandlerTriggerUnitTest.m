@@ -87,7 +87,7 @@
   return YES;
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
 }
 
 - (NSInteger)getGestureArenaMemberId {

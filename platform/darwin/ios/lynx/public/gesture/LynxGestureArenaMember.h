@@ -5,7 +5,7 @@
 #ifndef LynxGestureArenaMember_h
 #define LynxGestureArenaMember_h
 
-#import <Foundation/Foundation.h>
+#import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxEventTarget.h>
 #import <Lynx/LynxGestureDetectorDarwin.h>
 #import <UIKit/UIKit.h>
@@ -57,10 +57,10 @@
 
 /**
  * platform gesture status need changed
- * @see LynxGestureHandlerTrigger
- * @param status 2 - LYNX_STATE_ACTIVE 3 - LYNX_STATE_FAIL 4 - LYNX_STATE_CANCELLED
+ * @see LynxBaseGestureHandler
+ * @param status LynxGestureHandlerState
  */
-- (void)onPlatformGestureStatusChanged:(int)status;
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status;
 
 /**
  Retrieve  the map of gesture detectors associated with the member.

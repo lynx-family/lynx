@@ -4,6 +4,7 @@
 
 #import <Foundation/Foundation.h>
 #import <Lynx/ListNodeInfoFetcherProtocol.h>
+#import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxGenericResourceFetcher.h>
 #import <Lynx/LynxLifecycleDispatcher.h>
@@ -92,7 +93,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateScreenSize:(CGSize)screenSize;
 - (void)onGestureRecognized;
 - (void)onGestureRecognizedByUI:(LynxUI*)ui;
-- (void)onPlatformGestureStatusChanged:(int)status;
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status;
 - (void)onPropsChangedByUI:(LynxUI*)ui;
 - (BOOL)isTouchMoving;
 - (NSNumber*)getLynxRuntimeId;

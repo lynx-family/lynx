@@ -100,7 +100,7 @@
                 flingPoint:CGPointZero
       handleBySimultaneous:false
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_UNDETERMINED);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateUndetermined);
   [handler reset];
 
   [handler onHandle:LynxEventTouchMove
@@ -110,7 +110,7 @@
                 flingPoint:CGPointMake(100.0, 200.0)
       handleBySimultaneous:false
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateActive);
 
 #pragma clang diagnostic pop
 }

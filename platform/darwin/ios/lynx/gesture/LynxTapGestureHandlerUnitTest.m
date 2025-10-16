@@ -94,9 +94,9 @@
                 flingPoint:CGPointZero
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_UNDETERMINED);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateUndetermined);
   [handler reset];
-  XCTAssertEqual(handler.status, LYNX_STATE_INIT);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateInit);
   NSSet<UITouch *> *touches = [NSSet setWithObject:[[UITouch alloc] init]];
   UIEvent *event = [[UIEvent alloc] init];
   LynxTouchEvent *touchEvent = [[LynxTouchEvent alloc] init];
@@ -108,7 +108,7 @@
                 flingPoint:CGPointZero
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_BEGIN);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateBegin);
   [handler onHandle:LynxEventTouchEnd
                    touches:touches
                      event:event
@@ -116,7 +116,7 @@
                 flingPoint:CGPointZero
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateActive);
 
 #pragma clang diagnostic pop
 }
@@ -152,7 +152,7 @@
 - (void)onGestureScrollBy:(CGPoint)delta {
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
 }
 
 - (BOOL)getGestureBorder:(BOOL)start {

@@ -123,7 +123,7 @@ typedef struct {
                 flingPoint:CGPointZero
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_BEGIN);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateBegin);
   [handler onHandle:LynxEventTouchMove
                    touches:touchesMove
                      event:event
@@ -131,7 +131,7 @@ typedef struct {
                 flingPoint:CGPointMake(10, 10)
       handleBySimultaneous:NO
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateActive);
 
   [handler reset];
 
@@ -142,7 +142,7 @@ typedef struct {
                 flingPoint:CGPointMake(100.0, 200.0)
       handleBySimultaneous:false
                extraBundle:nil];
-  XCTAssertEqual(handler.status, LYNX_STATE_ACTIVE);
+  XCTAssertEqual(handler.status, LynxGestureHandlerStateActive);
 
 #pragma clang diagnostic pop
 }
@@ -171,7 +171,7 @@ typedef struct {
   return 0;
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
 }
 
 - (int)getScrollContainerDirection {

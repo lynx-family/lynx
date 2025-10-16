@@ -4161,7 +4161,7 @@ LYNX_PROP_DEFINE("accessibility-exclusive-focus", setAccessibilityExclusiveFocus
   return 0.0;
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
   [self.context onPlatformGestureStatusChanged:status];
 }
 

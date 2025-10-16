@@ -7,16 +7,6 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-static const int LYNX_STATE_INIT = 0;
-static const int LYNX_STATE_BEGIN = 1;
-static const int LYNX_STATE_ACTIVE = 2;
-static const int LYNX_STATE_FAIL = 3;
-static const int LYNX_STATE_CANCELLED = 4;  // failed without active
-static const int LYNX_STATE_END = 5;        // invoked end api
-static const int LYNX_STATE_UNDETERMINED =
-    6;  // not trigger in current event, for example, flingGesture will not trigger when touching
-        // the screen.
-
 @protocol LynxGestureArenaMember;
 @class LynxGestureDetectorManager;
 @class LynxGestureVelocityTracker;

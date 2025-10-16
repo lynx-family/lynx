@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-#import <Foundation/Foundation.h>
+#import <Lynx/LynxBaseGestureHandler.h>
 #import <Lynx/LynxEventEmitter.h>
 #import <Lynx/LynxEventTarget.h>
 #import <UIKit/UIKit.h>
@@ -35,7 +35,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateUiOwner:(nullable LynxUIOwner *)owner eventEmitter:(LynxEventEmitter *)eventEmitter;
 
 - (id<LynxEventTarget>)hitTest:(CGPoint)point withEvent:(nullable UIEvent *)event;
-- (void)onPlatformGestureStatusChanged:(int)status;
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status;
 - (void)handleFocus:(id<LynxEventTarget>)target
              onView:(UIView *)view
       withContainer:(UIView *)container

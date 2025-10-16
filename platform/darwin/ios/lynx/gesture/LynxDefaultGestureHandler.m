@@ -70,7 +70,7 @@
     return;
   }
 
-  if (self.status >= LYNX_STATE_FAIL) {
+  if (self.status >= LynxGestureHandlerStateFail) {
     [self onEnd:_lastPoint touchEvent:_lastTouchEvent];
     return;
   }
@@ -99,9 +99,9 @@
         }
       }
 
-      if (self.status == LYNX_STATE_INIT) {
+      if (self.status == LynxGestureHandlerStateInit) {
         [self onBegin:self.lastPoint touchEvent:touchEvent];
-        if (self.status <= LYNX_STATE_BEGIN) {
+        if (self.status <= LynxGestureHandlerStateBegin) {
           [self activate];
         }
       } else {
@@ -120,14 +120,14 @@
       }
       _lastPoint = touchPoint;
     } else if (touchType == LynxEventTouchEnd || touchType == LynxEventTouchCancel) {
-      if (self.status == LYNX_STATE_ACTIVE && flingPoint.x == FLT_EPSILON &&
+      if (self.status == LynxGestureHandlerStateActive && flingPoint.x == FLT_EPSILON &&
           flingPoint.y == FLT_EPSILON) {
         [self fail];
         [self onEnd:CGPointZero touchEvent:nil];
       }
     }
   } else {
-    if (self.status == LYNX_STATE_ACTIVE && flingPoint.x == FLT_EPSILON &&
+    if (self.status == LynxGestureHandlerStateActive && flingPoint.x == FLT_EPSILON &&
         flingPoint.y == FLT_EPSILON) {
       [self fail];
       [self onEnd:CGPointZero touchEvent:nil];
@@ -150,9 +150,9 @@
       [self fail];
       [self onEnd:flingPoint touchEvent:nil];
     } else {
-      if (self.status == LYNX_STATE_INIT) {
+      if (self.status == LynxGestureHandlerStateInit) {
         [self onBegin:_lastPoint touchEvent:touchEvent];
-        if (self.status <= LYNX_STATE_BEGIN) {
+        if (self.status <= LynxGestureHandlerStateBegin) {
           [self activate];
         }
         return;

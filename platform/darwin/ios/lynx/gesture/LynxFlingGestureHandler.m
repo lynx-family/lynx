@@ -52,7 +52,7 @@
     [self onBegin:CGPointZero touchEvent:nil];
     return;
   }
-  if ([self status] >= LYNX_STATE_FAIL && [self status] <= LYNX_STATE_END) {
+  if (self.status >= LynxGestureHandlerStateFail && self.status <= LynxGestureHandlerStateEnd) {
     [self onEnd:CGPointZero touchEvent:nil];
     return;
   }
@@ -62,7 +62,8 @@
     return;
   }
 
-  if ([self status] == LYNX_STATE_INIT || [self status] == LYNX_STATE_UNDETERMINED) {
+  if (self.status == LynxGestureHandlerStateInit ||
+      self.status == LynxGestureHandlerStateUndetermined) {
     [self begin];
     [self activate];
     [self onBegin:CGPointZero touchEvent:nil];

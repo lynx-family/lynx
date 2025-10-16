@@ -61,7 +61,7 @@
     [self ignore];
     return;
   }
-  if ([self status] >= LYNX_STATE_FAIL) {
+  if (self.status >= LynxGestureHandlerStateFail) {
     return;
   }
 
@@ -72,7 +72,7 @@
     [self onBegin:_startPoint touchEvent:touchEvent];
   } else if (touchType == LynxEventTouchMove) {
     _lastPoint = touchPoint;
-    if ([self status] == LYNX_STATE_INIT) {
+    if (self.status == LynxGestureHandlerStateInit) {
       [self begin];
       [self onBegin:_lastPoint touchEvent:touchEvent];
     }
@@ -80,9 +80,9 @@
       [self onStart:_lastPoint touchEvent:touchEvent];
       [self activate];
     }
-    if ([self status] == LYNX_STATE_ACTIVE) {
+    if (self.status == LynxGestureHandlerStateActive) {
       [self onUpdate:_lastPoint touchEvent:touchEvent];
-    } else if ([self status] >= LYNX_STATE_FAIL) {
+    } else if (self.status >= LynxGestureHandlerStateFail) {
       [self onEnd:_lastPoint touchEvent:touchEvent];
     }
   } else if (touchType == LynxEventTouchEnd || touchType == LynxEventTouchCancel) {
@@ -92,7 +92,7 @@
 }
 
 - (BOOL)shouldActive {
-  if ([self status] >= LYNX_STATE_FAIL) {
+  if (self.status >= LynxGestureHandlerStateFail) {
     return false;
   }
   CGFloat dx = fabs(_lastPoint.x - _startPoint.x);

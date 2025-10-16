@@ -64,7 +64,7 @@
     [self ignore];
     return;
   }
-  if ([self status] >= LYNX_STATE_FAIL) {
+  if (self.status >= LynxGestureHandlerStateFail) {
     [self endTap];
     return;
   }
@@ -82,7 +82,7 @@
     }
   } else if (touchType == LynxEventTouchEnd || touchType == LynxEventTouchCancel) {
     _lastPoint = touchPoint;
-    if ([self status] >= LYNX_STATE_FAIL) {
+    if (self.status >= LynxGestureHandlerStateFail) {
       [self fail];
     } else {
       [self activate];

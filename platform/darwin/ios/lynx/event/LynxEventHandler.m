@@ -732,20 +732,20 @@
   }
 }
 
-- (void)onPlatformGestureStatusChanged:(int)status {
+- (void)onPlatformGestureStatusChanged:(LynxGestureHandlerState)status {
   if (!self.customPlatformGesture) {
     return;
   }
   void (^work)(void) = ^{
     switch (status) {
-      case LYNX_STATE_BEGIN:
+      case LynxGestureHandlerStateBegin:
         [self.customPlatformGesture beginGesture];
         break;
-      case LYNX_STATE_ACTIVE:
+      case LynxGestureHandlerStateActive:
         [self.customPlatformGesture changeGesture];
         break;
-      case LYNX_STATE_END:
-      case LYNX_STATE_CANCELLED:
+      case LynxGestureHandlerStateEnd:
+      case LynxGestureHandlerStateCancel:
         if (self.customPlatformGesture.state == UIGestureRecognizerStateChanged) {
           [self.customPlatformGesture endGesture];
         } else {

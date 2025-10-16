@@ -248,11 +248,11 @@
     [self resetGestureHandlerAndSimultaneous:_lastWinner];
   }
 
-  int stateCurrent = [self getCurrentMemberState:current];
+  LynxGestureHandlerState stateCurrent = [self getCurrentMemberState:current];
 
-  if (stateCurrent <= LYNX_STATE_ACTIVE) {
+  if (stateCurrent <= LynxGestureHandlerStateActive) {
     return current;
-  } else if (stateCurrent == LYNX_STATE_END) {
+  } else if (stateCurrent == LynxGestureHandlerStateEnd) {
     return nil;
   }
 
@@ -299,10 +299,10 @@
       [self resetGestureHandlerAndSimultaneous:node];
     }
 
-    int state = [self getCurrentMemberState:node];
-    if (state <= LYNX_STATE_ACTIVE) {
+    LynxGestureHandlerState state = [self getCurrentMemberState:node];
+    if (state <= LynxGestureHandlerStateActive) {
       return node;
-    } else if (state == LYNX_STATE_END) {
+    } else if (state == LynxGestureHandlerStateEnd) {
       return nil;
     }
   }
@@ -321,11 +321,11 @@
       [self resetGestureHandlerAndSimultaneous:node];
     }
 
-    int state = [self getCurrentMemberState:node];
+    LynxGestureHandlerState state = [self getCurrentMemberState:node];
 
-    if (state <= LYNX_STATE_ACTIVE) {
+    if (state <= LynxGestureHandlerStateActive) {
       return node;
-    } else if (state == LYNX_STATE_END) {
+    } else if (state == LynxGestureHandlerStateEnd) {
       return nil;
     }
   }
@@ -338,31 +338,31 @@
  @param node    The GestureArenaMember to check.
  @return int state  True if the member is active, false otherwise.
  */
-- (int)getCurrentMemberState:(id<LynxGestureArenaMember>)node {
+- (LynxGestureHandlerState)getCurrentMemberState:(id<LynxGestureArenaMember>)node {
   if (!node) {
-    return LYNX_STATE_FAIL;
+    return LynxGestureHandlerStateFail;
   }
 
   NSDictionary<NSNumber *, LynxBaseGestureHandler *> *gestureHandlers = [node getGestureHandlers];
   if (!gestureHandlers) {
-    return LYNX_STATE_FAIL;
+    return LynxGestureHandlerStateFail;
   }
 
-  int minStatus = -1;
+  LynxGestureHandlerState minStatus = -1;
 
   for (LynxBaseGestureHandler *handler in [gestureHandlers allValues]) {
     if ([handler isEnd]) {
       [self resetGestureHandlerAndSimultaneous:node];
       // if end api invoked, not re-compete gesture to last winner
       _lastWinner = nil;
-      return LYNX_STATE_END;
+      return LynxGestureHandlerStateEnd;
     }
 
     if ([handler isActive]) {
       [self failOthersMembersInRaceRelation:node
                            currentGestureId:handler.gestureDetector.gestureID
                      simultaneousGestureIds:_simultaneousGestureIds];
-      return LYNX_STATE_ACTIVE;
+      return LynxGestureHandlerStateActive;
     }
 
     if (minStatus < 0) {

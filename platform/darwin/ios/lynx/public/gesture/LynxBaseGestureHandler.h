@@ -6,6 +6,17 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSInteger, LynxGestureHandlerState) {
+  LynxGestureHandlerStateInit,
+  LynxGestureHandlerStateBegin,
+  LynxGestureHandlerStateActive,
+  LynxGestureHandlerStateFail,
+  LynxGestureHandlerStateCancel,        // failed without active
+  LynxGestureHandlerStateEnd,           // invoked end api
+  LynxGestureHandlerStateUndetermined,  // not trigger in current event, for example, flingGesture
+                                        // will not trigger when touching the screen.
+};
+
 typedef NS_OPTIONS(NSInteger, LynxGestureHandlerOption) {
   LynxGestureHandlerOptionPan = 1,
   LynxGestureHandlerOptionFling = 1 << 1,
@@ -44,6 +55,7 @@ static const int DIRECTION_HORIZONTAL = -1;
 @property(nonatomic, weak, readonly) id<LynxGestureArenaMember> gestureMember;
 @property(nonatomic, assign, readonly) NSInteger sign;
 @property(nonatomic, weak, readonly) LynxUIContext *context;
+@property(nonatomic, assign, readonly) LynxGestureHandlerState status;
 
 /**
  Convert gesture detectors to gesture handlers and returns a map of gesture handlers.
@@ -216,11 +228,6 @@ static const int DIRECTION_HORIZONTAL = -1;
 - (BOOL)isEnd;
 
 - (BOOL)isActive;
-
-/**
- return the status of gesture
- */
-- (int)status;
 
 /**
  Handle the "onTouchesDown" event by sending the gesture event if enabled.
