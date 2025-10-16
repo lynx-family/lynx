@@ -343,13 +343,23 @@ CSSFragment *FiberElement::GetRelatedCSSFragment() {
               ? css_style_sheet_manager_->GetCSSStyleSheetForComponent(css_id_)
               : nullptr;
       style_sheet_ = std::make_unique<CSSFragmentDecorator>(fragment);
+      if (style_sheet_ && style_sheet_->HasTouchPseudoToken()) {
+        element_manager()->UpdateTouchPseudoStatus(true);
+      }
     }
     return style_sheet_.get();
   } else {
     auto *parent_component = GetParentComponentElement();
     if (parent_component) {
-      return static_cast<ComponentElement *>(parent_component)
-          ->GetCSSFragment();
+      auto css_fragment =
+          static_cast<ComponentElement *>(parent_component)->GetCSSFragment();
+      auto css_fragment_decorator =
+          static_cast<CSSFragmentDecorator *>(css_fragment);
+      if (css_fragment_decorator &&
+          css_fragment_decorator->IntrinsicStyleSheetHasTouchPseudoToken()) {
+        element_manager()->UpdateTouchPseudoStatus(true);
+      }
+      return css_fragment;
     } else {
       return nullptr;
     }
