@@ -977,8 +977,7 @@ export abstract class BaseApp<
     }
     let cacheKey = (entryName ? entryName : DEFAULT_ENTRY) + path;
     if (path.startsWith('/') || path.startsWith('lynx_assets')) {
-      cacheKey =
-        template_url.replace(/^([^?#]+)(?:[?#].*)?$/, '$1') + '/' + cacheKey;
+      cacheKey = template_url + cacheKey;
     }
     return cacheKey;
   }
