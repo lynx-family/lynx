@@ -10,15 +10,18 @@ import androidx.annotation.RestrictTo;
 import com.lynx.tasm.LynxLoadMeta;
 import com.lynx.tasm.LynxTemplateRender;
 import com.lynx.tasm.LynxUpdateMeta;
+import com.lynx.tasm.LynxView;
 import com.lynx.tasm.LynxViewBuilder;
 import com.lynx.tasm.TemplateBundle;
 import com.lynx.tasm.behavior.LynxContext;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
+import java.lang.ref.WeakReference;
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 public final class LynxFrameView extends UIBodyView {
   private LynxTemplateRender mRender;
   private String mUrl;
+  private WeakReference<LynxView> mRootView = null;
 
   public LynxFrameView(Context context) {
     super(context);
@@ -31,9 +34,25 @@ public final class LynxFrameView extends UIBodyView {
   }
 
   private void init(Context context) {
-    LynxViewBuilder builder = ((LynxContext) context).getUIBodyView().getLynxViewBuilder();
-    mLynxUIRender = builder.createLynxUIRenderer();
-    mRender = new LynxTemplateRender(context, this, builder);
+    UIBodyView bodyView = ((LynxContext) context).getUIBodyView();
+    if (bodyView != null) {
+      LynxViewBuilder builder = bodyView.getLynxViewBuilder();
+      mLynxUIRender = builder.createLynxUIRenderer();
+      mRender = new LynxTemplateRender(context, this, builder);
+      if (bodyView instanceof LynxView) {
+        mRootView = new WeakReference<>((LynxView) bodyView);
+      } else if (bodyView instanceof LynxFrameView) {
+        mRootView = new WeakReference<>(((LynxFrameView) bodyView).getRootView());
+      }
+    }
+  }
+
+  /**
+   * Get root view of this LynxFrameView.
+   * @return root view of this LynxFrameView.
+   */
+  public LynxView getRootView() {
+    return mRootView == null ? null : mRootView.get();
   }
 
   void loadBundle(TemplateBundle bundle) {

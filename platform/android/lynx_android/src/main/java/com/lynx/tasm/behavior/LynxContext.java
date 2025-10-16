@@ -38,6 +38,7 @@ import com.lynx.tasm.behavior.ui.UIBody;
 import com.lynx.tasm.behavior.ui.UIBody.UIBodyView;
 import com.lynx.tasm.behavior.ui.UIExposure;
 import com.lynx.tasm.behavior.ui.accessibility.LynxAccessibilityWrapper;
+import com.lynx.tasm.behavior.ui.frame.LynxFrameView;
 import com.lynx.tasm.core.JSProxy;
 import com.lynx.tasm.core.LynxLayoutProxy;
 import com.lynx.tasm.fluency.FluencyTraceHelper;
@@ -551,7 +552,12 @@ public abstract class LynxContext extends LynxBaseContext implements ExceptionHa
 
   public LynxView getLynxView() {
     UIBodyView bodyView = getUIBodyView();
-    return bodyView instanceof LynxView ? (LynxView) bodyView : null;
+    if (bodyView instanceof LynxView) {
+      return (LynxView) bodyView;
+    } else if (bodyView instanceof LynxFrameView) {
+      return ((LynxFrameView) bodyView).getRootView();
+    }
+    return null;
   }
 
   @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP)
