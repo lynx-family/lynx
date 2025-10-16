@@ -1431,6 +1431,7 @@ void ElementManager::OnPatchFinishForFiber(
         context->UpdateZIndexList();
       }
     }
+    PatchEventRelatedInfo();
     dirty_stacking_contexts_.clear();
     if (need_layout_ && !(options->has_layout)) {
       options->has_layout = need_layout_;
