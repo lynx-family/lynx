@@ -1437,11 +1437,12 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
   CALayer* lastInsetLayer = nil;
   const bool hasBorderRadii = LynxHasBorderRadii([_backgroundInfo borderRadius]);
 
+  // Shadow layers should above background color and background image layers.
+  unsigned shadowLayerInsetOffset = (unsigned)self.backgroundLayer.sublayers.count;
   for (LynxBoxShadow* shadow in _shadowArray) {
     if (shadow.layer != nil) {
       [shadow.layer removeFromSuperlayer];
     }
-
     // TODO(renzhongyue): rasterize shadow with spreadRadius. Now the shouldRasterizeShadow will
     // only shadows without spread radius on bitmap backends.
     // -[LynxBackgroundManager shouldRasterize] is an attribute set by front end.
@@ -1565,7 +1566,8 @@ const LynxBorderRadii LynxBorderRadiiZero = {{0, 0}, {0, 0}, {0, 0}, {0, 0},
       }
 
       // always below border-layer, image layers, keep the order
-      [self.backgroundLayer insertSublayer:layer atIndex:0];
+      [self.backgroundLayer insertSublayer:layer atIndex:shadowLayerInsetOffset];
+
       CGPathRelease(maskPath);
       CGPathRelease(path);
     }

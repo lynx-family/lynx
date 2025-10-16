@@ -204,4 +204,76 @@
   XCTAssertTrue(colorLayer.fillColor == NULL);
 }
 
+// Tests that shadow layers are positioned correctly in the layer hierarchy
+// Verifies shadow layers are above background color and gradient layers
+- (void)testShadowLayerStackingOrder {
+  // Initialize length context for gradient calculations
+  struct LynxLengthContext context = {};
+
+  // Create gradient image
+  NSArray* image =
+      [LynxGradientUtils getGradientArrayFromString:@"linear-gradient(180deg ,#fe2c551f ,#fe2c5500)"
+                                  withLengthContext:context];
+
+  UIView* parent = [UIView new];
+  [parent addSubview:_view.view];
+
+  [LynxPropsProcessor updateProp:@[ @[
+                        @5.5,        // offset x
+                        @5.5,        // offset y
+                        @10.0,       // blur
+                        @10.0,       // spread
+                        @1,          // option
+                        @0x80000000  // color
+                      ] ]
+                         withKey:@"box-shadow"
+                           forUI:_view];
+
+  [_view propsDidUpdate];
+
+  [_view updateFrameWithoutLayoutAnimation:CGRectMake(0, 0, 200.0f, 100.f)
+                               withPadding:UIEdgeInsetsZero
+                                    border:UIEdgeInsetsZero
+                                    margin:UIEdgeInsetsZero];
+  [_view frameDidChange];
+  [_view onNodeReadyForUIOwner];
+
+  // Force layer to render
+  [_view.backgroundManager.backgroundLayer display];
+  NSArray* sublayers = _view.backgroundManager.backgroundLayer.sublayers;
+  XCTAssertNotNil(sublayers);
+  XCTAssertGreaterThan(sublayers.count, 0, @"Should have shadow layer");
+
+  // Apply background color, gradient, and shadow
+  [LynxPropsProcessor updateProp:@0xFFFF0000 withKey:@"background-color" forUI:_view];
+  [LynxPropsProcessor updateProp:image withKey:@"background-image" forUI:_view];
+  [_view propsDidUpdate];
+  [_view onNodeReadyForUIOwner];
+  // Force layer to render
+  [_view.backgroundManager.backgroundLayer display];
+
+  sublayers = _view.backgroundManager.backgroundLayer.sublayers;
+  XCTAssertNotNil(sublayers);
+  XCTAssertGreaterThan(sublayers.count, 2,
+                       @"Should have at least color, gradient, and shadow layers");
+
+  // Verify stacking order:
+  // 1. Color layer should be at index 0 (bottom)
+  CAShapeLayer* colorLayer = [sublayers objectAtIndex:0];
+  XCTAssertTrue([colorLayer isKindOfClass:[CAShapeLayer class]],
+                @"First layer should be color layer");
+  XCTAssertTrue(CGColorEqualToColor(colorLayer.fillColor, [UIColor redColor].CGColor),
+                @"Color layer should have red fill");
+
+  // 2. Gradient layer should be above color layer
+  CALayer* gradientLayer = [sublayers objectAtIndex:1];
+  // Gradient layers are typically CATiledLayer or CAGradientLayer
+  XCTAssertNotNil(gradientLayer, @"Should have gradient layer at index 1");
+  XCTAssertTrue([gradientLayer isKindOfClass:[CAReplicatorLayer class]]);
+
+  CALayer* shadowLayer = [sublayers objectAtIndex:2];
+  XCTAssertTrue([shadowLayer shadowPath]);
+  [_view.view removeFromSuperview];
+}
+
 @end

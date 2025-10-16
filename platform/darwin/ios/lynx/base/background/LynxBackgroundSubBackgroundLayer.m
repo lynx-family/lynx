@@ -30,6 +30,7 @@
 @property(nonatomic, assign) BOOL isGradientOnly;
 @property(nonatomic, strong) CAShapeLayer* colorLayer;
 @property(nonatomic, assign) BOOL isPixelated;
+@property(nonatomic, assign) unsigned shadowLayerIndex;
 @end
 
 /**
@@ -431,16 +432,23 @@ dispatch_block_t mDispatchTask = NULL;
                                                                    edgeInsets:borderInsets];
     _colorLayer.path = clipPath;
     CGPathRelease(clipPath);
-    [self addSublayer:_colorLayer];
+    // Color layer should always at bottom.
+    [self insertSublayer:_colorLayer atIndex:0];
   } else {
     // reset color if layer exists and no background color set.
     [_colorLayer setFillColor:nil];
   }
 
-  NSEnumerator* reverseEnum = [self.imageArray reverseObjectEnumerator];
-  for (LynxBackgroundImageLayerInfo* info in reverseEnum) {
+  for (LynxBackgroundImageLayerInfo* info in self.imageArray) {
     if ([info prepareGradientLayers]) {
-      [self addSublayer:[(LynxBackgroundGradientDrawable*)info.item verticalRepeatLayer]];
+      // Gradient layers are above color layer and below shadow layers.
+      if (_colorLayer) {
+        [self insertSublayer:[(LynxBackgroundGradientDrawable*)info.item verticalRepeatLayer]
+                     atIndex:1];
+      } else {
+        [self insertSublayer:[(LynxBackgroundGradientDrawable*)info.item verticalRepeatLayer]
+                     atIndex:0];
+      }
     }
   }
   [CATransaction commit];
