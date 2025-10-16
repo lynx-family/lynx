@@ -17,7 +17,11 @@
 }
 
 - (void)initWithRootView:(UIView<LUIBodyView> *)rootView {
-  _rootView = rootView;
+  if ([rootView isKindOfClass:[LynxView class]]) {
+    _rootView = rootView;
+  } else if ([rootView isKindOfClass:[LynxFrameView class]]) {
+    _rootView = [(LynxFrameView *)rootView getRootView];
+  }
   _render = [[LynxTemplateRender alloc] initWithBuilderBlock:[rootView getLynxViewBuilderBlock]
                                                containerView:self];
 }
@@ -40,6 +44,10 @@
 
 - (void)setUrl:(NSString *)url {
   _url = url;
+}
+
+- (UIView<LUIBodyView> *_Nullable)getRootView {
+  return _rootView;
 }
 
 // TODO(zhoupeng.z): implement following methods, some of them are useless for LynxFrameView.

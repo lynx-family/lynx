@@ -5173,6 +5173,7 @@ public class com::lynx::tasm::utils::LynxFrameRateControl :  {
 public class com::lynx::tasm::behavior::ui::frame::LynxFrameView : com.lynx.tasm.behavior.ui.UIBody.UIBodyView {
   public com.lynx.tasm.behavior.ui.frame.LynxFrameView.LynxFrameView(Context context);
   public com.lynx.tasm.behavior.ui.frame.LynxFrameView.LynxFrameView(Context context, AttributeSet attrs);
+  public LynxView com.lynx.tasm.behavior.ui.frame.LynxFrameView.getRootView();
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateViewport(int widthMeasureSpec, int heightMeasureSpec);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.updateMetaData(LynxUpdateMeta meta);
   public void com.lynx.tasm.behavior.ui.frame.LynxFrameView.setUrl(String url);

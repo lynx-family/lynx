@@ -1816,6 +1816,7 @@ public class LynxFrameView : UIView, <LUIBodyView> {
   public void LynxFrameView::setAppBundle:(LynxTemplateBundle *bundle);
   public void LynxFrameView::updateMetaData:(LynxUpdateMeta *meta);
   public void LynxFrameView::setUrl:(NSString *url);
+  public UIView< LUIBodyView > *_Nullable LynxFrameView::getRootView();
 }
 
 public protocol LynxGenericResourceFetcher-p : <NSObject> {
