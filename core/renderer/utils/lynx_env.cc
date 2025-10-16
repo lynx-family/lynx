@@ -217,20 +217,12 @@ bool LynxEnv::IsLogBoxEnabled() {
 }
 
 bool LynxEnv::IsQuickjsCacheEnabled() {
-  bool enable_quickjs_cache =
-      GetBoolEnv(Key::ENABLE_QUICKJS_CACHE, true, EnvType::LOCAL);
+  bool enable_quickjs_cache = GetBoolEnv(
+      Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE, true, EnvType::EXTERNAL);
   if (!enable_quickjs_cache) {
     return false;
   }
-
-  std::optional<std::string> disable_quickjs_bytecode =
-      GetLocalEnv(Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE);
-  if (!disable_quickjs_bytecode.has_value()) {
-    disable_quickjs_bytecode =
-        GetExternalEnv(Key::ANDROID_DISABLE_QUICKJS_CODE_CACHE);
-  }
-  return disable_quickjs_bytecode != kLocalEnvValueTrue &&
-         disable_quickjs_bytecode != "true";
+  return GetBoolEnv(Key::ENABLE_QUICKJS_CACHE, true, EnvType::LOCAL);
 }
 
 bool LynxEnv::IsDisableTracingGC() {
