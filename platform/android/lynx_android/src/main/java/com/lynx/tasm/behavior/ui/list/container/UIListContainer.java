@@ -28,6 +28,7 @@ import com.lynx.react.bridge.ReadableArray;
 import com.lynx.react.bridge.ReadableMap;
 import com.lynx.react.bridge.ReadableType;
 import com.lynx.tasm.IListNodeInfoFetcher;
+import com.lynx.tasm.ListNodeInfoFetcher;
 import com.lynx.tasm.LynxError;
 import com.lynx.tasm.LynxSubErrorCode;
 import com.lynx.tasm.ThreadStrategyForRendering;
@@ -99,6 +100,9 @@ public class UIListContainer extends UISimpleView<ListContainerView>
   private final HashMap<String, UIComponent> mStickyBottomItemMap = new HashMap<>();
   private Callback mScrollToCallback = null;
   private int mScrollingEstimatedOffset = INVALID_SCROLL_ESTIMATED_OFFSET;
+  
+  
+  public ListContainerProxy mListContainerProxy = null;
 
   private final NestedScrollContainerView.CustomScrollHook mCustomScrollHook =
       new NestedScrollContainerView.CustomScrollHook() {
@@ -116,9 +120,12 @@ public class UIListContainer extends UISimpleView<ListContainerView>
 
         @Override
         public void onSmoothScrollEnd() {
-          LynxContext context = getLynxContext();
-          if (context != null && context.getListNodeInfoFetcher() != null) {
-            getLynxContext().getListNodeInfoFetcher().scrollStopped(getSign());
+//          LynxContext context = getLynxContext();
+//          if (context != null && context.getListNodeInfoFetcher() != null) {
+//            getLynxContext().getListNodeInfoFetcher().scrollStopped(getSign());
+//          }
+          if (mListContainerProxy!= null) {
+            mListContainerProxy.scrollStopped(0,getSign());
           }
         }
 
@@ -252,7 +259,7 @@ public class UIListContainer extends UISimpleView<ListContainerView>
       updateStickyInfoForDeletedChild(child, mStickyBottomItems);
     }
   }
-
+  
   @Override
   public void onLayoutFinish(long operationId, @Nullable LynxBaseUI component) {
     super.onLayoutFinish(operationId, component);
@@ -397,6 +404,15 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     super.onNodeReady();
     updateStickyStarts();
     updateStickyEnds();
+    
+    if(mListContainerProxy ==null && getLynxContext().getListNodeInfoFetcher() instanceof ListNodeInfoFetcher){
+      ListNodeInfoFetcher listNodeInfoFetcher = (ListNodeInfoFetcher) getLynxContext().getListNodeInfoFetcher();
+      // relax 
+      mListContainerProxy = new ListContainerProxy(this, listNodeInfoFetcher.mRenderer.getNativePtr());//shell_ptr; eng
+      
+    }
+    
+    
   }
 
   @Override
@@ -768,7 +784,10 @@ public class UIListContainer extends UISimpleView<ListContainerView>
     }
 
     if (listNodeInfoFetcher != null) {
-      listNodeInfoFetcher.scrollToPosition(getSign(), position, offsetVal, alignTo, smooth);
+      if (mListContainerProxy!=null){
+        mListContainerProxy.scrollToPosition(0,getSign(), position, offsetVal, alignTo, smooth);
+      }
+//      listNodeInfoFetcher.scrollToPosition(getSign(), position, offsetVal, alignTo, smooth);
       if (!smooth) {
         // TODO(xiamengfei.moonface) Invoke callback after ListElement did scroll on Most_On_Tasm
         sendCustomEvent(mView.getScrollX(), mView.getScrollY(), mView.getScrollX(),

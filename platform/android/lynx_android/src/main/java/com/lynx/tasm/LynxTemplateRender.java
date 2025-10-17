@@ -3287,6 +3287,11 @@ public class LynxTemplateRender
 
     mEngineProxy.dispatchTaskToLynxEngine(runnable);
   }
+  
+  
+  public long getNativePtr(){
+    return mNativePtr;
+  }
 
   public void startLynxRuntime() {
     if (mNativePtr != 0) {

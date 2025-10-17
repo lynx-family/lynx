@@ -58,6 +58,9 @@ shell_shared_sources = [
   "tasm_platform_invoker.h",
   "vsync_observer_impl.cc",
   "vsync_observer_impl.h",
+  "list_container_proxy.cc",
+   "list_container_proxy.h",
+  
 ]
 
 if (!enable_unittests) {

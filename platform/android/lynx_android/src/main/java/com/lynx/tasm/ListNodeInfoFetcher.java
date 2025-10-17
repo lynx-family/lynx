@@ -10,7 +10,7 @@ import com.lynx.react.bridge.JavaOnlyMap;
 import com.lynx.tasm.LynxTemplateRender;
 
 public class ListNodeInfoFetcher implements IListNodeInfoFetcher {
-  private LynxTemplateRender mRenderer;
+  public LynxTemplateRender mRenderer;
 
   public ListNodeInfoFetcher(LynxTemplateRender renderer) {
     mRenderer = renderer;

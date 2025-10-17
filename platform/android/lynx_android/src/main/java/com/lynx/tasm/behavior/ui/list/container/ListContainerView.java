@@ -253,6 +253,10 @@ public class ListContainerView
       }
       mPreviousOffsetY = t;
       mPreviousOffsetX = mUiListContainer.isRtl() ? contentOffsetXRTL(l) : l;
+      if(mUiListContainer !=null && mUiListContainer.mListContainerProxy!=null){
+        mUiListContainer.mListContainerProxy.scrollByListContainer(0, mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
+      }
+      
       listNodeInfoFetcher.scrollByListContainer(
           mUiListContainer.getSign(), mPreviousOffsetX, t, l, t);
 
