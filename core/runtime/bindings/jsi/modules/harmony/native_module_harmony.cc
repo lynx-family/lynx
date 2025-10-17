@@ -20,7 +20,7 @@ namespace harmony {
 
 struct CallbackData {
   CallbackData(const std::shared_ptr<piper::LynxModuleCallback>& c,
-               const std::shared_ptr<piper::LynxNativeModule::Delegate>& d)
+               const std::weak_ptr<piper::LynxNativeModule::Delegate>& d)
       : callback(c), delegate(d) {}
   std::shared_ptr<piper::LynxModuleCallback> callback;
   std::weak_ptr<piper::LynxNativeModule::Delegate> delegate;
@@ -49,7 +49,7 @@ napi_value NativeModuleHarmony::InvokePlatformMethod(
     const std::shared_ptr<PlatformModuleManager>& platform_manager,
     const std::string& module_name, bool sendable, napi_env env,
     const lepus::Value& lepus_argv, const std::string& method_name,
-    const std::shared_ptr<Delegate>& delegate,
+    const std::weak_ptr<Delegate>& delegate,
     const piper::CallbackMap& callbacks, uint64_t flow_id,
     const std::string& first_arg) {
   base::NapiHandleScope scope(env);
@@ -139,15 +139,11 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
                 ctx.event()->add_debug_annotations("arg0", first_arg);
                 ctx.event()->add_flow_ids(flow_id);
               });
-  auto delegate = delegate_.lock();
-  if (!delegate) {
-    return std::unique_ptr<pub::Value>(nullptr);
-  }
   if (sendable_) {
     auto env = base::harmony::GetJSThreadNapiEnv();
     napi_value result = InvokePlatformMethod(
         platform_manager_, module_name_, true, env, lepus_value, method_name,
-        delegate, callbacks, flow_id, first_arg);
+        delegate_, callbacks, flow_id, first_arg);
     lepus::Value lepus_result =
         base::NapiConvertHelper::ConvertToLepusValue(env, result);
     return std::make_unique<PubLepusValue>(std::move(lepus_result));
@@ -155,7 +151,7 @@ NativeModuleHarmony::InvokeMethod(const std::string& method_name,
 
   base::UIThread::GetRunner()->PostTask(
       [manager = platform_manager_, env = main_env_, module_name = module_name_,
-       lepus_argv = std::move(lepus_value), method_name, delegate,
+       lepus_argv = std::move(lepus_value), method_name, delegate = delegate_,
        callbacks = std::move(callbacks), flow_id = flow_id,
        first_arg = std::move(first_arg)]() {
         LOGD("LynxModuleHarmony module: " << module_name << ", invoke method: "

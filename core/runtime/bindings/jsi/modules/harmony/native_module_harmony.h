@@ -45,7 +45,7 @@ class NativeModuleHarmony : public piper::LynxNativeModule {
       const std::shared_ptr<PlatformModuleManager>& platform_manager,
       const std::string& module_name, bool sendable, napi_env env,
       const lepus::Value& lepus_argv, const std::string& method_name,
-      const std::shared_ptr<Delegate>& delegate,
+      const std::weak_ptr<Delegate>& delegate,
       const piper::CallbackMap& callbacks, uint64_t flow_id,
       const std::string& first_arg);
 
