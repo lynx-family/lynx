@@ -42,6 +42,7 @@ class ValueImplDarwin : public Value {
   bool IsArrayBuffer() const override;
   bool IsMap() const override;
   bool IsFunction() const override;
+  bool IsTemplateData() const override;
 
   // Getter
   bool Bool() const override;
@@ -94,6 +95,9 @@ class ValueImplDarwin : public Value {
   bool PushUInt32ToMap(const std::string& key, uint32_t value) override;
   bool PushInt64ToMap(const std::string& key, int64_t value) override;
   bool PushUInt64ToMap(const std::string& key, uint64_t value) override;
+
+  std::unique_ptr<pub::Value> ParseTemplateData(
+      std::shared_ptr<PubValueFactory> value_factory) const override;
 
   id backend_value() const { return backend_value_; }
 

@@ -3,6 +3,10 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "core/value_wrapper/darwin/value_impl_darwin.h"
+#import <Lynx/LynxTemplateData+Converter.h>
+#import <Lynx/LynxTemplateData.h>
+#include "core/runtime/common/utils.h"
+#include "core/value_wrapper/value_impl_piper.h"
 
 namespace lynx {
 namespace pub {
@@ -51,6 +55,10 @@ bool ValueImplDarwin::IsArrayBuffer() const {
 bool ValueImplDarwin::IsMap() const { return [backend_value_ isKindOfClass:[NSDictionary class]]; }
 
 bool ValueImplDarwin::IsFunction() const { return false; }
+
+bool ValueImplDarwin::IsTemplateData() const {
+  return [backend_value_ isKindOfClass:[LynxTemplateData class]];
+}
 
 bool ValueImplDarwin::Bool() const { return [backend_value_ boolValue]; }
 
@@ -480,6 +488,20 @@ NSArray* ValueUtilsDarwin::ConvertPubValueToOCArray(
     [array addObject:ConvertPubValueToOCValue(value) ?: (id)kCFNull];
   });
   return array;
+}
+
+std::unique_ptr<pub::Value> ValueImplDarwin::ParseTemplateData(
+    std::shared_ptr<PubValueFactory> value_factory) const {
+  if (value_factory->GetFactoryType() == PubValueFactory::FactoryType::kPiper) {
+    piper::Runtime* rt = reinterpret_cast<PiperValueFactory*>(value_factory.get())->GetRuntime();
+    piper::Scope scope(*rt);
+    LynxTemplateData* data = (LynxTemplateData*)backend_value_;
+    auto result = piper::valueFromLepus(*rt, *LynxGetLepusValueFromTemplateData(data));
+    if (result.has_value()) {
+      return std::make_unique<ValueImplPiper>(*rt, std::move(*result));
+    }
+  }
+  return nullptr;
 }
 
 }  // namespace pub

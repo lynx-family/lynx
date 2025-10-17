@@ -150,3 +150,21 @@ lynx_core_source_set("Lynx") {
     "public:Public",
   ]
 }
+
+lynx_core_source_set("TemplateData") {
+  sources = [
+    "LynxTemplateData+Converter.h",
+    "LynxTemplateData.h",
+    "LynxTemplateData.mm",
+  ]
+
+  public_deps = [
+    "../../../../base/trace/darwin:LynxTrace",
+    "../../../../core:lynx_native",
+    "../../../../core/inspector:inspector",
+    "../../../../core/shared_data",
+    "../../../../third_party/rapidjson",
+    "../lazy_load:lazy_load",
+    "public:Public",
+  ]
+}

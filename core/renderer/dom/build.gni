@@ -12,31 +12,29 @@ lynx_dom_core_sources = [
   "element_manager.cc",
 ]
 
-if (!enable_unittests) {
-  if (is_android) {
-    lynx_dom_core_sources += [
-      "android/environment_android.cc",
-      "android/environment_android.h",
-      "android/lepus_message_consumer.cc",
-      "android/lepus_message_consumer.h",
-      "android/lynx_get_ui_result_android.cc",
-      "android/lynx_get_ui_result_android.h",
-      "android/lynx_template_bundle_android.cc",
-      "android/lynx_template_bundle_android.h",
-      "android/lynx_view_data_manager_android.cc",
-      "android/lynx_view_data_manager_android.h",
-    ]
-  } else if (is_harmony) {
-    lynx_dom_core_sources += [
-      "harmony/lynx_template_bundle_harmony.cc",
-      "harmony/lynx_template_bundle_harmony.h",
-    ]
-  } else if (is_apple) {
-    lynx_dom_core_sources += [
-      "ios/lepus_value_converter.h",
-      "ios/lepus_value_converter.mm",
-    ]
-  }
+if (is_android) {
+  lynx_dom_core_sources += [
+    "android/environment_android.cc",
+    "android/environment_android.h",
+    "android/lepus_message_consumer.cc",
+    "android/lepus_message_consumer.h",
+    "android/lynx_get_ui_result_android.cc",
+    "android/lynx_get_ui_result_android.h",
+    "android/lynx_template_bundle_android.cc",
+    "android/lynx_template_bundle_android.h",
+    "android/lynx_view_data_manager_android.cc",
+    "android/lynx_view_data_manager_android.h",
+  ]
+} else if (is_harmony) {
+  lynx_dom_core_sources += [
+    "harmony/lynx_template_bundle_harmony.cc",
+    "harmony/lynx_template_bundle_harmony.h",
+  ]
+} else if (is_apple) {
+  lynx_dom_core_sources += [
+    "ios/lepus_value_converter.h",
+    "ios/lepus_value_converter.mm",
+  ]
 }
 
 lynx_dom_core_sources_path = get_path_info(lynx_dom_core_sources, "abspath")
